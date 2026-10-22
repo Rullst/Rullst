@@ -1,0 +1,148 @@
+//! Sign in with Microsoft: OpenID Connect with state, PKCE and nonce, for
+//! work and school (Entra ID) and personal Microsoft accounts.
+//!
+//! Identity, from the ID token Rullst Connect verifies:
+//! - the subject stored in `oauth_identities` is `<tid>:<oid>`, the user's
+//!   directory (tenant) ID and object ID: Microsoft's stable key for a user,
+//!   which does not change with the app registration (`sub` does);
+//! - Microsoft does not verify the `email` claim: an organization's
+//!   administrators can give a user any address. It counts as verified, and
+//!   so may create or link an account, only when the token also carries the
+//!   optional claim `xms_edov` with the value `true` (Microsoft checked that
+//!   the address's domain belongs to the user's organization, or the account
+//!   is a personal one). Add the optional ID-token claims `email` and
+//!   `xms_edov` under Token configuration in the app registration; without
+//!   them only an identity that is already linked can sign in.
+//!
+//! Settings (process environment, then `.env`):
+//! - `MICROSOFT_TENANT`: who may sign in. `common` admits any organization
+//!   and personal accounts, `organizations` any organization, `consumers`
+//!   personal accounts only, and a directory (tenant) ID one organization.
+//!   There is no default: the choice decides who can create accounts here.
+//! - `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET`: the application
+//!   (client) ID and a client secret of the app registration (Microsoft
+//!   Entra admin center, App registrations). With neither set, Microsoft
+//!   sign-in is off: the login page shows no button and `/auth/microsoft`
+//!   says so.
+//! - `MICROSOFT_REDIRECT_URL`, else `RULLST_PUBLIC_ORIGIN` followed by
+//!   `/auth/microsoft/callback`, else
+//!   `http://localhost:3000/auth/microsoft/callback` in development. Register
+//!   exactly this URL as a Web redirect URI.
+//! - `mock_*` credentials select Rullst Connect's offline provider, which
+//!   signs in a fixed test user (`mock@example.invalid`) without leaving the
+//!   application. They need this application's `oauth-mock` feature
+//!   (`cargo run --features oauth-mock`) and are refused in staging and
+//!   production; without the feature the application stops at startup.
+use super::{page_context, refused};
+use rullst::config::Environment;
+use rullst::connect::challenge::LoginOptions;
+use rullst::connect::extractors::AuthCallback;
+use rullst::connect::prelude::SecretString;
+use rullst::connect::providers::{MicrosoftOidcProvider, MicrosoftTenant};
+use rullst::html;
+use rullst::html::Markup;
+use rullst::server::{Extension, HeaderMap, Query, Response, StatusCode};
+use serde::Deserialize;
+use std::sync::OnceLock;
+
+/// The provider name in routes, cookies and `oauth_identities.provider`.
+pub(crate) const PROVIDER: &str = "microsoft";
+const OFF: &str = "Sign-in with Microsoft is not configured.";
+const TENANT_REQUIRED: &str =
+    "set MICROSOFT_TENANT to common, organizations, consumers or your directory (tenant) ID";
+
+static MICROSOFT: OnceLock<Option<MicrosoftOidcProvider>> = OnceLock::new();
+
+/// Reads the Microsoft settings once, at startup (`router()` calls it), so a
+/// wrong configuration stops the application instead of the first sign-in.
+pub fn initialize() -> Result<(), Box<dyn std::error::Error>> {
+    if MICROSOFT.get().is_none() {
+        let provider = configured(
+            super::setting("MICROSOFT_TENANT")?,
+            super::setting("MICROSOFT_CLIENT_ID")?,
+            super::setting("MICROSOFT_CLIENT_SECRET")?,
+            super::setting("MICROSOFT_REDIRECT_URL")?,
+            super::setting("RULLST_PUBLIC_ORIGIN")?,
+            super::environment(),
+        )?;
+        let _ = MICROSOFT.set(provider);
+    }
+    Ok(())
+}
+
+/// The configured provider; `None` when Microsoft sign-in is off.
+pub(crate) fn provider() -> Option<&'static MicrosoftOidcProvider> {
+    MICROSOFT.get().and_then(Option::as_ref)
+}
+
+/// The provider for these settings, `None` with no credentials.
+pub(crate) fn configured(
+    tenant: Option<String>,
+    client_id: Option<String>,
+    client_secret: Option<String>,
+    redirect_url: Option<String>,
+    public_origin: Option<String>,
+    environment: Environment,
+) -> Result<Option<MicrosoftOidcProvider>, Box<dyn std::error::Error>> {
+    let (client_id, client_secret) = match (client_id, client_secret) {
+        (None, None) => return Ok(None),
+        (Some(client_id), Some(client_secret)) => (client_id, client_secret),
+        _ => return Err("set both MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET, or neither".into()),
+    };
+    let tenant = MicrosoftTenant::parse(&tenant.ok_or(TENANT_REQUIRED)?)
+        .map_err(|_| TENANT_REQUIRED)?;
+    let redirect_url = super::redirect_url(PROVIDER, redirect_url, public_origin, environment)?;
+    let provider = MicrosoftOidcProvider::try_new(tenant, client_id, SecretString::from(client_secret), redirect_url)
+        .map_err(|error| format!("Microsoft sign-in: {error}"))?;
+    if provider.credential_mode().is_mock() && environment.requires_secure_defaults() {
+        return Err("Microsoft sign-in: mock credentials sign in a fixed test user; use them only in development and tests".into());
+    }
+    Ok(Some(provider))
+}
+
+#[derive(Deserialize)]
+pub struct StartQuery {
+    /// A same-site page to open after sign-in, such as `/courses/7`.
+    next: Option<String>,
+}
+
+/// `GET /auth/microsoft`: stores a fresh challenge and sends the browser to
+/// Microsoft's sign-in page.
+pub async fn start(
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    Query(query): Query<StartQuery>,
+) -> Response {
+    let page = page_context(&headers, &csrf, &csp_nonce);
+    let Some(provider) = provider() else {
+        return refused(&page, PROVIDER, StatusCode::NOT_FOUND, OFF);
+    };
+    super::start(PROVIDER, provider, LoginOptions::oidc(PROVIDER), query.next.as_deref(), &page, false).await
+}
+
+/// `GET /auth/microsoft/callback`: consumes the challenge, verifies
+/// Microsoft's answer (state, PKCE, ID token, tenant and nonce) and signs
+/// the account in.
+pub async fn callback(
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    Query(callback): Query<AuthCallback>,
+) -> Response {
+    let page = page_context(&headers, &csrf, &csp_nonce);
+    let Some(provider) = provider() else {
+        return refused(&page, PROVIDER, StatusCode::NOT_FOUND, OFF);
+    };
+    super::complete(PROVIDER, provider, &headers, &callback, &page, None).await
+}
+
+/// The "Sign in with Microsoft" link of the login page; nothing when
+/// Microsoft sign-in is off.
+pub fn login_link() -> Option<Markup> {
+    provider().map(|_| {
+        html! {
+            <p><a href="/auth/microsoft" class="oauth-microsoft">"Sign in with Microsoft"</a></p>
+        }
+    })
+}

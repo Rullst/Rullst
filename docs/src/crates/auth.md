@@ -158,7 +158,10 @@ assert!(password_reset_digests_match(&stored, &submitted));
 
 Expiry, single use and one live token per account belong to the
 application's store. The generated `password_reset_tokens` table keeps one
-token per account (its primary key), expires it after 30 minutes and deletes
+token per account (its primary key), expires it after
+`RESET_TOKEN_LIFETIME_MINUTES` (30 as generated; 10 minutes to 24 hours, see
+[Tutorial 11](../tutorials/11-authentication-system.md#what-the-scaffold-currently-enforces))
+and deletes
 it in the transaction that stores the new password hash and increments the
 session epoch. A password change keeps the browser that made it signed in with
 a cookie at the new epoch; a reset signs out every device and redirects to the

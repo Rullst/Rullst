@@ -1,44 +1,30 @@
-//! `cargo rullst make:oauth <provider>`: sign-in with an OAuth/OpenID Connect
-//! provider for the `make:auth`, SaaS and LMS account model (v13 preview).
+//! `cargo rullst make:oauth <provider>`: sign-in with Google, GitHub,
+//! Microsoft or Apple for the `make:auth`, SaaS and LMS account model (v13
+//! preview).
 //!
 //! The generated code keeps login challenges in the application database
-//! through `rullst::connect::challenge`, links provider identities in an
-//! `oauth_identities` table and signs accounts in with the same session-epoch
-//! cookie as the password login. Each provider is one [`ProviderSpec`]; add a
-//! row (and its template and tests) to support another one.
+//! through `rullst::connect::challenge`, links provider identities in one
+//! `oauth_identities` table keyed by provider and subject, and signs
+//! accounts in with the same session-epoch cookie as the password login. The
+//! first provider creates the shared flow, the table and its migration; each
+//! further provider adds only its module, routes, login link and settings.
+//! Each provider is one [`providers::ProviderSpec`].
 use super::consumer_files::{self as writes, Edit};
 use clap::{Arg, ArgMatches, Command};
+use providers::ProviderSpec;
 use std::io;
 use std::path::Path;
 
 mod edits;
 mod project;
-
-/// A provider `make:oauth` can generate.
-struct ProviderSpec {
-    /// Route segment, cookie path, `oauth_identities.provider` and module name.
-    name: &'static str,
-    /// Human-readable name in the login link and messages.
-    label: &'static str,
-    /// Prefix of its settings: `<ENV>_CLIENT_ID`, `<ENV>_CLIENT_SECRET`,
-    /// `<ENV>_REDIRECT_URL`.
-    env: &'static str,
-    /// The generated `src/controllers/oauth/<name>.rs`.
-    template: &'static str,
-}
-
-const PROVIDERS: [ProviderSpec; 1] = [ProviderSpec {
-    name: "google",
-    label: "Google",
-    env: "GOOGLE",
-    template: include_str!("google.rs.template"),
-}];
+mod providers;
 
 const CONTROLLER_TEMPLATE: &str = include_str!("controller.rs.template");
 const IDENTITY_TEMPLATE: &str = include_str!("identity.rs.template");
 const MIGRATION_TEMPLATE: &str = include_str!("migration.rs.template");
 /// File-name suffix of the identities migration.
 const MIGRATION_SUFFIX: &str = "_create_oauth_identities_table.rs";
+const UNKNOWN_PROVIDER: &str = "make:oauth supports only: google, github, microsoft, apple";
 
 pub(crate) fn command() -> Command {
     Command::new("make:oauth")
@@ -46,8 +32,8 @@ pub(crate) fn command() -> Command {
         .arg(
             Arg::new("provider")
                 .required(true)
-                .value_parser(PROVIDERS.map(|provider| provider.name))
-                .help("The identity provider; `google` for now"),
+                .value_parser(providers::names())
+                .help("The identity provider: google, github, microsoft or apple"),
         )
 }
 
@@ -72,18 +58,16 @@ struct Plan {
 }
 
 fn plan(root: &Path, name: &str, timestamp: &str) -> Result<Plan, Box<dyn std::error::Error>> {
-    let provider = PROVIDERS
-        .iter()
-        .find(|provider| provider.name == name)
-        .ok_or_else(|| invalid("make:oauth supports only: google"))?;
+    let provider = providers::find(name).ok_or_else(|| invalid(UNKNOWN_PROVIDER))?;
     if timestamp.len() != 14 || !timestamp.bytes().all(|byte| byte.is_ascii_digit()) {
         return Err(invalid("the migration timestamp must be 14 digits").into());
     }
     let root = &writes::project_root(root)?;
     let database = project::check(root)?;
     let mut edits = Vec::new();
+    let callback_method = if provider.form_post { "POST" } else { "GET" };
     let mut notes = vec![format!(
-        "{} sign-in added: GET /auth/{name} starts it and GET /auth/{name}/callback finishes it.",
+        "{} sign-in added: GET /auth/{name} starts it and {callback_method} /auth/{name}/callback finishes it.",
         provider.label
     )];
 
@@ -134,9 +118,17 @@ fn plan(root: &Path, name: &str, timestamp: &str) -> Result<Plan, Box<dyn std::e
 
     match edits::router(root, provider)? {
         Some(edit) => edits.push(edit),
+        None if provider.form_post => notes.push(format!(
+            "Mount the routes yourself, behind the CSRF layer: call controllers::oauth::{name}::initialize()? where the router is built, then route GET /auth/{name} to controllers::oauth::{name}::start, and POST /auth/{name}/callback to controllers::oauth::{name}::callback with GET to controllers::oauth::{name}::mock_callback, each with controllers::auth_controller::credential_rate_limit."
+        )),
         None => notes.push(format!(
             "Mount the routes yourself, behind the CSRF layer: call controllers::oauth::{name}::initialize()? where the router is built, then route GET /auth/{name} to controllers::oauth::{name}::start and GET /auth/{name}/callback to controllers::oauth::{name}::callback, each with controllers::auth_controller::credential_rate_limit."
         )),
+    }
+    if provider.form_post
+        && let Some(edit) = edits::csrf_exemption(root, &format!("/auth/{name}/callback"))?
+    {
+        edits.push(edit);
     }
     match edits::login_page(root, provider)? {
         Some(edit) => edits.push(edit),
@@ -148,13 +140,17 @@ fn plan(root: &Path, name: &str, timestamp: &str) -> Result<Plan, Box<dyn std::e
         edits.push(edit);
     }
     notes.push(format!(
-        "Set {env}_CLIENT_ID and {env}_CLIENT_SECRET, and register <RULLST_PUBLIC_ORIGIN>/auth/{name}/callback (or {env}_REDIRECT_URL) with the provider.",
+        "Set {}, and register <RULLST_PUBLIC_ORIGIN>/auth/{name}/callback (or {env}_REDIRECT_URL) with the provider.",
+        provider.setting_names().join(", "),
         env = provider.env
     ));
     notes.push(format!(
-        "Try it offline: {env}_CLIENT_ID=mock_{name} {env}_CLIENT_SECRET=mock_{name} cargo run --features oauth-mock (development only).",
-        env = provider.env
+        "Try it offline: {} cargo run --features oauth-mock (development only).",
+        provider.offline_settings()
     ));
+    if let Some(note) = provider.note {
+        notes.push(note.to_owned());
+    }
     if first_provider {
         notes.push("Run `cargo rullst db:migrate` to create the oauth_identities table. A verified provider email that already belongs to an account is refused by default; see EXISTING_ACCOUNT_POLICY in src/controllers/oauth/mod.rs.".to_owned());
     }

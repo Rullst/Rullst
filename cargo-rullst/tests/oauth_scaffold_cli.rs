@@ -1,6 +1,7 @@
-//! `make:oauth google` on real generated projects: the generated sign-in runs
-//! end to end through the generated router with the offline provider, and the
-//! command refuses projects without the account model.
+//! `make:oauth` on real generated projects: Google, GitHub, Microsoft and
+//! Apple sign-in in one project run end to end through the generated router
+//! with the offline providers, and the command refuses projects without the
+//! account model.
 use cargo_rullst::{blueprints, generators::project::cargo_toml::build_cargo_toml};
 use std::{
     fs,
@@ -27,7 +28,7 @@ fn rullst(root: &Path, args: &[&str]) -> Output {
 }
 
 #[test]
-fn generated_google_sign_in_runs_end_to_end_offline() {
+fn generated_sign_in_with_every_provider_runs_end_to_end_offline() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path();
@@ -59,11 +60,13 @@ fn generated_google_sign_in_runs_end_to_end_offline() {
         "Zero-Bundle HTMX",
     )
     .unwrap();
-    let installed = success(rullst(root, &["make:oauth", "google"]));
-    assert!(String::from_utf8_lossy(&installed.stdout).contains("--features oauth-mock"));
+    for provider in ["google", "github", "microsoft", "apple"] {
+        let installed = success(rullst(root, &["make:oauth", provider]));
+        assert!(String::from_utf8_lossy(&installed.stdout).contains("--features oauth-mock"));
+    }
     // A second run changes nothing.
     let before = fs::read(root.join("Cargo.toml")).unwrap();
-    assert!(!rullst(root, &["make:oauth", "google"]).status.success());
+    assert!(!rullst(root, &["make:oauth", "github"]).status.success());
     assert_eq!(before, fs::read(root.join("Cargo.toml")).unwrap());
 
     fs::write(
@@ -100,6 +103,18 @@ fn generated_google_sign_in_runs_end_to_end_offline() {
             .env("GOOGLE_CLIENT_ID", "mock_google_client")
             .env("GOOGLE_CLIENT_SECRET", "mock_google_secret")
             .env_remove("GOOGLE_REDIRECT_URL")
+            .env("GITHUB_CLIENT_ID", "mock_github")
+            .env("GITHUB_CLIENT_SECRET", "mock_github")
+            .env_remove("GITHUB_REDIRECT_URL")
+            .env("MICROSOFT_TENANT", "common")
+            .env("MICROSOFT_CLIENT_ID", "mock_microsoft")
+            .env("MICROSOFT_CLIENT_SECRET", "mock_microsoft")
+            .env_remove("MICROSOFT_REDIRECT_URL")
+            .env("APPLE_CLIENT_ID", "mock_apple")
+            .env("APPLE_TEAM_ID", "mock_apple")
+            .env("APPLE_KEY_ID", "mock_apple")
+            .env("APPLE_PRIVATE_KEY", "mock_apple")
+            .env_remove("APPLE_REDIRECT_URL")
             .env_remove("RULLST_PUBLIC_ORIGIN")
             .env("BILLING_API_KEY", "mock_contract")
             .env("BILLING_WEBHOOK_SECRET", "mock_contract")
@@ -203,9 +218,20 @@ fn make_oauth_needs_the_account_model_and_composes_with_make_auth() {
     let manifest = fs::read_to_string(root.join("Cargo.toml")).unwrap();
     assert!(manifest.contains("\"oauth\"") && manifest.contains("\"oauth-sqlite\""));
     assert!(manifest.contains("oauth-mock = [\"rullst/oauth-mock\"]"));
+    // A second provider adds its module, link and, for Apple's form POST
+    // callback, the CSRF exemption in a new Rullst.toml.
+    let apple = success(rullst(root, &["make:oauth", "apple"]));
+    let stdout = String::from_utf8_lossy(&apple.stdout);
+    assert!(stdout.contains("POST /auth/apple/callback to controllers::oauth::apple::callback"));
+    assert!(!stdout.contains("db:migrate"));
+    let config = fs::read_to_string(root.join("Rullst.toml")).unwrap();
+    assert!(config.contains("csrf_signed_webhook_paths = [\"/auth/apple/callback\"]"));
+    let page = fs::read_to_string(root.join("src/pages/auth.rs")).unwrap();
+    assert!(page.contains("{crate::controllers::oauth::apple::login_link()}"));
     for generated in [
         "src/controllers/oauth/mod.rs",
         "src/controllers/oauth/google.rs",
+        "src/controllers/oauth/apple.rs",
         "src/models/oauth_identity.rs",
     ] {
         syn::parse_file(&fs::read_to_string(root.join(generated)).unwrap()).unwrap();

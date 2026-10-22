@@ -21,10 +21,16 @@ const MAX_VALUE_BYTES: usize = 128;
 /// Pass `secure` the way Rullst Core decides it for its own cookies:
 /// `Environment::requires_secure_defaults()` (staging and production).
 /// Core also adds `Secure` to this cookie on HTTPS requests.
+///
+/// A provider that returns the callback as a cross-site form POST
+/// (`response_mode=form_post`, such as Sign in with Apple) needs
+/// [`Self::for_cross_site_post`]: browsers send no `SameSite=Lax` cookie
+/// with that POST.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChallengeCookie {
     path: String,
     secure: bool,
+    cross_site_post: bool,
 }
 
 impl ChallengeCookie {
@@ -40,7 +46,25 @@ impl ChallengeCookie {
         if !valid {
             return Err(ChallengeError::Invalid("cookie path"));
         }
-        Ok(Self { path, secure })
+        Ok(Self {
+            path,
+            secure,
+            cross_site_post: false,
+        })
+    }
+
+    /// The same cookie for a callback the provider POSTs from its own site
+    /// (`response_mode=form_post`): `SameSite=None` and always `Secure`,
+    /// because browsers attach only `SameSite=None` cookies to a cross-site
+    /// POST and accept that attribute only on `Secure` cookies (which they
+    /// keep over HTTPS and on `localhost`). The id still lives at most ten
+    /// minutes, is consumed once and is useless without the matching
+    /// `state`. Added in v13.
+    #[must_use]
+    pub fn for_cross_site_post(mut self) -> Self {
+        self.cross_site_post = true;
+        self.secure = true;
+        self
     }
 
     /// The `Set-Cookie` value storing `id` for `max_age_seconds`, clamped to
@@ -49,9 +73,10 @@ impl ChallengeCookie {
     pub fn set(&self, id: &ChallengeId, max_age_seconds: u64) -> String {
         let max_age = max_age_seconds.clamp(1, MAX_CHALLENGE_LIFETIME_SECONDS);
         format!(
-            "{CHALLENGE_COOKIE_NAME}={}; Path={}; Max-Age={max_age}; HttpOnly; SameSite=Lax{}",
+            "{CHALLENGE_COOKIE_NAME}={}; Path={}; Max-Age={max_age}; HttpOnly; SameSite={}{}",
             id.as_str(),
             self.path,
+            self.same_site(),
             self.secure_attribute()
         )
     }
@@ -60,8 +85,9 @@ impl ChallengeCookie {
     #[must_use]
     pub fn clear(&self) -> String {
         format!(
-            "{CHALLENGE_COOKIE_NAME}=; Path={}; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax{}",
+            "{CHALLENGE_COOKIE_NAME}=; Path={}; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite={}{}",
             self.path,
+            self.same_site(),
             self.secure_attribute()
         )
     }
@@ -92,6 +118,10 @@ impl ChallengeCookie {
             }
         }
         found.map(str::to_string)
+    }
+
+    fn same_site(&self) -> &'static str {
+        if self.cross_site_post { "None" } else { "Lax" }
     }
 
     fn secure_attribute(&self) -> &'static str {

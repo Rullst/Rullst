@@ -91,7 +91,7 @@ pub async fn start(
     let Some(provider) = provider() else {
         return refused(&page, PROVIDER, StatusCode::NOT_FOUND, OFF);
     };
-    super::start(PROVIDER, provider, LoginOptions::oidc(PROVIDER), query.next.as_deref(), &page).await
+    super::start(PROVIDER, provider, LoginOptions::oidc(PROVIDER), query.next.as_deref(), &page, false).await
 }
 
 /// `GET /auth/google/callback`: consumes the challenge, verifies Google's
@@ -106,7 +106,7 @@ pub async fn callback(
     let Some(provider) = provider() else {
         return refused(&page, PROVIDER, StatusCode::NOT_FOUND, OFF);
     };
-    super::complete(PROVIDER, provider, &headers, &callback, &page).await
+    super::complete(PROVIDER, provider, &headers, &callback, &page, None).await
 }
 
 /// The "Sign in with Google" link of the login page; nothing when Google

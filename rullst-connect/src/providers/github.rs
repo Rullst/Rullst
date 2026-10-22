@@ -1,3 +1,13 @@
+//! GitHub OAuth 2.0 adapter (GitHub is not an OpenID Connect provider).
+//!
+//! The identity comes from the REST API: [`ConnectUser::id`] is the numeric
+//! account `id` of `GET /user`, which never changes, never the `login`, which
+//! the user can rename. The email is the address `GET /user/emails` marks
+//! `primary`, and `email_verified` is that entry's `verified` flag; the
+//! default `user:email` scope grants the call. When the call fails or lists
+//! no primary address, `email` is the public profile address of `/user` and
+//! `email_verified` is `None`, so it never links or creates an account.
+
 use crate::client::HttpClientExt;
 use crate::provider::Provider;
 use crate::user::ConnectUser;
@@ -6,7 +16,43 @@ use serde_json::Value;
 
 crate::define_provider!(GithubProvider, "user:email");
 
+/// The account's primary address in a `GET /user/emails` response, with
+/// GitHub's `verified` flag; `None` when no entry is marked primary.
+fn primary_email(emails: &Value) -> Option<(String, bool)> {
+    emails.as_array()?.iter().find_map(|entry| {
+        if entry["primary"].as_bool() != Some(true) {
+            return None;
+        }
+        let address = entry["email"].as_str()?;
+        Some((
+            address.to_owned(),
+            entry["verified"].as_bool() == Some(true),
+        ))
+    })
+}
+
 impl GithubProvider {
+    /// The primary address and its `verified` flag from `GET /user/emails`;
+    /// `None` when the request fails, for example without `user:email`.
+    async fn primary_email(&self, access_token: &str) -> Option<(String, bool)> {
+        let emails = self
+            .http_client
+            .get("https://api.github.com/user/emails")
+            .bearer_auth(access_token)
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "rullst-connect")
+            .send()
+            .await
+            .and_then(|response| response.error_for_status());
+        match emails {
+            Ok(response) => primary_email(&response.json::<Value>().await.ok()?),
+            Err(error) => {
+                tracing::warn!("GitHub /user/emails failed; the email stays unverified: {error}");
+                None
+            }
+        }
+    }
+
     async fn get_user_from_form(
         &self,
         form_data: &crate::provider::TokenExchangeForm<'_>,
@@ -77,18 +123,23 @@ impl Provider for GithubProvider {
             .json::<Value>()
             .await?;
 
+        let id = user_res["id"]
+            .as_i64()
+            .ok_or_else(|| crate::error::ConnectError::Provider("Missing id".to_string()))?
+            .to_string();
+        let (email, email_verified) = match self.primary_email(access_token).await {
+            Some((address, verified)) => (Some(address), Some(verified)),
+            None => (user_res["email"].as_str().map(String::from), None),
+        };
         Ok(ConnectUser {
-            id: user_res["id"]
-                .as_i64()
-                .ok_or_else(|| crate::error::ConnectError::Provider("Missing id".to_string()))?
-                .to_string(),
+            id,
             name: user_res["name"]
                 .as_str()
                 .unwrap_or(user_res["login"].as_str().unwrap_or(""))
                 .to_string(),
-            email: user_res["email"].as_str().map(String::from),
+            email,
             avatar_url: user_res["avatar_url"].as_str().map(String::from),
-            email_verified: None,
+            email_verified,
             raw_data: user_res,
             access_token: secrecy::SecretString::from(access_token.to_string()),
             refresh_token: None,
@@ -216,279 +267,5 @@ impl Provider for GithubProvider {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::client::{HttpClient, HttpRequest, HttpResponse};
-    use serde_json::json;
-    use std::sync::Arc;
-
-    struct MockGithubClient {
-        token_status: u16,
-        token_body: serde_json::Value,
-        user_status: u16,
-        user_body: serde_json::Value,
-        device_status: u16,
-        device_body: serde_json::Value,
-    }
-
-    #[async_trait]
-    impl HttpClient for MockGithubClient {
-        async fn execute(
-            &self,
-            req: HttpRequest,
-        ) -> Result<HttpResponse, crate::error::ConnectError> {
-            if req.url.contains("access_token") {
-                Ok(HttpResponse {
-                    status: self.token_status,
-                    body: self.token_body.clone(),
-                })
-            } else if req.url.contains("device/code") {
-                Ok(HttpResponse {
-                    status: self.device_status,
-                    body: self.device_body.clone(),
-                })
-            } else {
-                Ok(HttpResponse {
-                    status: self.user_status,
-                    body: self.user_body.clone(),
-                })
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn test_github_get_user() {
-        let provider = GithubProvider::new(
-            "client_id".to_string(),
-            secrecy::SecretString::from("client_secret".to_string()),
-            "https://redirect.url".to_string(),
-        )
-        .with_http_client(Arc::new(MockGithubClient {
-            token_status: 200,
-            token_body: json!({
-                "access_token": "mock_token",
-                "token_type": "bearer",
-                "scope": "user:email"
-            }),
-            user_status: 200,
-            user_body: json!({
-                "id": 1234567,
-                "login": "octocat",
-                "name": "monalisa octocat",
-                "email": "octocat@github.com",
-                "avatar_url": "https://github.com/images/error/octocat_happy.gif"
-            }),
-            device_status: 200,
-            device_body: json!({}),
-        }));
-
-        let params = crate::provider::ExchangeParams {
-            auth_code: "mock_code",
-            code_verifier: None,
-            expected_nonce: None,
-        };
-        let user = provider.get_user(params).await.expect("Failed to get user");
-        assert_eq!(user.id, "1234567");
-        assert_eq!(user.name, "monalisa octocat");
-        assert_eq!(user.email, Some("octocat@github.com".to_string()));
-        assert_eq!(
-            user.avatar_url,
-            Some("https://github.com/images/error/octocat_happy.gif".to_string())
-        );
-    }
-
-    #[tokio::test]
-    async fn test_github_token_error() {
-        let provider = GithubProvider::new(
-            "client_id".to_string(),
-            secrecy::SecretString::from("client_secret".to_string()),
-            "https://redirect.url".to_string(),
-        )
-        .with_http_client(Arc::new(MockGithubClient {
-            token_status: 400,
-            token_body: json!({"error": "invalid_grant"}),
-            user_status: 200,
-            user_body: json!({}),
-            device_status: 200,
-            device_body: json!({}),
-        }));
-
-        let err = provider
-            .get_user(crate::provider::ExchangeParams {
-                auth_code: "code",
-                ..Default::default()
-            })
-            .await
-            .unwrap_err();
-
-        assert!(matches!(
-            err,
-            crate::error::ConnectError::ProviderApiError { .. }
-        ));
-    }
-
-    #[tokio::test]
-    async fn test_github_request_device_code_success() {
-        let provider = GithubProvider::new(
-            "client_id".to_string(),
-            secrecy::SecretString::from("client_secret".to_string()),
-            "https://redirect.url".to_string(),
-        )
-        .with_http_client(Arc::new(MockGithubClient {
-            token_status: 200,
-            token_body: json!({}),
-            user_status: 200,
-            user_body: json!({}),
-            device_status: 200,
-            device_body: json!({
-                "device_code": "device_123",
-                "user_code": "user_456",
-                "verification_uri": "https://github.com/login/device",
-                "expires_in": 900,
-                "interval": 5
-            }),
-        }));
-
-        let res = provider.request_device_code().await.unwrap();
-        assert_eq!(res.device_code, "device_123");
-        assert_eq!(res.user_code, "user_456");
-        assert_eq!(res.verification_uri, "https://github.com/login/device");
-    }
-
-    #[tokio::test]
-    async fn test_github_poll_device_token_success() {
-        let provider = GithubProvider::new(
-            "client_id".to_string(),
-            secrecy::SecretString::from("client_secret".to_string()),
-            "https://redirect.url".to_string(),
-        )
-        .with_http_client(Arc::new(MockGithubClient {
-            token_status: 200,
-            token_body: json!({
-                "access_token": "mock_token",
-                "token_type": "bearer",
-                "scope": "user:email"
-            }),
-            user_status: 200,
-            user_body: json!({
-                "id": 1234567,
-                "login": "octocat",
-                "name": "monalisa octocat",
-                "email": "octocat@github.com",
-                "avatar_url": "https://github.com/images/error/octocat_happy.gif"
-            }),
-            device_status: 200,
-            device_body: json!({}),
-        }));
-
-        let user = provider.poll_device_token("device_123").await.unwrap();
-        assert_eq!(user.id, "1234567");
-    }
-
-    #[tokio::test]
-    async fn test_github_poll_device_token_error() {
-        let provider = GithubProvider::new(
-            "client_id".to_string(),
-            secrecy::SecretString::from("client_secret".to_string()),
-            "https://redirect.url".to_string(),
-        )
-        .with_http_client(Arc::new(MockGithubClient {
-            token_status: 200, // Github returns 200 for authorization_pending
-            token_body: json!({
-                "error": "authorization_pending",
-                "error_description": "User has not yet entered code."
-            }),
-            user_status: 200,
-            user_body: json!({}),
-            device_status: 200,
-            device_body: json!({}),
-        }));
-
-        let err = provider.poll_device_token("device_123").await.unwrap_err();
-        assert!(matches!(
-            err,
-            crate::error::ConnectError::ProviderApiError { code, message }
-                if code == "authorization_pending" && message == "User has not yet entered code."
-        ));
-    }
-
-    #[tokio::test]
-    async fn test_github_poll_device_token_missing_token() {
-        let provider = GithubProvider::new(
-            "client_id".to_string(),
-            secrecy::SecretString::from("client_secret".to_string()),
-            "https://redirect.url".to_string(),
-        )
-        .with_http_client(Arc::new(MockGithubClient {
-            token_status: 200,
-            token_body: json!({}), // No access_token and no error
-            user_status: 200,
-            user_body: json!({}),
-            device_status: 200,
-            device_body: json!({}),
-        }));
-
-        let err = provider.poll_device_token("device_123").await.unwrap_err();
-        assert!(
-            matches!(err, crate::error::ConnectError::Token(msg) if msg.contains("Failed to get access_token during device poll"))
-        );
-    }
-
-    #[tokio::test]
-    async fn test_github_request_device_code_scopes() {
-        struct MockScopeClient {
-            expect_scope: bool,
-        }
-
-        #[async_trait]
-        impl HttpClient for MockScopeClient {
-            async fn execute(
-                &self,
-                req: HttpRequest,
-            ) -> Result<HttpResponse, crate::error::ConnectError> {
-                if req.url.contains("device/code") {
-                    let body_str = req.form.unwrap_or_default();
-                    if self.expect_scope {
-                        assert!(body_str.contains("scope="));
-                    } else {
-                        assert!(!body_str.contains("scope="));
-                    }
-                    Ok(HttpResponse {
-                        status: 200,
-                        body: serde_json::json!({
-                            "device_code": "device_123",
-                            "user_code": "USER123",
-                            "verification_uri": "https://github.com/login/device",
-                            "expires_in": 900,
-                            "interval": 5
-                        }),
-                    })
-                } else {
-                    Err(crate::error::ConnectError::Provider(
-                        "Unexpected URL".to_string(),
-                    ))
-                }
-            }
-        }
-
-        let provider_with_scope = GithubProvider::new(
-            "client_id".to_string(),
-            secrecy::SecretString::from("client_secret".to_string()),
-            "https://redirect.url".to_string(),
-        )
-        .with_scopes(&["read:user"])
-        .with_http_client(Arc::new(MockScopeClient { expect_scope: true }));
-        provider_with_scope.request_device_code().await.unwrap();
-
-        let provider_no_scope = GithubProvider::new(
-            "client_id".to_string(),
-            secrecy::SecretString::from("client_secret".to_string()),
-            "https://redirect.url".to_string(),
-        )
-        .with_scopes(&[])
-        .with_http_client(Arc::new(MockScopeClient {
-            expect_scope: false,
-        }));
-        provider_no_scope.request_device_code().await.unwrap();
-    }
-}
+#[path = "github_tests.rs"]
+mod tests;
