@@ -4,35 +4,20 @@ Rullst does not treat an ignored scanner finding as remediated. Any temporary
 exception must have a narrow scope, a compensating control, an owner, and an
 expiry date. CI must fail for every advisory that is not actively governed here.
 
-Last reviewed: **2026-10-17**.
+Last reviewed: **2026-10-22**.
 
-## Active exceptions
-
-| Advisory | Dependency path | Compensating control | Owner | Expiry | Exit condition |
-| --- | --- | --- | --- | --- | --- |
-| `RUSTSEC-2026-0367` | `zip` 6.0.0 ← build dependency of `libduckdb-sys` 1.10506.0 ← optional `duckdb`/`orm-duckdb` feature | See below | Maintainer (Venelouis) | 2026-10-31 | `duckdb-rs` release on `zip` ≥ 9, or DuckDB adapter removed |
-| `RUSTSEC-2026-0368` | same | See below | Maintainer (Venelouis) | 2026-10-31 | same |
-| `RUSTSEC-2026-0369` | same | See below | Maintainer (Venelouis) | 2026-10-31 | same |
-
-The three advisories (published 2026-10-09/10, patched only in `zip` ≥ 9; every
-earlier `zip` release has been yanked) concern extracting an
-attacker-controlled archive: preserved SUID/SGID bits, symbolic links that point
-outside the destination, and permissions applied through symbolic links.
-In Rullst's dependency graph `zip` 6.0.0 is reachable only as a **build
-dependency** of `libduckdb-sys`, compiled only when an application enables the
-optional `duckdb`/`orm-duckdb` adapter. Its build script uses it to unpack the
-DuckDB sources shipped inside the `libduckdb-sys` crate itself (checksummed by
-crates.io), not an archive from an application, a user or the network, and no
-Rullst runtime code links or calls `zip`. A compromised `libduckdb-sys` could run
-arbitrary code from its build script regardless of `zip`. Since the yank, a new
-project cannot even resolve the `duckdb` feature (13.0.0-alpha.2 Known
-limitations). Removing the adapter in a prerelease would be a breaking change
-with no reduction in reachable risk, so the exception is time-bounded to the
-next prerelease instead. The release owner's approval is recorded on the pull
-request that added it.
+There are **no active advisory exceptions** in the current audited dependency
+graph (`deny.toml` and the audit workflows ignore no advisory).
 
 ## Remediation history
 
+- On 2026-10-22, the time-bounded exception for `RUSTSEC-2026-0367`,
+  `RUSTSEC-2026-0368` and `RUSTSEC-2026-0369` (`zip` 6.0.0 as a build
+  dependency of `libduckdb-sys`, approved on 2026-10-17 until 2026-10-31) was
+  removed: `duckdb`/`libduckdb-sys` 1.10506.1 build with `zip` 9, and
+  `rullst-orm` now requires it. The same change moved `rustls-webpki` to
+  0.103.16 and `webpki-roots`/`webpki-root-certs` to 1.0.10
+  (`RUSTSEC-2026-0381` to `-0383`) and `ammonia` to 4.2.4 (`RUSTSEC-2026-0373`).
 - On 2026-09-08, `RUSTSEC-2023-0071` was removed from the production and fuzz
   dependency graphs by moving `jsonwebtoken` from its `rust_crypto` backend
   to `aws_lc_rs`. The CLI scaffolds the same backend for newly generated JWT
