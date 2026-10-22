@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792647352807,
+  "lastUpdate": 1792651319811,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -12701,6 +12701,48 @@ window.BENCHMARK_DATA = {
             "name": "capital_subscription/parse_status_past_due",
             "value": 22,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8b879be5465aa9592ab72a4e19f16135f97d8b1d",
+          "message": "Merge pull request #519 from Rullst/dependabot/github_actions/main/ci-tools-a023e6628c\n\nchore(deps): Bump the ci-tools group across 1 directory with 5 updates",
+          "timestamp": "2026-10-22T03:16:13-03:00",
+          "tree_id": "ff2d46142daad4f97fb3c437644cef6c22c39f19",
+          "url": "https://github.com/Rullst/Rullst/commit/8b879be5465aa9592ab72a4e19f16135f97d8b1d"
+        },
+        "date": 1792651319242,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
             "unit": "ns/iter"
           },
           {
