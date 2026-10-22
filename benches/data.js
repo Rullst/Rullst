@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792700095010,
+  "lastUpdate": 1792703329211,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -28059,6 +28059,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2317,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2e3ea0a3ca547fdd281c194b721d8ffb87532590",
+          "message": "Merge pull request #530 from Rullst/docs/v13-prerelease-security-support\n\ndocs(security): support the latest v13 prerelease until 13.0.0",
+          "timestamp": "2026-10-22T18:03:18-03:00",
+          "tree_id": "71b363019399cc6e4f0133576573fea44cab9092",
+          "url": "https://github.com/Rullst/Rullst/commit/2e3ea0a3ca547fdd281c194b721d8ffb87532590"
+        },
+        "date": 1792703326551,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 745,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 992,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 379,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2216,
+            "range": "± 28",
             "unit": "ns/iter"
           }
         ]
