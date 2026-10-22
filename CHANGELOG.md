@@ -33,6 +33,10 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Fixes from alpha.2 dogfooding
 
+- Security support for prereleases: until 13.0.0, the latest published
+  prerelease is supported. Critical and High vulnerabilities are fixed in an
+  out-of-cycle prerelease and announced in a GitHub security advisory; earlier
+  prereleases are not patched (`SECURITY.md`).
 - New `cargo rullst make:pwa` makes an application from an HTML starter an
   installable Progressive Web App: a web app manifest, placeholder icons
   (192, 512, maskable 512, apple-touch), `/sw.js` and an `/offline` page
