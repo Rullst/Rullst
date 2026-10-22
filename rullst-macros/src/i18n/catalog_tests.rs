@@ -64,39 +64,6 @@ fn tag_check_names_the_canonical_file() {
 }
 
 #[test]
-fn plural_rules_follow_cldr_for_integers() {
-    let cases = [
-        ("en", Some(PluralRule::One)),
-        ("en-US", Some(PluralRule::One)),
-        ("es-419", Some(PluralRule::One)),
-        ("de", Some(PluralRule::One)),
-        ("it", Some(PluralRule::One)),
-        ("nl", Some(PluralRule::One)),
-        ("pt-PT", Some(PluralRule::One)),
-        ("fr", Some(PluralRule::ZeroOne)),
-        ("fr-CA", Some(PluralRule::ZeroOne)),
-        ("pt", Some(PluralRule::ZeroOne)),
-        ("pt-BR", Some(PluralRule::ZeroOne)),
-        ("pt-Latn-BR", Some(PluralRule::ZeroOne)),
-        ("pt-AO", None),
-        ("ja", Some(PluralRule::Other)),
-        ("zh-Hant", Some(PluralRule::Other)),
-        ("ko", Some(PluralRule::Other)),
-        ("ru", None),
-        ("pl", None),
-    ];
-    for (tag, rule) in cases {
-        assert_eq!(PluralRule::for_tag(tag), rule, "{tag}");
-    }
-    assert!(PluralRule::One.has_one());
-    assert!(PluralRule::ZeroOne.has_one());
-    assert!(!PluralRule::Other.has_one());
-    assert_eq!(PluralRule::One.variant(), "One");
-    assert_eq!(PluralRule::ZeroOne.variant(), "ZeroOne");
-    assert_eq!(PluralRule::Other.variant(), "Other");
-}
-
-#[test]
 fn templates_split_placeholders_and_literal_braces() {
     let text = |s: &str| Segment::Text(s.to_owned());
     let name = |s: &str| Segment::Placeholder(s.to_owned());
@@ -157,10 +124,10 @@ fn a_valid_catalog_flattens_keys_and_finds_the_default() {
     assert_eq!(en.messages["nav.home"], Message::Single("Home".into()));
     assert_eq!(
         en.messages["n"],
-        Message::Plural {
-            one: Some("one item".into()),
-            other: "{count} items".into()
-        }
+        Message::Plural(vec![
+            ("one", "one item".into()),
+            ("other", "{count} items".into())
+        ])
     );
     assert_eq!(catalog.locales[1].rule, Some(PluralRule::ZeroOne));
     assert_eq!(catalog.locales[1].messages.len(), 2);
@@ -205,39 +172,6 @@ fn placeholders_and_shapes_must_agree() {
         errors(sources, "en"),
         [
             "`g` has different placeholders: locales/en.toml uses no placeholders but locales/es.toml uses {name}"
-        ]
-    );
-}
-
-#[test]
-fn plural_forms_must_match_the_language_rule() {
-    let plural = "[n]\nother = \"{count} x\"\n";
-    let with_one = "[n]\none = \"one x\"\nother = \"{count} x\"\n";
-    assert_eq!(
-        errors(vec![source("en", plural)], "en"),
-        ["locales/en.toml: plural message `n` needs a `one` form for `en`"]
-    );
-    assert_eq!(
-        errors(vec![source("ja", with_one)], "ja"),
-        ["locales/ja.toml: `ja` has no `one` plural form; remove `one` from `n`"]
-    );
-    assert!(catalog::build(vec![source("ja", plural)], "ja").is_ok());
-    let unsupported = errors(vec![source("ru", with_one)], "ru");
-    assert_eq!(unsupported.len(), 1);
-    assert!(unsupported[0].starts_with(
-        "locales/ru.toml: `n` is a plural message, but Rullst has no plural rule for `ru`"
-    ));
-    assert!(catalog::build(vec![source("ru", "n = \"x\"\n")], "ru").is_ok());
-    assert_eq!(
-        errors(
-            vec![source(
-                "en",
-                "[n]\none = \"a\"\nfew = \"b\"\nother = \"c\"\n"
-            )],
-            "en"
-        ),
-        [
-            "locales/en.toml: `n`: plural form `few` is not supported; Rullst selects only `one` and `other`"
         ]
     );
 }

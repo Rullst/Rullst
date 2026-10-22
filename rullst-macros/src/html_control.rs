@@ -1,14 +1,15 @@
 #![cfg_attr(mutants, mutants::skip)]
-//! `@if`/`@else if`/`@else` and `@for` blocks inside `html!`.
+//! `@if`/`@else if`/`@else`, `@for` and `@match` blocks inside `html!`.
 //!
 //! A node cannot start with `@` otherwise, so the syntax is unambiguous. The
-//! condition and the iterable are parsed like Rust's own `if`/`for` heads
-//! (`if let` and patterns included); bodies are `html!` nodes in braces.
+//! condition, the iterable, the scrutinee, patterns and guards are parsed
+//! like Rust's own `if`/`for`/`match` (`if let` included); bodies are `html!`
+//! nodes in braces.
 
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::parse::ParseStream;
-use syn::{Expr, Ident, Pat, Result, Token};
+use syn::{Expr, Ident, Pat, Result, Token, token};
 
 use super::{HtmlNode, parse_children};
 
@@ -24,12 +25,28 @@ pub struct HtmlFor {
     pub body: Vec<HtmlNode>,
 }
 
+/// `@match scrutinee { pattern if guard => { nodes } … }`.
+pub struct HtmlMatch {
+    /// Keeps the caller's span, so exhaustiveness errors point at the source.
+    pub match_token: Token![match],
+    pub scrutinee: Expr,
+    pub arms: Vec<HtmlArm>,
+}
+
+pub struct HtmlArm {
+    pub pattern: Pat,
+    pub guard: Option<Expr>,
+    pub body: Vec<HtmlNode>,
+}
+
 pub(super) fn parse_control(input: ParseStream) -> Result<HtmlNode> {
     let at = input.parse::<Token![@]>()?;
     if input.peek(Token![if]) {
         parse_if(input).map(|node| HtmlNode::If(Box::new(node)))
     } else if input.peek(Token![for]) {
         parse_for(input).map(|node| HtmlNode::For(Box::new(node)))
+    } else if input.peek(Token![match]) {
+        parse_match(input).map(|node| HtmlNode::Match(Box::new(node)))
     } else if input.peek(Token![else]) {
         Err(syn::Error::new(
             at.span,
@@ -38,9 +55,9 @@ pub(super) fn parse_control(input: ParseStream) -> Result<HtmlNode> {
     } else {
         Err(syn::Error::new(
             at.span,
-            "html! supports `@if`, `@else` and `@for`; for `match` and other control flow, \
+            "html! supports `@if`, `@else`, `@for` and `@match`; for other control flow, \
              interpolate a Rust expression that returns `Markup`, such as \
-             `{match state { State::A => html! { .. }, State::B => html! { .. } }}`",
+             `{rows.iter().map(|row| html! { .. }).collect::<Markup>()}`",
         ))
     }
 }
@@ -85,13 +102,50 @@ fn parse_for(input: ParseStream) -> Result<HtmlFor> {
     })
 }
 
+fn parse_match(input: ParseStream) -> Result<HtmlMatch> {
+    let match_token = input.parse::<Token![match]>()?;
+    let scrutinee = Expr::parse_without_eager_brace(input)?;
+    let content;
+    syn::braced!(content in input);
+    let mut arms = Vec::new();
+    while !content.is_empty() {
+        let pattern = Pat::parse_multi_with_leading_vert(&content)?;
+        let guard = if content.peek(Token![if]) {
+            content.parse::<Token![if]>()?;
+            Some(content.parse::<Expr>()?)
+        } else {
+            None
+        };
+        content.parse::<Token![=>]>()?;
+        if !content.peek(token::Brace) {
+            return Err(content.error(
+                "write the nodes of an `@match` arm in braces: `pattern => { <p>\"text\"</p> }`",
+            ));
+        }
+        let body = parse_body(&content)?;
+        if content.peek(Token![,]) {
+            content.parse::<Token![,]>()?;
+        }
+        arms.push(HtmlArm {
+            pattern,
+            guard,
+            body,
+        });
+    }
+    Ok(HtmlMatch {
+        match_token,
+        scrutinee,
+        arms,
+    })
+}
+
 /// Parses `{ nodes }`, the body of a control block.
 fn parse_body(input: ParseStream) -> Result<Vec<HtmlNode>> {
     let content;
     syn::braced!(content in input);
     let nodes = parse_children(&content)?;
     if !content.is_empty() {
-        return Err(content.error("unexpected closing tag in an `@if`/`@for` body"));
+        return Err(content.error("unexpected closing tag in an `@if`, `@for` or `@match` body"));
     }
     Ok(nodes)
 }
@@ -139,6 +193,29 @@ impl HtmlFor {
             {
                 let mut #buffer = String::new();
                 for #pattern in #iterable { #pushes }
+                #buffer
+            }
+        }
+    }
+}
+
+impl HtmlMatch {
+    /// A block evaluating to the `String` of the arm that matched. Rust checks
+    /// the patterns, guards and exhaustiveness as for its own `match`.
+    pub fn to_tokens(&self) -> TokenStream {
+        let buffer = Ident::new("s", Span::mixed_site());
+        let match_token = &self.match_token;
+        let scrutinee = &self.scrutinee;
+        let arms = self.arms.iter().map(|arm| {
+            let pattern = &arm.pattern;
+            let guard = arm.guard.as_ref().map(|guard| quote! { if #guard });
+            let pushes = push_nodes(&buffer, &arm.body);
+            quote! { #pattern #guard => { #pushes } }
+        });
+        quote! {
+            {
+                let mut #buffer = String::new();
+                #match_token #scrutinee { #(#arms)* }
                 #buffer
             }
         }

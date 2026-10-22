@@ -13,8 +13,9 @@ struct Entry {
     key: String,
     html: bool,
     plural: bool,
-    /// `(one, other)` per locale; `one` is `None` for single messages.
-    forms: Vec<(Option<String>, String)>,
+    /// `(category, template)` pairs per locale, `other` last; single
+    /// messages only have `other`.
+    forms: Vec<Vec<(Ident, String)>>,
 }
 
 struct Encoded {
@@ -74,11 +75,19 @@ fn parse_encoded(input: ParseStream) -> syn::Result<Encoded> {
         while !groups.is_empty() {
             let group;
             parenthesized!(group in groups);
-            let first: LitStr = group.parse()?;
-            forms.push(match group.parse::<Option<LitStr>>()? {
-                Some(other) => (Some(first.value()), other.value()),
-                None => (None, first.value()),
-            });
+            let mut locale_forms = Vec::new();
+            while !group.is_empty() {
+                let category: Ident = group.parse()?;
+                if category_variant(&category).is_none() {
+                    return Err(syn::Error::new(
+                        category.span(),
+                        format!("unknown plural category `{category}`"),
+                    ));
+                }
+                let text: LitStr = group.parse()?;
+                locale_forms.push((category, text.value()));
+            }
+            forms.push(locale_forms);
         }
         entries.push(Entry {
             key: key.value(),
@@ -138,8 +147,8 @@ fn expand(encoded: &Encoded, call: Call) -> syn::Result<TokenStream> {
     let parsed = parse_forms(entry, call.key.span())?;
     let mut names: BTreeSet<String> = parsed
         .iter()
-        .flat_map(|(one, other)| one.iter().chain([other]))
-        .flat_map(|segments| template::placeholders(segments))
+        .flatten()
+        .flat_map(|(_, segments)| template::placeholders(segments))
         .collect();
     if entry.plural {
         names.insert("count".to_owned());
@@ -147,10 +156,22 @@ fn expand(encoded: &Encoded, call: Call) -> syn::Result<TokenStream> {
     check_args(entry, &call, &names)?;
 
     let placeholder_index = |name: &str| names.iter().position(|n| n == name).unwrap_or_default();
-    let forms = parsed.iter().map(|(one, other)| {
-        let one = segments(one.as_deref().unwrap_or_default(), &placeholder_index);
-        let other = segments(other, &placeholder_index);
-        quote! { rullst::i18n::__Forms { one: &[#(#one),*], other: &[#(#other),*] } }
+    let forms = parsed.iter().map(|locale_forms| {
+        let mut other = Vec::new();
+        let mut plural = Vec::new();
+        for (category, form) in locale_forms {
+            let form = segments(form, &placeholder_index);
+            match category_variant(category) {
+                Some("Other") | None => other = form.collect(),
+                Some(variant) => {
+                    let variant = format_ident!("{variant}");
+                    plural.push(quote! {
+                        (rullst::i18n::PluralCategory::#variant, &[#(#form),*])
+                    });
+                }
+            }
+        }
+        quote! { rullst::i18n::__Forms { plural: &[#(#plural),*], other: &[#(#other),*] } }
     });
     let arg_ident = |name: &str| {
         let index = call
@@ -170,7 +191,7 @@ fn expand(encoded: &Encoded, call: Call) -> syn::Result<TokenStream> {
     });
     let count = if entry.plural {
         let ident = arg_ident("count");
-        quote! { ::core::option::Option::Some(rullst::i18n::PluralCount::plural_count(#ident)) }
+        quote! { ::core::option::Option::Some(rullst::i18n::PluralCount::plural_decimal(#ident)) }
     } else {
         quote! { ::core::option::Option::None }
     };
@@ -205,9 +226,10 @@ fn expand(encoded: &Encoded, call: Call) -> syn::Result<TokenStream> {
     })
 }
 
-type Forms = (Option<Vec<Segment>>, Vec<Segment>);
+/// The parsed templates of each locale, by category.
+type Forms<'a> = Vec<(&'a Ident, Vec<Segment>)>;
 
-fn parse_forms(entry: &Entry, span: Span) -> syn::Result<Vec<Forms>> {
+fn parse_forms(entry: &Entry, span: Span) -> syn::Result<Vec<Forms<'_>>> {
     let parse = |text: &str| {
         template::parse(text)
             .map_err(|problem| syn::Error::new(span, format!("`{}` {problem}", entry.key)))
@@ -215,8 +237,26 @@ fn parse_forms(entry: &Entry, span: Span) -> syn::Result<Vec<Forms>> {
     entry
         .forms
         .iter()
-        .map(|(one, other)| Ok((one.as_deref().map(parse).transpose()?, parse(other)?)))
+        .map(|locale_forms| {
+            locale_forms
+                .iter()
+                .map(|(category, text)| Ok((category, parse(text)?)))
+                .collect()
+        })
         .collect()
+}
+
+/// The `rullst::i18n::PluralCategory` variant of an encoded category.
+fn category_variant(category: &Ident) -> Option<&'static str> {
+    Some(match category.to_string().as_str() {
+        "zero" => "Zero",
+        "one" => "One",
+        "two" => "Two",
+        "few" => "Few",
+        "many" => "Many",
+        "other" => "Other",
+        _ => return None,
+    })
 }
 
 fn check_args(entry: &Entry, call: &Call, names: &BTreeSet<String>) -> syn::Result<()> {

@@ -11,6 +11,7 @@ pub enum HtmlNode {
     Block(Expr),
     If(Box<HtmlIf>),
     For(Box<HtmlFor>),
+    Match(Box<HtmlMatch>),
 }
 
 pub struct HtmlDocument {
@@ -29,7 +30,7 @@ use attributes::{HtmlAttribute, allows_data_urls, url_guard_tokens};
 
 #[path = "html_control.rs"]
 mod control;
-use control::{HtmlFor, HtmlIf};
+use control::{HtmlFor, HtmlIf, HtmlMatch};
 
 impl Parse for HtmlDocument {
     fn parse(input: ParseStream) -> Result<Self> {
@@ -184,6 +185,7 @@ impl HtmlNode {
             }
             HtmlNode::If(node) => node.to_tokens(),
             HtmlNode::For(node) => node.to_tokens(),
+            HtmlNode::Match(node) => node.to_tokens(),
         }
     }
 
@@ -191,7 +193,7 @@ impl HtmlNode {
         match self {
             HtmlNode::Element(el) => el.static_size(),
             HtmlNode::Text(txt) => txt.value().len(),
-            HtmlNode::Block(_) | HtmlNode::If(_) | HtmlNode::For(_) => 0,
+            HtmlNode::Block(_) | HtmlNode::If(_) | HtmlNode::For(_) | HtmlNode::Match(_) => 0,
         }
     }
 }
