@@ -73,3 +73,48 @@ fn capital_mail_exposes_payment_bound_delivery_without_requiring_smtp() {
     let _ = core::any::TypeId::of::<rullst::mail::PaidInvoiceDelivery>();
     let _ = core::any::TypeId::of::<rullst::capital::PaidInvoice>();
 }
+
+#[cfg(feature = "oauth-mock")]
+#[tokio::test]
+async fn oauth_mock_feature_builds_an_offline_provider() {
+    use rullst::connect::prelude::SecretString;
+    use rullst::connect::provider::{ExchangeParams, Provider};
+    use rullst::connect::providers::GithubProvider;
+
+    let provider = GithubProvider::try_new(
+        "mock_github_client",
+        SecretString::from("mock_github_secret".to_string()),
+        "http://localhost:3000/auth/github/callback",
+    )
+    .map_err(|error| error.to_string())
+    .unwrap();
+    let user = provider
+        .get_user(ExchangeParams {
+            auth_code: "mock_authorization_code",
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(user.email.as_deref(), Some("mock@example.invalid"));
+}
+
+#[cfg(all(feature = "oauth", not(feature = "oauth-mock")))]
+#[test]
+fn oauth_without_oauth_mock_rejects_mock_credentials() {
+    use rullst::connect::ConnectError;
+    use rullst::connect::prelude::SecretString;
+    use rullst::connect::providers::GithubProvider;
+
+    let result = GithubProvider::try_new(
+        "mock_github_client",
+        SecretString::from("mock_github_secret".to_string()),
+        "http://localhost:3000/auth/github/callback",
+    );
+    assert!(matches!(
+        result,
+        Err(ConnectError::InvalidConfiguration {
+            field: "credentials",
+            ..
+        })
+    ));
+}

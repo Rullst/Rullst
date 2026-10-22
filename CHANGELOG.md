@@ -14,6 +14,15 @@ A prepared version section does not establish that its tag or crates exist.
 - The `rullst` facade feature `oauth` now also enables `rullst-connect/rullst`
   (its Axum integration), so `rullst::connect::extractors::AuthCallback` works
   as an Axum handler argument without a direct `rullst-connect` dependency.
+- **Behaviour change:** `rullst-connect` providers built with empty or `mock_*`
+  credentials in a build without the `mock` feature are now rejected when they
+  are built: `try_new`, `Connect::driver` and `OidcProvider::discover` return
+  `ConnectError::InvalidConfiguration` for the field `credentials`, naming the
+  feature, and the deprecated `new` constructors return a disabled provider.
+  Before, the provider was built and only the code exchange at the callback
+  failed with `ConnectError::Offline`.
+- New `rullst` facade feature `oauth-mock` (`oauth` plus `rullst-connect/mock`)
+  for development and test builds that sign in with mock provider credentials.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

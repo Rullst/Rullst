@@ -216,6 +216,7 @@ rullst|auth-passkey-postgres
 rullst|account-mail-sqlite
 rullst|account-mail-postgres
 rullst|oauth-sqlite
+rullst|oauth-mock
 rullst|oauth
 rullst|ai
 rullst|ai-sql-memory
