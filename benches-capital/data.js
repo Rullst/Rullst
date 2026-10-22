@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792683491500,
+  "lastUpdate": 1792685400951,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -12983,6 +12983,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/c0b031476984a395d5e5ea361d6d41b3e6040349"
         },
         "date": 1792683490623,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9b5ca0d7d9d2817a3868df0130a2086211246ba0",
+          "message": "Merge pull request #526 from Rullst/docs/v13-maintaining-guide\n\ndocs: add a maintenance guide for the maintainer and AI assistants",
+          "timestamp": "2026-10-22T12:48:19-03:00",
+          "tree_id": "9be5341935fc8466a84d6f7061dce1d02a0023a4",
+          "url": "https://github.com/Rullst/Rullst/commit/9b5ca0d7d9d2817a3868df0130a2086211246ba0"
+        },
+        "date": 1792685400263,
         "tool": "cargo",
         "benches": [
           {
