@@ -274,23 +274,35 @@ async fn generated_oauth_flow_contract() {
         let claims = rullst::auth::decrypt_session_claims(&token, &key).unwrap();
         assert_eq!(claims.user_id, account.id);
         assert_eq!(OAuthIdentity::user_id(provider, subject).await.unwrap(), Some(account.id));
+        // A verified email of no account creates a password-less account.
+        let fresh = profile(&format!("{provider}-new"), &format!("{provider}@example.test"), Some(true));
+        let created = resolve_account(provider, &fresh, ExistingAccountPolicy::Refuse).await.unwrap();
+        assert_ne!(created.id, account.id);
+        assert_eq!(created.password_hash, None);
+        assert_eq!(created.oauth_provider.as_deref(), Some(provider));
+        assert_eq!(
+            OAuthIdentity::user_id(provider, &format!("{provider}-new")).await.unwrap(),
+            Some(created.id)
+        );
     }
     // A form POST without the challenge's state is refused like any other.
     let (challenge, _) = begin_with(app, "apple", None).await;
     let response = post_form(app, "/auth/apple/callback", &[&challenge], "code=mock_authorization_code").await;
     refused(&response, StatusCode::BAD_REQUEST);
-    let identities: Vec<(String, String, i32)> =
-        rullst::db::sqlx::query_as("SELECT provider, subject, user_id FROM oauth_identities ORDER BY provider")
-            .fetch_all(rullst::orm::Orm::pool().unwrap())
-            .await
-            .unwrap();
+    let identities: Vec<(String, String, i32)> = rullst::db::sqlx::query_as(
+        "SELECT provider, subject, user_id FROM oauth_identities WHERE user_id = ? ORDER BY provider",
+    )
+    .bind(account.id)
+    .fetch_all(rullst::orm::Orm::pool().unwrap())
+    .await
+    .unwrap();
     let mut expected: Vec<(String, String, i32)> = PROVIDERS
         .iter()
         .map(|(provider, subject)| ((*provider).to_owned(), (*subject).to_owned(), account.id))
         .collect();
     expected.sort();
     assert_eq!(identities, expected);
-    assert_eq!(users().await, 1);
+    assert_eq!(users().await, 4);
 
     // An account the password login refuses is refused here too.
     rullst::db::sqlx::query("UPDATE users SET session_epoch = -1 WHERE id = ?")
