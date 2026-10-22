@@ -1,10 +1,18 @@
 # v13 delivery plan and evidence
 
-**13.0.0-alpha.2 prepared on October 16, 2026.** It carries the fixes from the
+**13.0.0-alpha.2 published on October 17, 2026.** Tag `v13.0.0-alpha.2` points
+at `0daf4941`. [Release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)
+followed an exact-SHA admission of all 28 required workflows; the release fuzz
+campaign (42 targets, no crash) ran on `01aa4b10` and was reused for the
+release commit, whose fuzz inputs were identical. It carries the fixes from the
 alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema`
-date/time and Nexus changes (see the changelog). It is published only after
-its exact-SHA admission passes and its tag is pushed; the publication will be
-recorded here. Work planned next is under
+date/time and Nexus changes (see the changelog). Admission found and fixed, before
+publication: the upstream `zip` yank (Studio's Swagger UI page replaced), Windows,
+sanitizer, coverage and Miri failures, an exact-pin packaging check, and the
+`zip` 6 advisories (a governed exception until 2026-10-31). A first tag at
+`669befe6` failed release verification before publishing anything (the CLI
+evidence audit did not receive the exception) and was replaced after the
+maintainer's approval. Work planned next is under
 [Planned for 13.0.0-alpha.3](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-for-1300-alpha3).
 
 **13.0.0-alpha.1 published on October 11, 2026.** Tag `v13.0.0-alpha.1` points

@@ -77,7 +77,7 @@ pub(crate) fn write_docker_files(
     };
 
     let dockerfile = format!(
-        r#"FROM rust:1.99.0-slim-bookworm AS builder
+        r#"FROM rust:1.99.1-slim-bookworm AS builder
 WORKDIR /app
 COPY . .
 # Generate and commit Cargo.lock before building this application image.
@@ -124,7 +124,7 @@ mod tests {
             .expect("Docker files");
         let dockerfile =
             fs::read_to_string(root.path().join("Dockerfile")).expect("generated Dockerfile");
-        assert!(dockerfile.contains("FROM rust:1.99.0-slim-bookworm AS builder"));
+        assert!(dockerfile.contains("FROM rust:1.99.1-slim-bookworm AS builder"));
         // The runtime stage is distroless: no shell, no package manager, and
         // the writable `/app/data` tree comes from the builder stage.
         let runtime = dockerfile
