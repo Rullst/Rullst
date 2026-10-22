@@ -49,7 +49,11 @@ fn read(root: &Path, relative: &str) -> String {
 }
 
 fn installed(root: &Path) -> Vec<String> {
-    let plan = plan(root, "google", TIMESTAMP).unwrap();
+    installed_provider(root, "google")
+}
+
+fn installed_provider(root: &Path, name: &str) -> Vec<String> {
+    let plan = plan(root, name, TIMESTAMP).unwrap();
     writes::apply(&plan.edits).unwrap();
     plan.notes
 }
@@ -240,19 +244,38 @@ fn projects_without_the_account_model_are_refused() {
 #[test]
 fn unknown_providers_and_bad_timestamps_are_refused() {
     let (_temporary, root) = starter(crate::blueprints::SAAS_BLUEPRINT_ID, false, "Sqlite");
-    let error = plan(&root, "github", TIMESTAMP).err().unwrap().to_string();
-    assert_eq!(error, "make:oauth supports only: google");
+    let error = plan(&root, "facebook", TIMESTAMP)
+        .err()
+        .unwrap()
+        .to_string();
+    assert_eq!(
+        error,
+        "make:oauth supports only: google, github, microsoft, apple"
+    );
     for timestamp in ["2026102212000", "2026102212000a", "202610221200001"] {
         assert!(plan(&root, "google", timestamp).is_err(), "{timestamp}");
     }
     assert!(!root.join("src/controllers/oauth").exists());
     assert_eq!(
         command()
-            .try_get_matches_from(["make:oauth", "github"])
+            .try_get_matches_from(["make:oauth", "facebook"])
             .unwrap_err()
             .kind(),
         clap::error::ErrorKind::InvalidValue
     );
+}
+
+#[test]
+fn every_provider_is_a_command_value() {
+    for name in ["google", "github", "microsoft", "apple"] {
+        let matches = command()
+            .try_get_matches_from(["make:oauth", name])
+            .unwrap();
+        assert_eq!(
+            matches.get_one::<String>("provider").map(String::as_str),
+            Some(name)
+        );
+    }
 }
 
 #[test]
@@ -311,3 +334,6 @@ fn an_unrecognized_router_and_page_become_instructions() {
             == "Add {crate::controllers::oauth::google::login_link()} to your login page.")
     );
 }
+
+#[path = "providers_tests.rs"]
+mod providers_tests;

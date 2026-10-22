@@ -1,4 +1,6 @@
-//! Sign-in with external identity providers (`cargo rullst make:oauth`).
+//! Sign-in with external identity providers (`cargo rullst make:oauth`):
+//! one module per provider (Google, GitHub, Microsoft, Apple) next to this
+//! shared flow.
 //!
 //! The browser keeps only a random challenge id, in the short-lived
 //! `rullst_oauth_challenge` cookie scoped to `/auth/<provider>`. The OAuth
@@ -7,10 +9,11 @@
 //! (created on first use), and the callback consumes them exactly once.
 //!
 //! Accounts: a provider identity already linked in `oauth_identities`
-//! (provider + subject) signs in. Otherwise the provider must report the
-//! email address as verified: a new address creates an account without a
-//! password, and an address that already belongs to an account follows
-//! `EXISTING_ACCOUNT_POLICY`. Sign-in issues the same `rullst_session`
+//! (provider + the provider's stable subject) signs in. Otherwise the
+//! provider must report the email address as verified: a new address creates
+//! an account without a password, and an address that already belongs to an
+//! account follows `EXISTING_ACCOUNT_POLICY`. Each provider module documents
+//! what its subject and email are. Sign-in issues the same `rullst_session`
 //! cookie as the password login, carrying the account's session epoch.
 
 pub mod __PROVIDER__;
@@ -179,15 +182,21 @@ fn redirect_with_cookies(target: &str, cookies: &[String]) -> Response {
 
 /// Stores a fresh challenge and sends the browser to the provider (in mock
 /// mode, straight back to the callback). `next` names a same-site page to
-/// return to; anything else is ignored.
+/// return to; anything else is ignored. `cross_site_post` is for a provider
+/// that POSTs the callback from its own site (Apple), whose challenge cookie
+/// must be `SameSite=None; Secure`.
 pub(crate) async fn start<P: Provider + ?Sized>(
     provider_name: &'static str,
     provider: &P,
     options: LoginOptions,
     next: Option<&str>,
     page: &PageContext,
+    cross_site_post: bool,
 ) -> Response {
-    let (store, cookie) = match (challenges().await, challenge_cookie(provider_name)) {
+    let cookie = challenge_cookie(provider_name).map(|cookie| {
+        if cross_site_post { cookie.for_cross_site_post() } else { cookie }
+    });
+    let (store, cookie) = match (challenges().await, cookie) {
         (Ok(store), Ok(cookie)) => (store, cookie),
         (Err(error), _) | (_, Err(error)) => {
             eprintln!("{provider_name} sign-in could not start: {error}");
@@ -208,13 +217,16 @@ pub(crate) async fn start<P: Provider + ?Sized>(
 }
 
 /// Consumes the challenge named by the cookie, validates the callback,
-/// resolves the account and signs it in.
+/// resolves the account and signs it in. `first_login_name` is a display
+/// name the provider sent outside its verified profile (Apple, on the first
+/// authorization only), used when the profile has none.
 pub(crate) async fn complete<P: Provider + ?Sized>(
     provider_name: &'static str,
     provider: &P,
     headers: &HeaderMap,
     callback: &AuthCallback,
     page: &PageContext,
+    first_login_name: Option<String>,
 ) -> Response {
     let store = match challenges().await {
         Ok(store) => store,
@@ -246,7 +258,12 @@ pub(crate) async fn complete<P: Provider + ?Sized>(
             return refused(page, provider_name, status, message);
         }
     };
-    let (profile, return_to) = login.into_parts();
+    let (mut profile, return_to) = login.into_parts();
+    if profile.name.trim().is_empty()
+        && let Some(name) = first_login_name
+    {
+        profile.name = name;
+    }
     let user = match resolve_account(provider_name, &profile, EXISTING_ACCOUNT_POLICY).await {
         Ok(user) => user,
         Err(AccountError::UnverifiedEmail) => {
