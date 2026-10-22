@@ -318,13 +318,21 @@ async fn offline_credentials_never_install_a_live_revocation_transport() {
         SecretString::from("mock_secret".to_string()),
         "https://app.example/callback",
         "tenant.auth0.com",
-    )
-    .expect("offline provider");
-    let result = provider.revoke_refresh_token("offline-refresh-token").await;
+    );
 
     #[cfg(feature = "mock")]
-    result.expect("explicit mock feature enables deterministic offline revocation");
+    provider
+        .expect("offline provider")
+        .revoke_refresh_token("offline-refresh-token")
+        .await
+        .expect("explicit mock feature enables deterministic offline revocation");
 
     #[cfg(not(feature = "mock"))]
-    assert!(matches!(result, Err(ConnectError::Offline(_))));
+    assert!(matches!(
+        provider,
+        Err(ConnectError::InvalidConfiguration {
+            field: "credentials",
+            ..
+        })
+    ));
 }

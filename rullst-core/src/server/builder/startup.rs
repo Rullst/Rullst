@@ -39,6 +39,11 @@ impl Server {
                 .cloned(),
         );
         self.resolve_trusted_proxy(&app_config.security)?;
+        self.log_health_probes = crate::server::console::log_health_probes(
+            environment,
+            read_optional_environment_variable(crate::server::console::LOG_HEALTH_PROBES_VARIABLE)?,
+            &dotenv,
+        )?;
 
         self.init_database(&app_config, &dotenv).await?;
         self.migrate_on_startup(&dotenv).await?;

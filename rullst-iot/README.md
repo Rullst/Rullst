@@ -193,7 +193,7 @@ The `experimental-simulators` feature exposes deterministic fixtures named
 `SimulatedMqttPayloadFormatter`. They are useful only in tests and demos:
 
 ```toml
-# The v13 prerelease, pinned exactly; the stable line is `rullst-iot@12`.
+# The v13 prerelease, pinned exactly; the v12 line reached end of life.
 rullst-iot = { version = "=13.0.0-alpha.2", features = ["experimental-simulators"] }
 ```
 

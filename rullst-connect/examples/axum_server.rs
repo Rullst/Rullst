@@ -1,3 +1,6 @@
+//! Without `GOOGLE_CLIENT_ID`/`GITHUB_CLIENT_ID`, the providers use `mock_*`
+//! credentials, which need the `mock` feature: `cargo run -p rullst-connect --example axum_server --features mock`.
+//! The mock sign-in then returns straight to the callback with a fixed code.
 use axum::{
     Router,
     extract::Query,

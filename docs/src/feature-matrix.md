@@ -146,8 +146,9 @@ the drivers.
 | `redis` | no | Convenience alias enabling `queue-redis`, `cache-redis` and `orm-redis` |
 | `offline-sync` | no | Native bounded offline queue, explicit conflict state machine, account-bound encrypted snapshots, and static-dispatch push/pull orchestration; platform storage and concrete transport remain application responsibilities |
 | `scheduler-tz` | no | v13: `Scheduler::task_in_tz`, cron tasks in a named IANA time zone with a documented daylight-saving rule; adds `jiff` with the system zoneinfo database and a bundled fallback |
-| `oauth` | no | OAuth2/OIDC providers from `rullst-connect` |
+| `oauth` | no | OAuth2/OIDC providers from `rullst-connect` with its Axum integration (`rullst-connect/rullst`): the `AuthCallback` extractor and the local mock IdP router |
 | `oauth-sqlite` | no | `oauth` plus bounded encrypted shared-local token-generation state with exact SQLite compare-and-swap |
+| `oauth-mock` | no | v13: `oauth` plus `rullst-connect/mock`, so empty or `mock_*` provider credentials build an offline mock provider that signs in a fixed mock user; enable it only in development and test builds |
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
 | `ai-sql-memory` | no | `ai` plus tenant-aware durable chat memory for SQLite, PostgreSQL, MySQL, and MariaDB |
 | `capital` | no | Provider-neutral billing contracts, the Stripe and experimental InfinitePay adapters, webhooks and analytics from `rullst-capital` |

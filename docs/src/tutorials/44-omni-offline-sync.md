@@ -1,9 +1,11 @@
 # Bounded Offline Synchronization for Omni
 
 > [!IMPORTANT]
-> Dependency examples target `12.1.0`. Check the [release record](../v12.md)
-> for publication status and commit Cargo.lock for reproducible builds.
-> Use path dependencies only when intentionally testing checkout-local changes.
+> Dependency examples pin the v13 prerelease `=13.0.0-alpha.2` exactly: Cargo
+> never selects a prerelease on its own, and the v12 line reached end of life
+> on 16 October 2026 (see the [release record](../v12.md)). Commit Cargo.lock
+> for reproducible builds. Use path dependencies only when intentionally
+> testing checkout-local changes.
 
 Rullst's opt-in `offline-sync` feature supplies the native state and encrypted
 snapshot boundary needed to build a resilient Omni client. It is not mounted
@@ -18,7 +20,7 @@ entitlements and trusted time must be recomputed or revalidated by the server.
 
 ```toml
 [dependencies]
-rullst = { version = "12.1.0", features = ["offline-sync"] }
+rullst = { version = "=13.0.0-alpha.2", features = ["offline-sync"] }
 ```
 
 The encrypted snapshot codec is native-only. A browser offline implementation

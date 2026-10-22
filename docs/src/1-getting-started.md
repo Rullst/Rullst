@@ -2,7 +2,7 @@
 
 Welcome to the **Rullst** Getting Started guide!
 
-**Your goal:** install the matching stable CLI, generate a small application,
+**Your goal:** install the matching v13 CLI, generate a small application,
 open it locally and make your first change. Prefer to write the first route
 yourself? Use [Zero to Hello Rullst](tutorials/01-hello-world.md).
 
@@ -52,8 +52,9 @@ When installed from source, the CLI reuses the exact checkout
 from which it was compiled, even when project creation is invoked from another
 directory, provided that checkout has not been moved or deleted. Generated
 manifests therefore contain absolute path dependencies and are not portable.
-Running from the repository root remains an explicit fallback. Prefer stable
-published v12 releases and their matching registry packages for ordinary applications.
+Running from the repository root remains an explicit fallback. Prefer the
+published prerelease and its matching registry packages for ordinary
+applications.
 
 Cargo installs the `cargo-rullst` and `rullst` executables into
 `$CARGO_HOME/bin` (`~/.cargo/bin` by default). To install elsewhere, set

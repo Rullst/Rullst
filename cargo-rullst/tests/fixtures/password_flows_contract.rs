@@ -41,12 +41,28 @@ impl Reply {
 type App = rullst::web::axum::Router;
 
 async fn call(app: &App, method: &str, uri: &str, session: Option<&str>, form: &str, host: &str) -> Reply {
+    call_with(app, method, uri, session, form, host, &[]).await
+}
+
+async fn call_with(
+    app: &App,
+    method: &str,
+    uri: &str,
+    session: Option<&str>,
+    form: &str,
+    host: &str,
+    extra: &[(&str, &str)],
+) -> Reply {
     let mut cookie = format!("rullst_csrf={CSRF}");
     if let Some(session) = session {
         cookie.push_str(&format!("; rullst_session={session}"));
     }
     let peer = std::net::SocketAddr::from(([127, 0, 0, PEER.fetch_add(1, Ordering::Relaxed)], 40_000));
-    let request = Request::builder()
+    let mut request = Request::builder();
+    for (name, value) in extra {
+        request = request.header(*name, *value);
+    }
+    let request = request
         .method(method)
         .uri(uri)
         .header("host", host)
@@ -120,8 +136,23 @@ fn without_nonce(body: &str) -> String {
         .collect()
 }
 
+fn accept_language(value: &str) -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    headers.insert(header::ACCEPT_LANGUAGE, HeaderValue::from_str(value).unwrap());
+    headers
+}
+
 #[tokio::test]
 async fn generated_password_flows_contract() {
+    // Account emails follow the locale the i18n layer negotiated, else
+    // Accept-Language matched by language, else DEFAULT_MAIL_LOCALE.
+    assert_eq!(mail_locale(&HeaderMap::new(), &None), MailLocale::En);
+    assert_eq!(mail_locale(&accept_language("pt-PT, en;q=0.5"), &None), MailLocale::PtBr);
+    assert_eq!(mail_locale(&accept_language("fr, es-MX;q=0.8"), &None), MailLocale::Es);
+    assert_eq!(mail_locale(&accept_language("de"), &None), MailLocale::En);
+    let negotiated = rullst::i18n::Locales::new(&["es", "pt-BR"], "es").unwrap().get("pt-BR").unwrap();
+    assert_eq!(mail_locale(&accept_language("es"), &Some(Extension(negotiated))), MailLocale::PtBr);
+
     rullst::orm::Orm::init("sqlite::memory:").await.unwrap();
     for migration in crate::migrations::get_migrations() {
         migration.up().await.unwrap();
@@ -182,7 +213,7 @@ async fn generated_password_flows_contract() {
     assert!(get(app, &format!("/password/reset?token={early}"), None).await.body.contains("invalid or has expired"));
     let notices = mail_to(MEMBER, 2).await;
     assert_eq!(notices.len(), 2);
-    assert!(notices[1].subject.ends_with(": Your password was changed"));
+    assert_eq!(notices[1].subject, format!("{}: Your password was changed", env!("CARGO_PKG_NAME")));
     MailTrap::clear();
 
     // Forgot password: an unknown email gets the same answer, no sooner.
@@ -280,4 +311,18 @@ async fn generated_password_flows_contract() {
     let login = post(app, "/login", None, &format!("_token={CSRF}&email={MEMBER}&password={RESET_PASSWORD}")).await;
     assert_eq!(login.status, StatusCode::SEE_OTHER);
     assert_eq!(login.header("location"), "/dashboard");
+
+    // The request's language and APP_NAME reach the account email.
+    MailTrap::clear();
+    execute("DELETE FROM password_reset_tokens").await;
+    // SAFETY: this contract runs alone in its process and no other thread reads the environment now.
+    unsafe { std::env::set_var("APP_NAME", "Contract Academy") };
+    let form = format!("_token={CSRF}&email={MEMBER}");
+    let language = [("accept-language", "pt-BR,pt;q=0.9,en;q=0.8")];
+    let localized = call_with(app, "POST", "/password/forgot", None, &form, "localhost:3000", &language).await;
+    assert_eq!(localized.status, StatusCode::OK);
+    let localized_mail = mail_to(MEMBER, 1).await;
+    unsafe { std::env::remove_var("APP_NAME") };
+    assert_eq!(localized_mail.len(), 1);
+    assert_eq!(localized_mail[0].subject, "Contract Academy: Redefina sua senha");
 }

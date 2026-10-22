@@ -237,7 +237,7 @@ impl Provider for OidcProvider {
     fn redirect_url(&self) -> String {
         if self.credential_mode.is_mock() {
             return crate::configuration::mock_redirect_url(
-                "oidc",
+                &self.redirect_url,
                 self.state.as_deref(),
                 self.pkce_challenge.as_deref(),
             );

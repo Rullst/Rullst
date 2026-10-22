@@ -44,12 +44,12 @@ impl AppleProvider {
         let private_key_pem = private_key_pem.into();
         let redirect_url = redirect_url.into();
         crate::configuration::validate_redirect_url(&redirect_url)?;
-        let credential_mode = crate::configuration::credential_mode_for_values(&[
+        let credential_mode = crate::configuration::checked_credential_mode_for_values(&[
             &client_id,
             &team_id,
             &key_id,
             &private_key_pem,
-        ]);
+        ])?;
         let http_client =
             crate::configuration::provider_http_client(credential_mode, "apple", None);
 
@@ -87,15 +87,12 @@ impl AppleProvider {
         let mut redirect_url = redirect_url.into();
         let (credential_mode, invalid_reason) =
             match crate::configuration::validate_redirect_url(&redirect_url) {
-                Ok(_) => (
-                    crate::configuration::credential_mode_for_values(&[
-                        &client_id,
-                        &team_id,
-                        &key_id,
-                        &private_key_pem,
-                    ]),
-                    None,
-                ),
+                Ok(_) => crate::configuration::legacy_credential_mode_for_values(&[
+                    &client_id,
+                    &team_id,
+                    &key_id,
+                    &private_key_pem,
+                ]),
                 Err(error) => {
                     redirect_url = "about:blank".to_string();
                     (

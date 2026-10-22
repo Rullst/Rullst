@@ -9,7 +9,7 @@ mod startup;
 
 #[doc(hidden)]
 pub use environment::read_optional_environment_variable;
-pub(super) use environment::{development_console_enabled, parse_dotenv};
+pub(super) use environment::{development_console_enabled, parse_dotenv, parse_switch};
 pub use shutdown::shutdown_signal;
 
 /// Typed server startup and runtime failures.
@@ -98,6 +98,9 @@ pub struct Server {
     pub(crate) trusted_proxy: Option<crate::security::TrustedProxyConfig>,
     pub(crate) dev_queue: Option<std::sync::Arc<crate::queue::Queue>>,
     pub(crate) auto_migrate: Option<bool>,
+    /// Whether successful `/health` and `/ready` requests are access-logged;
+    /// resolved from the environment when the server starts.
+    pub(crate) log_health_probes: bool,
     #[cfg(feature = "orm")]
     pub(crate) migrations: Option<Vec<Box<dyn rullst_orm::schema::Migration>>>,
 }
@@ -118,6 +121,7 @@ impl Server {
             trusted_proxy: None,
             dev_queue: None,
             auto_migrate: None,
+            log_health_probes: true,
             #[cfg(feature = "orm")]
             migrations: None,
         }
@@ -139,6 +143,7 @@ impl Server {
             trusted_proxy: None,
             dev_queue: None,
             auto_migrate: None,
+            log_health_probes: true,
             #[cfg(feature = "orm")]
             migrations: None,
         }

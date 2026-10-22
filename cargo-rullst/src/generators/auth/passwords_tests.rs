@@ -106,7 +106,9 @@ fn reset_links_use_the_configured_origin_and_requests_answer_alike() {
     assert!(controller.contains(
         "rullst::runtime::time::sleep_until(started + RESET_REQUEST_MIN_DURATION).await;"
     ));
-    assert!(controller.contains("if valid && let Err(error) = request_reset(&email).await {"));
+    assert!(controller.contains(
+        "if valid && let Err(error) = request_reset(&email, mail_locale(&headers, &locale)).await {"
+    ));
     assert!(controller.contains("rullst::runtime::spawn(async move {"));
     assert!(controller.contains("Ok(mail) => Mail::send(mail.into_message()).await,"));
     assert!(controller.contains("expires_in_minutes: RESET_TOKEN_LIFETIME_MINUTES,"));
@@ -122,11 +124,51 @@ fn reset_links_use_the_configured_origin_and_requests_answer_alike() {
     // A completed reset signs nobody in.
     assert!(controller.contains("Ok(()) => Redirect::to(\"/login?reset=done\").into_response(),"));
     let reset = controller
-        .split("async fn reset_password(payload: ResetPasswordDto)")
+        .split("async fn reset_password(payload: ResetPasswordDto, locale: MailLocale)")
         .nth(1)
         .and_then(|rest| rest.split("fn cookie_epoch(").next())
         .expect("reset handlers");
     assert!(!reset.contains("make_login_cookie"));
+}
+
+#[test]
+fn account_mail_uses_the_request_language_and_an_editable_product_name() {
+    let controller = render_password_controller();
+    assert!(!controller.contains("MailLocale::En, event"));
+    assert!(controller.contains("const APPLICATION_NAME: &str = env!(\"CARGO_PKG_NAME\");"));
+    assert!(controller.contains("const DEFAULT_MAIL_LOCALE: MailLocale = MailLocale::En;"));
+    assert!(controller.contains("const MAIL_LANGUAGES: &[&str] = &[\"en\", \"pt\", \"es\"];"));
+    assert!(controller.contains(
+        "match rullst::config::project_setting(\"APP_NAME\") {\n        Ok(Some(name)) if !name.trim().is_empty() => name.trim().to_owned(),\n        _ => APPLICATION_NAME.to_owned(),"
+    ));
+    // The i18n layer's locale wins over the header; both match by language.
+    assert!(controller.contains(
+        "Some(Extension(locale)) => Some(locale.tag()),\n        None => headers.get(header::ACCEPT_LANGUAGE).and_then(|value| value.to_str().ok()),"
+    ));
+    assert!(controller.contains(
+        ".map_or(DEFAULT_MAIL_LOCALE, |language| MailLocale::from_preference(language.tag()))"
+    ));
+    assert!(controller.contains("AccountMail::new(to, application_name(), locale, event)"));
+    // Every handler that sends account mail passes the request's language.
+    assert_eq!(
+        controller
+            .matches("    locale: Option<Extension<rullst::i18n::Locale>>,\n    Form(payload)")
+            .count(),
+        3
+    );
+    assert!(
+        controller
+            .contains("match reset_password(payload, mail_locale(&headers, &locale)).await {")
+    );
+    assert!(controller.contains(
+        "Some(epoch) => change_password(user_id, epoch, payload, mail_locale(&headers, &locale)).await,"
+    ));
+    assert_eq!(
+        controller
+            .matches("send_account_mail(user.email, locale, ")
+            .count(),
+        2
+    );
 }
 
 #[test]
