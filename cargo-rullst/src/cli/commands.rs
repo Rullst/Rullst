@@ -6,7 +6,7 @@
 use clap::Subcommand;
 use std::path::PathBuf;
 
-use super::{BlueprintChoice, DatabaseChoice, OmniPlatformChoice};
+use super::{BlueprintChoice, DatabaseChoice};
 
 #[derive(Subcommand)]
 pub enum Commands {
@@ -128,25 +128,6 @@ pub enum Commands {
         /// The primary Billable model (e.g. User, Team, Workspace)
         #[arg(long, default_value = "User")]
         model: String,
-    },
-    /// Scaffolds Tauri desktop & mobile packaging (Omni) for your application
-    #[command(name = "make:omni")]
-    MakeOmni {
-        /// Target platform; repeat the flag or use comma-separated values
-        #[arg(long, value_enum, value_delimiter = ',')]
-        platform: Vec<OmniPlatformChoice>,
-        /// Backend URL embedded in the shell; required when a mobile platform is selected
-        #[arg(long)]
-        backend_url: Option<String>,
-        /// Human-readable product name; defaults to the Cargo package name
-        #[arg(long)]
-        product_name: Option<String>,
-        /// Application-owned reverse-DNS bundle/package identifier; required for mobile
-        #[arg(long)]
-        identifier: Option<String>,
-        /// Application SemVer; defaults to the Cargo package version
-        #[arg(long)]
-        app_version: Option<String>,
     },
     /// Scaffolds a local IoT telemetry module
     #[command(name = "make:iot")]
@@ -325,11 +306,6 @@ pub enum Commands {
         /// Optional: compile in debug mode instead of release
         #[arg(long)]
         debug: bool,
-    },
-    /// Starts the Omni App client (must be generated via make:omni first)
-    Omni {
-        /// Target platform (desktop, android, ios)
-        target: Option<String>,
     },
     /// Expands and inspects macro code or structural definitions for debugging
     Inspect {

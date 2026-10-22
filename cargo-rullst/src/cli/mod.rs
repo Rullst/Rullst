@@ -20,7 +20,7 @@ mod tests;
 #[cfg(test)]
 mod tutorial_tests;
 
-pub use choices::{BlueprintChoice, DatabaseChoice, OmniPlatformChoice};
+pub use choices::{BlueprintChoice, DatabaseChoice};
 pub use commands::Commands;
 pub use dispatch::run_cli_command;
 #[doc(hidden)]

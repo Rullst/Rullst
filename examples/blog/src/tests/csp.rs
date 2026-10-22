@@ -6,7 +6,7 @@ use axum::body::{Body, to_bytes};
 use axum::http::{Request, StatusCode, header};
 use tower::ServiceExt;
 
-const PAGES: [&str; 10] = [
+const PAGES: [&str; 9] = [
     "/",
     "/posts/repository",
     "/live-feed",
@@ -16,7 +16,6 @@ const PAGES: [&str; 10] = [
     "/checkout?provider=stripe",
     "/security-demo?test=dlp",
     "/ai-assistant?q=rust",
-    "/omni",
 ];
 
 /// One start tag: its lowercase name and attribute names/values.

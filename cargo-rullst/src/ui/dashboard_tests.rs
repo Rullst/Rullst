@@ -275,7 +275,7 @@ fn project_menu_reaches_direct_nested_and_back_paths() {
     for (selection, action) in [
         (0, "dev"),
         (1, "dash"),
-        (5, "make:omni"),
+        (5, "make:pwa"),
         (6, "dockerize"),
         (7, "nixify"),
         (9, "upgrade"),
@@ -347,7 +347,7 @@ fn main_menu_reaches_new_existing_help_exit_and_unknown_paths() {
     .expect("existing-project choice should be accepted");
     assert_eq!(
         commands,
-        vec![vec!["cargo-rullst".to_string(), "make:omni".to_string()]]
+        vec![vec!["cargo-rullst".to_string(), "make:pwa".to_string()]]
     );
 
     for selection in [3, 4, usize::MAX] {

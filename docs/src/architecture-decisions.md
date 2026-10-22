@@ -120,23 +120,29 @@ and queue support does not turn it into distributed WebSocket pub/sub.
 Neither interface should be exposed publicly without an application-owned
 identity, authorization, TLS and network policy.
 
-## Omni packaging
+## Installable applications
 
-Rullst uses a **web-first, platform-enhanced** model. The web application is the
-canonical universally reachable product; the server remains authoritative for
-domain rules, authentication, authorization, persistence, realtime and
-security. Omni may package that interface and later add scoped native
-capabilities, but it must not fork the business model or trust a client-side
-decision as authority.
+Rullst uses a **web-first** model. The web application is the canonical,
+universally reachable product; the server remains authoritative for domain
+rules, authentication, authorization, persistence, realtime and security.
 
-`cargo rullst make:omni` scaffolds a Tauri-powered shell and commands for
-desktop and mobile targets. Deterministic generation pins the local Tauri CLI,
-requires an explicit validated backend URL and application-owned identifier for
-mobile, derives or validates product metadata, generates real platform icon
-assets and fails when an explicitly requested platform cannot be initialized.
-The packaged bootstrap exposes no remote IPC. A native navigation policy allows
-only Tauri's local origin and the configured backend's exact origin, leaving
-OAuth/external links for a reviewed system-browser/deep-link contract.
+`cargo rullst make:pwa` makes that application installable as a Progressive
+Web App: a web app manifest, placeholder icons, `/sw.js` and an `/offline`
+page, wired into the starter's router and layouts. The service worker works
+under the default nonce Content-Security-Policy and never stores a non-GET
+request or a response marked `no-store` or `private`, which Rullst answers
+by default, so authenticated pages are not kept on the device. The same site
+reaches Google Play as a Trusted Web Activity (a Bubblewrap configuration and
+`/.well-known/assetlinks.json` from `rullst::pwa::AssetLinks`) and the
+Microsoft Store through PWABuilder; iOS users add it from Safari. See the
+[PWA guide](tutorials/43-progressive-web-apps.md).
+
+Until 13.0 the Omni command packaged the site in Tauri shells for desktop,
+Android and iOS. Those shells deliberately exposed no native API to the
+site, so they gave the same result as an installed PWA while costing three
+release workflows, Tauri upgrades and per-platform signing. 13.0 removes
+`make:omni`, `cargo rullst omni` and the native-only `offline-sync` feature,
+whose only consumer was the shell.
 
 `rullst::client_contract` supplies one shared `rullst.client` v1 JSON boundary
 for browser, server and future platform-enhanced code. It negotiates positive
@@ -144,34 +150,8 @@ versions, rejects unknown outer fields and oversized bodies, and carries typed
 payloads, correlation, optional mutation idempotency, server time and bounded
 failure codes. It deliberately has no user/tenant/role claim: authentication,
 authorization, domain validation and durable replay handling remain server
-work. This is a transport foundation for rich clients, not offline sync.
-
-The opt-in native `offline-sync` profile builds a bounded state machine on that
-transport boundary. It keeps cached server records separate from queued local
-proposals, requires unique idempotency keys, uses explicit server revisions and
-cursors, isolates conflicts from automatic replay, and makes incremental/full
-resync transitions atomic within the state value. Its encrypted v1 snapshot is
-AES-256-GCM authenticated to an exact account and rotation-key id. The framework
-adds a static-dispatch foreground coordinator with request budgets, mandatory
-timeouts and cursor-progress checks, but does not choose client-wins, accept
-cached authorization, own a platform key, or silently write/contact an arbitrary
-filesystem, browser store or endpoint. Keychain/Keystore, atomic platform
-persistence, concrete authenticated HTTP, retry/background scheduling and later
-schema migrations remain application/platform decisions until dedicated adapters
-have evidence.
-
-Path-aware workflows generate disposable applications and check desktop on
-Linux/macOS/Windows, an Android debug APK and an iOS simulator target. All
-three passed for commit `755fbd61933bed04369e0eb5de50b11275db5e3d`.
-
-That gate proves reproducible generation and simulator compilation only. It
-does not automatically mount offline synchronization, secure remote
-networking, platform signing, privacy declarations, physical-device behavior,
-store publication, native updater policy or every frontend profile. Push,
-biometrics, OS secure storage, deep links and offline state must be opt-in,
-least-privilege additions with platform tests. Treat the generated shell as
-application-owned packaging code that must be reviewed, signed and tested on
-each supported target.
+work. A page that accepts writes offline queues them in IndexedDB with an
+idempotency key, as the PWA guide shows; the server accepts each key once.
 
 ## Engineering invariants
 

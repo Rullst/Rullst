@@ -140,15 +140,15 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
             ],
         ),
         (
-            "🖥️  DESKTOP & MOBILE (OMNI)",
+            "📱  INSTALLABLE APP (PWA)",
             vec![
                 (
-                    "cargo rullst make:omni",
-                    "Scaffold Omni desktop & mobile app wrapper",
+                    "cargo rullst make:pwa",
+                    "Manifest, icons, service worker and offline page",
                 ),
                 (
-                    "cargo rullst omni [target]",
-                    "Run Omni app (desktop, android, ios)",
+                    "cargo rullst make:pwa --android --host <host> --package-id <id>",
+                    "Also a Google Play (Bubblewrap) configuration",
                 ),
             ],
         ),

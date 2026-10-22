@@ -31,7 +31,7 @@ where
 
             let mut animated_msg = String::new();
 
-            let found_target = ["Application", "migrations", "Omni"]
+            let found_target = ["Application", "migrations"]
                 .into_iter()
                 .filter_map(|target| msg.find(target).map(|position| (target, position)))
                 .min_by_key(|(_, position)| *position);
@@ -39,20 +39,7 @@ where
             if let Some((target, pos)) = found_target {
                 animated_msg.push_str(&msg[..pos].bold().to_string());
 
-                let custom_colors = if target == "Omni" {
-                    vec![
-                        colored::Color::Red,
-                        colored::Color::TrueColor {
-                            r: 255,
-                            g: 165,
-                            b: 0,
-                        },
-                        colored::Color::BrightRed,
-                        colored::Color::Yellow,
-                    ]
-                } else {
-                    colors.to_vec()
-                };
+                let custom_colors = colors;
 
                 for (j, ch) in target.chars().enumerate() {
                     let is_upper = ((i + j) % 4) < 2;

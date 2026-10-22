@@ -1131,51 +1131,68 @@ into their source tree and must be reviewed manually. Follow the
 [CORS scaffold security advisory](cors-scaffold-security-advisory.md) to detect
 origin reflection/wildcards and migrate to the current fail-closed allowlist.
 
-### `cargo rullst make:omni`
-**Maturity:** Supported for `desktop` and `android` (maintainer-tested) ·
-Experimental for `ios` · [tiers](maturity.md#cli-generators)
+### `cargo rullst make:pwa` (13.0.0-alpha.3)
 
-Generates a Tauri/Omni shell and development configuration for desktop, Android
-or iOS. Interactive use prompts for platforms. Automation can select one or
-more targets deterministically:
+Makes an HTML application an installable Progressive Web App and wires it into
+the starter's own router and page layouts:
 
 ```bash
-cargo rullst make:omni --platform desktop
-cargo rullst make:omni --platform android \
-  --backend-url http://10.0.2.2:3000 --identifier com.acme.myapp
-cargo rullst make:omni --platform ios \
-  --backend-url https://app.example.com --identifier com.acme.myapp
-cargo rullst make:omni --platform desktop,ios \
-  --backend-url https://app.example.com --identifier com.acme.myapp \
-  --product-name "Acme App" --app-version 1.2.3
+cargo rullst make:pwa
+cargo rullst make:pwa --name "Field Notes" --short-name Notes \
+  --theme-color '#0f172a' --background-color '#020617' --lang pt-BR --start-url /
 ```
 
-Mobile generation requires an explicit backend URL. HTTPS is required except
-for the bounded localhost/Android-emulator development hosts; embedded
-credentials are rejected. Mobile also requires an application-owned lowercase
-reverse-DNS `--identifier`; reserved framework and `com.example` placeholders
-are rejected. `--product-name` and `--app-version` are optional validated
-overrides and otherwise inherit the host package metadata. Desktop-only
-development can derive a documented `com.example` placeholder, which must be
-replaced before distribution.
+| Flag | Default | Meaning |
+| :--- | :--- | :--- |
+| `--name` | `[package].name` in words (`field-notes` → `Field Notes`) | 1-64 letters, digits, spaces, `.`, `-`, `_` |
+| `--short-name` | the name when it has at most 12 characters, else its first word cut to 12 | label under the home-screen icon |
+| `--theme-color`, `--background-color` | `#0f172a`, `#020617` | `#RRGGBB` |
+| `--lang` | `en` | language tag such as `en` or `pt-BR` |
+| `--start-url` | `/` | a path on this site that the installed app opens |
+| `--android` | off | also write `android/twa-manifest.json` (Bubblewrap) and `PWA-ANDROID.md`; needs `--host` and `--package-id` |
+| `--host` | none | with `--android`: the site's HTTPS host, such as `notes.acme.dev` |
+| `--package-id` | none | with `--android`: the Android application ID you own (`com.example.*` is refused) |
 
-The generator installs an exact Tauri npm CLI, creates platform icons,
-initializes mobile targets non-interactively, emits a restrictive local CSP and
-fails if a requested prerequisite step fails. iOS initialization requires
-macOS and Xcode. Native-side navigation is restricted to the packaged
-bootstrap and the configured backend's exact origin. Remote pages receive no
-privileged Tauri IPC surface; cross-origin OAuth/external-link behavior needs a
-separate reviewed system-browser/deep-link integration.
+It writes `static/manifest.webmanifest` (`id` and `scope` `/`, `display`
+`standalone`, icons 192 and 512 plus a maskable 512), four placeholder PNG
+icons in `static/icons/` (the Rullst logo; replace them), `static/pwa.js`,
+`src/pwa.rs`, the worker in `src/pwa/sw.js` and `PWA.md`. `src/pwa.rs` serves
+`/sw.js` (`text/javascript`, `Cache-Control: no-cache`, scope `/`) and
+`/offline` (`no-cache`, so the worker may store it), and its `head()` returns
+the manifest link, `theme-color`, the apple-touch icon and the registration
+script. The existing source is edited in three recognized places:
 
-The canonical product remains the Rullst web application and the generated
-client packages that application; it does not by itself
-implement native plugins, offline synchronization, production network policy,
-release signing, privacy declarations, physical-device validation, Play
-Store/App Store publication or review acceptance. The generated README contains
-the application-owned distribution checklist. Path-aware repository workflows
-generate fresh desktop, Android and iOS shells and compile only their declared
-targets; those runs are packaging evidence, not store, physical-device or
-universal behavior guarantees.
+- the router: `.merge_axum(crate::pwa::router().into_axum())` follows the one
+  `.merge_axum(rullst::health::health_router())` of the crate root (a merge in
+  a `return` expression, such as the ERP fallback router, does not count);
+- every page layout in `src/`: `{crate::pwa::head()}` before the `</head>` of
+  an `html!` document, the same tags before the `</head>` of a document
+  written in a string, and `render_page_with_lang(...)` calls become
+  `render_page_with_head(..., crate::pwa::head(), content)`;
+- the crate root (`src/lib.rs`, else `src/main.rs`) declares `mod pwa`.
+
+The registration script is a same-origin file, so the default
+Content-Security-Policy (`script-src 'self' 'nonce-…'`, `worker-src 'self'`,
+the manifest under `default-src 'self'`) allows it without a nonce. The worker
+precaches `/offline` and the PWA's static files, goes to the network first for
+navigations and unversioned static files, serves content-hashed static files
+from the cache first, and never stores a non-GET request, another origin or a
+response marked `no-store` or `private`; Rullst answers `no-store` by default,
+so authenticated pages stay off the device. A new worker waits until the user
+chooses **Reload** in the page's update prompt (`SKIP_WAITING`). The cache is
+named after `[package].version`.
+
+The generated router also serves `/.well-known/assetlinks.json` (Digital
+Asset Links for the Google Play package) once `RULLST_ANDROID_ASSET_LINKS` or
+`[[android.asset_links]]` in `Rullst.toml` names the app and its signing
+certificate fingerprints; see `rullst::pwa::AssetLinks`.
+
+The whole plan is checked before any write. Running the command again changes
+nothing; a generated file that now differs (edited, or another `--name`) stops
+the run without writing. `--android` can follow a plain run with the same
+flags and adds only the Android files. The JSON API starter, a project without an HTML
+layout, and a router without the health merge are refused; wire such a project
+by hand as the [PWA guide](tutorials/43-progressive-web-apps.md) shows.
 
 ### `cargo rullst make:iot <DeviceName>`
 **Maturity:** Experimental · [tiers](maturity.md#cli-generators)
@@ -1961,36 +1978,6 @@ only under `/opt/rullst/<app>/data`. The current command replaces the global
 `/etc/caddy/Caddyfile`; it does not perform migrations, data backup, external
 reachability check, or automatic rollback. It
 does not guarantee zero downtime and does not support IPv6 SCP targets.
-
-### `cargo rullst omni`
-**Maturity:** Supported for `desktop` and `android` (maintainer-tested) ·
-Experimental for `ios` · [tiers](maturity.md#cli-generators)
-
-The 12.1.0 executable added `cargo rullst omni android --release` for
-an explicit Android release build using application-owned signing inputs. It
-does not change the existing Rust `Commands::Omni` variant or start a backend.
-The v13 development CLI additionally requires `--signing-certificate` and
-`--apksigner-jar` (or `RULLST_ANDROID_SIGNING_CERTIFICATE` and
-`RULLST_ANDROID_APKSIGNER_JAR`), verifies one
-fresh release APK against that certificate and reports its SHA-256. Use
-`--apk` to select a relative output when variants are ambiguous and
-`--android-arch` to restrict the native build. Neither a successful build alone
-nor a previous unchanged artifact is accepted as fresh verified output.
-See [Android signing and icons](tutorials/49-omni-android-signing.md) for key
-setup, migration of existing shells and certificate/device verification.
-
-Runs the generated Tauri development client after `make:omni`. Android/iOS
-require their official SDK/toolchain and a reachable backend. For `desktop`, the
-spinner lasts until the shell prints `Launching Omni interface...` (or 200
-output lines arrive); the command then prints the held lines and keeps streaming
-the shell's and its managed backend's standard output until the window closes.
-For `android` and `ios`, the command resolves the Tauri CLI (the local
-`omni-app/node_modules/@tauri-apps/cli` or `cargo tauri`) before it starts the
-backend with `cargo run`, so a missing CLI fails without leaving a backend
-process on port 3000; the backend is stopped when the mobile client exits.
-* **Optional Arguments:** `<target>` specifies where to run (e.g., `desktop`, `android`, `ios`).
-
----
 
 ## 🛡️ 6. Security, Compliance & System Diagnostics
 

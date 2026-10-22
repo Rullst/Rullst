@@ -269,3 +269,56 @@ async fn rendered_htmx_script_uses_the_request_csp_nonce() {
             .contains(&format!("nonce=\"{}\"", nonce.as_str()))
     );
 }
+
+#[test]
+fn head_markup_ends_the_document_head_and_stays_out_of_htmx_fragments() {
+    let page_request = HtmxRequest {
+        is_htmx: false,
+        trigger: None,
+        target: None,
+        prompt: None,
+        current_url: None,
+        csp_nonce: None,
+    };
+    let head = crate::html! { <link rel="manifest" href="/static/manifest.webmanifest" /> };
+    let page = render_page_with_head(
+        &page_request,
+        "en",
+        "Installable",
+        head.clone(),
+        crate::html! { <p>"body"</p> },
+    );
+    assert!(
+        page.0.contains(
+            "<script src=\"/static/htmx-1.9.12.min.js\"></script><link rel=\"manifest\" href=\"/static/manifest.webmanifest\" /></head><body class=\"h-full\"><p>body</p></body>"
+        ),
+        "{}",
+        page.0
+    );
+    assert!(page.0.contains("<html lang=\"en\""), "{}", page.0);
+
+    let fragment_request = HtmxRequest {
+        is_htmx: true,
+        ..page_request.clone()
+    };
+    let fragment = render_page_with_head(
+        &fragment_request,
+        "en",
+        "Installable",
+        head,
+        crate::html! { <p>"body"</p> },
+    );
+    assert_eq!(fragment.0, "<p>body</p>");
+
+    // Without head markup the document is the one render_page_with_lang renders.
+    let plain = render_page_with_lang(&page_request, "en", "Same", Markup::default());
+    let empty_head = render_page_with_head(
+        &page_request,
+        "en",
+        "Same",
+        Markup::default(),
+        Markup::default(),
+    );
+    assert_eq!(plain.0, empty_head.0);
+    assert!(plain.0.contains("</script></head>"), "{}", plain.0);
+}

@@ -11,11 +11,14 @@ fn allowlisted_scaffolds_and_diagnostics_validate() {
         &["make:model", "Post", "--migration"][..],
         &["make:controller", "posts", "--api"],
         &[
-            "make:omni",
-            "--platform=desktop,android",
-            "--backend-url",
-            "https://api.example.com",
+            "make:pwa",
+            "--android",
+            "--host",
+            "notes.acme.dev",
+            "--package-id",
+            "dev.acme.notes",
         ],
+        &["make:pwa", "--lang=pt-BR"],
         &["generate:ai-context", "--check"],
         &[
             "generate:api",
@@ -80,6 +83,7 @@ fn every_allowlisted_command_exists_in_the_cli() {
         crate::generators::privacy::command(),
         crate::generators::age_gate::command(),
         crate::generators::api_contract::command(),
+        crate::generators::pwa::command(),
     ] {
         names.push(extra.get_name().to_string());
     }
@@ -198,8 +202,8 @@ fn hostile_arguments_are_refused() {
 #[test]
 fn ordinary_values_and_urls_still_validate() {
     for command in [
-        &["make:omni", "--platform=desktop,android"][..],
-        &["make:omni", "--backend-url=https://api.example.com"],
+        &["make:pwa", "--theme-color=0f172a"][..],
+        &["make:pwa", "--android", "--host=notes.acme.dev"],
         &["make:mail", "Welcome", "--welcome"],
         &[
             "generate:api",

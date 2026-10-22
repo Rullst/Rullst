@@ -11,7 +11,6 @@ use crate::generators::{
     controller::create_new_controller,
     cors_jwt::{create_cors_middleware, create_jwt_middleware},
     db::run_project_db_command,
-    desktop::{OmniScaffoldOptions, run_omni_app, scaffold_omni_system_with_options},
     foundry::{run_foundry_deploy, scaffold_foundry_config},
     inspect::inspect_project,
     introspect::generate_models_from_db,
@@ -114,32 +113,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::MakeChatSession => {
             crate::generators::chat::scaffold_chat_session()?;
-        }
-        Commands::MakeOmni {
-            platform,
-            backend_url,
-            product_name,
-            identifier,
-            app_version,
-        } => {
-            let platforms = platform
-                .iter()
-                .map(|platform| platform.as_str())
-                .collect::<Vec<_>>();
-            let mut options = OmniScaffoldOptions::new(platforms);
-            if let Some(backend_url) = backend_url {
-                options = options.backend_url(backend_url);
-            }
-            if let Some(product_name) = product_name {
-                options = options.product_name(product_name);
-            }
-            if let Some(identifier) = identifier {
-                options = options.identifier(identifier);
-            }
-            if let Some(app_version) = app_version {
-                options = options.app_version(app_version);
-            }
-            scaffold_omni_system_with_options(options)?;
         }
         Commands::MakeIot { name } => {
             crate::generators::iot::run_make_iot(name)?;
@@ -303,9 +276,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::Build { debug } => {
             run_production_build(!*debug)?;
-        }
-        Commands::Omni { target } => {
-            run_omni_app(target.as_deref())?;
         }
         Commands::Inspect { target } => {
             inspect_project(target.as_deref())?;

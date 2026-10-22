@@ -204,10 +204,32 @@ pub fn render_page_with_lang(
     title: &str,
     content: impl Into<Markup>,
 ) -> Html<String> {
+    render_page_with_head(htmx, lang, title, Markup::default(), content)
+}
+
+/// [`render_page_with_lang`] with extra `head` markup placed at the end of
+/// the document's `<head>`, after the stylesheet and the htmx script: for
+/// example the web app manifest link, `theme-color` and the service worker
+/// registration script that `cargo rullst make:pwa` adds. An htmx request
+/// still receives only `content`.
+///
+/// `head` is [`Markup`] like `content`, so `html!` output is escaped. A
+/// `<script>` placed there must load a same-origin file (`src="/static/…"`)
+/// or carry the request's CSP nonce.
+///
+/// Added in v13.0.0-alpha.3.
+pub fn render_page_with_head(
+    htmx: &HtmxRequest,
+    lang: &str,
+    title: &str,
+    head: impl Into<Markup>,
+    content: impl Into<Markup>,
+) -> Html<String> {
     let content = content.into();
     if htmx.is_htmx {
         return Html(content.into_string());
     }
+    let head = head.into();
     let htmx_script = if let Some(nonce) = htmx.csp_nonce.as_ref() {
         crate::html! {
             <script nonce={nonce.as_str()} src="/static/htmx-1.9.12.min.js"></script>
@@ -227,6 +249,7 @@ pub fn render_page_with_lang(
                 <link rel="icon" type="image/png" href="/static/rullst.png" />
                 <link rel="stylesheet" href="/static/rullst.css" />
                 {htmx_script}
+                {head}
             </head>
             <body class="h-full">
                 {content}
