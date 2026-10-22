@@ -225,23 +225,8 @@ fn database_field_name(field: &syn::Ident) -> String {
 }
 
 fn validate(parsed: &ParsedModel, input: &DeriveInput) -> Result<(), syn::Error> {
-    let valid_table = !parsed.table_name.is_empty()
-        && parsed.table_name.len() <= 128
-        && parsed
-            .table_name
-            .chars()
-            .all(|character| character.is_ascii_alphanumeric() || character == '_')
-        && parsed
-            .table_name
-            .chars()
-            .next()
-            .is_some_and(|character| character.is_ascii_alphabetic() || character == '_');
-    if !valid_table {
-        return Err(syn::Error::new_spanned(
-            input,
-            "TursoModel table names must be 1-128 ASCII letters, digits, or underscores and cannot start with a digit",
-        ));
-    }
+    // The parser already limits table and column names to 1-64 ASCII
+    // letters, digits or underscores that do not start with a digit.
     if !parsed.relations.is_empty() {
         return Err(syn::Error::new_spanned(
             input,
@@ -318,5 +303,117 @@ mod tests {
         };
         let parsed = parser::parse(&plain).expect("plain Turso model");
         assert!(generate(&parsed, &plain).is_ok());
+    }
+
+    fn generated(input: &DeriveInput) -> Result<String, String> {
+        let parsed = parser::parse(input).expect("model should parse before backend validation");
+        generate(&parsed, input)
+            .map(|tokens| tokens.to_string())
+            .map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn each_unsupported_model_behavior_fails_on_its_own() {
+        let models: [DeriveInput; 14] = [
+            parse_quote! { #[orm(backend = "turso", auditable)] struct A { id: i64 } },
+            parse_quote! { #[orm(backend = "turso", searchable)] struct A { id: i64 } },
+            parse_quote! { #[orm(backend = "turso", global_scope = "live")] struct A { id: i64 } },
+            parse_quote! {
+                #[orm(backend = "turso", tenant_column = "tenant_id")]
+                struct A { id: i64, tenant_id: String }
+            },
+            parse_quote! { #[orm(backend = "turso", policy = "APolicy")] struct A { id: i64 } },
+            parse_quote! { #[orm(backend = "turso", before_save = "hook")] struct A { id: i64 } },
+            parse_quote! { #[orm(backend = "turso", after_save = "hook")] struct A { id: i64 } },
+            parse_quote! { #[orm(backend = "turso", before_delete = "hook")] struct A { id: i64 } },
+            parse_quote! { #[orm(backend = "turso", after_delete = "hook")] struct A { id: i64 } },
+            parse_quote! { #[orm(backend = "turso", after_fetch = "hook")] struct A { id: i64 } },
+            parse_quote! {
+                #[orm(backend = "turso")]
+                struct A { id: i64, #[orm(rag_context)] bio: String }
+            },
+            parse_quote! {
+                #[orm(backend = "turso")]
+                struct A { id: i64, #[orm(db_default)] created_at: Option<String> }
+            },
+            parse_quote! {
+                #[orm(backend = "turso")]
+                struct A {
+                    id: i64,
+                    bio: String,
+                    #[orm(embedding_for = "bio")]
+                    embedding: Option<Vector>,
+                }
+            },
+            parse_quote! { #[orm(backend = "turso")] struct A { id: i64 } },
+        ];
+        let (supported, unsupported) = models.split_last().expect("models");
+        for model in unsupported {
+            assert_eq!(
+                generated(model).expect_err("unsupported behavior must fail"),
+                "this #[orm(...)] model behavior is not supported by the bounded Turso-primary profile",
+                "{}",
+                quote!(#model)
+            );
+        }
+        assert!(generated(supported).is_ok());
+    }
+
+    #[test]
+    fn turso_models_keep_a_leading_underscore_table() {
+        let underscored: DeriveInput = parse_quote! {
+            #[orm(table = "_legacy_users", backend = "turso")]
+            struct User { id: i64 }
+        };
+        assert!(
+            generated(&underscored)
+                .expect("a leading underscore is portable")
+                .contains("fn table_name () -> & 'static str { \"_legacy_users\" }")
+        );
+    }
+
+    #[test]
+    fn generated_turso_model_keys_on_id_and_encrypts_only_encrypted_columns() {
+        let input: DeriveInput = parse_quote! {
+            #[orm(table = "notes", backend = "turso")]
+            struct Note {
+                title: String,
+                id: i64,
+                kind: String,
+                #[orm(encrypted)]
+                secret: String,
+                #[orm(encrypted)]
+                hint: Option<String>,
+            }
+        };
+        let tokens = generated(&input).expect("Turso model");
+        let normalized = tokens.replace(' ', "");
+        assert!(
+            normalized.contains("&[\"title\",\"id\",\"kind\",\"secret\",\"hint\"]"),
+            "{tokens}"
+        );
+        assert!(
+            normalized
+                .contains("fnopaque_columns()->&'static[&'staticstr]{&[\"secret\",\"hint\"]}")
+        );
+        assert!(
+            normalized.contains("<i64asrullst_orm::polyglot::TursoCodec>::encode_turso(&self.id)")
+        );
+        assert!(
+            normalized.contains("rullst_orm::polyglot::TursoCodec::encode_turso(&self.title)?")
+        );
+        assert!(normalized.contains(
+            "rullst_orm::privacy::encrypt_model_field(&self.secret,\"notes\",\"secret\",)"
+        ));
+        assert!(normalized.contains(
+            "matchself.hint.as_deref(){Some(value)=>rullst_orm::polyglot::TursoValue::Text(rullst_orm::privacy::encrypt_model_field(value,\"notes\",\"hint\")"
+        ));
+        assert!(
+            normalized.contains("title:<Stringasrullst_orm::polyglot::TursoCodec>::decode_turso")
+        );
+        assert!(normalized.contains("secret:rullst_orm::privacy::decrypt_model_field(&<Stringasrullst_orm::polyglot::TursoCodec>::decode_turso(row.get(\"secret\")"));
+        assert!(normalized.contains("hint:match<Option<String>asrullst_orm::polyglot::TursoCodec>::decode_turso(row.get(\"hint\")"));
+        assert!(!normalized.contains("encrypt_model_field(&self.title"));
+        assert!(!normalized.contains("encrypt_model_field(&self.id"));
     }
 }
