@@ -243,7 +243,9 @@ the production authentication flow.
 application, `axum::Router::nest("/nexus", nexus)` is the equivalent.
 `rullst::Router` has no `with_state`; pass shared application state with
 `.layer(Extension(state))` (`rullst::web::axum::Extension`) and read it in
-handlers with the `Extension<T>` extractor.
+handlers with the `Extension<T>` extractor, or mount an `axum::Router<S>` after
+its own `with_state`; see
+[sharing application state](tutorials/08-routing-and-middlewares.md#step-3-share-application-state).
 
 #### Using the application's sign-in
 

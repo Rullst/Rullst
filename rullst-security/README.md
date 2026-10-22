@@ -205,7 +205,7 @@ how, its known limits and what you must still do.
 
 Add `rullst-security` to your `Cargo.toml`. This README describes the v13
 prerelease; Cargo never selects a prerelease on its own, so pin it exactly
-(the stable line is `rullst-security@12`):
+(the v12 line, `rullst-security@12`, reached end of life on 16 October 2026):
 
 ```toml
 [dependencies]

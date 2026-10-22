@@ -3,8 +3,8 @@
 > [!IMPORTANT]
 > This page describes the v13 prerelease, published as `13.0.0-alpha.2`. Cargo
 > never selects a prerelease on its own, so its dependency examples pin that
-> version exactly; for the stable line use `rullst-connect@12` and check the
-> [release record](../v12.md). Use a path dependency only for checkout-local
+> version exactly. The v12 line (`rullst-connect@12`) reached end of life on
+> 16 October 2026; see the [release record](../v12.md). Use a path dependency only for checkout-local
 > review.
 
 Since **12.1.2** (and in this development source), built-in
@@ -189,7 +189,7 @@ token was valid immediately before the call.
 Inside a source checkout, a path dependency intentionally follows that tree.
 For a reproducible application, install the exact registry version instead.
 
-v13 prerelease command (the stable line is `rullst-connect@12`):
+v13 prerelease command (the v12 line reached end of life on 16 October 2026):
 ```bash
 cargo add rullst-connect@=13.0.0-alpha.2
 cargo add secrecy

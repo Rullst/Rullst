@@ -45,6 +45,13 @@ A prepared version section does not establish that its tag or crates exist.
   `Server::run` and `init_telemetry` install now uses `info,sqlx=warn` instead
   of `info`, so SQLx's per-connection INFO events such as `acquired connection`
   no longer appear. Set `RUST_LOG=info,sqlx=info` to see them again.
+- Documentation: the start page, Getting Started, the first-route and REST
+  quickstarts, the CLI and API references, the tutorials, the crate pages and
+  the crate READMEs no longer point newcomers to v12, which reached end of life
+  on 16 October 2026; their dependency examples pin `=13.0.0-alpha.2`. The
+  `Router` documentation and the routing tutorial show how to share
+  application state, since `rullst::Router` has no `with_state`: a request
+  extension, or an `axum::Router<S>` mounted after its own `with_state`.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

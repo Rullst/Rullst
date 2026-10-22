@@ -4,11 +4,13 @@ You do not need to understand every Rullst crate before writing your first
 application. Start small, make one thing work, and learn what each layer does
 as your product needs it.
 
-> **This guide targets stable Rullst 12.1.x.** Check [publication status](v12.md)
-> before installing the matching CLI and framework packages. Review the
-> [12.1 migration guide](migration-v12-1.md) when upgrading an existing application.
-> This book is built from `main`, where v13 is in development. Its latest
-> prerelease, 13.0.0-alpha.2, is on crates.io and requires an explicit opt-in.
+> **This guide targets the v13 prerelease, 13.0.0-alpha.2.** The v12 line
+> reached end of life on 16 October 2026 and a new 12.x project no longer
+> resolves its dependencies, so install the CLI and pin the framework with the
+> exact version, as [Getting Started](1-getting-started.md) shows: Cargo never
+> selects a prerelease on its own. Upgrading an existing application? Follow
+> the [v13 migration guide](migration-v13.md). This book is built from `main`,
+> where v13 is in development.
 
 ## Pick your starting line
 

@@ -190,7 +190,7 @@ for Axum and Actix. Other hosts can deserialize the framework-neutral
 extractor.
 
 This README describes the v13 prerelease; Cargo never selects a
-prerelease on its own, so pin it exactly (the stable line is `rullst-connect@12`):
+prerelease on its own, so pin it exactly (the v12 line, `rullst-connect@12`, reached end of life on 16 October 2026):
 ```bash
 cargo add rullst-connect@=13.0.0-alpha.2
 ```

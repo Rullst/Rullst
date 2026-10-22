@@ -15,7 +15,7 @@ unsupported streaming, tool, timeout, retry, and cancellation boundaries.
 ```toml
 [dependencies]
 rullst = {
-    version = "12.1.0",
+    version = "=13.0.0-alpha.2",
     default-features = false,
     features = ["ai"]
 }
@@ -23,8 +23,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ```
 
-Use the exact stable v12 release. Keep the application's `Cargo.lock` under
-version control and review future dependency updates before deployment.
+Pin the v13 prerelease exactly: Cargo never selects a prerelease on its own,
+and the v12 line reached end of life on 16 October 2026. Keep the
+application's `Cargo.lock` under version control and review future dependency
+updates before deployment.
 
 ## 2. Create a guarded client
 
@@ -243,7 +245,7 @@ framework-owned fixed schema rather than generated models:
 
 ```toml
 rullst = {
-    version = "12.1.0",
+    version = "=13.0.0-alpha.2",
     default-features = false,
     features = ["ai-sql-memory"]
 }
