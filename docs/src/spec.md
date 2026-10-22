@@ -1590,7 +1590,7 @@ boundaries.
 v13 replaced the complete Academy scaffold with the LMS starter. The generated
 `ActivityEvaluator`, activity attempts, `ScoreEvent` recording, leaderboards and
 the spaced-review queue are no longer generated. Their design remains in the
-git history and on the stable v12 branch; an application that adds them owns
+git history and on the frozen v12 branch; an application that adds them owns
 the same server-authoritative controls.
 
 ## ⚡ 4. Core API Specifications (`rullst-core`)

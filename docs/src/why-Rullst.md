@@ -9,8 +9,10 @@ is the combination of compile-time-oriented APIs, explicit security
 boundaries, first-party backend capabilities, offline development contracts,
 and one coordinated CLI and release train.
 
-> **Version status:** the Rullst v12 release line receives compatible
-> maintenance. This page lists implemented or explicitly bounded capabilities;
+> **Version status:** the Rullst v12 release line reached end of life on
+> 16 October 2026; v13 is in prerelease (`13.0.0-alpha.2`, installed with an
+> exact version as [Getting Started](1-getting-started.md) shows). This page
+> lists implemented or explicitly bounded capabilities;
 > it is not a production-readiness certificate. The
 > [framework specification](spec.md),
 > [capability ledger](capability-ledger.md), and

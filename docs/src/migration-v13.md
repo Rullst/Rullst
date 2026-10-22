@@ -2,7 +2,8 @@
 
 **The current source is `13.0.0-alpha.2`, a prerelease, not a stable v13
 release.** The first prerelease, `13.0.0-alpha.1`, was published on October 11, 2026.
-The stable 12.x line lives on `v12`; `main` develops v13. The development packages use the same v13
+The 12.x line, on the frozen `v12` branch, reached end of life on 16 October
+2026 with 12.3.0 as its last release; `main` develops v13. The development packages use the same v13
 version and internal requirements. `rullst-privacy`, `rullst-supervision`,
 `rullst-media` and `rullst-labs` join the candidate package inventory and were
 first published in 13.0.0-alpha.1. Privacy
@@ -10,7 +11,8 @@ has explicit `privacy-*` umbrella features; Supervision, Media and Labs remain
 standalone opt-ins.
 All twenty packages are published together as each v13 prerelease; the current
 one is `13.0.0-alpha.2`. Cargo never selects
-a prerelease on its own, so `cargo add rullst` still selects 12.3.0: opt in with
+a prerelease on its own, so `cargo add rullst` still selects the end-of-life
+12.3.0: opt in with
 an exact requirement such as `rullst = "=13.0.0-alpha.2"`. A plain
 `"13.0.0-alpha.2"` is a caret requirement that also accepts later alphas, which
 may break the API. From 13.0.0-alpha.2 the CLI writes the `=` form; a project
@@ -351,7 +353,7 @@ Pre-release discovery also requires an exact `--to` and `--prerelease`.
 
 To evaluate the published prerelease, install its CLI from crates.io. Cargo
 never selects a prerelease on its own (`cargo install cargo-rullst` installs
-12.x), so name the exact version:
+the end-of-life 12.x CLI), so name the exact version:
 
 ```bash
 cargo install cargo-rullst --version =13.0.0-alpha.2 --locked

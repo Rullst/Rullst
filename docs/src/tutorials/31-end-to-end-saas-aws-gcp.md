@@ -6,11 +6,13 @@ operation, secrets, billing and recovery remain deployment responsibilities.
 
 ## 1. Materialize and verify the SaaS starter
 
-Install the published `12.1.0` CLI, then generate deterministically. Do not
-substitute the moving `main` branch for an immutable release artifact:
+Install the published `13.0.0-alpha.2` CLI with its exact version (Cargo never
+selects a prerelease on its own, and the v12 line reached end of life on
+16 October 2026), then generate deterministically. Do not substitute the
+moving `main` branch for an immutable release artifact:
 
 ```bash
-cargo install cargo-rullst --version 12.1.0 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.2 --locked
 cargo rullst new my_cloud_saas --default --blueprint saas --docker
 cd my_cloud_saas
 cargo fmt --all -- --check

@@ -5,10 +5,11 @@ The goal is to make the safe, repeatable part a single command while refusing
 to guess about application data or security policy.
 
 > The transaction steps below were written for `12.1.0`; check [publication status](../v12.md).
-> The v13 source rules, the assisted `cargo rullst ai upgrade` session and the
-> rule classification are described in
-> [v12 to v13: source findings](#v12-to-v13-source-findings) and belong to the
-> `13.0.0-alpha.2` prerelease. Install the exact release and complete
+> The v12 line reached end of life on 16 October 2026, so a v12 application
+> moves to v13 with the v13 CLI. The v13 source rules, the assisted
+> `cargo rullst ai upgrade` session and the rule classification are described
+> in [v12 to v13: source findings](#v12-to-v13-source-findings) and belong to
+> the `13.0.0-alpha.2` prerelease. Install the exact release and complete
 > the application-specific validation below before any production rollout.
 
 ## What the command can guarantee
@@ -42,16 +43,20 @@ Create a branch, make the worktree reviewable, record the old test result, and
 back up every database. Prove the database backup can be restored before
 changing the framework.
 
-Install the exact CLI from the same release train as the target framework:
+Install the exact CLI from the same release train as the target framework.
+For a v12 application, that is the v13 prerelease (Cargo never selects a
+prerelease on its own):
 
 ```bash
-cargo install cargo-rullst --version 12.1.0 --locked --force
+cargo install cargo-rullst --version =13.0.0-alpha.2 --locked --force
 ```
 
 The framework command does not update its own executable. This matters for v5:
-the already-published v5 CLI cannot gain the new v12 migration engine
-retroactively. Install the v12 CLI first, then run the command inside the
-application.
+the already-published v5 CLI cannot gain the v12 migration engine
+retroactively, and the v13 CLI upgrades only from v12 or later. A v5
+application first moves to v12 with the end-of-life 12.x CLI
+(`cargo install cargo-rullst --version 12.1.0 --locked --force`, as the steps
+below show), then to v13. Run each CLI inside the application.
 
 ## 2. Inspect without writing
 
