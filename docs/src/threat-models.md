@@ -217,7 +217,8 @@ copy of the configuration file (backup, dotfile sync, screen share).
 
 **Trust boundaries:** browser ↔ Studio's loopback listener; Studio ↔ the
 configuration file and its separate key file; Studio ↔ each monitored origin
-over the network.
+over the network; Studio ↔ its local history database (phase 3); Studio ↔ the
+developer's webhook receiver (phase 3).
 
 Test files named below are under `rullst-studio/src/`.
 
@@ -230,6 +231,10 @@ Test files named below are under `rullst-studio/src/`.
 | `REMOTE-05` hostile or compromised monitored endpoint | Treat the document as untrusted: bound the response (1 MiB, 5 s total, 3 s to connect), require `200`, JSON and `schema: "rullst.monitor.v1"`, bound every list and string, and HTML-escape every remote value; an error shows a fixed status, never the remote body. | `remote/client_tests.rs` against a local test server (`remote/server_test.rs`): oversized (declared and streamed), malformed, wrong-schema, non-JSON and slow responses become fixed statuses within the limits; `remote/router_tests.rs`: script and markup in labels are escaped on every page and unreachable projects show a status. |
 | `REMOTE-06` SSRF-like use of the project list | Projects are added only through the protected form; Studio requests only `GET <base>/_rullst/monitor/v1` and renders only the validated schema, so a project pointing at an internal service yields at most a refusal status. At most 32 projects. | Covered by `REMOTE-02`, `REMOTE-04` and `REMOTE-05` tests. Network policy on the developer's machine stays with the developer. |
 | `REMOTE-07` local surfaces leaking into remote mode | The remote router mounts only the remote pages; the data browser, `.env` viewer, AI and API playgrounds and migration pages are absent. | `remote/router_tests.rs`: those paths answer `404` in remote mode while the remote pages and assets answer. |
+| `REMOTE-08` history store disclosure or growth (phase 3) | Store only aggregates the document already exposes (reachability, request rate, 5xx rate, p95, queue pending and failed totals) per project and time, never tokens, routes or other labels, in an owner-only SQLite file in the user's data directory. Delete samples older than the retention age and beyond a per-project row limit on every write; keep a bounded number of alerts. | `remote/history_tests.rs`: retention by age and by row count, alerts bounded, file permissions on Unix, only numeric columns stored. |
+| `REMOTE-09` polling turned into load or a network scanner (phase 3) | Poll only projects the developer marked as watched, at an interval bounded to 15 s–1 h (default 60 s), one read per project per interval with the `REMOTE-04`/`REMOTE-05` bounds, so the monitored server's own budget (`MONITOR-05`) is never approached. | `remote/poller_tests.rs`: one read per watched project per round, unwatched projects untouched, interval clamped. |
+| `REMOTE-10` alert spam or hostile values in alerts (phase 3) | Evaluate rules with an explicit clock; a rule fires again only after its per-project cool-down; the 5xx-rate rule needs a minimum number of requests; restarts that reset counters never fire the failure rule. Alert text is built from Studio's own wording, the project name and numbers, never from remote labels. | `remote/alerts_tests.rs` with a fixed clock: thresholds, cool-down, minimum requests, counter resets, unreachable projects. |
+| `REMOTE-11` webhook secret disclosure or misuse (phase 3) | A webhook URL is a secret: stored sealed like tokens (bound to the project), shown only as configured or not, `https://` only, no user information or fragment. Delivery sends a small JSON body with the project name, rule, message and time, follows no redirect, ignores proxies, is bounded to 5 s and never retried in a loop; a failure is recorded on the alert as a fixed status. | `remote/webhook_tests.rs`: URL validation, sealing round trip, delivery to a local test receiver, failure and redirect statuses without following. |
 
 ## TM-TENANT-1 — multi-tenant data access
 
