@@ -15,11 +15,27 @@ pub(super) struct Operation<'a, C> {
 impl<'a, C: Clock> Operation<'a, C> {
     pub async fn begin(store: &'a SqliteMedia<C>) -> Result<Self, Error> {
         let before = checked_time(store.clock.now()?)?;
-        let mut tx = store
+        let tx = store
             .pool
             .begin_with("BEGIN IMMEDIATE")
             .await
             .map_err(storage)?;
+        Self::started(store, before, tx).await
+    }
+    /// [`begin`](Self::begin) for `open`, which retries a connection that
+    /// times out while it is established (see `establish`).
+    pub async fn bootstrap(store: &'a SqliteMedia<C>) -> Result<Self, Error> {
+        let before = checked_time(store.clock.now()?)?;
+        let tx = super::establish::retry(|| store.pool.begin_with("BEGIN IMMEDIATE"))
+            .await
+            .map_err(storage)?;
+        Self::started(store, before, tx).await
+    }
+    async fn started(
+        store: &'a SqliteMedia<C>,
+        before: i64,
+        mut tx: Transaction<'static, Sqlite>,
+    ) -> Result<Self, Error> {
         let rows: Vec<(i64, i64, String, i64)> = sqlx::query_as(
             "SELECT id,version,substr(configuration,1,2049),last_now FROM media_meta LIMIT 2",
         )

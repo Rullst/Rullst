@@ -3,6 +3,7 @@
 mod cause;
 mod completion;
 mod crypto;
+mod establish;
 mod exercises;
 mod grading;
 mod jobs;
