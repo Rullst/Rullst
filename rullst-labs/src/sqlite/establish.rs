@@ -25,7 +25,11 @@ where
     let mut made = 1;
     loop {
         match attempt().await {
-            Err(sqlx::Error::PoolTimedOut) if made < ATTEMPTS => made += 1,
+            Err(sqlx::Error::PoolTimedOut) if made < ATTEMPTS => {
+                // TEMP-DIAG: reverted before the final commit.
+                eprintln!("ESTABLISH-RETRY attempt={made}");
+                made += 1
+            }
             outcome => return outcome,
         }
     }
