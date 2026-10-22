@@ -9,6 +9,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Dependency security
+
+- `ammonia` is required at 4.2.4 or later (RUSTSEC-2026-0373: the CSS `url()`
+  function was matched case-sensitively in sanitized HTML). 13.0.0-alpha.2
+  applications already accept 4.2.4 and should run `cargo update -p ammonia`.
+- The lockfiles move `rustls-webpki` to 0.103.16 (RUSTSEC-2026-0382:
+  certificate verification could accept distrusted intermediates) and
+  `webpki-roots`/`webpki-root-certs` to 1.0.10 (RUSTSEC-2026-0381, -0383:
+  distrusted emSign intermediates in the bundled roots). Applications should
+  run `cargo update -p rustls-webpki -p webpki-roots -p webpki-root-certs`.
+- The optional DuckDB adapter requires `duckdb` 1.10506.1, which builds with
+  `zip` 9: a new project can enable `orm-duckdb` again, and the time-bounded
+  exception for the `zip` 6 advisories (RUSTSEC-2026-0367 to -0369) is removed.
+
 ## [13.0.0-alpha.2] - 2026-10-16
 
 Second v13 prerelease, for evaluation. It fixes the problems found while
