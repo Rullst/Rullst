@@ -50,6 +50,20 @@ impl LocalStudioAccess {
     }
 }
 
+/// Applies the loopback boundary without the debug-build requirement.
+///
+/// Only the remote-projects router uses it: that mode serves no data of a
+/// local application (no database, `.env`, AI or API surfaces), only remote
+/// monitoring documents, so the standalone `rullst-studio` binary can run as a
+/// release build while keeping the loopback, `Host`, same-origin and marker
+/// checks of every Studio page.
+pub(crate) fn protect_remote_router<S>(router: Router<S>) -> Router<S>
+where
+    S: Clone + Send + Sync + 'static,
+{
+    router.layer(axum::middleware::from_fn(loopback_only_middleware))
+}
+
 /// Errors returned while constructing a Studio access boundary.
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
