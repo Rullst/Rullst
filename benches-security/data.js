@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792664976959,
+  "lastUpdate": 1792672863707,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -16883,6 +16883,60 @@ window.BENCHMARK_DATA = {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 17,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ca3ed12e5300c9a7d6d69dd42c9a69a06953aef2",
+          "message": "Merge pull request #523 from Rullst/feat/v13-pwa\n\nfeat(cli)!: first-class PWA with Google Play TWA support; retire Omni",
+          "timestamp": "2026-10-22T09:15:11-03:00",
+          "tree_id": "5b4f5126e3f6ce955bef0cdb0eadbf2a5bf37a8e",
+          "url": "https://github.com/Rullst/Rullst/commit/ca3ed12e5300c9a7d6d69dd42c9a69a06953aef2"
+        },
+        "date": 1792672862979,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4608,
+            "range": "± 306",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 464,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 14,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
