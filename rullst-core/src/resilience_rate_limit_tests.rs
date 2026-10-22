@@ -198,3 +198,29 @@ fn refilled_buckets_are_swept_only_when_due() {
     assert_eq!(limiter.buckets.len(), 15);
     assert!(!limiter.buckets.contains_key("refilled-0"));
 }
+
+#[test]
+fn has_token_peeks_without_consuming_or_creating_a_bucket() {
+    // No refill: only consumption changes the bucket.
+    let limiter = RateLimiter::new(RateLimitConfig::new(2.0, 0.0));
+    assert!(limiter.has_token("client"));
+    assert!(limiter.buckets.is_empty());
+
+    assert!(limiter.check_and_consume("client"));
+    // One token left, and peeking twice does not take it.
+    assert!(limiter.has_token("client"));
+    assert!(limiter.has_token("client"));
+    assert!(limiter.check_and_consume("client"));
+    assert!(!limiter.has_token("client"));
+    assert!(!limiter.check_and_consume("client"));
+    // Other keys keep their own bucket.
+    assert!(limiter.has_token("other"));
+}
+
+#[test]
+fn has_token_counts_the_refill_since_the_last_decision() {
+    let limiter = RateLimiter::new(RateLimitConfig::new(1.0, 1_000_000_000.0));
+    assert!(limiter.check_and_consume("client"));
+    std::thread::sleep(std::time::Duration::from_millis(1));
+    assert!(limiter.has_token("client"));
+}

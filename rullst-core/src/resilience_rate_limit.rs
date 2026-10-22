@@ -72,6 +72,18 @@ impl RateLimiter {
             false
         }
     }
+
+    /// Whether [`Self::check_and_consume`] would admit `key` now, without
+    /// consuming a token or creating a bucket.
+    pub(crate) fn has_token(&self, key: &str) -> bool {
+        let key = buckets::bounded_bucket_key(key);
+        self.buckets.get(key.as_ref()).is_none_or(|bucket| {
+            let elapsed = Instant::now()
+                .duration_since(bucket.last_refill)
+                .as_secs_f64();
+            refill_token_count(bucket.tokens, elapsed, &self.config) >= 1.0
+        })
+    }
 }
 
 /// Default key extractor based only on Axum's transport peer address.
