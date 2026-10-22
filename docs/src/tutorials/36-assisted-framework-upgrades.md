@@ -410,7 +410,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (93 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (57 rows).
+  of inputs that previously failed) (91 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
 has 105 rules. A row can map to several rules and a rule to
@@ -423,6 +423,7 @@ the rule together.
 | Account/session registry | (b) review | `V13-AUTH-RECOVERY-MIGRATE` |  |
 | Private object storage | (c) none | — | Opt-in `storage-s3` candidate |
 | R2 public URLs | (b) review | `V13-R2-PUBLIC-URL` |  |
+| Tenant local storage | (c) none | — | Only a tenant directory below a regular file changes the error; not located |
 | Recoverable Live UI | (c) none | — | Opt-in module |
 | Distributed tracing | (b) review | `V13-OTLP-ENVIRONMENT` |  |
 | Core queue | (b) review | `V13-QUEUE-SEMANTICS` | Unindexed 12.x Redis failures are not located |
@@ -496,6 +497,9 @@ the rule together.
 | ORM eager pivot order | (c) none | — | The order was unspecified before |
 | PersonalData reports | (b) review | `V13-PERSONAL-DATA-REPORT` |  |
 | Nexus derive | (a) must-change | `V13-NEXUS-PRIMARY-KEY`, `V13-NEXUS-FIELD-KIND-NUMBER` | The field-kind rule is a review |
+| Nexus composite keys | (c) none | — | Opt-in composite keys; only `RegistryEntry` struct literals break, and `cargo check` reports them |
+| Nexus dates and times | (c) none | — | Derived field kinds change without a source edit; comparisons with `FieldKind::DateTime` are not located |
+| Nexus access in the starters | (c) none | — | Generator output; alpha.2 `#[orm(skip)]` fields are reported under ORM database-managed columns |
 | Nexus credentials | (b) review | `V13-NEXUS-DOTENV` |  |
 | Nexus panel | (a) must-change | `V13-NEXUS-FIELD-KIND-MATCH` | Other panel changes are runtime behaviour without an application API |
 | CLI migration catalog | (c) none | — | CLI |
@@ -508,13 +512,26 @@ the rule together.
 | CLI home screen | (c) none | — | CLI |
 | CLI security audit | (c) none | — | CLI |
 | CLI dashboard audit | (c) none | — | CLI |
+| Core deferrable jobs | (c) none | — | Opt-in APIs |
+| Core scheduler time zones | (c) none | — | Opt-in `scheduler-tz` feature |
+| Dash N+1 warning | (c) none | — | CLI |
 | CLI security report | (c) none | — | CLI |
+| Generated security tests | (c) none | — | Generator output for new projects |
+| Blank JSON API starter | (c) none | — | Generator output; existing API projects keep their behaviour |
+| CLI audit lockfile | (c) none | — | CLI |
+| RASP shell signatures | (c) none | — | Request matching; not detectable in source |
+| CLI footprint report | (c) none | — | New CLI command |
 | CLI `dev`/`dash` shutdown | (c) none | — | CLI |
 | CLI `dev --ts-sync` | (c) none | — | CLI |
 | CLI `dash` live metrics | (c) none | — | CLI |
 | Core development telemetry | (b) review | `V13-DEV-TELEMETRY-ROUTE` |  |
+| Core development error console | (c) none | — | Development-only page; `handle_autofix` callers are not located |
+| CLI `ai fix` and `ai review` | (c) none | — | New CLI commands |
 | CLI project updates on SELinux | (c) none | — | CLI |
 | CLI `pkg` in a virtual workspace | (c) none | — | CLI |
+| CLI `new` repository | (c) none | — | CLI |
+| CLI generated `validator` dependency | (c) none | — | Generator output; `cargo check` reports a missing `validator` dependency |
+| CLI `make:model` imports | (c) none | — | Generator output for new models |
 | CLI `dockerize` and `generate:buildah` | (c) none | — | Affected generated files are not distinguishable |
 | CLI errors and exit codes | (c) none | — | CLI output and scripts |
 | CLI `doctor` | (c) none | — | CLI |
@@ -524,6 +541,7 @@ the rule together.
 | Capital quota keys on MySQL/MariaDB | (b) review | `V13-CAPITAL-QUOTA-KEYS` | `SqlQuotaStore`/`SqlQuotaBackend`; the database backend is not located |
 | Capital zero tier limit | (b) review | `V13-CAPITAL-ZERO-TIER` |  |
 | Capital provider subscription IDs | (c) none | — | Rejects dot-only identifiers before a request |
+| Capital invoice amounts | (c) none | — | Only amounts below one minor unit change |
 | Messaging outbox relay key | (b) review | `V13-OUTBOX-RELAY-KEY` |  |
 | Messaging encrypted SQLite startup | (c) none | — | Correct keyrings are unaffected |
 | Messaging Redis Streams candidate | (c) none | — | No 12.x release contains the adapter |
@@ -555,6 +573,8 @@ the rule together.
 | Registration timestamps | (b) review | `V13-EMPTY-TIMESTAMPS` |  |
 | Billing row timestamps | (b) review | `V13-EMPTY-TIMESTAMPS` |  |
 | Registration lengths | (b) review | `V13-UTF16-LENGTHS` |  |
+| Revocable login sessions | (c) none | — | Additive APIs and generator output |
+| Password change and reset | (c) none | — | Additive APIs and generator output |
 | VPS deploy proxy | (b) review | `V13-VPS-DEPLOY-PROXY` |  |
 | Blank database status | (b) review | `V13-MODEL-ALL` |  |
 | Portfolio profile | (b) review | `V13-PORTFOLIO-PROFILE` |  |
@@ -580,6 +600,19 @@ the rule together.
 | Omni and offline sync removed | (a) must-change, (b) review | `V13-OFFLINE-SYNC-REMOVED`, `V13-OMNI-REMOVED` | The feature in dependency `features` and `[features]` entries; the shell's `omni-app/tauri.conf.json` or `omni-app/src/lib.rs`, and `cargo rullst omni`/`make:omni` in workflows, root scripts, Makefile and justfile |
 | Starter page language | (b) review | `V13-RENDER-PAGE-LANGUAGE` |  |
 | Repository examples | (c) none | — | Repository examples, not applications |
+| Windows paths in CLI and console output | (c) none | — | CLI output |
+| Consumer scaffolds under symlinked directories | (c) none | — | CLI |
+| Core HSTS default | (c) none | — | Runtime default; not detectable in source |
+| Artisan and `.env` | (c) none | — | `std::env::var` calls in migrations and seeders are not located |
+| Core WAF in development | (c) none | — | Development-only behaviour |
+| CSRF token on static-looking paths | (c) none | — | Only requests that previously received no token change |
+| Multipart CSRF refusal | (c) none | — | Only the refusal text changes; tests that compare it are not located |
+| Secure cookies over HTTPS | (c) none | — | Runtime behaviour; not detectable in source |
+| CSRF cookie on cacheable responses | (c) none | — | `Cache-Control` values set by handlers are not located |
+| Connect mock credentials | (c) none | — | Credentials come from configuration and are not located |
+| Connect mock authorization URL | (c) none | — | Mock mode only |
+| Account mail language and product name | (c) none | — | Generator output; existing projects keep their code |
+| Production log defaults | (c) none | — | Runtime defaults; not detectable in source |
 
 ## Planned simpler update experience
 
