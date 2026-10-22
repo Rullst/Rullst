@@ -100,20 +100,10 @@ impl<C: Clock> SqliteMedia<C> {
             use std::os::unix::fs::OpenOptionsExt;
             options.mode(0o600);
         }
-        let started = std::time::Instant::now();
         let file = options.open(&path).map_err(|_| Error::Configuration)?;
-        file.sync_all().map_err(|e| {
-            eprintln!("SQLITE-DIAG crate=media step=sync_all detail={e:?}");
-            Error::Storage
-        })?;
+        file.sync_all().map_err(|_| Error::Storage)?;
         drop(file);
-        let store = Self::connect(&path, config, clock).await.inspect_err(|e| {
-            eprintln!(
-                "SQLITE-DIAG crate=media step=connect after_ms={} thread={:?} detail={e:?}",
-                started.elapsed().as_millis(),
-                std::thread::current().name()
-            )
-        })?;
+        let store = Self::connect(&path, config, clock).await?;
         let mut tx = store
             .pool
             .begin_with("BEGIN IMMEDIATE")
@@ -130,13 +120,7 @@ impl<C: Clock> SqliteMedia<C> {
             .await
             .map_err(storage)?;
         tx.commit().await.map_err(|_| Error::Uncertain)?;
-        store.validate().await.inspect_err(|e| {
-            eprintln!(
-                "SQLITE-DIAG crate=media step=validate after_ms={} thread={:?} detail={e:?}",
-                started.elapsed().as_millis(),
-                std::thread::current().name()
-            )
-        })?;
+        store.validate().await?;
         Ok(store)
     }
     pub async fn open(
@@ -203,11 +187,6 @@ impl<C: Clock> SqliteMedia<C> {
 /// A lock or connection wait past its timeout is contention, not damage: the
 /// statement committed nothing, so it maps to `Busy` for a bounded retry.
 pub(super) fn storage(error: sqlx::Error) -> Error {
-    // TEMP-DIAG: Windows flake investigation; reverted before the final commit.
-    eprintln!(
-        "SQLITE-DIAG crate=media storage thread={:?} error={error:?}",
-        std::thread::current().name()
-    );
     let contended = match &error {
         sqlx::Error::PoolTimedOut => true,
         // SQLITE_BUSY (5) and SQLITE_LOCKED (6), with any extended code.

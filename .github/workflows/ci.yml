@@ -245,8 +245,7 @@ jobs:
           set +e
           (
             set -e
-            # TEMP-DIAG: Windows SQLite flake investigation; reverted before the final commit.
-            bash .github/tmp-windows-sqlite-diagnostic.sh
+            bash .github/run-workspace-test-shard.sh "$CI_SHARD"
           ) 2>&1 | tee "workspace-tests-$CI_SHARD.log"
           test_status="${PIPESTATUS[0]}"
           set -e

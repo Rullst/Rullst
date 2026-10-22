@@ -34,8 +34,6 @@ tokio = { workspace = true, features = ["rt", "time"], optional = true }
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tempfile = "3"
-# TEMP-DIAG: Windows flake investigation; removed before the final commit.
-libsqlite3-sys = { version = "=0.37.0", features = ["bundled"] }
 
 [[example]]
 name = "course_app"

@@ -260,11 +260,6 @@ fn resolved_path(path: &Path) -> Result<PathBuf, ConsentError> {
         .join(name))
 }
 
-fn unavailable(error: sqlx::Error) -> ConsentError {
-    // TEMP-DIAG: Windows flake investigation; reverted before the final commit.
-    eprintln!(
-        "SQLITE-DIAG crate=privacy-consent thread={:?} error={error:?}",
-        std::thread::current().name()
-    );
+fn unavailable(_: sqlx::Error) -> ConsentError {
     ConsentError::StoreUnavailable
 }
