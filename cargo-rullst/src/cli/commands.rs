@@ -293,7 +293,15 @@ pub enum Commands {
     Dash,
     /// Opens the Rullst Studio dashboard to inspect the database
     #[command(name = "studio")]
-    Studio,
+    Studio {
+        /// Starts the standalone Studio for remote projects instead (the
+        /// installed `rullst-studio` binary); no project needed
+        #[arg(long)]
+        remote: bool,
+        /// Loopback port of the remote Studio (default 5556)
+        #[arg(long, requires = "remote")]
+        port: Option<u16>,
+    },
     /// Compiles client-side components (Wasm Islands) to WebAssembly
     #[command(name = "build:client")]
     BuildClient {
