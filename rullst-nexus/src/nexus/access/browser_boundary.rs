@@ -159,6 +159,32 @@ mod tests {
     }
 
     #[test]
+    fn an_absolute_request_target_must_agree_with_the_host_header() {
+        let request = |uri: &str, host: Option<&str>| {
+            let mut builder = Request::get(uri);
+            if let Some(host) = host {
+                builder = builder.header(header::HOST, host);
+            }
+            builder.body(Body::empty()).unwrap()
+        };
+        // HTTP/2 and absolute-form requests may carry only the URI authority.
+        assert!(allows(&request("http://127.0.0.1:3000/", None)));
+        assert!(allows(&request(
+            "http://127.0.0.1:3000/",
+            Some("127.0.0.1:3000")
+        )));
+        assert!(allows(&request(
+            "http://LOCALHOST:3000/",
+            Some("localhost:3000")
+        )));
+        assert!(!allows(&request(
+            "http://localhost:3000/",
+            Some("127.0.0.1:3000")
+        )));
+        assert!(!allows(&request("/", None)));
+    }
+
+    #[test]
     fn opaque_origins_need_same_origin_fetch_metadata() {
         let request = |method: Method, origin: Option<&str>, sites: &[&str]| {
             let mut builder = Request::builder()
