@@ -465,4 +465,6 @@ fn invalid<T>(field: &FieldMeta, reason: &'static str) -> Result<T, FormInputErr
 #[cfg(test)]
 mod canonical_tests;
 #[cfg(test)]
+mod limits_tests;
+#[cfg(test)]
 mod tests;
