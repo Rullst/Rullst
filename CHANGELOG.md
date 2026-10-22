@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Dependency security
+
+- `ammonia` is required at 4.2.4 or later (RUSTSEC-2026-0373: the CSS `url()`
+  function was matched case-sensitively in sanitized HTML). 13.0.0-alpha.2
+  applications already accept 4.2.4 and should run `cargo update -p ammonia`.
+
 ## [13.0.0-alpha.2] - 2026-10-16
 
 Second v13 prerelease, for evaluation. It fixes the problems found while
