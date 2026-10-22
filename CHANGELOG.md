@@ -199,6 +199,38 @@ A prepared version section does not establish that its tag or crates exist.
   `Server::run`) installs is now present in release builds as well, so the
   monitor can attribute ORM operations to requests. Outside the development
   dashboard and monitored requests it records nothing.
+- **Behaviour change:** while the `up()` or `down()` of a migration that
+  returns `true` from `within_transaction()` runs, `Orm::pool()`,
+  `Orm::read_pool()`, `Orm::try_pool()`, `Orm::try_read_pool()` and
+  `Orm::begin_transaction()` return `Error::Validation` naming the migration,
+  so the run fails and the migration rolls back unrecorded. In alpha.2 a query
+  sent to the pool ran on another connection, outside the migration's
+  transaction, and could leave the migration half applied. Send such SQL with
+  `Orm::raw(sql).execute()`, `execute_query!` or `Schema`, or keep
+  `within_transaction()` at its default `false`, which is unaffected.
+- Every migration that `cargo rullst` generates now names the same error type,
+  `rullst::orm::Error`, and imports through `rullst::db`: the SaaS starter's
+  users migration imported `Schema`, `Migration` and `async_trait` from
+  `rullst_orm`, and the zero-to-complete-app tutorial and the SaaS journey
+  example used `rullst_orm::error::RullstError` (the same type under another
+  name). The ORM's own `make:migration`, for projects without the `rullst`
+  facade, keeps `rullst_orm::Error`.
+- Documentation: the ORM README and crate page, the Cargo feature matrix, the
+  cloud-deployment and assisted-upgrade tutorials, the v13 migration guide and
+  the contributing, governance, security, release and threat-model pages no
+  longer present 12.x as the current or maintained line. They state its end
+  of life on 16 October 2026 and pin `=13.0.0-alpha.2`; the 12.x CLI is named
+  only for moving a v5 application to v12 before v13.
+  The Core README and the capability ledger no longer say that the `rullst`
+  facade enables `orm`, `drivers-all` and `queue-sqlite` by default.
+- The Labs, Media and Supervision SQLite stores and the Privacy consent and
+  age-replay SQLite stores try a step of `initialize` or `open` again when
+  establishing its connection outlives the 5-second pool wait, three attempts
+  in total. Under load, a several-second file I/O stall on hosted Windows
+  runners made `initialize` fail with `Storage` (Labs) or `Busy` (Media) and
+  leave a new file that a second `initialize` refused. Other operations keep
+  the single 5-second wait. Media's documentation now states that wait as
+  5 seconds instead of 3.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 
