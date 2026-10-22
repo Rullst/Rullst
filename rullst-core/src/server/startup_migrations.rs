@@ -1,6 +1,6 @@
 //! Opt-in application of pending migrations when [`Server`] starts.
 
-use super::builder::read_optional_environment_variable;
+use super::builder::{parse_switch as parse_named_switch, read_optional_environment_variable};
 use super::{Server, ServerError};
 use std::collections::HashMap;
 
@@ -23,13 +23,7 @@ fn auto_migrate_enabled(
 }
 
 fn parse_switch(value: &str) -> Result<bool, ServerError> {
-    match value.trim().to_ascii_lowercase().as_str() {
-        "1" | "true" | "yes" | "on" => Ok(true),
-        "0" | "false" | "no" | "off" => Ok(false),
-        _ => Err(ServerError::Configuration(format!(
-            "{AUTO_MIGRATE_VARIABLE} must be true or false"
-        ))),
-    }
+    parse_named_switch(AUTO_MIGRATE_VARIABLE, value)
 }
 
 impl Server {

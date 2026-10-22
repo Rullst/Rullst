@@ -36,7 +36,8 @@ pub struct OidcProvider {
 
 impl OidcProvider {
     /// Discovers and validates OIDC metadata. Empty or `mock_*` credentials
-    /// construct deterministic local metadata and never perform network I/O.
+    /// construct deterministic local metadata and never perform network I/O;
+    /// without the `mock` feature they are rejected for the field `credentials`.
     pub async fn discover(
         issuer_url: impl Into<String>,
         client_id: impl Into<String>,
@@ -71,8 +72,10 @@ impl OidcProvider {
 
         let client_id = client_id.into();
         let client_secret = client_secret.into();
-        let credential_mode =
-            crate::configuration::credential_mode_for_values(&[&client_id, &client_secret]);
+        let credential_mode = crate::configuration::checked_credential_mode_for_values(&[
+            &client_id,
+            &client_secret,
+        ])?;
 
         let metadata = if credential_mode.is_mock() {
             mock_metadata(&requested_issuer)

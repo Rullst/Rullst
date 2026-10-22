@@ -48,6 +48,19 @@ impl<S: tracing_core::Subscriber> Layer<S> for RedactPersonalDataLayer {
     }
 }
 
+/// The log filter when `RUST_LOG` is unset or does not parse: INFO, except
+/// SQLx's own connection and statement events (such as `acquired
+/// connection`), which only reach WARN and above. Any `RUST_LOG`, such as
+/// `info,sqlx=info`, replaces it.
+pub(crate) const DEFAULT_LOG_FILTER: &str = "info,sqlx=warn";
+
+/// The filter read from `RUST_LOG`, else [`DEFAULT_LOG_FILTER`].
+fn log_filter<E>(
+    from_env: Result<tracing_subscriber::EnvFilter, E>,
+) -> tracing_subscriber::EnvFilter {
+    from_env.unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(DEFAULT_LOG_FILTER))
+}
+
 /// Spans per legacy export request unless `OTEL_BSP_MAX_EXPORT_BATCH_SIZE`
 /// is set. Legacy spans keep their attributes and events, so the SDK default
 /// of 512 can exceed the exporter's 1 MiB request limit.
@@ -112,8 +125,7 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
 
     let telemetry_layer = tracing_opentelemetry::layer().with_tracer(tracer);
 
-    let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
+    let filter_layer = log_filter(tracing_subscriber::EnvFilter::try_from_default_env());
 
     tracing_subscriber::registry()
         .with(filter_layer)
@@ -137,8 +149,7 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
 pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-    let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
+    let filter_layer = log_filter(tracing_subscriber::EnvFilter::try_from_default_env());
 
     if tracing_subscriber::registry()
         .with(filter_layer)
@@ -189,6 +200,31 @@ mod tests {
                 self.leaks.lock().unwrap().push(visitor.leaked_field);
             }
         }
+    }
+
+    /// Whether `filter` admits SQLx INFO, SQLx WARN, ORM INFO and application INFO.
+    fn admitted(filter: tracing_subscriber::EnvFilter) -> [bool; 4] {
+        use tracing_subscriber::layer::SubscriberExt;
+        let subscriber = tracing_subscriber::registry().with(filter);
+        tracing::subscriber::with_default(subscriber, || {
+            [
+                tracing::enabled!(target: "sqlx::pool::acquire", tracing::Level::INFO),
+                tracing::enabled!(target: "sqlx::pool::acquire", tracing::Level::WARN),
+                tracing::enabled!(target: "rullst_orm", tracing::Level::INFO),
+                tracing::enabled!(target: "my_app::orders", tracing::Level::INFO),
+            ]
+        })
+    }
+
+    #[test]
+    fn the_default_filter_quiets_sqlx_below_warn() {
+        assert_eq!(DEFAULT_LOG_FILTER, "info,sqlx=warn");
+        assert_eq!(admitted(log_filter(Err(()))), [false, true, true, true]);
+        let rust_log = tracing_subscriber::EnvFilter::new("info,sqlx=info");
+        assert_eq!(
+            admitted(log_filter(Ok::<_, ()>(rust_log))),
+            [true, true, true, true]
+        );
     }
 
     #[test]

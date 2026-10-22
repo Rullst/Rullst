@@ -3,8 +3,8 @@
 > [!IMPORTANT]
 > This page describes the v13 prerelease, published as `13.0.0-alpha.2`. Cargo
 > never selects a prerelease on its own, so its dependency examples pin that
-> version exactly; for the stable line use `rullst-connect@12` and check the
-> [release record](../v12.md). Use a path dependency only for checkout-local
+> version exactly. The v12 line (`rullst-connect@12`) reached end of life on
+> 16 October 2026; see the [release record](../v12.md). Use a path dependency only for checkout-local
 > review.
 
 Since **12.1.2** (and in this development source), built-in
@@ -78,9 +78,11 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 📺 **Device Flow**: RFC 8628 device authorization for headless CLI and Smart
   TV auth through `Provider::request_device_code`/`poll_device_token`; the
   GitHub adapter implements it and other providers return an explicit error.
-- 🛠️ **Testing**: Empty or `mock_*` credentials select a deterministic
-  offline transport, while `mock_idp` supplies a loopback-only signed OIDC
-  fixture with one-shot codes, PKCE, nonce, EdDSA ID tokens and JWKS.
+- 🛠️ **Testing**: With the `mock` feature (`rullst/oauth-mock` through the
+  facade), empty or `mock_*` credentials select a deterministic offline
+  transport; without it, `try_new` rejects them. `mock_idp` supplies a
+  loopback-only signed OIDC fixture with one-shot codes, PKCE, nonce, EdDSA ID
+  tokens and JWKS.
 
 > 📚 **Important Documents:**
 > - [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md): See what's new.
@@ -187,11 +189,17 @@ token was valid immediately before the call.
 Inside a source checkout, a path dependency intentionally follows that tree.
 For a reproducible application, install the exact registry version instead.
 
-v13 prerelease command (the stable line is `rullst-connect@12`):
+v13 prerelease command (the v12 line reached end of life on 16 October 2026):
 ```bash
 cargo add rullst-connect@=13.0.0-alpha.2
 cargo add secrecy
 ```
+
+A Rullst application can use the facade instead: the `rullst` feature `oauth`
+re-exports this crate as `rullst::connect` with its Axum integration
+(`rullst-connect/rullst`), so `rullst::connect::extractors::AuthCallback` works
+as a handler argument without a direct dependency. The managed
+`tower-sessions` transaction below (`axum-session`) still needs one.
 
 For the recommended Axum session transaction, enable `axum-session` and add a
 `tower-sessions` store:
@@ -227,6 +235,42 @@ let github = GithubProvider::try_new(
 # Ok(())
 # }
 ```
+
+### Credential modes and offline development
+
+Every provider exposes `credential_mode() -> CredentialMode`. An empty
+credential or a value beginning with `mock_` selects `CredentialMode::Mock`,
+a deterministic transport that never accesses the network and signs in a fixed
+mock user. That mode needs the Cargo feature `mock` (or `oauth-mock` on the
+`rullst` facade). Without it, `try_new`, `Connect::driver` and
+`OidcProvider::discover` return `ConnectError::InvalidConfiguration` for the
+field `credentials` when they receive such a value, so a missing production
+secret fails when the provider is built instead of at the login callback; the
+deprecated `new` constructors return a disabled provider. Enable the feature
+only in development and test builds, because it turns mock credentials into a
+working sign-in. In a facade application, run `cargo run --features dev-oauth`
+with:
+
+```toml
+[features]
+dev-oauth = ["rullst/oauth-mock"]
+```
+
+With a direct `rullst-connect` dependency, name `rullst-connect/mock` instead,
+or enable it for tests only:
+
+```toml
+[dev-dependencies]
+rullst-connect = { version = "=13.0.0-alpha.2", features = ["mock"] }
+```
+
+In mock mode the authorization URL is the configured `redirect_url` with the
+fixed `code=mock_authorization_code`, the `state` and any PKCE challenge, as a
+real provider redirects after consent. The browser flow, including the managed
+`axum-session` transaction, therefore runs locally without a login page;
+Apple's mock also uses a query string instead of a form post. Mock profiles use
+the reserved `example.invalid` email domain. For a real protocol exchange with
+discovery, one-shot codes and signed ID tokens, use the fixture below.
 
 ### Signed local OIDC fixture
 

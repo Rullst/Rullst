@@ -21,7 +21,8 @@ macro_rules! define_provider {
 
         impl $name {
             /// Creates a validated provider. Empty or `mock_*` credentials select the
-            /// deterministic offline fallback instead of issuing network requests.
+            /// deterministic offline fallback instead of issuing network requests;
+            /// without the `mock` feature they are rejected for the field `credentials`.
             pub fn try_new(
                 client_id: impl Into<String>,
                 client_secret: secrecy::SecretString,
@@ -31,7 +32,7 @@ macro_rules! define_provider {
                 let redirect_url = redirect_url.into();
                 $crate::configuration::validate_redirect_url(&redirect_url)?;
                 let credential_mode =
-                    $crate::configuration::credential_mode(&client_id, &client_secret);
+                    $crate::configuration::checked_credential_mode(&client_id, &client_secret)?;
                 let http_client = $crate::configuration::provider_http_client(
                     credential_mode,
                     stringify!($name),
@@ -66,10 +67,7 @@ macro_rules! define_provider {
                 let mut redirect_url = redirect_url.into();
                 let validation = $crate::configuration::validate_redirect_url(&redirect_url);
                 let (credential_mode, invalid_reason) = match validation {
-                    Ok(_) => (
-                        $crate::configuration::credential_mode(&client_id, &client_secret),
-                        None,
-                    ),
+                    Ok(_) => $crate::configuration::legacy_credential_mode(&client_id, &client_secret),
                     Err(error) => {
                         redirect_url = "about:blank".to_string();
                         ($crate::configuration::CredentialMode::Invalid, Some(error.to_string()))
@@ -152,7 +150,7 @@ macro_rules! impl_standard_redirect_url {
             }
             if self.credential_mode.is_mock() {
                 return $crate::configuration::mock_redirect_url(
-                    ::core::any::type_name::<Self>(),
+                    &self.redirect_url,
                     self.state.as_deref(),
                     self.pkce_challenge.as_deref(),
                 );

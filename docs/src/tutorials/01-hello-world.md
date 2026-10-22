@@ -46,12 +46,14 @@ cd my_first_app
 
 Every command below must run in this directory, where `Cargo.toml` lives.
 
-## 3. Add stable v12
+## 3. Add Rullst
 
-Add the stable v12 release from crates.io:
+Add the v13 prerelease from crates.io. Name its exact version: Cargo never
+selects a prerelease on its own, and the v12 line reached end of life on
+16 October 2026, so a plain `cargo add rullst` would pick an unmaintained 12.x:
 
 ```bash
-cargo add rullst@12.1.2
+cargo add rullst@=13.0.0-alpha.2
 cargo add tokio --features full
 ```
 
@@ -61,7 +63,7 @@ dependency updates before deployment.
 
 Applications that must remain on end-of-life v5 should use its
 [versioned API documentation](https://docs.rs/rullst/5.0.0/rullst/) instead;
-the v12 API below is intentionally different. That reference preserves the old
+the API below is intentionally different. That reference preserves the old
 API, not a promise of ongoing maintenance or a deployment recommendation.
 
 ## 4. Define the first route

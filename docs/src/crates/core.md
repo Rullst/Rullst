@@ -223,7 +223,11 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   fail a liveness probe. In a debug Development server with `cargo rullst dev`
   reloading, its `/_rullst/dev-generation` poll, `/_rullst/dev-reload.js` and
   the `/_rullst/dev-telemetry` poll of `cargo rullst dash` also bypass both and
-  are not access-logged.
+  are not access-logged. In staging and production, successful `/health` and
+  `/ready` probes are not access-logged either (failing ones are);
+  `RULLST_LOG_HEALTH_PROBES=true` prints them again. Without `RUST_LOG`, the
+  default tracing filter is `info,sqlx=warn`; see the
+  [telemetry guide](../telemetry-guide.md#health-probes-in-the-access-log).
 - **Development dashboard telemetry (v13):** under the same conditions `Server`
   serves `GET /_rullst/dev-telemetry` to loopback clients only, over HTTP/1.1
   or newer and without proxy forwarding headers: bounded request counters and

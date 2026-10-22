@@ -6,7 +6,7 @@ tools, and provides bounded static-analysis and deployment helpers.
 The CLI's `--help` output is authoritative for the installed version. This page
 documents the principal commands of the version 13 prerelease CLI and their
 security boundaries. Cargo never installs a prerelease unless you name it, so
-`cargo install cargo-rullst` installs the stable 12.x CLI; install this one
+`cargo install cargo-rullst` installs the end-of-life 12.x CLI; install this one
 with an exact version:
 
 ```bash
@@ -1269,7 +1269,10 @@ Creates an authentication starting point in your codebase, including:
   email** (a 30-minute single-use token stored as a SHA-256 digest, one live
   token per account, the same answer for unknown emails; a reset signs out
   every device and redirects to `/login?reset=done`). Reset links use
-  `RULLST_PUBLIC_ORIGIN`, never the request's `Host` header.
+  `RULLST_PUBLIC_ORIGIN`, never the request's `Host` header. Account emails
+  are written in the request's language (the `rullst::i18n` locale, else
+  `Accept-Language`) and name the product `APP_NAME` or the editable
+  `APPLICATION_NAME` constant.
 - HTML Views for Login, Signup, Forgot password, Reset password and Change
   password.
 

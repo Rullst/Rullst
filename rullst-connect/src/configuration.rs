@@ -13,6 +13,11 @@ pub enum CredentialMode {
     /// Credentials are non-placeholder values and requests use the configured HTTP client.
     Live,
     /// Empty or `mock_*` credentials select the deterministic, network-free fallback.
+    ///
+    /// Outside this crate's own unit tests the fallback needs the `mock` feature;
+    /// without it, `try_new` rejects such credentials with
+    /// [`ConnectError::InvalidConfiguration`] for the field `credentials`, and the
+    /// deprecated `new` constructors return a disabled ([`Self::Invalid`]) provider.
     Mock,
     /// A deprecated infallible constructor received invalid configuration.
     Invalid,
@@ -47,6 +52,67 @@ fn is_mock_credential(value: &str) -> bool {
     value.is_empty() || value.to_ascii_lowercase().starts_with("mock_")
 }
 
+/// Whether this build serves functional mock identities: always in this
+/// crate's unit tests, otherwise only with the `mock` feature.
+pub(crate) const MOCK_IDENTITIES: bool = cfg!(any(test, feature = "mock"));
+
+const MOCK_FEATURE_REQUIRED: &str = "empty or `mock_*` credentials select the offline mock \
+provider, which needs the `mock` feature of rullst-connect (`oauth-mock` in the `rullst` \
+facade); set real credentials, or enable that feature only in development and test builds";
+
+/// Rejects the mock mode in a build that cannot serve mock identities.
+pub(crate) fn require_mock_support(
+    mode: CredentialMode,
+    mock_identities: bool,
+) -> Result<CredentialMode, ConnectError> {
+    if mode.is_mock() && !mock_identities {
+        return Err(invalid("credentials", MOCK_FEATURE_REQUIRED));
+    }
+    Ok(mode)
+}
+
+/// The credential mode for a fallible constructor.
+pub(crate) fn checked_credential_mode(
+    client_id: &str,
+    client_secret: &SecretString,
+) -> Result<CredentialMode, ConnectError> {
+    require_mock_support(credential_mode(client_id, client_secret), MOCK_IDENTITIES)
+}
+
+/// The credential mode for a fallible constructor with several credential values.
+pub(crate) fn checked_credential_mode_for_values(
+    values: &[&str],
+) -> Result<CredentialMode, ConnectError> {
+    require_mock_support(credential_mode_for_values(values), MOCK_IDENTITIES)
+}
+
+/// The credential mode for a deprecated infallible constructor, plus the
+/// reason when the provider is disabled.
+pub(crate) fn legacy_credential_mode(
+    client_id: &str,
+    client_secret: &SecretString,
+) -> (CredentialMode, Option<String>) {
+    disable_unsupported_mock(credential_mode(client_id, client_secret), MOCK_IDENTITIES)
+}
+
+/// [`legacy_credential_mode`] for several credential values.
+pub(crate) fn legacy_credential_mode_for_values(
+    values: &[&str],
+) -> (CredentialMode, Option<String>) {
+    disable_unsupported_mock(credential_mode_for_values(values), MOCK_IDENTITIES)
+}
+
+/// Turns a mock mode this build cannot serve into a disabled provider.
+pub(crate) fn disable_unsupported_mock(
+    mode: CredentialMode,
+    mock_identities: bool,
+) -> (CredentialMode, Option<String>) {
+    match require_mock_support(mode, mock_identities) {
+        Ok(mode) => (mode, None),
+        Err(error) => (CredentialMode::Invalid, Some(error.to_string())),
+    }
+}
+
 pub(crate) fn provider_http_client(
     mode: CredentialMode,
     provider: &'static str,
@@ -61,23 +127,33 @@ pub(crate) fn provider_http_client(
     }
 }
 
+/// The fixed authorization code that the offline mock sends to the callback.
+pub(crate) const MOCK_AUTHORIZATION_CODE: &str = "mock_authorization_code";
+
+/// The mock authorization URL: the configured callback with a fixed code, the
+/// state and any PKCE challenge, which is what a real provider redirects to
+/// after the user consents. The browser flow then runs locally without a
+/// login page; `mock_idp` remains the full protocol simulator.
 pub(crate) fn mock_redirect_url(
-    provider: &str,
+    redirect_url: &str,
     state: Option<&str>,
     pkce_challenge: Option<&str>,
 ) -> String {
-    let base = "https://example.invalid/rullst-connect/mock?".to_string();
-    let start = base.len();
-    let mut query = url::form_urlencoded::Serializer::for_suffix(base, start);
-    query.append_pair("provider", provider);
-    if let Some(state) = state {
-        query.append_pair("state", state);
+    let Ok(mut url) = Url::parse(redirect_url) else {
+        return "about:blank".to_string();
+    };
+    {
+        let mut query = url.query_pairs_mut();
+        query.append_pair("code", MOCK_AUTHORIZATION_CODE);
+        if let Some(state) = state {
+            query.append_pair("state", state);
+        }
+        if let Some(challenge) = pkce_challenge {
+            query.append_pair("code_challenge", challenge);
+            query.append_pair("code_challenge_method", "S256");
+        }
     }
-    if let Some(challenge) = pkce_challenge {
-        query.append_pair("code_challenge", challenge);
-        query.append_pair("code_challenge_method", "S256");
-    }
-    query.finish()
+    url.into()
 }
 
 pub(crate) fn validate_redirect_url(value: &str) -> Result<Url, ConnectError> {
@@ -261,5 +337,84 @@ mod tests {
             CredentialMode::Mock
         );
         assert_eq!(credential_mode("client", &secret), CredentialMode::Live);
+    }
+
+    #[test]
+    fn mock_authorization_returns_to_the_configured_callback() {
+        assert_eq!(
+            mock_redirect_url("http://localhost:3000/auth/google/callback", None, None),
+            "http://localhost:3000/auth/google/callback?code=mock_authorization_code"
+        );
+        assert_eq!(
+            mock_redirect_url(
+                "https://app.example/callback?tenant=a",
+                Some("state 1"),
+                Some("challenge-1"),
+            ),
+            "https://app.example/callback?tenant=a&code=mock_authorization_code&state=state+1\
+             &code_challenge=challenge-1&code_challenge_method=S256"
+        );
+        assert_eq!(
+            mock_redirect_url("not a url", Some("s"), None),
+            "about:blank"
+        );
+    }
+
+    #[test]
+    fn mock_mode_requires_mock_identity_support() {
+        assert_eq!(
+            require_mock_support(CredentialMode::Mock, true).unwrap(),
+            CredentialMode::Mock
+        );
+        assert_eq!(
+            require_mock_support(CredentialMode::Live, false).unwrap(),
+            CredentialMode::Live
+        );
+        match require_mock_support(CredentialMode::Mock, false) {
+            Err(ConnectError::InvalidConfiguration { field, reason }) => {
+                assert_eq!(field, "credentials");
+                assert!(reason.contains("`mock` feature of rullst-connect"));
+                assert!(reason.contains("`oauth-mock`"));
+            }
+            other => panic!("unexpected result: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn legacy_constructors_disable_an_unsupported_mock() {
+        assert_eq!(
+            disable_unsupported_mock(CredentialMode::Mock, true),
+            (CredentialMode::Mock, None)
+        );
+        assert_eq!(
+            disable_unsupported_mock(CredentialMode::Live, false),
+            (CredentialMode::Live, None)
+        );
+        let (mode, reason) = disable_unsupported_mock(CredentialMode::Mock, false);
+        assert_eq!(mode, CredentialMode::Invalid);
+        assert!(reason.unwrap().starts_with(
+            "Invalid provider configuration for 'credentials': empty or `mock_*` credentials"
+        ));
+    }
+
+    #[test]
+    fn unit_tests_serve_mock_identities() {
+        let secret = SecretString::from(String::new());
+        assert_eq!(
+            checked_credential_mode("mock_client", &secret).unwrap(),
+            CredentialMode::Mock
+        );
+        assert_eq!(
+            legacy_credential_mode("", &secret),
+            (CredentialMode::Mock, None)
+        );
+        assert_eq!(
+            checked_credential_mode_for_values(&["client", "secret"]).unwrap(),
+            CredentialMode::Live
+        );
+        assert_eq!(
+            legacy_credential_mode_for_values(&["client", "secret"]),
+            (CredentialMode::Live, None)
+        );
     }
 }

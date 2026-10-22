@@ -227,9 +227,43 @@ fn offline_redirects_preserve_their_local_contract() {
     ] {
         let url = Url::parse(&raw).unwrap();
         assert_eq!(url.scheme(), "https");
-        assert_eq!(url.host_str(), Some("example.invalid"));
-        assert_eq!(url.path(), "/rullst-connect/mock");
+        assert_eq!(url.host_str(), Some("app.example.test"));
+        assert_eq!(url.path(), "/callback");
+        assert_parameter(&url, "next", Some("/course"));
+        assert_parameter(&url, "view", Some("login"));
+        assert_parameter(&url, "code", Some("mock_authorization_code"));
         assert_parameter(&url, "response_type", None);
+        assert_parameter(&url, "client_id", None);
+        assert_parameter(&url, "state", Some(STATE));
+        assert_parameter(&url, "code_challenge", Some(CHALLENGE));
+        assert_parameter(&url, "code_challenge_method", Some("S256"));
+    }
+}
+
+#[test]
+fn offline_redirects_use_the_builder_state_and_challenge() {
+    let auth0 = Auth0Provider::try_new("mock_auth0", secret(), REDIRECT, "tenant.auth0.com")
+        .unwrap()
+        .with_state(STATE)
+        .with_pkce(CHALLENGE);
+    let apple = AppleProvider::try_new("mock_apple", "team", "key", "pem", REDIRECT)
+        .unwrap()
+        .with_state(STATE)
+        .with_pkce(CHALLENGE);
+    let github = GithubProvider::try_new("mock_github", secret(), REDIRECT)
+        .unwrap()
+        .with_state(STATE)
+        .with_pkce(CHALLENGE);
+    for raw in [
+        auth0.redirect_url(),
+        apple.redirect_url(),
+        github.redirect_url(),
+    ] {
+        let url = Url::parse(&raw).unwrap();
+        assert_eq!(url.host_str(), Some("app.example.test"));
+        assert_eq!(url.path(), "/callback");
+        assert_parameter(&url, "next", Some("/course"));
+        assert_parameter(&url, "code", Some("mock_authorization_code"));
         assert_parameter(&url, "state", Some(STATE));
         assert_parameter(&url, "code_challenge", Some(CHALLENGE));
         assert_parameter(&url, "code_challenge_method", Some("S256"));

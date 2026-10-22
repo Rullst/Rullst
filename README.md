@@ -219,7 +219,7 @@ serves browser graphics from Rullst.
 </p>
 
 Rullst is a family of focused crates in one versioned workspace — select only
-what your application needs. The stable v12 release publishes sixteen crates;
+what your application needs. The v12 line, now end of life, published sixteen crates;
 detailed feature and provider boundaries live in the
 [specification](https://rullst.github.io/Rullst/book/spec.html). In v13, every
 crate is labelled Core, Extension or Experimental; see the
@@ -349,7 +349,7 @@ green main gates:
 | [Release and provenance](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Exact version tags only: exact-SHA admission of the full CI matrix, package-all, evidence bundle, checksums, GitHub build-provenance attestation, changelog-derived release notes, and ordered crates.io publication. This does **not** claim a project-wide SLSA level or independent certification. |
 
 Scheduled events use the repository's default branch, so scheduled and
-continuous development evidence refer to `main`; stable v12 has its own branch.
+continuous development evidence refer to `main`; the frozen v12 line has its own branch.
 The branch-protection profiles and the exact scope of all
 40 workflow definitions in this source branch are documented in
 [WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).
