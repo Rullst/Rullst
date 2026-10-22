@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792685312460,
+  "lastUpdate": 1792697183340,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -15101,6 +15101,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 423,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec643e00aecb3b3d097a10109c704df94d16bda3",
+          "message": "Merge pull request #528 from Rullst/fix/v13-alpha3-leftovers\n\nfix(v13): Windows SQLite store start-up, migration transactions and stale v12 pointers",
+          "timestamp": "2026-10-22T16:01:18-03:00",
+          "tree_id": "021ec64368af8ca55090ae6d8e995df47d8d8e49",
+          "url": "https://github.com/Rullst/Rullst/commit/ec643e00aecb3b3d097a10109c704df94d16bda3"
+        },
+        "date": 1792697182482,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1684,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 303,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 439,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
