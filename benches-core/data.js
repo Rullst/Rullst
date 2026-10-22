@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792685022629,
+  "lastUpdate": 1792696740900,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -28049,6 +28049,78 @@ window.BENCHMARK_DATA = {
             "name": "mask_pii/phone_field",
             "value": 181,
             "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 169,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 125,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec643e00aecb3b3d097a10109c704df94d16bda3",
+          "message": "Merge pull request #528 from Rullst/fix/v13-alpha3-leftovers\n\nfix(v13): Windows SQLite store start-up, migration transactions and stale v12 pointers",
+          "timestamp": "2026-10-22T16:01:18-03:00",
+          "tree_id": "021ec64368af8ca55090ae6d8e995df47d8d8e49",
+          "url": "https://github.com/Rullst/Rullst/commit/ec643e00aecb3b3d097a10109c704df94d16bda3"
+        },
+        "date": 1792696740010,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 23,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 201,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 64,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 200,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 201,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 180,
+            "range": "± 8",
             "unit": "ns/iter"
           },
           {
