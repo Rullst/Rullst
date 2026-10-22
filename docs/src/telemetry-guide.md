@@ -226,10 +226,12 @@ too. Recording starts only after the endpoint is mounted; until then each
 request costs one atomic load. Methods are cut to 16 bytes, paths to 256 bytes
 and labels to 64 bytes, and control characters are replaced.
 
-ORM figures come from the existing secret-free `rullst.orm.query` spans. In
-debug builds `telemetry::init_telemetry` (which `Server::run` calls) adds a
-passive layer that times the outermost such span of each ORM operation, from
-creation until it closes; nested operations such as eager loads belong to their
+ORM figures come from the existing secret-free `rullst.orm.query` spans.
+`telemetry::init_telemetry` (which `Server::run` calls) adds a passive layer
+that times the outermost such span of each ORM operation, from creation until
+it closes. Since 13.0.0-alpha.3 the layer is installed in release builds too,
+for the [production monitoring endpoint](production-monitoring.md); outside a
+recording scope it only compares the span's name; nested operations such as eager loads belong to their
 outer operation. The span of a `chunk`/`chunk_by_id` traversal also covers the
 application's handler, so it is neither counted nor treated as enclosing: each
 page it fetches and each operation the handler runs is counted on its own. An

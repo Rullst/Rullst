@@ -77,6 +77,26 @@ A prepared version section does not establish that its tag or crates exist.
   `Router` documentation and the routing tutorial show how to share
   application state, since `rullst::Router` has no `with_state`: a request
   extension, or an `axum::Router<S>` mounted after its own `with_state`.
+- New opt-in, read-only production monitoring endpoint, phase 1 of using
+  Studio as a production monitor (plataforma report #28: Studio works only in
+  debug builds and on loopback). `Server::with_monitor(rullst::monitor::Monitor::new())`
+  serves `GET /_rullst/monitor/v1`, a versioned `rullst.monitor.v1` JSON
+  document with request rates, latency percentiles and status classes per
+  route pattern, the queues the application registers (pending count and
+  this process's worker activity), possible N+1 query fingerprints and the
+  process radar. It never contains raw paths, query strings, headers, client
+  addresses, user identifiers, SQL values, environment or configuration. It
+  is mounted only when a credential is configured: tokens of at least 32
+  random bytes in the new `RULLST_MONITOR_TOKENS` setting (process
+  environment or `.env`, several for rotation) or `Monitor::with_token`, or
+  the application's own sign-in through a `MonitorAuthorizer`. In staging and
+  production it also requires TLS evidence from a trusted proxy. Generated
+  starters do not enable it. See the
+  [production monitoring guide](docs/src/production-monitoring.md).
+- The passive ORM query layer that `telemetry::init_telemetry` (and so
+  `Server::run`) installs is now present in release builds as well, so the
+  monitor can attribute ORM operations to requests. Outside the development
+  dashboard and monitored requests it records nothing.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 
