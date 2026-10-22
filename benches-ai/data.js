@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792404413855,
+  "lastUpdate": 1792647263018,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -14669,6 +14669,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 399,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "564db1c1cf6bc2c5b976dfccdf32878a208da563",
+          "message": "Merge pull request #516 from Rullst/fix/v13-ammonia-4.2.4\n\nfix(deps): RustSec updates (ammonia, rustls-webpki, webpki roots) and DuckDB on zip 9",
+          "timestamp": "2026-10-22T02:11:14-03:00",
+          "tree_id": "76a6e55653335edcaae4122d282d34b7e4d97358",
+          "url": "https://github.com/Rullst/Rullst/commit/564db1c1cf6bc2c5b976dfccdf32878a208da563"
+        },
+        "date": 1792647262469,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1708,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 303,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 444,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
