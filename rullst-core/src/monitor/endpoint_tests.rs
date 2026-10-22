@@ -283,6 +283,7 @@ async fn browser_cross_origin_requests_are_refused_even_with_a_token() {
             .headers()
             .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
             .cloned();
+        assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
         let (status, body) = read(response).await;
         assert_eq!(status, expected, "{name}: {value}");
         assert!(cors.is_none());
