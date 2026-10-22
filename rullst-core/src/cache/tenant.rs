@@ -190,4 +190,81 @@ mod tests {
             Some("tenant-a")
         );
     }
+
+    fn tenant(cache: Cache, id: &str) -> TenantCache {
+        let membership = TenantMembership::try_new([id]).expect("valid tenant membership");
+        TenantCache::from_context(cache, &membership.select(id).expect("membership"))
+    }
+
+    #[tokio::test]
+    async fn has_and_forget_act_only_on_the_bound_namespace() {
+        let cache = Cache::memory();
+        let alpha = tenant(cache.clone(), "alpha");
+        let beta = tenant(cache.clone(), "beta");
+        assert_eq!(alpha.tenant_id(), "alpha");
+        assert_eq!(beta.tenant_id(), "beta");
+
+        alpha.put("k", "a", Some(60)).await.expect("alpha write");
+        beta.put("k", "b", Some(60)).await.expect("beta write");
+        assert!(alpha.has("k").await.expect("alpha probe"));
+        assert!(cache.has("tenants:alpha:k").await.expect("raw probe"));
+
+        alpha.forget("k").await.expect("alpha forget");
+        assert!(!alpha.has("k").await.expect("alpha probe after forget"));
+        assert_eq!(alpha.get("k").await.expect("alpha read"), None);
+        assert!(beta.has("k").await.expect("beta probe after alpha forget"));
+        assert!(matches!(
+            alpha.has("").await,
+            Err(CacheError::InvalidKey(_))
+        ));
+        assert!(matches!(
+            alpha.forget("bad key").await,
+            Err(CacheError::InvalidKey(_))
+        ));
+    }
+
+    #[tokio::test]
+    async fn remember_computes_once_inside_the_namespace() {
+        let cache = Cache::memory();
+        let alpha = tenant(cache.clone(), "alpha");
+        let first = alpha
+            .remember("report", 60, || async { Ok("computed".to_string()) })
+            .await
+            .expect("first remember");
+        assert_eq!(first.as_str(), "computed");
+        let second = alpha
+            .remember("report", 60, || async { Ok("recomputed".to_string()) })
+            .await
+            .expect("second remember");
+        assert_eq!(second.as_str(), "computed");
+        assert_eq!(
+            cache
+                .get("tenants:alpha:report")
+                .await
+                .expect("raw read")
+                .as_deref()
+                .map(String::as_str),
+            Some("computed")
+        );
+        assert!(matches!(
+            alpha
+                .remember("", 60, || async { Ok("x".to_string()) })
+                .await,
+            Err(CacheError::InvalidKey(_))
+        ));
+    }
+
+    #[test]
+    fn logical_keys_hold_one_to_256_bytes() {
+        assert!(matches!(
+            validate_logical_key(""),
+            Err(CacheError::InvalidKey(_))
+        ));
+        assert!(validate_logical_key("a").is_ok());
+        assert!(validate_logical_key(&"k".repeat(256)).is_ok());
+        assert!(matches!(
+            validate_logical_key(&"k".repeat(257)),
+            Err(CacheError::InvalidKey(_))
+        ));
+    }
 }
