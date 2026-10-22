@@ -193,6 +193,12 @@ cargo add rullst-connect@=13.0.0-alpha.2
 cargo add secrecy
 ```
 
+A Rullst application can use the facade instead: the `rullst` feature `oauth`
+re-exports this crate as `rullst::connect` with its Axum integration
+(`rullst-connect/rullst`), so `rullst::connect::extractors::AuthCallback` works
+as a handler argument without a direct dependency. The managed
+`tower-sessions` transaction below (`axum-session`) still needs one.
+
 For the recommended Axum session transaction, enable `axum-session` and add a
 `tower-sessions` store:
 

@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Fixes from alpha.2 dogfooding
+
+- The `rullst` facade feature `oauth` now also enables `rullst-connect/rullst`
+  (its Axum integration), so `rullst::connect::extractors::AuthCallback` works
+  as an Axum handler argument without a direct `rullst-connect` dependency.
+
 ## [13.0.0-alpha.2] - 2026-10-16
 
 Second v13 prerelease, for evaluation. It fixes the problems found while
