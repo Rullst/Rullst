@@ -218,7 +218,7 @@ fn a_tracked_model_without_updatable_columns_never_updates() {
     };
     assert_eq!(
         tracked_update(&parsed, &update).to_string(),
-        "return Ok (false) ;"
+        "if ! self . snapshot . __any_changed (& []) { return Ok (false) ; }"
     );
     let methods = generate_methods(&parsed, &quote! {}).to_string();
     assert!(

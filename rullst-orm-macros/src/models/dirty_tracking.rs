@@ -187,7 +187,14 @@ pub(crate) fn tracked_update(parsed: &ParsedModel, update: &TrackedUpdate<'_>) -
     };
     let columns = update_columns(parsed);
     if columns.is_empty() {
-        return quote! { return Ok(false); };
+        // Only `id` and database-managed columns: nothing is ever written. A
+        // bare `return` would make the `updated` observers after this branch
+        // unreachable code in the application (`make:model` starts this way).
+        return quote! {
+            if !self.#snapshot.__any_changed(&[]) {
+                return Ok(false);
+            }
+        };
     }
     let count = columns.len();
     let indexes: Vec<usize> = (0..count).collect();
