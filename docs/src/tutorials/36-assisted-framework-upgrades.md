@@ -475,6 +475,7 @@ the rule together.
 | SQLite DSN paths | (c) none | — | Only stray files of earlier versions |
 | Auto-healing diagnostics | (b) review | `V13-AUTO-HEALING-DIAGNOSTICS` |  |
 | ORM migrations | (c) none | — | Existing migrations keep their behaviour; `db:seed` refusing pending migrations is command behaviour |
+| ORM transactional migrations and the pool | (c) none | — | `within_transaction()` is a v13 API, so v12 migrations are unaffected |
 | ORM instance mutations | (b) review | `V13-ORM-MISSING-ROW` | Plain `delete()` calls are not located |
 | ORM encryption key settings | (c) none | — | Only `.env` entries that the process environment lacks change; `.env` is not read |
 | ORM constraint errors | (b) review | `V13-ORM-CONSTRAINT-ERRORS` | Code that matches `DatabaseError` |

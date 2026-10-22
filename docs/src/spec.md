@@ -1833,6 +1833,18 @@ the same server-authoritative controls.
   leave `auto_migrate` unset, so only `RULLST_AUTO_MIGRATE` turns it on. Turso
   starters register none: their migrations run through `db:migrate`, and the
   variable set to true there fails startup with `ServerError::Migration`.
+* **Transactional Migrations (v13 prerelease):** A migration whose
+  `within_transaction()` returns `true` runs `up()` (or `down()`) and its
+  `migrations` record inside one `Orm::transaction`, which `Schema`, generated
+  model methods, `execute_query!`/`dispatch_executor!` and
+  `Orm::raw(sql).execute()` join. Since 13.0.0-alpha.3, while that body runs
+  on the runner's task, `Orm::pool()`, `Orm::read_pool()`, their `try_` forms
+  and `Orm::begin_transaction()` return `Error::Validation` naming the
+  migration instead of a connection outside the transaction, so the run fails
+  and the migration rolls back unrecorded. A pool obtained before the body
+  ran, another crate's pool and tasks spawned from the body are not detected.
+  PostgreSQL and SQLite roll the DDL back with the record; MySQL/MariaDB
+  commit DDL implicitly.
 * **Application Settings (v13 prerelease):** `rullst::config::project_setting`
   reads one application setting from the process environment, then from
   `./.env`, which never overrides the process environment and is never loaded

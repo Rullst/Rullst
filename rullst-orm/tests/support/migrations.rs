@@ -266,3 +266,155 @@ pub async fn exercise_transactional_migrations() {
     .expect("roll the transactional migration back");
     assert_eq!(atomic_state().await, (0, 0));
 }
+
+const POOL_MIGRATION: &str = "m20261022_000001_pool_in_transaction";
+const POOL_TABLE: &str = "rullst_pool_migration_probe";
+
+/// Which pool accessor a transactional migration reaches for after its
+/// `Schema` change, as `up()` or `down()`.
+#[derive(Clone, Copy)]
+enum PoolUse {
+    None,
+    PoolInUp,
+    ReadPoolInDown,
+    BeginInDown,
+}
+
+struct PoolMigration(PoolUse);
+
+#[rullst_orm::async_trait]
+impl Migration for PoolMigration {
+    fn name(&self) -> &'static str {
+        POOL_MIGRATION
+    }
+
+    fn within_transaction(&self) -> bool {
+        true
+    }
+
+    async fn up(&self) -> Result<(), rullst_orm::Error> {
+        rullst_orm::schema::Schema::create(POOL_TABLE, |table| {
+            table.id();
+        })
+        .await?;
+        if let PoolUse::PoolInUp = self.0 {
+            sqlx::query("SELECT 1").execute(Orm::pool()?).await?;
+        }
+        Ok(())
+    }
+
+    async fn down(&self) -> Result<(), rullst_orm::Error> {
+        rullst_orm::schema::Schema::drop_if_exists(POOL_TABLE).await?;
+        match self.0 {
+            PoolUse::ReadPoolInDown => {
+                Orm::read_pool()?;
+            }
+            PoolUse::BeginInDown => {
+                Orm::begin_transaction().await?;
+            }
+            PoolUse::None | PoolUse::PoolInUp => {}
+        }
+        Ok(())
+    }
+}
+
+fn pool_migration(pool_use: PoolUse) -> Vec<Box<dyn Migration>> {
+    vec![Box::new(PoolMigration(pool_use))]
+}
+
+/// The probe table and its `migrations` record, as `(tables, records)`.
+async fn pool_probe_state() -> (i64, i64) {
+    let driver = Orm::driver().expect("driver");
+    let (table_sql, record_sql) = match driver {
+        "postgres" => (
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = $1",
+            "SELECT COUNT(*) FROM migrations WHERE migration = $1",
+        ),
+        "mysql" => (
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?",
+            "SELECT COUNT(*) FROM migrations WHERE migration = ?",
+        ),
+        _ => (
+            "SELECT COUNT(*) FROM sqlite_schema WHERE type = 'table' AND name = ?",
+            "SELECT COUNT(*) FROM migrations WHERE migration = ?",
+        ),
+    };
+    let pool = Orm::pool().expect("the pool is available outside migrations");
+    let (tables,): (i64,) = sqlx::query_as(table_sql)
+        .bind(POOL_TABLE)
+        .fetch_one(pool)
+        .await
+        .expect("count pool probe tables");
+    let (records,): (i64,) = sqlx::query_as(record_sql)
+        .bind(POOL_MIGRATION)
+        .fetch_one(pool)
+        .await
+        .expect("count pool probe records");
+    (tables, records)
+}
+
+/// `Orm::pool()`, `Orm::read_pool()` and `Orm::begin_transaction()` inside
+/// the `up()`/`down()` of a migration with `within_transaction()` fail with
+/// a message naming the migration, instead of running outside its
+/// transaction; the migration is then neither recorded nor forgotten.
+/// PostgreSQL and SQLite also roll its `Schema` change back; MySQL/MariaDB
+/// commit DDL implicitly, so there only the record is asserted.
+#[allow(dead_code)]
+pub async fn exercise_pool_access_in_transactional_migrations() {
+    let transactional_ddl = Orm::driver().expect("driver") != "mysql";
+    let refusal = format!(
+        "Validation error: migration {POOL_MIGRATION} returns true from within_transaction(), so Orm::pool() and Orm::read_pool() are unavailable in its up()/down()"
+    );
+
+    let error = run_artisan_with_args(
+        &artisan("migrate"),
+        pool_migration(PoolUse::PoolInUp),
+        Vec::new(),
+    )
+    .await
+    .expect_err("Orm::pool() in a transactional up() must fail the run");
+    assert!(error.to_string().contains(&refusal), "{error}");
+    let (tables, records) = pool_probe_state().await;
+    assert_eq!(records, 0, "the refused migration must stay unrecorded");
+    if transactional_ddl {
+        assert_eq!(tables, 0, "its Schema change must roll back");
+    } else {
+        rullst_orm::schema::Schema::drop_if_exists(POOL_TABLE)
+            .await
+            .expect("drop the implicitly committed MySQL table");
+    }
+
+    run_artisan_with_args(
+        &artisan("migrate"),
+        pool_migration(PoolUse::None),
+        Vec::new(),
+    )
+    .await
+    .expect("apply the transactional migration");
+    assert_eq!(pool_probe_state().await, (1, 1));
+
+    for pool_use in [PoolUse::ReadPoolInDown, PoolUse::BeginInDown] {
+        let error = run_artisan_with_args(
+            &artisan("migrate:rollback"),
+            pool_migration(pool_use),
+            Vec::new(),
+        )
+        .await
+        .expect_err("pool access in a transactional down() must fail the rollback");
+        assert!(error.to_string().contains(&refusal), "{error}");
+        let (tables, records) = pool_probe_state().await;
+        assert_eq!(records, 1, "the refused rollback must keep the record");
+        if transactional_ddl {
+            assert_eq!(tables, 1, "its Schema change must roll back");
+        }
+    }
+
+    run_artisan_with_args(
+        &artisan("migrate:rollback"),
+        pool_migration(PoolUse::None),
+        Vec::new(),
+    )
+    .await
+    .expect("roll the transactional migration back");
+    assert_eq!(pool_probe_state().await, (0, 0));
+}

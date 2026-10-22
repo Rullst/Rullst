@@ -289,6 +289,7 @@ async fn test_migration_and_pool_suite() {
 
     // 9b. Opt-in transactional migrations record atomically.
     support::migrations::exercise_transactional_migrations().await;
+    support::migrations::exercise_pool_access_in_transactional_migrations().await;
 
     // 10. Unknown command
     let res = run_artisan_with_args(
