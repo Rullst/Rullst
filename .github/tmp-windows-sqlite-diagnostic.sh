@@ -2,7 +2,7 @@
 # TEMP-DIAG: Windows SQLite flake investigation; removed before the final commit.
 set -uo pipefail
 export RUST_BACKTRACE=0
-budget=${DIAG_BUDGET_SECONDS:-3000}
+budget=${DIAG_BUDGET_SECONDS:-1500}
 suites=(labs media supervision privacy)
 
 args_for() {
@@ -23,10 +23,20 @@ stress() {
   echo "=== stress: $1 threads x $2 initializations"
   # shellcheck disable=SC2046
   STRESS_THREADS=$1 STRESS_ITERATIONS=$2 cargo test $(args_for labs) --test temp_windows_stress \
-    -- --ignored --nocapture 2>&1 | grep -E 'STRESS|SQLITE-|test result|panicked' | head -400
+    -- --ignored --nocapture > "stress-$1.log" 2>&1
+  echo "slow initializations: $(grep -c STRESS-SLOW "stress-$1.log")"
+  grep STRESS-SLOW "stress-$1.log" | sed 's/.*ms=\([0-9]*\).*/\1/' | sort -n | tail -5 | tr '\n' ' '; echo
+  grep -E 'STRESS-FAIL|STRESS-TOTAL|SQLITE-|panicked|test result' "stress-$1.log" | head -200
+  grep -B2 -A2 'STRESS-FAIL' "stress-$1.log" | grep 'SQLITE-DIAG' | head -60
 }
+echo "TEMP=${TEMP:-} TMP=${TMP:-}"; python -c "import tempfile; print('python temp', tempfile.gettempdir())"
+pressure() {
+  for i in 1 2 3 4; do python .github/tmp-io-pressure.py "$1" & done
+}
+pressure 900
 stress 4 1500
-stress 8 600
+wait
+pressure 1800
 
 declare -A runs failures
 for suite in "${suites[@]}"; do runs[$suite]=0; failures[$suite]=0; done
@@ -47,6 +57,7 @@ while (( SECONDS - start < budget )); do
   done
   echo "round=$round elapsed=$((SECONDS - start))s"
 done
+wait
 for suite in "${suites[@]}"; do
   echo "SUMMARY suite=$suite runs=${runs[$suite]} failures=${failures[$suite]}"
 done
