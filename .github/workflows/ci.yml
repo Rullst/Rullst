@@ -162,6 +162,9 @@ jobs:
       - name: Check reload generation, singleton and refresh behavior
         run: node rullst-core/src/server/dev_reload/client_tests.cjs
 
+      - name: Check the make:pwa service worker and update prompt
+        run: node cargo-rullst/src/generators/pwa/assets/pwa_tests.cjs
+
       - name: Verify all fuzz dependency locks before expensive checks
         run: bash .github/check-fuzz-locks.sh
 

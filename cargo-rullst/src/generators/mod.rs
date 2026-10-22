@@ -51,6 +51,7 @@ pub(crate) mod output_guard;
 pub(crate) mod platform_name;
 pub(crate) mod privacy;
 pub mod project;
+pub(crate) mod pwa;
 pub mod resource;
 pub mod scalar;
 pub mod schema_diff;

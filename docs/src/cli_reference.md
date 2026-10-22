@@ -1131,6 +1131,60 @@ into their source tree and must be reviewed manually. Follow the
 [CORS scaffold security advisory](cors-scaffold-security-advisory.md) to detect
 origin reflection/wildcards and migrate to the current fail-closed allowlist.
 
+### `cargo rullst make:pwa` (13.0.0-alpha.3)
+
+Makes an HTML application an installable Progressive Web App and wires it into
+the starter's own router and page layouts:
+
+```bash
+cargo rullst make:pwa
+cargo rullst make:pwa --name "Field Notes" --short-name Notes \
+  --theme-color '#0f172a' --background-color '#020617' --lang pt-BR --start-url /
+```
+
+| Flag | Default | Meaning |
+| :--- | :--- | :--- |
+| `--name` | `[package].name` in words (`field-notes` → `Field Notes`) | 1-64 letters, digits, spaces, `.`, `-`, `_` |
+| `--short-name` | the name when it has at most 12 characters, else its first word cut to 12 | label under the home-screen icon |
+| `--theme-color`, `--background-color` | `#0f172a`, `#020617` | `#RRGGBB` |
+| `--lang` | `en` | language tag such as `en` or `pt-BR` |
+| `--start-url` | `/` | a path on this site that the installed app opens |
+
+It writes `static/manifest.webmanifest` (`id` and `scope` `/`, `display`
+`standalone`, icons 192 and 512 plus a maskable 512), four placeholder PNG
+icons in `static/icons/` (the Rullst logo; replace them), `static/pwa.js`,
+`src/pwa.rs`, the worker in `src/pwa/sw.js` and `PWA.md`. `src/pwa.rs` serves
+`/sw.js` (`text/javascript`, `Cache-Control: no-cache`, scope `/`) and
+`/offline` (`no-cache`, so the worker may store it), and its `head()` returns
+the manifest link, `theme-color`, the apple-touch icon and the registration
+script. The existing source is edited in three recognized places:
+
+- the router: `.merge_axum(crate::pwa::router().into_axum())` follows the one
+  `.merge_axum(rullst::health::health_router())` of the crate root (a merge in
+  a `return` expression, such as the ERP fallback router, does not count);
+- every page layout in `src/`: `{crate::pwa::head()}` before the `</head>` of
+  an `html!` document, the same tags before the `</head>` of a document
+  written in a string, and `render_page_with_lang(...)` calls become
+  `render_page_with_head(..., crate::pwa::head(), content)`;
+- the crate root (`src/lib.rs`, else `src/main.rs`) declares `mod pwa`.
+
+The registration script is a same-origin file, so the default
+Content-Security-Policy (`script-src 'self' 'nonce-…'`, `worker-src 'self'`,
+the manifest under `default-src 'self'`) allows it without a nonce. The worker
+precaches `/offline` and the PWA's static files, goes to the network first for
+navigations and unversioned static files, serves content-hashed static files
+from the cache first, and never stores a non-GET request, another origin or a
+response marked `no-store` or `private`; Rullst answers `no-store` by default,
+so authenticated pages stay off the device. A new worker waits until the user
+chooses **Reload** in the page's update prompt (`SKIP_WAITING`). The cache is
+named after `[package].version`.
+
+The whole plan is checked before any write. Running the command again changes
+nothing; a generated file that now differs (edited, or another `--name`) stops
+the run without writing. The JSON API starter, a project without an HTML
+layout, and a router without the health merge are refused; wire such a project
+by hand as the [PWA guide](tutorials/43-progressive-web-apps.md) shows.
+
 ### `cargo rullst make:omni`
 **Maturity:** Supported for `desktop` and `android` (maintainer-tested) ·
 Experimental for `ios` · [tiers](maturity.md#cli-generators)

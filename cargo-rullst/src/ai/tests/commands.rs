@@ -16,6 +16,7 @@ fn allowlisted_scaffolds_and_diagnostics_validate() {
             "--backend-url",
             "https://api.example.com",
         ],
+        &["make:pwa", "--lang=pt-BR"],
         &["generate:ai-context", "--check"],
         &[
             "generate:api",

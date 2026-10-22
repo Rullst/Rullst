@@ -4265,7 +4265,66 @@ assistant, not a claim that compilation proves production compatibility.
 
 ---
 
-## 📱 13. Omni Packaging Contract
+## 📱 13. Installable Applications: Progressive Web App Contract
+
+Since 13.0.0-alpha.3 an application is made installable as a Progressive Web
+App. The canonical product stays the Rullst web application; the browser, or a
+store package of the same site, only installs it.
+
+* 🟢 **`[Implemented / Bounded]` `cargo rullst make:pwa`:** for an HTML
+  starter it writes `static/manifest.webmanifest` (`id` and `scope` `/`,
+  `display` `standalone`, `name`, `short_name`, `start_url`, `theme_color`,
+  `background_color`, `lang`, PNG icons 192 and 512 plus a maskable 512),
+  four placeholder icons pre-rendered from the Rullst logo (no image
+  library), `static/pwa.js`, `src/pwa.rs`, the worker `src/pwa/sw.js` and
+  `PWA.md`. Values come from validated flags or the Cargo package name. It
+  mounts `crate::pwa::router()` after the crate root's single
+  `.merge_axum(rullst::health::health_router())` (merges inside a `return`
+  expression are fallback routers and are ignored), adds the head tags to
+  every recognized layout in `src/` (an `html!` document, a document in a
+  string literal, Core's `render_page_with_lang`, rewritten to
+  `render_page_with_head`) and declares `mod pwa` in `src/lib.rs`, else
+  `src/main.rs`. The complete plan is validated before the first write:
+  identical files and wired places are skipped, so a repeated run changes
+  nothing, and a generated file with other content (edited, or rendered from
+  other flags) refuses the run. Projects without an HTML layout (the JSON API
+  starter), without the health merge or with a source file that does not
+  parse are refused.
+* 🟢 **`[Implemented / Bounded]` Routes and headers:** `/sw.js` answers
+  `text/javascript; charset=utf-8` with `Cache-Control: no-cache` from the site
+  root, so the worker's scope is `/`; its cache is named after the package
+  version. `/offline` is an `html!` page with `no-cache`. Both answer GET only
+  and are mounted outside the CSRF layer. Static files keep Core's policy
+  (`no-cache`, or a year-long `immutable` for content-hashed names) and the
+  manifest Core's `application/manifest+json` type.
+* 🟢 **`[Implemented / Bounded]` CSP compatibility:** the registration script
+  is a same-origin file allowed by `script-src 'self'`, it styles the update
+  prompt only through the DOM, the worker is allowed by `worker-src 'self'`,
+  and the manifest by the `default-src 'self'` fallback. No inline script or
+  style is added. A policy with `'strict-dynamic'` needs the request nonce on
+  the script.
+* 🟢 **`[Implemented / Bounded]` Worker storage rule:** it precaches
+  `/offline` (required) and the PWA's own and the starter's static files (when
+  present); navigations and unversioned static files are network-first with a
+  stored-copy or offline fallback; content-hashed static files are cache-first;
+  other requests pass through. It stores only same-origin `200` `basic`
+  responses to GET requests whose `Cache-Control` has neither `no-store` nor
+  `private` and whose `Vary` is not `*`; since Core answers `no-store` by
+  default, authenticated pages are not kept. A waiting worker takes over only
+  after the user accepts the page's reload prompt (`SKIP_WAITING`); the old
+  version's cache is then deleted. `node
+  cargo-rullst/src/generators/pwa/assets/pwa_tests.cjs` executes both scripts
+  against in-memory browser APIs in CI, and a generated Blank application is
+  compiled and checked for these headers.
+* 🟢 **`[Implemented / Bounded]` `render_page_with_head`:** Core's
+  `render_page_with_lang` with extra `Markup` at the end of `<head>`; an htmx
+  request still receives only the content.
+* 🟠 **`[Application Boundary]`** icons, HTTPS, offline data and conflict
+  handling belong to the application. Browser-side offline data follows the
+  server-authoritative pattern of the PWA guide (an IndexedDB outbox replayed
+  with idempotency keys); no sync engine is generated.
+
+### Omni (removed in 13.0)
 
 `cargo rullst make:omni` generates an application-owned Tauri packaging shell;
 it is not a native-runtime abstraction or store-publication service.

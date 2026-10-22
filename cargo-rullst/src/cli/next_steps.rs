@@ -97,6 +97,10 @@ pub(crate) fn hints(name: &str, matches: &ArgMatches) -> Vec<Hint> {
             "compile the island to WebAssembly",
         )],
         "make:scalar" => vec![hint(DEV, "then open /docs for the API playground")],
+        "make:pwa" => vec![hint(
+            DEV,
+            "open the app on localhost and install it from the browser",
+        )],
         "make:omni" => vec![hint("cargo rullst omni desktop", "start the desktop shell")],
         "dockerize" => vec![hint("docker build -t app .", "build the container image")],
         "generate:buildah" => vec![hint("./build_buildah.sh", "build the OCI image rootless")],
@@ -196,6 +200,7 @@ mod tests {
             &["rullst", "make:island", "Chart"],
             &["rullst", "generate:ts"],
             &["rullst", "make:billing"],
+            &["rullst", "make:pwa"],
         ] {
             let (name, sub) = matches_for(args);
             let hints = hints(&name, &sub);

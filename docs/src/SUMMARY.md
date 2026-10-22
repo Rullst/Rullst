@@ -62,6 +62,7 @@
 - [39. Scout Search Providers](tutorials/39-scout-search.md)
 - [41. Tenant-Bound RAG](tutorials/41-tenant-bound-rag.md)
 - [42. Server-Bound OAuth/OIDC Sessions](tutorials/42-server-bound-oauth-sessions.md)
+- [43. Installable Apps: PWA, Google Play and Microsoft Store](tutorials/43-progressive-web-apps.md)
 - [43. Omni Web-First Applications](tutorials/43-omni-web-first.md)
 - [44. Omni Offline Synchronization](tutorials/44-omni-offline-sync.md)
 - [45. Accessible Academy Media](tutorials/45-accessible-academy-media.md)

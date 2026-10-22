@@ -30,6 +30,23 @@ A prepared version section does not establish that its tag or crates exist.
   `zip` 9: a new project can enable `orm-duckdb` again, and the time-bounded
   exception for the `zip` 6 advisories (RUSTSEC-2026-0367 to -0369) is removed.
 
+### Fixes from alpha.2 dogfooding
+
+- New `cargo rullst make:pwa` makes an application from an HTML starter an
+  installable Progressive Web App: a web app manifest, placeholder icons
+  (192, 512, maskable 512, apple-touch), `/sw.js` and an `/offline` page
+  served by a generated `src/pwa.rs`, and a registration script with a
+  "new version" reload prompt. It wires the routes next to the health probes
+  and adds the manifest, `theme-color`, apple-touch icon and script tags to
+  every recognized page layout. The service worker works under the default
+  nonce Content-Security-Policy, never stores a non-GET request or a response
+  marked `no-store` or `private` (so authenticated pages stay off the device),
+  and names its cache after the package version. Running the command again
+  changes nothing; an edited generated file stops it before any write. The
+  JSON API starter is refused. See the new PWA guide (tutorial 43).
+- New `rullst::htmx::render_page_with_head` (also `rullst::render_page_with_head`):
+  `render_page_with_lang` with extra markup at the end of the page's `<head>`.
+
 ## [13.0.0-alpha.2] - 2026-10-16
 
 Second v13 prerelease, for evaluation. It fixes the problems found while

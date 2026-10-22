@@ -198,6 +198,10 @@ tutorial!(
     "../../docs/src/tutorials/42-server-bound-oauth-sessions.md"
 );
 tutorial!(
+    tutorial_43_progressive_web_apps,
+    "../../docs/src/tutorials/43-progressive-web-apps.md"
+);
+tutorial!(
     tutorial_43_omni_web_first,
     "../../docs/src/tutorials/43-omni-web-first.md"
 );

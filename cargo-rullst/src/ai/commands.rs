@@ -36,6 +36,7 @@ pub(super) const RULLST_ALLOWLIST: &[&str] = &[
     "make:grpc",
     "make:privacy",
     "make:age-gate",
+    "make:pwa",
     "generate:openapi",
     "generate:ts",
     "generate:diagram",
