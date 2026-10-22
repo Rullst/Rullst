@@ -78,9 +78,11 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 📺 **Device Flow**: RFC 8628 device authorization for headless CLI and Smart
   TV auth through `Provider::request_device_code`/`poll_device_token`; the
   GitHub adapter implements it and other providers return an explicit error.
-- 🛠️ **Testing**: Empty or `mock_*` credentials select a deterministic
-  offline transport, while `mock_idp` supplies a loopback-only signed OIDC
-  fixture with one-shot codes, PKCE, nonce, EdDSA ID tokens and JWKS.
+- 🛠️ **Testing**: With the `mock` feature (`rullst/oauth-mock` through the
+  facade), empty or `mock_*` credentials select a deterministic offline
+  transport; without it, `try_new` rejects them. `mock_idp` supplies a
+  loopback-only signed OIDC fixture with one-shot codes, PKCE, nonce, EdDSA ID
+  tokens and JWKS.
 
 > 📚 **Important Documents:**
 > - [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md): See what's new.
@@ -233,6 +235,36 @@ let github = GithubProvider::try_new(
 # Ok(())
 # }
 ```
+
+### Credential modes and offline development
+
+Every provider exposes `credential_mode() -> CredentialMode`. An empty
+credential or a value beginning with `mock_` selects `CredentialMode::Mock`,
+a deterministic transport that never accesses the network and signs in a fixed
+mock user. That mode needs the Cargo feature `mock` (or `oauth-mock` on the
+`rullst` facade). Without it, `try_new`, `Connect::driver` and
+`OidcProvider::discover` return `ConnectError::InvalidConfiguration` for the
+field `credentials` when they receive such a value, so a missing production
+secret fails when the provider is built instead of at the login callback; the
+deprecated `new` constructors return a disabled provider. Enable the feature
+only in development and test builds, because it turns mock credentials into a
+working sign-in. In a facade application, run `cargo run --features dev-oauth`
+with:
+
+```toml
+[features]
+dev-oauth = ["rullst/oauth-mock"]
+```
+
+With a direct `rullst-connect` dependency, name `rullst-connect/mock` instead,
+or enable it for tests only:
+
+```toml
+[dev-dependencies]
+rullst-connect = { version = "=13.0.0-alpha.2", features = ["mock"] }
+```
+
+Mock profiles use the reserved `example.invalid` email domain.
 
 ### Signed local OIDC fixture
 

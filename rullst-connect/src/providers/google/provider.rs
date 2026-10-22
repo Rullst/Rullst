@@ -20,7 +20,9 @@ pub struct GoogleProvider {
 }
 
 impl GoogleProvider {
-    /// Creates a validated provider. Placeholder credentials select an offline mock.
+    /// Creates a validated provider. Empty or `mock_*` credentials select an
+    /// offline mock; without the `mock` feature they are rejected for the field
+    /// `credentials`.
     pub fn try_new(
         client_id: impl Into<String>,
         client_secret: secrecy::SecretString,
@@ -29,7 +31,8 @@ impl GoogleProvider {
         let client_id = client_id.into();
         let redirect_url = redirect_url.into();
         crate::configuration::validate_redirect_url(&redirect_url)?;
-        let credential_mode = crate::configuration::credential_mode(&client_id, &client_secret);
+        let credential_mode =
+            crate::configuration::checked_credential_mode(&client_id, &client_secret)?;
         let http_client =
             crate::configuration::provider_http_client(credential_mode, "google", None);
 
@@ -61,10 +64,7 @@ impl GoogleProvider {
         let mut redirect_url = redirect_url.into();
         let (credential_mode, invalid_reason) =
             match crate::configuration::validate_redirect_url(&redirect_url) {
-                Ok(_) => (
-                    crate::configuration::credential_mode(&client_id, &client_secret),
-                    None,
-                ),
+                Ok(_) => crate::configuration::legacy_credential_mode(&client_id, &client_secret),
                 Err(error) => {
                     redirect_url = "about:blank".to_string();
                     (

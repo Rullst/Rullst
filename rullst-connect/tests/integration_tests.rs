@@ -25,23 +25,100 @@ impl WiremockInterceptClient {
 }
 
 #[cfg(not(feature = "mock"))]
+fn assert_mock_feature_error(error: ConnectError) {
+    match error {
+        ConnectError::InvalidConfiguration { field, reason } => {
+            assert_eq!(field, "credentials");
+            assert!(
+                reason.contains("`mock` feature of rullst-connect"),
+                "{reason}"
+            );
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+}
+
+#[cfg(not(feature = "mock"))]
 #[tokio::test]
-async fn missing_credentials_are_network_free_and_fail_closed_without_mock_feature() {
+async fn mock_credentials_are_rejected_at_construction_without_mock_feature() {
+    for client_id in ["", "mock_github_client"] {
+        let error = GithubProvider::try_new(
+            client_id,
+            secrecy::SecretString::from("".to_string()),
+            "https://app.example/callback",
+        )
+        .err()
+        .expect("mock credentials need the mock feature outside unit tests");
+        assert_mock_feature_error(error);
+    }
+
+    let error = rullst_connect::Connect::driver(
+        "google",
+        "mock_google_client",
+        secrecy::SecretString::from("mock_google_secret".to_string()),
+        "http://localhost:3000/auth/google/callback",
+    )
+    .err()
+    .expect("the driver factory uses the same check");
+    assert_mock_feature_error(error);
+
+    let error = rullst_connect::providers::OidcProvider::discover(
+        "https://issuer.example",
+        "mock_client",
+        "mock_secret",
+        "https://app.example/callback",
+    )
+    .await
+    .err()
+    .expect("discovery rejects mock credentials before any network I/O");
+    assert_mock_feature_error(error);
+}
+
+#[cfg(not(feature = "mock"))]
+#[tokio::test]
+async fn deprecated_constructor_disables_mock_credentials_without_mock_feature() {
     use rullst_connect::configuration::CredentialMode;
 
-    let provider = GithubProvider::try_new(
+    let provider = GithubProvider::new(
         "",
         secrecy::SecretString::from("".to_string()),
         "https://app.example/callback",
-    )
-    .expect("empty credentials select a typed offline mode");
-    assert_eq!(provider.credential_mode(), CredentialMode::Mock);
+    );
+    assert_eq!(provider.credential_mode(), CredentialMode::Invalid);
+    assert_eq!(provider.redirect_url(), "about:blank");
 
     let error = provider
         .get_user(rullst_connect::provider::ExchangeParams::default())
         .await
         .expect_err("mock identities require an explicit feature outside unit tests");
-    assert!(matches!(error, ConnectError::Offline(_)));
+    match error {
+        ConnectError::Offline(reason) => assert!(reason.contains("`mock` feature"), "{reason}"),
+        other => panic!("unexpected error: {other:?}"),
+    }
+}
+
+#[cfg(feature = "mock")]
+#[tokio::test]
+async fn mock_feature_serves_offline_identities() {
+    use rullst_connect::configuration::CredentialMode;
+
+    let provider = GithubProvider::try_new(
+        "mock_github_client",
+        secrecy::SecretString::from("mock_github_secret".to_string()),
+        "https://app.example/callback",
+    )
+    .expect("the mock feature accepts mock credentials");
+    assert_eq!(provider.credential_mode(), CredentialMode::Mock);
+
+    let user = provider
+        .get_user(rullst_connect::provider::ExchangeParams {
+            auth_code: "mock_authorization_code",
+            ..Default::default()
+        })
+        .await
+        .expect("the mock feature serves an offline identity");
+    assert_eq!(user.id, "1");
+    assert_eq!(user.email.as_deref(), Some("mock@example.invalid"));
 }
 
 #[async_trait]

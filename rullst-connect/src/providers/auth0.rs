@@ -29,7 +29,8 @@ impl Auth0Provider {
         let redirect_url = redirect_url.into();
         crate::configuration::validate_redirect_url(&redirect_url)?;
         let domain = crate::configuration::validate_https_host("domain", &domain.into())?;
-        let credential_mode = crate::configuration::credential_mode(&client_id, &client_secret);
+        let credential_mode =
+            crate::configuration::checked_credential_mode(&client_id, &client_secret)?;
         let http_client =
             crate::configuration::provider_http_client(credential_mode, "auth0", None);
 
@@ -63,11 +64,11 @@ impl Auth0Provider {
         let redirect_result = crate::configuration::validate_redirect_url(&redirect_url);
         let domain_result = crate::configuration::validate_https_host("domain", &raw_domain);
         let (credential_mode, invalid_reason, domain) = match (redirect_result, domain_result) {
-            (Ok(_), Ok(domain)) => (
-                crate::configuration::credential_mode(&client_id, &client_secret),
-                None,
-                domain,
-            ),
+            (Ok(_), Ok(domain)) => {
+                let (mode, reason) =
+                    crate::configuration::legacy_credential_mode(&client_id, &client_secret);
+                (mode, reason, domain)
+            }
             (redirect, domain) => {
                 redirect_url = "about:blank".to_string();
                 let reason = match (redirect, domain) {

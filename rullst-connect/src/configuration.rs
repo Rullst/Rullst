@@ -13,6 +13,11 @@ pub enum CredentialMode {
     /// Credentials are non-placeholder values and requests use the configured HTTP client.
     Live,
     /// Empty or `mock_*` credentials select the deterministic, network-free fallback.
+    ///
+    /// Outside this crate's own unit tests the fallback needs the `mock` feature;
+    /// without it, `try_new` rejects such credentials with
+    /// [`ConnectError::InvalidConfiguration`] for the field `credentials`, and the
+    /// deprecated `new` constructors return a disabled ([`Self::Invalid`]) provider.
     Mock,
     /// A deprecated infallible constructor received invalid configuration.
     Invalid,
@@ -45,6 +50,67 @@ pub(crate) fn credential_mode_for_values(values: &[&str]) -> CredentialMode {
 fn is_mock_credential(value: &str) -> bool {
     let value = value.trim();
     value.is_empty() || value.to_ascii_lowercase().starts_with("mock_")
+}
+
+/// Whether this build serves functional mock identities: always in this
+/// crate's unit tests, otherwise only with the `mock` feature.
+pub(crate) const MOCK_IDENTITIES: bool = cfg!(any(test, feature = "mock"));
+
+const MOCK_FEATURE_REQUIRED: &str = "empty or `mock_*` credentials select the offline mock \
+provider, which needs the `mock` feature of rullst-connect (`oauth-mock` in the `rullst` \
+facade); set real credentials, or enable that feature only in development and test builds";
+
+/// Rejects the mock mode in a build that cannot serve mock identities.
+pub(crate) fn require_mock_support(
+    mode: CredentialMode,
+    mock_identities: bool,
+) -> Result<CredentialMode, ConnectError> {
+    if mode.is_mock() && !mock_identities {
+        return Err(invalid("credentials", MOCK_FEATURE_REQUIRED));
+    }
+    Ok(mode)
+}
+
+/// The credential mode for a fallible constructor.
+pub(crate) fn checked_credential_mode(
+    client_id: &str,
+    client_secret: &SecretString,
+) -> Result<CredentialMode, ConnectError> {
+    require_mock_support(credential_mode(client_id, client_secret), MOCK_IDENTITIES)
+}
+
+/// The credential mode for a fallible constructor with several credential values.
+pub(crate) fn checked_credential_mode_for_values(
+    values: &[&str],
+) -> Result<CredentialMode, ConnectError> {
+    require_mock_support(credential_mode_for_values(values), MOCK_IDENTITIES)
+}
+
+/// The credential mode for a deprecated infallible constructor, plus the
+/// reason when the provider is disabled.
+pub(crate) fn legacy_credential_mode(
+    client_id: &str,
+    client_secret: &SecretString,
+) -> (CredentialMode, Option<String>) {
+    disable_unsupported_mock(credential_mode(client_id, client_secret), MOCK_IDENTITIES)
+}
+
+/// [`legacy_credential_mode`] for several credential values.
+pub(crate) fn legacy_credential_mode_for_values(
+    values: &[&str],
+) -> (CredentialMode, Option<String>) {
+    disable_unsupported_mock(credential_mode_for_values(values), MOCK_IDENTITIES)
+}
+
+/// Turns a mock mode this build cannot serve into a disabled provider.
+pub(crate) fn disable_unsupported_mock(
+    mode: CredentialMode,
+    mock_identities: bool,
+) -> (CredentialMode, Option<String>) {
+    match require_mock_support(mode, mock_identities) {
+        Ok(mode) => (mode, None),
+        Err(error) => (CredentialMode::Invalid, Some(error.to_string())),
+    }
 }
 
 pub(crate) fn provider_http_client(
@@ -261,5 +327,63 @@ mod tests {
             CredentialMode::Mock
         );
         assert_eq!(credential_mode("client", &secret), CredentialMode::Live);
+    }
+
+    #[test]
+    fn mock_mode_requires_mock_identity_support() {
+        assert_eq!(
+            require_mock_support(CredentialMode::Mock, true).unwrap(),
+            CredentialMode::Mock
+        );
+        assert_eq!(
+            require_mock_support(CredentialMode::Live, false).unwrap(),
+            CredentialMode::Live
+        );
+        match require_mock_support(CredentialMode::Mock, false) {
+            Err(ConnectError::InvalidConfiguration { field, reason }) => {
+                assert_eq!(field, "credentials");
+                assert!(reason.contains("`mock` feature of rullst-connect"));
+                assert!(reason.contains("`oauth-mock`"));
+            }
+            other => panic!("unexpected result: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn legacy_constructors_disable_an_unsupported_mock() {
+        assert_eq!(
+            disable_unsupported_mock(CredentialMode::Mock, true),
+            (CredentialMode::Mock, None)
+        );
+        assert_eq!(
+            disable_unsupported_mock(CredentialMode::Live, false),
+            (CredentialMode::Live, None)
+        );
+        let (mode, reason) = disable_unsupported_mock(CredentialMode::Mock, false);
+        assert_eq!(mode, CredentialMode::Invalid);
+        assert!(reason.unwrap().starts_with(
+            "Invalid provider configuration for 'credentials': empty or `mock_*` credentials"
+        ));
+    }
+
+    #[test]
+    fn unit_tests_serve_mock_identities() {
+        let secret = SecretString::from(String::new());
+        assert_eq!(
+            checked_credential_mode("mock_client", &secret).unwrap(),
+            CredentialMode::Mock
+        );
+        assert_eq!(
+            legacy_credential_mode("", &secret),
+            (CredentialMode::Mock, None)
+        );
+        assert_eq!(
+            checked_credential_mode_for_values(&["client", "secret"]).unwrap(),
+            CredentialMode::Live
+        );
+        assert_eq!(
+            legacy_credential_mode_for_values(&["client", "secret"]),
+            (CredentialMode::Live, None)
+        );
     }
 }

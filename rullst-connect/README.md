@@ -233,10 +233,12 @@ returns a disabled, fail-closed provider when configuration is invalid.
 
 Every provider exposes `credential_mode() -> CredentialMode`. An empty credential or a
 value beginning with `mock_` selects `CredentialMode::Mock` and installs a transport that
-never accesses the network. Functional mock identities are available only in unit tests
-or when the Cargo feature `mock` is explicitly enabled; otherwise token operations return
-`ConnectError::Offline`. This prevents missing production secrets from silently becoming
-a working authentication bypass.
+never accesses the network. That mode needs the Cargo feature `mock` (`oauth-mock` on the
+`rullst` facade). Without it, `try_new`, `Connect::driver` and `OidcProvider::discover`
+return `ConnectError::InvalidConfiguration` for the field `credentials`, and the deprecated
+`new` constructors return a disabled provider, so a missing production secret fails when
+the provider is built and never becomes a working authentication bypass. Enable the
+feature only in development and test builds.
 
 ```toml
 [dev-dependencies]
