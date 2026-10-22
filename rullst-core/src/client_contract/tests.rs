@@ -284,3 +284,9 @@ fn envelope_accessors_return_what_was_set() {
     assert_eq!(failure.server_epoch_ms(), 1_727_712_000_000);
     assert!(failure.error().retryable());
 }
+
+#[test]
+fn body_limits_have_their_documented_sizes() {
+    assert_eq!(DEFAULT_CLIENT_CONTRACT_BODY_BYTES, 262_144);
+    assert_eq!(MAX_CLIENT_CONTRACT_BODY_BYTES, 2_097_152);
+}
