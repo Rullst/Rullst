@@ -48,6 +48,7 @@ impl NexusModel for Product {
             FieldMeta::new("ratio", "Ratio", FieldKind::Number),
             FieldMeta::new("is_active", "Active", FieldKind::Boolean),
             FieldMeta::new("featured", "Featured", FieldKind::Boolean),
+            FieldMeta::new("archived", "Archived", FieldKind::Boolean),
             FieldMeta::new(
                 "category_id",
                 "Category",
@@ -168,7 +169,8 @@ pub async fn exercise(database_url: &str, driver: &str) {
         &format!(
             "CREATE TABLE nexus_matrix_products (id {serial}, tenant_id VARCHAR(64) NOT NULL, \
              name {text} NOT NULL, price INTEGER, ratio {float}, is_active INTEGER NOT NULL, \
-             featured {native_boolean} NOT NULL, category_id INTEGER)"
+             featured {native_boolean} NOT NULL, category_id INTEGER, \
+             archived BIGINT NOT NULL DEFAULT 0)"
         ),
     )
     .await;
@@ -251,9 +253,36 @@ async fn typed_columns_round_trip(app: &axum::Router, pool: &RullstPool, driver:
         form.contains("name=\"price\" value=\"43\""),
         "{driver}: {form}"
     );
+    assert!(
+        form.contains("name=\"ratio\" value=\"\" class=\"nexus-input\" placeholder=\"NULL\""),
+        "{driver}: {form}"
+    );
 
-    let (status, _) = send(app, "PUT", &uri, "is_active=1").await;
+    let (status, _) = send(app, "PUT", &uri, "is_active=1&archived=1").await;
     assert_eq!(status, StatusCode::OK);
+    // Each Boolean column shape reads back for the edit form and the list:
+    // INTEGER, BIGINT and native BOOLEAN.
+    let (_, form) = send(app, "GET", &format!("{uri}/edit"), "").await;
+    for (field, checked) in [("is_active", true), ("archived", true), ("featured", false)] {
+        assert_eq!(
+            form.contains(&format!("name=\"{field}\" value=\"1\" checked")),
+            checked,
+            "{driver} {field}: {form}"
+        );
+    }
+    let row = listed_row(app, id).await;
+    assert_eq!(row.matches("✅ Yes").count(), 2, "{driver}: {row}");
+    assert_eq!(row.matches("❌ No").count(), 1, "{driver}: {row}");
+    assert!(
+        row.contains("<td class=\"nexus-td\">43</td>"),
+        "{driver}: {row}"
+    );
+    assert_eq!(
+        row.matches("<td class=\"nexus-td nexus-muted\">NULL</td>")
+            .count(),
+        2,
+        "{driver}: {row}"
+    );
     let (status, body) = send(
         app,
         "POST",
@@ -263,6 +292,20 @@ async fn typed_columns_round_trip(app: &axum::Router, pool: &RullstPool, driver:
     .await;
     assert!(status.is_redirection(), "{driver} batch: {status} {body}");
     assert_eq!(product(pool, driver, "created", &["is_active"]).await, "0");
+    let row = listed_row(app, id).await;
+    assert_eq!(row.matches("✅ Yes").count(), 1, "{driver}: {row}");
+    assert_eq!(row.matches("❌ No").count(), 2, "{driver}: {row}");
+}
+
+/// The `<tr>` of the listed product `id`.
+async fn listed_row(app: &axum::Router, id: i32) -> String {
+    let (status, list) = send(app, "GET", "/table/nexus_matrix_products", "").await;
+    assert_eq!(status, StatusCode::OK);
+    let start = list
+        .find(&format!("data-nexus-row-id=\"{id}\""))
+        .unwrap_or_else(|| panic!("row {id} is listed: {list}"));
+    let end = list[start..].find("</tr>").expect("row end") + start;
+    list[start..end].to_string()
 }
 
 /// NEXUS-08 and NX2-11: `Acme` is another tenant than `acme`, even under a
