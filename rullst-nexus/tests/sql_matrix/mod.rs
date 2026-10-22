@@ -3,6 +3,7 @@
 //! Typed columns, text keys, search case and the exact tenant scope all depend
 //! on the server's type system and collations, which SQLite cannot show.
 
+mod audit;
 mod composite;
 mod temporal;
 
@@ -198,6 +199,7 @@ pub async fn exercise(database_url: &str, driver: &str) {
     text_keys_are_not_bound_as_integers(&app).await;
     composite::composite_keys_round_trip(&app, pool, driver).await;
     temporal::native_date_time_columns_round_trip(&app, pool, driver).await;
+    audit::required_audit_round_trip(pool, driver).await;
 }
 
 /// NEXUS-05 and NX2-04: numbers, relations and both Boolean column shapes
