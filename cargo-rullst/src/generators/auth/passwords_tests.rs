@@ -46,6 +46,13 @@ fn password_templates_parse_and_never_panic() {
 fn reset_tokens_are_digest_only_single_use_and_expire() {
     let model = render_password_reset_model();
     assert!(model.contains("pub const RESET_TOKEN_LIFETIME_MINUTES: u32 = 30;"));
+    // The lifetime stays from 10 minutes to 24 hours, checked at compile time.
+    assert!(model.contains(
+        "const _: () = assert!(\n    matches!(RESET_TOKEN_LIFETIME_MINUTES, 10..=1440),"
+    ));
+    assert!(model.contains(
+        "let expires_at = now.saturating_add(i64::from(RESET_TOKEN_LIFETIME_MINUTES) * 60);"
+    ));
     assert!(model.contains("pub const RESET_REQUEST_COOLDOWN_SECONDS: i64 = 60;"));
     // Only the digest of a CSPRNG token reaches the database.
     assert!(
@@ -112,6 +119,10 @@ fn reset_links_use_the_configured_origin_and_requests_answer_alike() {
     assert!(controller.contains("rullst::runtime::spawn(async move {"));
     assert!(controller.contains("Ok(mail) => Mail::send(mail.into_message()).await,"));
     assert!(controller.contains("expires_in_minutes: RESET_TOKEN_LIFETIME_MINUTES,"));
+    // The answer states the same lifetime as the email.
+    assert!(controller.contains("lifetime_words(RESET_TOKEN_LIFETIME_MINUTES)"));
+    assert!(controller.contains("Some(&reset_requested_notice())"));
+    assert!(!controller.contains("expires in 30 minutes"));
     // The development preview needs a debug build, development and no driver.
     assert!(controller.contains(
         "if cfg!(debug_assertions)\n        && development()\n        && matches!(rullst::config::project_setting(\"MAIL_DRIVER\"), Ok(None))"
