@@ -4344,6 +4344,12 @@ store package of the same site, only installs it.
   handling belong to the application. Browser-side offline data follows the
   server-authoritative pattern of the PWA guide (an IndexedDB outbox replayed
   with idempotency keys); no sync engine is generated.
+* 🟠 **`[Documented / External Tools]` Other stores:** the PWA guide
+  documents packaging the same site as MSIX for the Microsoft Store with
+  PWABuilder and a Partner Center reservation, as Microsoft documents it, and
+  installation on iPhone and iPad from Safari. No Windows or App Store
+  package is generated or verified by the framework; App Store Review
+  Guideline 4.2 usually rejects an app that only wraps a website.
 
 ### Omni (removed in 13.0)
 

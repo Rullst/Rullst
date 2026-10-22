@@ -361,3 +361,50 @@ Android-side changes (name, icon, colours, start URL, package version). Then
 run `bubblewrap update` (it raises `appVersionCode` by one and saves
 `twa-manifest.json`) and `bubblewrap build`, and upload the new bundle signed
 with the same upload key.
+
+## Microsoft Store
+
+As documented by Microsoft in
+[Publish a PWA to the Microsoft Store](https://learn.microsoft.com/microsoft-edge/progressive-web-apps/how-to/microsoft-store),
+the same site is published without code changes: PWABuilder packages it as
+MSIX, and the package carries the manifest's metadata and icons but none of
+the application's code, which keeps loading from your server.
+
+1. **Before packaging:** the site is deployed over HTTPS with the manifest
+   `make:pwa` wrote (its `id`, name, colours and icons; replace the
+   placeholder icons first, because the package copies them).
+2. **Reserve the name:** with a personal Microsoft account enrolled in the
+   Windows Developer Program, open
+   [Partner Center](https://partner.microsoft.com/dashboard/home), choose
+   **Apps and games → New product → MSIX or PWA app** and reserve the name.
+   Under **Product management → Product Identity**, copy the **Package ID**,
+   **Publisher ID** and **Publisher display name**.
+3. **Package:** on [PWABuilder](https://www.pwabuilder.com), enter the
+   site's URL. Its report card evaluates the site and manifest and lists
+   action items; when it is store ready, choose **Package For Stores →
+   Windows → Generate Package**, paste the three values and download the
+   `.zip`, which holds an `.msixbundle` and a `.classic.appxbundle`.
+4. **Submit:** in Partner Center, start a submission for the reserved app,
+   answer the pricing and age-rating questions and upload both bundles.
+   Microsoft reviews it before it appears in the Store.
+
+**Updates.** Microsoft's page states that changes to HTML, CSS, JavaScript or
+the service worker reach users from your server without a new package.
+Changing the manifest (name, icons, or members such as `share_target`)
+requires a new package and submission, because the manifest is copied into
+the Windows package. Generate it with PWABuilder again, with a higher app
+version in its Windows options, and choose **Update** on the app in Partner
+Center ([PWABuilder's update steps](https://blog.pwabuilder.com/docs/update-an-existing-app-in-the-microsoft-store)).
+Apps installed from the Store send `Referer: app-info://platform/microsoft-store`
+on their first navigation, which lets you count them.
+
+## iPhone and iPad
+
+There is no App Store package. Apple's
+[App Store Review Guideline 4.2](https://developer.apple.com/app-store/review/guidelines/#minimum-functionality)
+asks for "features, content, and UI that elevate it beyond a repackaged
+website", so an app that only shows the site is usually rejected, and a
+native iOS app is a separate product. iOS users install the PWA from Safari
+instead: **Share → Add to Home Screen**. The home-screen app uses the
+`apple-touch-icon` and name that `make:pwa` provides and opens in its own
+window, and Safari runs the same service worker and offline page.
