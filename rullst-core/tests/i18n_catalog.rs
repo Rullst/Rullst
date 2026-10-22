@@ -12,7 +12,7 @@ use i18n::{LOCALES, t};
 use rullst::config::Environment;
 use rullst::html;
 use rullst::html::Markup;
-use rullst::i18n::Locale;
+use rullst::i18n::{Decimal, Locale};
 use std::borrow::Cow;
 use tower::ServiceExt;
 
@@ -23,7 +23,7 @@ fn locale(tag: &str) -> Locale {
 #[test]
 fn the_catalog_lists_its_locales_and_default() {
     let tags: Vec<&str> = LOCALES.iter().map(|l| l.tag()).collect();
-    assert_eq!(tags, ["en", "es", "pt-BR"]);
+    assert_eq!(tags, ["en", "es", "pt-BR", "ru"]);
     assert_eq!(LOCALES.default_locale().tag(), "en");
 }
 
@@ -68,6 +68,33 @@ fn plural_forms_use_each_language_rule() {
         t!(locale("en"), "inbox.unread", count = items.len()),
         "You have 3 unread messages"
     );
+}
+
+#[test]
+fn cldr_categories_and_decimal_counts_select_forms() {
+    let unread = |tag, count: i64| t!(locale(tag), "inbox.unread", count = count).into_owned();
+    assert_eq!(unread("ru", 1), "У вас 1 непрочитанное сообщение");
+    assert_eq!(unread("ru", 21), "У вас 21 непрочитанное сообщение");
+    assert_eq!(unread("ru", 3), "У вас 3 непрочитанных сообщения");
+    assert_eq!(unread("ru", 11), "У вас 11 непрочитанных сообщений");
+    assert_eq!(unread("ru", 25), "У вас 25 непрочитанных сообщений");
+    // `{count}` displays a `Decimal` with its fraction digits, which also
+    // select the form: `1.0` is not `one` in English.
+    let half = Decimal::new(15, 1);
+    assert_eq!(
+        t!(locale("ru"), "inbox.unread", count = half),
+        "У вас 1.5 непрочитанного сообщения"
+    );
+    assert_eq!(
+        t!(locale("en"), "inbox.unread", count = Decimal::new(10, 1)),
+        "You have 1.0 unread messages"
+    );
+    assert_eq!(
+        t!(locale("pt-BR"), "inbox.unread", count = half),
+        "Você tem 1.5 mensagem não lida"
+    );
+    // Spanish `many` (exact millions) is optional and falls back to `other`.
+    assert_eq!(unread("es", 1_000_000), "Tienes 1000000 mensajes sin leer");
 }
 
 #[test]
@@ -163,7 +190,7 @@ async fn the_language_menu_marks_the_current_locale() {
     assert!(
         page.contains(
             "<option value=\"en\">en</option><option value=\"es\" selected>es</option>\
-             <option value=\"pt-BR\">pt-BR</option>"
+             <option value=\"pt-BR\">pt-BR</option><option value=\"ru\">ru</option>"
         ),
         "{page}"
     );

@@ -74,9 +74,9 @@ fn encode_lists_locales_rules_and_forms_per_key() {
     ]);
     let expected = quote! {
         ["en" One, "ja" Other] 0usize {
-            "a" text single [("A") ("エー")]
-            "b_html" html single [("<b>B</b>") ("<b>ビー</b>")]
-            "n" text plural [("1" "N") ("件")]
+            "a" text single [(other "A") (other "エー")]
+            "b_html" html single [(other "<b>B</b>") (other "<b>ビー</b>")]
+            "n" text plural [(one "1" other "N") (other "件")]
         }
     };
     assert_eq!(tokens.to_string(), expected.to_string());
@@ -94,8 +94,8 @@ fn a_plain_message_selects_by_locale_without_arguments() {
     contains(
         &out,
         quote! {
-            &[rullst::i18n::__Forms { one: &[], other: &[rullst::i18n::__Segment::Text("Home")] },
-              rullst::i18n::__Forms { one: &[], other: &[rullst::i18n::__Segment::Text("Início")] }]
+            &[rullst::i18n::__Forms { plural: &[], other: &[rullst::i18n::__Segment::Text("Home")] },
+              rullst::i18n::__Forms { plural: &[], other: &[rullst::i18n::__Segment::Text("Início")] }]
         },
     );
     contains(&out, quote! { rullst::i18n::__locale(&(locale)); });
@@ -131,11 +131,62 @@ fn a_plural_message_passes_its_count() {
     let out = expand(quote! { locale, "inbox", count = unread.len() }).unwrap();
     contains(
         &out,
-        quote! { ::core::option::Option::Some(rullst::i18n::PluralCount::plural_count(__rullst_i18n_arg_0)) },
+        quote! { ::core::option::Option::Some(rullst::i18n::PluralCount::plural_decimal(__rullst_i18n_arg_0)) },
     );
     contains(
         &out,
-        quote! { rullst::i18n::__Forms { one: &[rullst::i18n::__Segment::Text("One message")], other: &[rullst::i18n::__Segment::Arg(0usize), rullst::i18n::__Segment::Text(" messages")] } },
+        quote! { rullst::i18n::__Forms { plural: &[(rullst::i18n::PluralCategory::One, &[rullst::i18n::__Segment::Text("One message")])], other: &[rullst::i18n::__Segment::Arg(0usize), rullst::i18n::__Segment::Text(" messages")] } },
+    );
+}
+
+#[test]
+fn every_category_of_a_plural_message_is_expanded() {
+    let encoded = encoded(vec![
+        source(
+            "en",
+            "[n]\none = \"{count} file\"\nother = \"{count} files\"\n",
+        ),
+        source(
+            "ru",
+            "[n]\none = \"{count} файл\"\nfew = \"{count} файла\"\nmany = \"{count} файлов\"\nother = \"{count} файла\"\n",
+        ),
+    ]);
+    let out = translate::try_expand(quote! { #encoded ; locale, "n", count = 3 })
+        .unwrap()
+        .to_string();
+    contains(
+        &out,
+        quote! { plurals: &[rullst::i18n::__Plural::One, rullst::i18n::__Plural::EastSlavic], },
+    );
+    contains(
+        &out,
+        quote! {
+            rullst::i18n::__Forms {
+                plural: &[
+                    (rullst::i18n::PluralCategory::One, &[rullst::i18n::__Segment::Arg(0usize), rullst::i18n::__Segment::Text(" файл")]),
+                    (rullst::i18n::PluralCategory::Few, &[rullst::i18n::__Segment::Arg(0usize), rullst::i18n::__Segment::Text(" файла")]),
+                    (rullst::i18n::PluralCategory::Many, &[rullst::i18n::__Segment::Arg(0usize), rullst::i18n::__Segment::Text(" файлов")])
+                ],
+                other: &[rullst::i18n::__Segment::Arg(0usize), rullst::i18n::__Segment::Text(" файла")]
+            }
+        },
+    );
+}
+
+#[test]
+fn encoded_categories_must_be_cldr_names() {
+    let bad = quote! { ["en" One] 0usize { "n" text plural [(several "x" other "y")] } ; locale, "n", count = 1 };
+    let error = translate::try_expand(bad).unwrap_err().to_string();
+    assert_eq!(error, "unknown plural category `several`");
+    let zero = quote! { ["ar" Arabic] 0usize { "n" text plural [(zero "z" two "t" other "o")] } ; locale, "n", count = 1 };
+    let out = translate::try_expand(zero).unwrap().to_string();
+    contains(
+        &out,
+        quote! { (rullst::i18n::PluralCategory::Zero, &[rullst::i18n::__Segment::Text("z")]) },
+    );
+    contains(
+        &out,
+        quote! { (rullst::i18n::PluralCategory::Two, &[rullst::i18n::__Segment::Text("t")]) },
     );
 }
 

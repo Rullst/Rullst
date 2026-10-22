@@ -1,0 +1,3 @@
+[inbox.unread]
+one = "You have one unread message"
+other = "You have {count} unread messages"
