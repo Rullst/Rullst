@@ -46,9 +46,12 @@ A prepared version section does not establish that its tag or crates exist.
   of `info`, so SQLx's per-connection INFO events such as `acquired connection`
   no longer appear. Set `RUST_LOG=info,sqlx=info` to see them again.
 - Documentation: the start page, Getting Started, the first-route and REST
-  quickstarts, the CLI and API references, the tutorials, the crate pages and
-  the crate READMEs no longer point newcomers to v12, which reached end of life
-  on 16 October 2026; their dependency examples pin `=13.0.0-alpha.2`. The
+  quickstarts, the CLI and API references, the AI, Redis and polyglot guides,
+  the RAG, Scout, offline-sync, OAuth, OIDC and messaging tutorials, the
+  Connect, IoT, Mail and Studio pages and the Capital, Connect, Core, IoT,
+  Mail, Security and Studio READMEs no longer point newcomers to v12, which
+  reached end of life on 16 October 2026; their dependency examples pin
+  `=13.0.0-alpha.2`. The
   `Router` documentation and the routing tutorial show how to share
   application state, since `rullst::Router` has no `with_state`: a request
   extension, or an `axum::Router<S>` mounted after its own `with_state`.
