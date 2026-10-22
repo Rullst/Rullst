@@ -46,7 +46,14 @@ default to the owner and related model names when omitted; an omitted
 `<owner model>_id` on has-one/has-many (lowercased model names).
 
 The derive recognizes `#[sqlx(skip)]`, `#[sqlx(default)]`, `#[sqlx(json)]`, and
-`#[sqlx(json(nullable))]`. `#[orm(skip)]` only removes a field from generated
+`#[sqlx(json(nullable))]`. Two options keep a field out of generated writes:
+
+| Option | Meaning | Filters, ordering, grouping, `select` |
+| --- | --- | --- |
+| `#[orm(skip)]` | not a database column for the ORM | rejected |
+| `#[orm(db_default)]` | a column the database manages: read, never written | allowed |
+
+`#[orm(skip)]` only removes a field from generated
 SQL; the application's `FromRow` still reads it, so a field without a table
 column also needs `#[sqlx(skip)]` (the two may be combined) or
 `#[sqlx(default)]`. `#[orm(db_default)]` (v13) keeps a field in reads, filters

@@ -737,8 +737,8 @@ digest in constant time and never matches a stored value that is not a
 rules of the application's store.
 
 The `cargo rullst auth`, SaaS and LMS scaffolds store `users.session_epoch`
-(`BIGINT NOT NULL DEFAULT 0`, excluded from ORM writes with `#[orm(skip)]` so a
-full-row save cannot undo a bump), issue epoch cookies at sign-in and
+(`BIGINT NOT NULL DEFAULT 0`, excluded from ORM writes with
+`#[orm(db_default)]` so a save cannot undo a bump), issue epoch cookies at sign-in and
 registration, refuse a cookie with another epoch in `auth_middleware`, and add
 `POST /logout/everywhere`, which increments the epoch in one `UPDATE` and clears
 the browser cookie. Plain logout still clears only the current browser.
@@ -2302,13 +2302,25 @@ lower-cased on PostgreSQL, so `Schema::create("UserProfiles", ...)` creates the
 queries. MySQL/MariaDB and SQLite keep the name as written.
 
 Only `skip`, `default`, `json`, and `json(nullable)` from SQLx field metadata
-are compatible with generated ORM persistence in v12 and v13. `#[orm(skip)]`
-removes a field from generated SQL (writes, filters and projections) but not
-from the application's SQLx `FromRow`, which still reads the column from
-`SELECT *`. A field without a table column therefore needs `#[sqlx(skip)]`
-(alone or together with `#[orm(skip)]`, which are distinct options) or
-`#[sqlx(default)]`; `#[orm(skip)]` alone suits a column the table has but
-generated writes must not touch. `FromRow` decodes a `json` or
+are compatible with generated ORM persistence in v12 and v13. Two field
+options keep a field out of generated writes, with different meanings:
+
+| Option | The column | Generated reads (`FromRow`) | `INSERT` / `save()` / `update_partial()` | WHERE / ORDER BY / GROUP BY / `select` |
+| --- | --- | --- | --- | --- |
+| `#[orm(skip)]` | is not a database column for the ORM | the application's SQLx `FromRow` still reads it unless `#[sqlx(skip)]` | never written | rejected at run time with `Validation` |
+| `#[orm(db_default)]` | exists and is managed by the database (a default, a trigger or explicit SQL) | read | never written (the `INSERT` takes the column `DEFAULT`) | allowed |
+
+`#[orm(skip)]` removes a field from generated SQL (writes, filters and
+projections) but not from the application's SQLx `FromRow`, which still reads
+the column from `SELECT *`. A field without a table column therefore needs
+`#[sqlx(skip)]` (alone or together with `#[orm(skip)]`, which are distinct
+options) or `#[sqlx(default)]`. A column the table has that generated writes
+must not touch is declared `#[orm(db_default)]`, which keeps it filterable;
+the builder's error for a skipped column names that option. Until
+13.0.0-alpha.2 the SaaS, LMS and `cargo rullst auth` `User` models declared
+`is_admin` and `session_epoch` `#[orm(skip)]`; from alpha.3 they use
+`#[orm(db_default)]`, and `cargo rullst upgrade` reports the old declaration
+(`V13-ORM-SKIP-MANAGED-COLUMNS`). `FromRow` decodes a `json` or
 `json(nullable)` field through SQLx `Json`, and generated INSERT/UPDATE
 statements (including `update_partial()`) encode it the same way: the value is
 bound as `sqlx::types::Json(value)`, and a `json(nullable)` `None` as SQL

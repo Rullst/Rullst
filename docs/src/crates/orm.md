@@ -635,10 +635,25 @@ pub struct Event {
 }
 ```
 
-`#[orm(db_default)]` fields are left out of the generated `INSERT` and of the
-full-row `UPDATE` of `save()`, `update_partial()` has no setter for them and
+`#[orm(db_default)]` fields are left out of the generated `INSERT` and of
+every `UPDATE` of `save()`, `update_partial()` has no setter for them and
 `#[derive(Nexus)]` shows them read-only. Set an `updated_at` without it
-yourself (`Utc::now()`) or maintain it with a trigger.
+yourself (`Utc::now()`) or maintain it with a trigger. A model with a
+`RowSnapshot` field refreshes them from the stored row after each update.
+
+`#[orm(db_default)]` is also the option for any column that the database or
+your own SQL manages, such as the generated `users.is_admin` and
+`users.session_epoch`: queries can filter, order, group and select it, and
+ORM writes never touch it. `#[orm(skip)]` means something else: the field is
+not a database column for the ORM, so a filter, ordering, grouping or
+`select` on it fails with `Error::Validation`. A skipped field that the table
+does not have also needs `#[sqlx(skip)]` (or `#[sqlx(default)]`), because the
+application's SQLx `FromRow` still reads `#[orm(skip)]` fields.
+
+| Option | The column | Filters, ordering, grouping, `select` | ORM writes |
+| --- | --- | --- | --- |
+| `#[orm(skip)]` | is not a database column for the ORM | rejected | never |
+| `#[orm(db_default)]` | exists and is managed by the database | allowed | never |
 
 Date/time columns and `chrono` fields need a strict driver feature
 (`strict-postgres`, `strict-mysql` or `strict-sqlite`, which generated projects
