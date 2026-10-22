@@ -28,15 +28,17 @@ INFORMATIONAL = {0, 2, 3}  # all caught, some missed, some timed out
 SHARD = re.compile(r"[0-9]+/[1-9][0-9]*")
 FILES = ["rullst-orm/src/**", "rullst-orm-macros/src/**"]
 EXCLUDES = ["**/*_tests.rs", "**/tests.rs", "**/tests/**"]
+FEATURES = ["drivers-all"]
 
 
-def command(regex: str, shard: str | None) -> list[str]:
+def command(regex: str, shard: str | None, features: list[str] = FEATURES) -> list[str]:
     if shard is not None and not SHARD.fullmatch(shard):
         raise ValueError("--shard takes K/N")
     mutants = ["cargo", "mutants", "--no-config",
                "--package", "rullst-orm", "--package", "rullst-orm-macros",
                "--test-package", "rullst-orm",
-               "--no-default-features", "--features", "rullst-orm/drivers-all",
+               "--no-default-features",
+               "--features", ",".join("rullst-orm/" + feature for feature in features),
                "--gitignore", "true", "--jobs", "1", "--cap-lints", "false",
                "--build-timeout", "600", "--timeout", "300",
                "--cargo-arg=--locked", "--cargo-arg=--offline", "--cargo-arg=--tests",
@@ -52,17 +54,9 @@ def ran_baseline(output: Path) -> bool:
     return (output / "mutants.out" / "log" / "baseline.log").is_file()
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mutants", metavar="REGEX", required=True,
-                        help="cargo-mutants --re filter over the ORM's mutants")
-    parser.add_argument("--shard", metavar="K/N", help="test only this cargo-mutants shard")
-    args = parser.parse_args(argv)
-    try:
-        mutants = command(args.mutants, args.shard)
-    except ValueError as error:
-        parser.error(str(error))
-    env = dict(os.environ, DOCKER_HOST="unix:///nonexistent")
+def run(mutants: list[str], env: dict[str, str]) -> int:
+    """Runs cargo-mutants with the testcontainers matrices skipped."""
+    env = dict(env, DOCKER_HOST="unix:///nonexistent")
     env.pop("RULLST_REQUIRE_TESTCONTAINERS", None)
     status = subprocess.run(mutants, env=env, check=False, timeout=19000).returncode
     if status in INFORMATIONAL and not ran_baseline(Path(env.get("CARGO_MUTANTS_OUTPUT", "."))):
@@ -70,6 +64,22 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
         return 1
     return status
+
+
+def parse_arguments(description: str | None, argv: list[str] | None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--mutants", metavar="REGEX", required=True,
+                        help="cargo-mutants --re filter over the ORM's mutants")
+    parser.add_argument("--shard", metavar="K/N", help="test only this cargo-mutants shard")
+    arguments = parser.parse_args(argv)
+    if arguments.shard is not None and not SHARD.fullmatch(arguments.shard):
+        parser.error("--shard takes K/N")
+    return arguments
+
+
+def main(argv: list[str] | None = None) -> int:
+    arguments = parse_arguments(__doc__, argv)
+    return run(command(arguments.mutants, arguments.shard), dict(os.environ))
 
 
 if __name__ == "__main__":

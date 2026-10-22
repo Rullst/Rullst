@@ -807,6 +807,7 @@ second.
 | `messaging-redis` | `rullst-messaging/src/redis_streams/**` | the password, TLS, fault, ordering, outbox and bounds contracts and the AOF restart exercise |
 | `connect-sql` | `rullst-connect/src/challenge/sql/postgres.rs`, `sql/mysql.rs` (the wrapper also owns a MySQL server, which each contract resets by dropping its table) | `postgres_challenge_contract`, `mysql_challenge_contract` |
 | `orm-sqlite` | `rullst-orm/src/**` and `rullst-orm-macros/src/**`, test files excluded; select files with `mutants_regex` (for example `^rullst-orm/src/pool/savepoint\.rs:`) | every `rullst-orm` test target, built with `drivers-all` (the SQLx `Any` pool) |
+| `orm-polyglot` | the same files; select the optional-backend modules (`polyglot`, `scout`, `redis_data`, `query_cache`) with `mutants_regex` | every `rullst-orm` test target, built with `drivers-all` and the Redis, MongoDB, SurrealDB, Turso, Scout HTTP and Qdrant features, with an owned Redis server for the `RULLST_TEST_REDIS_URL` contracts |
 
 `orm-sqlite` owns no server. Targeted and full runs build the workspace with
 every feature, which selects the strict PostgreSQL pool and compiles the
@@ -815,7 +816,10 @@ only a database statement reaches as missed. This contract builds the ORM
 with `drivers-all` instead and runs its whole suite on SQLite for every
 mutant, including the code `#[derive(Orm)]` generates; the testcontainers
 matrices are skipped. Code compiled only with every feature, such as the
-PostgreSQL-only branches, is measured by the targeted runs.
+PostgreSQL-only branches, is measured by the targeted runs. `orm-polyglot`
+adds the optional backends, whose tests use mocks and loopback servers, and
+runs the query-cache and Redis hash-scope contracts against a Redis server it
+owns; DuckDB, whose bundled build is large, stays with targeted runs.
 
 The MySQL statement files `rullst-capital/src/quota/sql/mysql.rs` and
 `rullst-ai/src/ai/memory/sql/mysql.rs` hold only string constants, so

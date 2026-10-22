@@ -236,6 +236,50 @@ class OrmSqliteTests(Fixture):
                 ORM_SQLITE.command(".", shard)
 
 
+ORM_POLYGLOT_PATH = HERE / "check-orm-polyglot.py"
+ORM_POLYGLOT_SPEC = importlib.util.spec_from_file_location("check_orm_polyglot", ORM_POLYGLOT_PATH)
+if ORM_POLYGLOT_SPEC is None or ORM_POLYGLOT_SPEC.loader is None:
+    raise RuntimeError(f"cannot import {ORM_POLYGLOT_PATH}")
+ORM_POLYGLOT = importlib.util.module_from_spec(ORM_POLYGLOT_SPEC)
+ORM_POLYGLOT_SPEC.loader.exec_module(ORM_POLYGLOT)
+
+
+class OrmPolyglotTests(Fixture):
+    def run_polyglot(self, status: int) -> int:
+        self.tool("docker", "if sys.argv[1] == 'port': print('127.0.0.1:49153')\n"
+                            "if sys.argv[1] == 'exec': print('PONG')\n")
+        log = self.root / "mutants.out" / "log"
+        self.tool("cargo", f"os.makedirs({str(log)!r}, exist_ok=True)\n"
+                           f"open({str(log / 'baseline.log')!r}, 'w').write('ok')\n"
+                           "open(os.environ['CALLS_ENV'], 'w').write(json.dumps(dict(os.environ)))\n"
+                           f"sys.exit({status})\n")
+        env = self.env(CARGO_MUTANTS_OUTPUT=str(self.root), CALLS_ENV=str(self.root / "env.json"))
+        with mock_environ(env):
+            return ORM_POLYGLOT.main(["--mutants", "^rullst-orm/src/polyglot/", "--shard", "0/4"])
+
+    def test_owns_a_redis_server_for_the_live_cache_contracts(self) -> None:
+        self.assertEqual(self.run_polyglot(2), 2)
+        calls = self.recorded()
+        docker = [call for call in calls if call[0] == "docker"]
+        self.assertEqual(docker[0][:4], ["docker", "run", "--detach", "--rm"])
+        self.assertIn("127.0.0.1::6379", docker[0])
+        self.assertEqual(docker[-1][:2], ["docker", "stop"])
+        cargo = [call for call in calls if call[0] == "cargo"][-1]
+        features = cargo[cargo.index("--features") + 1]
+        self.assertEqual(features.split(","), [
+            "rullst-orm/drivers-all", "rullst-orm/redis", "rullst-orm/mongodb",
+            "rullst-orm/surrealdb", "rullst-orm/turso", "rullst-orm/scout-http",
+            "rullst-orm/qdrant"])
+        self.assertEqual(cargo[cargo.index("--shard") + 1], "0/4")
+        env = json.loads((self.root / "env.json").read_text())
+        self.assertEqual(env["RULLST_TEST_REDIS_URL"], "redis://127.0.0.1:49153")
+        self.assertEqual(env["DOCKER_HOST"], "unix:///nonexistent")
+
+    def test_stops_its_server_when_cargo_fails(self) -> None:
+        self.assertEqual(self.run_polyglot(4), 4)
+        self.assertEqual(self.recorded()[-1][:2], ["docker", "stop"])
+
+
 @contextlib.contextmanager
 def mock_environ(env: dict[str, str]):
     saved = dict(os.environ)
