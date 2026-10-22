@@ -337,7 +337,7 @@ fn upgrade_fixture(sandbox: &Sandbox, main: &str) -> PathBuf {
     fs::write(
         sandbox.project.join("Cargo.toml"),
         format!(
-            "[package]\nname = \"app\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = {{ version = \"12.1.2\", path = {:?} }}\n",
+            "[package]\nname = \"app\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = {{ version = \"12.1.2\", path = {:?}, default-features = false }}\n",
             framework.to_string_lossy()
         ),
     )

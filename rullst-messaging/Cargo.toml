@@ -27,7 +27,7 @@ webhooks = ["sqlite", "dep:reqwest", "dep:hmac", "dep:base64", "tokio/net", "tok
 aes-gcm = { version = "0.11.0", features = ["zeroize"], optional = true }
 serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"], optional = true }
-rullst-orm = { workspace = true, default-features = true, optional = true }
+rullst-orm = { workspace = true, features = ["drivers-all"], optional = true }
 redis = { workspace = true, features = ["tokio-rustls-comp", "tls-rustls-webpki-roots"], optional = true }
 rustls = { version = "0.23.37", default-features = false, features = ["ring", "std", "tls12"], optional = true }
 sha2 = { workspace = true }

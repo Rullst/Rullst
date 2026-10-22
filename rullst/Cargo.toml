@@ -14,7 +14,9 @@ keywords = ["framework", "web", "async", "tokio", "fullstack"]
 categories = ["web-programming::http-server", "asynchronous"]
 exclude = ["tests/*", "benches/*", "storage/*", "*.db", ".env*"]
 [features]
-default = ["orm", "drivers-all", "queue-sqlite"]
+# No default feature: a database-free application compiles no SQLx driver.
+# Select `orm` with `drivers-all` or one `strict-*` backend, and `queue-sqlite`.
+default = []
 drivers-all = ["orm", "rullst-core/drivers-all", "rullst-studio?/drivers-all", "rullst-nexus?/drivers-all"]
 orm = ["dep:rullst-orm", "rullst-core/orm"]
 orm-mongodb = ["orm", "rullst-orm/mongodb"]

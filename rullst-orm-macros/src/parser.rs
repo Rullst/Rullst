@@ -6,8 +6,8 @@ mod field_types;
 use attributes::{FieldAttributes, ModelAttributes};
 #[cfg(test)]
 use attributes::{split_top_level, strip_outer_call, validate_relation_attribute};
-use field_types::encrypted_field_kind;
-pub(crate) use field_types::is_secret_string_type;
+use field_types::{encrypted_field_kind, is_row_snapshot_type};
+pub(crate) use field_types::{is_json_document_type, is_secret_string_type};
 use syn::{Data, DeriveInput, Fields};
 
 pub struct ParsedModel {
@@ -57,6 +57,9 @@ pub struct ParsedModel {
     /// `normal_fields` before the generators run.
     #[allow(dead_code)]
     pub skipped_fields: Vec<syn::Ident>,
+    /// The `#[sqlx(skip)]` field of type `RowSnapshot` that opts the model
+    /// into dirty tracking. It is also listed in `skipped_fields`.
+    pub snapshot_field: Option<syn::Ident>,
     pub relations: Vec<ParsedRelation>,
     pub has_soft_deletes: bool,
     pub rag_context_fields: Vec<syn::Ident>,
@@ -151,6 +154,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     let mut json_fields = vec![];
     let mut db_default_fields = vec![];
     let mut skipped_fields = vec![];
+    let mut snapshot_field: Option<syn::Ident> = None;
     let mut relations = vec![];
     let mut rag_context_fields = vec![];
     let mut embedding_for = None;
@@ -179,6 +183,21 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         }
 
         let field_attributes = FieldAttributes::parse(field, field_span)?;
+        if is_row_snapshot_type(&field.ty) {
+            if !field_attributes.is_sqlx_skipped || field_attributes.is_relation() {
+                return Err(syn::Error::new(
+                    field_span,
+                    "a `RowSnapshot` field must be declared `#[sqlx(skip)]`: it is dirty-tracking state, not a column",
+                ));
+            }
+            if snapshot_field.is_some() {
+                return Err(syn::Error::new(
+                    field_span,
+                    "a model declares at most one `RowSnapshot` field",
+                ));
+            }
+            snapshot_field = Some(field_name.clone());
+        }
         if field_attributes.is_encrypted {
             if field_attributes.is_relation() || field_attributes.is_skipped {
                 return Err(syn::Error::new(
@@ -462,6 +481,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         json_fields,
         db_default_fields,
         skipped_fields,
+        snapshot_field,
         relations,
         has_soft_deletes,
         rag_context_fields,

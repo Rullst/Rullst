@@ -225,6 +225,17 @@ impl Visitor<'_, '_> {
             {
                 self.hit(&PASSWORD_HASH_HIDDEN, at);
             }
+            // The 13.0.0-alpha.2 SaaS, LMS and auth `User` models skipped
+            // these existing columns; a field `FromRow` also skips has none.
+            if field
+                .ident
+                .as_ref()
+                .is_some_and(|name| name == "is_admin" || name == "session_epoch")
+                && has_key(&options, &["skip"])
+                && !has_key(&entries(&field.attrs, "sqlx"), &["skip"])
+            {
+                self.hit(&ORM_SKIP_MANAGED_COLUMNS, at);
+            }
         }
     }
 

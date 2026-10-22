@@ -23,7 +23,7 @@ changes.
 
 | Crate | Tier | Responsibilities |
 | :--- | :--- | :--- |
-| **`rullst`** | Core | Umbrella facade: re-exports Core and, behind Cargo features, the ORM and domain crates (`rullst::orm`, `rullst::auth`, `rullst::mail`, …); default features are `orm`, `drivers-all` and `queue-sqlite`. |
+| **`rullst`** | Core | Umbrella facade: re-exports Core and, behind Cargo features, the ORM and domain crates (`rullst::orm`, `rullst::auth`, `rullst::mail`, …); it has no default feature (since 13.0.0-alpha.3): `orm` with `drivers-all` or a `strict-*` backend, and `queue-sqlite`, are opt-in. |
 | **`rullst-core`** | Core | Runtime-only-by-default server, Tokio integration, `routes!`, queues/realtime, `RadarSnapshot`, and `SpanCollector`; ORM/SQLite queue support is feature-gated. |
 | **`rullst-orm`** | Core | Parameterized SQLx database pool, Active Record & Repository patterns, dynamic schema inspector, and a v13 transactional partial-update candidate admitted in PR #236; see the SST for full-row persistence and rollback semantics. |
 | **`rullst-auth`** | Extension | Argon2 password hashing, encrypted session management, passkeys and an optional v13 shared PostgreSQL ceremony candidate, RBAC helpers, and OAuth2/OIDC re-exports. |

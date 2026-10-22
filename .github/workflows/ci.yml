@@ -331,7 +331,7 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: "true"
           RULLST_REQUIRE_TESTCONTAINERS: "true"
         run: |
-          cargo test -p rullst-orm --test matrix_postgres --test matrix_mysql --test matrix_mariadb -- --test-threads=1
+          cargo test -p rullst-orm --features drivers-all --test matrix_postgres --test matrix_mysql --test matrix_mariadb -- --test-threads=1
           cargo test -p rullst-orm --no-default-features --features mongodb --test matrix_mongodb
           cargo test -p rullst-orm --no-default-features --features surrealdb --test matrix_surrealdb
           cargo test -p rullst-orm --no-default-features --features turso --test matrix_turso
@@ -529,7 +529,7 @@ jobs:
         env:
           RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
         run: >-
-          cargo test -p rullst-orm --features redis
+          cargo test -p rullst-orm --features redis,drivers-all
           --test query_cache_live
           --test post_commit_transaction_test
           --test scout_post_commit_test
