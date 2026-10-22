@@ -9,6 +9,7 @@ mod atomic_counters;
 mod bulk_delete;
 mod column_types;
 mod constraint_violations;
+mod dirty_tracking;
 mod id_only_rows;
 mod missing_rows;
 mod nested_transaction;
@@ -35,6 +36,7 @@ pub async fn exercise() {
     search_relevance::exercise().await;
     qualified_scopes::exercise().await;
     atomic_counters::exercise().await;
+    dirty_tracking::exercise().await;
     constraint_violations::exercise().await;
     schema_constraints::exercise().await;
     temporal::exercise().await;

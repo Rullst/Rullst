@@ -8,6 +8,8 @@ use syn::{Field, spanned::Spanned};
 pub(in crate::parser) struct FieldAttributes {
     pub is_hidden: bool,
     pub is_skipped: bool,
+    /// `#[sqlx(skip)]`: SQLx's `FromRow` does not read the column either.
+    pub is_sqlx_skipped: bool,
     pub is_masked: bool,
     pub is_encrypted: bool,
     /// `#[orm(db_default)]`: generated INSERT and full-row UPDATE statements
@@ -164,6 +166,7 @@ impl FieldAttributes {
             "skip" => {
                 mark_once(seen, "sqlx_skip", &meta)?;
                 self.is_skipped = true;
+                self.is_sqlx_skipped = true;
             }
             "default" => mark_once(seen, "sqlx_default", &meta)?,
             // FromRow decodes the column through SQLx `Json`; generated writes
@@ -287,6 +290,7 @@ impl Default for FieldAttributes {
         Self {
             is_hidden: false,
             is_skipped: false,
+            is_sqlx_skipped: false,
             is_masked: false,
             is_encrypted: false,
             is_db_default: false,

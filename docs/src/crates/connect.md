@@ -64,6 +64,11 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 🛡️ **Type-Safe**: Robust error handling using `thiserror` (`ConnectError`).
 - 🔌 **Framework adapters**: Core provider APIs are framework-independent;
   optional extractor features cover the integrations declared in the crate.
+- 🔐 **Login challenge store** (v13, 13.0.0-alpha.3): `begin_login` and
+  `finish_login` keep state + PKCE + OIDC nonce in a `ChallengeStore` (memory,
+  or the application's SQLite, PostgreSQL or MySQL pool) behind an opaque id in
+  a short `HttpOnly`, `SameSite=Lax` cookie, and consume each challenge exactly
+  once. `cargo rullst make:oauth google` generates it for Rullst accounts.
 - 🔐 **Managed callback transaction**: The optional Axum/tower-sessions path
   generates, stores, expires, validates, and consumes state + PKCE + OIDC nonce.
 - 🔏 **Encrypted token snapshots**: Versioned AES-256-GCM envelopes bind a
@@ -198,8 +203,11 @@ cargo add secrecy
 A Rullst application can use the facade instead: the `rullst` feature `oauth`
 re-exports this crate as `rullst::connect` with its Axum integration
 (`rullst-connect/rullst`), so `rullst::connect::extractors::AuthCallback` works
-as a handler argument without a direct dependency. The managed
-`tower-sessions` transaction below (`axum-session`) still needs one.
+as a handler argument without a direct dependency. The login challenge
+store is `rullst::connect::challenge`; `oauth-sqlite`, `oauth-postgres` and
+`oauth-mysql` add its SQL store for that database. The managed
+`tower-sessions` transaction below (`axum-session`) still needs a direct
+dependency.
 
 For the recommended Axum session transaction, enable `axum-session` and add a
 `tower-sessions` store:
@@ -329,7 +337,36 @@ bounded transport.
 
 ### 2. Start a Server-Bound Authorization
 
-The recommended Axum path generates state and PKCE, stores their private
+A Rullst application signs users in with its own encrypted session cookie and
+has no `tower-sessions` store. For it, `rullst_connect::challenge` keeps each
+attempt in a `ChallengeStore` (v13, 13.0.0-alpha.3): `begin_login` stores the
+state, PKCE verifier, nonce and an optional same-site return page and returns
+the redirect plus an opaque id for a `ChallengeCookie`; `finish_login`
+consumes the challenge once, compares the state in constant time and exchanges
+the code with the stored verifier and nonce:
+
+```rust,no_run
+use rullst_connect::challenge::{LoginOptions, LoginRedirect, MemoryChallengeStore, begin_login};
+use rullst_connect::challenge::LoginError;
+use rullst_connect::providers::GoogleProvider;
+
+async fn start_google(
+    store: &MemoryChallengeStore,
+    google: &GoogleProvider,
+) -> Result<LoginRedirect, LoginError> {
+    // Redirect to `url()` and set `set_cookie(&ChallengeCookie::new("/auth/google", secure)?)`.
+    begin_login(store, google, LoginOptions::oidc("google")).await
+}
+```
+
+`SqlChallengeStore::open(pool, max_entries)` stores them in the application's
+SQLite, PostgreSQL or MySQL database instead (features `sqlite`, `postgres`,
+`mysql`), consuming each row with one atomic statement or transaction.
+`cargo rullst make:oauth google` generates the handlers, account linking and
+sign-in for a Rullst application. See
+[Tutorial 42](../tutorials/42-server-bound-oauth-sessions.md#store-backed-login).
+
+The `axum-session` path generates state and PKCE, stores their private
 counterparts in `tower-sessions` for ten minutes, and returns only the redirect
 URL:
 

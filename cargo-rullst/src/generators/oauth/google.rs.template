@@ -1,0 +1,120 @@
+//! Sign in with Google: OpenID Connect with state, PKCE and nonce.
+//!
+//! Settings (process environment, then `.env`):
+//! - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from the Google Cloud
+//!   console. With neither set, Google sign-in is off: the login page shows
+//!   no button and `/auth/google` says so.
+//! - `GOOGLE_REDIRECT_URL`, else `RULLST_PUBLIC_ORIGIN` followed by
+//!   `/auth/google/callback`, else `http://localhost:3000/auth/google/callback`
+//!   in development. Register exactly this URL in the console.
+//! - `mock_*` credentials select Rullst Connect's offline provider, which
+//!   signs in a fixed test user (`mock@example.invalid`) without leaving the
+//!   application. They need this application's `oauth-mock` feature
+//!   (`cargo run --features oauth-mock`) and are refused in staging and
+//!   production; without the feature the application stops at startup.
+use super::{page_context, refused};
+use rullst::config::Environment;
+use rullst::connect::challenge::LoginOptions;
+use rullst::connect::extractors::AuthCallback;
+use rullst::connect::prelude::SecretString;
+use rullst::connect::providers::GoogleProvider;
+use rullst::html;
+use rullst::html::Markup;
+use rullst::server::{Extension, HeaderMap, Query, Response, StatusCode};
+use serde::Deserialize;
+use std::sync::OnceLock;
+
+/// The provider name in routes, cookies and `oauth_identities.provider`.
+pub(crate) const PROVIDER: &str = "google";
+const OFF: &str = "Sign-in with Google is not configured.";
+
+static GOOGLE: OnceLock<Option<GoogleProvider>> = OnceLock::new();
+
+/// Reads the Google settings once, at startup (`router()` calls it), so a
+/// wrong configuration stops the application instead of the first sign-in.
+pub fn initialize() -> Result<(), Box<dyn std::error::Error>> {
+    if GOOGLE.get().is_none() {
+        let provider = configured(
+            super::setting("GOOGLE_CLIENT_ID")?,
+            super::setting("GOOGLE_CLIENT_SECRET")?,
+            super::setting("GOOGLE_REDIRECT_URL")?,
+            super::setting("RULLST_PUBLIC_ORIGIN")?,
+            super::environment(),
+        )?;
+        let _ = GOOGLE.set(provider);
+    }
+    Ok(())
+}
+
+/// The configured provider; `None` when Google sign-in is off.
+pub(crate) fn provider() -> Option<&'static GoogleProvider> {
+    GOOGLE.get().and_then(Option::as_ref)
+}
+
+/// The provider for these settings, `None` with no credentials.
+pub(crate) fn configured(
+    client_id: Option<String>,
+    client_secret: Option<String>,
+    redirect_url: Option<String>,
+    public_origin: Option<String>,
+    environment: Environment,
+) -> Result<Option<GoogleProvider>, Box<dyn std::error::Error>> {
+    let (client_id, client_secret) = match (client_id, client_secret) {
+        (None, None) => return Ok(None),
+        (Some(client_id), Some(client_secret)) => (client_id, client_secret),
+        _ => return Err("set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither".into()),
+    };
+    let redirect_url = super::redirect_url(PROVIDER, redirect_url, public_origin, environment)?;
+    let provider = GoogleProvider::try_new(client_id, SecretString::from(client_secret), redirect_url)
+        .map_err(|error| format!("Google sign-in: {error}"))?;
+    if provider.credential_mode().is_mock() && environment.requires_secure_defaults() {
+        return Err("Google sign-in: mock credentials sign in a fixed test user; use them only in development and tests".into());
+    }
+    Ok(Some(provider))
+}
+
+#[derive(Deserialize)]
+pub struct StartQuery {
+    /// A same-site page to open after sign-in, such as `/courses/7`.
+    next: Option<String>,
+}
+
+/// `GET /auth/google`: stores a fresh challenge and sends the browser to
+/// Google's consent screen.
+pub async fn start(
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    Query(query): Query<StartQuery>,
+) -> Response {
+    let page = page_context(&headers, &csrf, &csp_nonce);
+    let Some(provider) = provider() else {
+        return refused(&page, PROVIDER, StatusCode::NOT_FOUND, OFF);
+    };
+    super::start(PROVIDER, provider, LoginOptions::oidc(PROVIDER), query.next.as_deref(), &page).await
+}
+
+/// `GET /auth/google/callback`: consumes the challenge, verifies Google's
+/// answer (state, PKCE, ID token and nonce) and signs the account in.
+pub async fn callback(
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    Query(callback): Query<AuthCallback>,
+) -> Response {
+    let page = page_context(&headers, &csrf, &csp_nonce);
+    let Some(provider) = provider() else {
+        return refused(&page, PROVIDER, StatusCode::NOT_FOUND, OFF);
+    };
+    super::complete(PROVIDER, provider, &headers, &callback, &page).await
+}
+
+/// The "Sign in with Google" link of the login page; nothing when Google
+/// sign-in is off.
+pub fn login_link() -> Option<Markup> {
+    provider().map(|_| {
+        html! {
+            <p><a href="/auth/google" class="oauth-google">"Sign in with Google"</a></p>
+        }
+    })
+}

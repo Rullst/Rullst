@@ -112,6 +112,8 @@ rullst-connect|actix
 rullst-connect|retry
 rullst-connect|axum-session
 rullst-connect|sqlite
+rullst-connect|postgres
+rullst-connect|mysql
 rullst-iot|std
 rullst-iot|experimental-simulators
 rullst-security|redis-rate-limit
@@ -216,6 +218,8 @@ rullst|auth-passkey-postgres
 rullst|account-mail-sqlite
 rullst|account-mail-postgres
 rullst|oauth-sqlite
+rullst|oauth-postgres
+rullst|oauth-mysql
 rullst|oauth-mock
 rullst|oauth
 rullst|ai

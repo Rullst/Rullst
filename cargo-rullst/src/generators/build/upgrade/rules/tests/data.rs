@@ -243,3 +243,52 @@ fn boot() {
         &[],
     );
 }
+
+/// The alpha.2 `User` models skipped two existing columns, which the query
+/// builder then refused to filter; `db_default` and fields without a column
+/// are not reported.
+#[test]
+fn skipped_managed_user_columns_are_reviewed() {
+    let source = r#"
+#[derive(Debug, Clone, Default, FromRow, Orm)]
+#[orm(table = "users")]
+pub struct User {
+    pub id: i32,
+    #[orm(skip)]
+    pub is_admin: bool,
+    #[orm(skip)]
+    pub session_epoch: i64,
+}
+"#;
+    // One finding per file, at the first field.
+    assert_eq!(
+        scan_with(source, "user.rs", &WorkspaceFacts::default()),
+        [("V13-ORM-SKIP-MANAGED-COLUMNS", 7)]
+    );
+    let epoch_only = source.replace("    #[orm(skip)]\n    pub is_admin", "    pub is_admin");
+    assert_eq!(
+        scan_with(&epoch_only, "user.rs", &WorkspaceFacts::default()),
+        [("V13-ORM-SKIP-MANAGED-COLUMNS", 8)]
+    );
+    assert_only(
+        r#"
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "users")]
+pub struct User {
+    pub id: i32,
+    #[orm(db_default)]
+    pub is_admin: bool,
+    #[orm(skip)]
+    #[sqlx(skip)]
+    pub session_epoch: i64,
+    #[orm(skip)]
+    pub nickname: String,
+}
+pub struct Plain {
+    #[orm(skip)]
+    pub is_admin: bool,
+}
+"#,
+        &[],
+    );
+}
