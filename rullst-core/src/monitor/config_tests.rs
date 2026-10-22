@@ -160,3 +160,13 @@ fn errors_explain_themselves_without_values() {
         "monitor token 1 must contain only base64, base64url or hexadecimal characters, at most 512 of them"
     );
 }
+
+#[test]
+fn an_authorizer_error_keeps_its_reason() {
+    let error = super::MonitorAuthorizerError::new("session store unavailable");
+    assert_eq!(error.reason(), "session store unavailable");
+    assert_eq!(
+        error.to_string(),
+        "monitor authorizer failed: session store unavailable"
+    );
+}

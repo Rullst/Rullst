@@ -224,3 +224,34 @@ fn the_least_recently_seen_finding_is_replaced_at_the_limit() {
             .any(|finding| finding.fingerprint == "Model2.find (t)")
     );
 }
+
+#[test]
+fn one_fingerprint_on_one_route_is_a_separate_finding_per_method() {
+    let collector = Collector::new();
+    let at = Duration::from_secs(1);
+    let latency = Duration::from_millis(1);
+    for method in [Method::GET, Method::POST, Method::GET] {
+        collector.record_at(
+            at,
+            &method,
+            Some("/feed"),
+            200,
+            latency,
+            &repeated("Post.find (posts)", 3),
+        );
+    }
+    let (total, findings) = collector.findings();
+    assert_eq!(total, 3);
+    let keys: Vec<(&str, u64)> = findings
+        .iter()
+        .map(|finding| (finding.method, finding.requests))
+        .collect();
+    assert_eq!(keys, [("GET", 2), ("POST", 1)]);
+}
+
+#[test]
+fn the_collector_measures_time_since_it_started() {
+    let collector = Collector::new();
+    std::thread::sleep(Duration::from_millis(20));
+    assert!(collector.elapsed() >= Duration::from_millis(20));
+}

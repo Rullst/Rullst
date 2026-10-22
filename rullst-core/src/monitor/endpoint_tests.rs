@@ -446,3 +446,15 @@ fn monitor_from_env_is_mounted() {
             .is_some()
     );
 }
+
+#[test]
+fn the_budget_and_lockout_rates_are_fixed() {
+    let installed = Installed::prepare(
+        Monitor::new().with_token(BASE64_TOKEN),
+        Environment::Production,
+    )
+    .unwrap()
+    .unwrap();
+    // 30 requests, one more per second; 10 failures, one more per 90 s.
+    assert_eq!(installed.limits(), [30.0, 1.0, 10.0, 1.0 / 90.0]);
+}

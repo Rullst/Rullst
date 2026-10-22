@@ -116,6 +116,20 @@ impl Installed {
     pub(super) fn collector(&self) -> &Collector {
         &self.state.collector
     }
+
+    /// Burst and refill per second of the request budget, then of the
+    /// failed-credential lockout.
+    #[cfg(test)]
+    pub(super) fn limits(&self) -> [f64; 4] {
+        let requests = &self.state.requests.config;
+        let failures = &self.state.failures.config;
+        [
+            requests.max_tokens,
+            requests.refill_rate,
+            failures.max_tokens,
+            failures.refill_rate,
+        ]
+    }
 }
 
 fn validate_application(name: String, version: String) -> Result<Application, MonitorError> {

@@ -165,3 +165,22 @@ fn the_presented_credential_is_classified_without_guessing() {
     );
     assert_eq!(presented(&opaque), Presented::Invalid);
 }
+
+#[test]
+fn two_padding_characters_are_accepted() {
+    let token = format!("{}==", &BASE64URL_TOKEN[..43]);
+    assert_eq!(validate(&token, 1), Ok(()));
+}
+
+#[test]
+fn a_token_configured_twice_still_matches() {
+    let set = TokenSet::new(&[BASE64_TOKEN.to_string(), BASE64_TOKEN.to_string()]).unwrap();
+    assert!(set.matches(BASE64_TOKEN));
+    let three = TokenSet::new(&[
+        BASE64_TOKEN.to_string(),
+        BASE64_TOKEN.to_string(),
+        BASE64_TOKEN.to_string(),
+    ])
+    .unwrap();
+    assert!(three.matches(BASE64_TOKEN));
+}
