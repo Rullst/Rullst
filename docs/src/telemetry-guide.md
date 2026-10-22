@@ -116,6 +116,22 @@ OTLP over HTTP and the service resource name `rullst-app`.
 The generic `OTEL_EXPORTER_OTLP_ENDPOINT` instead denotes a base URL to which
 the initializer appends `/v1/traces`; do not put a gRPC endpoint in either value.
 
+Without `RUST_LOG` (or with one that does not parse), the subscriber that
+`Server::run` and `init_telemetry` install uses `info,sqlx=warn`: SQLx's own
+connection and statement events, such as `acquired connection`, appear only
+from WARN up. To see them again, set `RUST_LOG=info,sqlx=info` (or
+`sqlx=debug`); any `RUST_LOG` replaces the default as a whole.
+
+### Health probes in the access log
+
+`Server` prints one `[HTTP] GET /orders -> 200 (1.20 ms)` line per request. In
+staging and production it skips `/health` and `/ready` requests that answer
+below 400, so orchestrator probes every few seconds do not fill the log; a
+failing probe (for example `/ready -> 503` while draining) is still printed.
+Set `RULLST_LOG_HEALTH_PROBES=true` in the process environment or `.env` to
+print every probe again, or `false` to skip successful probes in development
+too.
+
 `RedactPersonalDataLayer` detects a small list of sensitive *field names* and
 emits a warning. It cannot rewrite a tracing event already observed by another
 layer, so secrets must be removed or redacted at the call site.

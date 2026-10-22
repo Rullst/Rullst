@@ -6,9 +6,12 @@
 //! the connection after the handler's side effects already ran, so these
 //! helpers drop the diagnostic line instead.
 
-use axum::extract::Request;
+use super::ServerError;
+use crate::config::Environment;
+use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::Response;
+use std::collections::HashMap;
 use std::fmt::Arguments;
 use std::io::Write;
 
@@ -36,11 +39,46 @@ const UNLOGGED_DEVELOPMENT_PATHS: [&str; 3] = [
     super::dev_telemetry::PATH,
 ];
 
-/// Prints one completed request, except for the development HMR channel and
-/// the development polls. The development telemetry recorder is fed by its
-/// own outermost layer (`dev_telemetry::record_responses`), not from here.
-pub(crate) fn log_request(method: &str, path: &str, status: u16, elapsed: std::time::Duration) {
-    if is_logged(path) {
+/// Variable that turns the access log of successful `/health` and `/ready`
+/// requests on or off, from the process environment and then `.env`.
+pub(super) const LOG_HEALTH_PROBES_VARIABLE: &str = "RULLST_LOG_HEALTH_PROBES";
+
+/// The probes of `rullst::health::health_router`.
+const HEALTH_PROBE_PATHS: [&str; 2] = ["/health", "/ready"];
+
+/// Whether successful health probes are access-logged:
+/// `RULLST_LOG_HEALTH_PROBES` (the process value, else the `.env` value) when
+/// set; otherwise everywhere except staging and production, where probes
+/// every few seconds would fill the log.
+pub(super) fn log_health_probes(
+    environment: Environment,
+    process: Option<String>,
+    dotenv: &HashMap<String, String>,
+) -> Result<bool, ServerError> {
+    match process.or_else(|| dotenv.get(LOG_HEALTH_PROBES_VARIABLE).cloned()) {
+        Some(value) => super::builder::parse_switch(LOG_HEALTH_PROBES_VARIABLE, &value),
+        None => Ok(!environment.requires_secure_defaults()),
+    }
+}
+
+/// Whether a completed request is access-logged: never the development HMR
+/// channel and polls, and a `/health` or `/ready` request below status 400
+/// only when `log_health_probes` is set.
+pub(super) fn should_log(path: &str, status: u16, log_health_probes: bool) -> bool {
+    is_logged(path) && (log_health_probes || status >= 400 || !HEALTH_PROBE_PATHS.contains(&path))
+}
+
+/// Prints one completed request that [`should_log`] admits. The development
+/// telemetry recorder is fed by its own outermost layer
+/// (`dev_telemetry::record_responses`), not from here.
+pub(crate) fn log_request(
+    method: &str,
+    path: &str,
+    status: u16,
+    elapsed: std::time::Duration,
+    log_health_probes: bool,
+) {
+    if should_log(path, status, log_health_probes) {
         let elapsed_ms = elapsed.as_secs_f64() * 1000.0;
         stdout_line(format_args!(
             "[HTTP] {method} {path} -> {status} ({elapsed_ms:.2} ms)"
@@ -53,8 +91,13 @@ pub(super) fn is_logged(path: &str) -> bool {
     !path.starts_with("/_rullst_hmr") && !UNLOGGED_DEVELOPMENT_PATHS.contains(&path)
 }
 
-/// Access-log middleware for the static server.
-pub(crate) async fn access_log_middleware(request: Request, next: Next) -> Response {
+/// Access-log middleware for the static server; its state is
+/// [`log_health_probes`].
+pub(crate) async fn access_log_middleware(
+    State(log_health_probes): State<bool>,
+    request: Request,
+    next: Next,
+) -> Response {
     let method = request.method().clone();
     let path = request.uri().path().to_string();
     let start = std::time::Instant::now();
@@ -64,6 +107,7 @@ pub(crate) async fn access_log_middleware(request: Request, next: Next) -> Respo
         &path,
         response.status().as_u16(),
         start.elapsed(),
+        log_health_probes,
     );
     response
 }
@@ -77,6 +121,50 @@ fn development_polls_are_not_access_logged() {
     assert!(!is_logged("/_rullst_hmr"));
     assert!(is_logged("/orders"));
     assert!(is_logged("/_rullst/dev-generation/extra"));
+}
+
+#[cfg(test)]
+#[test]
+fn quiet_health_probes_still_log_failures_and_other_paths() {
+    for path in ["/health", "/ready"] {
+        assert!(!should_log(path, 200, false), "{path}");
+        assert!(!should_log(path, 399, false), "{path}");
+        assert!(should_log(path, 400, false), "{path}");
+        assert!(should_log(path, 503, false), "{path}");
+        assert!(should_log(path, 200, true), "{path}");
+    }
+    assert!(should_log("/health/details", 200, false));
+    assert!(should_log("/orders", 200, false));
+    assert!(!should_log("/_rullst/dev-generation", 500, true));
+}
+
+#[cfg(test)]
+#[test]
+#[allow(clippy::unwrap_used)]
+fn health_probe_logging_follows_the_environment_unless_configured() {
+    let none = HashMap::new();
+    let dotenv =
+        |value: &str| HashMap::from([("RULLST_LOG_HEALTH_PROBES".to_string(), value.to_string())]);
+    assert_eq!(LOG_HEALTH_PROBES_VARIABLE, "RULLST_LOG_HEALTH_PROBES");
+    for (environment, logged) in [
+        (Environment::Development, true),
+        (Environment::Test, true),
+        (Environment::Staging, false),
+        (Environment::Production, false),
+    ] {
+        assert_eq!(log_health_probes(environment, None, &none).unwrap(), logged);
+    }
+    let production = Environment::Production;
+    assert!(log_health_probes(production, Some("true".into()), &none).unwrap());
+    assert!(log_health_probes(production, None, &dotenv("on")).unwrap());
+    assert!(!log_health_probes(production, Some("0".into()), &dotenv("1")).unwrap());
+    assert!(!log_health_probes(Environment::Development, None, &dotenv("false")).unwrap());
+    match log_health_probes(production, Some("sometimes".into()), &none) {
+        Err(ServerError::Configuration(message)) => {
+            assert_eq!(message, "RULLST_LOG_HEALTH_PROBES must be true or false");
+        }
+        other => panic!("unexpected result: {other:?}"),
+    }
 }
 
 #[cfg(all(test, unix))]
@@ -103,7 +191,10 @@ mod tests {
         use tower::ServiceExt;
         let router = axum::Router::new()
             .route("/orders", axum::routing::post(|| async { "created" }))
-            .layer(axum::middleware::from_fn(access_log_middleware));
+            .layer(axum::middleware::from_fn_with_state(
+                true,
+                access_log_middleware,
+            ));
         let response = router
             .oneshot(
                 axum::http::Request::post("/orders")

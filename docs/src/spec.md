@@ -1616,6 +1616,17 @@ the same server-authoritative controls.
   before Axum waits for accepted requests and then becomes stopped. Dependency
   checks/timeouts, component updates, replica consensus, load-balancer timing,
   authorization and the deployment termination deadline remain host contracts.
+* **Access log and default log filter:** `Server` prints one `[HTTP] METHOD
+  path -> status (ms)` line per request on stdout. Since 13.0.0-alpha.3, in
+  Staging and Production a `/health` or `/ready` request with a status below
+  400 is not printed (a failing probe still is); `RULLST_LOG_HEALTH_PROBES`
+  (`true`/`false`, also `1`/`0`, `yes`/`no`, `on`/`off`, from the process
+  environment and then `.env`) overrides that default in every environment, and
+  any other value stops startup with `ServerError::Configuration`. The tracing
+  subscriber that `Server::run` and `telemetry::init_telemetry` install reads
+  `RUST_LOG`; when it is unset or does not parse, the filter is
+  `info,sqlx=warn`, so SQLx's own connection and statement events below WARN
+  are dropped while `rullst_orm` spans stay at INFO.
 * **Trusted-Proxy Client Resolution (v13):** The socket peer
   (`ConnectInfo<SocketAddr>`) is the default client identity.
   `security::TrustedProxyLayer` implements `ProductionMiddlewareStage::TrustedProxy`

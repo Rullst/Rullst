@@ -36,6 +36,15 @@ A prepared version section does not establish that its tag or crates exist.
   Spanish, else the editable `DEFAULT_MAIL_LOCALE`. Before, they were always in
   English. The product name they show is the new `APP_NAME` setting (listed in
   the generated `.env`), falling back to the `APPLICATION_NAME` constant.
+- **Behaviour change:** in staging and production, `Server` no longer prints
+  `[HTTP]` access-log lines for `/health` and `/ready` requests that answer
+  below 400; failing probes are still printed. Set
+  `RULLST_LOG_HEALTH_PROBES=true` (process environment or `.env`) to print every
+  probe, or `false` to skip them in development too.
+- **Behaviour change:** without `RUST_LOG`, the tracing subscriber that
+  `Server::run` and `init_telemetry` install now uses `info,sqlx=warn` instead
+  of `info`, so SQLx's per-connection INFO events such as `acquired connection`
+  no longer appear. Set `RUST_LOG=info,sqlx=info` to see them again.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

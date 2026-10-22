@@ -37,6 +37,19 @@ pub fn read_optional_environment_variable(name: &str) -> Result<Option<String>, 
     }
 }
 
+/// Parses an on/off setting: `true`/`false`, `1`/`0`, `yes`/`no` or
+/// `on`/`off`, in any case; anything else is a configuration error that names
+/// `variable`.
+pub(in crate::server) fn parse_switch(variable: &str, value: &str) -> Result<bool, ServerError> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "1" | "true" | "yes" | "on" => Ok(true),
+        "0" | "false" | "no" | "off" => Ok(false),
+        _ => Err(ServerError::Configuration(format!(
+            "{variable} must be true or false"
+        ))),
+    }
+}
+
 /// The panic console and `/_rullst/explain`/`/_rullst/autofix` are mounted only
 /// in debug builds running in Development, like hot reload and the generation
 /// probe. An unset environment resolves to Development, so a release binary must
