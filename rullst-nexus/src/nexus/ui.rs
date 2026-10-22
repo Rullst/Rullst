@@ -210,5 +210,8 @@ mod icon_tests {
             safe_icon_html("<img src=x onerror=alert(1)>&#60;"),
             "&lt;img src=x onerror=alert(1)&gt;&lt;"
         );
+        // An entity that is not a decimal code point stays literal text.
+        assert_eq!(safe_icon_html("a&#xyz;b&#65;"), "a&amp;#xyz;bA");
+        assert_eq!(safe_icon_html("&#4294967296;"), "&amp;#4294967296;");
     }
 }
