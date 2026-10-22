@@ -55,8 +55,11 @@ impl ObservedPostObserver for CountingObserver {
         }
         Ok(())
     }
-    async fn updating(&self, _model: &mut ObservedPost) -> Result<(), Error> {
+    async fn updating(&self, model: &mut ObservedPost) -> Result<(), Error> {
         self.0.updating.fetch_add(1, Ordering::SeqCst);
+        if model.title == "stamp on update" {
+            model.body = "stamped by updating".to_string();
+        }
         Ok(())
     }
     async fn updated(&self, _model: &ObservedPost) -> Result<(), Error> {
@@ -202,6 +205,17 @@ async fn observers_see_only_writes() {
         .expect("find")
         .expect("stored");
     assert_eq!(stored.body, "normalized by observer");
+
+    // A change made by an `updating` observer is written too.
+    post.title = "stamp on update".into();
+    post.save().await.expect("stamped save");
+    let stored = ObservedPost::find(post.id)
+        .await
+        .expect("find")
+        .expect("stored");
+    assert_eq!(stored.title, "stamp on update");
+    assert_eq!(stored.body, "stamped by updating");
+    assert!(!post.is_dirty());
 }
 
 async fn tenant_saves_stay_scoped() {

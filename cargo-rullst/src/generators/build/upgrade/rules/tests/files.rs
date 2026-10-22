@@ -88,15 +88,25 @@ version = "12"
     // A `rullst` dependency on the defaults, which no longer select a driver.
     for (manifest, line) in [
         ("[dependencies]\nrullst = \"12.1.2\"\n", 2),
-        ("[dependencies]\nrullst = { version = \"13\", features = [\"auth\"] }\n", 2),
-        ("[package]\nname = \"app\"\n[dependencies.rullst]\nversion = \"13\"\ndefault_features = true\n", 3),
+        (
+            "[dependencies]\nrullst = { version = \"13\", features = [\"auth\"] }\n",
+            2,
+        ),
+        (
+            "[package]\nname = \"app\"\n[dependencies.rullst]\nversion = \"13\"\ndefault_features = true\n",
+            3,
+        ),
     ] {
         let (findings, _) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), manifest)]);
         let found: Vec<_> = findings
             .iter()
             .map(|finding| (finding.rule.code, finding.line))
             .collect();
-        assert_eq!(found, vec![("V13-RULLST-DEFAULT-FEATURES", line)], "{manifest}");
+        assert_eq!(
+            found,
+            vec![("V13-RULLST-DEFAULT-FEATURES", line)],
+            "{manifest}"
+        );
     }
     // Defaults with a selected driver, or no defaults, need no change.
     for manifest in [

@@ -97,12 +97,15 @@ fn relies_on_default_driver(declaration: &toml::Value) -> bool {
         .get("features")
         .and_then(toml::Value::as_array)
         .is_some_and(|features| {
-            features.iter().filter_map(toml::Value::as_str).any(|feature| {
-                matches!(
-                    feature,
-                    "drivers-all" | "strict-sqlite" | "strict-postgres" | "strict-mysql"
-                )
-            })
+            features
+                .iter()
+                .filter_map(toml::Value::as_str)
+                .any(|feature| {
+                    matches!(
+                        feature,
+                        "drivers-all" | "strict-sqlite" | "strict-postgres" | "strict-mysql"
+                    )
+                })
         });
     defaults && !selects_driver
 }

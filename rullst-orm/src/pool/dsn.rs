@@ -33,17 +33,16 @@ pub(super) fn connect_error(database_url: &str, error: sqlx::Error) -> crate::Er
     let scheme = database_url
         .split_once(':')
         .map_or(database_url, |(scheme, _)| scheme);
-    let feature = if scheme.eq_ignore_ascii_case("postgres")
-        || scheme.eq_ignore_ascii_case("postgresql")
-    {
-        "strict-postgres"
-    } else if scheme.eq_ignore_ascii_case("mysql") || scheme.eq_ignore_ascii_case("mariadb") {
-        "strict-mysql"
-    } else if scheme.eq_ignore_ascii_case("sqlite") {
-        "strict-sqlite"
-    } else {
-        return crate::Error::from(error);
-    };
+    let feature =
+        if scheme.eq_ignore_ascii_case("postgres") || scheme.eq_ignore_ascii_case("postgresql") {
+            "strict-postgres"
+        } else if scheme.eq_ignore_ascii_case("mysql") || scheme.eq_ignore_ascii_case("mariadb") {
+            "strict-mysql"
+        } else if scheme.eq_ignore_ascii_case("sqlite") {
+            "strict-sqlite"
+        } else {
+            return crate::Error::from(error);
+        };
     if !missing_driver {
         return crate::Error::from(error);
     }

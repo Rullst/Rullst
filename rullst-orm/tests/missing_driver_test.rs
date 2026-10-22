@@ -15,7 +15,11 @@ use rullst_orm::{Error, Orm};
 #[tokio::test]
 async fn init_without_a_driver_names_the_feature_to_enable() {
     for (url, scheme, feature) in [
-        ("postgres://app@127.0.0.1:1/app", "postgres", "strict-postgres"),
+        (
+            "postgres://app@127.0.0.1:1/app",
+            "postgres",
+            "strict-postgres",
+        ),
         ("mysql://app@127.0.0.1:1/app", "mysql", "strict-mysql"),
         ("MariaDB://app@127.0.0.1:1/app", "MariaDB", "strict-mysql"),
     ] {

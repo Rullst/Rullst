@@ -1,7 +1,7 @@
 use super::{RowSnapshot, UNKNOWN, fingerprint, fingerprint_json};
 use crate::SecretString;
 use crate::privacy::{with_redacted_secrets, with_secret_fingerprints};
-use std::hash::{BuildHasher, Hash, Hasher};
+use std::hash::{BuildHasher, Hasher};
 
 #[test]
 fn a_default_snapshot_is_untracked_and_marks_every_column_changed() {
@@ -46,11 +46,9 @@ fn snapshots_are_bookkeeping_that_compares_and_hashes_alike() {
         Some(std::cmp::Ordering::Equal)
     );
 
+    // Hashing a snapshot writes nothing.
     let keys = std::collections::hash_map::RandomState::new();
-    let mut hashed = keys.build_hasher();
-    tracked.hash(&mut hashed);
-    let empty = keys.build_hasher();
-    assert_eq!(hashed.finish(), empty.finish());
+    assert_eq!(keys.hash_one(&tracked), keys.build_hasher().finish());
 
     assert_eq!(format!("{tracked:?}"), "RowSnapshot { tracked: true }");
     assert_eq!(format!("{untracked:?}"), "RowSnapshot { tracked: false }");
