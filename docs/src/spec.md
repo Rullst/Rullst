@@ -2204,15 +2204,17 @@ Ok(())
 }
 ```
 
-`save()` of a persisted model is a full-row `UPDATE` of every persisted column
-except the soft-delete marker, so the last writer wins: a column another writer
-changed after the handle was loaded is overwritten with the handle's value. An
+`save()` of a persisted model without a `RowSnapshot` field is a full-row
+`UPDATE` of every persisted column except the soft-delete marker, so the last
+writer wins: a column another writer changed after the handle was loaded is
+overwritten with the handle's value. An
 `INSERT` likewise binds every persisted field, so database column defaults
 do not apply to them, except to fields marked `#[orm(db_default)]` (v13): the
-generated `INSERT` omits them, so the column `DEFAULT` applies, and the
-full-row `UPDATE` never writes them, so the stored value stays; the handle
-keeps its own value until the row is read again, `update_partial()` has no
-setter for them and `#[derive(Nexus)]` shows them read-only. The option is
+generated `INSERT` omits them, so the column `DEFAULT` applies, and no
+`UPDATE` of `save()` writes them, so the stored value stays; without dirty
+tracking the handle keeps its own value until the row is read again,
+`update_partial()` has no setter for them and `#[derive(Nexus)]` shows them
+read-only. The option is
 rejected on `id`, the tenant column, relations, skipped and encrypted fields,
 and by Turso-primary models. The generated `save()` rustdoc and the ORM guide name
 the two supported alternatives: `update_partial()` (§5.4.1), which merges
@@ -2222,6 +2224,43 @@ locked row, and one atomic raw statement such as
 model lifecycle (tenant scope, policy, hooks, audit, cache). The driver
 contract runs that counter and the stale-handle overwrite on SQLite,
 PostgreSQL, MySQL and MariaDB.
+
+**Dirty tracking (v13).** A SQLx model opts in with exactly one field of type
+`RowSnapshot` (`rullst_orm::RowSnapshot`, matched by its last path segment)
+marked `#[sqlx(skip)]`; a `RowSnapshot` field without `#[sqlx(skip)]`, or a
+second one, fails compilation. The tracked columns are the columns of the
+`UPDATE`: every persisted field except `id`, `#[orm(db_default)]` fields and
+the soft-delete marker. Rows decoded by the generated reads (`get` and the
+methods built on it, relations, streams, query-cache hits and the row
+`update_partial()` locks) record, after decryption and before `after_fetch`,
+one keyed 64-bit SipHash per tracked column of its `serde_json`
+serialization (`SecretString` contributes its plaintext; `#[sqlx(json)]`,
+`Json<T>` and `serde_json::Value` columns their document with object keys
+sorted at every level; a value that cannot be serialized never matches). The
+snapshot is 16 bytes plus 8 per column and stores no value. `save()` of a
+persisted record runs the `before_save` hook and `saving` observers, then
+compares: with no difference it returns `Ok` and runs nothing else (no
+`updating`/`updated`/`saved` observer, `after_save` hook, audit entry or
+post-commit effect); otherwise it runs the `updating` observers, recomputes
+the difference and issues `UPDATE <table> SET <changed columns> WHERE id = ?`
+(plus the tenant predicate) with `RETURNING *` on PostgreSQL and SQLite, or
+followed by `SELECT * ... WHERE id = ?` in the same transaction on
+MySQL/MariaDB. No row is `RecordNotFound` (the tenant-scope `Validation` error
+on tenant models). The handle's unwritten tracked columns,
+`#[orm(db_default)]` columns and soft-delete marker take the stored values,
+so observers, the audit diff, events and the Scout document see the stored
+row, and the snapshot is recaptured. An insert records the snapshot of the
+inserted values. Without a `before_save` hook, policy or registered observer,
+an unchanged `save()`/`save_with_tx()` returns before opening a transaction
+or savepoint (it still applies and checks the tenant context). A failed save
+restores the previous snapshot, so its changes stay pending; a rollback of a
+caller-owned transaction after a successful save is not visible to the
+handle. A record built in code, one from a Redis hash, or after
+`mark_all_dirty()` is untracked and writes every tracked column. Tracked
+models also get `dirty_columns()` and `is_dirty()`. `RowSnapshot` is
+bookkeeping: any two compare equal, hash alike and order equal; `Debug` shows
+only whether it is tracked; it implements no Serde trait. Turso-primary
+models do not track. Models without the field keep the full-row `UPDATE`.
 
 `From<sqlx::Error> for rullst_orm::Error` maps `RowNotFound` to
 `RecordNotFound`, a unique or primary-key violation to
@@ -2531,7 +2570,7 @@ while portability and semantic review remain the model author's responsibility.
   both contexts from authenticated authority rather than client assertions.
   An auditable `save()` reads the pre-image of its diff inside its savepoint
   with `FOR UPDATE` on PostgreSQL and MySQL/MariaDB, so a concurrent writer
-  cannot change the row between that read and the full-row `UPDATE`. The
+  cannot change the row between that read and the `UPDATE`. The
   old side of a `deleted`, `force_deleted` or `restored` entry is likewise
   the persisted row read the same way just before the statement, not the
   caller's possibly edited or stale handle. These reads, the
@@ -2572,7 +2611,9 @@ while portability and semantic review remain the model author's responsibility.
 * The merged model uses the normal generated save lifecycle, including policy,
   hooks, observers, encrypted fields, atomic audit entries and post-commit
   cache/Scout/observer effects. This is a logical partial change implemented
-  through a full-row save, not a selected-column SQL optimization. Existing
+  through `save()`: a full-row `UPDATE`, or, for a model with a `RowSnapshot`
+  field, an `UPDATE` of the patched columns whose value differs from the
+  locked row (none: no `UPDATE`). Existing
   model hooks can transform that candidate under the normal save contract:
   the loaded row runs `after_fetch` before the patch is merged, as `find()`
   would return it, and `restore_revision` runs it on the restored row before

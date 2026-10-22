@@ -9,6 +9,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Fixes from alpha.2 dogfooding
+
+- ORM dirty tracking: a model with one `#[sqlx(skip)]` field of type
+  `rullst_orm::RowSnapshot` makes `save()` write only the columns whose value
+  changed since the record was loaded or last saved, so two requests that edit
+  different fields of the same row both persist (alpha.2 wrote the whole row
+  and the last writer won). The `UPDATE` returns the stored row, which
+  refreshes the columns it did not write; an unchanged record writes nothing;
+  unchanged `#[orm(encrypted)]` and `SecretString` fields are not encrypted
+  again, and JSON columns compare their canonical document. New
+  `is_dirty()`, `dirty_columns()` and `mark_all_dirty()` (the full-row write).
+  Behaviour changes for models that add the field, including their
+  `update_partial()`; models without it keep the full-row `save()`.
+  `cargo rullst make:model` adds the field to new models.
+
 ## [13.0.0-alpha.2] - 2026-10-16
 
 Second v13 prerelease, for evaluation. It fixes the problems found while

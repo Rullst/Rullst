@@ -98,10 +98,11 @@ already committed; it does not authorize replaying the domain mutation. These
 callbacks are process-local. Use an explicit transactional outbox for effects
 that need durable recovery.
 
-This implementation performs a full-row SQL save after merging the logical
-patch. It is not the v12 selected-column SQL optimization. The extra read and
-savepoint have a cost; row-read privileges, full-row triggers/update privileges and encrypted-field
-re-encryption follow full-save behavior. Model hooks may transform the candidate
+This implementation saves the merged row through `save()`: a full-row SQL
+update, or, for a model with a `RowSnapshot` field (dirty tracking), an update
+of only the patched columns whose value differs from the locked row. The extra
+read and savepoint have a cost; row-read privileges, update triggers and
+privileges and encrypted-field re-encryption follow `save()` behavior. Model hooks may transform the candidate
 under their usual contract. The loaded row first runs the model's `after_fetch`
 hook, exactly as `find()` returns it, so a `before_save` mutator paired with an
 `after_fetch` accessor is applied once rather than to the stored
@@ -134,7 +135,8 @@ savepoint release as proof that a caller-owned transaction is durable.
 For existing `update_partial()` call sites, review:
 
 - Required audit identity, tenant context and the model's newly applied hooks.
-- Database full-row update triggers/privileges and the extra read/savepoint.
+- Database update triggers/privileges (full-row, or only the changed columns
+  for a model with a `RowSnapshot` field) and the extra read/savepoint.
 - Unsaved fields and loaded relations in the old object: successful updates
   refresh them from the database representation, rather than retaining stale
   local values. Only explicit setters submit field values.

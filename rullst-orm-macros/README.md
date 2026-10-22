@@ -51,10 +51,15 @@ SQL; the application's `FromRow` still reads it, so a field without a table
 column also needs `#[sqlx(skip)]` (the two may be combined) or
 `#[sqlx(default)]`. `#[orm(db_default)]` (v13) keeps a field in reads, filters
 and `to_json()` but leaves it out of the generated `INSERT` (so the column
-`DEFAULT` applies) and of the full-row `UPDATE` of `save()`; `update_partial()`
+`DEFAULT` applies) and of every `UPDATE` of `save()`; `update_partial()`
 gets no setter for it and `#[derive(Nexus)]` shows it read-only. It is rejected
 on `id`, the tenant column, relations, skipped and encrypted fields, and by
-Turso-primary models, whose codec writes every field. `chrono`
+Turso-primary models, whose codec writes every field. One `#[sqlx(skip)]`
+field of type `RowSnapshot` (v13) turns on dirty tracking: rows read through
+the ORM remember a fingerprint of each column, and `save()` updates only the
+columns that changed (`dirty_columns()`, `is_dirty()`, `mark_all_dirty()`).
+A `RowSnapshot` field without `#[sqlx(skip)]`, or a second one, fails
+compilation. `chrono`
 date/time fields (`DateTime<Utc>`, `NaiveDateTime`, `NaiveDate`, `NaiveTime`)
 bind through SQLx's codecs, which exist only for the strict driver features.
 A `#[sqlx(json)]` field is decoded through SQLx `Json`
