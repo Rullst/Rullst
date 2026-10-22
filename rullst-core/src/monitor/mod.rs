@@ -54,6 +54,8 @@ mod config_tests;
 #[cfg(test)]
 mod endpoint_tests;
 #[cfg(test)]
+mod overhead_tests;
+#[cfg(test)]
 mod payload_tests;
 #[cfg(test)]
 mod record_tests;

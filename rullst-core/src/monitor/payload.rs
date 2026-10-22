@@ -12,7 +12,6 @@ use crate::query_patterns::N_PLUS_ONE_THRESHOLD;
 use crate::queue::QueueActivitySnapshot;
 use crate::radar::RadarSnapshot;
 use serde::Serialize;
-use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Debug, Serialize)]
@@ -71,7 +70,7 @@ pub(super) struct WindowReport {
 #[derive(Debug, Serialize)]
 pub(super) struct RouteReport {
     pub(super) method: &'static str,
-    pub(super) route: Arc<str>,
+    pub(super) route: String,
     pub(super) requests_total: u64,
     pub(super) status_total: StatusClasses,
     pub(super) window: WindowReport,
@@ -99,7 +98,7 @@ pub(super) struct NPlusOne {
 #[derive(Debug, Serialize)]
 pub(super) struct FindingReport {
     pub(super) method: &'static str,
-    pub(super) route: Arc<str>,
+    pub(super) route: String,
     pub(super) fingerprint: String,
     pub(super) requests: u64,
     pub(super) max_occurrences: u64,
@@ -195,7 +194,7 @@ pub(super) fn http(collector: &Collector, now: Duration) -> Http {
 fn route_report(route: &RouteSnapshot, now: Duration) -> RouteReport {
     RouteReport {
         method: route.method,
-        route: Arc::clone(&route.route),
+        route: route.route.to_string(),
         requests_total: route.stats.requests_total,
         status_total: route.stats.status_total,
         window: window_report(&route.stats.window(now), now),
@@ -232,7 +231,7 @@ pub(super) fn database(collector: &Collector, unavailable: Option<&'static str>)
 fn finding_report(finding: Finding) -> FindingReport {
     FindingReport {
         method: finding.method,
-        route: finding.route,
+        route: finding.route.to_string(),
         fingerprint: finding.fingerprint,
         requests: finding.requests,
         max_occurrences: finding.max_occurrences,

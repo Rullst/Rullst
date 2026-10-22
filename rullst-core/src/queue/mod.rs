@@ -39,8 +39,8 @@ mod bounds;
 mod deferral;
 mod error;
 mod preview;
-#[cfg(any(feature = "queue-sqlite", feature = "queue-redis"))]
 pub(crate) use activity::{QueueActivity, QueueActivitySnapshot};
+#[cfg(any(feature = "queue-sqlite", feature = "queue-redis"))]
 pub(crate) use bounds::unix_timestamp_millis_ceil;
 #[cfg(feature = "queue-sqlite")]
 pub(crate) use bounds::unix_timestamp_millis_floor;
