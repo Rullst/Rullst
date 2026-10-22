@@ -67,14 +67,6 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         } else if let Some(new) = matches.subcommand_matches("new") {
             let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
             generators::project::run_new_command(&cli.command, new)?;
-        } else if let Some(omni) = matches
-            .subcommand_matches("omni")
-            .filter(|m| m.get_flag("release"))
-        {
-            if omni.get_one::<String>("target").map(String::as_str) != Some("android") {
-                return Err("--release currently requires the android Omni target".into());
-            }
-            generators::desktop::run_release(omni)?;
         } else {
             let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
             cli::run_cli_command(&cli.command)?;
@@ -101,7 +93,6 @@ pub(crate) fn command() -> clap::Command {
         .subcommand(ai::command())
         .subcommand(tour::command())
         // Extend executable syntax without changing the published v12 enum.
-        .mut_subcommand("omni", generators::desktop::release_command)
         .mut_subcommand("generate:ai-context", generators::ai_context::command)
         .mut_subcommand("new", generators::project::new_command);
     cli::runtime::extend(command)

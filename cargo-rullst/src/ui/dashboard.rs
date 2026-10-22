@@ -329,8 +329,8 @@ where
             "(Auth, 2FA MFA, IDOR/SOC Audit, Billing)".dimmed()
         ),
         format!(
-            "🖥  Package for Desktop/App  {}",
-            "(Omni Desktop & Mobile)".dimmed()
+            "📱  Installable App (PWA)    {}",
+            "(Manifest, Offline Page, Stores)".dimmed()
         ),
         format!(
             "🐳  Dockerize Project        {}",
@@ -359,7 +359,7 @@ where
         2 => handle_scaffold_code(ui, program, run),
         3 => handle_database_operations(ui, program, run),
         4 => handle_auth_billing(ui, program, run),
-        5 => run(vec![program.to_string(), "make:omni".to_string()]),
+        5 => run(vec![program.to_string(), "make:pwa".to_string()]),
         6 => run(vec![program.to_string(), "dockerize".to_string()]),
         7 => run(vec![program.to_string(), "nixify".to_string()]),
         8 => handle_deploy(ui, program, run),

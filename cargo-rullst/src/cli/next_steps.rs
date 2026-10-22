@@ -101,7 +101,6 @@ pub(crate) fn hints(name: &str, matches: &ArgMatches) -> Vec<Hint> {
             DEV,
             "open the app on localhost and install it from the browser",
         )],
-        "make:omni" => vec![hint("cargo rullst omni desktop", "start the desktop shell")],
         "dockerize" => vec![hint("docker build -t app .", "build the container image")],
         "generate:buildah" => vec![hint("./build_buildah.sh", "build the OCI image rootless")],
         "nixify" => vec![hint(

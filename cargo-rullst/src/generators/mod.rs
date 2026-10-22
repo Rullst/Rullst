@@ -27,7 +27,6 @@ pub mod cors_jwt;
 pub mod db;
 pub mod deploy;
 pub(crate) mod deploy_doctor;
-pub mod desktop;
 pub mod dev;
 pub mod diagram;
 pub mod doctor;
