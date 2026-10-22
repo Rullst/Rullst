@@ -1,0 +1,5 @@
+error: write the nodes of an `@match` arm in braces: `pattern => { <p>"text"</p> }`
+ --> tests/ui/control_match_arm_body.rs:7:33
+  |
+7 |             @match count { 0 => "none", _ => { "some" } }
+  |                                 ^^^^^^

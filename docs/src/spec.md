@@ -1913,11 +1913,18 @@ the same server-authoritative controls.
   `@if let PATTERN = value`), `@else if …`, `@else { … }` and
   `@for PATTERN in iterable { … }` take `html!` nodes in their braces; the
   heads are parsed like Rust's own `if`/`for` heads and keep caller name
-  resolution. No other node can start with `@`, so the forms are
-  unambiguous. A plain `else` after an `@if` body and any other `@` form
-  (`@match`, `@let`, `@while`) are compile-time errors: `match` and other
-  control flow stay Rust expressions that return `Markup` inside `{…}`,
-  which keeps the grammar small without losing expressiveness.
+  resolution. Since 13.0.0-alpha.3, `@match value { PATTERN => { … } … }`
+  does the same for `match`: each arm is a Rust pattern (`|` alternatives
+  and `name @` bindings included) with an optional `if` guard, its body is
+  in braces, and commas between arms are optional. The arms expand to a
+  Rust `match`, so exhaustiveness and pattern errors are reported by the
+  compiler at the caller's tokens, and bodies follow the same escaping and
+  `Markup` rules as every other node. An arm body without braces is a
+  compile-time error that shows the braced form. No other node can start
+  with `@`, so the forms are unambiguous. A plain `else` after an `@if` body
+  and any other `@` form (`@let`, `@while`, `@loop`) are compile-time
+  errors: other control flow stays a Rust expression that returns `Markup`
+  inside `{…}`.
 * **Element names and the doctype:** Element names (opening and closing) may
   be Rust keywords, such as SVG's `<use>`. A leading `<!DOCTYPE html>` (any
   letter case) is emitted as written; it must precede every other node
@@ -1952,7 +1959,7 @@ the same server-authoritative controls.
   let card = html! { <section>{rendered}</section> };
   assert!(card.starts_with("<section><div class=\"user-badge\">"));
 
-  // Bare and conditional attributes, `@if` and `@for`.
+  // Bare and conditional attributes, `@if`, `@for` and `@match`.
   let tasks = [("Write tests", true), ("<Ship>", false)];
   let list = html! {
       <ul>
@@ -1961,11 +1968,17 @@ the same server-authoritative controls.
           }
       </ul>
       @if tasks.is_empty() { <p>"Nothing to do"</p> }
+      @match tasks.iter().filter(|(_, done)| !done).count() {
+          0 => { <p>"All done"</p> }
+          1 => { <p>"One task left"</p> }
+          left => { <p>{left} " tasks left"</p> }
+      }
   };
   assert_eq!(
       list,
       "<ul><li><input type=\"checkbox\" disabled checked />Write tests</li>\
-       <li><input type=\"checkbox\" disabled />&lt;Ship&gt;</li></ul>"
+       <li><input type=\"checkbox\" disabled />&lt;Ship&gt;</li></ul>\
+       <p>One task left</p>"
   );
   ```
 

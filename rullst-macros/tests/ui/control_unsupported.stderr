@@ -1,5 +1,5 @@
-error: html! supports `@if`, `@else` and `@for`; for `match` and other control flow, interpolate a Rust expression that returns `Markup`, such as `{match state { State::A => html! { .. }, State::B => html! { .. } }}`
+error: html! supports `@if`, `@else`, `@for` and `@match`; for other control flow, interpolate a Rust expression that returns `Markup`, such as `{rows.iter().map(|row| html! { .. }).collect::<Markup>()}`
  --> tests/ui/control_unsupported.rs:7:13
   |
-7 |             @match count { 0 => { "none" } _ => { "some" } }
+7 |             @while count > 0 { "tick" }
   |             ^

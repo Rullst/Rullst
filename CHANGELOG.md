@@ -199,6 +199,13 @@ A prepared version section does not establish that its tag or crates exist.
   `Server::run`) installs is now present in release builds as well, so the
   monitor can attribute ORM operations to requests. Outside the development
   dashboard and monitored requests it records nothing.
+- `html!` gains `@match value { pattern if guard => { nodes } … }`: arms are
+  Rust patterns (with `|` alternatives and `name @` bindings) and optional
+  guards, bodies are `html!` nodes in braces with the usual escaping and
+  `Markup` rules, and the compiler checks exhaustiveness at your tokens. An
+  arm without braces is a compile error that shows the braced form. Other
+  `@` forms (`@while`, `@let`) remain compile errors, whose message now lists
+  `@match`.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

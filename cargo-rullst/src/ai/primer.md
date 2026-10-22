@@ -126,9 +126,10 @@ pub async fn show(Path(id): Path<i32>) -> impl IntoResponse {
   `checked?={done}` writes `checked` or nothing, and `title?={maybe}` omits
   the attribute for `None`. Never write `disabled="false"`: presence is the
   value. `name={flag}` writes "true"/"false", which suits `aria-*` only.
-- `@if cond { ... } @else { ... }`, `@if let Some(x) = opt { ... }` and
-  `@for item in items { ... }` take html! nodes in their braces; use a
-  `{match ...}` expression returning `Markup` for other control flow.
+- `@if cond { ... } @else { ... }`, `@if let Some(x) = opt { ... }`,
+  `@for item in items { ... }` and `@match value { Pat if guard => { ... } }`
+  take html! nodes in their braces; use a `{...}` expression returning
+  `Markup` only for other control flow.
 - A dynamic value for an `on*` or `hx-on*` attribute does not compile; keep
   event handlers static and pass data through `data-*` attributes.
 - `html!` returns `rullst::html::Markup`, which a handler can return directly

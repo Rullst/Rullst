@@ -89,10 +89,16 @@ fn html_macro_renders_bare_and_conditional_attributes_and_control_blocks() {
             }
         </ul>
         <button disabled?={items.is_empty()}>"Export"</button>
+        @match items.len() {
+            0 => { <p>"No items"</p> }
+            n if n > 9 => { <p>"Many items"</p> }
+            n => { <p>{n} " items"</p> }
+        }
     };
     assert_eq!(
         page,
-        "<p>Hi Ana</p><ul><li aria-current=\"true\">a</li><li>b</li></ul><button>Export</button>"
+        "<p>Hi Ana</p><ul><li aria-current=\"true\">a</li><li>b</li></ul>\
+         <button>Export</button><p>2 items</p>"
     );
 
     let user: Option<&str> = None;
@@ -104,5 +110,47 @@ fn html_macro_renders_bare_and_conditional_attributes_and_control_blocks() {
     assert_eq!(
         page,
         "<a href=\"/login\">Sign in</a><input name=\"q\" required autofocus value=\"&lt;x&gt;\" />"
+    );
+}
+
+#[test]
+#[cfg_attr(miri, ignore)]
+fn html_match_blocks_escape_bindings_and_keep_nested_markup() {
+    enum Status<'a> {
+        Draft,
+        Published { title: &'a str, views: u32 },
+        Archived(&'a str),
+    }
+    let badge = html! { <span class="badge">"new"</span> };
+    let render = |status: &Status| {
+        html! {
+            <li>
+                @match status {
+                    Status::Draft => { <em>"Draft"</em> }
+                    Status::Published { title, views } if *views == 0 => { {title} {&badge} }
+                    Status::Published { title, views } => { {title} " (" {views} ")" }
+                    Status::Archived(reason) => { <s title={reason}>"Archived"</s> }
+                }
+            </li>
+        }
+    };
+    assert_eq!(render(&Status::Draft), "<li><em>Draft</em></li>");
+    assert_eq!(
+        render(&Status::Published {
+            title: "<b>Hi</b>",
+            views: 0
+        }),
+        "<li>&lt;b&gt;Hi&lt;/b&gt;<span class=\"badge\">new</span></li>"
+    );
+    assert_eq!(
+        render(&Status::Published {
+            title: "A & B",
+            views: 7
+        }),
+        "<li>A &amp; B (7)</li>"
+    );
+    assert_eq!(
+        render(&Status::Archived("\"old\"")),
+        "<li><s title=\"&quot;old&quot;\">Archived</s></li>"
     );
 }
