@@ -299,7 +299,7 @@ of every application built with Rullst. Explore the
 and [quality scorecard](https://rullst.github.io/Rullst/book/quality-scorecard.html).
 
 <details>
-<summary><strong>🛡️ Open the verification dashboard (40 workflows)</strong></summary>
+<summary><strong>🛡️ Open the verification dashboard (37 workflows)</strong></summary>
 
 <p align="center">
   Badges are pinned to the <code>main</code> branch; they report the latest matching run, not a certification or deployment guarantee.
@@ -351,7 +351,7 @@ green main gates:
 Scheduled events use the repository's default branch, so scheduled and
 continuous development evidence refer to `main`; the frozen v12 line has its own branch.
 The branch-protection profiles and the exact scope of all
-40 workflow definitions in this source branch are documented in
+37 workflow definitions in this source branch are documented in
 [WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).
 
 > 📖 **[Read the detailed breakdown of all CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).**
