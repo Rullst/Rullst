@@ -347,50 +347,6 @@
 .fixture-result .code-box { margin-top: 0.35rem; color: #a7f3d0; }
 .fixture-result-actions { margin-top: 0.75rem; display: flex; gap: 0.75rem; align-items: center; }
 
-/* ---- Omni page --------------------------------------------------------------- */
-.omni-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 1.5rem;
-    align-items: start;
-}
-.platform-card {
-    background: #0d121f;
-    border: 1px solid #1e293b;
-    border-radius: 0.75rem;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-.platform-card-header { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
-.platform-card h3 { color: #fff; margin-top: 0.25rem; font-size: 1.2rem; }
-.platform-card p { color: #cbd5e1; font-size: 0.9rem; line-height: 1.5; }
-.platform-card .code-block { margin: 1rem 0; }
-.platform-badge {
-    display: inline-block;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 0.2rem 0.5rem;
-    border-radius: 0.25rem;
-    margin-bottom: 0.75rem;
-}
-.badge-desktop { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
-.badge-mobile { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-.badge-req { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-.platform-engine { font-size: 0.75rem; color: #10b981; font-weight: 600; }
-.platform-note {
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid #1e293b;
-    border-radius: 0.5rem;
-    padding: 1rem;
-    font-size: 0.85rem;
-    color: #94a3b8;
-}
-.platform-note strong { color: #38bdf8; }
-.platform-note strong.warn { color: #f59e0b; }
-.link-list { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
-.link-list .btn { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
-
 /* ---- Embedded file template (templates/article.html) ---------------------- */
 .article-page { max-width: 56rem; margin: 0 auto; padding: 3rem 1.5rem; }
 .article-intro { text-align: center; margin-bottom: 2.5rem; }
