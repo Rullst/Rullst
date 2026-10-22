@@ -23,13 +23,13 @@
 mod n_plus_one_tests;
 mod orm_layer;
 mod recorder;
-mod request_scope;
+pub(crate) mod request_scope;
 #[cfg(test)]
 mod span_filter_tests;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use orm_layer::{debug_layer, mark_installed};
+pub(crate) use orm_layer::{mark_installed, query_layer};
 use recorder::{record_repeated, record_request};
 
 use crate::queue::Queue;
@@ -211,16 +211,26 @@ async fn serve(State(endpoint): State<Endpoint>, request: Request) -> Response {
 }
 
 fn database(recorder: &Recorder, layer_installed: bool, spans_enabled: bool) -> Database {
+    match unavailable_reason(layer_installed, spans_enabled) {
+        Some(reason) => Database::Unavailable { reason },
+        None => Database::Observed(recorder.query_snapshot()),
+    }
+}
+
+/// Why ORM operations cannot be counted in this process, if they cannot:
+/// the subscriber lacks the query layer, or it filters `rullst_orm` spans.
+/// The production monitor reports the same reasons.
+pub(crate) fn orm_unavailable_reason() -> Option<&'static str> {
+    unavailable_reason(orm_layer::installed(), orm_spans_enabled())
+}
+
+fn unavailable_reason(layer_installed: bool, spans_enabled: bool) -> Option<&'static str> {
     if !layer_installed {
-        Database::Unavailable {
-            reason: "subscriber_not_installed",
-        }
+        Some("subscriber_not_installed")
     } else if !spans_enabled {
-        Database::Unavailable {
-            reason: "orm_spans_filtered",
-        }
+        Some("orm_spans_filtered")
     } else {
-        Database::Observed(recorder.query_snapshot())
+        None
     }
 }
 

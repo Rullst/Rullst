@@ -132,7 +132,7 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
         .with(tracing_subscriber::fmt::layer())
         .with(RedactPersonalDataLayer)
         .with(telemetry_layer)
-        .with(crate::server::dev_telemetry::debug_layer())
+        .with(crate::server::dev_telemetry::query_layer())
         .try_init()?;
     mark_development_query_layer();
 
@@ -155,7 +155,7 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
         .with(filter_layer)
         .with(tracing_subscriber::fmt::layer())
         .with(RedactPersonalDataLayer)
-        .with(crate::server::dev_telemetry::debug_layer())
+        .with(crate::server::dev_telemetry::query_layer())
         .try_init()
         .is_ok()
     {
@@ -165,13 +165,13 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Debug builds add a passive layer that counts ORM operation spans for the
-/// development dashboard; it records nothing unless the development telemetry
-/// endpoint is mounted (debug, Development and `cargo rullst dev`/`dash`).
+/// The subscriber includes a passive layer that counts ORM operation spans
+/// for the development dashboard and the production monitor; it records
+/// nothing unless the development telemetry endpoint is mounted (debug,
+/// Development and `cargo rullst dev`/`dash`) or a request runs under the
+/// monitor's recorder ([`crate::monitor`]).
 fn mark_development_query_layer() {
-    if cfg!(debug_assertions) {
-        crate::server::dev_telemetry::mark_installed();
-    }
+    crate::server::dev_telemetry::mark_installed();
 }
 
 #[cfg(test)]
