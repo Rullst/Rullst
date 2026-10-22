@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792654450681,
+  "lastUpdate": 1792663324866,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -16757,6 +16757,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 560,
             "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3672ffef75a78ecf4109fa5da2ff4c801206b297",
+          "message": "Merge pull request #521 from Rullst/feat/v13-orm-alpha3\n\nfeat(orm)!: dirty-tracking save(), filterable db_default columns and empty default features",
+          "timestamp": "2026-10-22T06:35:32-03:00",
+          "tree_id": "fc5038663c43ae981f388e615719c0ca4bd9ea0d",
+          "url": "https://github.com/Rullst/Rullst/commit/3672ffef75a78ecf4109fa5da2ff4c801206b297"
+        },
+        "date": 1792663323958,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5540,
+            "range": "± 57",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 567,
+            "range": "± 3",
             "unit": "ns/iter"
           },
           {
