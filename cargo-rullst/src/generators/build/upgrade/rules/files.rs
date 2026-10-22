@@ -85,6 +85,28 @@ fn dependencies(document: &toml::Value) -> Vec<(String, String, toml::Value)> {
         .collect()
 }
 
+/// A dependency that keeps its default features and selects no SQLx driver:
+/// `rullst` and `rullst-orm` defaults included one up to 13.0.0-alpha.2.
+fn relies_on_default_driver(declaration: &toml::Value) -> bool {
+    let defaults = declaration
+        .get("default-features")
+        .or_else(|| declaration.get("default_features"))
+        .and_then(toml::Value::as_bool)
+        .unwrap_or(true);
+    let selects_driver = declaration
+        .get("features")
+        .and_then(toml::Value::as_array)
+        .is_some_and(|features| {
+            features.iter().filter_map(toml::Value::as_str).any(|feature| {
+                matches!(
+                    feature,
+                    "drivers-all" | "strict-sqlite" | "strict-postgres" | "strict-mysql"
+                )
+            })
+        });
+    defaults && !selects_driver
+}
+
 /// The lowest major and minor a declaration's requirement admits.
 fn minimum(declaration: &toml::Value) -> Option<(u64, u64)> {
     let requirement = declaration
@@ -185,19 +207,17 @@ pub(super) fn manifest_findings(
                     plan.path.clone(),
                     dependency_line(&plan.original, &key),
                 )),
-                "rullst-orm" if !inherited => {
-                    let defaults = declaration
-                        .get("default-features")
-                        .or_else(|| declaration.get("default_features"))
-                        .and_then(toml::Value::as_bool)
-                        .unwrap_or(true);
-                    if defaults {
-                        findings.push(finding(
-                            &ORM_DEFAULT_FEATURES,
-                            plan.path.clone(),
-                            dependency_line(&plan.original, &key),
-                        ));
-                    }
+                "rullst" | "rullst-orm" if !inherited && relies_on_default_driver(&declaration) => {
+                    let rule = if package == "rullst" {
+                        &RULLST_DEFAULT_FEATURES
+                    } else {
+                        &ORM_DEFAULT_FEATURES
+                    };
+                    findings.push(finding(
+                        rule,
+                        plan.path.clone(),
+                        dependency_line(&plan.original, &key),
+                    ));
                 }
                 "utoipa" => {
                     facts.utoipa_below_6 |=

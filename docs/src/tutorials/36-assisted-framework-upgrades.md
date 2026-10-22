@@ -405,9 +405,9 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (95 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (56 rows).
+  of inputs that previously failed) (57 rows).
 
-The catalog has 105 rules. A row can map to several rules and a rule to
+The catalog has 106 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -568,7 +568,8 @@ the rule together.
 | Generated container runtime | (c) none | — | Generator output for new projects |
 | Interactive `new --api` | (c) none | — | CLI |
 | CLI `new` wizard | (c) none | — | CLI |
-| Generated `rullst-orm` dependency | (b) review | `V13-ORM-DEFAULT-FEATURES` |  |
+| Minimal default features | (b) review | `V13-RULLST-DEFAULT-FEATURES`, `V13-ORM-DEFAULT-FEATURES` | Reports `rullst` and `rullst-orm` dependencies that keep their defaults and select no driver |
+| Generated `rullst-orm` dependency | (c) none | — | Generator output; such a dependency is reported under Minimal default features |
 | ORM adapter aggregate features | (a) must-change | `V13-POLYGLOT-FEATURE` | Dependency `features` and `[features]` entries such as `"rullst/orm-polyglot"` |
 | Omni desktop runner | (b) review | `V13-OMNI-RUNNER` |  |
 | Omni managed backend | (b) review | `V13-OMNI-BACKEND` |  |

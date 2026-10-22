@@ -64,7 +64,7 @@ name = "app"
 
 [dependencies]
 rullst = { version = "12.1.2", default-features = false }
-rullst-orm = { version = "12.1.2", features = ["strict-sqlite"] }
+rullst-orm = { version = "12.1.2", features = ["auth"] }
 utoipa = "5.3"
 
 [dev-dependencies.runner]
@@ -84,6 +84,32 @@ version = "12"
         ]
     );
     assert!(facts.utoipa_below_6);
+
+    // A `rullst` dependency on the defaults, which no longer select a driver.
+    for (manifest, line) in [
+        ("[dependencies]\nrullst = \"12.1.2\"\n", 2),
+        ("[dependencies]\nrullst = { version = \"13\", features = [\"auth\"] }\n", 2),
+        ("[package]\nname = \"app\"\n[dependencies.rullst]\nversion = \"13\"\ndefault_features = true\n", 3),
+    ] {
+        let (findings, _) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), manifest)]);
+        let found: Vec<_> = findings
+            .iter()
+            .map(|finding| (finding.rule.code, finding.line))
+            .collect();
+        assert_eq!(found, vec![("V13-RULLST-DEFAULT-FEATURES", line)], "{manifest}");
+    }
+    // Defaults with a selected driver, or no defaults, need no change.
+    for manifest in [
+        "[dependencies]\nrullst = { version = \"13\", features = [\"strict-sqlite\"] }\n",
+        "[dependencies]\nrullst-orm = { version = \"13\", features = [\"drivers-all\"] }\n",
+        "[dependencies]\nrullst-orm = { version = \"13\", features = [\"strict-postgres\"] }\n",
+        "[dependencies]\nrullst-orm = { version = \"13\", features = [\"strict-mysql\"] }\n",
+        "[dependencies]\nrullst = { version = \"13\", default-features = false }\n",
+        "[dependencies]\nrullst = { workspace = true }\n",
+    ] {
+        let (findings, _) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), manifest)]);
+        assert!(findings.is_empty(), "{manifest}: {findings:?}");
+    }
 
     let current = r#"[dependencies]
 rullst-orm = { version = "13.0.0-alpha.1", default-features = false, features = ["strict-sqlite"] }
@@ -140,7 +166,7 @@ edge = ["orm?/polyglot"]
     // Each package has its own name for the removed feature; the individual
     // adapters and unrelated packages are fine.
     let current = r#"[dependencies]
-rullst = { version = "13.0.0-alpha.1", features = ["polyglot", "orm-mongodb"] }
+rullst = { version = "13.0.0-alpha.1", default-features = false, features = ["polyglot", "orm-mongodb"] }
 rullst-orm = { version = "13.0.0-alpha.1", default-features = false, features = ["orm-polyglot", "turso"] }
 plain = "1"
 
