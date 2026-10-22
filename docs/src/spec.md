@@ -785,6 +785,13 @@ must match its confirmation.
   redirects to `/login?reset=done`, which shows a notice.
 - A completed change or reset emails a "password changed" notice. Deleting an
   account leaves its reset token row, which no longer redeems.
+- Account emails are written in the language of the request that caused them:
+  the `rullst::i18n::Locale` that `LOCALES.layer()` negotiated when the router
+  has one, else the `Accept-Language` header, each matched by language to the
+  `MailLocale` set (English, Brazilian Portuguese, Spanish), else the editable
+  `DEFAULT_MAIL_LOCALE` (English). The product name in their subject and
+  heading is `APP_NAME` (process environment, then `.env`) or the editable
+  `APPLICATION_NAME` constant, whose generated value is the package name.
 
 ### v13 active-session management (source admitted, prerelease)
 

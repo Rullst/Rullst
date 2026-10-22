@@ -197,6 +197,13 @@ fn account_starters_list_the_origin_of_password_reset_links() {
                 listed,
                 "{blueprint} {filename}"
             );
+            assert_eq!(
+                generated.contains(
+                    "# Product name in the subject and heading of account emails; unset, the\n# package name is used.\nAPP_NAME=\n"
+                ),
+                listed,
+                "{blueprint} {filename}"
+            );
         }
     }
 }

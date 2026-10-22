@@ -236,6 +236,9 @@ RULLST_PUBLIC_ORIGIN=
 # https://app.example.com. Unset, development links use http://localhost:3000
 # and staging/production send no reset link.
 RULLST_PUBLIC_ORIGIN=
+# Product name in the subject and heading of account emails; unset, the
+# package name is used.
+APP_NAME=
 "#;
         env_content.push_str(origin_template);
         env_example_content.push_str(origin_template);

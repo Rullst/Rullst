@@ -29,6 +29,13 @@ A prepared version section does not establish that its tag or crates exist.
   `https://example.invalid/rullst-connect/mock`, which a browser could not open.
   The local browser flow, including the managed `axum-session` transaction,
   now works without the `mock_idp` fixture.
+- New SaaS, LMS and `cargo rullst auth` projects send account emails (password
+  reset and "password changed") in the request's language: the
+  `rullst::i18n` locale when the application has `LOCALES.layer()`, else the
+  browser's `Accept-Language` matched to English, Brazilian Portuguese or
+  Spanish, else the editable `DEFAULT_MAIL_LOCALE`. Before, they were always in
+  English. The product name they show is the new `APP_NAME` setting (listed in
+  the generated `.env`), falling back to the `APPLICATION_NAME` constant.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 
