@@ -95,3 +95,7 @@ rullst-core/src/storage/local_paths.rs:27:20: replace match guard matches!( erro
 rullst-core/src/telemetry/distributed/processor.rs:25:9: replace <impl SpanProcessor for MinimizedProcessor>::on_start with ()
 rullst-core/src/testing/html_normalize.rs:340:18: replace < with <= in mask_csrf_headers
 rullst-core/src/testing/snapshot.rs:240:89: replace + with * in line_diff
+
+# rullst-nexus (alpha.3 campaign, hosted all-feature runs with the PostgreSQL
+# SQL matrix): see WORKFLOWS.md "Accepted equivalent mutants".
+rullst-nexus/src/nexus/crud/form.rs:194:32: replace match guard matches!(f.kind, FieldKind::Password) with false in form_html
