@@ -577,8 +577,12 @@ before 13.0.0-alpha.1), the local whole-crate campaign that followed it
 (`rullst-iot`, `rullst-privacy`, `rullst-labs`, `rullst-supervision`), the
 security campaign (targeted runs of every `rullst-security` file), the
 `rullst-auth` campaign (targeted runs of every file outside the PostgreSQL
-adapters), the first part of the `rullst-core` campaign (its security
-and correctness files and about half of the rest, with the Redis service),
+adapters), the `rullst-core` campaign (targeted runs of its security and
+correctness files and, before 13.0.0-alpha.3, of every remaining file the
+first pass measured, with the Redis service), the `rullst-nexus` campaign
+(targeted runs of every file; the all-feature build selects the PostgreSQL
+pool, so the PostgreSQL SQL matrix test reaches the database paths wherever
+Docker is available),
 the `rullst-capital` campaign (targeted runs of every file; mutants that
 only a live Stripe API response can reach are left to provider sandbox
 testing), the `rullst-messaging` campaign (targeted runs of every file,
@@ -591,8 +595,11 @@ link-security, tracking, egress and guardrail files of `rullst-connect`,
 `rullst-mail` and `rullst-ai`; the peer-address, status and content-type checks
 of `EgressFetcher::fetch_bytes` run only after a connection to a public HTTPS
 origin, which the egress policy refuses to loopback test servers, and are left
-to live integration testing) gave every missed mutant in their files a test,
-except these.
+to live integration testing; in `rullst-core`, the `pool_ready` guard of
+`run_artisan_command` needs an already initialized ORM pool, which the
+all-feature build can only open against a PostgreSQL server that the core
+runs do not have) gave every missed mutant in their files a test, except
+these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
