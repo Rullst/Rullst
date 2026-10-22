@@ -65,7 +65,16 @@ async fn forwards_normal_requests_and_reports_missing_reload_library() {
 
 #[tokio::test]
 async fn reload_endpoint_rejects_missing_and_incorrect_tokens() {
-    for token in [None, Some("incorrect-token")] {
+    // The same length as the real token, one character different, and the
+    // real token with a suffix.
+    let same_length = format!("{}0", &TEST_RELOAD_TOKEN[..63]);
+    let extended = format!("{TEST_RELOAD_TOKEN}0");
+    for token in [
+        None,
+        Some("incorrect-token"),
+        Some(same_length.as_str()),
+        Some(extended.as_str()),
+    ] {
         let mut service = service(axum::Router::new());
         let mut request = Request::builder()
             .method("POST")
