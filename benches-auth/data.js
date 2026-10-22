@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792672686545,
+  "lastUpdate": 1792679372610,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -17357,6 +17357,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3877,
             "range": "± 260",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1da93205a5ca05d34a1c13c6407da1f5cad79a89",
+          "message": "Merge pull request #524 from Rullst/feat/v13-studio-monitor\n\nfeat(core): read-only production monitoring endpoint (Studio monitor phase 1)",
+          "timestamp": "2026-10-22T11:03:12-03:00",
+          "tree_id": "7283514a8bec773c0160e7129210c9b1ac9d6c8e",
+          "url": "https://github.com/Rullst/Rullst/commit/1da93205a5ca05d34a1c13c6407da1f5cad79a89"
+        },
+        "date": 1792679371994,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 971,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 780,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1767,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4273,
+            "range": "± 35",
             "unit": "ns/iter"
           }
         ]
