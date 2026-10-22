@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792705286699,
+  "lastUpdate": 1792708975203,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -17260,6 +17260,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f70277b34c59e435c190f70b63a4db1332ed46e",
+          "message": "Merge pull request #531 from Rullst/fix/v13-alpha3-limitations-a\n\nfix(v13)!: typed Orm::transaction errors, Nexus time zones, multipart sweep, zoned deferrable tasks, Docker cache",
+          "timestamp": "2026-10-22T19:08:16-03:00",
+          "tree_id": "75c9eddf69d6ac6be10402e38f0b862dd4aecdfd",
+          "url": "https://github.com/Rullst/Rullst/commit/0f70277b34c59e435c190f70b63a4db1332ed46e"
+        },
+        "date": 1792708974085,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4120,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 435,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 13,
             "range": "± 0",
             "unit": "ns/iter"
           }
