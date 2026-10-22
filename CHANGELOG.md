@@ -234,6 +234,15 @@ A prepared version section does not establish that its tag or crates exist.
   touched; an unreadable directory or a file that cannot be removed is a
   `rullst::uploads` warning, and the upload continues. alpha.2 never removed
   them.
+- New `Scheduler::deferrable_task_in_tz(expression, zone, deferral, handler)`
+  (feature `scheduler-tz`), the time-zone form of `deferrable_task`: its
+  ticks follow `task_in_tz` and its `TimeWindow`s are wall times of the same
+  IANA zone, so a 22:00–06:00 window stays local across daylight-saving
+  changes. A window boundary that a gap skips moves to the end of the gap,
+  one that a fold repeats is its first occurrence, and a window that a gap
+  skips entirely does not open that day. A window that sets
+  `with_utc_offset_minutes` is rejected with
+  `SchedulerError::InvalidConfiguration`. `deferrable_task` is unchanged.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

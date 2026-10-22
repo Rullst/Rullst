@@ -2083,7 +2083,15 @@ the same server-authoritative controls.
   time. Zone rules come from the system zoneinfo database when it has the
   zone, otherwise from the database bundled with the `jiff` dependency. Fixed
   instants in tests cover São Paulo, New York's gap and fold, and UTC
-  equivalence with `Scheduler::task`. `deferrable_task` has no time-zone form.
+  equivalence with `Scheduler::task`. The 13.0.0-alpha.3
+  `Scheduler::deferrable_task_in_tz(expression, zone, deferral, handler)`
+  matches the ticks as `task_in_tz` does and reads the deferral's windows as
+  wall times of the same zone, with the same rule for their boundaries (a
+  skipped boundary moves to the end of the gap, a repeated one is its first
+  occurrence; a window a gap skips entirely does not open that day);
+  `max_delay` stays elapsed time, and a window that sets a UTC offset is
+  rejected with `InvalidConfiguration`. Fixed instants around New York's
+  spring and autumn changes cover it.
 * SQLite claims pending jobs in order of their due time, and an immediately
   dispatched job is due at its enqueue time. A scheduled job, or one handed
   back for lack of a handler, that became due earlier is therefore claimed

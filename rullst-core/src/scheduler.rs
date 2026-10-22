@@ -8,7 +8,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
-use time_zone::TaskSchedule;
+use time_zone::{TaskDeferral, TaskSchedule};
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
@@ -100,7 +100,7 @@ pub struct ScheduledTask {
     label: String,
     schedule: TaskSchedule,
     handler: ScheduledHandler,
-    deferral: Option<ScheduleDeferral>,
+    deferral: Option<TaskDeferral>,
 }
 
 /// A declarative scheduler for recurring asynchronous jobs.
@@ -181,6 +181,9 @@ impl Scheduler {
     ///
     /// Ticks that pass while a deferred run waits or executes are skipped, as
     /// for a slow run. Each placement is logged at debug level with its reason.
+    /// The cron fields are UTC and each window keeps its fixed UTC offset; with
+    /// the `scheduler-tz` feature, `Scheduler::deferrable_task_in_tz` reads
+    /// both as wall times of a named time zone, daylight saving included.
     ///
     /// # Errors
     /// Returns [`SchedulerError::InvalidCron`] like [`Self::task`].
@@ -196,7 +199,7 @@ impl Scheduler {
     {
         let mut scheduler = self.task(cron_expr, handler)?;
         if let Some(task) = scheduler.tasks.last_mut() {
-            task.deferral = Some(deferral);
+            task.deferral = Some(TaskDeferral::Utc(deferral));
         }
         Ok(scheduler)
     }

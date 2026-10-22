@@ -106,6 +106,8 @@
   "America/Sao_Paulo", handler)` matches the fields against that IANA zone's
   wall clock; a time skipped by a daylight-saving gap runs when the gap ends
   and a repeated time runs once, at its first occurrence.
+  `Scheduler::deferrable_task_in_tz` applies the same rule to a deferrable
+  task's ticks and to its `TimeWindow`s, which are wall times of the zone.
 - **Bounded Background Errors:** `WorkerHandle` and `SchedulerHandle` buffer at
   most 256 undrained errors; overflow is dropped, counted by `dropped_errors()`
   and logged as a `tracing` warning. Drain `next_error` to observe every failure.
