@@ -95,61 +95,63 @@ fn minimum(declaration: &toml::Value) -> Option<(u64, u64)> {
     Some((comparator.major, comparator.minor.unwrap_or(0)))
 }
 
-/// The aggregate feature v13 removed from a Rullst package
-/// (`V13-POLYGLOT-FEATURE`).
-fn removed_aggregate_feature(package: &str) -> Option<&'static str> {
+/// The features v13 removed from a Rullst package, with their rule:
+/// `V13-POLYGLOT-FEATURE` and `V13-OFFLINE-SYNC-REMOVED`.
+fn removed_features(package: &str) -> &'static [(&'static str, &'static Rule)] {
     match package {
-        "rullst" => Some("orm-polyglot"),
-        "rullst-orm" => Some("polyglot"),
-        _ => None,
+        "rullst" => &[
+            ("orm-polyglot", &POLYGLOT_FEATURE),
+            ("offline-sync", &OFFLINE_SYNC_REMOVED),
+        ],
+        "rullst-core" => &[("offline-sync", &OFFLINE_SYNC_REMOVED)],
+        "rullst-orm" => &[("polyglot", &POLYGLOT_FEATURE)],
+        _ => &[],
     }
 }
 
-/// Whether a dependency declaration enables its package's removed aggregate
-/// feature.
-fn enables_removed_aggregate(package: &str, declaration: &toml::Value) -> bool {
-    let Some(removed) = removed_aggregate_feature(package) else {
-        return false;
-    };
-    declaration
+/// The rule of the first removed feature a dependency declaration enables.
+fn enabled_removed_feature(package: &str, declaration: &toml::Value) -> Option<&'static Rule> {
+    let features = declaration
         .get("features")
-        .and_then(toml::Value::as_array)
-        .is_some_and(|features| {
+        .and_then(toml::Value::as_array)?;
+    removed_features(package)
+        .iter()
+        .find(|(removed, _)| {
             features
                 .iter()
                 .any(|feature| feature.as_str() == Some(removed))
         })
+        .map(|(_, rule)| *rule)
 }
 
-/// The line of the first `[features]` entry that enables a removed aggregate
+/// The line and rule of the first `[features]` entry that enables a removed
 /// feature through a dependency key, such as `"rullst/orm-polyglot"`.
-fn removed_aggregate_reference(
+fn removed_feature_reference(
     document: &toml::Value,
     text: &str,
     packages: &BTreeMap<String, String>,
-) -> Option<usize> {
-    let reference = document
+) -> Option<(usize, &'static Rule)> {
+    let (reference, rule) = document
         .get("features")
         .and_then(toml::Value::as_table)?
         .values()
         .filter_map(toml::Value::as_array)
         .flatten()
         .filter_map(toml::Value::as_str)
-        .find(|value| {
-            value.split_once('/').is_some_and(|(key, feature)| {
-                let key = key.strip_suffix('?').unwrap_or(key);
-                packages
-                    .get(key)
-                    .and_then(|package| removed_aggregate_feature(package))
-                    == Some(feature)
-            })
+        .find_map(|value| {
+            let (key, feature) = value.split_once('/')?;
+            let key = key.strip_suffix('?').unwrap_or(key);
+            let package = packages.get(key)?;
+            removed_features(package)
+                .iter()
+                .find(|(removed, _)| *removed == feature)
+                .map(|(_, rule)| (value, *rule))
         })?;
-    Some(
-        line_of(text, |line| {
-            !line.starts_with('#') && line.contains(reference)
-        })
-        .unwrap_or(1),
-    )
+    let line = line_of(text, |line| {
+        !line.starts_with('#') && line.contains(reference)
+    })
+    .unwrap_or(1);
+    Some((line, rule))
 }
 
 /// Manifest findings and the workspace facts that Rust rules depend on.
@@ -168,9 +170,9 @@ pub(super) fn manifest_findings(
             .map(|(key, package, _)| (key.clone(), package.clone()))
             .collect();
         for (key, package, declaration) in declared {
-            if enables_removed_aggregate(&package, &declaration) {
+            if let Some(rule) = enabled_removed_feature(&package, &declaration) {
                 findings.push(finding(
-                    &POLYGLOT_FEATURE,
+                    rule,
                     plan.path.clone(),
                     dependency_line(&plan.original, &key),
                 ));
@@ -210,8 +212,9 @@ pub(super) fn manifest_findings(
                 _ => {}
             }
         }
-        if let Some(line) = removed_aggregate_reference(&document, &plan.original, &packages) {
-            findings.push(finding(&POLYGLOT_FEATURE, plan.path.clone(), line));
+        if let Some((line, rule)) = removed_feature_reference(&document, &plan.original, &packages)
+        {
+            findings.push(finding(rule, plan.path.clone(), line));
         }
     }
     (findings, facts)
@@ -323,15 +326,12 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
     {
         push(&VPS_PROXY, "docker-compose.prod.yml", 1);
     }
-    if let Some(text) = read_small(&root.join("omni-app/src/lib.rs")) {
-        if !text.contains("Launching Omni interface")
-            && let Some(line) = line_of(&text, |line| line.contains("tauri::Builder"))
-        {
-            push(&OMNI_RUNNER, "omni-app/src/lib.rs", line);
-        }
-        if let Some(line) = line_of(&text, |line| line.contains("\"../Cargo.toml\"")) {
-            push(&OMNI_BACKEND, "omni-app/src/lib.rs", line);
-        }
+    // The shell `make:omni` generated: its Tauri configuration or runtime.
+    if let Some(shell) = ["omni-app/tauri.conf.json", "omni-app/src/lib.rs"]
+        .into_iter()
+        .find(|path| read_small(&root.join(path)).is_some())
+    {
+        push(&OMNI_REMOVED, shell, 1);
     }
     if let Some(text) = read_small(&root.join("rullst-client.ts"))
         && !text.contains("X-CSRF-Token")
@@ -400,10 +400,10 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
     for script in scripts {
         if let Some(text) = read_small(&root.join(&script))
             && let Some(line) = line_of(&text, |line| {
-                line.contains("omni android") && line.contains("--release")
+                line.contains("rullst omni") || line.contains("make:omni")
             })
         {
-            push(&ANDROID_RELEASE, &script, line);
+            push(&OMNI_REMOVED, &script, line);
         }
     }
     if kubernetes
