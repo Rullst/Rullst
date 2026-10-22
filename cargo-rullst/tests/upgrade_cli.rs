@@ -28,7 +28,7 @@ impl Fixture {
         std::fs::write(
             app.join("Cargo.toml"),
             format!(
-                "[package]\nname = \"upgrade-fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = {{ version = \"{dependency_requirement}\", path = \"../framework\" }}\n"
+                "[package]\nname = \"upgrade-fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = {{ version = \"{dependency_requirement}\", path = \"../framework\", default-features = false }}\n"
             ),
         )
         .expect("app manifest");
