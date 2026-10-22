@@ -156,8 +156,10 @@ pub async fn required_audit_round_trip(pool: &RullstPool, driver: &str) {
             "{driver}: {} outside {before}..={after}",
             audit.occurred_at_ms
         );
+        // A batch records its count, not its keys.
+        let expected_key = (audit.action == "update").then_some(key.as_str());
         if audit.action != "create" {
-            assert_eq!(audit.record_key.as_deref(), Some(key.as_str()), "{driver}");
+            assert_eq!(audit.record_key.as_deref(), expected_key, "{driver}");
         }
     }
 
