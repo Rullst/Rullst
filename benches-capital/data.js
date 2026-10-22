@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792705504662,
+  "lastUpdate": 1792709175320,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -13168,6 +13168,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f70277b34c59e435c190f70b63a4db1332ed46e",
+          "message": "Merge pull request #531 from Rullst/fix/v13-alpha3-limitations-a\n\nfix(v13)!: typed Orm::transaction errors, Nexus time zones, multipart sweep, zoned deferrable tasks, Docker cache",
+          "timestamp": "2026-10-22T19:08:16-03:00",
+          "tree_id": "75c9eddf69d6ac6be10402e38f0b862dd4aecdfd",
+          "url": "https://github.com/Rullst/Rullst/commit/0f70277b34c59e435c190f70b63a4db1332ed46e"
+        },
+        "date": 1792709174251,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
