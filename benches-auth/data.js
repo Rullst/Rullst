@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792663121657,
+  "lastUpdate": 1792664825928,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -17261,6 +17261,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4552,
             "range": "± 83",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d92663b6defd93ffbc0eeb7b24a85c7148422ff8",
+          "message": "Merge pull request #522 from Rullst/feat/v13-oauth-login\n\nfeat(connect): login challenge store and make:oauth google",
+          "timestamp": "2026-10-22T07:09:06-03:00",
+          "tree_id": "0b2e6efefceea845d126a41b8e013ff65d4cd889",
+          "url": "https://github.com/Rullst/Rullst/commit/d92663b6defd93ffbc0eeb7b24a85c7148422ff8"
+        },
+        "date": 1792664824904,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1018,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 815,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1886,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4640,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
