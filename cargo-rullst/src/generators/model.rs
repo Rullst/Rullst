@@ -179,13 +179,17 @@ pub(crate) fn render_model(
 ) -> String {
     match backend {
         ProjectOrmBackend::Sqlx => format!(
-            r#"use rullst::db::{{FromRow, Orm}};
+            r#"use rullst::db::{{FromRow, Orm, RowSnapshot}};
 
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "{plural_name}")]
 pub struct {pascal_name} {{
     pub id: i32,
     // Add your fields here (e.g. pub name: String)
+    // Remembers the loaded values, so `save()` writes only the columns this
+    // record changed. Build new records with `snapshot: RowSnapshot::default()`.
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }}
 "#
         ),
@@ -249,11 +253,12 @@ mod tests {
             .lines()
             .filter(|line| line.starts_with("use "))
             .collect();
-        assert_eq!(imports, ["use rullst::db::{FromRow, Orm};"]);
+        assert_eq!(imports, ["use rullst::db::{FromRow, Orm, RowSnapshot};"]);
         assert!(model.contains("#[derive(Debug, Clone, FromRow, Orm)]"));
         assert!(model.contains("#[orm(table = \"blog_posts\")]"));
         assert!(model.contains("pub struct BlogPost {\n    pub id: i32,"));
-        assert!(!model.contains("RullstModel") && !model.contains("sqlx"));
+        assert!(model.contains("    #[sqlx(skip)]\n    pub snapshot: RowSnapshot,\n}"));
+        assert!(!model.contains("RullstModel") && !model.contains("rullst_orm"));
 
         let turso = render_model(ProjectOrmBackend::Turso, "blog_posts", "BlogPost");
         assert!(!turso.contains("use "), "{turso}");

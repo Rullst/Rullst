@@ -42,7 +42,7 @@ fn auth_starters_admit_their_own_administrators_to_nexus() {
         ));
         assert!(!main.contains("local_development_or_basic_from_env"));
         let user = file(&manifest, "src/models/user.rs");
-        assert!(user.contains("    #[orm(skip)]\n    pub is_admin: bool,\n"));
+        assert!(user.contains("    #[orm(db_default)]\n    pub is_admin: bool,\n"));
         assert!(user.contains("FieldMeta { name: \"is_admin\", label: \"Nexus administrator\", kind: FieldKind::Boolean, hidden: false, readonly: false },"));
         assert!(
             manifest

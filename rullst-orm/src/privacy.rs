@@ -22,6 +22,7 @@ const KEYRING_ENV: &str = "RULLST_ENCRYPTION_KEYRING";
 mod secret_serde;
 #[doc(hidden)]
 pub use secret_serde::with_redacted_secrets;
+pub(crate) use secret_serde::with_secret_fingerprints;
 pub use secret_serde::{deserialize_optional_plaintext_secret, deserialize_plaintext_secret};
 mod settings;
 mod sqlx_codec;

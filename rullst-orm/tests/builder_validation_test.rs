@@ -94,6 +94,32 @@ struct SecretCustomer {
     tax_id: rullst_orm::SecretString,
 }
 
+/// Columns the database manages: read and filtered, never written by the ORM.
+#[derive(Clone, Debug, rullst_orm::Orm, rullst_orm::FromRow)]
+#[orm(table = "managed_accounts")]
+struct ManagedAccount {
+    id: i32,
+    #[orm(db_default)]
+    is_admin: bool,
+    #[orm(db_default)]
+    session_epoch: i64,
+}
+
+#[test]
+fn database_managed_columns_stay_filterable() {
+    let query = ManagedAccount::query()
+        .where_eq("is_admin", true)
+        .where_eq("managed_accounts.session_epoch", 0_i64)
+        .order_by("session_epoch")
+        .group_by("is_admin")
+        .select(&["id", "is_admin", "session_epoch"]);
+    assert!(query.errors.is_empty(), "{:?}", query.errors);
+    assert_eq!(
+        query.to_sql(),
+        "SELECT id, is_admin, session_epoch FROM managed_accounts WHERE ((is_admin = ?) AND (managed_accounts.session_epoch = ?)) GROUP BY is_admin ORDER BY session_epoch ASC LIMIT 1000"
+    );
+}
+
 #[derive(Clone, Debug, Default, rullst_orm::Orm, rullst_orm::FromRow)]
 #[orm(table = "cached_records")]
 struct CachedRecord {
@@ -135,18 +161,27 @@ fn secret_string_columns_cannot_be_filtered_ordered_or_grouped() {
         "{:?}",
         mixed_case.errors
     );
-    for query in [
-        CachedRecord::query().where_eq("SESSION_CACHE", "x"),
-        CachedRecord::query().select(&["cached_records.Session_Cache"]),
-        CachedRecord::query().order_by("draft"),
+    for (query, column) in [
+        (
+            CachedRecord::query().where_eq("SESSION_CACHE", "x"),
+            "SESSION_CACHE",
+        ),
+        (
+            CachedRecord::query().select(&["cached_records.Session_Cache"]),
+            "Session_Cache",
+        ),
+        (CachedRecord::query().order_by("draft"), "draft"),
     ] {
-        assert!(
+        let expected = format!(
+            "Validation error: column `{column}` is declared `#[orm(skip)]` / `#[sqlx(skip)]`, so it is not a database column for the ORM and must not be used in WHERE / ORDER BY / GROUP BY / SELECT; declare a column that the database manages `#[orm(db_default)]` to read and filter it without writing it"
+        );
+        assert_eq!(
             query
                 .errors
                 .iter()
-                .any(|error| error.to_string().contains("does not exist in the table")),
-            "{:?}",
-            query.errors
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            [expected],
         );
     }
     // The SQLx codec decrypts a selected column while decoding the model.

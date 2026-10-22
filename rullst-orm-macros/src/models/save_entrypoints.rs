@@ -2,32 +2,22 @@ use crate::parser::ParsedModel;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-/// Rustdoc of the generated `save()`: a full-row write, and what to use for
-/// concurrent edits and counters instead.
-const SAVE_DOC: &str = "Inserts this model when `id` is `0`, otherwise updates its row.
-
-An update writes every persisted column of this handle, so the last writer wins: \
-a change made to the row since this handle was loaded is overwritten, even in a \
-column this code never touched. To change some fields of a row that other requests \
-may edit at the same time, use `update_partial()`, which merges the selected fields \
-into the freshly read row (locked with `FOR UPDATE` on PostgreSQL and MySQL/MariaDB). \
-For a counter, run one atomic statement such as \
-`Orm::raw(\"UPDATE users SET xp = xp + ? WHERE id = ?\")` \
-(`$1`, `$2` on PostgreSQL); raw SQL skips the model's tenant scope, policy, hooks, \
-audit and cache invalidation.
-
-An insert also sends every field, so database column defaults do not apply, \
-except to fields marked `#[orm(db_default)]`, which inserts and updates never write.";
-
 pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
     let name = &parsed.name;
     let table_name = &parsed.table_name;
     let tenant_prepare = tenant_prepare(parsed);
     let (policy_create, policy_update) = policy_checks(parsed);
+    let save_doc = if parsed.snapshot_field.is_some() {
+        super::save_docs::TRACKED_SAVE_DOC
+    } else {
+        super::save_docs::SAVE_DOC
+    };
+    let clean_return = super::dirty_tracking::clean_save_return(parsed);
+    let (keep_snapshot, restore_snapshot) = super::dirty_tracking::snapshot_guard(parsed);
 
     if !parsed.auditable {
         return quote! {
-            #[doc = #SAVE_DOC]
+            #[doc = #save_doc]
             #[rullst_orm::_tracing::instrument(
                 name = "rullst.orm.query",
                 target = "rullst_orm",
@@ -36,6 +26,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
             )]
             pub async fn save(&mut self) -> Result<(), rullst_orm::Error> {
                 rullst_orm::__transaction_access::ensure_allowed()?;
+                #clean_return
                 let scoped_transaction = rullst_orm::CURRENT_TX
                     .try_with(|transaction| transaction.clone())
                     .ok();
@@ -47,6 +38,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                 }
 
                 let original_id = self.id;
+                #keep_snapshot
                 let mut transaction = rullst_orm::Orm::begin_transaction().await?;
                 let post_commit = rullst_orm::post_commit::PostCommitScope::new();
                 // The whole transaction rolls back on error, so no savepoint.
@@ -55,6 +47,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                     .await;
                 if let Err(save_error) = save_result {
                     self.id = original_id;
+                    #restore_snapshot
                     return match transaction.rollback().await {
                         Ok(()) => Err(save_error),
                         Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
@@ -68,6 +61,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                 // retry inserts instead of updating a row that never existed.
                 if let Err(commit_error) = transaction.commit().await {
                     self.id = original_id;
+                    #restore_snapshot
                     return Err(rullst_orm::Error::from(commit_error));
                 }
                 post_commit.commit().await
@@ -89,7 +83,9 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
             )]
             pub async fn save_with_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
                 use rullst_orm::_sqlx::Acquire;
+                #clean_return
                 let original_id = self.id;
+                #keep_snapshot
                 let mut savepoint = (&mut **tx).begin().await?;
                 let operation_callbacks = rullst_orm::post_commit::PostCommitScope::new();
                 let save_result = operation_callbacks
@@ -97,6 +93,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                     .await;
                 if let Err(save_error) = save_result {
                     self.id = original_id;
+                    #restore_snapshot
                     return match savepoint.rollback().await {
                         Ok(()) => Err(save_error),
                         Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
@@ -108,6 +105,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                 }
                 if let Err(release_error) = savepoint.commit().await {
                     self.id = original_id;
+                    #restore_snapshot
                     return Err(rullst_orm::Error::from(release_error));
                 }
                 operation_callbacks.promote_to_parent().await?;
@@ -122,7 +120,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                 } else {
                     #policy_update
                 }
-                self.save_with_tx_internal(&mut **tx).await
+                self.save_with_tx_internal(&mut **tx).await.map(|_| ())
             }
         };
     }
@@ -147,7 +145,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
     let revision_restore = revision_restore(table_name, &revision_lookup, &restored_after_fetch);
 
     quote! {
-        #[doc = #SAVE_DOC]
+        #[doc = #save_doc]
         #[rullst_orm::_tracing::instrument(
             name = "rullst.orm.query",
             target = "rullst_orm",
@@ -156,6 +154,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
         )]
         pub async fn save(&mut self) -> Result<(), rullst_orm::Error> {
             rullst_orm::__transaction_access::ensure_allowed()?;
+            #clean_return
             let scoped_transaction = rullst_orm::CURRENT_TX
                 .try_with(|transaction| transaction.clone())
                 .ok();
@@ -167,6 +166,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
             }
 
             let original_id = self.id;
+                #keep_snapshot
             let mut transaction = rullst_orm::Orm::begin_transaction().await?;
             let post_commit = rullst_orm::post_commit::PostCommitScope::new();
             let save_result = post_commit
@@ -174,6 +174,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                 .await;
             if let Err(save_error) = save_result {
                 self.id = original_id;
+                    #restore_snapshot
                 return match transaction.rollback().await {
                     Ok(()) => Err(save_error),
                     Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
@@ -187,6 +188,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
             // retry inserts instead of updating a row that never existed.
             if let Err(commit_error) = transaction.commit().await {
                 self.id = original_id;
+                    #restore_snapshot
                 return Err(rullst_orm::Error::from(commit_error));
             }
             post_commit.commit().await
@@ -205,7 +207,9 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
         )]
         pub async fn save_with_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
             use rullst_orm::_sqlx::Acquire;
+            #clean_return
             let original_id = self.id;
+                #keep_snapshot
             let mut savepoint = (&mut **tx).begin().await?;
             let operation_callbacks = rullst_orm::post_commit::PostCommitScope::new();
             let save_result = operation_callbacks
@@ -219,13 +223,16 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                         #policy_update
                     }
                     #before_tx
-                    self.save_with_tx_internal(&mut **tx).await?;
-                    #after_tx
+                    // An unchanged tracked record wrote nothing to audit.
+                    if self.save_with_tx_internal(&mut **tx).await? {
+                        #after_tx
+                    }
                     Ok::<(), rullst_orm::Error>(())
                 })
                 .await;
             if let Err(save_error) = save_result {
                 self.id = original_id;
+                    #restore_snapshot
                 return match savepoint.rollback().await {
                     Ok(()) => Err(save_error),
                     Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
@@ -237,6 +244,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
             }
             if let Err(release_error) = savepoint.commit().await {
                 self.id = original_id;
+                    #restore_snapshot
                 return Err(rullst_orm::Error::from(release_error));
             }
             operation_callbacks.promote_to_parent().await?;
@@ -368,7 +376,7 @@ fn revision_restore(
     }
 }
 
-fn tenant_prepare(parsed: &ParsedModel) -> TokenStream {
+pub(super) fn tenant_prepare(parsed: &ParsedModel) -> TokenStream {
     if parsed.tenant_column.is_empty() {
         return quote! {};
     }
@@ -454,65 +462,5 @@ fn audit_after_tx(table_name: &str) -> TokenStream {
 }
 
 #[cfg(test)]
-mod tests {
-    use syn::{DeriveInput, parse_quote};
-
-    #[test]
-    fn save_documents_the_full_row_write_on_every_model() {
-        for input in [
-            parse_quote! { struct Lesson { id: i32, title: String } },
-            parse_quote! {
-                #[orm(table = "lessons", auditable)]
-                struct Lesson { id: i32, title: String }
-            },
-        ] {
-            let input: DeriveInput = input;
-            let parsed = crate::parser::parse(&input).expect("parse model");
-            let generated = super::generate(&parsed).to_string();
-            let (before_save, _) = generated
-                .split_once("pub async fn save (& mut self)")
-                .expect("save()");
-            let doc = before_save
-                .rsplit_once("# [doc =")
-                .expect("save() rustdoc")
-                .1;
-            assert!(doc.contains("the last writer wins"), "{doc}");
-            assert!(doc.contains("use `update_partial()`"), "{doc}");
-            assert!(
-                doc.contains("UPDATE users SET xp = xp + ? WHERE id = ?"),
-                "{doc}"
-            );
-            assert!(
-                doc.contains("database column defaults do not apply"),
-                "{doc}"
-            );
-            assert!(doc.contains("marked `#[orm(db_default)]`"), "{doc}");
-        }
-    }
-
-    #[test]
-    fn auditable_save_locks_its_pre_image_before_the_update() {
-        let input: DeriveInput = parse_quote! {
-            #[orm(table = "lessons", auditable)]
-            struct Lesson { id: i32, title: String }
-        };
-        let parsed = crate::parser::parse(&input).expect("parse model");
-        let generated = super::generate(&parsed).to_string();
-        let save = generated
-            .split_once("pub async fn save_with_tx")
-            .expect("save_with_tx")
-            .1;
-        let before_write = save
-            .split_once("save_with_tx_internal")
-            .expect("full-row write")
-            .0;
-        assert!(before_write.contains("WHERE id = ? FOR UPDATE"));
-        assert!(before_write.contains("get_query_timeout"));
-        let restore = generated
-            .split_once("pub async fn restore_revision_with_tx")
-            .expect("restore_revision_with_tx")
-            .1;
-        assert!(restore.contains("WHERE id = ? FOR UPDATE"));
-        assert!(restore.contains("get_query_timeout"));
-    }
-}
+#[path = "save_entrypoints_tests.rs"]
+mod tests;

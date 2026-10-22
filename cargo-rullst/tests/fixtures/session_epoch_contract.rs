@@ -39,6 +39,10 @@ async fn generated_session_epoch_contract() {
     stale.name = "Renamed".into();
     stale.save().await.unwrap();
     assert_eq!(stored_epoch().await, 1);
+    // A database-managed (`db_default`) column stays filterable.
+    let bumped = User::query().where_eq("session_epoch", 1_i64).get().await.unwrap();
+    assert_eq!(bumped.len(), 1);
+    assert!(User::query().where_eq("is_admin", true).get().await.unwrap().is_empty());
     for cookie in [&laptop, &legacy, &issue(2)] {
         assert_eq!(send(app, "GET", "/dashboard", cookie).await.status(), StatusCode::SEE_OTHER);
     }

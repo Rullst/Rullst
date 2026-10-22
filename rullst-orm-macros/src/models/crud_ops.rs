@@ -1,5 +1,5 @@
 use crate::models::mutation_parts::saved_redis_effects;
-use crate::models::save_entrypoints;
+use crate::models::{dirty_tracking, save_entrypoints};
 use crate::parser::{EncryptedFieldKind, ParsedModel};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -165,13 +165,60 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
 
     let save_entrypoints = save_entrypoints::generate(parsed);
     let saved_redis_effects = saved_redis_effects(parsed);
+    let capture_inserted = dirty_tracking::capture(parsed, &quote! { self });
+    let full_row_update = quote! {
+        for obs in &observers {
+            rullst_orm::__transaction_access::run(obs.updating(self)).await?;
+        }
+        use rullst_orm::_sqlx::Execute;
+        let mut final_sql = format!(
+            "UPDATE {} SET {} WHERE id = ?{}",
+            #table_name,
+            #update_sets_str,
+            #update_tenant_clause
+        );
+        if rullst_orm::Orm::driver()? == "postgres" {
+            final_sql = rullst_orm::replace_placeholders(&final_sql);
+        }
+        if rullst_orm::schema::is_query_log_enabled() {
+            println!("[SQL Debug] {:?} | ID: {}", final_sql, self.id);
+        }
+        let query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(final_sql.as_str()));
+        let exec = query #(#bind_updates)*.bind(self.id) #update_tenant_binding;
+        let timeout = rullst_orm::schema::get_query_timeout();
+        let update_result = if let Some(t) = timeout {
+            tokio::time::timeout(t, exec.execute(&mut *conn))
+                .await
+                .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
+        } else {
+            exec.execute(&mut *conn).await?
+        };
+        #update_tenant_result_check
+    };
+    let update_branch = if parsed.snapshot_field.is_some() {
+        dirty_tracking::tracked_update(
+            parsed,
+            &dirty_tracking::TrackedUpdate {
+                assignments: &update_sets,
+                bindings: &bind_updates,
+                tenant_clause: &update_tenant_clause,
+                tenant_binding: &update_tenant_binding,
+                rows_check: &update_tenant_result_check,
+            },
+        )
+    } else {
+        full_row_update
+    };
 
     quote! {
         #save_entrypoints
 
-        async fn save_with_tx_internal<'e, E>(&mut self, executor: E) -> Result<(), rullst_orm::Error>
-        where E: rullst_orm::_sqlx::Executor<'e, Database = rullst_orm::RullstDatabase>
-        {
+        /// Runs the save lifecycle on `conn`; `Ok(false)` when a tracked record
+        /// had nothing to write and nothing ran after the `saving` observers.
+        async fn save_with_tx_internal(
+            &mut self,
+            conn: &mut <rullst_orm::RullstDatabase as rullst_orm::_sqlx::Database>::Connection,
+        ) -> Result<bool, rullst_orm::Error> {
             let is_new = self.id == 0;
             #hook_before_save
             let observers = {
@@ -201,11 +248,11 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                         let exec = query #(#bind_inserts)*;
                         let timeout = rullst_orm::schema::get_query_timeout();
                         if let Some(t) = timeout {
-                            tokio::time::timeout(t, exec.fetch_one(executor))
+                            tokio::time::timeout(t, exec.fetch_one(&mut *conn))
                                 .await
                                 .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
                         } else {
-                            exec.fetch_one(executor).await?
+                            exec.fetch_one(&mut *conn).await?
                         }
                     };
                     self.id = rullst_orm::_sqlx::Row::try_get(&row, "id")?;
@@ -220,11 +267,11 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                         let exec = query #(#bind_inserts)*;
                         let timeout = rullst_orm::schema::get_query_timeout();
                         if let Some(t) = timeout {
-                            tokio::time::timeout(t, exec.execute(executor))
+                            tokio::time::timeout(t, exec.execute(&mut *conn))
                                 .await
                                 .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
                         } else {
-                            exec.execute(executor).await?
+                            exec.execute(&mut *conn).await?
                         }
                     };
                     self.id = {
@@ -232,36 +279,11 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                         result.get_last_insert_id() as i32
                     }
                 }
+                #capture_inserted
                 let futures = observers.iter().map(|obs| obs.created(&*self));
                 rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
             } else {
-                for obs in &observers {
-                    rullst_orm::__transaction_access::run(obs.updating(self)).await?;
-                }
-                use rullst_orm::_sqlx::Execute;
-                let mut final_sql = format!(
-                    "UPDATE {} SET {} WHERE id = ?{}",
-                    #table_name,
-                    #update_sets_str,
-                    #update_tenant_clause
-                );
-                if rullst_orm::Orm::driver()? == "postgres" {
-                    final_sql = rullst_orm::replace_placeholders(&final_sql);
-                }
-                if rullst_orm::schema::is_query_log_enabled() {
-                    println!("[SQL Debug] {:?} | ID: {}", final_sql, self.id);
-                }
-                let query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(final_sql.as_str()));
-                let exec = query #(#bind_updates)*.bind(self.id) #update_tenant_binding;
-                let timeout = rullst_orm::schema::get_query_timeout();
-                let update_result = if let Some(t) = timeout {
-                    tokio::time::timeout(t, exec.execute(executor))
-                        .await
-                        .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
-                } else {
-                    exec.execute(executor).await?
-                };
-                #update_tenant_result_check
+                #update_branch
                 let futures = observers.iter().map(|obs| obs.updated(&*self));
                 rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
             }
@@ -286,7 +308,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                 Ok(())
             }).await?;
             #scout_after_commit
-            Ok(())
+            Ok(true)
         }
     }
 }

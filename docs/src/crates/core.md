@@ -7,9 +7,9 @@ helpers.
 Core is runtime-only by default. Enable `orm` for ORM bootstrap/artisan and
 database-backed feature flags, and `queue-sqlite` for the SQLite queue driver.
 `orm` adds no SQLx driver: pair it with `drivers-all` or one `strict-*`
-backend. The umbrella `rullst` crate enables `orm`, `drivers-all` and
-`queue-sqlite` by default, while domain crates opt in only when they actually
-use them.
+backend. The umbrella `rullst` crate enables none of them by default (up to
+13.0.0-alpha.2 its defaults were `orm`, `drivers-all` and `queue-sqlite`), and
+domain crates opt in only when they actually use them.
 
 Queue monitoring capabilities are driver-specific. The trait defaults for
 listing all jobs, retrying failures and purging failures return

@@ -49,3 +49,43 @@ fn is_option(field_type: &syn::Type) -> bool {
     matches!(field_type, syn::Type::Path(path)
         if path.path.segments.last().is_some_and(|segment| segment.ident == "Option"))
 }
+
+/// Recognizes the dirty-tracking `RowSnapshot` field type by its last path
+/// segment, so `RowSnapshot`, `rullst_orm::RowSnapshot` and the `rullst::db`
+/// re-export all match.
+pub(super) fn is_row_snapshot_type(field_type: &syn::Type) -> bool {
+    let syn::Type::Path(type_path) = field_type else {
+        return false;
+    };
+    type_path.qself.is_none()
+        && type_path.path.segments.last().is_some_and(|segment| {
+            segment.ident == "RowSnapshot" && matches!(segment.arguments, syn::PathArguments::None)
+        })
+}
+
+/// Recognizes JSON document types by path: `Json<T>` (`rullst_orm::Json`,
+/// `sqlx::types::Json`), `Option<..>` of one, and `serde_json::Value` /
+/// `JsonValue`.
+pub(crate) fn is_json_document_type(field_type: &syn::Type) -> bool {
+    let syn::Type::Path(type_path) = field_type else {
+        return false;
+    };
+    let segments = &type_path.path.segments;
+    let Some(last) = segments.last() else {
+        return false;
+    };
+    match &last.arguments {
+        syn::PathArguments::AngleBracketed(arguments) if last.ident == "Option" => {
+            matches!(arguments.args.first(), Some(syn::GenericArgument::Type(inner))
+                if arguments.args.len() == 1 && is_json_document_type(inner))
+        }
+        syn::PathArguments::AngleBracketed(_) => last.ident == "Json",
+        syn::PathArguments::None => {
+            last.ident == "JsonValue"
+                || (last.ident == "Value"
+                    && segments.len() >= 2
+                    && segments[segments.len() - 2].ident == "serde_json")
+        }
+        syn::PathArguments::Parenthesized(_) => false,
+    }
+}

@@ -398,9 +398,11 @@ cargo install cargo-rullst --version =13.0.0-alpha.2 --locked
 
 In a hand-written `Cargo.toml`, pin it with `=` too: a plain
 `"13.0.0-alpha.2"` is a caret requirement that also accepts later alphas,
-which may break the API. The default features compile the SQLite, PostgreSQL
-and MySQL drivers, so turn them off and select the database profile you use
-(plus capabilities such as `auth` or `nexus`):
+which may break the API. Select the database profile you use (plus
+capabilities such as `auth` or `nexus`). Up to 13.0.0-alpha.2 the default
+features compiled the SQLite, PostgreSQL and MySQL drivers, so turn them off;
+from alpha.3 the defaults are empty and a database-free application compiles
+no database code:
 
 ```toml
 rullst = { version = "=13.0.0-alpha.2", default-features = false, features = ["strict-postgres"] }

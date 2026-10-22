@@ -402,12 +402,12 @@ is classified for `rullst-upgrade-rules-v4`:
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
   application source (10 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (93 rows);
+  the affected API, feature or configuration, which the rules locate (95 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (54 rows).
+  of inputs that previously failed) (57 rows).
 
-The catalog has 104 rules. A row can map to several rules and a rule to
+The catalog has 106 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -457,6 +457,8 @@ the rule together.
 | Typed API generation | (c) none | — | Opt-in CLI profile |
 | CLI generator output | (b) review | `V13-TS-CLIENT-REGENERATE` | Other generator changes affect new output only |
 | CLI generator robustness | (b) review | `V13-TS-CLIENT-REGENERATE`, `V13-GITIGNORE-DATABASES` | Other generator changes affect new output only |
+| ORM database-managed columns | (b) review | `V13-ORM-SKIP-MANAGED-COLUMNS` | Reports `#[orm(skip)]` on `is_admin`/`session_epoch` without `#[sqlx(skip)]`, as alpha.2 starters declared them |
+| ORM dirty tracking | (c) none | — | Opt-in `RowSnapshot` field |
 | ORM partial updates | (b) review | `V13-ORM-PARTIAL-UPDATE` |  |
 | ORM derive checks | (a) must-change | `V13-ORM-BELONGS-TO-KEY`, `V13-ORM-IGNORED-RELATION-KEY`, `V13-ORM-SEARCHABLE-TABLE` |  |
 | ORM queries and cache | (b) review | `V13-ORM-SQLX-JSON-SERIALIZE`, `V13-ORM-QUERY-CACHE-KEY` | Count, chunk-order and stream changes are not located |
@@ -566,7 +568,8 @@ the rule together.
 | Generated container runtime | (c) none | — | Generator output for new projects |
 | Interactive `new --api` | (c) none | — | CLI |
 | CLI `new` wizard | (c) none | — | CLI |
-| Generated `rullst-orm` dependency | (b) review | `V13-ORM-DEFAULT-FEATURES` |  |
+| Minimal default features | (b) review | `V13-RULLST-DEFAULT-FEATURES`, `V13-ORM-DEFAULT-FEATURES` | Reports `rullst` and `rullst-orm` dependencies that keep their defaults and select no driver |
+| Generated `rullst-orm` dependency | (c) none | — | Generator output; such a dependency is reported under Minimal default features |
 | ORM adapter aggregate features | (a) must-change | `V13-POLYGLOT-FEATURE` | Dependency `features` and `[features]` entries such as `"rullst/orm-polyglot"` |
 | Omni desktop runner | (b) review | `V13-OMNI-RUNNER` |  |
 | Omni managed backend | (b) review | `V13-OMNI-BACKEND` |  |
