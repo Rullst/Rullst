@@ -362,24 +362,23 @@ mod tests {
     }
 
     #[test]
-    fn academy_assessment_keeps_each_observation_on_its_own_requirement() {
+    fn academy_assessment_keeps_each_observation_on_its_own_requirement()
+    -> Result<(), AcademyPresetError> {
         let preset = ProductionPreset::academy();
-        let assessments = preset
-            .assess([
-                (
-                    AcademyProductionRequirement::SchoolMembership,
-                    AcademyCheckStatus::Skipped,
-                ),
-                (
-                    AcademyProductionRequirement::AuthenticatedIdentity,
-                    AcademyCheckStatus::Fail,
-                ),
-                (
-                    AcademyProductionRequirement::TenantIsolation,
-                    AcademyCheckStatus::Pass,
-                ),
-            ])
-            .expect("distinct observations");
+        let assessments = preset.assess([
+            (
+                AcademyProductionRequirement::SchoolMembership,
+                AcademyCheckStatus::Skipped,
+            ),
+            (
+                AcademyProductionRequirement::AuthenticatedIdentity,
+                AcademyCheckStatus::Fail,
+            ),
+            (
+                AcademyProductionRequirement::TenantIsolation,
+                AcademyCheckStatus::Pass,
+            ),
+        ])?;
         let observed = assessments
             .iter()
             .map(|assessment| {
@@ -416,5 +415,6 @@ mod tests {
                 status: AcademyCheckStatus::Fail,
             })
         );
+        Ok(())
     }
 }
