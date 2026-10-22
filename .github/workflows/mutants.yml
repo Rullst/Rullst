@@ -55,7 +55,8 @@ on:
         description: >-
           Contract mode only. The wrapper that owns a disposable PostgreSQL,
           MySQL or Redis server; its adapter files are mutated and only its contract
-          tests run against that server
+          tests run against that server. orm-sqlite needs no server: it mutates
+          the ORM crates and runs the rullst-orm suite on SQLite
         required: false
         default: none
         type: choice
@@ -68,6 +69,7 @@ on:
           - recurring-postgres
           - messaging-redis
           - connect-sql
+          - orm-sqlite
       mutants_regex:
         description: Contract mode only. cargo-mutants --re filter over the contract's mutants
         required: false
@@ -253,7 +255,7 @@ jobs:
                 exit 2
               fi
               case "$contract" in
-                passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql)
+                passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql|orm-sqlite)
                   ;;
                 *)
                   echo "Contract mode requires one of the owned-server wrappers." >&2
@@ -615,7 +617,7 @@ jobs:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: prlimit --as=8589934592 --
         run: |
           case "$CONTRACT" in
-            passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql)
+            passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql|orm-sqlite)
               ;;
             *)
               echo "Unknown owned-server contract: $CONTRACT" >&2

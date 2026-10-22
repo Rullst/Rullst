@@ -178,6 +178,76 @@ class RunTests(Fixture):
                 self.run_contract("", 0, shard=shard)
 
 
+ORM_SQLITE_PATH = HERE / "check-orm-sqlite.py"
+ORM_SQLITE_SPEC = importlib.util.spec_from_file_location("check_orm_sqlite", ORM_SQLITE_PATH)
+if ORM_SQLITE_SPEC is None or ORM_SQLITE_SPEC.loader is None:
+    raise RuntimeError(f"cannot import {ORM_SQLITE_PATH}")
+ORM_SQLITE = importlib.util.module_from_spec(ORM_SQLITE_SPEC)
+ORM_SQLITE_SPEC.loader.exec_module(ORM_SQLITE)
+
+
+class OrmSqliteTests(Fixture):
+    def run_orm(self, baseline: bool, status: int, *args: str) -> int:
+        log = self.root / "mutants.out" / "log"
+        body = (f"import shutil\nshutil.rmtree({str(log.parent)!r}, ignore_errors=True)\n"
+                f"os.makedirs({str(log)!r})\n")
+        if baseline:
+            body += f"open({str(log / 'baseline.log')!r}, 'w').write('test a ... ok\\n')\n"
+        body += ("open(os.environ['CALLS_ENV'], 'w').write(json.dumps(dict(os.environ)))\n"
+                 f"sys.exit({status})\n")
+        self.tool("cargo", body)
+        env = self.env(CARGO_MUTANTS_OUTPUT=str(self.root), CALLS_ENV=str(self.root / "env.json"),
+                       RULLST_REQUIRE_TESTCONTAINERS="true")
+        self.stderr = io.StringIO()
+        with mock_environ(env), contextlib.redirect_stderr(self.stderr):
+            return ORM_SQLITE.main(["--mutants", "^rullst-orm/src/x\\.rs:", *args])
+
+    def test_mutates_both_crates_against_the_sqlite_suite_without_servers(self) -> None:
+        self.assertEqual(self.run_orm(True, 2, "--shard", "1/4"), 2)
+        call = self.recorded()[-1]
+        self.assertEqual(call[:3], ["cargo", "mutants", "--no-config"])
+        for part in (["--package", "rullst-orm", "--package", "rullst-orm-macros"],
+                     ["--test-package", "rullst-orm"],
+                     ["--no-default-features", "--features", "rullst-orm/drivers-all"],
+                     ["--file", "rullst-orm/src/**", "--file", "rullst-orm-macros/src/**"],
+                     ["--exclude", "**/*_tests.rs", "--exclude", "**/tests.rs",
+                      "--exclude", "**/tests/**"],
+                     ["--re", "^rullst-orm/src/x\\.rs:"], ["--shard", "1/4"],
+                     ["--timeout", "300"], ["--cargo-arg=--tests"]):
+            with self.subTest(part=part):
+                self.assertIn(part, [call[i:i + len(part)] for i in range(len(call))])
+        env = json.loads((self.root / "env.json").read_text())
+        self.assertEqual(env["DOCKER_HOST"], "unix:///nonexistent")
+        self.assertNotIn("RULLST_REQUIRE_TESTCONTAINERS", env)
+
+    def test_informational_statuses_need_a_baseline(self) -> None:
+        for status in (0, 2, 3):
+            with self.subTest(status=status):
+                self.assertEqual(self.run_orm(True, status), status)
+                self.assertEqual(self.run_orm(False, status), 1)
+                self.assertIn("ran no baseline", self.stderr.getvalue())
+        for status in (1, 4):
+            with self.subTest(status=status):
+                self.assertEqual(self.run_orm(False, status), status)
+
+    def test_rejects_malformed_shards(self) -> None:
+        for shard in ("1", "1/0", "a/b"):
+            with self.subTest(shard=shard), self.assertRaises(ValueError):
+                ORM_SQLITE.command(".", shard)
+
+
+@contextlib.contextmanager
+def mock_environ(env: dict[str, str]):
+    saved = dict(os.environ)
+    os.environ.clear()
+    os.environ.update(env)
+    try:
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(saved)
+
+
 class WorkflowTests(Fixture):
     def test_contract_step_keeps_findings_informational(self) -> None:
         self.tool("python3", "sys.exit(int(os.environ['FAKE_STATUS']))\n")
@@ -221,6 +291,11 @@ class WorkflowTests(Fixture):
         self.assertEqual((outputs["mode"], outputs["contract"], outputs["mutants_regex"],
                           outputs["targeted_shard"], outputs["source_sha"]),
                          ("contract", "messaging-redis", "in Foo::bar", "1/4", SHA))
+        status, outputs = self.plan(MUTATION_MODE="contract", CONTRACT="orm-sqlite",
+                                    MUTANTS_REGEX="^rullst-orm/src/pool/")
+        self.assertEqual(status, 0)
+        self.assertEqual((outputs["contract"], outputs["mutants_regex"]),
+                         ("orm-sqlite", "^rullst-orm/src/pool/"))
         for inputs in ({"MUTATION_MODE": "contract"},
                        {"MUTATION_MODE": "contract", "CONTRACT": "mail-postgres",
                         "MUTATION_FILE": "x.rs"},
