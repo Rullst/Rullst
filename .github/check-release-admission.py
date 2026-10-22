@@ -29,9 +29,6 @@ MANDATORY_MANUAL_WORKFLOWS = frozenset(
         "fuzzing.yml",
         "kani.yml",
         "miri.yml",
-        "omni-android.yml",
-        "omni-desktop.yml",
-        "omni-ios.yml",
         "proptest.yml",
         "sanitizers.yml",
     }

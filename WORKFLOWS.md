@@ -189,8 +189,7 @@ All remaining test/build workflows run on the documented push, pull-request or
 path filters and also expose a manual rerun. For an RC or stable checkpoint,
 first use the automatic mainline suite, then run the exact-SHA manual admission
 set: full-platform `ci.yml`, release-mode `fuzzing.yml`, `dast-zap.yml`,
-`kani.yml`, `miri.yml`, `sanitizers.yml`, `proptest.yml`, and all three Omni
-compile workflows. The tag workflow checks those receipts through
+`kani.yml`, `miri.yml`, `sanitizers.yml` and `proptest.yml`. The tag workflow checks those receipts through
 `.github/release-required-workflows.json`; the fuzz receipt is accepted only
 when all 42 named target jobs and its evidence boundary succeeded. Physical
 devices, store approval, live provider accounts, external security review and
@@ -357,8 +356,7 @@ threat-model minimum, CodeQL, documentation and workflow lint.
 Do not configure a path-filtered, scheduled, manual, deployment, or tag-only
 workflow as a universal required check: an intentionally skipped workflow may
 never create the check context. In particular, IoT Cryptography Containment is
-blocking when relevant paths change, and the Omni desktop, Android and iOS
-compile workflows are blocking only when the Omni generator boundary changes.
+blocking when relevant paths change.
 Pages, benchmarks, fuzzing, sanitizers,
 Kani, Miri, mutation testing, udeps, ZAP, Scorecard, and release provenance
 belong to deeper evidence or release policy. GitHub repository rulesets remain
@@ -658,8 +656,6 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-core/src/security/pii.rs`: `mask_chars`, the domain slice start `idx + 1` with `idx * 1` or `idx - 1` | The domain holds a dot, so the leading `@` never reaches the top-level domain; when its only dots are trailing ones, the text after the last dot starts with `@` and fails both domain tests. |
 | `rullst-core/src/security/csrf_multipart.rs`: `scan`, `available < first.len()` with `>` | A prefix shorter than the first delimiter reaches the loop's two-byte read past its end, which returns the same `Incomplete`. |
 | `rullst-core/src/security/csrf.rs`: `is_csrf_exempt_path`, the first two `\|\|` with `&&` | `/robots.txt`, `/sitemap.xml` and `/favicon.ico` stay exempt through their `.txt`, `.xml` and `.ico` suffixes. |
-| `rullst-core/src/offline_sync/crypto.rs`: `OfflineSnapshotCipher::open`, `key_id_length == 0 \|\| key_id_length > MAX_KEY_ID_BYTES` with `&&` | `valid_key_id` rejects an empty or longer key id with the same `InvalidSnapshot`. |
-| `rullst-core/src/offline_sync/json_limit.rs`: the `writer.exceeded()` guards of `encode_bounded` and `validate_bounded`, and both writers' `exceeded`, with `true` | Offline state and payloads hold only strings, numbers and JSON values, so serialization fails only when a writer reports its limit. |
 | `rullst-core/src/queue/mod.rs`: the default `QueueDriver::push_at`, `available_at > SystemTime::now()`, and `Queue::dispatch_at`, `delay > MAX_SCHEDULE_DELAY`, each with `>=` | They differ only when the requested time equals a clock reading taken inside the call, which a caller cannot arrange. |
 | `rullst-core/src/queue/worker/execution.rs`: `record_outcome`, the `error.is_panic()` guard with `true` | `execute_job` handles every cancelled handler before it calls `record_outcome`, so the only join error left is a panic. |
 | `rullst-core/src/storage/tenant.rs`: `confine_local_root`, the `!create && NotFound` guard with `false` or without `!` | Below a missing tenant directory, `get`, `metadata` and `delete` then fail with the same `NotFound` that the operation itself reports; `put` creates the directory first. |
@@ -935,9 +931,6 @@ dependency graph make static estimates unreliable.
 | [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | A source-bound inventory preflight followed by eighty lossless pinned cargo-mutants 27.1.0 shards with four concurrent jobs over that source's all-feature workspace, each shard with a pinned Redis service for the `RULLST_TEST_REDIS_URL` contracts, one validated production-file diagnostic, one owned-server contract (`mode=contract`: a PostgreSQL or Redis wrapper's adapter mutants against the server it owns), or policy-bound exact-SHA recovery of reviewed failed fragments. Successful immutable artifacts may be reused, but the content-addressed aggregate still requires every reviewed candidate exactly once and carries source/run/branch/tool/inventory provenance. Findings stay informational, while baseline/tool/invocation failures, missing artifacts, incomplete classification and reviewed-inventory drift fail the run. The completed v12 receipt is run `34761010296`: 14,391/14,391 classified and a conservative 70.57% caught. |
 | [`mutants-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants-pr.yml) | pull requests to main that change Rust | Blocking by policy; not a required check | Lists the pinned cargo-mutants 27.1.0 all-feature mutants on the Rust lines the pull request changes, skipping the globs in `.github/mutants-pr-exclude.txt`, and tests them in at most eight shards with a Redis service and the targeted-run timeouts and memory cap. A missed mutant fails the run; unviable and timed-out mutants do not. See [Pull-request mutation gate](#pull-request-mutation-gate). |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main/v12/v13 push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
-| [`omni-android.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-android.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh Omni shell and compiles an aarch64 debug APK. It additionally checks generated icon bytes, rejects missing release-signing inputs, builds a real release APK with an ephemeral CI-only key and verifies its certificate digest with apksigner. No production key, physical-device behavior, Play testing, privacy declarations or store acceptance is certified. |
-| [`omni-desktop.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-desktop.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic HTTPS-backed shell and checks its Tauri crate on Linux, macOS and Windows. It does not build/sign every installer or exercise a GUI/WebView session. |
-| [`omni-ios.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-ios.yml) | relevant main changes and PRs, manual | Blocking | Generates a fresh deterministic Omni iOS shell on macOS and compiles it for the runner's simulator architecture. It does not test a physical device, signing, privacy declarations, TestFlight or App Store acceptance. |
 | [`pages.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pages.yml) | main push, manual | Deploy | Validates and deploys the current development landing page, local visual assets, mdBook and benchmark hub/dashboards to GitHub Pages while preserving history data fetched from `gh-pages`. |
 | [`pqc-compliance.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pqc-compliance.yml) | relevant main changes and PRs, weekly, manual | Blocking | Signed OTA and Vault tests, RustSec audit, and simulator-boundary checks; explicitly no PQC/HSM certification. |
 | [`proptest.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/proptest.yml) | weekly, manual | Blocking run | Eight parallel release-mode workspace shards plus dedicated ORM and Connect property contracts with configured case counts. |
@@ -968,8 +961,7 @@ execution and general cross-commit release-evidence reuse are **not enabled**.
 
 The `ci.yml`, `documentation.yml` and `workflow-lint.yml` development triggers
 include v13, as do those of the other branch-filtered workflows except the
-`main`-only benchmark, Pages, Scorecard, IoT cryptography and Omni desktop/iOS
-workflows; these three jobs are not the whole release gate. The workflow-lint job retains a source/policy-bound
+`main`-only benchmark, Pages, Scorecard and IoT cryptography workflows; these three jobs are not the whole release gate. The workflow-lint job retains a source/policy-bound
 `rullst.verification-plan.v1` observation. It uses committed Git objects and TOML
 metadata without executing Cargo, build scripts, macros or project tests. All
 normal/optional/target/build/dev dependency edges participate in its reverse
