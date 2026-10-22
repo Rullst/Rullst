@@ -214,3 +214,7 @@ pub(super) fn tenant_scoped_invalidation() -> TokenStream {
         .await;
     }
 }
+
+#[cfg(test)]
+#[path = "mutation_parts_tests.rs"]
+mod tests;
