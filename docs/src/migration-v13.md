@@ -371,7 +371,9 @@ shows the expected result.
    `mock` feature, `oauth-mock` on the facade), Production log defaults
    (health probes are no longer logged, SQLx INFO events are hidden, and an
    invalid `RULLST_LOG_HEALTH_PROBES` stops startup), and the opt-in ORM
-   dirty tracking and Account mail language and product name.
+   dirty tracking and Account mail language and product name. Workarounds
+   for alpha.2 defects that the changelog's "Fixes from alpha.2 dogfooding"
+   lists, such as raw SQL to filter on `is_admin`, can then go.
 7. **Verify** with the production feature set: `cargo build`, `cargo test`
    and `cargo clippy --all-targets -- -D warnings`; `db:migrate` against a
    restored copy of the production database; then sign-in, "Sign out
