@@ -1480,6 +1480,12 @@ router that debug builds of the generated starters start on the same port
 development tool; do not expose it publicly without an independently reviewed
 authentication, authorization, and TLS boundary.
 
+`cargo rullst studio --remote [--port PORT]` needs no project: it starts the
+installed standalone `rullst-studio` binary (`cargo install rullst-studio --features remote --locked`),
+which serves Studio's remote-projects mode on `127.0.0.1:5556` (or `PORT`)
+and reads the [production monitoring endpoint](production-monitoring.md#watch-your-projects-from-studio)
+of the projects you add. Without the binary it explains how to install it.
+
 ---
 
 ## 🧠 4. Analyzers and Code Generators (`generate:*`)

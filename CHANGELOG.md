@@ -33,6 +33,10 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Fixes from alpha.2 dogfooding
 
+- Security support for prereleases: until 13.0.0, the latest published
+  prerelease is supported. Critical and High vulnerabilities are fixed in an
+  out-of-cycle prerelease and announced in a GitHub security advisory; earlier
+  prereleases are not patched (`SECURITY.md`).
 - New `cargo rullst make:pwa` makes an application from an HTML starter an
   installable Progressive Web App: a web app manifest, placeholder icons
   (192, 512, maskable 512, apple-touch), `/sw.js` and an `/offline` page
@@ -199,6 +203,62 @@ A prepared version section does not establish that its tag or crates exist.
   `Server::run`) installs is now present in release builds as well, so the
   monitor can attribute ORM operations to requests. Outside the development
   dashboard and monitored requests it records nothing.
+- New standalone Studio for remote projects, phase 2 of the production
+  monitor (plataforma report #28). `cargo install rullst-studio --features remote --locked`, then
+  `rullst-studio` (or `cargo rullst studio --remote`), serves Studio on
+  `127.0.0.1:5556` without an application process and shows the monitoring
+  document of each project you add (overview, routes, queues and N+1 pages,
+  with a project switcher). Tokens are stored in an owner-only file in your
+  configuration directory, encrypted with a key kept in your data directory.
+  Studio requires `https://` (or `http://` to loopback, for SSH tunnels),
+  never follows redirects and escapes every remote value. It is behind the
+  new non-default `remote` feature of `rullst-studio`, so applications that
+  enable Studio in development do not build its HTTP client or SQLite. See the
+  [production monitoring guide](docs/src/production-monitoring.md#watch-your-projects-from-studio).
+- The standalone Studio keeps history and alerts for the projects you mark as
+  watched (phase 3 of the production monitor): it reads them every 60 seconds
+  while it runs, charts request rate, 5xx rate, p95 latency and pending jobs
+  for the last hour, day or week from a bounded local SQLite file (seven
+  days), and fires per-project alerts (unreachable, 5xx rate, p95, pending
+  jobs, queue failures) with a cool-down, shown in Studio and optionally
+  posted to an `https://` webhook stored encrypted like the tokens. Nothing
+  new is collected on the servers.
+- `html!` gains `@match value { pattern if guard => { nodes } … }`: arms are
+  Rust patterns (with `|` alternatives and `name @` bindings) and optional
+  guards, bodies are `html!` nodes in braces with the usual escaping and
+  `Markup` rules, and the compiler checks exhaustiveness at your tokens. An
+  arm without braces is a compile error that shows the braced form. Other
+  `@` forms (`@while`, `@let`) remain compile errors, whose message now lists
+  `@match`.
+- i18n plural messages follow CLDR's cardinal rules for `ar`, `cs`, `de`,
+  `en`, `es`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`/`pt-BR`,
+  `pt-PT`, `ro`, `ru`, `tr`, `uk` and `zh`, with every category the language
+  uses (`zero`, `one`, `two`, `few`, `many`, `other`). `catalog!` requires
+  exactly those categories and names a missing one in the compile error, so
+  a `ru` or `pl` message with `one`/`few`/`many`/`other` now compiles. In
+  `es`, `fr`, `it` and `pt` the `many` form (exact millions) is optional and
+  falls back to `other`. Catalogs and integer counts that worked in alpha.2
+  select the same forms. New `rullst::i18n::Decimal` (units and visible
+  fraction digits, parsed from strings such as `"1.50"`) can be passed as
+  `count`, since CLDR selects by fraction digits too (`1.0` is English
+  `other`), and `Locale::plural_category` returns the new `PluralCategory`
+  without a catalog.
+- Adding or removing an i18n locale file can now rebuild the crate: the
+  i18n guide's setup adds a `build.rs` with
+  `println!("cargo::rerun-if-changed=locales");`, which makes Cargo rescan the
+  directory before each build (stable Rust gives `catalog!` no way to watch a
+  directory itself; edits to existing files were already tracked). Existing
+  applications add the same three-line `build.rs`.
+- `rullst::i18n::Locale` formats numbers, percentages, money and dates with
+  CLDR 48 conventions compiled in for `ar`, `cs`, `de`, `en`, `en-GB`, `es`,
+  `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`, `pt-PT`, `ro`, `ru`, `tr`,
+  `uk` and `zh` (other tags use their language's data, else `en`'s):
+  `format_number`, `format_percent`, `format_currency` (integer minor units
+  and the new `Currency`, with localized symbols for BRL, USD, EUR, GBP and
+  JPY), `format_date`, `format_time` and `format_datetime` (any `chrono` date
+  or time, with the new `DateStyle` and `TimeStyle`), for example
+  `R$ 1.234,56` and `22/10/2026` in `pt-BR`. `Decimal` gains
+  `round_half_even` and `round_half_up`. No new dependency.
 - **Behaviour change:** while the `up()` or `down()` of a migration that
   returns `true` from `within_transaction()` runs, `Orm::pool()`,
   `Orm::read_pool()`, `Orm::try_pool()`, `Orm::try_read_pool()` and

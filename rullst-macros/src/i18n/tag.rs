@@ -1,18 +1,38 @@
 //! Locale tags (a BCP 47 subset) and the plural rule chosen for each one.
 
-/// How a locale chooses between the `one` and `other` plural forms.
+/// A locale's CLDR cardinal plural rule, by the forms it selects. The
+/// runtime twin is `rullst::i18n::__Plural`; the variant names must match.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum PluralRule {
-    /// `one` for exactly 1: en, es, de, it, nl and pt-PT.
-    One,
-    /// `one` for 0 and 1: pt (pt, pt-BR) and fr.
-    ZeroOne,
-    /// No `one` form: ja, zh and ko.
+    /// `other` only: ja, zh, ko.
     Other,
+    /// `one` for 1 without visible fraction digits: en, de, nl.
+    One,
+    /// [`One`](Self::One) plus `many` for exact millions: it, pt-PT.
+    OneMany,
+    /// `one` below 2 (`i = 0,1`) plus `many` for exact millions: fr, pt.
+    ZeroOne,
+    /// `one` for the value 1 (`1.0` too): tr.
+    ExactOne,
+    /// [`ExactOne`](Self::ExactOne) plus `many` for exact millions: es.
+    ExactOneMany,
+    /// `one`, `few`, `many`, `other` by the last digits: ru, uk.
+    EastSlavic,
+    /// `one`, `few`, `many`, `other`: pl.
+    Polish,
+    /// `one`, `few` (2–4), `many` (decimals), `other`: cs.
+    Czech,
+    /// `one`, `few`, `other`: ro.
+    Romanian,
+    /// `zero`, `one`, `two`, `few`, `many`, `other`: ar.
+    Arabic,
+    /// `one`, `two`, `other`: he.
+    Hebrew,
 }
 
 /// Languages with a plural rule, listed in compile errors.
-pub(crate) const PLURAL_LANGUAGES: &str = "en, es, de, it, nl, fr, pt, pt-BR, pt-PT, ja, zh, ko";
+pub(crate) const PLURAL_LANGUAGES: &str =
+    "ar, cs, de, en, es, fr, he, it, ja, ko, nl, pl, pt, pt-BR, pt-PT, ro, ru, tr, uk, zh";
 
 impl PluralRule {
     /// The rule for a canonical tag, or `None` when Rullst has no
@@ -22,29 +42,67 @@ impl PluralRule {
         let language = subtags.next().unwrap_or_default();
         let region = subtags.find(|subtag| subtag.len() != 4);
         match language {
-            "en" | "es" | "de" | "it" | "nl" => Some(Self::One),
+            "en" | "de" | "nl" => Some(Self::One),
+            "it" => Some(Self::OneMany),
             "fr" => Some(Self::ZeroOne),
             "pt" => match region {
                 None | Some("BR") => Some(Self::ZeroOne),
-                Some("PT") => Some(Self::One),
+                Some("PT") => Some(Self::OneMany),
                 Some(_) => None,
             },
+            "tr" => Some(Self::ExactOne),
+            "es" => Some(Self::ExactOneMany),
+            "ru" | "uk" => Some(Self::EastSlavic),
+            "pl" => Some(Self::Polish),
+            "cs" => Some(Self::Czech),
+            "ro" => Some(Self::Romanian),
+            "ar" => Some(Self::Arabic),
+            "he" => Some(Self::Hebrew),
             "ja" | "zh" | "ko" => Some(Self::Other),
             _ => None,
         }
     }
 
-    /// Whether the rule has a `one` form that catalogs must provide.
-    pub(crate) fn has_one(self) -> bool {
-        self != Self::Other
+    /// The forms a plural message must define, in CLDR order.
+    pub(crate) fn required(self) -> &'static [&'static str] {
+        match self {
+            Self::Other => &["other"],
+            Self::One | Self::OneMany | Self::ZeroOne | Self::ExactOne | Self::ExactOneMany => {
+                &["one", "other"]
+            }
+            Self::EastSlavic | Self::Polish | Self::Czech => &["one", "few", "many", "other"],
+            Self::Romanian => &["one", "few", "other"],
+            Self::Arabic => &["zero", "one", "two", "few", "many", "other"],
+            Self::Hebrew => &["one", "two", "other"],
+        }
+    }
+
+    /// Whether the rule also selects `many` (exact millions), which a
+    /// message may leave out: `other` is used then.
+    pub(crate) fn optional_many(self) -> bool {
+        matches!(self, Self::OneMany | Self::ZeroOne | Self::ExactOneMany)
+    }
+
+    /// Whether a plural message may define `category`.
+    pub(crate) fn allows(self, category: &str) -> bool {
+        self.required().contains(&category) || (category == "many" && self.optional_many())
     }
 
     /// Name of the matching `rullst::i18n::__Plural` variant.
     pub(crate) fn variant(self) -> &'static str {
         match self {
-            Self::One => "One",
-            Self::ZeroOne => "ZeroOne",
             Self::Other => "Other",
+            Self::One => "One",
+            Self::OneMany => "OneMany",
+            Self::ZeroOne => "ZeroOne",
+            Self::ExactOne => "ExactOne",
+            Self::ExactOneMany => "ExactOneMany",
+            Self::EastSlavic => "EastSlavic",
+            Self::Polish => "Polish",
+            Self::Czech => "Czech",
+            Self::Romanian => "Romanian",
+            Self::Arabic => "Arabic",
+            Self::Hebrew => "Hebrew",
         }
     }
 }

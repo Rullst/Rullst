@@ -1,0 +1,18 @@
+# Fixture catalog for tests/i18n_catalog.rs: Russian needs `one`, `few`,
+# `many` and `other`.
+[nav]
+language = "Язык"
+
+[dashboard]
+title = "Панель"
+greeting = "Здравствуйте, {name}!"
+compare = "{a} < {b} & {{скобки}}"
+
+[inbox.unread]
+one = "У вас {count} непрочитанное сообщение"
+few = "У вас {count} непрочитанных сообщения"
+many = "У вас {count} непрочитанных сообщений"
+other = "У вас {count} непрочитанного сообщения"
+
+[legal]
+terms_html = "Я принимаю <a href=\"/terms\">условия</a>, {name}"
