@@ -51,7 +51,7 @@ impl SqliteReplayStore {
             .unwrap_or_else(|| Path::new("."));
         let path = parent
             .canonicalize()
-            .map_err(|_| AgeError::StoreUnavailable)?
+            .map_err(temp_age_diag)?
             .join(filename);
         match std::fs::symlink_metadata(&path) {
             Ok(metadata) if !metadata.file_type().is_file() => {
@@ -74,7 +74,7 @@ impl SqliteReplayStore {
             .acquire_timeout(Duration::from_secs(5))
             .connect_with(options)
             .await
-            .map_err(|_| AgeError::StoreUnavailable)?;
+            .map_err(temp_age_diag)?;
         let store = Self {
             pool,
             capacity: capacity as i64,
@@ -97,20 +97,20 @@ impl SqliteReplayStore {
             .pool
             .begin_with("BEGIN IMMEDIATE")
             .await
-            .map_err(|_| AgeError::StoreUnavailable)?;
+            .map_err(temp_age_diag)?;
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlite_schema WHERE type = 'table' AND name IN ('rullst_age_replay_meta', 'rullst_age_replay_claims')")
-            .fetch_one(&mut *tx).await.map_err(|_| AgeError::StoreUnavailable)?;
+            .fetch_one(&mut *tx).await.map_err(temp_age_diag)?;
         match count {
             0 => {
                 for statement in SCHEMA {
                     sqlx::query(*statement)
                         .execute(&mut *tx)
                         .await
-                        .map_err(|_| AgeError::StoreUnavailable)?;
+                        .map_err(temp_age_diag)?;
                 }
                 sqlx::query("INSERT INTO rullst_age_replay_meta (id, schema_version, capacity, last_now) VALUES (1, ?, ?, 0)")
                     .bind(SCHEMA_VERSION).bind(self.capacity).execute(&mut *tx).await
-                    .map_err(|_| AgeError::StoreUnavailable)?;
+                    .map_err(temp_age_diag)?;
             }
             2 => {}
             // Never recreate half of an existing replay schema.
@@ -118,7 +118,7 @@ impl SqliteReplayStore {
         }
         self.metadata(&mut tx).await?;
         self.count(&mut tx).await?;
-        tx.commit().await.map_err(|_| AgeError::StoreUnavailable)
+        tx.commit().await.map_err(temp_age_diag)
     }
 
     async fn metadata(&self, connection: &mut SqliteConnection) -> Result<i64, AgeError> {
@@ -127,7 +127,7 @@ impl SqliteReplayStore {
         )
         .fetch_optional(connection)
         .await
-        .map_err(|_| AgeError::StoreUnavailable)?;
+        .map_err(temp_age_diag)?;
         match row {
             Some((SCHEMA_VERSION, capacity, last_now))
                 if capacity == self.capacity && last_now >= 0 =>
@@ -142,7 +142,7 @@ impl SqliteReplayStore {
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_age_replay_claims")
             .fetch_one(connection)
             .await
-            .map_err(|_| AgeError::StoreUnavailable)?;
+            .map_err(temp_age_diag)?;
         if !(0..=self.capacity).contains(&count) {
             return Err(AgeError::StoreConfiguration);
         }
@@ -163,12 +163,12 @@ impl SqliteReplayStore {
             .bind(now)
             .execute(&mut *connection)
             .await
-            .map_err(|_| AgeError::StoreUnavailable)?;
+            .map_err(temp_age_diag)?;
         sqlx::query("DELETE FROM rullst_age_replay_claims WHERE expires_at <= ?")
             .bind(now)
             .execute(&mut *connection)
             .await
-            .map_err(|_| AgeError::StoreUnavailable)?;
+            .map_err(temp_age_diag)?;
         let digest = nonce_digest(&nonce);
         let exists: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM rullst_age_replay_claims WHERE nonce_digest = ?)",
@@ -176,7 +176,7 @@ impl SqliteReplayStore {
         .bind(digest.as_ref())
         .fetch_one(&mut *connection)
         .await
-        .map_err(|_| AgeError::StoreUnavailable)?;
+        .map_err(temp_age_diag)?;
         if exists {
             return Ok(false);
         }
@@ -190,7 +190,7 @@ impl SqliteReplayStore {
         .bind(expires_at)
         .execute(connection)
         .await
-        .map_err(|_| AgeError::StoreUnavailable)?;
+        .map_err(temp_age_diag)?;
         Ok(true)
     }
 }
@@ -206,21 +206,30 @@ impl ReplayStore for SqliteReplayStore {
             .pool
             .begin_with("BEGIN IMMEDIATE")
             .await
-            .map_err(|_| AgeError::StoreUnavailable)?;
+            .map_err(temp_age_diag)?;
         match self
             .claim_in_transaction(&mut tx, nonce, expires_at, now)
             .await
         {
             Ok(claimed) => {
-                tx.commit().await.map_err(|_| AgeError::StoreUnavailable)?;
+                tx.commit().await.map_err(temp_age_diag)?;
                 Ok(claimed)
             }
             Err(error) => {
                 tx.rollback()
                     .await
-                    .map_err(|_| AgeError::StoreUnavailable)?;
+                    .map_err(temp_age_diag)?;
                 Err(error)
             }
         }
     }
+}
+
+// TEMP-DIAG: Windows flake investigation; reverted before the final commit.
+fn temp_age_diag<E: std::fmt::Debug>(error: E) -> AgeError {
+    eprintln!(
+        "SQLITE-DIAG crate=privacy-age thread={:?} error={error:?}",
+        std::thread::current().name()
+    );
+    AgeError::StoreUnavailable
 }

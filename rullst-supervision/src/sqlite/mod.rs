@@ -192,7 +192,12 @@ impl<C: Clock> SqliteSupervision<C> {
     }
 }
 
-fn storage(_: sqlx::Error) -> Error {
+fn storage(error: sqlx::Error) -> Error {
+    // TEMP-DIAG: Windows flake investigation; reverted before the final commit.
+    eprintln!(
+        "SQLITE-DIAG crate=supervision storage thread={:?} error={error:?}",
+        std::thread::current().name()
+    );
     Error::Storage
 }
 

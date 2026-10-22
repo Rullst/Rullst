@@ -147,6 +147,7 @@ impl<C: Clock> SqliteLabs<C> {
         key: ContentKey,
         clock: C,
     ) -> Result<Self, Error> {
+        let started = std::time::Instant::now();
         let path = resolved(path.as_ref())?;
         let mut options = std::fs::OpenOptions::new();
         options.write(true).create_new(true);
@@ -155,30 +156,52 @@ impl<C: Clock> SqliteLabs<C> {
             use std::os::unix::fs::OpenOptionsExt;
             options.mode(0o600);
         }
-        let file = options.open(&path).map_err(|_| Error::Configuration)?;
-        file.sync_all().map_err(|_| Error::Storage)?;
+        let file = options.open(&path).map_err(|e| {
+            temp_diag("create_new", started, &e);
+            Error::Configuration
+        })?;
+        file.sync_all().map_err(|e| {
+            temp_diag("sync_all", started, &e);
+            Error::Storage
+        })?;
         drop(file);
-        let store = Self::connect(&path, config, key, clock).await?;
+        let store = Self::connect(&path, config, key, clock)
+            .await
+            .inspect_err(|e| temp_diag("connect", started, e))?;
         let mut tx = store
             .pool
             .begin_with("BEGIN IMMEDIATE")
             .await
+            .inspect_err(|e| temp_diag("begin", started, e))
             .map_err(storage)?;
         for (_, sql) in SCHEMA {
-            sqlx::query(*sql).execute(&mut *tx).await.map_err(storage)?;
+            sqlx::query(*sql)
+                .execute(&mut *tx)
+                .await
+                .inspect_err(|e| temp_diag("schema", started, e))
+                .map_err(storage)?;
         }
         sqlx::query("INSERT INTO labs_meta VALUES (1,1,?,?)")
             .bind(store.config.binding(&store.key)?)
             .bind(checked_time(store.clock.now()?)?)
             .execute(&mut *tx)
             .await
+            .inspect_err(|e| temp_diag("insert", started, e))
             .map_err(storage)?;
-        tx.commit().await.map_err(|_| Error::Uncertain)?;
-        store.validate().await?;
+        tx.commit().await.map_err(|e| {
+            temp_diag("commit", started, &e);
+            Error::Uncertain
+        })?;
+        store
+            .validate()
+            .await
+            .inspect_err(|e| temp_diag("validate", started, e))?;
         super::transaction::Operation::begin(&store, None)
-            .await?
+            .await
+            .inspect_err(|e| temp_diag("operation-begin", started, e))?
             .commit()
-            .await?;
+            .await
+            .inspect_err(|e| temp_diag("operation-commit", started, e))?;
         Ok(store)
     }
     pub async fn open(
@@ -262,8 +285,21 @@ impl<C: Clock> SqliteLabs<C> {
         self.pool.close().await;
     }
 }
-pub(super) fn storage(_: sqlx::Error) -> Error {
+pub(super) fn storage(error: sqlx::Error) -> Error {
+    eprintln!(
+        "SQLITE-DIAG crate=labs storage thread={:?} error={error:?}",
+        std::thread::current().name()
+    );
     Error::Storage
+}
+
+// TEMP-DIAG: Windows flake investigation; reverted before the final commit.
+pub(crate) fn temp_diag(step: &str, started: std::time::Instant, detail: &dyn std::fmt::Debug) {
+    eprintln!(
+        "SQLITE-DIAG crate=labs step={step} after_ms={} thread={:?} detail={detail:?}",
+        started.elapsed().as_millis(),
+        std::thread::current().name()
+    );
 }
 fn resolved(path: &Path) -> Result<PathBuf, Error> {
     let name = path

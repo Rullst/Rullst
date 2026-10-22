@@ -6491,6 +6491,7 @@ name = "rullst-labs"
 version = "13.0.0-alpha.2"
 dependencies = [
  "hex",
+ "libsqlite3-sys",
  "ring",
  "serde",
  "serde_json",
