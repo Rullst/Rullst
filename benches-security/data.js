@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792679573978,
+  "lastUpdate": 1792683262730,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -16984,6 +16984,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c0b031476984a395d5e5ea361d6d41b3e6040349",
+          "message": "Merge pull request #525 from Rullst/chore/v13-safe-updates\n\nchore(deps): update sha2, actix-web, syn and jiff",
+          "timestamp": "2026-10-22T12:04:36-03:00",
+          "tree_id": "6fac9d5fc3ed466d782a92e6e02bc4d6e413848c",
+          "url": "https://github.com/Rullst/Rullst/commit/c0b031476984a395d5e5ea361d6d41b3e6040349"
+        },
+        "date": 1792683261792,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5447,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 566,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 11,
             "range": "± 0",
             "unit": "ns/iter"
           },
