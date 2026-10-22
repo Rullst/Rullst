@@ -54,6 +54,8 @@ fn materialize(root: &Path, workspace: &Path, api: bool) {
     .unwrap();
 }
 
+const FINGERPRINT: &str = "14:6D:E9:83:C5:73:06:50:D8:EE:B9:95:2F:34:FC:64:16:A0:83:42:E6:1D:BE:A8:8A:04:96:B2:3F:CF:44:E5";
+
 fn make_pwa(root: &Path) -> Output {
     Command::new(env!("CARGO_BIN_EXE_rullst"))
         .current_dir(root)
@@ -113,6 +115,37 @@ fn make_pwa_is_idempotent_refuses_edits_and_the_api_starter() {
         let path = icon["src"].as_str().unwrap().trim_start_matches('/');
         assert!(project.join(path).is_file(), "{path}");
     }
+
+    // The Google Play files can follow; nothing else changes.
+    let web = snapshot(&project);
+    let android = success(
+        Command::new(env!("CARGO_BIN_EXE_rullst"))
+            .current_dir(&project)
+            .args([
+                "make:pwa",
+                "--name",
+                "Field Notes",
+                "--lang",
+                "en",
+                "--android",
+            ])
+            .args(["--host", "notes.acme.dev", "--package-id", "dev.acme.notes"])
+            .output()
+            .unwrap(),
+    );
+    assert!(
+        String::from_utf8_lossy(&android.stdout).contains("  created  android/twa-manifest.json\n")
+    );
+    let mut added = snapshot(&project);
+    let twa: serde_json::Value =
+        serde_json::from_slice(&added.remove("android/twa-manifest.json").unwrap()).unwrap();
+    assert_eq!(twa["packageId"], "dev.acme.notes");
+    assert_eq!(
+        twa["webManifestUrl"],
+        "https://notes.acme.dev/static/manifest.webmanifest"
+    );
+    assert!(added.remove("PWA-ANDROID.md").is_some());
+    assert_eq!(added, web);
 
     let wired = snapshot(&project);
     let second = success(make_pwa(&project));
@@ -183,6 +216,10 @@ fn a_generated_blank_application_serves_the_pwa_routes() {
                 "--nocapture",
             ])
             .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env(
+                "RULLST_ANDROID_ASSET_LINKS",
+                format!("dev.acme.notes={FINGERPRINT}"),
+            )
             .output()
             .unwrap(),
     );

@@ -1,5 +1,5 @@
 //! The files `make:pwa` writes, rendered from validated values.
-use super::values::PwaValues;
+use super::values::{AndroidValues, PwaValues};
 use serde::Serialize;
 use std::path::Path;
 
@@ -7,6 +7,7 @@ pub(super) const SERVICE_WORKER: &str = include_str!("assets/sw.js");
 pub(super) const REGISTRATION: &str = include_str!("assets/pwa.js");
 const MODULE: &str = include_str!("assets/pwa.rs.template");
 const README: &str = include_str!("assets/PWA.md.template");
+const ANDROID_README: &str = include_str!("assets/PWA.android.md.template");
 
 /// The line of `sw.js` that lists the files stored at install time.
 pub(super) const PRECACHE_LINE: &str = "const PRECACHE = ['/offline'];";
@@ -123,5 +124,88 @@ pub(super) fn module(values: &PwaValues) -> String {
 
 /// `PWA.md`.
 pub(super) fn readme() -> String {
-    README.replace("__ANDROID__", "")
+    README.to_owned()
+}
+
+/// `PWA-ANDROID.md`, the Google Play steps for `--android`.
+pub(super) fn android_readme(android: &AndroidValues) -> String {
+    ANDROID_README
+        .replace("__HOST__", &android.host)
+        .replace("__PACKAGE_ID__", &android.package_id)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SigningKey {
+    path: &'static str,
+    alias: &'static str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TwaManifest<'a> {
+    package_id: &'a str,
+    host: &'a str,
+    name: &'a str,
+    launcher_name: &'a str,
+    display: &'a str,
+    theme_color: &'a str,
+    theme_color_dark: &'a str,
+    navigation_color: &'a str,
+    navigation_color_dark: &'a str,
+    navigation_divider_color: &'a str,
+    navigation_divider_color_dark: &'a str,
+    background_color: &'a str,
+    enable_notifications: bool,
+    start_url: &'a str,
+    icon_url: String,
+    maskable_icon_url: String,
+    web_manifest_url: String,
+    full_scope_url: String,
+    splash_screen_fade_out_duration: u32,
+    signing_key: SigningKey,
+    app_version: &'a str,
+    app_version_code: u32,
+    fallback_type: &'a str,
+    generator_app: &'a str,
+}
+
+/// `android/twa-manifest.json` for Bubblewrap, from the web manifest values.
+/// The signing key entries are placeholders: the application's own upload
+/// key, kept outside the repository.
+pub(super) fn twa_manifest(
+    values: &PwaValues,
+    android: &AndroidValues,
+) -> Result<String, serde_json::Error> {
+    let origin = format!("https://{}", android.host);
+    let manifest = TwaManifest {
+        package_id: &android.package_id,
+        host: &android.host,
+        name: &values.name,
+        launcher_name: &values.short_name,
+        display: "standalone",
+        theme_color: &values.theme_color,
+        theme_color_dark: &values.theme_color,
+        navigation_color: &values.theme_color,
+        navigation_color_dark: &values.theme_color,
+        navigation_divider_color: &values.theme_color,
+        navigation_divider_color_dark: &values.theme_color,
+        background_color: &values.background_color,
+        enable_notifications: false,
+        start_url: &values.start_url,
+        icon_url: format!("{origin}/static/icons/icon-512.png"),
+        maskable_icon_url: format!("{origin}/static/icons/maskable-512.png"),
+        web_manifest_url: format!("{origin}/static/manifest.webmanifest"),
+        full_scope_url: format!("{origin}/"),
+        splash_screen_fade_out_duration: 300,
+        signing_key: SigningKey {
+            path: "/private/path/upload.keystore",
+            alias: "upload",
+        },
+        app_version: "1",
+        app_version_code: 1,
+        fallback_type: "customtabs",
+        generator_app: "cargo-rullst make:pwa",
+    };
+    Ok(serde_json::to_string_pretty(&manifest)? + "\n")
 }

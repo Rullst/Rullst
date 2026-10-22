@@ -1,0 +1,43 @@
+# Google Play (Trusted Web Activity)
+
+`android/twa-manifest.json` is the Bubblewrap configuration of
+`__PACKAGE_ID__`, which opens `https://__HOST__/` full screen.
+
+1. Deploy the site over HTTPS at `https://__HOST__/`.
+2. Install Bubblewrap: `npm i -g @bubblewrap/cli` (Node.js 18 or later and
+   JDK 17; it offers to install the Android command-line tools on first run).
+3. Create the upload key once, outside the repository, and let `keytool`
+   prompt for the passwords:
+
+   ```bash
+   keytool -genkeypair -keystore /private/path/upload.keystore \
+     -alias upload -keyalg RSA -keysize 3072 -validity 10000
+   ```
+
+   Put its real path and alias in `signingKey` in `twa-manifest.json`, and
+   back the keystore up: every update of the app must be signed with it.
+4. In `android/`, `bubblewrap update --skipVersionUpgrade` generates the
+   Android project from `twa-manifest.json`, and `bubblewrap build` writes the
+   signed `app-release-bundle.aab`. For later releases, `bubblewrap update`
+   (without the flag) raises `appVersionCode` before `bubblewrap build`.
+5. Upload the bundle in Play Console. With Play App Signing, Google re-signs
+   the app: copy the SHA-256 fingerprint of the **app signing key** from the
+   App integrity page (add your upload key's too for builds you install
+   yourself).
+6. Publish the fingerprints, restart the application and open
+   `https://__HOST__/.well-known/assetlinks.json`:
+
+   ```bash
+   RULLST_ANDROID_ASSET_LINKS="__PACKAGE_ID__=<app signing SHA-256>,<upload SHA-256>"
+   ```
+
+   or in `Rullst.toml`:
+
+   ```toml
+   [[android.asset_links]]
+   package_name = "__PACKAGE_ID__"
+   sha256_cert_fingerprints = ["<app signing SHA-256>"]
+   ```
+
+Without a valid file Android still opens the app, but with a browser address
+bar. Web changes reach installed apps without a new bundle.

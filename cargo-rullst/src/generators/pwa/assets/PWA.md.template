@@ -41,11 +41,11 @@ them in IndexedDB with an idempotency key and send them again when the
 connection returns; the server accepts each key once and rejects stale
 writes. The PWA guide shows the pattern:
 https://rullst.github.io/Rullst/book/tutorials/43-progressive-web-apps.html
-__ANDROID__
 ## Stores
 
-- Google Play: `cargo rullst make:pwa --android` writes a Bubblewrap
-  configuration for a Trusted Web Activity.
+- Google Play: `cargo rullst make:pwa --android --host <host> --package-id
+  <name>` adds a Bubblewrap configuration for a Trusted Web Activity and
+  `PWA-ANDROID.md` with its steps.
 - Microsoft Store: package the same site with PWABuilder.
 - Apple App Store: not offered; iOS users add the app to the home screen
   from Safari.

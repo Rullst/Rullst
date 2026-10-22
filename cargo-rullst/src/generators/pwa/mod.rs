@@ -8,7 +8,7 @@
 //! `--name`) stops the run before any write.
 use super::consumer_files::{self as writes, Edit};
 use super::source_walk;
-use clap::{Arg, ArgMatches, Command};
+use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::{
     error::Error,
     io,
@@ -32,6 +32,15 @@ pub(crate) fn command() -> Command {
         .arg(value("background-color", "Splash-screen background as #RRGGBB [default: #020617]"))
         .arg(value("lang", "Language of the application, such as en or pt-BR [default: en]"))
         .arg(value("start-url", "Path the installed app opens [default: /]"))
+        .arg(
+            Arg::new("android")
+                .long("android")
+                .action(ArgAction::SetTrue)
+                .requires_all(["host", "package-id"])
+                .help("Also write android/twa-manifest.json for a Google Play package (Bubblewrap)"),
+        )
+        .arg(value("host", "With --android: the HTTPS host of the site, such as app.example.com").requires("android"))
+        .arg(value("package-id", "With --android: the application-owned Android package name, such as com.acme.notes").requires("android"))
 }
 
 fn flags(matches: &ArgMatches) -> PwaFlags {
@@ -43,6 +52,9 @@ fn flags(matches: &ArgMatches) -> PwaFlags {
         background_color: text("background-color"),
         lang: text("lang"),
         start_url: text("start-url"),
+        android: matches.get_flag("android"),
+        host: text("host"),
+        package_id: text("package-id"),
     }
 }
 
@@ -223,6 +235,20 @@ fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
     )?;
     for (path, bytes) in files::ICONS {
         create(&mut plan, root, path, bytes.to_vec())?;
+    }
+    if let Some(android) = &values.android {
+        create(
+            &mut plan,
+            root,
+            "android/twa-manifest.json",
+            files::twa_manifest(&values, android)?.into_bytes(),
+        )?;
+        create(
+            &mut plan,
+            root,
+            "PWA-ANDROID.md",
+            files::android_readme(android).into_bytes(),
+        )?;
     }
     create(&mut plan, root, "PWA.md", files::readme().into_bytes())?;
     Ok(plan)

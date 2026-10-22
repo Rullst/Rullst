@@ -231,3 +231,133 @@ assert!(replay_key(&headers).is_none());
 Never let a queued write carry a role, a tenant, a price, a score or a
 timestamp the server trusts: the server derives them from the signed-in
 session and its own clock.
+
+## Google Play through a Trusted Web Activity
+
+A Trusted Web Activity (TWA) is an Android app that opens your site in the
+user's browser engine, full screen, without browser UI. Google's
+[Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap) builds one from
+the web manifest; PWABuilder uses it for its Android packages. The app holds
+no copy of your pages: deploying the site updates it.
+
+### 1. Generate the Bubblewrap configuration
+
+The site must already be served over HTTPS at its final host. Then:
+
+```bash
+cargo rullst make:pwa --android --host notes.acme.dev --package-id dev.acme.notes
+```
+
+`--host` is the site's host name (no scheme or path) and `--package-id` the
+Android application ID, which you own and can never change once published
+(`com.example.*` is refused). `make:pwa --android` can run after a plain
+`make:pwa` with the same flags; it adds only `android/twa-manifest.json` and
+`PWA-ANDROID.md`. The configuration repeats the web manifest: name, short
+name as `launcherName`, colours, `display`, start URL, the 512 icon as
+`iconUrl` and the maskable one as `maskableIconUrl`, plus
+`webManifestUrl`, `fullScopeUrl`, `appVersion` `1`/`appVersionCode` `1` and
+`enableNotifications: false`. The `signingKey` entry
+(`/private/path/upload.keystore`, alias `upload`) is a placeholder.
+
+### 2. Install Bubblewrap and create the upload key
+
+Bubblewrap needs Node.js 18 or later and JDK 17, and offers to install the
+Android command-line tools on its first run:
+
+```bash
+npm i -g @bubblewrap/cli
+```
+
+Android apps are signed, and every update must be signed with the same key.
+Create the upload key once with the JDK's `keytool`, outside the repository,
+and let it prompt for the passwords (never pass them as arguments, where they
+reach shell history and logs):
+
+```bash
+keytool -genkeypair -keystore /private/path/upload.keystore \
+  -alias upload -keyalg RSA -keysize 3072 -validity 10000
+```
+
+Restrict the file to your account, back it up with its passwords, and write
+its real path and alias into `signingKey` in `android/twa-manifest.json`.
+Keep `*.keystore` and `*.jks` out of version control and CI artifacts.
+
+### 3. Build the bundle
+
+```bash
+cd android
+bubblewrap update --skipVersionUpgrade
+bubblewrap build
+```
+
+`bubblewrap update` generates the Android project from `twa-manifest.json`
+(with `--skipVersionUpgrade` it keeps version 1), and `bubblewrap build` asks
+for the key passwords (or reads `BUBBLEWRAP_KEYSTORE_PASSWORD` and
+`BUBBLEWRAP_KEY_PASSWORD`) and writes `app-release-bundle.aab` and
+`app-release-signed.apk`.
+
+Bubblewrap's own quick start is interactive instead:
+`bubblewrap init --manifest https://notes.acme.dev/static/manifest.webmanifest`
+reads the same manifest, asks you to confirm each value (compare them with
+`android/twa-manifest.json`), creates a signing key and the project, and is
+followed by `bubblewrap build`. Run it in an empty directory.
+
+### 4. Play App Signing and Digital Asset Links
+
+Upload the `.aab` in Play Console. With Play App Signing, which Play requires
+for new apps, Google signs what users install with its **app signing key**;
+your key only uploads. Android shows the app full screen only when the site
+publishes the fingerprint of the key that signed the installed app, so copy
+the SHA-256 certificate fingerprint of the app signing key from Play
+Console's App integrity page. Add the upload key's fingerprint too if you
+install builds signed locally (`keytool -list -v -keystore
+/private/path/upload.keystore` prints it).
+
+The generated `src/pwa.rs` serves `/.well-known/assetlinks.json` once the
+application is told which app to name. Set the variable in the environment or
+`.env`:
+
+```bash
+RULLST_ANDROID_ASSET_LINKS="dev.acme.notes=<app signing SHA-256>,<upload SHA-256>"
+```
+
+or add the app to `Rullst.toml` (the variable wins when both are set):
+
+```toml
+[[android.asset_links]]
+package_name = "dev.acme.notes"
+sha256_cert_fingerprints = [
+  "14:6D:E9:83:C5:73:06:50:D8:EE:B9:95:2F:34:FC:64:16:A0:83:42:E6:1D:BE:A8:8A:04:96:B2:3F:CF:44:E5",
+]
+```
+
+Separate several apps with `;` in the variable, or repeat the table. Each
+fingerprint must be 32 colon-separated hexadecimal bytes; an invalid value is
+reported when the application starts and the file is then not served. The
+route answers `application/json` with `Cache-Control: public, max-age=3600`.
+Code outside the generated module can build the same route:
+
+```rust
+use rullst::pwa::{AndroidApp, AssetLinks};
+
+let fingerprint = "14:6D:E9:83:C5:73:06:50:D8:EE:B9:95:2F:34:FC:64:16:A0:83:42:E6:1D:BE:A8:8A:04:96:B2:3F:CF:44:E5";
+let links = AssetLinks::new().with_app(AndroidApp::new("dev.acme.notes", [fingerprint])?);
+assert!(links.to_json().contains("\"package_name\":\"dev.acme.notes\""));
+let router = rullst::Router::new().merge_axum(links.router());
+# let _ = router;
+# Ok::<(), rullst::pwa::AssetLinksError>(())
+```
+
+Restart the application and check
+`https://notes.acme.dev/.well-known/assetlinks.json`; Google's
+[Statement List Generator and Tester](https://developers.google.com/digital-asset-links/tools/generator)
+verifies it against the package. If the address bar still shows in the
+installed app, the fingerprint does not match the key that signed it.
+
+### 5. Updates
+
+Web changes reach installed apps immediately; a new bundle is needed only for
+Android-side changes (name, icon, colours, start URL, package version). Then
+run `bubblewrap update` (it raises `appVersionCode` by one and saves
+`twa-manifest.json`) and `bubblewrap build`, and upload the new bundle signed
+with the same upload key.

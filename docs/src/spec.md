@@ -4316,6 +4316,27 @@ store package of the same site, only installs it.
   cargo-rullst/src/generators/pwa/assets/pwa_tests.cjs` executes both scripts
   against in-memory browser APIs in CI, and a generated Blank application is
   compiled and checked for these headers.
+* 🟢 **`[Implemented / Bounded]` Google Play (Trusted Web Activity):**
+  `make:pwa --android --host <host> --package-id <id>` also writes the
+  Bubblewrap `android/twa-manifest.json` from the same validated values
+  (`packageId`, `host`, `name`, `launcherName`, `startUrl`, `iconUrl`,
+  `maskableIconUrl`, `webManifestUrl`, `fullScopeUrl`, theme, navigation and
+  background colours, `display`, `appVersion`/`appVersionCode` 1,
+  `enableNotifications: false` and a placeholder `signingKey` outside the
+  repository) and `PWA-ANDROID.md`. The host is a lowercase DNS name with an
+  alphabetic top label; the package ID has lowercase segments and may not be
+  `com.example.*`. `rullst::pwa::AssetLinks` serves
+  `/.well-known/assetlinks.json` (`application/json`, `public, max-age=3600`)
+  with one `delegate_permission/common.handle_all_urls` statement per
+  `AndroidApp`; package names are Android application IDs and each
+  fingerprint is 32 colon-separated hexadecimal bytes (normalized to upper
+  case), validated at construction with the typed `AssetLinksError`.
+  `AssetLinks::from_project` reads `RULLST_ANDROID_ASSET_LINKS` from the
+  process environment, then `.env`, then `[[android.asset_links]]` in
+  `Rullst.toml`; parse errors report only a line and column. With no app the
+  router has no route. The generated `src/pwa.rs` mounts it and reports an
+  invalid configuration at startup instead of serving it. Bubblewrap, the
+  signing key, Play App Signing and store review remain application work.
 * 🟢 **`[Implemented / Bounded]` `render_page_with_head`:** Core's
   `render_page_with_lang` with extra `Markup` at the end of `<head>`; an htmx
   request still receives only the content.

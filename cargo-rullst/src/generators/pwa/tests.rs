@@ -251,6 +251,7 @@ fn values_have_documented_defaults_and_bounds() {
             background_color: "#020617".to_owned(),
             lang: "en".to_owned(),
             start_url: "/".to_owned(),
+            android: None,
         }
     );
     let long = PwaValues::resolve(&PwaFlags::default(), "internationalization-console").unwrap();
@@ -413,6 +414,7 @@ fn rendered_files_hold_the_validated_values() {
         background_color: "#445566".to_owned(),
         lang: "pt-BR".to_owned(),
         start_url: "/?source=pwa".to_owned(),
+        android: None,
     };
     assert_eq!(
         files::web_manifest(&values).unwrap(),
@@ -490,4 +492,217 @@ fn rendered_files_hold_the_validated_values() {
         assert!(files::REGISTRATION.contains(branch), "{branch}");
     }
     assert!(!files::REGISTRATION.contains("setAttribute('style'"));
+}
+
+const PLAY_FLAGS: [&str; 5] = [
+    "--android",
+    "--host",
+    "notes.acme.dev",
+    "--package-id",
+    "dev.acme.notes",
+];
+
+fn android_flags() -> PwaFlags {
+    flags(
+        &command()
+            .try_get_matches_from(std::iter::once("make:pwa").chain(PLAY_FLAGS))
+            .unwrap(),
+    )
+}
+
+#[test]
+fn android_files_can_be_added_after_the_web_files() {
+    let temporary = tempfile::tempdir().unwrap();
+    let root = starter(temporary.path(), PORTFOLIO_BLUEPRINT_ID, false, false);
+    writes::apply(&plan(&root, &PwaFlags::default()).unwrap().edits).unwrap();
+    let android = plan(&root, &android_flags()).unwrap();
+    assert_eq!(
+        android.created,
+        ["android/twa-manifest.json", "PWA-ANDROID.md"]
+    );
+    assert!(android.changed.is_empty());
+    writes::apply(&android.edits).unwrap();
+    let notes = read(&root, "PWA-ANDROID.md");
+    assert!(notes.starts_with("# Google Play (Trusted Web Activity)\n"));
+    assert!(notes.contains("RULLST_ANDROID_ASSET_LINKS=\"dev.acme.notes=<app signing SHA-256>"));
+    assert!(notes.contains("`https://notes.acme.dev/.well-known/assetlinks.json`"));
+    assert!(!notes.contains("__"));
+    // Both runs are complete now: neither changes anything again.
+    assert!(plan(&root, &android_flags()).unwrap().edits.is_empty());
+    assert!(plan(&root, &PwaFlags::default()).unwrap().edits.is_empty());
+    let module = read(&root, "src/pwa.rs");
+    assert!(module.contains("match rullst::pwa::AssetLinks::from_project() {"));
+}
+
+#[test]
+fn the_bubblewrap_configuration_mirrors_the_web_manifest() {
+    let values = PwaValues::resolve(
+        &PwaFlags {
+            name: Some("Field Notes".to_owned()),
+            short_name: Some("Notes".to_owned()),
+            start_url: Some("/?source=twa".to_owned()),
+            ..android_flags()
+        },
+        "x",
+    )
+    .unwrap();
+    let android = values.android.clone().unwrap();
+    assert_eq!(
+        files::twa_manifest(&values, &android).unwrap(),
+        r##"{
+  "packageId": "dev.acme.notes",
+  "host": "notes.acme.dev",
+  "name": "Field Notes",
+  "launcherName": "Notes",
+  "display": "standalone",
+  "themeColor": "#0f172a",
+  "themeColorDark": "#0f172a",
+  "navigationColor": "#0f172a",
+  "navigationColorDark": "#0f172a",
+  "navigationDividerColor": "#0f172a",
+  "navigationDividerColorDark": "#0f172a",
+  "backgroundColor": "#020617",
+  "enableNotifications": false,
+  "startUrl": "/?source=twa",
+  "iconUrl": "https://notes.acme.dev/static/icons/icon-512.png",
+  "maskableIconUrl": "https://notes.acme.dev/static/icons/maskable-512.png",
+  "webManifestUrl": "https://notes.acme.dev/static/manifest.webmanifest",
+  "fullScopeUrl": "https://notes.acme.dev/",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "/private/path/upload.keystore",
+    "alias": "upload"
+  },
+  "appVersion": "1",
+  "appVersionCode": 1,
+  "fallbackType": "customtabs",
+  "generatorApp": "cargo-rullst make:pwa"
+}
+"##
+    );
+}
+
+#[test]
+fn android_values_are_validated() {
+    assert!(
+        command()
+            .try_get_matches_from(["make:pwa", "--android"])
+            .is_err()
+    );
+    assert!(
+        command()
+            .try_get_matches_from(["make:pwa", "--host", "notes.acme.dev"])
+            .is_err()
+    );
+    let resolved = PwaValues::resolve(&android_flags(), "x").unwrap();
+    assert_eq!(
+        resolved.android,
+        Some(values::AndroidValues {
+            host: "notes.acme.dev".to_owned(),
+            package_id: "dev.acme.notes".to_owned(),
+        })
+    );
+    assert_eq!(
+        PwaValues::resolve(&PwaFlags::default(), "x")
+            .unwrap()
+            .android,
+        None
+    );
+    let refused = |host: Option<&str>, package: Option<&str>| {
+        PwaValues::resolve(
+            &PwaFlags {
+                android: true,
+                host: host.map(str::to_owned),
+                package_id: package.map(str::to_owned),
+                ..PwaFlags::default()
+            },
+            "x",
+        )
+        .err()
+        .unwrap()
+        .to_string()
+    };
+    assert_eq!(
+        refused(None, Some("dev.acme.notes")),
+        "--android needs --host, the HTTPS host of the site"
+    );
+    assert_eq!(
+        refused(Some("notes.acme.dev"), None),
+        "--android needs --package-id, an application-owned Android package name"
+    );
+    for host in [
+        "localhost",
+        "https://notes.acme.dev",
+        "notes.acme.dev/app",
+        "notes.acme.dev:8443",
+        "Notes.acme.dev",
+        "-notes.acme.dev",
+        "notes-.acme.dev",
+        "notes..dev",
+        "10.0.0.1",
+        "notes.acme.d3v",
+        &format!("{}.dev", "a".repeat(64)),
+        &format!(
+            "{}.dev",
+            ["a", "b", "c", "d", "e"]
+                .map(|letter| letter.repeat(60))
+                .join(".")
+        ),
+    ] {
+        assert!(
+            refused(Some(host), Some("dev.acme.notes")).starts_with("--host must be"),
+            "{host}"
+        );
+    }
+    for host in [
+        "a.dev",
+        &format!("{}.dev", "a".repeat(63)),
+        "app-1.acme.dev",
+    ] {
+        assert!(
+            PwaValues::resolve(
+                &PwaFlags {
+                    host: Some(host.to_owned()),
+                    ..android_flags()
+                },
+                "x"
+            )
+            .is_ok(),
+            "{host}"
+        );
+    }
+    for package in [
+        "notes",
+        "Dev.acme",
+        "dev.1acme",
+        "dev.acme-notes",
+        "dev..notes",
+        &format!("dev.{}", "a".repeat(147)),
+    ] {
+        assert!(
+            refused(Some("notes.acme.dev"), Some(package)).starts_with("--package-id must be"),
+            "{package}"
+        );
+    }
+    assert_eq!(
+        refused(Some("notes.acme.dev"), Some("com.example.notes")),
+        "--package-id may not use the com.example placeholder namespace; use an application-owned name"
+    );
+    for package in [
+        "dev.acme_2.notes",
+        "a.b",
+        &format!("dev.{}", "a".repeat(146)),
+    ] {
+        assert!(
+            PwaValues::resolve(
+                &PwaFlags {
+                    package_id: Some(package.to_owned()),
+                    ..android_flags()
+                },
+                "x"
+            )
+            .is_ok(),
+            "{package}"
+        );
+    }
 }

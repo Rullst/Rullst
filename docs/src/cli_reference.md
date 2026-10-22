@@ -1149,6 +1149,9 @@ cargo rullst make:pwa --name "Field Notes" --short-name Notes \
 | `--theme-color`, `--background-color` | `#0f172a`, `#020617` | `#RRGGBB` |
 | `--lang` | `en` | language tag such as `en` or `pt-BR` |
 | `--start-url` | `/` | a path on this site that the installed app opens |
+| `--android` | off | also write `android/twa-manifest.json` (Bubblewrap) and `PWA-ANDROID.md`; needs `--host` and `--package-id` |
+| `--host` | none | with `--android`: the site's HTTPS host, such as `notes.acme.dev` |
+| `--package-id` | none | with `--android`: the Android application ID you own (`com.example.*` is refused) |
 
 It writes `static/manifest.webmanifest` (`id` and `scope` `/`, `display`
 `standalone`, icons 192 and 512 plus a maskable 512), four placeholder PNG
@@ -1179,9 +1182,15 @@ so authenticated pages stay off the device. A new worker waits until the user
 chooses **Reload** in the page's update prompt (`SKIP_WAITING`). The cache is
 named after `[package].version`.
 
+The generated router also serves `/.well-known/assetlinks.json` (Digital
+Asset Links for the Google Play package) once `RULLST_ANDROID_ASSET_LINKS` or
+`[[android.asset_links]]` in `Rullst.toml` names the app and its signing
+certificate fingerprints; see `rullst::pwa::AssetLinks`.
+
 The whole plan is checked before any write. Running the command again changes
 nothing; a generated file that now differs (edited, or another `--name`) stops
-the run without writing. The JSON API starter, a project without an HTML
+the run without writing. `--android` can follow a plain run with the same
+flags and adds only the Android files. The JSON API starter, a project without an HTML
 layout, and a router without the health merge are refused; wire such a project
 by hand as the [PWA guide](tutorials/43-progressive-web-apps.md) shows.
 

@@ -91,6 +91,25 @@ async fn the_offline_page_may_be_stored_but_pages_stay_no_store() {
 }
 
 #[tokio::test]
+async fn asset_links_follow_the_project_setting() {
+    // pwa_scaffold_cli sets RULLST_ANDROID_ASSET_LINKS for this process.
+    let response = get("/.well-known/assetlinks.json").await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(value(&response, header::CONTENT_TYPE), "application/json");
+    assert_eq!(
+        value(&response, header::CACHE_CONTROL),
+        "public, max-age=3600"
+    );
+    let statements: serde_json::Value =
+        serde_json::from_str(&text(response).await).expect("JSON statement list");
+    assert_eq!(
+        statements[0]["relation"][0],
+        "delegate_permission/common.handle_all_urls"
+    );
+    assert_eq!(statements[0]["target"]["package_name"], "dev.acme.notes");
+}
+
+#[tokio::test]
 async fn only_get_is_answered() {
     // Development has no CSRF layer, so the method reaches the router.
     let request = Request::post("/sw.js").body(Body::empty()).expect("POST request");

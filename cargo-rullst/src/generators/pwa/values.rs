@@ -20,6 +20,14 @@ pub(super) struct PwaValues {
     pub background_color: String,
     pub lang: String,
     pub start_url: String,
+    pub android: Option<AndroidValues>,
+}
+
+/// The values of `--android`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct AndroidValues {
+    pub host: String,
+    pub package_id: String,
 }
 
 /// The flags as given; `None` takes the default.
@@ -31,6 +39,9 @@ pub(super) struct PwaFlags {
     pub background_color: Option<String>,
     pub lang: Option<String>,
     pub start_url: Option<String>,
+    pub android: bool,
+    pub host: Option<String>,
+    pub package_id: Option<String>,
 }
 
 pub(super) fn invalid(message: impl Into<String>) -> io::Error {
@@ -59,6 +70,20 @@ impl PwaValues {
         validate_lang(&lang)?;
         let start_url = flags.start_url.clone().unwrap_or_else(|| "/".to_owned());
         validate_start_url(&start_url)?;
+        let android = if flags.android {
+            let host = flags
+                .host
+                .clone()
+                .ok_or_else(|| invalid("--android needs --host, the HTTPS host of the site"))?;
+            validate_host(&host)?;
+            let package_id = flags.package_id.clone().ok_or_else(|| {
+                invalid("--android needs --package-id, an application-owned Android package name")
+            })?;
+            validate_package_id(&package_id)?;
+            Some(AndroidValues { host, package_id })
+        } else {
+            None
+        };
         Ok(Self {
             name,
             short_name,
@@ -66,6 +91,7 @@ impl PwaValues {
             background_color,
             lang,
             start_url,
+            android,
         })
     }
 }
@@ -155,6 +181,61 @@ fn validate_start_url(value: &str) -> io::Result<()> {
     if !valid {
         return Err(invalid(
             "--start-url must be a path on this site such as / or /?source=pwa",
+        ));
+    }
+    Ok(())
+}
+
+/// A lowercase DNS name with at least two labels and an alphabetic top
+/// label, without scheme, port or path: Digital Asset Links and Bubblewrap
+/// need the HTTPS host the app opens.
+fn validate_host(value: &str) -> io::Result<()> {
+    let labels = value.split('.').collect::<Vec<_>>();
+    let valid = value.len() <= 253
+        && labels.len() >= 2
+        && labels.iter().all(|label| {
+            (1..=63).contains(&label.len())
+                && label
+                    .bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+                && !label.starts_with('-')
+                && !label.ends_with('-')
+        })
+        && labels
+            .last()
+            .is_some_and(|label| label.bytes().all(|byte| byte.is_ascii_lowercase()));
+    if !valid {
+        return Err(invalid(
+            "--host must be the site's lowercase host name such as app.example.com, without https:// or a path",
+        ));
+    }
+    Ok(())
+}
+
+/// An Android application ID: at least two dot-separated segments, each a
+/// lowercase letter followed by lowercase letters, digits or underscores.
+/// `com.example.*` is the placeholder namespace Google Play refuses.
+fn validate_package_id(value: &str) -> io::Result<()> {
+    let segments = value.split('.').collect::<Vec<_>>();
+    let valid = value.len() <= 150
+        && segments.len() >= 2
+        && segments.iter().all(|segment| {
+            let mut characters = segment.chars();
+            characters
+                .next()
+                .is_some_and(|first| first.is_ascii_lowercase())
+                && characters.all(|character| {
+                    character.is_ascii_lowercase() || character.is_ascii_digit() || character == '_'
+                })
+        });
+    if !valid {
+        return Err(invalid(
+            "--package-id must be a lowercase Android package name such as com.acme.chat; each segment starts with a letter and holds letters, digits or underscores",
+        ));
+    }
+    if value.starts_with("com.example.") {
+        return Err(invalid(
+            "--package-id may not use the com.example placeholder namespace; use an application-owned name",
         ));
     }
     Ok(())

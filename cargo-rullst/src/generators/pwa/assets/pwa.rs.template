@@ -4,6 +4,7 @@
 //! - `/sw.js`: the service worker in `src/pwa/sw.js`, served from the site
 //!   root so that it may control every page.
 //! - `/offline`: the page the worker shows for a navigation without network.
+//! - `/.well-known/assetlinks.json`: for the Google Play package, once configured.
 //! - [`head`]: the tags every layout puts in its `<head>`.
 //!
 //! The manifest, icons and `pwa.js` are files in `static/`.
@@ -28,11 +29,23 @@ pub fn head() -> Markup {
 }
 
 /// The routes of the PWA. They answer GET only, so they need no CSRF layer.
+///
+/// `/.well-known/assetlinks.json` lets the Google Play package of this site
+/// open without a browser address bar. It is served once
+/// `RULLST_ANDROID_ASSET_LINKS` (environment or `.env`) or
+/// `[[android.asset_links]]` in `Rullst.toml` names the app (PWA.md).
 pub fn router() -> rullst::Router {
-    rullst::routes![
+    let routes = rullst::routes![
         get("/sw.js" => service_worker),
         get("/offline" => offline),
-    ]
+    ];
+    match rullst::pwa::AssetLinks::from_project() {
+        Ok(links) => routes.merge_axum(links.router()),
+        Err(error) => {
+            eprintln!("/.well-known/assetlinks.json is not served: {error}");
+            routes
+        }
+    }
 }
 
 /// The worker, with its cache named after the package version: releasing a
