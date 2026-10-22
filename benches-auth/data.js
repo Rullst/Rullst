@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792705092774,
+  "lastUpdate": 1792708804915,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -17645,6 +17645,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 5134,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f70277b34c59e435c190f70b63a4db1332ed46e",
+          "message": "Merge pull request #531 from Rullst/fix/v13-alpha3-limitations-a\n\nfix(v13)!: typed Orm::transaction errors, Nexus time zones, multipart sweep, zoned deferrable tasks, Docker cache",
+          "timestamp": "2026-10-22T19:08:16-03:00",
+          "tree_id": "75c9eddf69d6ac6be10402e38f0b862dd4aecdfd",
+          "url": "https://github.com/Rullst/Rullst/commit/0f70277b34c59e435c190f70b63a4db1332ed46e"
+        },
+        "date": 1792708803705,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 899,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 770,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1697,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4120,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
