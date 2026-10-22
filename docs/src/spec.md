@@ -3965,7 +3965,10 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
 [production monitoring](production-monitoring.md#watch-your-projects-from-studio).
 
 * **Process.** `rullst_studio::remote::run_remote_studio` (the `rullst-studio`
-  binary, also started by `cargo rullst studio --remote`) listens on
+  binary, also started by `cargo rullst studio --remote`) exists only with the
+  non-default `remote` feature of `rullst-studio` (which adds `reqwest`,
+  `ring` and SQLx's SQLite driver), so applications that mount Studio in
+  development build none of it. It listens on
   `127.0.0.1` only (default port 5556) and needs no application process. Its
   router applies Studio's loopback boundary (loopback peer and `Host`,
   same-origin `Origin` on unsafe methods, crate-private marker) in release

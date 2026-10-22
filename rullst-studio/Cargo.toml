@@ -23,6 +23,10 @@ queue-sqlite = ["rullst-core/queue-sqlite"]
 strict-sqlite = ["rullst-core/strict-sqlite", "rullst-orm/strict-sqlite"]
 strict-postgres = ["rullst-core/strict-postgres", "rullst-orm/strict-postgres"]
 strict-mysql = ["rullst-core/strict-mysql", "rullst-orm/strict-mysql"]
+# The standalone remote-projects Studio (`rullst-studio` binary): an HTTP
+# client, token encryption and the SQLite history. Off by default, so
+# applications that mount Studio in development do not build them.
+remote = ["sqlx/sqlite", "dep:reqwest", "dep:ring"]
 
 [dependencies]
 rullst-core = { workspace = true, features = ["orm"] }
@@ -37,7 +41,7 @@ tower = { workspace = true, features = ["util"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 utoipa = "6"
-sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls", "sqlite"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls"] }
 urlencoding = { workspace = true }
 chrono = { workspace = true }
 tokio-stream = { version = "0.1.19", features = ["sync"] }
@@ -46,12 +50,13 @@ base64 = { workspace = true }
 hmac = { workspace = true }
 rand = { workspace = true }
 sha2 = { workspace = true }
-reqwest = { workspace = true, features = ["rustls"] }
-ring = { workspace = true, features = ["std"] }
+reqwest = { workspace = true, features = ["rustls"], optional = true }
+ring = { workspace = true, features = ["std"], optional = true }
 
 [[bin]]
 name = "rullst-studio"
 path = "src/bin/rullst-studio.rs"
+required-features = ["remote"]
 
 [dev-dependencies]
 rullst-orm = { workspace = true, features = ["drivers-all"] }

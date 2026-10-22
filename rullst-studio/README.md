@@ -75,8 +75,9 @@ return `403`.
 
 ### Remote projects (v13, 13.0.0-alpha.3)
 
-The `rullst-studio` binary (`cargo install rullst-studio`, then
-`rullst-studio [--port PORT]`, or `cargo rullst studio --remote`) serves
+The `rullst-studio` binary (`cargo install rullst-studio --features remote --locked`, then
+`rullst-studio [--port PORT]`, or `cargo rullst studio --remote`; library
+users enable the non-default `remote` feature) serves
 Studio on `127.0.0.1:5556` without an application process and reads the
 read-only `/_rullst/monitor/v1` document of the projects you add: overview,
 routes, queues and N+1 pages with a project switcher. It keeps the loopback

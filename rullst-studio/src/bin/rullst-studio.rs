@@ -2,7 +2,7 @@
 //!
 //! Serves Studio on `127.0.0.1` without an application process and reads the
 //! read-only monitoring endpoint (`/_rullst/monitor/v1`) of the projects you
-//! add. Install with `cargo install rullst-studio`.
+//! add. Install with `cargo install rullst-studio --features remote --locked`.
 
 use rullst_studio::remote::{
     DEFAULT_REMOTE_PORT, RemoteStudioOptions, StudioPaths, run_remote_studio,

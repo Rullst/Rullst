@@ -2658,8 +2658,6 @@ dependencies = [
  "futures-util",
  "hmac",
  "rand 0.10.3",
- "reqwest",
- "ring",
  "rullst-capital",
  "rullst-core",
  "rullst-macros",

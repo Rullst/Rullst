@@ -1,5 +1,6 @@
 //! `cargo rullst studio --remote`: starts the standalone Studio for remote
-//! projects, the `rullst-studio` binary of the `rullst-studio` crate.
+//! projects, the `rullst-studio` binary of the `rullst-studio` crate (built
+//! with its `remote` feature).
 
 use std::io;
 use std::process::Command;
@@ -19,7 +20,9 @@ pub(super) fn launch_error(outcome: io::Result<std::process::ExitStatus>) -> Res
         Ok(status) => Err(io::Error::other(format!("{BINARY} exited with {status}"))),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Err(io::Error::new(
             io::ErrorKind::NotFound,
-            format!("{BINARY} is not installed; install it with `cargo install {BINARY}`"),
+            format!(
+                "{BINARY} is not installed; install it with `cargo install {BINARY} --features remote --locked`"
+            ),
         )),
         Err(error) => Err(error),
     }
@@ -43,7 +46,7 @@ mod tests {
         assert_eq!(missing.kind(), io::ErrorKind::NotFound);
         assert_eq!(
             missing.to_string(),
-            "rullst-studio is not installed; install it with `cargo install rullst-studio`"
+            "rullst-studio is not installed; install it with `cargo install rullst-studio --features remote --locked`"
         );
         let denied = launch_error(Err(io::Error::new(
             io::ErrorKind::PermissionDenied,

@@ -1,5 +1,8 @@
 //! Remote projects: the standalone Studio on a developer's machine.
 //!
+//! Requires the non-default `remote` feature, which adds the HTTP client,
+//! token encryption and the SQLite history (and the `rullst-studio` binary).
+//!
 //! [`run_remote_studio`] (the `rullst-studio` binary) serves Studio on
 //! `127.0.0.1` without an application process. It keeps a list of projects
 //! (name, base URL, monitor token) and renders each project's read-only

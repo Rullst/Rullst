@@ -290,11 +290,15 @@ switcher in the header. It only connects outwards to your projects; nothing
 new is collected or stored on the servers.
 
 ```bash
-cargo install rullst-studio
+cargo install rullst-studio --features remote --locked
 rullst-studio                  # http://127.0.0.1:5556/studio
 # or, with the CLI installed:
 cargo rullst studio --remote   # --port 7000 for another port
 ```
+
+The `remote` feature is not enabled by default: applications that mount
+Studio's local pages in development do not build its HTTP client, encryption
+or SQLite history.
 
 It listens on `127.0.0.1` only, with the same protections as Studio's local
 pages: loopback peer and `Host`, same-origin forms, and a per-process form

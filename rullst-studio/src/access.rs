@@ -50,6 +50,7 @@ impl LocalStudioAccess {
     }
 }
 
+#[cfg(feature = "remote")]
 /// Applies the loopback boundary without the debug-build requirement.
 ///
 /// Only the remote-projects router uses it: that mode serves no data of a

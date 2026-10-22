@@ -295,7 +295,8 @@ pub enum Commands {
     #[command(name = "studio")]
     Studio {
         /// Starts the standalone Studio for remote projects instead (the
-        /// installed `rullst-studio` binary); no project needed
+        /// `rullst-studio` binary, installed with `cargo install rullst-studio
+        /// --features remote --locked`); no project needed
         #[arg(long)]
         remote: bool,
         /// Loopback port of the remote Studio (default 5556)
