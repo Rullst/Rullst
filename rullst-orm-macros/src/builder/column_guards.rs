@@ -78,3 +78,29 @@ pub fn generate_column_guards(parsed: &ParsedModel) -> TokenStream {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::generate_column_guards;
+
+    #[test]
+    fn skipped_fields_are_guarded_and_db_default_columns_stay_filterable() {
+        let input: syn::DeriveInput = syn::parse_quote! {
+            struct Member {
+                id: i32,
+                #[orm(db_default)]
+                is_admin: bool,
+                #[orm(skip)]
+                display_badge: String,
+            }
+        };
+        let parsed = crate::parser::parse(&input).expect("test model should parse");
+        let generated = generate_column_guards(&parsed).to_string();
+        assert!(generated.contains("SKIPPED_COLUMNS"), "{generated}");
+        assert!(generated.contains("\"display_badge\""), "{generated}");
+        assert!(!generated.contains("\"is_admin\""), "{generated}");
+        assert!(generated.contains(
+            "so it is not a database column for the ORM and must not be used in WHERE / ORDER BY / GROUP BY / SELECT; declare a column that the database manages `#[orm(db_default)]`"
+        ));
+    }
+}

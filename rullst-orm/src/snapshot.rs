@@ -73,7 +73,9 @@ impl RowSnapshot {
             .as_deref()
             .and_then(|fingerprints| fingerprints.get(index));
         match stored {
-            Some(&stored) => stored == UNKNOWN || fingerprint == UNKNOWN || stored != fingerprint,
+            // An `UNKNOWN` fingerprint never equals a known stored one, so only
+            // the stored side needs its own check.
+            Some(&stored) => stored == UNKNOWN || stored != fingerprint,
             None => true,
         }
     }
