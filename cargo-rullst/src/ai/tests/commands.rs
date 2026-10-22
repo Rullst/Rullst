@@ -81,6 +81,7 @@ fn every_allowlisted_command_exists_in_the_cli() {
         crate::generators::privacy::command(),
         crate::generators::age_gate::command(),
         crate::generators::api_contract::command(),
+        crate::generators::pwa::command(),
     ] {
         names.push(extra.get_name().to_string());
     }
