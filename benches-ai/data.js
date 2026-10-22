@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792705410697,
+  "lastUpdate": 1792709087232,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -15245,6 +15245,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 417,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f70277b34c59e435c190f70b63a4db1332ed46e",
+          "message": "Merge pull request #531 from Rullst/fix/v13-alpha3-limitations-a\n\nfix(v13)!: typed Orm::transaction errors, Nexus time zones, multipart sweep, zoned deferrable tasks, Docker cache",
+          "timestamp": "2026-10-22T19:08:16-03:00",
+          "tree_id": "75c9eddf69d6ac6be10402e38f0b862dd4aecdfd",
+          "url": "https://github.com/Rullst/Rullst/commit/0f70277b34c59e435c190f70b63a4db1332ed46e"
+        },
+        "date": 1792709086038,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1472,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 237,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 290,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
