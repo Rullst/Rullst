@@ -137,7 +137,7 @@ fn account_mail_uses_the_request_language_and_an_editable_product_name() {
     assert!(!controller.contains("MailLocale::En, event"));
     assert!(controller.contains("const APPLICATION_NAME: &str = env!(\"CARGO_PKG_NAME\");"));
     assert!(controller.contains("const DEFAULT_MAIL_LOCALE: MailLocale = MailLocale::En;"));
-    assert!(controller.contains("const MAIL_LANGUAGES: &[&str] = &[\"en\", \"pt-BR\", \"es\"];"));
+    assert!(controller.contains("const MAIL_LANGUAGES: &[&str] = &[\"en\", \"pt\", \"es\"];"));
     assert!(controller.contains(
         "match rullst::config::project_setting(\"APP_NAME\") {\n        Ok(Some(name)) if !name.trim().is_empty() => name.trim().to_owned(),\n        _ => APPLICATION_NAME.to_owned(),"
     ));
