@@ -206,7 +206,7 @@ impl AccountEvent {
 /// A link lifetime in words: whole hours as hours ("2 hours"), anything
 /// else as minutes ("90 minutes").
 fn lifetime_words(minutes: u32, locale: MailLocale) -> String {
-    let (amount, one, many) = if minutes % 60 == 0 {
+    let (amount, one, many) = if minutes.is_multiple_of(60) {
         (
             minutes / 60,
             locale.select("hour", "hora", "hora"),
