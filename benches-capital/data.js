@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792654661958,
+  "lastUpdate": 1792663550316,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -12773,6 +12773,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/479d9a08c2cab58bac43a443e0f74ead8d572e19"
         },
         "date": 1792654661378,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3672ffef75a78ecf4109fa5da2ff4c801206b297",
+          "message": "Merge pull request #521 from Rullst/feat/v13-orm-alpha3\n\nfeat(orm)!: dirty-tracking save(), filterable db_default columns and empty default features",
+          "timestamp": "2026-10-22T06:35:32-03:00",
+          "tree_id": "fc5038663c43ae981f388e615719c0ca4bd9ea0d",
+          "url": "https://github.com/Rullst/Rullst/commit/3672ffef75a78ecf4109fa5da2ff4c801206b297"
+        },
+        "date": 1792663549384,
         "tool": "cargo",
         "benches": [
           {
