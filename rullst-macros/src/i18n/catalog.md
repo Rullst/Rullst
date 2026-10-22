@@ -42,7 +42,15 @@ The generated items are:
   its arguments escaped. A plural message takes `count = n` (any integer or a
   `rullst::i18n::Decimal`) and selects the form with the locale's CLDR rule.
 
-Adding a new locale file does not by itself rebuild the crate: touch the file
-that invokes `catalog!` (edits to existing files are tracked).
+Edits to existing files rebuild the crate. To rebuild when a locale file is
+added or removed, add a `build.rs` next to `Cargo.toml` (stable Rust gives
+a macro no way to watch a directory):
+
+```rust,ignore
+// build.rs
+fn main() {
+    println!("cargo::rerun-if-changed=locales");
+}
+```
 
 This example is compiled and run in `rullst-core/tests/i18n_catalog.rs`.

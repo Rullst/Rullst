@@ -2002,7 +2002,12 @@ the same server-authoritative controls.
   malformed template, a plural message whose forms do not match the locale's
   rule, a non-canonical file tag, and a `default` without a file (at most 30
   catalog errors are listed). Each file is tracked with `include_bytes!`, so
-  edits rebuild the crate; adding a file needs a rebuild trigger.
+  edits rebuild the crate. Stable Rust gives a macro no way to watch a
+  directory, so the documented setup adds a `build.rs` printing
+  `cargo::rerun-if-changed=<dir>`: Cargo then rescans the directory and
+  rebuilds the crate when a locale file is added or removed
+  (`rullst-macros/tests/locale_rebuild.rs` builds a probe crate with and
+  without it).
 * **Generated items:** in the invoking module, `pub static LOCALES:
   rullst::i18n::Locales` (tags sorted, default index) and `macro_rules! t`
   re-exported with `pub(crate) use t;`. `t!(locale, "key", name = expr, …)`

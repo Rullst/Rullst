@@ -219,6 +219,12 @@ A prepared version section does not establish that its tag or crates exist.
   `count`, since CLDR selects by fraction digits too (`1.0` is English
   `other`), and `Locale::plural_category` returns the new `PluralCategory`
   without a catalog.
+- Adding or removing an i18n locale file can now rebuild the crate: the
+  i18n guide's setup adds a `build.rs` with
+  `println!("cargo::rerun-if-changed=locales");`, which makes Cargo rescan the
+  directory before each build (stable Rust gives `catalog!` no way to watch a
+  directory itself; edits to existing files were already tracked). Existing
+  applications add the same three-line `build.rs`.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 
