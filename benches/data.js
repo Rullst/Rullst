@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792695994687,
+  "lastUpdate": 1792700095010,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -28005,6 +28005,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2301,
             "range": "± 82",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7a4bdd27793b368a011c823b9b427f6e1e51d357",
+          "message": "Merge pull request #527 from Rullst/feat/v13-alpha3-i18n-html\n\nfeat(i18n): CLDR plural rules and formatting; html! @match",
+          "timestamp": "2026-10-22T17:08:12-03:00",
+          "tree_id": "31f01694a9eb862cec819d94fdca51f58b1651ae",
+          "url": "https://github.com/Rullst/Rullst/commit/7a4bdd27793b368a011c823b9b427f6e1e51d357"
+        },
+        "date": 1792700091828,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 778,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1028,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 374,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2317,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
