@@ -215,7 +215,7 @@ comments and string literals never match an API rule, and macro bodies such as
 `html!` and `routes!` are read token by token), Cargo manifests with a TOML
 parser, and a few generated project files (`.gitignore`, `.dockerignore`,
 `.cargo/config.toml`, `Foundry.toml`, `docker-compose.prod.yml`, Kubernetes
-YAML, `omni-app/src/lib.rs`, `rullst-client.ts`, `Dockerfile`,
+YAML, an Omni shell under `omni-app/`, `rullst-client.ts`, `Dockerfile`,
 `.env`/`.env.example` keys and release scripts). Files are read without
 following symbolic links; a finding records a rule and a line, never file
 contents. A Rust file that does not parse, is not UTF-8 or is larger than
@@ -405,14 +405,15 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (10 rows);
+  application source (11 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (95 rows);
+  the affected API, feature or configuration, which the rules locate (93 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
   of inputs that previously failed) (57 rows).
 
-The catalog has 106 rules. A row can map to several rules and a rule to
+A row with both a must-change and a review part counts in both. The catalog
+has 105 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -455,7 +456,6 @@ the rule together.
 | Security DLP, RASP and honeypot | (b) review | `V13-SECURITY-DLP-HONEYPOT` |  |
 | Security audit log lines | (b) review | `V13-SECURITY-AUDIT-LOG-LINES` |  |
 | Connect generic OIDC | (b) review | `V13-OIDC-OPTIONAL-NAME` |  |
-| Android release command | (b) review | `V13-ANDROID-RELEASE-SIGNING` | Detected in workflows, root scripts, Makefile and justfile |
 | Age assurance | (c) none | — | Opt-in APIs and generator |
 | Optional consent and export | (c) none | — | Opt-in generator |
 | Project context | (c) none | — | CLI generator |
@@ -577,8 +577,7 @@ the rule together.
 | Minimal default features | (b) review | `V13-RULLST-DEFAULT-FEATURES`, `V13-ORM-DEFAULT-FEATURES` | Reports `rullst` and `rullst-orm` dependencies that keep their defaults and select no driver |
 | Generated `rullst-orm` dependency | (c) none | — | Generator output; such a dependency is reported under Minimal default features |
 | ORM adapter aggregate features | (a) must-change | `V13-POLYGLOT-FEATURE` | Dependency `features` and `[features]` entries such as `"rullst/orm-polyglot"` |
-| Omni desktop runner | (b) review | `V13-OMNI-RUNNER` |  |
-| Omni managed backend | (b) review | `V13-OMNI-BACKEND` |  |
+| Omni and offline sync removed | (a) must-change, (b) review | `V13-OFFLINE-SYNC-REMOVED`, `V13-OMNI-REMOVED` | The feature in dependency `features` and `[features]` entries; the shell's `omni-app/tauri.conf.json` or `omni-app/src/lib.rs`, and `cargo rullst omni`/`make:omni` in workflows, root scripts, Makefile and justfile |
 | Starter page language | (b) review | `V13-RENDER-PAGE-LANGUAGE` |  |
 | Repository examples | (c) none | — | Repository examples, not applications |
 

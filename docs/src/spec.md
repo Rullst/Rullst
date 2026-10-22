@@ -84,7 +84,7 @@ each crate implements.
 
 | Crate | Responsibilities | Status & Capabilities |
 | :--- | :--- | :--- |
-| **`rullst-core`** | Kernel HTTP runtime, `routes!`, Server bootstrap, HTML engine, async task queues, WebSockets, circular telemetry buffers, storage facade, and the default baseline CSRF/WAF/header/PII stack. | 🟢 **`[Implemented / Bounded]`**: Routing, server lifecycle, `html!` engine, graceful shutdown, backpressure guard, queues, and local storage with path-traversal protection. The process-local `RateLimiter` keys IPv6 peers per /64 and tracks at most 100,000 buckets, dropping refilled ones and evicting the least recently used beyond that cap. `ApplicationLifecycle` adds an opt-in process-local monotonic startup/ready/draining/stopped state, at most 32 immutable component readiness bits, secret-minimized `/ready`, fail-closed admission and a bounded drain wait. `Server` marks ready after binding, begins drain before Axum's graceful wait, and accepts an explicit supervisor shutdown future; deterministic tests cover startup failure, in-flight completion, rejection after drain and lock poisoning. It does not run dependency checks, coordinate replicas/load balancers or authorize domain requests. SQLite and Redis persist `dispatch_at` timestamps for at most 366 days and never claim them early; Redis promotion uses server time and a digest-pinned live CI/release contract. The Redis cache and queue drivers share one lazily opened multiplexed connection per driver and reconnect after a connection-level failure instead of opening a connection per operation. Execution starts on the first later worker poll and is at-least-once. The worker never cancels an in-flight claim; graceful shutdown requeues a job claimed after the request. Timeout and shutdown record a handler's own result when it finishes before cancellation takes effect, so only a cancelled handler is failed as timed out or requeued. Stalled-lease recovery runs at worker start and then every `min(stalled_after, 60 s)` over every processing lease of the shared SQLite table or Redis namespace, and in the v13 prerelease source workers claim with `QueueDriver::pop_with_lease` so SQLite and Redis store each claim's own `stalled_after` lease and recovery honours it; only claims without a lease need every sharing worker's `stalled_after` to exceed the longest `job_timeout` among them; SQLite and Redis count stalled leases per job and fail the job at its fifth stalled lease instead of requeuing it forever (`retry_failed_job` restarts the count; the v13 prerelease `try_with_max_stalled_leases` driver builders accept 1–1,000). Worker transitions are fenced by the claimed attempt number in SQLite and Redis, so a stale lease cannot complete, fail or requeue a recovered and re-claimed job; custom drivers inherit unfenced defaults, and SQLite and Redis `retry_failed_job` keep the counter so the fence holds across retries. A worker without a handler for a claimed job's name hands it back with a five-second delay in SQLite and Redis instead of failing it, until the claim's 720th attempt fails it (section 4.3); custom drivers without `requeue_attempt_after` still fail it. Redis retains at most 10,000 failed jobs and 10,000 dead letters by default (1–100,000 via `try_with_failure_retention`), evicting the oldest atomically, and implements bounded `list_all_jobs` (at most 1,000 rows), `retry_failed_job` and `purge_failed_jobs`. The v13 prerelease `QueueDriver::list_job_previews` returns those records with each payload and error cut to a caller-chosen byte budget on a UTF-8 boundary; SQLite cuts them in SQL and Redis in one atomic Lua script, while custom drivers inherit a projection of `list_all_jobs`. Worker and scheduler handles buffer at most 256 undrained errors; overflow is dropped, counted by `dropped_errors()` and logged as a `tracing` warning. `Server` drains the scheduler handle it owns, logging each task failure, and returns a scheduler error at shutdown only for a failed scheduler loop. Custom drivers fail closed for future scheduling until implemented. `TenantStorage`, `TenantCache`, `TenantRealtime` and `TenantPresence` bind those facades to a validated `TenantContext`, apply immutable tenant namespaces and prove same-name local non-interference; the realtime wrappers also bound channel/event/identity names and payload size. `BroadcastManager` retains a channel only while it has a subscriber or an outstanding handle (publishing never creates one) and `PresenceTracker` counts connections per user and drops empty rooms, so neither registry grows with abandoned names. Memory and Redis caches expose an opt-in, at-most-200-entry metadata snapshot containing logical key, UTF-8 value length and remaining TTL but never the value; custom drivers fail explicitly unless they implement that method. Remote bucket policy, distributed transport/liveness, cache operator authorization and application room authorization remain deployment/application work. In a supervised debug Development process (`RULLST_DEV_GENERATION` set by `cargo rullst dev`/`dash`), `Server` also serves `GET /_rullst/dev-telemetry` to loopback peers with a loopback `Host`: bounded request counters and the newest 64 requests (method, query-free path, status, duration), outermost `rullst.orm.query` operation counts with the newest 16 slow operations, and the pending count of a queue passed to the v13 `Server::with_dev_queue`, plus the newest 16 possible-N+1 findings (an ORM label fingerprint that one request, identified by its matched route, repeated at least three times, using the shared `rullst_core::query_patterns` rule that Studio's threshold also uses); bodies, headers, query strings, SQL, bindings and error text are never recorded, and release builds, Staging and Production never mount it.<br/>🟢 **`[Implemented / Bounded]`**: The in-memory upload admission contract enforces a hard size/allowlist boundary, canonical tenant/name, recognized signature versus MIME/extension, active-text denial, randomized tenant quarantine keys, SHA-256 binding and fail-closed scanner release. It is not a deep parser, remote persistence or a production malware engine. Since 13.0.0-alpha.2 `uploads::Multipart` reads `multipart/form-data` under an explicit `MultipartPolicy`, streaming each file to memory or a private temporary file and recognizing content with the same signatures (section 4.1, "Multipart Form Uploads").<br/>🟢 **`[Implemented / Bounded]`**: Validated environment precedence is `RULLST_ENV`, legacy `APP_ENV` (from the process, then from the `.env` that `Server` reads, which `RullstConfig::environment` also honours once a `Server` has started), then `[app].env`; invalid values fail instead of silently enabling development.<br/>🟢 **`[Implemented / Bounded]`**: `apply_security_baseline` and `Server` compose configured CSP nonce headers, exact-origin CORS with explicit credential opt-in, bounded WAF, double-submit CSRF and optional PII masking in one tested order, with the per-application config installed outside every middleware. Browser/proxy/TLS deployment evidence and application-owned session/auth/tenant/authorization remain separate. A fail-closed typed Academy boundary-assessment contract records those application observations without certifying them, and the extended `rullst-security` stack is still composed explicitly. The opt-in v13 `Server::trusted_proxies` stage resolves clients behind listed reverse-proxy networks outside that baseline (section 4.1).<br/>🟢 **`[Implemented / Bounded]`**: `client_contract` exposes the portable `rullst.client` v1 typed JSON envelope, positive version negotiation, bounded correlation/idempotency/failure tokens, server-authored time and a fail-closed 2 MiB codec on native and Wasm. It deliberately contains no role, tenant or authorization assertion; durable replay and domain policy remain server/application work.<br/>🟢 **`[Implemented / Feature-gated Foundation]`**: native `offline-sync` adds bounded account state, FIFO idempotent proposals, server revisions/cursors, explicit conflicts/full resync/recovery/logical erasure, account-bound AES-256-GCM snapshots and a static-dispatch foreground coordinator with request budgets, timeout and cursor-stall checks. Platform persistence/secure-key adapters, browser offline storage, concrete authenticated HTTP/retry/background orchestration, future-schema migrations and device evidence remain application/platform work.<br/>🟢 **`[Implemented / Bounded, v13 prerelease]`**: Optional `storage-s3` private S3/R2 operations passed hosted source/package admission in PR #236; final release admission and actual owner-account interoperability remain outstanding. See section 4.4. |
+| **`rullst-core`** | Kernel HTTP runtime, `routes!`, Server bootstrap, HTML engine, async task queues, WebSockets, circular telemetry buffers, storage facade, and the default baseline CSRF/WAF/header/PII stack. | 🟢 **`[Implemented / Bounded]`**: Routing, server lifecycle, `html!` engine, graceful shutdown, backpressure guard, queues, and local storage with path-traversal protection. The process-local `RateLimiter` keys IPv6 peers per /64 and tracks at most 100,000 buckets, dropping refilled ones and evicting the least recently used beyond that cap. `ApplicationLifecycle` adds an opt-in process-local monotonic startup/ready/draining/stopped state, at most 32 immutable component readiness bits, secret-minimized `/ready`, fail-closed admission and a bounded drain wait. `Server` marks ready after binding, begins drain before Axum's graceful wait, and accepts an explicit supervisor shutdown future; deterministic tests cover startup failure, in-flight completion, rejection after drain and lock poisoning. It does not run dependency checks, coordinate replicas/load balancers or authorize domain requests. SQLite and Redis persist `dispatch_at` timestamps for at most 366 days and never claim them early; Redis promotion uses server time and a digest-pinned live CI/release contract. The Redis cache and queue drivers share one lazily opened multiplexed connection per driver and reconnect after a connection-level failure instead of opening a connection per operation. Execution starts on the first later worker poll and is at-least-once. The worker never cancels an in-flight claim; graceful shutdown requeues a job claimed after the request. Timeout and shutdown record a handler's own result when it finishes before cancellation takes effect, so only a cancelled handler is failed as timed out or requeued. Stalled-lease recovery runs at worker start and then every `min(stalled_after, 60 s)` over every processing lease of the shared SQLite table or Redis namespace, and in the v13 prerelease source workers claim with `QueueDriver::pop_with_lease` so SQLite and Redis store each claim's own `stalled_after` lease and recovery honours it; only claims without a lease need every sharing worker's `stalled_after` to exceed the longest `job_timeout` among them; SQLite and Redis count stalled leases per job and fail the job at its fifth stalled lease instead of requeuing it forever (`retry_failed_job` restarts the count; the v13 prerelease `try_with_max_stalled_leases` driver builders accept 1–1,000). Worker transitions are fenced by the claimed attempt number in SQLite and Redis, so a stale lease cannot complete, fail or requeue a recovered and re-claimed job; custom drivers inherit unfenced defaults, and SQLite and Redis `retry_failed_job` keep the counter so the fence holds across retries. A worker without a handler for a claimed job's name hands it back with a five-second delay in SQLite and Redis instead of failing it, until the claim's 720th attempt fails it (section 4.3); custom drivers without `requeue_attempt_after` still fail it. Redis retains at most 10,000 failed jobs and 10,000 dead letters by default (1–100,000 via `try_with_failure_retention`), evicting the oldest atomically, and implements bounded `list_all_jobs` (at most 1,000 rows), `retry_failed_job` and `purge_failed_jobs`. The v13 prerelease `QueueDriver::list_job_previews` returns those records with each payload and error cut to a caller-chosen byte budget on a UTF-8 boundary; SQLite cuts them in SQL and Redis in one atomic Lua script, while custom drivers inherit a projection of `list_all_jobs`. Worker and scheduler handles buffer at most 256 undrained errors; overflow is dropped, counted by `dropped_errors()` and logged as a `tracing` warning. `Server` drains the scheduler handle it owns, logging each task failure, and returns a scheduler error at shutdown only for a failed scheduler loop. Custom drivers fail closed for future scheduling until implemented. `TenantStorage`, `TenantCache`, `TenantRealtime` and `TenantPresence` bind those facades to a validated `TenantContext`, apply immutable tenant namespaces and prove same-name local non-interference; the realtime wrappers also bound channel/event/identity names and payload size. `BroadcastManager` retains a channel only while it has a subscriber or an outstanding handle (publishing never creates one) and `PresenceTracker` counts connections per user and drops empty rooms, so neither registry grows with abandoned names. Memory and Redis caches expose an opt-in, at-most-200-entry metadata snapshot containing logical key, UTF-8 value length and remaining TTL but never the value; custom drivers fail explicitly unless they implement that method. Remote bucket policy, distributed transport/liveness, cache operator authorization and application room authorization remain deployment/application work. In a supervised debug Development process (`RULLST_DEV_GENERATION` set by `cargo rullst dev`/`dash`), `Server` also serves `GET /_rullst/dev-telemetry` to loopback peers with a loopback `Host`: bounded request counters and the newest 64 requests (method, query-free path, status, duration), outermost `rullst.orm.query` operation counts with the newest 16 slow operations, and the pending count of a queue passed to the v13 `Server::with_dev_queue`, plus the newest 16 possible-N+1 findings (an ORM label fingerprint that one request, identified by its matched route, repeated at least three times, using the shared `rullst_core::query_patterns` rule that Studio's threshold also uses); bodies, headers, query strings, SQL, bindings and error text are never recorded, and release builds, Staging and Production never mount it. For deployed applications, the opt-in 13.0.0-alpha.3 `Server::with_monitor` serves the authenticated read-only `GET /_rullst/monitor/v1` document instead (section 10.1.1).<br/>🟢 **`[Implemented / Bounded]`**: The in-memory upload admission contract enforces a hard size/allowlist boundary, canonical tenant/name, recognized signature versus MIME/extension, active-text denial, randomized tenant quarantine keys, SHA-256 binding and fail-closed scanner release. It is not a deep parser, remote persistence or a production malware engine. Since 13.0.0-alpha.2 `uploads::Multipart` reads `multipart/form-data` under an explicit `MultipartPolicy`, streaming each file to memory or a private temporary file and recognizing content with the same signatures (section 4.1, "Multipart Form Uploads").<br/>🟢 **`[Implemented / Bounded]`**: Validated environment precedence is `RULLST_ENV`, legacy `APP_ENV` (from the process, then from the `.env` that `Server` reads, which `RullstConfig::environment` also honours once a `Server` has started), then `[app].env`; invalid values fail instead of silently enabling development.<br/>🟢 **`[Implemented / Bounded]`**: `apply_security_baseline` and `Server` compose configured CSP nonce headers, exact-origin CORS with explicit credential opt-in, bounded WAF, double-submit CSRF and optional PII masking in one tested order, with the per-application config installed outside every middleware. Browser/proxy/TLS deployment evidence and application-owned session/auth/tenant/authorization remain separate. A fail-closed typed Academy boundary-assessment contract records those application observations without certifying them, and the extended `rullst-security` stack is still composed explicitly. The opt-in v13 `Server::trusted_proxies` stage resolves clients behind listed reverse-proxy networks outside that baseline (section 4.1).<br/>🟢 **`[Implemented / Bounded]`**: `client_contract` exposes the portable `rullst.client` v1 typed JSON envelope, positive version negotiation, bounded correlation/idempotency/failure tokens, server-authored time and a fail-closed 2 MiB codec on native and Wasm. It deliberately contains no role, tenant or authorization assertion; durable replay and domain policy remain server/application work.<br/>🟢 **`[Implemented / Bounded, v13 prerelease]`**: Optional `storage-s3` private S3/R2 operations passed hosted source/package admission in PR #236; final release admission and actual owner-account interoperability remain outstanding. See section 4.4. |
 | **`rullst-orm`** | Active Record & Repository patterns, parameterized SQLx connection pool (PostgreSQL, MySQL/MariaDB, SQLite), typed Turso/libSQL primary profile, schema migrations, AES-256-GCM privacy, Scout search, typed pgvector/Qdrant queries, Redis native structures, and optional capability-oriented persistence adapters. | 🟢 **`[Implemented / Bounded]`**: Relational CRUD, eager loading, type-safe queries, migration runner, versioned field encryption, and connection-pool resilience for supported SQLx drivers/features. PostgreSQL, MySQL, MariaDB and SQLite have distinct executable matrix contracts, while MariaDB intentionally shares SQLx's MySQL protocol/backend.<br/>🟢 **`[Implemented / Bounded]`**: `#[derive(Orm)] #[orm(backend = "turso")]` supplies typed CRUD, equality filters, ordering, pagination/counts and generated/app-assigned keys through a process-wide `TursoOrm`. Its migrations are ordered, checksummed, drift-detecting and reversible. The blank/API CLI profile generates, compiles, migrates, reports status and rolls back locally, while the same typed contract passes against the official remote libSQL server. Unsupported SQLx-specific model behaviors fail during macro expansion rather than being ignored. Other SQLx-specific blueprints, ORM relations/hooks, schema auto-diff, seed generation and transparent embedded-replica synchronization are not part of this bounded Turso profile.<br/>🟢 **`[Implemented / Bounded]`**: The optional persistence boundary supplies portable document CRUD for MongoDB and SurrealDB, parameterized OLAP queries through in-process DuckDB, explicit parameterized Turso/libSQL SQL/transactions, and bounded read-only ISO GQL through SurrealDB. These capability APIs do not claim shared semantics or cross-store transactions. External adapters select deterministic offline behavior for empty or `mock_*` credentials where documented; SurrealDB uses its HTTP protocol rather than embedding the BSL-licensed SDK.<br/>🟢 **`[Implemented / Feature-gated]`**: `scout-http` provides bounded Meilisearch, Elasticsearch and Algolia indexing/search adapters plus deterministic mocks. Meilisearch has a digest-pinned live lifecycle; Elasticsearch/Algolia have protocol fixtures, not hosted-provider certification. Generated projections are process-local post-commit effects unless the application explicitly composes the transactional outbox.<br/>🟢 **`[Implemented / Feature-gated]`**: `pgvector` with `strict-postgres` supplies typed SQL vector helpers. `qdrant` supplies a separate bounded dense-vector collection/upsert/delete/cosine-query contract, while `redis` supplies namespaced Hash, Set and Sorted Set operations. All three have digest-pinned live lifecycles; RAG orchestration, authorization, production ANN tuning and Redis cluster/failover remain application/deployment boundaries.<br/>🟢 **`[Implemented / Benchmark Evidence]`**: A lockfile-pinned Criterion target compares five equivalent typed-SQLite shapes through one Rullst, Diesel and SeaORM connection under the same schema, seed and SQLite policy. It is per-run evidence, not a superiority, negligible-overhead, networked-database or full-application claim. |
 | **`rullst-auth`** | Argon2id password hashing, encrypted cookie sessions (AES-256-GCM), opt-in application JWTs, Passkey ceremony foundations, RBAC context guards. | 🟢 **`[Implemented / Bounded]`**: Non-blocking `spawn_blocking` Argon2id hashing, versioned expiring AES-256-GCM sessions with opt-in per-user session-epoch revocation, fail-closed `RequireRoleLayer`, compile-validated `#[rullst::require_role]`, named `Policy<User, Resource>` decisions, and a feature-gated application JWT policy with required versioned claims, bounded TTL/scopes, strong HS256 keys, `kid` rotation and revocation contracts that reject process-local state in production mode.<br/>🟢 **`[Implemented / Feature-gated]`**: `sqlite` supplies bounded shared local auth state. `SqliteJwtRevocationStore` persists JTI expiry and monotonic subject session versions through serialized transactions, stored quota/configuration and async verification. `SqlitePasskeyStore` persists validated public credentials, bounded device inventory/rename/revocation and optimistic signature-counter CAS; executable restart, replay, quota, corruption/configuration and two-instance contention evidence covers both stores. Authentication, role persistence, resource/tenant/device ownership, trusted file permissions/encryption, backup and multi-host replication remain application/deployment boundaries.<br/>🟠 **`[Partial]`**: Passkey registration/assertion validates the documented ES256/`none`-attestation scope; the compatible `PasskeyAuth` challenge state remains process-local. The optional `passkey-postgres` v13 candidate adds a separate shared manager with bound single-use PostgreSQL ceremonies; independent-process/database-restart and Chromium virtual-authenticator contracts pass, and PR #223 passed hosted workspace/archive source acceptance. Final release admission remains separate. The v13 opaque-session inventory/logout increment extends the recovery store with process/database evidence and passed hosted source/package admission in PR #236. Final release admission remains separate. Normative WebAuthn conformance or adoption of an audited full server library, refresh tokens and complete recovery/session UX remain required before a general stable claim. |
 | **`rullst-security`** | Explicit extended defense-in-depth layers: bounded RASP, authenticated Vault, Login Jail, Secure Headers, rate limiting, DLP and security telemetry. | 🟢 **`[Implemented / Bounded]`**: AES-256-GCM envelopes with rotation/AAD, bounded URI/header/body RASP heuristics, local abuse controls, CSWSH origin guard, OS-random TOTP with SVG enrollment QR, strict JSON transport inspection plus an explicitly mounted reusable JSON Schema 2020-12/OpenAPI 3.1-component policy, explicit log redaction, file-backed SRI hashes, and a versioned/bounded `LiveSecurityEvent` v1 dashboard envelope. `DurableSiemSpool` preserves the compatible unsigned local format, while `AuthenticatedSiemSpool` offers an explicit HMAC-SHA256-chained format with named active/historical keys, zeroized key material, sequence/predecessor validation and byte/record quotas. Restart, forgery, wrong/missing keys, reordering, interior deletion, quota, symlink and external-length-change paths fail closed. Whole valid-tail rollback requires a separately trusted checkpoint, and the caller owns directory/key trust, permissions, retention and exclusive-writer operation. Schema construction caps bytes/nodes/depth, accepts only local references, disables network/filesystem resolution and uses linear-time regexes; auth/ownership/domain rules and query/header/form validation remain application contracts. A deterministic Sentinel classifies three caller-supplied aggregate patterns and can issue HMAC-authenticated, subject-bound, expiring, one-shot process-local proof-of-work challenges; it is not AI attribution, automatic blocking or distributed replay protection. The CLI emits bounded fail-closed evidence and a CycloneDX 1.5 Cargo SBOM; it does not certify the application.<br/>🟢 **`[Implemented / Feature-gated]`**: `redis-rate-limit` provides namespaced atomic Redis fixed-window counters over one lazily opened multiplexed connection per limiter (shared by its clones and reopened after a connection-level failure), hashes client keys and exposes an explicit process-local offline mode that production can reject with `require_distributed()`.<br/>🟠 **`[Partial]`**: Recovery-code consumption must be persisted transactionally by the application. The two-replica deployment acceptance (PR #224) shows two processes sharing one Redis rate-limit budget; Redis eviction and failover evidence is still required. CSP nonce composition is shared, but Core and Security are not yet one canonical Server stack; WebSocket CSRF tickets/frame crypto, trusted rollback checkpoints, spool compaction/remote acknowledgement and external SIEM delivery are not implemented. |
@@ -493,11 +493,9 @@ from generated SaaS/LMS consumers compiled against actual framework source.
 Release-time inventory and package checks must revisit this boundary as more
 v13 changes land.
 
-The current candidate intentionally tightens the Android release command's
-configuration contract: the expected public certificate and trusted verifier
-paths are now required in addition to the existing signing inputs. An unchanged
-Rust helper signature does not make that behavior minor-compatible. Retain this
-break in the migration inventory. The major-aware SemVer job is not evidence
+The current candidate intentionally removes supported commands and features:
+`make:omni`, `cargo rullst omni` and the `offline-sync` feature (section 13).
+Retain this break in the migration inventory. The major-aware SemVer job is not evidence
 that the candidate could instead be released as 12.2; that question requires a
 minor-level comparison and review of the full documented compatibility surface.
 
@@ -3930,6 +3928,67 @@ provider](capital-custom-provider.md)); the
   authenticated network boundary owned by the application; no environment
   variable silently converts the local server into a production admin surface.
 
+### 10.1.1. Production monitoring endpoint (v13, 13.0.0-alpha.3)
+
+Phase 1 of the Studio production monitor: a read-only machine contract served
+by the application, which a later Studio "remote projects" mode reads. Guide:
+[production monitoring](production-monitoring.md); threat model `TM-STUDIO-2`.
+
+* **Mounting.** `Server::with_monitor(rullst_core::monitor::Monitor)` mounts
+  `GET /_rullst/monitor/v1` (Core's reserved `/_rullst/*` namespace, schema
+  major version in the path) and a recording layer outside the framework
+  layers, so their refusals are counted. At start-up the server adds the
+  comma-separated tokens of `RULLST_MONITOR_TOKENS` (process environment, then
+  `.env`) to `Monitor::with_token` values. With no token and no
+  `MonitorAuthorizer`, nothing is mounted (`404`) and request handling is
+  unchanged. Invalid tokens (fewer than 43 base64/base64url or 64 hexadecimal
+  characters, other characters, more than 512 characters, fewer than ten
+  distinct characters, placeholder words, more than eight tokens), invalid
+  application labels (1–128 bytes, no control characters) and invalid queue
+  names (1–64 of `[A-Za-z0-9._-]`, unique, at most 16) stop start-up with
+  `ServerError::Configuration`, whose message names a position, never a
+  token. The hot-reload development server does not mount it.
+* **Admission.** In order: a request with `Origin`, or `Sec-Fetch-Site`
+  `cross-site`/`same-site`, gets `403`; in staging and production a request
+  without TLS evidence gets `426` (evidence: `https` reported by a trusted proxy
+  with `trust_forwarded_proto`, the application-inserted
+  `MonitorVerifiedTls` marker, or, with `Monitor::allow_loopback_plaintext`, a
+  direct loopback peer with a loopback `Host` and no forwarding header); a
+  per-client budget of 30 requests refilled at one per second, then a lockout
+  after 10 presented invalid `Bearer` values refilled at one per 90 seconds,
+  both `429` with `Retry-After` and keyed per IPv4 address or IPv6 /64 after
+  trusted-proxy resolution. A locked client's credentials are not evaluated.
+  Then `Authorization: Bearer` is compared with every token's SHA-256 digest
+  in constant time; otherwise the `MonitorAuthorizer` answers `Allow` (`200`),
+  `SignIn` (`401`), `Deny` (`403`) or an error (`503`, reason logged).
+  Missing and invalid credentials get one empty `401` with
+  `WWW-Authenticate: Bearer realm="rullst-monitor"`. Every response of the
+  route carries `Cache-Control: no-store` and `X-Content-Type-Options:
+  nosniff`; other methods get `405`.
+* **Document (`rullst.monitor.v1`).** `schema`, `generated_at`, `application`
+  (`name`, `version` or `null`), `framework`, `uptime_seconds`, `process`
+  (radar), `http` (`window_seconds`, `route_limit`, `routes_overflowed`,
+  `requests_total`, `status_total`, `window`, `routes`), `database`
+  (`observed` with `queries_total` and `n_plus_one`, or `unavailable` with a
+  fixed reason) and `queues`. A test pins this exact field set. Route keys are
+  the matched route pattern (Axum's nested tail shown as `{*rest}`, control
+  characters replaced, at most 256 bytes) or `(unmatched)`, and a method from
+  the standard set or `OTHER`; at most 256 pairs, then one `*`/`(other)`
+  bucket. Windows are five one-minute slots with a 17-bucket latency
+  histogram (0.1 ms to 10 s and an open bucket); a percentile is its bucket's
+  upper bound capped at the window maximum. N+1 findings use the
+  `rullst_core::query_patterns` rule on ORM label fingerprints attributed to a
+  request scope, at most 64 entries. Queue `pending` comes from the store
+  within 250 ms per queue (`timeout`/`driver_error` otherwise); in-flight,
+  completed, failed, retried and stalled-recovered counts cover this process's
+  workers. Raw paths, query strings, headers, cookies, addresses, user
+  identifiers, bodies, SQL text or values, error messages, environment and
+  configuration values are never recorded.
+* **Cost and scope.** State is process-local and resets with the process. The
+  passive ORM query layer is part of the framework subscriber in every build
+  and attributes operations only inside a recording scope. A release-build
+  measurement adds about 0.6 µs per request (guide, "Overhead").
+
 ### 10.2. Rullst Nexus (`/nexus`)
 * Auto-generated CMS with dynamic CRUD operations and AI Admin Assistant.
 * **Security Default:** Fail-closed by design; requires explicit authentication middleware and RBAC role validation (`admin`) on all mutating endpoints.
@@ -4396,83 +4455,92 @@ assistant, not a claim that compilation proves production compatibility.
 
 ---
 
-## 📱 13. Omni Packaging Contract
+## 📱 13. Installable Applications: Progressive Web App Contract
 
-`cargo rullst make:omni` generates an application-owned Tauri packaging shell;
-it is not a native-runtime abstraction or store-publication service.
+Since 13.0.0-alpha.3 an application is made installable as a Progressive Web
+App. The canonical product stays the Rullst web application; the browser, or a
+store package of the same site, only installs it.
 
-The canonical product is the Rullst web application. Server-side domain rules,
-authentication, authorization, persistence, realtime policy and security
-controls remain authoritative and must work without trusting the platform
-shell. Omni is **web-first, platform-enhanced**: it may add narrowly scoped
-native capabilities, but it must not fork the business/security model or move
-authoritative secrets into JavaScript or an untrusted client.
+* 🟢 **`[Implemented / Bounded]` `cargo rullst make:pwa`:** for an HTML
+  starter it writes `static/manifest.webmanifest` (`id` and `scope` `/`,
+  `display` `standalone`, `name`, `short_name`, `start_url`, `theme_color`,
+  `background_color`, `lang`, PNG icons 192 and 512 plus a maskable 512),
+  four placeholder icons pre-rendered from the Rullst logo (no image
+  library), `static/pwa.js`, `src/pwa.rs`, the worker `src/pwa/sw.js` and
+  `PWA.md`. Values come from validated flags or the Cargo package name. It
+  mounts `crate::pwa::router()` after the crate root's single
+  `.merge_axum(rullst::health::health_router())` (merges inside a `return`
+  expression are fallback routers and are ignored), adds the head tags to
+  every recognized layout in `src/` (an `html!` document, a document in a
+  string literal, Core's `render_page_with_lang`, rewritten to
+  `render_page_with_head`) and declares `mod pwa` in `src/lib.rs`, else
+  `src/main.rs`. The complete plan is validated before the first write:
+  identical files and wired places are skipped, so a repeated run changes
+  nothing, and a generated file with other content (edited, or rendered from
+  other flags) refuses the run. Projects without an HTML layout (the JSON API
+  starter), without the health merge or with a source file that does not
+  parse are refused.
+* 🟢 **`[Implemented / Bounded]` Routes and headers:** `/sw.js` answers
+  `text/javascript; charset=utf-8` with `Cache-Control: no-cache` from the site
+  root, so the worker's scope is `/`; its cache is named after the package
+  version. `/offline` is an `html!` page with `no-cache`. Both answer GET only
+  and are mounted outside the CSRF layer. Static files keep Core's policy
+  (`no-cache`, or a year-long `immutable` for content-hashed names) and the
+  manifest Core's `application/manifest+json` type.
+* 🟢 **`[Implemented / Bounded]` CSP compatibility:** the registration script
+  is a same-origin file allowed by `script-src 'self'`, it styles the update
+  prompt only through the DOM, the worker is allowed by `worker-src 'self'`,
+  and the manifest by the `default-src 'self'` fallback. No inline script or
+  style is added. A policy with `'strict-dynamic'` needs the request nonce on
+  the script.
+* 🟢 **`[Implemented / Bounded]` Worker storage rule:** it precaches
+  `/offline` (required) and the PWA's own and the starter's static files (when
+  present); navigations and unversioned static files are network-first with a
+  stored-copy or offline fallback; content-hashed static files are cache-first;
+  other requests pass through. It stores only same-origin `200` `basic`
+  responses to GET requests whose `Cache-Control` has neither `no-store` nor
+  `private` and whose `Vary` is not `*`; since Core answers `no-store` by
+  default, authenticated pages are not kept. A waiting worker takes over only
+  after the user accepts the page's reload prompt (`SKIP_WAITING`); the old
+  version's cache is then deleted. `node
+  cargo-rullst/src/generators/pwa/assets/pwa_tests.cjs` executes both scripts
+  against in-memory browser APIs in CI, and a generated Blank application is
+  compiled and checked for these headers.
+* 🟢 **`[Implemented / Bounded]` Google Play (Trusted Web Activity):**
+  `make:pwa --android --host <host> --package-id <id>` also writes the
+  Bubblewrap `android/twa-manifest.json` from the same validated values
+  (`packageId`, `host`, `name`, `launcherName`, `startUrl`, `iconUrl`,
+  `maskableIconUrl`, `webManifestUrl`, `fullScopeUrl`, theme, navigation and
+  background colours, `display`, `appVersion`/`appVersionCode` 1,
+  `enableNotifications: false` and a placeholder `signingKey` outside the
+  repository) and `PWA-ANDROID.md`. The host is a lowercase DNS name with an
+  alphabetic top label; the package ID has lowercase segments and may not be
+  `com.example.*`. `rullst::pwa::AssetLinks` serves
+  `/.well-known/assetlinks.json` (`application/json`, `public, max-age=3600`)
+  with one `delegate_permission/common.handle_all_urls` statement per
+  `AndroidApp`; package names are Android application IDs and each
+  fingerprint is 32 colon-separated hexadecimal bytes (normalized to upper
+  case), validated at construction with the typed `AssetLinksError`.
+  `AssetLinks::from_project` reads `RULLST_ANDROID_ASSET_LINKS` from the
+  process environment, then `.env`, then `[[android.asset_links]]` in
+  `Rullst.toml`; parse errors report only a line and column. With no app the
+  router has no route. The generated `src/pwa.rs` mounts it and reports an
+  invalid configuration at startup instead of serving it. Bubblewrap, the
+  signing key, Play App Signing and store review remain application work.
+* 🟢 **`[Implemented / Bounded]` `render_page_with_head`:** Core's
+  `render_page_with_lang` with extra `Markup` at the end of `<head>`; an htmx
+  request still receives only the content.
+* 🟠 **`[Application Boundary]`** icons, HTTPS, offline data and conflict
+  handling belong to the application. Browser-side offline data follows the
+  server-authoritative pattern of the PWA guide (an IndexedDB outbox replayed
+  with idempotency keys); no sync engine is generated.
+* 🟠 **`[Documented / External Tools]` Other stores:** the PWA guide
+  documents packaging the same site as MSIX for the Microsoft Store with
+  PWABuilder and a Partner Center reservation, as Microsoft documents it, and
+  installation on iPhone and iPad from Safari. No Windows or App Store
+  package is generated or verified by the framework; App Store Review
+  Guideline 4.2 usually rejects an app that only wraps a website.
 
-* 🟢 **`[Implemented / Bounded]` Deterministic Scaffold:** `--platform` accepts
-  desktop, Android and iOS selections without a prompt. Mobile selections
-  require `--backend-url`; HTTPS is required except for explicitly bounded
-  loopback/emulator development hosts, and embedded credentials are rejected.
-  Product name and application version default to validated Cargo package
-  metadata. `--product-name`, `--app-version` and `--identifier` provide
-  deterministic overrides. Android/iOS require an application-owned lowercase
-  reverse-DNS identifier and reject framework/reserved example placeholders;
-  desktop-only development may use a clearly documented `com.example` value.
-* 🟢 **`[Implemented / Bounded]` Reproducible Tooling:** the generated manifest
-  pins the Tauri CLI and compatible Rust runtime/macro/build-helper family,
-  including Tauri 2.11.6's channel IPC isolation correction. Explicit transitive
-  constraints prevent fresh resolution from combining incompatible internal
-  Tauri releases; other dependencies still require application-owned lockfiles
-  and advisory review. Existing shells require explicit manifest/lockfile
-  migration. The generator emits a restrictive local CSP and real
-  source-derived platform icons, and treats npm, icon generation or
-  explicitly requested mobile initialization failures as command failures.
-  Explicit iOS initialization requires macOS/Xcode.
-  **12.1.0:** new shells embed the existing Rullst logo as their
-  default square icon source and regenerate icons after all mobile init steps.
-  Existing shells are never regenerated in place. New Android shells bind the
-  release signing configuration to application-owned keystore/alias/password
-  environment inputs and fail release preparation when inputs are missing;
-  debug signing remains development-only. `omni android --release` checks
-  required inputs before invoking Tauri, without changing the public v12
-  command enum. No shared signing key, store publication or physical-device
-  evidence is implied. Existing/custom-flavor shells need reviewed migration;
-  see the [signing guide](tutorials/49-omni-android-signing.md).
-* 🟢 **`[Implemented / Bounded v13 candidate]` Verified Android release output:** the
-  CLI binds a successful build to one fresh release APK under the generated
-  Android output directory. An explicit relative APK selection may disambiguate
-  variants; absent, unchanged, ambiguous, linked or oversized outputs fail.
-  Reproducible bytes may be accepted only when the output's filesystem timestamp
-  changed during this build; a cached unchanged artifact is not fresh evidence.
-  Compare artifact time with a temporary filesystem timestamp anchor created
-  before the build, so filesystem clock granularity cannot invalidate a fresh
-  fast build merely by lagging the wall clock. The before/after artifact identity
-  comparison remains mandatory.
-  An application-owned DER certificate and a trusted absolute SDK
-  `apksigner.jar` path are required in addition to signing inputs. Invoke the
-  jar through Java from an absolute trusted PATH entry, with bounded output,
-  deadlines and process cleanup. The verifier receives no keystore or password
-  environment inputs. It requires cryptographic verification of a private bounded APK
-  snapshot with SDK warnings treated as errors, report exactly one supported signer and match the expected
-  certificate SHA-256. Verify that the original bytes still match before
-  reporting the APK digest. Tool failures expose fixed diagnostics, not captured
-  logs or signing secrets. Local protocol fixtures are not real APK acceptance;
-  hosted Android CI built and verified a generated signed APK through this
-  CLI in PR #220, whose complete source campaign passed. Preserve that check
-  in final release verification. Multiple signers/key rotation, arbitrary output layouts, AAB/store/device
-  acceptance and protection from hostile build tools or same-user writers remain
-  separate contracts.
-* 🟢 **`[Implemented / Bounded]` Remote-content Boundary:** the generated local
-  bootstrap exposes no Tauri IPC API to the remote application. A native
-  navigation callback permits only Tauri's packaged origin and the exact
-  scheme/host/effective-port tuple of the configured backend; cross-origin
-  links and OAuth must use a separately reviewed system-browser/deep-link flow.
-  The bootstrap provides an accessible initial offline/retry state, but this is
-  not offline application data or synchronization.
-* 🟢 **`[Implemented / Bounded]` Desktop Lifecycle:** the one-command local
-  `http://localhost:3000` development profile owns its child process, refuses a
-  pre-existing port rather than attaching to an unknown process, stops on early
-  child exit or timeout, and terminates only the child it spawned. HTTPS and
-  other configured origins are treated as externally operated backends.
 * 🟢 **`[Implemented / Bounded]` Shared Wire Contract:**
   `rullst::client_contract` provides the strict `rullst.client` v1 JSON marker,
   positive version negotiation, private typed request/success/failure
@@ -4482,35 +4550,11 @@ authoritative secrets into JavaScript or an untrusted client.
   compiles natively and for `wasm32-unknown-unknown`. The envelope carries no
   role, tenant or authorization claim; the server must derive those from its
   authenticated context and persist idempotency atomically.
-* 🟢 **`[Implemented / Feature-gated Foundation]` Offline State Contract:** the
-  native `offline-sync` feature supplies one account-bound, versioned state
-  with bounded cached records, FIFO idempotent mutations, server revisions and
-  cursors, atomic response application, explicit conflict isolation, full
-  resync, quotas, cache recovery and logical erasure. `OfflineSnapshotCipher`
-  authenticates and encrypts the closed snapshot with randomized AES-256-GCM,
-  binds it to the exact account and rotation-key id, revalidates every bound
-  after decryption, redacts state payloads from aggregate `Debug`, and zeroizes
-  its owned key/plaintext buffers where possible. It never treats client time,
-  cached identity/role/tenant, score or local revision as authority.
-  A static-dispatch coordinator bounds foreground push/pull requests, mandates
-  per-request timeout, stops on retryable no-progress and rejects a continuing
-  page whose cursor did not advance. Keychain/Keystore, atomic platform
-  persistence, browser storage, concrete authenticated HTTP, retry/background
-  orchestration, concrete future-schema migrations, physical-device
-  recovery/erasure evidence and application conflict UX remain explicit
-  platform/application work; therefore the generated shell alone is not an
-  offline-first application.
-* 🟢 **`[Implemented / Hosted Compile Evidence]` Compile Evidence:** on commit
-  `755fbd61933bed04369e0eb5de50b11275db5e3d`, path-aware workflows created
-  disposable hosts and passed fresh desktop shell checks on Linux, macOS and
-  Windows, an Android aarch64 debug APK build, and an iOS simulator build.
-  These are compile gates for that SHA, not physical-device or store evidence.
-* 🟠 **`[Application / Platform Boundary]`** bundle identity, signing and
-  provisioning, privacy manifest and usage declarations, native capabilities,
-  production endpoint/auth policy, physical-device testing, TestFlight,
-  Play testing, metadata and store review belong to the generated application.
-  Offline sync, push, biometrics, OS secure storage, deep links and signed
-  updates are not implied by the web shell and require opt-in capability scopes
-  plus platform tests. Simulator/APK compilation must never be described as
-  store acceptance or universal iPhone/Android
-  compatibility.
+* ⚪ **`[Removed in 13.0.0-alpha.3]` Omni:** `cargo rullst make:omni`,
+  `cargo rullst omni` (including `omni android --release`), the Tauri shell
+  templates, their three release workflows and the native-only `offline-sync`
+  feature (`rullst::offline_sync`) were removed. The shells exposed no native
+  API to the site, so an installed PWA gives the same result. `cargo rullst
+  upgrade` reports an Omni shell or script (`V13-OMNI-REMOVED`) and a manifest
+  that enables `offline-sync` (`V13-OFFLINE-SYNC-REMOVED`); see the
+  [migration guide](migration-v13.md).

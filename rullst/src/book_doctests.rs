@@ -32,6 +32,10 @@ tutorial!(
 tutorial!(live_recovery, "../../docs/src/live-recovery.md");
 tutorial!(migration_v13, "../../docs/src/migration-v13.md");
 tutorial!(distributed_tracing, "../../docs/src/distributed-tracing.md");
+tutorial!(
+    production_monitoring,
+    "../../docs/src/production-monitoring.md"
+);
 
 tutorial!(
     tutorial_zero_to_complete_app,
@@ -198,12 +202,8 @@ tutorial!(
     "../../docs/src/tutorials/42-server-bound-oauth-sessions.md"
 );
 tutorial!(
-    tutorial_43_omni_web_first,
-    "../../docs/src/tutorials/43-omni-web-first.md"
-);
-tutorial!(
-    tutorial_44_omni_offline_sync,
-    "../../docs/src/tutorials/44-omni-offline-sync.md"
+    tutorial_43_progressive_web_apps,
+    "../../docs/src/tutorials/43-progressive-web-apps.md"
 );
 tutorial!(
     tutorial_45_accessible_academy_media,
@@ -212,10 +212,6 @@ tutorial!(
 tutorial!(
     tutorial_48_local_oidc_testing,
     "../../docs/src/tutorials/48-local-oidc-testing.md"
-);
-tutorial!(
-    tutorial_49_omni_android_signing,
-    "../../docs/src/tutorials/49-omni-android-signing.md"
 );
 tutorial!(
     tutorial_49_brokered_messaging,

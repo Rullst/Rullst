@@ -237,40 +237,6 @@ fn parses_transactional_upgrade_options() {
 }
 
 #[test]
-fn parses_deterministic_omni_platforms_and_backend() {
-    let cli = Cli::try_parse_from([
-        "rullst",
-        "make:omni",
-        "--platform",
-        "desktop,ios",
-        "--backend-url",
-        "https://api.example.com",
-        "--product-name",
-        "Acme Chat",
-        "--identifier",
-        "com.acme.chat",
-        "--app-version",
-        "1.2.3",
-    ])
-    .expect("deterministic Omni CLI flags");
-
-    assert!(matches!(
-        cli.command,
-        Commands::MakeOmni {
-            platform,
-            backend_url: Some(ref backend_url),
-            product_name: Some(ref product_name),
-            identifier: Some(ref identifier),
-            app_version: Some(ref app_version),
-        } if platform == vec![OmniPlatformChoice::Desktop, OmniPlatformChoice::Ios]
-            && backend_url == "https://api.example.com"
-            && product_name == "Acme Chat"
-            && identifier == "com.acme.chat"
-            && app_version == "1.2.3"
-    ));
-}
-
-#[test]
 fn invalid_pkg_invocations_fail_instead_of_exiting_successfully() {
     // Both are rejected before the manifest is read, so no project is needed.
     let missing_name = run_cli_command(&Commands::Pkg {

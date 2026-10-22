@@ -100,9 +100,6 @@ rules! {
     OIDC_OPTIONAL_NAME: "V13-OIDC-OPTIONAL-NAME", Review, "Connect generic OIDC",
         "`OidcProvider` accepts tokens without `name`; `ConnectUser::name` may now be empty",
         "Handle an empty `ConnectUser::name` (fall back to e-mail or another claim) wherever a display name is required.";
-    ANDROID_RELEASE: "V13-ANDROID-RELEASE-SIGNING", Review, "Android release command",
-        "`omni android --release` now requires the expected signing certificate and a trusted `apksigner.jar`",
-        "Set `RULLST_ANDROID_SIGNING_CERTIFICATE` and `RULLST_ANDROID_APKSIGNER_JAR` (or the CLI options) in the release job.";
     TS_CLIENT_REGENERATE: "V13-TS-CLIENT-REGENERATE", Review, "CLI generator robustness",
         "regenerate `rullst-client.ts`: v13 clients send the CSRF header and URL-encode path parameters",
         "Run `cargo rullst generate:ts` and update callers of parameterized methods; older clients receive 403 from `csrf_middleware`.";
@@ -331,12 +328,12 @@ rules! {
     POLYGLOT_FEATURE: "V13-POLYGLOT-FEATURE", MustChange, "ORM adapter aggregate features",
         "the `orm-polyglot` (`rullst`) and `polyglot` (`rullst-orm`) features were removed; Cargo refuses a manifest that enables them",
         "Enable only the adapters the application uses: `orm-turso`, `orm-mongodb`, `orm-duckdb`, `orm-surrealdb` or `orm-qdrant` on `rullst`, or `turso`, `mongodb`, `duckdb`, `surrealdb` or `qdrant` on `rullst-orm`.";
-    OMNI_RUNNER: "V13-OMNI-RUNNER", Review, "Omni desktop runner",
-        "the Omni runtime does not print `Launching Omni interface...` before opening its window",
-        "Add `println!(\"Launching Omni interface...\");` before `tauri::Builder::default()` in the desktop branch.";
-    OMNI_BACKEND: "V13-OMNI-BACKEND", Review, "Omni managed backend",
-        "the Omni runtime chooses `cargo run` from a relative `../Cargo.toml`",
-        "Resolve the project from `CARGO_MANIFEST_DIR` in debug builds and start the `server` executable in release builds.";
+    OMNI_REMOVED: "V13-OMNI-REMOVED", Review, "Omni and offline sync removed",
+        "13.0 removed `make:omni` and `cargo rullst omni`; this project has an Omni shell or runs the removed commands",
+        "Run `cargo rullst make:pwa` (with `--android` for Google Play), ship the installable PWA, then retire `omni-app/` and the `cargo rullst omni` steps.";
+    OFFLINE_SYNC_REMOVED: "V13-OFFLINE-SYNC-REMOVED", MustChange, "Omni and offline sync removed",
+        "the `offline-sync` feature and `rullst::offline_sync` were removed; Cargo refuses a manifest that enables the feature",
+        "Remove the feature; keep the server authoritative and queue browser writes in IndexedDB with idempotency keys as the PWA guide shows.";
     PAGE_LANGUAGE: "V13-RENDER-PAGE-LANGUAGE", Review, "Starter page language",
         "`render_page` declares `lang=\"pt-BR\"`; English pages should use `render_page_with_lang`",
         "Call `rullst::htmx::render_page_with_lang(&htmx, \"en\", title, content)` with the page's language.";

@@ -192,9 +192,6 @@ class ReleaseAdmissionTests(unittest.TestCase):
             full_fuzz,
             {"workflow": "kani.yml", "event": "workflow_dispatch"},
             {"workflow": "miri.yml", "event": "workflow_dispatch"},
-            {"workflow": "omni-android.yml", "event": "workflow_dispatch"},
-            {"workflow": "omni-desktop.yml", "event": "workflow_dispatch"},
-            {"workflow": "omni-ios.yml", "event": "workflow_dispatch"},
             {"workflow": "proptest.yml", "event": "workflow_dispatch"},
             {"workflow": "sanitizers.yml", "event": "workflow_dispatch"},
         ]

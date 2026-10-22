@@ -1,6 +1,6 @@
 //! Bounded background queue worker and lifecycle handle.
 
-use super::{Queue, QueueDriver, QueueError, QueuedJob};
+use super::{Queue, QueueActivity, QueueDriver, QueueError, QueuedJob};
 use crate::error_buffer::{ERROR_BUFFER_CAPACITY, ErrorBuffer, ErrorReporter, error_buffer};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -12,6 +12,9 @@ use tokio::sync::watch;
 use tokio::task::{JoinHandle, JoinSet};
 
 mod execution;
+mod transitions;
+
+use transitions::{hand_back_unhandled, release_claim_after_shutdown};
 
 /// Delay before a job handed back for lack of a handler can be claimed again.
 pub(crate) const UNHANDLED_JOB_RETRY_DELAY: Duration = Duration::from_secs(5);
@@ -33,6 +36,7 @@ pub type JobHandler = Box<
 /// Polls a queue and executes registered handlers with bounded concurrency.
 pub struct Worker {
     driver: Arc<Box<dyn QueueDriver>>,
+    activity: Arc<QueueActivity>,
     handlers: HashMap<String, Arc<JobHandler>>,
     poll_interval: Duration,
     max_concurrency: usize,
@@ -45,6 +49,7 @@ impl Worker {
     pub fn new(queue: &Queue) -> Self {
         Self {
             driver: queue.driver_ref(),
+            activity: queue.activity(),
             handlers: HashMap::new(),
             poll_interval: Duration::from_secs(1),
             max_concurrency: 16,
@@ -148,6 +153,7 @@ impl Worker {
             self.stalled_after,
             shutdown_rx,
             errors_tx,
+            Arc::clone(&self.activity),
         ));
 
         Ok(WorkerHandle {
@@ -244,9 +250,11 @@ async fn run_worker_loop(
     stalled_after: Duration,
     mut shutdown: watch::Receiver<bool>,
     errors: ErrorReporter<QueueError>,
+    activity: Arc<QueueActivity>,
 ) {
     match driver.recover_stalled(stalled_after).await {
-        Ok(_) | Err(QueueError::Unsupported(_)) => {}
+        Ok(recovered) => activity.stalled_recovered(recovered),
+        Err(QueueError::Unsupported(_)) => {}
         Err(error) => {
             errors.report(error);
         }
@@ -257,6 +265,7 @@ async fn run_worker_loop(
         stalled_after,
         shutdown.clone(),
         errors.clone(),
+        Arc::clone(&activity),
     ));
     let mut recovery_task = AbortOnDrop(recovery_task);
 
@@ -275,7 +284,7 @@ async fn run_worker_loop(
 
         let popped = claim_next(&**driver, stalled_after, &mut jobs, &errors).await;
         if shutdown_requested(&shutdown) {
-            release_claim_after_shutdown(popped, &**driver, &errors).await;
+            release_claim_after_shutdown(popped, &**driver, &errors, &activity).await;
             break;
         }
         match popped {
@@ -288,6 +297,7 @@ async fn run_worker_loop(
                     shutdown.clone(),
                     &mut jobs,
                     &errors,
+                    &activity,
                 )
                 .await
             }
@@ -344,34 +354,12 @@ async fn claim_next(
     }
 }
 
-/// Returns a job claimed while shutdown was requested to the pending state
-/// instead of dispatching it.
-async fn release_claim_after_shutdown(
-    popped: Result<Option<QueuedJob>, QueueError>,
-    driver: &dyn QueueDriver,
-    errors: &ErrorReporter<QueueError>,
-) {
-    match popped {
-        Ok(Some(job)) => {
-            if let Err(error) = driver
-                .requeue_attempt(&job.id, job.attempts, "worker shutdown before dispatch")
-                .await
-            {
-                errors.report(state_error(&job.id, "requeue_claim_after_shutdown", error));
-            }
-        }
-        Ok(None) => {}
-        Err(error) => {
-            errors.report(error);
-        }
-    }
-}
-
 async fn recovery_loop(
     driver: Arc<Box<dyn QueueDriver>>,
     stale_after: Duration,
     mut shutdown: watch::Receiver<bool>,
     errors: ErrorReporter<QueueError>,
+    activity: Arc<QueueActivity>,
 ) {
     let interval = stale_after
         .min(Duration::from_secs(60))
@@ -382,7 +370,7 @@ async fn recovery_loop(
             _ = wait_for_shutdown(&mut shutdown) => break,
         }
         match driver.recover_stalled(stale_after).await {
-            Ok(_) => {}
+            Ok(recovered) => activity.stalled_recovered(recovered),
             Err(QueueError::Unsupported(_)) => break,
             Err(error) => {
                 errors.report(error);
@@ -391,6 +379,7 @@ async fn recovery_loop(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn dispatch_job(
     job: QueuedJob,
     handlers: &HashMap<String, Arc<JobHandler>>,
@@ -399,55 +388,24 @@ async fn dispatch_job(
     shutdown: watch::Receiver<bool>,
     jobs: &mut JoinSet<Result<(), QueueError>>,
     errors: &ErrorReporter<QueueError>,
+    activity: &Arc<QueueActivity>,
 ) {
     let Some(handler) = handlers.get(&job.name).cloned() else {
-        hand_back_unhandled(&job, &**driver, errors).await;
+        hand_back_unhandled(&job, &**driver, errors, activity).await;
         return;
     };
 
+    // Counted from dispatch, so a handler waiting for its first poll is in flight.
+    let in_flight = activity.start();
     jobs.spawn(execution::execute_job(
-        driver, handler, job, timeout, shutdown,
+        driver,
+        handler,
+        job,
+        timeout,
+        shutdown,
+        Arc::clone(activity),
+        in_flight,
     ));
-}
-
-/// Returns a job this worker has no handler for to the queue, so a worker
-/// that registered its name can claim it. The delay keeps this worker from
-/// re-claiming the job in a hot loop; `HandlerNotFound` is still reported.
-/// Drivers without delayed requeue keep the previous behaviour and fail it,
-/// and a claim at [`MAX_UNHANDLED_CLAIM_ATTEMPT`] or later is failed too, so
-/// a job whose name no worker handles reaches a terminal state.
-async fn hand_back_unhandled(
-    job: &QueuedJob,
-    driver: &dyn QueueDriver,
-    errors: &ErrorReporter<QueueError>,
-) {
-    let missing = QueueError::HandlerNotFound(job.name.clone());
-    let reason = missing.to_string();
-    let fail = |reason: String| async move {
-        driver
-            .mark_failed_attempt(&job.id, job.attempts, &reason)
-            .await
-            .map_err(|error| state_error(&job.id, "mark_failed", error))
-    };
-    let transition = if job.attempts >= MAX_UNHANDLED_CLAIM_ATTEMPT {
-        fail(format!(
-            "{reason}; failed at claim attempt {} instead of being handed back again",
-            job.attempts
-        ))
-        .await
-    } else {
-        match driver
-            .requeue_attempt_after(&job.id, job.attempts, &reason, UNHANDLED_JOB_RETRY_DELAY)
-            .await
-        {
-            Err(QueueError::Unsupported(_)) => fail(reason).await,
-            deferred => deferred.map_err(|error| state_error(&job.id, "requeue_unhandled", error)),
-        }
-    };
-    match transition {
-        Ok(()) => errors.report(missing),
-        Err(error) => errors.report(error),
-    }
 }
 
 fn report_outcome(

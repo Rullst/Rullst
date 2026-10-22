@@ -104,10 +104,6 @@ Before releasing, make sure:
     LMS applications plus the explicitly informational blog showcase.
   - `e2e-smoke.yml`: Live SSR, security-header, CSRF and SQLite-persistence
     checks against the release-built Blog application.
-  - `omni-android.yml`, `omni-desktop.yml`, and `omni-ios.yml`: fresh
-    deterministic shell generation and the declared hosted compile matrices.
-    These are not physical-device, signing, store-review or GUI acceptance
-    evidence.
 - [ ] You have manually verified the mandatory local trifecta:
   `cargo test --workspace --all-features`,
   `cargo clippy --workspace --all-features -- -D warnings`, and

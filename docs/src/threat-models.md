@@ -28,11 +28,11 @@ addresses are untrusted unless an explicit proxy policy (Core's
 `TrustedProxyLayer`, see `CORE-03`) establishes the direct peer as trusted.
 
 The machine-readable release minimum in
-`.github/threat-model-release-minimum.json` binds 48 distinct abuse-case IDs to
-64 evidence rows and 63 exact test executions across thirteen crates. The gate
+`.github/threat-model-release-minimum.json` binds 52 distinct abuse-case IDs to
+70 evidence rows and 69 exact test executions across thirteen crates. The gate
 rejects missing markers, missing tests and zero-test filters before executing
 Core (including trusted-proxy client resolution), ORM, Auth, Connect, Security,
-Messaging, Nexus, Studio, tenant ownership, Capital, AI, Mail, IoT,
+Messaging, Nexus, Studio, the production monitor, tenant ownership, Capital, AI, Mail, IoT,
 generated-default and Academy negatives. Passing that bounded minimum does not
 imply that every case below is closed.
 
@@ -150,6 +150,49 @@ controls, prompts and source-error tooling.
 Trust boundaries are local browser ↔ loopback listener, authenticated trace
 producer ↔ push-only application endpoint, Studio ↔ telemetry/database/cache,
 and error console ↔ source filesystem.
+
+## TM-STUDIO-2 — production monitoring endpoint
+
+Added for 13.0.0-alpha.3, before the endpoint shipped. Phase 1 of the
+[Studio production monitor plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-for-1300-alpha3)
+is a read-only JSON endpoint, `GET /_rullst/monitor/v1`, that an application
+mounts with `Server::with_monitor`. Phase 2 (a standalone Studio on the
+developer's machine that reads it for several projects) will extend this model
+for local credential storage.
+
+**Assets:** operational metrics of a production process (request counts, rates
+and latency per route pattern, status classes, queue depth and worker
+activity, possible N+1 query fingerprints, process radar); the monitor tokens;
+the availability of the application that serves the endpoint.
+
+**Actors:** an anonymous internet client; the holder of a leaked or replayed
+monitor token; a user signed in to the application without the monitoring
+permission; a compromised developer machine that holds tokens for several
+projects; a browser page on another origin using a signed-in administrator's
+cookies; a network observer between the client and the TLS terminator.
+
+**Trust boundaries:** internet client ↔ reverse proxy/TLS terminator ↔
+application listener; monitor client ↔ token or application authorizer;
+request handling ↔ the bounded in-process collector; collector ↔ queue store.
+
+Test files named below are under `rullst-core/src/`.
+
+| Abuse case | Required disposition | Repository evidence or remaining work |
+| --- | --- | --- |
+| `MONITOR-01` endpoint exposed by default or by accident | Off by default. The route and the recording layer exist only when the application calls `Server::with_monitor` **and** at least one credential source is configured (a token from `RULLST_MONITOR_TOKENS` or code, or an application authorizer); otherwise the path answers `404` like any unknown route and request handling is unchanged. Generated starters do not enable it. | `server/monitor_stack_tests.rs`: no monitor and a monitor without credentials both answer `404`, and an invalid token stops start-up without echoing it; `monitor/endpoint_tests.rs`: `Installed::prepare` mounts nothing (no route, no recording layer) without a credential, including an empty `RULLST_MONITOR_TOKENS` list. |
+| `MONITOR-02` token guessing, theft and replay | Accept tokens only in `Authorization: Bearer` (never in the query string, which access logs and proxies record). Reject at startup tokens below 32 bytes of entropy (43 base64 or 64 hex characters, a minimum character variety, no placeholders) without echoing them. Compare against every configured token in constant time; several tokens allow rotation without downtime. Count only presented, invalid tokens as failures; after a bounded number per client (IPv4 address, IPv6 /64, resolved through `CORE-03` trusted proxies) answer `429` without evaluating credentials until the bucket refills. Missing and invalid credentials get the same `401`. A bearer token is replayable by design: TLS (`MONITOR-08`), rotation and the read-only scope bound the damage; there is no nonce or expiry in phase 1. | `monitor/token_tests.rs` (length, alphabet, variety, placeholders, list size, position-only errors, constant-time set matching, `Authorization` parsing); `monitor/endpoint_tests.rs` for missing, malformed, wrong, other-scheme, rotated and valid tokens with one identical `401`, and a lockout that answers `429` even to a valid token while other clients are unaffected. Distributed (multi-replica) lockout and token expiry remain deployment work. |
+| `MONITOR-03` signed-in user without the monitoring permission | With an application authorizer, the application decides on every request: `Allow` serves, `SignIn` answers `401`, `Deny` answers `403`, and an authorizer error fails closed with `503` and a logged reason. A token never widens what the authorizer denies for other requests. | `monitor/endpoint_tests.rs`: authorizer allow, sign-in, deny and error, a bearer value that is not a token, and token or authorizer either sufficing. |
+| `MONITOR-04` information disclosure through the payload | Report only aggregates keyed by the matched **route pattern** (`/users/{id}`), never the raw path, query string, headers, cookies, client addresses, user identifiers, request or response bodies, SQL text or bound values, error messages, environment or configuration values. Requests without a matched route are counted as `(unmatched)`. N+1 findings carry the ORM's static `Model.operation (table)` fingerprint. Queue probe failures report a fixed reason, never a driver message. The schema is versioned (`rullst.monitor.v1`). | `monitor/payload_tests.rs` pins the exact set of JSON fields and values; `monitor/record_tests.rs` sends a path with an id, an email and a query string, a cookie, an `Authorization` value, a forwarded address and a user header, and finds only the route pattern in the body; `monitor/config_tests.rs` proves a driver error message never reaches the document. Application-chosen route templates and queue names are the application's responsibility. |
+| `MONITOR-05` denial of service through the endpoint or through collection | Bound collection: at most 256 route patterns (further ones share an `(other)` bucket), methods normalized to the standard set plus `OTHER`, a fixed latency histogram over a five-minute window, at most 64 N+1 entries, 16 queues and a 250 ms limit per queue probe. Collection is O(1) per request and lock-local to the route. The endpoint has its own per-client rate limit, and its requests are not counted in the statistics. The overhead per request is measured and published in the guide. | `monitor/collector_tests.rs` (route and method cardinality, `(other)`, N+1 table eviction), `monitor/endpoint_tests.rs` (per-client budget), `monitor/config_tests.rs` (concurrent queue probes bounded by the timeout), `monitor/record_tests.rs` (own requests not counted); the release-mode overhead measurement (`monitor/overhead_tests.rs`) is published in the production monitoring guide. |
+| `MONITOR-06` cache or proxy keeps a response | Every monitor response, including refusals, carries `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`; staging and production also receive the security-header baseline. | `monitor/endpoint_tests.rs` checks the headers on `200`, `401`, `403`, `405`, `426` and `429`; `server/monitor_stack_tests.rs` checks the production security headers. |
+| `MONITOR-07` cross-origin read with an administrator's ambient cookies | The endpoint is a machine contract: a request carrying an `Origin` header, or a `Sec-Fetch-Site` of `cross-site` or `same-site`, is refused with `403` before credentials are evaluated, so even an application CORS policy that allows the origin never releases monitoring data to a page. The endpoint itself adds no CORS headers and serves `application/json` with `nosniff`. | `monitor/endpoint_tests.rs`: `Origin` (including `null`) and cross-site or same-site `Sec-Fetch-Site` refused with an empty body and no `Access-Control-Allow-Origin` from the endpoint; `server/monitor_stack_tests.rs`: refused under an application CORS allowlist that includes the origin. |
+| `MONITOR-08` downgrade to plain HTTP | In staging and production, refuse (`426 Upgrade Required`, before credentials are evaluated) a request without TLS evidence: an `https` scheme reported by a trusted proxy with `trust_forwarded_proto` (`CORE-03`), or a `MonitorVerifiedTls` marker inserted by an application that terminates TLS itself. A forwarded header from an untrusted peer and an absolute-form `https://` request target are not evidence. An explicit opt-in admits plain HTTP from a direct loopback peer without forwarding headers (an SSH tunnel or a sidecar on the same host). A token already sent in cleartext must be rotated. | `monitor/endpoint_tests.rs`: staging and production plain HTTP and an absolute `https://` target refused; forged `X-Forwarded-Proto` from an untrusted peer refused; trusted proxy `https` admitted and `http` refused; marker admitted; the loopback opt-in admits direct loopback peers and refuses forwarding headers, a public `Host` and other peers; development and test admit plain HTTP. |
+| `MONITOR-09` compromised developer machine or monitoring client | A token grants read-only access to one application's aggregates and nothing else: no rows, no secrets, no mutation, no Studio development pages. Use one token per project and client, so revoking one machine is removing its token. | The read-only scope follows from `MONITOR-04`; `monitor/endpoint_tests.rs` proves other methods answer `405`. Local encryption of stored tokens is phase 2 work and is not covered here. |
+| `MONITOR-10` monitoring changes or breaks request handling | The recording layer never alters a response; it observes method, matched route, status and duration, tolerates poisoned locks and adds no work when the monitor is disabled. ORM attribution uses the passive query layer the telemetry subscriber installs; with a `RUST_LOG` that filters `rullst_orm` spans or an application-owned subscriber, the payload says so instead of reporting zero queries. | `monitor/record_tests.rs` compares responses with and without the layer and counts ORM operations only inside a recorded request; `monitor/payload_tests.rs` covers the unavailable reasons; the full Core suite passes with the passive layer. |
+
+**Release-negative minimum:** disabled → `404`; missing and invalid tokens →
+the same `401`; production plain HTTP → `426`; a raw path with an id and a
+query string never appears in the payload.
 
 ## TM-TENANT-1 — multi-tenant data access
 

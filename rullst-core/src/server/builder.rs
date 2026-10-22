@@ -101,6 +101,7 @@ pub struct Server {
     /// Whether successful `/health` and `/ready` requests are access-logged;
     /// resolved from the environment when the server starts.
     pub(crate) log_health_probes: bool,
+    pub(crate) monitor: Option<crate::monitor::Monitor>,
     #[cfg(feature = "orm")]
     pub(crate) migrations: Option<Vec<Box<dyn rullst_orm::schema::Migration>>>,
 }
@@ -122,6 +123,7 @@ impl Server {
             dev_queue: None,
             auto_migrate: None,
             log_health_probes: true,
+            monitor: None,
             #[cfg(feature = "orm")]
             migrations: None,
         }
@@ -144,6 +146,7 @@ impl Server {
             dev_queue: None,
             auto_migrate: None,
             log_health_probes: true,
+            monitor: None,
             #[cfg(feature = "orm")]
             migrations: None,
         }
@@ -320,6 +323,35 @@ impl Server {
     /// ```
     pub fn with_dev_queue(mut self, queue: impl Into<std::sync::Arc<crate::queue::Queue>>) -> Self {
         self.dev_queue = Some(queue.into());
+        self
+    }
+
+    /// Mounts the read-only production monitoring endpoint,
+    /// `GET /_rullst/monitor/v1` ([`crate::monitor`]), and the layer that
+    /// records request statistics for it. Off unless this is called.
+    ///
+    /// When the server starts it adds the tokens of `RULLST_MONITOR_TOKENS`
+    /// (process environment, then `.env`) to the monitor's own. With no
+    /// token and no application authorizer nothing is mounted: the path
+    /// answers `404` and requests are handled as without the monitor. An
+    /// invalid token, application name or queue name stops start-up with
+    /// [`ServerError::Configuration`], whose message never contains a
+    /// token. The development hot-reload server does not mount it.
+    ///
+    /// ```rust,no_run
+    /// use rullst_core::monitor::Monitor;
+    /// use rullst_core::{Server, routes, routing::get};
+    ///
+    /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    /// Server::new(routes![get("/" => || async { "OK" })])
+    ///     .with_monitor(Monitor::new().with_application("shop", "1.4.0"))
+    ///     .run(3000)
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn with_monitor(mut self, monitor: crate::monitor::Monitor) -> Self {
+        self.monitor = Some(monitor);
         self
     }
 

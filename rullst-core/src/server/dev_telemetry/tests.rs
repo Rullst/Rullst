@@ -492,3 +492,28 @@ async fn the_recording_layer_feeds_the_recorder_without_query_strings_polls_or_s
     assert!(!is_recorded("/static/app.css", true));
     assert!(is_recorded("/statics", true));
 }
+
+#[test]
+fn the_shared_orm_reason_follows_the_installed_layer_and_the_filter() {
+    use tracing_subscriber::filter::LevelFilter;
+    use tracing_subscriber::layer::SubscriberExt;
+
+    // A filter that drops every span yields a reason whether or not another
+    // test already installed the layer.
+    let silent = tracing_subscriber::registry().with(LevelFilter::OFF);
+    tracing::subscriber::with_default(silent, || {
+        assert!(matches!(
+            orm_unavailable_reason(),
+            Some("subscriber_not_installed" | "orm_spans_filtered")
+        ));
+    });
+
+    mark_installed();
+    tracing::subscriber::with_default(tracing_subscriber::registry(), || {
+        assert_eq!(orm_unavailable_reason(), None);
+    });
+    let silent = tracing_subscriber::registry().with(LevelFilter::OFF);
+    tracing::subscriber::with_default(silent, || {
+        assert_eq!(orm_unavailable_reason(), Some("orm_spans_filtered"));
+    });
+}

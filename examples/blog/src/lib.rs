@@ -8,7 +8,6 @@ mod assets;
 pub mod billing_demo;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod database;
-pub mod omni_demo;
 pub mod pico_demo;
 #[cfg(not(target_arch = "wasm32"))]
 mod public_origin;
@@ -71,7 +70,6 @@ fn router_with_nexus_auth(
         post("/checkout" => crate::billing_demo::checkout_handler_post),
         get("/security-demo" => crate::security_demo::security_page),
         get("/ai-assistant" => crate::ai_demo::ai_page),
-        get("/omni" => crate::omni_demo::omni_page),
         get("/wp-admin" => honeypot_trap),
         get("/assets/showcase.css" => crate::assets::showcase_css),
         get("/assets/pages.css" => crate::assets::pages_css),

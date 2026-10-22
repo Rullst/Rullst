@@ -357,8 +357,9 @@ The assistant may propose (and the user approves) these commands:
 | `make:chat-session` | Chat session/message models for AI memory |
 | `make:jwt`, `make:cors`, `make:mfa` | Security middleware and second factor |
 | `make:scalar` | Interactive API docs at `/docs` |
-| `make:grpc <Service>`, `make:iot <Device>`, `make:k8s`, `make:omni`, `generate:buildah` | Integrations and packaging |
+| `make:grpc <Service>`, `make:iot <Device>`, `make:k8s`, `generate:buildah` | Integrations and packaging |
 | `make:privacy`, `make:age-gate` | Privacy and age-gate previews for the SaaS starter (required flags: see `--help`) |
+| `make:pwa [--name <Name>] [--lang <tag>]` | Installable web app for an HTML starter: manifest, icons, service worker, `/offline` |
 | `generate:openapi`, `generate:ts` | OpenAPI document and TypeScript client from routes |
 | `generate:api --schema <file> --output <dir>` | Rust/TypeScript contracts from OpenAPI |
 | `generate:diagram` | Mermaid ER diagram of the models |

@@ -132,9 +132,11 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
         .with(tracing_subscriber::fmt::layer())
         .with(RedactPersonalDataLayer)
         .with(telemetry_layer)
-        .with(crate::server::dev_telemetry::debug_layer())
+        .with(crate::server::dev_telemetry::query_layer())
         .try_init()?;
-    mark_development_query_layer();
+    // The subscriber now holds the passive ORM query layer that the
+    // development dashboard and the production monitor read.
+    crate::server::dev_telemetry::mark_installed();
 
     // Failed subscriber installation must not replace an application's provider.
     opentelemetry::global::set_tracer_provider(provider);
@@ -155,23 +157,16 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
         .with(filter_layer)
         .with(tracing_subscriber::fmt::layer())
         .with(RedactPersonalDataLayer)
-        .with(crate::server::dev_telemetry::debug_layer())
+        .with(crate::server::dev_telemetry::query_layer())
         .try_init()
         .is_ok()
     {
-        mark_development_query_layer();
+        // The subscriber now holds the passive ORM query layer that the
+        // development dashboard and the production monitor read.
+        crate::server::dev_telemetry::mark_installed();
     }
 
     Ok(())
-}
-
-/// Debug builds add a passive layer that counts ORM operation spans for the
-/// development dashboard; it records nothing unless the development telemetry
-/// endpoint is mounted (debug, Development and `cargo rullst dev`/`dash`).
-fn mark_development_query_layer() {
-    if cfg!(debug_assertions) {
-        crate::server::dev_telemetry::mark_installed();
-    }
 }
 
 #[cfg(test)]
