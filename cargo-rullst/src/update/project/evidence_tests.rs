@@ -124,9 +124,16 @@ fn evidence_child_fixture() {
     let matches = super::super::command()
         .try_get_matches_from(std::iter::once("project").chain(args.split('\u{1f}')))
         .unwrap();
-    let text = match super::super::execute(&matches) {
-        Ok(value) => value.to_string(),
-        Err(error) => format!("err {error}"),
+    let text = if std::env::var_os("RULLST_EVIDENCE_RUN").is_some() {
+        match super::super::run(&matches) {
+            Ok(()) => "{}".to_string(),
+            Err(error) => format!("err {error}"),
+        }
+    } else {
+        match super::super::execute(&matches) {
+            Ok(value) => value.to_string(),
+            Err(error) => format!("err {error}"),
+        }
     };
     fs::write(report, text).unwrap();
 }
@@ -376,5 +383,58 @@ fn verification_stops_at_the_first_failing_cargo_command() {
     assert!(
         error.ends_with("command-2.stderr; no acceptance or application was recorded"),
         "{error}"
+    );
+}
+
+/// `cargo rullst update project <args>` through `run`, with its output.
+fn run_in_child(project: &CachedProject, args: &[&str]) -> (String, String, String) {
+    let report = project.xdg.parent().unwrap().join("run-report");
+    let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "update::project::review::tests::evidence_child_fixture",
+            "--nocapture",
+        ])
+        .env("XDG_CACHE_HOME", &project.xdg)
+        .env("RULLST_EVIDENCE_REPORT", &report)
+        .env("RULLST_EVIDENCE_ARGS", args.join("\u{1f}"))
+        .env("RULLST_EVIDENCE_RUN", "1")
+        .env_remove("CARGO_NET_OFFLINE")
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    (
+        fs::read_to_string(report).unwrap(),
+        String::from_utf8(output.stdout).unwrap(),
+        String::from_utf8(output.stderr).unwrap(),
+    )
+}
+
+#[test]
+fn verification_prints_its_plan_and_progress() {
+    let project = cached_project();
+    let (result, stdout, _) = run_in_child(
+        &project,
+        &["verify", "--prepared", prepared(&project), "--dry-run"],
+    );
+    assert_eq!(result, "{}");
+    assert!(
+        stdout.contains("\"schema_version\": \"rullst.project-verification-plan.v1\""),
+        "{stdout}"
+    );
+    let (result, _, stderr) = run_in_child(
+        &project,
+        &[
+            "verify",
+            "--prepared",
+            prepared(&project),
+            "--allow-project-code",
+        ],
+    );
+    assert!(result.starts_with("err "), "{result}");
+    assert!(
+        stderr.contains("Verifying candidate: rustc --version --verbose"),
+        "{stderr}"
     );
 }
