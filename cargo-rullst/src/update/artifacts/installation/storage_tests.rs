@@ -132,3 +132,17 @@ fn retention_removes_a_completed_update_with_its_retired_files() {
     install(&candidate(base.path(), true));
     assert!(!second_operation.exists());
 }
+
+#[test]
+fn a_running_executable_that_cannot_be_removed_is_explained() {
+    let denied = std::io::Error::from(std::io::ErrorKind::PermissionDenied);
+    assert_eq!(
+        retention::removal_error(denied).to_string(),
+        "artifact verification rejected: retained executable cannot be removed; close older CLI processes and retry; the current installation is unchanged"
+    );
+    let other = std::io::Error::from(std::io::ErrorKind::NotFound);
+    assert!(matches!(
+        retention::removal_error(other),
+        ArtifactError::Io(_)
+    ));
+}

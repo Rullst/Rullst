@@ -71,11 +71,7 @@ pub(super) fn prune(
             directories.push(child.path());
         }
         for file in files {
-            fs::remove_file(file).map_err(|error| {
-                if error.kind() == std::io::ErrorKind::PermissionDenied {
-                    ArtifactError::Invalid("retained executable cannot be removed; close older CLI processes and retry; the current installation is unchanged")
-                } else { error.into() }
-            })?;
+            fs::remove_file(file).map_err(removal_error)?;
         }
         for directory in directories {
             fs::remove_dir(directory)?;
@@ -85,4 +81,15 @@ pub(super) fn prune(
         storage::sync(storage)?;
     }
     Ok(())
+}
+
+/// Windows refuses to remove the image of a running executable.
+pub(super) fn removal_error(error: std::io::Error) -> ArtifactError {
+    if error.kind() == std::io::ErrorKind::PermissionDenied {
+        ArtifactError::Invalid(
+            "retained executable cannot be removed; close older CLI processes and retry; the current installation is unchanged",
+        )
+    } else {
+        error.into()
+    }
 }
