@@ -786,10 +786,18 @@ above.
   later major release because it would put the SQLx drivers at risk.
 - **The rest of the mutation campaign.** Before the alpha.3 version freeze, as
   the [verification order](docs/src/v13-delivery-plan.md) requires:
-  - `rullst-orm`: 53 missed mutants in waves 1–2, 443 in wave 4 and 32 in the
-    owned-server contract mode. They were measured before the alpha.2
-    `Schema` changes (constraints, indexes, foreign keys, date/time columns),
-    so re-measure the crate first.
+  - `rullst-orm` and `rullst-orm-macros`: re-measured in full for alpha.3 on
+    hosted runs, with all-feature targeted runs and the `orm-sqlite`,
+    `orm-polyglot`, `orm-sql-servers`, `orm-strict-postgres`,
+    `orm-strict-mysql` and `orm-polyglot-servers` contracts of `mutants.yml`,
+    which run the SQLite, optional-backend and database-server suites that the
+    all-feature build compiles out. `rullst-orm` has 2,414 mutants: 1,967
+    caught, 421 unviable, 17 timeouts and 9 missed, of which 8 are accepted
+    equivalents. The ninth is the MySQL `FOR UPDATE SKIP LOCKED` claim query of
+    `Outbox::claim_next_at_inner`, which only concurrent claims tell apart from
+    the portable query. `rullst-orm-macros` has 542 mutants: 514 caught, 26
+    unviable and 2 accepted equivalents. A full all-feature campaign still
+    reports the mutants that only those contracts reach.
   - `rullst-core`: the files the first pass left
     ([PR #465](https://github.com/Rullst/Rullst/pull/465)): the wave-4 files
     not started (`health.rs`, `cache/tenant.rs`, `feature/*`, `html.rs`,
