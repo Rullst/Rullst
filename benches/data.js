@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792708046292,
+  "lastUpdate": 1792715718195,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -28221,6 +28221,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1706,
             "range": "± 38",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "36ed6c7a17735b248fde34033679ba971308abee",
+          "message": "Merge pull request #534 from Rullst/integration/v13-alpha3-batch\n\nchore(v13): integrate the alpha.3 mutation campaign (#532) and OAuth providers (#533)",
+          "timestamp": "2026-10-22T21:29:57-03:00",
+          "tree_id": "6f83b28ed0375b4fb55bf02090700d060158f79f",
+          "url": "https://github.com/Rullst/Rullst/commit/36ed6c7a17735b248fde34033679ba971308abee"
+        },
+        "date": 1792715715075,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 566,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 750,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 299,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1696,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
