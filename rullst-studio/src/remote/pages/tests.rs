@@ -201,3 +201,27 @@ fn the_overview_shows_rates_latency_and_status_classes() {
     assert!(html.contains("p99 —"), "{html}");
     assert!(html.contains(r#"text-emerald-300"><div class="font-bold">Database</div>"#));
 }
+
+#[test]
+fn queue_failures_and_n_plus_one_findings_set_the_tone() {
+    let html = super::monitor::overview("shop", &monitor_document());
+    // The fixture's queue failed four jobs since start.
+    assert!(html.contains(r#"text-amber-300"><div class="font-bold">Queues</div>"#));
+    let mut value = document("/orders/{id}");
+    value["queues"][0]["failed_total"] = serde_json::json!(0);
+    value["database"]["n_plus_one"]["findings"] = serde_json::json!([]);
+    let calm: MonitorDocument = serde_json::from_value(value).unwrap();
+    let html = super::monitor::overview("shop", &calm);
+    assert!(html.contains(r#"text-emerald-300"><div class="font-bold">Queues</div>"#));
+
+    let queues = super::monitor::queues("shop", &monitor_document());
+    assert!(
+        queues.contains("<td class=\"px-3 py-2 break-all\">mail</td>"),
+        "{queues}"
+    );
+    let queries = super::monitor::queries("shop", &calm);
+    assert!(queries.contains("No repeated operations"), "{queries}");
+    let queries = super::monitor::queries("shop", &monitor_document());
+    assert!(!queries.contains("No repeated operations"));
+    assert!(queries.contains("LineItem.find (line_items)"), "{queries}");
+}
