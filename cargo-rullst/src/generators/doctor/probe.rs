@@ -130,3 +130,7 @@ pub(crate) fn tool_version(program: &str) -> Option<String> {
         .then(|| version_token(&probe.first_line))
         .flatten()
 }
+
+#[cfg(test)]
+#[path = "probe_tests.rs"]
+mod tests;
