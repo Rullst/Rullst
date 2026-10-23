@@ -312,3 +312,7 @@ pub(super) fn unchanged_ignoring(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "snapshot_tests.rs"]
+mod tests;
