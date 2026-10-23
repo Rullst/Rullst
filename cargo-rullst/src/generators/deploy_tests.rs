@@ -51,8 +51,9 @@ fn deploy_child_fixture() {
     let Some(report) = std::env::var_os("RULLST_DEPLOY_REPORT") else {
         return;
     };
+    // An empty platform opens the interactive menu.
     let platform = std::env::var("RULLST_DEPLOY_PLATFORM").unwrap();
-    let outcome = match run_deploy(Some(&platform)) {
+    let outcome = match run_deploy(Some(platform.as_str()).filter(|name| !name.is_empty())) {
         Ok(()) => "ok".to_string(),
         Err(error) => error.to_string(),
     };
@@ -195,4 +196,101 @@ fn an_unreadable_configuration_is_never_overwritten() {
         fs::read_to_string(&config).unwrap(),
         "[app]\nname = \"shop\"\n"
     );
+}
+
+/// The platform menu in a real terminal: `script` gives the fixture a
+/// pseudo-terminal, and the arrow keys pick an entry.
+#[cfg(target_os = "linux")]
+mod menu {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::process::Stdio;
+    use std::sync::mpsc;
+    use std::time::{Duration, Instant};
+
+    const PROMPT: &str = "Select your Target Deployment Platform";
+
+    /// The outcome of choosing the entry `downs` below the first one, or
+    /// `None` when `script` is not installed.
+    fn choose(project: &Path, downs: usize) -> Option<String> {
+        // Found on this test's PATH; the fixture's PATH has no provider CLI.
+        let script = std::env::split_paths(&std::env::var_os("PATH")?)
+            .map(|directory| directory.join("script"))
+            .find(|path| path.is_file())?;
+        let report = project.join("report");
+        let inner = format!(
+            "'{}' --exact generators::deploy::provider_tests::deploy_child_fixture --nocapture",
+            std::env::current_exe().unwrap().display()
+        );
+        let empty = tempfile::tempdir().unwrap();
+        let mut child = Command::new(script)
+            .args(["-qec", &inner, "/dev/null"])
+            .current_dir(project)
+            .env("PATH", empty.path())
+            .env("TERM", "xterm")
+            .env("RULLST_DEPLOY_REPORT", &report)
+            .env("RULLST_DEPLOY_PLATFORM", "")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let mut input = child.stdin.take().unwrap();
+        let mut terminal = child.stdout.take().unwrap();
+        let (sender, receiver) = mpsc::channel();
+        std::thread::spawn(move || {
+            let mut buffer = [0u8; 4096];
+            while let Ok(count) = terminal.read(&mut buffer) {
+                if count == 0 || sender.send(buffer[..count].to_vec()).is_err() {
+                    break;
+                }
+            }
+        });
+        let deadline = Instant::now() + Duration::from_secs(60);
+        let mut output = Vec::new();
+        let mut keys = Some(format!("{}\r", "\x1b[B".repeat(downs)));
+        loop {
+            match receiver.recv_timeout(Duration::from_millis(200)) {
+                Ok(chunk) => output.extend(chunk),
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+            }
+            if let Some(answer) = keys.as_deref()
+                && String::from_utf8_lossy(&output).contains(PROMPT)
+            {
+                // Let the menu switch the terminal to raw input first.
+                std::thread::sleep(Duration::from_millis(300));
+                input.write_all(answer.as_bytes()).unwrap();
+                input.flush().unwrap();
+                keys = None;
+            }
+            if Instant::now() > deadline {
+                let _ = child.kill();
+                panic!(
+                    "the menu did not finish: {}",
+                    String::from_utf8_lossy(&output)
+                );
+            }
+        }
+        drop(input);
+        child.wait().unwrap();
+        Some(fs::read_to_string(report).unwrap_or_default())
+    }
+
+    #[test]
+    fn the_menu_entries_select_their_platforms() {
+        for (downs, file) in [
+            (0, "fly.toml"),
+            (1, "railway.json"),
+            (2, "render.yaml"),
+            (3, "docker-compose.prod.yml"),
+        ] {
+            let project = project();
+            let Some(outcome) = choose(project.path(), downs) else {
+                return;
+            };
+            assert_eq!(outcome, "ok", "{file}");
+            assert!(project.path().join(file).is_file(), "{file}");
+        }
+    }
 }
