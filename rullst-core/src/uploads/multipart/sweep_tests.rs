@@ -71,7 +71,9 @@ fn stale_temporary_files_are_removed_and_everything_else_is_kept() {
     let other = touch(dir.path(), "report.pdf", now() - DAY * 30);
     let upper = touch(
         dir.path(),
-        ".rullst-upload-0123456789ABCDEF0123456789ABCDEF.part",
+        // Not the stale file's id in capitals: macOS and Windows file names
+        // ignore case, so that would be the same file.
+        ".rullst-upload-ABCDEF0123456789ABCDEF0123456789.part",
         now() - DAY * 30,
     );
 

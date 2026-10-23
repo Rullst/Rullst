@@ -11,7 +11,9 @@ const MIGRATION: &str = "m20261022120000_create_oauth_identities_table";
 /// A generated starter with `database` in a temporary directory.
 fn starter(blueprint: usize, hot: bool, database: &str) -> (tempfile::TempDir, PathBuf) {
     let temporary = tempfile::tempdir().unwrap();
-    let root = temporary.path().join("app");
+    // macOS temporary directories are reached through the `/var` symlink,
+    // which the generators refuse.
+    let root = temporary.path().canonicalize().unwrap().join("app");
     fs::create_dir_all(&root).unwrap();
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let manifest = crate::generators::project::cargo_toml::build_cargo_toml(
