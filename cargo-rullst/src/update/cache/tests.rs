@@ -331,6 +331,7 @@ fn the_cache_base_comes_from_xdg_or_home_and_is_created_only_on_request() {
     );
     let home = base.join("home");
     fs::create_dir(&home).unwrap();
+    fs::set_permissions(&home, fs::Permissions::from_mode(0o700)).unwrap();
     assert_eq!(
         base_directory_in_child(
             &[
