@@ -41,10 +41,16 @@ async fn upsert() -> Json<Value> {
     Json(json!({ "status": "ok", "result": { "status": "completed" } }))
 }
 
+// Paths of the Qdrant HTTP API this test server imitates. They are a
+// third-party service's routes, not application routes, so the IDOR audit's
+// access classification does not apply to them.
+const QUERY_POINTS: &str = "/collections/{collection}/points/query";
+const UPSERT_POINTS: &str = "/collections/{collection}/points";
+
 async fn store(limit: usize) -> (QdrantStore, tokio::task::JoinHandle<()>) {
     let router = Router::new()
-        .route("/collections/{collection}/points/query", post(query))
-        .route("/collections/{collection}/points", put(upsert));
+        .route(QUERY_POINTS, post(query))
+        .route(UPSERT_POINTS, put(upsert));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
     let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });

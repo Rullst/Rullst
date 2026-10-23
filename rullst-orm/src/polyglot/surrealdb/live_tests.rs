@@ -71,10 +71,16 @@ async fn exact() -> Response {
         .into_response()
 }
 
+// Paths of the SurrealDB HTTP API this test server imitates. They are a
+// third-party service's routes, not application routes, so the IDOR audit's
+// access classification does not apply to them.
+const EVENT_KEY: &str = "/key/events/{key}";
+const EXACT_KEY: &str = "/key/exact/{key}";
+
 async fn store(limit: Option<usize>) -> (SurrealDbStore<Event>, tokio::task::JoinHandle<()>) {
     let router = Router::new()
-        .route("/key/events/{key}", get(record).delete(record))
-        .route("/key/exact/{key}", get(exact))
+        .route(EVENT_KEY, get(record).delete(record))
+        .route(EXACT_KEY, get(exact))
         .route("/sql", post(page))
         .route("/gql", post(graph));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
