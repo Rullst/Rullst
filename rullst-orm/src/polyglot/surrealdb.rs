@@ -20,10 +20,10 @@ mod config;
 mod graph;
 mod live;
 #[cfg(test)]
-mod tests;
-#[cfg(test)]
 #[path = "surrealdb/live_tests.rs"]
 mod live_tests;
+#[cfg(test)]
+mod tests;
 
 pub use config::{SurrealAuth, SurrealConfig};
 use config::{decode_surreal_record_key, is_mock_credential, validate_endpoint};
