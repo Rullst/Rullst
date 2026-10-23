@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792708975203,
+  "lastUpdate": 1792716651331,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -17297,6 +17297,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 435,
             "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "36ed6c7a17735b248fde34033679ba971308abee",
+          "message": "Merge pull request #534 from Rullst/integration/v13-alpha3-batch\n\nchore(v13): integrate the alpha.3 mutation campaign (#532) and OAuth providers (#533)",
+          "timestamp": "2026-10-22T21:29:57-03:00",
+          "tree_id": "6f83b28ed0375b4fb55bf02090700d060158f79f",
+          "url": "https://github.com/Rullst/Rullst/commit/36ed6c7a17735b248fde34033679ba971308abee"
+        },
+        "date": 1792716650280,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4179,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 430,
+            "range": "± 4",
             "unit": "ns/iter"
           },
           {
