@@ -96,7 +96,19 @@ fn the_hint_is_a_warning_with_the_exact_snippet_and_skipped_when_not_needed() {
     );
     let lld = check(&facts(false, false, false, true)).unwrap();
     assert_eq!(lld.detail, "not configured; ld.lld is installed");
-    assert!(lld.fix.unwrap().ends_with("\"link-arg=-fuse-ld=lld\"]"));
+    let lld_fix = lld.fix.unwrap();
+    assert!(
+        lld_fix.starts_with("Add to .cargo/config.toml:"),
+        "{lld_fix}"
+    );
+    assert!(lld_fix.ends_with("\"link-arg=-fuse-ld=lld\"]"));
+    let only_mold = check(&facts(false, false, true, false)).unwrap();
+    assert!(
+        only_mold
+            .fix
+            .unwrap()
+            .starts_with("Add to .cargo/config.toml:")
+    );
     let neither = check(&facts(false, false, false, false)).unwrap();
     assert!(neither.detail.contains("neither mold nor ld.lld"));
     assert!(neither.fix.unwrap().starts_with("Install mold"));

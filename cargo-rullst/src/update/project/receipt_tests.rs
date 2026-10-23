@@ -296,3 +296,29 @@ fn the_verified_lockfile_must_resolve_the_selected_release() {
         Err(ProjectError::Planning(_))
     ));
 }
+
+#[test]
+fn recorded_files_keep_the_preparation_order_and_byte_bound() {
+    let (_project, state, record) = verified_project();
+    let inventory = "project preparation rejected: invalid verification file inventory";
+    let mut swapped = record.value.clone();
+    let files = swapped["files"].as_array_mut().unwrap();
+    files.swap(1, 2);
+    assert_eq!(
+        validation(&record, &swapped, &state)
+            .unwrap_err()
+            .to_string(),
+        inventory
+    );
+    let mut sized = record.value.clone();
+    sized["files"][0]["bytes"] = json!(snapshot::MAX_TOTAL);
+    assert_eq!(
+        validation(&record, &sized, &state).unwrap_err().to_string(),
+        "project preparation rejected: verified candidate bytes changed"
+    );
+    sized["files"][0]["bytes"] = json!(snapshot::MAX_TOTAL + 1);
+    assert_eq!(
+        validation(&record, &sized, &state).unwrap_err().to_string(),
+        inventory
+    );
+}
