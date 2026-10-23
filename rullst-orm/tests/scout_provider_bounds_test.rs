@@ -119,6 +119,9 @@ async fn providers_poll_tasks_bound_hits_and_select_live_mode() {
     let elastic = ElasticsearchEngine::local(&endpoint).unwrap();
     let meili = MeilisearchEngine::local(&endpoint).unwrap();
     assert!(!algolia.is_offline() && !elastic.is_offline() && !meili.is_offline());
+    assert!(AlgoliaEngine::offline().is_offline());
+    assert!(ElasticsearchEngine::offline().is_offline());
+    assert!(MeilisearchEngine::offline().is_offline());
 
     // A pending task is polled again until it completes.
     algolia
@@ -134,7 +137,14 @@ async fn providers_poll_tasks_bound_hits_and_select_live_mode() {
     // Unknown and failed states end the wait with an error.
     assert!(algolia.update("unknown", 1, json!({})).await.is_err());
     assert!(meili.update("unknown", 1, json!({})).await.is_err());
-    assert!(meili.update("failed", 1, json!({})).await.is_err());
+    assert_eq!(
+        meili
+            .update("failed", 1, json!({}))
+            .await
+            .unwrap_err()
+            .to_string(),
+        "Internal error: Meilisearch indexing task did not succeed"
+    );
 
     for engine in [&algolia as &(dyn SearchEngine + Sync), &elastic, &meili] {
         assert_eq!(engine.search("full", "q").await.unwrap().len(), 1_000);
