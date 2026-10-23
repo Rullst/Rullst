@@ -3,6 +3,8 @@
 use super::*;
 #[path = "fault_tests.rs"]
 mod fault_tests;
+#[path = "recovery_tests.rs"]
+mod recovery_tests;
 use crate::update::cache;
 use sha2::{Digest, Sha256};
 use std::{
