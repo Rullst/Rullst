@@ -205,7 +205,7 @@ class OrmSqliteTests(Fixture):
     def test_mutates_both_crates_against_the_sqlite_suite_without_servers(self) -> None:
         self.assertEqual(self.run_orm(True, 2, "--shard", "1/4"), 2)
         call = self.recorded()[-1]
-        self.assertEqual(call[:3], ["cargo", "mutants", "--no-config"])
+        self.assertEqual(call[:4], ["cargo", "mutants", "--no-config", "--in-place"])
         for part in (["--package", "rullst-orm", "--package", "rullst-orm-macros"],
                      ["--test-package", "rullst-orm"],
                      ["--no-default-features", "--features", "rullst-orm/drivers-all"],

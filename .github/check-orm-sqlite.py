@@ -37,7 +37,9 @@ def command(regex: str, shard: str | None, features: list[str] = FEATURES,
     """The cargo-mutants command; `targets` default to every test target."""
     if shard is not None and not SHARD.fullmatch(shard):
         raise ValueError("--shard takes K/N")
-    mutants = ["cargo", "mutants", "--no-config",
+    # In place: a copy of the workspace under the runner's temporary directory
+    # runs out of quota once every ORM test binary is linked.
+    mutants = ["cargo", "mutants", "--no-config", "--in-place",
                "--package", "rullst-orm", "--package", "rullst-orm-macros",
                "--test-package", "rullst-orm",
                "--no-default-features",
