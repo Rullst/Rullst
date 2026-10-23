@@ -14,6 +14,9 @@ mod config;
 mod mock;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+#[path = "live_tests.rs"]
+mod live_tests;
 mod types;
 
 pub use config::QdrantConfig;
