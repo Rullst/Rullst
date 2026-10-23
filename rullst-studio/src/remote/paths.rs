@@ -76,3 +76,47 @@ impl StudioPaths {
         }
     }
 }
+
+#[cfg(all(test, not(windows)))]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    fn resolve(vars: &[(&str, &str)]) -> Option<StudioPaths> {
+        StudioPaths::resolve(|name| {
+            vars.iter()
+                .find(|(key, _)| *key == name)
+                .map(|(_, value)| OsString::from(value))
+        })
+    }
+
+    #[test]
+    fn xdg_directories_win_over_home_and_must_be_absolute() {
+        let home = resolve(&[("HOME", "/home/u")]).unwrap();
+        assert_eq!(
+            home.projects,
+            Path::new("/home/u/.config/rullst/studio/projects.json")
+        );
+        assert_eq!(
+            home.key,
+            Path::new("/home/u/.local/share/rullst/studio/projects.key")
+        );
+        let xdg = resolve(&[
+            ("HOME", "/home/u"),
+            ("XDG_CONFIG_HOME", "/cfg"),
+            ("XDG_DATA_HOME", ""),
+        ])
+        .unwrap();
+        assert_eq!(xdg.projects, Path::new("/cfg/rullst/studio/projects.json"));
+        assert_eq!(
+            xdg.history,
+            Path::new("/home/u/.local/share/rullst/studio/history.sqlite")
+        );
+        assert_eq!(resolve(&[("HOME", "relative")]), None);
+        assert_eq!(resolve(&[]), None);
+        assert_eq!(
+            StudioPaths::from_env(),
+            StudioPaths::resolve(|name| std::env::var_os(name))
+        );
+    }
+}

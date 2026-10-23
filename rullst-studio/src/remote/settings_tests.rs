@@ -139,6 +139,14 @@ async fn history_and_alerts_render_escaped_and_alerts_can_be_acknowledged() {
     assert!(page.contains("Acknowledge all"));
     assert!(page.contains(r#"border-rose-500/30">1</span>"#));
 
+    // A wrong form token from this Studio's own page acknowledges nothing.
+    let wrong = format!("form_token={}", "0".repeat(64));
+    assert_eq!(
+        post(&studio, "/studio/alerts/acknowledge", Some(ORIGIN), &wrong).await,
+        StatusCode::FORBIDDEN
+    );
+    assert_eq!(history.unacknowledged().await.unwrap(), 1);
+
     let body = format!("form_token={}", studio.state.form_token);
     assert_eq!(
         post(&studio, "/studio/alerts/acknowledge", Some(ORIGIN), &body).await,
