@@ -260,6 +260,10 @@ mod tests {
                 #[derive(rullst_orm::Orm)]
                 #[orm(table_name = "audit_events", auditable)]
                 struct AuditEvent { id: i64 }
+
+                #[derive(Orm)]
+                #[orm(table = "orders", tenant_column = "account_id")]
+                struct Order { id: i64, account_id: String }
             "#,
         )
         .unwrap();
@@ -270,9 +274,9 @@ mod tests {
             .iter()
             .map(|table| table.table_name.as_str())
             .collect();
-        assert_eq!(names, ["audit_events", "user_projects"]);
+        assert_eq!(names, ["audit_events", "orders", "user_projects"]);
         assert_eq!(
-            tables[1].fields.len(),
+            tables[2].fields.len(),
             2,
             "the skipped field must be omitted"
         );

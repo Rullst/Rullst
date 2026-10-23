@@ -11,6 +11,9 @@ use serde_json::Value;
 use super::{Backend, BackendCapabilities, Capability, PolyglotError};
 
 mod config;
+#[cfg(test)]
+#[path = "live_tests.rs"]
+mod live_tests;
 mod mock;
 #[cfg(test)]
 mod tests;

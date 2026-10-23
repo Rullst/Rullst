@@ -279,4 +279,31 @@ mod tests {
         );
         assert!(!builder.contains("rollback () . await ?"));
     }
+
+    #[test]
+    fn tenant_partial_updates_check_bind_and_refresh_within_the_tenant() {
+        let input: DeriveInput = parse_quote! {
+            #[orm(table = "lessons", tenant_column = "tenant_id", after_fetch = "loaded")]
+            struct Lesson { id: i32, tenant_id: String, title: String }
+        };
+        let parsed = crate::parser::parse(&input).expect("parse model");
+        let builder = super::generate_update_builder(&parsed).0.to_string();
+        for expected in [
+            "let expected : String = tenant . try_into ()",
+            "if self . __rullst_model . tenant_id != expected",
+            "\"tenant context is required for partial update\"",
+            "\"SELECT * FROM {} WHERE id = ?{}\" , \"lessons\" , \" AND tenant_id = ?\"",
+            ". bind (self . __rullst_model . tenant_id . clone ())",
+            "rullst_orm :: __transaction_access :: run (candidate . loaded ()) . await ?",
+        ] {
+            assert!(builder.contains(expected), "{expected}: {builder}");
+        }
+        assert!(!builder.contains("pub fn tenant_id (mut self"));
+
+        let global: DeriveInput = parse_quote! { struct Lesson { id: i32, title: String } };
+        let parsed = crate::parser::parse(&global).expect("parse model");
+        let builder = super::generate_update_builder(&parsed).0.to_string();
+        assert!(builder.contains("\"SELECT * FROM {} WHERE id = ?{}\" , \"lessons\" , \"\""));
+        assert!(!builder.contains("__transaction_access :: run (candidate"));
+    }
 }

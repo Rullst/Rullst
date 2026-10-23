@@ -490,3 +490,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
 }
 
 include!("parser_tests.rs");
+
+#[cfg(test)]
+#[path = "parser/validation_tests.rs"]
+mod validation_tests;

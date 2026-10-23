@@ -163,3 +163,7 @@ mod tests {
         assert!(engine.is_some());
     }
 }
+
+#[cfg(test)]
+#[path = "scout/bounds_tests.rs"]
+mod bounds_tests;

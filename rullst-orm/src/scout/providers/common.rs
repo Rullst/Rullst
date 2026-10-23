@@ -114,3 +114,7 @@ pub fn parse_positive_id(value: &Value, provider: &str) -> Result<i32, Error> {
         ))
     })
 }
+
+#[cfg(test)]
+#[path = "common_tests.rs"]
+mod tests;

@@ -178,6 +178,187 @@ class RunTests(Fixture):
                 self.run_contract("", 0, shard=shard)
 
 
+ORM_SQLITE_PATH = HERE / "check-orm-sqlite.py"
+ORM_SQLITE_SPEC = importlib.util.spec_from_file_location("check_orm_sqlite", ORM_SQLITE_PATH)
+if ORM_SQLITE_SPEC is None or ORM_SQLITE_SPEC.loader is None:
+    raise RuntimeError(f"cannot import {ORM_SQLITE_PATH}")
+ORM_SQLITE = importlib.util.module_from_spec(ORM_SQLITE_SPEC)
+ORM_SQLITE_SPEC.loader.exec_module(ORM_SQLITE)
+
+
+class OrmSqliteTests(Fixture):
+    def run_orm(self, baseline: bool, status: int, *args: str) -> int:
+        log = self.root / "mutants.out" / "log"
+        body = (f"import shutil\nshutil.rmtree({str(log.parent)!r}, ignore_errors=True)\n"
+                f"os.makedirs({str(log)!r})\n")
+        if baseline:
+            body += f"open({str(log / 'baseline.log')!r}, 'w').write('test a ... ok\\n')\n"
+        body += ("open(os.environ['CALLS_ENV'], 'w').write(json.dumps(dict(os.environ)))\n"
+                 f"sys.exit({status})\n")
+        self.tool("cargo", body)
+        env = self.env(CARGO_MUTANTS_OUTPUT=str(self.root), CALLS_ENV=str(self.root / "env.json"),
+                       RULLST_REQUIRE_TESTCONTAINERS="true")
+        self.stderr = io.StringIO()
+        with mock_environ(env), contextlib.redirect_stderr(self.stderr):
+            return ORM_SQLITE.main(["--mutants", "^rullst-orm/src/x\\.rs:", *args])
+
+    def test_mutates_both_crates_against_the_sqlite_suite_without_servers(self) -> None:
+        self.assertEqual(self.run_orm(True, 2, "--shard", "1/4"), 2)
+        call = self.recorded()[-1]
+        self.assertEqual(call[:4], ["cargo", "mutants", "--no-config", "--in-place"])
+        for part in (["--package", "rullst-orm", "--package", "rullst-orm-macros"],
+                     ["--test-package", "rullst-orm"],
+                     ["--no-default-features", "--features", "rullst-orm/drivers-all"],
+                     ["--file", "rullst-orm/src/**", "--file", "rullst-orm-macros/src/**"],
+                     ["--exclude", "**/*_tests.rs", "--exclude", "**/tests.rs",
+                      "--exclude", "**/tests/**"],
+                     ["--re", "^rullst-orm/src/x\\.rs:"], ["--shard", "1/4"],
+                     ["--timeout", "300"], ["--cargo-arg=--tests"]):
+            with self.subTest(part=part):
+                self.assertIn(part, [call[i:i + len(part)] for i in range(len(call))])
+        env = json.loads((self.root / "env.json").read_text())
+        self.assertEqual(env["DOCKER_HOST"], "unix:///nonexistent")
+        self.assertNotIn("RULLST_REQUIRE_TESTCONTAINERS", env)
+
+    def test_informational_statuses_need_a_baseline(self) -> None:
+        for status in (0, 2, 3):
+            with self.subTest(status=status):
+                self.assertEqual(self.run_orm(True, status), status)
+                self.assertEqual(self.run_orm(False, status), 1)
+                self.assertIn("ran no baseline", self.stderr.getvalue())
+        for status in (1, 4):
+            with self.subTest(status=status):
+                self.assertEqual(self.run_orm(False, status), status)
+
+    def test_rejects_malformed_shards(self) -> None:
+        for shard in ("1", "1/0", "a/b"):
+            with self.subTest(shard=shard), self.assertRaises(ValueError):
+                ORM_SQLITE.command(".", shard)
+
+
+ORM_POLYGLOT_PATH = HERE / "check-orm-polyglot.py"
+ORM_POLYGLOT_SPEC = importlib.util.spec_from_file_location("check_orm_polyglot", ORM_POLYGLOT_PATH)
+if ORM_POLYGLOT_SPEC is None or ORM_POLYGLOT_SPEC.loader is None:
+    raise RuntimeError(f"cannot import {ORM_POLYGLOT_PATH}")
+ORM_POLYGLOT = importlib.util.module_from_spec(ORM_POLYGLOT_SPEC)
+ORM_POLYGLOT_SPEC.loader.exec_module(ORM_POLYGLOT)
+
+
+class OrmPolyglotTests(Fixture):
+    def run_polyglot(self, status: int) -> int:
+        self.tool("docker", "if sys.argv[1] == 'port': print('127.0.0.1:49153')\n"
+                            "if sys.argv[1] == 'exec': print('PONG')\n")
+        log = self.root / "mutants.out" / "log"
+        self.tool("cargo", f"os.makedirs({str(log)!r}, exist_ok=True)\n"
+                           f"open({str(log / 'baseline.log')!r}, 'w').write('ok')\n"
+                           "open(os.environ['CALLS_ENV'], 'w').write(json.dumps(dict(os.environ)))\n"
+                           f"sys.exit({status})\n")
+        env = self.env(CARGO_MUTANTS_OUTPUT=str(self.root), CALLS_ENV=str(self.root / "env.json"))
+        with mock_environ(env):
+            return ORM_POLYGLOT.main(["--mutants", "^rullst-orm/src/polyglot/", "--shard", "0/4"])
+
+    def test_owns_a_redis_server_for_the_live_cache_contracts(self) -> None:
+        self.assertEqual(self.run_polyglot(2), 2)
+        calls = self.recorded()
+        docker = [call for call in calls if call[0] == "docker"]
+        self.assertEqual(docker[0][:4], ["docker", "run", "--detach", "--rm"])
+        self.assertIn("127.0.0.1::6379", docker[0])
+        self.assertEqual(docker[-1][:2], ["docker", "stop"])
+        cargo = [call for call in calls if call[0] == "cargo"][-1]
+        features = cargo[cargo.index("--features") + 1]
+        self.assertEqual(features.split(","), [
+            "rullst-orm/drivers-all", "rullst-orm/redis", "rullst-orm/mongodb",
+            "rullst-orm/surrealdb", "rullst-orm/turso", "rullst-orm/scout-http",
+            "rullst-orm/qdrant"])
+        self.assertEqual(cargo[cargo.index("--shard") + 1], "0/4")
+        env = json.loads((self.root / "env.json").read_text())
+        self.assertEqual(env["RULLST_TEST_REDIS_URL"], "redis://127.0.0.1:49153")
+        self.assertEqual(env["DOCKER_HOST"], "unix:///nonexistent")
+
+    def test_stops_its_server_when_cargo_fails(self) -> None:
+        self.assertEqual(self.run_polyglot(4), 4)
+        self.assertEqual(self.recorded()[-1][:2], ["docker", "stop"])
+
+
+ORM_SERVERS_PATH = HERE / "check-orm-sql-servers.py"
+ORM_SERVERS_SPEC = importlib.util.spec_from_file_location("check_orm_sql_servers", ORM_SERVERS_PATH)
+if ORM_SERVERS_SPEC is None or ORM_SERVERS_SPEC.loader is None:
+    raise RuntimeError(f"cannot import {ORM_SERVERS_PATH}")
+ORM_SERVERS = importlib.util.module_from_spec(ORM_SERVERS_SPEC)
+ORM_SERVERS_SPEC.loader.exec_module(ORM_SERVERS)
+
+
+class OrmSqlServersTests(Fixture):
+    def test_runs_only_the_server_matrices_and_requires_their_containers(self) -> None:
+        log = self.root / "mutants.out" / "log"
+        self.tool("cargo", f"os.makedirs({str(log)!r}, exist_ok=True)\n"
+                           f"open({str(log / 'baseline.log')!r}, 'w').write('ok')\n"
+                           "open(os.environ['CALLS_ENV'], 'w').write(json.dumps(dict(os.environ)))\n"
+                           "sys.exit(2)\n")
+        env = self.env(CARGO_MUTANTS_OUTPUT=str(self.root), CALLS_ENV=str(self.root / "env.json"),
+                       DOCKER_HOST="unix:///var/run/docker.sock")
+        with mock_environ(env):
+            self.assertEqual(ORM_SERVERS.main(["--mutants", "in insert_sql$"]), 2)
+        call = self.recorded()[-1]
+        for part in (["--cargo-arg=--test=matrix_postgres", "--cargo-arg=--test=matrix_mysql",
+                      "--cargo-arg=--test=matrix_mariadb"], ["--timeout", "900"],
+                     ["--features", "rullst-orm/drivers-all"]):
+            with self.subTest(part=part):
+                self.assertIn(part, [call[i:i + len(part)] for i in range(len(call))])
+        self.assertNotIn("--cargo-arg=--tests", call)
+        self.assertEqual(call[-3:], ["--", "--", "--test-threads=1"])
+        env = json.loads((self.root / "env.json").read_text())
+        self.assertEqual(env["RULLST_REQUIRE_TESTCONTAINERS"], "true")
+        self.assertEqual(env["DOCKER_HOST"], "unix:///var/run/docker.sock")
+
+    def test_strict_wrappers_select_their_pool_and_matrix(self) -> None:
+        log = self.root / "mutants.out" / "log"
+        self.tool("cargo", f"os.makedirs({str(log)!r}, exist_ok=True)\n"
+                           f"open({str(log / 'baseline.log')!r}, 'w').write('ok')\n"
+                           "sys.exit(0)\n")
+        for name, feature, target in (("postgres", "strict-postgres", "matrix_postgres"),
+                                      ("mysql", "strict-mysql", "matrix_mysql")):
+            with self.subTest(name=name):
+                result = subprocess.run(
+                    [sys.executable, str(HERE / f"check-orm-strict-{name}.py"), "--mutants", "x"],
+                    cwd=self.root, text=True, capture_output=True, check=False,
+                    env=self.env(CARGO_MUTANTS_OUTPUT=str(self.root)))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                call = self.recorded()[-1]
+                self.assertEqual(call[call.index("--features") + 1], "rullst-orm/" + feature)
+                self.assertIn("--cargo-arg=--test=" + target, call)
+                self.assertEqual(sum(argument.startswith("--cargo-arg=--test=")
+                                     for argument in call), 1)
+
+    def test_polyglot_servers_run_every_backend_matrix(self) -> None:
+        log = self.root / "mutants.out" / "log"
+        self.tool("cargo", f"os.makedirs({str(log)!r}, exist_ok=True)\n"
+                           f"open({str(log / 'baseline.log')!r}, 'w').write('ok')\n"
+                           "sys.exit(0)\n")
+        result = subprocess.run(
+            [sys.executable, str(HERE / "check-orm-polyglot-servers.py"), "--mutants", "x"],
+            cwd=self.root, text=True, capture_output=True, check=False,
+            env=self.env(CARGO_MUTANTS_OUTPUT=str(self.root)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        call = self.recorded()[-1]
+        targets = [argument for argument in call if argument.startswith("--cargo-arg=--test=")]
+        self.assertEqual(len(targets), 7)
+        self.assertIn("--cargo-arg=--test=matrix_turso", targets)
+        self.assertIn("rullst-orm/qdrant", call[call.index("--features") + 1])
+
+
+@contextlib.contextmanager
+def mock_environ(env: dict[str, str]):
+    saved = dict(os.environ)
+    os.environ.clear()
+    os.environ.update(env)
+    try:
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(saved)
+
+
 class WorkflowTests(Fixture):
     def test_contract_step_keeps_findings_informational(self) -> None:
         self.tool("python3", "sys.exit(int(os.environ['FAKE_STATUS']))\n")
@@ -221,6 +402,11 @@ class WorkflowTests(Fixture):
         self.assertEqual((outputs["mode"], outputs["contract"], outputs["mutants_regex"],
                           outputs["targeted_shard"], outputs["source_sha"]),
                          ("contract", "messaging-redis", "in Foo::bar", "1/4", SHA))
+        status, outputs = self.plan(MUTATION_MODE="contract", CONTRACT="orm-sqlite",
+                                    MUTANTS_REGEX="^rullst-orm/src/pool/")
+        self.assertEqual(status, 0)
+        self.assertEqual((outputs["contract"], outputs["mutants_regex"]),
+                         ("orm-sqlite", "^rullst-orm/src/pool/"))
         for inputs in ({"MUTATION_MODE": "contract"},
                        {"MUTATION_MODE": "contract", "CONTRACT": "mail-postgres",
                         "MUTATION_FILE": "x.rs"},

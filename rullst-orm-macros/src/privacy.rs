@@ -163,4 +163,26 @@ mod tests {
         assert!(expanded.contains("table_name : \"userdatas\" . to_string ()"));
         assert!(expanded.contains("has_encrypted_data : false"));
     }
+
+    #[test]
+    fn only_the_encrypted_option_marks_a_column_encrypted() {
+        let input: DeriveInput = parse_quote! {
+            struct Account {
+                id: i32,
+                #[orm(masked)]
+                email: String,
+                #[orm(json)]
+                settings: String,
+            }
+        };
+        let expanded = super::expand(&input).expect("expand").to_string();
+        assert!(
+            expanded.contains("has_encrypted_data : false"),
+            "{expanded}"
+        );
+        assert!(
+            expanded.contains("encrypted_fields : vec ! []"),
+            "{expanded}"
+        );
+    }
 }

@@ -244,3 +244,7 @@ impl Drop for ManagedSavepoint {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "savepoint_tests.rs"]
+mod tests;

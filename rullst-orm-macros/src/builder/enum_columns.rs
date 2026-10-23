@@ -161,4 +161,18 @@ mod tests {
                 .contains("__RullstEnumProbe")
         );
     }
+
+    #[test]
+    fn only_a_single_argument_option_is_unwrapped() {
+        let probe = |ty: syn::Type| super::probed_type(&ty).map(|t| quote::quote!(#t).to_string());
+        assert_eq!(
+            probe(parse_quote!(Option<AccountStatus>)),
+            Some("AccountStatus".to_string())
+        );
+        assert_eq!(
+            probe(parse_quote!(legacy::Option<AccountStatus, Extra>)),
+            None
+        );
+        assert_eq!(probe(parse_quote!(Option)), None);
+    }
 }

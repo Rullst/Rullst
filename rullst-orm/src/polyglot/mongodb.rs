@@ -284,6 +284,18 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn only_empty_or_mock_uris_select_the_offline_store() {
+        for mock in ["", "mock_local", "mock://mongo"] {
+            assert!(is_mock_credential(mock), "{mock}");
+        }
+        assert!(!is_mock_credential("mongodb://127.0.0.1:1"));
+        let live = MongoDbStore::<Event>::connect_or_mock("mongodb://127.0.0.1:1", "app")
+            .await
+            .expect("the client is built without connecting");
+        assert!(!live.is_mock());
+    }
+
     #[test]
     fn rejects_models_that_own_the_driver_identifier() {
         #[derive(Serialize)]

@@ -47,40 +47,24 @@ impl ReplicaPool {
 }
 
 #[cfg(test)]
-#[allow(unused_imports)]
 mod tests {
-    use super::*;
+    use super::ReplicaPool;
+    use crate::pool::tests::lazy_pool;
 
     #[tokio::test]
-    async fn test_replica_pool_count_and_rotation() {
-        #[cfg(not(any(
-            feature = "strict-postgres",
-            feature = "strict-mysql",
-            feature = "strict-sqlite"
-        )))]
-        {
-            sqlx::any::install_default_drivers();
-        }
+    async fn reads_rotate_over_the_replicas_and_writes_use_the_primary() {
+        let replica_pool = ReplicaPool::new(lazy_pool(), vec![lazy_pool(), lazy_pool()]);
+        assert_eq!(replica_pool.replica_count(), 2);
+        let picks: Vec<*const crate::RullstPool> = (0..5)
+            .map(|_| std::ptr::from_ref(replica_pool.read()))
+            .collect();
+        let first = std::ptr::from_ref(&replica_pool.replicas[0]);
+        let second = std::ptr::from_ref(&replica_pool.replicas[1]);
+        assert_eq!(picks, [first, second, first, second, first]);
+        assert!(std::ptr::eq(replica_pool.write(), &replica_pool.primary));
 
-        #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
-        {
-            if let (Ok(pool), Ok(replica1), Ok(replica2)) = (
-                RullstPool::connect("sqlite::memory:").await,
-                RullstPool::connect("sqlite::memory:").await,
-                RullstPool::connect("sqlite::memory:").await,
-            ) {
-                let replica_pool = ReplicaPool::new(pool.clone(), vec![replica1, replica2]);
-                assert_eq!(replica_pool.replica_count(), 2);
-
-                // Test read round-robin
-                let _r1 = replica_pool.read();
-                let _r2 = replica_pool.read();
-                let _r3 = replica_pool.read();
-
-                let primary_only = ReplicaPool::primary_only(pool);
-                assert_eq!(primary_only.replica_count(), 0);
-                let _p_read = primary_only.read();
-            }
-        }
+        let primary_only = ReplicaPool::primary_only(lazy_pool());
+        assert_eq!(primary_only.replica_count(), 0);
+        assert!(std::ptr::eq(primary_only.read(), &primary_only.primary));
     }
 }

@@ -8,6 +8,9 @@ mod codec;
 mod operation;
 
 #[cfg(test)]
+#[path = "recovery/codec_tests.rs"]
+mod codec_tests;
+#[cfg(test)]
 #[path = "recovery/tests.rs"]
 mod tests;
 

@@ -20,6 +20,9 @@ mod config;
 mod graph;
 mod live;
 #[cfg(test)]
+#[path = "surrealdb/live_tests.rs"]
+mod live_tests;
+#[cfg(test)]
 mod tests;
 
 pub use config::{SurrealAuth, SurrealConfig};

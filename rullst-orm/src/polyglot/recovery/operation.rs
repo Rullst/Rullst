@@ -257,3 +257,7 @@ fn ensure_subset(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "operation_tests.rs"]
+mod tests;

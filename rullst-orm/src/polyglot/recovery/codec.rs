@@ -116,11 +116,8 @@ fn parse_envelope(
     let key_id = parts.next().ok_or(DocumentRecoveryError::InvalidEnvelope)?;
     let nonce = parts.next().ok_or(DocumentRecoveryError::InvalidEnvelope)?;
     let ciphertext = parts.next().ok_or(DocumentRecoveryError::InvalidEnvelope)?;
-    if prefix != PREFIX
-        || parts.next().is_some()
-        || !valid_portable_label(key_id, MAX_KEY_ID_BYTES)
-        || nonce.is_empty()
-        || ciphertext.is_empty()
+    // An empty nonce or ciphertext fails the length checks below.
+    if prefix != PREFIX || parts.next().is_some() || !valid_portable_label(key_id, MAX_KEY_ID_BYTES)
     {
         return Err(DocumentRecoveryError::InvalidEnvelope);
     }

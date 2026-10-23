@@ -498,3 +498,54 @@ fn client_input_deserializers_reject_envelopes() {
         Some("spare secret")
     );
 }
+
+#[test]
+fn key_ids_are_bounded_and_tags_may_be_exactly_sixteen_bytes() {
+    let key = generate_test_key_32();
+    let context = model_context("accounts", "api_token");
+    let too_long = "k".repeat(129);
+    for invalid in ["", too_long.as_str(), "bad/key"] {
+        assert_eq!(
+            encrypt_with_context("sensitive", key.as_bytes(), invalid, &context)
+                .expect_err("invalid key id"),
+            PrivacyError::InvalidKeyId,
+            "{invalid}"
+        );
+    }
+    let longest = "k".repeat(128);
+    let encrypted = encrypt_with_context("sensitive", key.as_bytes(), &longest, &context)
+        .expect("a 128-byte key id is valid");
+    assert_eq!(
+        parse_envelope(&encrypted).expect("envelope").key_id,
+        longest
+    );
+
+    let nonce = URL_SAFE_NO_PAD.encode([0_u8; NONCE_LENGTH]);
+    let tag = URL_SAFE_NO_PAD.encode([0_u8; TAG_LENGTH]);
+    let tag_only_envelope = format!("RULLST:v2:default:{nonce}:{tag}");
+    let tag_only =
+        parse_envelope(&tag_only_envelope).expect("an empty plaintext still has its tag");
+    assert_eq!(tag_only.ciphertext.len(), TAG_LENGTH);
+
+    // A legacy payload of exactly nonce + tag reaches authentication.
+    let payload = STANDARD.encode([0_u8; NONCE_LENGTH + TAG_LENGTH]);
+    assert!(matches!(
+        decrypt_aes_gcm(&payload, &key),
+        Err(PrivacyError::DecryptionFailed(_))
+    ));
+}
+
+#[test]
+fn compliance_models_declare_no_personal_fields_by_default() {
+    struct Plain;
+    impl ComplianceModel for Plain {
+        fn compliance_schema() -> PrivacyReport {
+            PrivacyReport {
+                table_name: "plain".to_string(),
+                has_encrypted_data: false,
+                encrypted_fields: Vec::new(),
+            }
+        }
+    }
+    assert!(Plain::personal_fields().is_empty());
+}

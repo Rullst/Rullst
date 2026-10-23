@@ -104,6 +104,47 @@ pub async fn exercise_outbox() {
             .is_none()
     );
 
+    // A failed delivery returns to the stream until its attempts run out.
+    Orm::transaction(|_| {
+        Box::pin(async {
+            Outbox::enqueue(
+                "matrix-retry",
+                "order-retry",
+                "matrix.retry",
+                &json!({"retry": true}),
+            )
+            .await
+            .map(|_| ())
+        })
+    })
+    .await
+    .expect("retry event should enqueue");
+    let first = Outbox::claim_next("matrix-retry", "matrix-worker", 30, 2)
+        .await
+        .expect("retry claim should execute")
+        .expect("retry event should be claimable");
+    assert!(
+        Outbox::fail(first.id, &first.claim_key, "temporary outage", 2, 0)
+            .await
+            .expect("outbox failure should execute")
+    );
+    let second = Outbox::claim_next("matrix-retry", "matrix-worker", 30, 2)
+        .await
+        .expect("retried claim should execute")
+        .expect("a failed event with attempts left is claimable again");
+    assert_eq!(second.attempts, 2);
+    assert!(
+        Outbox::fail(second.id, &second.claim_key, "still down", 2, 0)
+            .await
+            .expect("final outbox failure should execute")
+    );
+    assert!(
+        Outbox::claim_next("matrix-retry", "matrix-worker", 30, 2)
+            .await
+            .expect("dead-letter stream query should succeed")
+            .is_none()
+    );
+
     // Streams and event keys are case-sensitive on every backend, including
     // MySQL/MariaDB whose default collations fold case.
     let (lower, upper) = Orm::transaction(|_| {

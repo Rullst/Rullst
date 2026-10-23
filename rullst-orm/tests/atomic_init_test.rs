@@ -26,4 +26,12 @@ async fn replica_failure_does_not_publish_partial_global_state() {
     assert!(Orm::pool().is_ok());
     assert!(Orm::read_pool().is_ok());
     assert_eq!(Orm::driver().expect("initialized driver"), "sqlite");
+
+    // A second initialization is refused before it connects anywhere: an
+    // unreachable database would otherwise report a connection error.
+    let unreachable = std::env::temp_dir()
+        .join(format!("rullst-missing-{}", rand::random::<u64>()))
+        .join("app.db");
+    let again = Orm::init(&format!("sqlite:{}?mode=ro", unreachable.display())).await;
+    assert!(matches!(again, Err(Error::AlreadyInitialized)), "{again:?}");
 }
