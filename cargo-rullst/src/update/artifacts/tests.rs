@@ -233,3 +233,98 @@ fn symlinked_binaries_directories_and_fifos_are_rejected_without_blocking() {
     );
     assert!(manifest.verify_files(directory.path()).is_err());
 }
+
+fn rejection<T: std::fmt::Debug>(result: Result<T, Box<dyn std::error::Error>>) -> String {
+    result.unwrap_err().to_string()
+}
+
+#[test]
+fn artifact_errors_debug_print_their_message() {
+    assert_eq!(
+        format!("{:?}", ArtifactError::Invalid("fixture")),
+        "artifact verification rejected: fixture"
+    );
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
+#[test]
+fn the_native_target_is_the_linux_gnu_release() {
+    assert_eq!(native_target().unwrap(), "x86_64-unknown-linux-gnu");
+}
+
+#[test]
+fn offline_artifact_operations_are_refused_first() {
+    let directory = tempfile::tempdir().unwrap();
+    let directory = directory.path().to_str().unwrap();
+    // Without --allow-major the next check would refuse 99.0.0 differently.
+    let verify = command()
+        .try_get_matches_from([
+            "verify",
+            "--directory",
+            directory,
+            "--to",
+            "99.0.0",
+            "--offline",
+        ])
+        .unwrap();
+    assert_eq!(
+        run(&verify).unwrap_err().to_string(),
+        "artifact verification rejected: offline mode forbids attestation verification"
+    );
+    let stage_matches = stage_command()
+        .try_get_matches_from(["stage", "--to", "99.0.0", "--offline"])
+        .unwrap();
+    let staged = "artifact verification rejected: offline mode forbids authenticated downloads";
+    assert_eq!(rejection(stage(&stage_matches).map(|()| 0)), staged);
+    assert_eq!(rejection(execute("stage", &stage_matches)), staged);
+    let install_matches = install_command()
+        .try_get_matches_from([
+            "install",
+            "recover",
+            "--root",
+            directory,
+            "--approved-review",
+            &"f".repeat(64),
+            "--offline",
+        ])
+        .unwrap();
+    let installed = "artifact verification rejected: offline mode forbids authenticated installation operations";
+    assert_eq!(
+        rejection(installation(&install_matches).map(|()| 0)),
+        installed
+    );
+    assert_eq!(rejection(execute("install", &install_matches)), installed);
+    assert_eq!(
+        rejection(execute("apply", &install_matches)),
+        "artifact verification rejected: unsupported guided artifact operation"
+    );
+}
+
+#[test]
+fn verification_reads_a_whole_16_kib_manifest_before_matching_it() {
+    let Ok(target) = native_target() else {
+        return;
+    };
+    let directory = tempfile::tempdir().unwrap();
+    let mut body = serde_json::to_vec(&fixture()).unwrap();
+    body.resize(16 * 1024, b' ');
+    fs::write(
+        directory.path().join(format!("cli-manifest-{target}.json")),
+        body,
+    )
+    .unwrap();
+    let matches = command()
+        .try_get_matches_from([
+            "verify",
+            "--directory",
+            directory.path().to_str().unwrap(),
+            "--to",
+            "99.0.0",
+            "--allow-major",
+        ])
+        .unwrap();
+    assert_eq!(
+        run(&matches).unwrap_err().to_string(),
+        "artifact verification rejected: manifest does not match the selected release, source or native target"
+    );
+}
