@@ -191,6 +191,24 @@ mod tests {
     use std::fs;
 
     #[test]
+    fn every_status_has_its_exact_label() {
+        for (status, label) in [
+            (EvidenceStatus::NoFindings, "NO FINDINGS"),
+            (
+                EvidenceStatus::NoFindingsOutsideExceptions(Vec::new()),
+                "NO FINDINGS OUTSIDE EXCEPTIONS",
+            ),
+            (EvidenceStatus::Findings(1), "FINDINGS"),
+            (EvidenceStatus::Generated(1), "GENERATED"),
+            (EvidenceStatus::Observed(1), "OBSERVED"),
+            (EvidenceStatus::NotChecked("reason"), "NOT CHECKED"),
+            (EvidenceStatus::Error("cause".into()), "ERROR"),
+        ] {
+            assert_eq!(status.label(), label);
+        }
+    }
+
+    #[test]
     fn report_never_fabricates_compliance_passes() {
         let output =
             std::env::temp_dir().join(format!("rullst-compliance-{}.md", rand::random::<u64>()));

@@ -433,3 +433,54 @@ fn the_report_is_never_written_through_a_symlink() {
     assert!(write_output(&output, b"report", true).is_err());
     assert_eq!(fs::read_to_string(victim).unwrap(), "keep");
 }
+
+#[test]
+fn a_clean_summary_marks_passes_and_lists_each_check_in_its_group() {
+    let root = project(&[("src/main.rs", PROTECTED_APP)]);
+    let report = collect(root.path(), &[], &missing_tools());
+    let text = summary::render(&report, "SECURITY_REPORT.md", Style::PLAIN);
+    assert!(text.contains("  ✓ CSRF — no findings\n"), "{text}");
+    assert!(
+        text.contains("  ✓ Inventory — 0 field(s) listed, 0 need review (name heuristic)\n"),
+        "{text}"
+    );
+    assert!(!text.contains("exit status"), "{text}");
+    let position = |needle: &str| {
+        text.find(needle)
+            .unwrap_or_else(|| panic!("{needle} missing: {text}"))
+    };
+    assert!(position("Security checks\n") < position("CSRF —"));
+    assert!(position("CSRF —") < position("Personal data\n"));
+    assert!(position("Accessibility checks\n") < position("Pages declare their language —"));
+}
+
+#[test]
+fn report_formats_and_default_files_are_exact() {
+    for (name, format, file) in [
+        ("md", ReportFormat::Markdown, "SECURITY_REPORT.md"),
+        ("html", ReportFormat::Html, "SECURITY_REPORT.html"),
+        ("json", ReportFormat::Json, "SECURITY_REPORT.json"),
+    ] {
+        assert_eq!(ReportFormat::parse(name), Some(format));
+        assert_eq!(format.default_file(), file);
+    }
+    assert_eq!(ReportFormat::parse("pdf"), None);
+}
+
+#[test]
+fn a_report_with_an_invalid_advisory_exception_is_refused_before_scanning() {
+    let directory = tempfile::tempdir().unwrap();
+    let output = directory.path().join("report.json");
+    let ignores = ["RUSTSEC-24-1".to_string()];
+    let error = run_report(ReportOptions {
+        format: ReportFormat::Json,
+        output: Some(output.clone()),
+        ignores: &ignores,
+    })
+    .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "invalid --audit-ignore value 'RUSTSEC-24-1'; expected RUSTSEC-YYYY-NNNN"
+    );
+    assert!(!output.exists());
+}
