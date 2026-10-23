@@ -25,12 +25,16 @@ fn ok(result: Value) -> Json<Value> {
     Json(json!([{ "status": "OK", "result": result }]))
 }
 
-fn rows(count: usize) -> Value {
+fn table_rows(table: &str, count: usize) -> Value {
     Value::Array(
         (1..=count)
-            .map(|index| json!({ "id": format!("events:evt-{index}"), "label": format!("row-{index}") }))
+            .map(|index| json!({ "id": format!("{table}:evt-{index}"), "label": format!("row-{index}") }))
             .collect(),
     )
+}
+
+fn rows(count: usize) -> Value {
+    table_rows("events", count)
 }
 
 /// `evt-1` exists, `evt-2` does not, `evt-3` matches twice, `evt-4` is a
@@ -45,11 +49,12 @@ async fn record(Path(key): Path<String>) -> Json<Value> {
     }
 }
 
-/// Returns `limit` rows, or one more for the `overflow` table.
+/// Returns `limit` rows of the requested table, or one more valid row for
+/// the `overflow` table.
 async fn page(Query(query): Query<HashMap<String, String>>) -> Json<Value> {
     let limit: usize = query["limit"].parse().unwrap();
     let extra = usize::from(query["table"] == "overflow");
-    ok(rows(limit + extra))
+    ok(table_rows(&query["table"], limit + extra))
 }
 
 async fn graph(body: String) -> Json<Value> {
