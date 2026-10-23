@@ -39,6 +39,12 @@ rullst-orm/src/polyglot/recovery/codec.rs:192:34: replace - with + in base64url_
 rullst-orm/src/polyglot/qdrant/mod.rs:242:24: replace > with == in LiveQdrant::send_json
 rullst-orm/src/polyglot/qdrant/mod.rs:242:24: replace > with >= in LiveQdrant::send_json
 
+# The MySQL key-collation conversion is idempotent, so running it on keys that
+# are already ascii_bin only rebuilds the table; the migration lock lives in the
+# connection's session, which dropping the connection ends as closing it does.
+rullst-orm/src/outbox.rs:117:38: replace > with >= in Outbox::install
+rullst-orm/src/schema/migration_lock.rs:72:9: replace MigrationLock::release with ()
+
 # rullst-core (alpha.3 campaign, hosted all-feature runs): each name below has a
 # row in WORKFLOWS.md "Accepted equivalent mutants"; radar.rs entries are
 # compiled only on Windows or other non-Linux targets.
