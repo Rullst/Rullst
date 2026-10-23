@@ -1,6 +1,7 @@
 //! Boolean, enum and URL widgets for stored values.
 
 use super::*;
+use crate::nexus::NexusTimeZone;
 
 fn widget(kind: FieldKind, stored: StoredValue) -> String {
     render_field_widget(
@@ -8,6 +9,7 @@ fn widget(kind: FieldKind, stored: StoredValue) -> String {
         &stored,
         true,
         &["id"],
+        &NexusTimeZone::utc(),
     )
 }
 
@@ -36,12 +38,16 @@ fn an_unreadable_enum_value_is_selected_but_never_submitted() {
 #[test]
 fn url_inputs_hold_only_values_the_browser_keeps_unchanged() {
     assert_eq!(
-        typed_input(&FieldKind::Url, "https://example.com/a"),
+        typed_input(
+            &FieldKind::Url,
+            "https://example.com/a",
+            &NexusTimeZone::utc()
+        ),
         ("url", "https://example.com/a".to_string())
     );
     for padded in [" https://example.com/a", "https://example.com/a\n"] {
         assert_eq!(
-            typed_input(&FieldKind::Url, padded),
+            typed_input(&FieldKind::Url, padded, &NexusTimeZone::utc()),
             ("text", padded.to_string()),
             "{padded:?}"
         );
