@@ -37,6 +37,7 @@ const IDENT_RULES: &[(&str, &Rule)] = &[
     ("redact_secrets", &SECURITY_LAYERS),
     ("StdoutAuditLogger", &AUDIT_LOG_LINES),
     ("OidcProvider", &OIDC_OPTIONAL_NAME),
+    ("GithubProvider", &CONNECT_GITHUB_EMAIL),
     ("update_partial", &ORM_PARTIAL_UPDATE),
     ("save_to_redis", &ORM_REDIS_HASHES),
     ("get_from_redis", &ORM_REDIS_HASHES),
@@ -369,6 +370,13 @@ impl Scanner<'_, '_> {
                 }
             }
             [.., "Outbox", _] => self.hit(&OUTBOX_MYSQL_KEYS, at),
+            [.., "Connect", "driver"]
+                if first_string
+                    .as_deref()
+                    .is_some_and(|name| name.eq_ignore_ascii_case("github")) =>
+            {
+                self.hit(&CONNECT_GITHUB_EMAIL, at);
+            }
             [.., "Orm", "transaction"] if self.context.text.contains("DatabaseError") => {
                 self.hit(&ORM_TRANSACTION_ERRORS, at);
             }

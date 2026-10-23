@@ -100,6 +100,9 @@ rules! {
     OIDC_OPTIONAL_NAME: "V13-OIDC-OPTIONAL-NAME", Review, "Connect generic OIDC",
         "`OidcProvider` accepts tokens without `name`; `ConnectUser::name` may now be empty",
         "Handle an empty `ConnectUser::name` (fall back to e-mail or another claim) wherever a display name is required.";
+    CONNECT_GITHUB_EMAIL: "V13-CONNECT-GITHUB-EMAIL", Review, "Connect GitHub email",
+        "the GitHub provider now returns the primary account email and GitHub's verified flag instead of the public profile email",
+        "Link or create accounts on a GitHub email only when `email_verified == Some(true)`, and request the `user:email` scope so the primary address can be read.";
     TS_CLIENT_REGENERATE: "V13-TS-CLIENT-REGENERATE", Review, "CLI generator robustness",
         "regenerate `rullst-client.ts`: v13 clients send the CSRF header and URL-encode path parameters",
         "Run `cargo rullst generate:ts` and update callers of parameterized methods; older clients receive 403 from `csrf_middleware`.";
