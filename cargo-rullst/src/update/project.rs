@@ -120,12 +120,26 @@ fn prepare(matches: &ArgMatches) -> Result<serde_json::Value, ProjectError> {
         ));
     }
     let candidate = stage.path().join("candidate");
-    let baseline = stage.path().join("before");
-    let records = snapshot::copy(&root, &baseline, &candidate, &paths)?;
+    let prepared = prepare_into(root, target, &paths, stage.path())?;
+    let path = stage.retain();
+    let report = serde_json::json!({"schema_version":"rullst.project-preparation-result.v1",
+        "prepared_directory":path, "candidate_directory":candidate, "preparation":prepared});
+    Ok(report)
+}
+
+/// Copies the inventoried project into `stage` and writes its preparation record.
+fn prepare_into(
+    root: PathBuf,
+    target: &str,
+    paths: &BTreeSet<String>,
+    stage: &Path,
+) -> Result<Prepared, ProjectError> {
+    let candidate = stage.join("candidate");
+    let records = snapshot::copy(&root, &stage.join("before"), &candidate, paths)?;
     let manifests = manifests(&candidate)?;
     let plan = crate::generators::build::prepare_manifests(&candidate, manifests, target)
         .map_err(|error| ProjectError::Planning(error.to_string()))?;
-    snapshot::unchanged(&root, &paths, &records)?;
+    snapshot::unchanged(&root, paths, &records)?;
     let prepared = Prepared {
         schema_version: "rullst.project-preparation.v1".into(),
         phase: "prepared".into(),
@@ -141,11 +155,8 @@ fn prepare(matches: &ArgMatches) -> Result<serde_json::Value, ProjectError> {
     if serialized.len() > 64 * 1024 * 1024 {
         return Err(ProjectError::Invalid("preparation report exceeds 64 MiB"));
     }
-    std::fs::write(stage.path().join("preparation.json"), serialized)?;
-    let path = stage.retain();
-    let report = serde_json::json!({"schema_version":"rullst.project-preparation-result.v1",
-        "prepared_directory":path, "candidate_directory":candidate, "preparation":prepared});
-    Ok(report)
+    std::fs::write(stage.join("preparation.json"), serialized)?;
+    Ok(prepared)
 }
 
 pub(super) fn execute(matches: &ArgMatches) -> Result<serde_json::Value, ProjectError> {

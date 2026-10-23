@@ -88,3 +88,63 @@ fn verification_features_follow_the_verify_policy() {
         ["--features", "serde"]
     );
 }
+
+/// A Git project prepared into a private stage directory, without the cache.
+pub(super) struct PreparedProject {
+    _temp: tempfile::TempDir,
+    pub source: PathBuf,
+    pub stage: PathBuf,
+}
+
+pub(super) fn prepared_project() -> PreparedProject {
+    let temp = tempfile::tempdir().unwrap();
+    let base = temp.path().canonicalize().unwrap();
+    let source = base.join("source");
+    std::fs::create_dir_all(source.join("src")).unwrap();
+    std::fs::write(
+        source.join("Cargo.toml"),
+        "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = { version = \"13.0.0-alpha.1\", default-features = false }\n",
+    )
+    .unwrap();
+    std::fs::write(source.join("src/main.rs"), "fn main() {}\n").unwrap();
+    assert!(
+        std::process::Command::new("git")
+            .args(["init", "--quiet"])
+            .current_dir(&source)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let paths = snapshot::inventory(&source).unwrap();
+    let stage = base.join("stage");
+    std::fs::create_dir(&stage).unwrap();
+    prepare_into(source.clone(), "13.0.0", &paths, &stage).unwrap();
+    PreparedProject {
+        _temp: temp,
+        source,
+        stage,
+    }
+}
+
+#[test]
+fn preparation_copies_and_plans_the_project_into_its_stage() {
+    let project = prepared_project();
+    let prepared: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(project.stage.join("preparation.json")).unwrap())
+            .unwrap();
+    assert_eq!(prepared["schema_version"], "rullst.project-preparation.v1");
+    assert_eq!(prepared["target"], "13.0.0");
+    assert_eq!(
+        prepared["source"],
+        serde_json::json!(project.source.clone())
+    );
+    assert_eq!(
+        std::fs::read_to_string(project.stage.join("before/src/main.rs")).unwrap(),
+        "fn main() {}\n"
+    );
+    assert!(
+        std::fs::read_to_string(project.stage.join("candidate/Cargo.toml"))
+            .unwrap()
+            .contains("13.0.0")
+    );
+}
