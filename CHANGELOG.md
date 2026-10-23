@@ -49,9 +49,10 @@ after your version.
 - Native date/time `Schema` columns need a strict driver feature
   (`strict-postgres`, `strict-mysql`, `strict-sqlite`). On the SQLx `Any` pool
   `timestamps()` keeps `TEXT` columns.
-- `save()` writes only the changed columns only for models that declare a
-  `RowSnapshot` field. The generated SaaS and LMS models do not declare one, so
-  they never update records through `save()`.
+- `save()` writes only the changed columns for models that declare a
+  `RowSnapshot` field. Every SQLx model the CLI generates now declares it;
+  models written by hand or generated before 13.0.0-alpha.3 keep the full-row
+  `save()` until the field is added, and Turso models do not track changes.
 - Startup migrations stay opt-in (`RULLST_AUTO_MIGRATE=true`).
 - i18n plural rules and formatting cover the documented locale list; other
   languages fall back to English data. Currencies other than BRL, USD, EUR,
