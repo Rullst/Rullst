@@ -163,7 +163,27 @@ fn streaming_downloads_are_bounded_and_cannot_replace_existing_files() {
     assert!(write_bounded(&b"new"[..], 3, &path).is_err());
     assert_eq!(fs::read(&path).unwrap(), b"original");
     let empty = directory.path().join("empty");
-    assert!(write_bounded(&b""[..], 3, &empty).is_err());
+    // Bounded, so a write loop that never sees the end of input fails the test
+    // instead of hanging it.
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = sender.send(write_bounded(&b""[..], 3, &empty).is_err());
+    });
+    assert!(
+        receiver
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .unwrap()
+    );
+}
+
+#[test]
+fn the_download_client_refuses_plain_http() {
+    let error = client()
+        .unwrap()
+        .get("http://127.0.0.1:9/")
+        .send()
+        .unwrap_err();
+    assert!(error.is_builder(), "{error}");
 }
 
 #[test]
