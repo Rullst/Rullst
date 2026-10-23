@@ -415,6 +415,15 @@ async fn live_structures_round_trip_in_their_namespace() {
         top,
         [("alpha".to_string(), 4.0), ("gamma".to_string(), 3.0)]
     );
+    // A limit above the set's size returns every member.
+    let everything: Vec<String> = store
+        .sorted_set_top(&key, RedisScanLimit::new(10).unwrap())
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|scored| scored.member().as_str().to_owned())
+        .collect();
+    assert_eq!(everything, ["alpha", "gamma", "beta"]);
 
     for structure in [
         RedisStructure::Hash,
