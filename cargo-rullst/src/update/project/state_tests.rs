@@ -161,3 +161,40 @@ fn a_loaded_preparation_notices_later_changes() {
         "candidate changed during verification",
     );
 }
+
+#[test]
+fn declared_inputs_may_reach_but_not_exceed_their_bounds() {
+    let project = prepared_project();
+    let original = record(&project.stage);
+    let mut sized = original.clone();
+    sized["files"][0]["bytes"] = serde_json::json!(snapshot::MAX_TOTAL);
+    save(&project.stage, &sized);
+    assert_eq!(
+        error(&project.stage),
+        "project preparation rejected: baseline bytes differ from preparation record"
+    );
+    sized["files"][0]["bytes"] = serde_json::json!(snapshot::MAX_TOTAL + 1);
+    save(&project.stage, &sized);
+    assert_eq!(
+        error(&project.stage),
+        "project preparation rejected: preparation exceeds its total byte bound"
+    );
+
+    let first = original["files"][0].clone();
+    for (count, expected) in [
+        (
+            snapshot::MAX_ENTRIES,
+            "project preparation rejected: duplicate preparation input",
+        ),
+        (snapshot::MAX_ENTRIES + 1, INVALID),
+    ] {
+        let mut many = original.clone();
+        many["files"] = serde_json::Value::Array(vec![first.clone(); count]);
+        fs::write(
+            project.stage.join("preparation.json"),
+            serde_json::to_vec(&many).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(error(&project.stage), expected, "{count}");
+    }
+}
