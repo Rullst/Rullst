@@ -67,7 +67,9 @@ fn enabling_keeps_comments_and_existing_features_and_is_idempotent() {
     let example = read(root.path(), ".env.example");
     assert!(example.starts_with("# ── Mail (added by `cargo rullst add mail`) ──\n"));
     assert!(example.contains("MAIL_FROM=\"Example App <no-reply@example.com>\"\n"));
-    assert!(example.contains("# MAIL_DRIVER=resend\n"));
+    assert!(example.contains(
+        "# Development logs messages while MAIL_DRIVER is unset; staging and\n# production must choose a driver, for example:\n# MAIL_DRIVER=resend\n"
+    ));
     assert!(example.contains("# RESEND_API_KEY=mock_resend_key\n"));
 
     let before = [

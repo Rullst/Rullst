@@ -236,6 +236,43 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn a_rollback_that_cannot_restore_an_edit_says_so() {
+        use std::os::unix::fs::PermissionsExt;
+        if rustix::process::geteuid().is_root() {
+            return;
+        }
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().canonicalize().unwrap();
+        let locked = root.join("locked");
+        fs::create_dir(&locked).unwrap();
+        let first = locked.join("main.rs");
+        fs::write(&first, "original").unwrap();
+        let plan = vec![
+            Edit::replace(first.clone(), "original".into(), "generated".into()),
+            Edit::create(root.join("late.rs"), "late".into()).unwrap(),
+        ];
+        let mut calls = 0;
+        let error = apply_with(&plan, |path, content, create| {
+            calls += 1;
+            if calls == 2 {
+                // The restore of main.rs needs a temporary file in `locked`.
+                fs::set_permissions(&locked, fs::Permissions::from_mode(0o500))?;
+                Err(io::Error::other("injected second-write failure"))
+            } else {
+                replace(path, content, create)
+            }
+        })
+        .unwrap_err();
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o700)).unwrap();
+        assert_eq!(
+            error.to_string(),
+            "consumer scaffold write failed; concurrent changes or a rollback error require reviewing the application diff"
+        );
+        assert_eq!(fs::read_to_string(&first).unwrap(), "generated");
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn project_symlinks_still_refuse_writes_after_resolving_the_root() {
         let directory = tempfile::tempdir().unwrap();
         let root = directory.path().canonicalize().unwrap();

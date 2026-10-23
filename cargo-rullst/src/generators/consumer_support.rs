@@ -199,6 +199,66 @@ mod tests {
     use super::*;
 
     #[test]
+    fn only_the_recognized_saas_authentication_is_accepted() {
+        let root = tempfile::tempdir().unwrap();
+        assert!(recognized_auth(root.path(), "lms").is_err());
+        let baseline = crate::blueprints::saas::file_manifest(
+            "unused",
+            false,
+            "Active Record",
+            "Zero-Bundle HTMX",
+        );
+        for name in [
+            "src/middlewares/auth_middleware.rs",
+            "src/controllers/auth_controller.rs",
+        ] {
+            let (_, content) = baseline.iter().find(|(path, _)| *path == name).unwrap();
+            let path = root.path().join(name);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, content).unwrap();
+        }
+        recognized_auth(root.path(), "saas").unwrap();
+        let middleware = root.path().join("src/middlewares/auth_middleware.rs");
+        let edited = format!(
+            "{}\nfn custom() {{}}\n",
+            fs::read_to_string(&middleware).unwrap()
+        );
+        fs::write(&middleware, edited).unwrap();
+        assert!(recognized_auth(root.path(), "saas").is_err());
+    }
+
+    #[test]
+    fn a_privacy_source_must_be_this_version_of_the_package() {
+        let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).join("../rullst-privacy");
+        assert_eq!(
+            privacy_source(Some(&workspace), "src/lib.rs").unwrap(),
+            Some(workspace.canonicalize().unwrap())
+        );
+        assert_eq!(privacy_source(None, "src/lib.rs").unwrap(), None);
+        let version = env!("CARGO_PKG_VERSION");
+        for (name, package_version, module) in [
+            ("other-privacy", version, true),
+            ("rullst-privacy", "0.0.1", true),
+            ("rullst-privacy", version, false),
+        ] {
+            let source = tempfile::tempdir().unwrap();
+            fs::write(
+                source.path().join("Cargo.toml"),
+                format!("[package]\nname = \"{name}\"\nversion = \"{package_version}\"\n"),
+            )
+            .unwrap();
+            if module {
+                fs::create_dir(source.path().join("src")).unwrap();
+                fs::write(source.path().join("src/lib.rs"), "").unwrap();
+            }
+            assert!(
+                privacy_source(Some(source.path()), "src/lib.rs").is_err(),
+                "{name} {package_version} {module}"
+            );
+        }
+    }
+
+    #[test]
     fn formatting_equivalence_preserves_semantic_changes() {
         assert!(equivalent("// comment\nfn one() {}", "fn one ( ) { }").unwrap());
         assert!(equivalent("fn one() { call(1); }", "fn one() { call(1,); }").unwrap());
