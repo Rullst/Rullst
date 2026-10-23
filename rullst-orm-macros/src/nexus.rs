@@ -207,7 +207,6 @@ fn inferred_field_kind(field_type: &Type) -> TokenStream2 {
         return kind;
     }
     match unwrapped_type_name(field_type).as_str() {
-        "String" | "&str" => quote!(::rullst::nexus::FieldKind::Text),
         "bool" => quote!(::rullst::nexus::FieldKind::Boolean),
         "f32" | "f64" => quote!(::rullst::nexus::FieldKind::Number),
         _ => quote!(::rullst::nexus::FieldKind::Text),

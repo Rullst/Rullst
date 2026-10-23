@@ -443,3 +443,38 @@ fn integer_fields_carry_their_type_range() {
         assert!(meta.contains(expected), "{name}: {meta}");
     }
 }
+
+#[test]
+fn nexus_flags_labels_and_generic_types_are_read_exactly() {
+    let input: DeriveInput = parse_quote! {
+        struct Account {
+            id: i32,
+            first_name: String,
+            #[nexus(hidden)]
+            internal_note: String,
+            ratio: Atomic<f64>,
+            score: Option<f64>,
+        }
+    };
+    let output = expand_nexus(&input)
+        .expect("valid Nexus derive")
+        .to_string();
+    let first = field_meta(&output, "first_name").expect("first_name");
+    assert!(first.contains("label : \"First name\""), "{first}");
+    let hidden = field_meta(&output, "internal_note").expect("internal_note");
+    assert!(hidden.contains("hidden : true"), "{hidden}");
+    let ratio = field_meta(&output, "ratio").expect("ratio");
+    assert!(ratio.contains("FieldKind :: Text"), "{ratio}");
+    let score = field_meta(&output, "score").expect("score");
+    assert!(score.contains("FieldKind :: Number"), "{score}");
+
+    let unsupported: DeriveInput = parse_quote! {
+        struct Account { id: i32, #[nexus(bogus)] name: String }
+    };
+    assert_eq!(
+        expand_nexus(&unsupported)
+            .expect_err("unknown option")
+            .to_string(),
+        "unsupported Nexus field option"
+    );
+}
