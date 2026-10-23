@@ -20,3 +20,13 @@ rullst-orm/src/value.rs:86:9: replace temporal::date -> String with String::new(
 rullst-orm/src/value.rs:86:9: replace temporal::date -> String with "xyzzy".into()
 rullst-orm/src/value.rs:90:9: replace temporal::time -> String with String::new()
 rullst-orm/src/value.rs:90:9: replace temporal::time -> String with "xyzzy".into()
+
+# rullst-orm-macros feature gates: with every feature, redis() and ai() emit
+# no attribute, which is what Default::default() returns.
+rullst-orm-macros/src/feature_gates.rs:17:5: replace redis -> TokenStream with Default::default()
+rullst-orm-macros/src/feature_gates.rs:26:5: replace ai -> TokenStream with Default::default()
+
+# rullst-orm: the two hex digits occupy disjoint bits; the default
+# personal_fields() already returns an empty vector.
+rullst-orm/src/pool/dsn.rs:177:34: replace | with ^ in percent_decode_utf8
+rullst-orm/src/privacy.rs:83:9: replace ComplianceModel::personal_fields -> Vec<&'static str> with vec![]
