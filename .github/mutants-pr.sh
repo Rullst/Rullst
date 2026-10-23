@@ -68,14 +68,21 @@ case "${1:-}" in
     fi
     # Same per-mutant bounds as a targeted mutants.yml run.
     bounds=(--in-place --shard "$2" --timeout 300 --build-timeout 300)
+    # Assigned first, so a failed listing stops the script (set -e) instead
+    # of skipping its pass.
+    workspace_count=$(count "${workspace[@]}" --shard "$2")
+    cli_count=0
+    if [ "${#cli[@]}" -gt 0 ]; then
+      cli_count=$(count "${cli[@]}" --shard "$2")
+    fi
     statuses=()
-    if [ "$(count "${workspace[@]}" --shard "$2")" -gt 0 ]; then
+    if [ "$workspace_count" -gt 0 ]; then
       set +e
       "${workspace[@]}" "${bounds[@]}"
       statuses+=("$?")
       set -e
     fi
-    if [ "${#cli[@]}" -gt 0 ] && [ "$(count "${cli[@]}" --shard "$2")" -gt 0 ]; then
+    if [ "$cli_count" -gt 0 ]; then
       # A second run would rename the workspace pass's mutants.out, so the
       # CLI pass writes elsewhere and its lists are appended to mutants.out,
       # which mutants-pr.yml reads and uploads.
