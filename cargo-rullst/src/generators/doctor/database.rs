@@ -388,3 +388,7 @@ pub(crate) fn human_bytes(bytes: u64) -> String {
         format!("{value:.1} {}", UNITS[unit])
     }
 }
+
+#[cfg(test)]
+#[path = "database_tests.rs"]
+mod tests;
