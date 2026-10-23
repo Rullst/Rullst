@@ -607,8 +607,13 @@ origin, which the egress policy refuses to loopback test servers, and are left
 to live integration testing; in `rullst-core`, the `pool_ready` guard of
 `run_artisan_command` needs an already initialized ORM pool, which the
 all-feature build can only open against a PostgreSQL server that the core
-runs do not have) gave every missed mutant in their files a test, except
-these.
+runs do not have), the `cargo-rullst` campaign (targeted runs, with the
+CLI's library unit tests, of the self-update, audit, `add` and consumer-file,
+doctor and deploy files; it covers the files `.github/mutants-pr-cli.txt`
+lists, and ROADMAP.md names the survivors left in the others) and the Studio
+remote-mode campaign (targeted runs of every `rullst-studio/src/remote` file
+and of the `rullst-studio` binary with the package's tests) gave every missed
+mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
@@ -628,6 +633,18 @@ entry only when its exact cargo-mutants name is also listed in
 | `cargo-rullst/src/generators/footprint/procfs.rs`: `ticks_per_second`, `> 0` with `>= 0` | The clock tick rate is always positive. |
 | `cargo-rullst/src/generators/footprint/procfs.rs`: the non-Unix `ticks_per_second` with `Some(0)` or `Some(1)` | Not compiled on Linux. |
 | `cargo-rullst/src/generators/footprint/energy.rs`: `discover`, `root == POWERCAP_ROOT` with `!=` | On Linux `!cfg!(target_os = "linux")` is false, so the comparison is never evaluated. |
+| `cargo-rullst/src/generators/doctor/probe.rs`: `run`, `stdout.len() > OUTPUT_LIMIT` with `>=` | An output of exactly `OUTPUT_LIMIT` bytes is cut at its own length, which leaves it unchanged. |
+| `cargo-rullst/src/generators/doctor/database.rs`: `tcp_reachable`, delete the `TimedOut \| WouldBlock` arm | `TcpStream::connect_timeout` reports its timeout as a `TimedOut` error whose text is `connection timed out`, which the catch-all arm passes through unchanged, and never returns `WouldBlock` on Linux. |
+| `cargo-rullst/src/update/artifacts/download.rs`: `write_bounded`, the `64 * 1024` copy buffer with `64 + 1024` | A smaller buffer copies the same bytes in more reads. |
+| `cargo-rullst/src/generators/output_guard.rs`: `write_output`, the `NotFound` guard of `fs::metadata` with `true` | `reject_symlink` has already returned every other `lstat` error, and for a path that is not a symlink `stat` fails exactly when `lstat` does. |
+| `cargo-rullst/src/generators/output_guard.rs`: `write_output`, the `!parent.as_os_str().is_empty()` guard with `true` | `tempfile` creates its file for the empty directory `""` in the current directory, as it does for `"."`. |
+| `cargo-rullst/src/generators/consumer_files.rs`: `reject_links`, the `NotFound` guard with `true` | Any other `lstat` failure of an ancestor (permission, not a directory, name too long) recurs with the same error when the path itself is read or created. |
+| `cargo-rullst/src/update/artifacts.rs`: `native_target`, the `cfg!(target_env = "gnu")` guard with `true`, the `cfg!(target_env = "msvc")` guard with `true` or `false`, and deleting either macOS arm | On the x86_64 GNU/Linux host the first guard is already true and the Windows and macOS patterns never match. |
+| `cargo-rullst/src/update/project/permissions_unix.rs`: `xattr_names`, `size > MAX_XATTR_NAMES` with `==` or `>=` | Linux never reports a name list longer than 64 KiB, and a list of exactly 64 KiB cannot hold only `security.selinux`, so `has_unreproduced_attribute` refuses it with the same error. |
+| `cargo-rullst/src/update/project/receipt.rs`: `Verified::validate`, the `\|\|` before `!seen.insert(...)` with `&&` | A repeated path cannot also equal the preparation's record at its position, because those records are unique, so `file.path != input.path` rejects it with the same error. |
+| `cargo-rullst/src/update/cache/unix.rs`: `options`, `NOFOLLOW \| NONBLOCK` with `^` | The two flags occupy disjoint bits, so OR and XOR give the same value. |
+| `cargo-rullst/src/update/cache/unix.rs`: `load_at`, `FILE_LIMIT + 1` with `-` or `*` | `validate_file` has already refused a file longer than `FILE_LIMIT`. Reading one byte less shortens only a file of exactly `FILE_LIMIT` bytes, whose body `decode` refuses either way because it allows 64 bytes less, and a file that grows during the read is refused either way. |
+| `rullst-studio/src/remote/history.rs`: `Sample::from_outcome`, `window.requests > 0` with `>=` | With no request the rate is `0 / 0`, which `finite` drops, so the sample stores no rate either way. |
 | `rullst-iot/src/coap.rs` (`CoapRequest::encode` twice, `append_option`), `rullst-iot/src/mqtt.rs` (`MqttPublish::encode`) and `rullst-iot/src/i2c.rs` (`I2cHelper::try_build_read_frame`): `\|` with `^` | The operands occupy disjoint bits, so OR and XOR build the same byte. |
 | `rullst-iot/src/coap.rs`: `CoapRequest::encode`, `payload.len() > MAX_COAP_DATAGRAM_BYTES` with `==` or `>=` | `CoapRequest::payload` already bounds the payload, and `ensure_room` rejects the same lengths with the same error. |
 | `rullst-iot/src/mqtt.rs`: `MqttPublish::encode`, `remaining_length > MQTT_MAX_VARIABLE_BYTE_INTEGER` with `==` or `>=` | The builders keep topic and payload far below that limit, and `variable_byte_integer` repeats the check with the same error. |
@@ -726,7 +743,8 @@ RASP decoder, the HTML snapshot normaliser and the accessibility scanner so
 that every step consumes input, and bounded the WAF linear-time test, which
 removed their timeouts. The core campaign ran the queue worker, realtime,
 multipart CSRF, byteranges and long PII masking tests against a deadline
-instead, which turned their timeouts into caught mutants. The remaining ones
+instead, which turned their timeouts into caught mutants; the CLI campaign
+bounded the update cache's FIFO test the same way. The remaining ones
 turn forward progress into a loop that never ends without allocating, in code
 every test of the file reaches, so no single test can fail first:
 
