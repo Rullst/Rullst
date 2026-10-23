@@ -1,7 +1,7 @@
 # 22. RAG Systems & Vector Search
 
 > [!IMPORTANT]
-> Dependency examples pin the v13 prerelease `=13.0.0-alpha.2` exactly: Cargo
+> Dependency examples pin the v13 prerelease `=13.0.0-alpha.3` exactly: Cargo
 > never selects a prerelease on its own, and the v12 line reached end of life
 > on 16 October 2026 (see the [release record](../v12.md)). Commit Cargo.lock
 > for reproducible builds. Use path dependencies only when intentionally
@@ -18,7 +18,7 @@ budgets, an embedding model, or a production RAG policy.
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.2", default-features = false, features = ["ai"] }
+rullst = { version = "=13.0.0-alpha.3", default-features = false, features = ["ai"] }
 serde_json = "1.0"
 ```
 
@@ -51,7 +51,7 @@ Enable the typed vector and concrete PostgreSQL paths:
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.2", default-features = false, features = [
+rullst = { version = "=13.0.0-alpha.3", default-features = false, features = [
   "orm-pgvector",
   "strict-postgres",
   "ai",
@@ -137,7 +137,7 @@ vector service rather than keeping vectors in PostgreSQL:
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.2", default-features = false, features = [
+rullst = { version = "=13.0.0-alpha.3", default-features = false, features = [
   "orm-qdrant",
   "ai",
 ] }

@@ -10,7 +10,7 @@ security boundaries. Cargo never installs a prerelease unless you name it, so
 with an exact version:
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.2 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
 ```
 
 `cargo-rullst` is a Core package. A few generators depend on outside toolchains
@@ -539,7 +539,7 @@ The directory may contain other downloads; only these fixed names are read.
 No archive is extracted and no downloaded executable is run. Releases since
 12.1.0 publish this inventory for Linux x64 GNU, Windows x64 MSVC and macOS
 x64/ARM64; 12.0.0 has none. The v13 prereleases publish it for the same
-targets; select one exactly, such as `--to 13.0.0-alpha.2`, with the
+targets; select one exactly, such as `--to 13.0.0-alpha.3`, with the
 major/prerelease opt-ins described below.
 
 The caller-installed GitHub CLI must be available through an absolute trusted

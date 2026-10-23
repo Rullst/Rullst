@@ -138,7 +138,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-privacy"
-version = "13.0.0-alpha.2"
+version = "13.0.0-alpha.3"
 dependencies = [
  "base64",
  "ring",
