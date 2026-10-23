@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792725603191,
+  "lastUpdate": 1792763617905,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -17470,6 +17470,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 12,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3135ffb2f4f5772ab9f65bbcb748a31f485e4f50",
+          "message": "Merge pull request #537 from Rullst/feat/v13-alpha3-polish\n\nfeat(cli): rule releases in upgrade plans, dirty tracking in generated models, monitor wiring, quiet spinner",
+          "timestamp": "2026-10-23T10:05:27-03:00",
+          "tree_id": "42473b7615b1bcfc8262583c2322cac6e578e788",
+          "url": "https://github.com/Rullst/Rullst/commit/3135ffb2f4f5772ab9f65bbcb748a31f485e4f50"
+        },
+        "date": 1792763616968,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5379,
+            "range": "± 42",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 580,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 11,
             "range": "± 1",
             "unit": "ns/iter"
           },
