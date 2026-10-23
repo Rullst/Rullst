@@ -343,6 +343,53 @@ mod tests {
     }
 
     #[test]
+    fn nested_and_source_less_members_add_no_extra_roots() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write(
+            &root.join("Cargo.toml"),
+            "[package]\nname = \"shop\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[workspace]\nmembers = [\"src/plugin\", \"tools\"]\n",
+        );
+        write(&root.join("src/main.rs"), "fn main() {}\n");
+        write(
+            &root.join("src/plugin/Cargo.toml"),
+            "[package]\nname = \"plugin\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+        );
+        write(&root.join("src/plugin/src/lib.rs"), "");
+        write(
+            &root.join("tools/Cargo.toml"),
+            "[package]\nname = \"tools\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[lib]\npath = \"lib.rs\"\n",
+        );
+        write(&root.join("tools/lib.rs"), "");
+        assert_eq!(package_source_roots(root).unwrap(), vec![root.join("src")]);
+    }
+
+    #[test]
+    fn unsafe_code_is_found_in_each_form_but_not_in_comments() {
+        let project = tempfile::tempdir().unwrap();
+        let src = project.path().join("src");
+        write(
+            &src.join("lib.rs"),
+            "// unsafe { commented }\n/* unsafe fn commented() */\n * unsafe impl Commented for X {}\nfn safe() {}\n",
+        );
+        assert_eq!(scan_unsafe_code(&src), (0, Vec::new()));
+        for line in [
+            "let x = unsafe { y() };",
+            "pub unsafe fn f() {}",
+            "pub unsafe impl Send for X {}",
+            "unsafe extern \"C\" {}",
+        ] {
+            write(&src.join("lib.rs"), &format!("{line}\n"));
+            let (count, warnings) = scan_unsafe_code(&src);
+            assert_eq!(count, 1, "{line}");
+            assert!(
+                warnings[0].ends_with(&format!("lib.rs:1': Unsafe Rust detected: `{line}`")),
+                "{warnings:?}"
+            );
+        }
+    }
+
+    #[test]
     fn a_directory_without_src_is_not_a_package_root() {
         let project = tempfile::tempdir().unwrap();
         assert!(package_source_roots(project.path()).is_none());
