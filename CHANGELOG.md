@@ -19,6 +19,9 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Dependency security
 
+- `ctutils` 0.4.5 (RUSTSEC-2026-0385: non-constant-time mask generation and
+  `u128` comparisons in 0.4.2), pulled in through `digest`. Applications
+  should run `cargo update -p ctutils`.
 - `ammonia` is required at 4.2.4 or later (RUSTSEC-2026-0373: the CSS `url()`
   function was matched case-sensitively in sanitized HTML). 13.0.0-alpha.2
   applications already accept 4.2.4 and should run `cargo update -p ammonia`.
