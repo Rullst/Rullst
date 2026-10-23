@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792716757819,
+  "lastUpdate": 1792722298978,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -15341,6 +15341,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 302,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2d0a42ebd70e18b8b130aa94af5c92d98a82dfb4",
+          "message": "Merge pull request #536 from Rullst/ci/v13-strict-test-ca\n\nci: give the disposable test CAs the extensions strict TLS verification needs",
+          "timestamp": "2026-10-22T22:54:54-03:00",
+          "tree_id": "fe0dcf5be289e67b8412c114928386663d52b183",
+          "url": "https://github.com/Rullst/Rullst/commit/2d0a42ebd70e18b8b130aa94af5c92d98a82dfb4"
+        },
+        "date": 1792722298081,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1654,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 381,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 384,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
