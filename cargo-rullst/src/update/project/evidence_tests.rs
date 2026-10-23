@@ -438,3 +438,26 @@ fn verification_prints_its_plan_and_progress() {
         "{stderr}"
     );
 }
+
+#[test]
+fn review_prints_the_diff_and_its_digest() {
+    let project = cached_project();
+    let verified = project.verified.to_str().unwrap();
+    let digest = review(&project)["review_sha256"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let (result, stdout, _) = run_in_child(&project, &["review", "--verified", verified]);
+    assert_eq!(result, "{}");
+    assert!(stdout.contains("+rullst"), "{stdout}");
+    assert!(
+        stdout.contains(&format!("Review SHA-256: \"{digest}\"")),
+        "{stdout}"
+    );
+    assert!(stdout.contains("Application is not authorized by this review."));
+    let (_, stdout, _) = run_in_child(&project, &["review", "--verified", verified, "--json"]);
+    assert!(
+        stdout.contains(&format!("\"review_sha256\": \"{digest}\"")),
+        "{stdout}"
+    );
+}

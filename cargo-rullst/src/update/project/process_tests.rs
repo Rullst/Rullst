@@ -22,6 +22,16 @@ fn captured_tools_succeed_or_fail_by_exit_status() {
     assert!(version.starts_with(b"git version "), "{version:?}");
     // Outside a repository, git exits with status 128.
     assert!(capture("git", &["rev-parse", "HEAD"], directory.path(), 4096).is_err());
+    // Only a diff may exit with status 1; elsewhere it is a failure.
+    assert!(
+        capture(
+            "git",
+            &["config", "--file", "absent.cfg", "--get", "rullst.absent"],
+            directory.path(),
+            4096
+        )
+        .is_err()
+    );
 }
 
 #[test]

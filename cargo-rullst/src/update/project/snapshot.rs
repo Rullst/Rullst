@@ -96,18 +96,18 @@ pub(super) fn validate_path(text: &str) -> Result<(), ProjectError> {
     Ok(())
 }
 
+#[cfg(windows)]
+#[cfg_attr(mutants, mutants::skip)]
 fn linked(metadata: &Metadata) -> bool {
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::MetadataExt;
-        metadata.file_attributes()
-            & windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_REPARSE_POINT
-            != 0
-    }
-    #[cfg(not(windows))]
-    {
-        metadata.file_type().is_symlink()
-    }
+    use std::os::windows::fs::MetadataExt;
+    metadata.file_attributes()
+        & windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_REPARSE_POINT
+        != 0
+}
+
+#[cfg(not(windows))]
+fn linked(metadata: &Metadata) -> bool {
+    metadata.file_type().is_symlink()
 }
 
 pub(super) fn read(root: &Path, name: &str) -> Result<Option<Vec<u8>>, ProjectError> {

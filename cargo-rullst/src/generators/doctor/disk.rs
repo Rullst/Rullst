@@ -50,3 +50,39 @@ pub(crate) fn checks(path: &Path, shown: &str) -> Vec<Check> {
         ),
     }]
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+    use crate::generators::doctor::report::Status;
+
+    #[test]
+    fn one_and_five_gib_are_the_first_passing_amounts() {
+        for (available, status) in [
+            (FAIL_BELOW - 1, Status::Fail),
+            (FAIL_BELOW, Status::Warn),
+            (WARN_BELOW - 1, Status::Warn),
+            (WARN_BELOW, Status::Pass),
+        ] {
+            assert_eq!(classify(available, ".").status, status, "{available}");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn free_space_is_measured_on_unix() {
+        let directory = tempfile::tempdir().unwrap();
+        assert!(available_bytes(directory.path()).unwrap() > 1);
+        let checks = checks(directory.path(), "here");
+        assert_eq!(checks.len(), 1);
+        assert_eq!(checks[0].id, "disk.free");
+        assert!(
+            checks[0]
+                .detail
+                .ends_with(" available on the filesystem of here"),
+            "{}",
+            checks[0].detail
+        );
+    }
+}
