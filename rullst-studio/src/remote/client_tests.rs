@@ -153,3 +153,21 @@ fn every_status_message_is_fixed_text() {
         "unexpected HTTP status 502"
     );
 }
+
+#[tokio::test]
+async fn a_document_may_fill_the_byte_limit_exactly() {
+    let (base, _) = start(None).await;
+    let exact = super::server_test::document("/orders/{id}")
+        .to_string()
+        .len();
+    for (max_bytes, fits) in [(exact, true), (exact - 1, false)] {
+        let directory = TempDir::new("client-exact");
+        let client = MonitorClient::new(FetchLimits {
+            max_bytes,
+            ..limits()
+        })
+        .unwrap();
+        let outcome = client.fetch(&project(&directory, &base, "ok", TOKEN)).await;
+        assert_eq!(outcome.is_ok(), fits, "{max_bytes}: {outcome:?}");
+    }
+}

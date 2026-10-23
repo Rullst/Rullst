@@ -120,3 +120,82 @@ fn random_suffix() -> io::Result<String> {
         .map_err(|_| io::Error::other("operating-system randomness unavailable"))?;
     Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+    use super::super::server_test::TempDir;
+    use super::*;
+
+    #[test]
+    fn temporary_names_take_a_random_hex_suffix() {
+        let first = random_suffix().unwrap();
+        assert_eq!(first.len(), 16);
+        assert!(
+            first
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        );
+        assert_ne!(first, random_suffix().unwrap());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_path_below_a_file_is_an_error_not_an_absent_file() {
+        let directory = TempDir::new("below-file");
+        let file = directory.path().join("plain");
+        fs::write(&file, b"x").unwrap();
+        let below = file.join("projects.json");
+        assert_eq!(
+            read_private(&below, 64).unwrap_err().kind(),
+            io::ErrorKind::NotADirectory
+        );
+        assert_eq!(
+            write_private(&below, b"{}").unwrap_err().kind(),
+            io::ErrorKind::NotADirectory
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn links_and_directories_are_never_written_through() {
+        let directory = TempDir::new("write-links");
+        let target = directory.path().join("target.json");
+        fs::write(&target, b"kept").unwrap();
+        let link = directory.path().join("projects.json");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        assert_eq!(
+            write_private(&link, b"{}").unwrap_err().kind(),
+            io::ErrorKind::InvalidInput
+        );
+        assert!(
+            fs::symlink_metadata(&link)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+        assert_eq!(fs::read(&target).unwrap(), b"kept");
+
+        let folder = directory.path().join("folder");
+        fs::create_dir(&folder).unwrap();
+        assert_eq!(
+            write_private(&folder, b"{}").unwrap_err().kind(),
+            io::ErrorKind::InvalidInput
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_existing_directory_loses_group_and_other_access() {
+        use std::os::unix::fs::PermissionsExt;
+        let directory = TempDir::new("private-dir");
+        let open = directory.path().join("open");
+        fs::create_dir(&open).unwrap();
+        fs::set_permissions(&open, fs::Permissions::from_mode(0o755)).unwrap();
+        create_private_dir(&open).unwrap();
+        assert_eq!(
+            fs::metadata(&open).unwrap().permissions().mode() & 0o777,
+            0o700
+        );
+    }
+}
