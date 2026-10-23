@@ -150,7 +150,7 @@ async fn account_templates_deliver_both_parts_without_tracking() {
 
 #[test]
 fn reset_templates_reject_unsafe_expiry_and_header_injection() {
-    for minutes in [0, 31, u32::MAX] {
+    for minutes in [0, 1441, u32::MAX] {
         let link = ActionLink::new(
             "https://app.example/reset?token=abc123",
             "https://app.example",
@@ -177,5 +177,87 @@ fn reset_templates_reject_unsafe_expiry_and_header_injection() {
             AccountEvent::Welcome
         )
         .is_err()
+    );
+}
+
+fn reset_text(minutes: u32, locale: MailLocale) -> Result<String, rullst_mail::MailError> {
+    let link = ActionLink::new(
+        "https://app.example/reset?token=abc123",
+        "https://app.example",
+    )
+    .unwrap();
+    AccountMail::new(
+        "member@example.com",
+        "App",
+        locale,
+        AccountEvent::PasswordReset {
+            link,
+            expires_in_minutes: minutes,
+        },
+    )
+    .map(|mail| mail.into_message().body_text.unwrap())
+}
+
+#[test]
+fn reset_links_state_a_lifetime_of_up_to_twenty_four_hours() {
+    for (minutes, english, portuguese, spanish) in [
+        (1, "1 minute", "1 minuto", "1 minuto"),
+        (10, "10 minutes", "10 minutos", "10 minutos"),
+        (30, "30 minutes", "30 minutos", "30 minutos"),
+        (60, "1 hour", "1 hora", "1 hora"),
+        (90, "90 minutes", "90 minutos", "90 minutos"),
+        (120, "2 hours", "2 horas", "2 horas"),
+        (1440, "24 hours", "24 horas", "24 horas"),
+    ] {
+        assert!(
+            reset_text(minutes, MailLocale::En)
+                .unwrap()
+                .contains(&format!("This link expires in {english}.\n")),
+            "{minutes}"
+        );
+        assert!(
+            reset_text(minutes, MailLocale::PtBr)
+                .unwrap()
+                .contains(&format!("Este link expira em {portuguese}.\n"))
+        );
+        assert!(
+            reset_text(minutes, MailLocale::Es)
+                .unwrap()
+                .contains(&format!("Este enlace caduca en {spanish}.\n"))
+        );
+    }
+    let error = reset_text(1441, MailLocale::En).unwrap_err().to_string();
+    assert!(error.contains("1–1440 minutes"), "{error}");
+    // Verification and email-change links keep the 30-minute ceiling.
+    let events: [fn(ActionLink) -> AccountEvent; 2] = [
+        |link| AccountEvent::EmailVerification {
+            link,
+            expires_in_minutes: 31,
+        },
+        |link| AccountEvent::EmailChangeRequested {
+            link,
+            expires_in_minutes: 31,
+        },
+    ];
+    for event in events {
+        let link =
+            ActionLink::new("https://app.example/verify?t=1", "https://app.example").unwrap();
+        let error = AccountMail::new("member@example.com", "App", MailLocale::En, event(link))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("1–30 minutes"), "{error}");
+    }
+    let link = ActionLink::new("https://app.example/verify?t=1", "https://app.example").unwrap();
+    assert!(
+        AccountMail::new(
+            "member@example.com",
+            "App",
+            MailLocale::En,
+            AccountEvent::EmailVerification {
+                link,
+                expires_in_minutes: 30,
+            },
+        )
+        .is_ok()
     );
 }

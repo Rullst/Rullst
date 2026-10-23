@@ -185,6 +185,10 @@ fn invalid<T>(reason: &'static str) -> Result<T, NexusBuildError> {
 }
 
 #[cfg(test)]
+#[path = "metadata_bounds_tests.rs"]
+mod bounds_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::nexus::{FieldMeta, NexusBuildError};

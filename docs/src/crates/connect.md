@@ -68,7 +68,8 @@ state of those checks for the referenced commit; they are not an absolute securi
   `finish_login` keep state + PKCE + OIDC nonce in a `ChallengeStore` (memory,
   or the application's SQLite, PostgreSQL or MySQL pool) behind an opaque id in
   a short `HttpOnly`, `SameSite=Lax` cookie, and consume each challenge exactly
-  once. `cargo rullst make:oauth google` generates it for Rullst accounts.
+  once. `cargo rullst make:oauth google|github|microsoft|apple` generates it
+  for Rullst accounts.
 - 🔐 **Managed callback transaction**: The optional Axum/tower-sessions path
   generates, stores, expires, validates, and consumes state + PKCE + OIDC nonce.
 - 🔏 **Encrypted token snapshots**: Versioned AES-256-GCM envelopes bind a
@@ -99,16 +100,39 @@ state of those checks for the referenced commit; they are not an absolute securi
 Official support for 11 core providers:
 
 1. **Google**
-2. **GitHub**
-3. **Microsoft / Azure AD** (uses the multi-tenant `common` authority, so any
-   Entra tenant and personal Microsoft accounts can sign in, and returns no
-   tenant ID; `email` is Graph `mail` or, failing that, `userPrincipalName`,
-   which tenant administrators control and which may not be a mailbox, so
-   `email_verified` is `None`. Never link accounts or grant tenant access on
-   it; for a single tenant use `OidcProvider` with the
-   `https://login.microsoftonline.com/<tenant-id>/v2.0` issuer, whose ID
-   tokens bind that tenant)
-4. **Apple** (Sign in with Apple)
+2. **GitHub** (OAuth 2.0, not OpenID Connect: `ConnectUser::id` is the
+   numeric account id of `GET /user`, which never changes, never the login
+   name. From 13.0.0-alpha.3 `email` is the address `GET /user/emails` marks
+   `primary` and `email_verified` is its `verified` flag; the default
+   `user:email` scope grants the call. When it fails or lists no primary
+   address, `email` is the public profile address and `email_verified` is
+   `None`)
+3. **Microsoft / Azure AD**, two adapters:
+   - `MicrosoftOidcProvider` (v13, from 13.0.0-alpha.3) signs in with OpenID
+     Connect for an explicit `MicrosoftTenant`: `Common` (any Entra ID
+     organization and personal accounts), `Organizations`, `Consumers` or one
+     directory ID (`MicrosoftTenant::parse` reads `common`,
+     `organizations`, `consumers` or a GUID). It verifies the RS256 ID token
+     against `https://login.microsoftonline.com/<tenant>/discovery/v2.0/keys`,
+     requires the issuer `https://login.microsoftonline.com/<tid>/v2.0` of
+     the token's own `tid` and refuses a `tid` the tenant choice does not
+     admit. `ConnectUser::id` is `<tid>:<oid>`, Microsoft's stable key for a
+     user (`sub` is pairwise per application). `email` is the optional
+     `email` claim, which Microsoft does not verify; `email_verified` is
+     `Some(true)` only when the token also carries the optional claim
+     `xms_edov: true` (request `email` and `xms_edov` in the app
+     registration's Token configuration), otherwise `None`. It has no
+     `get_user_from_token`: the identity comes only from the code exchange.
+   - `MicrosoftProvider` reads Microsoft Graph `/me` through the multi-tenant
+     `common` authority, so any Entra tenant and personal Microsoft accounts
+     can sign in, and returns no tenant ID; `email` is Graph `mail` or,
+     failing that, `userPrincipalName`, which tenant administrators control
+     and which may not be a mailbox, so `email_verified` is `None`. Never link
+     accounts or grant tenant access on it.
+4. **Apple** (Sign in with Apple; `AppleProvider::verify_signing_key` checks
+   at startup that the `.p8` key can sign the ES256 client secret, and
+   `AppleProvider::name_from_user_field` reads the unsigned first-login name
+   from the callback's `user` field, from 13.0.0-alpha.3)
 5. **Auth0**
 6. **AWS Cognito**
 7. **Facebook**
@@ -362,8 +386,11 @@ async fn start_google(
 `SqlChallengeStore::open(pool, max_entries)` stores them in the application's
 SQLite, PostgreSQL or MySQL database instead (features `sqlite`, `postgres`,
 `mysql`), consuming each row with one atomic statement or transaction.
-`cargo rullst make:oauth google` generates the handlers, account linking and
-sign-in for a Rullst application. See
+`cargo rullst make:oauth google|github|microsoft|apple` generates the
+handlers, account linking and sign-in for a Rullst application. A provider
+that POSTs the callback from its own site, such as Sign in with Apple, needs
+`ChallengeCookie::for_cross_site_post` (`SameSite=None; Secure`): browsers
+attach no `SameSite=Lax` cookie to that POST. See
 [Tutorial 42](../tutorials/42-server-bound-oauth-sessions.md#store-backed-login).
 
 The `axum-session` path generates state and PKCE, stores their private

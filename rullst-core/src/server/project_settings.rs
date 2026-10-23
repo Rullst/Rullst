@@ -164,6 +164,7 @@ mod tests {
         );
         let debug = format!("{settings:?}");
         assert!(!debug.contains("from-dotenv") && !debug.contains("quoted value"));
+        assert_eq!(debug, "ProjectSettings { dotenv_entries: 2 }");
 
         let missing = tempfile::tempdir().unwrap();
         let empty = ProjectSettings::load(missing.path()).await.unwrap();

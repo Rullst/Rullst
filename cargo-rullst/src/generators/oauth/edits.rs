@@ -161,8 +161,16 @@ pub(super) fn router(root: &Path, provider: &ProviderSpec) -> Result<Option<Edit
     let ([route_end], [body_start]) = (visitor.ends.as_slice(), bodies.as_slice()) else {
         return Ok(None);
     };
+    // Apple POSTs the callback; its offline mock returns with a GET.
+    let callback = if provider.form_post {
+        format!(
+            "rullst::routing::post(controllers::oauth::{name}::callback)\n        .get(controllers::oauth::{name}::mock_callback)"
+        )
+    } else {
+        format!("rullst::routing::get(controllers::oauth::{name}::callback)")
+    };
     let routes = format!(
-        "\n    // Sign-in with {label}: budgeted per client like the password login.\n    .route(\"/auth/{name}\", rullst::routing::get(controllers::oauth::{name}::start)\n        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))\n    .route(\"/auth/{name}/callback\", rullst::routing::get(controllers::oauth::{name}::callback)\n        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))",
+        "\n    // Sign-in with {label}: budgeted per client like the password login.\n    .route(\"/auth/{name}\", rullst::routing::get(controllers::oauth::{name}::start)\n        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))\n    .route(\"/auth/{name}/callback\", {callback}\n        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))",
         label = provider.label
     );
     let initialize = format!(
@@ -228,12 +236,58 @@ pub(super) fn env_example(root: &Path, provider: &ProviderSpec) -> Result<Option
     if !updated.is_empty() && !updated.ends_with('\n') {
         updated.push('\n');
     }
+    let settings: String = provider
+        .setting_names()
+        .iter()
+        .map(|setting| format!("{setting}=\n"))
+        .collect();
     updated.push_str(&format!(
-        "\n# ── Sign in with {label} (cargo rullst make:oauth {name}) ──\n# Leave both empty to turn it off. `mock_*` values select the offline\n# provider and need `--features oauth-mock` (development and tests only).\n{env}_CLIENT_ID=\n{env}_CLIENT_SECRET=\n# Defaults to RULLST_PUBLIC_ORIGIN followed by /auth/{name}/callback.\n{env}_REDIRECT_URL=\n",
+        "\n# ── Sign in with {label} (cargo rullst make:oauth {name}) ──\n{notes}{settings}# Defaults to RULLST_PUBLIC_ORIGIN followed by /auth/{name}/callback.\n{env}_REDIRECT_URL=\n",
         label = provider.label,
-        name = provider.name
+        name = provider.name,
+        notes = provider.env_notes,
     ));
     Ok(Some(Edit::replace(path, source, updated)))
+}
+
+/// Lists `path` in `[security] csrf_signed_webhook_paths` of `Rullst.toml`
+/// (created when missing), for a callback the provider POSTs from its own
+/// site; `None` when it is already listed.
+pub(super) fn csrf_exemption(root: &Path, path: &str) -> Result<Option<Edit>> {
+    let file = root.join("Rullst.toml");
+    let comment = "# make:oauth: the identity provider POSTs this callback from its own site,\n# without this site's CSRF token; the handler requires the state of the\n# login challenge that the browser's challenge cookie names instead.\n";
+    if !file.try_exists()? {
+        let source = format!("[security]\n{comment}csrf_signed_webhook_paths = [\"{path}\"]\n");
+        return Ok(Some(Edit::create(file, source)?));
+    }
+    let source = writes::read(&file)?;
+    let mut document = source.parse::<DocumentMut>()?;
+    if document.get("security").is_none() {
+        document["security"] = TomlItem::Table(Table::new());
+    }
+    let security = document["security"]
+        .as_table_mut()
+        .ok_or_else(|| invalid("[security] in Rullst.toml is not a table"))?;
+    match security.get_mut("csrf_signed_webhook_paths") {
+        None => {
+            let mut paths = Array::new();
+            paths.push(path);
+            security["csrf_signed_webhook_paths"] = value(paths);
+            if let Some(mut key) = security.key_mut("csrf_signed_webhook_paths") {
+                key.leaf_decor_mut().set_prefix(comment);
+            }
+        }
+        Some(paths) => {
+            let paths = paths.as_array_mut().ok_or_else(|| {
+                invalid("csrf_signed_webhook_paths in Rullst.toml is not an array")
+            })?;
+            if paths.iter().any(|listed| listed.as_str() == Some(path)) {
+                return Ok(None);
+            }
+            paths.push(path);
+        }
+    }
+    Ok(Some(Edit::replace(file, source, document.to_string())))
 }
 
 /// Tokens of a call chain without trailing argument commas, so formatting

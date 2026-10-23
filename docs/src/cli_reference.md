@@ -1336,40 +1336,44 @@ credentials. Recovery codes and factor reset remain application work.
 
 ### `cargo rullst make:oauth <provider>` (v13 prerelease preview)
 
-Adds sign-in with an OAuth/OpenID Connect provider to the account model of
-`cargo rullst auth` or of the SaaS and LMS starters. `google` is the provider
-it generates for now; others are refused until they have a generator and tests.
+Adds sign-in with Google, GitHub, Microsoft or Apple to the account model of
+`cargo rullst auth` or of the SaaS and LMS starters. Run it once per provider;
+other providers are refused until they have a generator and tests.
 
 ```bash
-cargo rullst make:oauth google
-cargo rullst db:migrate
+cargo rullst make:oauth google      # or github, microsoft, apple
+cargo rullst db:migrate             # once, after the first provider
 ```
 
-It writes `src/controllers/oauth/mod.rs` (shared flow, account linking and
-sign-in), `src/controllers/oauth/google.rs` (settings and the
-`GET /auth/google` and `GET /auth/google/callback` handlers),
-`src/models/oauth_identity.rs` and an `oauth_identities` migration (provider
-and subject unique, the user id with `ON DELETE CASCADE`, created at). It
+The first provider writes `src/controllers/oauth/mod.rs` (shared flow, account
+linking and sign-in), `src/models/oauth_identity.rs` and an
+`oauth_identities` migration (provider and subject unique, the user id with
+`ON DELETE CASCADE`, created at). Every provider writes
+`src/controllers/oauth/<provider>.rs` (settings and the `/auth/<provider>`
+and `/auth/<provider>/callback` handlers), registers it in the shared module
+and documents its settings in `.env.example`; a second provider adds no
+migration and shares the table, the flow and the linking policy. The command
 enables the `oauth` umbrella feature and the challenge store of the project's
-database (`oauth-sqlite`, `oauth-postgres` or `oauth-mysql`), adds an
-application feature `oauth-mock = ["rullst/oauth-mock"]`, and documents the
-settings in `.env.example`. In the SaaS and LMS starters it also mounts both
-routes after the password login, with the same `credential_rate_limit`, calls
-`controllers::oauth::google::initialize()?` at the start of `router()` and
-adds a "Sign in with Google" link to the login page; for a `cargo rullst auth`
-project, whose router is the application's, it prints the routes to mount.
+database (`oauth-sqlite`, `oauth-postgres` or `oauth-mysql`) and adds an
+application feature `oauth-mock = ["rullst/oauth-mock"]`. In the SaaS and LMS
+starters it also mounts the routes after the password login, with the same
+`credential_rate_limit`, calls `controllers::oauth::<provider>::initialize()?`
+at the start of `router()` and adds a "Sign in with …" link to the login page;
+for a `cargo rullst auth` project, whose router is the application's, it
+prints the routes to mount.
 
 The flow keeps the OAuth state, PKCE verifier and OIDC nonce in
 `rullst_connect_login_challenges` (created on first use) and only an opaque id
 in the `rullst_oauth_challenge` cookie (ten minutes, `HttpOnly`,
-`SameSite=Lax`, `Path=/auth/google`, `Secure` in staging and production); see
-[Tutorial 42](tutorials/42-server-bound-oauth-sessions.md#store-backed-login).
-The callback consumes the challenge once, checks the state, the PKCE verifier,
-the ID token and its nonce, then:
+`SameSite=Lax`, `Path=/auth/<provider>`, `Secure` in staging and production);
+see [Tutorial 42](tutorials/42-server-bound-oauth-sessions.md#store-backed-login).
+The callback consumes the challenge once, checks the state and the PKCE
+verifier and, for OpenID Connect providers, the ID token and its nonce, then:
 
-- an identity already in `oauth_identities` signs in to its account;
-- otherwise the email must be verified (`email_verified: true` in the ID
-  token); an unverified email is refused;
+- an identity already in `oauth_identities` (provider and subject) signs in to
+  its account;
+- otherwise the provider must have verified the email; an unverified email is
+  refused;
 - a verified email that belongs to no account creates one without a password,
   linked to the identity;
 - a verified email that already belongs to an account is refused by default
@@ -1377,23 +1381,59 @@ the ID token and its nonce, then:
   `src/controllers/oauth/mod.rs`), because registration does not prove that
   whoever registered the address owns it. `LinkAndResetPassword` links it
   instead, removes the account's password and signs out every device in the
-  same transaction.
+  same transaction. The policy applies to every provider, including a second
+  provider of an account that signed in with the first.
+
+What counts as the subject and as a verified email differs per provider:
+
+| Provider | Subject | Verified email |
+| :--- | :--- | :--- |
+| `google` (OpenID Connect) | ID token `sub` | `email` with `email_verified: true` |
+| `github` (OAuth 2.0) | numeric account id of `GET /user`, never the login name | the `primary` address of `GET /user/emails` marked `verified`; the default `user:email` scope grants it |
+| `microsoft` (OpenID Connect) | `<tid>:<oid>` (directory and object IDs) | `email` only with the optional claim `xms_edov: true`, which the app registration must request with `email` |
+| `apple` (OpenID Connect, form POST) | ID token `sub` | `email` with `email_verified`; possibly a private relay address |
 
 Sign-in issues the password login's cookie, `make_login_cookie_with_epoch` with
 the account's current session epoch; an account whose session epoch the
 password login refuses is refused the same way. The page to return to comes
-from `?next=` on `/auth/google`, and only a same-site absolute path is kept.
+from `?next=` on `/auth/<provider>`, and only a same-site absolute path is
+kept.
 
-Settings (process environment, then `.env`): `GOOGLE_CLIENT_ID` and
-`GOOGLE_CLIENT_SECRET` (neither set turns Google sign-in off and hides the
-link; only one set stops startup), and `GOOGLE_REDIRECT_URL`, which defaults
-to `RULLST_PUBLIC_ORIGIN` followed by `/auth/google/callback`, and to
-`http://localhost:3000/auth/google/callback` in development; staging and
-production without either stop at startup. `mock_*` credentials select the
-offline provider, which signs in `mock@example.invalid` without leaving the
-application: run `cargo run --features oauth-mock` in development. Without
-that feature the application stops at startup with an error naming it, and
-staging and production refuse mock credentials.
+Settings (process environment, then `.env`); setting none of a provider's
+credentials turns it off and hides its link, a partial set stops startup:
+
+- Google: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+- GitHub: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` of an OAuth App.
+- Microsoft: `MICROSOFT_TENANT` (required with the credentials: `common`,
+  `organizations`, `consumers` or a directory ID GUID; there is no default,
+  because it decides who can create accounts), `MICROSOFT_CLIENT_ID`,
+  `MICROSOFT_CLIENT_SECRET`.
+- Apple: `APPLE_CLIENT_ID` (the Services ID), `APPLE_TEAM_ID`,
+  `APPLE_KEY_ID` and `APPLE_PRIVATE_KEY`, the PEM text of the `.p8` key
+  (newlines may be written as `\n`). Rullst Connect signs a five-minute ES256
+  client secret with it for each code exchange; a key that cannot sign stops
+  startup. Keep it in the environment or a secret store: the command never
+  writes it to a file.
+- `<PROVIDER>_REDIRECT_URL` defaults to `RULLST_PUBLIC_ORIGIN` followed by
+  `/auth/<provider>/callback`, and to `http://localhost:3000/...` in
+  development; staging and production without either stop at startup.
+- `mock_*` values select the offline provider, which signs in
+  `mock@example.invalid` without leaving the application; the command prints
+  the exact settings, such as `GITHUB_CLIENT_ID=mock_github
+  GITHUB_CLIENT_SECRET=mock_github cargo run --features oauth-mock`. Without
+  that feature the application stops at startup with an error naming it, and
+  staging and production refuse mock credentials.
+
+Apple POSTs its callback from `appleid.apple.com`, so `make:oauth apple`
+mounts `POST /auth/apple/callback` (plus a `GET` that only the offline mock
+uses), makes the challenge cookie `SameSite=None; Secure`, and lists
+`/auth/apple/callback` in `[security] csrf_signed_webhook_paths` of
+`Rullst.toml` (creating the file when missing): instead of the CSRF token,
+the handler requires the `state` of the login challenge that the browser's
+challenge cookie names. Its name arrives only on the first authorization, in
+the unsigned `user` form field, and only names a new account. Register the
+`MAIL_FROM` domain with Apple's Private Email Relay service so account emails
+reach relay addresses.
 
 The command requires a strict single-database profile (`strict-sqlite`,
 `strict-postgres` or `strict-mysql`, as `cargo rullst new --database ...`

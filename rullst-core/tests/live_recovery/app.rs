@@ -18,6 +18,8 @@ pub const TEACHER: &str = "fixture-teacher-a";
 pub const FRESH_TEACHER: &str = "fixture-fresh-teacher-a";
 pub const LEARNER: &str = "fixture-learner-a";
 pub const OTHER: &str = "fixture-teacher-b";
+/// An active session whose live view refuses authorization.
+pub const SUSPENDED: &str = "fixture-suspended-a";
 pub const CSRF: &str = "12345678901234567890123456789012";
 
 #[derive(Deserialize, Serialize)]
@@ -84,6 +86,7 @@ impl Server {
             (FRESH_TEACHER, "teacher-a", "school-a", "teacher"),
             (LEARNER, "learner-a", "school-a", "learner"),
             (OTHER, "teacher-b", "school-b", "teacher"),
+            (SUSPENDED, "suspended-a", "school-a", "suspended"),
         ] {
             sqlx::query("INSERT OR IGNORE INTO sessions VALUES(?,?,?,?,1)")
                 .bind(token)
@@ -200,7 +203,7 @@ struct View {
 impl RecoverableLiveView for View {
     async fn authorize(&self, scope: &LiveScope) -> LiveResult<()> {
         let valid: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM sessions WHERE token=? AND account=? AND tenant=? AND active=1",
+            "SELECT COUNT(*) FROM sessions WHERE token=? AND account=? AND tenant=? AND active=1 AND role<>'suspended'",
         )
         .bind(&self.token)
         .bind(scope.account())

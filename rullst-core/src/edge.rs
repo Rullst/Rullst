@@ -283,9 +283,8 @@ mod tests {
             )
         };
 
-        let response = send("/documents/1", vec![b'x'; MAX_EDGE_BODY_BYTES + 1])
-            .await
-            .unwrap();
+        // The documented 2 MiB limit, spelled out so the test pins its value.
+        let response = send("/documents/1", vec![b'x'; 2_097_153]).await.unwrap();
         assert_eq!(response.status(), 413);
         assert_eq!(calls.load(Ordering::SeqCst), 0, "handler must not run");
 
@@ -296,9 +295,7 @@ mod tests {
             .unwrap();
         assert_eq!(&body[..], b"/ 2");
 
-        let response = send("/documents/1", vec![b'x'; MAX_EDGE_BODY_BYTES])
-            .await
-            .unwrap();
+        let response = send("/documents/1", vec![b'x'; 2_097_152]).await.unwrap();
         assert_eq!(response.status(), 200);
         assert_eq!(calls.load(Ordering::SeqCst), 2);
     }

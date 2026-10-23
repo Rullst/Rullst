@@ -1,0 +1,196 @@
+//! Sign in with Apple: OpenID Connect with state, PKCE and nonce, answered
+//! by a form POST from Apple (`response_mode=form_post`).
+//!
+//! Identity, from the ID token Rullst Connect verifies:
+//! - the subject stored in `oauth_identities` is Apple's `sub`, stable for
+//!   this developer team;
+//! - Apple verifies the email, but it may be a private relay address
+//!   (`...@privaterelay.appleid.com`) that reaches the user only from sending
+//!   domains registered for Apple's Private Email Relay service: register the
+//!   domain of `MAIL_FROM` there, or account emails never arrive. A relay
+//!   address matches no existing account, so it creates a new one;
+//! - the name arrives only on the first authorization, in the unsigned `user`
+//!   field of the callback form: it names a new account and nothing else.
+//!
+//! The callback: Apple POSTs it from `appleid.apple.com`, so the challenge
+//! cookie is `SameSite=None; Secure`, and `/auth/apple/callback` is listed in
+//! `csrf_signed_webhook_paths` (Rullst.toml): instead of this site's CSRF
+//! token, the handler requires the `state` of the login challenge that this
+//! browser's challenge cookie names, which another site cannot know.
+//!
+//! Settings (process environment, then `.env`):
+//! - `APPLE_CLIENT_ID`: the Services ID of "Sign in with Apple" for the web.
+//! - `APPLE_TEAM_ID` and `APPLE_KEY_ID`: your team ID and the ID of a key
+//!   with "Sign in with Apple" enabled.
+//! - `APPLE_PRIVATE_KEY`: the PEM text of that key's `.p8` file (newlines may
+//!   be written as `\n`). Each code exchange signs a five-minute ES256 client
+//!   secret with it; keep it in the environment or a secret store, never in
+//!   the repository. A key that cannot sign stops the application at startup.
+//! - With none of the four set, Apple sign-in is off: the login page shows no
+//!   button and `/auth/apple` says so.
+//! - `APPLE_REDIRECT_URL`, else `RULLST_PUBLIC_ORIGIN` followed by
+//!   `/auth/apple/callback`. Register exactly this URL as a Return URL of the
+//!   Services ID; Apple accepts only HTTPS on a registered domain, never
+//!   `localhost`, so develop with the mock credentials.
+//! - `mock_*` values select Rullst Connect's offline provider, which signs in
+//!   a fixed test user (`mock@example.invalid`) and returns with a same-site
+//!   GET instead of Apple's POST. They need this application's `oauth-mock`
+//!   feature (`cargo run --features oauth-mock`) and are refused in staging
+//!   and production; without the feature the application stops at startup.
+use super::{page_context, refused};
+use rullst::config::Environment;
+use rullst::connect::challenge::LoginOptions;
+use rullst::connect::extractors::AuthCallback;
+use rullst::connect::providers::AppleProvider;
+use rullst::html;
+use rullst::html::Markup;
+use rullst::server::{Extension, Form, HeaderMap, Query, Response, StatusCode};
+use serde::Deserialize;
+use std::sync::OnceLock;
+
+/// The provider name in routes, cookies and `oauth_identities.provider`.
+pub(crate) const PROVIDER: &str = "apple";
+const OFF: &str = "Sign-in with Apple is not configured.";
+const FORM_POST_ONLY: &str = "Sign in with Apple returns with a form POST. Start again.";
+const ALL_OR_NONE: &str =
+    "set all of APPLE_CLIENT_ID, APPLE_TEAM_ID, APPLE_KEY_ID and APPLE_PRIVATE_KEY, or none";
+
+static APPLE: OnceLock<Option<AppleProvider>> = OnceLock::new();
+
+/// Reads the Apple settings once, at startup (`router()` calls it), so a
+/// wrong configuration stops the application instead of the first sign-in.
+pub fn initialize() -> Result<(), Box<dyn std::error::Error>> {
+    if APPLE.get().is_none() {
+        let provider = configured(
+            [
+                super::setting("APPLE_CLIENT_ID")?,
+                super::setting("APPLE_TEAM_ID")?,
+                super::setting("APPLE_KEY_ID")?,
+                super::setting("APPLE_PRIVATE_KEY")?,
+            ],
+            super::setting("APPLE_REDIRECT_URL")?,
+            super::setting("RULLST_PUBLIC_ORIGIN")?,
+            super::environment(),
+        )?;
+        let _ = APPLE.set(provider);
+    }
+    Ok(())
+}
+
+/// The configured provider; `None` when Apple sign-in is off.
+pub(crate) fn provider() -> Option<&'static AppleProvider> {
+    APPLE.get().and_then(Option::as_ref)
+}
+
+/// The provider for these settings (client ID, team ID, key ID and private
+/// key), `None` with none of them.
+pub(crate) fn configured(
+    credentials: [Option<String>; 4],
+    redirect_url: Option<String>,
+    public_origin: Option<String>,
+    environment: Environment,
+) -> Result<Option<AppleProvider>, Box<dyn std::error::Error>> {
+    let (client_id, team_id, key_id, private_key) = match credentials {
+        [None, None, None, None] => return Ok(None),
+        [Some(client_id), Some(team_id), Some(key_id), Some(private_key)] => {
+            (client_id, team_id, key_id, private_key)
+        }
+        _ => return Err(ALL_OR_NONE.into()),
+    };
+    // A `.env` value keeps the PEM on one line with `\n` escapes.
+    let private_key = private_key.replace("\\n", "\n");
+    let redirect_url = super::redirect_url(PROVIDER, redirect_url, public_origin, environment)?;
+    let provider = AppleProvider::try_new(client_id, team_id, key_id, private_key, redirect_url)
+        .map_err(|error| format!("Apple sign-in: {error}"))?;
+    provider
+        .verify_signing_key()
+        .map_err(|error| format!("Apple sign-in: {error}"))?;
+    if provider.credential_mode().is_mock() && environment.requires_secure_defaults() {
+        return Err("Apple sign-in: mock credentials sign in a fixed test user; use them only in development and tests".into());
+    }
+    Ok(Some(provider))
+}
+
+#[derive(Deserialize)]
+pub struct StartQuery {
+    /// A same-site page to open after sign-in, such as `/courses/7`.
+    next: Option<String>,
+}
+
+/// `GET /auth/apple`: stores a fresh challenge and sends the browser to
+/// Apple's sign-in page.
+pub async fn start(
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    Query(query): Query<StartQuery>,
+) -> Response {
+    let page = page_context(&headers, &csrf, &csp_nonce);
+    let Some(provider) = provider() else {
+        return refused(&page, PROVIDER, StatusCode::NOT_FOUND, OFF);
+    };
+    // Apple POSTs the callback from its own site; the mock returns with a
+    // same-site GET, which the default cookie already reaches.
+    let cross_site_post = !provider.credential_mode().is_mock();
+    super::start(PROVIDER, provider, LoginOptions::oidc(PROVIDER), query.next.as_deref(), &page, cross_site_post).await
+}
+
+/// The form Apple POSTs to the callback.
+#[derive(Deserialize)]
+pub struct AppleCallback {
+    code: Option<String>,
+    state: Option<String>,
+    error: Option<String>,
+    error_description: Option<String>,
+    /// JSON with the user's name, on the first authorization only. Unsigned.
+    user: Option<String>,
+}
+
+/// `POST /auth/apple/callback`: consumes the challenge, verifies Apple's
+/// answer (state, PKCE, ID token and nonce) and signs the account in.
+pub async fn callback(
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    Form(form): Form<AppleCallback>,
+) -> Response {
+    let page = page_context(&headers, &csrf, &csp_nonce);
+    let Some(provider) = provider() else {
+        return refused(&page, PROVIDER, StatusCode::NOT_FOUND, OFF);
+    };
+    let name = form.user.as_deref().and_then(AppleProvider::name_from_user_field);
+    let callback = AuthCallback {
+        code: form.code,
+        state: form.state,
+        error: form.error,
+        error_description: form.error_description,
+    };
+    super::complete(PROVIDER, provider, &headers, &callback, &page, name).await
+}
+
+/// `GET /auth/apple/callback`: only the offline mock returns this way.
+pub async fn mock_callback(
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    Query(callback): Query<AuthCallback>,
+) -> Response {
+    let page = page_context(&headers, &csrf, &csp_nonce);
+    let Some(provider) = provider() else {
+        return refused(&page, PROVIDER, StatusCode::NOT_FOUND, OFF);
+    };
+    if !provider.credential_mode().is_mock() {
+        return refused(&page, PROVIDER, StatusCode::METHOD_NOT_ALLOWED, FORM_POST_ONLY);
+    }
+    super::complete(PROVIDER, provider, &headers, &callback, &page, None).await
+}
+
+/// The "Sign in with Apple" link of the login page; nothing when Apple
+/// sign-in is off.
+pub fn login_link() -> Option<Markup> {
+    provider().map(|_| {
+        html! {
+            <p><a href="/auth/apple" class="oauth-apple">"Sign in with Apple"</a></p>
+        }
+    })
+}
