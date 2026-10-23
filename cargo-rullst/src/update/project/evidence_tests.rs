@@ -12,6 +12,7 @@ struct CachedProject {
     _temp: tempfile::TempDir,
     xdg: PathBuf,
     source: PathBuf,
+    prepared: PathBuf,
     verified: PathBuf,
 }
 
@@ -108,6 +109,7 @@ fn cached_project() -> CachedProject {
         _temp: temp,
         xdg,
         source,
+        prepared,
         verified,
     }
 }
@@ -130,8 +132,21 @@ fn evidence_child_fixture() {
 }
 
 fn operation(project: &CachedProject, args: &[&str]) -> Result<Value, String> {
+    operation_with(project, args, None)
+}
+
+fn operation_with(
+    project: &CachedProject,
+    args: &[&str],
+    offline_variable: Option<&str>,
+) -> Result<Value, String> {
     let report = project.xdg.parent().unwrap().join("report");
-    let status = std::process::Command::new(std::env::current_exe().unwrap())
+    let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+    command.env_remove("CARGO_NET_OFFLINE");
+    if let Some(value) = offline_variable {
+        command.env("CARGO_NET_OFFLINE", value);
+    }
+    let status = command
         .args([
             "--exact",
             "update::project::review::tests::evidence_child_fixture",
@@ -285,5 +300,81 @@ fn a_changed_source_or_record_blocks_review_and_application() {
     assert_eq!(
         fs::read_to_string(project.source.join("src/main.rs")).unwrap(),
         "fn main() {}\n"
+    );
+}
+
+fn prepared(project: &CachedProject) -> &str {
+    project.prepared.to_str().unwrap()
+}
+
+#[test]
+fn a_verification_plan_reports_its_offline_policy() {
+    let project = cached_project();
+    let plan = operation(
+        &project,
+        &["verify", "--prepared", prepared(&project), "--dry-run"],
+    )
+    .unwrap();
+    assert_eq!(plan["offline"], true);
+    assert_eq!(plan["execution_authorized"], false);
+    assert_eq!(
+        plan["commands"][2]["args"],
+        json!(["update", "--workspace", "--offline"])
+    );
+    let online = operation(
+        &project,
+        &[
+            "verify",
+            "--prepared",
+            prepared(&project),
+            "--dry-run",
+            "--allow-network",
+        ],
+    )
+    .unwrap();
+    assert_eq!(online["offline"], false);
+    // An offline environment only conflicts with an explicit network request.
+    let offline_environment = operation_with(
+        &project,
+        &["verify", "--prepared", prepared(&project), "--dry-run"],
+        Some("true"),
+    )
+    .unwrap();
+    assert_eq!(offline_environment["offline"], true);
+    assert_eq!(
+        operation_with(
+            &project,
+            &[
+                "verify",
+                "--prepared",
+                prepared(&project),
+                "--dry-run",
+                "--allow-network"
+            ],
+            Some("true"),
+        )
+        .unwrap_err(),
+        "project preparation rejected: --allow-network conflicts with CARGO_NET_OFFLINE"
+    );
+}
+
+#[test]
+fn verification_stops_at_the_first_failing_cargo_command() {
+    let project = cached_project();
+    // Offline resolution cannot find the unpublished framework release, so
+    // the third command (`cargo update --workspace --offline`) fails.
+    let error = operation(
+        &project,
+        &[
+            "verify",
+            "--prepared",
+            prepared(&project),
+            "--allow-project-code",
+        ],
+    )
+    .unwrap_err();
+    assert!(
+        error.ends_with("command-2.stderr; no acceptance or application was recorded"),
+        "{error}"
     );
 }
