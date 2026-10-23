@@ -102,17 +102,18 @@ pub(super) fn prepared_project() -> PreparedProject {
 
 /// A prepared project whose manifest declares `dependencies`.
 pub(super) fn prepared_project_with(dependencies: &str) -> PreparedProject {
+    prepared_project_from(&format!(
+        "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\n{dependencies}"
+    ))
+}
+
+/// A Git project with `manifest` as its `Cargo.toml`, prepared into a stage.
+fn prepared_project_from(manifest: &str) -> PreparedProject {
     let temp = tempfile::tempdir().unwrap();
     let base = temp.path().canonicalize().unwrap();
     let source = base.join("source");
     std::fs::create_dir_all(source.join("src")).unwrap();
-    std::fs::write(
-        source.join("Cargo.toml"),
-        format!(
-            "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\n{dependencies}"
-        ),
-    )
-    .unwrap();
+    std::fs::write(source.join("Cargo.toml"), manifest).unwrap();
     std::fs::write(source.join("src/main.rs"), "fn main() {}\n").unwrap();
     assert!(
         std::process::Command::new("git")
@@ -154,4 +155,15 @@ fn preparation_copies_and_plans_the_project_into_its_stage() {
             .unwrap()
             .contains("13.0.0")
     );
+}
+
+#[test]
+fn a_manifest_of_a_megabyte_fits_the_metadata_and_report_bounds() {
+    // `cargo metadata` repeats the description, so its output passes 1 MiB.
+    let description = "d".repeat(1_100_000);
+    let project = prepared_project_from(&format!(
+        "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\ndescription = \"{description}\"\n\n[dependencies]\nrullst = {{ version = \"13.0.0-alpha.1\", default-features = false }}\n"
+    ));
+    let candidate = std::fs::read_to_string(project.stage.join("candidate/Cargo.toml")).unwrap();
+    assert!(candidate.contains(&description));
 }
