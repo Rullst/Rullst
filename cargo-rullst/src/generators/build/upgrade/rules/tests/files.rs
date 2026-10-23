@@ -9,6 +9,7 @@ fn plan(path: PathBuf, original: &str) -> ManifestUpgradePlan {
         is_package: true,
         matched: 1,
         source_majors: BTreeSet::from([12]),
+        source_versions: Vec::new(),
         changes: Vec::new(),
         warnings: Vec::new(),
     }

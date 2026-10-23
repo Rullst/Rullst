@@ -348,7 +348,7 @@ fn only_blank_sqlx_profiles_register_migrations_with_the_server() {
                 let case = format!("api={api} hot={hot_reload} {orm_pattern} db={db_needed}");
                 assert_eq!(
                     main.matches(
-                        "        .with_migrations(crate::migrations::get_migrations())\n        .run(3000)\n"
+                        "        .with_migrations(crate::migrations::get_migrations())\n        // Production monitoring is off."
                     )
                     .count(),
                     usize::from(registers),
@@ -632,7 +632,10 @@ fn extracted_rust_templates_parse_after_substitution() {
                     "__UTC_TIMESTAMP_FN__",
                     include_str!("../src/generators/billing_timestamp_sqlx.rs.template"),
                 )
-                .replace("__UPDATED_AT__", "updated_at: created_at")
+                .replace(
+                    "__UPDATED_AT__",
+                    "updated_at: created_at,\n                snapshot: rullst::db::RowSnapshot::default()",
+                )
                 .replace("__FOREIGN_KEY__", "user_id")
                 .replace("__OWNER_ID_TYPE__", "i32"),
         ),

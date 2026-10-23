@@ -1,3 +1,4 @@
+use rullst::db::RowSnapshot;
 use rullst::html::Markup;
 use rullst::security::{CspNonce, CsrfToken};
 use rullst::server::{Extension, IntoResponse, Path, Redirect, Response, StatusCode};
@@ -106,7 +107,13 @@ pub async fn store(
     Extension(user_id): Extension<i32>,
     ValidatedForm(form): ValidatedForm<NoteForm>,
 ) -> Result<Response, StatusCode> {
-    let mut note = Note { id: 0, user_id, title: form.title, body: form.body };
+    let mut note = Note {
+        id: 0,
+        user_id,
+        title: form.title,
+        body: form.body,
+        snapshot: RowSnapshot::default(),
+    };
     note.save().await.map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
     Ok(back_to_list(&htmx))
 }
@@ -163,7 +170,13 @@ mod tests {
     use super::*;
 
     fn note_of(user_id: i32) -> Note {
-        Note { id: 1, user_id, title: "Groceries".into(), body: String::new() }
+        Note {
+            id: 1,
+            user_id,
+            title: "Groceries".into(),
+            body: String::new(),
+            snapshot: RowSnapshot::default(),
+        }
     }
 
     #[test]

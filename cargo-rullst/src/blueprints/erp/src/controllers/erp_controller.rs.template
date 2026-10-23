@@ -114,6 +114,7 @@ pub async fn store_product(Form(payload): Form<CreateProductPayload>) -> Respons
         sku,
         price: payload.price,
         stock: payload.stock,
+        snapshot: rullst::db::RowSnapshot::default(),
     };
     match product.save().await {
         Ok(_) => Redirect::to("/").into_response(),

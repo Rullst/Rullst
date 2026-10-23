@@ -2425,6 +2425,11 @@ models also get `dirty_columns()` and `is_dirty()`. `RowSnapshot` is
 bookkeeping: any two compare equal, hash alike and order equal; `Debug` shows
 only whether it is tracked; it implements no Serde trait. Turso-primary
 models do not track. Models without the field keep the full-row `UPDATE`.
+Since 13.0.0-alpha.3 every SQLx model the CLI writes (`make:model`,
+`generate:models`, `make:auth`, `make:billing`, `make:chat-session` and the
+`cargo rullst new` starters) declares `#[sqlx(skip)] pub snapshot: RowSnapshot`
+and builds new records with `RowSnapshot::default()`; `generate:models` adds
+`#[serde(skip)]` and omits the field for a table with a `snapshot` column.
 
 `From<sqlx::Error> for rullst_orm::Error` maps `RowNotFound` to
 `RecordNotFound`, a unique or primary-key violation to
@@ -4051,7 +4056,11 @@ by the application, which a later Studio "remote projects" mode reads. Guide:
   application labels (1–128 bytes, no control characters) and invalid queue
   names (1–64 of `[A-Za-z0-9._-]`, unique, at most 16) stop start-up with
   `ServerError::Configuration`, whose message names a position, never a
-  token. The hot-reload development server does not mount it.
+  token. The hot-reload development server does not mount it. Since
+  13.0.0-alpha.3 the `src/main.rs` of the Blank (web and JSON API), SaaS and
+  LMS starters carries the `with_monitor` call commented out, and their
+  `.env`/`.env.example` list `# RULLST_MONITOR_TOKENS=` commented out with a
+  generation hint; nothing is enabled by default.
 * **Admission.** In order: a request with `Origin`, or `Sec-Fetch-Site`
   `cross-site`/`same-site`, gets `403`; in staging and production a request
   without TLS evidence gets `426` (evidence: `https` reported by a trusted proxy
@@ -4326,8 +4335,17 @@ assistant, not a claim that compilation proves production compatibility.
   changed behaviour of an API, feature or configuration in use), `file:line`, a
   one-line message and the first-column title of its row in
   `migration-v13.md`; the assisted-upgrade tutorial classifies every row.
-  `rullst.upgrade-plan.v1` is extended additively (`kind`, `migration_row`,
-  `migration_url`, `finding_counts`, `unscanned_sources`, `migration_guide`).
+  Each rule records the release that introduced its change (13.0.0-alpha.1
+  for the 12.x to 13 changes, a later prerelease for rules added or reworded
+  since). The plan takes the project's Rullst version to be the oldest version
+  a Rullst requirement admits or `Cargo.lock` holds and, for a project already
+  on v13, applies only the rules introduced after it, reporting how many
+  rules it skipped and how many findings they would have added; `--all-rules`
+  (also on `cargo rullst ai upgrade`) applies every rule, and project
+  preparations always do.
+  `rullst.upgrade-plan.v1` is extended additively (`kind`, `introduced_in`,
+  `migration_row`, `migration_url`, `finding_counts`, `unscanned_sources`,
+  `migration_guide`, `rule_selection`).
   Findings never block `cargo rullst upgrade`; project preparations with
   must-change findings are refused at verification, review and application.
 * 🟡 **`[Implemented / Preview]` Assisted fixes:** `cargo rullst ai upgrade`

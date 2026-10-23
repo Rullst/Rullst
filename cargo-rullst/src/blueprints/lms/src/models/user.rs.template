@@ -1,4 +1,4 @@
-use rullst::db::{FromRow, Orm};
+use rullst::db::{FromRow, Orm, RowSnapshot};
 use rullst::orm::chrono::{DateTime, Utc};
 use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
 
@@ -27,6 +27,10 @@ pub struct User {
     // `revoke_sessions`.
     #[orm(db_default)]
     pub session_epoch: i64,
+    // Remembers the loaded values, so `save()` writes only the columns this
+    // record changed. Build new records with `snapshot: RowSnapshot::default()`.
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 impl User {

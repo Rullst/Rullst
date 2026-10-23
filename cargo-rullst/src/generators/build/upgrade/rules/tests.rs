@@ -6,6 +6,7 @@ mod data;
 mod docs;
 mod files;
 mod markup;
+mod releases;
 mod scanner;
 
 /// Codes and lines found in one Rust source.

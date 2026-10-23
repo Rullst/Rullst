@@ -1,7 +1,7 @@
 //! Human, Markdown and `rullst.upgrade-plan.v1` renderings of a plan.
 
 use super::manifest::ManifestUpgradePlan;
-use super::rules::{self, FindingKind, SourceScan};
+use super::rules::{self, FindingKind, RuleSelection, SourceScan};
 use super::{portable_path, relative_report_path};
 use colored::Colorize;
 use semver::Version;
@@ -9,6 +9,17 @@ use std::path::Path;
 
 /// The command that proposes reviewed fixes for the findings.
 pub(super) const ASSIST_COMMAND: &str = "cargo rullst ai upgrade";
+
+/// What the plan says about the rules it skipped, when it skipped any.
+fn selection_note(selection: &RuleSelection) -> Option<String> {
+    let current = selection.current.as_ref()?;
+    (selection.skipped_rules > 0).then(|| {
+        format!(
+            "introduced after {current}, the Rullst version this project uses; earlier rules skipped: {} (findings hidden: {}); --all-rules applies every rule",
+            selection.skipped_rules, selection.hidden_findings
+        )
+    })
+}
 
 /// The plan as plain text (no colour), shared by the CLI and the assistant.
 pub(crate) fn plan_text(
@@ -39,6 +50,9 @@ pub(crate) fn plan_text(
         scan.count(FindingKind::MustChange),
         scan.count(FindingKind::Review)
     ));
+    if let Some(note) = selection_note(&scan.selection) {
+        lines.push(format!("  Rules: {note}"));
+    }
     for finding in &scan.findings {
         lines.push(format!(
             "  {} {}:{} [{}] {}",
@@ -110,6 +124,9 @@ pub(super) fn render_report(
         rules::RULE_CATALOG_VERSION,
         rules::MIGRATION_GUIDE_URL
     ));
+    if let Some(note) = selection_note(&scan.selection) {
+        report.push_str(&format!("Rules: {note}.\n\n"));
+    }
     if scan.findings.is_empty() {
         report.push_str(
             "No applicable source rules matched. This is not proof of runtime compatibility.\n",
@@ -140,7 +157,8 @@ pub(super) fn render_report(
 
 /// The `rullst.upgrade-plan.v1` document. v13 extends it additively: each
 /// finding keeps `path`, `line`, `code`, `severity` and `message` and adds
-/// `kind`, `migration_row` and `migration_url`.
+/// `kind`, `introduced_in`, `migration_row` and `migration_url`; the root adds
+/// `rule_selection`.
 pub(super) fn render_json_report(
     root: &Path,
     target: &Version,
@@ -169,6 +187,7 @@ pub(super) fn render_json_report(
                 "code": finding.rule.code,
                 "severity": finding.rule.kind.severity(),
                 "kind": finding.rule.kind.as_str(),
+                "introduced_in": finding.rule.introduced,
                 "message": finding.rule.message,
                 "migration_row": finding.rule.row,
                 "migration_url": rules::MIGRATION_GUIDE_URL,
@@ -189,6 +208,12 @@ pub(super) fn render_json_report(
         "finding_counts": {
             "must_change": scan.count(FindingKind::MustChange),
             "review": scan.count(FindingKind::Review),
+        },
+        "rule_selection": {
+            "current_version": scan.selection.current.as_ref().map(Version::to_string),
+            "all_rules": scan.selection.all_rules,
+            "skipped_rules": scan.selection.skipped_rules,
+            "hidden_findings": scan.selection.hidden_findings,
         },
         "unscanned_sources": unscanned,
         "migration_guide": rules::MIGRATION_GUIDE_URL,

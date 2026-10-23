@@ -251,7 +251,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "nexus::audit::tests::schemas_keep_required_identity_and_scope_columns",
-      "source": "rullst-nexus/src/nexus/audit.rs",
+      "source": "rullst-nexus/src/nexus/audit_tests.rs",
       "marker": "TM-NEXUS-06"
     },
     {

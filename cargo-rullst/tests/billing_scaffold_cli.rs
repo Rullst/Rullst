@@ -64,6 +64,12 @@ fn contract_source(database: &str) -> String {
     } else {
         r#"rullst::orm::Orm::init("sqlite://db.sqlite?mode=rwc").await?;"#
     };
+    // SQLx models declare the dirty-tracking snapshot; Turso models do not.
+    let snapshot = if database == "turso" {
+        ""
+    } else {
+        "snapshot: rullst::db::RowSnapshot::default(),"
+    };
     // SQLx `timestamps()` columns hold `chrono` instants; Turso keeps text.
     let (now, customer_stamps, subscription_stamps) = if database == "turso" {
         (
@@ -133,6 +139,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         customer_id: None,
         created_at: {now},
         updated_at: {now},
+        {snapshot}
     }};
     owner.save().await?;
 
@@ -175,6 +182,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         customer_id: None,
         created_at: {now},
         updated_at: {now},
+        {snapshot}
     }};
     other.save().await?;
     let unknown_plan = WebhookEvent {{
@@ -209,7 +217,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         let owner_id = 20 + index;
         let mut customer = BillingCustomer {{
             id: 0, workspace_id: owner_id, email: email.clone(), customer_id: None,
-            created_at: {now}, updated_at: {now},
+            created_at: {now}, updated_at: {now}, {snapshot}
         }};
         customer.save().await?;
         execute_sql(&format!("CREATE TRIGGER reject_billing_update BEFORE {{operation}} ON {{table}} BEGIN SELECT RAISE(ABORT, 'injected billing failure'); END")).await?;

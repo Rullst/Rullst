@@ -111,7 +111,14 @@ async fn redirects_are_never_followed_so_the_token_stays_with_its_origin() {
 #[tokio::test]
 async fn an_unreachable_project_or_an_unreadable_token_is_reported() {
     let directory = TempDir::new("client-unreachable");
-    let client = MonitorClient::new(limits()).unwrap();
+    // Windows retries a refused loopback connection for about two seconds, so
+    // this client waits long enough for the refusal on every platform.
+    let client = MonitorClient::new(FetchLimits {
+        timeout: Duration::from_secs(6),
+        connect_timeout: Duration::from_secs(5),
+        ..limits()
+    })
+    .unwrap();
     // A port nothing listens on: bind, read the port, then close.
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base = format!("http://{}/", listener.local_addr().unwrap());

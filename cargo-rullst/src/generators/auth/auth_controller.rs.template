@@ -326,6 +326,8 @@ pub async fn register_submit(
         is_admin: false,
         // The column defaults to 0; ORM writes leave it to the database.
         session_epoch: 0,
+        // A new record: `save()` inserts every column.
+        snapshot: rullst::db::RowSnapshot::default(),
     };
     let original_id = user.id;
     let mut transaction = match rullst::db::Orm::begin_transaction().await {

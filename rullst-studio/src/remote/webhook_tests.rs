@@ -164,8 +164,10 @@ async fn delivery_posts_the_alert_once_and_reports_a_fixed_status() {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let closed = format!("http://{}/hook", listener.local_addr().unwrap());
     drop(listener);
+    // Windows retries a refused loopback connection for about two seconds.
+    let patient = WebhookClient::with_timeout(Duration::from_secs(6)).unwrap();
     assert_eq!(
-        client.deliver(&closed, &payload()).await,
+        patient.deliver(&closed, &payload()).await,
         "failed: unreachable"
     );
 }

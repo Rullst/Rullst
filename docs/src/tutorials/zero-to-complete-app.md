@@ -82,7 +82,9 @@ Next steps
 ```
 
 Give the model its fields in `src/models/note.rs`. `user_id` records who wrote
-the note; it always comes from the session, never from the form:
+the note; it always comes from the session, never from the form. Keep the
+`snapshot` field the generator added: with it, `save()` of a loaded note
+writes only the columns that changed:
 
 ```rust,ignore
 {{#include zero-to-complete-app/note.rs}}

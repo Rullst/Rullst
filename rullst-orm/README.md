@@ -486,8 +486,14 @@ async fn rename(id: i32, name: String) -> Result<(), rullst_orm::Error> {
   write; stamp it only when `self.is_dirty()`.
 - Mark the field `#[serde(skip)]` when the model derives Serde traits. Any two
   snapshots compare equal and hash alike, so a derived `PartialEq` or `Hash`
-  looks at the columns only. `cargo rullst make:model` adds the field to new
-  models.
+  looks at the columns only. Since 13.0.0-alpha.3 every SQLx model that the
+  CLI writes declares the field: `make:model` (and `make:resource`),
+  `generate:models` (with `#[serde(skip)]`; a table with its own `snapshot`
+  column keeps full-row saves), `make:auth`, `make:billing`,
+  `make:chat-session` and the models of every `cargo rullst new` starter
+  (Blank, Blog, ERP, Portfolio, SaaS and LMS). Their struct literals set
+  `snapshot: RowSnapshot::default()`. Turso models have no dirty tracking.
+  Projects generated earlier keep their models until you add the field.
 
 Dirty tracking merges edits of different columns. Two writers of the same
 column still race, and the last one wins:

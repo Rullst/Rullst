@@ -266,6 +266,15 @@ BILLING_REPORT_PLAN_IDS=
         env_example_content.push_str(billing_template);
     }
 
+    if matches!(
+        blueprint_selection,
+        BLANK_BLUEPRINT_ID | SAAS_BLUEPRINT_ID | LMS_BLUEPRINT_ID
+    ) {
+        // Their `src/main.rs` carries the monitor wiring, commented out.
+        env_content.push_str(MONITOR_TEMPLATE);
+        env_example_content.push_str(MONITOR_TEMPLATE);
+    }
+
     fs::write(path.join(".env"), &env_content)?;
     fs::write(path.join(".env.example"), &env_example_content)?;
 
@@ -275,6 +284,17 @@ BILLING_REPORT_PLAN_IDS=
 
     Ok(())
 }
+
+/// The production monitor's token setting, commented out like the
+/// `with_monitor` wiring of the Blank, SaaS and LMS starters.
+const MONITOR_TEMPLATE: &str = r#"
+# ── Production monitor (off) ──
+# Bearer tokens for GET /_rullst/monitor/v1, read only after you uncomment
+# `with_monitor` in src/main.rs. Use at least 32 random bytes per token, e.g.
+# `openssl rand -base64 32`; separate several with commas. Guide:
+# https://rullst.github.io/Rullst/book/production-monitoring.html
+# RULLST_MONITOR_TOKENS=
+"#;
 
 /// Appends the bearer token of the Blank JSON API starter's machine endpoints:
 /// a random value to `.env` and an empty entry to `.env.example`.

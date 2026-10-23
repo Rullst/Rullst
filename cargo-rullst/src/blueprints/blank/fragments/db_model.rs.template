@@ -1,4 +1,4 @@
-use rullst::db::{Orm, FromRow};
+use rullst::db::{Orm, FromRow, RowSnapshot};
 
 // 1. Define your database model using the built-in rullst-orm ORM!
 #[derive(Debug, Clone, FromRow, Orm)]
@@ -6,4 +6,8 @@ use rullst::db::{Orm, FromRow};
 pub struct User {
     pub id: i32,
     pub name: String,
+    // Remembers the loaded values, so `save()` writes only the columns this
+    // record changed. Build new records with `snapshot: RowSnapshot::default()`.
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
