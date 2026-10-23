@@ -484,3 +484,43 @@ fn a_report_with_an_invalid_advisory_exception_is_refused_before_scanning() {
     );
     assert!(!output.exists());
 }
+
+#[test]
+fn markdown_tables_keep_each_group_and_its_mapping_separate() {
+    let root = project(&[
+        ("src/main.rs", VULNERABLE_APP),
+        ("templates/page.html", "<html><img src=\"x.png\"></html>"),
+    ]);
+    let report = collect(root.path(), &[], &missing_tools());
+    let markdown = render(&report, ReportFormat::Markdown).unwrap();
+    let security = markdown
+        .split("## Security checks\n")
+        .nth(1)
+        .and_then(|rest| rest.split("## Personal-data inventory").next())
+        .unwrap();
+    assert!(
+        security.contains("| V3.5.1 (L1, V3.5 Browser Origin Separation) |"),
+        "{security}"
+    );
+    assert!(
+        security.contains("| V13.3.1 (L2, V13.3 Secret Management); chapter V13 Configuration |"),
+        "{security}"
+    );
+    assert!(
+        !security.contains("Images have a text alternative"),
+        "{security}"
+    );
+    let accessibility = markdown.split("## Accessibility checks\n").nth(1).unwrap();
+    assert!(
+        accessibility.contains("| WCAG 1.1.1 Non-text Content (A) |"),
+        "{accessibility}"
+    );
+    assert!(accessibility.contains("### Accessibility checks findings"));
+    assert!(!accessibility.contains("| CSRF |"), "{accessibility}");
+
+    let protected = project(&[("src/main.rs", PROTECTED_APP)]);
+    let report = collect(protected.path(), &[], &missing_tools());
+    assert!(report.personal_data.fields.is_empty());
+    let markdown = render(&report, ReportFormat::Markdown).unwrap();
+    assert!(!markdown.contains("| Model | Field |"), "{markdown}");
+}
