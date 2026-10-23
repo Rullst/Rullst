@@ -97,13 +97,20 @@ pub(super) struct PreparedProject {
 }
 
 pub(super) fn prepared_project() -> PreparedProject {
+    prepared_project_with("rullst = { version = \"13.0.0-alpha.1\", default-features = false }\n")
+}
+
+/// A prepared project whose manifest declares `dependencies`.
+pub(super) fn prepared_project_with(dependencies: &str) -> PreparedProject {
     let temp = tempfile::tempdir().unwrap();
     let base = temp.path().canonicalize().unwrap();
     let source = base.join("source");
     std::fs::create_dir_all(source.join("src")).unwrap();
     std::fs::write(
         source.join("Cargo.toml"),
-        "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = { version = \"13.0.0-alpha.1\", default-features = false }\n",
+        format!(
+            "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\n{dependencies}"
+        ),
     )
     .unwrap();
     std::fs::write(source.join("src/main.rs"), "fn main() {}\n").unwrap();

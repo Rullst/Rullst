@@ -1,7 +1,7 @@
 //! A preparation is loaded only while its record, baseline, candidate and
 //! source still match.
 use super::*;
-use crate::update::project::tests::prepared_project;
+use crate::update::project::tests::{prepared_project, prepared_project_with};
 use std::fs;
 
 const INVALID: &str =
@@ -197,4 +197,20 @@ fn declared_inputs_may_reach_but_not_exceed_their_bounds() {
         .unwrap();
         assert_eq!(error(&project.stage), expected, "{count}");
     }
+}
+
+#[test]
+fn review_findings_do_not_block_execution() {
+    // Default features no longer select a database driver (13.0.0-alpha.3).
+    let project = prepared_project_with("rullst = \"13.0.0-alpha.1\"\n");
+    let prepared = record(&project.stage);
+    let findings = prepared["plan"]["source_findings"].as_array().unwrap();
+    assert!(!findings.is_empty(), "{prepared}");
+    assert!(
+        findings
+            .iter()
+            .all(|finding| finding["severity"] == "REVIEW"),
+        "{findings:?}"
+    );
+    State::load(&project.stage).unwrap();
 }
