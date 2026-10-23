@@ -695,6 +695,7 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-orm/src/schema/schema_builder.rs`: `prepare_postgres_enums`, delete `!` in the `!definitions.is_empty()` guard | That guard exists only without `strict-postgres`, which the all-feature build enables; `postgres_enum_preparation_validates_before_any_statement` covers it in default-feature builds. |
 | `rullst-orm/src/pool/dsn.rs`: `percent_decode_utf8`, `(high << 4) \| low` with `^` | The high and low hex digits occupy disjoint bits, so OR and XOR build the same byte. |
 | `rullst-orm/src/privacy.rs`: the default `ComplianceModel::personal_fields` with `vec![]` | The default already returns an empty vector. |
+| `rullst-orm/src/polyglot/turso/model.rs`: the default `TursoModel::opaque_columns` with `Vec::leak(Vec::new())` | The default already returns an empty slice. |
 | `rullst-orm-macros/src/feature_gates.rs`: `redis` and `ai` with `Default::default()` | With every feature the runtime gates are on and the feature is enabled, so both return an empty token stream, which is the default. |
 | `rullst-orm/src/polyglot/recovery/codec.rs`: `base64url_value`, the digit arm's `byte - b'0'` with `+` | The value is read only for its low four padding bits, and the two results differ by 96, a multiple of 16. |
 | `rullst-orm/src/polyglot/qdrant/mod.rs`: `LiveQdrant::send_json`, `bytes.len() > MAX_REQUEST_BYTES` with `==` or `>=` | No request reaches 4 MiB: vectors hold at most 65,536 values and payloads at most 1 MiB, so the body stays near 2 MiB; a test still sends a 1 MiB payload. |
