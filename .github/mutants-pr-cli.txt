@@ -1,0 +1,8 @@
+# cargo-rullst files the pull-request mutation gate (mutants-pr.yml) mutates.
+#
+# The CLI's integration suites build generated projects, which is too slow to
+# repeat for every mutant, so mutants-pr.sh tests these files with the CLI's
+# library unit tests only (`cargo test --lib`), the scope of a targeted
+# mutants.yml run with test_scope=lib. List a file here once such a run leaves
+# no missed mutant, apart from the accepted equivalents in
+# mutants-pr-equivalents.txt. Other cargo-rullst files are not mutated.
