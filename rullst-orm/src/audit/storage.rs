@@ -206,7 +206,8 @@ fn diff_payloads(
         return Some((marker.clone(), marker));
     }
     let payloads = diff::with_redacted_changes(compute_diff(old_json, new_json), redacted_changes);
-    (payloads.0.is_some() || payloads.1.is_some()).then_some(payloads)
+    // Both diff helpers return both sides or neither.
+    payloads.0.is_some().then_some(payloads)
 }
 
 /// Persists a recursively redacted bounded difference when values changed.
@@ -320,6 +321,101 @@ mod tests {
             Some(r#"{"error":"payload_too_large"}"#)
         );
         assert_eq!(entry.new_values, entry.old_values);
+    }
+
+    /// A JSON string document of exactly `len` bytes.
+    fn json_of_len(len: usize) -> String {
+        format!("\"{}\"", "a".repeat(len - 2))
+    }
+
+    #[tokio::test]
+    async fn preparation_bounds_type_event_and_id() {
+        let context = AuditContext::system("unit-test").expect("valid context");
+        let results = with_audit_context(context, async {
+            let prepare = |model_type: &str, model_id: i32, event: &str| {
+                prepare_audit(model_type, model_id, event, None, None, None).map(|_| ())
+            };
+            vec![
+                prepare(&"T".repeat(255), 1, &"e".repeat(50)),
+                prepare("User", 0, "created"),
+                prepare("", 1, "created"),
+                prepare(&"T".repeat(256), 1, "created"),
+                prepare(" User", 1, "created"),
+                prepare("Us\ter", 1, "created"),
+                prepare("User", 1, ""),
+                prepare("User", 1, &"e".repeat(51)),
+                prepare("User", 1, "created "),
+                prepare("User", 1, "cre\nated"),
+            ]
+        })
+        .await;
+        let (accepted, rejected) = results.split_first().expect("results");
+        assert!(accepted.is_ok(), "{accepted:?}");
+        let messages: Vec<String> = rejected
+            .iter()
+            .map(|result| result.as_ref().expect_err("rejected").to_string())
+            .collect();
+        assert_eq!(
+            messages[0],
+            "Validation error: audit model ID must be positive"
+        );
+        for message in &messages[1..] {
+            assert_eq!(
+                message,
+                "Validation error: audit model type or event is invalid"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn payloads_up_to_the_limit_are_kept() {
+        let context = AuditContext::system("unit-test").expect("valid context");
+        let exact = json_of_len(MAX_PAYLOAD_LEN);
+        let entry = with_audit_context(context, async {
+            prepare_audit("User", 1, "created", Some(exact.clone()), None, None)
+        })
+        .await
+        .expect("prepared audit");
+        assert_eq!(entry.old_values.as_deref(), Some(exact.as_str()));
+        assert_eq!(entry.new_values, None);
+    }
+
+    #[test]
+    fn diffs_and_restore_patches_respect_the_payload_limit_on_each_side() {
+        let exact = json_of_len(MAX_PAYLOAD_LEN);
+        let over = json_of_len(MAX_PAYLOAD_LEN + 1);
+        let marker = Some(r#"{"error":"payload_too_large_for_diff"}"#.to_string());
+        for (old, new) in [(exact.as_str(), "\"b\""), ("\"b\"", exact.as_str())] {
+            let diff = diff_payloads(old, new, &[]).expect("changed");
+            assert_ne!(diff.0, marker);
+            assert_ne!(diff.1, marker);
+        }
+        for (old, new) in [(over.as_str(), "\"b\""), ("\"b\"", over.as_str())] {
+            assert_eq!(
+                diff_payloads(old, new, &[]),
+                Some((marker.clone(), marker.clone()))
+            );
+            assert_eq!(restore_patch_for(old, new, &[]), None);
+        }
+        assert_eq!(diff_payloads(r#"{"a":1}"#, r#"{"a":1}"#, &[]), None);
+        assert_eq!(
+            diff_payloads(r#"{"a":1}"#, r#"{"a":1}"#, &["secret"]),
+            Some((
+                Some(r#"{"secret":"***"}"#.to_string()),
+                Some(r#"{"secret":"***"}"#.to_string())
+            ))
+        );
+        // Whitespace keeps the documents, and so the patch, small.
+        let padded = |json: &str, len: usize| format!("{json}{}", " ".repeat(len - json.len()));
+        let (old_exact, new_exact) = (
+            padded(r#"{"x":1}"#, MAX_PAYLOAD_LEN),
+            padded(r#"{"x":2}"#, MAX_PAYLOAD_LEN),
+        );
+        assert!(restore_patch_for(&old_exact, &new_exact, &[]).is_some());
+        let old_over = padded(r#"{"x":1}"#, MAX_PAYLOAD_LEN + 1);
+        assert_eq!(restore_patch_for(&old_over, r#"{"x":2}"#, &[]), None);
+        assert_eq!(restore_patch_for(r#"{"x":1}"#, &old_over, &[]), None);
+        assert!(restore_patch_for(r#"{"x":1}"#, r#"{"x":2}"#, &[]).is_some());
     }
 
     #[test]
