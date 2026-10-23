@@ -197,5 +197,15 @@ mod tests {
             fs::metadata(&open).unwrap().permissions().mode() & 0o777,
             0o700
         );
+
+        // An already private directory is left exactly as it is.
+        let private = directory.path().join("private");
+        fs::create_dir(&private).unwrap();
+        fs::set_permissions(&private, fs::Permissions::from_mode(0o1700)).unwrap();
+        create_private_dir(&private).unwrap();
+        assert_eq!(
+            fs::metadata(&private).unwrap().permissions().mode() & 0o7777,
+            0o1700
+        );
     }
 }
