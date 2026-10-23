@@ -67,7 +67,7 @@ def main():
     try:
         cert_commands = [
             ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
-             "-keyout", "ca-key.pem", "-out", "ca.pem", "-days", "1", "-subj", "/CN=Disposable Fixture CA"],
+             "-keyout", "ca-key.pem", "-out", "ca.pem", "-days", "1", "-subj", "/CN=Disposable Fixture CA", "-addext", "keyUsage=critical,keyCertSign,cRLSign"],
             ["openssl", "req", "-new", "-newkey", "rsa:2048", "-nodes",
              "-keyout", "key.pem", "-out", "request.pem", "-subj", "/CN=localhost"],
             ["openssl", "x509", "-req", "-in", "request.pem", "-CA", "ca.pem",
@@ -75,7 +75,7 @@ def main():
              "-days", "1", "-extfile", "extensions.cnf"],
         ]
         (certificate_dir / "extensions.cnf").write_text(
-            "basicConstraints=critical,CA:FALSE\nsubjectAltName=DNS:localhost\nextendedKeyUsage=serverAuth\n")
+            "basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nsubjectAltName=DNS:localhost\nextendedKeyUsage=serverAuth\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n")
         for certificate_command in cert_commands:
             subprocess.run(certificate_command, cwd=certificate_dir, check=True,
                            timeout=30, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
