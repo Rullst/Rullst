@@ -58,10 +58,13 @@ pub(crate) fn render_billing_controller(foreign_key: &str, backend: ProjectOrmBa
                 ProjectOrmBackend::Turso => TURSO_TIMESTAMP,
             },
         )
+        // New SQLx records also start an empty dirty-tracking snapshot.
         .replace(
             "__UPDATED_AT__",
             match backend {
-                ProjectOrmBackend::Sqlx => "updated_at: created_at",
+                ProjectOrmBackend::Sqlx => {
+                    "updated_at: created_at,\n                snapshot: rullst::db::RowSnapshot::default()"
+                }
                 ProjectOrmBackend::Turso => "updated_at: created_at.clone()",
             },
         )

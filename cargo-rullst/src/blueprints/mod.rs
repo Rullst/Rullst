@@ -95,6 +95,8 @@ pub fn apply(
 }
 
 #[cfg(test)]
+mod dirty_tracking_tests;
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -333,7 +335,7 @@ mod tests {
             let user = file(&manifest, "src/models/user.rs");
             syn::parse_file(&user).unwrap_or_else(|error| panic!("{blueprint}: {error}"));
             assert!(!user.contains("__RULLST"), "{blueprint}: unresolved marker");
-            assert!(user.contains("    #[orm(db_default)]\n    pub session_epoch: i64,\n}"));
+            assert!(user.contains("    #[orm(db_default)]\n    pub session_epoch: i64,\n"));
             assert!(
                 !user.contains("#[orm(skip)]"),
                 "{blueprint}: skip is not a column"

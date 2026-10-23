@@ -2425,6 +2425,11 @@ models also get `dirty_columns()` and `is_dirty()`. `RowSnapshot` is
 bookkeeping: any two compare equal, hash alike and order equal; `Debug` shows
 only whether it is tracked; it implements no Serde trait. Turso-primary
 models do not track. Models without the field keep the full-row `UPDATE`.
+Since 13.0.0-alpha.3 every SQLx model the CLI writes (`make:model`,
+`generate:models`, `make:auth`, `make:billing`, `make:chat-session` and the
+`cargo rullst new` starters) declares `#[sqlx(skip)] pub snapshot: RowSnapshot`
+and builds new records with `RowSnapshot::default()`; `generate:models` adds
+`#[serde(skip)]` and omits the field for a table with a `snapshot` column.
 
 `From<sqlx::Error> for rullst_orm::Error` maps `RowNotFound` to
 `RecordNotFound`, a unique or primary-key violation to

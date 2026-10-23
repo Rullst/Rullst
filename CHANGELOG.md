@@ -431,6 +431,17 @@ A prepared version section does not establish that its tag or crates exist.
   `skipped_rules`, `hidden_findings`); existing keys are unchanged. The
   `cargo-rullst` library's `Commands::Upgrade` variant and `UpgradeOptions`
   gain an `all_rules` field.
+- New projects use ORM dirty tracking: every SQLx model that the CLI writes
+  declares `#[sqlx(skip)] pub snapshot: RowSnapshot`, so `save()` of a loaded
+  record writes only the columns that changed and two requests that edit
+  different fields of one row both persist. This covers the models of the
+  Blank, Blog, ERP, Portfolio, SaaS and LMS starters, `make:auth`,
+  `make:billing`, `make:chat-session` and `generate:models` (which also adds
+  `#[serde(skip)]`, and leaves a table with its own `snapshot` column on
+  full-row saves), as `make:model` already did; their struct literals set
+  `snapshot: RowSnapshot::default()`. Turso models are unchanged. Existing
+  projects keep their models; add the field to opt in (see the ORM dirty
+  tracking row of the migration guide).
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

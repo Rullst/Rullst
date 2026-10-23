@@ -632,7 +632,10 @@ fn extracted_rust_templates_parse_after_substitution() {
                     "__UTC_TIMESTAMP_FN__",
                     include_str!("../src/generators/billing_timestamp_sqlx.rs.template"),
                 )
-                .replace("__UPDATED_AT__", "updated_at: created_at")
+                .replace(
+                    "__UPDATED_AT__",
+                    "updated_at: created_at,\n                snapshot: rullst::db::RowSnapshot::default()",
+                )
                 .replace("__FOREIGN_KEY__", "user_id")
                 .replace("__OWNER_ID_TYPE__", "i32"),
         ),
