@@ -70,3 +70,7 @@ pub(super) fn required_environment_variable(name: &'static str) -> Result<String
         Err(_) => Err(NexusBuildError::InvalidDotenv { variable: name }),
     }
 }
+
+#[cfg(test)]
+#[path = "credentials_tests.rs"]
+mod tests;

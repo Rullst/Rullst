@@ -8,7 +8,8 @@ validating the callback. It offers two places to keep them:
 - a **login challenge store** (v13, from 13.0.0-alpha.3) in the application's
   own database, with only an opaque id in a short-lived cookie. A Rullst
   application signs users in with its own encrypted session cookie, so this is
-  the path for it, and `cargo rullst make:oauth google` generates it;
+  the path for it, and `cargo rullst make:oauth google|github|microsoft|apple`
+  generates it;
 - a **`tower-sessions` session** (`axum-session` feature), for an Axum
   application that already runs a `SessionManagerLayer`.
 
@@ -22,33 +23,90 @@ does not choose the application's account-linking or authorization policy.
 In a project with the `cargo rullst auth`, SaaS or LMS account model:
 
 ```bash
-cargo rullst make:oauth google
+cargo rullst make:oauth google      # or github, microsoft, apple
 cargo rullst db:migrate
 ```
 
-The command adds `/auth/google` and `/auth/google/callback` (behind the
-password login's per-client rate limit), a "Sign in with Google" link on the
+The command adds `/auth/<provider>` and `/auth/<provider>/callback` (behind
+the password login's per-client rate limit), a "Sign in with …" link on the
 login page, an `oauth_identities` table (provider and subject, unique) and the
 `oauth`, `oauth-<database>` and application `oauth-mock` features. The
 generated callback signs the account in with `make_login_cookie_with_epoch`,
 like the password login. A provider email links or creates an account only
-when the ID token reports `email_verified: true`; an email that already
-belongs to an account is refused by default, because registration does not
-prove that the person who registered it owns the address. See
+when the provider verified it; an email that already belongs to an account is
+refused by default, because registration does not prove that the person who
+registered it owns the address. See
 [`cargo rullst make:oauth`](../cli_reference.md#cargo-rullst-makeoauth-v13-prerelease-preview)
 for the settings and the linking policy.
 
-To try it without a Google project, run with mock credentials and the
-offline provider, which sends the browser straight back to the callback and
-signs in `mock@example.invalid`:
+Run the command once per provider: the first one creates the shared flow
+(`src/controllers/oauth/mod.rs`), the table and its migration; each further
+provider adds only its module, routes, login link and settings, so Google and
+GitHub (or all four) share one `oauth_identities` table, one migration and the
+same linking policy. A provider identity signs in to one account; linking a
+second provider to an existing account follows `EXISTING_ACCOUNT_POLICY`.
+
+What each provider's identity is:
+
+| Provider | Protocol | Subject in `oauth_identities` | Email that may link or create an account |
+| :--- | :--- | :--- | :--- |
+| Google | OpenID Connect | ID token `sub` | ID token `email` with `email_verified: true` |
+| GitHub | OAuth 2.0 (not OIDC) | numeric account `id` of `GET /user`, never the login name, which users can rename | the `primary` address of `GET /user/emails`, only when GitHub marks it `verified` |
+| Microsoft | OpenID Connect, tenant chosen by `MICROSOFT_TENANT` | `<tid>:<oid>`, the directory and object IDs (`sub` is pairwise: it changes with the app registration) | the `email` claim only with the optional claim `xms_edov: true` |
+| Apple | OpenID Connect, callback by form POST | ID token `sub`, stable for the developer team | ID token `email` with `email_verified`; it may be a private relay address |
+
+**Microsoft.** `MICROSOFT_TENANT` is required with the credentials and has no
+default, because it decides who can create accounts: `common` (any Entra ID
+organization and personal Microsoft accounts), `organizations` (any
+organization), `consumers` (personal accounts) or one directory (tenant) ID.
+Rullst Connect verifies the ID token against the tenant's keys and requires an
+issuer `https://login.microsoftonline.com/<tid>/v2.0` whose `tid` the tenant
+choice admits. Microsoft does not verify the `email` claim: an organization's
+administrators can give a user any address, including one of another
+company. Treating it as verified would let any tenant administrator sign in to
+an account here (the "nOAuth" pattern). The generated code therefore trusts it
+only with `xms_edov: true`, Microsoft's statement that the address's domain is
+verified for the user's organization (or that the account is a personal one).
+Add the optional ID-token claims `email` and `xms_edov` under **Token
+configuration** in the app registration; without them a Microsoft identity
+cannot create or link an account, and only identities linked before can sign
+in. Changing `EXISTING_ACCOUNT_POLICY` does not change this check.
+
+**Apple.** Apple returns the callback as a cross-site form POST
+(`response_mode=form_post`). Browsers send no `SameSite=Lax` cookie with it, so
+the generated start uses `ChallengeCookie::for_cross_site_post`
+(`SameSite=None; Secure`), and the command lists `/auth/apple/callback` in
+`csrf_signed_webhook_paths` of `Rullst.toml`: Apple cannot send this site's
+CSRF token, so instead the handler accepts the POST only with the `state` of
+the login challenge that this browser's challenge cookie names, which another
+site cannot know. The client secret is a five-minute ES256 JWT that Rullst
+Connect signs for each code exchange from `APPLE_TEAM_ID`, `APPLE_KEY_ID` and
+the `.p8` key in `APPLE_PRIVATE_KEY` (process environment or a secret store;
+newlines may be written as `\n`; the command never writes it to a file).
+`AppleProvider::verify_signing_key` stops the application at startup when the
+key cannot sign. Apple sends the user's name only on the first authorization,
+in the unsigned `user` form field; the generated code uses it as the new
+account's display name and for nothing else. An Apple email may be a private
+relay address (`…@privaterelay.appleid.com`): register the domain of
+`MAIL_FROM` with Apple's Private Email Relay service, or account emails never
+arrive. Apple accepts only HTTPS return URLs on a registered domain, never
+`localhost`, so develop with the mock credentials.
+
+To try a provider without registering an application, run with mock
+credentials and the offline provider, which sends the browser straight back
+to the callback (a same-site GET, Apple included) and signs in
+`mock@example.invalid`:
 
 ```bash
 GOOGLE_CLIENT_ID=mock_google GOOGLE_CLIENT_SECRET=mock_google \
   cargo run --features oauth-mock
 ```
 
-Without `--features oauth-mock` the application stops at startup with an error
-that names the feature, and staging and production refuse mock credentials.
+The command prints the mock settings of the provider it added, such as
+`MICROSOFT_TENANT=common MICROSOFT_CLIENT_ID=mock_microsoft
+MICROSOFT_CLIENT_SECRET=mock_microsoft`. Without `--features oauth-mock` the
+application stops at startup with an error that names the feature, and
+staging and production refuse mock credentials.
 
 ### Or write the two handlers
 
@@ -131,8 +189,11 @@ request.
   with `LoginOptions::with_lifetime`.
 - The browser holds only the id, in an `HttpOnly`, `SameSite=Lax` cookie of at
   most ten minutes. `SameSite=Lax` still sends it with the provider's
-  top-level `GET` redirect. Several cookies of that name with different values
-  are refused rather than guessed.
+  top-level `GET` redirect. For a provider that POSTs the callback from its own
+  site (Sign in with Apple), `ChallengeCookie::for_cross_site_post` makes it
+  `SameSite=None; Secure`, the only cookie a browser attaches to that POST.
+  Several cookies of that name with different values are refused rather than
+  guessed.
 - Stores key rows by a SHA-256 digest of the id, never the id. Consumption is
   one atomic removal: `DELETE … RETURNING` on SQLite and PostgreSQL,
   `SELECT … FOR UPDATE` then `DELETE` in one transaction on MySQL, a mutex in

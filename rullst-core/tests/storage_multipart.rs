@@ -173,6 +173,10 @@ async fn forged_checkpoint_wrong_key_policy_and_profile_are_rejected() {
     assert!(fresh.progress(&fresh_token).await.is_ok());
     assert!(!format!("{token:?}").contains(token.expose_encoded()));
     assert!(!format!("{uploader:?}").contains("private-files"));
+    assert_eq!(
+        format!("{uploader:?}"),
+        "MultipartStorage { mock: true, .. }"
+    );
     assert_eq!(uploader.abort(&token).await.unwrap(), AbortStatus::Gone);
     assert_eq!(uploader.abort(&token).await.unwrap(), AbortStatus::Gone);
     assert!(

@@ -7,6 +7,9 @@ use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
 use serde_json::Value;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/// Largest `user` form field [`AppleProvider::name_from_user_field`] reads.
+const MAX_USER_FIELD_BYTES: usize = 4096;
+
 /// Apple OAuth2 provider implementation with Sign in with Apple (.p8 client_secret generator and OIDC JWKS token verification).
 ///
 /// Authorization URLs request `response_mode=form_post`, so Apple returns the callback as a
@@ -158,6 +161,54 @@ impl AppleProvider {
     pub fn with_jwks_cache_policy(mut self, policy: crate::provider::JwksCachePolicy) -> Self {
         self.jwks_cache = crate::provider::JwksCache::new(policy);
         self
+    }
+
+    /// Checks that the team ID, key ID and `.p8` private key can sign the
+    /// ES256 client secret that each code exchange sends, so a wrong or
+    /// truncated key stops the application at startup instead of failing the
+    /// first sign-in. Mock credentials need no key. Added in v13.
+    ///
+    /// # Errors
+    /// [`crate::error::ConnectError::InvalidConfiguration`] for the field
+    /// `private_key_pem`; the message never contains the key.
+    pub fn verify_signing_key(&self) -> Result<(), crate::error::ConnectError> {
+        if self.credential_mode.is_mock() {
+            return Ok(());
+        }
+        self.generate_client_secret().map(|_| ()).map_err(|_| {
+            crate::configuration::invalid(
+                "private_key_pem",
+                "the Apple private key cannot sign an ES256 client secret; use the PEM text of the .p8 key",
+            )
+        })
+    }
+
+    /// The display name in the `user` field that Apple posts with the
+    /// callback on the first authorization only, such as
+    /// `{"name":{"firstName":"Ana","lastName":"Silva"}}`: the first and last
+    /// names joined by a space, without control characters, at most 120
+    /// characters. `None` for anything else.
+    ///
+    /// The field is not signed, so use it only as a display name, never as
+    /// an identity or an email address. Added in v13.
+    #[must_use]
+    pub fn name_from_user_field(user: &str) -> Option<String> {
+        if user.len() > MAX_USER_FIELD_BYTES {
+            return None;
+        }
+        let user: Value = serde_json::from_str(user).ok()?;
+        let name = ["firstName", "lastName"]
+            .iter()
+            .filter_map(|part| user["name"][part].as_str())
+            .flat_map(str::split_whitespace)
+            .collect::<Vec<_>>()
+            .join(" ");
+        let name: String = name
+            .chars()
+            .filter(|character| !character.is_control())
+            .take(120)
+            .collect();
+        (!name.is_empty()).then_some(name)
     }
 
     pub(crate) fn generate_client_secret(&self) -> Result<String, crate::error::ConnectError> {

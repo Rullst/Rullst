@@ -39,8 +39,16 @@ pub enum MailPurpose {
     Marketing,
 }
 
+/// Longest remaining lifetime a password reset link may state: 24 hours.
+const MAX_RESET_LIFETIME_MINUTES: u32 = 24 * 60;
+/// Longest remaining lifetime the other account action links may state.
+const MAX_ACTION_LIFETIME_MINUTES: u32 = 30;
+
 /// Minimal typed events. Action links have redacted Debug output and no Serialize
 /// implementation; never copy them into generic event/telemetry payloads.
+///
+/// `expires_in_minutes` is the link's remaining lifetime: 1 to 1440 minutes
+/// (24 hours) for [`Self::PasswordReset`], 1 to 30 for the other events.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum AccountEvent {
@@ -129,6 +137,14 @@ impl AccountEvent {
         }
     }
 
+    /// The longest remaining lifetime this event's link may state.
+    fn max_lifetime_minutes(&self) -> u32 {
+        match self {
+            Self::PasswordReset { .. } => MAX_RESET_LIFETIME_MINUTES,
+            _ => MAX_ACTION_LIFETIME_MINUTES,
+        }
+    }
+
     fn title(&self, locale: MailLocale) -> &str {
         match self {
             Self::Welcome => locale.select("Welcome!", "Boas-vindas!", "¡Bienvenido!"),
@@ -185,6 +201,25 @@ impl AccountEvent {
             ),
         }
     }
+}
+
+/// A link lifetime in words: whole hours as hours ("2 hours"), anything
+/// else as minutes ("90 minutes").
+fn lifetime_words(minutes: u32, locale: MailLocale) -> String {
+    let (amount, one, many) = if minutes.is_multiple_of(60) {
+        (
+            minutes / 60,
+            locale.select("hour", "hora", "hora"),
+            locale.select("hours", "horas", "horas"),
+        )
+    } else {
+        (
+            minutes,
+            locale.select("minute", "minuto", "minuto"),
+            locale.select("minutes", "minutos", "minutos"),
+        )
+    };
+    format!("{amount} {}", if amount == 1 { one } else { many })
 }
 
 /// Safe template output. Debug contains only purpose, locale and template version.
@@ -250,19 +285,20 @@ impl AccountMail {
         }
         if let Some((link, expiry)) = event.action() {
             if let Some(minutes) = expiry {
-                if !(1..=30).contains(&minutes) {
-                    return Err(MailError::ValidationError(
-                        "remaining account action lifetime must be 1–30 minutes".into(),
-                    ));
+                let longest = event.max_lifetime_minutes();
+                if !(1..=longest).contains(&minutes) {
+                    return Err(MailError::ValidationError(format!(
+                        "remaining account action lifetime must be 1–{longest} minutes"
+                    )));
                 }
                 let expiry = format!(
-                    "{} {minutes} {}.",
+                    "{} {}.",
                     locale.select(
                         "This link expires in",
                         "Este link expira em",
                         "Este enlace caduca en"
                     ),
-                    locale.select("minutes", "minutos", "minutos")
+                    lifetime_words(minutes, locale)
                 );
                 text.push_str(&format!("{expiry}\n"));
                 html.push_str(&format!("<p>{expiry}</p>"));

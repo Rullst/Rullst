@@ -153,6 +153,11 @@ async fn generated_password_flows_contract() {
     let negotiated = rullst::i18n::Locales::new(&["es", "pt-BR"], "es").unwrap().get("pt-BR").unwrap();
     assert_eq!(mail_locale(&accept_language("es"), &Some(Extension(negotiated))), MailLocale::PtBr);
 
+    // RESET_TOKEN_LIFETIME_MINUTES (10 to 1440) in the words the email uses.
+    for (minutes, words) in [(10, "10 minutes"), (30, "30 minutes"), (60, "1 hour"), (90, "90 minutes"), (120, "2 hours"), (1440, "24 hours")] {
+        assert_eq!(lifetime_words(minutes), words);
+    }
+
     rullst::orm::Orm::init("sqlite::memory:").await.unwrap();
     for migration in crate::migrations::get_migrations() {
         migration.up().await.unwrap();
@@ -223,10 +228,13 @@ async fn generated_password_flows_contract() {
     let known = post(app, "/password/forgot", None, &format!("_token={CSRF}&email={MEMBER}")).await;
     assert_eq!((unknown.status, known.status), (StatusCode::OK, StatusCode::OK));
     assert!(known.body.contains("If an account uses that email address, we sent it a link"));
+    // The answer, the email and the stored token state one lifetime.
+    assert!(known.body.contains("The link expires in 30 minutes."));
     assert_eq!(without_nonce(&unknown.body), without_nonce(&known.body));
     let first_mail = mail_to(MEMBER, 1).await;
     assert_eq!(first_mail.len(), 1);
     assert!(mail_to("nobody@example.test", 0).await.is_empty());
+    assert!(first_mail[0].body_text.as_deref().unwrap().contains("This link expires in 30 minutes.\n"));
     let first = link_token(&first_mail[0], "http://localhost:3000");
     // Only the digest is stored, valid for 30 minutes.
     let rows = reset_rows().await;

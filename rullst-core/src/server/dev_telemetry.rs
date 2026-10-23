@@ -20,6 +20,8 @@
 //! responses of the security, lifecycle and traffic layers are counted too.
 
 #[cfg(test)]
+mod layer_tests;
+#[cfg(test)]
 mod n_plus_one_tests;
 mod orm_layer;
 mod recorder;

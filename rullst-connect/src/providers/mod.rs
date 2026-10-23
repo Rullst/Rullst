@@ -7,6 +7,7 @@ pub mod github;
 pub mod google;
 pub mod linkedin;
 pub mod microsoft;
+pub mod microsoft_oidc;
 pub mod oidc;
 pub mod x;
 
@@ -22,6 +23,7 @@ pub use github::GithubProvider;
 pub use google::GoogleProvider;
 pub use linkedin::LinkedinProvider;
 pub use microsoft::MicrosoftProvider;
+pub use microsoft_oidc::{MICROSOFT_CONSUMER_TENANT_ID, MicrosoftOidcProvider, MicrosoftTenant};
 pub use oidc::OidcProvider;
 pub use x::XProvider;
 

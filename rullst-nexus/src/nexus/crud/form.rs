@@ -205,6 +205,8 @@ pub(super) fn form_html(
                                 FieldKind::Boolean => r
                                     .try_get::<bool, _>(fname)
                                     .or_else(|_| r.try_get::<i64, _>(fname).map(|v| v != 0))
+                                    // An `INTEGER` column on the strict PostgreSQL pool.
+                                    .or_else(|_| r.try_get::<i32, _>(fname).map(|v| v != 0))
                                     .ok()
                                     .map(|b| if b { "1" } else { "0" }.to_string()),
                                 FieldKind::Number
@@ -458,3 +460,5 @@ fn is_html_number(text: &str) -> bool {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod widget_tests;

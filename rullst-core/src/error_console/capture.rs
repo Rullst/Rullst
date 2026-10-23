@@ -77,3 +77,7 @@ where
     let handle = tokio::spawn(PANIC_SLOT.scope(Arc::clone(&slot), future));
     (handle, PanicSlot(slot))
 }
+
+#[cfg(test)]
+#[path = "capture_tests.rs"]
+mod tests;

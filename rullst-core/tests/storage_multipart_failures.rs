@@ -11,7 +11,7 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use rullst_core::{
     Storage,
     storage::cloud::{
-        CloudCredentials, CloudStorageConfig,
+        CloudCredentials, CloudError, CloudStorageConfig,
         multipart::{
             CompletionStatus, MultipartError, MultipartKey, MultipartLimits, MultipartStorage,
         },
@@ -348,6 +348,36 @@ async fn upload_sizes_part_etags_and_completion_identity_are_checked() {
             fx.uploader.complete(&token).await,
             Err(MultipartError::CompletionUncertain),
             "{result}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_response_may_fill_the_256_kib_body_limit_exactly() {
+    let Reply { body, .. } = init();
+    let padded = format!("{body}{}", " ".repeat(262_144 - body.len()));
+    assert_eq!(padded.len(), 262_144);
+    let fixture = fixture(vec![Reply::xml(padded)]).await;
+    assert!(fixture.uploader.begin(5).await.is_ok());
+}
+
+#[tokio::test]
+async fn provider_statuses_map_to_not_found_or_rejected() {
+    for (status, expected) in [
+        (404, CloudError::NotFound),
+        (403, CloudError::Rejected(403)),
+        (201, CloudError::Rejected(201)),
+    ] {
+        let fixture = fixture(vec![Reply {
+            status,
+            body: String::new(),
+            delay: Duration::ZERO,
+        }])
+        .await;
+        assert_eq!(
+            fixture.uploader.begin(5).await.err(),
+            Some(MultipartError::Cloud(expected)),
+            "{status}"
         );
     }
 }

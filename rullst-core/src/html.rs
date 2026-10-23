@@ -201,6 +201,14 @@ mod tests {
         let raw = RawHtml::new("<b>bold</b>");
         assert_eq!(raw.0, "<b>bold</b>");
     }
+
+    #[test]
+    fn borrowed_and_owned_cows_are_escaped() {
+        let borrowed: Cow<'_, str> = Cow::Borrowed("<b>&</b>");
+        let owned: Cow<'_, str> = Cow::Owned("\"x\"".to_string());
+        assert_eq!(borrowed.escape_html(), "&lt;b&gt;&amp;&lt;/b&gt;");
+        assert_eq!(owned.escape_html(), "&quot;x&quot;");
+    }
 }
 
 #[cfg(test)]

@@ -103,3 +103,27 @@ fn ambiguous_empty_or_oversized_values_are_refused() {
         None
     );
 }
+
+#[test]
+fn a_cross_site_post_callback_gets_a_secure_same_site_none_cookie() {
+    let id = ChallengeId::parse(ID).unwrap();
+    for secure in [false, true] {
+        let cookie = ChallengeCookie::new("/auth/apple", secure)
+            .unwrap()
+            .for_cross_site_post();
+        assert_eq!(
+            cookie.set(&id, 600),
+            "rullst_oauth_challenge=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ; Path=/auth/apple; Max-Age=600; HttpOnly; SameSite=None; Secure"
+        );
+        assert_eq!(
+            cookie.clear(),
+            "rullst_oauth_challenge=; Path=/auth/apple; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=None; Secure"
+        );
+    }
+    assert_ne!(
+        ChallengeCookie::new("/auth/apple", true).unwrap(),
+        ChallengeCookie::new("/auth/apple", true)
+            .unwrap()
+            .for_cross_site_post()
+    );
+}
