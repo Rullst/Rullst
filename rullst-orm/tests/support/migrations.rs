@@ -418,3 +418,44 @@ pub async fn exercise_pool_access_in_transactional_migrations() {
     .expect("roll the transactional migration back");
     assert_eq!(pool_probe_state().await, (0, 0));
 }
+
+/// The MySQL/MariaDB runner lock name of the current database.
+const MYSQL_LOCK_NAME: &str = "CONCAT('rullst_orm_migrations:', SHA1(COALESCE(DATABASE(), '')))";
+
+/// A runner keeps waiting while another session holds the MySQL/MariaDB lock
+/// for longer than one 10-second `GET_LOCK` attempt, then migrates.
+pub async fn exercise_runner_waits_past_one_lock_attempt() {
+    if Orm::driver().expect("driver") != "mysql" {
+        return;
+    }
+    let mut holder = Orm::pool()
+        .expect("pool")
+        .acquire()
+        .await
+        .expect("lock holder connection");
+    let take = format!("SELECT CAST(GET_LOCK({MYSQL_LOCK_NAME}, 0) AS SIGNED)");
+    let taken: Option<i64> = sqlx::query_scalar(sqlx::AssertSqlSafe(take.as_str()))
+        .fetch_one(&mut *holder)
+        .await
+        .expect("take the runner lock");
+    assert_eq!(taken, Some(1));
+
+    let arguments = artisan("migrate");
+    let migrate = run_artisan_with_args(&arguments, Vec::new(), Vec::new());
+    let release = async {
+        tokio::time::sleep(Duration::from_secs(12)).await;
+        let release = format!("SELECT CAST(RELEASE_LOCK({MYSQL_LOCK_NAME}) AS SIGNED)");
+        let released: Option<i64> = sqlx::query_scalar(sqlx::AssertSqlSafe(release.as_str()))
+            .fetch_one(&mut *holder)
+            .await
+            .expect("release the runner lock");
+        released
+    };
+    let (migrated, released) = tokio::time::timeout(Duration::from_secs(60), async {
+        tokio::join!(migrate, release)
+    })
+    .await
+    .expect("the runner finishes once the lock is free");
+    assert_eq!(released, Some(1));
+    migrated.expect("the runner waits for the lock instead of failing");
+}
