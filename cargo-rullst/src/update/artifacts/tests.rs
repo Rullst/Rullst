@@ -88,6 +88,23 @@ fn the_longest_runner_name_and_largest_binary_are_accepted() {
     assert_eq!(manifest.files[0].bytes, 134_217_728);
     value["build_runner"] = json!("r".repeat(65));
     assert!(parse(&value).is_err());
+    value["build_runner"] = json!("");
+    assert!(parse(&value).is_err());
+}
+
+#[test]
+fn a_manifest_may_fill_but_not_exceed_16_kib() {
+    let version = Version::new(12, 1, 0);
+    let mut body = serde_json::to_vec(&fixture()).unwrap();
+    body.resize(16 * 1024, b' ');
+    manifest::Manifest::parse(&body, &version, TARGET).unwrap();
+    body.push(b' ');
+    assert_eq!(
+        manifest::Manifest::parse(&body, &version, TARGET)
+            .unwrap_err()
+            .to_string(),
+        "artifact verification rejected: manifest exceeds its size bound"
+    );
 }
 
 #[test]
