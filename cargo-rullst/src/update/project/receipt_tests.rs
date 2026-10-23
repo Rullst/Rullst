@@ -172,3 +172,127 @@ fn logs_must_match_their_digest_and_stay_within_8_mib() {
         "project preparation rejected: missing verification log"
     );
 }
+
+const LOCK: &str = "version = 4\n\n[[package]]\nname = \"rullst\"\nversion = \"13.0.0\"\n";
+
+/// A verification record of a prepared project's unchanged candidate.
+fn verified_project() -> (super::super::tests::PreparedProject, State, Record) {
+    let project = super::super::tests::prepared_project();
+    let state = State::load(&project.stage).unwrap();
+    let mut record = Record::new();
+    let candidate = record.directory.join("candidate");
+    for input in &state.candidate_records {
+        if input.path != "Cargo.lock" && input.sha256.is_some() {
+            let target = candidate.join(&input.path);
+            fs::create_dir_all(target.parent().unwrap()).unwrap();
+            fs::copy(state.candidate.join(&input.path), target).unwrap();
+        }
+    }
+    fs::write(candidate.join("Cargo.lock"), LOCK).unwrap();
+    let files: Vec<_> = state
+        .candidate_records
+        .iter()
+        .map(|input| {
+            if input.path == "Cargo.lock" {
+                snapshot::record("Cargo.lock", Some(LOCK.as_bytes()))
+            } else {
+                input.clone()
+            }
+        })
+        .collect();
+    record.value["source"] = json!(project.source);
+    record.value["target"] = json!("13.0.0");
+    record.value["files"] = json!(files);
+    (project, state, record)
+}
+
+fn validation(record: &Record, value: &Value, state: &State) -> Result<(), ProjectError> {
+    record.load(value).unwrap().0.validate(state)
+}
+
+#[test]
+fn a_record_of_the_unchanged_candidate_validates() {
+    let (_project, state, record) = verified_project();
+    validation(&record, &record.value, &state).unwrap();
+}
+
+#[test]
+fn the_verified_scope_must_be_the_preparation() {
+    let (_project, state, record) = verified_project();
+    let scope = "project preparation rejected: verification scope differs from preparation";
+    for (field, value) in [
+        ("source", json!(record.directory)),
+        ("target", json!("13.0.1")),
+    ] {
+        let mut changed = record.value.clone();
+        changed[field] = value;
+        assert_eq!(
+            validation(&record, &changed, &state)
+                .unwrap_err()
+                .to_string(),
+            scope,
+            "{field}"
+        );
+    }
+    let mut fewer = record.value.clone();
+    fewer["files"].as_array_mut().unwrap().pop();
+    assert_eq!(
+        validation(&record, &fewer, &state).unwrap_err().to_string(),
+        scope
+    );
+    let mut renamed = record.value.clone();
+    renamed["files"][2]["path"] = renamed["files"][1]["path"].clone();
+    assert_eq!(
+        validation(&record, &renamed, &state)
+            .unwrap_err()
+            .to_string(),
+        "project preparation rejected: invalid verification file inventory"
+    );
+}
+
+#[test]
+fn verified_candidate_bytes_and_inventory_must_match() {
+    let (_project, state, record) = verified_project();
+    let candidate = record.directory.join("candidate");
+    fs::write(candidate.join("src/main.rs"), "fn main() { changed() }\n").unwrap();
+    let changed = "project preparation rejected: verified candidate bytes changed";
+    assert_eq!(
+        validation(&record, &record.value, &state)
+            .unwrap_err()
+            .to_string(),
+        changed
+    );
+    // A record that matches the changed bytes still differs from the input.
+    let mut rerecorded = record.value.clone();
+    rerecorded["files"][2] = json!(snapshot::record(
+        "src/main.rs",
+        Some(b"fn main() { changed() }\n")
+    ));
+    assert_eq!(
+        validation(&record, &rerecorded, &state)
+            .unwrap_err()
+            .to_string(),
+        changed
+    );
+    let (_project, state, record) = verified_project();
+    fs::write(record.directory.join("candidate/extra.rs"), "").unwrap();
+    assert_eq!(
+        validation(&record, &record.value, &state)
+            .unwrap_err()
+            .to_string(),
+        "project preparation rejected: verified candidate inventory changed"
+    );
+}
+
+#[test]
+fn the_verified_lockfile_must_resolve_the_selected_release() {
+    let (_project, state, record) = verified_project();
+    let other = LOCK.replace("13.0.0", "13.0.1");
+    fs::write(record.directory.join("candidate/Cargo.lock"), &other).unwrap();
+    let mut changed = record.value.clone();
+    changed["files"][0] = json!(snapshot::record("Cargo.lock", Some(other.as_bytes())));
+    assert!(matches!(
+        validation(&record, &changed, &state),
+        Err(ProjectError::Planning(_))
+    ));
+}
