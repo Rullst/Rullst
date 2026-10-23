@@ -41,7 +41,9 @@ fn tokenized_views(content: &str) -> Option<AuditSource> {
     let mut index = 0;
     while index < tokens.len() {
         if let Some(after_attribute) = cfg_test_attribute(&tokens, index) {
-            let last = item_end(&tokens, skip_outer_attributes(&tokens, after_attribute));
+            // Further outer attributes are bracket groups after `#`, which
+            // `item_end` passes over like the rest of the item.
+            let last = item_end(&tokens, after_attribute);
             let start = tokens.get(index)?.span().byte_range().start;
             let end = tokens.get(last)?.span().byte_range().end;
             test_items.push(start..end);
@@ -82,19 +84,6 @@ fn cfg_test_attribute(tokens: &[TokenTree], index: usize) -> Option<usize> {
     let predicate = predicate.stream().into_iter().collect::<Vec<_>>();
     let is_test = matches!(predicate.as_slice(), [TokenTree::Ident(test)] if test == "test");
     (cfg == "cfg" && is_test).then_some(index + 2)
-}
-
-/// Skips further outer attributes (including doc comments) of the same item.
-fn skip_outer_attributes(tokens: &[TokenTree], mut index: usize) -> usize {
-    while let (Some(TokenTree::Punct(hash)), Some(TokenTree::Group(group))) =
-        (tokens.get(index), tokens.get(index + 1))
-    {
-        if hash.as_char() != '#' || group.delimiter() != Delimiter::Bracket {
-            break;
-        }
-        index += 2;
-    }
-    index
 }
 
 /// Index of the last token of the item starting at `index`: its terminating
@@ -262,6 +251,64 @@ mod tests {
         assert!(code.contains("let x = RbacGuard::authorize(ctx);"));
         assert!(!code.contains("template comment"));
         assert!(code.contains("fn f() { call(); }"));
+    }
+
+    /// Bounded, so a scan that never advances fails instead of hanging.
+    fn bounded(source: &'static str) -> AuditSource {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = sender.send(audit_source(source));
+        });
+        receiver
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .expect("the scan finished")
+    }
+
+    #[test]
+    fn test_items_end_at_their_terminator_or_body_and_scanning_resumes() {
+        let source = "#[cfg(test)]\n#[path = \"x_tests.rs\"]\n/// doc\nmod tests;\n#[cfg(test)]\nstatic X: S = S { a: 1 };\nfn kept() {}\n#[cfg(test)]\n#[test]\nfn check() { assert!(true) }\nfn after() {}\n";
+        let production = bounded(source).production;
+        for removed in [
+            "mod tests",
+            "x_tests.rs",
+            "static X",
+            "S { a: 1 }",
+            "fn check",
+            "assert!",
+        ] {
+            assert!(!production.contains(removed), "{removed}: {production}");
+        }
+        assert!(production.contains("fn kept() {}"));
+        assert!(production.contains("fn after() {}"));
+    }
+
+    #[test]
+    fn only_a_hash_and_a_bracket_group_form_an_attribute() {
+        let source = "fn a() {}\n#(cfg(test))\nmod hidden_paren;\n![cfg(test)]\nmod hidden_bang;\nfn after() {}\n";
+        let production = bounded(source).production;
+        assert!(production.contains("mod hidden_paren;"), "{production}");
+        assert!(production.contains("mod hidden_bang;"), "{production}");
+    }
+
+    #[test]
+    fn doc_attributes_anywhere_are_not_guard_evidence() {
+        let source = "let x = 1; /// RbacGuard::authorize_owner_or_role\nlet y = 2; //! RequireRoleLayer\n#[doc = \"protect_router(\"] fn z() {}\n#[cfg_attr(feature = \"x\", doc = \"RbacGuard::authorize(\")] fn w() {}\n";
+        let code = bounded(source).code;
+        assert!(!code.contains("authorize_owner_or_role"), "{code}");
+        assert!(!code.contains("RequireRoleLayer"), "{code}");
+        assert!(!code.contains("protect_router("), "{code}");
+        assert!(code.contains("RbacGuard::authorize("), "{code}");
+        assert!(code.contains("let x = 1;"));
+    }
+
+    #[test]
+    fn template_comment_lines_are_dropped_from_the_code_view() {
+        let source =
+            "const T: &str = \"\n/* RequireRoleLayer\n * RbacGuard::authorize(\nkept();\n\";\n";
+        let code = bounded(source).code;
+        assert!(!code.contains("RequireRoleLayer"), "{code}");
+        assert!(!code.contains("RbacGuard"), "{code}");
+        assert!(code.contains("kept();"), "{code}");
     }
 
     #[test]
