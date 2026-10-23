@@ -31,7 +31,10 @@ EXCLUDES = ["**/*_tests.rs", "**/tests.rs", "**/tests/**"]
 FEATURES = ["drivers-all"]
 
 
-def command(regex: str, shard: str | None, features: list[str] = FEATURES) -> list[str]:
+def command(regex: str, shard: str | None, features: list[str] = FEATURES,
+            targets: list[str] | None = None, test_arguments: list[str] | None = None,
+            timeout: int = 300) -> list[str]:
+    """The cargo-mutants command; `targets` default to every test target."""
     if shard is not None and not SHARD.fullmatch(shard):
         raise ValueError("--shard takes K/N")
     mutants = ["cargo", "mutants", "--no-config",
@@ -40,13 +43,16 @@ def command(regex: str, shard: str | None, features: list[str] = FEATURES) -> li
                "--no-default-features",
                "--features", ",".join("rullst-orm/" + feature for feature in features),
                "--gitignore", "true", "--jobs", "1", "--cap-lints", "false",
-               "--build-timeout", "600", "--timeout", "300",
-               "--cargo-arg=--locked", "--cargo-arg=--offline", "--cargo-arg=--tests",
+               "--build-timeout", "600", "--timeout", str(timeout),
+               "--cargo-arg=--locked", "--cargo-arg=--offline",
+               *("--cargo-arg=" + target for target in (targets or ["--tests"])),
                *(argument for path in FILES for argument in ("--file", path)),
                *(argument for path in EXCLUDES for argument in ("--exclude", path)),
                "--re", regex, "--caught", "--unviable"]
     if shard is not None:
         mutants += ["--shard", shard]
+    if test_arguments:
+        mutants += ["--", "--", *test_arguments]
     return mutants
 
 
@@ -54,10 +60,16 @@ def ran_baseline(output: Path) -> bool:
     return (output / "mutants.out" / "log" / "baseline.log").is_file()
 
 
-def run(mutants: list[str], env: dict[str, str]) -> int:
-    """Runs cargo-mutants with the testcontainers matrices skipped."""
-    env = dict(env, DOCKER_HOST="unix:///nonexistent")
-    env.pop("RULLST_REQUIRE_TESTCONTAINERS", None)
+def run(mutants: list[str], env: dict[str, str], containers: bool = False) -> int:
+    """Runs cargo-mutants; the testcontainers matrices are skipped unless
+    `containers` requires them, so a server that fails to start fails the
+    baseline instead of skipping its contract."""
+    env = dict(env)
+    if containers:
+        env.update(RULLST_REQUIRE_TESTCONTAINERS="true", TESTCONTAINERS_RYUK_DISABLED="true")
+    else:
+        env["DOCKER_HOST"] = "unix:///nonexistent"
+        env.pop("RULLST_REQUIRE_TESTCONTAINERS", None)
     status = subprocess.run(mutants, env=env, check=False, timeout=19000).returncode
     if status in INFORMATIONAL and not ran_baseline(Path(env.get("CARGO_MUTANTS_OUTPUT", "."))):
         print("cargo-mutants ran no baseline; the regex or shard selected no mutant.",

@@ -280,6 +280,38 @@ class OrmPolyglotTests(Fixture):
         self.assertEqual(self.recorded()[-1][:2], ["docker", "stop"])
 
 
+ORM_SERVERS_PATH = HERE / "check-orm-sql-servers.py"
+ORM_SERVERS_SPEC = importlib.util.spec_from_file_location("check_orm_sql_servers", ORM_SERVERS_PATH)
+if ORM_SERVERS_SPEC is None or ORM_SERVERS_SPEC.loader is None:
+    raise RuntimeError(f"cannot import {ORM_SERVERS_PATH}")
+ORM_SERVERS = importlib.util.module_from_spec(ORM_SERVERS_SPEC)
+ORM_SERVERS_SPEC.loader.exec_module(ORM_SERVERS)
+
+
+class OrmSqlServersTests(Fixture):
+    def test_runs_only_the_server_matrices_and_requires_their_containers(self) -> None:
+        log = self.root / "mutants.out" / "log"
+        self.tool("cargo", f"os.makedirs({str(log)!r}, exist_ok=True)\n"
+                           f"open({str(log / 'baseline.log')!r}, 'w').write('ok')\n"
+                           "open(os.environ['CALLS_ENV'], 'w').write(json.dumps(dict(os.environ)))\n"
+                           "sys.exit(2)\n")
+        env = self.env(CARGO_MUTANTS_OUTPUT=str(self.root), CALLS_ENV=str(self.root / "env.json"),
+                       DOCKER_HOST="unix:///var/run/docker.sock")
+        with mock_environ(env):
+            self.assertEqual(ORM_SERVERS.main(["--mutants", "in insert_sql$"]), 2)
+        call = self.recorded()[-1]
+        for part in (["--cargo-arg=--test=matrix_postgres", "--cargo-arg=--test=matrix_mysql",
+                      "--cargo-arg=--test=matrix_mariadb"], ["--timeout", "900"],
+                     ["--features", "rullst-orm/drivers-all"]):
+            with self.subTest(part=part):
+                self.assertIn(part, [call[i:i + len(part)] for i in range(len(call))])
+        self.assertNotIn("--cargo-arg=--tests", call)
+        self.assertEqual(call[-3:], ["--", "--", "--test-threads=1"])
+        env = json.loads((self.root / "env.json").read_text())
+        self.assertEqual(env["RULLST_REQUIRE_TESTCONTAINERS"], "true")
+        self.assertEqual(env["DOCKER_HOST"], "unix:///var/run/docker.sock")
+
+
 @contextlib.contextmanager
 def mock_environ(env: dict[str, str]):
     saved = dict(os.environ)
