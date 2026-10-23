@@ -80,6 +80,17 @@ fn release_and_file_identity_confusion_is_rejected() {
 }
 
 #[test]
+fn the_longest_runner_name_and_largest_binary_are_accepted() {
+    let mut value = fixture();
+    value["build_runner"] = json!("r".repeat(64));
+    value["files"][0]["bytes"] = json!(134_217_728);
+    let manifest = parse(&value).unwrap();
+    assert_eq!(manifest.files[0].bytes, 134_217_728);
+    value["build_runner"] = json!("r".repeat(65));
+    assert!(parse(&value).is_err());
+}
+
+#[test]
 fn all_native_platform_filenames_have_an_exact_contract() {
     for target in [
         TARGET,
