@@ -218,11 +218,23 @@ fn fifo_catalog_and_lock_are_rejected_without_waiting_for_a_peer() {
     let catalog = directory.join(CATALOG);
     fs::remove_file(&catalog).unwrap();
     create_test_fifo(&catalog);
-    assert!(load_at(&base, 100).is_err());
     let lock = directory.join("catalog.lock");
     fs::remove_file(&lock).unwrap();
     create_test_fifo(&lock);
-    assert!(store_at(&base, BODY, 100).is_err());
+    // An open that waits for a writer would block forever; fail instead.
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let refused = (
+            load_at(&base, 100).is_err(),
+            store_at(&base, BODY, 100).is_err(),
+        );
+        let _ = sender.send(refused);
+    });
+    let refused = receiver
+        .recv_timeout(std::time::Duration::from_secs(30))
+        .expect("opening a FIFO must not wait for a peer");
+    assert_eq!(refused, (true, true));
+    drop(temp);
 }
 
 fn create_test_fifo(path: &Path) {
