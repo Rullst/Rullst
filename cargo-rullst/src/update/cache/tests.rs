@@ -276,8 +276,13 @@ fn base_directory_child_fixture() {
         return;
     };
     let create = std::env::var_os("RULLST_CACHE_BASE_CREATE").is_some();
-    let text = match base_directory(create) {
-        Ok(path) => format!("ok {}", path.display()),
+    let text = match std::env::var("RULLST_CACHE_OPERATION").as_deref() {
+        Ok("store") => store(BODY, 100).map(|()| String::new()),
+        Ok("workspace") => project_workspace().map(|path| path.display().to_string()),
+        _ => base_directory(create).map(|path| path.display().to_string()),
+    };
+    let text = match text {
+        Ok(text) => format!("ok {text}"),
         Err(error) => format!("err {error}"),
     };
     fs::write(report, text).unwrap();
@@ -402,4 +407,43 @@ fn installation_roots_report_lookup_errors_other_than_absence() {
     let result = installation_root(&parent.join("installed"));
     fs::set_permissions(&parent, fs::Permissions::from_mode(0o700)).unwrap();
     assert!(result.is_err());
+}
+
+#[test]
+fn stores_and_project_workspaces_live_in_the_private_cache() {
+    let temp = fixture();
+    let xdg = temp.path().canonicalize().unwrap().join("xdg");
+    let operation = |name: &str| {
+        base_directory_in_child(
+            &[
+                ("XDG_CACHE_HOME", xdg.as_os_str()),
+                ("RULLST_CACHE_OPERATION", std::ffi::OsStr::new(name)),
+            ],
+            false,
+        )
+    };
+    assert_eq!(operation("store"), "ok ");
+    assert_eq!(load_at(&xdg, 101).unwrap().body, BODY);
+    let workspace = PathBuf::from(operation("workspace").strip_prefix("ok ").unwrap());
+    assert!(workspace.starts_with(xdg.join("rullst-update-v1")));
+    assert_eq!(
+        fs::metadata(&workspace).unwrap().permissions().mode() & 0o777,
+        0o700
+    );
+}
+
+#[test]
+fn a_cache_file_of_exactly_its_bound_is_read_and_then_decoded() {
+    let temp = fixture();
+    let base = temp.path().canonicalize().unwrap();
+    store_at(&base, BODY, 100).unwrap();
+    let file = options()
+        .write(true)
+        .open(base.join("rullst-update-v1").join(CATALOG))
+        .unwrap();
+    file.set_len(256 * 1024 + 64).unwrap();
+    assert!(matches!(
+        load_at(&base, 100),
+        Err(CacheError::Invalid("invalid cached catalog size"))
+    ));
 }
