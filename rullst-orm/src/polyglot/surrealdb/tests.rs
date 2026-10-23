@@ -268,3 +268,21 @@ fn graph_queries_reach_exactly_their_size_and_row_limits() {
     assert!(GraphQuery::read_only("MATCH (n:person) RETURN n", 1_000).is_ok());
     assert!(GraphQuery::read_only("MATCH (n:person) RETURN n", 1_001).is_err());
 }
+
+#[tokio::test]
+async fn the_offline_store_keeps_its_documents() {
+    let store = SurrealDbStore::<Event>::connect_or_mock(SurrealConfig::new(
+        "",
+        "main",
+        "app",
+        SurrealAuth::None,
+    ))
+    .expect("mock");
+    let collection = CollectionName::new("events").unwrap();
+    let id = DocumentId::new("evt-1").unwrap();
+    let event = Event {
+        label: "created".to_owned(),
+    };
+    store.create(&collection, &id, &event).await.unwrap();
+    assert_eq!(store.find(&collection, &id).await.unwrap(), Some(event));
+}
