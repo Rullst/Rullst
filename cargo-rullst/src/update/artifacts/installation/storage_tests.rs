@@ -97,3 +97,38 @@ fn storage_of_a_deeply_nested_root_can_be_reopened() {
     drop(storage::Storage::open(&root).unwrap());
     storage::Storage::open(&root).unwrap();
 }
+
+#[test]
+fn retention_allows_at_most_eight_operations() {
+    let base = base();
+    let root = cache::installation_root(&base.path().join("installed")).unwrap();
+    let storage = storage::Storage::open(&root).unwrap();
+    for _ in 0..8 {
+        cache::create_installation_directory(
+            &storage.path.join(format!("op-{}", uuid::Uuid::new_v4())),
+        )
+        .unwrap();
+    }
+    retention::prune(&storage.path, &root, None).unwrap();
+    cache::create_installation_directory(
+        &storage.path.join(format!("op-{}", uuid::Uuid::new_v4())),
+    )
+    .unwrap();
+    assert_eq!(
+        error_text(retention::prune(&storage.path, &root, None)),
+        "artifact verification rejected: installation evidence exceeds retention bound"
+    );
+}
+
+#[test]
+fn retention_removes_a_completed_update_with_its_retired_files() {
+    let base = base();
+    install(&candidate(base.path(), false));
+    let second = candidate(base.path(), true);
+    let second_operation = PathBuf::from(install(&second)["operation"].as_str().unwrap());
+    assert!(second_operation.join("retired").read_dir().unwrap().count() > 0);
+    install(&candidate(base.path(), false));
+    assert!(second_operation.exists());
+    install(&candidate(base.path(), true));
+    assert!(!second_operation.exists());
+}
