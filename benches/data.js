@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792774208875,
+  "lastUpdate": 1792788858238,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -28545,6 +28545,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2064,
             "range": "± 43",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "173b463d34cde166e1ea191878ccc2ac9db5750e",
+          "message": "Merge pull request #540 from Rullst/ci/v13-kani-lib-targets\n\nci,test: Kani library targets and the fake Qdrant upload (alpha.3 admission fixes)",
+          "timestamp": "2026-10-23T17:49:24-03:00",
+          "tree_id": "c8ded4732fb99d834fa70da82cefeedbf55b3392",
+          "url": "https://github.com/Rullst/Rullst/commit/173b463d34cde166e1ea191878ccc2ac9db5750e"
+        },
+        "date": 1792788854796,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 560,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 783,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 381,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1602,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
