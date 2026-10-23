@@ -3,6 +3,8 @@
 use super::*;
 #[path = "fault_tests.rs"]
 mod fault_tests;
+#[path = "intent_tests.rs"]
+mod intent_tests;
 #[path = "recovery_tests.rs"]
 mod recovery_tests;
 use crate::update::cache;
