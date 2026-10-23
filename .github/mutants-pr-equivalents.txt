@@ -33,3 +33,8 @@ rullst-orm/src/privacy.rs:83:9: replace ComplianceModel::personal_fields -> Vec<
 # The padding check reads a digit's value modulo 16; byte + b'0' and byte - b'0'
 # differ by 96.
 rullst-orm/src/polyglot/recovery/codec.rs:192:34: replace - with + in base64url_value
+
+# No Qdrant request body can reach 4 MiB: a vector holds at most 65,536 values and a
+# payload at most 1 MiB.
+rullst-orm/src/polyglot/qdrant/mod.rs:242:24: replace > with == in LiveQdrant::send_json
+rullst-orm/src/polyglot/qdrant/mod.rs:242:24: replace > with >= in LiveQdrant::send_json
