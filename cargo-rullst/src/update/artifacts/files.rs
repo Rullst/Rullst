@@ -16,18 +16,19 @@ pub(super) fn directory(path: &Path) -> Result<(), ArtifactError> {
     Ok(())
 }
 
+// Windows only; the mutation tests run on Linux.
+#[cfg(windows)]
+#[cfg_attr(mutants, mutants::skip)]
 fn linked(metadata: &Metadata) -> bool {
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::MetadataExt;
-        metadata.file_attributes()
-            & windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_REPARSE_POINT
-            != 0
-    }
-    #[cfg(not(windows))]
-    {
-        metadata.file_type().is_symlink()
-    }
+    use std::os::windows::fs::MetadataExt;
+    metadata.file_attributes()
+        & windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_REPARSE_POINT
+        != 0
+}
+
+#[cfg(not(windows))]
+fn linked(metadata: &Metadata) -> bool {
+    metadata.file_type().is_symlink()
 }
 
 pub(super) fn open(path: &Path, limit: u64) -> Result<File, ArtifactError> {
