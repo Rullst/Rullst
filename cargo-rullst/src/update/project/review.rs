@@ -146,3 +146,7 @@ pub(super) struct Change {
     pub before: snapshot::Record,
     pub after: snapshot::Record,
 }
+
+#[cfg(all(test, unix))]
+#[path = "evidence_tests.rs"]
+mod tests;
