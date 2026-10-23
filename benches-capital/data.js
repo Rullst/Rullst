@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792716844979,
+  "lastUpdate": 1792722401693,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -13252,6 +13252,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2d0a42ebd70e18b8b130aa94af5c92d98a82dfb4",
+          "message": "Merge pull request #536 from Rullst/ci/v13-strict-test-ca\n\nci: give the disposable test CAs the extensions strict TLS verification needs",
+          "timestamp": "2026-10-22T22:54:54-03:00",
+          "tree_id": "fe0dcf5be289e67b8412c114928386663d52b183",
+          "url": "https://github.com/Rullst/Rullst/commit/2d0a42ebd70e18b8b130aa94af5c92d98a82dfb4"
+        },
+        "date": 1792722400766,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
