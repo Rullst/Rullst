@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792708804915,
+  "lastUpdate": 1792716483174,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -17693,6 +17693,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4120,
             "range": "± 24",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "36ed6c7a17735b248fde34033679ba971308abee",
+          "message": "Merge pull request #534 from Rullst/integration/v13-alpha3-batch\n\nchore(v13): integrate the alpha.3 mutation campaign (#532) and OAuth providers (#533)",
+          "timestamp": "2026-10-22T21:29:57-03:00",
+          "tree_id": "6f83b28ed0375b4fb55bf02090700d060158f79f",
+          "url": "https://github.com/Rullst/Rullst/commit/36ed6c7a17735b248fde34033679ba971308abee"
+        },
+        "date": 1792716482154,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 926,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 773,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1710,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4161,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
