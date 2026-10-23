@@ -30,3 +30,6 @@ rullst-orm-macros/src/feature_gates.rs:26:5: replace ai -> TokenStream with Defa
 # personal_fields() already returns an empty vector.
 rullst-orm/src/pool/dsn.rs:177:34: replace | with ^ in percent_decode_utf8
 rullst-orm/src/privacy.rs:83:9: replace ComplianceModel::personal_fields -> Vec<&'static str> with vec![]
+# The padding check reads a digit's value modulo 16; byte + b'0' and byte - b'0'
+# differ by 96.
+rullst-orm/src/polyglot/recovery/codec.rs:192:34: replace - with + in base64url_value
