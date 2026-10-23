@@ -367,4 +367,42 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn verification_may_change_only_the_lockfile() {
+        let project = super::super::tests::prepared_project();
+        let state = State::load(&project.stage).unwrap();
+        let copy = tempfile::tempdir().unwrap();
+        let root = copy.path();
+        let lock = "version = 4\n";
+        let fill = |root: &Path| {
+            for input in &state.candidate_records {
+                if input.path != "Cargo.lock" && input.sha256.is_some() {
+                    let target = root.join(&input.path);
+                    fs::create_dir_all(target.parent().unwrap()).unwrap();
+                    fs::copy(state.candidate.join(&input.path), target).unwrap();
+                }
+            }
+            fs::write(root.join("Cargo.lock"), lock).unwrap();
+        };
+        fill(root);
+        let files = accepted_files(root, &state).unwrap();
+        assert_eq!(files.len(), 3);
+        assert_eq!(
+            files.iter().find(|file| file.path == "Cargo.lock").unwrap(),
+            &snapshot::record("Cargo.lock", Some(lock.as_bytes()))
+        );
+        fs::write(root.join("src/main.rs"), "fn main() { changed() }\n").unwrap();
+        assert_eq!(
+            accepted_files(root, &state).unwrap_err().to_string(),
+            "project preparation rejected: project execution changed a prepared source input"
+        );
+        let copy = tempfile::tempdir().unwrap();
+        fill(copy.path());
+        fs::write(copy.path().join("build.rs"), "").unwrap();
+        assert_eq!(
+            accepted_files(copy.path(), &state).unwrap_err().to_string(),
+            "project preparation rejected: verification generated or removed unexpected source files"
+        );
+    }
 }
