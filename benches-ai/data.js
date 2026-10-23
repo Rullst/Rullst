@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792722298978,
+  "lastUpdate": 1792725725773,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -15389,6 +15389,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 384,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0c93d322cf8584a230ca3139ebddb6546118948f",
+          "message": "Merge pull request #535 from Rullst/test/v13-alpha3-upgrade-rehearsal\n\ntest(cli): rehearse the alpha.2 → alpha.3 upgrade and re-measure tutorial 36",
+          "timestamp": "2026-10-22T23:54:36-03:00",
+          "tree_id": "c2a1186a0e8db7a4c4fddf6716681830f6936bdb",
+          "url": "https://github.com/Rullst/Rullst/commit/0c93d322cf8584a230ca3139ebddb6546118948f"
+        },
+        "date": 1792725725125,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1658,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 375,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 395,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
