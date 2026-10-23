@@ -77,7 +77,8 @@ impl StudioPaths {
     }
 }
 
-#[cfg(all(test, not(windows)))]
+#[cfg(test)]
+#[cfg(not(windows))]
 mod tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
