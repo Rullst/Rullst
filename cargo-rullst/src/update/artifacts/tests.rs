@@ -157,6 +157,40 @@ fn manifest_bound_and_report_authority_are_explicit() {
     }
 }
 
+#[test]
+fn only_bounded_nonempty_regular_files_open() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("artifact");
+    fs::write(&path, [7u8; 16]).unwrap();
+    assert!(files::directory(&path).is_err());
+    files::directory(directory.path()).unwrap();
+    files::open(&path, 16).unwrap();
+    assert_eq!(files::read_bounded(&path, 16).unwrap(), [7u8; 16]);
+    assert!(files::open(&path, 15).is_err());
+    fs::write(&path, []).unwrap();
+    assert!(files::open(&path, 16).is_err());
+    let nested = directory.path().join("nested");
+    fs::create_dir(&nested).unwrap();
+    fs::write(nested.join("entry"), b"x").unwrap();
+    assert!(files::open(&nested, manifest::MAX_BINARY).is_err());
+}
+
+/// sysfs reports a 4096-byte size for every attribute and returns less.
+#[cfg(target_os = "linux")]
+#[test]
+fn a_file_shorter_than_its_reported_size_is_rejected() {
+    let path = std::path::Path::new("/sys/devices/system/cpu/online");
+    if !path.exists() {
+        return;
+    }
+    assert_eq!(
+        files::read_bounded(path, 16 * 1024)
+            .unwrap_err()
+            .to_string(),
+        "artifact verification rejected: artifact changed size while reading"
+    );
+}
+
 #[cfg(unix)]
 #[test]
 fn symlinked_binaries_directories_and_fifos_are_rejected_without_blocking() {
