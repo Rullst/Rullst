@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792763421218,
+  "lastUpdate": 1792772091818,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -17885,6 +17885,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4275,
             "range": "± 33",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3474f2cfbbf39165172c837c57c92f0451ae2f75",
+          "message": "Merge pull request #538 from Rullst/test/v13-alpha3-orm-mutation\n\ntest(orm): re-measure rullst-orm and rullst-orm-macros for alpha.3",
+          "timestamp": "2026-10-23T12:57:17-03:00",
+          "tree_id": "7e221d0012011ea2025758f8852b21fdefcee49a",
+          "url": "https://github.com/Rullst/Rullst/commit/3474f2cfbbf39165172c837c57c92f0451ae2f75"
+        },
+        "date": 1792772090869,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 682,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 552,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1284,
+            "range": "± 59",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3165,
+            "range": "± 21",
             "unit": "ns/iter"
           }
         ]
