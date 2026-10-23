@@ -27,10 +27,13 @@ SPEC.loader.exec_module(ORM_SQLITE)
 TARGETS = ["--test=matrix_postgres", "--test=matrix_mysql", "--test=matrix_mariadb"]
 
 
-def main(argv: list[str] | None = None) -> int:
-    arguments = ORM_SQLITE.parse_arguments(__doc__, argv)
-    mutants = ORM_SQLITE.command(arguments.mutants, arguments.shard, ["drivers-all"],
-                                 TARGETS, ["--test-threads=1"], timeout=900)
+def main(argv: list[str] | None = None, features: list[str] | None = None,
+         targets: list[str] | None = None, description: str | None = None) -> int:
+    """Runs the selected matrices; the strict-pool wrappers pass their own."""
+    arguments = ORM_SQLITE.parse_arguments(description or __doc__, argv)
+    mutants = ORM_SQLITE.command(arguments.mutants, arguments.shard,
+                                 features or ["drivers-all"], targets or TARGETS,
+                                 ["--test-threads=1"], timeout=900)
     return ORM_SQLITE.run(mutants, dict(os.environ), containers=True)
 
 
