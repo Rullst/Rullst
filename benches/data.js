@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792721104902,
+  "lastUpdate": 1792724558758,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -28329,6 +28329,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2012,
             "range": "± 40",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0c93d322cf8584a230ca3139ebddb6546118948f",
+          "message": "Merge pull request #535 from Rullst/test/v13-alpha3-upgrade-rehearsal\n\ntest(cli): rehearse the alpha.2 → alpha.3 upgrade and re-measure tutorial 36",
+          "timestamp": "2026-10-22T23:54:36-03:00",
+          "tree_id": "c2a1186a0e8db7a4c4fddf6716681830f6936bdb",
+          "url": "https://github.com/Rullst/Rullst/commit/0c93d322cf8584a230ca3139ebddb6546118948f"
+        },
+        "date": 1792724555977,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 714,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 943,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 424,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2014,
+            "range": "± 44",
             "unit": "ns/iter"
           }
         ]
