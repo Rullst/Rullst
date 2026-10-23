@@ -268,3 +268,138 @@ fn cache_timestamps_have_at_most_20_digits() {
         Err(CacheError::Invalid("invalid catalog cache timestamp"))
     ));
 }
+
+/// Runs `base_directory` in a child test process with its own environment.
+#[test]
+fn base_directory_child_fixture() {
+    let Some(report) = std::env::var_os("RULLST_CACHE_BASE_REPORT") else {
+        return;
+    };
+    let create = std::env::var_os("RULLST_CACHE_BASE_CREATE").is_some();
+    let text = match base_directory(create) {
+        Ok(path) => format!("ok {}", path.display()),
+        Err(error) => format!("err {error}"),
+    };
+    fs::write(report, text).unwrap();
+}
+
+fn base_directory_in_child(environment: &[(&str, &std::ffi::OsStr)], create: bool) -> String {
+    let temp = fixture();
+    let report = temp.path().join("report");
+    let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+    command
+        .args([
+            "--exact",
+            "update::cache::platform::tests::base_directory_child_fixture",
+            "--nocapture",
+        ])
+        .env("RULLST_CACHE_BASE_REPORT", &report)
+        .env_remove("XDG_CACHE_HOME")
+        .env_remove("RULLST_CACHE_BASE_CREATE")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null());
+    for (name, value) in environment {
+        command.env(name, value);
+    }
+    if create {
+        command.env("RULLST_CACHE_BASE_CREATE", "1");
+    }
+    assert!(command.status().unwrap().success());
+    fs::read_to_string(report).unwrap()
+}
+
+#[test]
+fn the_cache_base_comes_from_xdg_or_home_and_is_created_only_on_request() {
+    let temp = fixture();
+    let base = temp.path().canonicalize().unwrap();
+    let xdg = base.join("xdg");
+    let selected = [("XDG_CACHE_HOME", xdg.as_os_str())];
+    assert!(base_directory_in_child(&selected, false).starts_with("err "));
+    assert!(!xdg.exists());
+    assert_eq!(
+        base_directory_in_child(&selected, true),
+        format!("ok {}", xdg.display())
+    );
+    assert_eq!(
+        fs::metadata(&xdg).unwrap().permissions().mode() & 0o777,
+        0o700
+    );
+    let home = base.join("home");
+    fs::create_dir(&home).unwrap();
+    assert_eq!(
+        base_directory_in_child(
+            &[
+                ("XDG_CACHE_HOME", std::ffi::OsStr::new("")),
+                ("HOME", home.as_os_str()),
+            ],
+            true
+        ),
+        format!("ok {}", home.join(".cache").display())
+    );
+}
+
+#[test]
+fn cache_paths_must_be_absolute_without_traversal() {
+    validate_absolute(Path::new("/var/cache")).unwrap();
+    for path in ["relative/cache", "/var/../cache"] {
+        assert!(validate_absolute(Path::new(path)).is_err(), "{path}");
+    }
+}
+
+#[test]
+fn cache_directories_are_owned_directories() {
+    let temp = fixture();
+    let file = temp.path().join("file");
+    fs::write(&file, b"x").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o600)).unwrap();
+    assert!(validate_directory(&file, false).is_err());
+    validate_directory(temp.path(), true).unwrap();
+}
+
+#[test]
+fn creating_a_private_directory_reports_errors_other_than_existence() {
+    let temp = fixture();
+    let path = temp.path().join("private");
+    create_private_directory(&path).unwrap();
+    create_private_directory(&path).unwrap();
+    assert!(create_private_directory(&temp.path().join("missing").join("child")).is_err());
+}
+
+#[test]
+fn ancestors_must_be_directories_without_other_writers() {
+    let temp = fixture();
+    let base = temp.path().canonicalize().unwrap();
+    validate_ancestors(&base).unwrap();
+    let file = base.join("file");
+    fs::write(&file, b"x").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o600)).unwrap();
+    assert!(validate_ancestors(&file).is_err());
+    // Only root's sticky directories may be group or world writable.
+    let sticky = base.join("sticky");
+    fs::create_dir(&sticky).unwrap();
+    fs::set_permissions(&sticky, fs::Permissions::from_mode(0o1770)).unwrap();
+    assert!(validate_ancestors(&sticky).is_err());
+    let shared = Path::new("/var/mail");
+    if let Ok(metadata) = fs::symlink_metadata(shared)
+        && metadata.is_dir()
+        && metadata.uid() == 0
+        && metadata.mode() & 0o022 != 0
+        && metadata.mode() & 0o1000 == 0
+    {
+        assert!(validate_ancestors(shared).is_err());
+    }
+}
+
+#[test]
+fn installation_roots_report_lookup_errors_other_than_absence() {
+    if rustix::process::geteuid().is_root() {
+        return;
+    }
+    let temp = fixture();
+    let parent = temp.path().canonicalize().unwrap().join("unsearchable");
+    fs::create_dir(&parent).unwrap();
+    fs::set_permissions(&parent, fs::Permissions::from_mode(0o600)).unwrap();
+    let result = installation_root(&parent.join("installed"));
+    fs::set_permissions(&parent, fs::Permissions::from_mode(0o700)).unwrap();
+    assert!(result.is_err());
+}
