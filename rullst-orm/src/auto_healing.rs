@@ -254,5 +254,11 @@ mod tests {
                 .diagnose_sql_error(r#"relation "orders; drop table users" does not exist"#)
                 .is_none()
         );
+        // A valid column on a table whose name is not an identifier.
+        assert!(
+            interceptor
+                .diagnose_sql_error(r#"column "phone" of relation "user list" does not exist"#)
+                .is_none()
+        );
     }
 }

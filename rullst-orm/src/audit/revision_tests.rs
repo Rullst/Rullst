@@ -222,3 +222,98 @@ fn added_and_removed_sensitive_keys_are_withheld_from_the_patch() {
         assert!(apply_reverse_patch(after.clone(), &patch).is_err());
     }
 }
+
+fn nested(depth: usize, leaf: Value) -> Value {
+    (0..depth).fold(leaf, |inner, _| json!({ "n": inner }))
+}
+
+fn invalid_operation(error: crate::Error) -> bool {
+    matches!(error, crate::Error::Validation(message) if message == "audit revision contains a redacted or invalid operation")
+}
+
+#[test]
+fn patches_reach_exactly_their_depth_operation_and_size_bounds() {
+    // A leaf 64 levels down is recorded and applied; one more level is not.
+    let (old, new) = (nested(64, json!(1)), nested(64, json!(2)));
+    let patch = build_reverse_patch(&old.to_string(), &new.to_string())
+        .expect("depth 64")
+        .expect("changed");
+    assert_eq!(apply_reverse_patch(new, &patch).expect("apply"), old);
+    let (old, new) = (nested(65, json!(1)), nested(65, json!(2)));
+    assert!(build_reverse_patch(&old.to_string(), &new.to_string()).is_err());
+
+    // Exactly 4096 operations are kept and applied.
+    let added: Map<String, Value> = (0..MAX_PATCH_OPERATIONS)
+        .map(|index| (format!("k{index}"), json!(index)))
+        .collect();
+    let new = Value::Object(added);
+    let patch = build_reverse_patch("{}", &new.to_string())
+        .expect("4096 operations")
+        .expect("changed");
+    assert_eq!(apply_reverse_patch(new, &patch).expect("apply"), json!({}));
+
+    // A large but bounded value fits; the bound is 5 MiB.
+    let old = json!({ "body": "a".repeat(2 * 1024 * 1024) });
+    let patch = build_reverse_patch(&old.to_string(), r#"{"body":"b"}"#)
+        .expect("a 2 MiB patch is bounded")
+        .expect("changed");
+    let overhead = patch.len() - 2 * 1024 * 1024;
+    let exact = json!({ "body": "a".repeat(MAX_PATCH_BYTES - overhead) });
+    let exact_patch = build_reverse_patch(&exact.to_string(), r#"{"body":"b"}"#)
+        .expect("a patch of exactly the bound")
+        .expect("changed");
+    assert_eq!(exact_patch.len(), MAX_PATCH_BYTES);
+    let over = json!({ "body": "a".repeat(MAX_PATCH_BYTES - overhead + 1) });
+    assert!(build_reverse_patch(&over.to_string(), r#"{"body":"b"}"#).is_err());
+}
+
+#[test]
+fn applied_patches_are_bounded_and_need_a_path() {
+    let empty = apply_reverse_patch(json!({}), "").expect_err("empty patch");
+    assert!(
+        matches!(&empty, crate::Error::Validation(message) if message == "audit restore patch is empty or oversized"),
+        "{empty:?}"
+    );
+    // Whitespace pads a valid patch to exactly the size bound.
+    let patch = encoded_patch(vec![operation(
+        json!(["name"]),
+        state(true, Some(json!("before"))),
+        state(true, Some(json!("after"))),
+        true,
+    )]);
+    let padded = format!("{patch}{}", " ".repeat(MAX_PATCH_BYTES - patch.len()));
+    assert_eq!(
+        apply_reverse_patch(json!({"name": "after"}), &padded).expect("bounded patch"),
+        json!({"name": "before"})
+    );
+    let over = format!("{padded} ");
+    assert!(apply_reverse_patch(json!({"name": "after"}), &over).is_err());
+
+    let rootless = encoded_patch(vec![operation(
+        json!([]),
+        state(true, Some(json!({}))),
+        state(true, Some(json!({}))),
+        true,
+    )]);
+    assert!(invalid_operation(
+        apply_reverse_patch(json!({}), &rootless).expect_err("empty path")
+    ));
+}
+
+#[test]
+fn redacted_values_anywhere_in_a_change_make_it_non_restorable() {
+    for (old, new) in [
+        (json!({"note": "***"}), json!({"note": "plain"})),
+        (json!({"tags": ["***"]}), json!({"tags": []})),
+        (json!({"profile": {"password": "x"}}), json!({"profile": 5})),
+        (json!({"profile": 5}), json!({"profile": {"password": "x"}})),
+    ] {
+        let patch = build_reverse_patch(&old.to_string(), &new.to_string())
+            .expect("patch")
+            .expect("changed");
+        assert!(
+            invalid_operation(apply_reverse_patch(new.clone(), &patch).expect_err("redacted")),
+            "{old} -> {new}"
+        );
+    }
+}
