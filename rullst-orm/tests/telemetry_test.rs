@@ -157,6 +157,13 @@ async fn queries_transactions_and_pool_acquires_emit_redacted_telemetry() {
             .iter()
             .any(|field| field == "orm.outcome=\"committed\"")
     );
+    // Transactions and their begin spans name the driver, never the DSN.
+    assert!(
+        fields
+            .iter()
+            .any(|field| field == "orm.driver=\"sqlite\""),
+        "{fields:?}"
+    );
     assert!(
         fields
             .iter()
