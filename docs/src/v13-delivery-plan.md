@@ -1,5 +1,18 @@
 # v13 delivery plan and evidence
 
+**13.0.0-alpha.3 prepared on October 23, 2026 (not yet published).** The
+release commit sets the twenty packages to `13.0.0-alpha.3`; the coordinator
+records the tag, the exact-SHA admission and the release run here after
+publication. It carries the fixes from the alpha.2 dogfooding reports,
+first-class PWA support and the retirement of Omni, the Studio production
+monitor (endpoint, standalone remote mode, history and alerts), OAuth login
+with `make:oauth` for Google, GitHub, Microsoft and Apple, CLDR plurals and
+formatting, and the breaking changes listed in the changelog. The mutation
+campaign finished `rullst-orm`, `rullst-orm-macros`, `rullst-core` and
+`rullst-nexus`; `cargo-rullst` is not yet mutation-measured and its targeted
+campaign continues after this release. Work planned next is under
+[Planned after 13.0.0-alpha.3](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha3).
+
 **13.0.0-alpha.2 published on October 17, 2026.** Tag `v13.0.0-alpha.2` points
 at `0daf4941`. [Release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)
 followed an exact-SHA admission of all 28 required workflows; the release fuzz
@@ -12,8 +25,8 @@ sanitizer, coverage and Miri failures, an exact-pin packaging check, and the
 `zip` 6 advisories (a governed exception until 2026-10-31). A first tag at
 `669befe6` failed release verification before publishing anything (the CLI
 evidence audit did not receive the exception) and was replaced after the
-maintainer's approval. Work planned next is under
-[Planned for 13.0.0-alpha.3](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-for-1300-alpha3).
+maintainer's approval. The work planned next was delivered in
+[13.0.0-alpha.3](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#delivered-in-1300-alpha3).
 
 **13.0.0-alpha.1 published on October 11, 2026.** Tag `v13.0.0-alpha.1` points
 at `fc44bf76`. [Release run 38151068563](https://github.com/Rullst/Rullst/actions/runs/38151068563)

@@ -13,7 +13,7 @@ It answers a JSON document, versioned as `rullst.monitor.v1`, with request
 rates and latency per route pattern, status classes, queue depth and worker
 activity, possible N+1 queries and the process radar. It never contains
 database rows, request data or configuration. It is phase 1 of the
-[Studio production monitor plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-for-1300-alpha3);
+[Studio production monitor plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#delivered-in-1300-alpha3);
 phase 2 is the [standalone Studio](#watch-your-projects-from-studio) on your
 machine, which reads this endpoint for several projects. Any HTTPS client
 (curl, a script, an uptime tool) can read it too.
