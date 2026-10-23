@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792708718848,
+  "lastUpdate": 1792716396274,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -28342,6 +28342,78 @@ window.BENCHMARK_DATA = {
           {
             "name": "mask_pii/safe_field_no_pii",
             "value": 133,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 114,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "36ed6c7a17735b248fde34033679ba971308abee",
+          "message": "Merge pull request #534 from Rullst/integration/v13-alpha3-batch\n\nchore(v13): integrate the alpha.3 mutation campaign (#532) and OAuth providers (#533)",
+          "timestamp": "2026-10-22T21:29:57-03:00",
+          "tree_id": "6f83b28ed0375b4fb55bf02090700d060158f79f",
+          "url": "https://github.com/Rullst/Rullst/commit/36ed6c7a17735b248fde34033679ba971308abee"
+        },
+        "date": 1792716395191,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 166,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 53,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 149,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 150,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 136,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 128,
             "range": "± 1",
             "unit": "ns/iter"
           },
