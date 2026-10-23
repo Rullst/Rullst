@@ -1,4 +1,4 @@
-use rullst::db::{Orm, FromRow};
+use rullst::db::{FromRow, Orm, RowSnapshot};
 
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "notes")]
@@ -8,4 +8,8 @@ pub struct Note {
     pub user_id: i32,
     pub title: String,
     pub body: String,
+    // Remembers the loaded values, so `save()` writes only the columns this
+    // record changed. Build new records with `snapshot: RowSnapshot::default()`.
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }

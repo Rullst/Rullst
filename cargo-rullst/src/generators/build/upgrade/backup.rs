@@ -194,6 +194,7 @@ mod tests {
             is_package: true,
             matched: 1,
             source_majors: Default::default(),
+            source_versions: Vec::new(),
             changes: Vec::new(),
             warnings: Vec::new(),
         }];
@@ -224,6 +225,7 @@ mod tests {
             is_package: true,
             matched: 1,
             source_majors: std::collections::BTreeSet::new(),
+            source_versions: Vec::new(),
             changes: Vec::new(),
             warnings: Vec::new(),
         }];
@@ -263,6 +265,7 @@ mod tests {
             is_package: true,
             matched: 1,
             source_majors: std::collections::BTreeSet::new(),
+            source_versions: Vec::new(),
             changes: Vec::new(),
             warnings: Vec::new(),
         }];

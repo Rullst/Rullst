@@ -19,6 +19,9 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Dependency security
 
+- `ctutils` 0.4.5 (RUSTSEC-2026-0385: non-constant-time mask generation and
+  `u128` comparisons in 0.4.2), pulled in through `digest`. Applications
+  should run `cargo update -p ctutils`.
 - `ammonia` is required at 4.2.4 or later (RUSTSEC-2026-0373: the CSS `url()`
   function was matched case-sensitively in sanitized HTML). 13.0.0-alpha.2
   applications already accept 4.2.4 and should run `cargo update -p ammonia`.
@@ -415,6 +418,46 @@ A prepared version section does not establish that its tag or crates exist.
   the v13 migration guide (33 rows were missing, all without application
   impact a rule could locate), and a `cargo-rullst` test keeps the table, its
   row counts and the rule catalog in step with the guide.
+- **Behaviour change:** `cargo rullst upgrade` skips the rules an application
+  already on a 13.0 prerelease runs with. Each upgrade rule records the release
+  that introduced its change (13.0.0-alpha.1 for the 12.x to 13 changes, then
+  alpha.2 or alpha.3), and the plan reads the application's Rullst version
+  (the oldest version a Rullst requirement admits or `Cargo.lock` holds): an
+  alpha.2 application now gets only the alpha.3 rules, an alpha.1 application
+  the alpha.2 and alpha.3 rules, instead of every v12 → v13 finding again. The
+  plan prints how many earlier rules it skipped and how many findings they
+  would have added; the new `--all-rules` flag (also on
+  `cargo rullst ai upgrade`) applies every rule. A v12 application still gets
+  every rule, and `cargo rullst update` project preparations always apply every
+  rule. The `rullst.upgrade-plan.v1` JSON gains `introduced_in` on each finding
+  and a root `rule_selection` object (`current_version`, `all_rules`,
+  `skipped_rules`, `hidden_findings`); existing keys are unchanged. The
+  `cargo-rullst` library's `Commands::Upgrade` variant and `UpgradeOptions`
+  gain an `all_rules` field.
+- New projects use ORM dirty tracking: every SQLx model that the CLI writes
+  declares `#[sqlx(skip)] pub snapshot: RowSnapshot`, so `save()` of a loaded
+  record writes only the columns that changed and two requests that edit
+  different fields of one row both persist. This covers the models of the
+  Blank, Blog, ERP, Portfolio, SaaS and LMS starters, `make:auth`,
+  `make:billing`, `make:chat-session` and `generate:models` (which also adds
+  `#[serde(skip)]`, and leaves a table with its own `snapshot` column on
+  full-row saves), as `make:model` already did; their struct literals set
+  `snapshot: RowSnapshot::default()`. Turso models are unchanged. Existing
+  projects keep their models; add the field to opt in (see the ORM dirty
+  tracking row of the migration guide).
+- The Blank (web and JSON API), SaaS and LMS starters now carry the production
+  monitor wiring commented out: `src/main.rs` has the
+  `.with_monitor(Monitor::new().with_application(...))` call in the server
+  chain with a pointer to the production monitoring guide, and `.env` and
+  `.env.example` list `# RULLST_MONITOR_TOKENS=` with how to generate a token.
+  Nothing is enabled: uncomment the call and set a token to serve
+  `/_rullst/monitor/v1`.
+- CLI progress in CI logs and pipes: the spinner of long steps (the first
+  build of `cargo rullst new`, the `cargo fix` and `cargo check` gates of
+  `cargo rullst upgrade`) now animates only when standard output is a
+  terminal without `NO_COLOR`, `CI`, `TERM=dumb` or `RULLST_REDUCED_MOTION`.
+  Otherwise it prints the step as one plain line; before, logs filled with
+  carriage returns and ANSI escape sequences.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

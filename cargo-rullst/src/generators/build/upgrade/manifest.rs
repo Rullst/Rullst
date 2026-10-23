@@ -1,4 +1,4 @@
-use semver::VersionReq;
+use semver::{Comparator, Op, Version, VersionReq};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -43,6 +43,8 @@ pub(super) struct ManifestUpgradePlan {
     pub is_package: bool,
     pub matched: usize,
     pub source_majors: BTreeSet<u64>,
+    /// The lowest version each versioned Rullst requirement admits.
+    pub source_versions: Vec<Version>,
     pub changes: Vec<DependencyChange>,
     pub warnings: Vec<String>,
 }
@@ -134,6 +136,7 @@ pub(super) fn plan_manifest(
         is_package,
         matched: state.matched,
         source_majors: state.source_majors,
+        source_versions: state.source_versions,
         changes: state.changes,
         warnings: state.warnings,
     })
@@ -152,6 +155,7 @@ struct PlanState<'a> {
     target: &'a str,
     matched: usize,
     source_majors: BTreeSet<u64>,
+    source_versions: Vec<Version>,
     changes: Vec<DependencyChange>,
     warnings: Vec<String>,
 }
@@ -162,6 +166,7 @@ impl<'a> PlanState<'a> {
             target,
             matched: 0,
             source_majors: BTreeSet::new(),
+            source_versions: Vec::new(),
             changes: Vec::new(),
             warnings: Vec::new(),
         }
@@ -289,6 +294,7 @@ fn replace_version(
         && let Some(comparator) = requirement.comparators.first()
     {
         state.source_majors.insert(comparator.major);
+        state.source_versions.extend(requirement_floor(comparator));
     }
     let exact_requirement = format!("={}", state.target);
     if current.value() == &exact_requirement {
@@ -305,6 +311,20 @@ fn replace_version(
         from: previous,
         to: exact_requirement,
     });
+}
+
+/// The lowest version a comparator admits; `<` and `<=` have no lower bound.
+fn requirement_floor(comparator: &Comparator) -> Option<Version> {
+    if matches!(comparator.op, Op::Less | Op::LessEq) {
+        return None;
+    }
+    let mut floor = Version::new(
+        comparator.major,
+        comparator.minor.unwrap_or(0),
+        comparator.patch.unwrap_or(0),
+    );
+    floor.pre = comparator.pre.clone();
+    Some(floor)
 }
 
 #[cfg(test)]
@@ -359,6 +379,31 @@ rullst-security = "5.0.0"
         );
         assert_eq!(result.warnings.len(), 1);
         assert!(result.warnings[0].contains("local_ai"));
+    }
+
+    #[test]
+    fn records_the_lowest_version_each_requirement_admits() {
+        let result = plan(
+            r#"[dependencies]
+rullst = "=13.0.0-alpha.2"
+rullst-orm = { version = "13.0.0-alpha.1" }
+rullst-auth = "~12.3"
+rullst-ai = ">=12, <14"
+rullst-mail = "<14"
+rullst-iot = "<=13.0.0"
+rullst-core = "*"
+axum = "0.8"
+"#,
+        );
+        let versions = result
+            .source_versions
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            versions,
+            ["13.0.0-alpha.2", "13.0.0-alpha.1", "12.3.0", "12.0.0"]
+        );
     }
 
     #[test]

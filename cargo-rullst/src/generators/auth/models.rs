@@ -8,7 +8,7 @@ use std::fs;
 use std::path::Path;
 
 /// The `User` model written by `cargo rullst auth`.
-const USER_MODEL_SOURCE: &str = r##"use rullst::db::{Orm, FromRow};
+const USER_MODEL_SOURCE: &str = r##"use rullst::db::{Orm, FromRow, RowSnapshot};
 use rullst::orm::chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Default, FromRow, Orm)]
@@ -37,6 +37,10 @@ pub struct User {
     // `revoke_sessions`.
     #[orm(db_default)]
     pub session_epoch: i64,
+    // Remembers the loaded values, so `save()` writes only the columns this
+    // record changed. Build new records with `snapshot: RowSnapshot::default()`.
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 impl User {
@@ -226,7 +230,10 @@ mod tests {
         let model = with_session_epoch_methods(USER_MODEL_SOURCE);
         assert!(!model.contains(SESSION_EPOCH_MARKER));
         // A database-managed column: read and filterable, never written.
-        assert!(model.contains("    #[orm(db_default)]\n    pub session_epoch: i64,\n}"));
+        assert!(model.contains("    #[orm(db_default)]\n    pub session_epoch: i64,\n"));
+        // Dirty tracking: `save()` writes only the columns a request changed.
+        assert!(model.starts_with("use rullst::db::{Orm, FromRow, RowSnapshot};\n"));
+        assert!(model.contains("    #[sqlx(skip)]\n    pub snapshot: RowSnapshot,\n}"));
         assert!(model.contains("    #[orm(db_default)]\n    pub is_admin: bool,\n"));
         assert!(!model.contains("#[orm(skip)]"));
         assert!(model.contains("#[derive(Debug, Clone, Default, FromRow, Orm)]"));

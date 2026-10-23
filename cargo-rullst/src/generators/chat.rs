@@ -186,7 +186,7 @@ pub(crate) fn render_chat_migration(stem: &str, backend: ProjectOrmBackend) -> S
     }
 }
 
-const SQLX_MODELS: &str = r#"use rullst::db::{FromRow, Orm};
+const SQLX_MODELS: &str = r#"use rullst::db::{FromRow, Orm, RowSnapshot};
 
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "chat_sessions")]
@@ -194,6 +194,8 @@ pub struct ChatSession {
     pub id: i32,
     pub title: String,
     pub created_at: i64,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[derive(Debug, Clone, FromRow, Orm)]
@@ -204,11 +206,13 @@ pub struct ChatMessage {
     pub role: String,
     pub content: String,
     pub created_at: i64,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 impl ChatSession {
     pub fn new(title: impl Into<String>) -> Self {
-        Self { id: 0, title: title.into(), created_at: unix_timestamp() }
+        Self { id: 0, title: title.into(), created_at: unix_timestamp(), snapshot: RowSnapshot::default() }
     }
 
     /// Returns at most the newest 100 messages in chronological order.
@@ -339,6 +343,7 @@ impl StatefulChat {
             role: "user".to_string(),
             content: text.to_string(),
             created_at: unix_timestamp(),
+            snapshot: rullst::db::RowSnapshot::default(),
         };
         user_message.save().await?;
         let response = builder.send().await?;
@@ -348,6 +353,7 @@ impl StatefulChat {
             role: "assistant".to_string(),
             content: response.clone(),
             created_at: unix_timestamp(),
+            snapshot: rullst::db::RowSnapshot::default(),
         };
         assistant_message.save().await?;
         Ok(response)

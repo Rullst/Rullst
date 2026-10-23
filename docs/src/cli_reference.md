@@ -119,7 +119,11 @@ transpositions, an exact `group:name` segment (`migrate`) and prefixes.
 
 Colour follows the home screen rules on each stream: none for `NO_COLOR`, `CI`,
 `TERM=dumb` or a stream that is not a terminal. When standard output is not
-coloured, generator output is plain as well.
+coloured, generator output is plain as well. Long steps (the first build of
+`new`, the Cargo gates of `upgrade`) animate a spinner only when standard
+output is a terminal without `NO_COLOR`, `CI`, `TERM=dumb` or
+`RULLST_REDUCED_MOTION`; otherwise, as in CI logs and pipes, they print one
+plain line without escape sequences or carriage returns.
 
 After a generator succeeds, the CLI prints up to three concrete **Next steps**
 (for example `cargo rullst db:migrate` after `make:model -m`). Generators that
@@ -410,6 +414,9 @@ cargo rullst upgrade --dry-run
 # Versioned machine-readable plan
 cargo rullst upgrade --dry-run --json
 
+# Apply every source rule, not only those introduced after the project's version
+cargo rullst upgrade --dry-run --all-rules
+
 # Backed-up apply + cargo fix + cargo check
 cargo rullst upgrade
 
@@ -428,7 +435,7 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
-The v13 CLI's `rullst-upgrade-rules-v4` catalog (104 rules) parses Rust sources
+The v13 CLI's `rullst-upgrade-rules-v4` catalog (107 rules) parses Rust sources
 (with `syn`; comments, doc comments and strings never match an API rule), Cargo
 manifests and generated project files, and reports each finding as
 `MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed
@@ -438,12 +445,20 @@ code, `file:line`, a one-line message and the title of its row in the
 Findings do not stop the transaction; a failed Cargo gate names the
 must-change findings and repeats the guidance of `V13-CAPITAL-REMOVED` and
 `V13-MAIL-REMOVED` (removed APIs reported for review).
+Each rule records the release that introduced its change. The plan reads the
+project's Rullst version (the oldest version a Rullst requirement admits or
+`Cargo.lock` holds); for a project already on a 13.0 prerelease it applies only
+the rules introduced after that version and prints how many earlier rules it
+skipped and how many findings they would have added. `--all-rules` applies
+every rule; a v12 project, or one whose version cannot be read, gets every
+rule anyway.
 `update project verify`/`review`/`apply` refuse a preparation with must-change
-findings. In JSON, each
+findings; preparations apply every rule. In JSON, each
 `source_findings` element keeps `path`, `line`, `code`, `severity` (`BLOCKER`
-or `REVIEW`) and `message` and adds `kind`, `migration_row` and
-`migration_url`; the root adds `finding_counts`, `unscanned_sources` and
-`migration_guide`. `cargo rullst ai upgrade` proposes reviewed fixes for the
+or `REVIEW`) and `message` and adds `kind`, `introduced_in`, `migration_row`
+and `migration_url`; the root adds `finding_counts`, `unscanned_sources`,
+`migration_guide` and `rule_selection` (`current_version`, `all_rules`,
+`skipped_rules`, `hidden_findings`). `cargo rullst ai upgrade` proposes reviewed fixes for the
 findings. See the [tutorial](tutorials/36-assisted-framework-upgrades.md#v12-to-v13-source-findings)
 and its [rule classification](tutorials/36-assisted-framework-upgrades.md#v12--v13-rule-classification).
 
@@ -1570,7 +1585,7 @@ cargo rullst ai                        # streaming chat in the current project
 cargo rullst ai "add a posts page"     # one goal, then exit
 cargo rullst ai status [--json]        # provider, model and key source (never the key)
 cargo rullst ai disconnect             # delete the saved credentials file
-cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgrade findings
+cargo rullst ai upgrade [--to <VERSION>] [--all-rules] [--dry-run]  # reviewed fixes for upgrade findings
 cargo rullst ai fix <ERROR_ID> [--url <URL>] [--dry-run]  # reviewed fix for a panic on the error page
 cargo rullst ai review [--staged | --base <REF> | --include-untracked] [--json]  # read-only diff review
 ```
@@ -1653,8 +1668,8 @@ cargo rullst ai review [--staged | --base <REF> | --include-untracked] [--json] 
 * **Non-interactive use:** when standard input, output or error is not a
   terminal, or `CI`/`TERM=dumb` is set, actions are printed as a plan and never
   executed. `NO_COLOR` disables colour.
-* **Upgrade sessions:** `cargo rullst ai upgrade` (flags `--to`, `--provider`,
-  `--model`, `--dry-run`) prints the `cargo rullst upgrade --dry-run` plan and,
+* **Upgrade sessions:** `cargo rullst ai upgrade` (flags `--to`, `--all-rules`,
+  `--provider`, `--model`, `--dry-run`) prints the `cargo rullst upgrade --dry-run` plan and,
   when it has source findings, starts one goal grounded in them: the trusted
   instructions carry only the migration rows those findings reference; the
   findings, each flagged line and the affected files (within the path policy)

@@ -250,6 +250,7 @@ mod tests {
             url: " JavaScript:alert(3)".to_string(),
             tags: "Rust".to_string(),
             is_featured: 1,
+            snapshot: rullst::db::RowSnapshot::default(),
         };
         let page = render_content(&[project], &[]);
         assert!(page.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));

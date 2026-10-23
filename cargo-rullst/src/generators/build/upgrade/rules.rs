@@ -17,13 +17,12 @@ mod rust;
 mod tokens;
 
 use super::manifest::ManifestUpgradePlan;
+use semver::Version;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-#[cfg(test)]
-pub(crate) use catalog::CATALOG;
-pub(crate) use catalog::REMOVED_API_RULES;
+pub(crate) use catalog::{CATALOG, REMOVED_API_RULES};
 
 /// Catalog identifier recorded in plans and preparations.
 pub(crate) const RULE_CATALOG_VERSION: &str = "rullst-upgrade-rules-v4";
@@ -76,12 +75,24 @@ pub(crate) struct Rule {
     /// Stable identifier, also the `code` of a finding.
     pub code: &'static str,
     pub kind: FindingKind,
+    /// The release that introduced the change, an exact SemVer version.
+    pub introduced: &'static str,
     /// First-column title of the row in `docs/src/migration-v13.md`.
     pub row: &'static str,
     /// One line shown in the plan.
     pub message: &'static str,
     /// How to fix it; given to `cargo rullst ai upgrade`.
     pub guidance: &'static str,
+}
+
+impl Rule {
+    /// Whether the rule's change is newer than `version`. A release that does
+    /// not parse counts as newer, so the rule is never skipped by mistake.
+    pub(crate) fn introduced_after(&self, version: &Version) -> bool {
+        Version::parse(self.introduced).map_or(true, |introduced| {
+            introduced.cmp_precedence(version).is_gt()
+        })
+    }
 }
 
 /// A rule matched at a location.
@@ -97,6 +108,22 @@ pub(crate) struct SourceFinding {
 pub(crate) struct SourceScan {
     pub findings: Vec<SourceFinding>,
     pub unscanned: Vec<PathBuf>,
+    /// Which rules the findings come from.
+    pub selection: RuleSelection,
+}
+
+/// The rules a plan applies: by default only those introduced after the
+/// Rullst version the application already uses.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct RuleSelection {
+    /// The oldest Rullst version the manifests require or `Cargo.lock` holds.
+    pub current: Option<Version>,
+    /// Every rule applies, whatever `current` is (`--all-rules`).
+    pub all_rules: bool,
+    /// Catalog rules introduced in or before `current`, not applied.
+    pub skipped_rules: usize,
+    /// Findings of the skipped rules, left out of the plan.
+    pub hidden_findings: usize,
 }
 
 impl SourceScan {
@@ -105,6 +132,25 @@ impl SourceScan {
             .iter()
             .filter(|finding| finding.rule.kind == kind)
             .count()
+    }
+
+    /// Keeps the findings of rules introduced after `current` (all of them
+    /// with `all_rules` or an unknown version) and records what was skipped.
+    pub(crate) fn select(&mut self, current: Option<Version>, all_rules: bool) {
+        let applies = |rule: &Rule| {
+            all_rules
+                || current
+                    .as_ref()
+                    .is_none_or(|current| rule.introduced_after(current))
+        };
+        let found = self.findings.len();
+        self.findings.retain(|finding| applies(finding.rule));
+        self.selection = RuleSelection {
+            skipped_rules: CATALOG.iter().filter(|rule| !applies(rule)).count(),
+            hidden_findings: found - self.findings.len(),
+            current,
+            all_rules,
+        };
     }
 }
 
