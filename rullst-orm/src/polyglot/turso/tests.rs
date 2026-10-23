@@ -51,6 +51,14 @@ async fn offline_fallback_executes_real_parameterized_sql() {
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].get("sequence"), Some(&TursoValue::Integer(1)));
     assert_eq!(rows[0].get("label"), Some(&TursoValue::Text("one".into())));
+    let columns = rows[0].clone().into_columns();
+    assert_eq!(
+        columns.into_iter().collect::<Vec<_>>(),
+        [
+            ("label".to_owned(), TursoValue::Text("one".into())),
+            ("sequence".to_owned(), TursoValue::Integer(1)),
+        ]
+    );
 }
 
 #[test]
