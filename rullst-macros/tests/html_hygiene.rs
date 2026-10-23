@@ -246,3 +246,22 @@ fn control_blocks_resolve_caller_bindings_named_like_the_buffer() {
     );
     assert_eq!(s.map(|label| label.text), Some("caller"));
 }
+
+#[test]
+fn match_blocks_resolve_caller_bindings_named_like_the_buffer() {
+    let s = Some(Label { text: "a" });
+    assert_eq!(
+        html! { <p>@match &s { Some(s) if s.text.is_empty() => { "empty" } Some(s) => { {s.text} } None => { "none" } }</p> },
+        "<p>text:a</p>"
+    );
+    let s: Option<Label> = None;
+    assert_eq!(
+        html! { @match s { Some(s) => { {s.text} } None => { "none" } } },
+        "none"
+    );
+    let s = 3;
+    assert_eq!(
+        html! { @match s { 0 => { "zero" }, n @ 1..=2 => { {n} }, n if n > 2 => { "many:" {n} } _ => {} } },
+        "many:text:3"
+    );
+}

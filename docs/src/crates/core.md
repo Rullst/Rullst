@@ -381,8 +381,9 @@ network can choose the client address, so never list client-reachable ranges.
 Opt-in v13 prerelease API. Work that need not run immediately (reports,
 exports, re-indexing) can be dispatched with a `Deferral`: a deadline
 (`run_by`) and up to 24 daily `TimeWindow`s, each with an optional fixed UTC
-offset (daylight-saving changes are not applied; an end earlier than the start
-wraps midnight). `Queue::dispatch_deferred` makes the job claimable at the
+offset (daylight-saving changes are not applied, except for the windows of
+`Scheduler::deferrable_task_in_tz`; an end earlier than the start wraps
+midnight). `Queue::dispatch_deferred` makes the job claimable at the
 start of the next allowed window (immediately inside an open window), never
 after the deadline; when no window opens before the deadline, it becomes
 claimable at the deadline. Without windows, any time before the deadline is
@@ -488,8 +489,34 @@ has the zone, so operating-system updates refresh them; otherwise the copy
 bundled with the `jiff` dependency is used, which keeps minimal container
 images without `tzdata` working. A task's label in scheduler errors is the
 expression followed by the zone, such as `0 7 * * * [America/Sao_Paulo]`.
-There is no time-zone form of `deferrable_task`: its ticks stay in UTC and
-its `TimeWindow`s use a fixed UTC offset.
+
+`Scheduler::deferrable_task_in_tz(expression, zone, deferral, handler)`
+(13.0.0-alpha.3) is the zoned form of `deferrable_task`: its ticks follow
+`task_in_tz`, and its `TimeWindow`s are wall times of the same zone, so
+`TimeWindow::daily(22, 0, 6, 0)` stays 22:00–06:00 local time across a
+daylight-saving change. Window boundaries follow the same rule as ticks: one
+that a gap skips moves to the first instant after the gap, and one that a fold
+repeats is its first occurrence; a window that a gap skips entirely does not
+open that day. `max_delay` is elapsed time after the tick. A window of such a
+task must not set `with_utc_offset_minutes`, which registration rejects with
+`SchedulerError::InvalidConfiguration`. `deferrable_task` keeps UTC ticks
+and fixed-offset windows.
+
+```rust,ignore
+use rullst::Scheduler;
+use rullst::queue::{ScheduleDeferral, TimeWindow};
+use std::time::Duration;
+
+// The 18:00 report may wait up to 12 hours for 22:00–06:00 in São Paulo.
+let night = ScheduleDeferral::within(Duration::from_secs(12 * 3_600))?
+    .window(TimeWindow::daily(22, 0, 6, 0)?)?;
+let scheduler = Scheduler::new().deferrable_task_in_tz(
+    "0 18 * * *",
+    "America/Sao_Paulo",
+    night,
+    || async { /* build the report */ },
+)?;
+```
 
 ### Axum First-Class Escape Hatches & Tower Interoperability
 

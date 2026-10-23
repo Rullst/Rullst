@@ -88,6 +88,18 @@ defaults to `std::env::temp_dir()` (`TMPDIR` on Unix). The file is created with
 `create_new` and, on Unix, mode `0600`, and it is removed when its
 `UploadedFile` is dropped, including when reading fails.
 
+A process that crashes, or is killed, while it holds such a file cannot remove
+it. Since 13.0.0-alpha.3 the first upload that a process writes to a
+`temp_dir`, and the first one after each further 24 hours, first sweeps that
+directory: it removes the regular files named exactly
+`.rullst-upload-<32 lowercase hex digits>.part` (the names Rullst creates)
+that were last modified 24 hours ago or earlier. It never follows or removes a
+symbolic link or a directory, never touches other names, and examines at most
+10,000 entries and removes at most 1,000 files per sweep. The sweep runs on the
+blocking thread pool before that upload's file is created; if the directory
+cannot be read or a file cannot be removed, it logs a `rullst::uploads`
+warning and the upload continues.
+
 `UploadedFile::persist_to(target)` keeps the content at `target`:
 
 - it never overwrites: an existing `target`, a symbolic link included, is
@@ -153,7 +165,6 @@ File contents and file names are not inspected.
 ## What it does not do
 
 It does not parse documents, strip metadata, transcode media or scan for
-malware, and it does not resume interrupted uploads. Temporary files left by a
-crashed process (named `.rullst-upload-*.part`) are not swept automatically;
-clean `temp_dir` at startup or with the operating system's temporary-file
-policy.
+malware, and it does not resume interrupted uploads. Leftover temporary files
+are swept only from a directory this process writes uploads to, and only once
+they are 24 hours old (see [Temporary files](#temporary-files)).

@@ -156,9 +156,9 @@ and error console ↔ source filesystem.
 Added for 13.0.0-alpha.3, before the endpoint shipped. Phase 1 of the
 [Studio production monitor plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-for-1300-alpha3)
 is a read-only JSON endpoint, `GET /_rullst/monitor/v1`, that an application
-mounts with `Server::with_monitor`. Phase 2 (a standalone Studio on the
-developer's machine that reads it for several projects) will extend this model
-for local credential storage.
+mounts with `Server::with_monitor`. The standalone Studio that reads it for
+several projects from the developer's machine (phases 2 and 3) is modelled in
+`TM-STUDIO-3`.
 
 **Assets:** operational metrics of a production process (request counts, rates
 and latency per route pattern, status classes, queue depth and worker
@@ -187,12 +187,54 @@ Test files named below are under `rullst-core/src/`.
 | `MONITOR-06` cache or proxy keeps a response | Every monitor response, including refusals, carries `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`; staging and production also receive the security-header baseline. | `monitor/endpoint_tests.rs` checks the headers on `200`, `401`, `403`, `405`, `426` and `429`; `server/monitor_stack_tests.rs` checks the production security headers. |
 | `MONITOR-07` cross-origin read with an administrator's ambient cookies | The endpoint is a machine contract: a request carrying an `Origin` header, or a `Sec-Fetch-Site` of `cross-site` or `same-site`, is refused with `403` before credentials are evaluated, so even an application CORS policy that allows the origin never releases monitoring data to a page. The endpoint itself adds no CORS headers and serves `application/json` with `nosniff`. | `monitor/endpoint_tests.rs`: `Origin` (including `null`) and cross-site or same-site `Sec-Fetch-Site` refused with an empty body and no `Access-Control-Allow-Origin` from the endpoint; `server/monitor_stack_tests.rs`: refused under an application CORS allowlist that includes the origin. |
 | `MONITOR-08` downgrade to plain HTTP | In staging and production, refuse (`426 Upgrade Required`, before credentials are evaluated) a request without TLS evidence: an `https` scheme reported by a trusted proxy with `trust_forwarded_proto` (`CORE-03`), or a `MonitorVerifiedTls` marker inserted by an application that terminates TLS itself. A forwarded header from an untrusted peer and an absolute-form `https://` request target are not evidence. An explicit opt-in admits plain HTTP from a direct loopback peer without forwarding headers (an SSH tunnel or a sidecar on the same host). A token already sent in cleartext must be rotated. | `monitor/endpoint_tests.rs`: staging and production plain HTTP and an absolute `https://` target refused; forged `X-Forwarded-Proto` from an untrusted peer refused; trusted proxy `https` admitted and `http` refused; marker admitted; the loopback opt-in admits direct loopback peers and refuses forwarding headers, a public `Host` and other peers; development and test admit plain HTTP. |
-| `MONITOR-09` compromised developer machine or monitoring client | A token grants read-only access to one application's aggregates and nothing else: no rows, no secrets, no mutation, no Studio development pages. Use one token per project and client, so revoking one machine is removing its token. | The read-only scope follows from `MONITOR-04`; `monitor/endpoint_tests.rs` proves other methods answer `405`. Local encryption of stored tokens is phase 2 work and is not covered here. |
+| `MONITOR-09` compromised developer machine or monitoring client | A token grants read-only access to one application's aggregates and nothing else: no rows, no secrets, no mutation, no Studio development pages. Use one token per project and client, so revoking one machine is removing its token. | The read-only scope follows from `MONITOR-04`; `monitor/endpoint_tests.rs` proves other methods answer `405`. Tokens stored on a developer machine are covered by `REMOTE-03` (`TM-STUDIO-3`). |
 | `MONITOR-10` monitoring changes or breaks request handling | The recording layer never alters a response; it observes method, matched route, status and duration, tolerates poisoned locks and adds no work when the monitor is disabled. ORM attribution uses the passive query layer the telemetry subscriber installs; with a `RUST_LOG` that filters `rullst_orm` spans or an application-owned subscriber, the payload says so instead of reporting zero queries. | `monitor/record_tests.rs` compares responses with and without the layer and counts ORM operations only inside a recorded request; `monitor/payload_tests.rs` covers the unavailable reasons; the full Core suite passes with the passive layer. |
 
 **Release-negative minimum:** disabled → `404`; missing and invalid tokens →
 the same `401`; production plain HTTP → `426`; a raw path with an id and a
 query string never appears in the payload.
+
+## TM-STUDIO-3 — Studio remote projects on the developer's machine
+
+Phase 2 of the
+[Studio production monitor plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-for-1300-alpha3):
+the standalone `rullst-studio` binary runs on a developer's machine without an
+application process, keeps a list of projects (name, base URL, monitor token)
+and renders each project's `rullst.monitor.v1` document (`TM-STUDIO-2`). It
+connects outwards only; the server collects nothing new. Studio's local pages
+(data browser, `.env` viewer, AI and API playgrounds, migrations) are not part
+of this mode.
+
+**Assets:** the monitor tokens of every configured project; the developer's
+local network position; the integrity of what Studio displays; the
+availability of the developer's Studio process.
+
+**Actors:** a malicious or compromised monitored application (or anyone able
+to answer for its origin); a web page open in the developer's browser; another
+local user on the same machine; malware running as the developer; a network
+attacker between Studio and the monitored application; someone who obtains a
+copy of the configuration file (backup, dotfile sync, screen share).
+
+**Trust boundaries:** browser ↔ Studio's loopback listener; Studio ↔ the
+configuration file and its separate key file; Studio ↔ each monitored origin
+over the network; Studio ↔ its local history database (phase 3); Studio ↔ the
+developer's webhook receiver (phase 3).
+
+Test files named below are under `rullst-studio/src/`.
+
+| Abuse case | Required disposition | Repository evidence or remaining work |
+| --- | --- | --- |
+| `REMOTE-01` Studio reachable from other machines or pages | Bind `127.0.0.1` only; every route keeps Studio's loopback boundary (loopback peer, loopback `Host`, same-origin `Origin` on unsafe methods, the crate-private marker), which remote mode applies in release builds too because it serves no local data. | `remote/router_tests.rs`: a non-loopback peer, a public `Host` and cross-origin or `Origin`-less form posts are refused; `bin/rullst-studio.rs`: the only option is `--port` (a `--host` argument is rejected). |
+| `REMOTE-02` local CSRF against add/remove-project forms | Unsafe methods require a same-origin `Origin` (as for every Studio form) and a per-process random form token compared in constant time; `GET` pages change nothing. | `remote/router_tests.rs`: a post without `Origin`, with another origin, or with a missing or wrong form token answers `403` and leaves the project list unchanged; form tokens are compared whole. |
+| `REMOTE-03` token disclosure at rest | Store the project list in the user's configuration directory (`0600` file in a `0700` directory on Unix, never through a symlink, written atomically, bounded size). Encrypt each token with AES-256-GCM under a 256-bit key kept in a separate file in the user's data directory (`0600`), with the project name and base URL as associated data, so a token copied to another project or a URL edited in the file no longer decrypts and is never sent. Tokens never appear in pages, logs, errors or `Debug`. This protects a copied configuration file, not a compromised account: malware running as the developer can read both files. | `remote/store_tests.rs`: encryption round trip, the file never contains the token, swapped names and an edited URL fail to decrypt, a missing key makes tokens unreadable, `0600`/`0700` permissions and the readable-by-others warning on Unix, symlinked files refused, malformed and oversized files reported without contents. OS keychain integration is not provided. |
+| `REMOTE-04` token sent to the wrong party | Accept only `https` base URLs, or `http` to a loopback host (SSH tunnels). Reject user information, query and fragment. Send the token only in `Authorization: Bearer` to the configured origin's fixed monitor path; follow no redirects; validate certificates (no option to disable it); ignore proxy environment variables. | `remote/store_tests.rs`: `http` to a non-loopback host, user information, query strings, fragments and non-HTTP schemes are refused; `remote/client_tests.rs`: a redirect to another origin is reported and the second origin never receives the token, and the token goes as `Bearer` to the configured origin only. |
+| `REMOTE-05` hostile or compromised monitored endpoint | Treat the document as untrusted: bound the response (1 MiB, 5 s total, 3 s to connect), require `200`, JSON and `schema: "rullst.monitor.v1"`, bound every list and string, and HTML-escape every remote value; an error shows a fixed status, never the remote body. | `remote/client_tests.rs` against a local test server (`remote/server_test.rs`): oversized (declared and streamed), malformed, wrong-schema, non-JSON and slow responses become fixed statuses within the limits; `remote/router_tests.rs`: script and markup in labels are escaped on every page and unreachable projects show a status. |
+| `REMOTE-06` SSRF-like use of the project list | Projects are added only through the protected form; Studio requests only `GET <base>/_rullst/monitor/v1` and renders only the validated schema, so a project pointing at an internal service yields at most a refusal status. At most 32 projects. | Covered by `REMOTE-02`, `REMOTE-04` and `REMOTE-05` tests. Network policy on the developer's machine stays with the developer. |
+| `REMOTE-07` local surfaces leaking into remote mode | The remote router mounts only the remote pages; the data browser, `.env` viewer, AI and API playgrounds and migration pages are absent. | `remote/router_tests.rs`: those paths answer `404` in remote mode while the remote pages and assets answer. |
+| `REMOTE-08` history store disclosure or growth (phase 3) | Store only aggregates the document already exposes (reachability, request rate, 5xx rate, p95, queue pending and failed totals) per project and time, never tokens, routes or other labels, in an owner-only SQLite file in the user's data directory. Delete samples older than the retention age and beyond a per-project row limit on every write; keep a bounded number of alerts. | `remote/history_tests.rs`: retention by age and by row count, alerts bounded, file permissions on Unix, only numeric columns stored. |
+| `REMOTE-09` polling turned into load or a network scanner (phase 3) | Poll only projects the developer marked as watched, at an interval bounded to 15 s–1 h (default 60 s), one read per project per interval with the `REMOTE-04`/`REMOTE-05` bounds, so the monitored server's own budget (`MONITOR-05`) is never approached. | `remote/poller_tests.rs`: one read per watched project per round, unwatched projects untouched, interval clamped. |
+| `REMOTE-10` alert spam or hostile values in alerts (phase 3) | Evaluate rules with an explicit clock; a rule fires again only after its per-project cool-down; the 5xx-rate rule needs a minimum number of requests; restarts that reset counters never fire the failure rule. Alert text is built from Studio's own wording, the project name and numbers, never from remote labels. | `remote/alerts_tests.rs` with a fixed clock: thresholds, cool-down, minimum requests, counter resets, unreachable projects. |
+| `REMOTE-11` webhook secret disclosure or misuse (phase 3) | A webhook URL is a secret: stored sealed like tokens (bound to the project), shown only as configured or not, `https://` only, no user information or fragment. Delivery sends a small JSON body with the project name, rule, message and time, follows no redirect, ignores proxies, is bounded to 5 s and never retried in a loop; a failure is recorded on the alert as a fixed status. | `remote/webhook_tests.rs`: URL validation, sealing round trip, delivery to a local test receiver, failure and redirect statuses without following. |
 
 ## TM-TENANT-1 — multi-tenant data access
 

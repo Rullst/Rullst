@@ -98,9 +98,11 @@ rullst-core|queue-sqlite
 rullst-core|queue-redis
 rullst-core|cache-redis
 rullst-core|scheduler-tz
+rullst-nexus|tz
 rullst-core|storage-s3
 rullst-core|storage-multipart
 rullst-core|telemetry
+rullst-studio|remote
 rullst-messaging|sqlite
 rullst-messaging|schedules-postgres
 rullst-messaging|webhooks
@@ -233,6 +235,7 @@ rullst|security-redis
 rullst|iot
 rullst|telemetry
 rullst|nexus
+rullst|nexus-tz
 rullst|studio
 rullst|drivers-all
 rullst|strict-postgres

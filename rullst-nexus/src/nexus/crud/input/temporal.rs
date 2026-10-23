@@ -4,12 +4,13 @@
 
 use rullst_orm::RullstValue;
 use rullst_orm::chrono::{
-    DateTime, Datelike, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, SecondsFormat, Timelike,
-    Utc,
+    DateTime, Datelike, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, SecondsFormat, TimeDelta,
+    Timelike, Utc,
 };
 
-use super::{canonical_datetime, parse_date_part};
-use crate::nexus::types::FieldKind;
+use super::{FormInputError, canonical_datetime, parse_date_part};
+use crate::nexus::NexusTimeZone;
+use crate::nexus::types::{FieldKind, RegistryEntry};
 
 /// A calendar date `YYYY-MM-DD` (year 0001 to 9999, as HTML date inputs).
 pub(super) fn date(value: &str) -> Option<NaiveDate> {
@@ -162,16 +163,75 @@ pub(crate) fn time_input_value(text: &str) -> Option<String> {
     input_time(time(text)?)
 }
 
-/// The UTC `datetime-local` value of the stored instant `text`: an RFC 3339
-/// or PostgreSQL value is converted to UTC, and a MySQL `DATETIME` value
-/// without an offset already holds UTC.
-pub(crate) fn utc_input_value(text: &str) -> Option<String> {
+/// The input type and value that show the stored instant `text` (RFC 3339,
+/// PostgreSQL, or a MySQL `DATETIME` without an offset, which holds UTC) in
+/// `zone`: its wall time in a `datetime-local` input, or its UTC value (`Z`)
+/// in a text input when `zone` would read that wall time as another instant,
+/// the later occurrence of a time a fold repeats. `None` when the wall time
+/// is outside years 1 to 9999 or finer than milliseconds.
+pub(crate) fn zoned_input_value(
+    text: &str,
+    zone: &NexusTimeZone,
+) -> Option<(&'static str, String)> {
     let instant = utc(text)?;
-    if !(1..=9999).contains(&instant.year()) {
+    let offset = TimeDelta::seconds(i64::from(zone.offset_at(&instant)?));
+    let local = instant.naive_utc().checked_add_signed(offset)?;
+    if !(1..=9999).contains(&local.year()) {
         return None;
     }
-    let time = input_time(instant.time())?;
-    Some(format!("{}T{time}", instant.format("%Y-%m-%d")))
+    let time = input_time(local.time())?;
+    if zone.instant_of(&local).ok()? != instant {
+        return Some(("text", instant.to_rfc3339_opts(SecondsFormat::AutoSi, true)));
+    }
+    Some((
+        "datetime-local",
+        format!("{}T{time}", local.format("%Y-%m-%d")),
+    ))
+}
+
+/// Rewrites each submitted `DateTimeUtc` value without an offset, a wall
+/// time in the administrator's `zone`, as its UTC instant (`Z`); validation
+/// then reads it like a value typed with an offset. Other values are kept
+/// for [`super::validate_form_values`] to check.
+pub(crate) fn localize_form_values(
+    entry: &RegistryEntry,
+    pairs: Vec<(String, String)>,
+    zone: &NexusTimeZone,
+) -> Result<Vec<(String, String)>, FormInputError> {
+    pairs
+        .into_iter()
+        .map(|(name, value)| {
+            let field = entry
+                .fields
+                .iter()
+                .find(|field| field.name == name && matches!(field.kind, FieldKind::DateTimeUtc));
+            let Some(field) = field else {
+                return Ok((name, value));
+            };
+            match zoned_submission(&value, zone) {
+                Ok(Some(instant)) => Ok((name, instant)),
+                Ok(None) => Ok((name, value)),
+                Err(_) => Err(FormInputError::NonexistentLocalTime {
+                    field: field.name,
+                    zone: zone.name().to_string(),
+                }),
+            }
+        })
+        .collect()
+}
+
+/// The UTC instant (`Z`) of a submitted value without an offset, read as a
+/// wall time in `zone`; `Ok(None)` for any other value, which validation
+/// then reads as before.
+fn zoned_submission(
+    value: &str,
+    zone: &NexusTimeZone,
+) -> Result<Option<String>, crate::nexus::NexusTimeZoneError> {
+    let Some(local) = local_date_time(value) else {
+        return Ok(None);
+    };
+    let instant = zone.instant_of(&local)?;
+    Ok(Some(instant.to_rfc3339_opts(SecondsFormat::AutoSi, true)))
 }
 
 /// Whether the time part of a date-time carries an offset (`Z`, `+`, `-`).
@@ -184,3 +244,7 @@ pub(crate) fn has_offset(value: &str) -> bool {
 #[cfg(test)]
 #[path = "temporal_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "zone_tests.rs"]
+mod zone_tests;

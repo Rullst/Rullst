@@ -484,6 +484,7 @@ the rule together.
 | ORM instance mutations | (b) review | `V13-ORM-MISSING-ROW` | Plain `delete()` calls are not located |
 | ORM encryption key settings | (c) none | — | Only `.env` entries that the process environment lacks change; `.env` is not read |
 | ORM constraint errors | (b) review | `V13-ORM-CONSTRAINT-ERRORS` | Code that matches `DatabaseError` |
+| ORM transaction errors | (b) review | `V13-ORM-TRANSACTION-ERRORS` | `Orm::transaction` calls in files that mention `DatabaseError`; `cargo check` reports closure error types without `From<rullst_orm::Error>` |
 | ORM query values | (c) none | — | Only exhaustive `match`es on `RullstValue` break, and `cargo check` reports them |
 | ORM date/time columns | (b) review | `V13-TEXT-TIMESTAMPS` | `String` `created_at`/`updated_at` fields of SQLx models; whether the table's migration calls `timestamps()` is not checked |
 | Schema builder constraints | (c) none | — | Only `Column` struct literals break, and `cargo check` reports them |

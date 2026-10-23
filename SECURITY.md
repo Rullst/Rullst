@@ -27,13 +27,15 @@ documents the end-of-life 12.x line.
 
 `main` develops the next major release. The v12 line reached end of life on
 16 October 2026: the [`v12` branch](https://github.com/Rullst/Rullst/tree/v12)
-is frozen and no further 12.x release is planned. Until 13.0.0 is stable,
-security reports are handled on `main` for the latest v13 prerelease.
+is frozen and no further 12.x release is planned. Until 13.0.0 is stable, the
+latest published v13 prerelease is supported as described in
+[Security support for v13 prereleases](#security-support-for-v13-prereleases).
 
 | Version | Supported | Status |
 | :--- | :---: | :--- |
 | **12.x** | :x: | End of life since 16 October 2026; 12.3.0 is the last release. crates.io yanked the `zip` releases its Studio needs, so new 12.x projects no longer resolve dependencies. Move to v13. |
-| **13.x development** | :x: | Prereleases such as 13.0.0-alpha.2: reports are triaged on `main` and fixed in the next prerelease; no stable security-support commitment until 13.0.0. |
+| **Latest 13.0.0 prerelease** | :white_check_mark: | Only the most recently published prerelease (for example 13.0.0-alpha.3 once it is published). Fixes ship in a new prerelease; see below. |
+| **Earlier 13.0.0 prereleases** | :x: | Not patched; upgrade to the latest prerelease. |
 | **12.0.0-rc.1** | :x: | Immutable evaluation prerelease of the end-of-life 12.x line; move to v13. |
 | **5.0.0** | :x: | Frozen legacy release; no routine maintenance. |
 | < 5.0.0 | :x: | End of life. |
@@ -42,6 +44,33 @@ Individual crates have historically used different version numbers. Before
 reporting an issue, confirm the exact package and version from `Cargo.lock`.
 Security fixes are issued on the current supported line rather than by
 replacing an already published archive.
+
+### Security support for v13 prereleases
+
+Until 13.0.0 is published, this policy applies:
+
+- **Supported version.** Only the most recently published 13.0.0 prerelease
+  is supported. A prerelease stops being supported when the next one is
+  published; earlier prereleases do not receive backported fixes.
+- **Reporting and response.** Reports follow
+  [Reporting a Vulnerability](#-reporting-a-vulnerability) and the response
+  and patch targets of the
+  [coordinated disclosure policy](#coordinated-vulnerability-disclosure-cvd).
+- **How fixes ship.** A Critical or High vulnerability in the supported
+  prerelease is fixed in a new prerelease published out of cycle, admitted
+  by the same release gates as any other release. Medium and Low issues are
+  fixed in the next planned prerelease. A published archive is never
+  replaced.
+- **Notification.** Each fix is described in `CHANGELOG.md` and, for Critical
+  and High issues, in a GitHub security advisory for the affected crates.
+  A prerelease with a Critical vulnerability may be yanked from crates.io
+  once a fixed prerelease is available.
+- **Your part.** Prereleases may change APIs between versions. Pin the exact
+  version (`=13.0.0-alpha.N`), follow the changelog and move to the newest
+  prerelease promptly.
+
+The support policy for 13.0.0 and later stable releases will be published
+with 13.0.0.
 
 ---
 

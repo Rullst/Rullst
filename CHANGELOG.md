@@ -33,6 +33,10 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Fixes from alpha.2 dogfooding
 
+- Security support for prereleases: until 13.0.0, the latest published
+  prerelease is supported. Critical and High vulnerabilities are fixed in an
+  out-of-cycle prerelease and announced in a GitHub security advisory; earlier
+  prereleases are not patched (`SECURITY.md`).
 - New `cargo rullst make:pwa` makes an application from an HTML starter an
   installable Progressive Web App: a web app manifest, placeholder icons
   (192, 512, maskable 512, apple-touch), `/sw.js` and an `/offline` page
@@ -199,6 +203,62 @@ A prepared version section does not establish that its tag or crates exist.
   `Server::run`) installs is now present in release builds as well, so the
   monitor can attribute ORM operations to requests. Outside the development
   dashboard and monitored requests it records nothing.
+- New standalone Studio for remote projects, phase 2 of the production
+  monitor (plataforma report #28). `cargo install rullst-studio --features remote --locked`, then
+  `rullst-studio` (or `cargo rullst studio --remote`), serves Studio on
+  `127.0.0.1:5556` without an application process and shows the monitoring
+  document of each project you add (overview, routes, queues and N+1 pages,
+  with a project switcher). Tokens are stored in an owner-only file in your
+  configuration directory, encrypted with a key kept in your data directory.
+  Studio requires `https://` (or `http://` to loopback, for SSH tunnels),
+  never follows redirects and escapes every remote value. It is behind the
+  new non-default `remote` feature of `rullst-studio`, so applications that
+  enable Studio in development do not build its HTTP client or SQLite. See the
+  [production monitoring guide](docs/src/production-monitoring.md#watch-your-projects-from-studio).
+- The standalone Studio keeps history and alerts for the projects you mark as
+  watched (phase 3 of the production monitor): it reads them every 60 seconds
+  while it runs, charts request rate, 5xx rate, p95 latency and pending jobs
+  for the last hour, day or week from a bounded local SQLite file (seven
+  days), and fires per-project alerts (unreachable, 5xx rate, p95, pending
+  jobs, queue failures) with a cool-down, shown in Studio and optionally
+  posted to an `https://` webhook stored encrypted like the tokens. Nothing
+  new is collected on the servers.
+- `html!` gains `@match value { pattern if guard => { nodes } … }`: arms are
+  Rust patterns (with `|` alternatives and `name @` bindings) and optional
+  guards, bodies are `html!` nodes in braces with the usual escaping and
+  `Markup` rules, and the compiler checks exhaustiveness at your tokens. An
+  arm without braces is a compile error that shows the braced form. Other
+  `@` forms (`@while`, `@let`) remain compile errors, whose message now lists
+  `@match`.
+- i18n plural messages follow CLDR's cardinal rules for `ar`, `cs`, `de`,
+  `en`, `es`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`/`pt-BR`,
+  `pt-PT`, `ro`, `ru`, `tr`, `uk` and `zh`, with every category the language
+  uses (`zero`, `one`, `two`, `few`, `many`, `other`). `catalog!` requires
+  exactly those categories and names a missing one in the compile error, so
+  a `ru` or `pl` message with `one`/`few`/`many`/`other` now compiles. In
+  `es`, `fr`, `it` and `pt` the `many` form (exact millions) is optional and
+  falls back to `other`. Catalogs and integer counts that worked in alpha.2
+  select the same forms. New `rullst::i18n::Decimal` (units and visible
+  fraction digits, parsed from strings such as `"1.50"`) can be passed as
+  `count`, since CLDR selects by fraction digits too (`1.0` is English
+  `other`), and `Locale::plural_category` returns the new `PluralCategory`
+  without a catalog.
+- Adding or removing an i18n locale file can now rebuild the crate: the
+  i18n guide's setup adds a `build.rs` with
+  `println!("cargo::rerun-if-changed=locales");`, which makes Cargo rescan the
+  directory before each build (stable Rust gives `catalog!` no way to watch a
+  directory itself; edits to existing files were already tracked). Existing
+  applications add the same three-line `build.rs`.
+- `rullst::i18n::Locale` formats numbers, percentages, money and dates with
+  CLDR 48 conventions compiled in for `ar`, `cs`, `de`, `en`, `en-GB`, `es`,
+  `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`, `pt-PT`, `ro`, `ru`, `tr`,
+  `uk` and `zh` (other tags use their language's data, else `en`'s):
+  `format_number`, `format_percent`, `format_currency` (integer minor units
+  and the new `Currency`, with localized symbols for BRL, USD, EUR, GBP and
+  JPY), `format_date`, `format_time` and `format_datetime` (any `chrono` date
+  or time, with the new `DateStyle` and `TimeStyle`), for example
+  `R$ 1.234,56` and `22/10/2026` in `pt-BR`. `Decimal` gains
+  `round_half_even` and `round_half_up`. No new dependency.
 - **Behaviour change:** while the `up()` or `down()` of a migration that
   returns `true` from `within_transaction()` runs, `Orm::pool()`,
   `Orm::read_pool()`, `Orm::try_pool()`, `Orm::try_read_pool()` and
@@ -231,6 +291,63 @@ A prepared version section does not establish that its tag or crates exist.
   leave a new file that a second `initialize` refused. Other operations keep
   the single 5-second wait. Media's documentation now states that wait as
   5 seconds instead of 3.
+- **Breaking:** `Orm::transaction` returns its closure's error unchanged
+  after the rollback: it now returns `Result<R, E>`, where `E` is the
+  closure's error type and must implement `From<rullst_orm::Error>` and
+  `Display`, instead of `Result<R, rullst_orm::Error>`. A `UniqueViolation` or
+  `ForeignKeyViolation` inside the transaction keeps its variant and an
+  application error its type (alpha.2 turned both into
+  `Error::DatabaseError("Transaction failed: ...")`). Begin, commit and
+  post-commit failures arrive through `E::from`, so a commit rejected by a
+  deferred constraint is a typed violation too. A closure whose error type
+  lacks `From<rullst_orm::Error>`, such as `String`, no longer compiles; code
+  that matched `DatabaseError` on the result must match the closure's error;
+  `cargo rullst upgrade` reports `Orm::transaction` calls in files that
+  mention `DatabaseError` (`V13-ORM-TRANSACTION-ERRORS`). See the migration
+  guide.
+- Nexus shows and reads `DateTimeUtc` fields in the administrator's time
+  zone: the new `Nexus::with_time_zone(NexusTimeZone)` selects UTC (still the
+  default), a fixed offset (`NexusTimeZone::fixed_offset(-180)`) or, with the
+  new `tz` feature of `rullst-nexus` (`nexus-tz` in `rullst`), an IANA zone
+  (`NexusTimeZone::named("America/Sao_Paulo")`) whose rules come from `jiff`,
+  as for `Scheduler::task_in_tz`. The `datetime-local` input shows the stored
+  instant as a wall time in that zone, a submitted value without an offset is
+  read in that zone and stored as UTC, and the label names the zone instead of
+  `(UTC)`. A wall time that a daylight-saving gap skips answers `422` naming
+  the zone; one that a fold repeats is read as its earlier instant, and a
+  stored instant at the later occurrence is shown as its UTC value in a text
+  input so saving the form unchanged keeps it. alpha.2 always read such a
+  value as UTC. The CRUD form handlers take an extra
+  `Option<Extension<NexusTimeZone>>` argument.
+- Multipart uploads now remove the temporary files that a crashed or killed
+  process left behind. Before a process first writes a temporary file to a
+  `temp_dir`, and again after each further 24 hours, it removes the regular
+  files there named exactly `.rullst-upload-<32 lowercase hex digits>.part`
+  and last modified at least 24 hours ago, at most 1,000 per sweep (10,000
+  entries examined). Symbolic links, directories and other names are never
+  touched; an unreadable directory or a file that cannot be removed is a
+  `rullst::uploads` warning, and the upload continues. alpha.2 never removed
+  them.
+- New `Scheduler::deferrable_task_in_tz(expression, zone, deferral, handler)`
+  (feature `scheduler-tz`), the time-zone form of `deferrable_task`: its
+  ticks follow `task_in_tz` and its `TimeWindow`s are wall times of the same
+  IANA zone, so a 22:00–06:00 window stays local across daylight-saving
+  changes. A window boundary that a gap skips moves to the end of the gap,
+  one that a fold repeats is its first occurrence, and a window that a gap
+  skips entirely does not open that day. A window that sets
+  `with_utc_offset_minutes` is rejected with
+  `SchedulerError::InvalidConfiguration`. `deferrable_task` is unchanged.
+- The `Dockerfile` written by `cargo rullst new --docker`, `dockerize` and a
+  first `deploy` builds the dependencies in their own cached layer: a
+  `planner` stage keeps only the manifests, `Cargo.lock` and the toolchain
+  file, with `fn main() {}` standing in for each target and build script, and
+  the builder compiles that skeleton with `cargo build --release --locked`
+  before it copies the sources, so a change to the application's code no
+  longer recompiles every dependency. Workspace members, `src/bin` targets,
+  targets and build scripts with an explicit `path`/`build`, and
+  `rust-toolchain.toml` are kept; the distroless non-root runtime stage is
+  unchanged. Existing Dockerfiles are not rewritten; move one aside and run
+  `cargo rullst dockerize` to regenerate it.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

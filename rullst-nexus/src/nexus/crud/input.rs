@@ -8,7 +8,7 @@ use rullst_orm::RullstValue;
 use crate::nexus::types::{FieldKind, FieldMeta, RegistryEntry};
 
 mod temporal;
-pub(super) use temporal::{has_offset, time_input_value, utc_input_value};
+pub(super) use temporal::{has_offset, localize_form_values, time_input_value, zoned_input_value};
 
 const MAX_FORM_PAIRS: usize = 256;
 const MAX_SHORT_TEXT_BYTES: usize = 4 * 1024;
@@ -44,6 +44,12 @@ pub(super) enum FormInputError {
         field: &'static str,
         reason: &'static str,
     },
+    /// A `DateTimeUtc` wall time that a daylight-saving gap skips in the
+    /// administrator's time zone.
+    NonexistentLocalTime {
+        field: &'static str,
+        zone: String,
+    },
 }
 
 impl fmt::Display for FormInputError {
@@ -59,6 +65,10 @@ impl fmt::Display for FormInputError {
             Self::InvalidField { field, reason } => {
                 write!(formatter, "field `{field}` {reason}")
             }
+            Self::NonexistentLocalTime { field, zone } => write!(
+                formatter,
+                "field `{field}` names a time that does not exist in {zone}: clocks skip it at a daylight-saving change"
+            ),
         }
     }
 }
@@ -248,7 +258,7 @@ fn validate_semantic_value(field: &FieldMeta, value: &str) -> Result<(), FormInp
             Some(_) => Ok(()),
             None => invalid(
                 field,
-                "must use a valid date-time; one without an offset is UTC",
+                "must use a valid date-time; one without an offset is in the panel's time zone",
             ),
         },
         FieldKind::Json => serde_json::from_str::<serde_json::Value>(value)

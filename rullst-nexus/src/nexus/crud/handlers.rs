@@ -8,13 +8,16 @@ use axum::{
 use std::fmt::Write as _;
 use std::sync::Arc;
 
-use crate::nexus::NexusPrincipal;
-use crate::nexus::crud::form::record_form;
-use crate::nexus::crud::mutation::{create_record, delete_record, update_record};
+use crate::nexus::crud::form::{form_html, record_form};
+use crate::nexus::crud::input::localize_form_values;
+use crate::nexus::crud::mutation::{
+    create_record, delete_record, invalid_form_response, update_record,
+};
 use crate::nexus::crud::query::{PaginationParams, find_entry};
-use crate::nexus::crud::views::{TableView, render_record_form, render_table_rows, table_view};
+use crate::nexus::crud::views::{TableView, render_table_rows, table_view};
 use crate::nexus::types::{NexusState, RegistryEntry};
 use crate::nexus::ui::{render_shell, render_sidebar, safe_icon_html, wants_fragment};
+use crate::nexus::{NexusPrincipal, NexusTimeZone};
 use rullst_core::security::{CsrfToken, TenantContext};
 
 #[derive(Debug, Clone, Copy)]
@@ -163,21 +166,26 @@ pub async fn nexus_table_search(
     Html(render_table_rows(entry, &q, page, sort_by, order, tenant_id).await).into_response()
 }
 
+/// The zone `Nexus::try_build` provides, else UTC.
+fn panel_zone(zone: Option<Extension<NexusTimeZone>>) -> NexusTimeZone {
+    zone.map(|Extension(zone)| zone).unwrap_or_default()
+}
+
 /// GET /nexus/table/{table}/new — New record form.
 pub async fn nexus_new_form(
     State(state): State<Arc<NexusState>>,
     Path(table): Path<String>,
     tenant: Option<Extension<TenantContext>>,
+    zone: Option<Extension<NexusTimeZone>>,
 ) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
         None => return (StatusCode::NOT_FOUND, "Table not found.").into_response(),
     };
-    let tenant_id = match tenant_for_entry(entry, tenant.as_ref().map(|value| &value.0)) {
-        Ok(tenant_id) => tenant_id,
-        Err(error) => return error.into_response(),
-    };
-    Html(render_record_form(&state, entry, None, tenant_id).await).into_response()
+    if let Err(error) = tenant_for_entry(entry, tenant.as_ref().map(|value| &value.0)) {
+        return error.into_response();
+    }
+    Html(form_html(entry, None, None, &panel_zone(zone))).into_response()
 }
 
 /// POST /nexus/table/{table} — Create a new record.
@@ -187,12 +195,18 @@ pub async fn nexus_create_record(
     Path(table): Path<String>,
     Extension(principal): Extension<NexusPrincipal>,
     tenant: Option<Extension<TenantContext>>,
+    zone: Option<Extension<NexusTimeZone>>,
     headers: axum::http::HeaderMap,
     axum::extract::Form(data_vec): axum::extract::Form<Vec<(String, String)>>,
 ) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
         None => return (StatusCode::NOT_FOUND, "Table not found.").into_response(),
+    };
+    // Wall times are read in the panel's zone before validation.
+    let data_vec = match localize_form_values(entry, data_vec, &panel_zone(zone)) {
+        Ok(data_vec) => data_vec,
+        Err(error) => return invalid_form_response(entry, error),
     };
     create_record(
         &state,
@@ -210,6 +224,7 @@ pub async fn nexus_edit_form(
     State(state): State<Arc<NexusState>>,
     Path((table, id)): Path<(String, String)>,
     tenant: Option<Extension<TenantContext>>,
+    zone: Option<Extension<NexusTimeZone>>,
 ) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
@@ -221,7 +236,7 @@ pub async fn nexus_edit_form(
     };
     // A missing, other-tenant or unloadable record is an error, never an
     // empty form that invites re-typing values.
-    match record_form(&state, entry, Some(&id), tenant_id).await {
+    match record_form(&state, entry, Some(&id), tenant_id, &panel_zone(zone)).await {
         Ok(form) => Html(form).into_response(),
         Err(error) => error.into_response(),
     }
@@ -233,12 +248,18 @@ pub async fn nexus_update_record(
     Path((table, id)): Path<(String, String)>,
     Extension(principal): Extension<NexusPrincipal>,
     tenant: Option<Extension<TenantContext>>,
+    zone: Option<Extension<NexusTimeZone>>,
     headers: axum::http::HeaderMap,
     axum::extract::Form(data_vec): axum::extract::Form<Vec<(String, String)>>,
 ) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
         None => return (StatusCode::NOT_FOUND, "Table not found.").into_response(),
+    };
+    // Wall times are read in the panel's zone before validation.
+    let data_vec = match localize_form_values(entry, data_vec, &panel_zone(zone)) {
+        Ok(data_vec) => data_vec,
+        Err(error) => return invalid_form_response(entry, error),
     };
     update_record(
         &state,
@@ -274,3 +295,7 @@ pub async fn nexus_delete_record(
     )
     .await
 }
+
+#[cfg(test)]
+#[path = "handlers_zone_tests.rs"]
+mod zone_tests;

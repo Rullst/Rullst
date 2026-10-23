@@ -89,14 +89,35 @@ field.
 | `date` (`NaiveDate`) | `date` | `YYYY-MM-DD`, year 0001 to 9999 | `YYYY-MM-DD` |
 | `time` (`NaiveTime`) | `time` | `HH:MM`, `HH:MM:SS` or with a fraction of up to 9 digits | `HH:MM:SS[.fraction]` |
 | `datetime` (`NaiveDateTime`) | `datetime-local` | a local `YYYY-MM-DDTHH:MM[:SS[.fraction]]` (or a space for `T`) | `YYYY-MM-DD HH:MM:SS[.fraction]` |
-| `datetime_utc` (`DateTime<Utc>`) | `datetime-local`, labelled `(UTC)` | as `datetime`, read as UTC; `Z`, `±HH:MM` or `±HH` is converted to UTC | RFC 3339, `2026-10-15T09:30:00+00:00` |
+| `datetime_utc` (`DateTime<Utc>`) | `datetime-local`, labelled with the panel's time zone, `(UTC)` by default | as `datetime`, read as a wall time in the panel's time zone; `Z`, `±HH:MM` or `±HH` is converted to UTC | RFC 3339, `2026-10-15T09:30:00+00:00` |
 
 A `datetime-local` input has no time zone, so a `datetime_utc` field shows and
-accepts the UTC wall time: an administrator in UTC−3 who wants 09:30 local time
-enters 12:30. The stored instant is shown converted to UTC whatever offset the
-database reports (PostgreSQL's `+00`, an RFC 3339 offset, or a MySQL/MariaDB
-`DATETIME` holding UTC). A value either picker cannot hold exactly (finer than
-milliseconds, or outside the years 0001 to 9999) is shown in a text input.
+accepts wall times in the panel's time zone, which is UTC unless the
+application selects another with `Nexus::with_time_zone` (v13):
+
+```rust,ignore
+use rullst::nexus::{Nexus, NexusTimeZone};
+
+// A fixed offset (no daylight-saving changes), in minutes east of UTC.
+let nexus = Nexus::new().with_time_zone(NexusTimeZone::fixed_offset(-180)?);
+// An IANA zone with its daylight-saving rules: the `nexus-tz` feature
+// (`rullst-nexus/tz`), which uses `jiff` like Core's `scheduler-tz`.
+let nexus = Nexus::new().with_time_zone(NexusTimeZone::named("America/Sao_Paulo")?);
+```
+
+The label names the zone (`Starts at (America/Sao_Paulo)`). An administrator
+in São Paulo enters 09:30 and Nexus stores `12:30:00+00:00`; the stored
+instant is shown converted to the zone whatever offset the database reports
+(PostgreSQL's `+00`, an RFC 3339 offset, or a MySQL/MariaDB `DATETIME` holding
+UTC). In a zone with daylight-saving changes, a wall time that a gap skips
+(clocks move forward) does not exist and answers `422` naming the zone, and a
+wall time that a fold repeats (clocks move back) is read as its first, earlier
+instant. A stored instant at the later occurrence of a repeated wall time is
+shown in a text input as its UTC value (`2026-11-01T06:30:00Z`), so saving the
+form unchanged keeps it; type an offset (`2026-11-01T01:30-05:00`) to choose
+that occurrence. A value either picker cannot hold exactly (finer than
+milliseconds, or a wall time outside the years 0001 to 9999) is shown in a text
+input. 13.0.0-alpha.2 always used UTC.
 
 The `datetime` form of a text column is the text `CURRENT_TIMESTAMP` and SQLx
 write, so text comparisons and ordering agree with application rows. A

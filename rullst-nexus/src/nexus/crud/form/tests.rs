@@ -1,4 +1,5 @@
 use super::*;
+use crate::nexus::NexusTimeZone;
 
 fn widget(kind: FieldKind, stored: StoredValue) -> String {
     render_field_widget(
@@ -6,6 +7,7 @@ fn widget(kind: FieldKind, stored: StoredValue) -> String {
         &stored,
         true,
         &["id"],
+        &NexusTimeZone::utc(),
     )
 }
 
@@ -17,7 +19,13 @@ fn value(text: &str) -> StoredValue {
 fn password_widgets_are_never_prefilled() {
     let field = FieldMeta::new("api_key", "API key", FieldKind::Password);
     for is_edit in [false, true] {
-        let html = render_field_widget(&field, &value("stored-sample-value"), is_edit, &["id"]);
+        let html = render_field_widget(
+            &field,
+            &value("stored-sample-value"),
+            is_edit,
+            &["id"],
+            &NexusTimeZone::utc(),
+        );
         assert!(html.contains("type=\"password\""));
         assert!(html.contains("value=\"\""));
         assert!(html.contains("autocomplete=\"new-password\""));
@@ -101,6 +109,7 @@ fn enum_keeps_null_and_unregistered_values_without_submitting_a_default() {
         &StoredValue::Absent,
         false,
         &["id"],
+        &NexusTimeZone::utc(),
     );
     assert!(!html.contains("selected"));
     assert!(
@@ -126,7 +135,7 @@ async fn forms_declare_their_mode_for_change_only_submission() {
     };
     let create = render_record_form(&state, &entry, None, None).await;
     assert!(create.contains("data-nexus-mode=\"create\""));
-    let edit = form_html(&entry, Some("7"), None);
+    let edit = form_html(&entry, Some("7"), None, &NexusTimeZone::utc());
     assert!(edit.contains("data-nexus-mode=\"edit\""));
     assert!(edit.contains("data-nexus-action=\"/nexus/table/articles/record/7\""));
 }
@@ -152,7 +161,7 @@ async fn unloadable_records_render_an_error_instead_of_an_empty_edit_form() {
     };
     // A non-canonical numeric key names no record, before any query runs.
     assert_eq!(
-        record_form(&state, &entry, Some("+7"), None).await,
+        record_form(&state, &entry, Some("+7"), None, &NexusTimeZone::utc()).await,
         Err(RecordFormError::NotFound)
     );
     let html = render_record_form(&state, &entry, Some("+7"), None).await;
@@ -167,18 +176,25 @@ fn readonly_checkboxes_and_selects_are_disabled_rather_than_interactive() {
     };
     for (kind, stored) in [(FieldKind::Boolean, "1"), (enum_kind, "draft")] {
         let field = FieldMeta::new("locked", "Locked", kind.clone()).readonly();
-        let html = render_field_widget(&field, &value(stored), true, &["id"]);
+        let html =
+            render_field_widget(&field, &value(stored), true, &["id"], &NexusTimeZone::utc());
         assert!(!html.contains("name=\"locked\""), "{kind:?}");
         assert!(html.contains(" disabled"), "{kind:?}");
         assert!(!html.contains(" readonly"), "{kind:?}");
 
         let editable = FieldMeta::new("open", "Open", kind.clone());
-        let html = render_field_widget(&editable, &value(stored), true, &["id"]);
+        let html = render_field_widget(
+            &editable,
+            &value(stored),
+            true,
+            &["id"],
+            &NexusTimeZone::utc(),
+        );
         assert!(html.contains("name=\"open\""), "{kind:?}");
         assert!(!html.contains("disabled"), "{kind:?}");
     }
     let text = FieldMeta::new("title", "Title", FieldKind::Text).readonly();
-    let html = render_field_widget(&text, &value("kept"), true, &["id"]);
+    let html = render_field_widget(&text, &value("kept"), true, &["id"], &NexusTimeZone::utc());
     assert!(html.contains(" readonly") && !html.contains("disabled"));
 }
 
@@ -298,7 +314,7 @@ fn records_are_loaded_by_every_key_column_then_the_tenant() {
 #[test]
 fn every_key_column_is_read_only_on_edit_and_the_address_is_encoded() {
     let entry = progress(None);
-    let edit = form_html(&entry, Some("3,a%2Cb"), None);
+    let edit = form_html(&entry, Some("3,a%2Cb"), None, &NexusTimeZone::utc());
     assert!(
         edit.contains("data-nexus-action=\"/nexus/table/lesson_progress/record/3%2Ca%252Cb\""),
         "{edit}"
@@ -310,14 +326,26 @@ fn every_key_column_is_read_only_on_edit_and_the_address_is_encoded() {
             "{column}"
         );
     }
-    let create = form_html(&entry, None, None);
+    let create = form_html(&entry, None, None, &NexusTimeZone::utc());
     for column in ["user_id", "lesson_id", "percent"] {
         assert!(create.contains(&format!("name=\"{column}\"")), "{column}");
     }
     let field = FieldMeta::new("lesson_id", "Lesson", FieldKind::Text);
-    let key = render_field_widget(&field, &value("x"), true, &["user_id", "lesson_id"]);
+    let key = render_field_widget(
+        &field,
+        &value("x"),
+        true,
+        &["user_id", "lesson_id"],
+        &NexusTimeZone::utc(),
+    );
     assert!(key.contains(" readonly") && !key.contains("name="), "{key}");
-    let other = render_field_widget(&field, &value("x"), true, &["user_id"]);
+    let other = render_field_widget(
+        &field,
+        &value("x"),
+        true,
+        &["user_id"],
+        &NexusTimeZone::utc(),
+    );
     assert!(other.contains("name=\"lesson_id\"") && !other.contains(" readonly"));
 }
 
@@ -372,7 +400,7 @@ fn utc_fields_are_labelled_as_utc() {
             FieldMeta::new("due_on", "Due on", FieldKind::Date),
         ],
     };
-    let html = form_html(&entry, None, None);
+    let html = form_html(&entry, None, None, &NexusTimeZone::utc());
     assert!(
         html.contains("<label class=\"nexus-label\">Paid at (UTC)</label>"),
         "{html}"

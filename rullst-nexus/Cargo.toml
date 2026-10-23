@@ -23,6 +23,9 @@ drivers-all = ["rullst-core/drivers-all", "rullst-orm/drivers-all"]
 strict-sqlite = ["rullst-core/strict-sqlite", "rullst-orm/strict-sqlite"]
 strict-postgres = ["rullst-core/strict-postgres", "rullst-orm/strict-postgres"]
 strict-mysql = ["rullst-core/strict-mysql", "rullst-orm/strict-mysql"]
+# v13: `NexusTimeZone::named`, `DateTimeUtc` form values in a named IANA time
+# zone (system zoneinfo, bundled `jiff` database as fallback).
+tz = ["dep:jiff"]
 
 [dependencies]
 rullst-core = { workspace = true, features = ["orm"] }
@@ -38,6 +41,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
+jiff = { version = "0.2.35", optional = true, default-features = false, features = ["std", "tzdb-zoneinfo", "tzdb-bundle-always"] }
 url = "2.5.8"
 urlencoding = { workspace = true }
 

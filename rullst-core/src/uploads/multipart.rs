@@ -23,6 +23,7 @@ mod file;
 mod headers;
 mod parser;
 mod sniff;
+mod sweep;
 
 pub use error::MultipartError;
 pub use file::UploadedFile;
@@ -159,6 +160,13 @@ impl MultipartPolicy {
     /// Unix, mode `0600`. Choose a directory on the same file system as the
     /// [`UploadedFile::persist_to`] target, so persisting is a link, not a
     /// copy.
+    ///
+    /// Before the first temporary file a process writes to a directory, and
+    /// again after each further 24 hours, the leftovers of a crashed process
+    /// are removed there: regular files named `.rullst-upload-<32 lowercase
+    /// hex digits>.part` last modified at least 24 hours ago, at most 1,000
+    /// per sweep. Symbolic links, directories and other names are kept, and a
+    /// failure is logged as a warning without failing the upload.
     pub fn temp_dir(mut self, dir: impl Into<PathBuf>) -> Self {
         self.temp_dir = Some(dir.into());
         self

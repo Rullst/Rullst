@@ -409,7 +409,8 @@ fn record_not_found() -> Response {
 
 /// A plain-text `422`: `nexus.js` shows error bodies as text, so markup
 /// would reach the administrator literally.
-fn invalid_form_response(entry: &RegistryEntry, error: FormInputError) -> Response {
+/// The `422` answer to a rejected form.
+pub(super) fn invalid_form_response(entry: &RegistryEntry, error: FormInputError) -> Response {
     (
         StatusCode::UNPROCESSABLE_ENTITY,
         format!("Invalid {} form: {error}", entry.label),

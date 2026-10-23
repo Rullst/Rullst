@@ -1794,7 +1794,13 @@ the same server-authoritative controls.
   and not counted. Larger files stream to `.rullst-upload-<uuid>.part` in
   `temp_dir` (default `std::env::temp_dir()`), created with `create_new` and
   mode `0600` on Unix and removed when the `UploadedFile` drops, also on every
-  error. `UploadedFile::persist_to` never overwrites (an existing path or
+  error. Before a process first writes a temporary file to a directory, and
+  again once 24 hours have passed (13.0.0-alpha.3), it sweeps the leftovers of
+  a crashed process there: regular files named exactly
+  `.rullst-upload-<32 lowercase hex>.part` and modified at least 24 hours ago,
+  never a symbolic link or a directory, examining at most 10,000 entries and
+  removing at most 1,000; a failure is a `rullst::uploads` warning and the
+  upload continues. `UploadedFile::persist_to` never overwrites (an existing path or
   symbolic link is `PersistTargetExists`), requires a file name in an
   existing directory without `..` (`InvalidPersistTarget`), hard-links on the
   same file system, copies otherwise, and syncs the new `0600` file.
@@ -1943,11 +1949,18 @@ the same server-authoritative controls.
   `@if let PATTERN = value`), `@else if …`, `@else { … }` and
   `@for PATTERN in iterable { … }` take `html!` nodes in their braces; the
   heads are parsed like Rust's own `if`/`for` heads and keep caller name
-  resolution. No other node can start with `@`, so the forms are
-  unambiguous. A plain `else` after an `@if` body and any other `@` form
-  (`@match`, `@let`, `@while`) are compile-time errors: `match` and other
-  control flow stay Rust expressions that return `Markup` inside `{…}`,
-  which keeps the grammar small without losing expressiveness.
+  resolution. Since 13.0.0-alpha.3, `@match value { PATTERN => { … } … }`
+  does the same for `match`: each arm is a Rust pattern (`|` alternatives
+  and `name @` bindings included) with an optional `if` guard, its body is
+  in braces, and commas between arms are optional. The arms expand to a
+  Rust `match`, so exhaustiveness and pattern errors are reported by the
+  compiler at the caller's tokens, and bodies follow the same escaping and
+  `Markup` rules as every other node. An arm body without braces is a
+  compile-time error that shows the braced form. No other node can start
+  with `@`, so the forms are unambiguous. A plain `else` after an `@if` body
+  and any other `@` form (`@let`, `@while`, `@loop`) are compile-time
+  errors: other control flow stays a Rust expression that returns `Markup`
+  inside `{…}`.
 * **Element names and the doctype:** Element names (opening and closing) may
   be Rust keywords, such as SVG's `<use>`. A leading `<!DOCTYPE html>` (any
   letter case) is emitted as written; it must precede every other node
@@ -1982,7 +1995,7 @@ the same server-authoritative controls.
   let card = html! { <section>{rendered}</section> };
   assert!(card.starts_with("<section><div class=\"user-badge\">"));
 
-  // Bare and conditional attributes, `@if` and `@for`.
+  // Bare and conditional attributes, `@if`, `@for` and `@match`.
   let tasks = [("Write tests", true), ("<Ship>", false)];
   let list = html! {
       <ul>
@@ -1991,11 +2004,17 @@ the same server-authoritative controls.
           }
       </ul>
       @if tasks.is_empty() { <p>"Nothing to do"</p> }
+      @match tasks.iter().filter(|(_, done)| !done).count() {
+          0 => { <p>"All done"</p> }
+          1 => { <p>"One task left"</p> }
+          left => { <p>{left} " tasks left"</p> }
+      }
   };
   assert_eq!(
       list,
       "<ul><li><input type=\"checkbox\" disabled checked />Write tests</li>\
-       <li><input type=\"checkbox\" disabled />&lt;Ship&gt;</li></ul>"
+       <li><input type=\"checkbox\" disabled />&lt;Ship&gt;</li></ul>\
+       <p>One task left</p>"
   );
   ```
 
@@ -2011,14 +2030,20 @@ the same server-authoritative controls.
   `language[-Script][-REGION]` in canonical case. Nested tables form dotted
   keys of ASCII letters, digits, `_` and `-`. A table whose entries are all
   strings named after CLDR categories and that has `other` is a plural
-  message; only `one` and `other` are accepted. Templates use `{name}`
+  message; since 13.0.0-alpha.3 any of `zero`, `one`, `two`, `few`, `many`
+  and `other` the locale's rule selects is accepted. Templates use `{name}`
   placeholders (Rust identifiers that are not keywords) and `{{`/`}}`.
 * **Compile-time checks:** the build fails on a key missing from any locale,
   differing placeholder sets or plural/single shapes between locales, a
   malformed template, a plural message whose forms do not match the locale's
   rule, a non-canonical file tag, and a `default` without a file (at most 30
   catalog errors are listed). Each file is tracked with `include_bytes!`, so
-  edits rebuild the crate; adding a file needs a rebuild trigger.
+  edits rebuild the crate. Stable Rust gives a macro no way to watch a
+  directory, so the documented setup adds a `build.rs` printing
+  `cargo::rerun-if-changed=<dir>`: Cargo then rescans the directory and
+  rebuilds the crate when a locale file is added or removed
+  (`rullst-macros/tests/locale_rebuild.rs` builds a probe crate with and
+  without it).
 * **Generated items:** in the invoking module, `pub static LOCALES:
   rullst::i18n::Locales` (tags sorted, default index) and `macro_rules! t`
   re-exported with `pub(crate) use t;`. `t!(locale, "key", name = expr, …)`
@@ -2032,13 +2057,26 @@ the same server-authoritative controls.
   text and attributes; arguments use `Display`. A key ending in `_html`
   returns `Markup`: its catalog template is trusted and its arguments are
   HTML-escaped.
-* **Plural rules:** `count` accepts any integer through `PluralCount` (the
-  absolute value, saturating at `u64::MAX`). `one` is selected for exactly 1
-  in `en`, `es`, `de`, `it`, `nl` and `pt-PT`, for 0 and 1 in `pt`, `pt-BR`
-  and `fr` (any region for `fr`), never in `ja`, `zh` and `ko` (which must
-  not define `one`). A plural message in any other language or Portuguese
-  region is a compile error. CLDR's `many` (millions in `es`, `fr`, `it`,
-  `pt`) uses `other`.
+* **Plural rules:** Since 13.0.0-alpha.3 forms are selected with CLDR's
+  cardinal rules (checked against CLDR 48's sample numbers) for `ar`, `cs`,
+  `de`, `en`, `es`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt` (`pt`,
+  `pt-BR`), `pt-PT`, `ro`, `ru`, `tr`, `uk` and `zh`, any region or script.
+  A plural message must define exactly the categories its locale's rule
+  selects: `other` only in `ja`, `ko` and `zh`; `one`/`other` in `de`, `en`,
+  `nl` and `tr`; `one`/`few`/`many`/`other` in `cs`, `pl`, `ru` and `uk`;
+  `one`/`few`/`other` in `ro`; `one`/`two`/`other` in `he`; all six in `ar`.
+  `es`, `fr`, `it`, `pt` and `pt-PT` need `one`/`other` and may add `many`,
+  which CLDR selects for exact millions (`other` is used when it is left
+  out). A missing category is a compile error naming it; a category the rule
+  never selects is one too. A plural message in another language, or a
+  Portuguese region other than Brazil and Portugal, is a compile error.
+  `count` accepts any integer and `rullst::i18n::Decimal` through
+  `PluralCount` (the absolute value; integers beyond `u64` saturate). A
+  `Decimal` keeps its visible fraction digits, which CLDR's operands read
+  (`1.0` is English `other`, `1.5` is French `one`); compact exponents are
+  not modelled. `Locale::plural_category(count)` returns the
+  `PluralCategory` (`#[non_exhaustive]`), or `None` for a language without a
+  rule.
 * **Message selection:** a call selects the catalog locale with the
   `Locale`'s tag, else one with the same language (the catalog default
   first), else the catalog default, so a `Locale` from another crate's list
@@ -2077,8 +2115,34 @@ the same server-authoritative controls.
   `csrf_middleware`/security baseline; the route does not exempt itself.
 * **Page language:** handlers pass `locale.tag()` to
   `render_page_with_lang` for `<html lang>`.
-* **Out of scope:** runtime-loaded catalogs, other plural categories,
-  script-aware matching, and date/number formatting. `rullst-mail`'s
+* **Formatting:** Since 13.0.0-alpha.3 `Locale::format_number(impl
+  Into<Decimal>)`, `format_percent(ratio)`, `format_currency(minor_units:
+  i64, Currency)`, `format_date(&impl chrono::Datelike, DateStyle)`,
+  `format_time(&impl chrono::Timelike, TimeStyle)` and `format_datetime`
+  return `String`s with CLDR 48 conventions compiled in (generated from ICU
+  78 and CLDR's date patterns by `.github/generate-i18n-format-data.py`; no
+  runtime data or network). Data exist for `ar`, `cs`, `de`, `en`, `en-GB`,
+  `es`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`, `pt-PT`, `ro`, `ru`,
+  `tr`, `uk` and `zh`; another tag uses its `language-REGION` entry, else its
+  language's, else `en`'s (`Locale::format_data_tag`). Numbers use the
+  locale's decimal and grouping separators, minimum grouping digits (`es`,
+  `it`, `pl`, `pt-PT` write `1234`), minus sign and Latin digits, and show
+  every fraction digit of the `Decimal` (`Decimal::round_half_even` and
+  `round_half_up` round explicitly). Percentages multiply the ratio by 100.
+  `Currency` (`BRL`, `USD`, `EUR`, `GBP`, `JPY` constants with localized
+  symbols; `Currency::new(code, minor_digits)` for other ISO codes, written
+  as the code; `CurrencyError::{InvalidCode, TooManyDigits}`) takes amounts
+  in integer minor units, so no floating-point rounding occurs. `DateStyle`
+  is `Short`, `Medium`, `Long`, `Full` (CLDR's date formats) or `Numeric`
+  (CLDR's `yMd` skeleton); `TimeStyle` is `Short` or `Medium` (no zone
+  names); both are `#[non_exhaustive]`. Date and time are joined with CLDR's
+  date-time format for the date style (ICU's `atTime` variant for `Long` and
+  `Full`; `Numeric` joins like `Short`). Values are formatted in their own
+  offset; years before 1 are written as ISO numbers. Outputs keep CLDR's
+  U+202F and U+00A0 spaces. Tests compare every locale with ICU output.
+* **Out of scope:** runtime-loaded catalogs, ordinal plural rules,
+  script-aware matching, compact and spelled-out numbers, time zone names,
+  non-Gregorian calendars and non-Latin digits. `rullst-mail`'s
   `MailLocale` remains separate (`MailLocale::from_preference(locale.tag())`).
 
 ### 4.3. Durable Queue Timing and Completion History
@@ -2107,7 +2171,15 @@ the same server-authoritative controls.
   time. Zone rules come from the system zoneinfo database when it has the
   zone, otherwise from the database bundled with the `jiff` dependency. Fixed
   instants in tests cover São Paulo, New York's gap and fold, and UTC
-  equivalence with `Scheduler::task`. `deferrable_task` has no time-zone form.
+  equivalence with `Scheduler::task`. The 13.0.0-alpha.3
+  `Scheduler::deferrable_task_in_tz(expression, zone, deferral, handler)`
+  matches the ticks as `task_in_tz` does and reads the deferral's windows as
+  wall times of the same zone, with the same rule for their boundaries (a
+  skipped boundary moves to the end of the gap, a repeated one is its first
+  occurrence; a window a gap skips entirely does not open that day);
+  `max_delay` stays elapsed time, and a window that sets a UTC offset is
+  rejected with `InvalidConfiguration`. Fixed instants around New York's
+  spring and autumn changes cover it.
 * SQLite claims pending jobs in order of their due time, and an immediately
   dispatched job is due at its enqueue time. A scheduled job, or one handed
   back for lack of a handler, that became due earlier is therefore claimed
@@ -2339,8 +2411,17 @@ every other database error stays `DatabaseError(String)`. `constraint` is the
 name PostgreSQL reports and `None` on SQLite and MySQL/MariaDB. Their `Display`
 names only the constraint, never the database message, which can quote the
 rejected value. Generated model writes and builders reach the caller through
-this conversion, and `Orm::raw` uses it too; `Orm::transaction`, generic over
-its closure's error type, still reports a failed closure as
+this conversion, and `Orm::raw` uses it too.
+
+`Orm::transaction` returns `Result<R, E>` for a closure error type
+`E: From<rullst_orm::Error> + Display`. After the rollback, the closure's
+`Err` reaches the caller unchanged, so a violation keeps its variant and an
+application error its type. Failures of the transaction itself (begin,
+savepoint, release, commit, post-commit effects) are `rullst_orm::Error`s
+converted with `E::from`; a commit rejected by a deferred constraint is a
+typed violation too. Only a rollback that fails after a failed closure returns
+`E::from(DatabaseError(..))`, naming both errors. 13.0.0-alpha.2 returned
+`Result<R, rullst_orm::Error>` and reported a failed closure as
 `DatabaseError("Transaction failed: ...")`.
 
 The `Orm` derive grammar is fail-closed. Model and field attributes are parsed
@@ -2726,7 +2807,7 @@ while portability and semantic review remain the model author's responsibility.
   transaction is active on the same task) does not open a second pooled
   transaction. It opens a SQLx-tracked savepoint on the active transaction and
   passes the same shared handle to its closure. An `Err` rolls back only to
-  that savepoint and returns `DatabaseError`; a success releases it, so the
+  that savepoint and is returned unchanged; a success releases it, so the
   nested work commits or rolls back with the outer transaction. Its
   `after_commit` callbacks are promoted to the outer commit boundary only on
   success. Dropping an unfinished nested future rolls its savepoint back.
@@ -3989,6 +4070,60 @@ by the application, which a later Studio "remote projects" mode reads. Guide:
   and attributes operations only inside a recording scope. A release-build
   measurement adds about 0.6 µs per request (guide, "Overhead").
 
+### 10.1.2. Studio remote projects (v13, 13.0.0-alpha.3)
+
+Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
+[production monitoring](production-monitoring.md#watch-your-projects-from-studio).
+
+* **Process.** `rullst_studio::remote::run_remote_studio` (the `rullst-studio`
+  binary, also started by `cargo rullst studio --remote`) exists only with the
+  non-default `remote` feature of `rullst-studio` (which adds `reqwest`,
+  `ring` and SQLx's SQLite driver), so applications that mount Studio in
+  development build none of it. It listens on
+  `127.0.0.1` only (default port 5556) and needs no application process. Its
+  router applies Studio's loopback boundary (loopback peer and `Host`,
+  same-origin `Origin` on unsafe methods, crate-private marker) in release
+  builds too, and mounts only `/studio` (projects), `/studio/radar`,
+  `/studio/routes`, `/studio/queues`, `/studio/queries` and the assets; local
+  surfaces (data browser, `.env`, AI, API, migrations, jobs, cache,
+  features, requests) answer `404`. Add and remove forms also require a
+  random per-process form token compared in constant time.
+* **Storage.** `projects.json` in `$XDG_CONFIG_HOME`/`~/.config`/`%APPDATA%`
+  under `rullst/studio`, and `projects.key` (32 random bytes) under the data
+  directory (`$XDG_DATA_HOME`/`~/.local/share`/`%LOCALAPPDATA%`). Files are
+  written atomically, owner-only (`0600` in `0700` directories on Unix), read
+  with a size bound, never through a symlink; unknown fields are rejected. At
+  most 32 projects; names are 1–48 of `[A-Za-z0-9._-]` starting with a letter
+  or digit. Tokens are sealed with AES-256-GCM (random 96-bit nonce) with
+  the project name and normalized base URL as associated data; a token that
+  does not decrypt is reported and never sent.
+* **Requests.** Base URLs are `https://`, or `http://` to a loopback host,
+  without user information, query or fragment. Studio sends
+  `GET <base>_rullst/monitor/v1` with `Authorization: Bearer`, follows no
+  redirect, ignores proxy variables, validates certificates, and bounds each
+  read to 1 MiB, 5 s total and 3 s to connect. It accepts only `200`, a JSON
+  content type and `schema: "rullst.monitor.v1"` with bounded lists (512
+  routes, 128 findings, 32 queues) and labels (512 characters); unknown fields
+  are ignored. Failures are fixed statuses; every remote value is
+  HTML-escaped.
+* **History and alerts (phase 3).** Projects marked *watched* are read every
+  60 s (clamped to 15 s–1 h) while the process runs. Each read stores one row
+  of aggregates (reachable, requests per second, window requests, 5xx rate,
+  p95, total pending and failed queue jobs) in `history.sqlite` in the data
+  directory (created `0600`, directory `0700`); every write deletes rows older
+  than 7 days and beyond 10,080 per project, and keeps the newest 500 alerts.
+  Rules per project (unreachable; 5xx rate, needing 20 window requests; p95;
+  pending jobs; failures between two polls, ignoring counter resets) fire at
+  most once per cool-down (15 minutes, 1–1,440) for each rule, with messages
+  built from fixed wording, the project name and numbers. `/studio/history`
+  charts the samples as inline SVG; `/studio/alerts` lists alerts, sets each
+  project's watch flag, rules and webhook (same form token) and acknowledges
+  alerts. A webhook URL must be `https://` without user information or
+  fragment, is sealed like a token and is never displayed; each alert is
+  posted once as JSON (`source`, `project`, `rule`, `message`, `at`) without
+  redirects or proxies within 5 s, and the fixed outcome is stored on the
+  alert.
+
 ### 10.2. Rullst Nexus (`/nexus`)
 * Auto-generated CMS with dynamic CRUD operations and AI Admin Assistant.
 * **Security Default:** Fail-closed by design; requires explicit authentication middleware and RBAC role validation (`admin`) on all mutating endpoints.
@@ -3998,7 +4133,7 @@ by the application, which a later Studio "remote projects" mode reads. Guide:
 * Basic Auth counts only presented Basic credentials that fail, per client bucket (IPv4 address or IPv6 /64 of the `ConnectInfo` peer); a credential-less `401` challenge is not a failure. A locked bucket receives `429` without credential evaluation, except for a browser holding the per-process `rullst_nexus_known_client` cookie issued on a previous success. Behind a shared reverse proxy, Core's `TrustedProxyLayer` (`Server::trusted_proxies`) configured with only the proxy's networks supplies the resolved client as `ConnectInfo`, isolating clients.
 * Basic Auth requires TLS evidence: the application-inserted `NexusVerifiedTls` marker, or a `ClientAddr` whose `forwarded_proto()` is HTTPS, which only the trusted-proxy layer can produce and only with `trust_forwarded_proto(true)`. A request URI or forwarding header alone is never TLS evidence.
 * A model may explicitly declare one text `tenant` column. Nexus then obtains the scope only from a trusted Core `TenantContext`, injects it on create, includes it in every built-in read/mutation/batch predicate, and denies a missing context. Models without that metadata remain global administrator models. Authentication and tenant-membership resolution remain host contracts.
-* Updates write only submitted fields, and the edit form (`data-nexus-mode="edit"`) submits only controls the administrator changed. NULL, unregistered enum values, offset or sub-millisecond date-times and undecodable values render without a widget default that could overwrite them. An emptied number/relation/date/date-time/enum/JSON value is NULL (omitted on create), never `''`; the semantic validator rejects `''` for those kinds. A `FieldKind::Integer { min, max }` value must be a whole number in range and is stored canonically; `Number` accepts any finite number. Date and time kinds are parsed per kind and bound as typed values: `Date` (`YYYY-MM-DD`, year 0001 to 9999) as a date, `Time` (`HH:MM[:SS[.fraction]]`, v13) as a time, a local `DateTime` (`T` or space separator) as a date-time without a zone, and `DateTimeUtc` (v13) as a UTC instant, where a value without an offset is UTC and one with `Z`, `±HH:MM` or `±HH` is converted. A text column stores them as `YYYY-MM-DD`, `HH:MM:SS[.fraction]`, `YYYY-MM-DD HH:MM:SS[.fraction]` (the text form of `CURRENT_TIMESTAMP`, so text comparison and ordering agree with application-written rows) and RFC 3339 respectively; a `DateTime` value with an offset is bound as text, as entered, which only a text column accepts. A malformed value is a `422` validation error. `Time` fields use a `time` input and `DateTimeUtc` fields a `datetime-local` input labelled `(UTC)` that shows the stored instant converted to UTC; a value either picker cannot hold exactly (finer than milliseconds) is shown in a text input.
+* Updates write only submitted fields, and the edit form (`data-nexus-mode="edit"`) submits only controls the administrator changed. NULL, unregistered enum values, offset or sub-millisecond date-times and undecodable values render without a widget default that could overwrite them. An emptied number/relation/date/date-time/enum/JSON value is NULL (omitted on create), never `''`; the semantic validator rejects `''` for those kinds. A `FieldKind::Integer { min, max }` value must be a whole number in range and is stored canonically; `Number` accepts any finite number. Date and time kinds are parsed per kind and bound as typed values: `Date` (`YYYY-MM-DD`, year 0001 to 9999) as a date, `Time` (`HH:MM[:SS[.fraction]]`, v13) as a time, a local `DateTime` (`T` or space separator) as a date-time without a zone, and `DateTimeUtc` (v13) as a UTC instant, where a value without an offset is a wall time in the panel's time zone and one with `Z`, `±HH:MM` or `±HH` is converted. The zone is UTC unless `Nexus::with_time_zone` selects a `NexusTimeZone` (v13, 13.0.0-alpha.3): a fixed offset, or with the `tz` feature (`nexus-tz` in the facade) an IANA zone whose rules come from `jiff` (system zoneinfo, bundled fallback). A wall time that a daylight-saving gap skips is a `422` naming the zone; one that a fold repeats is read as its earlier instant. A text column stores them as `YYYY-MM-DD`, `HH:MM:SS[.fraction]`, `YYYY-MM-DD HH:MM:SS[.fraction]` (the text form of `CURRENT_TIMESTAMP`, so text comparison and ordering agree with application-written rows) and RFC 3339 respectively; a `DateTime` value with an offset is bound as text, as entered, which only a text column accepts. A malformed value is a `422` validation error. `Time` fields use a `time` input and `DateTimeUtc` fields a `datetime-local` input labelled with the zone's name (`UTC`, `UTC±HH:MM` or the IANA name) that shows the stored instant as a wall time in that zone; the later occurrence of a repeated wall time is shown as its UTC value (`Z`) in a text input so saving the form unchanged keeps it, and a value either picker cannot hold exactly (finer than milliseconds) is shown in a text input.
 * Record keys follow the registered primary-key kind: a `number`, `integer` or relation key must be a canonical integer (`+1`, `01` and `1e3` name no record, so the audit key is the changed key); other kinds are compared as text. A model may declare a composite key (`NexusModel::nexus_pk_columns`, v13; at most 8 distinct registered columns, none of them the tenant column): a record is then addressed by its values in key order, each percent-encoded (`urlencoding::encode`) and joined by `,`; only that canonical spelling with the right number of values names a record, each value typed by its column, and every key column is bound in list, edit, update, delete, batch and create predicates, read-only on edit and a sort tie-breaker. The UI addresses records under `/table/{table}/record/{key}` so keys such as `new`, `search` or `batch` never meet an action route. Other form values are bound as text; on PostgreSQL, numbers and integers are written through `NUMERIC`, canonical-integer relations through `BIGINT`, Booleans as untyped `'0'`/`'1'` literals and dates and times (including NULL) through `DATE`, `TIME`, `TIMESTAMP` or `TIMESTAMPTZ` casts, so native columns accept them, while other kinds need text columns. MySQL/MariaDB receive a UTC instant as its UTC wall time. Search matches the typed text literally and case-insensitively (`ILIKE` on PostgreSQL) in visible text, textarea, e-mail and URL fields; a model without one shows no search box and a search query lists no rows. The tenant predicate compares binary strings on MySQL/MariaDB.
 * `Password` fields are never rendered: list cells show a fixed mask (the column is not selected or sortable; neither is a hidden field, so a `sort_by` naming either orders by the key) and edit forms an empty input; an empty submission keeps the stored value. Non-empty values are written verbatim; Nexus neither hashes them nor runs ORM hooks, so credential-hash columns must be read-only in Nexus and changed by an application flow that hashes.
 * `#[derive(Nexus)]` follows ORM field semantics: `#[orm(skip)]`/`#[sqlx(skip)]` fields are not columns; `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields become hidden, read-only `Password` fields that are never listed, searched, sorted, rendered or written (only `#[nexus(kind = "password")]` turns an `#[orm(hidden)]` field into a write-only field, and any other widget override on these fields fails compilation); `#[orm(masked)]` fields default to `Password` unless an explicit `#[nexus(kind)]` shows them. The record key is the struct-level `primary_key` (one column, or up to 8 distinct columns separated by commas), else every `#[nexus(primary_key)]` field in declaration order, else `id`; annotations must match a struct-level list. A single integer key is hidden and read-only as database-generated, while another key, and every column of a composite key, is entered on create and read-only on edit. `chrono::NaiveDate`, `NaiveTime`, `NaiveDateTime` and `DateTime<Utc>` fields become `Date`, `Time`, `DateTime` and `DateTimeUtc`. Rust integer fields (also under `Option`, and under an explicit `kind = "number"`) become `FieldKind::Integer` bounded by their type (`isize`/`usize` as 64-bit, `u64`/`usize` capped at `i64::MAX`); `f32`/`f64` stay `Number`.

@@ -14,5 +14,8 @@ pub(crate) use translate::expand_translate;
 #[path = "catalog_tests.rs"]
 mod catalog_tests;
 #[cfg(test)]
+#[path = "plural_tests.rs"]
+mod plural_tests;
+#[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

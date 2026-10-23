@@ -252,15 +252,15 @@ fn malformed_control_blocks_are_rejected() {
         parse_error(r#"<p>@else { "y" }</p>"#),
         "`@else` must directly follow the body of an `@if` or `@else if` block"
     );
-    for source in ["@match x { _ => {} }", "@while x { }", "@let x = 1;"] {
+    for source in ["@while x { }", "@let x = 1;", "@loop { }"] {
         assert!(
-            parse_error(source).starts_with("html! supports `@if`, `@else` and `@for`"),
+            parse_error(source).starts_with("html! supports `@if`, `@else`, `@for` and `@match`"),
             "{source}"
         );
     }
     assert_eq!(
         parse_error("<div>@if a { </div> }</div>"),
-        "unexpected closing tag in an `@if`/`@for` body"
+        "unexpected closing tag in an `@if`, `@for` or `@match` body"
     );
     assert_eq!(
         parse_error("@if a { <!DOCTYPE html> }"),
@@ -268,4 +268,66 @@ fn malformed_control_blocks_are_rejected() {
     );
     assert!(syn::parse_str::<HtmlDocument>("@for x items { }").is_err());
     assert!(syn::parse_str::<HtmlDocument>(r#"@if a "x""#).is_err());
+}
+
+#[test]
+fn match_blocks_parse_patterns_guards_and_optional_commas() {
+    let document = parse_ok(
+        r#"@match state {
+               State::Empty => { <p>"Nothing"</p> }
+               State::One(name) if name.is_empty() => { "anonymous" },
+               | State::One(name) | State::Two(name, _) => { <b>{name}</b> "!" }
+               n @ State::Many { .. } => {}
+           }"#,
+    );
+    let [HtmlNode::Match(node)] = &document.nodes[..] else {
+        panic!("expected one @match node");
+    };
+    assert!(matches!(node.scrutinee, syn::Expr::Path(_)));
+    assert_eq!(node.arms.len(), 4);
+    let bodies: Vec<usize> = node.arms.iter().map(|arm| arm.body.len()).collect();
+    assert_eq!(bodies, [1, 1, 2, 0]);
+    let guards: Vec<bool> = node.arms.iter().map(|arm| arm.guard.is_some()).collect();
+    assert_eq!(guards, [false, true, false, false]);
+    assert!(matches!(node.arms[2].pattern, syn::Pat::Or(_)));
+    assert!(matches!(node.arms[3].pattern, syn::Pat::Ident(_)));
+
+    // `@match` nests in elements and other control blocks, and the other way round.
+    let document = parse_ok(
+        r#"<ul>@for row in rows { @match row.kind { Kind::A => { @if row.on { <li>"a"</li> } } _ => {} } }</ul>"#,
+    );
+    let [HtmlNode::Element(list)] = &document.nodes[..] else {
+        panic!("expected one <ul>");
+    };
+    let [HtmlNode::For(rows)] = &list.children[..] else {
+        panic!("expected one @for child");
+    };
+    let [HtmlNode::Match(kind)] = &rows.body[..] else {
+        panic!("expected @match in the @for body");
+    };
+    assert!(matches!(kind.arms[0].body[..], [HtmlNode::If(_)]));
+    // A struct-literal-like brace after the scrutinee opens the arms.
+    assert_eq!(parse_ok("@match x {}").nodes.len(), 1);
+}
+
+#[test]
+fn malformed_match_blocks_are_rejected() {
+    for source in [
+        r#"@match x { 0 => "zero", _ => { "other" } }"#,
+        r#"@match x { 0 => <p>"zero"</p> }"#,
+        r#"@match x { _ => html! { "x" } }"#,
+    ] {
+        assert_eq!(
+            parse_error(source),
+            "write the nodes of an `@match` arm in braces: `pattern => { <p>\"text\"</p> }`",
+            "{source}"
+        );
+    }
+    assert_eq!(parse_error(r#"@match x { 0 { "zero" } }"#), "expected `=>`");
+    assert_eq!(
+        parse_error("<div>@match x { _ => { </div> } }</div>"),
+        "unexpected closing tag in an `@if`, `@for` or `@match` body"
+    );
+    assert!(syn::parse_str::<HtmlDocument>(r#"@match x"#).is_err());
+    assert!(syn::parse_str::<HtmlDocument>(r#"@match { _ => {} }"#).is_err());
 }

@@ -1,10 +1,12 @@
 use rullst_macros::html;
 
 fn main() {
-    let count = 2;
+    let mut count = 2;
     let _ = html! {
         <p>
-            @match count { 0 => { "none" } _ => { "some" } }
+            @while count > 0 { "tick" }
         </p>
     };
+    count -= 1;
+    let _ = count;
 }
