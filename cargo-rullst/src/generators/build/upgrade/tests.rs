@@ -167,3 +167,106 @@ fn the_plan_says_which_earlier_rules_it_skipped() {
         assert!(!markdown.contains("Rules:"), "{markdown}");
     }
 }
+
+/// Must-change and review findings as the assistant receives them, and the
+/// guide links that only a plan with findings carries.
+#[test]
+fn findings_reach_the_plan_text_and_the_assistant() {
+    let root = Path::new("/project");
+    let target = Version::parse("13.0.0").unwrap();
+    let clean = report::plan_text(root, &target, &[], &SourceScan::default());
+    assert!(!clean.contains("Migration guide:"), "{clean}");
+    let scan = selected_scan(None, false);
+    let text = report::plan_text(root, &target, &[], &scan);
+    assert!(text.contains("Migration guide: "), "{text}");
+    assert!(
+        text.contains("Reviewed fixes for these findings: cargo rullst ai upgrade"),
+        "{text}"
+    );
+
+    let handler = rules::CATALOG
+        .iter()
+        .copied()
+        .find(|rule| rule.code == "V13-HTML-DYNAMIC-EVENT-HANDLER")
+        .unwrap();
+    let mut mixed = selected_scan(None, false);
+    mixed.findings.push(rules::SourceFinding {
+        rule: handler,
+        path: root.join("src/view.rs"),
+        line: 7,
+    });
+    let findings = report::assist_findings(root, &mixed);
+    let summary: Vec<_> = findings
+        .iter()
+        .map(|finding| {
+            (
+                finding.code,
+                finding.must_change,
+                finding.path.as_str(),
+                finding.line,
+            )
+        })
+        .collect();
+    assert_eq!(
+        summary,
+        [
+            ("V13-RENDER-PAGE-LANGUAGE", false, "src/main.rs", 2),
+            ("V13-ORM-TRANSACTION-ERRORS", false, "src/main.rs", 5),
+            ("V13-HTML-DYNAMIC-EVENT-HANDLER", true, "src/view.rs", 7),
+        ]
+    );
+}
+
+/// Runs a dry-run upgrade in the current directory when a parent test names
+/// a report file; otherwise does nothing.
+#[test]
+fn upgrade_child_fixture() {
+    let Some(report) = std::env::var_os("RULLST_UPGRADE_REPORT") else {
+        return;
+    };
+    let outcome = match run_upgrade(UpgradeOptions {
+        target: Some("13.0.0".into()),
+        dry_run: true,
+        json: false,
+        keep_on_failure: false,
+        restore: None,
+        all_rules: false,
+    }) {
+        Ok(()) => "ok".to_string(),
+        Err(error) => error.to_string(),
+    };
+    std::fs::write(report, outcome).unwrap();
+}
+
+#[test]
+fn a_dry_run_prints_the_plan() {
+    let project = tempfile::tempdir().unwrap();
+    std::fs::create_dir(project.path().join("src")).unwrap();
+    std::fs::write(project.path().join("src/main.rs"), "fn main() {}\n").unwrap();
+    std::fs::write(
+        project.path().join("Cargo.toml"),
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = { version = \"12.3\", default-features = false }\n",
+    )
+    .unwrap();
+    let report = project.path().join("report");
+    let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "generators::build::upgrade::tests::upgrade_child_fixture",
+            "--nocapture",
+        ])
+        .current_dir(project.path())
+        .env("NO_COLOR", "1")
+        .env("RULLST_UPGRADE_REPORT", &report)
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(std::fs::read_to_string(&report).unwrap(), "ok", "{stdout}");
+    assert!(
+        stdout.contains("Rullst assisted upgrade — DRY RUN — target 13.0.0"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("rullst (rullst) 12.3 -> "), "{stdout}");
+}
