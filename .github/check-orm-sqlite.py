@@ -38,13 +38,14 @@ def command(regex: str, shard: str | None, features: list[str] = FEATURES,
     if shard is not None and not SHARD.fullmatch(shard):
         raise ValueError("--shard takes K/N")
     # In place: a copy of the workspace under the runner's temporary directory
-    # runs out of quota once every ORM test binary is linked.
+    # runs out of quota once every ORM test binary is linked. cargo-mutants
+    # rejects --gitignore and --jobs together with --in-place (one job anyway).
     mutants = ["cargo", "mutants", "--no-config", "--in-place",
                "--package", "rullst-orm", "--package", "rullst-orm-macros",
                "--test-package", "rullst-orm",
                "--no-default-features",
                "--features", ",".join("rullst-orm/" + feature for feature in features),
-               "--gitignore", "true", "--jobs", "1", "--cap-lints", "false",
+               "--cap-lints", "false",
                "--build-timeout", "600", "--timeout", str(timeout),
                "--cargo-arg=--locked", "--cargo-arg=--offline",
                *("--cargo-arg=" + target for target in (targets or ["--tests"])),
