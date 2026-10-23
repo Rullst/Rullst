@@ -32,6 +32,12 @@ impl Style {
         depth: ColorDepth::None,
     };
 
+    /// 24-bit colour, for tests outside the UI module.
+    #[cfg(test)]
+    pub(crate) const TRUE_COLOR: Self = Self {
+        depth: ColorDepth::TrueColor,
+    };
+
     pub(crate) const fn with_depth(depth: ColorDepth) -> Self {
         Self { depth }
     }
