@@ -256,4 +256,24 @@ mod tests {
     async fn nested_runtime_is_rejected_before_network_discovery() {
         assert!(matches!(fetch_catalog(), Err(UpdateError::NestedRuntime)));
     }
+
+    #[test]
+    fn errors_debug_print_their_actionable_message() {
+        assert_eq!(
+            format!("{:?}", UpdateError::NestedRuntime),
+            "cannot run synchronous discovery inside an existing async runtime"
+        );
+    }
+
+    #[test]
+    fn a_downgrade_check_is_refused_before_discovery() {
+        let matches = command()
+            .try_get_matches_from(["update", "check", "--to", "0.0.1"])
+            .unwrap();
+        let error = run(&matches).unwrap_err().to_string();
+        assert_eq!(
+            error,
+            "invalid update selection: downgrades are not authorized by update discovery"
+        );
+    }
 }

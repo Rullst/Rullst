@@ -53,6 +53,52 @@ fn authentication_precedes_binary_download_and_exact_bytes_are_required() {
 }
 
 #[test]
+fn the_manifest_may_use_its_whole_16_kib_bound() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut padded = manifest();
+    padded.resize(16 * 1024, b' ');
+    let limits = RefCell::new(Vec::new());
+    stage_into(
+        directory.path(),
+        &Version::new(12, 1, 0),
+        TARGET,
+        |name, limit, path| {
+            limits.borrow_mut().push((name.to_string(), limit));
+            let body = if name.ends_with(".json") {
+                padded.clone()
+            } else {
+                BODY.to_vec()
+            };
+            write_bounded(&body[..], limit, path)
+        },
+        |_, _| Ok(()),
+    )
+    .unwrap();
+    assert_eq!(
+        limits.borrow()[0],
+        (format!("cli-manifest-{TARGET}.json"), 16_384)
+    );
+    assert_eq!(limits.borrow()[1].1, 32);
+}
+
+#[test]
+fn offline_staging_is_refused_before_any_other_check() {
+    let matches = command()
+        .try_get_matches_from(["stage", "--to", "99.0.0", "--offline"])
+        .unwrap();
+    // Inside a runtime, the next check would fail with another message.
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .unwrap();
+    let _entered = runtime.enter();
+    assert_eq!(
+        execute(&matches).unwrap_err().to_string(),
+        "artifact verification rejected: offline mode forbids authenticated downloads"
+    );
+    assert!(run(&matches).is_err());
+}
+
+#[test]
 fn failed_provenance_or_changed_manifest_never_downloads_executables() {
     for mutation in [false, true] {
         let directory = tempfile::tempdir().unwrap();
