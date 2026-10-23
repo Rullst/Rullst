@@ -237,3 +237,34 @@ fn create_test_fifo(path: &Path) {
             .success()
     );
 }
+
+#[test]
+fn a_cache_file_one_byte_over_its_bound_is_refused_before_decoding() {
+    let temp = fixture();
+    let base = temp.path().canonicalize().unwrap();
+    store_at(&base, &vec![b'x'; CATALOG_LIMIT as usize], 100).unwrap();
+    let file = options()
+        .write(true)
+        .open(base.join("rullst-update-v1").join(CATALOG))
+        .unwrap();
+    file.set_len(256 * 1024 + 64 + 1).unwrap();
+    assert!(matches!(
+        load_at(&base, 100),
+        Err(CacheError::Invalid("catalog cache exceeds its size limit"))
+    ));
+}
+
+#[test]
+fn cache_timestamps_have_at_most_20_digits() {
+    let entry = |timestamp: &str| [HEADER, timestamp.as_bytes(), b"\n", BODY].concat();
+    assert_eq!(
+        decode(&entry("00000000000000000100"), 100)
+            .unwrap()
+            .age_seconds,
+        0
+    );
+    assert!(matches!(
+        decode(&entry("000000000000000000100"), 100),
+        Err(CacheError::Invalid("invalid catalog cache timestamp"))
+    ));
+}
