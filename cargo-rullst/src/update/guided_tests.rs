@@ -199,3 +199,64 @@ fn project_major_jump_stops_before_installation_even_with_explicit_cli_major_opt
             .contains("major-specific")
     );
 }
+
+#[test]
+fn offline_guidance_is_limited_to_project_verification() {
+    let prerelease = (!semver::Version::parse(env!("CARGO_PKG_VERSION"))
+        .unwrap()
+        .pre
+        .is_empty())
+    .then_some("--prerelease");
+    let parse = |scope: &str| {
+        let matches = command()
+            .try_get_matches_from(
+                [
+                    "guided",
+                    "--to",
+                    env!("CARGO_PKG_VERSION"),
+                    "--scope",
+                    scope,
+                    "--root",
+                    "/private/cli",
+                    "--offline",
+                ]
+                .into_iter()
+                .chain(prerelease),
+            )
+            .unwrap();
+        Options::parse(&matches)
+    };
+    assert_eq!(
+        parse("cli").unwrap_err().to_string(),
+        "guided update rejected: offline mode forbids authenticated CLI installation; use --scope project for offline project verification"
+    );
+    assert!(parse("project").unwrap().offline);
+    if !std::io::stdin().is_terminal() {
+        let matches = command()
+            .try_get_matches_from(["guided", "--to", "99.0.0", "--scope", "project"])
+            .unwrap();
+        assert!(run(&matches).is_err());
+    }
+}
+
+#[test]
+fn guided_steps_dispatch_to_the_checked_commands() {
+    let stage = execute(&["stage", "--to", "99.0.0", "--offline"].map(OsString::from));
+    assert_eq!(
+        stage.unwrap_err().to_string(),
+        "artifact verification rejected: offline mode forbids authenticated downloads"
+    );
+    let project = execute(
+        &[
+            "project",
+            "verify",
+            "--prepared",
+            "/rullst-missing-preparation",
+        ]
+        .map(OsString::from),
+    );
+    assert_eq!(
+        project.unwrap_err().to_string(),
+        "project preparation rejected: review the preparation first; --allow-project-code is required because Cargo builds and tests execute project code"
+    );
+}
