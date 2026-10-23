@@ -199,3 +199,101 @@ async fn mock_breaks_sorted_set_ties_like_zrevrange() {
     assert_eq!(top(1).await, ["bob"]);
     assert_eq!(top(3).await, ["bob", "alice", "carol"]);
 }
+
+fn validated(config: RedisDataConfig) -> Result<(), &'static str> {
+    config.validate().map(|_| ()).map_err(|error| match error {
+        PolyglotError::InvalidConfiguration { reason, .. } => reason,
+        other => panic!("unexpected error: {other:?}"),
+    })
+}
+
+fn acl(endpoint: &str, username: &str, password: &str) -> RedisDataConfig {
+    RedisDataConfig::new(endpoint, "application", username, password)
+}
+
+#[test]
+fn any_mock_endpoint_or_credential_selects_the_offline_backend() {
+    assert!(acl("", "user", "secret").requests_mock());
+    assert!(acl("mock://redis", "user", "secret").requests_mock());
+    assert!(acl("rediss://cache.example.com", "mock_user", "secret").requests_mock());
+    assert!(acl("rediss://cache.example.com", "user", "mock_secret").requests_mock());
+    assert!(!acl("rediss://cache.example.com", "user", "secret").requests_mock());
+    assert!(
+        !RedisDataConfig::unauthenticated_local("redis://127.0.0.1", "application").requests_mock()
+    );
+    assert_eq!(
+        format!("{:?}", acl("rediss://cache.example.com", "user", "secret")),
+        "RedisDataConfig { endpoint: \"[CONFIGURED]\", credentials: \"[REDACTED]\", namespace: \"application\" }"
+    );
+}
+
+#[tokio::test]
+async fn the_offline_backend_still_validates_its_namespace() {
+    let invalid = RedisDataStore::connect_or_mock(RedisDataConfig::new("", "bad/ns", "", "")).await;
+    assert!(matches!(
+        invalid,
+        Err(PolyglotError::InvalidConfiguration {
+            backend: "Redis",
+            ..
+        })
+    ));
+}
+
+#[test]
+fn endpoints_are_bare_tls_urls_unless_local() {
+    let shape =
+        "endpoint must not contain credentials, a database path, query parameters, or a fragment";
+    for endpoint in [
+        "rediss://user@cache.example.com",
+        "rediss://:pw@cache.example.com",
+        "rediss://cache.example.com?db=1",
+        "rediss://cache.example.com#x",
+        "rediss://cache.example.com/2",
+    ] {
+        assert_eq!(
+            validated(acl(endpoint, "user", "secret")),
+            Err(shape),
+            "{endpoint}"
+        );
+    }
+    assert_eq!(
+        validated(acl("rediss://cache.example.com/", "user", "secret")),
+        Ok(())
+    );
+    assert_eq!(
+        validated(acl("redis://127.0.0.1:6379", "user", "secret")),
+        Ok(())
+    );
+    assert_eq!(
+        validated(acl("redis://cache.example.com", "user", "secret")),
+        Err("remote endpoints must use rediss:// TLS")
+    );
+    assert_eq!(
+        validated(acl("http://cache.example.com", "user", "secret")),
+        Err("only redis:// and rediss:// endpoints are supported")
+    );
+}
+
+#[test]
+fn credentials_hold_one_to_2048_visible_bytes() {
+    let message = "credentials must contain 1-2,048 visible ASCII bytes";
+    let endpoint = "rediss://cache.example.com";
+    assert_eq!(validated(acl(endpoint, "user", "pass word")), Ok(()));
+    assert_eq!(validated(acl(endpoint, "user", &"p".repeat(2_048))), Ok(()));
+    assert_eq!(
+        validated(acl(endpoint, &"u".repeat(2_048), "secret")),
+        Ok(())
+    );
+    for (username, password) in [
+        ("user", "p".repeat(2_049)),
+        ("user", "pass\tword".to_string()),
+        ("us\ner", "secret".to_string()),
+        ("usér", "secret".to_string()),
+    ] {
+        assert_eq!(
+            validated(acl(endpoint, username, &password)),
+            Err(message),
+            "{username:?}"
+        );
+    }
+}
