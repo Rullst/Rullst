@@ -74,3 +74,32 @@ fn finishing_commits_every_replacement_and_records_the_final_phase() {
         assert_eq!(stored["phase"], finished);
     }
 }
+
+#[test]
+fn approvals_are_complete_lowercase_digests() {
+    for (name, about) in [
+        ("apply", "Apply the exact approved"),
+        ("recover", "Restore only this approved"),
+    ] {
+        let text = command(name).get_about().unwrap().to_string();
+        assert!(text.starts_with(about), "{text}");
+    }
+    let invalid =
+        "project preparation rejected: approval must be the complete lowercase SHA-256 from review";
+    for approval in ["A".repeat(64), "a".repeat(63), "g".repeat(64)] {
+        let matches = command("apply")
+            .try_get_matches_from([
+                "apply",
+                "--verified",
+                "/rullst-missing-verification",
+                "--approved-review",
+                &approval,
+            ])
+            .unwrap();
+        assert_eq!(
+            execute(&matches, false).unwrap_err().to_string(),
+            invalid,
+            "{approval}"
+        );
+    }
+}

@@ -461,3 +461,6 @@ fn review_prints_the_diff_and_its_digest() {
         "{stdout}"
     );
 }
+
+#[path = "evidence_intent_tests.rs"]
+mod intent;
