@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792722401693,
+  "lastUpdate": 1792725825487,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -13282,6 +13282,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_active",
             "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0c93d322cf8584a230ca3139ebddb6546118948f",
+          "message": "Merge pull request #535 from Rullst/test/v13-alpha3-upgrade-rehearsal\n\ntest(cli): rehearse the alpha.2 → alpha.3 upgrade and re-measure tutorial 36",
+          "timestamp": "2026-10-22T23:54:36-03:00",
+          "tree_id": "c2a1186a0e8db7a4c4fddf6716681830f6936bdb",
+          "url": "https://github.com/Rullst/Rullst/commit/0c93d322cf8584a230ca3139ebddb6546118948f"
+        },
+        "date": 1792725824805,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 18,
             "range": "± 0",
             "unit": "ns/iter"
           },
