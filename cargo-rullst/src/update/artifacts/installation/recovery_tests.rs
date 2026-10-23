@@ -100,3 +100,45 @@ fn recovery_without_a_selected_operation_is_refused() {
     let root = cache::installation_root(&base.path().join("installed")).unwrap();
     assert!(application::recover(&root, &"f".repeat(64)).is_err());
 }
+
+#[test]
+fn recover_requires_a_lowercase_review_digest_and_a_selected_operation() {
+    let base = base();
+    let root = base.path().join("installed");
+    let recover = |digest: &str| {
+        let matches = command()
+            .try_get_matches_from([
+                "install",
+                "recover",
+                "--root",
+                root.to_str().unwrap(),
+                "--approved-review",
+                digest,
+            ])
+            .unwrap();
+        match execute(&matches) {
+            Ok(_) => panic!("recovery was accepted"),
+            Err(error) => error.to_string(),
+        }
+    };
+    assert_eq!(
+        recover(&"f".repeat(64)),
+        "artifact verification rejected: no selected installation operation to recover"
+    );
+    assert_eq!(
+        recover(&"F".repeat(64)),
+        "artifact verification rejected: approval must be a lowercase SHA-256 review digest"
+    );
+}
+
+#[test]
+fn a_destination_changed_after_review_is_refused() {
+    let base = base();
+    let first = candidate(base.path(), false);
+    unchanged(&first).unwrap();
+    install(&first);
+    assert_eq!(
+        unchanged(&first).unwrap_err().to_string(),
+        "artifact verification rejected: installation destination changed after review"
+    );
+}
