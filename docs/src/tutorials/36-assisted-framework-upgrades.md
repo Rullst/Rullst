@@ -401,13 +401,13 @@ is classified for `rullst-upgrade-rules-v4`:
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
   application source (11 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (94 rows);
+  the affected API, feature or configuration, which the rules locate (95 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (91 rows).
+  of inputs that previously failed) (93 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 106 rules. A row can map to several rules and a rule to
+has 107 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -608,6 +608,9 @@ the rule together.
 | Connect mock authorization URL | (c) none | — | Mock mode only |
 | Account mail language and product name | (c) none | — | Generator output; existing projects keep their code |
 | Production log defaults | (c) none | — | Runtime defaults; not detectable in source |
+| Connect GitHub email | (b) review | `V13-CONNECT-GITHUB-EMAIL` | `GithubProvider` and `Connect::driver("github", ...)` |
+| Account mail link lifetime | (c) none | — | Only reset lifetimes that previously failed change; the link wording is not located |
+| Generated reset link lifetime | (c) none | — | Generator output; existing projects keep their code |
 
 ## Planned simpler update experience
 

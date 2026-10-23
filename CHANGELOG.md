@@ -407,6 +407,10 @@ A prepared version section does not establish that its tag or crates exist.
   measurements: each upgraded with `cargo rullst upgrade`, built without
   warnings and passed its tests and Clippy; SaaS and LMS needed only the
   `#[orm(db_default)]` edit that `V13-ORM-SKIP-MANAGED-COLUMNS` reports.
+- `cargo rullst upgrade` reports `GithubProvider` and
+  `Connect::driver("github", ...)` (`V13-CONNECT-GITHUB-EMAIL`, review), whose
+  user email is now the primary address with GitHub's verified flag, so code
+  that links accounts on it can require `email_verified == Some(true)`.
 - Documentation: tutorial 36's rule classification now lists every row of
   the v13 migration guide (33 rows were missing, all without application
   impact a rule could locate), and a `cargo-rullst` test keeps the table, its
