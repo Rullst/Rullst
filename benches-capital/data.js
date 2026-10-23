@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792763843745,
+  "lastUpdate": 1792772436410,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -13378,6 +13378,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3474f2cfbbf39165172c837c57c92f0451ae2f75",
+          "message": "Merge pull request #538 from Rullst/test/v13-alpha3-orm-mutation\n\ntest(orm): re-measure rullst-orm and rullst-orm-macros for alpha.3",
+          "timestamp": "2026-10-23T12:57:17-03:00",
+          "tree_id": "7e221d0012011ea2025758f8852b21fdefcee49a",
+          "url": "https://github.com/Rullst/Rullst/commit/3474f2cfbbf39165172c837c57c92f0451ae2f75"
+        },
+        "date": 1792772435544,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 3,
             "range": "± 0",
             "unit": "ns/iter"
           }
