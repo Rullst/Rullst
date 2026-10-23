@@ -167,3 +167,107 @@ fn bracketed_ipv6_loopback_is_a_local_endpoint() {
         .is_err()
     );
 }
+
+fn configuration_error(config: QdrantConfig) -> &'static str {
+    match QdrantStore::connect_or_mock(config) {
+        Err(PolyglotError::InvalidConfiguration { reason, .. }) => reason,
+        Err(other) => panic!("unexpected error: {other:?}"),
+        Ok(_) => panic!("configuration must be rejected"),
+    }
+}
+
+#[test]
+fn mock_selection_endpoint_shape_and_response_limits_are_exact() {
+    let mock = |config| {
+        QdrantStore::connect_or_mock(config)
+            .expect("valid config")
+            .is_mock()
+    };
+    assert!(mock(QdrantConfig::new(
+        "https://qdrant.example.com",
+        "mock_key"
+    )));
+    assert!(mock(QdrantConfig::new("mock://qdrant", "key")));
+    assert!(!mock(QdrantConfig::new(
+        "https://qdrant.example.com",
+        "key"
+    )));
+    assert!(!mock(QdrantConfig::unauthenticated_local(
+        "http://127.0.0.1:6333"
+    )));
+
+    let shape = "endpoint must not contain credentials, a path, query parameters, or a fragment";
+    for endpoint in [
+        "https://user@qdrant.example.com",
+        "https://:pw@qdrant.example.com",
+        "https://qdrant.example.com?x=1",
+        "https://qdrant.example.com#x",
+    ] {
+        assert_eq!(
+            configuration_error(QdrantConfig::new(endpoint, "key")),
+            shape,
+            "{endpoint}"
+        );
+    }
+
+    assert_eq!(
+        format!(
+            "{:?}",
+            QdrantConfig::new("https://qdrant.example.com", "key")
+        ),
+        "QdrantConfig { endpoint: \"[CONFIGURED]\", api_key: \"[REDACTED]\", response_limit: 2097152 }"
+    );
+    let config = || QdrantConfig::new("https://qdrant.example.com", "key");
+    assert!(config().with_response_limit(16 * 1024 * 1024).is_ok());
+    assert!(config().with_response_limit(16 * 1024 * 1024 + 1).is_err());
+}
+
+#[test]
+fn vectors_and_payloads_reach_exactly_their_bounds() {
+    use super::types::{validate_payload, validate_vector};
+    assert!(validate_vector(&vec![1.0; 65_536], None).is_ok());
+    assert!(validate_vector(&vec![1.0; 65_537], None).is_err());
+    assert!(validate_vector(&[], None).is_err());
+
+    // `{"p":"…"}` is 8 bytes plus the string.
+    let exact = payload_of(1024 * 1024 - 8);
+    assert_eq!(serde_json::to_vec(&exact).unwrap().len(), 1024 * 1024);
+    assert!(validate_payload(&exact).is_ok());
+    assert!(validate_payload(&payload_of(1024 * 1024 - 7)).is_err());
+}
+
+fn payload_of(len: usize) -> Map<String, Value> {
+    let Value::Object(payload) = json!({ "p": "x".repeat(len) }) else {
+        unreachable!("object literal must remain an object");
+    };
+    payload
+}
+
+#[tokio::test]
+async fn mock_search_scores_are_cosine_similarities() {
+    let store = QdrantStore::connect_or_mock(QdrantConfig::new("", "")).expect("mock");
+    let collection = VectorCollectionName::new("cosine").expect("valid collection");
+    store
+        .create_collection(&collection, VectorDimensions::new(2).expect("dimensions"))
+        .await
+        .expect("collection");
+    for (id, vector) in [(1, vec![1.0, 0.0]), (2, vec![3.0, 4.0])] {
+        store
+            .upsert(
+                &collection,
+                VectorPoint::new(id, vector, payload("p")).expect("point"),
+            )
+            .await
+            .expect("upsert");
+    }
+    let matches = store
+        .search(
+            &collection,
+            &[2.0, 0.0],
+            VectorQueryLimit::new(2).expect("limit"),
+        )
+        .await
+        .expect("search");
+    let scores: Vec<(u64, f32)> = matches.iter().map(|hit| (hit.id(), hit.score())).collect();
+    assert_eq!(scores, [(1, 1.0), (2, 0.6)]);
+}
