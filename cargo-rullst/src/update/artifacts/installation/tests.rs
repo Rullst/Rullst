@@ -7,6 +7,8 @@ mod fault_tests;
 mod intent_tests;
 #[path = "recovery_tests.rs"]
 mod recovery_tests;
+#[path = "storage_tests.rs"]
+mod storage_tests;
 use crate::update::cache;
 use sha2::{Digest, Sha256};
 use std::{
