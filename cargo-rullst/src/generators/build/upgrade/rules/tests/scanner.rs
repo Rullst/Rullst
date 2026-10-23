@@ -168,3 +168,23 @@ fn attributes_are_skipped_and_a_lone_hash_is_not_one() {
         bounded_codes("fn a() { x!(# \"progress:{u}:next\"); }").contains(&"V13-LMS-PROGRESS-KEY")
     );
 }
+
+#[test]
+fn github_providers_are_reviewed_by_type_or_driver_name() {
+    let code = "V13-CONNECT-GITHUB-EMAIL";
+    assert!(has("use rullst::connect::providers::GithubProvider;", code));
+    for name in ["github", "GitHub"] {
+        let source =
+            format!("fn p(s: SecretString) {{ Connect::driver(\"{name}\", id, s, url); }}");
+        assert!(has(&source, code), "{name}");
+    }
+    assert!(!has(
+        "fn p(s: SecretString) { Connect::driver(\"google\", id, s, url); }",
+        code
+    ));
+    assert!(!has(
+        "fn p(s: SecretString) { Other::driver(\"github\", id, s, url); }",
+        code
+    ));
+    assert!(!has("fn p() { let name = \"github\"; }", code));
+}

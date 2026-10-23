@@ -3,6 +3,7 @@
 use super::*;
 
 mod data;
+mod docs;
 mod files;
 mod markup;
 mod scanner;
