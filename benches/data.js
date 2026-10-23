@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792715718195,
+  "lastUpdate": 1792721104902,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -28275,6 +28275,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1696,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2d0a42ebd70e18b8b130aa94af5c92d98a82dfb4",
+          "message": "Merge pull request #536 from Rullst/ci/v13-strict-test-ca\n\nci: give the disposable test CAs the extensions strict TLS verification needs",
+          "timestamp": "2026-10-22T22:54:54-03:00",
+          "tree_id": "fe0dcf5be289e67b8412c114928386663d52b183",
+          "url": "https://github.com/Rullst/Rullst/commit/2d0a42ebd70e18b8b130aa94af5c92d98a82dfb4"
+        },
+        "date": 1792721101528,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 707,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 916,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 423,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2012,
+            "range": "± 40",
             "unit": "ns/iter"
           }
         ]
