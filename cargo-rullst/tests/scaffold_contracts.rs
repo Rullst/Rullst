@@ -348,7 +348,7 @@ fn only_blank_sqlx_profiles_register_migrations_with_the_server() {
                 let case = format!("api={api} hot={hot_reload} {orm_pattern} db={db_needed}");
                 assert_eq!(
                     main.matches(
-                        "        .with_migrations(crate::migrations::get_migrations())\n        .run(3000)\n"
+                        "        .with_migrations(crate::migrations::get_migrations())\n        // Production monitoring is off."
                     )
                     .count(),
                     usize::from(registers),

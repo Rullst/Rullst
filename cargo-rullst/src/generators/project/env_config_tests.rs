@@ -255,3 +255,46 @@ fn cargo_config_selects_the_linker_for_x86_64_and_aarch64_linux() {
         );
     }
 }
+
+/// Blank, SaaS and LMS mount the monitor only after its commented wiring in
+/// `src/main.rs` is enabled; their environment files name the token setting,
+/// commented out, so nothing is configured by default.
+#[test]
+fn web_starters_list_the_monitor_token_commented_out() {
+    use crate::blueprints::{ERP_BLUEPRINT_ID, PORTFOLIO_BLUEPRINT_ID};
+    for (blueprint, listed) in [
+        (BLANK_BLUEPRINT_ID, true),
+        (SAAS_BLUEPRINT_ID, true),
+        (LMS_BLUEPRINT_ID, true),
+        (BLOG_BLUEPRINT_ID, false),
+        (PORTFOLIO_BLUEPRINT_ID, false),
+        (ERP_BLUEPRINT_ID, false),
+    ] {
+        let root = tempfile::tempdir().expect("temporary project");
+        generate_env_and_configs(
+            root.path(),
+            true,
+            "Sqlite",
+            &[],
+            blueprint,
+            "0123456789abcdef0123456789abcdef",
+        )
+        .expect("environment scaffold");
+        for filename in [".env", ".env.example"] {
+            let generated = fs::read_to_string(root.path().join(filename)).expect(filename);
+            assert_eq!(
+                generated.contains(
+                    "\n# ── Production monitor (off) ──\n# Bearer tokens for GET /_rullst/monitor/v1, read only after you uncomment\n# `with_monitor` in src/main.rs. Use at least 32 random bytes per token, e.g.\n# `openssl rand -base64 32`; separate several with commas. Guide:\n# https://rullst.github.io/Rullst/book/production-monitoring.html\n# RULLST_MONITOR_TOKENS=\n"
+                ),
+                listed,
+                "{blueprint} {filename}"
+            );
+            assert!(
+                !generated
+                    .lines()
+                    .any(|line| line.starts_with("RULLST_MONITOR_TOKENS")),
+                "{blueprint} {filename}: the monitor stays unconfigured"
+            );
+        }
+    }
+}

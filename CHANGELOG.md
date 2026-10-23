@@ -442,6 +442,13 @@ A prepared version section does not establish that its tag or crates exist.
   `snapshot: RowSnapshot::default()`. Turso models are unchanged. Existing
   projects keep their models; add the field to opt in (see the ORM dirty
   tracking row of the migration guide).
+- The Blank (web and JSON API), SaaS and LMS starters now carry the production
+  monitor wiring commented out: `src/main.rs` has the
+  `.with_monitor(Monitor::new().with_application(...))` call in the server
+  chain with a pointer to the production monitoring guide, and `.env` and
+  `.env.example` list `# RULLST_MONITOR_TOKENS=` with how to generate a token.
+  Nothing is enabled: uncomment the call and set a token to serve
+  `/_rullst/monitor/v1`.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

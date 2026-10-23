@@ -4056,7 +4056,11 @@ by the application, which a later Studio "remote projects" mode reads. Guide:
   application labels (1–128 bytes, no control characters) and invalid queue
   names (1–64 of `[A-Za-z0-9._-]`, unique, at most 16) stop start-up with
   `ServerError::Configuration`, whose message names a position, never a
-  token. The hot-reload development server does not mount it.
+  token. The hot-reload development server does not mount it. Since
+  13.0.0-alpha.3 the `src/main.rs` of the Blank (web and JSON API), SaaS and
+  LMS starters carries the `with_monitor` call commented out, and their
+  `.env`/`.env.example` list `# RULLST_MONITOR_TOKENS=` commented out with a
+  generation hint; nothing is enabled by default.
 * **Admission.** In order: a request with `Origin`, or `Sec-Fetch-Site`
   `cross-site`/`same-site`, gets `403`; in staging and production a request
   without TLS evidence gets `426` (evidence: `https` reported by a trusted proxy
