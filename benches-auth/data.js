@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792725403089,
+  "lastUpdate": 1792763421218,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -17837,6 +17837,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4307,
             "range": "± 73",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3135ffb2f4f5772ab9f65bbcb748a31f485e4f50",
+          "message": "Merge pull request #537 from Rullst/feat/v13-alpha3-polish\n\nfeat(cli): rule releases in upgrade plans, dirty tracking in generated models, monitor wiring, quiet spinner",
+          "timestamp": "2026-10-23T10:05:27-03:00",
+          "tree_id": "42473b7615b1bcfc8262583c2322cac6e578e788",
+          "url": "https://github.com/Rullst/Rullst/commit/3135ffb2f4f5772ab9f65bbcb748a31f485e4f50"
+        },
+        "date": 1792763420102,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1059,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 787,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1831,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4275,
+            "range": "± 33",
             "unit": "ns/iter"
           }
         ]
