@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792775372751,
+  "lastUpdate": 1792790122093,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -13456,6 +13456,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "173b463d34cde166e1ea191878ccc2ac9db5750e",
+          "message": "Merge pull request #540 from Rullst/ci/v13-kani-lib-targets\n\nci,test: Kani library targets and the fake Qdrant upload (alpha.3 admission fixes)",
+          "timestamp": "2026-10-23T17:49:24-03:00",
+          "tree_id": "c8ded4732fb99d834fa70da82cefeedbf55b3392",
+          "url": "https://github.com/Rullst/Rullst/commit/173b463d34cde166e1ea191878ccc2ac9db5750e"
+        },
+        "date": 1792790121160,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
             "range": "± 0",
             "unit": "ns/iter"
           },
