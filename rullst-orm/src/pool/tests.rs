@@ -153,7 +153,7 @@ async fn in_memory_sqlite_schema_survives_the_idle_reaper() {
 }
 
 /// A pool of the compiled driver that never connects.
-fn lazy_pool() -> crate::RullstPool {
+pub(crate) fn lazy_pool() -> crate::RullstPool {
     #[cfg(not(any(
         feature = "strict-postgres",
         feature = "strict-mysql",
