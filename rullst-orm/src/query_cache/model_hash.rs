@@ -204,6 +204,12 @@ mod tests {
             assert!(build_model_hash_key("academy", None, "invoices", invalid).is_err());
         }
         assert!(build_model_hash_key("bad namespace", None, "invoices", "1").is_err());
+        let longest = "9".repeat(64);
+        assert!(
+            build_model_hash_key("academy", None, "invoices", &longest)
+                .expect("a 64-byte id")
+                .ends_with(&format!(":{longest}"))
+        );
     }
 
     #[test]
