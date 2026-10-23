@@ -278,6 +278,30 @@ fn base_directory_child_fixture() {
     let create = std::env::var_os("RULLST_CACHE_BASE_CREATE").is_some();
     let text = match std::env::var("RULLST_CACHE_OPERATION").as_deref() {
         Ok("store") => store(BODY, 100).map(|()| String::new()),
+        Ok("cache-store") => super::super::store(BODY).map(|()| String::new()),
+        Ok("manifest-bounds") => Ok([0, 16 * 1024, 16 * 1024 + 1]
+            .map(|size| {
+                if super::super::verification_manifest(&vec![b'm'; size]).is_ok() {
+                    "kept"
+                } else {
+                    "refused"
+                }
+            })
+            .join(" ")),
+        Ok("workspaces") => (|| -> Result<String, CacheError> {
+            let dropped = super::super::project_workspace()?;
+            let dropped_path = dropped.path().to_path_buf();
+            drop(dropped);
+            let kept = super::super::project_workspace()?;
+            let kept_path = kept.path().to_path_buf();
+            let retained = kept.retain();
+            Ok(format!(
+                "{} {} {}",
+                dropped_path.exists(),
+                retained == kept_path,
+                retained.exists()
+            ))
+        })(),
         Ok("workspace") => project_workspace().map(|path| path.display().to_string()),
         _ => base_directory(create).map(|path| path.display().to_string()),
     };
@@ -447,4 +471,84 @@ fn a_cache_file_of_exactly_its_bound_is_read_and_then_decoded() {
         load_at(&base, 100),
         Err(CacheError::Invalid("invalid cached catalog size"))
     ));
+}
+
+fn cache_operation(xdg: &Path, name: &str) -> String {
+    base_directory_in_child(
+        &[
+            ("XDG_CACHE_HOME", xdg.as_os_str()),
+            ("RULLST_CACHE_OPERATION", std::ffi::OsStr::new(name)),
+        ],
+        false,
+    )
+}
+
+#[test]
+fn the_cache_api_stores_bounds_manifests_and_removes_unretained_workspaces() {
+    let temp = fixture();
+    let xdg = temp.path().canonicalize().unwrap().join("xdg");
+    assert_eq!(cache_operation(&xdg, "cache-store"), "ok ");
+    assert_eq!(
+        load_at(&xdg, super::super::now().unwrap()).unwrap().body,
+        BODY
+    );
+    assert_eq!(
+        cache_operation(&xdg, "manifest-bounds"),
+        "ok refused kept refused"
+    );
+    assert_eq!(cache_operation(&xdg, "workspaces"), "ok false true true");
+}
+
+#[test]
+fn catalogs_expire_after_six_hours_and_the_clock_is_real() {
+    let temp = fixture();
+    let base = temp.path().canonicalize().unwrap();
+    store_at(&base, BODY, 100).unwrap();
+    assert!(load_at(&base, 100 + 21_599).is_ok());
+    assert!(load_at(&base, 100 + 21_600).is_err());
+    assert!(super::super::now().unwrap() > 1_700_000_000);
+}
+
+#[test]
+fn a_dropped_lease_unlocks_even_while_another_handle_survives() {
+    let temp = fixture();
+    let path = temp.path().join("lease.lock");
+    let file = options()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&path)
+        .unwrap();
+    let duplicate = file.try_clone().unwrap();
+    let lease = super::super::acquire(file, "busy").unwrap();
+    drop(lease);
+    assert!(File::open(&path).unwrap().try_lock().is_ok());
+    drop(duplicate);
+}
+
+#[test]
+fn preparations_are_canonical_uuids_inside_the_private_cache() {
+    let temp = fixture();
+    let directory = temp.path().canonicalize().unwrap();
+    let id = uuid::Uuid::new_v4();
+    let name = format!("project-{id}");
+    assert_eq!(
+        super::super::project_path(&directory.join(&name), &directory).unwrap(),
+        directory.join(&name)
+    );
+    let elsewhere = directory.join("elsewhere");
+    fs::create_dir(&elsewhere).unwrap();
+    for requested in [
+        directory.join(format!("project-{}", id.to_string().to_uppercase())),
+        directory.join("project-latest"),
+        directory.join(id.to_string()),
+        elsewhere.join(&name),
+    ] {
+        assert!(
+            super::super::project_path(&requested, &directory).is_err(),
+            "{}",
+            requested.display()
+        );
+    }
 }

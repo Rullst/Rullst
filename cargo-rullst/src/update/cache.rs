@@ -50,7 +50,9 @@ mod platform;
 #[path = "cache/windows.rs"]
 mod platform;
 
+// Not compiled on the Unix and Windows hosts that run the mutation tests.
 #[cfg(not(any(unix, windows)))]
+#[cfg_attr(mutants, mutants::skip)]
 mod platform {
     use super::{CacheError, CachedCatalog};
 
@@ -284,7 +286,9 @@ fn project_path(
     Ok(directory.join(name))
 }
 
+// Windows only; the mutation tests run on Linux.
 #[cfg(windows)]
+#[cfg_attr(mutants, mutants::skip)]
 pub(super) fn private_file_descriptor() -> Result<String, CacheError> {
     platform::private_file_descriptor()
 }
