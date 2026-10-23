@@ -524,3 +524,14 @@ fn markdown_tables_keep_each_group_and_its_mapping_separate() {
     let markdown = render(&report, ReportFormat::Markdown).unwrap();
     assert!(!markdown.contains("| Model | Field |"), "{markdown}");
 }
+
+#[test]
+fn scanners_read_regular_files_of_up_to_2_mib() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("large.rs");
+    fs::write(&path, vec![b' '; 2 * 1024 * 1024]).unwrap();
+    assert_eq!(sources::read_bounded(&path).unwrap().len(), 2_097_152);
+    fs::write(&path, vec![b' '; 2 * 1024 * 1024 + 1]).unwrap();
+    assert_eq!(sources::read_bounded(&path), None);
+    assert_eq!(sources::read_bounded(directory.path()), None);
+}
