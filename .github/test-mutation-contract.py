@@ -330,6 +330,22 @@ class OrmSqlServersTests(Fixture):
                 self.assertEqual(sum(argument.startswith("--cargo-arg=--test=")
                                      for argument in call), 1)
 
+    def test_polyglot_servers_run_every_backend_matrix(self) -> None:
+        log = self.root / "mutants.out" / "log"
+        self.tool("cargo", f"os.makedirs({str(log)!r}, exist_ok=True)\n"
+                           f"open({str(log / 'baseline.log')!r}, 'w').write('ok')\n"
+                           "sys.exit(0)\n")
+        result = subprocess.run(
+            [sys.executable, str(HERE / "check-orm-polyglot-servers.py"), "--mutants", "x"],
+            cwd=self.root, text=True, capture_output=True, check=False,
+            env=self.env(CARGO_MUTANTS_OUTPUT=str(self.root)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        call = self.recorded()[-1]
+        targets = [argument for argument in call if argument.startswith("--cargo-arg=--test=")]
+        self.assertEqual(len(targets), 7)
+        self.assertIn("--cargo-arg=--test=matrix_turso", targets)
+        self.assertIn("rullst-orm/qdrant", call[call.index("--features") + 1])
+
 
 @contextlib.contextmanager
 def mock_environ(env: dict[str, str]):

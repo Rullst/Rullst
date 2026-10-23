@@ -814,6 +814,7 @@ second.
 | `orm-sql-servers` | the same files; select the PostgreSQL and MySQL/MariaDB branches with `mutants_regex` | `matrix_postgres`, `matrix_mysql` and `matrix_mariadb`, built with `drivers-all`; their testcontainers start a disposable server per test binary, and a server that cannot start fails the run |
 | `orm-strict-postgres` | the same files | `matrix_postgres`, built with `strict-postgres` only, which also exercises the native enum types and typed binds of that pool |
 | `orm-strict-mysql` | the same files | `matrix_mysql`, built with `strict-mysql` only |
+| `orm-polyglot-servers` | the same files; select the optional backends' live paths with `mutants_regex` | the MongoDB, SurrealDB, document-recovery, Qdrant, Meilisearch, Redis data and Turso testcontainers matrices, built like `orm-polyglot` |
 
 `orm-sqlite` owns no server. Targeted and full runs build the workspace with
 every feature, which selects the strict PostgreSQL pool and compiles the

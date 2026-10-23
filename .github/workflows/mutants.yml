@@ -58,8 +58,9 @@ on:
           tests run against that server. orm-sqlite needs no server: it mutates
           the ORM crates and runs the rullst-orm suite on SQLite; orm-polyglot
           adds the optional backends and an owned Redis; orm-sql-servers runs
-          the PostgreSQL, MySQL and MariaDB matrices, and orm-strict-postgres and
-          orm-strict-mysql run one matrix with that strict pool
+          the PostgreSQL, MySQL and MariaDB matrices, orm-strict-postgres and
+          orm-strict-mysql run one matrix with that strict pool, and
+          orm-polyglot-servers runs the optional backends' server matrices
         required: false
         default: none
         type: choice
@@ -77,6 +78,7 @@ on:
           - orm-sql-servers
           - orm-strict-postgres
           - orm-strict-mysql
+          - orm-polyglot-servers
       mutants_regex:
         description: Contract mode only. cargo-mutants --re filter over the contract's mutants
         required: false
@@ -262,7 +264,7 @@ jobs:
                 exit 2
               fi
               case "$contract" in
-                passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql|orm-sqlite|orm-polyglot|orm-sql-servers|orm-strict-postgres|orm-strict-mysql)
+                passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql|orm-sqlite|orm-polyglot|orm-sql-servers|orm-strict-postgres|orm-strict-mysql|orm-polyglot-servers)
                   ;;
                 *)
                   echo "Contract mode requires one of the owned-server wrappers." >&2
@@ -624,7 +626,7 @@ jobs:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: prlimit --as=8589934592 --
         run: |
           case "$CONTRACT" in
-            passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql|orm-sqlite|orm-polyglot|orm-sql-servers|orm-strict-postgres|orm-strict-mysql)
+            passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql|orm-sqlite|orm-polyglot|orm-sql-servers|orm-strict-postgres|orm-strict-mysql|orm-polyglot-servers)
               ;;
             *)
               echo "Unknown owned-server contract: $CONTRACT" >&2
