@@ -8,6 +8,7 @@ fn rendered_portfolio_covers_long_content_and_mobile_browser_when_requested() {
         avatar_url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3C/svg%3E".into(),
         github_url: format!("https://example.test/{long}"),
         linkedin_url: format!("https://example.test/{long}"),
+        snapshot: rullst::db::RowSnapshot::default(),
     };
     let project = Project {
         id: 1,
@@ -16,6 +17,7 @@ fn rendered_portfolio_covers_long_content_and_mobile_browser_when_requested() {
         url: "https://example.test/project".into(),
         tags: long.clone(),
         is_featured: 1,
+        snapshot: rullst::db::RowSnapshot::default(),
     };
     let experience = Experience {
         id: 1,
@@ -23,11 +25,13 @@ fn rendered_portfolio_covers_long_content_and_mobile_browser_when_requested() {
         company: long.clone(),
         period: long.clone(),
         description: long.clone(),
+        snapshot: rullst::db::RowSnapshot::default(),
     };
     let skill = Skill {
         id: 1,
         name: long.clone(),
         category: long.clone(),
+        snapshot: rullst::db::RowSnapshot::default(),
     };
     let html = render(&profile, &[project], &[experience], &[skill], "");
     assert!(html.contains(&long));
