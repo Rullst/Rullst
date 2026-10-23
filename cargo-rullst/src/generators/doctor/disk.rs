@@ -36,6 +36,7 @@ fn available_bytes(path: &Path) -> Option<u64> {
 }
 
 #[cfg(not(unix))]
+#[cfg_attr(mutants, mutants::skip)]
 fn available_bytes(_path: &Path) -> Option<u64> {
     None
 }
