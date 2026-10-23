@@ -1,5 +1,10 @@
 //! Nexus CRUD against PostgreSQL (Docker matrix).
-#![cfg(not(any(feature = "strict-mysql", feature = "strict-sqlite")))]
+// The all-feature build selects the PostgreSQL pool, so it runs this matrix
+// too: mutation testing measures Nexus with every feature enabled.
+#![cfg(any(
+    feature = "strict-postgres",
+    not(any(feature = "strict-mysql", feature = "strict-sqlite"))
+))]
 
 mod sql_matrix;
 mod support;

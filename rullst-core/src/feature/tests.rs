@@ -221,6 +221,15 @@ fn toml_section_headers_may_carry_comments() {
     assert_eq!(driver.value("name"), None);
 }
 
+#[test]
+fn the_tolerant_reader_skips_comment_lines_inside_features() {
+    let driver = TomlFeatureDriver::new();
+    // `x` is not a TOML value, so the line reader parses this file.
+    driver.load_from_str("[features]\n\n# legacy = true\nbeta = x\n");
+    assert_eq!(driver.value("beta").as_deref(), Some("x"));
+    assert_eq!(driver.value("# legacy"), None);
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn toml_reload_never_exposes_a_partially_loaded_set() {
     let mut content = String::from("[features]\n");
@@ -370,6 +379,19 @@ async fn the_default_pipeline_exposes_its_override_layer() {
     assert!(manager.enabled("override-only-flag").await);
     overrides.override_enabled("override-only-flag", false);
     assert!(!manager.enabled("override-only-flag").await);
+
+    assert!(!manager.enabled_for("override-target-flag", "user-1").await);
+    overrides.override_enabled("override-target-flag", true);
+    assert!(manager.enabled_for("override-target-flag", "user-1").await);
+    assert_eq!(manager.variant("override-split-flag", "user-1").await, None);
+    overrides.override_variants("override-split-flag", vec![("blue".to_string(), 100)]);
+    assert_eq!(
+        manager
+            .variant("override-split-flag", "user-1")
+            .await
+            .as_deref(),
+        Some("blue")
+    );
 
     assert!(FeatureManager::new().overrides().is_none());
 }

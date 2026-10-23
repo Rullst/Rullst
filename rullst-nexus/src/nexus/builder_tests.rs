@@ -300,3 +300,40 @@ fn registration_records_every_key_column_with_the_first_as_pk() {
     assert_eq!(slug.key_columns(), ["slug"]);
     assert_eq!(nexus.registry[2].key_columns(), ["id"]);
 }
+
+#[tokio::test]
+#[allow(deprecated)]
+async fn legacy_into_router_is_also_fail_closed_without_authentication() {
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt;
+
+    let router = Nexus::new().into_router();
+    let request = Request::builder()
+        .uri("/")
+        .body(axum::body::Body::empty())
+        .expect("valid request");
+    let response = router.oneshot(request).await.expect("router response");
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+#[test]
+fn builder_options_keep_the_registry_and_policy() {
+    let audited = Nexus::new()
+        .register::<DummyModel>()
+        .with_brand("Audited")
+        .with_required_audit();
+    assert_eq!(audited.registry.len(), 1);
+    assert_eq!(audited.brand, "Audited");
+    assert!(matches!(audited.audit_policy, NexusAuditPolicy::Required));
+
+    let local = Nexus::new()
+        .register::<DummyModel>()
+        .with_local_access(LocalNexusAccess::loopback_only());
+    assert_eq!(local.registry.len(), 1);
+    assert!(matches!(
+        local.auth,
+        Some(PendingAuthPolicy::Validated(NexusAuthPolicy::LoopbackOnly(
+            _
+        )))
+    ));
+}

@@ -106,6 +106,13 @@ impl HttpClient for OfflineHttpClient {
             && (normalized_url.contains("token") || normalized_url.contains("access_token"))
         {
             Self::token_response()
+        } else if normalized_url.ends_with("/user/emails") {
+            json!([{
+                "email": "mock@example.invalid",
+                "primary": true,
+                "verified": true,
+                "visibility": "public"
+            }])
         } else if normalized_url.contains("jwks")
             || normalized_url.contains("certs")
             || normalized_url.ends_with("/keys")

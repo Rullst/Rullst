@@ -26,11 +26,11 @@ def main():
         exposed = work / "fixture"
         exposed.mkdir(mode=0o755)
         commands = [
-            ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", "ca-key.pem", "-out", "ca.pem", "-days", "1", "-subj", "/CN=Disposable Trace Fixture CA"],
+            ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", "ca-key.pem", "-out", "ca.pem", "-days", "1", "-subj", "/CN=Disposable Trace Fixture CA", "-addext", "keyUsage=critical,keyCertSign,cRLSign"],
             ["openssl", "req", "-new", "-newkey", "rsa:2048", "-nodes", "-keyout", "fixture/key.pem", "-out", "request.pem", "-subj", "/CN=localhost"],
             ["openssl", "x509", "-req", "-in", "request.pem", "-CA", "ca.pem", "-CAkey", "ca-key.pem", "-CAcreateserial", "-out", "fixture/cert.pem", "-days", "1", "-extfile", "extensions.cnf"],
         ]
-        (work / "extensions.cnf").write_text("basicConstraints=critical,CA:FALSE\nsubjectAltName=DNS:localhost\nextendedKeyUsage=serverAuth\n")
+        (work / "extensions.cnf").write_text("basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nsubjectAltName=DNS:localhost\nextendedKeyUsage=serverAuth\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n")
         for command in commands:
             subprocess.run(command, cwd=work, check=True, timeout=30, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         # The mounted server identity is public, ephemeral fixture material.

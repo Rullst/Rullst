@@ -168,7 +168,8 @@ everywhere* button (`POST /logout/everywhere`) increments it, which ends the
 session on every device. The starter also has *Change password*
 (`/password/change`), which keeps only the current browser signed in, and
 *Forgot your password?* (`/password/forgot`), which emails a single-use link
-that expires in 30 minutes; see
+that expires in 30 minutes (`RESET_TOKEN_LIFETIME_MINUTES`, from 10 minutes
+to 24 hours); see
 [Tutorial 11](11-authentication-system.md#what-the-scaffold-currently-enforces).
 
 Being signed in is not enough to open a note, though: `/notes/{id}` must

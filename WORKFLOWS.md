@@ -577,8 +577,12 @@ before 13.0.0-alpha.1), the local whole-crate campaign that followed it
 (`rullst-iot`, `rullst-privacy`, `rullst-labs`, `rullst-supervision`), the
 security campaign (targeted runs of every `rullst-security` file), the
 `rullst-auth` campaign (targeted runs of every file outside the PostgreSQL
-adapters), the first part of the `rullst-core` campaign (its security
-and correctness files and about half of the rest, with the Redis service),
+adapters), the `rullst-core` campaign (targeted runs of its security and
+correctness files and, before 13.0.0-alpha.3, of every remaining file the
+first pass measured, with the Redis service), the `rullst-nexus` campaign
+(targeted runs of every file; the all-feature build selects the PostgreSQL
+pool, so the PostgreSQL SQL matrix test reaches the database paths wherever
+Docker is available),
 the `rullst-capital` campaign (targeted runs of every file; mutants that
 only a live Stripe API response can reach are left to provider sandbox
 testing), the `rullst-messaging` campaign (targeted runs of every file,
@@ -591,8 +595,11 @@ link-security, tracking, egress and guardrail files of `rullst-connect`,
 `rullst-mail` and `rullst-ai`; the peer-address, status and content-type checks
 of `EgressFetcher::fetch_bytes` run only after a connection to a public HTTPS
 origin, which the egress policy refuses to loopback test servers, and are left
-to live integration testing) gave every missed mutant in their files a test,
-except these.
+to live integration testing; in `rullst-core`, the `pool_ready` guard of
+`run_artisan_command` needs an already initialized ORM pool, which the
+all-feature build can only open against a PostgreSQL server that the core
+runs do not have) gave every missed mutant in their files a test, except
+these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
@@ -673,6 +680,13 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-core/src/live/recovery/session.rs`: `send_snapshot`, `encoded.len() > 512 * 1024` with `==` or `>=` | A snapshot holds at most 64 KiB of HTML, which JSON escaping expands to under 400 KiB. |
 | `rullst-core/src/cache/memory/exact_json.rs`: `Display for Inexact` with `Ok(Default::default())` | `is_exact_json` only checks whether serialization succeeds; the error text is never formatted. |
 | `rullst-core/src/radar.rs`: `get_windows_memory_mb`, `get_windows_process_cpu_usage`, `filetime_100ns`, `calculate_windows_cpu_percent`, and the Windows and other-platform `get_process_cpu_usage` | Not compiled on Linux. |
+| `rullst-core/src/feature/db.rs`: `DbFeatureDriver::resolve_with`, the freshness test `Instant::now() < entry.expires_at`, and `remember`, the eviction `retain`'s `<`, each with `<=` | An `Instant` reading would have to equal the entry's expiry to the nanosecond. |
+| `rullst-core/src/cache.rs`: `MemoryDriver::cleanup_if_due`, the sweep's `now < expires_at`, and `inspect`, the filter's `expires_at > now`, with `<=` and `>=` | An `Instant` reading would have to equal the entry's expiry to the nanosecond. |
+| `rullst-core/src/storage/local_paths.rs`: `reject_symlink_components`, the `NotFound \| NotADirectory` guard with `true` | Any other `symlink_metadata` failure (permission, name length) recurs in the `canonicalize`, `create_dir_all` or write that follows, with the same `Io` text. |
+| `rullst-core/src/telemetry/distributed/processor.rs`: `MinimizedProcessor::on_start` with `()` | The wrapped `BatchSpanProcessor::on_start` ignores its arguments (opentelemetry_sdk 0.33). |
+| `rullst-core/src/server/dylib_loader.rs`: `is_expected_loaded_library_removal_error` with `true` or `false` | Not compiled on Linux. |
+| `rullst-core/src/config/project_setting.rs`: `parse_dotenv_entries`, delete the `dotenvy::Error::Io` arm | The entries are read from a `&str`, which never fails with an I/O error. |
+| `rullst-nexus/src/nexus/crud/form.rs`: `form_html`, the `Password` guard with `false` | `render_field_widget` renders a `Password` input empty and without a placeholder, whatever value or state it receives. |
 | `rullst-capital/src/invoice.rs`: `money_to_minor`, `(scaled - rounded).abs() > 1e-7` with `>=` | When `scaled` rounds to at least one minor unit, `scaled - rounded` is a multiple of 2^-53 and never equals the `f64` `1e-7`, so the two differ only for an amount that rounds to zero minor units, which `rounded < 1.0` rejects either way. |
 | `rullst-capital/src/invoice/pdf.rs`: `render_pdf`, `bytes.len() > MAX_PDF_BYTES` with `==` or `>=`, and the `\|\|` with `&&` | The embedded font is at most 8 MiB and a bounded invoice adds well under 1 MiB, so the document never reaches 16 MiB, and printpdf always writes the `%PDF-` header. |
 | `rullst-capital/src/providers/mod.rs`: `http_client` with a leaked default client | Adapters only build requests with it; `execute` always sends them through the bounded client from `http::client`. |

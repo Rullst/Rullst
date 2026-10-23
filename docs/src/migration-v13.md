@@ -39,7 +39,9 @@ and `REVIEW` findings at `file:line`, each naming the first-column title of its
 row below, and `cargo rullst ai upgrade` proposes reviewed fixes for them. The
 [assisted upgrade tutorial](tutorials/36-assisted-framework-upgrades.md#v12-to-v13-source-findings)
 describes the workflow and [classifies every row](tutorials/36-assisted-framework-upgrades.md#v12--v13-rule-classification).
-Rows without rules still need a reading.
+Rows without rules still need a reading. An application that already runs
+13.0.0-alpha.2 follows the shorter
+[alpha.2 to alpha.3 checklist](#upgrading-an-alpha2-application-to-alpha3).
 
 ## Changes from the published 12.1.0 source
 
@@ -240,6 +242,9 @@ Rows without rules still need a reading.
 | Connect mock authorization URL | From 13.0.0-alpha.3 a provider in mock mode returns the configured `redirect_url` with `code=mock_authorization_code`, the `state` and any PKCE challenge, instead of `https://example.invalid/rullst-connect/mock?provider=...`, which a browser could not open. Code that matched the old URL, or that redirected to its own callback to work around it, can follow the returned URL directly. |
 | Account mail language and product name | From 13.0.0-alpha.3 the password controller generated for SaaS, LMS and `cargo rullst auth` projects writes account emails in the request's language (the `rullst::i18n` `Locale` when the router has `LOCALES.layer()`, else `Accept-Language`, matched to English, Brazilian Portuguese or Spanish, else `DEFAULT_MAIL_LOCALE`) instead of always `MailLocale::En`, and names the product `APP_NAME` (environment, then `.env`) before the `APPLICATION_NAME` constant. Existing projects are not changed; to adopt it, pass a `MailLocale` from `MailLocale::from_preference` to `AccountMail::new` in `send_account_mail`. |
 | Production log defaults | From 13.0.0-alpha.3, in staging and production `Server` no longer prints `[HTTP]` lines for `/health` and `/ready` requests that answer below 400 (failing probes still appear); set `RULLST_LOG_HEALTH_PROBES=true` (process environment or `.env`) to restore them, and note that an invalid value now stops startup. Without `RUST_LOG`, the default tracing filter is `info,sqlx=warn` instead of `info`, which drops SQLx's own INFO events such as `acquired connection`; set `RUST_LOG=info` (or `info,sqlx=info`) to keep the previous output. |
+| Connect GitHub email | From 13.0.0-alpha.3 `GithubProvider` also calls `GET /user/emails` after `GET /user`: `ConnectUser::email` is the address GitHub marks `primary` (which may differ from the public profile address) and `email_verified` is that entry's `verified` flag (`Some(true)` or `Some(false)`) instead of always `None`. When the call fails (for example a token without the `user:email` scope) or lists no primary address, `email` stays the public profile address and `email_verified` stays `None`. Code that linked or created accounts on the GitHub email should now require `email_verified == Some(true)`; transports that answered every GET with the `/user` body keep the old result. `cargo rullst upgrade` reports `GithubProvider` and `Connect::driver("github", ...)` (`V13-CONNECT-GITHUB-EMAIL`). |
+| Account mail link lifetime | From 13.0.0-alpha.3 `AccountEvent::PasswordReset` accepts a remaining lifetime of 1–1440 minutes (24 hours) instead of 1–30; the verification and email-change links keep 1–30. Every account link now states whole hours as hours ("This link expires in 2 hours.", "1 hora") and one minute in the singular ("1 minute"); other values are unchanged ("30 minutes"). |
+| Generated reset link lifetime | From 13.0.0-alpha.3 new SaaS, LMS and `cargo rullst auth` projects bound `RESET_TOKEN_LIFETIME_MINUTES` (`src/models/password_reset.rs`) to 10–1440 with a compile-time assertion, and the forgot-password answer states that value instead of a hard-coded "30 minutes". In an alpha.2 project a value above 30 failed at send time (`AccountMail` refused it, so no email went out) and the answer still said 30 minutes: to change the lifetime, copy `reset_requested_notice` and `lifetime_words` from a new project's `password_controller.rs` and the assertion from its `password_reset.rs`. |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
@@ -316,6 +321,77 @@ upgrade` reports each under the "Build files from the 12.0 CLI" row:
 `rullst-orm` enables `drivers-all` by default since 12.1, so the starter's
 `rullst-orm` dependency pulls in every SQLx driver after the upgrade; the
 `V13-ORM-DEFAULT-FEATURES` finding gives the fix.
+
+## Upgrading an alpha.2 application to alpha.3
+
+This checklist moves an application from 13.0.0-alpha.2 to 13.0.0-alpha.3.
+The rows above that name alpha.3, and the ORM database-managed columns, ORM
+dirty tracking and Omni rows, are the changes in between. The
+[rehearsal on generated starters](tutorials/36-assisted-framework-upgrades.md#1300-alpha2-to-1300-alpha3)
+shows the expected result.
+
+1. **Prepare.** Work on a branch with a clean tree and a committed
+   `Cargo.lock`, record the current `cargo test` result, and back up every
+   database (check that the backup restores).
+2. **Install the alpha.3 CLI.**
+   `cargo install cargo-rullst --version =13.0.0-alpha.3 --locked --force`,
+   then `rullst --version` must print `13.0.0-alpha.3`.
+3. **Name the features.** `rullst` (which enabled `orm`, `drivers-all` and
+   `queue-sqlite`) and `rullst-orm` (`drivers-all`) have no default features
+   any more. A dependency that relied on them lists what the application
+   uses, for example
+   `rullst = { version = "=13.0.0-alpha.3", default-features = false, features = ["orm", "strict-sqlite", "queue-sqlite"] }`
+   (`drivers-all` keeps the three SQLx drivers). Remove `offline-sync` from
+   `rullst` and `rullst-core` features. Projects generated by `cargo rullst
+   new` already disable the defaults and list their features.
+4. **Inspect.** Run `cargo rullst upgrade --dry-run` and fix every
+   `MUST-CHANGE` finding first (`V13-OFFLINE-SYNC-REMOVED` is the one alpha.3
+   adds). These findings concern alpha.3 changes and usually need an edit:
+   - `V13-ORM-SKIP-MANAGED-COLUMNS`: replace `#[orm(skip)]` with
+     `#[orm(db_default)]` on `User::is_admin` and `User::session_epoch` (SaaS,
+     LMS and `cargo rullst auth` models generated by alpha.2) and on any
+     other column the database manages. No schema change is needed.
+   - `V13-ORM-TRANSACTION-ERRORS`: `Orm::transaction` returns its closure's
+     own error type, so match that error instead of `DatabaseError`. A
+     closure whose error type lacks `From<rullst_orm::Error>` (such as
+     `String`) no longer compiles, which `cargo check` reports; return
+     `rullst_orm::Error` or an application error that wraps it.
+   - `V13-RULLST-DEFAULT-FEATURES` and `V13-ORM-DEFAULT-FEATURES`: step 3.
+   - `V13-CONNECT-GITHUB-EMAIL`: the GitHub provider now returns the primary
+     address and GitHub's verified flag; link or create accounts on it only
+     when `email_verified == Some(true)`.
+   - `V13-OMNI-REMOVED` and `V13-OFFLINE-SYNC-REMOVED`: replace the Omni
+     shell with `cargo rullst make:pwa`, as the Omni row describes.
+
+   Other review findings, such as `V13-REFERRER-NO-REFERRER`,
+   `V13-MAIL-FACADE-CONFIG`, `V13-LMS-RECORD-PROGRESS` and
+   `V13-HOT-RELOAD-MACHINE-ENDPOINTS`, describe changes an alpha.2
+   application already runs with; they also appear on new starters and need
+   no edit for this step.
+5. **Apply.** `cargo rullst upgrade` pins every Rullst dependency, including
+   direct `rullst-auth`, `rullst-security` or `rullst-connect` lines, to
+   `=13.0.0-alpha.3`, runs `cargo fix` and `cargo check --locked`, and
+   restores the files if a step fails (`--keep-on-failure` keeps the failed
+   state for diagnosis). Make the edits from step 4, then update the
+   dependencies of the changelog's Dependency security entries that the
+   lockfile contains:
+   `cargo update -p ammonia -p rustls-webpki -p webpki-roots -p webpki-root-certs`.
+6. **Read the alpha.3 rows that no rule locates** and adjust the application
+   where it depends on them: ORM transactional migrations and the pool (no
+   `Orm::pool()` inside a `within_transaction()` migration), Connect mock
+   credentials and Connect mock authorization URL (mock credentials need the
+   `mock` feature, `oauth-mock` on the facade), Production log defaults
+   (health probes are no longer logged, SQLx INFO events are hidden, and an
+   invalid `RULLST_LOG_HEALTH_PROBES` stops startup), and the opt-in ORM
+   dirty tracking, Nexus time zone (`Nexus::with_time_zone`, in the Nexus
+   dates and times row) and Account mail language and product name. Workarounds
+   for alpha.2 defects that the changelog's "Fixes from alpha.2 dogfooding"
+   lists, such as raw SQL to filter on `is_admin`, can then go.
+7. **Verify** with the production feature set: `cargo build`, `cargo test`
+   and `cargo clippy --all-targets -- -D warnings`; `db:migrate` against a
+   restored copy of the production database; then sign-in, "Sign out
+   everywhere", Nexus access for an `is_admin` account, each configured
+   provider and the health probes on staging before production.
 
 ## Why the candidate uses a new major
 

@@ -1,0 +1,130 @@
+//! Sign in with GitHub: OAuth 2.0 with state and PKCE. GitHub is not an
+//! OpenID Connect provider, so the identity comes from its REST API:
+//! - the subject stored in `oauth_identities` is the numeric GitHub account
+//!   id, which never changes (never the login name, which users can rename);
+//! - the email is the address GitHub marks `primary`, and only when GitHub
+//!   also marks it `verified` may it create or link an account. Without the
+//!   default `user:email` scope there is no verified address, so only an
+//!   identity already linked can sign in.
+//!
+//! Settings (process environment, then `.env`):
+//! - `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` of a GitHub OAuth App
+//!   (Settings → Developer settings → OAuth Apps). With neither set, GitHub
+//!   sign-in is off: the login page shows no button and `/auth/github` says
+//!   so.
+//! - `GITHUB_REDIRECT_URL`, else `RULLST_PUBLIC_ORIGIN` followed by
+//!   `/auth/github/callback`, else `http://localhost:3000/auth/github/callback`
+//!   in development. Register exactly this URL as the app's callback URL.
+//! - `mock_*` credentials select Rullst Connect's offline provider, which
+//!   signs in a fixed test user (`mock@example.invalid`, account id 1)
+//!   without leaving the application. They need this application's
+//!   `oauth-mock` feature (`cargo run --features oauth-mock`) and are refused
+//!   in staging and production; without the feature the application stops at
+//!   startup.
+use super::{page_context, refused};
+use rullst::config::Environment;
+use rullst::connect::challenge::LoginOptions;
+use rullst::connect::extractors::AuthCallback;
+use rullst::connect::prelude::SecretString;
+use rullst::connect::providers::GithubProvider;
+use rullst::html;
+use rullst::html::Markup;
+use rullst::server::{Extension, HeaderMap, Query, Response, StatusCode};
+use serde::Deserialize;
+use std::sync::OnceLock;
+
+/// The provider name in routes, cookies and `oauth_identities.provider`.
+pub(crate) const PROVIDER: &str = "github";
+const OFF: &str = "Sign-in with GitHub is not configured.";
+
+static GITHUB: OnceLock<Option<GithubProvider>> = OnceLock::new();
+
+/// Reads the GitHub settings once, at startup (`router()` calls it), so a
+/// wrong configuration stops the application instead of the first sign-in.
+pub fn initialize() -> Result<(), Box<dyn std::error::Error>> {
+    if GITHUB.get().is_none() {
+        let provider = configured(
+            super::setting("GITHUB_CLIENT_ID")?,
+            super::setting("GITHUB_CLIENT_SECRET")?,
+            super::setting("GITHUB_REDIRECT_URL")?,
+            super::setting("RULLST_PUBLIC_ORIGIN")?,
+            super::environment(),
+        )?;
+        let _ = GITHUB.set(provider);
+    }
+    Ok(())
+}
+
+/// The configured provider; `None` when GitHub sign-in is off.
+pub(crate) fn provider() -> Option<&'static GithubProvider> {
+    GITHUB.get().and_then(Option::as_ref)
+}
+
+/// The provider for these settings, `None` with no credentials.
+pub(crate) fn configured(
+    client_id: Option<String>,
+    client_secret: Option<String>,
+    redirect_url: Option<String>,
+    public_origin: Option<String>,
+    environment: Environment,
+) -> Result<Option<GithubProvider>, Box<dyn std::error::Error>> {
+    let (client_id, client_secret) = match (client_id, client_secret) {
+        (None, None) => return Ok(None),
+        (Some(client_id), Some(client_secret)) => (client_id, client_secret),
+        _ => return Err("set both GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET, or neither".into()),
+    };
+    let redirect_url = super::redirect_url(PROVIDER, redirect_url, public_origin, environment)?;
+    let provider = GithubProvider::try_new(client_id, SecretString::from(client_secret), redirect_url)
+        .map_err(|error| format!("GitHub sign-in: {error}"))?;
+    if provider.credential_mode().is_mock() && environment.requires_secure_defaults() {
+        return Err("GitHub sign-in: mock credentials sign in a fixed test user; use them only in development and tests".into());
+    }
+    Ok(Some(provider))
+}
+
+#[derive(Deserialize)]
+pub struct StartQuery {
+    /// A same-site page to open after sign-in, such as `/courses/7`.
+    next: Option<String>,
+}
+
+/// `GET /auth/github`: stores a fresh challenge and sends the browser to
+/// GitHub's authorization page.
+pub async fn start(
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    Query(query): Query<StartQuery>,
+) -> Response {
+    let page = page_context(&headers, &csrf, &csp_nonce);
+    let Some(provider) = provider() else {
+        return refused(&page, PROVIDER, StatusCode::NOT_FOUND, OFF);
+    };
+    super::start(PROVIDER, provider, LoginOptions::oauth(PROVIDER), query.next.as_deref(), &page, false).await
+}
+
+/// `GET /auth/github/callback`: consumes the challenge, verifies GitHub's
+/// answer (state and PKCE), reads the account and its primary email from
+/// the GitHub API and signs the account in.
+pub async fn callback(
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    Query(callback): Query<AuthCallback>,
+) -> Response {
+    let page = page_context(&headers, &csrf, &csp_nonce);
+    let Some(provider) = provider() else {
+        return refused(&page, PROVIDER, StatusCode::NOT_FOUND, OFF);
+    };
+    super::complete(PROVIDER, provider, &headers, &callback, &page, None).await
+}
+
+/// The "Sign in with GitHub" link of the login page; nothing when GitHub
+/// sign-in is off.
+pub fn login_link() -> Option<Markup> {
+    provider().map(|_| {
+        html! {
+            <p><a href="/auth/github" class="oauth-github">"Sign in with GitHub"</a></p>
+        }
+    })
+}

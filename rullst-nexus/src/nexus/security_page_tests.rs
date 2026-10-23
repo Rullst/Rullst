@@ -76,3 +76,22 @@ async fn empty_security_page_is_explicit_about_unmounted_and_unavailable_sources
     assert!(html.contains("No in-process security events recorded"));
     assert!(html.contains(AUDIT_CHAIN_UNAVAILABLE));
 }
+
+#[test]
+fn event_types_map_to_their_tone_classes() {
+    assert_eq!(event_tone("HONEYPOT_TRAP_TRIGGERED"), "nexus-tone-rose");
+    assert_eq!(event_tone("XSS_PAYLOAD_NEUTRALIZED"), "nexus-tone-cyan");
+    assert_eq!(
+        event_tone("AI_PROMPT_INJECTION_SHIELDED"),
+        "nexus-tone-violet"
+    );
+    assert_eq!(event_tone("RBAC_ACCESS_DENIED"), "nexus-tone-amber");
+    assert_eq!(
+        event_integrity_badge(true),
+        ("HMAC VERIFIED", "nexus-badge-verified")
+    );
+    assert_eq!(
+        event_integrity_badge(false),
+        ("UNSIGNED LOCAL EVENT", "nexus-badge-unsigned")
+    );
+}

@@ -175,6 +175,20 @@ edge.
   expiry, and emails the link in the background. The table keeps one token per
   account: a new request replaces the previous token, but requests for the
   same account less than 60 seconds apart send nothing.
+- **Reset link lifetime**: `RESET_TOKEN_LIFETIME_MINUTES` in
+  `src/models/password_reset.rs` (30 as generated) sets it. Change it there:
+  a compile-time assertion keeps it from 10 minutes to 24 hours (1440), and
+  the stored expiry, the email ("This link expires in 30 minutes.", or
+  "2 hours" for whole hours) and the forgot-password answer all follow it.
+  Below 10 minutes, mail that a provider greylists or queues for a few minutes
+  arrives after its link expired, and the user can only ask again. Above 24
+  hours, the link stays a working way into the account for as long as it sits
+  in a mailbox that is synchronized to several devices, forwarded or read by
+  someone else, while a day already covers a user who reads mail once a day.
+  Single use and replacement by a newer request narrow that exposure but do
+  not remove it, which is why the
+  [OWASP Forgot Password Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html)
+  asks for short-lived tokens.
 - **Reset password** (`/password/reset?token=…`) shows the form only for a live
   token, without caching and with `Referrer-Policy: no-referrer`. Submitting
   it deletes the token, stores the new hash and increments the session epoch

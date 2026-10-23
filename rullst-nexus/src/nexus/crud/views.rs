@@ -98,6 +98,8 @@ pub async fn render_table_rows(
                     FieldKind::Boolean => decode_cell(&row, f.name, |row| {
                         row.try_get::<bool, _>(f.name)
                             .or_else(|_| row.try_get::<i64, _>(f.name).map(|v| v != 0))
+                            // An `INTEGER` column on the strict PostgreSQL pool.
+                            .or_else(|_| row.try_get::<i32, _>(f.name).map(|v| v != 0))
                             .ok()
                             .map(|b| if b { "✅ Yes" } else { "❌ No" }.to_string())
                     }),
