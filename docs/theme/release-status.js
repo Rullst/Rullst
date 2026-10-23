@@ -24,7 +24,7 @@
     const message = document.createElement("span");
     message.append(
       "v13 development on ", mainLink,
-      "; 13.0.0-alpha.2 is an evaluation prerelease. Install published v12 packages for stable use; maintenance is on ",
+      "; 13.0.0-alpha.3 is an evaluation prerelease. Install published v12 packages for stable use; maintenance is on ",
       stableLink, "."
     );
 

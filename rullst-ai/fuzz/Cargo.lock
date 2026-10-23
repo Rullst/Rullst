@@ -1466,7 +1466,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-ai"
-version = "13.0.0-alpha.2"
+version = "13.0.0-alpha.3"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -1494,7 +1494,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-core"
-version = "13.0.0-alpha.2"
+version = "13.0.0-alpha.3"
 dependencies = [
  "async-trait",
  "axum",
@@ -1536,7 +1536,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "13.0.0-alpha.2"
+version = "13.0.0-alpha.3"
 dependencies = [
  "proc-macro2",
  "quote",

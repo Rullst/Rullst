@@ -2,8 +2,8 @@
 
 > [!IMPORTANT]
 > This page describes the v13 prerelease source, and its dependency examples
-> pin the published `13.0.0-alpha.2` exactly: Cargo never selects a prerelease
-> on its own, and a plain `"13.0.0-alpha.2"` would also accept later alphas
+> pin the published `13.0.0-alpha.3` exactly: Cargo never selects a prerelease
+> on its own, and a plain `"13.0.0-alpha.3"` would also accept later alphas
 > (see the [v13 migration guide](migration-v13.md)). The v12 line (`rullst@12`)
 > reached end of life on 16 October 2026; see the [release record](v12.md). Commit `Cargo.lock` for
 > reproducible builds, and use path dependencies only for checkout-local review.
@@ -28,7 +28,7 @@ Using the umbrella crate, next to the primary database profile:
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.2", default-features = false, features = ["strict-postgres", "orm-mongodb"] }
+rullst = { version = "=13.0.0-alpha.3", default-features = false, features = ["strict-postgres", "orm-mongodb"] }
 ```
 
 Available umbrella features are `orm-turso`, `orm-mongodb`, `orm-duckdb`,

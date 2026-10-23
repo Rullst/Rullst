@@ -9,7 +9,7 @@ There are two different meanings of **API** in this documentation:
   client or another service. Start with the REST learning path below; an
   OpenAPI document describes your endpoints, not the entire Rust framework.
 
-The Rust reference links target the published **13.0.0-alpha.2** prerelease
+The Rust reference links target the published **13.0.0-alpha.3** prerelease
 packages; the v12 line reached end of life on 16 October 2026 (see the
 [release record](v12.md)). Versioned docs.rs pages become available after
 registry publication and rustdoc builds. This book is built from `main`, which
@@ -22,18 +22,18 @@ before interpreting a provider or blueprint name as complete product support.
 
 | What you need | Application guide | Exact v13 prerelease Rust reference |
 | --- | --- | --- |
-| Choose imports and start an application | [First application](tutorials/01-hello-world.md) | [rullst facade](https://docs.rs/rullst/13.0.0-alpha.2/rullst/) |
-| Route requests and compose middleware | [Routing](tutorials/08-routing-and-middlewares.md), [Core](crates/core.md) | [rullst-core](https://docs.rs/rullst-core/13.0.0-alpha.2/rullst_core/) |
-| Query data and manage persistence | [ORM](crates/orm.md), [CRUD](tutorials/03-active-record-crud.md), [backend boundaries](polyglot-persistence.md) | [rullst-orm](https://docs.rs/rullst-orm/13.0.0-alpha.2/rullst_orm/) |
-| Authenticate users and authorize access | [Auth](crates/auth.md), [ownership and roles](tutorials/13-rbac-authorization.md) | [rullst-auth](https://docs.rs/rullst-auth/13.0.0-alpha.2/rullst_auth/) |
-| Compose request defenses | [Security](crates/security.md), [security architecture](security-architecture.md) | [rullst-security](https://docs.rs/rullst-security/13.0.0-alpha.2/rullst_security/) |
-| Integrate social sign-in | [Connect](crates/connect.md) | [rullst-connect](https://docs.rs/rullst-connect/13.0.0-alpha.2/rullst_connect/) |
-| Integrate payments and signed webhooks | [Capital](crates/capital.md), [billing tutorial](tutorials/19-saas-billing-capital.md) | [rullst-capital](https://docs.rs/rullst-capital/13.0.0-alpha.2/rullst_capital/) |
-| Call local or cloud language models | [AI](crates/ai.md) | [rullst-ai](https://docs.rs/rullst-ai/13.0.0-alpha.2/rullst_ai/) |
-| Send transactional email | [Mail](crates/mail.md) | [rullst-mail](https://docs.rs/rullst-mail/13.0.0-alpha.2/rullst_mail/) |
-| Publish and consume messages | [Messaging](crates/messaging.md) | [rullst-messaging](https://docs.rs/rullst-messaging/13.0.0-alpha.2/rullst_messaging/) |
-| Inspect the local app or compose an admin interface | [Studio](crates/studio.md), [Nexus](crates/nexus.md) | [rullst-studio](https://docs.rs/rullst-studio/13.0.0-alpha.2/rullst_studio/), [rullst-nexus](https://docs.rs/rullst-nexus/13.0.0-alpha.2/rullst_nexus/) |
-| Generate code or prepare a framework upgrade | [CLI reference](cli_reference.md), [assisted upgrades](tutorials/36-assisted-framework-upgrades.md) | [cargo-rullst](https://docs.rs/cargo-rullst/13.0.0-alpha.2/cargo_rullst/) |
+| Choose imports and start an application | [First application](tutorials/01-hello-world.md) | [rullst facade](https://docs.rs/rullst/13.0.0-alpha.3/rullst/) |
+| Route requests and compose middleware | [Routing](tutorials/08-routing-and-middlewares.md), [Core](crates/core.md) | [rullst-core](https://docs.rs/rullst-core/13.0.0-alpha.3/rullst_core/) |
+| Query data and manage persistence | [ORM](crates/orm.md), [CRUD](tutorials/03-active-record-crud.md), [backend boundaries](polyglot-persistence.md) | [rullst-orm](https://docs.rs/rullst-orm/13.0.0-alpha.3/rullst_orm/) |
+| Authenticate users and authorize access | [Auth](crates/auth.md), [ownership and roles](tutorials/13-rbac-authorization.md) | [rullst-auth](https://docs.rs/rullst-auth/13.0.0-alpha.3/rullst_auth/) |
+| Compose request defenses | [Security](crates/security.md), [security architecture](security-architecture.md) | [rullst-security](https://docs.rs/rullst-security/13.0.0-alpha.3/rullst_security/) |
+| Integrate social sign-in | [Connect](crates/connect.md) | [rullst-connect](https://docs.rs/rullst-connect/13.0.0-alpha.3/rullst_connect/) |
+| Integrate payments and signed webhooks | [Capital](crates/capital.md), [billing tutorial](tutorials/19-saas-billing-capital.md) | [rullst-capital](https://docs.rs/rullst-capital/13.0.0-alpha.3/rullst_capital/) |
+| Call local or cloud language models | [AI](crates/ai.md) | [rullst-ai](https://docs.rs/rullst-ai/13.0.0-alpha.3/rullst_ai/) |
+| Send transactional email | [Mail](crates/mail.md) | [rullst-mail](https://docs.rs/rullst-mail/13.0.0-alpha.3/rullst_mail/) |
+| Publish and consume messages | [Messaging](crates/messaging.md) | [rullst-messaging](https://docs.rs/rullst-messaging/13.0.0-alpha.3/rullst_messaging/) |
+| Inspect the local app or compose an admin interface | [Studio](crates/studio.md), [Nexus](crates/nexus.md) | [rullst-studio](https://docs.rs/rullst-studio/13.0.0-alpha.3/rullst_studio/), [rullst-nexus](https://docs.rs/rullst-nexus/13.0.0-alpha.3/rullst_nexus/) |
+| Generate code or prepare a framework upgrade | [CLI reference](cli_reference.md), [assisted upgrades](tutorials/36-assisted-framework-upgrades.md) | [cargo-rullst](https://docs.rs/cargo-rullst/13.0.0-alpha.3/cargo_rullst/) |
 
 Search within the selected crate's rustdoc page for an exact symbol. Read its
 module context and feature requirements as well as its signature. A facade

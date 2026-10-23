@@ -31,10 +31,10 @@ prerelease on its own, so neither a plain `cargo install cargo-rullst` nor
 `^13` installs it:
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.2 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
 ```
 
-Pin the framework the same way in `Cargo.toml` (`"=13.0.0-alpha.2"`); the
+Pin the framework the same way in `Cargo.toml` (`"=13.0.0-alpha.3"`); the
 [v13 migration guide](migration-v13.md) explains why and what changed.
 
 Source reviewers who intentionally need checkout-local changes can instead

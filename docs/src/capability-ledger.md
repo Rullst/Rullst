@@ -6,7 +6,7 @@ User-facing guides describe what can be used today; this ledger preserves the
 larger vision without presenting roadmap work as a production capability.
 
 Status is evaluated against the current v13 development source tree
-(`13.0.0-alpha.2`), not against an old changelog entry or marketing description:
+(`13.0.0-alpha.3`), not against an old changelog entry or marketing description:
 
 - **Implemented**: a real implementation and focused tests exist; deployment
   responsibilities may still apply.
