@@ -4326,8 +4326,17 @@ assistant, not a claim that compilation proves production compatibility.
   changed behaviour of an API, feature or configuration in use), `file:line`, a
   one-line message and the first-column title of its row in
   `migration-v13.md`; the assisted-upgrade tutorial classifies every row.
-  `rullst.upgrade-plan.v1` is extended additively (`kind`, `migration_row`,
-  `migration_url`, `finding_counts`, `unscanned_sources`, `migration_guide`).
+  Each rule records the release that introduced its change (13.0.0-alpha.1
+  for the 12.x to 13 changes, a later prerelease for rules added or reworded
+  since). The plan takes the project's Rullst version to be the oldest version
+  a Rullst requirement admits or `Cargo.lock` holds and, for a project already
+  on v13, applies only the rules introduced after it, reporting how many
+  rules it skipped and how many findings they would have added; `--all-rules`
+  (also on `cargo rullst ai upgrade`) applies every rule, and project
+  preparations always do.
+  `rullst.upgrade-plan.v1` is extended additively (`kind`, `introduced_in`,
+  `migration_row`, `migration_url`, `finding_counts`, `unscanned_sources`,
+  `migration_guide`, `rule_selection`).
   Findings never block `cargo rullst upgrade`; project preparations with
   must-change findings are refused at verification, review and application.
 * 🟡 **`[Implemented / Preview]` Assisted fixes:** `cargo rullst ai upgrade`

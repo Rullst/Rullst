@@ -2,6 +2,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+#[path = "upgrade_cli/rule_selection.rs"]
+mod rule_selection;
+
 struct Fixture {
     root: PathBuf,
 }
@@ -190,6 +193,16 @@ fn json_dry_run_is_versioned_and_machine_readable() {
         serde_json::json!({"must_change": 0, "review": 0})
     );
     assert_eq!(report["unscanned_sources"], serde_json::json!([]));
+    // A v12 application is planned with every rule.
+    assert_eq!(
+        report["rule_selection"],
+        serde_json::json!({
+            "current_version": "12.0.0",
+            "all_rules": false,
+            "skipped_rules": 0,
+            "hidden_findings": 0
+        })
+    );
 }
 
 #[test]
@@ -213,6 +226,7 @@ fn json_findings_extend_the_v1_schema_with_kind_and_migration_row() {
                 "code": "V13-HTML-DYNAMIC-EVENT-HANDLER",
                 "severity": "BLOCKER",
                 "kind": "must-change",
+                "introduced_in": "13.0.0-alpha.1",
                 "message": "a dynamic value in an `on*`/`hx-on*` attribute of `html!` no longer compiles",
                 "migration_row": "`html!` event handlers",
                 "migration_url": "https://rullst.github.io/Rullst/book/migration-v13.html#changes-from-the-published-1210-source"
@@ -223,6 +237,7 @@ fn json_findings_extend_the_v1_schema_with_kind_and_migration_row() {
                 "code": "V13-RENDER-PAGE-LANGUAGE",
                 "severity": "REVIEW",
                 "kind": "review",
+                "introduced_in": "13.0.0-alpha.1",
                 "message": "`render_page` declares `lang=\"pt-BR\"`; English pages should use `render_page_with_lang`",
                 "migration_row": "Starter page language",
                 "migration_url": "https://rullst.github.io/Rullst/book/migration-v13.html#changes-from-the-published-1210-source"

@@ -251,6 +251,45 @@ but are review findings.
 `update project verify`, `review` and `apply` refuse a preparation that has
 must-change findings and carry review findings in the plan.
 
+### Rules by release
+
+Each rule records the release that introduced the change it reports. The
+rules for the 12.x to 13 changes date from 13.0.0-alpha.1; a rule added later,
+or reworded because a later release changed what it reports, carries that
+release:
+
+| Release | Rules |
+| :--- | :--- |
+| 13.0.0-alpha.1 | The other 95 rules |
+| 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
+| 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
+
+A rule is dated by the first release tag whose catalog contains its code
+(`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
+or `git log -S'"V13-..."'` on that file), checked against the CHANGELOG entry
+that names it; a new rule takes the next release. A unit test checks that every
+rule names one of these releases.
+
+The plan takes the application's Rullst version to be the oldest version that
+a Rullst requirement in the workspace manifests admits (`=13.0.0-alpha.2`,
+or `13.0.0-alpha.1`, a caret requirement) or that `Cargo.lock` holds. When that
+version is a 13.0 prerelease, only the rules introduced after it apply: an
+alpha.2 application gets the seven alpha.3 rules and an alpha.1 application the
+alpha.2 and alpha.3 rules, because the earlier changes are already in the
+version it runs. The plan says what it skipped:
+
+```text
+Source findings (rullst-upgrade-rules-v4): 0 must-change, 1 review
+  Rules: introduced after 13.0.0-alpha.2, the Rullst version this project uses; earlier rules skipped: 100 (findings hidden: 3); --all-rules applies every rule
+```
+
+A v12 application, or one whose version cannot be read (path dependencies
+without a version and no `Cargo.lock`), gets every rule. `--all-rules` (also
+accepted by `cargo rullst ai upgrade`) applies every rule to a prerelease
+application too, for example to review the 12.x to 13 changes again. Project
+preparations (`cargo rullst update`) always apply every rule, because their
+must-change findings gate execution.
+
 ### JSON plan fields
 
 `--dry-run --json` keeps every `rullst.upgrade-plan.v1` key. Each element of
@@ -260,11 +299,19 @@ must-change findings and carry review findings in the plan.
 | Key | Meaning |
 | :--- | :--- |
 | `kind` | `must-change` or `review` |
+| `introduced_in` | The release that introduced the rule's change, such as `13.0.0-alpha.3` |
 | `migration_row` | First-column title of the row in `migration-v13.md` |
 | `migration_url` | The published table of the v13 migration guide |
 
 The root object adds `finding_counts` (`must_change`, `review`),
-`unscanned_sources` (project-relative paths) and `migration_guide`.
+`unscanned_sources` (project-relative paths), `migration_guide` and
+`rule_selection`: `current_version` (the application's Rullst version, or
+`null` when it cannot be read), `all_rules` (`--all-rules`, and always `true`
+in project preparations), `skipped_rules` (rules introduced in or before
+`current_version` that were not applied) and `hidden_findings` (the findings
+those rules would have added). A consumer that ignores unknown keys reads the
+plan as before; findings of skipped rules are absent from `source_findings`
+and `finding_counts`.
 
 ## Assisted fixes with `cargo rullst ai upgrade`
 
@@ -288,8 +335,8 @@ Rullst dependency versions stay owned by `cargo rullst upgrade`.
 
 It is a subcommand of `ai` rather than an `upgrade --assist` flag because it
 needs the assistant's provider, model, credential and terminal handling, while
-`cargo rullst upgrade` stays deterministic and keeps its published command and
-`UpgradeOptions` shape. A one-word chat goal of `upgrade` now opens this
+`cargo rullst upgrade` stays deterministic and keeps its published command
+(`UpgradeOptions` only gained `all_rules` in 13.0.0-alpha.3). A one-word chat goal of `upgrade` now opens this
 command; phrase such a goal with more words.
 
 With no provider connected, the deterministic offline assistant demonstrates
@@ -354,6 +401,11 @@ The other findings locate APIs whose behaviour changed between 12.x and
 13.0.0-alpha.2, so they also appear on a new alpha.2 or alpha.3 starter and
 need no edit in an application that already runs alpha.2. After the `User`
 edit the SaaS and LMS dry runs report 3 and 5 findings, all of that kind.
+The rehearsal's CLI applied every rule; the plan now skips the rules an
+alpha.2 application already runs with (see [Rules by release](#rules-by-release)),
+so its default dry run lists only `V13-ORM-SKIP-MANAGED-COLUMNS` for SaaS and
+LMS and nothing for Blank and Blank `--api`, and `--all-rules` lists the
+findings in the table.
 
 An HTTP smoke test of each upgraded starter (`db:migrate`, then the server in
 development) passed. In SaaS and LMS, registration stored `is_admin = 0` and

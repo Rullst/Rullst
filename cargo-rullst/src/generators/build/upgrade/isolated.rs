@@ -76,7 +76,10 @@ fn plan_manifests(
         .filter_map(|plan| plan.path.parent().map(Path::to_path_buf))
         .collect::<Vec<_>>();
     super::scan::reject_symlinked_sources(&roots)?;
-    let scan = super::rules::scan_workspace(&root, &plans, version.major)?;
+    // Project preparations gate execution on must-change findings, so they
+    // apply every rule whatever version the project already uses.
+    let mut scan = super::rules::scan_workspace(&root, &plans, version.major)?;
+    scan.select(None, true);
     let mut report: serde_json::Value = serde_json::from_str(&super::report::render_json_report(
         &root, &version, &plans, &scan,
     )?)?;
@@ -148,9 +151,19 @@ pub(super) fn locked_above(
     root: &Path,
     target: &semver::Version,
 ) -> Result<Option<(String, semver::Version)>, Box<dyn std::error::Error>> {
+    Ok(locked_versions(root)?
+        .into_iter()
+        .find(|(_, version)| version.cmp_precedence(target).is_gt()))
+}
+
+/// Every Rullst package `Cargo.lock` holds, with its version; none without a
+/// lockfile.
+pub(super) fn locked_versions(
+    root: &Path,
+) -> Result<Vec<(String, semver::Version)>, Box<dyn std::error::Error>> {
     let lock = match std::fs::read_to_string(root.join("Cargo.lock")) {
         Ok(lock) => lock,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
         Err(error) => return Err(error.into()),
     };
     let document: toml::Value = toml::from_str(&lock)?;
@@ -158,6 +171,7 @@ pub(super) fn locked_above(
         .get("package")
         .and_then(toml::Value::as_array)
         .ok_or("project lockfile has no package inventory")?;
+    let mut locked = Vec::new();
     for package in packages {
         let name = package
             .get("name")
@@ -168,11 +182,8 @@ pub(super) fn locked_above(
                 .get("version")
                 .and_then(toml::Value::as_str)
                 .ok_or("invalid lockfile package version")?;
-            let version = semver::Version::parse(version)?;
-            if version.cmp_precedence(target).is_gt() {
-                return Ok(Some((name.to_string(), version)));
-            }
+            locked.push((name.to_string(), semver::Version::parse(version)?));
         }
     }
-    Ok(None)
+    Ok(locked)
 }

@@ -39,8 +39,11 @@ and `REVIEW` findings at `file:line`, each naming the first-column title of its
 row below, and `cargo rullst ai upgrade` proposes reviewed fixes for them. The
 [assisted upgrade tutorial](tutorials/36-assisted-framework-upgrades.md#v12-to-v13-source-findings)
 describes the workflow and [classifies every row](tutorials/36-assisted-framework-upgrades.md#v12--v13-rule-classification).
-Rows without rules still need a reading. An application that already runs
-13.0.0-alpha.2 follows the shorter
+Rows without rules still need a reading. An application already on a 13.0
+prerelease gets only the rules introduced after its version, and the plan says
+how many earlier rules it skipped; `--all-rules` applies every rule
+([rules by release](tutorials/36-assisted-framework-upgrades.md#rules-by-release)).
+An application that already runs 13.0.0-alpha.2 follows the shorter
 [alpha.2 to alpha.3 checklist](#upgrading-an-alpha2-application-to-alpha3).
 
 ## Changes from the published 12.1.0 source
@@ -363,11 +366,16 @@ shows the expected result.
    - `V13-OMNI-REMOVED` and `V13-OFFLINE-SYNC-REMOVED`: replace the Omni
      shell with `cargo rullst make:pwa`, as the Omni row describes.
 
-   Other review findings, such as `V13-REFERRER-NO-REFERRER`,
+   The plan reads the application's version from its manifests and
+   `Cargo.lock` and applies only the rules introduced after 13.0.0-alpha.2,
+   which are the ones above; its `Rules:` line says how many earlier rules it
+   skipped. If it names 13.0.0-alpha.1 instead, a requirement still has the
+   caret form of the alpha.1 CLI (`"13.0.0-alpha.1"`), and the alpha.2 rules
+   are listed too. `--all-rules` also lists the rules for the 12.x to 13
+   changes that alpha.2 already contained, such as `V13-REFERRER-NO-REFERRER`,
    `V13-MAIL-FACADE-CONFIG`, `V13-LMS-RECORD-PROGRESS` and
-   `V13-HOT-RELOAD-MACHINE-ENDPOINTS`, describe changes an alpha.2
-   application already runs with; they also appear on new starters and need
-   no edit for this step.
+   `V13-HOT-RELOAD-MACHINE-ENDPOINTS`; an alpha.2 application already runs
+   with those changes, so they need no edit for this step.
 5. **Apply.** `cargo rullst upgrade` pins every Rullst dependency, including
    direct `rullst-auth`, `rullst-security` or `rullst-connect` lines, to
    `=13.0.0-alpha.3`, runs `cargo fix` and `cargo check --locked`, and

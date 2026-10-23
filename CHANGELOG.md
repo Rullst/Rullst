@@ -415,6 +415,22 @@ A prepared version section does not establish that its tag or crates exist.
   the v13 migration guide (33 rows were missing, all without application
   impact a rule could locate), and a `cargo-rullst` test keeps the table, its
   row counts and the rule catalog in step with the guide.
+- **Behaviour change:** `cargo rullst upgrade` skips the rules an application
+  already on a 13.0 prerelease runs with. Each upgrade rule records the release
+  that introduced its change (13.0.0-alpha.1 for the 12.x to 13 changes, then
+  alpha.2 or alpha.3), and the plan reads the application's Rullst version
+  (the oldest version a Rullst requirement admits or `Cargo.lock` holds): an
+  alpha.2 application now gets only the alpha.3 rules, an alpha.1 application
+  the alpha.2 and alpha.3 rules, instead of every v12 → v13 finding again. The
+  plan prints how many earlier rules it skipped and how many findings they
+  would have added; the new `--all-rules` flag (also on
+  `cargo rullst ai upgrade`) applies every rule. A v12 application still gets
+  every rule, and `cargo rullst update` project preparations always apply every
+  rule. The `rullst.upgrade-plan.v1` JSON gains `introduced_in` on each finding
+  and a root `rule_selection` object (`current_version`, `all_rules`,
+  `skipped_rules`, `hidden_findings`); existing keys are unchanged. The
+  `cargo-rullst` library's `Commands::Upgrade` variant and `UpgradeOptions`
+  gain an `all_rules` field.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 
