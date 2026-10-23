@@ -127,7 +127,7 @@ mod tests {
         assert!(controller.contains(
             "rullst_auth::make_login_cookie_with_epoch(user.id, epoch, rullst_auth::DEFAULT_SESSION_MAX_AGE)"
         ));
-        assert!(controller.contains("        session_epoch: 0,\n    };"));
+        assert!(controller.contains("        session_epoch: 0,\n"));
         assert!(controller.contains(
             "pub async fn logout_everywhere(Extension(user_id): Extension<i32>) -> Response {\n    match User::revoke_sessions(user_id).await {"
         ));
@@ -154,6 +154,10 @@ mod tests {
         assert!(!source.contains("updated_at: String::new()"));
         assert!(source.contains("let created_at = utc_timestamp();"));
         assert!(source.contains("updated_at: created_at,\n        created_at,\n"));
+        // A new account starts an empty dirty-tracking snapshot.
+        assert!(source.contains(
+            "        session_epoch: 0,\n        // A new record: `save()` inserts every column.\n        snapshot: rullst::db::RowSnapshot::default(),\n    };"
+        ));
         assert!(source.contains(
             "pub(crate) fn utc_timestamp() -> rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc> {\n    rullst::orm::chrono::Utc::now()\n}"
         ));

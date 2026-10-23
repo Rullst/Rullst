@@ -415,8 +415,14 @@ fn generate_struct(
     columns: &[ColumnInfo],
 ) -> Result<String, IntrospectionError> {
     validate_database_identifier(&table.database_name, "table")?;
-    let mut code =
-        String::from("use rullst_orm::{FromRow, Orm};\nuse serde::{Deserialize, Serialize};\n\n");
+    // A `snapshot` column leaves the name to the column: that model keeps
+    // full-row saves instead of dirty tracking.
+    let tracked = columns.iter().all(|column| column.name != SNAPSHOT_FIELD);
+    let mut code = String::from(if tracked {
+        "use rullst_orm::{FromRow, Orm, RowSnapshot};\nuse serde::{Deserialize, Serialize};\n\n"
+    } else {
+        "use rullst_orm::{FromRow, Orm};\nuse serde::{Deserialize, Serialize};\n\n"
+    });
     code.push_str("#[derive(Clone, Debug, Serialize, Deserialize, Orm, FromRow)]\n");
     code.push_str(&format!(
         "#[orm(table = {})]\n",
@@ -450,9 +456,17 @@ fn generate_struct(
         let rust_type = map_db_type_to_rust(&column.data_type, column.not_null);
         code.push_str(&format!("    pub {field_name}: {rust_type},\n"));
     }
+    if tracked {
+        code.push_str(SNAPSHOT_FIELD_SOURCE);
+    }
     code.push_str("}\n");
     Ok(code)
 }
+
+/// The dirty-tracking field of generated models: `save()` writes only the
+/// columns a loaded record changed.
+const SNAPSHOT_FIELD: &str = "snapshot";
+const SNAPSHOT_FIELD_SOURCE: &str = "    // Remembers the loaded values, so `save()` writes only the columns this\n    // record changed. Build new records with `snapshot: RowSnapshot::default()`.\n    #[serde(skip)]\n    #[sqlx(skip)]\n    pub snapshot: RowSnapshot,\n";
 
 #[cfg(test)]
 #[path = "introspect_tests.rs"]

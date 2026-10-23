@@ -64,3 +64,25 @@ fn malformed_or_missing_rullst_dependency_fails_closed() {
         .is_err()
     );
 }
+
+#[test]
+fn sqlx_chat_models_track_dirty_columns_and_turso_models_do_not() {
+    let model = render_chat_models(ProjectOrmBackend::Sqlx);
+    assert!(model.starts_with("use rullst::db::{FromRow, Orm, RowSnapshot};\n"));
+    assert_eq!(
+        model
+            .matches("    #[sqlx(skip)]\n    pub snapshot: RowSnapshot,\n}")
+            .count(),
+        2
+    );
+    assert!(model.contains("created_at: unix_timestamp(), snapshot: RowSnapshot::default() }"));
+    let service = render_chat_service(ProjectOrmBackend::Sqlx);
+    assert_eq!(
+        service
+            .matches("            snapshot: rullst::db::RowSnapshot::default(),\n        };")
+            .count(),
+        2
+    );
+    assert!(!render_chat_models(ProjectOrmBackend::Turso).contains("RowSnapshot"));
+    assert!(!render_chat_service(ProjectOrmBackend::Turso).contains("RowSnapshot"));
+}

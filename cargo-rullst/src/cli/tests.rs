@@ -232,8 +232,21 @@ fn parses_transactional_upgrade_options() {
             json: true,
             keep_on_failure: true,
             restore: None,
+            all_rules: false,
         } if target == "12.0.0-rc.1"
     ));
+    let all = Cli::try_parse_from(["rullst", "upgrade", "--dry-run", "--all-rules"])
+        .expect("upgrade --all-rules");
+    assert!(matches!(
+        all.command,
+        Commands::Upgrade {
+            all_rules: true,
+            ..
+        }
+    ));
+    assert!(
+        Cli::try_parse_from(["rullst", "upgrade", "--all-rules", "--restore", "backup"]).is_err()
+    );
 }
 
 #[test]

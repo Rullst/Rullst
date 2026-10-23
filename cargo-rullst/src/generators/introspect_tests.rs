@@ -257,3 +257,28 @@ async fn metadata_rows_with_unexpected_labels_or_types_are_errors_not_panics() {
             .starts_with("database introspection failed")
     );
 }
+
+#[test]
+fn generated_models_track_dirty_columns_unless_a_column_is_named_snapshot() {
+    let table = TablePlan {
+        database_name: "notes".to_string(),
+        module_name: "notes".to_string(),
+        struct_name: "Note".to_string(),
+    };
+    let column = |name: &str| ColumnInfo {
+        name: name.to_string(),
+        data_type: "text".to_string(),
+        not_null: true,
+    };
+    let code = generate_struct(&table, &[column("id"), column("body")]).expect("model");
+    assert!(code.starts_with("use rullst_orm::{FromRow, Orm, RowSnapshot};\n"));
+    assert!(code.ends_with(
+        "    pub body: String,\n    // Remembers the loaded values, so `save()` writes only the columns this\n    // record changed. Build new records with `snapshot: RowSnapshot::default()`.\n    #[serde(skip)]\n    #[sqlx(skip)]\n    pub snapshot: RowSnapshot,\n}\n"
+    ));
+    syn::parse_file(&code).expect("tracked model must parse");
+
+    let named = generate_struct(&table, &[column("id"), column("snapshot")]).expect("model");
+    assert!(named.starts_with("use rullst_orm::{FromRow, Orm};\n"));
+    assert!(named.ends_with("    pub snapshot: String,\n}\n"));
+    assert!(!named.contains("RowSnapshot"));
+}

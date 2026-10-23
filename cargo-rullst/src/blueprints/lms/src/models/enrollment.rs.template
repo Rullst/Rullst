@@ -1,4 +1,4 @@
-use rullst::db::{FromRow, Orm};
+use rullst::db::{FromRow, Orm, RowSnapshot};
 use rullst::orm::chrono::{DateTime, Utc};
 use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
 
@@ -11,6 +11,10 @@ pub struct Enrollment {
     pub status: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    // Remembers the loaded values, so `save()` writes only the columns this
+    // record changed. Build new records with `snapshot: RowSnapshot::default()`.
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 impl Enrollment {

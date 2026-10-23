@@ -267,6 +267,10 @@ pub enum Commands {
         /// Leaves edits in place when a Cargo gate fails instead of restoring the backup
         #[arg(long, conflicts_with = "restore")]
         keep_on_failure: bool,
+        /// Applies every source rule; a project already on a 13.0 prerelease
+        /// otherwise sees only the rules introduced after its version
+        #[arg(long, conflicts_with = "restore")]
+        all_rules: bool,
         /// Restores a backup previously created under target/rullst-upgrades
         #[arg(
             long,

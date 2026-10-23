@@ -1,10 +1,14 @@
-use rullst::db::{Orm, FromRow};
+use rullst::db::{Orm, FromRow, RowSnapshot};
 use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "categories")]
 pub struct Category {
     pub id: i32,
     pub name: String,
+    // Remembers the loaded values, so `save()` writes only the columns this
+    // record changed. Build new records with `snapshot: RowSnapshot::default()`.
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 impl NexusModel for Category {
     fn nexus_table() -> &'static str { "categories" }

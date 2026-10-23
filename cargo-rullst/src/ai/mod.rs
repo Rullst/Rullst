@@ -177,6 +177,12 @@ pub(crate) fn command() -> Command {
                         .value_name("VERSION")
                         .help("Exact target version; defaults to the installed cargo-rullst version"),
                 )
+                .arg(
+                    Arg::new("all-rules")
+                        .long("all-rules")
+                        .action(ArgAction::SetTrue)
+                        .help("Apply every source rule, not only those introduced after the project's Rullst version"),
+                )
                 .arg(provider_arg())
                 .arg(model_arg())
                 .arg(
@@ -262,6 +268,7 @@ fn run_upgrade(matches: &ArgMatches, env: &TermEnv, style: Style) -> Result<(), 
     let plan = crate::generators::build::assist_plan(
         &root,
         matches.get_one::<String>("to").map(String::as_str),
+        matches.get_flag("all-rules"),
     )
     .map_err(|error| AiCliError::Upgrade(sanitize(&error.to_string())))?;
     if plan.findings.is_empty() {

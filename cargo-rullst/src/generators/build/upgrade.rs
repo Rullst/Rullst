@@ -1,6 +1,7 @@
 // src/generators/build/upgrade.rs — Transactional, reviewable project upgrades.
 
 mod backup;
+mod current;
 mod isolated;
 mod manifest;
 mod report;
@@ -40,6 +41,9 @@ pub struct UpgradeOptions {
     pub json: bool,
     pub keep_on_failure: bool,
     pub restore: Option<PathBuf>,
+    /// Applies every source rule. By default a project already on v13 (a 13.0
+    /// prerelease) sees only the rules introduced after its version.
+    pub all_rules: bool,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -84,6 +88,7 @@ struct Planned {
 fn plan_project(
     root: &Path,
     requested: Option<&str>,
+    all_rules: bool,
 ) -> Result<Planned, Box<dyn std::error::Error>> {
     if !root.join("Cargo.toml").is_file() {
         return Err(UpgradeError::NotRullstProject.into());
@@ -118,7 +123,8 @@ fn plan_project(
 
     reject_downgrade(root, &target, &plans)?;
     scan::reject_symlinked_sources(&package_roots)?;
-    let scan = rules::scan_workspace(root, &plans, target.major)?;
+    let mut scan = rules::scan_workspace(root, &plans, target.major)?;
+    scan.select(current::application_version(root, &plans)?, all_rules);
     Ok(Planned {
         target,
         plans,
@@ -142,9 +148,10 @@ pub(crate) struct AssistPlan {
 pub(crate) fn assist_plan(
     root: &Path,
     requested: Option<&str>,
+    all_rules: bool,
 ) -> Result<AssistPlan, Box<dyn std::error::Error>> {
     let root = root.canonicalize()?;
-    let planned = plan_project(&root, requested)?;
+    let planned = plan_project(&root, requested, all_rules)?;
     Ok(AssistPlan {
         target: planned.target.to_string(),
         catalog: rules::RULE_CATALOG_VERSION,
@@ -207,7 +214,7 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
         plans,
         scan,
         changed,
-    } = plan_project(&root, options.target.as_deref())?;
+    } = plan_project(&root, options.target.as_deref(), options.all_rules)?;
     let json_report = report::render_json_report(&root, &target, &plans, &scan)?;
     if options.json {
         println!("{json_report}");
@@ -403,95 +410,4 @@ fn recover_after_failure(
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn target_must_match_the_installed_cli_major() {
-        let cli = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
-        let incompatible = format!("{}.0.0", cli.major + 1);
-        assert!(matches!(
-            target_version(Some(&incompatible)),
-            Err(UpgradeError::IncompatibleCli { .. })
-        ));
-    }
-
-    #[test]
-    fn requirements_above_the_target_are_downgrades() {
-        let target = Version::parse("13.0.0").unwrap();
-        for newer in [
-            "=13.2.0", "13.1", "^13.0.1", "~13.0.5", ">=14", ">13.0.0", "13.1.*",
-        ] {
-            assert!(requirement_exceeds(newer, &target), "{newer}");
-        }
-        for not_newer in [
-            "=13.0.0",
-            "13",
-            "12",
-            ">=12, <14",
-            "<13.5",
-            "*",
-            "13.0.0-rc.1",
-        ] {
-            assert!(!requirement_exceeds(not_newer, &target), "{not_newer}");
-        }
-        // A stable requirement is above a prerelease CLI of the same version.
-        let prerelease = Version::parse("13.0.0-alpha.1").unwrap();
-        assert!(requirement_exceeds("13", &prerelease));
-        assert!(!requirement_exceeds("13.0.0-alpha.1", &prerelease));
-    }
-
-    /// A removed provider is a review finding, so a failed gate used to give no
-    /// hint; it now names the finding and repeats its guidance.
-    #[test]
-    fn a_failed_gate_repeats_the_guidance_of_removed_api_findings() {
-        let root = Path::new("/project");
-        let finding = |rule: &'static rules::Rule, path: &str, line| rules::SourceFinding {
-            rule,
-            path: root.join(path),
-            line,
-        };
-        let capital = rules::REMOVED_API_RULES
-            .iter()
-            .copied()
-            .find(|rule| rule.code == "V13-CAPITAL-REMOVED")
-            .unwrap();
-        let other = rules::REMOVED_API_RULES
-            .iter()
-            .copied()
-            .find(|rule| rule.code == "V13-MAIL-REMOVED")
-            .unwrap();
-        let scan = SourceScan {
-            findings: vec![
-                finding(capital, ".env.example", 21),
-                finding(capital, "src/controllers/billing_controller.rs", 8),
-                finding(other, "src/mail.rs", 3),
-            ],
-            unscanned: Vec::new(),
-        };
-        let hint = findings_hint(root, &scan);
-        assert!(!hint.contains("must-change"), "{hint}");
-        assert!(
-            hint.contains("V13-CAPITAL-REMOVED at src/controllers/billing_controller.rs:8"),
-            "{hint}"
-        );
-        assert!(!hint.contains(".env.example"), "{hint}");
-        assert!(hint.contains("`StripeProvider`"), "{hint}");
-        assert!(
-            hint.contains("`InfinitePayProvider` is experimental"),
-            "{hint}"
-        );
-        assert!(hint.contains("V13-MAIL-REMOVED at src/mail.rs:3"), "{hint}");
-        assert!(findings_hint(root, &SourceScan::default()).is_empty());
-    }
-
-    #[test]
-    fn target_accepts_an_exact_prerelease_in_the_cli_train() {
-        let cli = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
-        let prerelease = format!("{}.1.0-rc.2", cli.major);
-        assert_eq!(
-            target_version(Some(&prerelease)).unwrap().to_string(),
-            prerelease
-        );
-    }
-}
+mod tests;

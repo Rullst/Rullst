@@ -95,6 +95,10 @@ pub fn apply(
 }
 
 #[cfg(test)]
+mod dirty_tracking_tests;
+#[cfg(test)]
+mod monitor_tests;
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -176,7 +180,8 @@ mod tests {
                 .map(|(_, source)| source.as_str())
                 .expect("a main.rs");
             assert_eq!(
-                main.matches("        .with_migrations(crate::migrations::get_migrations())\n        .run(3000)\n").count(),
+                main.matches("        .with_migrations(crate::migrations::get_migrations())\n")
+                    .count(),
                 1,
                 "{blueprint}"
             );
@@ -333,7 +338,7 @@ mod tests {
             let user = file(&manifest, "src/models/user.rs");
             syn::parse_file(&user).unwrap_or_else(|error| panic!("{blueprint}: {error}"));
             assert!(!user.contains("__RULLST"), "{blueprint}: unresolved marker");
-            assert!(user.contains("    #[orm(db_default)]\n    pub session_epoch: i64,\n}"));
+            assert!(user.contains("    #[orm(db_default)]\n    pub session_epoch: i64,\n"));
             assert!(
                 !user.contains("#[orm(skip)]"),
                 "{blueprint}: skip is not a column"

@@ -606,14 +606,17 @@ of `EgressFetcher::fetch_bytes` run only after a connection to a public HTTPS
 origin, which the egress policy refuses to loopback test servers, and are left
 to live integration testing; in `rullst-core`, the `pool_ready` guard of
 `run_artisan_command` needs an already initialized ORM pool, which the
-all-feature build can only open against a PostgreSQL server that the core
-runs do not have), the `cargo-rullst` campaign (targeted runs, with the
-CLI's library unit tests, of the self-update, audit, `add` and consumer-file,
-doctor and deploy files; it covers the files `.github/mutants-pr-cli.txt`
-lists, and ROADMAP.md names the survivors left in the others) and the Studio
-remote-mode campaign (targeted runs of every `rullst-studio/src/remote` file
-and of the `rullst-studio` binary with the package's tests) gave every missed
-mutant in their files a test, except these.
+all-feature build can only open against a PostgreSQL server:
+`rullst-core/tests/artisan_open_pool.rs` opens one in a PostgreSQL
+testcontainer and runs `db:status` in a child process, so runs with Docker
+measure the guard, and runs without it skip the test unless
+`RULLST_REQUIRE_TESTCONTAINERS=true`), the `cargo-rullst` campaign (targeted
+runs, with the CLI's library unit tests, of the self-update, audit, `add` and
+consumer-file, doctor and deploy files; it covers the files
+`.github/mutants-pr-cli.txt` lists, and ROADMAP.md names the survivors left in
+the others) and the Studio remote-mode campaign (targeted runs of every
+`rullst-studio/src/remote` file and of the `rullst-studio` binary with the
+package's tests) gave every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an

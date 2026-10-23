@@ -2,6 +2,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+#[path = "upgrade_cli/rule_selection.rs"]
+mod rule_selection;
+
 struct Fixture {
     root: PathBuf,
 }
@@ -190,6 +193,16 @@ fn json_dry_run_is_versioned_and_machine_readable() {
         serde_json::json!({"must_change": 0, "review": 0})
     );
     assert_eq!(report["unscanned_sources"], serde_json::json!([]));
+    // A v12 application is planned with every rule.
+    assert_eq!(
+        report["rule_selection"],
+        serde_json::json!({
+            "current_version": "12.0.0",
+            "all_rules": false,
+            "skipped_rules": 0,
+            "hidden_findings": 0
+        })
+    );
 }
 
 #[test]
@@ -213,6 +226,7 @@ fn json_findings_extend_the_v1_schema_with_kind_and_migration_row() {
                 "code": "V13-HTML-DYNAMIC-EVENT-HANDLER",
                 "severity": "BLOCKER",
                 "kind": "must-change",
+                "introduced_in": "13.0.0-alpha.1",
                 "message": "a dynamic value in an `on*`/`hx-on*` attribute of `html!` no longer compiles",
                 "migration_row": "`html!` event handlers",
                 "migration_url": "https://rullst.github.io/Rullst/book/migration-v13.html#changes-from-the-published-1210-source"
@@ -223,6 +237,7 @@ fn json_findings_extend_the_v1_schema_with_kind_and_migration_row() {
                 "code": "V13-RENDER-PAGE-LANGUAGE",
                 "severity": "REVIEW",
                 "kind": "review",
+                "introduced_in": "13.0.0-alpha.1",
                 "message": "`render_page` declares `lang=\"pt-BR\"`; English pages should use `render_page_with_lang`",
                 "migration_row": "Starter page language",
                 "migration_url": "https://rullst.github.io/Rullst/book/migration-v13.html#changes-from-the-published-1210-source"
@@ -308,6 +323,17 @@ fn successful_upgrade_changes_the_manifest_and_keeps_a_review_report() {
     let output = fixture.run(&["upgrade"]);
 
     assert!(output.status.success(), "{}", output_text(&output));
+    // Standard output is a pipe here, so the Cargo gates are announced as
+    // plain lines instead of an animated spinner.
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in [
+        "Applying compiler-provided migrations...\n",
+        "Validating the migrated feature selection...\n",
+    ] {
+        assert!(stdout.contains(line), "{stdout}");
+    }
+    assert!(!stdout.contains('\r'), "{stdout:?}");
+    assert!(!stdout.contains("\u{1b}[K"), "{stdout:?}");
     let manifest = std::fs::read_to_string(fixture.app().join("Cargo.toml")).expect("manifest");
     let expected_version = format!("version = \"={}\"", env!("CARGO_PKG_VERSION"));
     assert!(manifest.contains(&expected_version));

@@ -1,4 +1,4 @@
-use rullst::db::{Orm, FromRow};
+use rullst::db::{Orm, FromRow, RowSnapshot};
 use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
 
 #[derive(Debug, Clone, FromRow, Orm)]
@@ -9,6 +9,10 @@ pub struct Product {
     pub sku: String,
     pub price: f64,
     pub stock: i32,
+    // Remembers the loaded values, so `save()` writes only the columns this
+    // record changed. Build new records with `snapshot: RowSnapshot::default()`.
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 impl NexusModel for Product {

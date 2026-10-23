@@ -96,6 +96,9 @@ fn each_subcommand_routes_to_its_own_handler_with_its_own_arguments() {
             .map(String::as_str),
         Some("13.0.0")
     );
+    assert!(!route(&upgrade).1.get_flag("all-rules"));
+    let all_rules = parse(&["ai", "upgrade", "--all-rules"]);
+    assert!(route(&all_rules).1.get_flag("all-rules"));
     let session = parse(&["ai", "explain", "the", "router"]);
     assert_eq!(
         route(&session)

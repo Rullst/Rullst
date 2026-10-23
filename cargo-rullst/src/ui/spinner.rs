@@ -1,15 +1,53 @@
 // src/ui/spinner.rs — Neon animated terminal spinner.
 
+use super::terminal::TerminalEnv;
 use std::io::Write;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 
+/// How progress is shown on standard output.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SpinnerMode {
+    /// Coloured frames redrawn in place with carriage returns.
+    Animated,
+    /// One plain line, without escape sequences or carriage returns.
+    Plain,
+}
+
+/// Animation needs standard output to be a terminal without `NO_COLOR`,
+/// `CI`, `TERM=dumb` or `RULLST_REDUCED_MOTION`; CI logs and pipes get a
+/// plain line.
+fn spinner_mode(env: &TerminalEnv) -> SpinnerMode {
+    if env.stdout_tty && !env.no_color && !env.ci && !env.dumb && !env.reduced_motion {
+        SpinnerMode::Animated
+    } else {
+        SpinnerMode::Plain
+    }
+}
+
+/// Writes `msg` as one line, then runs `f`.
+fn plain_progress<W, F, T>(out: &mut W, msg: &str, f: F) -> T
+where
+    W: Write,
+    F: FnOnce() -> T,
+{
+    let _ = writeln!(out, "{msg}");
+    let _ = out.flush();
+    f()
+}
+
+/// Runs `f` while showing `msg`: an animated spinner in a terminal, one plain
+/// line in CI logs, pipes or with `NO_COLOR`.
 pub fn with_spinner<F, T>(msg: &str, f: F) -> T
 where
     F: FnOnce() -> T,
 {
+    match spinner_mode(&TerminalEnv::detect()) {
+        SpinnerMode::Plain => return plain_progress(&mut std::io::stdout(), msg, f),
+        SpinnerMode::Animated => {}
+    }
     let msg = msg.to_string();
     let is_running = Arc::new(AtomicBool::new(true));
     let is_running_clone = is_running.clone();
@@ -79,3 +117,7 @@ where
 
     result
 }
+
+#[cfg(test)]
+#[path = "spinner_tests.rs"]
+mod tests;
