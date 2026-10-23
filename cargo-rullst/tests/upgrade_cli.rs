@@ -323,6 +323,17 @@ fn successful_upgrade_changes_the_manifest_and_keeps_a_review_report() {
     let output = fixture.run(&["upgrade"]);
 
     assert!(output.status.success(), "{}", output_text(&output));
+    // Standard output is a pipe here, so the Cargo gates are announced as
+    // plain lines instead of an animated spinner.
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in [
+        "Applying compiler-provided migrations...\n",
+        "Validating the migrated feature selection...\n",
+    ] {
+        assert!(stdout.contains(line), "{stdout}");
+    }
+    assert!(!stdout.contains('\r'), "{stdout:?}");
+    assert!(!stdout.contains("\u{1b}[K"), "{stdout:?}");
     let manifest = std::fs::read_to_string(fixture.app().join("Cargo.toml")).expect("manifest");
     let expected_version = format!("version = \"={}\"", env!("CARGO_PKG_VERSION"));
     assert!(manifest.contains(&expected_version));

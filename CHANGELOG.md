@@ -449,6 +449,12 @@ A prepared version section does not establish that its tag or crates exist.
   `.env.example` list `# RULLST_MONITOR_TOKENS=` with how to generate a token.
   Nothing is enabled: uncomment the call and set a token to serve
   `/_rullst/monitor/v1`.
+- CLI progress in CI logs and pipes: the spinner of long steps (the first
+  build of `cargo rullst new`, the `cargo fix` and `cargo check` gates of
+  `cargo rullst upgrade`) now animates only when standard output is a
+  terminal without `NO_COLOR`, `CI`, `TERM=dumb` or `RULLST_REDUCED_MOTION`.
+  Otherwise it prints the step as one plain line; before, logs filled with
+  carriage returns and ANSI escape sequences.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

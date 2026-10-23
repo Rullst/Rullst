@@ -119,7 +119,11 @@ transpositions, an exact `group:name` segment (`migrate`) and prefixes.
 
 Colour follows the home screen rules on each stream: none for `NO_COLOR`, `CI`,
 `TERM=dumb` or a stream that is not a terminal. When standard output is not
-coloured, generator output is plain as well.
+coloured, generator output is plain as well. Long steps (the first build of
+`new`, the Cargo gates of `upgrade`) animate a spinner only when standard
+output is a terminal without `NO_COLOR`, `CI`, `TERM=dumb` or
+`RULLST_REDUCED_MOTION`; otherwise, as in CI logs and pipes, they print one
+plain line without escape sequences or carriage returns.
 
 After a generator succeeds, the CLI prints up to three concrete **Next steps**
 (for example `cargo rullst db:migrate` after `make:model -m`). Generators that
