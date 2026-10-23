@@ -480,3 +480,8 @@ Router::new().route(
         assert!(result[0].contains("/invoices/{invoice_number}"));
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used)]
+#[path = "audit_idor_tests.rs"]
+mod scan_tests;
