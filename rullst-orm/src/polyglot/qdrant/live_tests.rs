@@ -37,7 +37,9 @@ async fn query(Path(collection): Path<String>) -> Response {
     }
 }
 
-async fn upsert() -> Json<Value> {
+/// Reads the whole request body before answering: a server that replies
+/// while a 1 MiB upload is still arriving resets the connection on Windows.
+async fn upsert(_body: axum::body::Bytes) -> Json<Value> {
     Json(json!({ "status": "ok", "result": { "status": "completed" } }))
 }
 

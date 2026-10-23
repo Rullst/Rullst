@@ -154,7 +154,10 @@ jobs:
           # unbounded loops in crypto crates. --jobs 1 prevents parallel SAT
           # solvers from competing for runner RAM. A proof failure now fails
           # its matrix job instead of being hidden by continue-on-error.
+          # --lib: every harness lives in a library target; a binary with
+          # required features (rullst-studio's `remote` binary) must not be built.
           cargo kani \
+            --lib \
             --harness "${{ matrix.harness }}" \
             --default-unwind 5 \
             --jobs 1
