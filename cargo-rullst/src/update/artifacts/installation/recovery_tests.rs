@@ -93,3 +93,10 @@ fn restored_binaries_are_executable_and_the_receipt_is_not() {
         .mode();
     assert_eq!(mode & 0o777, 0o600);
 }
+
+#[test]
+fn recovery_without_a_selected_operation_is_refused() {
+    let base = base();
+    let root = cache::installation_root(&base.path().join("installed")).unwrap();
+    assert!(application::recover(&root, &"f".repeat(64)).is_err());
+}
