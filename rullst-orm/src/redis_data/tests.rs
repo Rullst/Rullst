@@ -297,3 +297,131 @@ fn credentials_hold_one_to_2048_visible_bytes() {
         );
     }
 }
+
+#[tokio::test]
+async fn bounded_wrappers_and_mock_membership_are_exact() {
+    assert!(RedisMember::new("m".repeat(4 * 1024)).is_ok());
+    assert!(RedisMember::new("m".repeat(4 * 1024 + 1)).is_err());
+    assert!(RedisValue::new("v".repeat(1024 * 1024)).is_ok());
+    assert_eq!(
+        RedisDataKey::new("account:7").unwrap().as_str(),
+        "account:7"
+    );
+    assert_eq!(RedisValue::new("value").unwrap().into_inner(), "value");
+    assert_eq!(RedisMember::new("member").unwrap().into_inner(), "member");
+
+    let store = RedisDataStore::connect_or_mock(RedisDataConfig::new("", "test-app", "", ""))
+        .await
+        .expect("mock");
+    let key = RedisDataKey::new("members").unwrap();
+    let present = RedisMember::new("present").unwrap();
+    store.set_add(&key, &present).await.unwrap();
+    assert!(store.set_contains(&key, &present).await.unwrap());
+    assert!(
+        !store
+            .set_contains(&key, &RedisMember::new("absent").unwrap())
+            .await
+            .unwrap()
+    );
+}
+
+/// Runs against the server named by `RULLST_TEST_REDIS_URL` (a loopback,
+/// unauthenticated test instance); skipped when it is unset.
+#[tokio::test]
+async fn live_structures_round_trip_in_their_namespace() {
+    let Ok(url) = std::env::var("RULLST_TEST_REDIS_URL") else {
+        eprintln!("RULLST_TEST_REDIS_URL is unset; skipping the live Redis data contract");
+        return;
+    };
+    let namespace = format!("live-data-{}", rand::random::<u32>());
+    let connect = |namespace: String| {
+        RedisDataStore::connect_or_mock(RedisDataConfig::unauthenticated_local(
+            url.clone(),
+            namespace,
+        ))
+    };
+    let store = connect(namespace.clone()).await.expect("live store");
+    let other = connect(format!("{namespace}-other"))
+        .await
+        .expect("second namespace");
+    assert!(!store.is_mock());
+    let key = RedisDataKey::new("account:1").unwrap();
+    let field = RedisField::new("name").unwrap();
+
+    assert!(
+        store
+            .hash_set(&key, &field, &RedisValue::new("Ada").unwrap())
+            .await
+            .unwrap()
+    );
+    assert!(
+        !store
+            .hash_set(&key, &field, &RedisValue::new("Grace").unwrap())
+            .await
+            .unwrap()
+    );
+    assert_eq!(
+        store
+            .hash_get(&key, &field)
+            .await
+            .unwrap()
+            .map(RedisValue::into_inner),
+        Some("Grace".to_string())
+    );
+    assert_eq!(other.hash_get(&key, &field).await.unwrap(), None);
+
+    let members = ["alpha", "beta", "gamma"].map(|member| RedisMember::new(member).unwrap());
+    for member in &members {
+        assert!(store.set_add(&key, member).await.unwrap());
+    }
+    assert!(!store.set_add(&key, &members[0]).await.unwrap());
+    assert!(store.set_contains(&key, &members[1]).await.unwrap());
+    assert!(
+        !store
+            .set_contains(&key, &RedisMember::new("delta").unwrap())
+            .await
+            .unwrap()
+    );
+    assert_eq!(
+        store
+            .set_scan(&key, RedisScanLimit::new(1).unwrap())
+            .await
+            .unwrap()
+            .len(),
+        1
+    );
+    let mut scanned: Vec<String> = store
+        .set_scan(&key, RedisScanLimit::new(10).unwrap())
+        .await
+        .unwrap()
+        .into_iter()
+        .map(RedisMember::into_inner)
+        .collect();
+    scanned.sort();
+    assert_eq!(scanned, ["alpha", "beta", "gamma"]);
+
+    for (member, score) in members.iter().zip([1.0, 2.0, 3.0]) {
+        assert!(store.sorted_set_add(&key, member, score).await.unwrap());
+    }
+    assert!(!store.sorted_set_add(&key, &members[0], 4.0).await.unwrap());
+    let top: Vec<(String, f64)> = store
+        .sorted_set_top(&key, RedisScanLimit::new(2).unwrap())
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|scored| (scored.member().as_str().to_owned(), scored.score()))
+        .collect();
+    assert_eq!(
+        top,
+        [("alpha".to_string(), 4.0), ("gamma".to_string(), 3.0)]
+    );
+
+    for structure in [
+        RedisStructure::Hash,
+        RedisStructure::Set,
+        RedisStructure::SortedSet,
+    ] {
+        assert!(store.delete(&key, structure).await.unwrap());
+        assert!(!store.delete(&key, structure).await.unwrap());
+    }
+}
