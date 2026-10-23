@@ -215,3 +215,7 @@ fn manifests(root: &Path) -> Result<Vec<PathBuf>, ProjectError> {
     paths.insert(root.join("Cargo.toml").canonicalize()?);
     Ok(paths.into_iter().collect())
 }
+
+#[cfg(test)]
+#[path = "project/project_tests.rs"]
+mod tests;
