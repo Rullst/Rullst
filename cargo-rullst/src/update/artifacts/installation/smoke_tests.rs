@@ -14,11 +14,26 @@ fn probe(script: &str) -> Result<(), ArtifactError> {
     smoke::verify(directory.path(), &manifest)
 }
 
+/// Retries a probe that must pass: another test thread forking while a script
+/// was open for writing makes executing it fail briefly with ETXTBSY.
+#[cfg(unix)]
+fn passing(script: &str) {
+    let mut result = probe(script);
+    for _ in 0..20 {
+        if result.is_ok() {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        result = probe(script);
+    }
+    result.unwrap();
+}
+
 #[cfg(unix)]
 #[test]
 fn only_one_exact_quiet_version_line_passes() {
-    probe("echo 'rullst 12.1.0'").unwrap();
-    probe("printf '%-4096s' 'cargo-rullst 12.1.0'").unwrap();
+    passing("echo 'rullst 12.1.0'");
+    passing("printf '%-4096s' 'cargo-rullst 12.1.0'");
     for rejected in [
         "printf '%-4097s' 'rullst 12.1.0'",
         "echo 'rullst 12.1.0'; echo 'warning' >&2",

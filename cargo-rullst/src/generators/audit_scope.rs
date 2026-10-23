@@ -338,7 +338,16 @@ mod tests {
         fs::write(&cargo, script).unwrap();
         fs::set_permissions(&cargo, fs::Permissions::from_mode(0o755)).unwrap();
 
-        let status = cargo_audit_status(cargo.as_os_str(), &member, &[]);
+        // Another test thread forking while the script was open for writing
+        // makes executing it fail briefly with ETXTBSY; retry that case.
+        let mut status = cargo_audit_status(cargo.as_os_str(), &member, &[]);
+        for _ in 0..20 {
+            if status != EvidenceStatus::NotChecked("cargo-audit is unavailable") {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            status = cargo_audit_status(cargo.as_os_str(), &member, &[]);
+        }
         assert_eq!(status, EvidenceStatus::NoFindings);
     }
 
