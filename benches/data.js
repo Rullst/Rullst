@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792724558758,
+  "lastUpdate": 1792762526786,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -28383,6 +28383,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2014,
             "range": "± 44",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3135ffb2f4f5772ab9f65bbcb748a31f485e4f50",
+          "message": "Merge pull request #537 from Rullst/feat/v13-alpha3-polish\n\nfeat(cli): rule releases in upgrade plans, dirty tracking in generated models, monitor wiring, quiet spinner",
+          "timestamp": "2026-10-23T10:05:27-03:00",
+          "tree_id": "42473b7615b1bcfc8262583c2322cac6e578e788",
+          "url": "https://github.com/Rullst/Rullst/commit/3135ffb2f4f5772ab9f65bbcb748a31f485e4f50"
+        },
+        "date": 1792762523689,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 697,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 926,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 429,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2006,
+            "range": "± 40",
             "unit": "ns/iter"
           }
         ]
