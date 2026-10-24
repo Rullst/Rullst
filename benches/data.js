@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792788858238,
+  "lastUpdate": 1792849574034,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -28599,6 +28599,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1602,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "be33683252d29244ea14311790ac66decaf9d299",
+          "message": "Merge pull request #541 from Rullst/fix/v13-crypto-bigint\n\nfix(deps): crypto-bigint 0.7.6 and fuzz tokio for new RustSec advisories",
+          "timestamp": "2026-10-24T10:41:47-03:00",
+          "tree_id": "3162184411f8acdf3c0886634133b173ab1c6ec7",
+          "url": "https://github.com/Rullst/Rullst/commit/be33683252d29244ea14311790ac66decaf9d299"
+        },
+        "date": 1792849570674,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 557,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 724,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 322,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1544,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
