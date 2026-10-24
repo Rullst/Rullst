@@ -1,9 +1,10 @@
 # v13 delivery plan and evidence
 
-**13.0.0-alpha.3 prepared on October 23, 2026 (not yet published).** The
-release commit sets the twenty packages to `13.0.0-alpha.3`; the coordinator
-records the tag, the exact-SHA admission and the release run here after
-publication. It carries the fixes from the alpha.2 dogfooding reports,
+**13.0.0-alpha.3 published on October 24, 2026.** All twenty packages were
+published from tag `v13.0.0-alpha.3` at `be336833` after the 25 required
+workflows passed on that exact commit
+([release run 40129821475](https://github.com/Rullst/Rullst/actions/runs/40129821475)).
+It carries the fixes from the alpha.2 dogfooding reports,
 first-class PWA support and the retirement of Omni, the Studio production
 monitor (endpoint, standalone remote mode, history and alerts), OAuth login
 with `make:oauth` for Google, GitHub, Microsoft and Apple, CLDR plurals and
