@@ -101,6 +101,10 @@ after your version.
 
 ### Dependency security
 
+- `crypto-bigint` 0.7.6 (RUSTSEC-2026-0387: timing variability in
+  operations intended to be constant-time), through `elliptic-curve`/`p256`.
+  Applications should run `cargo update -p crypto-bigint`. The `rullst` and
+  `rullst-orm` fuzz workspaces use `tokio` 1.54.1 (RUSTSEC-2026-0386).
 - `ctutils` 0.4.5 (RUSTSEC-2026-0385: non-constant-time mask generation and
   `u128` comparisons in 0.4.2), pulled in through `digest`. Applications
   should run `cargo update -p ctutils`.
