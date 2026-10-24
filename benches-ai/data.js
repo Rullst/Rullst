@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792790022467,
+  "lastUpdate": 1792850527703,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -15629,6 +15629,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 326,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "be33683252d29244ea14311790ac66decaf9d299",
+          "message": "Merge pull request #541 from Rullst/fix/v13-crypto-bigint\n\nfix(deps): crypto-bigint 0.7.6 and fuzz tokio for new RustSec advisories",
+          "timestamp": "2026-10-24T10:41:47-03:00",
+          "tree_id": "3162184411f8acdf3c0886634133b173ab1c6ec7",
+          "url": "https://github.com/Rullst/Rullst/commit/be33683252d29244ea14311790ac66decaf9d299"
+        },
+        "date": 1792850526432,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1396,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 270,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 278,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
