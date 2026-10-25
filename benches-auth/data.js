@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792878441408,
+  "lastUpdate": 1792965937196,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -18125,6 +18125,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1882,
             "range": "± 65",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "431910d400fb8b407fe4912bd85ec2ec571d39dc",
+          "message": "Merge pull request #543 from Rullst/docs/fix-v12-eol-banner\n\ndocs: align release status banner with v12 end of life",
+          "timestamp": "2026-10-25T18:46:12-03:00",
+          "tree_id": "ddd68dbce644c0d46e5ec80b5f6282b5605b4533",
+          "url": "https://github.com/Rullst/Rullst/commit/431910d400fb8b407fe4912bd85ec2ec571d39dc"
+        },
+        "date": 1792965936341,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1041,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 786,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1830,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4243,
+            "range": "± 67",
             "unit": "ns/iter"
           }
         ]
