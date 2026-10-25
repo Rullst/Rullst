@@ -13,9 +13,9 @@
     title.className = "rullst-release-status__title";
     title.textContent = "Rullst v13 — prerelease";
 
-    const stableLink = document.createElement("a");
-    stableLink.href = "https://github.com/Rullst/Rullst/tree/v12";
-    stableLink.textContent = "v12";
+    const v12Link = document.createElement("a");
+    v12Link.href = "https://github.com/Rullst/Rullst/tree/v12";
+    v12Link.textContent = "v12";
 
     const mainLink = document.createElement("a");
     mainLink.href = "https://github.com/Rullst/Rullst/tree/main";
@@ -24,8 +24,8 @@
     const message = document.createElement("span");
     message.append(
       "v13 development on ", mainLink,
-      "; 13.0.0-alpha.3 is an evaluation prerelease. Install published v12 packages for stable use; maintenance is on ",
-      stableLink, "."
+      "; 13.0.0-alpha.3 is the active prerelease. The v12 line reached end of life on 16 October 2026 and the ",
+      v12Link, " branch is frozen."
     );
 
     const details = document.createElement("details");
