@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792878795911,
+  "lastUpdate": 1792966388691,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -13588,6 +13588,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "431910d400fb8b407fe4912bd85ec2ec571d39dc",
+          "message": "Merge pull request #543 from Rullst/docs/fix-v12-eol-banner\n\ndocs: align release status banner with v12 end of life",
+          "timestamp": "2026-10-25T18:46:12-03:00",
+          "tree_id": "ddd68dbce644c0d46e5ec80b5f6282b5605b4533",
+          "url": "https://github.com/Rullst/Rullst/commit/431910d400fb8b407fe4912bd85ec2ec571d39dc"
+        },
+        "date": 1792966387835,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
