@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792966144545,
+  "lastUpdate": 1793009681359,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -17854,6 +17854,58 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "@venelouis",
+            "username": "venelouis",
+            "email": "37526748+venelouis@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "431910d400fb8b407fe4912bd85ec2ec571d39dc",
+          "message": "Merge pull request #543 from Rullst/docs/fix-v12-eol-banner\n\ndocs: align release status banner with v12 end of life",
+          "timestamp": "2026-10-25T21:46:12Z",
+          "url": "https://github.com/Rullst/Rullst/commit/431910d400fb8b407fe4912bd85ec2ec571d39dc"
+        },
+        "date": 1793009680627,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5349,
+            "range": "± 115",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 567,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 13,
             "range": "± 0",
             "unit": "ns/iter"
           }
