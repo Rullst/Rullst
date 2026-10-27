@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793009618488,
+  "lastUpdate": 1793114491558,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -11289,6 +11289,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 530,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d4d35838312c3f722edce17b6fb7dde36c67e0d1",
+          "message": "Merge pull request #544 from Rullst/dependabot/github_actions/main/ci-tools-9875e00e14\n\nchore(deps): bump the ci-tools group with 6 updates",
+          "timestamp": "2026-10-27T12:00:41-03:00",
+          "tree_id": "7f6b38d7e459b23a8ae4146e7a4e7c20426c2e25",
+          "url": "https://github.com/Rullst/Rullst/commit/d4d35838312c3f722edce17b6fb7dde36c67e0d1"
+        },
+        "date": 1793114490906,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 533,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
