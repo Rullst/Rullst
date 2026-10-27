@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793114754808,
+  "lastUpdate": 1793117086369,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -15867,6 +15867,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 394,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a429c89bdbb125fc280bef87ffa42e1d66e186c7",
+          "message": "Merge pull request #545 from Rullst/dependabot/cargo/main/safe-updates-0d0606fe84\n\nchore(deps): bump the safe-updates group across 12 directories with 9 updates",
+          "timestamp": "2026-10-27T12:43:01-03:00",
+          "tree_id": "fc78210db8a6bc0a692a827f0a38b6fee15b4f25",
+          "url": "https://github.com/Rullst/Rullst/commit/a429c89bdbb125fc280bef87ffa42e1d66e186c7"
+        },
+        "date": 1793117085214,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1018,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 186,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 0,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 189,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
