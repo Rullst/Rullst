@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793119075280,
+  "lastUpdate": 1793121050344,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -28975,6 +28975,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2048,
             "range": "± 170",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "858dbf8601da7548a8e2750b00d18296afd23e39",
+          "message": "Merge pull request #552 from Rullst/feat/v13-opening-always\n\nfeat(cli): animate the opening on every run; RULLST_OPENING selects daily or static",
+          "timestamp": "2026-10-27T14:06:37-03:00",
+          "tree_id": "55dc33140bc3e828c810fae73c01033556b46ee9",
+          "url": "https://github.com/Rullst/Rullst/commit/858dbf8601da7548a8e2750b00d18296afd23e39"
+        },
+        "date": 1793121042634,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 563,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 801,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 398,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1621,
+            "range": "± 30",
             "unit": "ns/iter"
           }
         ]
