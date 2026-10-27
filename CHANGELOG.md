@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Changed
+
+- The `cargo rullst` opening animates on every run (any key skips it).
+  `RULLST_OPENING=daily` restores the once-a-day animation and
+  `RULLST_OPENING=static` turns it off; `RULLST_REDUCED_MOTION` still applies.
+
 ## [13.0.0-alpha.3] - 2026-10-23
 
 Third v13 prerelease, for evaluation. It fixes the problems found while

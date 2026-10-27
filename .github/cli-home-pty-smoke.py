@@ -103,7 +103,10 @@ with tempfile.TemporaryDirectory(prefix="rullst-home-") as directory:
            if name not in ("CI", "NO_COLOR", "RULLST_REDUCED_MOTION", "COLORTERM", "DATABASE_URL",
                            "TURSO_DATABASE_URL")}
     env.update(XDG_CACHE_HOME=str(cache), LOCALAPPDATA=str(cache), TERM="xterm-256color",
-               RULLST_DISABLE_UPDATE_CHECK="true", CARGO_NET_OFFLINE="true")
+               RULLST_DISABLE_UPDATE_CHECK="true", CARGO_NET_OFFLINE="true",
+               # The cases below exercise the once-a-day marker; the default
+               # (every run) is checked by "default-animates-every-run".
+               RULLST_OPENING="daily")
     today = datetime.date.today().isoformat()
 
     def case(name, cwd, extra, answers, check):
@@ -129,6 +132,13 @@ with tempfile.TemporaryDirectory(prefix="rullst-home-") as directory:
         assert status == 0 and frames == 0 and restored and menu in output, (status, frames)
 
     case("later-run-static", nested, {"COLORTERM": "truecolor"}, exit_menu, static)
+
+    def every_run(status, output, frames, restored):
+        assert status == 0 and frames == 42 and restored, (status, frames, restored)
+
+    # An empty RULLST_OPENING selects the default, which ignores the day stamp.
+    case("default-animates-every-run", nested, {"COLORTERM": "truecolor", "RULLST_OPENING": ""},
+         exit_menu, every_run)
 
     stamp.unlink()
 

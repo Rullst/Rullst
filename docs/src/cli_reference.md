@@ -51,9 +51,11 @@ Enter runs the selection (asking first for its required arguments, as a menu
 when the values are fixed), Esc returns to the home menu and Ctrl+C exits.
 `cargo rullst --help` is the non-interactive equivalent.
 
-The opening animates for about 0.7 s only on the first run of each day; later
-runs draw the final frame instantly and any key skips the animation. The day
-of the last animation is kept in the user cache directory
+The opening animates for about 0.7 s on every run; any key skips the
+animation. `RULLST_OPENING=daily` animates only the first run of each day
+(later runs draw the final frame instantly) and `RULLST_OPENING=static` never
+animates. For `daily`, the day of the last animation is kept in the user cache
+directory
 (`$XDG_CACHE_HOME/rullst-ui-v1` or `~/.cache/rullst-ui-v1`;
 `%LOCALAPPDATA%\rullst-ui-v1` on Windows), never in the project. If that file
 cannot be read or written, the opening is static.
