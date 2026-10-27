@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793113545970,
+  "lastUpdate": 1793116072290,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -28867,6 +28867,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2059,
             "range": "± 33",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a429c89bdbb125fc280bef87ffa42e1d66e186c7",
+          "message": "Merge pull request #545 from Rullst/dependabot/cargo/main/safe-updates-0d0606fe84\n\nchore(deps): bump the safe-updates group across 12 directories with 9 updates",
+          "timestamp": "2026-10-27T12:43:01-03:00",
+          "tree_id": "fc78210db8a6bc0a692a827f0a38b6fee15b4f25",
+          "url": "https://github.com/Rullst/Rullst/commit/a429c89bdbb125fc280bef87ffa42e1d66e186c7"
+        },
+        "date": 1793116069254,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 407,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 566,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 276,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1055,
+            "range": "± 47",
             "unit": "ns/iter"
           }
         ]
