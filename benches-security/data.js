@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793116980543,
+  "lastUpdate": 1793120128017,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -18014,6 +18014,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5223f7545d7dd575ad364e4cec7ae6730ac15ad9",
+          "message": "Merge pull request #551 from Rullst/docs/v13-migration-cli-pin\n\ndocs(migration): install the alpha.3 CLI in the target-major CLI step",
+          "timestamp": "2026-10-27T13:32:56-03:00",
+          "tree_id": "fbb7dede5dd05996de1ff0b68ba09e3f5a0ecaaf",
+          "url": "https://github.com/Rullst/Rullst/commit/5223f7545d7dd575ad364e4cec7ae6730ac15ad9"
+        },
+        "date": 1793120127331,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5381,
+            "range": "± 46",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 579,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 13,
             "range": "± 0",
             "unit": "ns/iter"
           }
