@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793117164544,
+  "lastUpdate": 1793120346917,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -13754,6 +13754,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5223f7545d7dd575ad364e4cec7ae6730ac15ad9",
+          "message": "Merge pull request #551 from Rullst/docs/v13-migration-cli-pin\n\ndocs(migration): install the alpha.3 CLI in the target-major CLI step",
+          "timestamp": "2026-10-27T13:32:56-03:00",
+          "tree_id": "fbb7dede5dd05996de1ff0b68ba09e3f5a0ecaaf",
+          "url": "https://github.com/Rullst/Rullst/commit/5223f7545d7dd575ad364e4cec7ae6730ac15ad9"
+        },
+        "date": 1793120346297,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
