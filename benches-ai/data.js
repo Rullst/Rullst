@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793120250914,
+  "lastUpdate": 1793122199695,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -15963,6 +15963,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 409,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "858dbf8601da7548a8e2750b00d18296afd23e39",
+          "message": "Merge pull request #552 from Rullst/feat/v13-opening-always\n\nfeat(cli): animate the opening on every run; RULLST_OPENING selects daily or static",
+          "timestamp": "2026-10-27T14:06:37-03:00",
+          "tree_id": "55dc33140bc3e828c810fae73c01033556b46ee9",
+          "url": "https://github.com/Rullst/Rullst/commit/858dbf8601da7548a8e2750b00d18296afd23e39"
+        },
+        "date": 1793122197920,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1455,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 304,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 325,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
