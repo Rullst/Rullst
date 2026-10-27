@@ -175,3 +175,14 @@ fn static_profiles_never_animate_or_touch_the_daily_stamp() {
         }
     }
 }
+
+#[test]
+fn the_opening_animates_on_every_run_unless_rullst_opening_says_otherwise() {
+    assert_eq!(opening_mode(None), OpeningMode::Always);
+    assert_eq!(opening_mode(Some("always")), OpeningMode::Always);
+    assert_eq!(opening_mode(Some("something else")), OpeningMode::Always);
+    assert_eq!(opening_mode(Some(" Daily ")), OpeningMode::Daily);
+    for value in ["static", "never", "OFF"] {
+        assert_eq!(opening_mode(Some(value)), OpeningMode::Static, "{value}");
+    }
+}
