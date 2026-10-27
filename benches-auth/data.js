@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793116813342,
+  "lastUpdate": 1793119929824,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -18315,6 +18315,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3178,
             "range": "± 48",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5223f7545d7dd575ad364e4cec7ae6730ac15ad9",
+          "message": "Merge pull request #551 from Rullst/docs/v13-migration-cli-pin\n\ndocs(migration): install the alpha.3 CLI in the target-major CLI step",
+          "timestamp": "2026-10-27T13:32:56-03:00",
+          "tree_id": "fbb7dede5dd05996de1ff0b68ba09e3f5a0ecaaf",
+          "url": "https://github.com/Rullst/Rullst/commit/5223f7545d7dd575ad364e4cec7ae6730ac15ad9"
+        },
+        "date": 1793119928552,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1017,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 743,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1763,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4291,
+            "range": "± 58",
             "unit": "ns/iter"
           }
         ]
