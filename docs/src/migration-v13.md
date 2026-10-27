@@ -439,7 +439,7 @@ never selects a prerelease on its own (`cargo install cargo-rullst` installs
 the end-of-life 12.x CLI), so name the exact version:
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.2 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
 rullst --version
 ```
 
