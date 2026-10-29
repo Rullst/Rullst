@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793274317517,
+  "lastUpdate": 1793289443538,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -18747,6 +18747,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2977,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27440eb88706fe739bf7cc5a72908e61c45d6f9a",
+          "message": "Merge pull request #561 from Rullst/fix/v13-alpha4-admission-tests\n\ntest: keep the Miri audit scope and the mail queue test deterministic",
+          "timestamp": "2026-10-29T12:37:39-03:00",
+          "tree_id": "a0c3b968ff75e6f5729fca23dc665ea81a2f2aa4",
+          "url": "https://github.com/Rullst/Rullst/commit/27440eb88706fe739bf7cc5a72908e61c45d6f9a"
+        },
+        "date": 1793289442931,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1044,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 771,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1851,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4230,
+            "range": "± 72",
             "unit": "ns/iter"
           }
         ]
