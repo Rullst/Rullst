@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793264119467,
+  "lastUpdate": 1793270017360,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -14006,6 +14006,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "344f9437ea0242ac1f1400e35c888faa0ee86fca",
+          "message": "Merge pull request #558 from Rullst/feat/v13-alpha4-starters-examples\n\nfeat(cli)!: keep the Blank, API and SaaS starters; LMS, ERP and Portfolio become examples",
+          "timestamp": "2026-10-29T07:09:19-03:00",
+          "tree_id": "5f17e4d69d48d8cae7703b74394bd91d8b92c188",
+          "url": "https://github.com/Rullst/Rullst/commit/344f9437ea0242ac1f1400e35c888faa0ee86fca"
+        },
+        "date": 1793270016391,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
