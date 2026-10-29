@@ -4,6 +4,10 @@
 dashboard for Rullst. It exposes bounded database, queue and in-process
 telemetry views from the sources explicitly supplied by the application.
 
+**Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):
+optional and supported for its documented scope, a local developer control
+room. The 13.x stability promise begins with stable `13.0.0`.
+
 ## ✨ Features
 
 - **Database inspector:** Read and filter configured SQLx tables, edit bounded
@@ -56,7 +60,18 @@ cargo add rullst-studio@=13.0.0-alpha.4
 
 ### Launching the Studio
 
-The supported mode is a standalone debug server. `run_studio` and
+The supported mode is a standalone debug server. `run_studio` serves it on
+`http://127.0.0.1:5555/studio` (this example also needs `tokio` with its
+`macros` and `rt-multi-thread` features):
+
+```rust,no_run
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    rullst_studio::run_studio(5555_u16).await
+}
+```
+
+`run_studio` and
 `Studio::into_router(LocalStudioAccess::loopback_only())` reject release builds
 and requests whose direct peer is not verified as loopback (an IPv4-mapped
 peer such as `::ffff:127.0.0.1` from a dual-stack `::` listener counts as IPv4
@@ -73,9 +88,9 @@ so importing the raw browser, `jobs_monitor` or `feature_flags` router cannot
 turn those handlers into an unprotected write API; without the marker they
 return `403`.
 
-### Remote projects (v13, 13.0.0-alpha.3)
+### Remote projects (v13, since 13.0.0-alpha.3)
 
-The `rullst-studio` binary (`cargo install rullst-studio --features remote --locked`, then
+The `rullst-studio` binary (`cargo install rullst-studio --version =13.0.0-alpha.4 --features remote --locked`, then
 `rullst-studio [--port PORT]`, or `cargo rullst studio --remote`; library
 users enable the non-default `remote` feature) serves
 Studio on `127.0.0.1:5556` without an application process and reads the

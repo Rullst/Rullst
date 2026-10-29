@@ -6,8 +6,6 @@ mod upgrade;
 mod wasm;
 
 pub use production::run_production_build;
-#[doc(hidden)]
-pub use upgrade::{AssistFinding, AssistPlan, assist_plan};
 pub use upgrade::{UpgradeOptions, run_upgrade};
 pub(crate) use upgrade::{
     prepare_manifests, validate_prepared_manifests, validate_prepared_resolution,

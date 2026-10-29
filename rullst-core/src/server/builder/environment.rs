@@ -50,10 +50,11 @@ pub(in crate::server) fn parse_switch(variable: &str, value: &str) -> Result<boo
     }
 }
 
-/// The panic console and `/_rullst/explain`/`/_rullst/autofix` are mounted only
-/// in debug builds running in Development, like hot reload and the generation
-/// probe. An unset environment resolves to Development, so a release binary must
-/// not rely on the environment alone.
+/// The panic console, `/_rullst/explain`, the retired `/_rullst/autofix` and
+/// `/_rullst/errors/{id}` are mounted only in debug builds running in
+/// Development, like hot reload and the generation probe. An unset environment
+/// resolves to Development, so a release binary must not rely on the
+/// environment alone.
 pub(in crate::server) fn development_console_enabled(
     debug_build: bool,
     environment: crate::config::Environment,

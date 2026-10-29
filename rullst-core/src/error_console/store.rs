@@ -1,5 +1,5 @@
 //! Bounded, expiring store of the panic contexts that
-//! `cargo rullst ai fix <error-id>` reads.
+//! `GET /_rullst/errors/{id}` serves to the developer's own assistant.
 //!
 //! The development console records what it already shows for a panic: the
 //! message, the source location, a short backtrace of project frames and the
@@ -19,14 +19,14 @@ pub(crate) const SCHEMA: &str = "rullst.error-context.v1";
 pub(crate) const MAX_ENTRIES: usize = 32;
 /// Lifetime of an entry.
 pub(crate) const TTL: Duration = Duration::from_secs(30 * 60);
-const MAX_MESSAGE_BYTES: usize = 2 * 1024;
-const MAX_FILE_BYTES: usize = 512;
-const MAX_PATH_BYTES: usize = 512;
-const MAX_METHOD_BYTES: usize = 16;
+pub(super) const MAX_MESSAGE_BYTES: usize = 2 * 1024;
+pub(super) const MAX_FILE_BYTES: usize = 512;
+pub(super) const MAX_PATH_BYTES: usize = 512;
+pub(super) const MAX_METHOD_BYTES: usize = 16;
 const MAX_FRAMES: usize = 16;
 const MAX_FRAME_BYTES: usize = 320;
 
-/// One recorded panic, as served to the CLI.
+/// One recorded panic, as `GET /_rullst/errors/{id}` serves it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub(crate) struct ErrorContext {
     pub(crate) schema: &'static str,
@@ -54,7 +54,7 @@ pub(crate) struct Store {
 }
 
 /// Truncates on a character boundary.
-fn bounded(text: &str, max: usize) -> String {
+pub(super) fn bounded(text: &str, max: usize) -> String {
     if text.len() <= max {
         return text.to_string();
     }

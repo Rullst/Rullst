@@ -24,6 +24,10 @@ fn migrations() -> Vec<Box<dyn Migration>> {
 }
 ```
 
+In a generated project, add `Box::new(rullst::db::OutboxMigration)` to the
+vector returned by `get_migrations()` in `src/migrations/mod.rs`, then run
+`cargo rullst db:migrate`.
+
 `Outbox::install()` applies the same idempotent DDL directly and is useful in
 tests or explicit local setup. It never runs automatically. A production team
 should review and track the migration through the same deployment process as
@@ -46,6 +50,7 @@ use serde_json::json;
 
 # async fn create_invoice() -> Result<(), Error> {
 Orm::transaction(|_| Box::pin(async move {
+    // `?` placeholders are SQLite/MySQL syntax; PostgreSQL uses `$1, $2`.
     let insert = sqlx::query(
         "INSERT INTO invoices (id, status) VALUES (?, ?)"
     )
@@ -124,8 +129,8 @@ if let Some(event) = Outbox::claim_next(
             event.id,
             event.claim_key,
             "provider temporarily unavailable",
-            8,
-            15,
+            8,  // maximum attempts
+            15, // retry delay seconds
         ).await?;
     }
 }
@@ -161,7 +166,9 @@ Other explicit limits:
 
 - key fields are 1–128 characters from a bounded ASCII grammar;
 - JSON payloads are at most one MiB;
-- leases are 1–3,600 seconds and attempts are 1–100;
+- leases are 1–3,600 seconds, attempts are 1–100 and retry delays are
+  0–86,400 seconds;
+- a failure message is 1–512 bytes without control characters;
 - ordering is not guaranteed across retries or concurrent workers;
 - generated observers are not automatically converted into outbox events;
 - cleanup, retention, tenant authorization and the worker supervision loop
@@ -175,9 +182,9 @@ durable primitive where the event schema and operational policy are explicit.
 
 With the umbrella `messaging-orm-outbox` feature, `OrmOutboxRelay<B>` maps one
 exact outbox stream to one topic on any static `MessageBroker`. It validates the
-claimed JSON, uses the stream-scoped `event_key` (the stream's SHA-256, `/`,
-then the event key) as the broker idempotency key, publishes and then
-acknowledges the exact ORM claim. Its executable crash-window test stops after
+claimed JSON, uses the stream-scoped `event_key` (the lowercase hex SHA-256 of
+the stream, `/`, then the event key) as the broker idempotency key, publishes
+and then acknowledges the exact ORM claim. Its executable crash-window test stops after
 the first publish, reclaims the expired event and observes an exact broker
 replay with only one retained message.
 

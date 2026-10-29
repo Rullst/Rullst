@@ -1,7 +1,7 @@
 # Compatibility, MSRV, deprecation, and support policy
 
 This policy applies to the packages in the [release inventory](../../.github/release-order.json):
-16 published packages in v12.1 and 21 packages in the v13 prerelease train (13.0.0-alpha.4),
+16 published packages in v12.1 and 20 packages in the v13 prerelease train (13.0.0-alpha.4),
 including `rullst-privacy`, `rullst-supervision`, `rullst-media` and `rullst-labs`. They are released as one synchronized release train
 even when a user depends on only one crate. The
 current supported-version table in [`SECURITY.md`](../../SECURITY.md) remains

@@ -5,11 +5,12 @@
 private-video lifecycle: authorized creation and resumable upload, processing
 refresh, explicit publication, current-entitlement playback, withdrawal, metadata
 updates, deletion and durable reconciliation. Its standalone package is in the
-v13 release inventory, pending final release acceptance; it is not part of the framework facade. Existing blueprints are not
+v13 release inventory, pending final release acceptance; it is not part of the framework facade. Existing starters are not
 changed.
 
 The [crate integration guide](../../rullst-media/README.md) describes installation
-from the candidate checkout, separate provider keys, required embed/CDN/direct-file
+(`rullst-media = { version = "=13.0.0-alpha.4", features = ["bunny", "sqlite"] }`),
+separate provider keys, required embed/CDN/direct-file
 protection, HTTP security composition, browser uploads, captions/transcripts,
 typed failure handling, SQLite retention and backup responsibilities.
 

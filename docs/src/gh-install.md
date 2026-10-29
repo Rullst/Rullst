@@ -13,8 +13,8 @@ Official references:
 
 ## Current Rullst workstation
 
-On the Linux workstation used for the v12 release work, `gh` was installed for
-the current user at `~/.local/bin/gh`. The downloaded GitHub release archive was
+On the maintainer's Linux workstation, `gh` is installed for the current user
+at `~/.local/bin/gh`. The downloaded GitHub release archive was
 verified against its official SHA-256 checksum. Confirm that the command is on
 the shell path:
 

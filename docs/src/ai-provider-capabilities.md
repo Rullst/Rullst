@@ -2,8 +2,8 @@
 
 This matrix describes the transport paths implemented by the current
 `rullst-ai` source. Anthropic and Gemini streaming (with its explicit
-cancellation) and token usage are v13 prerelease additions, absent from the
-published v12 crate. The matrix is not a claim that every model sold by a
+cancellation) and token usage were added in v13; the v12 crate does not have
+them. The matrix is not a claim that every model sold by a
 provider accepts every request. Model availability, account entitlements,
 regions, quotas, and upstream API behavior remain provider concerns.
 

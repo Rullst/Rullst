@@ -1,4 +1,4 @@
 {
   "expected_owner": "venelouis",
-  "bootstrap_unregistered": ["cargo-rullst-extras"]
+  "bootstrap_unregistered": []
 }

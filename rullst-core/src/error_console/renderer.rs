@@ -1,5 +1,6 @@
 //! Sleek, glowing dark-theme HTML console renderer for panic diagnosis.
 
+use crate::error_console::assistant::{PANEL_TITLE, PromptSource};
 use crate::error_console::capture::PanicCapture;
 use crate::error_console::parser::{extract_source_context, find_source_location};
 
@@ -29,11 +30,14 @@ const CONSOLE_STYLE: &str = include_str!("console.css");
 /// `nonce` is the request's CSP nonce: the inline `<style>` and `<script>`
 /// carry it so the default nonce-based policy allows them. The page loads no
 /// external resource (fonts fall back to system faces) and makes no request.
-/// `error_id` is the recorded context offered to `cargo rullst ai fix`.
+/// `request` is the method and path (no query string) quoted in the
+/// "Ask your AI assistant" prompt; `error_id` names the recorded context that
+/// `GET /_rullst/errors/{id}` serves, when the server mounts that route.
 #[cfg_attr(mutants, mutants::skip)]
 pub(crate) async fn render_console_html(
     error_message: &str,
     capture: &PanicCapture,
+    request: Option<(&str, &str)>,
     nonce: Option<&str>,
     error_id: Option<&str>,
 ) -> String {
@@ -104,7 +108,16 @@ pub(crate) async fn render_console_html(
 
     let escaped_err = crate::html::escape_str(error_message);
     let file_html = display_path(&file_display);
-    let fix_panel = fix_panel(error_id);
+    let prompt_file = file_display.replace('\\', "/");
+    let assistant_panel = crate::error_console::assistant::panel(&PromptSource {
+        message: error_message,
+        location: source_loc
+            .as_ref()
+            .map(|(_, line)| (prompt_file.as_str(), *line)),
+        backtrace: &bt_str,
+        request,
+        error_id,
+    });
 
     format!(
         r#"<!DOCTYPE html>
@@ -148,9 +161,9 @@ pub(crate) async fn render_console_html(
 
             <div>
                 <div class="section-title">
-                    <span>🤖</span> Fix with cargo rullst ai
+                    <span>🤖</span> {panel_title}
                 </div>
-                {fix_panel}
+                {assistant_panel}
             </div>
         </div>
 
@@ -163,23 +176,21 @@ pub(crate) async fn render_console_html(
     </div>
 
     <script{nonce_attr}>
-        // Copies the command only; the page makes no network request.
+        // Copies the prompt only; the page makes no network request. The
+        // button stays hidden when a Content-Security-Policy blocks this script.
         const copyButton = document.getElementById('btn-copy');
-        const command = document.getElementById('fix-command');
-        if (copyButton && command) {{
+        const promptBox = document.getElementById('ai-prompt');
+        if (copyButton && promptBox) {{
+            copyButton.hidden = false;
             copyButton.addEventListener('click', function () {{
-                const text = command.textContent;
                 const done = function () {{ copyButton.textContent = 'Copied'; }};
                 const select = function () {{
-                    const range = document.createRange();
-                    range.selectNodeContents(command);
-                    const selection = window.getSelection();
-                    selection.removeAllRanges();
-                    selection.addRange(range);
+                    promptBox.focus();
+                    promptBox.select();
                     copyButton.textContent = 'Selected: press Ctrl+C';
                 }};
                 if (navigator.clipboard && window.isSecureContext) {{
-                    navigator.clipboard.writeText(text).then(done, select);
+                    navigator.clipboard.writeText(promptBox.value).then(done, select);
                 }} else {{
                     select();
                 }}
@@ -193,38 +204,9 @@ pub(crate) async fn render_console_html(
         line_display = line_display,
         code_frame_html = code_frame_html,
         trace_html = trace_html,
-        fix_panel = fix_panel,
+        panel_title = PANEL_TITLE,
+        assistant_panel = assistant_panel,
         nonce_attr = nonce_attr,
         style = CONSOLE_STYLE
-    )
-}
-
-/// The "Fix with cargo rullst ai" panel: one command to copy into the
-/// project terminal. The page never runs it and never contacts a provider.
-fn fix_panel(error_id: Option<&str>) -> String {
-    let (command, explanation) = match error_id {
-        Some(id) => (
-            format!("cargo rullst ai fix {}", crate::html::escape_str(id)),
-            "Run this in your project terminal. The assistant reads this error from the \
-local development server (for 30 minutes, until it restarts), shows each proposed edit as a \
-diff and applies it only after you confirm, with a git checkpoint first.",
-        ),
-        None => (
-            "cargo rullst ai \"fix the panic shown on the error page\"".to_string(),
-            "This server does not record errors for `cargo rullst ai fix`. Run the assistant \
-in your project terminal and share the file with /add; each edit is shown as a diff and \
-needs your confirmation.",
-        ),
-    };
-    format!(
-        r#"<div class="ai-panel">
-                    <p class="fix-note">{explanation}</p>
-                    <div class="fix-row">
-                        <code id="fix-command" class="fix-command">{command}</code>
-                        <button id="btn-copy" type="button" class="btn-copy">Copy</button>
-                    </div>
-                    <p class="fix-note">This page makes no network request and sends nothing to an AI provider.</p>
-                </div>"#,
-        explanation = crate::html::escape_str(explanation),
     )
 }

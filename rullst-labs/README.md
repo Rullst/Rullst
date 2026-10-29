@@ -17,9 +17,12 @@ the API may change between 13.x releases. The crate is in the 13.0 release
 inventory and has shipped since `13.0.0-alpha.1`; it contains contracts only and never
 executes learner code. Experimental does not mean broken.
 
-The default feature provides bounded, versioned contracts with no executor or
-network/runtime dependency. `sqlite` adds a dedicated encrypted shared-local job
-plane; `receipt-signing` belongs to the runner's trusted controller.
+With no feature enabled (the default), the crate provides bounded, versioned
+contracts with no executor or network/runtime dependency. `sqlite` adds a
+dedicated encrypted shared-local job plane; `receipt-signing` belongs to the
+runner's trusted controller. Pin the prerelease exactly, for example
+`rullst-labs = { version = "=13.0.0-alpha.4", features = ["sqlite"] }` in the
+application and `features = ["sqlite", "receipt-signing"]` in the controller.
 The application must never spawn learner code or expose a container control socket.
 
 ## Implemented candidate surface
@@ -111,7 +114,8 @@ limit, signs a fixed `Rejected(Isolation)` verdict for `complete` and fences
 every failure after the claim, clock and signing errors included, through
 `abandon_attempt`/`reconcile_cleanup`. It never compiles or
 runs learner code; `PLUG-IN POINT` comments mark where an isolated worker and
-its teardown belong. It runs as a test with the crate's suite:
+its teardown belong. Its tests run with the crate's suite; to run it on its
+own from a clone of the repository:
 
 ```bash
 cargo run -p rullst-labs --example byo_runner_controller --features sqlite,receipt-signing

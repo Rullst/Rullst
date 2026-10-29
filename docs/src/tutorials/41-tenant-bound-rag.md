@@ -78,6 +78,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+Saved as `src/main.rs`, `cargo run` prints the deterministic offline answer,
+one `source=upgrade-guide …` line and `recorded 1 terminal RAG event(s)`.
+
 The offline provider is a deterministic test fixture, not evidence of live
 model quality. In a real application, select a live provider explicitly and
 evaluate its configured model against a versioned domain corpus.
@@ -99,9 +102,10 @@ For each call, `RagPipeline`:
    operation if the required audit sink is unavailable.
 
 Tune budgets with `RagConfig::try_new(max_documents,
-max_document_chars, max_context_chars)`. The constructor rejects zero or
-unbounded values; `RagPipeline::with_config` accepts only an already validated
-configuration.
+max_document_chars, max_context_chars)`. The constructor accepts 1–32
+documents, 1–32,768 characters per document and 1–131,072 context characters
+(characters are Unicode scalar values); `RagPipeline::with_config` accepts only
+an already validated configuration.
 
 ## Use an authoritative production retriever
 

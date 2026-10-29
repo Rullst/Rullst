@@ -43,15 +43,15 @@ additional Security controls require explicit composition.
 | Host and cloud account | OS/SSH patching, firewall rules, IAM, secret custody, backup/restore and privileged container configuration belong to the deployment operator/provider. The crate does not administer these systems. |
 | Network availability | Application request limits can reduce specific abuse. Network saturation and upstream DDoS filtering require infrastructure controls outside the application process. |
 
-The [v13 deployment candidate](deployment-acceptance.md) now exercises two real
+The [v13 deployment candidate](deployment-acceptance.md) exercises two real
 application processes with an existing proxy, shared Redis budgets, forged
 forwarding metadata and HTTP/WebSocket controls. Local acceptance passes, and
 hosted workspace and installed-archive checks passed in PR #224; the final
 release campaign remains separate. It does not certify a cloud account, VPS or
 production topology.
 
-The separate [local configuration diagnostic](deployment-diagnostic.md) candidate
-reuses Core validation through `deploy:doctor`, with explicit environment-source
+The separate v13 [local configuration diagnostic](deployment-diagnostic.md),
+`cargo rullst deploy:doctor`, reuses Core validation with explicit environment-source
 selection and bounded, redacted reports. It identifies what was actually
 inspected and lists unobserved controls; its source merged in PR #225 after
 hosted checks, and its archive gate passed in a later exact-commit run.
@@ -61,8 +61,8 @@ settings or certify a host. No new security crate is introduced. See the
 
 ## Canonical production preset
 
-`ProductionPreset::middleware_order()` is the v12 machine-readable ordering
-contract. From the outermost inbound boundary to the handler, the order is:
+`ProductionPreset::middleware_order()` is the machine-readable ordering
+contract (introduced in v12). From the outermost inbound boundary to the handler, the order is:
 
 1. trusted-proxy policy;
 2. request-body limit;
@@ -254,8 +254,8 @@ values. Verification must cover the ordered sequence, not just isolated
 records. A valid chain is tamper-evident; it cannot stop an attacker who can
 delete every record or steal the key. Store the log and key in separate
 protected systems. A new `AuditChain` starts at sequence 1 from the genesis
-predecessor, so a restarted writer must continue its persisted trail with the
-v13 prerelease `AuditChain::try_resume`, passing the newest persisted record;
+predecessor, so a restarted writer must continue its persisted trail with
+`AuditChain::try_resume` (added in v13), passing the newest persisted record;
 that record's HMAC must verify. Exactly one writer may own a persisted chain, and deleting
 the newest records before a restart is detected only against an external
 checkpoint of the last sequence and hash.
@@ -268,8 +268,11 @@ and blocking status are defined by the workflow files. Informational checks must
 not be described as formal gates.
 
 Neither those workflows nor this crate certify an application for SOC 2, ISO
-27001, PCI DSS, FedRAMP, or any OWASP level. See `AUDIT.md` and
-`SECURITY_COMPLIANCE.md` for reproduction and evidence requirements.
+27001, PCI DSS, FedRAMP, or any OWASP level. See [`AUDIT.md`](../../AUDIT.md)
+and the [external audit kit](external-audit-kit.md) for reproduction and
+evidence requirements. `cargo rullst audit --compliance` writes a bounded
+`SECURITY_COMPLIANCE.md` evidence report for one application; it is generated,
+not kept in the repository, and is not a certification.
 
 ## Deployment checklist
 

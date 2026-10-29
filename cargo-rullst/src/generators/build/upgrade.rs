@@ -15,7 +15,6 @@ pub(crate) use isolated::{
 use crate::ui::spinner::with_spinner;
 use colored::Colorize;
 use manifest::ManifestUpgradePlan;
-pub use report::AssistFinding;
 use rules::{FindingKind, SourceScan};
 use semver::Version;
 use std::path::{Path, PathBuf};
@@ -133,34 +132,6 @@ fn plan_project(
     })
 }
 
-/// The dry-run plan `cargo rullst ai upgrade` grounds its session in.
-pub struct AssistPlan {
-    pub target: String,
-    pub catalog: &'static str,
-    /// Dependency requirements `cargo rullst upgrade` would still change.
-    pub pending_changes: usize,
-    /// The plain-text plan, as `cargo rullst upgrade --dry-run` prints it.
-    pub summary: String,
-    pub findings: Vec<AssistFinding>,
-}
-
-/// Plans an upgrade of the project at `root` without writing anything.
-pub fn assist_plan(
-    root: &Path,
-    requested: Option<&str>,
-    all_rules: bool,
-) -> Result<AssistPlan, Box<dyn std::error::Error>> {
-    let root = root.canonicalize()?;
-    let planned = plan_project(&root, requested, all_rules)?;
-    Ok(AssistPlan {
-        target: planned.target.to_string(),
-        catalog: rules::RULE_CATALOG_VERSION,
-        pending_changes: planned.changed,
-        summary: report::plan_text(&root, &planned.target, &planned.plans, &planned.scan),
-        findings: report::assist_findings(&root, &planned.scan),
-    })
-}
-
 /// Recovery advice when a Cargo gate fails while must-change findings, or
 /// review findings for APIs that v13 removed in Rust sources, remain. The
 /// plan prints no guidance, so the removed-API rules repeat theirs here.
@@ -168,8 +139,7 @@ fn findings_hint(root: &Path, scan: &SourceScan) -> String {
     let mut hint = match scan.count(FindingKind::MustChange) {
         0 => String::new(),
         count => format!(
-            "; the plan lists {count} must-change finding(s): fix them first, or rerun with --keep-on-failure and use `{}`",
-            report::ASSIST_COMMAND
+            "; the plan lists {count} must-change finding(s): fix them first, or rerun with --keep-on-failure to repair the kept state"
         ),
     };
     let mut named = std::collections::BTreeSet::new();
@@ -297,10 +267,9 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
         String::new()
     } else {
         format!(
-            "\n{} must-change and {} review finding(s) are listed in the report; `{}` proposes reviewed fixes.",
+            "\n{} must-change and {} review finding(s) are listed in the report.",
             scan.count(FindingKind::MustChange),
             scan.count(FindingKind::Review),
-            report::ASSIST_COMMAND
         )
     };
     println!(

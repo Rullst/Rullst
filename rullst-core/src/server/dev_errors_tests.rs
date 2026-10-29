@@ -46,11 +46,11 @@ async fn send(
 }
 
 #[cfg(debug_assertions)]
-fn fix_id(page: &str) -> String {
-    page.split("cargo rullst ai fix ")
+fn context_id(page: &str) -> String {
+    page.split("<code class=\"context-url\">/_rullst/errors/")
         .nth(1)
         .map(|rest| rest.chars().take_while(char::is_ascii_hexdigit).collect())
-        .expect("fix command on the error page")
+        .expect("recorded-context path on the error page")
 }
 
 #[cfg(debug_assertions)]
@@ -68,8 +68,14 @@ async fn error_context_is_served_only_to_direct_loopback_requests() {
     )
     .await;
     assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-    let id = fix_id(&page);
+    assert!(
+        !page.contains("cargo rullst ai"),
+        "the removed CLI is named"
+    );
+    let id = context_id(&page);
     let path = format!("/_rullst/errors/{id}");
+    // The page's assistant prompt names the same path.
+    assert!(page.contains(&format!("GET {path} on the same development server")));
 
     let (status, body) = send(&development, &path, "127.0.0.1:40101", &[]).await;
     assert_eq!(status, StatusCode::OK, "{body}");
@@ -86,6 +92,10 @@ async fn error_context_is_served_only_to_direct_loopback_requests() {
         "body-secret",
     ] {
         assert!(!body.contains(secret), "{secret} leaked into the context");
+        assert!(
+            !page.contains(secret),
+            "{secret} leaked into the error page"
+        );
     }
 
     // Other machines, rebinding pages, proxies and unknown ids get 404.

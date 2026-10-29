@@ -10,8 +10,6 @@ use colored::Colorize;
 pub(in crate::ui) enum HomeAction {
     /// Runs `<program> <command>` directly.
     Command(&'static str),
-    /// Runs a `cargo-rullst-extras` command, or shows how to install it.
-    Extras(&'static str),
     Scaffold,
     Database,
     Deploy,
@@ -46,7 +44,7 @@ impl HomeEntry {
     }
 }
 
-const PROJECT_ENTRIES: [HomeEntry; 13] = [
+const PROJECT_ENTRIES: [HomeEntry; 12] = [
     HomeEntry::new(
         "🚀  Start Dev Server         ",
         "(cargo rullst dev · hot reload)",
@@ -83,14 +81,9 @@ const PROJECT_ENTRIES: [HomeEntry; 13] = [
         HomeAction::ProjectOperations,
     ),
     HomeEntry::new(
-        "🤖  AI Assistant             ",
-        "(cargo rullst ai · extras)",
-        HomeAction::Extras("ai"),
-    ),
-    HomeEntry::new(
         "🌱  Green Report             ",
-        "(cargo rullst green · extras)",
-        HomeAction::Extras("green"),
+        "(cargo rullst green · experimental)",
+        HomeAction::Command("green"),
     ),
     HomeEntry::new(
         "✨  Create New Project       ",

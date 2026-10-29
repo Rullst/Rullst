@@ -258,7 +258,8 @@ fn json_findings_extend_the_v1_schema_with_kind_and_migration_row() {
     assert!(human.contains("MUST-CHANGE src/main.rs:3 [V13-HTML-DYNAMIC-EVENT-HANDLER]"));
     assert!(human.contains("migration-v13 row: Starter page language"));
     assert!(human.contains("NOT SCANNED src/broken.rs"));
-    assert!(human.contains("cargo rullst ai upgrade"));
+    assert!(human.contains("Migration guide: "));
+    assert!(!human.contains("cargo rullst ai"));
 }
 
 #[test]

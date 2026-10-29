@@ -1,6 +1,6 @@
 # rullst-messaging
 
-`rullst-messaging` is the broker-neutral event boundary for Rullst. It is kept
+`rullst-messaging` (Extension tier) is the broker-neutral event boundary for Rullst. It is kept
 separate from `rullst-connect` because OAuth/OIDC identity federation and
 message-broker delivery have different security, availability, and retry
 semantics.
@@ -24,7 +24,7 @@ The crate has an **implemented, bounded broker foundation**:
   immutable profile selection and bounded primary/prior-key rotation;
 - an opt-in static relational ORM outbox relay with exact stream/topic binding
   and publish-before-ACK crash/replay evidence;
-- v13 prerelease candidates: `schedules-postgres`
+- added in v13: `schedules-postgres`
   [recurring publications](../recurring-publications.md) and `webhooks`
   [outgoing webhooks](../outgoing-webhooks.md).
 
@@ -32,10 +32,11 @@ The `InMemoryBroker` is suitable for offline tests, deterministic development,
 and explicitly process-local workloads. `SqliteBroker` uses a fixed schema and
 serialized SQLite write transactions; restart, two-instance contention,
 configuration drift and corrupt-row repair are tested. It is a durable local
-adapter, not a remote transport. The optional v13 prerelease
-[Redis Streams candidate](../redis-messaging.md) provides a standalone transport
-with Rullst-owned group and fenced-lease indexes; hosted source/package admission
-passed in PR #236 and final release admission remains separate. Kafka, RabbitMQ,
+adapter, not a remote transport. The optional
+[Redis Streams transport](../redis-messaging.md) (`redis-streams` feature, added
+in v13) provides a standalone transport with Rullst-owned group and fenced-lease
+indexes; hosted source/package admission passed in PR #236 and final release
+admission remains separate. Kafka, RabbitMQ,
 NATS/JetStream, SQS/SNS, Google Pub/Sub and Pulsar adapters remain roadmap work.
 
 The wire codec is not a remote adapter: it neither opens broker connections nor

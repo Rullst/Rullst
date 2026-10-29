@@ -1,11 +1,11 @@
 # v13 delivery plan and evidence
 
 **13.0.0-alpha.4 prepared on October 29, 2026 (not yet published).** The
-release commit sets the twenty-one packages of the release order, now including
-`cargo-rullst-extras`, to `13.0.0-alpha.4`; the coordinator records the tag,
-the exact-SHA admission and the release run here after publication. It makes
-the main CLI leaner and moves the terminal AI assistant and `green` to the
-optional, Experimental `cargo-rullst-extras`; removes Foundry, Nix, Buildah,
+release commit sets the twenty packages of the release order to
+`13.0.0-alpha.4`; the coordinator records the tag, the exact-SHA admission and
+the release run here after publication. It makes the main CLI leaner: `green`
+(formerly `footprint`) stays in it as an Experimental command and the terminal
+AI assistant (`cargo rullst ai`) is removed; it removes Foundry, Nix, Buildah,
 gRPC, the Fly.io, Render and Railway deploy targets and the self-updater's
 binary replacement; gives `deploy` one path for any Linux VM with guides for
 Hetzner Cloud, DigitalOcean, Oracle Cloud and Google Cloud; keeps three
@@ -14,9 +14,13 @@ one `--json` contract and an optional section to `llms.txt`; and shortens the
 development builds of generated projects. The framework crates' APIs do not
 change. The first targeted `cargo-rullst` mutation campaign is merged, and the
 CLI's measured files are in the pull-request mutation gate.
-`cargo-rullst-extras` is not registered on crates.io: its first publication
-uses the one-time token path in the
-[release recovery runbook](release-recovery.md#first-publication-of-cargo-rullst-extras-1300-alpha4).
+13.0.0-alpha.4 is the 13.0 feature freeze: next come 13.0.0-rc.1 (fixes and
+documentation only) and then 13.0.0. Rullst keeps `aws-lc-rs` as the TLS
+crypto provider (rustls' post-quantum hybrid key exchange), so the `aws-lc-sys`
+build script stays in a project's first build; moving to `ring` is not planned.
+SQLx's macros compiling some crates twice and Nexus pulling `rullst-ai` into
+the SaaS starter are planned for 13.0.0-rc.1 if they need no breaking change,
+otherwise for 13.1 ([Build times](build-times.md)).
 Work planned next is under
 [Planned after 13.0.0-alpha.4](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha4).
 
@@ -984,7 +988,7 @@ when its dependencies and verification capacity are ready.
 | M40 — Labs | The `rullst-labs` candidate, first published in the 13.0.0-alpha.1 prerelease, provides encrypted durable exercises/jobs, exact grading and cancellation/recovery/retention. The former `rullst-labs-runner` candidate, a separate Linux Rust/Wasmi executor, passed 26 ordinary and 26 instrumented hosted journey checks at `977e40a3`. On 30 September 2026 the maintainer removed it from the 13.0 workspace; its source remains in git history. `rullst-labs` is now bring-your-own-runner, with a documented [controller contract](labs-runner-contract.md) and a non-executing example controller. | PR #228 passed workspace/platform and actual extracted-package source admission, plus both 90% coverage floors; that historical evidence covered the removed runner. Final release admission of `rullst-labs` remains outstanding, and each application-owned runner needs its own isolation review. See the [recorded profile evidence](labs-first-profile.md#recorded-linux-acceptance). |
 | M15 — remote messaging | PR #236 admitted the optional standalone Redis Streams profile with TLS, restart/redelivery, fenced leases, exact replay, retry/DLQ and outbox evidence. | Preserve the documented Redis and operator boundaries in combined validation. Other broker adapters, native Redis group interoperability and replication/failover remain separate roadmap work. |
 | M39 — optional Rullst Gateway | No `rullst-gateway` crate or executable exists. On 8 October 2026 the maintainer abandoned it in favour of generated Caddy/nginx configuration for established proxies; see the [master roadmap](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#ideas-recorded-for-after-130). | No delivery. Proxy work continues as generated configuration (Caddy today, nginx planned) consuming the existing readiness/drain signals. |
-| M1/M3/M7/M12 — adoption and assurance | The compatible updater is carried forward. `cargo rullst upgrade` reports v12 → v13 source findings from `rullst-upgrade-rules-v4`, each tied to a [migration-guide](migration-v13.md) row, and `cargo rullst ai upgrade` proposes reviewed fixes. Next: improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
+| M1/M3/M7/M12 — adoption and assurance | The compatible updater is carried forward. `cargo rullst upgrade` reports v12 → v13 source findings from `rullst-upgrade-rules-v4`, each tied to a [migration-guide](migration-v13.md) row. Next: improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
 
 Gateway/load-balancer implementation, physical IoT/Embassy,
 PQC protocols, local facial inference and broad database replication retain

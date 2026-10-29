@@ -1,3 +1,22 @@
+//! The `cargo rullst` command-line interface for Rullst applications.
+//!
+//! Install it as a Cargo subcommand. Name the exact version, the one this page
+//! documents: Cargo never selects a prerelease on its own.
+//!
+//! ```text
+//! cargo install cargo-rullst --version =<version> --locked
+//! cargo rullst new my_app
+//! ```
+//!
+//! `cargo rullst new` creates a project from the Blank, API or SaaS starter;
+//! `cargo rullst --help` lists every command, and `cargo rullst` alone opens an
+//! interactive home screen. The supported interface is the commands, their
+//! flags and the versioned `--json` output described in the
+//! [CLI reference](https://rullst.github.io/Rullst/book/cli_reference.html).
+//! This library is the CLI's implementation, shared by its binaries and tests;
+//! it is not documented as a framework API. Applications depend on the
+//! [`rullst`](https://docs.rs/rullst) crate instead.
+
 #![cfg_attr(
     not(test),
     deny(
@@ -12,14 +31,10 @@
 
 pub mod blueprints;
 pub mod cli;
-#[doc(hidden)]
-pub mod diff;
-#[doc(hidden)]
-pub mod extras;
+mod diff;
 pub mod generators;
 pub mod pkg;
-#[doc(hidden)]
-pub mod term;
+mod term;
 mod tour;
 pub mod ui;
 mod update;
@@ -35,10 +50,10 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         args.remove(1);
     }
 
-    // `ai` and `green` belong to cargo-rullst-extras: everything after the
-    // subcommand reaches it unparsed, `--help` included.
-    if let Some(subcommand) = args.get(1).filter(|name| cli::forward::is_extras(name)) {
-        return cli::forward::run(subcommand, args.get(2..).unwrap_or_default());
+    // Removed commands report their replacement before parsing, so that
+    // their former arguments (`--help` included) reach the same report.
+    if let Some(name) = args.get(1).filter(|name| cli::removed::is_removed(name)) {
+        return Err(cli::removed::report(name));
     }
 
     // At most once a day, in an interactive terminal: announces a newer
@@ -64,16 +79,14 @@ fn run_command(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     }
     if let Some(add) = matches.subcommand_matches("add") {
         generators::add::run(add)?;
-    } else if let Some((name, extras)) = matches
-        .subcommand()
-        .filter(|(name, _)| cli::forward::is_extras(name))
+    } else if let Some(name) = matches
+        .subcommand_name()
+        .filter(|name| cli::removed::is_removed(name))
     {
         // Reached only when a global flag precedes the subcommand.
-        let arguments: Vec<String> = extras
-            .get_many::<String>("arguments")
-            .map(|values| values.cloned().collect())
-            .unwrap_or_default();
-        return cli::forward::run(name, &arguments);
+        return Err(cli::removed::report(name));
+    } else if let Some(green) = matches.subcommand_matches("green") {
+        generators::green::run(green)?;
     } else if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
         generators::deploy_doctor::run(doctor)?;
     } else if let Some(api) = matches.subcommand_matches("generate:api") {
@@ -120,7 +133,8 @@ pub(crate) fn command() -> clap::Command {
         .subcommand(generators::oauth::command())
         .subcommand(generators::api_contract::command())
         .subcommand(generators::deploy_doctor::command())
-        .subcommands(cli::forward::commands())
+        .subcommand(generators::green::command())
+        .subcommands(cli::removed::commands())
         .subcommand(tour::command())
         // Extend executable syntax without changing the published v12 enum.
         .mut_subcommand("generate:ai-context", generators::ai_context::command)

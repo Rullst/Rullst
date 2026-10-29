@@ -4,11 +4,14 @@ v13 candidate for private course videos with Bunny Stream, first published in
 the 13.0.0-alpha.1 prerelease. The crate
 provides creation, metadata, resumable upload authorization, processing refresh,
 explicit publication, current-entitlement playback, withdrawal, deletion and
-recovery of interrupted operations. It is **opt-in**, with its standalone package
+recovery of interrupted operations. An experimental `s3` adapter stores and
+serves the original upload in a private S3, R2 or MinIO bucket instead, without
+transcoding. It is **opt-in**, with its standalone package
 now included in the v13 release inventory. Final release acceptance remains
 outstanding.
 Real Bunny account, transcoding, CDN and player interoperability are **unvalidated**;
 automated acceptance uses local HTTP protocol fixtures and controlled browser media.
+The `s3` adapter is validated against the offline mock only.
 
 **Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):
 the API may change between 13.x releases and not every real-world scenario is
@@ -30,7 +33,7 @@ campaign and provider interoperability remain separate requirements.
 | `s3,sqlite` | Object-storage service composition; see [the guide](https://rullst.github.io/Rullst/book/managed-video.html#s3-compatible-object-storage-s3-r2-minio) |
 
 Run `cargo run -p rullst-media --example private_course_video --all-features`
-from this checkout. [The example](https://github.com/Rullst/Rullst/blob/main/rullst-media/examples/private_course_video.rs) uses a real
+from a clone of the repository. [The example](https://github.com/Rullst/Rullst/blob/main/rullst-media/examples/private_course_video.rs) uses a real
 temporary SQLite database and an explicit offline provider. It creates, publishes,
 checks entitlement, withdraws and deletes a lesson, without network credentials.
 Its mock grants are deliberately unusable for browser playback/upload.
@@ -178,7 +181,7 @@ Mutations are journaled before dispatch; no DB write lock is held during HTTP.
 Every operation, reads and playback included, runs short serialized
 `BEGIN IMMEDIATE` transactions on a pool of four connections. A read commits
 no change unless the stored clock high-water mark advances, so a burst within
-one second adds no durable write. A SQLite lock or connection wait over 3
+one second adds no durable write. A SQLite lock or connection wait over 5
 seconds returns `Busy`, not `Storage`: nothing was committed, so retry.
 Remote metadata updates and deletions are reconciled using authoritative reads.
 Every public operation has a 20-second total timeout; provider calls have bounded

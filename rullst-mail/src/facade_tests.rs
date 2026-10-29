@@ -315,6 +315,8 @@ fn valid_message() -> Message {
 
 #[tokio::test]
 async fn explicit_queue_preserves_tenant_and_schedule_and_maps_driver_errors() {
+    // `Mail::enqueue` reads `MAIL_FROM`, which other tests change.
+    let _lock = MAIL_ENV_LOCK.lock().await;
     let jobs = Arc::new(Mutex::new(Vec::new()));
     let queue = Queue::custom(Box::new(CapturedQueue {
         jobs: jobs.clone(),

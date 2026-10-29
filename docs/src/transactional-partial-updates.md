@@ -1,7 +1,7 @@
 # Transactional partial updates
 
-The v13 prerelease (13.0.0-alpha.1) makes a SQLx model’s typed partial change participate in the
-model's normal save lifecycle. A lesson editor can submit a new title while
+Since v13 (first released in 13.0.0-alpha.1), a SQLx model’s typed partial
+change participates in the model's normal save lifecycle. A lesson editor can submit a new title while
 preserving a note that another operation has already changed, applying its
 policy, recording the audit and refreshing projections after commit.
 
@@ -13,8 +13,8 @@ MSRV 1.96, strict linting and an extracted-facade consumer passed. Hosted worksp
 The consumer needs its selected `rullst` ORM/database features and direct
 `sqlx`, `tokio` and `tracing` dependencies, which the generated macros reference.
 The [extracted-package consumer](../../.github/test-packaged-distribution.sh)
-records a compiled dependency profile; this candidate is not yet a published
-crates.io installation.
+records a compiled dependency profile (`rullst` with `strict-sqlite`, plus
+`tokio`, `sqlx` and `tracing`).
 
 ```rust,no_run
 # #[cfg(feature = "orm")]
@@ -117,7 +117,6 @@ borrowed transaction. Ordinary `.save()` also reuses the active
 `Orm::transaction` task scope. Neither commits the enclosing transaction.
 
 The `rename_in_transaction` example above uses that explicit terminal method.
-
 
 A successful scoped update replaces the object with the transaction's tentative
 row. If a later operation rolls that transaction back, discard or reload the

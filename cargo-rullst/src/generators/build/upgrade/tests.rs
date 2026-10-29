@@ -168,10 +168,11 @@ fn the_plan_says_which_earlier_rules_it_skipped() {
     }
 }
 
-/// Must-change and review findings as the assistant receives them, and the
-/// guide links that only a plan with findings carries.
+/// Only a plan with findings links the guide; nothing points at the removed
+/// `cargo rullst ai upgrade`, and a failed gate with must-change findings
+/// points at --keep-on-failure.
 #[test]
-fn findings_reach_the_plan_text_and_the_assistant() {
+fn findings_reach_the_plan_text_with_the_guide_link() {
     let root = Path::new("/project");
     let target = Version::parse("13.0.0").unwrap();
     let clean = report::plan_text(root, &target, &[], &SourceScan::default());
@@ -179,10 +180,7 @@ fn findings_reach_the_plan_text_and_the_assistant() {
     let scan = selected_scan(None, false);
     let text = report::plan_text(root, &target, &[], &scan);
     assert!(text.contains("Migration guide: "), "{text}");
-    assert!(
-        text.contains("Reviewed fixes for these findings: cargo rullst ai upgrade"),
-        "{text}"
-    );
+    assert!(!text.contains("cargo rullst ai"), "{text}");
 
     let handler = rules::CATALOG
         .iter()
@@ -195,25 +193,9 @@ fn findings_reach_the_plan_text_and_the_assistant() {
         path: root.join("src/view.rs"),
         line: 7,
     });
-    let findings = report::assist_findings(root, &mixed);
-    let summary: Vec<_> = findings
-        .iter()
-        .map(|finding| {
-            (
-                finding.code,
-                finding.must_change,
-                finding.path.as_str(),
-                finding.line,
-            )
-        })
-        .collect();
     assert_eq!(
-        summary,
-        [
-            ("V13-RENDER-PAGE-LANGUAGE", false, "src/main.rs", 2),
-            ("V13-ORM-TRANSACTION-ERRORS", false, "src/main.rs", 5),
-            ("V13-HTML-DYNAMIC-EVENT-HANDLER", true, "src/view.rs", 7),
-        ]
+        findings_hint(root, &mixed),
+        "; the plan lists 1 must-change finding(s): fix them first, or rerun with --keep-on-failure to repair the kept state"
     );
 }
 

@@ -96,7 +96,10 @@ pub(crate) fn hints(name: &str, matches: &ArgMatches) -> Vec<Hint> {
             "cargo rullst build:client",
             "compile the island to WebAssembly",
         )],
-        "make:scalar" => vec![hint(DEV, "then open /docs for the API playground")],
+        "make:scalar" => vec![hint(
+            DEV,
+            "mount docs_controller::router(), then open /docs for the API playground",
+        )],
         "make:pwa" => vec![hint(
             DEV,
             "open the app on localhost and install it from the browser",

@@ -292,9 +292,9 @@ fn removed_mail_driver_line(text: &str) -> Option<usize> {
     None
 }
 
-/// A script line running a command that moved to cargo-rullst-extras in
-/// 13.0.0-alpha.4: `rullst footprint` or `rullst ai` as a whole word.
-pub(super) fn runs_extras_command(line: &str) -> bool {
+/// A script line running a command that 13.0.0-alpha.4 removed (`rullst ai`)
+/// or renamed (`rullst footprint`, now `green`), as a whole word.
+pub(super) fn runs_removed_cli_command(line: &str) -> bool {
     ["rullst footprint", "rullst ai"].iter().any(|command| {
         line.match_indices(command).any(|(index, _)| {
             line[index + command.len()..]
@@ -519,8 +519,8 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
         }) {
             push(&OMNI_REMOVED, &script, line);
         }
-        if let Some(line) = line_of(&text, runs_extras_command) {
-            push(&CLI_EXTRAS, &script, line);
+        if let Some(line) = line_of(&text, runs_removed_cli_command) {
+            push(&CLI_AI_REMOVED, &script, line);
         }
         if let Some(line) = line_of(&text, runs_removed_update_command) {
             push(&CLI_SELF_UPDATE, &script, line);

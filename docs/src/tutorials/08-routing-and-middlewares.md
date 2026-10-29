@@ -7,7 +7,15 @@ middleware composition. This example uses the Axum 0.8 request and `Next` types.
 
 ## Step 1: Create a custom middleware
 
-In `src/middlewares/logger.rs`:
+Generate the file with the CLI:
+
+```bash
+cargo rullst make:middleware Logger
+```
+
+It writes `src/middlewares/logger_middleware.rs` with an empty
+`logger_middleware` function and registers the module. Fill in the body, for
+example:
 
 ```rust
 use rullst::web::axum::{
@@ -16,7 +24,7 @@ use rullst::web::axum::{
     response::Response,
 };
 
-pub async fn log_request(req: Request, next: Next) -> Response {
+pub async fn logger_middleware(req: Request, next: Next) -> Response {
     let method = req.method().clone();
     let path = req.uri().path().to_owned();
     let response = next.run(req).await;
@@ -41,7 +49,8 @@ async fn list_users() -> &'static str { "users" }
 async fn create_user() -> &'static str { "created" }
 async fn login() -> &'static str { "login" }
 
-async fn log_request(
+// Stand-in for the generated `logger_middleware` of Step 1.
+async fn logger_middleware(
     request: rullst::web::axum::extract::Request,
     next: rullst::web::axum::middleware::Next,
 ) -> rullst::web::axum::response::Response {
@@ -52,7 +61,7 @@ async fn log_request(
 async fn main() -> Result<(), ServerError> {
     let api = Router::new()
         .route("/users", get(list_users).post(create_user))
-        .layer(middleware::from_fn(log_request));
+        .layer(middleware::from_fn(logger_middleware));
 
     let auth = Router::new().route("/login", post(login));
     let app = Router::new()
@@ -63,7 +72,10 @@ async fn main() -> Result<(), ServerError> {
 }
 ```
 
-Use `nest_axum` or `merge_axum` when integrating a third-party raw
+In the application, import the generated function
+(`use crate::middlewares::logger_middleware::logger_middleware;`) and pass it to
+`from_fn` the same way. A layer covers only the routes added before it. Use
+`nest_axum` or `merge_axum` when integrating a third-party raw
 `axum::Router`.
 
 ---

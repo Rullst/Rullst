@@ -198,7 +198,7 @@ Failed jobs recorded before this bound was introduced (for example by 12.x
 workers) are not indexed, so they are neither counted, listed nor evicted;
 `retry_failed_job` still finds them by ID and `purge_failed_jobs` removes them.
 `list_all_jobs` returns at most 1,000 rows, failures and dead letters first,
-and `list_job_previews` (v13 prerelease) returns the same rows with each
+and `list_job_previews` (new in v13) returns the same rows with each
 payload and error cut to a byte budget inside one Lua script;
 `retry_failed_job` moves a failed job back to the pending list with its attempt
 counter intact; `purge_failed_jobs` deletes every failed job and dead letter. Like the cache, each driver shares one lazily opened
@@ -216,7 +216,7 @@ Core's current WebSocket broadcast/presence helpers are process-local. They
 release channels without subscribers and empty presence rooms, so the registry
 tracks live rooms rather than every name ever used. Redis Pub/Sub, Kafka, and
 RabbitMQ real-time transports remain roadmap work; do not describe the cache or
-queue adapter as cross-instance real-time sync. The v13 prerelease
+queue adapter as cross-instance real-time sync. The v13
 [Redis Streams messaging](redis-messaging.md) candidate in `rullst-messaging`
 is at-least-once brokered delivery, not WebSocket fan-out.
 

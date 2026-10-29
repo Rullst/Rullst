@@ -334,10 +334,8 @@ are revalidated with their `ETag`. Started with the development `.env`, the
 binary answered `200` on `/health`, redirected `/notes` to `/login`, and served
 `/static/rullst.css` Brotli-compressed with `no-cache` and an `ETag`.
 
-**New in 13.0:** measure the build with `cargo rullst green`, from the
-optional extras
-(`cargo install cargo-rullst-extras --version =13.0.0-alpha.4 --locked`). On
-its own, `cargo rullst green --path /health` starts the release binary with
+**New in 13.0:** measure the build with `cargo rullst green` (Experimental).
+On its own, `cargo rullst green --path /health` starts the release binary with
 `RULLST_ENV=production`, which the SaaS starter refuses until the production
 billing settings exist:
 

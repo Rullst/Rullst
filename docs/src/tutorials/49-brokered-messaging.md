@@ -257,13 +257,16 @@ detection, retention, disk monitoring and topic/tenant authorization. A future
 remote adapter is supported only after it
 passes the shared contract plus its own protocol, restart, and fault matrix; an
 adapter name alone is not durability evidence. The optional v13
-[Redis Streams candidate](../redis-messaging.md) now provides that standalone
-transport journey under hosted validation, with explicit operational limits and
-Rullst-owned delivery indexes. Other remote adapters remain future work.
+[Redis Streams candidate](../redis-messaging.md) (`messaging-redis`) is such a
+standalone transport, with explicit operational limits and Rullst-owned
+delivery indexes; it passed hosted source admission, and its final release
+admission remains separate. Other remote adapters remain future work.
 
 ## 6. Relay a relational outbox after commit
 
-Enable `messaging-orm-outbox` on the umbrella crate. Commit the domain mutation
+Enable `messaging-orm-outbox` on the umbrella crate together with the ORM
+backend the application uses (`drivers-all` or one `strict-*` feature; the
+relay feature enables `orm` but no SQL driver). Commit the domain mutation
 and `rullst_orm::Outbox::enqueue` together as described in the
 [transactional outbox tutorial](38-transactional-outbox.md). Then bind one
 exact outbox stream to one broker topic:

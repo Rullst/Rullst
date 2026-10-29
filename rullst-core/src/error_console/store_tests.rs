@@ -1,4 +1,5 @@
-//! Bounds, expiry and content of the `cargo rullst ai fix` error store.
+//! Bounds, expiry and content of the recorded error contexts that
+//! `GET /_rullst/errors/{id}` serves.
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 

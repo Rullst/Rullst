@@ -183,18 +183,9 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "cargo rullst dash",
                     "Start interactive Ratatui Dev Dashboard",
                 ),
-            ],
-        ),
-        (
-            "🧩  EXTRAS (cargo install cargo-rullst-extras)",
-            vec![
                 (
-                    "cargo rullst ai [goal]",
-                    "Terminal assistant that knows Rullst and your project",
-                ),
-                (
-                    "cargo rullst green [--bench]",
-                    "Measured size, memory and CPU; optional SCI estimate",
+                    "cargo rullst green [--bench] [--json]",
+                    "(experimental) Measured size, memory and CPU; optional SCI estimate",
                 ),
             ],
         ),

@@ -28,8 +28,8 @@ mod tests;
 
 pub(crate) use options::command;
 
-use cargo_rullst::extras;
-use cargo_rullst::term::{Style, TermEnv};
+use crate::term::{Style, TermEnv};
+use crate::ui::error_report::{self, AlreadyReported, Friendly, ProjectRequired};
 use clap::ArgMatches;
 use options::Options;
 use report::{Benchmark, Machine, Measured, Metric, Report, Target};
@@ -41,7 +41,23 @@ const DOCS: &str = "https://rullst.github.io/Rullst/book/green.html";
 
 /// Prints a friendly report on stderr; the exit status is 1.
 fn failure(title: &str, happened: String, fix: &str) -> Box<dyn Error> {
-    extras::failure(title, happened, fix, DOCS)
+    let friendly = Friendly {
+        title: title.to_string(),
+        happened: happened.clone(),
+        fix: Some(fix.to_string()),
+        docs: Some(DOCS),
+    };
+    eprint!(
+        "{}",
+        error_report::render(
+            &friendly,
+            &[],
+            None,
+            false,
+            crate::ui::style::Style::stderr()
+        )
+    );
+    AlreadyReported::new(1, happened).into()
 }
 
 pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
@@ -134,18 +150,18 @@ async fn spawned(
     path: &str,
     environment: &'static str,
 ) -> Result<Subject, Box<dyn Error>> {
-    if extras::package_name(Path::new("Cargo.toml")).is_none() {
-        return Err(extras::project_required());
+    if crate::generators::platform_name::package_name(Path::new("Cargo.toml")).is_none() {
+        return Err(ProjectRequired.into());
     }
     eprintln!(
         "Building the release binary (cargo build --release; an existing build is reused)..."
     );
-    let binary = match extras::compile_release_in(Path::new(".")).await {
+    let binary = match crate::generators::dev::compile_release_in(Path::new(".")).await {
         Ok(binary) => binary,
         Err(error) => {
             return Err(failure(
                 "Release build failed",
-                extras::sanitize(&error.to_string()),
+                error_report::sanitize(&error.to_string()),
                 "Fix the build errors (`cargo build --release`), then run green again.",
             ));
         }

@@ -12,7 +12,7 @@ row "Mail providers removed".
 This guide walks through a complete transport for a fictitious HTTP email API,
 **AcmeMail**. The code below is included from
 [`rullst-mail/examples/custom_transport.rs`](https://github.com/Rullst/Rullst/blob/main/rullst-mail/examples/custom_transport.rs),
-which CI compiles and which runs offline:
+which CI compiles and which runs offline from a clone of the Rullst repository:
 
 ```text
 cargo run -p rullst-mail --example custom_transport
@@ -20,8 +20,9 @@ cargo run -p rullst-mail --example custom_transport
 
 In an application, the same types are available through the facade as
 `rullst::mail::*` with the `mail` feature. The example also uses `reqwest`,
-`secrecy`, `serde_json`, `chrono` and `async-trait`; add equivalent crates to
-your own `Cargo.toml`.
+`secrecy`, `serde_json`, `chrono` and `async-trait` (`MailDriver` is an
+`#[async_trait]` trait; the facade's `rullst::async_trait` works too); add
+equivalent crates to your own `Cargo.toml`.
 
 ## What the framework does and what the transport does
 
@@ -55,7 +56,8 @@ Points that matter for security and testing:
   not silent drops. Durable scheduling belongs to `Mail::enqueue`.
 - **Offline fallback.** An empty or `mock_*` key selects
   `DeliveryMode::OfflineMock` through `credential_mode`, and the transport
-  captures the message without network I/O, as AGENTS.md 3.5 requires. Validate
+  captures the message without network I/O, as section 3.5 of Rullst's
+  [`AGENTS.md`](https://github.com/Rullst/Rullst/blob/main/AGENTS.md) requires. Validate
   the payload before that check so the fixture enforces the live contract.
 - **Bound the HTTP exchange.** Disable redirects (they would forward the key
   and the message), set connect and request deadlines, require HTTPS except for

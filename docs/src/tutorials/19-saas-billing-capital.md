@@ -20,7 +20,7 @@ provider traits in the application as described in
 removed the other built-in adapters; see the
 [v13 migration guide](../migration-v13.md).
 
-**Since 12.1.0:** the Stripe flow persists an opaque local owner,
+The generated Stripe flow persists an opaque local owner,
 account/test-live scope, immutable customer and checkout intents, session IDs,
 and event receipts. Signed Checkout/subscription notifications reconcile current
 provider state. Database revision fencing prevents delayed reads from replacing

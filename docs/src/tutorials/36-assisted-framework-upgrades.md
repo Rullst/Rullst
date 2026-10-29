@@ -6,9 +6,9 @@ to guess about application data or security policy.
 
 > The transaction steps below were written for `12.1.0`; check [publication status](../v12.md).
 > The v12 line reached end of life on 16 October 2026, so a v12 application
-> moves to v13 with the v13 CLI. The v13 source rules, the assisted
-> `cargo rullst ai upgrade` session and the rule classification are described
-> in [v12 to v13: source findings](#v12-to-v13-source-findings) and belong to
+> moves to v13 with the v13 CLI. The v13 source rules and the rule
+> classification are described in
+> [v12 to v13: source findings](#v12-to-v13-source-findings) and belong to
 > the `13.0.0-alpha.4` prerelease. Install the exact release and complete
 > the application-specific validation below before any production rollout.
 
@@ -263,7 +263,7 @@ release:
 | 13.0.0-alpha.1 | The other 95 rules |
 | 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
-| 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-EXTRAS` |
+| 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED` |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -286,9 +286,8 @@ Source findings (rullst-upgrade-rules-v4): 0 must-change, 1 review
 ```
 
 A v12 application, or one whose version cannot be read (path dependencies
-without a version and no `Cargo.lock`), gets every rule. `--all-rules` (also
-accepted by `cargo rullst ai upgrade`) applies every rule to a prerelease
-application too, for example to review the 12.x to 13 changes again. Project
+without a version and no `Cargo.lock`), gets every rule. `--all-rules`
+applies every rule to a prerelease application too, for example to review the 12.x to 13 changes again. Project
 preparations (`cargo rullst update`) always apply every rule, because their
 must-change findings gate execution.
 
@@ -315,52 +314,25 @@ those rules would have added). A consumer that ignores unknown keys reads the
 plan as before; findings of skipped rules are absent from `source_findings`
 and `finding_counts`.
 
-## Assisted fixes with `cargo rullst ai upgrade`
+## Fixing the findings
 
-`cargo rullst ai` is part of the optional `cargo-rullst-extras` package since
-13.0.0-alpha.4; install it with the same version as the CLI
-(`cargo install cargo-rullst-extras --version =13.0.0-alpha.4 --locked`).
-
-```bash
-cargo rullst ai upgrade                 # plan, then a reviewed session
-cargo rullst ai upgrade --dry-run       # show the proposed fixes only
-cargo rullst ai upgrade --provider anthropic --model <name>
-```
-
-The command computes the same dry-run plan (nothing is written) and prints it.
-Without findings it stops there. Otherwise it starts a `cargo rullst ai`
-session whose trusted instructions contain only the migration rows of the
-reported findings, with their fix guidance; the findings (and the text of each
-flagged line) and the affected files are sent as untrusted data, subject to the
-assistant's path policy (`.env`, `.cargo/`, `Cargo.lock` and other protected
-files are never read). The assistant proposes fixes through the normal action
-protocol: each edit is shown as a diff and confirmed, a git checkpoint is
-stored before the first change, and `cargo check` is proposed after the edits.
-Without an interactive terminal, or with `--dry-run`, nothing is executed.
-Rullst dependency versions stay owned by `cargo rullst upgrade`.
-
-It is a subcommand of `ai` rather than an `upgrade --assist` flag because it
-needs the assistant's provider, model, credential and terminal handling, while
-`cargo rullst upgrade` stays deterministic and keeps its published command
-(`UpgradeOptions` only gained `all_rules` in 13.0.0-alpha.3). A one-word chat goal of `upgrade` now opens this
-command; phrase such a goal with more words.
-
-With no provider connected, the deterministic offline assistant demonstrates
-the flow on `V13-RENDER-PAGE-LANGUAGE`: it rewrites the first flagged
-`render_page(&htmx, title, body)` call as
-`rullst::htmx::render_page_with_lang(&htmx, "en", title, body)` and proposes
-`cargo check`. It proposes no edits for the other findings.
+Each finding names its rule and the first-column title of its row in the
+[v13 migration guide](../migration-v13.md#changes-from-the-published-1210-source),
+which says what changed and how to adapt. Fix them by hand, or with your
+editor's or terminal's AI assistant given the plan, the migration row and the
+project's `AGENTS.md` (`cargo rullst generate:ai-context`); review every edit
+it proposes. `cargo rullst ai upgrade`, which proposed such fixes in earlier
+13.0 prereleases, was removed in 13.0.0-alpha.4.
 
 A practical order:
 
 1. `cargo rullst upgrade --dry-run` and read every finding with its migration row.
 2. Fix findings that also compile against v12 (most review items and the
-   `html!`, ORM and Nexus must-change items) with `cargo rullst ai upgrade` or
-   by hand, then run the v12 tests.
+   `html!`, ORM and Nexus must-change items), then run the v12 tests.
 3. `cargo rullst upgrade`. When a fix needs a v13 API (for example utoipa 6
-   with Studio), run `cargo rullst upgrade --keep-on-failure`, then
-   `cargo rullst ai upgrade` on the kept state, and finish with
-   `cargo rullst upgrade` (no further version edits; it validates the result).
+   with Studio), run `cargo rullst upgrade --keep-on-failure`, fix the kept
+   state, and finish with `cargo rullst upgrade` (no further version edits; it
+   validates the result).
 4. Run the application-owned gates below.
 
 ## Rehearsal on generated starters
@@ -464,7 +436,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (99 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (94 rows).
+  of inputs that previously failed) (95 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
 has 111 rules. A row can map to several rules and a rule to
@@ -575,13 +547,13 @@ the rule together.
 | Blank JSON API starter | (c) none | — | Generator output; existing API projects keep their behaviour |
 | CLI audit lockfile | (c) none | — | CLI |
 | RASP shell signatures | (c) none | — | Request matching; not detectable in source |
-| CLI footprint report | (c) none | — | New CLI command; replaced by `green` (CLI extras row) |
+| CLI footprint report | (c) none | — | New CLI command; renamed `green` (CLI `ai` removed, `footprint` renamed `green` row) |
 | CLI `dev`/`dash` shutdown | (c) none | — | CLI |
 | CLI `dev --ts-sync` | (c) none | — | CLI |
 | CLI `dash` live metrics | (c) none | — | CLI |
 | Core development telemetry | (b) review | `V13-DEV-TELEMETRY-ROUTE` |  |
 | Core development error console | (c) none | — | Development-only page; `handle_autofix` callers are not located |
-| CLI `ai fix` and `ai review` | (c) none | — | New CLI commands |
+| CLI `ai fix` and `ai review` | (c) none | — | Added and removed within the 13.0 prereleases |
 | CLI project updates on SELinux | (c) none | — | CLI |
 | CLI `pkg` in a virtual workspace | (c) none | — | CLI |
 | CLI `new` repository | (c) none | — | CLI |
@@ -674,7 +646,8 @@ the rule together.
 | CLI deploy targets removed | (b) review | `V13-DEPLOY-TARGETS-REMOVED` | `fly.toml`, `render.yaml`, `railway.json`, `railway.toml`, and `deploy --platform fly\|railway\|render` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 | CLI Foundry, Nix, Buildah and gRPC generators removed | (b) review | `V13-DEPLOY-GENERATORS-REMOVED` | `Foundry.toml`, a `nixify` `flake.nix`, `build_buildah.sh`, `src/grpc/mod.rs`, and the removed commands in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 | CLI self-update removed | (b) review | `V13-CLI-SELF-UPDATE-REMOVED` | `rullst update check\|verify\|stage\|install`, or `update guided` with `--scope`/`--root`, in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
-| CLI extras (`ai`, `green`) | (b) review | `V13-CLI-EXTRAS` | `rullst ai` or `rullst footprint` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
+| CLI `ai` removed, `footprint` renamed `green` | (b) review | `V13-CLI-AI-REMOVED` | `rullst ai` or `rullst footprint` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
+| Core error console assistant panel | (c) none | — | Development-only page; `handle_autofix` response readers are not located; introduced in 13.0.0-alpha.4 |
 | CLI starters moved to the examples | (c) none | — | CLI behaviour; applications generated from the removed starters keep their code; introduced in 13.0.0-alpha.4 |
 
 ## Planned simpler update experience

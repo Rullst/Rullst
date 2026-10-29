@@ -9,34 +9,41 @@ loopback peers. It is not a shared-environment authentication system; do not
 expose raw subrouters publicly without application-level authentication,
 authorization, TLS, and network policy.
 
-Generated Blank, API and SaaS applications (and the LMS, ERP, Portfolio and blog examples) start the
-standalone server only in debug builds and link to `http://127.0.0.1:5555`.
+Projects generated from the Blank, API and SaaS starters (and the LMS, ERP,
+Portfolio and Blog examples in `examples/`) start the standalone server only in
+debug builds and link to `http://127.0.0.1:5555`.
 Release builds do not start it; runtime `RULLST_ENV` or legacy `APP_ENV` values
 cannot override that compile-time boundary.
 
 To watch a deployed application, mount the read-only
-[production monitoring endpoint](production-monitoring.md) instead
-(13.0.0-alpha.3): it reports request rates, latency, errors, queues and N+1
+[production monitoring endpoint](production-monitoring.md) instead (new in
+v13): it reports request rates, latency, errors, queues and N+1
 findings behind a token or the application's own sign-in. The standalone
-`rullst-studio` binary (`cargo install rullst-studio --features remote --locked`, or
-`cargo rullst studio --remote`) reads it for several projects from your
+`rullst-studio` binary
+(`cargo install rullst-studio --version =13.0.0-alpha.4 --features remote --locked`,
+then `rullst-studio` or `cargo rullst studio --remote`) reads it for several projects from your
 machine, with a project switcher and encrypted local tokens; see
 [Watch your projects from Studio](production-monitoring.md#watch-your-projects-from-studio).
 That remote mode has none of the local pages below.
 
 ## Running Studio
 
-Inside a project, the CLI runs the application with the `studio` argument
-(`cargo run -- studio`):
+In a project generated from a starter, run the application in a debug build
+(`cargo rullst dev`) and open `http://127.0.0.1:5555/studio`: its `main`
+starts the full Studio next to the server. Studio stops with the application.
+
+`cargo rullst studio` is different: it runs the application with the `studio`
+argument (`cargo run -- studio`), and Core's Artisan handler then serves a
+smaller local compatibility UI (database, AI, telemetry, security, capital and
+span pages) on `127.0.0.1:5555` until it stops; it is not the `rullst-studio`
+router described below. Both use port 5555, so stop `cargo rullst dev` first.
 
 ```bash
 cargo rullst studio
 ```
 
-Core's Artisan handler then serves a smaller local compatibility UI (database,
-AI, telemetry, security, capital and span pages) on `127.0.0.1:5555` until it
-stops; it is not the `rullst-studio` router described below. The `rullst-studio`
-library entry point starts the full Studio:
+In your own `main`, the `rullst-studio` library entry point starts the full
+Studio:
 
 ```rust,no_run
 #[tokio::main]
@@ -152,7 +159,7 @@ separate WebSocket telemetry transport or zero runtime overhead.
   its processing/failed/completed counts describe only that window, while the
   pending count and the purge actions cover the whole queue. Studio previews at
   most 256 payload and 512 error characters. It reads records through
-  `Queue::list_job_previews` (v13 prerelease), which cuts each payload and error
+  `Queue::list_job_previews` (new in v13), which cuts each payload and error
   to 2 KiB: the SQLite and Redis drivers cut them inside the store, while other
   drivers inherit a default that still loads complete records first. SQLite
   deletes successful rows by default; an application can explicitly select
@@ -217,6 +224,9 @@ access remains roadmap work, not a password environment-variable promise.
 <a id="v1210-browser-composition-fix-unreleased"></a>
 
 ## v12.1.0 browser composition fix
+
+This section is for applications still on 12.0.x; 12.1.0 and every 13.0
+prerelease include the fix.
 
 The [Portfolio issue report](https://github.com/Rullst/examples/blob/deb147f1b3cc75a84a804ceef64d69716916970f/docs/portfolio-errors-found.md)
 identified two omissions in the published `12.0.0` raw data-browser router:
