@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793263885648,
+  "lastUpdate": 1793269812792,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -18339,6 +18339,60 @@ window.BENCHMARK_DATA = {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 14,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "344f9437ea0242ac1f1400e35c888faa0ee86fca",
+          "message": "Merge pull request #558 from Rullst/feat/v13-alpha4-starters-examples\n\nfeat(cli)!: keep the Blank, API and SaaS starters; LMS, ERP and Portfolio become examples",
+          "timestamp": "2026-10-29T07:09:19-03:00",
+          "tree_id": "5f17e4d69d48d8cae7703b74394bd91d8b92c188",
+          "url": "https://github.com/Rullst/Rullst/commit/344f9437ea0242ac1f1400e35c888faa0ee86fca"
+        },
+        "date": 1793269811831,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 3700,
+            "range": "± 96",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 458,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 7,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 4,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 11,
+            "range": "± 0",
             "unit": "ns/iter"
           }
         ]
