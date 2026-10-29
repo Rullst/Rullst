@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793289656576,
+  "lastUpdate": 1793294437865,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -18554,6 +18554,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f230beccb0814f0aab06b6a20ed799af17f34c92",
+          "message": "Merge pull request #562 from Rullst/docs/v13-audit-guides-b\n\ndocs: audit the v13 feature guides (i18n, auth, storage, messaging, privacy, supervision, media)",
+          "timestamp": "2026-10-29T13:39:45-03:00",
+          "tree_id": "d6bbbacfb5946b2f1e26c9f2360ca00942d08e61",
+          "url": "https://github.com/Rullst/Rullst/commit/f230beccb0814f0aab06b6a20ed799af17f34c92"
+        },
+        "date": 1793294435652,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 2908,
+            "range": "± 47",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 289,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 10,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 7,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 7,
             "range": "± 0",
             "unit": "ns/iter"
           }
