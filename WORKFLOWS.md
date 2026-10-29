@@ -63,7 +63,18 @@ facade composition and AI evals. Line coverage, SemVer and
 CodeQL skip pull requests to `main`. The resulting `main` push runs every Linux
 shard, public feature boundaries, the threat-model minimum, coverage, SemVer and
 CodeQL. A nightly scheduled run (05:30 UTC) executes the complete
-Linux/macOS/Windows matrix on the default branch. Ready pull requests to the
+Linux/macOS/Windows matrix on the default branch. A maintainer can add the
+`full-matrix` label to a pull request to `main` to run that complete
+Linux/macOS/Windows test matrix (all seven shards on each system) before merge:
+the `labeled` event starts it, and every later push re-runs it while the label
+stays. The label changes only the `Run Tests` matrix; feature boundaries, the
+threat-model minimum, the scorecard and the release-only packaging jobs keep
+their pull-request guards. Every pull-request event, `labeled` included, uses
+the pull request's concurrency group, so the newest run replaces the older one
+and still reports every required check (`.github/test-ci-matrix.py` evaluates
+the workflow's expressions to check this). Adding any other label re-runs the
+same Linux gate rather than skipping it, because a skipped job would report a
+passing required check. Ready pull requests to the
 maintained `v12` line and transitional `v13` keep the complete matrix, blocking
 line coverage, SemVer fan-out and CodeQL before merge. Any matrix can be
 requested manually. Each operating system
@@ -1008,7 +1019,7 @@ dependency graph make static estimates unreliable.
 | [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main/v12/v13 push and PR, daily, manual | Blocking | Cargo Audit over the production lock and all eleven fuzz-package locks with one advisory-database fetch. Scheduled and manual runs add a job that audits the protected `v12` locks, because scheduled workflows only check out the default branch. The v12 candidate applies no advisory exceptions; future exceptions must pass the separate owner/expiry governance check. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, eight-shard multi-OS tests including Cargo-aware doctests sourced from all 51 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, eight-shard multi-OS tests including Cargo-aware doctests sourced from all 51 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from full/CLI manual Rust CI or admitted tag release | Blocking caller job; required release evidence | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories before attestation. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Validates the shared 42-target inventory and eleven package lockfiles, restores each real target corpus, performs a bounded warm-up, minimizes it, uploads the result and warms the campaign's content-addressed compiler cache; individual target failures are retained but tolerated, while dependency-lock drift remains a hard failure. |
