@@ -1,3 +1,32 @@
+//! OAuth 2.0 and OpenID Connect sign-in for Rullst applications.
+//!
+//! The adapters in [`providers`] (Google, GitHub, Microsoft, Apple, Auth0,
+//! AWS Cognito, Facebook, X, Discord, LinkedIn and any discovered OIDC
+//! issuer) implement the [`Provider`] trait and return a common
+//! [`ConnectUser`]. The crate also provides:
+//!
+//! - [`challenge`]: server-side login challenges (state, PKCE verifier and
+//!   OIDC nonce) that [`challenge::begin_login`] stores and the callback
+//!   consumes exactly once;
+//! - ID-token verification against the issuer's rotating JWKS for Google,
+//!   Apple, Microsoft OIDC and custom OIDC providers;
+//! - [`AutoRefreshingSession`] and [`EncryptedTokenSnapshot`] for refresh
+//!   tokens, and the [`pkce`] helpers.
+//!
+//! **Maturity: Extension**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
+//!
+//! No Cargo feature is enabled by default. `axum` or `actix` adds the
+//! callback extractors and `finish_login` (`axum` also adds the signed local
+//! `mock_idp` fixture); `axum-session` adds the `tower-sessions` flow;
+//! `sqlite`, `postgres` and `mysql` add the SQL challenge store (`sqlite` also
+//! the encrypted token snapshot store); `retry` adds a retrying transport.
+//! Empty or `mock_*` credentials select an offline provider only with the
+//! `mock` feature and are rejected without it. In a Rullst application,
+//! enable the `oauth` feature of `rullst`.
+//!
+//! Guide: <https://rullst.github.io/Rullst/book/crates/connect.html>.
+
 pub mod challenge;
 pub mod client;
 pub mod configuration;

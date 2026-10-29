@@ -1,4 +1,23 @@
-//! Rullst Core Library
+//! The runtime of the Rullst framework: the HTTP [`Server`] and Axum-based
+//! [`Router`] (with the [`routes!`] and [`html!`] macros), the default
+//! security baseline, configuration, health and lifecycle probes, queues,
+//! scheduling, caching, storage, realtime and Live UI, i18n and process
+//! telemetry.
+//!
+//! **Maturity: Core**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). Most
+//! applications use the `rullst` facade, which re-exports this crate; depend on
+//! `rullst-core` directly for a plugin or middleware crate.
+//!
+//! Core is runtime-only by default. Optional features add integrations: `orm`
+//! (with `drivers-all` or one `strict-sqlite`, `strict-postgres` or
+//! `strict-mysql` backend), `queue-sqlite`, `queue-redis`, `cache-redis` (or
+//! `redis` for both), `scheduler-tz`, `storage-s3`, `storage-multipart` and
+//! `telemetry`. docs.rs builds this page with the default features, so the
+//! items behind them are not listed here. The
+//! [crate guide](https://rullst.github.io/Rullst/book/crates/core.html) and the
+//! [README](https://github.com/Rullst/Rullst/blob/main/rullst-core/README.md)
+//! describe each capability and its limits.
 #![allow(
     clippy::collapsible_if,
     clippy::unnecessary_map_or,

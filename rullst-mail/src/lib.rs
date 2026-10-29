@@ -1,15 +1,29 @@
-//! # `rullst-mail` — High-Performance Transactional Email & Mailables Engine
+//! # `rullst-mail` — Transactional Email & Mailables Engine
 //!
 //! Provides typed, bounded primitives for transactional emails with built-in:
 //! - **RFC 8058 One-Click List-Unsubscribe** headers
 //! - **Automatic Plain-Text Fallback** derivation
-//! - **In-Memory MailTrap & Fluent Assertions**
+//! - **In-Memory MailTrap & Fluent Assertions** (a local test harness, not the
+//!   hosted Mailtrap service)
 //! - **Outbound DLP Secret Scanner** (AWS keys, passwords, bearer tokens)
 //! - Delivery drivers for **Resend**, **AWS SES**, **SendPulse** and **SMTP**, plus
 //!   **Log**, **Memory** and **Failover**; other providers implement [`MailDriver`]
 //! - **Dynamic Multi-Tenancy Resolver** (`TenantMailResolver`)
 //! - **Resilient Circuit Breaker & Automatic Failover** (`FailoverDriver`)
 //! - Opt-in attachment inspection, recipient suppression, and minimized observations
+//!
+//! **Maturity: Extension**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)): optional, and
+//! supported for its documented scope. The default build covers the `Mail`
+//! facade, Resend, SendPulse, Log, Memory and the SES offline fixture and
+//! bearer proxy. Opt-in Cargo features: `mail-smtp` (`SmtpDriver`), `aws-ses`
+//! (native SES v2 through the official SDK), `sqlite` and `postgres` (durable
+//! suppression stores) and `capital-invoice` (payment-bound invoice delivery).
+//! v13 removed the SendGrid, Postmark, Mailjet, Mailtrap and Azure
+//! Communication Services transports.
+//!
+//! See the [book page](https://rullst.github.io/Rullst/book/crates/mail.html) and the
+//! [README](https://github.com/Rullst/Rullst/blob/main/rullst-mail/README.md).
 
 pub mod account;
 pub mod action;
