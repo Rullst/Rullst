@@ -1403,8 +1403,9 @@ verified TLS outside an explicit literal-loopback test mode. Exact configuration
 and an application-supplied deployment generation bind persisted namespaces;
 provisioning is explicit and normal connection must not recreate lost state.
 The TLS adapter preserves an installed Rustls process provider and otherwise
-installs ring before Redis creates its client, avoiding implicit-provider panics
-when dependency features enable multiple providers. Applications requiring a
+installs aws-lc-rs, the framework's Rustls provider, before Redis creates its
+client, avoiding implicit-provider panics when dependency features enable
+multiple providers. Applications requiring a
 different provider install it before broker startup; trust and hostname checks
 remain mandatory.
 Lua mutations are isolated but do not roll back on runtime errors: a persistent
