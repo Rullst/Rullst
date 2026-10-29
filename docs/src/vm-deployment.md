@@ -94,6 +94,11 @@ Check that it works:
 docker compose version      # or: podman compose version
 ```
 
+The commands below run `docker` without `sudo`. For that, add your user to the
+`docker` group once (`sudo usermod -aG docker $USER`, then log in again);
+members of that group can control the host as root, so add only yourself.
+Podman runs rootless as your normal user and needs no group.
+
 ## 4. Get the application onto the VM
 
 There are two simple ways. Pick one.
@@ -112,7 +117,21 @@ rsync -av --exclude target --exclude .git --exclude '.env*' ./ <user>@<ip>:~/app
 # on your computer
 docker build -t my-app:2026-10-29 .
 docker save my-app:2026-10-29 | gzip | ssh <user>@<ip> 'gunzip | docker load'
+scp compose.yaml Caddyfile <user>@<ip>:~/app/
 ```
+
+The generated `compose.yaml` builds the `app` service from the source
+(`build: .`), which is not on the VM in this case. Add an `image:` line with
+your tag under `app:` so Compose uses the image you loaded:
+
+```yaml
+services:
+  app:
+    image: my-app:2026-10-29
+    build: .
+```
+
+Then start it without `--build` in step 6 (`docker compose up -d`).
 
 If your computer and the VM have different CPU architectures (for example an
 Apple Silicon laptop and an x86-64 VM, or an x86-64 laptop and an ARM VM), add
@@ -129,14 +148,16 @@ Put these in a file on the VM named `.env.production`, next to
 
 | Setting | Why |
 | :--- | :--- |
-| `RULLST_ENV=production` | Turns on the production behavior: Secure cookies, strict headers, and a refusal to start with unsafe configuration. The generated `Dockerfile` already sets it. |
+| `RULLST_ENV=production` | Turns on the production behavior: Secure cookies, strict headers, and a refusal to start with unsafe configuration. The generated `Dockerfile` and `compose.yaml` already set it; keep it in this file too, so `deploy:doctor` (below) checks the environment you deploy. |
 | `APP_KEY=<long random value>` | The application secret that protects sessions. Create one with `openssl rand -hex 32`. Never reuse a development value. |
 | `DATABASE_URL=...` | For SQLite (the starters' default) the `Dockerfile` that `cargo rullst deploy` writes already points it at `/app/data/rullst.db`, inside the `app_data` volume; leave it out. A `Dockerfile` from an earlier `deploy` or `dockerize` may lack that line (`deploy` warns): add `ENV DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc` to its last stage, or set it here. For PostgreSQL or MySQL, the connection URL of your database. |
 | Other secrets | Mail, payment and AI keys also go here, as environment variables, never in the source or the image. |
 
-You can check this file before you start anything, without sending it
-anywhere: `cargo rullst deploy:doctor --env-file .env.production`
-(see [Local Deployment Configuration Diagnostic](deployment-diagnostic.md)).
+Where the CLI is installed (usually your computer, in the project directory),
+`cargo rullst deploy:doctor --env-file .env.production` checks a copy of this
+file and `Rullst.toml` without sending them anywhere; it exits with an error
+when, for example, `RULLST_ENV` or `APP_KEY` is missing or a placeholder (see
+[Local Deployment Configuration Diagnostic](deployment-diagnostic.md)).
 
 **Trusted proxy.** Every request reaches your application through Caddy, so
 the application sees Caddy's address as the visitor's address. Rate limits and
@@ -181,7 +202,19 @@ echo 'DOMAIN=your-domain.example' > .env
 **Rootless Podman** cannot listen on ports below 1024 by default. Allow it
 once: `echo 'net.ipv4.ip_unprivileged_port_start=80' | sudo tee
 /etc/sysctl.d/99-rullst-ports.conf && sudo sysctl --system`. Docker and
-rootful Podman need nothing.
+rootful Podman need nothing. Rootless containers also belong to your login:
+run `sudo loginctl enable-linger $USER` once so they keep running after you log
+out. Docker starts the containers again after a reboot (`restart:
+unless-stopped`); with rootless Podman, enable a user service that does it
+(for example `systemctl --user enable podman-restart.service`, or the
+[Podman Quadlet](advanced-deployment.md#podman-quadlet-systemd-unit-for-the-container)
+units) and check it with one test reboot. To restart everything with
+podman-compose, use `podman compose down` and then `podman compose up -d` (the
+volumes stay): with Podman 5.7 and podman-compose 1.5 on Ubuntu 26.04,
+`podman compose restart` can leave Caddy stopped while it reports success, and
+`down` can print `rootless netns: kill network process: permission denied`
+(Ubuntu's AppArmor profile for `pasta` refuses Podman's stop signal) although
+it removes the containers.
 
 On the VM, in the directory that holds the generated files:
 
@@ -201,10 +234,11 @@ docker compose run --rm app /app/<binary-name> db:migrate
 (`<binary-name>` is your package name from `Cargo.toml`. The runtime image has
 no shell, so call the binary directly.)
 
-When the DNS record is correct and ports 80 and 443 are open, Caddy gets a
-certificate on the first request. Open `https://your-domain.example` in a
-browser. If it does not work, read `docker compose logs caddy`: the usual
-causes are a wrong DNS record, a closed port, or a typo in the domain.
+When the DNS record is correct and ports 80 and 443 are open, Caddy requests
+a certificate as soon as it starts, and retries until it gets one. Open
+`https://your-domain.example` in a browser. If it does not work, read
+`docker compose logs caddy`: the usual causes are a wrong DNS record, a closed
+port, or a typo in the domain.
 
 ## 7. Logs
 
@@ -215,6 +249,12 @@ stores them:
 docker compose logs --tail 200 app
 docker compose logs -f caddy
 ```
+
+The app's first line says where it listens. Because `Rullst.toml` trusts a
+proxy, it adds "if it runs on this host, set HOST=127.0.0.1": ignore that hint
+here. Caddy runs in its own container and reaches the app over the compose
+network, so the app must keep listening on `0.0.0.0` (the `HOST` that
+`compose.yaml` sets); its port is not published on the VM.
 
 On the host, `journalctl` shows the engine's own messages
 (`sudo journalctl -u docker`). The default log driver can fill the disk on a
@@ -231,12 +271,14 @@ the app is running (the runtime image has no shell, so run it from a helper
 container that mounts the same volume, or from the host path of the volume):
 
 ```bash
-docker run --rm -v <volume-name>:/data -v "$PWD":/backup alpine:3 \
+docker run --rm -v <volume-name>:/data -v "$PWD":/backup docker.io/library/alpine:3 \
   sh -c 'apk add --no-cache sqlite >/dev/null && sqlite3 /data/rullst.db ".backup /backup/rullst-$(date +%F).db"'
 ```
 
-Find the volume name with `docker volume ls`. The generated database file name
-and location are in the `DATABASE_URL` you configured.
+The volume is named after the directory that holds `compose.yaml`: for
+`~/app` it is `app_app_data` (`docker volume ls` lists them; with Podman use
+`podman run` and `podman volume ls`). `rullst.db` is the file the generated
+`Dockerfile` names in `DATABASE_URL`; use yours if you changed it.
 
 **PostgreSQL or MySQL.** Use `pg_dump` or `mysqldump` (or your managed
 database's snapshots) on a schedule.
@@ -257,7 +299,7 @@ commit:
 docker build -t my-app:$(git rev-parse --short HEAD) .
 ```
 
-Make the `app` service in `compose.yaml` use that tag (its `image:` line), then:
+Make the `app` service in `compose.yaml` use that tag (add an `image:` line under `app:`, as in step 4B, or change it), then:
 
 ```bash
 docker compose run --rm app /app/<binary-name> db:migrate   # only if there are new migrations
@@ -272,10 +314,12 @@ the new version is fine. A rollback does not undo a database migration: write
 migrations so the previous version still works with the new schema, and take a
 backup (section 8) before any change that removes or rewrites data.
 
-Caddy keeps serving while the app container is replaced, but a single VM has a
-short gap during the restart. That is normal for this setup; if you need zero
-downtime, you need more than one machine, which is outside this guide
-([Kubernetes](advanced-deployment.md#kubernetes) is one option).
+Caddy keeps serving while the app container is replaced: the generated
+`Caddyfile` holds each request for up to 15 seconds while the app is down and
+checks `/health` every 5 seconds, so a quick restart shows as slower responses
+rather than errors. A single VM still cannot replace the app without any gap;
+if you need zero downtime, you need more than one machine, which is outside
+this guide ([Kubernetes](advanced-deployment.md#kubernetes) is one option).
 
 ## 10. Keep the VM healthy
 
@@ -284,6 +328,31 @@ downtime, you need more than one machine, which is outside this guide
 - Keep SSH key-only and, if you wish, install `fail2ban`.
 - Watch disk space (`df -h`) and memory (`free -h`).
 - Keep the VM's firewall at 22, 80 and 443. Do not publish database ports.
+
+## What CI checks
+
+Rullst's CI runs this guide's main path (`.github/check-vm-deploy.py`) on a
+GitHub-hosted Ubuntu runner, for the Blank and SaaS starters, with Docker and
+with rootless Podman (`podman compose` with podman-compose):
+
+- `cargo rullst new`, then `cargo rullst deploy`, then the copy of step 4A and
+  a `.env.production` with `RULLST_ENV` and `APP_KEY` (SaaS adds its billing
+  settings), checked with `cargo rullst deploy:doctor`;
+- `compose up -d --build` with `DOMAIN=localhost`, so Caddy uses its own local
+  certificate authority instead of Let's Encrypt;
+- `/health` over HTTPS through Caddy, the HTTP-to-HTTPS redirect, that only
+  Caddy publishes ports, Caddy's fixed address, and in both containers a
+  read-only root filesystem, no capabilities except Caddy's
+  `NET_BIND_SERVICE`, and `no-new-privileges`;
+- `compose run --rm app /app/<binary-name> db:migrate`, a page that reads the
+  database (SaaS: registering an account, with a Secure session cookie), and
+  the same after a restart (`docker compose restart`; Podman recreates the
+  containers with `down` and `up -d`), with the SQLite file still in its
+  volume;
+- the SQLite backup command of section 8, and no panic in the logs.
+
+It does not cover a real domain, DNS or Let's Encrypt, a provider account or
+firewall, an Arm machine, a reboot, path 4B, or PostgreSQL and MySQL.
 
 ## Where next
 
