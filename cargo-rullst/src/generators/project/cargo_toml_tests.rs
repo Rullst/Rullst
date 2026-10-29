@@ -60,6 +60,51 @@ fn stable_blueprint_ids_enable_only_their_required_domain_features() {
 }
 
 #[test]
+fn starters_declare_only_the_framework_crates_their_code_uses() {
+    let direct = |blueprint| {
+        let manifest = build_cargo_toml(
+            "direct",
+            false,
+            true,
+            "Sqlite",
+            &[],
+            false,
+            false,
+            blueprint,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("manifest");
+        let parsed: toml::Value = toml::from_str(&manifest).expect("valid Cargo manifest");
+        let mut names = parsed["dependencies"]
+            .as_table()
+            .expect("dependencies")
+            .keys()
+            .filter(|name| name.starts_with("rullst"))
+            .cloned()
+            .collect::<Vec<_>>();
+        names.sort();
+        names
+    };
+    // `make:oauth` enables the facade's `oauth-*` feature, so the SaaS
+    // starter does not compile `rullst-connect` and its JWT stack up front.
+    assert_eq!(
+        direct(SAAS_BLUEPRINT_ID),
+        [
+            "rullst",
+            "rullst-auth",
+            "rullst-capital",
+            "rullst-orm",
+            "rullst-security"
+        ]
+    );
+    assert_eq!(
+        direct(BLANK_BLUEPRINT_ID),
+        ["rullst", "rullst-orm", "rullst-security"]
+    );
+}
+
+#[test]
 fn blank_database_project_does_not_compile_an_unmounted_nexus() {
     let blank = build_cargo_toml(
         "blank-db",

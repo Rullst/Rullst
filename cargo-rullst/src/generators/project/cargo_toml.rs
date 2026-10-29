@@ -229,12 +229,11 @@ rust-version = "1.96.0"
         cargo_toml.push_str(&auth_dep);
     }
 
+    // No direct `rullst-connect`: `make:oauth` enables the facade's `oauth-*`
+    // feature, and an unused dependency only lengthens the first build.
     if blueprint_selection == SAAS_BLUEPRINT_ID {
         let capital_dep = dependency_line(current_dir, "rullst-capital", crate_version)?;
         cargo_toml.push_str(&capital_dep);
-
-        let connect_dep = dependency_line(current_dir, "rullst-connect", crate_version)?;
-        cargo_toml.push_str(&connect_dep);
     }
 
     let security_dep = dependency_line(current_dir, "rullst-security", crate_version)?;
