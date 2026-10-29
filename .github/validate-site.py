@@ -22,6 +22,8 @@ README = ROOT / "README.md"
 LLMS_INDEX_LIMIT = 128 * 1024
 LLMS_FULL_LIMIT = 8 * 1024 * 1024
 SUMMARY_PAGE = re.compile(r"\[[^\]]+\]\(([^)]+\.md)\)")
+CLI_VERSION = re.compile(r'^version = "([^"]+)"$', re.MULTILINE)
+INSTALL_PIN = re.compile(r"cargo install cargo-rullst --version =(\S+) --locked")
 
 
 def validate_llms() -> int:
@@ -141,8 +143,16 @@ def main() -> None:
     validate_document(HOME, home)
     assert home.has_main and home.has_nav and home.has_footer, "landing page needs nav, main and footer"
     assert source.count("All glory and honor to God") == 1, "landing page needs the footer dedication"
-    assert "Rullst v12 stable" in source, "landing page must identify stable v12"
+    assert "Rullst v13 prerelease" in source, "landing page must identify the v13 prerelease line"
+    assert "Rullst v12 stable" not in source, "landing page still presents end-of-life v12 as current"
     assert "evaluate before stable v12" not in source, "landing page retains obsolete RC copy"
+    assert "/Rullst/book/v12.html" not in home.links, "landing release-status links must not point to the v12 record"
+    cli_version = CLI_VERSION.search((ROOT / "cargo-rullst" / "Cargo.toml").read_text(encoding="utf-8"))
+    assert cli_version, "cannot read the cargo-rullst version"
+    pins = INSTALL_PIN.findall(source)
+    assert pins and set(pins) == {cli_version[1]}, (
+        f"landing install command must pin the current CLI version ={cli_version[1]}: {pins}"
+    )
     assert "Content-Security-Policy" in source, "landing page must declare a CSP"
     assert not home.inline_behavior, f"landing page has inline behavior/style: {home.inline_behavior}"
     for references, filename in ((home.stylesheets, "site.css"), (home.scripts, "site.js")):
