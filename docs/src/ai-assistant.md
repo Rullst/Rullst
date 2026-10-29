@@ -22,7 +22,7 @@ writes `.llms.txt`, `.rullst/context-map.json` and an `AGENTS.md` (see
 Install the extras with the same version as the CLI:
 
 ```bash
-cargo install cargo-rullst-extras --version =13.0.0-alpha.3 --locked
+cargo install cargo-rullst-extras --version =13.0.0-alpha.4 --locked
 ```
 
 `cargo rullst ai …` runs `cargo-rullst-extras ai …` found on `PATH`, with the

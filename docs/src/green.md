@@ -19,7 +19,7 @@ software.
 version:
 
 ```bash
-cargo install cargo-rullst-extras --version =13.0.0-alpha.3 --locked
+cargo install cargo-rullst-extras --version =13.0.0-alpha.4 --locked
 ```
 
 `cargo rullst green …` then runs `cargo-rullst-extras green …` found on `PATH`

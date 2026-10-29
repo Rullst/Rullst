@@ -1473,7 +1473,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-rullst"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "axum",
  "brotli",
@@ -1517,7 +1517,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-rullst-extras"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "async-trait",
  "axum",
@@ -6232,7 +6232,7 @@ dependencies = [
 
 [[package]]
 name = "rullst"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "actix-web",
  "async-trait",
@@ -6293,7 +6293,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-ai"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -6316,7 +6316,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-auth"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -6348,7 +6348,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-blog-example"
-version = "12.0.0"
+version = "13.0.0-alpha.4"
 dependencies = [
  "async-trait",
  "axum",
@@ -6370,7 +6370,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-capital"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "actix-web",
  "async-trait",
@@ -6396,7 +6396,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-connect"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "actix-web",
  "aes-gcm",
@@ -6432,7 +6432,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-core"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "async-trait",
  "aws-credential-types",
@@ -6495,7 +6495,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-erp-example"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "rullst",
  "rullst-orm",
@@ -6507,7 +6507,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-iot"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "ed25519-dalek",
  "serde",
@@ -6517,7 +6517,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-labs"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "hex",
  "ring",
@@ -6533,7 +6533,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-lms-example"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "rullst",
  "rullst-auth",
@@ -6547,7 +6547,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6559,7 +6559,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-mail"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "async-trait",
  "aws-sdk-sesv2",
@@ -6585,7 +6585,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-media"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "async-trait",
  "aws-credential-types",
@@ -6608,7 +6608,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-messaging"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "aes-gcm",
  "base64 0.23.1",
@@ -6637,7 +6637,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-nexus"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "ammonia",
  "axum",
@@ -6662,7 +6662,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "aes-gcm",
  "async-stream",
@@ -6705,7 +6705,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm-macros"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "mutants",
  "proc-macro2",
@@ -6716,7 +6716,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-portfolio-example"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "rullst",
  "rullst-orm",
@@ -6727,7 +6727,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-privacy"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "base64 0.23.1",
  "ring",
@@ -6742,7 +6742,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-security"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "aes-gcm",
  "ammonia",
@@ -6776,7 +6776,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-studio"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "axum",
  "base64 0.23.1",
@@ -6806,7 +6806,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-supervision"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "ring",
  "sqlx",
@@ -6817,7 +6817,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-webgpu-example"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 dependencies = [
  "rullst-core",
  "tokio",

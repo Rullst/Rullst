@@ -10,7 +10,7 @@ security boundaries. Cargo never installs a prerelease unless you name it, so
 with an exact version:
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 ```
 
 `cargo-rullst` is a Core package. A few generators depend on outside toolchains
@@ -26,7 +26,7 @@ live in the optional, Experimental `cargo-rullst-extras` package, so the main
 CLI stays small. Install it with the same version as the CLI:
 
 ```bash
-cargo install cargo-rullst-extras --version =13.0.0-alpha.3 --locked
+cargo install cargo-rullst-extras --version =13.0.0-alpha.4 --locked
 ```
 
 `cargo rullst ai …` and `cargo rullst green …` run `cargo-rullst-extras ai …`

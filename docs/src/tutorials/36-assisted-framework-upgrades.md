@@ -9,7 +9,7 @@ to guess about application data or security policy.
 > moves to v13 with the v13 CLI. The v13 source rules, the assisted
 > `cargo rullst ai upgrade` session and the rule classification are described
 > in [v12 to v13: source findings](#v12-to-v13-source-findings) and belong to
-> the `13.0.0-alpha.3` prerelease. Install the exact release and complete
+> the `13.0.0-alpha.4` prerelease. Install the exact release and complete
 > the application-specific validation below before any production rollout.
 
 ## What the command can guarantee
@@ -48,7 +48,7 @@ For a v12 application, that is the v13 prerelease (Cargo never selects a
 prerelease on its own):
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.3 --locked --force
+cargo install cargo-rullst --version =13.0.0-alpha.4 --locked --force
 ```
 
 The framework command does not update its own executable. This matters for v5:
@@ -319,7 +319,7 @@ and `finding_counts`.
 
 `cargo rullst ai` is part of the optional `cargo-rullst-extras` package since
 13.0.0-alpha.4; install it with the same version as the CLI
-(`cargo install cargo-rullst-extras --version =13.0.0-alpha.3 --locked`).
+(`cargo install cargo-rullst-extras --version =13.0.0-alpha.4 --locked`).
 
 ```bash
 cargo rullst ai upgrade                 # plan, then a reviewed session
@@ -721,7 +721,7 @@ File recovery does not replace database backups or application acceptance
 tests, and updating the CLI alone never updates a deployed application.
 
 The 12.1.0 update mechanism does not implement v13 migrations. The
-v13 CLI (13.0.0-alpha.3 prerelease) carries its own rule catalog
+v13 CLI (13.0.0-alpha.4 prerelease) carries its own rule catalog
 ([v12 to v13: source findings](#v12-to-v13-source-findings)); `update guided`
 offers a project update only within the installed CLI's major.
 

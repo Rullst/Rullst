@@ -1,7 +1,7 @@
 # An example application to copy from, not a supported starter: see README.md.
 [package]
 name = "rullst-erp-example"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 edition = "2024"
 rust-version = "1.96.0"
 publish = false

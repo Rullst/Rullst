@@ -6,7 +6,7 @@ workflows around them. Version 12 is the current stable release line; use the
 capability and release documents to distinguish implemented behavior from
 roadmap work and application-specific responsibilities. This book is built
 from the `main` branch, where v13 is in development; its latest prerelease,
-`13.0.0-alpha.3`, is published, and the **v13 Preview** chapters describe that
+`13.0.0-alpha.4`, is published, and the **v13 Preview** chapters describe that
 prerelease work.
 
 **Welcome to the Rullst documentation.** Build a small application, understand

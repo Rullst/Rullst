@@ -337,8 +337,11 @@ reporting a refresh failure without concealing the completed source edits.
 Archive-only acceptance must install the packaged CLI and compile
 generated SaaS consumers with both opt-ins and no workspace source paths.
 This is packaging eligibility, not a published version or registration claim.
-The stable publisher still refuses an unregistered crate; initial registration,
-reviewed ownership and Trusted Publishing configuration are separate prerequisites.
+The release workflow refuses an unregistered crate unless the tagged source's
+reviewed bootstrap allowlist names it for a one-time first publication
+([release recovery](release-recovery.md#name-ownership-and-first-publication-credentials));
+initial registration, reviewed ownership and Trusted Publishing configuration
+are separate prerequisites.
 
 The native `DeclarationGate` contract processes an authenticated first-party
 `AgeDeclaration` without requiring an external issuer or a signing key for the
@@ -469,8 +472,8 @@ defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidenc
 
 ### v13 source-train and adoption preparation
 
-The development train uses one version, currently `13.0.0-alpha.3`, for every
-publishable package, and exact (`=13.0.0-alpha.3`) internal requirements, so
+The development train uses one version, currently `13.0.0-alpha.4`, for every
+publishable package, and exact (`=13.0.0-alpha.4`) internal requirements, so
 Cargo cannot pair packages from different prereleases. This prepares the CLI's
 actual major-version behavior; it is not a publication or stable-release claim.
 The privacy package joins the candidate inventory with explicit optional facade

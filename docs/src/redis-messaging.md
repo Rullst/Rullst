@@ -11,10 +11,10 @@ owner's account or production data.
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.3", default-features = false, features = ["messaging-redis"] }
+rullst = { version = "=13.0.0-alpha.4", default-features = false, features = ["messaging-redis"] }
 ```
 
-This version is the 13.0.0-alpha.3 prerelease, which `cargo add rullst` does not
+This version is the 13.0.0-alpha.4 prerelease, which `cargo add rullst` does not
 select; name it explicitly. Final release admission remains separate.
 
 ```rust,no_run

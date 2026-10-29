@@ -1,7 +1,7 @@
 # 49. Bounded Brokered Messaging
 
 > [!IMPORTANT]
-> Dependency examples pin the v13 prerelease `=13.0.0-alpha.3` exactly: Cargo
+> Dependency examples pin the v13 prerelease `=13.0.0-alpha.4` exactly: Cargo
 > never selects a prerelease on its own, and the v12 line reached end of life
 > on 16 October 2026 (see the [release record](../v12.md)). Commit Cargo.lock
 > for reproducible builds. Use path dependencies only when intentionally
@@ -15,11 +15,11 @@ Remote broker protocols remain separate adapters.
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.3", features = ["messaging"] }
+rullst = { version = "=13.0.0-alpha.4", features = ["messaging"] }
 ```
 
 Use `messaging-sqlite` instead of `messaging` for durable local state. A direct
-dependency uses `rullst-messaging = { version = "=13.0.0-alpha.3", features =
+dependency uses `rullst-messaging = { version = "=13.0.0-alpha.4", features =
 ["sqlite"] }`.
 
 ## 2. Create a bounded broker

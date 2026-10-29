@@ -209,7 +209,7 @@ prerelease; Cargo never selects a prerelease on its own, so pin it exactly
 
 ```toml
 [dependencies]
-rullst-security = "=13.0.0-alpha.3"
+rullst-security = "=13.0.0-alpha.4"
 ```
 
 ---

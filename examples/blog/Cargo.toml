@@ -1,6 +1,6 @@
 [package]
 name = "rullst-blog-example"
-version = "12.0.0"
+version = "13.0.0-alpha.4"
 authors = ["Rullst Core Team"]
 edition = "2024"
 publish = false

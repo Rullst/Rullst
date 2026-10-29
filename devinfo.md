@@ -8,7 +8,7 @@ in this file.
 ## Work on the checkout source
 
 From the repository root, install the CLI from the exact checkout (on `main`,
-the v13 prerelease `13.0.0-alpha.3` CLI; on `v12`, the end-of-life 12.x CLI):
+the v13 prerelease `13.0.0-alpha.4` CLI; on `v12`, the end-of-life 12.x CLI):
 
 ```bash
 cargo install --locked --path cargo-rullst
@@ -19,7 +19,7 @@ Run `cargo rullst new` from this root when validating checkout-local changes so
 the generator can select sibling framework crates as path dependencies. A plain
 `cargo install cargo-rullst` installs the latest published stable release
 (Cargo skips prereleases), which is the end-of-life 12.x line; install the v13
-prerelease with its exact version, `--version =13.0.0-alpha.3 --locked`.
+prerelease with its exact version, `--version =13.0.0-alpha.4 --locked`.
 
 ## Required local verification
 

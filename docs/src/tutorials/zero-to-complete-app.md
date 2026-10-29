@@ -22,7 +22,7 @@ CLI. Cargo never selects a prerelease on its own, so name the exact version, as
 described in [Getting Started](../1-getting-started.md#1-installation):
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 ```
 
 ## 2. Create the app from the SaaS starter
@@ -336,7 +336,7 @@ binary answered `200` on `/health`, redirected `/notes` to `/login`, and served
 
 **New in 13.0:** measure the build with `cargo rullst green`, from the
 optional extras
-(`cargo install cargo-rullst-extras --version =13.0.0-alpha.3 --locked`). On
+(`cargo install cargo-rullst-extras --version =13.0.0-alpha.4 --locked`). On
 its own, `cargo rullst green --path /health` starts the release binary with
 `RULLST_ENV=production`, which the SaaS starter refuses until the production
 billing settings exist:

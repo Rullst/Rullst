@@ -1,6 +1,6 @@
 [package]
 name = "rullst-labs"
-version = "13.0.0-alpha.3"
+version = "13.0.0-alpha.4"
 edition = "2024"
 rust-version = "1.96.0"
 authors = ["Rullst Core Team"]

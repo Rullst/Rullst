@@ -46,7 +46,7 @@
 ## ⚡ Rullst in 30 seconds
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 cargo rullst new my_app    # choose the Blank, API or SaaS starter
 cd my_app
 cargo rullst dev           # rebuilds and restarts every time you save
@@ -54,7 +54,7 @@ cargo rullst dev           # rebuilds and restarts every time you save
 
 That's it: a running application, generated as readable Rust you can change —
 no hidden runtime magic. Complete applications to copy from — an LMS, an ERP, a
-portfolio and a blog — live in [`examples/`](examples/). This installs the 13.0.0-alpha.3 prerelease; the v12
+portfolio and a blog — live in [`examples/`](examples/). This installs the 13.0.0-alpha.4 prerelease; the v12
 line reached end of life on 16 October 2026 (see below).
 
 [Installation and prerequisites](https://rullst.github.io/Rullst/book/1-getting-started.html)
@@ -393,7 +393,7 @@ migrate production data. [Assisted upgrade tutorial](https://rullst.github.io/Ru
 ## 🚀 What's next: v13
 
 This `main` branch is where **v13** is being built; its latest prerelease,
-`13.0.0-alpha.3`, is on crates.io. **The v12 line reached end of life on
+`13.0.0-alpha.4`, is on crates.io. **The v12 line reached end of life on
 16 October 2026**: 12.3.0 is its last release and the
 [`v12`](https://github.com/Rullst/Rullst/tree/v12) branch is frozen (v5 is no
 longer maintained either). crates.io has since yanked the `zip` releases that
@@ -404,11 +404,11 @@ selects a prerelease on its own, so `cargo install cargo-rullst` and
 prerelease:
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 ```
 
 In a hand-written `Cargo.toml`, pin it with `=` too: a plain
-`"13.0.0-alpha.3"` is a caret requirement that also accepts later alphas,
+`"13.0.0-alpha.4"` is a caret requirement that also accepts later alphas,
 which may break the API. Select the database profile you use (plus
 capabilities such as `auth` or `nexus`). Up to 13.0.0-alpha.2 the default
 features compiled the SQLite, PostgreSQL and MySQL drivers, so turn them off;
@@ -416,7 +416,7 @@ from alpha.3 the defaults are empty and a database-free application compiles
 no database code:
 
 ```toml
-rullst = { version = "=13.0.0-alpha.3", default-features = false, features = ["strict-postgres"] }
+rullst = { version = "=13.0.0-alpha.4", default-features = false, features = ["strict-postgres"] }
 ```
 
 `cargo rullst new` already turns the default features off and, from
@@ -426,10 +426,30 @@ rullst = { version = "=13.0.0-alpha.3", default-features = false, features = ["s
 
 ### What is new in v13
 
-Since 12.x, with 13.0.0-alpha.3 adding the first six items. Details are in the
+Since 12.x, with 13.0.0-alpha.4 adding the first five items and 13.0.0-alpha.3
+the next six. Details are in the
 [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md) and the
 [v13 adoption guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md).
 
+- **A leaner CLI with optional extras:** the main CLI keeps the everyday
+  commands; the terminal AI assistant and `green` (measured size, memory and
+  CPU figures, carbon only as a labelled SCI estimate) are in the optional,
+  Experimental `cargo-rullst-extras`, which `cargo rullst ai` and
+  `cargo rullst green` run when it is installed
+  ([CLI reference](https://rullst.github.io/Rullst/book/cli_reference.html#extras-cargo-rullst-extras)).
+- **One deployment path:** `cargo rullst deploy` writes a Dockerfile,
+  `compose.yaml` and `Caddyfile` for any Linux VM with Docker or Podman, with
+  guides for Hetzner Cloud, DigitalOcean, Oracle Cloud and Google Cloud
+  ([guide](https://rullst.github.io/Rullst/book/vm-deployment.html)).
+- **Three starters and complete examples:** `cargo rullst new` offers Blank,
+  API and SaaS; the LMS, ERP, Portfolio and blog applications are in
+  [`examples/`](examples/) to copy from.
+- **For AI assistants:** every `--json` output follows one contract with a
+  `schema` id, and the site publishes `llms.txt` and `llms-full.txt`.
+- **Faster development builds:** generated projects get a development profile
+  that shortened their first build by 15 to 19 % and a rebuild after an edit by
+  about half on the measuring machine
+  ([build times](https://rullst.github.io/Rullst/book/build-times.html)).
 - **Progressive web apps:** `cargo rullst make:pwa` (manifest, service worker,
   offline page), a Google Play Trusted Web Activity configuration and a
   Microsoft Store guide ([guide](https://rullst.github.io/Rullst/book/tutorials/43-progressive-web-apps.html)).
@@ -460,6 +480,19 @@ Since 12.x, with 13.0.0-alpha.3 adding the first six items. Details are in the
   established reverse proxy (`cargo rullst deploy` writes a Caddyfile).
 - The unpublished `rullst-labs-runner` candidate: bring your own runner (see the
   Labs runner contract).
+- The CLI's Foundry (`foundry:init`, `foundry:deploy`), Nix (`nixify`,
+  `new --nix`), Buildah (`generate:buildah`, `new --buildah`) and gRPC
+  (`make:grpc`) generators: files they wrote stay yours, and the Advanced
+  deployment page shows Nix, Buildah, Podman Quadlet and Kubernetes setups.
+- The Fly.io, Render and Railway targets of `cargo rullst deploy`: it writes
+  the Dockerfile, `compose.yaml` and `Caddyfile` for a Linux VM; existing
+  provider files keep working with the provider's own CLI.
+- The self-updater's download and binary replacement (`update check`,
+  `update verify`, `update stage`, `update install`): install a newer CLI with
+  `cargo install cargo-rullst --version =<version> --locked`, which a daily
+  notice prints.
+- The LMS, Blog, Portfolio and ERP starters of `cargo rullst new`: they are
+  complete applications in [`examples/`](examples/).
 
 Each row has its replacement in the
 [v13 adoption guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md).
