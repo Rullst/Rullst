@@ -18,8 +18,8 @@ Step-by-step guides that use these files:
 For Nix, Buildah, Podman Quadlet or Kubernetes see
 [Advanced deployment](../advanced-deployment.md). The CLI no longer has
 provider-specific targets (Fly.io, Railway, Render) or the Foundry SSH
-pipeline; those platforms and tools can still run the generated `Dockerfile`,
-but their configuration is yours to write and review.
+pipeline; container platforms can still build the generated `Dockerfile`, but
+their configuration is yours to write and review.
 
 ---
 
@@ -85,11 +85,14 @@ networks: any host inside them can choose the client address.
 
 ### Container lifecycle boundary
 
-Projects created with `cargo rullst new --docker` receive a non-root runtime
-image with production host/port defaults and local assets, but never an
-application secret. For an explicit SQLite project the generated database URL
-uses `/app/data`; configure the target platform so that directory remains owned
-by UID/GID 10001 when attaching persistent storage.
+The `Dockerfile` written by `cargo rullst deploy`, `cargo rullst dockerize` or
+`cargo rullst new --docker` builds a non-root runtime image with production
+host/port defaults and local assets, but never an application secret. For a
+SQLite project (the starters' default) the image sets
+`DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc`, so the database lives in
+`/app/data`; configure the target platform so that directory remains owned by
+UID/GID 10001 when attaching persistent storage (the generated `compose.yaml`
+mounts a volume there).
 
 Apply migrations in one bounded pre-deployment job and start application
 replicas only after it succeeds. Running migrations inside every replica is
