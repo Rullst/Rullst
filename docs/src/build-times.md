@@ -22,8 +22,8 @@ debug = false
   own code in a `RUST_BACKTRACE=1` backtrace still show the file and line
   (`at ./src/main.rs:2:11`). Frames inside dependencies show the function name
   without a file and line.
-- **Dependencies are built without debug information.** Full debug
-  information was most of what a debug build wrote and linked: the API
+- **Dependencies are built without debug information.** Their debug
+  information was about half of a debug binary and 41 % of `target/`: the API
   starter's binary went from 83.7 MB to 41.5 MB and its `target/` directory
   from 2.47 GB to 1.45 GB.
 - **Nothing else changes.** Optimisation level, incremental compilation,
