@@ -28,7 +28,9 @@ postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "dep:url"]
 [dependencies]
 rullst-core = { workspace = true }
 rullst-capital = { workspace = true, optional = true }
-lettre = { workspace = true, optional = true, features = ["tokio1", "tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
+# `tokio1-rustls-tls` would select ring; SMTP TLS uses aws-lc-rs, the
+# framework's rustls provider, unless the application installed another.
+lettre = { workspace = true, optional = true, features = ["tokio1", "tokio1-rustls", "aws-lc-rs", "webpki-roots", "builder", "smtp-transport", "hostname"] }
 reqwest = { workspace = true, features = ["json", "rustls"] }
 serde = { workspace = true }
 serde_json = { workspace = true }

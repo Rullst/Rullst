@@ -42,8 +42,8 @@ sql-memory = ["dep:sqlx"]
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 criterion = { workspace = true, features = ["async_tokio"] }
-testcontainers = "0.27.3"
-testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql", "mariadb"] }
+testcontainers = { version = "0.27.3", default-features = false, features = ["aws-lc-rs"] }
+testcontainers-modules = { version = "0.15.0", default-features = false, features = ["aws-lc-rs", "postgres", "mysql", "mariadb"] }
 
 [[bench]]
 name = "ai_bench"

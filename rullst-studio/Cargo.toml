@@ -63,8 +63,8 @@ rullst-orm = { workspace = true, features = ["drivers-all"] }
 # The paused clock (`test-util`) drives the remote poller's loop in tests.
 tokio = { workspace = true, features = ["full", "test-util"] }
 rullst-core = { workspace = true, features = ["queue-sqlite"] }
-testcontainers = "0.27.3"
-testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql", "mariadb"] }
+testcontainers = { version = "0.27.3", default-features = false, features = ["aws-lc-rs"] }
+testcontainers-modules = { version = "0.15.0", default-features = false, features = ["aws-lc-rs", "postgres", "mysql", "mariadb"] }
 
 [package.metadata.cargo-machete]
 ignored = []
