@@ -30,6 +30,7 @@ cargo-rullst/src/generators/audit_report/web.rs
 cargo-rullst/src/generators/audit_scope.rs
 cargo-rullst/src/generators/audit_source.rs
 cargo-rullst/src/generators/build/upgrade.rs
+cargo-rullst/src/generators/build/upgrade/backup/restore.rs
 cargo-rullst/src/generators/build/upgrade/current.rs
 cargo-rullst/src/generators/build/upgrade/isolated.rs
 cargo-rullst/src/generators/build/upgrade/manifest.rs
