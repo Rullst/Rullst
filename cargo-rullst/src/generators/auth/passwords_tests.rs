@@ -1,13 +1,9 @@
 use super::*;
-use crate::blueprints::{lms, saas};
+use crate::blueprints::saas;
 use crate::generators::auth::views::AUTH_VIEWS_TEMPLATE;
 
-fn starter(name: &str, hot: bool) -> Vec<(&'static str, String)> {
-    let (orm, frontend) = ("Active Record", "Zero-Bundle HTMX");
-    match name {
-        "saas" => saas::file_manifest("demo", hot, orm, frontend),
-        _ => lms::file_manifest("demo", hot, orm, frontend),
-    }
+fn starter(hot: bool) -> Vec<(&'static str, String)> {
+    saas::file_manifest("demo", hot, "Active Record", "Zero-Bundle HTMX")
 }
 
 fn file<'a>(manifest: &'a [(&'static str, String)], path: &str) -> &'a str {
@@ -241,11 +237,7 @@ fn every_auth_view_renders_the_password_pages() {
         ("make:auth", AUTH_VIEWS_TEMPLATE.to_string()),
         (
             "saas",
-            file(&starter("saas", false), "src/pages/auth.rs").to_string(),
-        ),
-        (
-            "lms",
-            file(&starter("lms", false), "src/pages/auth.rs").to_string(),
+            file(&starter(false), "src/pages/auth.rs").to_string(),
         ),
     ];
     for (name, source) in views {
@@ -283,9 +275,10 @@ fn every_auth_view_renders_the_password_pages() {
 
 #[test]
 fn starters_ship_and_mount_the_password_flows() {
-    for blueprint in ["saas", "lms"] {
+    let blueprint = "saas";
+    {
         for hot in [false, true] {
-            let manifest = starter(blueprint, hot);
+            let manifest = starter(hot);
             assert_eq!(
                 file(&manifest, "src/controllers/password_controller.rs"),
                 render_password_controller()
@@ -294,10 +287,7 @@ fn starters_ship_and_mount_the_password_flows() {
                 file(&manifest, "src/models/password_reset.rs"),
                 render_password_reset_model()
             );
-            let migration = match blueprint {
-                "saas" => "m20260601000001_create_password_reset_tokens_table",
-                _ => "m20260827000001_create_password_reset_tokens_table",
-            };
+            let migration = "m20260601000001_create_password_reset_tokens_table";
             assert_eq!(
                 file(&manifest, &format!("src/migrations/{migration}.rs")),
                 render_password_reset_migration(migration)
@@ -334,14 +324,7 @@ fn starters_ship_and_mount_the_password_flows() {
                     ".route(\"/password/{path}\", rullst::routing::post(controllers::password_controller::{handler})\n        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))"
                 )), "{blueprint}: {handler} must be rate limited");
             }
-            let change = match blueprint {
-                "saas" => {
-                    ".route(\"/password/change\", rullst::routing::post(controllers::password_controller::change_password_submit)\n        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit))\n        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))"
-                }
-                _ => {
-                    "    .route(\"/password/change\", rullst::routing::post(controllers::password_controller::change_password_submit)\n        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))\n    .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware));"
-                }
-            };
+            let change = ".route(\"/password/change\", rullst::routing::post(controllers::password_controller::change_password_submit)\n        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit))\n        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))";
             assert!(
                 router.contains(change),
                 "{blueprint}: password change route"

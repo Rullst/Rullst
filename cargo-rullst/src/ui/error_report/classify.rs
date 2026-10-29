@@ -15,6 +15,8 @@ const DOCTOR_DOCS: &str =
 const DEV_DOCS: &str = "https://rullst.github.io/Rullst/book/cli_reference.html#cargo-rullst-dev";
 const DATABASE_DOCS: &str =
     "https://rullst.github.io/Rullst/book/cli_reference.html#cargo-rullst-dbmigrate";
+const MOVED_STARTERS_DOCS: &str =
+    "https://rullst.github.io/Rullst/book/cli_reference.html#starters-that-moved-to-the-examples";
 
 /// Everything the mapping needs, gathered from an error chain.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -33,6 +35,8 @@ pub(crate) struct Facts {
     pub command: Option<String>,
     /// `..`-style path to an enclosing Rullst project, when there is one.
     pub project_root: Option<String>,
+    /// `cargo rullst new` was asked for a blueprint that moved to `examples/`.
+    pub moved: Option<crate::blueprints::MovedBlueprint>,
 }
 
 impl Facts {
@@ -60,6 +64,9 @@ impl Facts {
             }
             if error.downcast_ref::<super::ProjectRequired>().is_some() {
                 facts.project_required = true;
+            }
+            if let Some(moved) = error.downcast_ref::<crate::blueprints::MovedBlueprint>() {
+                facts.moved = Some(*moved);
             }
             if let Some(database) = error.downcast_ref::<sqlx::Error>() {
                 facts.database |= matches!(
@@ -271,6 +278,20 @@ fn network_failure(facts: &Facts) -> bool {
 pub(crate) fn classify(facts: &Facts) -> Friendly {
     if facts.has(ErrorKind::Interrupted) || facts.text.contains("read interrupted") {
         return Friendly::new("Cancelled", facts);
+    }
+    if let Some(moved) = facts.moved {
+        return Friendly::new(
+            format!("The `{}` starter is now an example", moved.name()),
+            facts,
+        )
+        .fix(format!(
+            "Nothing was created. Copy the complete application from {} ({}), or create a \
+             project from a current starter: `cargo rullst new <name> --blueprint blank`, \
+             `api` or `saas`. Projects already generated from it keep working.",
+            moved.directory(),
+            moved.url()
+        ))
+        .docs(MOVED_STARTERS_DOCS);
     }
     if not_in_project(facts) {
         let mut friendly = Friendly::new("Not inside a Rullst project", facts).docs(START_HERE);

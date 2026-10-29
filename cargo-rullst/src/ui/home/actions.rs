@@ -117,7 +117,7 @@ const PROJECT_ENTRIES: [HomeEntry; 13] = [
 const OUTSIDE_ENTRIES: [HomeEntry; 5] = [
     HomeEntry::new(
         "✨  Create New Project       ",
-        "(Blank/API, Blog, SaaS, LMS, Portfolio or ERP)",
+        "(Blank, API or SaaS starter)",
         HomeAction::NewProject,
     ),
     HomeEntry::new(

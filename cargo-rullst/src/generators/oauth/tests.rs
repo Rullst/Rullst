@@ -169,7 +169,7 @@ fn the_saas_starter_gets_routes_link_store_identities_and_features() {
 }
 
 #[test]
-fn hot_reload_lms_and_postgres_starters_are_recognized() {
+fn hot_reload_mysql_and_postgres_starters_are_recognized() {
     for (blueprint, hot, database, sqlx) in [
         (
             crate::blueprints::SAAS_BLUEPRINT_ID,
@@ -177,12 +177,12 @@ fn hot_reload_lms_and_postgres_starters_are_recognized() {
             "Postgres",
             "Postgres",
         ),
-        (crate::blueprints::LMS_BLUEPRINT_ID, true, "MySQL", "MySql"),
+        (crate::blueprints::SAAS_BLUEPRINT_ID, true, "MySQL", "MySql"),
         (
-            crate::blueprints::LMS_BLUEPRINT_ID,
+            crate::blueprints::SAAS_BLUEPRINT_ID,
             false,
-            "Sqlite",
-            "Sqlite",
+            "MariaDB",
+            "MySql",
         ),
     ] {
         let (_temporary, root) = starter(blueprint, hot, database);

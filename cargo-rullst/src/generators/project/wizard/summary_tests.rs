@@ -113,7 +113,7 @@ fn summary_lists_answers_files_commands_and_the_first_url() {
     assert_eq!(lines[0], "Project      my_app  in ./my_app");
     assert_eq!(
         lines[1],
-        "Blueprint    Blank · Minimal HTMX page or JSON API; Nexus CMS not included"
+        "Starter      Blank · A server-rendered web page with HTMX; add what you need"
     );
     assert_eq!(lines[2], "Application  Full-stack web app (html! + HTMX)");
     assert_eq!(lines[3], "Database     SQLite");
@@ -143,6 +143,12 @@ fn summary_reflects_api_database_free_features_and_unavailable_previews() {
     lean.add_ons = vec![PolyglotIntegration::Qdrant];
     let lines = texts(summary(&lean, None, 8080).lines());
     let text = lines.join("\n");
+    assert!(
+        text.contains(
+            "Starter      API · A headless JSON API with token-protected writes; no HTML"
+        ),
+        "{text}"
+    );
     assert!(
         text.contains("Application  JSON API (headless, no HTML)"),
         "{text}"

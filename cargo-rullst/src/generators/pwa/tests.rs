@@ -1,8 +1,5 @@
 use super::*;
-use crate::blueprints::{
-    self, BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, ERP_BLUEPRINT_ID, LMS_BLUEPRINT_ID,
-    PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
-};
+use crate::blueprints::{self, BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 use std::fs;
 
 const MANIFEST: &str = "[package]\nname = \"acme-field-notes\"\nversion = \"0.3.1\"\nedition = \"2024\"\n\n[dependencies]\nrullst = \"13\"\n";
@@ -34,11 +31,8 @@ fn every_html_starter_is_wired_once_and_a_second_run_changes_nothing() {
     for (blueprint, hot, layouts, entry) in [
         (BLANK_BLUEPRINT_ID, false, 1, "src/main.rs"),
         (BLANK_BLUEPRINT_ID, true, 1, "src/lib.rs"),
-        (BLOG_BLUEPRINT_ID, false, 2, "src/main.rs"),
-        (LMS_BLUEPRINT_ID, false, 5, "src/main.rs"),
         (SAAS_BLUEPRINT_ID, false, 3, "src/main.rs"),
-        (ERP_BLUEPRINT_ID, false, 1, "src/main.rs"),
-        (PORTFOLIO_BLUEPRINT_ID, false, 1, "src/main.rs"),
+        (SAAS_BLUEPRINT_ID, true, 3, "src/lib.rs"),
     ] {
         let temporary = tempfile::tempdir().unwrap();
         let root = starter(temporary.path(), blueprint, false, hot);
@@ -134,10 +128,10 @@ fn the_blank_starter_gets_the_core_layout_and_its_own_files() {
 #[test]
 fn an_edited_generated_file_stops_the_run_before_any_write() {
     let temporary = tempfile::tempdir().unwrap();
-    let root = starter(temporary.path(), BLOG_BLUEPRINT_ID, false, false);
+    let root = starter(temporary.path(), BLANK_BLUEPRINT_ID, false, false);
     writes::apply(&plan(&root, &PwaFlags::default()).unwrap().edits).unwrap();
     fs::write(root.join("static/pwa.js"), "// mine\n").unwrap();
-    let page = read(&root, "src/pages/blog.rs");
+    let page = read(&root, "src/main.rs");
     let error = plan(&root, &PwaFlags::default()).err().unwrap().to_string();
     assert!(
         error.starts_with(
@@ -156,7 +150,7 @@ fn an_edited_generated_file_stops_the_run_before_any_write() {
         error.starts_with("static/manifest.webmanifest already exists"),
         "{error}"
     );
-    assert_eq!(read(&root, "src/pages/blog.rs"), page);
+    assert_eq!(read(&root, "src/main.rs"), page);
 }
 
 #[test]
@@ -171,7 +165,7 @@ fn projects_without_pages_or_a_known_router_are_refused() {
     assert!(!api.join("src/pwa.rs").exists());
 
     let temporary = tempfile::tempdir().unwrap();
-    let custom = starter(temporary.path(), ERP_BLUEPRINT_ID, false, false);
+    let custom = starter(temporary.path(), SAAS_BLUEPRINT_ID, false, false);
     let main =
         read(&custom, "src/main.rs").replace(".merge_axum(rullst::health::health_router())", "");
     fs::write(custom.join("src/main.rs"), &main).unwrap();
@@ -513,7 +507,7 @@ fn android_flags() -> PwaFlags {
 #[test]
 fn android_files_can_be_added_after_the_web_files() {
     let temporary = tempfile::tempdir().unwrap();
-    let root = starter(temporary.path(), PORTFOLIO_BLUEPRINT_ID, false, false);
+    let root = starter(temporary.path(), BLANK_BLUEPRINT_ID, false, false);
     writes::apply(&plan(&root, &PwaFlags::default()).unwrap().edits).unwrap();
     let android = plan(&root, &android_flags()).unwrap();
     assert_eq!(

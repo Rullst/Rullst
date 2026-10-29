@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use super::{Commands, DatabaseChoice};
+use super::{BlueprintChoice, Commands, DatabaseChoice};
 use crate::generators::{
     auth::scaffold_auth_system,
     billing::scaffold_billing_system,
@@ -48,10 +48,11 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             surrealdb,
             qdrant,
         } => {
+            let starter = blueprint.map(BlueprintChoice::starter).transpose()?;
             create_new_project_with_cli_options(
                 name.as_deref(),
                 ProjectScaffoldOptions {
-                    api: *api,
+                    api: *api || blueprint.is_some_and(BlueprintChoice::is_api),
                     docker: *docker,
                     use_defaults: *default,
                     turso: *turso,
@@ -65,7 +66,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                     wants_ai: *ai,
                     wants_redis: *redis,
                 },
-                blueprint.as_ref().map(|choice| choice.id()),
+                starter,
                 *skip_initial_migration,
             )?;
         }

@@ -7,7 +7,7 @@ use clap::{Arg, ArgAction, Command};
 use super::create;
 use super::vcs::Vcs;
 use super::wizard::NewProjectRequest;
-use crate::cli::{Commands, DatabaseChoice};
+use crate::cli::{BlueprintChoice, Commands, DatabaseChoice};
 
 /// The wizard skips every question a profile flag answers, so those flags
 /// no longer require `--default`; `--dry-run` previews without writing.
@@ -15,7 +15,7 @@ pub(crate) fn new_command(command: Command) -> Command {
     command
         .mut_arg("blueprint", |arg| {
             arg.requires(Resettable::Reset)
-                .help("Selects the starter blueprint; the wizard skips that question")
+                .help("Selects the starter (blank, api or saas); the wizard skips that question")
         })
         .mut_arg("database", |arg| {
             arg.requires(Resettable::Reset).help(
@@ -104,10 +104,12 @@ pub(crate) fn run_new_command(
     else {
         return Err("--dry-run and --vcs apply only to `cargo rullst new`".into());
     };
+    // A removed blueprint fails here, before the wizard or any file write.
+    let starter = blueprint.map(BlueprintChoice::starter).transpose()?;
     let request = NewProjectRequest {
         name: name.as_deref(),
         options: super::ProjectScaffoldOptions {
-            api: *api,
+            api: *api || blueprint.is_some_and(BlueprintChoice::is_api),
             docker: *docker,
             use_defaults: *default,
             turso: *turso,
@@ -121,7 +123,7 @@ pub(crate) fn run_new_command(
             wants_ai: *ai,
             wants_redis: *redis,
         },
-        blueprint: blueprint.map(|choice| choice.id()),
+        blueprint: starter,
         skip_initial_migration: *skip_initial_migration,
         dry_run,
     };

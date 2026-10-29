@@ -1,5 +1,5 @@
 use super::*;
-use crate::blueprints::{BLOG_BLUEPRINT_ID, LMS_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+use crate::blueprints::SAAS_BLUEPRINT_ID;
 
 fn isolated_root() -> std::path::PathBuf {
     std::env::temp_dir().join(format!("rullst-manifest-{}", rand::random::<u64>()))
@@ -38,39 +38,25 @@ fn stable_blueprint_ids_enable_only_their_required_domain_features() {
         &isolated_root(),
     )
     .expect("SaaS manifest");
-    let blog = build_cargo_toml(
-        "blog",
+    let blank = build_cargo_toml(
+        "blank",
         false,
         true,
         "Sqlite",
         &[],
         false,
         false,
-        BLOG_BLUEPRINT_ID,
+        BLANK_BLUEPRINT_ID,
         "Zero-Bundle HTMX",
         &isolated_root(),
     )
-    .expect("Blog manifest");
-    let lms = build_cargo_toml(
-        "lms",
-        false,
-        true,
-        "Sqlite",
-        &[],
-        false,
-        false,
-        LMS_BLUEPRINT_ID,
-        "Zero-Bundle HTMX",
-        &isolated_root(),
-    )
-    .expect("LMS manifest");
-    assert!(saas.contains("\"auth\", \"mail\""));
-    assert!(saas.contains("\"capital\""));
-    assert!(lms.contains("\"auth\", \"mail\""));
-    assert!(!lms.contains("\"capital\""));
-    assert!(!blog.contains("\"auth\""));
-    assert!(!blog.contains("\"mail\""));
-    assert!(!blog.contains("\"capital\""));
+    .expect("Blank manifest");
+    assert!(saas.contains("\"nexus\", \"auth\", \"mail\", \"capital\""));
+    assert!(saas.contains("rullst-auth = "));
+    for feature in ["\"nexus\"", "\"auth\"", "\"mail\"", "\"capital\""] {
+        assert!(!blank.contains(feature), "{feature}");
+    }
+    assert!(!blank.contains("rullst-auth = "));
 }
 
 #[test]

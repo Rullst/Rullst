@@ -43,38 +43,9 @@ fn every_starter_sqlx_model_declares_a_row_snapshot() {
             vec!["User"],
         ),
         (
-            "blog",
-            blog::file_manifest("demo", false, orm, frontend),
-            vec!["Post"],
-        ),
-        (
-            "erp",
-            erp::file_manifest("demo", false, orm, frontend),
-            vec!["Order", "Product"],
-        ),
-        (
-            "portfolio",
-            portfolio::file_manifest("demo", false, orm, frontend),
-            vec!["Experience", "Profile", "Project", "Skill"],
-        ),
-        (
             "saas",
             saas::file_manifest("demo", false, orm, frontend),
             vec!["BillingCustomer", "Subscription", "User"],
-        ),
-        (
-            "lms",
-            lms::file_manifest("demo", false, orm, frontend),
-            vec![
-                "Category",
-                "Course",
-                "CourseModule",
-                "Enrollment",
-                "Lesson",
-                "LessonProgress",
-                "LessonProgressEvent",
-                "User",
-            ],
         ),
     ];
     for (starter, manifest, expected) in starters {

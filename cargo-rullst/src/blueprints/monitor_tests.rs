@@ -33,7 +33,6 @@ fn web_starters_carry_the_monitor_wiring_commented_out() {
                 blank::file_manifest("demo", "demo", true, hot, true, orm, frontend),
             ),
             ("saas", saas::file_manifest("demo", hot, orm, frontend)),
-            ("lms", lms::file_manifest("demo", hot, orm, frontend)),
         ] {
             let main = main_source(manifest);
             assert!(
@@ -49,17 +48,5 @@ fn web_starters_carry_the_monitor_wiring_commented_out() {
             checked += 1;
         }
     }
-    assert_eq!(checked, 10);
-}
-
-#[test]
-fn other_starters_do_not_mention_the_monitor() {
-    let (orm, frontend) = ("Active Record", "Zero-Bundle HTMX");
-    for manifest in [
-        blog::file_manifest("demo", false, orm, frontend),
-        erp::file_manifest("demo", false, orm, frontend),
-        portfolio::file_manifest("demo", false, orm, frontend),
-    ] {
-        assert!(!main_source(manifest).contains("with_monitor"));
-    }
+    assert_eq!(checked, 8);
 }

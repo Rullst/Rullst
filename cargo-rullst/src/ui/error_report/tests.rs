@@ -209,6 +209,35 @@ fn interrupted_prompts_render_as_cancelled() {
 }
 
 #[test]
+fn a_moved_starter_names_its_example_and_the_current_starters() {
+    let error = boxed(crate::blueprints::MovedBlueprint::ERP);
+    let facts = Facts::from_error(error.as_ref(), Some("new".into()), None);
+    assert_eq!(facts.moved, Some(crate::blueprints::MovedBlueprint::ERP));
+    let friendly = classify(&facts);
+    assert_eq!(friendly.title, "The `erp` starter is now an example");
+    assert_eq!(
+        friendly.fix.as_deref(),
+        Some(
+            "Nothing was created. Copy the complete application from examples/erp \
+             (https://github.com/Rullst/Rullst/tree/main/examples/erp), or create a project \
+             from a current starter: `cargo rullst new <name> --blueprint blank`, `api` or \
+             `saas`. Projects already generated from it keep working."
+        )
+    );
+    assert_eq!(
+        friendly.docs,
+        Some(
+            "https://rullst.github.io/Rullst/book/cli_reference.html#starters-that-moved-to-the-examples"
+        )
+    );
+    let text = render(&friendly, &[], None, false, Style::PLAIN);
+    assert!(
+        text.starts_with("error: The `erp` starter is now an example\n"),
+        "{text}"
+    );
+}
+
+#[test]
 fn facts_follow_the_error_chain_and_typed_errors() {
     let project = boxed(ProjectRequired);
     assert!(Facts::from_error(project.as_ref(), None, None).project_required);

@@ -1,5 +1,5 @@
 // cargo-rullst/src/generators/auth/passwords.rs — Password change and reset
-// flows shared by `cargo rullst auth` and the SaaS and LMS starters.
+// flows shared by `cargo rullst auth` and the SaaS starter.
 
 use crate::generators::migration::regenerate_migrations_mod;
 use crate::generators::{output_guard::write_new, register_mod_ast};

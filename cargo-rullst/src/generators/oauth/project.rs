@@ -34,7 +34,7 @@ impl Database {
     }
 }
 
-const ACCOUNT_MODEL: &str = "make:oauth needs the account model of `cargo rullst auth` or of the SaaS/LMS starter (src/models/user.rs with `session_epoch`, `current_session_epoch` and `find_by_email`), and its auth_controller; this project has none";
+const ACCOUNT_MODEL: &str = "make:oauth needs the account model of `cargo rullst auth` or of the SaaS starter (src/models/user.rs with `session_epoch`, `current_session_epoch` and `find_by_email`), and its auth_controller; this project has none";
 
 /// Checks the account model, the auth helpers, the login page, the migration
 /// runner and the database; returns the database.

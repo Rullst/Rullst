@@ -1,4 +1,5 @@
 use super::*;
+use crate::blueprints::BLANK_BLUEPRINT_ID;
 
 #[test]
 fn generated_environment_uses_the_canonical_rullst_name() {
@@ -122,7 +123,6 @@ fn turso_primary_has_no_fictitious_sqlx_database_url() {
 fn account_starters_list_the_origin_of_password_reset_links() {
     for (blueprint, listed) in [
         (crate::blueprints::SAAS_BLUEPRINT_ID, true),
-        (crate::blueprints::LMS_BLUEPRINT_ID, true),
         (BLANK_BLUEPRINT_ID, false),
     ] {
         let root = tempfile::tempdir().expect("temporary project");
@@ -209,20 +209,12 @@ fn cargo_config_selects_the_linker_for_x86_64_and_aarch64_linux() {
     }
 }
 
-/// Blank, SaaS and LMS mount the monitor only after its commented wiring in
+/// Blank and SaaS mount the monitor only after its commented wiring in
 /// `src/main.rs` is enabled; their environment files name the token setting,
 /// commented out, so nothing is configured by default.
 #[test]
 fn web_starters_list_the_monitor_token_commented_out() {
-    use crate::blueprints::{ERP_BLUEPRINT_ID, PORTFOLIO_BLUEPRINT_ID};
-    for (blueprint, listed) in [
-        (BLANK_BLUEPRINT_ID, true),
-        (SAAS_BLUEPRINT_ID, true),
-        (LMS_BLUEPRINT_ID, true),
-        (BLOG_BLUEPRINT_ID, false),
-        (PORTFOLIO_BLUEPRINT_ID, false),
-        (ERP_BLUEPRINT_ID, false),
-    ] {
+    for (blueprint, listed) in [(BLANK_BLUEPRINT_ID, true), (SAAS_BLUEPRINT_ID, true)] {
         let root = tempfile::tempdir().expect("temporary project");
         generate_env_and_configs(
             root.path(),

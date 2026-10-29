@@ -8,10 +8,7 @@ pub(crate) mod preview;
 pub(crate) mod summary;
 mod terminal;
 
-use crate::blueprints::{
-    BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, ERP_BLUEPRINT_ID, LMS_BLUEPRINT_ID,
-    PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
-};
+use crate::blueprints::{BLANK_BLUEPRINT_ID, MovedBlueprint, SAAS_BLUEPRINT_ID};
 use crate::generators::project::ProjectScaffoldOptions;
 use crate::ui::screen::{Line, Terminal, Tone};
 use plan::{Database, ProjectPlan};
@@ -132,20 +129,13 @@ fn validate_request(request: &NewProjectRequest<'_>) -> WizardResult<()> {
     }) {
         return Err(invalid_input("unknown relational database provider"));
     }
-    if request.blueprint.is_some_and(|id| {
-        !matches!(
-            id,
-            BLANK_BLUEPRINT_ID
-                | LMS_BLUEPRINT_ID
-                | SAAS_BLUEPRINT_ID
-                | BLOG_BLUEPRINT_ID
-                | PORTFOLIO_BLUEPRINT_ID
-                | ERP_BLUEPRINT_ID
-        )
-    }) {
-        return Err(invalid_input("unknown public blueprint ID"));
+    match request.blueprint {
+        None | Some(BLANK_BLUEPRINT_ID | SAAS_BLUEPRINT_ID) => Ok(()),
+        Some(id) => Err(MovedBlueprint::from_id(id).map_or_else(
+            || invalid_input("unknown public blueprint ID"),
+            |moved| moved.into(),
+        )),
     }
-    Ok(())
 }
 
 fn check_blank_only_flags(
@@ -191,12 +181,9 @@ fn locked_questions(request: &NewProjectRequest<'_>) -> flow::Locked {
     let options = &request.options;
     flow::Locked {
         name: request.name.is_some(),
-        // These flags exist only for the Blank starter, so they choose it.
-        blueprint: request.blueprint.is_some()
-            || options.api
-            || options.no_database
-            || options.database == Some("Turso"),
-        application: options.api,
+        starter: request.blueprint.is_some() || options.api,
+        // These flags exist only for the Blank blueprint (web page or API).
+        blank_only: options.no_database || options.database == Some("Turso"),
         database: options.database.is_some() || options.no_database,
         ai: options.wants_ai,
         redis: options.wants_redis,

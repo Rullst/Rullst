@@ -27,13 +27,13 @@ pub(crate) const STEPS: [Step; 7] = [
         command: "new",
         title: "Create a project",
         explanation: &[
-            "Pick a blueprint, a database and optional features, then review the",
-            "file tree and the commands it will run before anything is written.",
+            "Pick a starter (Blank, API or SaaS), a database and optional features, then",
+            "review the file tree and the commands it will run before anything is written.",
             "Every answer has a flag; with --default it never prompts (CI, scripts).",
         ],
         try_commands: &[
             "cargo rullst new my_app",
-            "cargo rullst new my_app --default --blueprint blog --database sqlite",
+            "cargo rullst new my_app --default --blueprint saas --database sqlite",
         ],
         example: Example {
             arguments: &["new", "tour-demo", "--default", "--dry-run"],

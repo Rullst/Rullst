@@ -56,7 +56,7 @@ fn previewed_count(output: &str) -> usize {
 #[test]
 fn dry_runs_preview_exactly_the_files_a_real_run_writes_and_write_nothing() {
     let temporary = tempfile::tempdir().unwrap();
-    let profiles: [&[&str]; 8] = [
+    let profiles: [&[&str]; 6] = [
         &["--blueprint", "blank"],
         &["--blueprint", "blank", "--api", "--no-database"],
         &[
@@ -67,10 +67,15 @@ fn dry_runs_preview_exactly_the_files_a_real_run_writes_and_write_nothing() {
             "--ai",
             "--redis",
         ],
-        &["--blueprint", "lms"],
-        &["--blueprint", "blog"],
-        &["--blueprint", "portfolio", "--database", "mysql"],
-        &["--blueprint", "erp", "--mongodb", "--qdrant"],
+        &["--blueprint", "api"],
+        &[
+            "--blueprint",
+            "saas",
+            "--database",
+            "mysql",
+            "--mongodb",
+            "--qdrant",
+        ],
         &["--docker", "--database", "turso"],
     ];
     for (index, profile) in profiles.iter().enumerate() {
@@ -119,12 +124,46 @@ fn dry_runs_preview_exactly_the_files_a_real_run_writes_and_write_nothing() {
 }
 
 #[test]
+fn moved_blueprints_point_to_their_examples_and_write_nothing() {
+    let temporary = tempfile::tempdir().unwrap();
+    for name in ["lms", "blog", "portfolio", "erp"] {
+        for extra in [&["--default"][..], &["--dry-run"], &[]] {
+            let mut arguments = vec!["new", "app", "--blueprint", name];
+            arguments.extend_from_slice(extra);
+            let output = cli(temporary.path(), &arguments);
+            let message = text(&output);
+            assert_eq!(output.status.code(), Some(1), "{arguments:?}: {message}");
+            assert!(
+                message.contains(&format!("The `{name}` starter is now an example")),
+                "{message}"
+            );
+            assert!(
+                message.contains(&format!(
+                    "https://github.com/Rullst/Rullst/tree/main/examples/{name}"
+                )),
+                "{message}"
+            );
+            assert!(message.contains(&format!("examples/{name}")), "{message}");
+            assert!(
+                !message.contains("interactive terminal"),
+                "refused before any question: {message}"
+            );
+            assert_eq!(
+                fs::read_dir(temporary.path()).unwrap().count(),
+                0,
+                "{arguments:?} wrote something"
+            );
+        }
+    }
+}
+
+#[test]
 fn without_a_terminal_new_never_prompts_and_creates_nothing() {
     let temporary = tempfile::tempdir().unwrap();
     for arguments in [
         &["new", "app"][..],
         &["new"],
-        &["new", "app", "--blueprint", "blog", "--database", "sqlite"],
+        &["new", "app", "--blueprint", "saas", "--database", "sqlite"],
         &["new", "app", "--dry-run"],
     ] {
         let output = cli(temporary.path(), arguments);

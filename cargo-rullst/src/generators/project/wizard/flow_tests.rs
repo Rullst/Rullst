@@ -1,6 +1,6 @@
 use super::super::{NewProjectRequest, initial_plan, interactive_setup, requested_integrations};
 use super::*;
-use crate::blueprints::{LMS_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+use crate::blueprints::SAAS_BLUEPRINT_ID;
 use crate::generators::project::ProjectScaffoldOptions;
 use std::collections::VecDeque;
 use std::io;
@@ -56,9 +56,9 @@ fn setup(request: NewProjectRequest<'_>) -> Setup {
     interactive_setup(&request, plan, true, 3000)
 }
 
-/// A preview that names the blueprint, so tests can see which plan it got.
+/// A preview that names the starter, so tests can see which plan it got.
 fn fake_preview(plan: &ProjectPlan) -> Option<Vec<String>> {
-    let flag = super::super::catalog::blueprint(plan.blueprint)?.flag;
+    let flag = super::super::catalog::starter(plan.blueprint, plan.api)?.flag;
     Some(vec![
         "Cargo.toml".to_string(),
         format!("src/{flag}.rs"),
@@ -87,8 +87,7 @@ fn interactive_blank_wizard_validates_names_and_composes_the_full_profile() {
     let mut ui = FakeUi::scripted(
         &["", "space name", "1number", "bad!", "crate", "learning_hub"],
         vec![
-            Answer::One(0),                    // Blank
-            Answer::One(1),                    // JSON API
+            Answer::One(1),                    // API
             Answer::One(4),                    // Turso primary
             Answer::Many(vec![0, 3, 4, 5, 6]), // AI + every add-on offered
             Answer::One(0),                    // Create
@@ -122,7 +121,7 @@ fn interactive_blank_wizard_validates_names_and_composes_the_full_profile() {
         ]
     );
 
-    let features = &ui.screens[3];
+    let features = &ui.screens[2];
     let labels: Vec<&str> = features
         .choices
         .iter()
@@ -141,17 +140,16 @@ fn interactive_blank_wizard_validates_names_and_composes_the_full_profile() {
     assert_eq!(
         ui.crumbs(),
         [
-            "Step 2 of 6 · Blueprint",
-            "Step 3 of 6 · Application",
-            "Step 4 of 6 · Database",
-            "Step 5 of 6 · Features",
-            "Step 6 of 6 · Review",
+            "Step 2 of 5 · Starter",
+            "Step 3 of 5 · Database",
+            "Step 4 of 5 · Features",
+            "Step 5 of 5 · Review",
         ]
     );
 }
 
 #[test]
-fn blueprint_choices_describe_themselves_and_preview_their_own_tree() {
+fn starter_choices_describe_themselves_and_preview_their_own_tree() {
     let mut ui = FakeUi::scripted(
         &[],
         vec![
@@ -171,7 +169,12 @@ fn blueprint_choices_describe_themselves_and_preview_their_own_tree() {
     assert_eq!(plan.blueprint, SAAS_BLUEPRINT_ID);
 
     let blueprints = &ui.screens[0];
-    assert_eq!(blueprints.choices.len(), 6);
+    let labels: Vec<&str> = blueprints
+        .choices
+        .iter()
+        .map(|choice| choice.label.as_str())
+        .collect();
+    assert_eq!(labels, ["Blank", "API", "SaaS"]);
     for choice in &blueprints.choices {
         assert!(
             !choice.hint.is_empty(),
@@ -190,11 +193,19 @@ fn blueprint_choices_describe_themselves_and_preview_their_own_tree() {
             .iter()
             .any(|line| line.contains("blank.rs"))
     );
+    assert!(
+        texts(&blueprints.choices[1].detail)
+            .iter()
+            .any(|line| line.contains("api.rs"))
+    );
 
     let review = ui.screens.last().expect("review");
     assert_eq!(review.choices[0].label, "Create the project");
     let body = texts(&review.body).join("\n");
-    assert!(body.contains("Blueprint    SaaS Starter"), "{body}");
+    assert!(
+        body.contains("Starter      SaaS · Authentication, Stripe billing and a pricing page"),
+        "{body}"
+    );
     assert!(body.contains("cargo run -q -- db:migrate"), "{body}");
     assert!(body.contains("cd shop && cargo rullst dev"), "{body}");
     assert!(
@@ -205,7 +216,7 @@ fn blueprint_choices_describe_themselves_and_preview_their_own_tree() {
 }
 
 #[test]
-fn an_explicit_api_flag_skips_the_blueprint_and_build_type_questions() {
+fn an_explicit_api_flag_skips_the_starter_question() {
     let mut ui = FakeUi::scripted(
         &[],
         vec![Answer::One(0), Answer::Many(vec![]), Answer::One(0)],
@@ -286,10 +297,9 @@ fn back_returns_to_the_previous_question_with_the_earlier_answer_selected() {
     let mut ui = FakeUi::scripted(
         &[],
         vec![
-            Answer::One(1),        // LMS
-            Answer::Back,          // from Database back to Blueprint
+            Answer::One(2),        // SaaS
+            Answer::Back,          // from Database back to Starter
             Answer::One(0),        // Blank
-            Answer::One(0),        // Full-stack
             Answer::One(5),        // No database
             Answer::Many(vec![1]), // Redis
             Answer::One(1),        // review: Back to Features
@@ -305,24 +315,26 @@ fn back_returns_to_the_previous_question_with_the_earlier_answer_selected() {
         &mut ui,
     ));
     let crumbs = ui.crumbs();
-    assert_eq!(crumbs[0], "Step 1 of 5 · Blueprint");
-    assert_eq!(
-        crumbs[1], "Step 2 of 4 · Database",
-        "LMS has no build-type question"
-    );
+    assert_eq!(crumbs[0], "Step 1 of 4 · Starter");
+    assert_eq!(crumbs[1], "Step 2 of 4 · Database");
     assert_eq!(
         ui.screens[2].selection,
-        Selection::One { initial: 1 },
-        "LMS stays selected"
+        Selection::One { initial: 2 },
+        "SaaS stays selected"
     );
     assert_eq!(
         ui.screens[1].choices.len(),
         4,
-        "LMS offers only SQLx databases"
+        "SaaS offers only SQLx databases"
     );
-    assert_eq!(crumbs[7], "Step 4 of 5 · Features");
     assert_eq!(
-        ui.screens[7].selection,
+        ui.screens[3].choices.len(),
+        6,
+        "Blank also offers Turso and none"
+    );
+    assert_eq!(crumbs[6], "Step 3 of 4 · Features");
+    assert_eq!(
+        ui.screens[6].selection,
         Selection::Many {
             checked: vec![false, true, false, false, false, false, false, false]
         }
@@ -337,15 +349,13 @@ fn switching_to_a_product_blueprint_restores_a_supported_database() {
     let mut ui = FakeUi::scripted(
         &[],
         vec![
-            Answer::One(0),       // Blank
-            Answer::One(1),       // JSON API
+            Answer::One(1),       // API
             Answer::One(5),       // No database
             Answer::Many(vec![]), // no features
             Answer::Back,         // review → Features
             Answer::Back,         // → Database
-            Answer::Back,         // → Application
-            Answer::Back,         // → Blueprint
-            Answer::One(1),       // LMS
+            Answer::Back,         // → Starter
+            Answer::One(2),       // SaaS
             Answer::One(3),       // MariaDB
             Answer::Many(vec![]),
             Answer::One(0),
@@ -358,10 +368,10 @@ fn switching_to_a_product_blueprint_restores_a_supported_database() {
         },
         &mut ui,
     ));
-    assert_eq!(plan.blueprint, LMS_BLUEPRINT_ID);
-    assert!(!plan.api, "the Blank-only API answer does not survive");
+    assert_eq!(plan.blueprint, SAAS_BLUEPRINT_ID);
+    assert!(!plan.api, "the API starter's answer does not survive");
     assert_eq!(plan.database, Database::Provider("MariaDB"));
-    let database = &ui.screens[9];
+    let database = &ui.screens[7];
     assert_eq!(
         database.selection,
         Selection::One { initial: 0 },
@@ -374,7 +384,6 @@ fn cancel_and_invalid_answers_never_create_anything() {
     let mut ui = FakeUi::scripted(
         &[],
         vec![
-            Answer::One(0),
             Answer::One(0),
             Answer::One(0),
             Answer::Many(vec![]),
@@ -424,7 +433,6 @@ fn out_of_range_feature_indices_are_ignored() {
     let mut ui = FakeUi::scripted(
         &[],
         vec![
-            Answer::One(0),
             Answer::One(0),
             Answer::Many(vec![usize::MAX]),
             Answer::One(0),
@@ -480,19 +488,58 @@ fn the_library_wizard_does_not_offer_packaging_it_cannot_apply() {
     };
     let requested = requested_integrations(&request.options);
     let plan = initial_plan(&request, &requested);
-    let mut ui = FakeUi::scripted(
-        &[],
-        vec![Answer::One(0), Answer::Many(vec![]), Answer::One(0)],
-    );
+    let mut ui = FakeUi::scripted(&[], vec![Answer::Many(vec![]), Answer::One(0)]);
     created(run(
         interactive_setup(&request, plan, false, 3000),
         &mut ui,
         fake_preview,
     ));
-    let offered: Vec<&str> = ui.screens[1]
+    let offered: Vec<&str> = ui.screens[0]
         .choices
         .iter()
         .map(|choice| choice.label.as_str())
         .collect();
     assert!(!offered.contains(&"Dockerfile"));
+}
+
+#[test]
+fn blank_only_flags_limit_the_starters_to_blank_and_api() {
+    for options in [
+        ProjectScaffoldOptions {
+            no_database: true,
+            ..ProjectScaffoldOptions::default()
+        },
+        ProjectScaffoldOptions {
+            database: Some("Turso"),
+            ..ProjectScaffoldOptions::default()
+        },
+    ] {
+        let mut ui = FakeUi::scripted(
+            &[],
+            vec![Answer::One(1), Answer::Many(vec![]), Answer::One(0)],
+        );
+        let plan = created(run_with(
+            NewProjectRequest {
+                name: Some("lean"),
+                options,
+                ..NewProjectRequest::default()
+            },
+            &mut ui,
+        ));
+        let labels: Vec<&str> = ui.screens[0]
+            .choices
+            .iter()
+            .map(|choice| choice.label.as_str())
+            .collect();
+        assert_eq!(labels, ["Blank", "API"]);
+        assert_eq!(ui.screens[0].crumb, "Step 1 of 3 · Starter");
+        assert!(plan.api);
+        assert_eq!(plan.blueprint, BLANK_BLUEPRINT_ID);
+        let expected = if options.no_database {
+            Database::None
+        } else {
+            Database::Provider("Turso")
+        };
+        assert_eq!(plan.database, expected);
+    }
 }

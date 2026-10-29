@@ -1,8 +1,6 @@
 // cargo-rullst/src/generators/project/env_config.rs — Environment, gitignore and linker configuration.
 
-use crate::blueprints::{
-    BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, LMS_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
-};
+use crate::blueprints::SAAS_BLUEPRINT_ID;
 use crate::generators::project::PolyglotIntegration;
 use crate::generators::project::has_binary;
 use rand::distr::{Alphanumeric, SampleString};
@@ -194,8 +192,8 @@ MAIL_FROM=
     env_content.push_str(mail_template);
     env_example_content.push_str(mail_template);
 
-    if blueprint_selection == SAAS_BLUEPRINT_ID || blueprint_selection == LMS_BLUEPRINT_ID {
-        // These starters admit their own administrators to Nexus.
+    if blueprint_selection == SAAS_BLUEPRINT_ID {
+        // The SaaS starter admits its own administrators to Nexus.
         let nexus_template = r#"
 # ── Nexus Admin ──
 # Release builds open /nexus to signed-in users whose `is_admin` is true; no
@@ -204,30 +202,7 @@ MAIL_FROM=
 "#;
         env_content.push_str(nexus_template);
         env_example_content.push_str(nexus_template);
-    } else if blueprint_selection != BLANK_BLUEPRINT_ID {
-        let mut rng = rand::rng();
-        let nexus_username = format!("nexus_{}", Alphanumeric.sample_string(&mut rng, 12));
-        let nexus_password = Alphanumeric.sample_string(&mut rng, 32);
-        env_content.push_str(&format!(
-            "\n# ── Nexus Admin (generated uniquely; rotate before deployment) ──\nNEXUS_ADMIN_USERNAME={nexus_username}\nNEXUS_ADMIN_PASSWORD={nexus_password}\n"
-        ));
-        env_example_content.push_str(
-            "\n# ── Nexus Admin (required; use unique values, password >= 16 chars) ──\nNEXUS_ADMIN_USERNAME=\nNEXUS_ADMIN_PASSWORD=\n",
-        );
-    }
 
-    if blueprint_selection == BLOG_BLUEPRINT_ID {
-        let origin_template = r#"
-# ── Public origin ──
-# Canonical HTTPS origin (no path) for the absolute URLs in robots.txt and
-# sitemap.xml, e.g. https://blog.example.com. Unset, neither lists a URL.
-RULLST_PUBLIC_ORIGIN=
-"#;
-        env_content.push_str(origin_template);
-        env_example_content.push_str(origin_template);
-    }
-
-    if matches!(blueprint_selection, LMS_BLUEPRINT_ID | SAAS_BLUEPRINT_ID) {
         // Reset links must never be built from the request's Host header.
         let origin_template = r#"
 # ── Public origin ──
@@ -265,14 +240,9 @@ BILLING_REPORT_PLAN_IDS=
         env_example_content.push_str(billing_template);
     }
 
-    if matches!(
-        blueprint_selection,
-        BLANK_BLUEPRINT_ID | SAAS_BLUEPRINT_ID | LMS_BLUEPRINT_ID
-    ) {
-        // Their `src/main.rs` carries the monitor wiring, commented out.
-        env_content.push_str(MONITOR_TEMPLATE);
-        env_example_content.push_str(MONITOR_TEMPLATE);
-    }
+    // Every starter's `src/main.rs` carries the monitor wiring, commented out.
+    env_content.push_str(MONITOR_TEMPLATE);
+    env_example_content.push_str(MONITOR_TEMPLATE);
 
     fs::write(path.join(".env"), &env_content)?;
     fs::write(path.join(".env.example"), &env_example_content)?;
@@ -285,7 +255,7 @@ BILLING_REPORT_PLAN_IDS=
 }
 
 /// The production monitor's token setting, commented out like the
-/// `with_monitor` wiring of the Blank, SaaS and LMS starters.
+/// `with_monitor` wiring of the Blank and SaaS starters.
 const MONITOR_TEMPLATE: &str = r#"
 # ── Production monitor (off) ──
 # Bearer tokens for GET /_rullst/monitor/v1, read only after you uncomment

@@ -1,18 +1,17 @@
-//! Compile representative generated projects across every public blueprint.
+//! Compile representative generated projects across every public starter.
 //!
-//! The structural suite covers all 18 public v12 project shapes. This slower suite selects
-//! the smallest set that crosses every public blueprint plus the API, database,
-//! hot-reload and release-build boundaries. Rullst v12 fixes generated projects
-//! to Active Record plus `html!` SSR/HTMX. Every
-//! materialized case runs its generated tests, so template-only runtime and
-//! authorization regressions cannot hide behind a successful `cargo check`.
+//! The structural suite covers all 10 public project shapes (Blank, API and
+//! SaaS). This slower suite selects the smallest set that crosses every starter
+//! plus the API, database, hot-reload and release-build boundaries. Generated
+//! projects use Active Record plus `html!` SSR/HTMX. Every materialized case
+//! runs its generated tests, so template-only runtime and authorization
+//! regressions cannot hide behind a successful `cargo check`. The former LMS,
+//! Blog, Portfolio and ERP starters are workspace examples (`examples/`) whose
+//! tests run in the workspace suite.
 
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
 
-use cargo_rullst::blueprints::{
-    self, BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, ERP_BLUEPRINT_ID, LMS_BLUEPRINT_ID,
-    PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
-};
+use cargo_rullst::blueprints::{self, BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 use cargo_rullst::generators::project::cargo_toml::build_cargo_toml;
 use std::{fs, path::Path, path::PathBuf, process::Command};
 
@@ -35,7 +34,7 @@ struct GeneratedCase {
     release: bool,
 }
 
-const GENERATED_CASES: [GeneratedCase; 8] = [
+const GENERATED_CASES: [GeneratedCase; 4] = [
     GeneratedCase {
         name: "blank-minimal",
         group: GeneratedGroup::Foundation,
@@ -59,17 +58,6 @@ const GENERATED_CASES: [GeneratedCase; 8] = [
         release: false,
     },
     GeneratedCase {
-        name: "lms-active-htmx-hot",
-        group: GeneratedGroup::Foundation,
-        blueprint: LMS_BLUEPRINT_ID,
-        api: false,
-        hot_reload: true,
-        db_needed: true,
-        orm_pattern: "Active Record",
-        frontend: "Zero-Bundle HTMX",
-        release: false,
-    },
-    GeneratedCase {
         name: "saas-active-htmx-hot",
         group: GeneratedGroup::Foundation,
         blueprint: SAAS_BLUEPRINT_ID,
@@ -81,48 +69,15 @@ const GENERATED_CASES: [GeneratedCase; 8] = [
         release: false,
     },
     GeneratedCase {
-        name: "blog-active-htmx-hot",
+        name: "saas-active-htmx-release",
         group: GeneratedGroup::Product,
-        blueprint: BLOG_BLUEPRINT_ID,
-        api: false,
-        hot_reload: true,
-        db_needed: true,
-        orm_pattern: "Active Record",
-        frontend: "Zero-Bundle HTMX",
-        release: false,
-    },
-    GeneratedCase {
-        name: "portfolio-active-htmx-hot",
-        group: GeneratedGroup::Product,
-        blueprint: PORTFOLIO_BLUEPRINT_ID,
-        api: false,
-        hot_reload: true,
-        db_needed: true,
-        orm_pattern: "Active Record",
-        frontend: "Zero-Bundle HTMX",
-        release: false,
-    },
-    GeneratedCase {
-        name: "erp-active-htmx-release",
-        group: GeneratedGroup::Product,
-        blueprint: ERP_BLUEPRINT_ID,
+        blueprint: SAAS_BLUEPRINT_ID,
         api: false,
         hot_reload: false,
         db_needed: true,
         orm_pattern: "Active Record",
         frontend: "Zero-Bundle HTMX",
         release: true,
-    },
-    GeneratedCase {
-        name: "erp-active-htmx-hot",
-        group: GeneratedGroup::Product,
-        blueprint: ERP_BLUEPRINT_ID,
-        api: false,
-        hot_reload: true,
-        db_needed: true,
-        orm_pattern: "Active Record",
-        frontend: "Zero-Bundle HTMX",
-        release: false,
     },
 ];
 
@@ -190,19 +145,6 @@ fn materialize(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
 
     if case.blueprint == SAAS_BLUEPRINT_ID {
         add_saas_generator_smoke(project_dir);
-    }
-    if case.blueprint == PORTFOLIO_BLUEPRINT_ID {
-        let path = project_dir.join("src/pages/home.rs");
-        let source = fs::read_to_string(&path).expect("generated portfolio view");
-        fs::write(
-            &path,
-            format!(
-                "{source}\n#[cfg(test)] mod mobile_contract {{\nuse super::*;\n{}\n{}\n}}\n",
-                include_str!("fixtures/mobile_browser.rs"),
-                include_str!("fixtures/portfolio_mobile.rs"),
-            ),
-        )
-        .expect("append real generated-view browser contract");
     }
 }
 
@@ -346,15 +288,6 @@ fn cargo_verify(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
             String::from_utf8_lossy(&output.stderr)
         );
     }
-    if case.blueprint == PORTFOLIO_BLUEPRINT_ID
-        && std::env::var("RULLST_UI_BROWSER_TESTS").as_deref() == Ok("1")
-    {
-        assert!(
-            String::from_utf8_lossy(&output.stdout)
-                .contains("PASS: portfolio real-browser mobile contract"),
-            "the generated Portfolio must execute Chromium when requested"
-        );
-    }
 }
 
 #[test]
@@ -365,24 +298,6 @@ fn every_blueprint_and_distinct_generated_boundary_passes_cargo_verification() {
             .into_iter()
             .filter(|case| selected_group.is_none_or(|group| case.group == group)),
     );
-}
-
-#[test]
-// TM-ACADEMY-02: the materialized LMS starter executes its owner-boundary denial test.
-fn materialized_lms_executes_security_contracts() {
-    // This security evidence must not depend on RULLST_CI_GENERATED_GROUP:
-    // a product-only environment must never hide the LMS starter assertions. The full
-    // eight-case matrix above remains the normal generated-project gate.
-    let cases: Vec<_> = GENERATED_CASES
-        .into_iter()
-        .filter(|case| case.blueprint == LMS_BLUEPRINT_ID)
-        .collect();
-    assert_eq!(
-        cases.len(),
-        1,
-        "the LMS evidence needs exactly one reviewed case"
-    );
-    verify_generated_cases(cases);
 }
 
 fn verify_generated_cases(cases: impl IntoIterator<Item = GeneratedCase>) {

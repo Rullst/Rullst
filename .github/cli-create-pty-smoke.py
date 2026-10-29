@@ -88,7 +88,7 @@ with tempfile.TemporaryDirectory(prefix="rullst-create-") as directory:
     def created(cwd, status, output, restored):
         text = plain(output)
         assert status == 0 and restored, (status, restored, text[-1500:])
-        for expected in ["Step 2 of 6 · Blueprint", "Step 6 of 6 · Review",
+        for expected in ["Step 2 of 5 · Starter", "Step 5 of 5 · Review",
                          "files will be written", "✔ Features · AI features",
                          "Next steps", "open http://127.0.0.1:3000"]:
             assert expected in text, expected
@@ -99,7 +99,6 @@ with tempfile.TemporaryDirectory(prefix="rullst-create-") as directory:
     case("wizard-create", ["new", "--skip-initial-migration"], [
         (b"Project name", b"smoke_app\r"),
         (b"Which starter", ENTER),
-        (b"What are you building", ENTER),
         (b"Which primary database", ENTER),
         (b"Optional features", SPACE),
         (b"Optional features", ENTER),
