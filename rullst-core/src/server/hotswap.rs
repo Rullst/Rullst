@@ -78,11 +78,13 @@ impl HotSwapService {
 
     /// Renders a panic that escaped the application router. Details are shown
     /// only when `render_details` (the request passed the console peer check);
-    /// any other client receives an empty `500`.
+    /// any other client receives an empty `500`. `request` is the method and
+    /// path (no query string) quoted in the page's assistant prompt.
     pub(crate) async fn handle_panic_error(
         join_err: tokio::task::JoinError,
         capture: crate::error_console::capture::PanicCapture,
         render_details: bool,
+        request: (&str, &str),
     ) -> Result<axum::response::Response, std::convert::Infallible> {
         if !render_details {
             return Self::handle_oneshot_error();
@@ -101,9 +103,15 @@ impl HotSwapService {
         };
 
         // The dylib router does not serve `/_rullst/errors/{id}`, so no id is
-        // recorded and the page suggests a plain `cargo rullst ai` goal.
-        let html_content =
-            crate::error_console::render_console_html(&message, &capture, None, None).await;
+        // recorded and the prompt is all the developer's assistant receives.
+        let html_content = crate::error_console::render_console_html(
+            &message,
+            &capture,
+            Some(request),
+            None,
+            None,
+        )
+        .await;
 
         match axum::response::Response::builder()
             .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
@@ -266,7 +274,13 @@ impl Service<axum::extract::Request> for HotSwapService {
                 }
                 Ok(Err(_)) => Self::handle_oneshot_error(),
                 Err(join_err) => {
-                    Self::handle_panic_error(join_err, panic_slot.take(), render_details).await
+                    Self::handle_panic_error(
+                        join_err,
+                        panic_slot.take(),
+                        render_details,
+                        (&method, &path),
+                    )
+                    .await
                 }
             }
         })

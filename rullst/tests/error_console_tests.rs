@@ -38,6 +38,15 @@ async fn test_error_console_catches_panic_and_renders_html() {
         .assert_see("Opa! Algo deu errado no Rullst!")
         .assert_see("Source Code Snippet");
 
+    // The hand-off is a prompt for the developer's own assistant; the removed
+    // `cargo rullst ai` command is not offered.
+    response
+        .assert_see("Ask your AI assistant")
+        .assert_see("<textarea id=\"ai-prompt\"")
+        .assert_see("Request: GET /panic")
+        .assert_see("cargo rullst generate:ai-context")
+        .assert_dont_see("cargo rullst ai");
+
     // 4. Verify that the backtrace section is present
     // (The exact filename may vary by environment/platform)
     response.assert_see("Stack Trace");
@@ -122,7 +131,8 @@ async fn test_handle_autofix_non_loopback() {
 }
 
 /// The retired autofix endpoint never touches files: every loopback request,
-/// whatever its path, answers `410 Gone` with the CLI command.
+/// whatever its path, answers `410 Gone` with a pointer to the error page's
+/// assistant panel and the recorded-context path.
 async fn retired_autofix(file_path: &str) -> (u16, String) {
     let addr = SocketAddr::from(([127, 0, 0, 1], 12345));
     let payload: AutoFixPayload = serde_json::from_value(serde_json::json!({
@@ -144,7 +154,11 @@ async fn retired_autofix(file_path: &str) -> (u16, String) {
 async fn test_handle_autofix_path_traversal() {
     let (status, body) = retired_autofix("../../../etc/passwd").await;
     assert_eq!(status, 410);
-    assert!(body.contains("cargo rullst ai fix"), "{body}");
+    assert!(
+        body.contains("\"context_url\":\"/_rullst/errors/<error-id>\""),
+        "{body}"
+    );
+    assert!(!body.contains("cargo rullst ai"), "{body}");
 }
 
 #[tokio::test]
@@ -246,7 +260,7 @@ async fn test_handle_autofix_wrong_extension() {
     let unchanged = std::fs::read_to_string(&unique_file).unwrap_or_default();
     let _ = std::fs::remove_file(&unique_file);
     assert_eq!(status, 410);
-    assert!(body.contains("cargo rullst ai fix"), "{body}");
+    assert!(body.contains("Ask your AI assistant"), "{body}");
     assert_eq!(unchanged, "SECRET=1", "the endpoint never writes files");
 }
 

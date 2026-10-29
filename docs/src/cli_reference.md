@@ -1550,7 +1550,10 @@ Use your editor's or terminal's AI assistant instead, with the project's
 ([`generate:ai-context`](#cargo-rullst-generateai-context---check) writes and
 checks them) and the framework's published
 [`llms.txt`](https://rullst.github.io/Rullst/llms.txt). The `rullst-ai` crate,
-which applications use to call models, is unchanged. Credentials that
+which applications use to call models, is unchanged. In place of
+`ai fix <error-id>`, the development error page's "Ask your AI assistant"
+panel gives a prompt to copy into your assistant and the path of the recorded
+error context. Credentials that
 `ai connect` saved stay in `~/.config/rullst/credentials.toml`
 (`$XDG_CONFIG_HOME/rullst/`, or `%APPDATA%\rullst\` on Windows), and its git
 checkpoints under `refs/rullst/ai-checkpoints/`, until you delete them. See

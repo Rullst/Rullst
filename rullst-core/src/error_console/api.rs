@@ -1,6 +1,8 @@
 //! API endpoints for error explanation and developer diagnostics, and the
-//! retired autofix endpoint that now points to `cargo rullst ai fix`.
+//! retired autofix endpoint that now points to the error page's
+//! "Ask your AI assistant" panel and the recorded error context.
 
+use super::assistant::{CONTEXT_PATH_TEMPLATE, PANEL_TITLE};
 use axum::{
     Json,
     extract::{ConnectInfo, Query},
@@ -86,15 +88,14 @@ pub struct AutoFixPayload {
     error_message: String,
 }
 
-/// Command that replaces the retired autofix endpoint.
-pub(crate) const FIX_COMMAND: &str = "cargo rullst ai fix <error-id>";
-
 /// Retired `POST /_rullst/autofix` endpoint.
 ///
 /// The console never edits files. A loopback peer receives `410 Gone` with
-/// `success: false` and a pointer to `cargo rullst ai fix <error-id>`, which
-/// reviews every edit in the terminal (diff, confirmation, git checkpoint);
-/// any other peer receives `403`. The payload is ignored.
+/// `success: false`, a message that points to the error page's
+/// "Ask your AI assistant" panel (a prompt for the developer's own assistant)
+/// and `context_url`, the path template of the recorded error context
+/// (`/_rullst/errors/<error-id>`); any other peer receives `403`. The payload
+/// is ignored.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn handle_autofix(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
@@ -114,9 +115,9 @@ pub async fn handle_autofix(
         Json(serde_json::json!({
             "success": false,
             "error": format!(
-                "The error console no longer edits files. Run `{FIX_COMMAND}` with the id shown on the error page; it previews each edit as a diff and applies it only after you confirm."
+                "The error console no longer edits files. Copy the prompt from the \"{PANEL_TITLE}\" panel on the development error page into your own AI assistant. Where the server records errors, a terminal assistant can also read the error as JSON at GET {CONTEXT_PATH_TEMPLATE} (the id is on the page; loopback only). Review every edit it proposes."
             ),
-            "command": FIX_COMMAND,
+            "context_url": CONTEXT_PATH_TEMPLATE,
         })),
     )
 }
@@ -215,7 +216,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn retired_autofix_points_to_the_cli_and_never_edits() {
+    async fn retired_autofix_points_to_the_assistant_panel_and_never_edits() {
         let payload = || -> AutoFixPayload {
             serde_json::from_value(serde_json::json!({
                 "file_path": "src/lib.rs",
@@ -240,7 +241,14 @@ mod tests {
             let json: serde_json::Value = serde_json::from_slice(&body).expect("JSON body");
             assert_eq!(json["success"], false, "{peer}");
             if status == 410 {
-                assert_eq!(json["command"], "cargo rullst ai fix <error-id>");
+                assert_eq!(json["context_url"], "/_rullst/errors/<error-id>");
+                assert!(json.get("command").is_none(), "{json}");
+                let message = json["error"].as_str().expect("message");
+                assert!(
+                    message.contains("\"Ask your AI assistant\" panel"),
+                    "{message}"
+                );
+                assert!(!message.contains("cargo rullst ai"), "{message}");
             }
         }
     }
