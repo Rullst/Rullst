@@ -21,9 +21,11 @@ Intentions, not promises; dates follow the evidence gates described below.
 
 - **v13:** `13.0.0-alpha.1` (published as a prerelease on October 11, 2026),
   `13.0.0-alpha.2` (published as a prerelease on October 17, 2026, with the
-  alpha.1 dogfooding fixes), `13.0.0-alpha.3` (the candidate prepared on
-  October 23, 2026: PWA, Studio production monitor, OAuth providers), then
-  further alphas, betas and a release candidate
+  alpha.1 dogfooding fixes), `13.0.0-alpha.3` (published on October 24,
+  2026: PWA, Studio production monitor, OAuth providers), `13.0.0-alpha.4`
+  (the candidate prepared on October 29, 2026: a lean CLI with optional
+  extras, deployment guides, three starters), then `13.0.0-beta.1` with the
+  API freeze, further betas and a release candidate
   driven by user feedback, then `13.0.0` stable with the
   [maturity tiers](docs/src/maturity.md) applying from that release.
 - **v12:** end of life on 16 October 2026; 12.3.0 is the last release and the
@@ -817,29 +819,89 @@ contains and what stays open. They add no milestone to the counts above.
   platforms built on 13.0.0-alpha.2 chose the fixes in this release (see the
   changelog), as the alpha.1 report did for alpha.2.
 
-### Planned after 13.0.0-alpha.3
+### Delivered in 13.0.0-alpha.4
 
-Work items for later prereleases, not shipped features. They add no milestone
-to the counts above.
+Planned with the maintainer on 29 October 2026 and prepared the same day as
+the 13.0.0-alpha.4 release candidate; the coordinator records publication in
+the table below. Goal: a lean CLI for people and a predictable framework for
+AI assistants. The framework crates' APIs do not change. They add no
+milestone to the counts above.
 
-- **Targeted `cargo-rullst` mutation campaign** (branch
-  `test/v13-alpha3-cli-mutation`, done when it is merged): hosted targeted runs
+- `[x]` **Lean main CLI** ([PR #555](https://github.com/Rullst/Rullst/pull/555)).
+  Foundry, `nixify`/`new --nix`, `generate:buildah`/`new --buildah`,
+  `make:grpc`, the Fly.io, Render and Railway deploy targets and the
+  self-updater's download and binary replacement were removed; a once-a-day
+  notice prints the `cargo install` command for a newer CLI. Each removal has
+  a [migration row](docs/src/migration-v13.md) and, where an application can
+  be detected using it, an upgrade review rule.
+- `[x]` **`cargo-rullst-extras`** (Experimental, PR #555): the terminal AI
+  assistant and `green` (measured size, memory, dependency and CPU figures;
+  carbon only as a labelled SCI estimate), released with the same version.
+  `cargo rullst ai|green` run it when it is installed. Its first publication
+  uses the one-time token path in the
+  [release recovery runbook](docs/src/release-recovery.md#first-publication-of-cargo-rullst-extras-1300-alpha4).
+- `[x]` **Deployment guides** (PR #555): one `deploy` path (Dockerfile,
+  `compose.yaml` and `Caddyfile` for Docker or Podman), the
+  [Linux VM](docs/src/vm-deployment.md), Hetzner Cloud, DigitalOcean, Oracle
+  Cloud and Google Cloud guides and [Advanced deployment](docs/src/advanced-deployment.md)
+  (Nix, Buildah, Podman Quadlet, Kubernetes; described, not generated). The
+  guides were written from the providers' documentation and not followed on
+  real accounts, and no automated test starts the generated stack.
+- `[x]` **Three starters, the others as examples**
+  ([PR #558](https://github.com/Rullst/Rullst/pull/558)): `cargo rullst new`
+  offers Blank, API and SaaS; LMS, ERP and Portfolio are workspace
+  applications under [`examples/`](docs/src/examples.md) with their own tests.
+- `[x]` **For AI assistants** (PR #555): one `--json` contract with a
+  `schema` id (new for `inspect models`, `inspect schema` and `pkg list`), and
+  `llms.txt` with an optional section, checked by `validate-site.py`.
+- `[x]` **Shorter development builds**
+  ([PR #559](https://github.com/Rullst/Rullst/pull/559)): generated projects
+  get a `[profile.dev]` (line tables for the application, no debug information
+  for dependencies), and the SaaS starter no longer declares `rullst-connect`.
+  On the measuring machine cold builds took 15 to 19 % less time, rebuilds
+  after an edit about half and `target/` about 41 % less disk
+  ([Build times](docs/src/build-times.md)). The framework-level items are
+  planned below.
+- `[x]` **Targeted `cargo-rullst` mutation campaign**
+  ([PR #557](https://github.com/Rullst/Rullst/pull/557)): hosted targeted runs
   with the CLI's library tests measured 83 CLI files and 3,189 mutants of
   the self-update, audit and IDOR scanner, `add` and consumer-file editors,
   `doctor` and deployment configuration and `upgrade` code. New tests killed
   1,041 of the 1,129 first-run survivors and 51 are documented
-  equivalents; the 76 files left without a survivor are listed in
+  equivalents; the 76 files left without a survivor were listed in
   `.github/mutants-pr-cli.txt`, so `mutants-pr.yml` mutates their changed lines
   on every pull request. Left: size and count bounds that only very large
   projects reach (hundreds of mebibytes, or 10,000 to 250,000 files): upgrade
   snapshot 6, upgrade source walk 3, project snapshot 13, replacement and
-  verification totals 2 and 2, the 64 MiB preparation report 4; and 7
-  installation review and apply mutants that only a live catalog and
-  Sigstore-verified artifacts reach. The Studio remote mode
-  (20 files) was measured in the same campaign and has no survivor left. The self-updater's binary replacement was removed in
-  13.0.0-alpha.4; its 13 measured files left the gate list with it, and
-  `generators/deploy.rs` and `update/guided.rs`, rewritten in that release,
-  left it until they are measured again.
+  verification totals 2 and 2, the 64 MiB preparation report 4. The Studio
+  remote mode (20 files) was measured in the same campaign and has no
+  survivor left. The self-updater's binary replacement was removed in
+  13.0.0-alpha.4, with its 7 remaining installation mutants; its 13 measured
+  files left the gate list with it, and `generators/deploy.rs` and
+  `update/guided.rs`, rewritten in that release, left it until they are
+  measured again.
+
+### Planned after 13.0.0-alpha.4
+
+Work items for later prereleases, not shipped features. They add no milestone
+to the counts above.
+
+- **13.0.0-beta.1: API freeze and stability scope.** Freeze the public APIs
+  that 13.0 supports and decide which packages and features its stability
+  promise covers, starting from the [maturity tiers](docs/src/maturity.md).
+  After beta.1, breaking changes are limited to defects found in the betas.
+- **Framework build time**, for beta.1. Measured on the generated starters
+  ([Build times](docs/src/build-times.md)): the `aws-lc-sys` build script
+  (about 52 s) reached through Studio → `rullst-capital` → `reqwest`/`rustls`
+  on `aws-lc-rs`; SQLx's compile-time macros compiling some crates, SQLite
+  among them, a second time; and `rullst-nexus` pulling `rullst-ai` into the
+  SaaS starter.
+- **Re-measure `generators/deploy.rs` and `update/guided.rs`** with targeted
+  `mutants.yml` runs and return them to `.github/mutants-pr-cli.txt` once only
+  accepted equivalents are left.
+- **The first hour and the documentation:** follow the path from
+  installation to a deployed starter as a new user, and fix the
+  documentation and CLI messages that get in the way.
 - **Turso/libSQL beyond the blank and API starters**, if users ask for it.
   Turso can be the primary database only in those starters and does not work
   with `#[derive(Orm)]`, `Schema`, `artisan!`, `Server::with_db`, Nexus or
@@ -848,9 +910,11 @@ to the counts above.
   release. Full parity, which would let the ORM core run on a backend other
   than SQLx, is deferred to a later major release because it would put the
   SQLx drivers at risk.
-- **Feedback from the platforms upgraded to 13.0.0-alpha.3.** Their reports
-  choose the fixes and priorities of the next prerelease, as the alpha.1 and
-  alpha.2 reports did before.
+- **Feedback from the platforms upgraded to 13.0.0-alpha.3 and alpha.4.**
+  Their reports choose the fixes and priorities of the next prerelease, as
+  the alpha.1 and alpha.2 reports did before.
+- **Then 13.0.0-rc.1**, once the betas leave no open defect in the stability
+  scope.
 
 ### Published and planned release lines
 
@@ -866,6 +930,7 @@ to the counts above.
 | **v13.0.0-alpha.1** | `[x] Published prerelease` | Tag `v13.0.0-alpha.1` at `fc44bf76`; all twenty packages were published on 11 October 2026 for evaluation. See the [delivery plan](docs/src/v13-delivery-plan.md). |
 | **v13.0.0-alpha.2** | `[x] Published prerelease` | All twenty packages were published on 17 October 2026 from tag `v13.0.0-alpha.2` at `0daf4941` ([release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)): the fixes from the alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema` date/time and Nexus changes. A first tag at `669befe6` failed release verification before publishing anything and was replaced. |
 | **v13.0.0-alpha.3** | `[x] Published prerelease` | All twenty packages were published on 24 October 2026 from tag `v13.0.0-alpha.3` at `be336833` ([release run 40129821475](https://github.com/Rullst/Rullst/actions/runs/40129821475)) after all 25 required workflows passed on that commit. See [Delivered in 13.0.0-alpha.3](#delivered-in-1300-alpha3). |
+| **v13.0.0-alpha.4** | `[ ] Release candidate` | Prepared on 29 October 2026 and not yet published; the coordinator records the tag, release run and publication here. Twenty-one packages, including the first publication of `cargo-rullst-extras`. See [Delivered in 13.0.0-alpha.4](#delivered-in-1300-alpha4). |
 | **v13.x** | `[ ] Next feature line` | Compatible and breaking improvements move together into the next deliberate cycle: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
 The framework may call a milestone implemented only when the same commit passes

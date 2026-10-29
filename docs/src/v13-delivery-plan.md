@@ -1,5 +1,25 @@
 # v13 delivery plan and evidence
 
+**13.0.0-alpha.4 prepared on October 29, 2026 (not yet published).** The
+release commit sets the twenty-one packages of the release order, now including
+`cargo-rullst-extras`, to `13.0.0-alpha.4`; the coordinator records the tag,
+the exact-SHA admission and the release run here after publication. It makes
+the main CLI leaner and moves the terminal AI assistant and `green` to the
+optional, Experimental `cargo-rullst-extras`; removes Foundry, Nix, Buildah,
+gRPC, the Fly.io, Render and Railway deploy targets and the self-updater's
+binary replacement; gives `deploy` one path for any Linux VM with guides for
+Hetzner Cloud, DigitalOcean, Oracle Cloud and Google Cloud; keeps three
+starters and moves LMS, ERP and Portfolio to the repository's examples; adds
+one `--json` contract and an optional section to `llms.txt`; and shortens the
+development builds of generated projects. The framework crates' APIs do not
+change. The first targeted `cargo-rullst` mutation campaign is merged, and the
+CLI's measured files are in the pull-request mutation gate.
+`cargo-rullst-extras` is not registered on crates.io: its first publication
+uses the one-time token path in the
+[release recovery runbook](release-recovery.md#first-publication-of-cargo-rullst-extras-1300-alpha4).
+Work planned next is under
+[Planned after 13.0.0-alpha.4](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha4).
+
 **13.0.0-alpha.3 published on October 24, 2026.** All twenty packages were
 published from tag `v13.0.0-alpha.3` at `be336833` after the 25 required
 workflows passed on that exact commit
@@ -11,8 +31,8 @@ with `make:oauth` for Google, GitHub, Microsoft and Apple, CLDR plurals and
 formatting, and the breaking changes listed in the changelog. The mutation
 campaign finished `rullst-orm`, `rullst-orm-macros`, `rullst-core` and
 `rullst-nexus`; `cargo-rullst` is not yet mutation-measured and its targeted
-campaign continues after this release. Work planned next is under
-[Planned after 13.0.0-alpha.3](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha3).
+campaign continues after this release. The work planned next was delivered in
+[13.0.0-alpha.4](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#delivered-in-1300-alpha4).
 
 **13.0.0-alpha.2 published on October 17, 2026.** Tag `v13.0.0-alpha.2` points
 at `0daf4941`. [Release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)

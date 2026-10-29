@@ -44,8 +44,11 @@ Rows without rules still need a reading. An application already on a 13.0
 prerelease gets only the rules introduced after its version, and the plan says
 how many earlier rules it skipped; `--all-rules` applies every rule
 ([rules by release](tutorials/36-assisted-framework-upgrades.md#rules-by-release)).
-An application that already runs 13.0.0-alpha.2 follows the shorter
-[alpha.2 to alpha.3 checklist](#upgrading-an-alpha2-application-to-alpha3).
+An application that already runs 13.0.0-alpha.3 follows the shorter
+[alpha.3 to alpha.4 checklist](#upgrading-an-alpha3-application-to-alpha4);
+one on 13.0.0-alpha.2 follows the
+[alpha.2 to alpha.3 checklist](#upgrading-an-alpha2-application-to-alpha3)
+first.
 
 ## Changes from the published 12.1.0 source
 
@@ -406,6 +409,46 @@ shows the expected result.
    restored copy of the production database; then sign-in, "Sign out
    everywhere", Nexus access for an `is_admin` account, each configured
    provider and the health probes on staging before production.
+
+## Upgrading an alpha.3 application to alpha.4
+
+This checklist moves an application from 13.0.0-alpha.3 to 13.0.0-alpha.4.
+alpha.4 changes the CLI and the files it generates, not the APIs of the
+framework crates: the rows above that name alpha.4 are the changes in between.
+
+1. **Prepare** as for alpha.3: a branch with a clean tree and a committed
+   `Cargo.lock`, the current `cargo test` result and a database backup.
+2. **Install the alpha.4 CLI.**
+   `cargo install cargo-rullst --version =13.0.0-alpha.4 --locked --force`,
+   then `rullst --version` must print `13.0.0-alpha.4`. Where
+   `cargo rullst ai` or `cargo rullst green` is used, also install the extras
+   with the same version:
+   `cargo install cargo-rullst-extras --version =13.0.0-alpha.4 --locked`.
+3. **Inspect.** `cargo rullst upgrade --dry-run` applies only the rules
+   introduced after 13.0.0-alpha.3. All four are `REVIEW` findings about files
+   and scripts, not Rust code:
+   - `V13-DEPLOY-TARGETS-REMOVED`: `fly.toml`, `render.yaml`, `railway.json`
+     or `railway.toml`, or a script that runs `deploy --platform` with Fly.io,
+     Railway or Render.
+   - `V13-DEPLOY-GENERATORS-REMOVED`: `Foundry.toml`, a `nixify` `flake.nix`,
+     `build_buildah.sh`, `src/grpc/mod.rs`, or a script that runs a removed
+     generator.
+   - `V13-CLI-SELF-UPDATE-REMOVED`: a script that runs
+     `update check|verify|stage|install` or `update guided --scope|--root`.
+   - `V13-CLI-EXTRAS`: a script that runs `rullst ai` or `rullst footprint`
+     (now `green`).
+
+   Generated files stay yours and keep working with their own tools; keep or
+   delete them. Scripts that run a removed command need the replacement the
+   finding names.
+4. **Apply.** `cargo rullst upgrade` pins every Rullst dependency to
+   `=13.0.0-alpha.4`, runs `cargo fix` and `cargo check --locked`, and
+   restores the files if a step fails.
+5. **Optionally** copy the `[profile.dev]` sections that new projects get
+   ([Build times](build-times.md)). A SaaS application whose code does not
+   import `rullst_connect` can remove that dependency.
+6. **Verify** with the production feature set: `cargo build`, `cargo test`
+   and `cargo clippy --all-targets -- -D warnings`.
 
 ## Why the candidate uses a new major
 
