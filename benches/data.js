@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793298448593,
+  "lastUpdate": 1793301132813,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -29731,6 +29731,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1389,
             "range": "± 26",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "94f265aead6b42cb38c5abcfffbd12dfa6a34935",
+          "message": "Merge pull request #572 from Rullst/fix/v13-alpha4-error-console-handoff\n\nfix(core): hand errors to the developer's own assistant on the error page",
+          "timestamp": "2026-10-29T16:08:23-03:00",
+          "tree_id": "31c2f8f48bd7c30a4faac0e162615c3f1793d0b9",
+          "url": "https://github.com/Rullst/Rullst/commit/94f265aead6b42cb38c5abcfffbd12dfa6a34935"
+        },
+        "date": 1793301129424,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 393,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 568,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 292,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 994,
+            "range": "± 43",
             "unit": "ns/iter"
           }
         ]
