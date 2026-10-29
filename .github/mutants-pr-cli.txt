@@ -35,6 +35,9 @@ cargo-rullst/src/generators/build/upgrade/isolated.rs
 cargo-rullst/src/generators/build/upgrade/manifest.rs
 cargo-rullst/src/generators/build/upgrade/report.rs
 cargo-rullst/src/generators/build/upgrade/rules/catalog.rs
+cargo-rullst/src/generators/build/upgrade/rules/files.rs
+cargo-rullst/src/generators/build/upgrade/rules/markup.rs
+cargo-rullst/src/generators/build/upgrade/rules/rust.rs
 cargo-rullst/src/generators/build/upgrade/rules/tokens.rs
 cargo-rullst/src/generators/build/upgrade/scan.rs
 cargo-rullst/src/generators/consumer_files.rs
