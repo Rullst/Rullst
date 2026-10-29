@@ -412,3 +412,28 @@ fn removed_billing_settings_are_reviewed() {
         );
     assert_eq!(current.findings("[package]\nname = \"app\"\n"), vec![]);
 }
+
+/// The walk's edges: a `.dockerignore` needs both patterns, skipped
+/// directories are not read, a YAML file is a Kubernetes manifest only with
+/// both keys, and only root-level shell scripts are read.
+#[test]
+fn the_project_walk_reads_root_scripts_and_kubernetes_manifests_only() {
+    let project = Project::new();
+    project
+        .write(".dockerignore", ".env\n.env.*\n")
+        .write(
+            "vendor/ingress.yaml",
+            "apiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  annotations:\n    kubernetes.io/ingress.class: nginx\n",
+        )
+        .write("compose.yaml", "kind: local\n")
+        .write("deploy.sh", "#!/bin/sh\ncargo rullst make:omni\n")
+        .write("scripts/release.sh", "cargo rullst omni build\n")
+        .write("NOTES.md", "cargo rullst omni build\n");
+    assert_eq!(
+        project.findings("[package]\nname = \"my_app\"\n"),
+        vec![
+            (".dockerignore".to_string(), "V13-DOCKER-CONTEXT", 1),
+            ("deploy.sh".to_string(), "V13-OMNI-REMOVED", 2),
+        ]
+    );
+}
