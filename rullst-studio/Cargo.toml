@@ -26,7 +26,7 @@ strict-mysql = ["rullst-core/strict-mysql", "rullst-orm/strict-mysql"]
 # The standalone remote-projects Studio (`rullst-studio` binary): an HTTP
 # client, token encryption and the SQLite history. Off by default, so
 # applications that mount Studio in development do not build them.
-remote = ["sqlx/sqlite", "dep:reqwest", "dep:ring"]
+remote = ["sqlx/sqlite", "dep:reqwest", "dep:ring", "dep:rustls"]
 
 [dependencies]
 rullst-core = { workspace = true, features = ["orm"] }
@@ -52,6 +52,8 @@ rand = { workspace = true }
 sha2 = { workspace = true }
 reqwest = { workspace = true, features = ["rustls"], optional = true }
 ring = { workspace = true, features = ["std"], optional = true }
+# The binary installs aws-lc-rs as the rustls process default.
+rustls = { workspace = true, features = ["aws-lc-rs", "std"], optional = true }
 
 [[bin]]
 name = "rullst-studio"

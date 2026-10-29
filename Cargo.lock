@@ -6770,6 +6770,7 @@ dependencies = [
  "rullst-macros",
  "rullst-orm",
  "rullst-security",
+ "rustls",
  "serde",
  "serde_json",
  "sha2 0.11.1",
