@@ -118,10 +118,9 @@ Security headers add defense in depth: HSTS, a nonce-based CSP,
   and `cli-standard` test shards, `cargo audit`, `cargo deny`, the unsafe
   policy, the zero-panic Clippy gates, the crate-archive reproducibility check
   and a mutation check of the changed Rust lines (`mutants-pr.yml`) run on pull
-  requests to `main`. The push
-  after a merge to `main` adds every Linux shard, the threat-model release
-  minimum, coverage, SemVer checks and CodeQL, and the nightly run covers
-  Linux, macOS and Windows. CodeQL analyzes Rust and JavaScript/TypeScript
+  requests to `main`. The push after a merge to `main` adds every Linux shard,
+  the threat-model release minimum, coverage, SemVer checks and CodeQL, and the
+  nightly run covers Linux, macOS and Windows. CodeQL analyzes Rust and JavaScript/TypeScript
   after every push to `main` and weekly.
 - **Coverage:** line coverage must stay at or above 90% (`coverage.yml`, after
   every push to `main`); `main` measured 93.96% on 29 October 2026
