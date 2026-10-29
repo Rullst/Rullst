@@ -277,11 +277,13 @@ fn auth_scaffold_never_replaces_account_files_or_duplicates_the_users_table() {
     let users = "// starter users table\n";
     let starter_migration = "src/migrations/m20260601000000_create_users_table.rs";
     fs::write(starter.path(starter_migration), users).expect("starter migration");
+    // A users migration auth does not recognize is never extended.
     let refused = starter.fails(&["auth"]);
     assert!(
-        refused.contains("second users table migration"),
+        refused.contains("refusing to change the users table"),
         "{refused}"
     );
+    assert_unchanged(&starter, starter_migration, users);
     assert_eq!(
         starter
             .migrations_ending_with("_create_users_table.rs")
@@ -303,10 +305,16 @@ fn auth_scaffold_never_replaces_account_files_or_duplicates_the_users_table() {
     assert_unchanged(&resets, reset_migration, tokens);
     assert!(!resets.path("src/models/user.rs").exists());
 
+    // A second run finds every account file and writes nothing.
     let repeated = Project::with_migration_runner();
     repeated.succeeds(&["auth"]);
     let controller = repeated.read("src/controllers/auth_controller.rs");
-    repeated.fails(&["auth"]);
+    let again = repeated.succeeds(&["auth"]);
+    assert!(
+        again.contains("Authentication is already scaffolded"),
+        "{again}"
+    );
+    assert!(again.contains("nothing was written"), "{again}");
     assert_eq!(
         repeated
             .migrations_ending_with("_create_users_table.rs")

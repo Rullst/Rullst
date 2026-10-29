@@ -1,5 +1,6 @@
 // cargo-rullst/src/generators/auth/models.rs — Migration and User model generator.
 
+use super::users_table::{UsersTable, render_account_columns_migration};
 use crate::generators::{
     migration::regenerate_migrations_mod, output_guard::write_new, register_mod_ast,
 };
@@ -129,19 +130,46 @@ pub(crate) fn with_session_epoch_methods(template: &str) -> String {
     template.replace(SESSION_EPOCH_MARKER, SESSION_EPOCH_METHODS)
 }
 
+/// Writes a complete `users` table migration and the `User` model.
 pub fn generate_user_model_and_migration() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Create User Migration
+    let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
+    write_user_model_and_migration(&UsersTable::Create, &timestamp)
+}
+
+/// Writes the `users` migration `users` plans, named after `timestamp`, and
+/// the `User` model.
+pub(crate) fn write_user_model_and_migration(
+    users: &UsersTable,
+    timestamp: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Create or extend the users table
     let migrations_dir = Path::new("src/migrations");
     fs::create_dir_all(migrations_dir)?;
-    let now = chrono::Local::now();
-    let timestamp = now.format("%Y%m%d%H%M%S").to_string();
-    let file_stem = format!("m{}_create_users_table", timestamp);
-    let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
-    write_new(
-        &migration_path,
-        user_migration_source(&file_stem).as_bytes(),
-    )?;
-    println!("{}", "  ✨ Created 'users' table migration.".green());
+    match users {
+        UsersTable::Create => {
+            let file_stem = format!("m{timestamp}_create_users_table");
+            write_new(
+                &migrations_dir.join(format!("{file_stem}.rs")),
+                user_migration_source(&file_stem).as_bytes(),
+            )?;
+            println!("{}", "  ✨ Created 'users' table migration.".green());
+        }
+        UsersTable::ExtendStarter(starter) => {
+            let file_stem = format!("m{timestamp}_add_account_columns_to_users_table");
+            write_new(
+                &migrations_dir.join(format!("{file_stem}.rs")),
+                render_account_columns_migration(&file_stem).as_bytes(),
+            )?;
+            println!(
+                "{}",
+                format!(
+                    "  ✨ Kept the starter's {} and added a migration with the account columns of 'users'.",
+                    crate::generators::slash_path(starter)
+                )
+                .green()
+            );
+        }
+    }
 
     regenerate_migrations_mod()?;
 
@@ -160,7 +188,7 @@ pub fn generate_user_model_and_migration() -> Result<(), Box<dyn std::error::Err
 }
 
 /// The `users` migration written by `make:auth`.
-fn user_migration_source(file_stem: &str) -> String {
+pub(super) fn user_migration_source(file_stem: &str) -> String {
     format!(
         r##"use rullst::db::{{Orm, sqlx}};
 use rullst::db::schema::{{ColumnDefault, Schema, Migration}};

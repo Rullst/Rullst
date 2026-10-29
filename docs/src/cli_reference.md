@@ -1274,13 +1274,35 @@ Creates an authentication starting point in your codebase, including:
 It targets the SQLx ORM: Turso-primary projects are rejected. The command
 enables the `orm`, `auth` and `mail` umbrella features, registers the generated
 `controllers`, `middlewares`, `models` and `pages` modules in `src/lib.rs` (or
-`src/main.rs`), and refreshes the migration registry. It fails before writing
-anything when `src/models/user.rs`, `src/models/password_reset.rs`,
+`src/main.rs`), and refreshes the migration registry.
+
+In a Blank or API database starter (SQLite, PostgreSQL, MySQL or MariaDB) the
+unchanged starter migration `m20260601000000_create_users_table.rs` already
+creates `users` with `id`, `name` and timestamps. The command keeps it and
+writes `m<timestamp>_add_account_columns_to_users_table.rs` instead of a
+second users table: in one migration transaction (MySQL/MariaDB commit each
+DDL statement on its own) it adds `email` (`VARCHAR(255) NOT NULL DEFAULT ''`,
+as SQLite adds a `NOT NULL` column only with a default), `password_hash`,
+`oauth_provider`, `oauth_id`, `is_admin` and `session_epoch`, gives every
+existing row the unique placeholder email `user-<id>@no-email.invalid` (a
+reserved domain that never receives mail) and no password, and creates the
+unique index `users_email_unique`. It therefore works before and after the
+starter's first `db:migrate`, and no row is lost; its rollback drops only
+those columns and the index. The starter's two-field `User` struct in
+`src/main.rs` (or `src/lib.rs`) is replaced, while unchanged, by
+`pub use crate::models::user::User;`.
+
+When `src/models/user.rs`, `src/models/password_reset.rs`,
 `src/controllers/auth_controller.rs`, `src/controllers/password_controller.rs`,
-`src/middlewares/auth_middleware.rs` or `src/pages/auth.rs` already exists,
-when a `*_create_password_reset_tokens_table.rs` migration exists, or
-when a `*_create_users.rs`/`*_create_users_table.rs` migration already creates
-the users table (the blank database starter and the SaaS starter ship one). It also refuses a project without a SQL migration runner (`pub mod
+`src/middlewares/auth_middleware.rs` and `src/pages/auth.rs` all exist, as in
+the SaaS starter or after an earlier run, the command reports that
+authentication is already scaffolded, writes nothing and exits with status 0.
+It fails before writing anything when only some of those files exist, when a
+`*_create_password_reset_tokens_table.rs` or
+`*_add_account_columns_to_users_table.rs` migration exists, or when a
+`*_create_users.rs`/`*_create_users_table.rs` migration other than the
+unchanged Blank/API starter one creates the users table (its columns are
+unknown: add them with `make:migration`). It also refuses a project without a SQL migration runner (`pub mod
 migrations;` in `src/main.rs` or `src/lib.rs` plus a
 `rullst::artisan!(crate::migrations::get_migrations())` call, which database
 starters include), such as a `--no-database` starter, because nothing would
