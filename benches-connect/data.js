@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793299270211,
+  "lastUpdate": 1793301850888,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -11709,6 +11709,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 392,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "94f265aead6b42cb38c5abcfffbd12dfa6a34935",
+          "message": "Merge pull request #572 from Rullst/fix/v13-alpha4-error-console-handoff\n\nfix(core): hand errors to the developer's own assistant on the error page",
+          "timestamp": "2026-10-29T16:08:23-03:00",
+          "tree_id": "31c2f8f48bd7c30a4faac0e162615c3f1793d0b9",
+          "url": "https://github.com/Rullst/Rullst/commit/94f265aead6b42cb38c5abcfffbd12dfa6a34935"
+        },
+        "date": 1793301848274,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 278,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
