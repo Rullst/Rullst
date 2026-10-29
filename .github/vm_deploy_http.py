@@ -61,7 +61,7 @@ class Client:
             response = self.opener.open(request, timeout=30)
         except urllib.error.HTTPError as error:
             response = error
-        except (urllib.error.URLError, OSError) as error:
+        except OSError as error:  # URLError is an OSError
             raise Failure(f"{request.get_method()} {url} failed: {error}") from error
         with response:
             body = response.read(2 * 1024 * 1024).decode(errors="replace")

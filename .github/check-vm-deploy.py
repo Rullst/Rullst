@@ -27,6 +27,7 @@ import sqlite3
 import subprocess
 import sys
 import tarfile
+import tempfile
 import time
 import tomllib
 
@@ -39,10 +40,11 @@ CADDY_ADDRESS = "172.31.250.10"
 CADDY_IMAGE = "docker.io/library/caddy:2-alpine"
 NET_BIND_SERVICE = 1 << 10
 GENERATED = ("Dockerfile", ".dockerignore", "compose.yaml", "Caddyfile")
-CLI_PACKAGES = ("cargo-rullst", "cargo-rullst-extras")
+CLI_PACKAGES = ("cargo-rullst",)
 PATCH_DIRECTORY = "rullst-ci-packages"
 DATABASE_SUFFIXES = (".db", ".sqlite", ".sqlite3")
 TIMINGS: list[tuple[str, float]] = []
+MANIFEST = "Cargo.toml"
 
 
 @contextlib.contextmanager
@@ -134,7 +136,7 @@ def patch_section(paths: dict[str, str]) -> str:
 def install_cli(extracted: Path, crates: list[str], version: str, work: Path) -> dict[str, str]:
     """`cargo install` from the archive, as users get it; it writes registry pins."""
     package = extracted / f"cargo-rullst-{version}"
-    manifest = package / "Cargo.toml"
+    manifest = package / MANIFEST
     paths = {crate: str(extracted / f"{crate}-{version}") for crate in crates}
     manifest.write_text(manifest.read_text() + patch_section(paths))
     root = work / "install"
@@ -155,7 +157,7 @@ def create_project(starter: str, env: dict[str, str], version: str,
     run(["cargo", "rullst", "new", name, "--default", "--blueprint", starter,
          "--skip-initial-migration"], cwd=projects, env=env, timeout=300)
     project = projects / name
-    dependencies = tomllib.loads((project / "Cargo.toml").read_text())["dependencies"]
+    dependencies = tomllib.loads((project / MANIFEST).read_text())["dependencies"]
     expect(not any(isinstance(spec, dict) and "path" in spec for spec in dependencies.values()),
            "the generated manifest uses registry dependencies only")
     expect(dependencies["rullst"]["version"] == f"={version}",
@@ -179,7 +181,7 @@ def patch_release_crates(project: Path, extracted: Path, crates: list[str], vers
     for crate in crates:
         shutil.copytree(extracted / f"{crate}-{version}", target / f"{crate}-{version}")
         paths[crate] = f"{PATCH_DIRECTORY}/{crate}-{version}"
-    manifest = project / "Cargo.toml"
+    manifest = project / MANIFEST
     manifest.write_text(manifest.read_text() + patch_section(paths))
     # The Dockerfile builds with --locked: "Generate and commit Cargo.lock".
     run(["cargo", "generate-lockfile"], cwd=project, timeout=600)
@@ -217,33 +219,43 @@ def proc_status(pid: int) -> dict[str, str]:
     return {key: value.strip() for key, _, value in (line.partition(":") for line in lines)}
 
 
+def app_stopped(state: dict, first_start: bool) -> str | None:
+    """Why the app container is not running, if it stopped or crash-loops."""
+    # A crash loop shows as policy restarts; `compose restart` itself may count
+    # as one on some engines, so only the first start checks restarts.
+    status = state["State"].get("Status")
+    restarted = first_start and (state.get("RestartCount") or state["State"].get("Restarting"))
+    if status in ("exited", "dead") or restarted:
+        return (f"state {status}, exit {state['State'].get('ExitCode')}, "
+                f"restarts {state.get('RestartCount')}")
+    return None
+
+
+def caddy_health(engine: Engine, caddy: str) -> str | None:
+    state = engine.inspect(caddy)["State"]
+    if state.get("Status") != "running":
+        return state.get("Status")
+    return (state.get("Health") or state.get("Healthcheck") or {}).get("Status")
+
+
 def wait_until_healthy(engine: Engine, first_start: bool, deadline: float = 300) -> tuple[str, str]:
     """Waits for the Caddy health check (it probes the app's /health)."""
     started = time.monotonic()
     while time.monotonic() - started < deadline:
         app, caddy = engine.containers("app"), engine.containers("caddy")
         if len(app) == 1 and len(caddy) == 1:
-            state = engine.inspect(app[0])
-            # A crash loop shows as policy restarts; `compose restart` itself
-            # may count as one on some engines, so only the first start checks.
-            if state["State"].get("Status") in ("exited", "dead") or (
-                    first_start and (state.get("RestartCount") or state["State"].get("Restarting"))):
-                raise Failure(f"the app container stopped (state {state['State'].get('Status')}, "
-                              f"exit {state['State'].get('ExitCode')}, "
-                              f"restarts {state.get('RestartCount')})")
-            state = engine.inspect(caddy[0])["State"]
-            health = (state.get("Health") or state.get("Healthcheck") or {}).get("Status")
-            if state.get("Status") != "running":
-                health = state.get("Status")
-            if health == "healthy":
+            stopped = app_stopped(engine.inspect(app[0]), first_start)
+            if stopped:
+                raise Failure(f"the app container stopped ({stopped})")
+            if caddy_health(engine, caddy[0]) == "healthy":
                 log(f"ok: compose reports Caddy healthy after {time.monotonic() - started:.0f}s")
                 return app[0], caddy[0]
             # Rootless Podman runs health checks from systemd user timers; when
             # the runner has none, run the generated check explicitly.
-            if engine.name == "podman" and time.monotonic() - started > 90:
-                if engine("healthcheck", "run", caddy[0], check=False).returncode == 0:
-                    log("ok: `podman healthcheck run` passed (no systemd timer ran it)")
-                    return app[0], caddy[0]
+            if (engine.name == "podman" and time.monotonic() - started > 90
+                    and engine("healthcheck", "run", caddy[0], check=False).returncode == 0):
+                log("ok: `podman healthcheck run` passed (no systemd timer ran it)")
+                return app[0], caddy[0]
         time.sleep(5)
     raise Failure(f"Caddy did not report healthy within {deadline:.0f}s")
 
@@ -255,7 +267,8 @@ def check_hardening(engine: Engine, container: str, service: str, capabilities: 
         f"CapAdd={host.get('CapAdd')} Tmpfs={host.get('Tmpfs')}")
     expect(host.get("ReadonlyRootfs") is True, f"{service} has a read-only root filesystem")
     expect(not host.get("Privileged"), f"{service} is not privileged")
-    expect("/tmp" in (host.get("Tmpfs") or {}), f"{service} has a tmpfs on /tmp")
+    # The container's tmpfs mount point, inspected, never written by this script.
+    expect("/tmp" in (host.get("Tmpfs") or {}), f"{service} has a tmpfs on /tmp")  # NOSONAR
     status = proc_status(int(info["State"]["Pid"]))
     expect(status.get("NoNewPrivs") == "1", f"{service} runs with no-new-privileges")
     for field in ("CapEff", "CapPrm", "CapBnd"):
@@ -367,7 +380,7 @@ def restart(engine: Engine, vm: Path) -> None:
 
 
 def deploy(engine: Engine, starter: str, vm: Path, work: Path) -> None:
-    binary = tomllib.loads((vm / "Cargo.toml").read_text())["package"]["name"]
+    binary = tomllib.loads((vm / MANIFEST).read_text())["package"]["name"]
     password = secrets.token_urlsafe(18)
     with step(f"{starter}: build the image and start compose.yaml with {engine.name}"):
         engine.compose(vm, "up", "-d", "--build", timeout=25 * 60)
@@ -400,10 +413,9 @@ def main() -> int:
         log("This check binds ports 80/443 and builds container images; it runs in CI "
             "(or set RULLST_VM_DEPLOY_SMOKE=1 on a disposable machine).")
         return 2
-    version = tomllib.loads((ROOT / "cargo-rullst/Cargo.toml").read_text())["package"]["version"]
-    work = Path(os.environ.get("RUNNER_TEMP") or "/tmp") / "rullst-vm-deploy"
-    if work.exists():
-        shutil.rmtree(work)
+    version = tomllib.loads((ROOT / "cargo-rullst" / MANIFEST).read_text())["package"]["version"]
+    # A private directory under the runner's temp dir, never a shared path.
+    work = Path(tempfile.mkdtemp(prefix="rullst-vm-deploy-", dir=os.environ.get("RUNNER_TEMP")))
     engine = Engine(args.engine)
     run(["df", "-h", "/"])
     with step("Install the CLI from the packaged archives"):
