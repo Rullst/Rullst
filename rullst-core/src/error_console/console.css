@@ -227,25 +227,33 @@ header {
     line-height: 1.6;
     margin: 0 0 1rem 0;
 }
-.fix-row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: stretch;
-    margin-bottom: 1rem;
+.fix-note code {
+    font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    font-size: 0.85rem;
+    color: #f472b6;
+    overflow-wrap: anywhere;
 }
-.fix-command {
-    flex-grow: 1;
+.ai-prompt {
+    width: 100%;
+    min-height: 14rem;
+    resize: vertical;
     background: var(--code-bg);
     border: 1px solid var(--border);
     border-radius: 0.75rem;
     padding: 0.9rem 1rem;
+    margin-bottom: 1rem;
     font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
-    font-size: 0.9rem;
-    color: #f472b6;
-    overflow-wrap: anywhere;
-    user-select: all;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: #e2e8f0;
+}
+.ai-prompt:focus {
+    outline: none;
+    border-color: var(--secondary);
 }
 .btn-copy {
+    align-self: flex-end;
+    margin-bottom: 1rem;
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     color: #fff;
     border: none;

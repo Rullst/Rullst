@@ -86,6 +86,10 @@ impl Server {
                 .route("/_rullst/errors/{id}", axum::routing::get(error_context))
                 .layer(axum::middleware::from_fn(
                     crate::error_console::catch_panic_middleware,
+                ))
+                // Lets the console record panics and name their context path.
+                .layer(axum::Extension(
+                    crate::error_console::middleware::ErrorContextServed,
                 ));
         }
 

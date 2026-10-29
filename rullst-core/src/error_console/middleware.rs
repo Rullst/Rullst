@@ -11,11 +11,18 @@ use axum::{
 };
 use std::net::SocketAddr;
 
+/// Request marker that `Server` adds where it also mounts the loopback-only
+/// `GET /_rullst/errors/{id}` route. Only then does the console record a panic
+/// and name its context path, so the page never points to an absent route.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct ErrorContextServed;
+
 /// Middleware that catches panic unwinds in dev mode and presents the Self-Healing Console.
 ///
-/// Each rendered panic is also recorded under a random id (see
-/// `store`) that `cargo rullst ai fix <error-id>` reads from the
-/// loopback-only `GET /_rullst/errors/{id}` endpoint.
+/// The page's "Ask your AI assistant" panel holds a prompt to copy into the
+/// developer's own assistant. Where `Server` also serves
+/// `GET /_rullst/errors/{id}` (loopback only), each rendered panic is recorded
+/// under a random id (see `store`) and the panel names that path.
 ///
 /// Panic details are rendered only when the request's [`ConnectInfo`] peer is a
 /// loopback address, or when no peer metadata exists (in-process dispatch such
@@ -31,6 +38,7 @@ pub async fn catch_panic_middleware(mut req: Request<Body>, next: Next) -> Respo
     let nonce = crate::security::CspNonce::get_or_insert(req.extensions_mut());
     let method = req.method().to_string();
     let path = req.uri().path().to_string();
+    let record = req.extensions().get::<ErrorContextServed>().is_some();
     let (handle, panic_slot) = spawn_capturing(async move { next.run(req).await });
 
     match handle.await {
@@ -49,16 +57,23 @@ pub async fn catch_panic_middleware(mut req: Request<Body>, next: Next) -> Respo
                 let capture = panic_slot.take();
                 // Only the console's own view of the panic is kept: no query
                 // string, headers, cookies or body.
-                let error_id = crate::error_console::store::record(
+                let error_id = record.then(|| {
+                    crate::error_console::store::record(
+                        &message,
+                        capture.location.clone(),
+                        capture.backtrace.as_deref(),
+                        &method,
+                        &path,
+                    )
+                });
+                let html_content = render_console_html(
                     &message,
-                    capture.location.clone(),
-                    capture.backtrace.as_deref(),
-                    &method,
-                    &path,
-                );
-                let html_content =
-                    render_console_html(&message, &capture, Some(nonce.as_str()), Some(&error_id))
-                        .await;
+                    &capture,
+                    Some((&method, &path)),
+                    Some(nonce.as_str()),
+                    error_id.as_deref(),
+                )
+                .await;
 
                 match Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)

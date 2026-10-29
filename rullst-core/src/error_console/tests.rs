@@ -171,6 +171,7 @@ async fn panic_console_matches_the_default_nonce_csp() {
     let router = axum::Router::new()
         .route("/panic", axum::routing::get(located_panic))
         .layer(axum::middleware::from_fn(catch_panic_middleware))
+        .layer(axum::Extension(middleware::ErrorContextServed))
         .layer(axum::middleware::from_fn(
             crate::security::headers_middleware,
         ))
@@ -207,19 +208,24 @@ async fn panic_console_matches_the_default_nonce_csp() {
         "inline style attributes need unsafe-inline"
     );
 
-    // The fix panel offers one copyable command and makes no request.
+    // The assistant panel holds a selectable prompt; the copy button stays
+    // hidden until the nonce-carrying script reveals it. No request is made.
     let id = body
-        .split("cargo rullst ai fix ")
+        .split("<code class=\"context-url\">/_rullst/errors/")
         .nth(1)
         .map(|rest| {
             rest.chars()
                 .take_while(char::is_ascii_hexdigit)
                 .collect::<String>()
         })
-        .expect("fix command on the page");
+        .expect("recorded-context path on the page");
     assert!(super::store::valid_id(&id), "{id}");
-    assert!(body.contains("<code id=\"fix-command\" class=\"fix-command\">"));
-    assert!(body.contains("<button id=\"btn-copy\" type=\"button\""));
+    assert!(body.contains("<textarea id=\"ai-prompt\" class=\"ai-prompt\" readonly"));
+    assert!(body.contains("<button id=\"btn-copy\" type=\"button\" class=\"btn-copy\" hidden>"));
+    assert!(
+        !body.contains("cargo rullst ai"),
+        "the removed CLI must not be named"
+    );
     for request in [
         "fetch(",
         "XMLHttpRequest",
@@ -242,7 +248,7 @@ async fn backslash_panic_locations_display_with_forward_slashes() {
         location: Some(("rullst-core\\src\\error_console\\tests.rs".to_string(), 7)),
         backtrace: None,
     };
-    let body = renderer::render_console_html("boom", &capture, None, None).await;
+    let body = renderer::render_console_html("boom", &capture, None, None, None).await;
     assert!(
         body.contains("File: <span>rullst-core/src/error_console/tests.rs</span> (Line 7)"),
         "the location must use forward slashes"

@@ -1,5 +1,6 @@
-//! `GET /_rullst/errors/{id}`: the panic context that
-//! `cargo rullst ai fix <error-id>` reads.
+//! `GET /_rullst/errors/{id}`: the recorded panic context that the error
+//! page's "Ask your AI assistant" panel names, so a terminal assistant on the
+//! developer's machine can read it as JSON.
 //!
 //! Mounted with the development error console only (debug build running in
 //! Development). It answers only a loopback peer that names a loopback `Host`
