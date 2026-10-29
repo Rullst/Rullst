@@ -7,6 +7,10 @@ projects use `RULLST_ENV`; `APP_ENV` remains a legacy compatibility alias.
 
 ## 🛠️ Step 1: Define Environment Variables in `.env`
 
+`cargo rullst new` already writes `.env` with `RULLST_ENV=development`, a random
+`APP_KEY` and the starter's `DATABASE_URL`, plus a `.env.example` with a
+placeholder key. A hand-written project adds the file itself:
+
 ```dotenv
 RULLST_ENV=development
 PORT=3000
@@ -14,18 +18,23 @@ APP_KEY=REPLACE_WITH_YOUR_32_CHAR_RANDOM_KEY
 DATABASE_URL=postgres://postgres:password@localhost:5432/my_app
 ```
 
+Replace the placeholder with at least 32 bytes of random data, for example the
+output of `openssl rand -base64 32`: `rullst-auth`, which encrypts session
+cookies with `APP_KEY`, refuses shorter keys and the documented placeholders.
+`PORT` overrides the port passed to `Server::run`.
+
 ---
 
 ## 💻 Step 2: Access Configuration in Rust
 
 ```rust,no_run
-use rullst_core::config::RullstConfig;
+use rullst::config::RullstConfig;
 
 fn report_environment() -> Result<(), Box<dyn std::error::Error>> {
     let environment = RullstConfig::global().environment()?;
     // The process environment first, then `./.env`, as `Server` reads it.
     let database_is_configured =
-        rullst_core::config::project_setting("DATABASE_URL")?.is_some();
+        rullst::config::project_setting("DATABASE_URL")?.is_some();
 
     println!(
         "Booting Rullst in {environment} mode; database configured: {database_is_configured}"
