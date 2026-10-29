@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793294327754,
+  "lastUpdate": 1793299270211,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -11679,6 +11679,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 280,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ef9d6f2e910f72a03592e39d63d3d6655af8f8d4",
+          "message": "Merge pull request #563 from Rullst/refactor/v13-alpha4-green-only\n\nrefactor(cli)!: move green into the main CLI, remove cargo rullst ai and the extras package",
+          "timestamp": "2026-10-29T15:22:09-03:00",
+          "tree_id": "cfe2955cd3f1006cef5c184c5429993d59a50c53",
+          "url": "https://github.com/Rullst/Rullst/commit/ef9d6f2e910f72a03592e39d63d3d6655af8f8d4"
+        },
+        "date": 1793299268162,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 392,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
