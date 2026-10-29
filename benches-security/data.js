@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793299399420,
+  "lastUpdate": 1793301957408,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -18662,6 +18662,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "94f265aead6b42cb38c5abcfffbd12dfa6a34935",
+          "message": "Merge pull request #572 from Rullst/fix/v13-alpha4-error-console-handoff\n\nfix(core): hand errors to the developer's own assistant on the error page",
+          "timestamp": "2026-10-29T16:08:23-03:00",
+          "tree_id": "31c2f8f48bd7c30a4faac0e162615c3f1793d0b9",
+          "url": "https://github.com/Rullst/Rullst/commit/94f265aead6b42cb38c5abcfffbd12dfa6a34935"
+        },
+        "date": 1793301956225,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 2989,
+            "range": "± 171",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 291,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 9,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 7,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 8,
             "range": "± 0",
             "unit": "ns/iter"
           }
