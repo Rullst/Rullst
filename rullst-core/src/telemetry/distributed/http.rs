@@ -88,6 +88,8 @@ impl BoundedOtlpClient {
         let client = self
             .client
             .get_or_init(|| {
+                // reqwest uses the process provider, else aws-lc-rs.
+                crate::tls_provider::install_default_provider();
                 let mut builder = reqwest::blocking::Client::builder();
                 if !self.legacy {
                     // The minimized profile never follows ambient proxies.

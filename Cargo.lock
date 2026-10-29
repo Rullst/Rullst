@@ -6442,6 +6442,7 @@ dependencies = [
  "roxmltree",
  "rullst-macros",
  "rullst-orm",
+ "rustls",
  "serde",
  "serde_json",
  "serde_urlencoded",
