@@ -14,11 +14,14 @@ cargo rullst eject
 ```
 
 The default output is `src/ejected_main.rs`; the existing `src/main.rs` remains
-unchanged. The generated template serves a placeholder route from
-`application_routes()` and wraps it in the configured Rullst security baseline,
-the same `apply_security_baseline` step `rullst::Server` performs with
-`Rullst.toml`. Axum is reached through the `rullst::web::axum` re-export, so the
-template compiles without adding Axum to `Cargo.toml`:
+unchanged. Cargo does not build `src/ejected_main.rs` (it is not a binary
+target): review it and compare it with `src/main.rs`; only `--force` (Step 2)
+replaces the entry point. The generated template serves a placeholder route
+from `application_routes()` and wraps it in the configured Rullst security
+baseline, the same `apply_security_baseline` step `rullst::Server` performs
+with `Rullst.toml`. Axum is reached through the `rullst::web::axum` re-export,
+so the template compiles without adding Axum to `Cargo.toml`. Without its
+header comment and start-up message, the template is:
 
 ```rust,no_run
 use rullst::RullstConfig;

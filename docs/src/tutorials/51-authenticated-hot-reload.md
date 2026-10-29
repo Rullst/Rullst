@@ -1,13 +1,13 @@
 # Supervised Development Auto-Reload
 
-> Supervised restart is the development loop of the published v12 CLI and of
-> the v13 prerelease CLI. The [release audit](../v12-release-audit.md#development-reload-decision)
-> records the v12 decision.
-
-Rullst v12's development command rebuilds and restarts a directly linked
-application. This keeps Tokio, ORM pools, sessions and other process globals in
-one runtime. It replaces the advertised DLL-swap profile after Windows/LMS
-testing exposed an uninitialized ORM in the loaded library.
+`cargo rullst dev` and `cargo rullst dash` rebuild and restart a directly
+linked application when you save. This keeps Tokio, ORM pools, sessions and
+other process globals in one runtime. Supervised restart replaced the
+advertised DLL-swap profile in v12, after Windows/LMS testing exposed an
+uninitialized ORM in the loaded library, and 13.0 keeps it (see
+[the v13 decision](#existing-dll-scaffolds-and-the-v13-decision); the
+[v12 release audit](../v12-release-audit.md#development-reload-decision)
+records the original one).
 
 ## Run the development loop
 
@@ -23,7 +23,7 @@ cargo rullst dash
 ```
 
 There is no hot-reload question in the wizard. Both commands supervise
-reloads automatically; use `cargo run` for ordinary execution. In v13 the
+reloads automatically; use `cargo run` for ordinary execution. The
 dashboard also shows live requests/s, latency, errors and, when reported, ORM
 and queue figures, and `r` restarts the application without rebuilding (see the
 [CLI reference](../cli_reference.md#cargo-rullst-dash)).
@@ -87,7 +87,7 @@ The debug/development server serves a local reload script and an opaque
 generation marker under `/_rullst/dev-*`. The script polls the same origin
 and refreshes only after a different valid generation responds. Readiness
 checks match the child generation rather than trusting any service on the port.
-The marker is not a secret or an authentication credential. In v13 the same
+The marker is not a secret or an authentication credential. The same
 development processes also serve `/_rullst/dev-telemetry` for the
 `cargo rullst dash` metrics, to loopback clients only (see the
 [telemetry guide](../telemetry-guide.md#development-dashboard-endpoint)). These
@@ -111,27 +111,26 @@ after changing its port configuration.
 
 ## Existing DLL scaffolds and the v13 decision
 
-The v12 and v13 CLIs reject the old `--hot-reload` generation flag and remove
-`HOT_RELOAD` when they launch a child, so old generated projects use their
+The CLI (since v12) rejects the old `--hot-reload` generation flag and removes
+`HOT_RELOAD` when it launches a child, so old generated projects use their
 directly linked router unless their application reloads that variable itself.
 Remove legacy `HOT_RELOAD` entries from `.env` as well: application-owned dotenv
-loading can otherwise restore them. Regenerate fresh projects for release acceptance;
-already edited application code may need application-specific migration.
+loading can otherwise restore them. A newly generated project has no DLL
+layout; already edited application code may need application-specific migration.
 
 The existing library loader is retained only as a legacy experimental boundary.
 Passing Rust, Axum, Tokio or SQLx objects across a library ABI does not provide a
 stable interoperability contract. Do not reintroduce cross-library ORM pools.
 
-For v13, compare supervised restart with any proposed replacement using real
-blueprints and databases on Windows, Linux and macOS. Measure cold/warm reload
-time, failed-build recovery, cancellation, memory growth, process cleanup and
-state ownership. Restore DLL swapping only if its safety requirements can be
-established and it offers a measured practical benefit; keeping supervised
-restart remains a valid v13 outcome. The current v13 source keeps supervised
-restart.
+13.0 keeps supervised restart. DLL swapping would return only if its safety
+requirements can be established and it offers a measured practical benefit
+over supervised restart, compared with real starters and databases on Windows,
+Linux and macOS: cold/warm reload time, failed-build recovery, cancellation,
+memory growth, process cleanup and state ownership.
 
 ## Terminal accessibility
 
 Use `RULLST_REDUCED_MOTION=1 cargo rullst dash` for static rendering with
-colors, or `NO_COLOR=1 cargo rullst dash` for static color-free output.
-Use `cargo rullst dev` with redirected/non-interactive output.
+colors, and add `NO_COLOR=1` to remove the colors as well
+(`NO_COLOR=1 RULLST_REDUCED_MOTION=1 cargo rullst dash`). Use
+`cargo rullst dev` with redirected/non-interactive output.

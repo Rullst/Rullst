@@ -9,18 +9,20 @@ Monitor process uptime, RSS memory, CPU, Tokio scheduler-yield latency, and acti
 In `src/main.rs`:
 
 ```rust,no_run
-use axum::Router;
-use rullst_core::radar::radar_metrics_router;
-use rullst::Server;
+use rullst::radar::radar_metrics_router;
+use rullst::{Router, Server, ServerError};
 
-#[tokio::main]
-async fn main() -> Result<(), rullst_core::server::ServerError> {
-    let app = Router::new()
-        .merge(radar_metrics_router()); // Exposes GET /metrics
+#[rullst::runtime::main]
+async fn main() -> Result<(), ServerError> {
+    let app = Router::new().merge_axum(radar_metrics_router()); // Exposes GET /metrics
 
-    Server::new(app.into()).run(3000).await
+    Server::new(app).run(3000).await
 }
 ```
+
+In a generated project, add `.merge_axum(rullst::radar::radar_metrics_router())`
+to the router that `main` passes to `Server::new`, then run `cargo rullst dev`
+and open `http://localhost:3000/metrics`.
 
 ---
 
@@ -53,7 +55,8 @@ rullst_tokio_latency_microseconds 42
 The CPU gauge needs an earlier sample in the same process, so the first
 collection omits it.
 
-Visual dashboard available in Studio: `http://localhost:5555/studio/radar`.
+In a debug build the generated starters also start Studio, whose Radar page
+shows the same process measurements: `http://127.0.0.1:5555/studio/radar`.
 
 `/metrics` is not authenticated by `radar_metrics_router()`. Restrict it with a
 private network, service-mesh policy, or reviewed authentication middleware;

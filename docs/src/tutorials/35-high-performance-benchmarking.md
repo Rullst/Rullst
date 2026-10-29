@@ -14,6 +14,11 @@ codegen-units = 1
 strip = "debuginfo"
 ```
 
+Generated projects already ship a release profile with `lto = "thin"`,
+`codegen-units = 1` and `strip = "symbols"`; `strip = "debuginfo"` keeps symbol
+names for production backtraces. `cargo rullst build` compiles the release
+binary and pre-compresses static assets.
+
 Alternative linkers such as `mold` or `lld` can improve developer link time on
 supported hosts. `target-cpu=native` can improve a host-specific binary but
 makes it less portable; do not put it in a generally distributed artifact
@@ -35,13 +40,21 @@ Orm::init_with_options(
 # }
 ```
 
-Choose limits from database capacity and measured concurrency. More connections
-can increase contention and resource use instead of increasing throughput.
+Call it before `Server::run`: the server keeps an already-initialized pool
+instead of opening its own from `DATABASE_URL`. Choose limits from database
+capacity and measured concurrency. More connections can increase contention and
+resource use instead of increasing throughput.
 
 ## 3. Run reproducible benchmarks
 
+In a checkout of the Rullst repository, run one group at a time with the
+command the
+[benchmark workflow](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml)
+uses for it, for example:
+
 ```bash
-cargo bench --workspace
+cargo bench -p rullst-core --bench core_bench
+cargo bench -p rullst-orm --features drivers-all --bench orm_bench
 ```
 
 Record at least:
@@ -53,9 +66,9 @@ Record at least:
 - median and tail latency, throughput, errors and resource use.
 
 Criterion microbenchmarks detect regressions in selected functions. They do not
-model a production network, database, proxy or user journey. The separate
-cross-framework repository currently exercises historical Rullst 4.x and is not
-v12 evidence until refreshed.
+model a production network, database, proxy or user journey. For
+cross-framework comparisons, follow the method in the
+[v13 framework comparison plan](../v13-framework-comparison.md).
 
 The [public benchmark hub](https://rullst.github.io/Rullst/benches/) links the
 eight published groups: facade/HTTP, Core primitives, ORM, Auth, Connect,
@@ -66,7 +79,7 @@ restart/failure contracts, no_std target builds or whole-request tests can fit
 its dominant risk better. Add a new benchmark only with a stable operation,
 input, unit and interpretation.
 
-The repository now also contains a v12 cross-ORM SQLite harness:
+The repository also contains a cross-ORM SQLite harness:
 
 ```bash
 cargo bench -p rullst-orm --features strict-sqlite \
@@ -81,11 +94,10 @@ and insert/delete. This makes the input inspectable; it does not make the
 architectures identical. Diesel's synchronous call path and the async
 Rullst/SeaORM executor paths remain part of what is measured.
 
-The first local smoke run contradicted the old “negligible overhead versus
-Diesel” wording: Diesel led these five SQLite shapes. Rullst was competitive
-with SeaORM on reads but did not lead every operation. Keep the per-commit CI
-history as regression/comparison evidence and never generalize it to networked
-PostgreSQL/MySQL, concurrency, memory use or complete applications.
+The benchmark workflow runs it and publishes the results with the other
+groups. Read them as regression/comparison evidence for these five SQLite
+shapes only, and never generalize them to networked PostgreSQL/MySQL,
+concurrency, memory use or complete applications.
 
 ## 4. Test failure behavior separately
 

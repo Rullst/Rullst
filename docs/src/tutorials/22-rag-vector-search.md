@@ -56,7 +56,15 @@ rullst = { version = "=13.0.0-alpha.4", default-features = false, features = [
   "strict-postgres",
   "ai",
 ] }
+# `#[derive(Orm)]` and `FromRow` expand to `rullst_orm::…` and `::sqlx::…`
+# paths, so a crate that derives models depends on both directly.
+rullst-orm = { version = "=13.0.0-alpha.4", default-features = false, features = ["strict-postgres"] }
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres"] }
 ```
+
+Projects generated with `cargo rullst new --database postgres` already list
+the `rullst-orm` and `sqlx` lines; add `orm-pgvector` and `ai` to their
+`rullst` features.
 
 Install the extension through a reviewed PostgreSQL migration and choose the
 dimension used by your embedding provider:
@@ -122,6 +130,11 @@ let chunks = with_tenant("tenant-42", async move {
 # Ok(chunks)
 # }
 ```
+
+The two clauses use different metrics: `where_similar` keeps rows whose L2
+distance (`<->`) is below the bound, while `order_by_cosine_distance` sorts by
+cosine distance (`<=>`). `order_by_l2_distance` and `order_by_inner_product`
+(`<#>`) are also available; choose the bound for the L2 metric.
 
 Vector and distance values are SQL bindings, not interpolated literals. Column
 names use the normal identifier validation, vectors must be finite/non-empty,

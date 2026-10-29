@@ -78,9 +78,18 @@ pub async fn analytics_page() -> Markup {
 }
 ```
 
-Register `/ws/analytics` with
-`axum::routing::get(rullst::live::live_ws_handler::<AnalyticsDashboard>)` and
-load a pinned HTMX WebSocket extension in the page.
+`Live::mount` pre-renders the component inside a wrapper that opens the
+WebSocket; return it as the page or interpolate it into an `html!` layout.
+Register the matching upgrade route on the application's `rullst::Router`
+(generated projects reach Axum only through `rullst::web::axum`):
+
+```rust,ignore
+let app = router()
+    .ws("/ws/analytics", rullst::live::live_ws_handler::<AnalyticsDashboard>);
+```
+
+The page must also load HTMX and a pinned HTMX WebSocket extension; Rullst does
+not inject that browser dependency.
 
 ---
 
