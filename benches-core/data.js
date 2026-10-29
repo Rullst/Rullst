@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793307531055,
+  "lastUpdate": 1793312155361,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -30356,6 +30356,78 @@ window.BENCHMARK_DATA = {
           {
             "name": "mask_pii/safe_field_no_pii",
             "value": 191,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 126,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b59f9ad7a5ffe2a4ed574aa7d72e777268d7c7ea",
+          "message": "Merge pull request #575 from Rullst/docs/v13-audit-first-hour\n\ndocs: audit the first-hour pages for 13.0 (overview, getting started, maturity, zero-to-complete)",
+          "timestamp": "2026-10-29T18:57:25-03:00",
+          "tree_id": "427a66742828fd39bb488124226b5ab1e5bb3c40",
+          "url": "https://github.com/Rullst/Rullst/commit/b59f9ad7a5ffe2a4ed574aa7d72e777268d7c7ea"
+        },
+        "date": 1793312154389,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 29,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 197,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 67,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 220,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 192,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 154,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 189,
             "range": "± 1",
             "unit": "ns/iter"
           },
