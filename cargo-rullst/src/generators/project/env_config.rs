@@ -247,7 +247,9 @@ BILLING_REPORT_PLAN_IDS=
     fs::write(path.join(".env"), &env_content)?;
     fs::write(path.join(".env.example"), &env_example_content)?;
 
-    if db_provider == "Sqlite" {
+    // A database-free project keeps the `Sqlite` provider name, so the file
+    // also depends on `db_needed`.
+    if db_needed && db_provider == "Sqlite" {
         fs::write(path.join("rullst.db"), "")?;
     }
 
