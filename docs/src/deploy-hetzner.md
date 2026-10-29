@@ -39,7 +39,8 @@ server:
 | TCP | 443 | any |
 
 Hetzner firewalls are stateful, so replies are allowed automatically. Port 80
-must stay open: Caddy uses it to obtain and renew certificates.
+must stay open: Caddy uses it to obtain and renew certificates. Add UDP 443 as
+well if you want HTTP/3; without it browsers use HTTPS over TCP.
 
 ## 3. DNS
 

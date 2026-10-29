@@ -38,6 +38,38 @@ Foundry.toml
     )
 }
 
+/// The database provider an existing project runs with, for generators that
+/// write a Dockerfile after `cargo rullst new` (`deploy`, `dockerize`):
+/// `Some("Sqlite")` when the `[database] url` in `Rullst.toml` (the image
+/// copies it) or, without one, the `DATABASE_URL` in `.env.example` names a
+/// SQLite database. The Dockerfile then keeps that database in the writable
+/// `/app/data` volume; the relative `sqlite://db.sqlite` of a new project
+/// would point into the read-only `/app` and stop the app at startup.
+pub(crate) fn project_database_provider(project_path: &Path) -> Option<&'static str> {
+    let configured = fs::read_to_string(project_path.join("Rullst.toml"))
+        .ok()
+        .and_then(|text| toml::from_str::<toml::Table>(&text).ok())
+        .and_then(|config| {
+            config
+                .get("database")?
+                .get("url")?
+                .as_str()
+                .map(str::to_owned)
+        });
+    let url = configured.or_else(|| {
+        fs::read_to_string(project_path.join(".env.example"))
+            .ok()?
+            .lines()
+            .find_map(|line| {
+                let value = line.trim().strip_prefix("DATABASE_URL=")?;
+                Some(value.trim().trim_matches(['"', '\'']).to_owned())
+            })
+    })?;
+    url.get(..7)
+        .is_some_and(|scheme| scheme.eq_ignore_ascii_case("sqlite:"))
+        .then_some("Sqlite")
+}
+
 pub fn generate_docker_files(
     project_path: &Path,
     project_name: &str,
@@ -358,6 +390,41 @@ mod tests {
         ] {
             assert!(metadata.contains(target), "{target}");
         }
+    }
+
+    #[test]
+    fn the_database_provider_of_an_existing_project_comes_from_its_configuration() {
+        let project = |config: Option<&str>, example: Option<&str>| {
+            let root = tempfile::tempdir().expect("temporary project");
+            if let Some(config) = config {
+                fs::write(root.path().join("Rullst.toml"), config).expect("Rullst.toml");
+            }
+            if let Some(example) = example {
+                fs::write(root.path().join(".env.example"), example).expect(".env.example");
+            }
+            project_database_provider(root.path())
+        };
+        let sqlite = "[database]\nurl = \"sqlite://db.sqlite\"\n";
+        let postgres = "[database]\nurl = \"postgres://user:password@localhost:5432/db\"\n";
+        let example = "APP_KEY=REPLACE\nDATABASE_URL=sqlite://db.sqlite?mode=rwc\n";
+        assert_eq!(project(Some(sqlite), None), Some("Sqlite"));
+        assert_eq!(
+            project(Some("[database]\nurl = \"SQLite:data.db\"\n"), None),
+            Some("Sqlite")
+        );
+        // The image copies Rullst.toml, so its URL wins over the example file.
+        assert_eq!(project(Some(postgres), Some(example)), None);
+        assert_eq!(project(None, Some(example)), Some("Sqlite"));
+        assert_eq!(
+            project(
+                Some("[security]\n"),
+                Some("DATABASE_URL=\"sqlite://x.db\"\n")
+            ),
+            Some("Sqlite")
+        );
+        assert_eq!(project(Some("not = [valid"), Some(example)), Some("Sqlite"));
+        assert_eq!(project(None, Some("DATABASE_URL=mysql://db/app\n")), None);
+        assert_eq!(project(None, None), None);
     }
 
     #[test]
