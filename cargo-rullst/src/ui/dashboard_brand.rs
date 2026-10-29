@@ -181,14 +181,41 @@ fn print_static(out: &mut impl Write, depth: ColorDepth) -> io::Result<()> {
     out.flush()
 }
 
-/// Prints the opening for `profile`. It animates only on the first run of the
-/// day in a motion-capable terminal; Ctrl+C during the animation returns an
-/// `Interrupted` error after the terminal has been restored.
+/// When the opening animates in a motion-capable terminal, from
+/// `RULLST_OPENING`: every run (the default), only the first run of the day
+/// (`daily`), or never (`static`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum OpeningMode {
+    Always,
+    Daily,
+    Static,
+}
+
+pub(super) fn opening_mode(value: Option<&str>) -> OpeningMode {
+    match value
+        .map(|value| value.trim().to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("daily") => OpeningMode::Daily,
+        Some("static" | "never" | "off") => OpeningMode::Static,
+        _ => OpeningMode::Always,
+    }
+}
+
+/// Prints the opening for `profile`. In a motion-capable terminal it animates
+/// as `RULLST_OPENING` asks (every run by default); Ctrl+C during the
+/// animation returns an `Interrupted` error after the terminal has been
+/// restored.
 pub(super) fn print_opening(profile: &TerminalProfile, out: &mut impl Write) -> io::Result<()> {
+    let mode = opening_mode(std::env::var("RULLST_OPENING").ok().as_deref());
     let animate = profile.motion
-        && super::opening_marker::marker_path().is_some_and(|path| {
-            super::opening_marker::claim_daily_animation(&path, &super::opening_marker::today())
-        });
+        && match mode {
+            OpeningMode::Always => true,
+            OpeningMode::Static => false,
+            OpeningMode::Daily => super::opening_marker::marker_path().is_some_and(|path| {
+                super::opening_marker::claim_daily_animation(&path, &super::opening_marker::today())
+            }),
+        };
     if !animate {
         return print_static(out, profile.color);
     }

@@ -374,5 +374,102 @@ mod tests {
     fn case_conversion_handles_words_and_acronyms() {
         assert_eq!(to_snake_case("AwaitingReview"), "awaiting_review");
         assert_eq!(to_snake_case("HTTPStatus"), "http_status");
+        assert_eq!(to_snake_case("HttpOK"), "http_ok");
+        assert_eq!(to_snake_case("Version2OK"), "version2_ok");
+    }
+
+    fn expanded(input: TokenStream) -> String {
+        derive_enum_impl(input).to_string()
+    }
+
+    fn variants(count: usize) -> Vec<syn::Ident> {
+        (0..count)
+            .map(|index| quote::format_ident!("V{index}"))
+            .collect()
+    }
+
+    #[test]
+    fn variant_count_and_generics_are_bounded() {
+        let error = "Enum macro requires 1-64 unit variants";
+        assert!(expanded(quote! { enum Empty {} }).contains(error));
+        let full = variants(64);
+        assert!(!expanded(quote! { enum Full { #(#full),* } }).contains(error));
+        let over = variants(65);
+        assert!(expanded(quote! { enum Over { #(#over),* } }).contains(error));
+        assert!(
+            expanded(quote! { enum Generic<T> { Only } })
+                .contains("Enum macro does not support generic database enums")
+        );
+    }
+
+    #[test]
+    fn type_names_are_unqualified_identifiers() {
+        let error = "database enum type_name must be a 1-63 byte unqualified ASCII identifier";
+        let with_type = |type_name: &str| {
+            expanded(quote! {
+                #[rullst_enum(type_name = #type_name)]
+                enum Status { Active }
+            })
+        };
+        let longest = format!("t{}", "x".repeat(62));
+        for valid in ["_status", "status_2", longest.as_str()] {
+            assert!(
+                with_type(valid).contains("DatabaseEnum for Status"),
+                "{valid}"
+            );
+        }
+        let too_long = format!("t{}", "x".repeat(63));
+        for invalid in [
+            "",
+            "2status",
+            "account-status",
+            "app.status",
+            too_long.as_str(),
+        ] {
+            assert!(with_type(invalid).contains(error), "{invalid}");
+        }
+    }
+
+    #[test]
+    fn labels_are_bounded_and_renamed() {
+        let error = "database enum labels must be 1-63 ASCII letters, digits, spaces, underscores or hyphens";
+        let with_label = |label: &str| {
+            expanded(quote! {
+                enum Status { #[rullst_enum(rename = #label)] Active }
+            })
+        };
+        let longest = "x".repeat(63);
+        for valid in ["on hold-now_2", longest.as_str()] {
+            assert!(
+                with_label(valid).contains(&format!(
+                    "VARIANTS : & 'static [& 'static str] = & [\"{valid}\"]"
+                )),
+                "{valid}"
+            );
+        }
+        let too_long = "x".repeat(64);
+        for invalid in ["", "on.hold", too_long.as_str()] {
+            assert!(with_label(invalid).contains(error), "{invalid}");
+        }
+
+        let lowercase = expanded(quote! {
+            #[rullst_enum(rename_all = "lowercase")]
+            enum Status {
+                AwaitingReview,
+                #[rullst_enum(rename = "live")]
+                Active,
+            }
+        });
+        assert!(
+            lowercase.contains(
+                "VARIANTS : & 'static [& 'static str] = & [\"awaitingreview\" , \"live\"]"
+            ),
+            "{lowercase}"
+        );
+        assert!(lowercase.contains("TYPE_NAME : & 'static str = \"status\""));
+        assert!(
+            expanded(quote! { enum Status { A, #[rullst_enum(rename = "A")] B } })
+                .contains("duplicate database enum label `A`")
+        );
     }
 }

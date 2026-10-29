@@ -488,3 +488,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "query_cache/namespace_tests.rs"]
+mod namespace_tests;

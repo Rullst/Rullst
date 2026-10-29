@@ -112,3 +112,58 @@ fn preserves_json_operators_and_continues_existing_parameters() {
         "SELECT payload ? 'key', payload ?| array['a'], payload ?& array['b'], payload @? '$.a' FROM events WHERE tenant_id = $4 AND id = $5"
     );
 }
+
+#[test]
+fn every_quoted_construct_hides_its_markers_wherever_it_starts() {
+    for (sql, expected) in [
+        ("-- a?b\nx = ?", "-- a?b\nx = $1"),
+        ("\"a?b\" = ?", "\"a?b\" = $1"),
+        ("x = \"a\"\"?b\" AND y = ?", "x = \"a\"\"?b\" AND y = $1"),
+        ("`a?b` = ?", "`a?b` = $1"),
+        ("x = `a``?b` AND y = ?", "x = `a``?b` AND y = $1"),
+        ("'a?b' = ?", "'a?b' = $1"),
+        ("x = 'a''?b' AND y = ?", "x = 'a''?b' AND y = $1"),
+        ("/* a?b */ x = ?", "/* a?b */ x = $1"),
+        (
+            "x /* a /* b?c */ d?e */ = ?",
+            "x /* a /* b?c */ d?e */ = $1",
+        ),
+        ("$tag$ a?b $tag$ = ?", "$tag$ a?b $tag$ = $1"),
+        (
+            "x = $a_b$ c?d $a_b$ AND y = ?",
+            "x = $a_b$ c?d $a_b$ AND y = $1",
+        ),
+        (
+            "x = $_t$ c?d $_t$ AND y = ?",
+            "x = $_t$ c?d $_t$ AND y = $1",
+        ),
+        ("$$ a?b $$ = ?", "$$ a?b $$ = $1"),
+        // Only the whole tag closes the string, not a prefix of it.
+        (
+            "x = $tag$ $ta, $tag, ?, $tag$ AND y = ?",
+            "x = $tag$ $ta, $tag, ?, $tag$ AND y = $1",
+        ),
+        ("$ = ? AND b = ?", "$ = $1 AND b = $2"),
+        ("$12 = x AND y = ?", "$12 = x AND y = $13"),
+        ("E'a\\'?b' = ?", "E'a\\'?b' = $1"),
+        // Empty literals close on their second quote.
+        ("x = '' AND y = ?", "x = '' AND y = $1"),
+        ("x = \"\" AND y = ?", "x = \"\" AND y = $1"),
+        ("x = `` AND y = ?", "x = `` AND y = $1"),
+    ] {
+        assert_eq!(replace_placeholders(sql), expected, "{sql}");
+    }
+}
+
+#[test]
+fn only_a_standalone_e_prefix_opens_an_escape_string() {
+    // After an identifier character the backslash is a complete literal.
+    for prefix in ["x_e", "x$e", "xée"] {
+        let sql = format!("SELECT {prefix}'\\' WHERE a = ?");
+        assert_eq!(
+            replace_placeholders(&sql),
+            format!("SELECT {prefix}'\\' WHERE a = $1"),
+            "{prefix}"
+        );
+    }
+}

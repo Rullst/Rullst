@@ -444,5 +444,8 @@ fn response_too_large() -> PolyglotError {
 }
 
 #[cfg(test)]
+#[path = "hrana/pipeline_tests.rs"]
+mod pipeline_tests;
+#[cfg(test)]
 #[path = "hrana/tests.rs"]
 mod tests;

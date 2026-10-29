@@ -21,7 +21,9 @@ Intentions, not promises; dates follow the evidence gates described below.
 
 - **v13:** `13.0.0-alpha.1` (published as a prerelease on October 11, 2026),
   `13.0.0-alpha.2` (published as a prerelease on October 17, 2026, with the
-  alpha.1 dogfooding fixes), then further alphas, betas and a release candidate
+  alpha.1 dogfooding fixes), `13.0.0-alpha.3` (the candidate prepared on
+  October 23, 2026: PWA, Studio production monitor, OAuth providers), then
+  further alphas, betas and a release candidate
   driven by user feedback, then `13.0.0` stable with the
   [maturity tiers](docs/src/maturity.md) applying from that release.
 - **v12:** end of life on 16 October 2026; 12.3.0 is the last release and the
@@ -708,12 +710,12 @@ features, and they add no milestone to the counts above.
   output and add nginx, with the readiness/drain and trusted-proxy contracts
   that `rullst-core` already exposes.
 
-### Planned for 13.0.0-alpha.3
+### Delivered in 13.0.0-alpha.3
 
-Recorded on 15 October 2026 with the maintainer and extended on 16 October,
-when 13.0.0-alpha.2 was prepared. These are planned work items for the next
-prerelease, not shipped features, and they add no milestone to the counts
-above.
+Planned on 15 and 16 October 2026 with the maintainer and prepared on
+23 October 2026 as the 13.0.0-alpha.3 release candidate; the coordinator
+records publication in the table below. Each item states what the release
+contains and what stays open. They add no milestone to the counts above.
 
 - `[x]` **First-class PWA, and retiring Omni** (done in the 13.0.0-alpha.3
   source; see the [PWA guide](docs/src/tutorials/43-progressive-web-apps.md)).
@@ -745,7 +747,7 @@ above.
   sections of the guide, and the removal, with `cargo rullst upgrade` findings
   for an Omni shell and the `offline-sync` feature. They ship with
   13.0.0-alpha.3; store acceptance and physical devices stay application work.
-- **Studio as a production monitor for several projects.** Today Studio is a
+- `[x]` **Studio as a production monitor for several projects** (phases 1 to 3 done in the 13.0.0-alpha.3 source; see the [production monitoring guide](docs/src/production-monitoring.md)). Before alpha.3 Studio is a
   development tool: it runs inside the application process in debug builds,
   listens only on `127.0.0.1:5555` and reads that process's own telemetry,
   queues, cache and local database. The only production-facing piece is the
@@ -776,32 +778,58 @@ above.
   personal data or run arbitrary operations. The work needs a threat-model
   update before phase 1 ships. Estimated at three to four focused packages
   plus mutation tests.
-- **Turso/libSQL beyond the blank and API starters.** Turso can be the primary
-  database only in those starters and does not work with `#[derive(Orm)]`,
-  `Schema`, `artisan!`, `Server::with_db`, Nexus or Studio; alpha.2 states
-  this in the `new` wizard and a capability table. A partial bridge (`Schema`
-  emitting Turso migrations, `#[derive(Orm)]` also generating the Turso model)
-  is a candidate for a 13.x release if users ask for it. Full parity, which
-  would let the ORM core run on a backend other than SQLx, is deferred to a
-  later major release because it would put the SQLx drivers at risk.
-- **The rest of the mutation campaign.** Before the alpha.3 version freeze, as
-  the [verification order](docs/src/v13-delivery-plan.md) requires:
-  - `rullst-orm`: 53 missed mutants in waves 1–2, 443 in wave 4 and 32 in the
-    owned-server contract mode. They were measured before the alpha.2
-    `Schema` changes (constraints, indexes, foreign keys, date/time columns),
-    so re-measure the crate first.
+- `[x]` **The rest of the mutation campaign** (all but `cargo-rullst` done in
+  the 13.0.0-alpha.3 source; `cargo-rullst` moves to the next section). As the
+  [verification order](docs/src/v13-delivery-plan.md) requires:
+  - `rullst-orm` and `rullst-orm-macros`: re-measured in full for alpha.3 on
+    hosted runs, with all-feature targeted runs and the `orm-sqlite`,
+    `orm-polyglot`, `orm-sql-servers`, `orm-strict-postgres`,
+    `orm-strict-mysql` and `orm-polyglot-servers` contracts of `mutants.yml`,
+    which run the SQLite, optional-backend and database-server suites that the
+    all-feature build compiles out. `rullst-orm` has 2,414 mutants: 1,967
+    caught, 421 unviable, 17 timeouts and 9 missed, of which 8 are accepted
+    equivalents. The ninth is the MySQL `FOR UPDATE SKIP LOCKED` claim query of
+    `Outbox::claim_next_at_inner`, which only concurrent claims tell apart from
+    the portable query. `rullst-orm-macros` has 542 mutants: 514 caught, 26
+    unviable and 2 accepted equivalents. A full all-feature campaign still
+    reports the mutants that only those contracts reach.
   - `rullst-core`: the files the first pass left
-    ([PR #465](https://github.com/Rullst/Rullst/pull/465)): the wave-4 files
-    not started (`health.rs`, `cache/tenant.rs`, `feature/*`, `html.rs`,
-    `devops.rs`, `production.rs` and a few one-mutant files),
-    `redis_connection.rs`, and hosted reruns of the files checked only
-    locally; the wave-4 list holds 452 mutants.
-  - `rullst-nexus` and the whole of `cargo-rullst`, not measured yet.
+    ([PR #465](https://github.com/Rullst/Rullst/pull/465)) were finished in
+    [PR #532](https://github.com/Rullst/Rullst/pull/532): 78 files and 2,435
+    mutants, 72 missed at the end (71 documented equivalents; the remaining
+    one needs an open PostgreSQL pool).
+  - `rullst-nexus`: measured for the first time in PR #532 (26 files, 876
+    mutants); 170 of 171 first misses were killed by new tests, one is a
+    documented equivalent, and one real defect was fixed.
+  - `cargo-rullst` is not measured yet; a targeted campaign was stopped before
+    completion and is not part of alpha.3.
   - The 29 `rullst-capital` mutants that only a live Stripe response reaches
     stay with provider sandbox testing.
-- **Feedback from the platforms built on alpha.2.** The maintainer is building
-  platforms on 13.0.0-alpha.2. Their reports choose the fixes and priorities
-  for alpha.3, as the alpha.1 report did for alpha.2.
+- `[x]` **Feedback from the platforms built on alpha.2.** The reports from the
+  platforms built on 13.0.0-alpha.2 chose the fixes in this release (see the
+  changelog), as the alpha.1 report did for alpha.2.
+
+### Planned after 13.0.0-alpha.3
+
+Work items for later prereleases, not shipped features. They add no milestone
+to the counts above.
+
+- **Targeted `cargo-rullst` mutation campaign** (its branch continues after the
+  alpha.3 candidate): self-update signature and checksum verification, upgrade
+  rules, the audit and IDOR scanner, manifest editing, `doctor` and the
+  deployment configuration generators. Until it finishes, `cargo-rullst` is
+  not mutation-measured.
+- **Turso/libSQL beyond the blank and API starters**, if users ask for it.
+  Turso can be the primary database only in those starters and does not work
+  with `#[derive(Orm)]`, `Schema`, `artisan!`, `Server::with_db`, Nexus or
+  Studio. A partial bridge (`Schema` emitting Turso migrations,
+  `#[derive(Orm)]` also generating the Turso model) is a candidate for a 13.x
+  release. Full parity, which would let the ORM core run on a backend other
+  than SQLx, is deferred to a later major release because it would put the
+  SQLx drivers at risk.
+- **Feedback from the platforms upgraded to 13.0.0-alpha.3.** Their reports
+  choose the fixes and priorities of the next prerelease, as the alpha.1 and
+  alpha.2 reports did before.
 
 ### Published and planned release lines
 
@@ -816,7 +844,7 @@ above.
 | **v12.3.0** | `[x] Latest published stable` | Tagged `v12.3.0` at `67b2d0e5` and published on 9 October 2026: hickory 0.26.3, fewer WAF/RASP false positives and deprecations of the Capital and Mail APIs that 13.0 removes. It is the last 12.x release: the `v12` line reached end of life on 16 October 2026 and no further patch will be published. |
 | **v13.0.0-alpha.1** | `[x] Published prerelease` | Tag `v13.0.0-alpha.1` at `fc44bf76`; all twenty packages were published on 11 October 2026 for evaluation. See the [delivery plan](docs/src/v13-delivery-plan.md). |
 | **v13.0.0-alpha.2** | `[x] Published prerelease` | All twenty packages were published on 17 October 2026 from tag `v13.0.0-alpha.2` at `0daf4941` ([release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)): the fixes from the alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema` date/time and Nexus changes. A first tag at `669befe6` failed release verification before publishing anything and was replaced. |
-| **v13.0.0-alpha.3** | `[ ] Planned` | See [Planned for 13.0.0-alpha.3](#planned-for-1300-alpha3). |
+| **v13.0.0-alpha.3** | `[x] Published prerelease` | All twenty packages were published on 24 October 2026 from tag `v13.0.0-alpha.3` at `be336833` ([release run 40129821475](https://github.com/Rullst/Rullst/actions/runs/40129821475)) after all 25 required workflows passed on that commit. See [Delivered in 13.0.0-alpha.3](#delivered-in-1300-alpha3). |
 | **v13.x** | `[ ] Next feature line` | Compatible and breaking improvements move together into the next deliberate cycle: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
 The framework may call a milestone implemented only when the same commit passes

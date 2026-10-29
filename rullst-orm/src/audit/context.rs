@@ -260,6 +260,91 @@ mod tests {
         assert_eq!(metadata.tenant_key.as_deref(), Some("string:tenant-a"));
     }
 
+    #[test]
+    fn accessors_and_debug_expose_only_safe_metadata() {
+        let context = AuditContext::user("alice").expect("valid actor");
+        assert_eq!(context.actor_kind(), AuditActorKind::User);
+        assert_eq!(context.actor_id(), "alice");
+        assert_eq!(context.correlation_id(), None);
+        let context = context
+            .with_correlation_id("req-1")
+            .expect("valid correlation");
+        assert_eq!(context.correlation_id(), Some("req-1"));
+        assert_eq!(
+            format!("{context:?}"),
+            "AuditContext { actor_kind: User, actor_id_bytes: 5, has_correlation_id: true, reverted_audit_id: None, has_reason: false }"
+        );
+    }
+
+    #[test]
+    fn text_fields_accept_exactly_their_byte_limit() {
+        let longest = "a".repeat(255);
+        assert_eq!(
+            AuditContext::user(longest.clone())
+                .expect("255 bytes")
+                .actor_id(),
+            longest
+        );
+        let error = AuditContext::user("a".repeat(256)).expect_err("256 bytes");
+        assert_eq!(
+            error.to_string(),
+            "Validation error: audit actor ID must be non-empty, at most 255 bytes, and free of padding or control characters"
+        );
+    }
+
+    #[tokio::test]
+    async fn revision_restores_need_a_positive_audit_id() {
+        let context = AuditContext::system("restorer").expect("valid actor");
+        let error = context
+            .clone()
+            .for_revision_restore(0, "undo")
+            .expect_err("zero id");
+        assert_eq!(
+            error.to_string(),
+            "Validation error: restored audit ID must be positive"
+        );
+        let restoring = context.for_revision_restore(1, "undo").expect("id 1");
+        let metadata = with_audit_context(restoring, async { current_metadata() })
+            .await
+            .expect("metadata");
+        assert_eq!(metadata.reverted_audit_id, Some(1));
+        assert_eq!(metadata.reason.as_deref(), Some("undo"));
+        assert_eq!(metadata.tenant_key, None);
+    }
+
+    #[tokio::test]
+    async fn tenant_keys_encode_each_scalar_type_within_their_bound() {
+        let key = |tenant: RullstValue| crate::with_tenant(tenant, async { active_tenant_key() });
+        assert_eq!(
+            key(RullstValue::Int(7)).await.unwrap().as_deref(),
+            Some("i32:7")
+        );
+        assert_eq!(
+            key(RullstValue::Bool(true)).await.unwrap().as_deref(),
+            Some("bool:true")
+        );
+        assert_eq!(
+            key(RullstValue::Float(1.5)).await.unwrap().as_deref(),
+            Some("f64:3ff8000000000000")
+        );
+        let nan = key(RullstValue::Float(f64::NAN)).await;
+        assert!(
+            matches!(&nan, Err(crate::Error::Validation(message)) if message == "audit tenant ID must be finite"),
+            "{nan:?}"
+        );
+        // `string:` takes 7 of the 512 key bytes.
+        let longest = "t".repeat(505);
+        assert_eq!(
+            key(RullstValue::String(longest.clone())).await.unwrap(),
+            Some(format!("string:{longest}"))
+        );
+        let too_long = key(RullstValue::String("t".repeat(506))).await;
+        assert!(
+            matches!(&too_long, Err(crate::Error::Validation(message)) if message.starts_with("audit tenant ID must be non-empty, at most 505 bytes")),
+            "{too_long:?}"
+        );
+    }
+
     #[tokio::test]
     async fn wide_and_null_tenants_have_their_own_audit_keys() {
         let wide = crate::with_tenant(5_000_000_000_i64, async { active_tenant_key() }).await;

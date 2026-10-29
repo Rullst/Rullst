@@ -347,3 +347,18 @@ async fn poisoned_connections_and_failed_workers_return_typed_errors() {
         }
     ));
 }
+
+#[test]
+fn analytics_requests_reach_exactly_their_bounds() {
+    let mib = 1024 * 1024;
+    assert!(validate_analytics_request(&"x".repeat(mib), &[]).is_ok());
+    assert!(validate_analytics_request(&"x".repeat(mib + 1), &[]).is_err());
+
+    let parameters = vec![AnalyticsValue::Null; 1_025];
+    assert!(validate_analytics_request("SELECT 1", &parameters[..1_024]).is_ok());
+    assert!(validate_analytics_request("SELECT 1", &parameters).is_err());
+
+    let payload = |len: usize| [AnalyticsValue::Text("p".repeat(len))];
+    assert!(validate_analytics_request("SELECT ?", &payload(8 * mib)).is_ok());
+    assert!(validate_analytics_request("SELECT ?", &payload(8 * mib + 1)).is_err());
+}

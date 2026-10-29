@@ -21,6 +21,32 @@ rullst-orm/src/value.rs:86:9: replace temporal::date -> String with "xyzzy".into
 rullst-orm/src/value.rs:90:9: replace temporal::time -> String with String::new()
 rullst-orm/src/value.rs:90:9: replace temporal::time -> String with "xyzzy".into()
 
+# rullst-orm-macros feature gates: with every feature, redis() and ai() emit
+# no attribute, which is what Default::default() returns.
+rullst-orm-macros/src/feature_gates.rs:17:5: replace redis -> TokenStream with Default::default()
+rullst-orm-macros/src/feature_gates.rs:26:5: replace ai -> TokenStream with Default::default()
+
+# rullst-orm: the two hex digits occupy disjoint bits; the default
+# personal_fields() and TursoModel::opaque_columns() already return an empty
+# vector or slice.
+rullst-orm/src/pool/dsn.rs:177:34: replace | with ^ in percent_decode_utf8
+rullst-orm/src/privacy.rs:83:9: replace ComplianceModel::personal_fields -> Vec<&'static str> with vec![]
+rullst-orm/src/polyglot/turso/model.rs:42:9: replace TursoModel::opaque_columns -> &'static[&'static str] with Vec::leak(Vec::new())
+# The padding check reads a digit's value modulo 16; byte + b'0' and byte - b'0'
+# differ by 96.
+rullst-orm/src/polyglot/recovery/codec.rs:192:34: replace - with + in base64url_value
+
+# No Qdrant request body can reach 4 MiB: a vector holds at most 65,536 values and a
+# payload at most 1 MiB.
+rullst-orm/src/polyglot/qdrant/mod.rs:242:24: replace > with == in LiveQdrant::send_json
+rullst-orm/src/polyglot/qdrant/mod.rs:242:24: replace > with >= in LiveQdrant::send_json
+
+# The MySQL key-collation conversion is idempotent, so running it on keys that
+# are already ascii_bin only rebuilds the table; the migration lock lives in the
+# connection's session, which dropping the connection ends as closing it does.
+rullst-orm/src/outbox.rs:117:38: replace > with >= in Outbox::install
+rullst-orm/src/schema/migration_lock.rs:72:9: replace MigrationLock::release with ()
+
 # rullst-core (alpha.3 campaign, hosted all-feature runs): each name below has a
 # row in WORKFLOWS.md "Accepted equivalent mutants"; radar.rs entries are
 # compiled only on Windows or other non-Linux targets.

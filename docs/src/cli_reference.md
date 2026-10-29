@@ -10,7 +10,7 @@ security boundaries. Cargo never installs a prerelease unless you name it, so
 with an exact version:
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.2 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
 ```
 
 `cargo-rullst` is a Core package. A few generators depend on outside toolchains
@@ -51,9 +51,11 @@ Enter runs the selection (asking first for its required arguments, as a menu
 when the values are fixed), Esc returns to the home menu and Ctrl+C exits.
 `cargo rullst --help` is the non-interactive equivalent.
 
-The opening animates for about 0.7 s only on the first run of each day; later
-runs draw the final frame instantly and any key skips the animation. The day
-of the last animation is kept in the user cache directory
+The opening animates for about 0.7 s on every run; any key skips the
+animation. `RULLST_OPENING=daily` animates only the first run of each day
+(later runs draw the final frame instantly) and `RULLST_OPENING=static` never
+animates. For `daily`, the day of the last animation is kept in the user cache
+directory
 (`$XDG_CACHE_HOME/rullst-ui-v1` or `~/.cache/rullst-ui-v1`;
 `%LOCALAPPDATA%\rullst-ui-v1` on Windows), never in the project. If that file
 cannot be read or written, the opening is static.
@@ -539,7 +541,7 @@ The directory may contain other downloads; only these fixed names are read.
 No archive is extracted and no downloaded executable is run. Releases since
 12.1.0 publish this inventory for Linux x64 GNU, Windows x64 MSVC and macOS
 x64/ARM64; 12.0.0 has none. The v13 prereleases publish it for the same
-targets; select one exactly, such as `--to 13.0.0-alpha.2`, with the
+targets; select one exactly, such as `--to 13.0.0-alpha.3`, with the
 major/prerelease opt-ins described below.
 
 The caller-installed GitHub CLI must be available through an absolute trusted

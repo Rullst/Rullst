@@ -1,7 +1,9 @@
 #![cfg(feature = "turso")]
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
 
-use rullst_orm::polyglot::{TursoConfig, TursoMigration, TursoOrder, TursoOrm, TursoStatement};
+use rullst_orm::polyglot::{
+    PolyglotError, TursoConfig, TursoMigration, TursoOrder, TursoOrm, TursoStatement,
+};
 
 #[derive(Debug, Clone, PartialEq, rullst_orm::Orm)]
 #[orm(table = "users", backend = "turso")]
@@ -28,6 +30,17 @@ async fn primary_model_contract_covers_crud_filters_order_and_counts() {
     assert!(User::paginate(1, 0).await.is_err());
     assert!(User::paginate(1, 501).await.is_err());
     assert!(User::paginate(usize::MAX, 500).await.is_err());
+    // Each argument is checked on its own, before the store is needed.
+    for (page, per_page) in [(0, 10), (1, 0)] {
+        assert!(
+            matches!(
+                User::paginate(page, per_page).await,
+                Err(PolyglotError::InvalidIdentifier { reason, .. })
+                    if reason == "page must be positive and per_page must be between 1 and 500"
+            ),
+            "{page} {per_page}"
+        );
+    }
 
     TursoOrm::init(TursoConfig::new("mock_local", ""))
         .await
@@ -121,6 +134,22 @@ async fn primary_model_contract_covers_crud_filters_order_and_counts() {
         .await
         .unwrap();
     assert_eq!(unscored, vec![grace.clone()]);
+    // Two rows: counts, descending order, the 500-row page and offsets.
+    assert_eq!(User::count().await.unwrap(), 2);
+    let names: Vec<String> = User::query()
+        .unwrap()
+        .order_by("name", TursoOrder::Desc)
+        .unwrap()
+        .get()
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|user| user.name)
+        .collect();
+    assert_eq!(names, ["Grace", "Ada Lovelace"]);
+    assert_eq!(User::paginate(1, 500).await.unwrap().data.len(), 2);
+    assert!(User::query().unwrap().offset(i64::MAX as u64).is_ok());
+    assert!(User::query().unwrap().offset(i64::MAX as u64 + 1).is_err());
     let unscored_count = User::query()
         .unwrap()
         .where_eq("score", &Option::<f64>::None)

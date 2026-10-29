@@ -449,4 +449,4 @@ pub struct PaginationResult<T> {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

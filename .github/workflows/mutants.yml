@@ -55,7 +55,12 @@ on:
         description: >-
           Contract mode only. The wrapper that owns a disposable PostgreSQL,
           MySQL or Redis server; its adapter files are mutated and only its contract
-          tests run against that server
+          tests run against that server. orm-sqlite needs no server: it mutates
+          the ORM crates and runs the rullst-orm suite on SQLite; orm-polyglot
+          adds the optional backends and an owned Redis; orm-sql-servers runs
+          the PostgreSQL, MySQL and MariaDB matrices, orm-strict-postgres and
+          orm-strict-mysql run one matrix with that strict pool, and
+          orm-polyglot-servers runs the optional backends' server matrices
         required: false
         default: none
         type: choice
@@ -68,6 +73,12 @@ on:
           - recurring-postgres
           - messaging-redis
           - connect-sql
+          - orm-sqlite
+          - orm-polyglot
+          - orm-sql-servers
+          - orm-strict-postgres
+          - orm-strict-mysql
+          - orm-polyglot-servers
       mutants_regex:
         description: Contract mode only. cargo-mutants --re filter over the contract's mutants
         required: false
@@ -253,7 +264,7 @@ jobs:
                 exit 2
               fi
               case "$contract" in
-                passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql)
+                passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql|orm-sqlite|orm-polyglot|orm-sql-servers|orm-strict-postgres|orm-strict-mysql|orm-polyglot-servers)
                   ;;
                 *)
                   echo "Contract mode requires one of the owned-server wrappers." >&2
@@ -387,7 +398,7 @@ jobs:
           toolchain: 1.99.1
 
       - name: Install cargo-mutants
-        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+        uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-mutants@27.1.0
 
@@ -479,7 +490,7 @@ jobs:
           toolchain: 1.99.1
 
       - name: Install cargo-mutants
-        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+        uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-mutants@27.1.0
 
@@ -591,7 +602,7 @@ jobs:
           toolchain: 1.99.1
 
       - name: Install cargo-mutants
-        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+        uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-mutants@27.1.0
 
@@ -615,7 +626,7 @@ jobs:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: prlimit --as=8589934592 --
         run: |
           case "$CONTRACT" in
-            passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql)
+            passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql|orm-sqlite|orm-polyglot|orm-sql-servers|orm-strict-postgres|orm-strict-mysql|orm-polyglot-servers)
               ;;
             *)
               echo "Unknown owned-server contract: $CONTRACT" >&2

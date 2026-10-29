@@ -188,3 +188,101 @@ async fn replace_updates_without_creating_a_missing_document() {
     assert!(matches!(replaced, Err(PolyglotError::NotFound)));
     server.abort();
 }
+
+#[test]
+fn any_mock_endpoint_or_credential_selects_the_offline_store() {
+    let store = |endpoint: &str, auth: SurrealAuth| {
+        SurrealDbStore::<Event>::connect_or_mock(SurrealConfig::new(endpoint, "main", "app", auth))
+            .expect("valid configuration")
+            .is_mock()
+    };
+    let live = "https://db.example.com";
+    assert!(store("", SurrealAuth::None));
+    assert!(store("mock://surreal", SurrealAuth::None));
+    assert!(store("mock_local", SurrealAuth::None));
+    assert!(store(live, SurrealAuth::basic("mock_user", "secret")));
+    assert!(store(live, SurrealAuth::basic("user", "mock_secret")));
+    assert!(store(live, SurrealAuth::basic("", "secret")));
+    assert!(store(live, SurrealAuth::bearer("mock_token")));
+    assert!(!store(live, SurrealAuth::basic("user", "secret")));
+    assert!(!store(live, SurrealAuth::bearer("token")));
+    assert!(!store(live, SurrealAuth::None));
+}
+
+#[test]
+fn endpoints_are_bare_urls_and_configuration_debug_is_redacted() {
+    let shape = "endpoint must not contain credentials, query parameters, or a fragment";
+    for endpoint in [
+        "https://user@db.example.com",
+        "https://:pw@db.example.com",
+        "https://db.example.com?ns=x",
+        "https://db.example.com#x",
+    ] {
+        assert!(
+            matches!(
+                super::config::validate_endpoint(endpoint, false),
+                Err(PolyglotError::InvalidConfiguration { reason, .. }) if reason == shape
+            ),
+            "{endpoint}"
+        );
+    }
+    let base = super::config::validate_endpoint("https://db.example.com/surreal", false)
+        .expect("valid endpoint");
+    assert_eq!(base.as_str(), "https://db.example.com/surreal/");
+    let slashed = super::config::validate_endpoint("https://db.example.com/surreal/", false)
+        .expect("valid endpoint");
+    assert_eq!(slashed.as_str(), "https://db.example.com/surreal/");
+
+    assert_eq!(
+        format!(
+            "{:?}",
+            SurrealConfig::new(
+                "https://db.example.com",
+                "main",
+                "app",
+                SurrealAuth::basic("user", "secret")
+            )
+        ),
+        "SurrealConfig { endpoint: \"[CONFIGURED]\", namespace: \"main\", database: \"app\", auth: SurrealAuth::Basic([REDACTED]), response_limit: 1048576, allow_insecure_http: false }"
+    );
+    assert_eq!(format!("{:?}", SurrealAuth::None), "SurrealAuth::None");
+    assert_eq!(
+        format!("{:?}", SurrealAuth::bearer("token")),
+        "SurrealAuth::Bearer([REDACTED])"
+    );
+
+    let config = || SurrealConfig::new("https://db.example.com", "main", "app", SurrealAuth::None);
+    assert!(config().with_response_limit(8 * 1024 * 1024).is_ok());
+    assert!(config().with_response_limit(8 * 1024 * 1024 + 1).is_err());
+    assert!(config().with_response_limit(1024).is_ok());
+    assert!(config().with_response_limit(1023).is_err());
+}
+
+#[test]
+fn graph_queries_reach_exactly_their_size_and_row_limits() {
+    let padded = "MATCH (n:person) RETURN n";
+    let longest = format!("{padded}{}", "a".repeat(64 * 1024 - padded.len()));
+    assert!(GraphQuery::read_only(longest.clone(), 1).is_ok());
+    assert!(GraphQuery::read_only(format!("{longest}a"), 1).is_err());
+    assert!(GraphQuery::read_only("   ", 1).is_err());
+    assert!(GraphQuery::read_only("MATCH (n:person) RETURN n", 1_000).is_ok());
+    assert!(GraphQuery::read_only("MATCH (n:person) RETURN n", 1_001).is_err());
+}
+
+#[tokio::test]
+async fn the_offline_store_keeps_its_documents() {
+    let store = SurrealDbStore::<Event>::connect_or_mock(SurrealConfig::new(
+        "",
+        "main",
+        "app",
+        SurrealAuth::None,
+    ))
+    .expect("mock");
+    let collection = CollectionName::new("events").unwrap();
+    let id = DocumentId::new("evt-1").unwrap();
+    let event = Event {
+        label: "created".to_owned(),
+    };
+    store.create(&collection, &id, &event).await.unwrap();
+    assert_eq!(store.find(&collection, &id).await.unwrap(), Some(event));
+}

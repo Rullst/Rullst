@@ -222,4 +222,14 @@ mod tests {
             Err(PolyglotError::NotFound)
         ));
     }
+
+    #[tokio::test]
+    async fn clones_share_one_document_set() {
+        let store = MockDocumentStore::<Event>::new();
+        let clone = store.clone();
+        let collection = CollectionName::new("events").unwrap();
+        let id = DocumentId::new("01").unwrap();
+        clone.create(&collection, &id, &event(1)).await.unwrap();
+        assert_eq!(store.find(&collection, &id).await.unwrap(), Some(event(1)));
+    }
 }

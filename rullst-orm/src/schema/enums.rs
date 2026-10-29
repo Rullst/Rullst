@@ -102,6 +102,21 @@ mod tests {
     }
 
     #[test]
+    fn enum_metadata_accepts_the_exact_limits() {
+        let longest = "x".repeat(63);
+        assert!(validate_native_enum(&longest, &["Active"]).is_ok());
+        assert!(validate_native_enum("status", &[longest.as_str()]).is_ok());
+        let labels: Vec<String> = (0..65).map(|index| format!("v{index}")).collect();
+        let labels: Vec<&str> = labels.iter().map(String::as_str).collect();
+        assert!(validate_native_enum("status", &labels[..64]).is_ok());
+        let error = validate_native_enum("status", &labels).expect_err("65 labels");
+        assert_eq!(
+            error.to_string(),
+            "Validation error: database enums require 1-64 variants"
+        );
+    }
+
+    #[test]
     fn enum_labels_are_sql_quoted_defensively() {
         assert_eq!(quoted_label("awaiting_review"), "'awaiting_review'");
         assert_eq!(quoted_label("owner's"), "'owner''s'");

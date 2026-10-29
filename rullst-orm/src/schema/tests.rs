@@ -22,6 +22,13 @@ fn test_subquery_builder_trait() {
     };
     assert_eq!(sq.to_sql(), "SELECT * FROM users WHERE id = ?");
     assert_eq!(sq.bindings().len(), 1);
+    // By default a custom builder binds its values in declaration order and
+    // reports no validation failure.
+    assert!(matches!(
+        sq.ordered_bindings().as_slice(),
+        [crate::RullstValue::Int(42)]
+    ));
+    assert!(sq.validation_error().is_none());
 }
 
 #[test]

@@ -33,6 +33,11 @@ fn executed(names: &[&str]) -> HashSet<String> {
 }
 
 #[test]
+fn migrations_run_outside_the_runner_transaction_by_default() {
+    assert!(!Named("m1_users").within_transaction());
+}
+
+#[test]
 fn seeding_waits_for_every_registered_migration() {
     let migrations = registry(&["m1_users", "m2_posts", "m3_tags", "m4_likes"]);
     let error = pending_before_seed(&migrations, &executed(&["m1_users"])).unwrap_err();

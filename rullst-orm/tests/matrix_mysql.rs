@@ -138,6 +138,100 @@ async fn test_matrix_mysql_crud() {
     driver_contract::exercise().await;
     #[cfg(feature = "strict-mysql")]
     support::json_columns::exercise_sqlx_json("JSON").await;
+    support::migrations::exercise_runner_waits_past_one_lock_attempt().await;
+    exercise_legacy_outbox_key_collation().await;
+    exercise_audit_v1_upgrade().await;
+}
+
+/// Counts the columns of `table` that match `condition` in this database.
+async fn count_columns(table: &str, condition: &str) -> i64 {
+    let sql = format!(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS \
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}' AND {condition}"
+    );
+    let (count,): (i64,) = sqlx::query_as(sqlx::AssertSqlSafe(sql.as_str()))
+        .fetch_one(Orm::pool().expect("MySQL pool"))
+        .await
+        .expect("count the matching columns");
+    count
+}
+
+/// An outbox created before its keys compared case-sensitively is converted
+/// in place by `Outbox::install`.
+async fn exercise_legacy_outbox_key_collation() {
+    let pool = Orm::pool().expect("MySQL pool");
+    sqlx::query("DROP TABLE IF EXISTS rullst_outbox")
+        .execute(pool)
+        .await
+        .expect("drop the outbox");
+    sqlx::query(
+        "CREATE TABLE rullst_outbox (id BIGINT AUTO_INCREMENT PRIMARY KEY, \
+         stream VARCHAR(128) NOT NULL, event_key VARCHAR(128) NOT NULL, \
+         event_kind VARCHAR(128) NOT NULL, payload_json LONGTEXT NOT NULL, \
+         status VARCHAR(16) NOT NULL, attempts INT NOT NULL, claimed_by VARCHAR(128) NOT NULL, \
+         claim_key VARCHAR(128) NOT NULL, claim_expires_at_epoch BIGINT NOT NULL, \
+         last_error VARCHAR(512) NOT NULL, available_at_epoch BIGINT NOT NULL, \
+         created_at_epoch BIGINT NOT NULL, delivered_at_epoch BIGINT NULL, \
+         insert_token VARCHAR(32) NOT NULL, \
+         UNIQUE KEY rullst_outbox_stream_event_unique (stream, event_key), \
+         INDEX rullst_outbox_delivery_idx (stream, status, available_at_epoch, claim_expires_at_epoch, id)) \
+         CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci",
+    )
+    .execute(pool)
+    .await
+    .expect("create an outbox with case-insensitive keys");
+    let binary_keys = "COLUMN_NAME IN ('stream', 'event_key', 'claim_key') \
+                       AND COLLATION_NAME = 'ascii_bin'";
+    assert_eq!(count_columns("rullst_outbox", binary_keys).await, 0);
+
+    rullst_orm::Outbox::install()
+        .await
+        .expect("install converts the legacy outbox");
+    assert_eq!(count_columns("rullst_outbox", binary_keys).await, 3);
+}
+
+/// A v1 audit table gains its v2 columns, with a `LONGTEXT` restore patch.
+async fn exercise_audit_v1_upgrade() {
+    let pool = Orm::pool().expect("MySQL pool");
+    sqlx::query("DROP TABLE IF EXISTS rullst_audits")
+        .execute(pool)
+        .await
+        .expect("drop the audit table");
+    sqlx::query(
+        "CREATE TABLE rullst_audits (id INT AUTO_INCREMENT PRIMARY KEY, \
+         model_type VARCHAR(255) NOT NULL, model_id INT NOT NULL, event VARCHAR(50) NOT NULL, \
+         old_values LONGTEXT, new_values LONGTEXT, \
+         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+    )
+    .execute(pool)
+    .await
+    .expect("create a v1 audit table");
+
+    rullst_orm::audit::create_audit_table()
+        .await
+        .expect("upgrade the v1 audit table");
+    // old_values, new_values and the added restore_patch; the other added
+    // columns keep their own types.
+    assert_eq!(
+        count_columns("rullst_audits", "DATA_TYPE = 'longtext'").await,
+        3
+    );
+    assert_eq!(
+        count_columns(
+            "rullst_audits",
+            "COLUMN_NAME = 'restore_patch' AND DATA_TYPE = 'longtext'"
+        )
+        .await,
+        1
+    );
+    assert_eq!(
+        count_columns(
+            "rullst_audits",
+            "COLUMN_NAME = 'actor_kind' AND DATA_TYPE = 'varchar'"
+        )
+        .await,
+        1
+    );
 }
 
 async fn exercise_native_enum() {

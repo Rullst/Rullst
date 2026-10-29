@@ -494,7 +494,7 @@ for blueprint in "${blueprints[@]}"; do
     echo "Generated $blueprint manifest unexpectedly references a source path."
     exit 1
   fi
-  # Prereleases are pinned exactly (`=13.0.0-alpha.2`) so Cargo cannot move a
+  # Prereleases are pinned exactly (`=13.0.0-alpha.3`) so Cargo cannot move a
   # generated project to a later, incompatible alpha; stable versions are not.
   if ! grep -Fq "rullst = { version = \"$version\"" "$manifest" \
     && ! grep -Fq "rullst = { version = \"=$version\"" "$manifest"; then

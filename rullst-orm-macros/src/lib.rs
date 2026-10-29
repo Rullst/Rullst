@@ -9,7 +9,6 @@ mod factory_observer;
 mod feature_gates;
 mod models;
 mod nexus;
-#[cfg_attr(mutants, mutants::skip)]
 mod parser;
 mod privacy;
 mod relationships;
