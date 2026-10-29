@@ -28,7 +28,7 @@ python3 examples/saas/run.py --serve
 ```
 
 The command installs the source CLI into a private temporary prefix, generates
-the SaaS blueprint, adds the notes resource, runs migrations twice and checks
+the SaaS starter, adds the notes resource, runs migrations twice and checks
 the generated application with strict Clippy. It prints a loopback URL, the
 generated source directory and the database path. Open the printed `/register`
 URL and create a disposable account using an address such as
