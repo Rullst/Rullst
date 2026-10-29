@@ -329,6 +329,8 @@ def check_logs(engine: Engine) -> None:
         expect("panicked" not in logs, f"container {container[:12]} logged no panic")
         if container in engine.containers("app"):
             log("\n".join(logs.splitlines()[:25]))
+        else:
+            expect("Caddyfile input is not formatted" not in logs, "Caddy accepts the Caddyfile as formatted")
 
 
 def diagnostics(engine: Engine) -> None:
@@ -339,6 +341,24 @@ def diagnostics(engine: Engine) -> None:
                "restarts={{.RestartCount}}", container, check=False)
         engine("logs", "--tail", "200", container, check=False)
     log("::endgroup::")
+
+
+def restart(engine: Engine, vm: Path) -> None:
+    """`compose restart`. Rootless Podman on the Ubuntu runner may fail to tear
+    down its pasta network namespace; that is reported as a warning (with the
+    kernel's AppArmor messages) and `compose up -d` starts what stopped."""
+    result = engine.compose(vm, "restart", capture=True, check=False, timeout=300)
+    log(result.stdout)
+    if result.returncode == 0:
+        return
+    if engine.name != "podman" or "rootless netns" not in result.stdout:
+        raise Failure(f"`{engine.name} compose restart` exited with {result.returncode}")
+    log("::warning title=Rootless Podman restart::`podman compose restart` failed to stop "
+        "the rootless network namespace (see the log); ran `podman compose up -d`")
+    denials = run(["sudo", "dmesg"], capture=True, check=False, quiet=True).stdout
+    log("\n".join(line for line in denials.splitlines() if "apparmor" in line.lower())[-4000:])
+    engine("info", "--format", "network={{.Host.RootlessNetworkCmd}}", check=False)
+    engine.compose(vm, "up", "-d", timeout=600)
 
 
 def deploy(engine: Engine, starter: str, vm: Path, work: Path) -> None:
@@ -356,7 +376,7 @@ def deploy(engine: Engine, starter: str, vm: Path, work: Path) -> None:
     with step(f"{starter}: migrate once, restart, and check the database volume"):
         check_database(engine, vm, app, binary, "db:migrate")
         check_application(starter, ca, password, registered=False)
-        engine.compose(vm, "restart", timeout=300)
+        restart(engine, vm)
         app_id, _ = wait_until_healthy(engine, first_start=False)
         check_https(ca)
         volume = check_database(engine, vm, engine.inspect(app_id), binary, "db:status")
