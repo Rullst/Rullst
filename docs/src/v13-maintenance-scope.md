@@ -65,6 +65,78 @@ This requires an actual packaging, compatibility and release-workflow migration,
 not just a new repository name. Security support for shipped capabilities remains
 in force throughout that transition.
 
+## Measured cost snapshot (13.0.0-alpha.3)
+
+Measured on 29 October 2026 at the `main` that follows the 13.0.0-alpha.3
+publication. These are proxies for recurring work, not hours: each line of
+production code, each mutant and each fuzz target is something every release
+must keep compiling, tested and admitted. Hosted CI minutes per crate and the
+time spent on reviews and incidents were not measured; they stay unknown.
+
+| Package | Tier | Production lines | Test lines | Tests | Mutants | Fuzz targets | Dependencies | Commits (60 days) |
+| :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `cargo-rullst` | Core | 66,544 | 36,138 | 1,212 | 9,454 | 0 | 307 | 520 |
+| `rullst-core` | Core | 41,987 | 34,002 | 1,193 | 5,494 | 0 | 287 | 398 |
+| `rullst-orm` | Core | 21,871 | 26,402 | 487 | 2,414 | 5 | 304 | 258 |
+| `rullst-security` | Core | 12,178 | 7,426 | 404 | 1,842 | 7 | 248 | 119 |
+| `rullst-orm-macros` | Core | 11,504 | 2,376 | 138 | 542 | 0 | 4 | 133 |
+| `rullst-macros` | Core | 3,084 | 2,165 | 77 | 0¹ | 0 | 11 | 36 |
+| `rullst` (facade) | Core | 560 | 4,733 | 133 | 10 | 12 | 525 | 174 |
+| `rullst-connect` | Extension | 13,796 | 12,484 | 391 | 1,200 | 3 | 242 | 88 |
+| `rullst-ai` | Extension | 13,529 | 6,068 | 232 | 2,131 | 3 | 231 | 72 |
+| `rullst-studio` | Extension | 11,893 | 5,637 | 157 | 17¹ | 1 | 302 | 103 |
+| `rullst-mail` | Extension | 11,750 | 8,347 | 272 | 1,735 | 4 | 306 | 131 |
+| `rullst-capital` | Extension | 11,157 | 6,342 | 214 | 1,782 | 1 | 311 | 140 |
+| `rullst-auth` | Extension | 10,236 | 12,251 | 244 | 1,818 | 0 | 277 | 72 |
+| `rullst-messaging` | Extension | 8,830 | 9,156 | 176 | 1,576 | 0 | 205 | 57 |
+| `rullst-nexus` | Extension | 7,422 | 9,455 | 239 | 920 | 1 | 326 | 135 |
+| `rullst-media` | Experimental | 4,397 | 3,882 | 60 | 874 | 0 | 160 | 28 |
+| `rullst-labs` | Experimental | 3,785 | 3,274 | 78 | 558 | 0 | 110 | 43 |
+| `rullst-privacy` | Experimental | 3,482 | 4,392 | 102 | 562 | 2 | 134 | 35 |
+| `rullst-supervision` | Experimental | 3,113 | 3,769 | 66 | 598 | 0 | 95 | 24 |
+| `rullst-iot` | Experimental | 2,593 | 1,395 | 83 | 307 | 3 | 34 | 37 |
+
+¹ Most of the crate is excluded from mutation with `mutants::skip`, so the
+listed count understates its test obligation.
+
+**By tier**, the share of the workspace totals (263,711 production lines, 5,958
+tests, 33,834 mutants, 42 fuzz targets):
+
+| Tier | Production lines | Tests | Mutants | Fuzz targets | Commits (60 days) |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| Core | 60% | 61% | 58% | 57% | 63% |
+| Extension | 34% | 32% | 33% | 31% | 31% |
+| Experimental | 7% | 7% | 9% | 12% | 6% |
+
+What the numbers show:
+
+- **The CLI is the largest single cost.** `cargo-rullst` alone holds a quarter
+  of the production code and 28% of the mutants, and changes most often, because
+  every generator multiplies database, blueprint and platform combinations.
+  Reducing generator combinations saves more than retiring any optional crate.
+- **The experimental packages are a small share.** Together they are about 7%
+  of the code and 9% of the mutants. Narrowing their promise lowers support
+  obligations more than CI work; retiring them would not change the release
+  cost much.
+- **External services are concentrated in four Extensions** (`rullst-connect`,
+  `rullst-mail`, `rullst-capital`, `rullst-ai`): about 19% of the code, and the
+  part whose correctness depends on providers changing their APIs. Each new
+  provider adds to this group.
+- **Two production applications (October 2026) enable** the facade with `orm`,
+  `strict-postgres`, `nexus` and `auth`, plus `rullst-connect`. The packages
+  neither application enables directly (messaging, AI, Capital, mail, Studio
+  and the five experimental packages) are about 28% of the code. That is
+  evidence of current use, not a reason to retire a package by itself.
+
+How the columns were measured: Rust lines under each package, excluding
+`target/` and `fuzz/` (test lines are `tests/`, `benches/`, `*_tests.rs` and
+`tests.rs`); tests are `#[test]`, `#[tokio::test]` and `#[rullst_orm::test]`
+attributes; mutants are `cargo mutants --list -p <package> --all-features`;
+dependencies are the unique packages in `cargo tree -p <package>
+--all-features -e normal`, without the package itself; fuzz targets are the
+`[[bin]]` entries of `<package>/fuzz/Cargo.toml`; commits are
+`git log --since=60.days -- <package>`.
+
 ## Crate-level investment decisions
 
 | Crate or area | Maintenance assessment | Adopted direction |
