@@ -18,29 +18,79 @@ the pinned execution environment, preflight and campaign commands, runner
 labels, tool/action versions, flags and each fuzz package's complete contents.
 Each of the eleven separate fuzz workspaces retains its own dependency lockfile.
 
-Shared production source, normal/build dependencies, compiler configuration,
-the target inventory and unclassified files are global inputs: changing one
-invalidates every target. A change confined to one isolated fuzz package
-invalidates every sibling target in that package, including changes to its
-lockfile. Package isolation is conservative: unusual path dependencies, build
-scripts, includes and direct file/process/environment access make fuzz-package
-inputs global. The existing ORM parser inclusion is explicitly reviewed and
-its included production source is already a global input. Unsupported Git
-layouts, missing history or malformed evidence stop verification.
+A fuzz workspace builds only its own crate and the workspace packages it
+reaches through path dependencies, so its inputs follow that build graph
+(`.github/fuzz_build_graph.py`):
 
-There is a small explicit list of reviewed non-inputs, not a blanket exclusion
-of test or documentation directories. It includes the two browser helpers,
-the mail feedback integration test, this documentation, and release/admission
-control code. The root lockfile is not used by the separate fuzz workspaces;
-their eleven locks remain inputs. Only the top-level `dev-dependencies` table of
-`rullst-mail/Cargo.toml` is normalized out, because the mail dependency's
-integration tests are not built by the fuzz workspaces. Every other field,
+- **The fuzz package and every reached package, whole.** Starting from the
+  fuzz manifest, normal, dev, build, target-specific and `[patch]` entries
+  with a `path`, or `workspace = true` resolving to a path in the root
+  `[workspace.dependencies]`, are followed transitively. Every tracked file
+  below each reached directory is an input: sources, tests, build script,
+  manifest, assets and any fuzz directory nested in it. A fuzz package's
+  lockfile, harnesses and corpus therefore also invalidate the fuzz packages
+  that reach its parent crate.
+- **Files a reached package refers to outside its directory.** Every Rust
+  file of a reached package is scanned for `include_str!`, `include_bytes!`,
+  `include!` (including `concat!(env!("CARGO_MANIFEST_DIR"), …)`), `#[path]`
+  (also inside `cfg_attr`), path arguments forwarded through `macro_rules!`
+  (resolved at each call site), `dir`/`path`/`file`/`folder` arguments that
+  climb with `..`, and literal paths in build scripts. Those targets become
+  inputs of the fuzz packages that reach the referring package; included code
+  is scanned again. Today this adds the 93 book pages of
+  `rullst/src/book_doctests.rs` and six `.github/fixtures` sources of the
+  facade's tests to `rullst/fuzz`.
+- **Global inputs of every package.** The root `Cargo.toml`,
+  `rust-toolchain(.toml)`, `.cargo/**`, `.gitattributes`, the target
+  inventory, release-line policy, `.github/validate-fuzz-targets.py`, every
+  other `.github` path the fuzz workflow names (and sibling modules it
+  imports), and the workflow's execution contract.
+
+Anything outside those sets is not an input: `docs/**`, `CHANGELOG.md`,
+`README.md` and other Markdown outside reached packages, `cargo-rullst/**`,
+`examples/**`, the remaining crates, the root lockfile (the eleven fuzz
+workspaces keep their own locks) and other `.github/**` files, unless a
+reached package refers to them.
+
+All 42 targets still run after a global-input or execution-contract change,
+with `force_full`, or when no eligible earlier campaign exists. A change in a
+shared crate reruns the packages that reach it: `rullst-core` or
+`rullst-macros` 7 packages (29 targets), `rullst-orm` or `rullst-orm-macros`
+8 packages (34 targets). A doctest-included book page reruns `rullst/fuzz`
+(12 targets).
+
+The scope **fails closed** (the whole repository becomes that fuzz package's
+input, the previous rule) when it cannot be bounded statically: an include,
+`#[path]` or manifest path that is computed, absolute, contains a backslash or
+leaves the repository; a path dependency without a package manifest; a target
+or build script outside its package; a macro carrying a path that is renamed
+with `as` or called from generated code; a build script using processes,
+`parent()`/`canonicalize`, the working directory or a non-Cargo environment
+variable; a fuzz harness touching files, processes or the environment; Cargo
+configuration other than aliases, build jobs/flags, profiles, terminal or
+network settings; source that cannot be lexed. Proc macros run inside the
+compiler, so filesystem, process or environment access in a reached proc-macro
+crate (outside its `tests`, `benches` and `examples`) also fails closed unless
+the exact blob is reviewed in `REVIEWED_COMPILE_IO`. Only the `rullst-macros`
+i18n `catalog!` reader is reviewed: it reads `<invoking package>/<dir>/*.toml`,
+covered above. The planner's receipt lists every package that fell back and why.
+
+The list of reviewed non-inputs still applies inside reached packages: the
+mail feedback integration test, two `#[cfg(test)]` Core modules and the
+top-level `dev-dependencies` table of `rullst-mail/Cargo.toml`. Explicitly
+referenced files are inputs even when listed. Every other manifest field,
 including target-specific, normal and build dependencies, remains an input.
 The regular locked-resolution, all-feature CI and CodeQL checks still run on
-the changed candidate. New exclusions require a reviewed policy change and
-negative tests; they are not inferred from filenames.
+the changed candidate. Unsupported Git layouts, missing history or malformed
+evidence stop verification. Package-local run-time reads resolve from the fuzz
+directory; the scanner does not model library code that reads repository files
+through other relative or absolute paths at run time.
 
 ### Reviewed v12.1 publication documentation
+
+The two documentation reviews below predate the build-graph rule. They still
+normalize their exact blobs where those files remain inputs (crate READMEs
+inside reached packages and book pages included by the facade's doctests).
 
 The publication review in commit `c3417135` changes 48 README, book and public
 site files relative to `44902312`, without changing runtime source, build

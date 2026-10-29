@@ -165,15 +165,22 @@ and fails on any surviving mutant.
 Release mode of `fuzzing.yml` covers all 42 targets
 (`python3 .github/validate-fuzz-targets.py`) in three waves of about five and
 a half hours each, about 17 hours in total. Evidence from an earlier run is
-reused only for targets whose inputs did not change:
-[`.github/fuzz_evidence_inputs.py`](.github/fuzz_evidence_inputs.py) lists the
-files that are not inputs; every other changed file is a global input and
-reruns every target. A toolchain change always reruns everything.
+reused only for targets whose inputs did not change. A fuzz package's inputs
+are its build graph ([`docs/src/fuzz-evidence.md`](docs/src/fuzz-evidence.md)):
+every crate it reaches through path dependencies, files those crates
+`include_str!`/`#[path]` from elsewhere, and a few global files (root
+`Cargo.toml`, toolchain, `.cargo/**`, `.gitattributes`, inventory and fuzz
+scripts). Docs, changelog, READMEs outside reached crates, `cargo-rullst`,
+examples and other CI files no longer rerun anything; a change to a shared
+crate reruns only the packages that reach it. A global or toolchain change
+always reruns everything. When the scope cannot be bounded statically, that
+package falls back to the whole repository; the receipt's
+`whole_repository_inputs` says why.
 
 Plan releases around this: freeze the code first, then start the release-mode
-run on that exact commit. When a release-only fix touches a file that should
-not invalidate fuzz evidence (release scripts, advisory ledgers), add it to
-the non-input list in the same pull request, with a test.
+run on that exact commit. If a reviewed proc-macro reader in
+`REVIEWED_COMPILE_IO` (`.github/fuzz_build_graph.py`) changes, review the new
+blob and add it with a test, or the packages that reach it keep falling back.
 
 ## 6. Mutation campaigns
 
