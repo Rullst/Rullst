@@ -503,7 +503,18 @@ fi
 "$extras_bin" --version
 PATH="$install_root/bin:$PATH" "$rullst_bin" green --help > /dev/null
 
-blueprints=(blank lms saas blog portfolio erp)
+# The CLI's starters since 13.0.0-alpha.4; LMS, Blog, Portfolio and ERP are
+# repository examples, and asking for one fails before anything is written.
+blueprints=(blank api saas)
+if (cd "$projects_dir" && "$rullst_bin" new packaged-lms --default --blueprint lms \
+  --skip-initial-migration > /dev/null 2>&1); then
+  echo "The removed lms blueprint still generated a project."
+  exit 1
+fi
+if [ -e "$projects_dir/packaged-lms" ]; then
+  echo "The removed lms blueprint wrote files before failing."
+  exit 1
+fi
 for blueprint in "${blueprints[@]}"; do
   app_name="packaged-${blueprint}"
   (

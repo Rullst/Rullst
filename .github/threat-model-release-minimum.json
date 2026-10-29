@@ -607,11 +607,11 @@
     },
     {
       "id": "ACADEMY-02",
-      "crate": "cargo-rullst",
-      "target_kind": "integration",
-      "target": "generated_saas_check",
-      "test_filter": "materialized_lms_executes_security_contracts",
-      "source": "cargo-rullst/tests/generated_saas_check.rs",
+      "crate": "rullst-lms-example",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "security_tests::another_learners_lessons_are_refused",
+      "source": "examples/lms/src/security_tests.rs",
       "marker": "TM-ACADEMY-02"
     },
     {

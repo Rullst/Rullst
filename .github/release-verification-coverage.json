@@ -26,7 +26,7 @@
       "job": "test",
       "matrix": {
         "os": ["ubuntu-latest"],
-        "shard": ["workspace", "cli-standard", "cli-profiles-basic", "cli-profiles-relational", "cli-profiles-polyglot", "cli-lms", "cli-saas-foundation", "cli-saas-product"]
+        "shard": ["workspace", "cli-standard", "cli-profiles-basic", "cli-profiles-relational", "cli-profiles-polyglot", "cli-saas-foundation", "cli-saas-product"]
       },
       "commands": ["bash .github/run-workspace-test-shard.sh"]
     },

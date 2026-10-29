@@ -67,8 +67,9 @@ Linux/macOS/Windows matrix on the default branch. Ready pull requests to the
 maintained `v12` line and transitional `v13` keep the complete matrix, blocking
 line coverage, SemVer fan-out and CodeQL before merge. Any matrix can be
 requested manually. Each operating system
-executes eight parallel shards: the non-CLI workspace, ordinary CLI targets,
-the LMS contract, three public-profile groups and two generated-blueprint groups.
+executes seven parallel shards: the non-CLI workspace (which includes the LMS,
+ERP and Portfolio examples), ordinary CLI targets, three public-profile groups
+and two generated-starter groups.
 The basic/relational/polyglot and foundation/product partitions retain every original
 case while bounding the longest Windows and macOS jobs. No test is omitted;
 this changes wall-clock scheduling rather than the assertions being executed.
@@ -127,13 +128,12 @@ The GitHub release job adds those assets only after attestation and registry
 publication succeed. This prepares distribution, not an installer; no new
 installation command or platform recovery claim is implied.
 
-The existing Linux `workspace` and `cli-saas-product` shards also require
-`RULLST_UI_BROWSER_TESTS=1` with Node 24 and Chromium. They feed HTML from the
-real Nexus renderer and the compiled generated Portfolio view into the bounded
-`.github/mobile-ui-browser-smoke.mjs` contract: drawer dismissal/focus/no-JS
-behavior, responsive layout at 320–1440px, long content and reduced motion.
-Missing browser prerequisites or a missing Portfolio execution receipt fail
-those shards. Other platforms still run the render assertions and the complete
+The existing Linux `workspace` shard also requires
+`RULLST_UI_BROWSER_TESTS=1` with Node 24 and Chromium. It feeds HTML from the
+real Nexus renderer and the Portfolio example's view (`examples/portfolio`) into
+the bounded `.github/mobile-ui-browser-smoke.mjs` contract: drawer
+dismissal/focus/no-JS behavior, responsive layout at 320–1440px, long content
+and reduced motion. Missing browser prerequisites fail that shard. Other platforms still run the render assertions and the complete
 existing project matrix; they do not claim Chromium evidence. Local runs opt in
 with the same flag and an absolute `RULLST_UI_BROWSER_SCRIPT` path. CDN resources
 are blocked in this UI fixture. The Nexus run serves the shell with the default
@@ -166,7 +166,7 @@ The workflows below run **only when requested manually**:
 
 | Workflow | Evidence | RC interpretation |
 | :--- | :--- | :--- |
-| `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase plus fresh generated REST API and LMS starter applications | REST/LMS warnings and failures block unless an exact rule ID is versioned as `INFO` with a local explanation in `.zap/`; those configs are passed explicitly to the pinned scanner and unlisted warnings remain live. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
+| `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase, a fresh generated REST API and the LMS example (`examples/lms`, release-built from the workspace) | REST/LMS warnings and failures block unless an exact rule ID is versioned as `INFO` with a local explanation in `.zap/`; those configs are passed explicitly to the pinned scanner and unlisted warnings remain live. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
 | `fuzzing.yml` | All 42 declared libFuzzer targets from the validated shared inventory | **Required release evidence:** release mode validates all 42 targets and independently verifies reusable input-equivalent evidence; packages with remaining targets run locked compilation preflights and new 5.5-hour campaigns; target-specific corpora are restored and saved, while failure reproducers are retained. Dependency-lock drift fails preflight, campaign and corpus jobs. The proc-macro parser uses strict processes of at most 30 minutes sharing one corpus, which bounds sanitizer RSS without weakening the total budget. Original reused results must be at most seven days old, come from an ancestor on the same release line, and prove the complete budget. The final candidate still runs the evidence boundary and publication independently recomputes all 42 results. [Reuse policy](docs/src/fuzz-evidence.md). A strict five-minute single-target diagnostic accelerates correction feedback but is explicitly ineligible as release evidence. This is bounded evidence, not proof for every input. |
 | `kani.yml` | Twenty named bounded formal harnesses in ten supported runtime/library packages | **Required release evidence for the declared harnesses:** every proof has an isolated strict matrix job. Rullst itself stays on stable Rust 1.99.0 with a Rust 1.96 MSRV; only the separately built Kani verifier uses its pinned `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) because the latest stable Kani bundle's Rust 1.93 compiler cannot compile the framework. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
 | `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | **Required release evidence for the declared scopes:** every selected scope is strict. This nightly-only interpreter uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
@@ -281,7 +281,7 @@ mainline results without leaving that language unexamined.
 isolation (PostgreSQL, MySQL, and SQLite), exercises the runtime-only Core and
 all 70 public umbrella features in isolated additive graphs with automatic
 manifest-drift detection, runs the portable database matrix on Linux, and
-tests the complete all-feature workspace in eight parallel shards on Linux,
+tests the complete all-feature workspace in seven parallel shards on Linux,
 macOS, and Windows. Feature-boundary rows and threat-model negative tests also
 fan out into four deterministic strict shards each; their matrix job remains a
 single blocking dependency for the quality scorecard. Each threat-model shard
@@ -539,17 +539,19 @@ higher component result for the repository total.
   exercised rather than reporting a zero-test library pass. There is no MSan
   job in the current sanitizer workflow.
 - The manual ZAP workflow materializes, release-builds and migrates a fresh
-  REST API and LMS starter through the real CLI. Both baselines fail on any
+  REST API through the real CLI, and release-builds and migrates the LMS
+  example from the workspace (the LMS starter moved to `examples/lms` in
+  13.0.0-alpha.4). Both baselines fail on any
   warning/failure, preserve INFO observations and use no ignored rules. The
   release blog showcase is scanned separately but remains informational because
   its documented presentation boundary deliberately uses a relaxed CSP and
   third-party assets. Its rules retain those external-asset findings for review
   and reduce only evidenced token/state signals or escaped showcase reflections
   to INFO; they do not hide findings with `IGNORE`. These three targets are representative evidence, not
-  coverage of every blueprint, authenticated role, browser, proxy or deployment.
+  coverage of every starter, authenticated role, browser, proxy or deployment.
 - Property tests and benchmarks are scheduled/manual evidence. The property
   workflow preserves the complete all-feature release-mode regression suite in
-  eight parallel shards and separately runs the ORM and Connect property
+  seven parallel shards and separately runs the ORM and Connect property
   contracts with 10,000 generated cases. The eight published benchmark groups,
   backed by nine Criterion binaries, emit
   non-blocking alerts at a 20% regression and feed the
@@ -1002,7 +1004,7 @@ dependency graph make static estimates unreliable.
 **Priority: first, before the planned 12.1.0 updater and concentrated v13 product
 development.** Compatible policy/tooling can serve both release lines after
 review; it does not require a new framework capability release. The draft/ready split,
-eight OS shards, Linux-only post-merge repetition, mutation recovery and
+seven OS shards, Linux-only post-merge repetition, mutation recovery and
 targeted diagnostic modes described above already exist. Measurement and
 change-impact **observation tooling now exists on v13**. A narrowly scoped
 development-only site admission path is being validated below; affected-crate
@@ -1024,7 +1026,7 @@ The separate `admit-site-only.py` / `plan-ci-scope.sh` path can avoid repeating
 Rust CI only for a **development `main` or transitional `v13` push** whose committed changes exclusively touch
 `docs/home_template.html`, `docs/site.css` or `docs/site.js`. It requires the
 immediately preceding commit to have a successful full Linux push CI in this
-repository within 72 hours, on the same branch, with all 25 expected runtime jobs completed
+repository within 72 hours, on the same branch, with all 24 expected runtime jobs completed
 successfully. Run/attempt/source/repository/branch identity and the entire job
 inventory are checked. A skipped runtime job, unknown job, failure, missing
 history, unavailable API, changed policy, symlink, mode change or stale receipt
@@ -1083,17 +1085,16 @@ test can no longer produce a false pass from libtest's zero exit status.
 
 The LMS threat mapping (`ACADEMY-02`; v13 retired the other Academy mappings
 with the complete Academy scaffold) selects
-`materialized_lms_executes_security_contracts`. It materializes the same LMS
-case and runs all its application tests with the original verification helper,
-regardless of the normal generated-group environment. The normal foundation
-and product shards still exercise all eight reviewed project configurations,
-including all six blueprints, API/hot-reload/database boundaries and ERP's
-release build. Those normal shards exclude only the duplicate LMS wrapper by
-its exact name: the full matrix already executes its case and assertions.
-No generated application assertion, feature flag or release-build case is
-removed. Direct unfiltered workspace tests also discover the focused wrapper.
+`security_tests::another_learners_lessons_are_refused` in the LMS example
+(`rullst-lms-example`, `--lib`). Since 13.0.0-alpha.4 the LMS starter is that
+workspace example, so the exact test needs no nested generated build; the
+workspace shard also runs it with the example's other tests. The normal
+foundation and product shards exercise the four reviewed generated
+configurations: Blank, the hot-reload JSON API, hot-reload SaaS and SaaS's
+release build.
 
-This narrowing addresses an observed bottleneck: in [Rust CI 35007899011](https://github.com/Rullst/Rullst/actions/runs/35007899011),
+Before 13.0.0-alpha.4, the mapping materialized the generated LMS starter
+(`materialized_lms_executes_security_contracts`). That narrowing addressed an observed bottleneck: in [Rust CI 35007899011](https://github.com/Rullst/Rullst/actions/runs/35007899011),
 the old all-blueprint wrapper consumed 958.22 seconds inside threat shard 0,
 whose complete job took 26m12s. That gate needed LMS evidence, not another
 execution of the seven other project configurations. Hosted threat jobs now
@@ -1127,10 +1128,10 @@ change site admission or release-evidence rules. The compatible v12 backport
 must earn its own platform evidence; a v13 run is not a main acceptance receipt.
 
 Six parser tests include a real compiled Rust harness; five runner tests check
-the full exact inventory, shard partition and failure paths. Five generated
+the full exact inventory, shard partition and failure paths. Four generated
 scheduling tests compile the actual selectors and wrappers with a recorded
-verifier, proving the eight-case partition and unconditional focused LMS
-selection without building applications locally. That recorder is policy
+verifier, proving the four-case partition without building applications
+locally. That recorder is policy
 evidence only: real generated application tests and full CI remain required.
 These changes do not enable general fuzz-result reuse or relax release gates.
 
