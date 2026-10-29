@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793302096732,
+  "lastUpdate": 1793308058425,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -14300,6 +14300,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a89cd289210b300e4748f175382b99d586eb6068",
+          "message": "Merge pull request #571 from Rullst/docs/v13-audit-packages\n\ndocs(crates): audit the crates.io and docs.rs pages of the 20 packages",
+          "timestamp": "2026-10-29T17:42:15-03:00",
+          "tree_id": "0d30873c80856c6b20199a9611d5bca2e77a364b",
+          "url": "https://github.com/Rullst/Rullst/commit/a89cd289210b300e4748f175382b99d586eb6068"
+        },
+        "date": 1793308057829,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
