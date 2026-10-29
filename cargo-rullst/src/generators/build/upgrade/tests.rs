@@ -217,18 +217,21 @@ fn findings_reach_the_plan_text_and_the_assistant() {
     );
 }
 
-/// Runs a dry-run upgrade in the current directory when a parent test names
-/// a report file; otherwise does nothing.
+/// Runs an upgrade in the current directory when a parent test names a
+/// report file; otherwise does nothing. `RULLST_UPGRADE_MODE` selects `json`
+/// (a JSON dry run), `apply`, or `keep` (apply, keeping edited files when a
+/// Cargo gate fails); any other value runs a plain dry run.
 #[test]
 fn upgrade_child_fixture() {
     let Some(report) = std::env::var_os("RULLST_UPGRADE_REPORT") else {
         return;
     };
+    let mode = std::env::var("RULLST_UPGRADE_MODE").unwrap_or_default();
     let outcome = match run_upgrade(UpgradeOptions {
         target: Some("13.0.0".into()),
-        dry_run: true,
-        json: false,
-        keep_on_failure: false,
+        dry_run: !matches!(mode.as_str(), "apply" | "keep"),
+        json: mode == "json",
+        keep_on_failure: mode == "keep",
         restore: None,
         all_rules: false,
     }) {
@@ -238,35 +241,249 @@ fn upgrade_child_fixture() {
     std::fs::write(report, outcome).unwrap();
 }
 
-#[test]
-fn a_dry_run_prints_the_plan() {
+/// A package that depends on `rullst = "<requirement>"`.
+fn demo_project(requirement: &str) -> tempfile::TempDir {
     let project = tempfile::tempdir().unwrap();
     std::fs::create_dir(project.path().join("src")).unwrap();
     std::fs::write(project.path().join("src/main.rs"), "fn main() {}\n").unwrap();
     std::fs::write(
         project.path().join("Cargo.toml"),
-        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = { version = \"12.3\", default-features = false }\n",
+        demo_manifest(requirement),
     )
     .unwrap();
-    let report = project.path().join("report");
-    let output = std::process::Command::new(std::env::current_exe().unwrap())
+    project
+}
+
+fn demo_manifest(requirement: &str) -> String {
+    format!(
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = {{ version = \"{requirement}\", default-features = false }}\n"
+    )
+}
+
+/// Runs `upgrade_child_fixture` in `project` in `mode` with extra
+/// environment; returns the outcome it reported and its standard output.
+fn run_child(
+    project: &Path,
+    mode: &str,
+    environment: &[(&str, &std::ffi::OsStr)],
+) -> (String, String) {
+    let report = project.join("report");
+    let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+    command
         .args([
             "--exact",
             "generators::build::upgrade::tests::upgrade_child_fixture",
             "--nocapture",
         ])
-        .current_dir(project.path())
+        .current_dir(project)
         .env("NO_COLOR", "1")
         .env("RULLST_UPGRADE_REPORT", &report)
-        .stdin(std::process::Stdio::null())
-        .output()
-        .unwrap();
-    assert!(output.status.success());
+        .env("RULLST_UPGRADE_MODE", mode)
+        .stdin(std::process::Stdio::null());
+    for (name, value) in environment {
+        command.env(name, value);
+    }
+    let output = command.output().unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
-    assert_eq!(std::fs::read_to_string(&report).unwrap(), "ok", "{stdout}");
+    assert!(output.status.success(), "{stdout}");
+    (std::fs::read_to_string(&report).unwrap(), stdout)
+}
+
+#[test]
+fn a_dry_run_prints_the_plan() {
+    let project = demo_project("12.3");
+    let (outcome, stdout) = run_child(project.path(), "dry-run", &[]);
+    assert_eq!(outcome, "ok", "{stdout}");
     assert!(
         stdout.contains("Rullst assisted upgrade — DRY RUN — target 13.0.0"),
         "{stdout}"
     );
     assert!(stdout.contains("rullst (rullst) 12.3 -> "), "{stdout}");
+    assert!(
+        stdout.contains("Dry run complete: no files or lockfile were changed."),
+        "{stdout}"
+    );
+}
+
+#[test]
+fn a_json_dry_run_prints_only_the_report() {
+    let project = demo_project("12.3");
+    let (outcome, stdout) = run_child(project.path(), "json", &[]);
+    assert_eq!(outcome, "ok", "{stdout}");
+    assert!(stdout.contains("\"target\": \"13.0.0\""), "{stdout}");
+    assert!(!stdout.contains("DRY RUN"), "{stdout}");
+    assert!(!stdout.contains("Dry run complete"), "{stdout}");
+    assert_eq!(
+        std::fs::read_to_string(project.path().join("Cargo.toml")).unwrap(),
+        demo_manifest("12.3")
+    );
+}
+
+/// A stand-in `cargo` that answers `metadata` for `project` and exits with
+/// `RULLST_STUB_FIX` and `RULLST_STUB_CHECK` for `fix` and `check`; returns
+/// a `PATH` that finds it first. Unix-only: the stand-in is a shell script.
+#[cfg(unix)]
+fn stub_cargo(project: &Path, directory: &Path) -> std::ffi::OsString {
+    use std::os::unix::fs::PermissionsExt;
+    let metadata = serde_json::json!({
+        "packages": [{
+            "id": "demo",
+            "manifest_path": project.canonicalize().unwrap().join("Cargo.toml"),
+        }],
+        "workspace_members": ["demo"],
+    });
+    let answer = directory.join("metadata.json");
+    std::fs::write(&answer, metadata.to_string()).unwrap();
+    let script = directory.join("cargo");
+    std::fs::write(
+        &script,
+        format!(
+            "#!/bin/sh\ncase \"$1\" in\n  metadata) cat '{}' ;;\n  fix) exit \"$RULLST_STUB_FIX\" ;;\n  check) exit \"$RULLST_STUB_CHECK\" ;;\n  *) exit 97 ;;\nesac\n",
+            answer.display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700)).unwrap();
+    // Another test thread forking while the script was open for writing
+    // makes executing it fail briefly with ETXTBSY; wait until it runs.
+    for _ in 0..40 {
+        if std::process::Command::new(&script)
+            .arg("probe")
+            .status()
+            .is_ok()
+        {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let mut path = directory.as_os_str().to_os_string();
+    path.push(":");
+    path.push(std::env::var_os("PATH").unwrap_or_default());
+    path
+}
+
+/// Applies an upgrade of `rullst = "<requirement>"` with the stand-in
+/// `cargo` exiting `fix` and `check` as given.
+#[cfg(unix)]
+fn apply(
+    requirement: &str,
+    mode: &str,
+    fix: &str,
+    check: &str,
+) -> (tempfile::TempDir, String, String) {
+    let project = demo_project(requirement);
+    let tools = tempfile::tempdir().unwrap();
+    let path = stub_cargo(project.path(), tools.path());
+    let (outcome, stdout) = run_child(
+        project.path(),
+        mode,
+        &[
+            ("PATH", path.as_os_str()),
+            ("RULLST_STUB_FIX", fix.as_ref()),
+            ("RULLST_STUB_CHECK", check.as_ref()),
+        ],
+    );
+    (project, outcome, stdout)
+}
+
+#[cfg(unix)]
+#[test]
+fn a_passing_upgrade_edits_the_manifest_and_names_the_report() {
+    let (project, outcome, stdout) = apply("12.3", "apply", "0", "0");
+    assert_eq!(outcome, "ok", "{stdout}");
+    assert!(
+        stdout.contains(
+            "Upgrade transaction completed and cargo check passed.\nBackup and review report: "
+        ),
+        "{stdout}"
+    );
+    assert!(
+        !stdout.contains("No version edits are required"),
+        "{stdout}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(project.path().join("Cargo.toml")).unwrap(),
+        demo_manifest("=13.0.0")
+    );
+
+    let (_, outcome, stdout) = apply("=13.0.0", "apply", "0", "0");
+    assert_eq!(outcome, "ok", "{stdout}");
+    assert!(
+        stdout.contains("No version edits are required."),
+        "{stdout}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_failed_cargo_fix_restores_the_project() {
+    let (project, outcome, stdout) = apply("12.3", "apply", "1", "0");
+    assert!(
+        outcome.starts_with("cargo fix --workspace --all-targets failed; the original manifests, lockfile, and Rust sources were restored; diagnostic report: "),
+        "{outcome}\n{stdout}"
+    );
+    assert!(
+        outcome.contains(
+            "; the persisted snapshot can be restored again with `cargo rullst upgrade --restore "
+        ),
+        "{outcome}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(project.path().join("Cargo.toml")).unwrap(),
+        demo_manifest("12.3")
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_failed_cargo_check_can_keep_the_edited_project() {
+    let (project, outcome, stdout) = apply("12.3", "keep", "0", "1");
+    assert!(
+        outcome.starts_with("cargo check --workspace --all-targets --locked failed; edited files were kept by request; recover with `cargo rullst upgrade --restore "),
+        "{outcome}\n{stdout}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(project.path().join("Cargo.toml")).unwrap(),
+        demo_manifest("=13.0.0")
+    );
+}
+
+/// The planner accepts v13 sources and refuses a requirement above the target.
+#[test]
+fn the_plan_accepts_v13_sources_and_refuses_downgrades() {
+    let plan = |requirement: &str| {
+        let project = demo_project(requirement);
+        let root = project.path().canonicalize().unwrap();
+        plan_project(&root, Some("13.0.0"), false).map(|planned| planned.changed)
+    };
+    assert_eq!(plan("13.0").unwrap(), 1);
+    assert_eq!(
+        plan("=13.1.0").unwrap_err().to_string(),
+        "upgrading to 13.0.0 would downgrade `rullst` (requirement `=13.1.0`); install a cargo-rullst release that is not older than the project, or pass `--to` with such a version"
+    );
+    assert!(
+        plan("11.2")
+            .unwrap_err()
+            .to_string()
+            .starts_with("this project depends on Rullst v11; "),
+    );
+}
+
+/// Only removed-API findings in Rust sources are named after a failed gate.
+#[test]
+fn a_failed_gate_names_no_other_review_finding() {
+    let page = rules::CATALOG
+        .iter()
+        .copied()
+        .find(|rule| rule.code == "V13-RENDER-PAGE-LANGUAGE")
+        .unwrap();
+    let scan = SourceScan {
+        findings: vec![rules::SourceFinding {
+            rule: page,
+            path: Path::new("/project/src/main.rs").to_path_buf(),
+            line: 2,
+        }],
+        ..SourceScan::default()
+    };
+    assert_eq!(findings_hint(Path::new("/project"), &scan), "");
 }
