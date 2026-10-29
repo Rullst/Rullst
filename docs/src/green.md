@@ -126,8 +126,10 @@ architecture, logical CPU count and CPU model.
 
 ## JSON report
 
-`--json` prints one document with `schema_version: "rullst.green.v1"`. Every
-key is always present (null when unknown) so scripts can rely on the shape:
+`--json` prints one document whose `schema` (and `schema_version`) is
+`"rullst.green.v1"`, with `cli_version`, `measured_at` and the `machine`
+section. Every key is always present (null when unknown) so scripts can rely
+on the shape:
 
 - `target`: `mode` (`release_build` or `existing_url`), the URL, PID and how it
   was found.

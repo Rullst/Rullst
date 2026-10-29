@@ -9,9 +9,11 @@ The public entry points have different deployment sources:
 | `gh-pages` branch in this repository | Benchmark workflow data | Criterion history consumed by the Pages build; not a development branch |
 
 The landing design and copy have one editable source: `docs/home_template.html`,
-`docs/site.css` and `docs/site.js`. Preserve the footer dedication and the v12
-stable-release/v5 end-of-life notice. Use actual source and release evidence for claims;
-do not hardcode aspirational coverage, scorecard, speed or certification values.
+`docs/site.css` and `docs/site.js`. Preserve the footer dedication and the
+release notice (v13 prerelease, v12 and v5 end of life). The install command
+must pin the current `cargo-rullst` version; the validator checks it. Use actual
+source and release evidence for claims; do not hardcode aspirational coverage,
+scorecard, speed or certification values.
 
 ## Validate before deployment
 

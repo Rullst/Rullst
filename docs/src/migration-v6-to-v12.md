@@ -1,5 +1,11 @@
 # Migration guide: v6 to v12
 
+> [!NOTE]
+> **Historical guide (v12).** The 12.x line reached end of life on 16 October
+> 2026. The v13 CLI upgrades only v12 and v13 projects: bring the application
+> to v12 with this guide and the v12 CLI, then follow
+> [Preparing an application for v13](migration-v13.md).
+
 Baseline: repository source commit `5229132f`, which bumped the facade to
 `6.0.0`. There is no repository v6 tag, so first verify the exact crate versions
 in the application's `Cargo.lock`; do not assume this snapshot matches every

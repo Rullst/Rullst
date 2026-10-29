@@ -429,6 +429,7 @@ The umbrella crate exposes this as `ai-sql-memory`, which also enables `ai`.
 | `rullst-studio` | `strict-postgres` | PostgreSQL selection in Core and ORM |
 | `rullst-studio` | `strict-mysql` | MySQL selection in Core and ORM |
 | `rullst-studio` | `strict-sqlite` | SQLite selection in Core and ORM |
+| `rullst-studio` | `remote` | The standalone `rullst-studio` binary's remote-projects mode (see [production monitoring](production-monitoring.md#watch-your-projects-from-studio)); the binary requires it |
 
 Use the same single-selection rule described for `rullst-orm`.
 
