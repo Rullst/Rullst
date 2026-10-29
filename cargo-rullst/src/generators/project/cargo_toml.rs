@@ -123,6 +123,11 @@ pub fn build_cargo_toml(
     rullst_features.push("studio");
     if blueprint_selection != BLANK_BLUEPRINT_ID {
         rullst_features.push("nexus");
+        // Since 13.0.0-alpha.4 `nexus` leaves out the AI assistant and its
+        // `rullst-ai` dependency; choosing AI in the wizard turns it on.
+        if wants_ai {
+            rullst_features.push("nexus-ai");
+        }
     }
     if blueprint_selection == SAAS_BLUEPRINT_ID {
         // `mail` sends the password reset links and password-changed notices.
@@ -297,3 +302,7 @@ fn relational_profile(db_provider: &str) -> Option<&'static str> {
 #[cfg(test)]
 #[path = "cargo_toml_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "cargo_toml_feature_tests.rs"]
+mod feature_tests;
