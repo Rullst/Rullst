@@ -23,7 +23,9 @@ let axum_router: AxumRouter = rullst_router.into();
 ```
 
 The standard Axum extractor and response types remain available, including
-through Rullst's documented re-exports.
+through Rullst's documented re-exports. Generated projects do not depend on
+`axum` directly: add `axum = "0.8"` (the version Rullst uses) to run this
+example as written, or import the same types through `rullst::web::axum`.
 
 ## Keep raw SQLx where it is useful
 
@@ -45,16 +47,21 @@ async fn active_names(pool: &PgPool) -> Result<Vec<String>, sqlx::Error> {
 
 ```bash
 cargo rullst eject
-cargo check
 ```
 
-The command writes a reviewable Axum/Tokio entry-point template: a placeholder
-route behind the configured Rullst security baseline, compiled through the
+The command writes a reviewable Axum/Tokio entry-point template to
+`src/ejected_main.rs` (`--output src/<file>.rs` chooses another file below
+`src/`) and leaves `src/main.rs` unchanged. The template is a placeholder route
+behind the configured Rullst security baseline, compiled through the
 `rullst::web::axum` re-export. It does not copy the application's routes;
 ORM models, migrations, authentication policy, Studio/Nexus integration and
-other selected subsystems can still require deliberate migration work. Use
-`--force` only when replacing `src/main.rs` is intended and the worktree is
-backed up.
+other selected subsystems can still require deliberate migration work.
+
+`cargo rullst eject --force` writes the template over `src/main.rs` instead and
+keeps the original at `src/main.rs.rullst-backup` (it refuses to run while that
+backup exists). Use it only with a committed or backed-up worktree, move the
+module declarations and routes from the backup into `application_routes()`,
+then run `cargo check`.
 
 ## Practical migration sequence
 
