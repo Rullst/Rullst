@@ -108,9 +108,18 @@ browser upload, durable recovery and an extracted consumer; actual Bunny/CDN
 interoperability and application entitlement policy remain outside that evidence.
 Both withhold operations credit for ordinary-release archive acceptance, first
 registry registration and deployment recovery. Their current hosted gates must
-pass before the report can award the applicable dimensions. Labs remains outside
-the publication scorecard. Its isolation acceptance was removed with the runner
-candidate; execution evidence now belongs to each application-owned runner.
+pass before the report can award the applicable dimensions.
+
+On 8 October 2026 `rullst-labs` joined the release inventory and the scorecard,
+making twenty packages, with the same 85/100 ceiling and dimensions. Its
+evidence covers the exercise, authorization and grading contracts and the
+encrypted shared-local SQLite jobs; it never executes learner code. Its
+isolation acceptance was removed with the runner candidate; execution evidence
+now belongs to each application-owned runner.
+
+The four 85-point ceilings were set before these packages were first published
+in the 13.0.0-alpha.1 prerelease on 11 October 2026; the policy still withholds
+the same operations credit until it is reviewed again.
 
 For every relevant change, retain the commit and workflow result, identify
 which gates and evidence changed, and report capability progress separately.

@@ -2,9 +2,9 @@
 
 The v13 release requires all 42 declared targets across eleven fuzz workspaces,
 including challenge-token and signed-attestation checks in `rullst-privacy`.
-The immutable v12 release line retains its 40-target policy. A successful
-`fuzzing.yml` run on the final release-branch commit remains mandatory (`v12`
-for v12, `main` for v13). In release mode,
+The v12 line, at end of life since 16 October 2026, kept its 40-target policy.
+A successful `fuzzing.yml` run on the final release commit on `main` remains
+mandatory. In release mode,
 the planner can credit an original successful campaign when its reviewed inputs
 match the candidate; only targets without eligible evidence execute again.
 `force_full: true` requests every declared execution. Diagnostic mode remains a
@@ -30,8 +30,10 @@ layouts, missing history or malformed evidence stop verification.
 
 There is a small explicit list of reviewed non-inputs, not a blanket exclusion
 of test or documentation directories. It includes the two browser helpers,
-the mail feedback integration test, this documentation, and release/admission
-control code. The root lockfile is not used by the separate fuzz workspaces;
+the mail feedback integration test, two Core unit-test modules, this
+documentation and `WORKFLOWS.md`, the advisory-exception policy and its audit
+workflows, and release/admission control code. Every other documentation file,
+including the README and the book, is a global input. The root lockfile is not used by the separate fuzz workspaces;
 their eleven locks remain inputs. Only the top-level `dev-dependencies` table of
 `rullst-mail/Cargo.toml` is normalized out, because the mail dependency's
 integration tests are not built by the fuzz workspaces. Every other field,
@@ -94,7 +96,7 @@ fuzz workflow. If some target jobs were reused, it independently reads Git and
 GitHub again and requires complete coverage of the release line's reviewed inventory; it does not trust the
 uploaded receipt. It retains `release-fuzz-evidence.json` for that decision.
 Expired or newly invalidated evidence blocks publication and requires another
-campaign. The other 27 required workflows retain their existing exact-SHA rules.
+campaign. The other 24 required workflows retain their existing exact-SHA rules.
 
 This is reuse of bounded historical testing, not proof that every input is safe
 or that another randomized campaign would find nothing new. It compares tracked
