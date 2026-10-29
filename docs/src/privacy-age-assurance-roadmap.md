@@ -31,8 +31,8 @@ school-scoped policies, nominal `Adult`/`Minor` bands, guardian-consent records
 and bounded export/delete request processing. They do not independently verify
 a person's age or a guardian's authority, and their privacy worker requires an
 application adapter to perform actual export/deletion. v13 removed these
-templates with the complete Academy scaffold; the v13 LMS starter generates no
-privacy lifecycle.
+templates with the complete Academy scaffold; the LMS example (the former v13
+LMS starter) has no privacy lifecycle.
 
 Applications generated with those templates keep their code; reuse needs an
 explicit migration. Adding a consent row, encrypting a field or completing a

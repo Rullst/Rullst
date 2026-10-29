@@ -18,22 +18,14 @@ fn turso_and_database_free_profiles_are_offered_only_for_the_blank_starter() {
     );
     assert!(blank.iter().any(|option| option.database == Database::None));
     assert_eq!(blank[0].database, Database::Provider("Sqlite"));
-    for blueprint in [
-        LMS_BLUEPRINT_ID,
-        SAAS_BLUEPRINT_ID,
-        BLOG_BLUEPRINT_ID,
-        PORTFOLIO_BLUEPRINT_ID,
-        ERP_BLUEPRINT_ID,
-    ] {
-        let options = database_options(blueprint);
-        assert_eq!(options.len(), 4);
-        assert!(options.iter().all(|option| {
-            !matches!(
-                option.database,
-                Database::None | Database::Provider("Turso")
-            )
-        }));
-    }
+    let saas = database_options(SAAS_BLUEPRINT_ID);
+    assert_eq!(saas.len(), 4);
+    assert!(saas.iter().all(|option| {
+        !matches!(
+            option.database,
+            Database::None | Database::Provider("Turso")
+        )
+    }));
 }
 
 #[test]
@@ -73,7 +65,7 @@ fn deterministic_wizard_locks_the_supported_v12_application_profile() {
             ..defaults()
         },
         &[],
-        Some(ERP_BLUEPRINT_ID),
+        Some(SAAS_BLUEPRINT_ID),
     )
     .expect("deterministic build axes");
 
@@ -128,27 +120,27 @@ fn deterministic_defaults_match_the_previous_blank_profile() {
 
 #[test]
 fn impossible_deterministic_profiles_fail_instead_of_being_ignored() {
-    let api_lms = run_project_wizard_with_blueprint(
-        Some("invalid-api-lms"),
+    let api_saas = run_project_wizard_with_blueprint(
+        Some("invalid-api-saas"),
         ProjectScaffoldOptions {
             api: true,
             ..defaults()
         },
         &[],
-        Some(LMS_BLUEPRINT_ID),
+        Some(SAAS_BLUEPRINT_ID),
     );
-    assert!(api_lms.is_err());
+    assert!(api_saas.is_err());
 
-    let no_database_lms = run_project_wizard_with_blueprint(
-        Some("invalid-lms"),
+    let no_database_saas = run_project_wizard_with_blueprint(
+        Some("invalid-saas"),
         ProjectScaffoldOptions {
             no_database: true,
             ..defaults()
         },
         &[],
-        Some(LMS_BLUEPRINT_ID),
+        Some(SAAS_BLUEPRINT_ID),
     );
-    assert!(no_database_lms.is_err());
+    assert!(no_database_saas.is_err());
 
     let turso_hot_reload = run_project_wizard_with_blueprint(
         Some("invalid-edge"),
@@ -184,6 +176,29 @@ fn impossible_deterministic_profiles_fail_instead_of_being_ignored() {
             Some(usize::MAX)
         )
         .is_err()
+    );
+}
+
+#[test]
+fn a_moved_blueprint_id_is_refused_with_its_example_before_any_question() {
+    for (id, name) in [(1, "lms"), (3, "blog"), (4, "portfolio"), (5, "erp")] {
+        let request = NewProjectRequest {
+            name: Some("moved"),
+            blueprint: Some(id),
+            ..NewProjectRequest::default()
+        };
+        // Even an interactive terminal is refused before anything is drawn.
+        let error = plan_project(&request, &[], &Terminal::interactive_for_tests(), true)
+            .expect_err("a moved blueprint");
+        let moved = error
+            .downcast_ref::<MovedBlueprint>()
+            .unwrap_or_else(|| panic!("{id}: {error}"));
+        assert_eq!(moved.name(), name);
+    }
+    let unknown = run_project_wizard_with_blueprint(Some("x"), defaults(), &[], Some(6));
+    assert_eq!(
+        unknown.err().map(|error| error.to_string()),
+        Some("unknown public blueprint ID".to_string())
     );
 }
 
@@ -302,7 +317,7 @@ fn profile_flags_lock_their_questions() {
         },
         ..NewProjectRequest::default()
     });
-    assert!(locked.name && locked.blueprint && locked.application && locked.ai);
+    assert!(locked.name && locked.starter && !locked.blank_only && locked.ai);
     assert!(locked.docker && !locked.database && !locked.redis);
 
     for options in [
@@ -319,7 +334,8 @@ fn profile_flags_lock_their_questions() {
             options,
             ..NewProjectRequest::default()
         });
-        assert!(locked.blueprint && locked.database && !locked.application);
+        // The starter is still asked, limited to Blank and API.
+        assert!(!locked.starter && locked.blank_only && locked.database);
     }
     assert_eq!(
         locked_questions(&NewProjectRequest::default()),

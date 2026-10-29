@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
-  echo "usage: $0 <workspace|cli-standard|cli-updates|cli-profiles-basic|cli-profiles-relational|cli-profiles-polyglot|cli-lms|cli-saas-foundation|cli-saas-product|cli-saas-journey> [--release]" >&2
+  echo "usage: $0 <workspace|cli-standard|cli-updates|cli-profiles-basic|cli-profiles-relational|cli-profiles-polyglot|cli-saas-foundation|cli-saas-product|cli-saas-journey> [--release]" >&2
   exit 2
 fi
 
@@ -55,7 +55,7 @@ case "$shard" in
     while IFS= read -r test_source; do
       test_target="$(basename "$test_source" .rs)"
       case "$test_target" in
-        generated_cli_profiles|generated_lms_modules_check|generated_saas_check)
+        generated_cli_profiles|generated_saas_check)
           continue
           ;;
       esac
@@ -94,30 +94,20 @@ case "$shard" in
     cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
       "${profile_args[@]}" --test generated_cli_profiles
     ;;
-  cli-lms)
-    cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
-      "${profile_args[@]}" --test generated_lms_modules_check
-    ;;
   cli-saas-foundation)
-    # The full matrix already materializes LMS with the same helper and case.
-    # Exclude only its duplicate threat-evidence wrapper, never an application
-    # assertion. --exact prevents a future similarly named test being skipped.
     RULLST_CI_GENERATED_GROUP=foundation \
       cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
-        "${profile_args[@]}" --test generated_saas_check \
-        -- --exact --skip materialized_lms_executes_security_contracts
+        "${profile_args[@]}" --test generated_saas_check
     ;;
   cli-saas-product)
     RULLST_CI_GENERATED_GROUP=product \
       cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
-        "${profile_args[@]}" --test generated_saas_check \
-        -- --exact --skip materialized_lms_executes_security_contracts
+        "${profile_args[@]}" --test generated_saas_check
     ;;
   cli-saas)
     # Backwards-compatible local alias; CI uses the bounded groups above.
     cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
-      "${profile_args[@]}" --test generated_saas_check \
-      -- --exact --skip materialized_lms_executes_security_contracts
+      "${profile_args[@]}" --test generated_saas_check
     ;;
   *)
     echo "unknown workspace test shard: $shard" >&2

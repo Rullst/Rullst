@@ -58,10 +58,13 @@ jobs:
             -p cargo-rullst --bin cargo-rullst
           cargo build --release --locked \
             -p rullst-blog-example --bin rullst-blog-example
+          cargo build --release --locked \
+            -p rullst-lms-example --bin rullst-lms-example
           test -x target/release/cargo-rullst
           test -x target/release/rullst-blog-example
+          test -x target/release/rullst-lms-example
 
-      - name: Materialize representative generated applications
+      - name: Materialize the generated API and the LMS example
         run: |
           dast_root="$RUNNER_TEMP/rullst-zap"
           printf 'DAST_ROOT=%s\n' "$dast_root" >> "$GITHUB_ENV"
@@ -73,28 +76,23 @@ jobs:
             --database sqlite \
             --api \
             --skip-initial-migration
-          ./target/release/cargo-rullst new "$dast_root/zap-lms-app" \
-            --default \
-            --blueprint lms \
-            --database sqlite \
-            --skip-initial-migration
+          # The LMS starter moved to examples/lms in 13.0.0-alpha.4: scan the
+          # workspace build from a scratch copy of its directory (static/,
+          # Rullst.toml and a .env whose APP_KEY comes from the job).
+          cp -R examples/lms "$dast_root/zap-lms-app"
+          grep -v '^APP_KEY=' examples/lms/.env.example > "$dast_root/zap-lms-app/.env"
 
           cp Cargo.lock "$dast_root/zap-blank-api/Cargo.lock"
-          cp Cargo.lock "$dast_root/zap-lms-app/Cargo.lock"
 
-      - name: Build generated applications in release mode
+      - name: Build the generated API in release mode
         timeout-minutes: 100
         run: |
           CARGO_TARGET_DIR="$GITHUB_WORKSPACE/target" cargo build \
             --release \
             --offline \
             --manifest-path "$DAST_ROOT/zap-blank-api/Cargo.toml"
-          CARGO_TARGET_DIR="$GITHUB_WORKSPACE/target" cargo build \
-            --release \
-            --offline \
-            --manifest-path "$DAST_ROOT/zap-lms-app/Cargo.toml"
 
-      - name: Apply generated application migrations
+      - name: Apply application migrations
         run: |
           (
             cd "$DAST_ROOT/zap-blank-api"
@@ -102,7 +100,7 @@ jobs:
           )
           (
             cd "$DAST_ROOT/zap-lms-app"
-            "$GITHUB_WORKSPACE/target/release/zap-lms-app" db:migrate
+            "$GITHUB_WORKSPACE/target/release/rullst-lms-example" db:migrate
           )
 
       - name: Start blog showcase
@@ -214,13 +212,13 @@ jobs:
             fi
           fi
 
-      - name: Start generated LMS
+      - name: Start LMS example
         run: |
           log_path="$RUNNER_TEMP/zap-lms.log"
           pid_path="$RUNNER_TEMP/zap-lms.pid"
           (
             cd "$DAST_ROOT/zap-lms-app"
-            exec "$GITHUB_WORKSPACE/target/release/zap-lms-app"
+            exec "$GITHUB_WORKSPACE/target/release/rullst-lms-example"
           ) > "$log_path" 2>&1 &
           server_pid=$!
           printf '%s\n' "$server_pid" > "$pid_path"
@@ -243,7 +241,7 @@ jobs:
             exit 1
           fi
 
-      - name: Scan generated LMS public surface (blocking)
+      - name: Scan LMS example public surface (blocking)
         id: zap_lms
         continue-on-error: true
         uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
@@ -251,12 +249,12 @@ jobs:
         with:
           target: http://127.0.0.1:3000
           docker_name: ${{ env.ZAP_DOCKER_IMAGE }}
-          cmd_options: -a -j -m 3 -c .zap/generated-lms.tsv
+          cmd_options: -a -j -m 3 -c .zap/lms-example.tsv
           fail_action: true
           allow_issue_writing: false
-          artifact_name: zap-generated-lms
+          artifact_name: zap-lms-example
 
-      - name: Stop generated LMS
+      - name: Stop LMS example
         if: always()
         run: |
           pid_path="$RUNNER_TEMP/zap-lms.pid"
@@ -277,7 +275,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Enforce generated application DAST gates
+      - name: Enforce blocking application DAST gates
         if: always() && !cancelled()
         env:
           REST_API_OUTCOME: ${{ steps.zap_api.outcome }}
@@ -289,7 +287,7 @@ jobs:
             failed=true
           fi
           if [[ "$LMS_OUTCOME" != success ]]; then
-            echo "Generated LMS ZAP gate: $LMS_OUTCOME"
+            echo "LMS example ZAP gate: $LMS_OUTCOME"
             failed=true
           fi
           if [[ "$failed" == true ]]; then

@@ -1,0 +1,76 @@
+use rullst::db::async_trait;
+use rullst::db::schema::{Migration, Schema};
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {
+    fn name(&self) -> &'static str {
+        "m20260601000000_create_erp_tables"
+    }
+
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
+        // Create products table
+        Schema::create("products", |table| {
+            table.id();
+            table.string("name").not_null();
+            table.string("sku").not_null();
+            table.float("price").not_null();
+            table.integer("stock").not_null();
+            table.timestamps();
+        })
+        .await?;
+
+        // Create orders table
+        Schema::create("orders", |table| {
+            table.id();
+            table.string("customer_name").not_null();
+            table.integer("product_id").not_null();
+            table.integer("quantity").not_null();
+            table.float("total_price").not_null();
+            table.string("status").not_null();
+            table.timestamps();
+        })
+        .await?;
+
+        // Seed initial products and orders
+        let pool = rullst::db::Orm::pool()?;
+
+        rullst::db::sqlx::query(
+            "INSERT INTO products (id, name, sku, price, stock) VALUES 
+             (1, 'Specialty Arabica Coffee', 'CAF-001', 34.90, 18),
+             (2, 'Rullst Ceramic Mug', 'CAN-002', 19.90, 4),
+             (3, 'French Press', 'PRE-003', 89.00, 12)",
+        )
+        .execute(pool)
+        .await?;
+
+        rullst::db::sqlx::query(
+            "INSERT INTO orders (id, customer_name, product_id, quantity, total_price, status) VALUES 
+             (1, 'Carlos Silva', 1, 2, 69.80, 'Paid'),
+             (2, 'Mariana Souza', 2, 1, 19.90, 'Pending')"
+        ).execute(pool).await?;
+
+        // PostgreSQL SERIAL sequences do not advance for explicit ids: move them
+        // past the seeded rows so later inserts (for example from Nexus) do not
+        // collide. MySQL/MariaDB and SQLite advance their counters themselves.
+        if rullst::db::Orm::driver()? == "postgres" {
+            for statement in [
+                "SELECT setval(pg_get_serial_sequence('products', 'id'), (SELECT MAX(id) FROM products))",
+                "SELECT setval(pg_get_serial_sequence('orders', 'id'), (SELECT MAX(id) FROM orders))",
+            ] {
+                rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement))
+                    .execute(pool)
+                    .await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
+        Schema::drop_if_exists("orders").await?;
+        Schema::drop_if_exists("products").await?;
+        Ok(())
+    }
+}

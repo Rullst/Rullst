@@ -22,16 +22,17 @@ the v12.1/v13 payment and generator defects reported by `Rullst/examples`.
 
 ## 🗺️ Proposed blueprints (ordered from easiest to hardest)
 
-Except for ERP, these rows describe design targets and are not selectable CLI
-blueprints. A proposal becomes implemented only when its generated project and
-negative boundaries pass the release gates. `cargo rullst new --blueprint`
-currently offers `blank`, `lms`, `saas`, `blog`, `portfolio` and `erp`; in the
-v13 CLI, `lms` generates a small LMS starter (catalog, modules, lessons,
-enrollment and progress) that replaced the complete Academy scaffold.
+These rows describe design targets and are not selectable CLI starters; ERP
+exists as the `examples/erp` application. A proposal becomes implemented only
+when its generated project and negative boundaries pass the release gates.
+Since 13.0.0-alpha.4 `cargo rullst new --blueprint` offers `blank`, `api` and
+`saas`; the former LMS, Blog, Portfolio and ERP starters are complete
+applications under the repository's `examples/` (see [examples](examples.md)),
+and a new domain is more likely to arrive as an example than as a starter.
 
 | ID | Blueprint Name | Technical Focus in Rullst | Commercial Differentiator |
 |:---|:---|:---|:---|
-| **4** | 💼 ERP Pocket (Inventory) | Embedded SQLite + `rullst::nexus` (Auto-CMS) + Single Binary | Small/medium-business inventory starter; crash recovery and backup remain application work. |
+| **4** | 💼 ERP Pocket (Inventory) | Embedded SQLite + `rullst::nexus` (Auto-CMS) + Single Binary | The `examples/erp` application (a starter until 13.0.0-alpha.4); crash recovery and backup remain application work. |
 | **5** | 📋 Member/Club Management | Validation + Nexus + reviewed receipt adapter | Proposed member and billing domain starter. |
 | **7** | 🤖 AI Agent & RAG Boilerplate | `rullst-ai` + opt-in document parsing/embedding adapters | Proposed RAG starter; uploaded content remains untrusted. |
 | **8** | 🪙 AI Credit-Based SaaS | SSE + transactional usage ledger + payment adapter | Proposed AI SaaS starter with server-owned credit reservation. |

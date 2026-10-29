@@ -1,0 +1,75 @@
+use rullst::db::{FromRow, Orm, RowSnapshot};
+use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "orders")]
+pub struct Order {
+    pub id: i32,
+    pub customer_name: String,
+    pub product_id: i32,
+    pub quantity: i32,
+    pub total_price: f64,
+    pub status: String,
+    // Remembers the loaded values, so `save()` writes only the columns this
+    // record changed. Build new records with `snapshot: RowSnapshot::default()`.
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
+}
+
+impl NexusModel for Order {
+    fn nexus_table() -> &'static str {
+        "orders"
+    }
+    fn nexus_label() -> &'static str {
+        "Orders"
+    }
+    fn nexus_icon() -> &'static str {
+        "🛒"
+    }
+    fn nexus_fields() -> Vec<FieldMeta> {
+        vec![
+            FieldMeta {
+                name: "id",
+                label: "ID",
+                kind: FieldKind::Number,
+                hidden: true,
+                readonly: true,
+            },
+            FieldMeta {
+                name: "customer_name",
+                label: "Customer Name",
+                kind: FieldKind::Text,
+                hidden: false,
+                readonly: false,
+            },
+            FieldMeta {
+                name: "product_id",
+                label: "Product ID",
+                kind: FieldKind::Number,
+                hidden: false,
+                readonly: false,
+            },
+            FieldMeta {
+                name: "quantity",
+                label: "Quantity",
+                kind: FieldKind::Number,
+                hidden: false,
+                readonly: false,
+            },
+            FieldMeta {
+                name: "total_price",
+                label: "Total Price",
+                kind: FieldKind::Number,
+                hidden: false,
+                readonly: false,
+            },
+            FieldMeta {
+                name: "status",
+                label: "Status",
+                kind: FieldKind::Text,
+                hidden: false,
+                readonly: false,
+            },
+        ]
+    }
+}

@@ -1,26 +1,31 @@
 # 45. Accessible Academy Media
 
-Rullst's LMS blueprint generates a bounded lesson-presentation foundation for
-video and audio. Authorization and progress remain server-owned, while the
+Rullst's LMS example (`examples/lms`) contains a bounded lesson-presentation
+foundation for video and audio. Authorization and progress remain server-owned, while the
 browser receives accessible media markup and an escaped transcript.
 
-## Generate the LMS starter
+## Start from the LMS example
+
+Until 13.0.0-alpha.4 `cargo rullst new --blueprint lms` generated this
+application; it now lives in the Rullst repository as
+[`examples/lms`](https://github.com/Rullst/Rullst/tree/main/examples/lms). From
+a checkout of the repository:
 
 ```bash
-cargo rullst new language-academy --default --blueprint lms \
-  --skip-initial-migration
-cd language-academy
-cargo test --all-targets
+cd examples/lms
+cargo test -p rullst-lms-example
 ```
 
-The starter includes the course catalog, modules, lessons, this accessible
-player, enrollment, progress, login and a Nexus admin. Earlier releases also
-generated a complete Academy (assessment, gamification, automation and
-notifications); v13 removed it in favor of this smaller starter.
+Copy the directory to start your own academy (its README shows how to switch
+to the published crates). It includes the course catalog, modules, lessons,
+this accessible player, enrollment, progress, login and a Nexus admin. Earlier
+releases also generated a complete Academy (assessment, gamification,
+automation and notifications); v13 removed it in favor of this smaller
+application.
 
 ## Lesson media contract
 
-Generated lessons store these fields:
+Lessons store these fields:
 
 | Field | Contract |
 |---|---|
@@ -42,9 +47,9 @@ WEBVTT
 Bem-vindo à primeira atividade.
 ```
 
-The blueprint intentionally does not copy a media binary. Its four seeded
+The example intentionally ships no media binary. Its four seeded
 development lessons point at remote sample video/audio files, and its two
-video lessons use the generated `static/media/memory-safety.en.vtt` and
+video lessons use the `static/media/memory-safety.en.vtt` and
 `static/media/first-project.en.vtt` captions. The default CSP
 (`default-src 'self'`) does not allow that remote media, so replace the seeded
 lessons in Nexus (`/nexus`) with your own content. Add your reviewed
@@ -59,7 +64,7 @@ in `Rullst.toml`; browsers then omit credentials for eligible cross-origin
 no-CORS requests. Prefer same-origin delivery, and test the exact CSP/COEP/media
 combination in the deployed browser rather than disabling isolation globally.
 
-## What the generated player enforces
+## What the player enforces
 
 - no autoplay;
 - native video/audio controls;
@@ -79,12 +84,10 @@ stored event, while a later save, or another button, records new progress.
 
 ## Evidence boundary
 
-Repository tests check the generated player source for its caption track,
-native controls, source and transcript bounds, and the absence of autoplay,
-inline styles and `hx-` attributes. They also materialize the generated SQLite
-project and run its own tests (catalog query bounds, progress keys and the
-learning service's owner boundary); no generated test renders the player or
-its rejected source/metadata cases. They do not prove codec support, buffering
+The example's own tests, run in the repository's workspace suite, cover
+catalog query bounds, progress keys, the production security baseline and the
+learning service's owner boundary; no test renders the player or its rejected
+source/metadata cases. They do not prove codec support, buffering
 behavior, screen-reader quality, subtitle accuracy, microphone or speech
 recognition, physical mobile devices, CDN delivery or app store behavior. Run
 browser accessibility tests with your real content and deployment before making

@@ -1,0 +1,529 @@
+//! Password change (signed in) and password reset by email (signed out).
+//!
+//! Storing a new password hash also bumps the account's `session_epoch`, so
+//! both flows end every other session. Mount every route behind CSRF, the
+//! submissions behind `credential_rate_limit`, and `/password/change` behind
+//! `auth_middleware`. A completed reset does not sign the user in: it
+//! redirects to `/login?reset=done`.
+//!
+//! Reset links use `RULLST_PUBLIC_ORIGIN` (process environment, then
+//! `.env`), never the request's Host header. In development it defaults to
+//! `http://localhost:3000`; in staging and production no link is sent until
+//! it is set. Mail goes through the `Mail` facade (`MAIL_DRIVER`, `MAIL_FROM`).
+//! Account emails name the product `APP_NAME` (process environment, then
+//! `.env`) or `APPLICATION_NAME`, in the language of the request (see
+//! `mail_locale`).
+use crate::controllers::auth_controller::{
+    DUMMY_PASSWORD_HASH, PASSWORD_LENGTH_MESSAGE, PasswordWorkError, busy, get_csp_nonce,
+    get_csrf_token, normalize_email, redirect_with_cookie, run_password_work, utc_timestamp,
+    valid_email, valid_password,
+};
+use crate::models::password_reset::{self, RESET_TOKEN_LIFETIME_MINUTES, ResetError};
+use crate::models::user::User;
+use crate::pages::auth;
+use rullst::auth as rullst_auth;
+use rullst::mail::{AccountEvent, AccountMail, ActionLink, Mail, MailLocale};
+use rullst::server::{
+    Extension, Form, HeaderMap, HeaderValue, IntoResponse, Query, Redirect, Response, Uri, header,
+};
+use serde::Deserialize;
+use std::time::Duration;
+
+/// The product name account emails show when `APP_NAME` is unset; change it
+/// to your product's name.
+const APPLICATION_NAME: &str = env!("CARGO_PKG_NAME");
+/// The language of account emails when the request names none they support.
+const DEFAULT_MAIL_LOCALE: MailLocale = MailLocale::En;
+/// The languages `AccountMail` writes (English, Brazilian Portuguese and
+/// Spanish), as `rullst::i18n` language tags.
+const MAIL_LANGUAGES: &[&str] = &["en", "pt", "es"];
+/// Where reset links point in development when `RULLST_PUBLIC_ORIGIN` is unset.
+const DEVELOPMENT_ORIGIN: &str = "http://localhost:3000";
+/// Every forgot-password answer takes at least this long, so its timing does
+/// not tell whether the email belongs to an account.
+const RESET_REQUEST_MIN_DURATION: Duration = Duration::from_millis(400);
+
+/// The forgot-password answer, whether or not the address has an account.
+fn reset_requested_notice() -> String {
+    format!(
+        "If an account uses that email address, we sent it a link to reset the password. The link expires in {}.",
+        lifetime_words(RESET_TOKEN_LIFETIME_MINUTES)
+    )
+}
+
+/// A link lifetime in words, as the reset email states it: whole hours as
+/// hours ("1 hour", "24 hours"), anything else as minutes ("90 minutes").
+fn lifetime_words(minutes: u32) -> String {
+    match minutes {
+        60 => "1 hour".to_owned(),
+        minutes if minutes % 60 == 0 => format!("{} hours", minutes / 60),
+        minutes => format!("{minutes} minutes"),
+    }
+}
+
+const PASSWORD_CHANGED_NOTICE: &str =
+    "Your password was changed. Every other device was signed out.";
+
+/// Why a password form was refused. Each maps to one generic message.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PasswordError {
+    /// The new password breaks the registration policy.
+    Policy,
+    /// The confirmation differs from the new password.
+    Mismatch,
+    /// The current password is wrong, or the account has none.
+    WrongCurrentPassword,
+    /// The reset link is malformed, unknown, expired, used or replaced.
+    InvalidLink,
+    /// Password hashing capacity is exhausted; try again shortly.
+    Busy,
+    /// This browser's session was revoked meanwhile; sign in again.
+    SessionRevoked,
+    /// Storage or hashing failed; nothing changed.
+    Unavailable,
+}
+
+impl PasswordError {
+    pub fn message(self) -> &'static str {
+        match self {
+            Self::Policy => PASSWORD_LENGTH_MESSAGE,
+            Self::Mismatch => "The new password and its confirmation do not match",
+            Self::WrongCurrentPassword => "The current password is incorrect",
+            Self::InvalidLink => {
+                "This password reset link is invalid or has expired. Request a new one."
+            }
+            Self::Busy => "Too many password requests are in progress. Try again in a moment.",
+            Self::SessionRevoked => "Your session ended. Sign in again.",
+            Self::Unavailable => "Passwords cannot be changed right now. Try again later.",
+        }
+    }
+}
+
+impl From<PasswordWorkError> for PasswordError {
+    fn from(error: PasswordWorkError) -> Self {
+        match error {
+            PasswordWorkError::Busy => Self::Busy,
+            PasswordWorkError::Failed => Self::Unavailable,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ChangePasswordDto {
+    pub current_password: String,
+    pub password: String,
+    pub password_confirmation: String,
+}
+
+#[derive(Deserialize)]
+pub struct ForgotPasswordDto {
+    pub email: String,
+}
+
+#[derive(Deserialize)]
+pub struct ResetLinkQuery {
+    #[serde(default)]
+    pub token: String,
+}
+
+#[derive(Deserialize)]
+pub struct ResetPasswordDto {
+    pub token: String,
+    pub password: String,
+    pub password_confirmation: String,
+}
+
+fn form_token(
+    headers: &HeaderMap,
+    csrf: &Option<Extension<rullst::security::CsrfToken>>,
+) -> String {
+    csrf.as_ref()
+        .map(|Extension(token)| token.as_str().to_owned())
+        .unwrap_or_else(|| get_csrf_token(headers))
+}
+
+fn check_new_password(password: &str, confirmation: &str) -> Result<(), PasswordError> {
+    if !valid_password(password) {
+        return Err(PasswordError::Policy);
+    }
+    if password != confirmation {
+        return Err(PasswordError::Mismatch);
+    }
+    Ok(())
+}
+
+async fn hash_new_password(password: String) -> Result<String, PasswordError> {
+    run_password_work(move || rullst_auth::hash_password(&password))
+        .await?
+        .map_err(|error| {
+            eprintln!("Password hashing failed: {error}");
+            PasswordError::Unavailable
+        })
+}
+
+/// A page carrying a reset token: never cached, never sent as a Referer.
+fn private(page: impl IntoResponse) -> Response {
+    let mut response = page.into_response();
+    let headers = response.headers_mut();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    headers.insert(
+        header::REFERRER_POLICY,
+        HeaderValue::from_static("no-referrer"),
+    );
+    response
+}
+
+fn development() -> bool {
+    matches!(
+        rullst::config::RullstConfig::global().environment(),
+        Ok(rullst::config::Environment::Development | rullst::config::Environment::Test)
+    )
+}
+
+/// The origin of reset links: `RULLST_PUBLIC_ORIGIN`, else the development
+/// default. Staging and production refuse to guess.
+fn public_origin() -> Result<String, &'static str> {
+    match rullst::config::project_setting("RULLST_PUBLIC_ORIGIN") {
+        Ok(Some(origin)) if !origin.trim().is_empty() => {
+            Ok(origin.trim().trim_end_matches('/').to_owned())
+        }
+        Ok(_) if development() => Ok(DEVELOPMENT_ORIGIN.to_owned()),
+        Ok(_) => Err("RULLST_PUBLIC_ORIGIN is not set, so no reset link can be sent"),
+        Err(_) => Err("RULLST_PUBLIC_ORIGIN could not be read"),
+    }
+}
+
+/// The product name in account emails: `APP_NAME`, else `APPLICATION_NAME`.
+fn application_name() -> String {
+    match rullst::config::project_setting("APP_NAME") {
+        Ok(Some(name)) if !name.trim().is_empty() => name.trim().to_owned(),
+        _ => APPLICATION_NAME.to_owned(),
+    }
+}
+
+/// The language of account emails for a request: the locale that
+/// `LOCALES.layer()` negotiated when the application has `rullst::i18n`
+/// catalogs, else the browser's `Accept-Language`, matched by language to
+/// English, Brazilian Portuguese or Spanish; else `DEFAULT_MAIL_LOCALE`.
+fn mail_locale(
+    headers: &HeaderMap,
+    locale: &Option<Extension<rullst::i18n::Locale>>,
+) -> MailLocale {
+    let preference = match locale {
+        Some(Extension(locale)) => Some(locale.tag()),
+        None => headers
+            .get(header::ACCEPT_LANGUAGE)
+            .and_then(|value| value.to_str().ok()),
+    };
+    let languages = rullst::i18n::Locales::new(MAIL_LANGUAGES, "en").ok();
+    preference
+        .and_then(|preference| languages?.accept_language(preference))
+        .map_or(DEFAULT_MAIL_LOCALE, |language| {
+            MailLocale::from_preference(language.tag())
+        })
+}
+
+/// Sends account mail in the background, so no answer waits on the provider.
+fn send_account_mail(to: String, locale: MailLocale, event: AccountEvent) {
+    rullst::runtime::spawn(async move {
+        let sent = match AccountMail::new(to, application_name(), locale, event) {
+            Ok(mail) => Mail::send(mail.into_message()).await,
+            Err(error) => Err(error),
+        };
+        if let Err(error) = sent {
+            eprintln!("Account mail was not sent: {error}");
+        }
+    });
+}
+
+/// Without `MAIL_DRIVER`, development mail goes to the log driver, which
+/// records metadata only. A debug build then prints the link so the flow can
+/// be tried locally; release builds and other environments never do.
+fn preview_reset_link(link: &ActionLink) {
+    if cfg!(debug_assertions)
+        && development()
+        && matches!(rullst::config::project_setting("MAIL_DRIVER"), Ok(None))
+    {
+        println!(
+            "Password reset link (development preview, MAIL_DRIVER unset): {}",
+            link.expose_url()
+        );
+    }
+}
+
+async fn request_reset(email: &str, locale: MailLocale) -> Result<(), ResetError> {
+    let Some(user) = User::find_by_email(email).await? else {
+        return Ok(());
+    };
+    let origin = match public_origin() {
+        Ok(origin) => origin,
+        Err(problem) => {
+            eprintln!("Password reset not sent: {problem}");
+            return Ok(());
+        }
+    };
+    let Some(token) = password_reset::issue(user.id, password_reset::unix_now()).await? else {
+        return Ok(());
+    };
+    let url = format!("{origin}/password/reset?token={}", token.expose());
+    match ActionLink::new(url, origin) {
+        Ok(link) => {
+            preview_reset_link(&link);
+            send_account_mail(
+                user.email,
+                locale,
+                AccountEvent::PasswordReset {
+                    link,
+                    expires_in_minutes: RESET_TOKEN_LIFETIME_MINUTES,
+                },
+            );
+        }
+        Err(error) => eprintln!("Password reset not sent: {error}"),
+    }
+    Ok(())
+}
+
+/// `GET /password/forgot`.
+pub async fn forgot_password_view(
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+) -> Response {
+    let token = form_token(&headers, &csrf);
+    auth::forgot_password_page(&token, None, None, get_csp_nonce(&csp_nonce)).into_response()
+}
+
+/// `POST /password/forgot`: the same answer, after the same minimum time,
+/// whether or not the email belongs to an account.
+pub async fn forgot_password_submit(
+    headers: HeaderMap,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    locale: Option<Extension<rullst::i18n::Locale>>,
+    Form(payload): Form<ForgotPasswordDto>,
+) -> Response {
+    let started = rullst::runtime::time::Instant::now();
+    let token = get_csrf_token(&headers);
+    let nonce = get_csp_nonce(&csp_nonce);
+    let email = normalize_email(&payload.email);
+    let valid = valid_email(&email);
+    if valid && let Err(error) = request_reset(&email, mail_locale(&headers, &locale)).await {
+        eprintln!("Password reset request failed: {error}");
+    }
+    rullst::runtime::time::sleep_until(started + RESET_REQUEST_MIN_DURATION).await;
+    if valid {
+        auth::forgot_password_page(&token, None, Some(&reset_requested_notice()), nonce)
+            .into_response()
+    } else {
+        auth::forgot_password_page(&token, Some("Enter a valid email address"), None, nonce)
+            .into_response()
+    }
+}
+
+/// `GET /password/reset?token=…`, the emailed link.
+pub async fn reset_password_view(
+    Query(link): Query<ResetLinkQuery>,
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+) -> Response {
+    let form = form_token(&headers, &csrf);
+    let nonce = get_csp_nonce(&csp_nonce);
+    let user = match rullst_auth::password_reset_token_digest(&link.token) {
+        Some(digest) => password_reset::live_user(&digest, password_reset::unix_now()).await,
+        None => Ok(None),
+    };
+    private(match user {
+        Ok(Some(_)) => auth::reset_password_page(&form, &link.token, None, nonce).into_response(),
+        Ok(None) => auth::forgot_password_page(
+            &form,
+            Some(PasswordError::InvalidLink.message()),
+            None,
+            nonce,
+        )
+        .into_response(),
+        Err(error) => {
+            eprintln!("Reset link lookup failed: {error}");
+            auth::forgot_password_page(
+                &form,
+                Some(PasswordError::Unavailable.message()),
+                None,
+                nonce,
+            )
+            .into_response()
+        }
+    })
+}
+
+async fn reset_password(
+    payload: ResetPasswordDto,
+    locale: MailLocale,
+) -> Result<(), PasswordError> {
+    let digest = rullst_auth::password_reset_token_digest(&payload.token)
+        .ok_or(PasswordError::InvalidLink)?;
+    let user_id = password_reset::live_user(&digest, password_reset::unix_now())
+        .await
+        .map_err(|error| {
+            eprintln!("Reset link lookup failed: {error}");
+            PasswordError::Unavailable
+        })?
+        .ok_or(PasswordError::InvalidLink)?;
+    check_new_password(&payload.password, &payload.password_confirmation)?;
+    let password_hash = hash_new_password(payload.password).await?;
+    match password_reset::redeem(
+        user_id,
+        &digest,
+        password_reset::unix_now(),
+        &password_hash,
+        utc_timestamp(),
+    )
+    .await
+    {
+        Ok(()) => {}
+        Err(ResetError::InvalidToken) => return Err(PasswordError::InvalidLink),
+        Err(error) => {
+            eprintln!("Password reset failed: {error}");
+            return Err(PasswordError::Unavailable);
+        }
+    }
+    if let Ok(Some(user)) = User::find(user_id).await {
+        send_account_mail(user.email, locale, AccountEvent::PasswordChanged);
+    }
+    Ok(())
+}
+
+/// `POST /password/reset`: stores the new password, ends every session and
+/// sends the user to sign in again.
+pub async fn reset_password_submit(
+    headers: HeaderMap,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    locale: Option<Extension<rullst::i18n::Locale>>,
+    Form(payload): Form<ResetPasswordDto>,
+) -> Response {
+    let form = get_csrf_token(&headers);
+    let nonce = get_csp_nonce(&csp_nonce);
+    let link = payload.token.clone();
+    match reset_password(payload, mail_locale(&headers, &locale)).await {
+        Ok(()) => Redirect::to("/login?reset=done").into_response(),
+        Err(error @ (PasswordError::InvalidLink | PasswordError::Unavailable)) => private(
+            auth::forgot_password_page(&form, Some(error.message()), None, nonce),
+        ),
+        Err(PasswordError::Busy) => private(busy(auth::reset_password_page(
+            &form,
+            &link,
+            Some(PasswordError::Busy.message()),
+            nonce,
+        ))),
+        Err(error) => private(auth::reset_password_page(
+            &form,
+            &link,
+            Some(error.message()),
+            nonce,
+        )),
+    }
+}
+
+/// The epoch of the login cookie that reached this handler, so a change only
+/// replaces that session and never revives one revoked meanwhile.
+fn cookie_epoch(headers: &HeaderMap, user_id: i32) -> Option<u64> {
+    let cookie = rullst_auth::extract_session_cookie(headers)?;
+    let key = rullst_auth::get_app_key().ok()?;
+    let claims = rullst_auth::decrypt_session_claims(&cookie, &key).ok()?;
+    (claims.user_id == user_id).then_some(claims.epoch)
+}
+
+async fn change_password(
+    user_id: i32,
+    epoch: u64,
+    payload: ChangePasswordDto,
+    locale: MailLocale,
+) -> Result<String, PasswordError> {
+    check_new_password(&payload.password, &payload.password_confirmation)?;
+    let user = User::find(user_id)
+        .await
+        .map_err(|error| {
+            eprintln!("Password change user query failed: {error}");
+            PasswordError::Unavailable
+        })?
+        .ok_or(PasswordError::SessionRevoked)?;
+    let has_password = user.password_hash.is_some();
+    let stored_hash = user
+        .password_hash
+        .clone()
+        .unwrap_or_else(|| DUMMY_PASSWORD_HASH.to_owned());
+    let current = payload.current_password;
+    let current_valid =
+        run_password_work(move || rullst_auth::verify_password(&current, &stored_hash)).await?;
+    if !(current_valid && has_password) {
+        return Err(PasswordError::WrongCurrentPassword);
+    }
+    let password_hash = hash_new_password(payload.password).await?;
+    let next_epoch = User::change_password(user_id, epoch, &password_hash, utc_timestamp())
+        .await
+        .map_err(|error| {
+            eprintln!("Password change failed: {error}");
+            PasswordError::Unavailable
+        })?
+        .ok_or(PasswordError::SessionRevoked)?;
+    // A reset link requested before the change must not undo it.
+    if let Err(error) = password_reset::discard(user_id).await {
+        eprintln!("Reset token cleanup failed: {error}");
+    }
+    send_account_mail(user.email, locale, AccountEvent::PasswordChanged);
+    rullst_auth::make_login_cookie_with_epoch(
+        user_id,
+        next_epoch,
+        rullst_auth::DEFAULT_SESSION_MAX_AGE,
+    )
+    .map_err(|error| {
+        // The password changed; this browser signs in again with it.
+        eprintln!("Session creation failed: {error}");
+        PasswordError::SessionRevoked
+    })
+}
+
+/// `GET /password/change`, behind `auth_middleware`.
+pub async fn change_password_view(
+    uri: Uri,
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+) -> Response {
+    let token = form_token(&headers, &csrf);
+    let notice = (uri.query() == Some("changed=1")).then_some(PASSWORD_CHANGED_NOTICE);
+    auth::change_password_page(&token, None, notice, get_csp_nonce(&csp_nonce)).into_response()
+}
+
+/// `POST /password/change`, behind `auth_middleware`: checks the current
+/// password, stores the new one, signs out every other device and gives this
+/// browser a cookie with the new session epoch.
+pub async fn change_password_submit(
+    Extension(user_id): Extension<i32>,
+    headers: HeaderMap,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    locale: Option<Extension<rullst::i18n::Locale>>,
+    Form(payload): Form<ChangePasswordDto>,
+) -> Response {
+    let form = get_csrf_token(&headers);
+    let nonce = get_csp_nonce(&csp_nonce);
+    let changed = match cookie_epoch(&headers, user_id) {
+        Some(epoch) => {
+            change_password(user_id, epoch, payload, mail_locale(&headers, &locale)).await
+        }
+        None => Err(PasswordError::SessionRevoked),
+    };
+    match changed {
+        Ok(cookie) => redirect_with_cookie("/password/change?changed=1", &cookie),
+        Err(PasswordError::SessionRevoked) => {
+            redirect_with_cookie("/login", &rullst_auth::make_logout_cookie())
+        }
+        Err(PasswordError::Busy) => busy(auth::change_password_page(
+            &form,
+            Some(PasswordError::Busy.message()),
+            None,
+            nonce,
+        )),
+        Err(error) => {
+            auth::change_password_page(&form, Some(error.message()), None, nonce).into_response()
+        }
+    }
+}

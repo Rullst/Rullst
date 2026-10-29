@@ -472,6 +472,12 @@ a different supported contract or provides clear product value. Opt-in features
 must remain opt-in, and source/manifest, authentication, persistence and packaged
 installation checks cannot be replaced with mock-only examples.
 
+Since 13.0.0-alpha.4 `cargo rullst new` keeps three starters (Blank, API and
+SaaS). The LMS, ERP and Portfolio blueprints became workspace examples under
+`examples/` with their own tests, the Blog blueprint was dropped in favor of
+the existing blog showcase, and the CLI's generated-project gates cover only
+the three starters.
+
 Human exploratory testing is not assumed to be available during this delivery
 window. Use automated unit, integration, real-database, HTTP/browser and failure
 tests appropriate to each supported feature. Record environmental and usability

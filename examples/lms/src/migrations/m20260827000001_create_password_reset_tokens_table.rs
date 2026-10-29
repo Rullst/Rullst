@@ -1,0 +1,33 @@
+use rullst::db::async_trait;
+use rullst::db::schema::{Migration, Schema};
+use rullst::db::{Orm, sqlx};
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {
+    fn name(&self) -> &'static str {
+        "m20260827000001_create_password_reset_tokens_table"
+    }
+
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
+        // One live reset token per account (the primary key), stored only as
+        // the SHA-256 digest of the emailed token, with Unix-second times.
+        Schema::create("password_reset_tokens", |table| {
+            table.integer("user_id").not_null().primary();
+            // MySQL/MariaDB cannot index a TEXT column without a prefix length.
+            table.string("token_hash").not_null().col_type = "VARCHAR(64)".to_string();
+            table.big_integer("expires_at").not_null();
+            table.big_integer("created_at").not_null();
+        })
+        .await?;
+        sqlx::query("CREATE UNIQUE INDEX password_reset_tokens_hash_unique ON password_reset_tokens(token_hash)")
+            .execute(Orm::pool()?)
+            .await?;
+        Ok(())
+    }
+
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
+        Schema::drop_if_exists("password_reset_tokens").await
+    }
+}

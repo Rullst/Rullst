@@ -1,6 +1,6 @@
 use super::*;
-use crate::blueprints::{self, BLANK_BLUEPRINT_ID, LMS_BLUEPRINT_ID};
-use crate::generators::project::wizard::catalog::BLUEPRINTS;
+use crate::blueprints::{self, BLANK_BLUEPRINT_ID};
+use crate::generators::project::wizard::catalog::STARTERS;
 use crate::generators::project::wizard::plan::Database;
 
 fn plan(name: &str, blueprint: usize) -> ProjectPlan {
@@ -18,33 +18,24 @@ fn plan(name: &str, blueprint: usize) -> ProjectPlan {
     }
 }
 
-/// The blueprint's own template manifest, independent of the preview code.
-fn manifest_paths(blueprint: usize) -> Vec<&'static str> {
+/// The starter's own template manifest, independent of the preview code.
+fn manifest_paths(blueprint: usize, api: bool) -> Vec<&'static str> {
     let (orm, frontend) = ("Active Record", "Zero-Bundle HTMX");
-    let manifest = match blueprint {
-        BLANK_BLUEPRINT_ID => {
-            blueprints::blank::file_manifest("demo", "demo", false, false, true, orm, frontend)
-        }
-        LMS_BLUEPRINT_ID => blueprints::lms::file_manifest("demo", false, orm, frontend),
-        blueprints::SAAS_BLUEPRINT_ID => {
-            blueprints::saas::file_manifest("demo", false, orm, frontend)
-        }
-        blueprints::BLOG_BLUEPRINT_ID => {
-            blueprints::blog::file_manifest("demo", false, orm, frontend)
-        }
-        blueprints::PORTFOLIO_BLUEPRINT_ID => {
-            blueprints::portfolio::file_manifest("demo", false, orm, frontend)
-        }
-        _ => blueprints::erp::file_manifest("demo", false, orm, frontend),
+    let manifest = if blueprint == BLANK_BLUEPRINT_ID {
+        blueprints::blank::file_manifest("demo", "demo", api, false, true, orm, frontend)
+    } else {
+        blueprints::saas::file_manifest("demo", false, orm, frontend)
     };
     manifest.into_iter().map(|(path, _)| path).collect()
 }
 
 #[test]
-fn previews_come_from_the_real_writers_for_every_blueprint() {
-    for info in BLUEPRINTS {
-        let files = rendered_files(&plan("preview-probe", info.id)).expect("preview renders");
-        for path in manifest_paths(info.id) {
+fn previews_come_from_the_real_writers_for_every_starter() {
+    for info in STARTERS {
+        let mut probe = plan("preview-probe", info.blueprint);
+        probe.api = info.api;
+        let files = rendered_files(&probe).expect("preview renders");
+        for path in manifest_paths(info.blueprint, info.api) {
             assert!(
                 files.iter().any(|file| file == path),
                 "{}: {path}",
@@ -59,7 +50,6 @@ fn previews_come_from_the_real_writers_for_every_blueprint() {
             ".llms.txt",
             ".rullst/context-map.json",
             ".cargo/config.toml",
-            "static/htmx-1.9.12.min.js",
         ] {
             assert!(
                 files.iter().any(|file| file == path),
@@ -67,6 +57,12 @@ fn previews_come_from_the_real_writers_for_every_blueprint() {
                 info.flag
             );
         }
+        assert_eq!(
+            files.iter().any(|file| file == "static/htmx-1.9.12.min.js"),
+            !info.api,
+            "{}: only HTML starters serve HTMX",
+            info.flag
+        );
         assert!(!files.iter().any(|file| file.contains('\\')));
     }
     assert!(

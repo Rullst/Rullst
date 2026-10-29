@@ -1,13 +1,14 @@
 # Examples and generated starters
 
-The repository examples and CLI blueprints serve different purposes:
+The repository examples and CLI starters serve different purposes:
 
 | Artifact | Purpose | Trust boundary |
 | --- | --- | --- |
 | `examples/blog` | Workspace integration showcase with local data, interactive demos, and offline provider fixtures. | Development-only; not a production template or compliance proof. |
 | `examples/saas` | Reproducible CLI-generated SQLite SaaS with authenticated notes, tenant membership and the same HTTP journey used in CI. | Disposable Linux development example; membership is an explicit local operator action. |
 | `examples/webgpu` | Browser wave-interference lesson served by `rullst-core`, with WebGPU rendering and a Canvas fallback. | Public read-only demo on loopback; browser output establishes no server-owned result. |
-| CLI blueprints | Small starting structures generated into a new project. | Generated output must be reviewed, configured, formatted, checked, and tested by the application owner. |
+| `examples/lms`, `examples/erp`, `examples/portfolio` | Complete applications that were the LMS, ERP and Portfolio starters of `cargo rullst new` until 13.0.0-alpha.4, kept as workspace members with their own tests. | Examples to copy from, not supported starters: no generator or upgrade path behind them. |
+| CLI starters (Blank, API, SaaS) | Small starting structures generated into a new project. | Generated output must be reviewed, configured, formatted, checked, and tested by the application owner. |
 
 No example is expected to exercise 100% of workspace behavior. External provider
 paths use deterministic mock credentials so CI and local development do not make
@@ -52,6 +53,37 @@ The script requires Linux, Python 3.11+, the pinned toolchain and 32 GiB of
 initial disk headroom. It removes generated data on exit and uses no real
 provider account. This directory holds the canonical example recipe and
 resource; it is not a duplicate checked-in copy of a generated application.
+
+## LMS, ERP and Portfolio examples
+
+Until 13.0.0-alpha.4, `cargo rullst new --blueprint lms|erp|portfolio`
+generated these applications; the CLI now offers only the Blank, API and SaaS
+starters, and `--blueprint lms`, `erp`, `portfolio` or `blog` fails before
+writing anything with a report that names the example. Each was generated with
+that CLI (SQLite, `--default`), then adapted to the workspace: `publish = false`,
+workspace dependencies, a library with `router()` plus a thin binary, and the
+generated tests (security baseline, CSRF, rate limits, ownership checks) as the
+package's own tests.
+
+| Example | What it shows |
+| :--- | :--- |
+| [`examples/lms`](https://github.com/Rullst/Rullst/tree/main/examples/lms) | Course catalog, modules and lessons, an accessible player, enrollment, owner-bound progress, sign-in with password reset and a Nexus admin for signed-in administrators. Its owner-boundary test is the threat-model evidence for `ACADEMY-02`. |
+| [`examples/erp`](https://github.com/Rullst/Rullst/tree/main/examples/erp) | Products, stock movements and orders; the dashboard, forms and Nexus share one administrator policy. |
+| [`examples/portfolio`](https://github.com/Rullst/Rullst/tree/main/examples/portfolio) | A developer portfolio read from the database and edited in Nexus, checked in a mobile Chromium viewport in Linux CI. |
+
+Run one from its directory, after copying `.env.example` to `.env` and setting
+`APP_KEY`:
+
+```bash
+cd examples/lms
+cargo run -p rullst-lms-example -- db:migrate
+cargo run -p rullst-lms-example
+```
+
+To start your own application from one, copy the directory and replace its
+`workspace = true` dependencies with the published crates (each README shows
+the line). Applications generated earlier from these blueprints keep working:
+their code is theirs.
 
 ## Browser graphics example
 
@@ -104,9 +136,9 @@ peer as loopback. A release build does not start Studio and refuses to construct
 Nexus without validated `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD`
 values. Studio is local developer tooling; keep it on a trusted interface.
 
-## Verifying examples and blueprints
+## Verifying examples and starters
 
-For the checked-in example, run package tests and the workspace trifecta. For CLI
+For the checked-in examples, run package tests and the workspace trifecta. For CLI
 output, use a temporary directory and verify every generated project:
 
 ```bash

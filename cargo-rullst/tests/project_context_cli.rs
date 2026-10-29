@@ -23,7 +23,7 @@ fn success(output: Output) {
 #[test]
 fn generated_projects_preserve_instructions_and_refresh_context_after_scaffolding() {
     let temporary = tempfile::tempdir().unwrap();
-    for blueprint in ["blank", "saas", "lms", "blog", "portfolio", "erp"] {
+    for blueprint in ["blank", "api", "saas"] {
         let root = temporary.path().join(blueprint);
         success(cli(
             temporary.path(),

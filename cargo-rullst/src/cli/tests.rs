@@ -89,7 +89,7 @@ fn parses_deterministic_blueprint_generation_flags() {
         "release-consumer",
         "--default",
         "--blueprint",
-        "erp",
+        "api",
         "--skip-initial-migration",
     ])
     .expect("deterministic blueprint CLI");
@@ -97,11 +97,55 @@ fn parses_deterministic_blueprint_generation_flags() {
     assert!(matches!(
         cli.command,
         Commands::New {
-            blueprint: Some(BlueprintChoice::Erp),
+            blueprint: Some(BlueprintChoice::Api),
             skip_initial_migration: true,
             ..
         }
     ));
+}
+
+#[test]
+fn only_the_three_starters_are_listed_and_moved_blueprints_still_parse() {
+    use clap::ValueEnum;
+    let listed: Vec<String> = BlueprintChoice::value_variants()
+        .iter()
+        .filter_map(ValueEnum::to_possible_value)
+        .filter(|value| !value.is_hide_set())
+        .map(|value| value.get_name().to_string())
+        .collect();
+    assert_eq!(listed, ["blank", "api", "saas"]);
+
+    for (value, choice, example) in [
+        ("lms", BlueprintChoice::Lms, "lms"),
+        ("blog", BlueprintChoice::Blog, "blog"),
+        ("portfolio", BlueprintChoice::Portfolio, "portfolio"),
+        ("erp", BlueprintChoice::Erp, "erp"),
+    ] {
+        let cli = Cli::try_parse_from(["rullst", "new", "x", "--default", "--blueprint", value])
+            .expect("a moved blueprint still parses");
+        assert!(
+            matches!(cli.command, Commands::New { blueprint: Some(parsed), .. } if parsed == choice)
+        );
+        let moved = choice
+            .starter()
+            .expect_err("a moved blueprint has no starter");
+        assert_eq!(moved.name(), example);
+        assert!(!choice.is_api());
+    }
+    assert_eq!(
+        BlueprintChoice::Blank.starter(),
+        Ok(crate::blueprints::BLANK_BLUEPRINT_ID)
+    );
+    assert_eq!(
+        BlueprintChoice::Api.starter(),
+        Ok(crate::blueprints::BLANK_BLUEPRINT_ID)
+    );
+    assert_eq!(
+        BlueprintChoice::Saas.starter(),
+        Ok(crate::blueprints::SAAS_BLUEPRINT_ID)
+    );
+    assert!(BlueprintChoice::Api.is_api());
+    assert!(!BlueprintChoice::Blank.is_api() && !BlueprintChoice::Saas.is_api());
 }
 
 #[test]
@@ -112,7 +156,7 @@ fn parses_streamlined_deterministic_project_profile() {
         "release-consumer",
         "--default",
         "--blueprint",
-        "erp",
+        "saas",
         "--database",
         "postgres",
         "--hot-reload",
@@ -125,7 +169,7 @@ fn parses_streamlined_deterministic_project_profile() {
     assert!(matches!(
         cli.command,
         Commands::New {
-            blueprint: Some(BlueprintChoice::Erp),
+            blueprint: Some(BlueprintChoice::Saas),
             database: Some(DatabaseChoice::Postgres),
             hot_reload: true,
             ai: true,

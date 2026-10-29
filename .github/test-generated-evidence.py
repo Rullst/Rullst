@@ -2,8 +2,8 @@
 """Run actual generated-case selection with a recorded, non-building verifier.
 
 This proves scheduling/inventory only, not generated application correctness.
-Hosted Rust CI still materializes and tests the eight real applications; the
-threat minimum separately executes the same LMS case and verification helper.
+Hosted Rust CI still materializes and tests the four real applications. The
+LMS threat evidence (ACADEMY-02) is the LMS example's own test in the workspace.
 """
 
 import json
@@ -17,16 +17,13 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "cargo-rullst/tests/generated_saas_check.rs"
-FOCUSED = "materialized_lms_executes_security_contracts"
+WRAPPER = "every_blueprint_and_distinct_generated_boundary_passes_cargo_verification"
+LMS_EVIDENCE = ROOT / "examples/lms/src/security_tests.rs"
 EXPECTED = [
     "blank-minimal|0|false|false|false|Active Record|Zero-Bundle HTMX|false",
     "blank-api-hot|0|true|true|false|Active Record|Zero-Bundle HTMX|false",
-    "lms-active-htmx-hot|1|false|true|true|Active Record|Zero-Bundle HTMX|false",
     "saas-active-htmx-hot|2|false|true|true|Active Record|Zero-Bundle HTMX|false",
-    "blog-active-htmx-hot|3|false|true|true|Active Record|Zero-Bundle HTMX|false",
-    "portfolio-active-htmx-hot|4|false|true|true|Active Record|Zero-Bundle HTMX|false",
-    "erp-active-htmx-release|5|false|false|true|Active Record|Zero-Bundle HTMX|true",
-    "erp-active-htmx-hot|5|false|true|true|Active Record|Zero-Bundle HTMX|false",
+    "saas-active-htmx-release|2|false|false|true|Active Record|Zero-Bundle HTMX|true",
 ]
 
 RECORDER = r'''
@@ -48,10 +45,6 @@ fn cargo_verify(case: GeneratedCase, project: &Path, _: &Path) {
     writeln!(log, "{}|{}|{}|{}|{}|{}|{}|{}", case.name, case.blueprint, case.api, case.hot_reload,
         case.db_needed, case.orm_pattern, case.frontend, case.release).unwrap();
 }
-// --exact --skip must not suppress a future prefix-sharing assertion.
-#[test] fn materialized_lms_executes_security_contracts_additional() {
-    assert_eq!(2 + 2, 4);
-}
 '''
 
 FAKE_CARGO = r'''#!/usr/bin/env python3
@@ -63,7 +56,9 @@ assert args[0] == "test" and "--all-features" in args and "--no-fail-fast" in ar
 assert args[args.index("--test") + 1] == "generated_saas_check"
 assert "cargo-rullst" in args and "rullst-core" in args
 assert ("--release" in args) == (os.environ.get("RULLST_EXPECT_RELEASE") == "1")
-raise SystemExit(subprocess.run([os.environ["RULLST_SELECTION_BINARY"], *args[args.index("--") + 1:]]).returncode)
+# The shard filters nothing: libtest receives no arguments after `--`.
+assert "--" not in args, args
+raise SystemExit(subprocess.run([os.environ["RULLST_SELECTION_BINARY"]]).returncode)
 '''
 
 
@@ -81,7 +76,7 @@ class SelectionTests(unittest.TestCase):
         wrappers = source[source.index("#[test]\nfn every_blueprint_"):]
         ids = re.findall(r"pub const [A-Z]+_BLUEPRINT_ID: usize = \d+;",
                          (ROOT / "cargo-rullst/src/blueprints/mod.rs").read_text())
-        if len(ids) != 6:
+        if len(ids) != 2:
             raise AssertionError("review the public blueprint inventory")
         fixture = cls.root / "selection.rs"
         fixture.write_text("#![allow(dead_code)]\n" + "\n".join(ids)
@@ -113,15 +108,15 @@ class SelectionTests(unittest.TestCase):
                                 text=True, capture_output=True, timeout=15)
         return result, log.read_text().splitlines() if log.exists() else []
 
-    def test_two_normal_shards_preserve_all_eight_cases_without_duplicate_lms(self):
+    def test_two_normal_shards_preserve_all_four_cases(self):
         for release in (False, True):
             all_cases = []
-            for group, expected in (("foundation", EXPECTED[:4]), ("product", EXPECTED[4:])):
+            for group, expected in (("foundation", EXPECTED[:3]), ("product", EXPECTED[3:])):
                 args = [f"cli-saas-{group}", *(["--release"] if release else [])]
                 result, cases = self.run_selection(*args, shard=True, release=release)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertEqual(cases, expected)
-                self.assertIn(f"test {FOCUSED}_additional ... ok", result.stdout)
+                self.assertIn(f"test {WRAPPER} ... ok", result.stdout)
                 all_cases.extend(cases)
             self.assertEqual(all_cases, EXPECTED)
 
@@ -130,26 +125,30 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(cases, EXPECTED)
 
-    def test_security_evidence_always_runs_only_lms_even_with_product_or_invalid_group(self):
-        for group in (None, "foundation", "product", "invalid"):
-            result, cases = self.run_selection(FOCUSED, "--exact", group=group)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertEqual(cases, [EXPECTED[2]])
-
     def test_bad_normal_group_cannot_succeed_without_cases(self):
-        result, cases = self.run_selection(
-            "every_blueprint_and_distinct_generated_boundary_passes_cargo_verification",
-            "--exact", group="invalid")
+        result, cases = self.run_selection(WRAPPER, "--exact", group="invalid")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(cases, [])
 
-    def test_threat_manifest_maps_the_lms_starter_contract_to_focused_execution(self):
+    def test_threat_manifest_maps_the_lms_contract_to_the_lms_example(self):
         manifest = json.loads((ROOT / ".github/threat-model-release-minimum.json").read_text())
-        rows = [row for row in manifest["cases"] if row["target"] == "generated_saas_check"]
-        self.assertEqual(sorted(row["id"] for row in rows), ["ACADEMY-02"])
-        for row in rows:
-            self.assertEqual(row["test_filter"], FOCUSED)
-            self.assertEqual(row["source"], str(SOURCE.relative_to(ROOT)))
+        self.assertEqual(
+            [row for row in manifest["cases"] if row["target"] == "generated_saas_check"], [])
+        rows = [row for row in manifest["cases"] if row["id"] == "ACADEMY-02"]
+        self.assertEqual(rows, [{
+            "id": "ACADEMY-02",
+            "crate": "rullst-lms-example",
+            "target_kind": "lib",
+            "target": "lib",
+            "test_filter": "security_tests::another_learners_lessons_are_refused",
+            "source": str(LMS_EVIDENCE.relative_to(ROOT)),
+            "marker": "TM-ACADEMY-02",
+        }])
+        evidence = LMS_EVIDENCE.read_text()
+        self.assertIn(
+            "// TM-ACADEMY-02: another learner's session cannot open a learner's lessons.\n"
+            "#[tokio::test]\nasync fn another_learners_lessons_are_refused() {", evidence)
+        self.assertNotIn("#[ignore", evidence)
         source = SOURCE.read_text()
         self.assertNotIn("#[ignore", source)
         self.assertIn('command.arg("test").arg("--offline").arg("--all-targets")', source)

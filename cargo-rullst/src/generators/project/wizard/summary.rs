@@ -1,6 +1,6 @@
 //! Pure renderings of a plan: the review summary and the compact file tree.
 
-use super::catalog::{TURSO_PRIMARY_LIMITS, blueprint, database_name, feature_name};
+use super::catalog::{TURSO_PRIMARY_LIMITS, database_name, feature_name, starter};
 use super::plan::{Database, ProjectPlan};
 use crate::blueprints::BLANK_BLUEPRINT_ID;
 use crate::generators::project::ProjectIdentity;
@@ -231,9 +231,9 @@ pub(crate) fn summary(plan: &ProjectPlan, files: Option<&[String]>, port: u16) -
             .push(Tone::Strong, package)
             .push(Tone::Muted, format!("  in {shown_destination}")),
     )];
-    if let Some(info) = blueprint(plan.blueprint) {
+    if let Some(info) = starter(plan.blueprint, plan.api) {
         answers.push(row(
-            "Blueprint",
+            "Starter",
             Line::new()
                 .push(Tone::Value, info.name)
                 .push(Tone::Muted, format!(" · {}", info.summary)),

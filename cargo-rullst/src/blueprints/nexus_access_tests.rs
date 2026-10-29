@@ -1,19 +1,14 @@
-//! The SaaS and LMS starters admit their own administrators to Nexus.
+//! The SaaS starter admits its own administrators to Nexus.
 
 use super::NEXUS_ACCESS;
-use crate::blueprints::{lms, saas};
+use crate::blueprints::saas;
 
-/// Both auth starters, with and without the reloadable layout.
+/// The auth starter, with and without the reloadable layout.
 fn auth_starter_manifests() -> Vec<(&'static str, Vec<(&'static str, String)>)> {
     let (orm, frontend) = ("Active Record", "Zero-Bundle HTMX");
     [false, true]
         .into_iter()
-        .flat_map(|hot| {
-            [
-                ("lms", lms::file_manifest("demo", hot, orm, frontend)),
-                ("saas", saas::file_manifest("demo", hot, orm, frontend)),
-            ]
-        })
+        .map(|hot| ("saas", saas::file_manifest("demo", hot, orm, frontend)))
         .collect()
 }
 

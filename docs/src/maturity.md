@@ -124,6 +124,11 @@ regenerate.
 generators and the Fly.io, Railway and Render targets of `deploy`; see
 [Advanced deployment](advanced-deployment.md) for those setups.
 
+`cargo rullst new` offers three starters with the CLI's Core tier: Blank, API
+and SaaS. 13.0.0-alpha.4 moved the LMS, Blog, Portfolio and ERP starters out of
+the CLI; the LMS, ERP and Portfolio applications live on as
+[examples](examples.md), which are examples to copy from and carry no tier.
+
 ## How a tier changes
 
 - **Promotion** (Experimental to Extension) can happen in any 13.x minor

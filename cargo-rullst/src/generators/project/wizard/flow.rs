@@ -1,9 +1,9 @@
-//! The interactive `cargo rullst new` state machine: name → blueprint →
-//! application kind (Blank) → database → features → review. Questions that
-//! flags already answered are skipped, Esc returns to the previous question
-//! and the review screen creates, goes back or cancels.
+//! The interactive `cargo rullst new` state machine: name → starter (Blank,
+//! API or SaaS) → database → features → review. Questions that flags already
+//! answered are skipped, Esc returns to the previous question and the review
+//! screen creates, goes back or cancels.
 
-use super::catalog::{BLUEPRINTS, FEATURES, Feature, database_options};
+use super::catalog::{FEATURES, Feature, STARTERS, Starter, database_options};
 use super::plan::{Database, ProjectPlan};
 use super::summary::{TREE_WIDTH, summary, tree_lines};
 use super::{PolyglotIntegration, WizardResult};
@@ -17,17 +17,15 @@ pub(crate) const TITLE: &str = "New Rullst app";
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Step {
     Name,
-    Blueprint,
-    Application,
+    Starter,
     Database,
     Features,
     Review,
 }
 
-const ORDER: [Step; 6] = [
+const ORDER: [Step; 5] = [
     Step::Name,
-    Step::Blueprint,
-    Step::Application,
+    Step::Starter,
     Step::Database,
     Step::Features,
     Step::Review,
@@ -37,8 +35,10 @@ const ORDER: [Step; 6] = [
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Locked {
     pub(crate) name: bool,
-    pub(crate) blueprint: bool,
-    pub(crate) application: bool,
+    pub(crate) starter: bool,
+    /// A flag that exists only for the Blank blueprint (`--no-database`,
+    /// `--database turso`) limits the starter question to Blank and API.
+    pub(crate) blank_only: bool,
     pub(crate) database: bool,
     pub(crate) ai: bool,
     pub(crate) redis: bool,
@@ -143,10 +143,7 @@ impl<P: FnMut(&ProjectPlan) -> Option<Vec<String>>> Flow<P> {
         let locked = self.setup.locked;
         match step {
             Step::Name => !locked.name,
-            Step::Blueprint => !locked.blueprint,
-            Step::Application => {
-                self.setup.plan.blueprint == BLANK_BLUEPRINT_ID && !locked.application
-            }
+            Step::Starter => !locked.starter,
             Step::Database => !locked.database,
             Step::Features => !self.offered_features().is_empty(),
             Step::Review => true,
@@ -225,8 +222,7 @@ impl<P: FnMut(&ProjectPlan) -> Option<Vec<String>>> Flow<P> {
         loop {
             let movement = match step {
                 Step::Name => self.name(ui)?,
-                Step::Blueprint => self.blueprint(ui)?,
-                Step::Application => self.application(ui)?,
+                Step::Starter => self.starter(ui)?,
                 Step::Database => self.database(ui)?,
                 Step::Features => self.features(ui)?,
                 Step::Review => self.review(ui)?,
@@ -260,12 +256,22 @@ impl<P: FnMut(&ProjectPlan) -> Option<Vec<String>>> Flow<P> {
         }
     }
 
-    fn blueprint<U: WizardUi>(&mut self, ui: &mut U) -> WizardResult<Move> {
+    /// The starters the flags still allow.
+    fn offered_starters(&self) -> Vec<Starter> {
+        STARTERS
+            .into_iter()
+            .filter(|starter| {
+                !self.setup.locked.blank_only || starter.blueprint == BLANK_BLUEPRINT_ID
+            })
+            .collect()
+    }
+
+    fn starter<U: WizardUi>(&mut self, ui: &mut U) -> WizardResult<Move> {
+        let offered = self.offered_starters();
         let mut choices = Vec::new();
-        for info in BLUEPRINTS {
+        for info in &offered {
             let mut candidate = self.setup.plan.clone();
-            candidate.blueprint = info.id;
-            candidate.fit_blueprint();
+            candidate.choose(info);
             let detail = match self.files(&candidate) {
                 Some(files) => {
                     let package = ProjectIdentity::from_destination(&candidate.name).map_or_else(
@@ -282,53 +288,26 @@ impl<P: FnMut(&ProjectPlan) -> Option<Vec<String>>> Flow<P> {
             });
         }
         let mut screen = self.screen(
-            Step::Blueprint,
-            "Blueprint",
+            Step::Starter,
+            "Starter",
             "Which starter should Rullst generate?",
             choices,
         );
+        let plan = &self.setup.plan;
         screen.selection = Selection::One {
-            initial: BLUEPRINTS
+            initial: offered
                 .iter()
-                .position(|info| info.id == self.setup.plan.blueprint)
+                .position(|info| info.blueprint == plan.blueprint && info.api == plan.api)
                 .unwrap_or(0),
         };
         match ui.choose(&screen)? {
             Answer::One(index) => {
-                let info = BLUEPRINTS.get(index).ok_or_else(invalid_answer)?;
-                self.setup.plan.blueprint = info.id;
-                self.setup.plan.fit_blueprint();
+                let info = offered.get(index).ok_or_else(invalid_answer)?;
+                self.setup.plan.choose(info);
                 Ok(Move::Forward)
             }
             Answer::Back => Ok(Move::Back),
             Answer::Many(_) => Err(invalid_answer()),
-        }
-    }
-
-    fn application<U: WizardUi>(&mut self, ui: &mut U) -> WizardResult<Move> {
-        let choices = vec![
-            Choice::new(
-                "Full-stack web app",
-                "server-rendered html! pages with HTMX",
-            ),
-            Choice::new("JSON API", "headless REST endpoints, no HTML"),
-        ];
-        let mut screen = self.screen(
-            Step::Application,
-            "Application",
-            "What are you building?",
-            choices,
-        );
-        screen.selection = Selection::One {
-            initial: usize::from(self.setup.plan.api),
-        };
-        match ui.choose(&screen)? {
-            Answer::One(index @ (0 | 1)) => {
-                self.setup.plan.api = index == 1;
-                Ok(Move::Forward)
-            }
-            Answer::Back => Ok(Move::Back),
-            _ => Err(invalid_answer()),
         }
     }
 

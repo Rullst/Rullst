@@ -14,6 +14,12 @@
 # The experimental extras moved out of cargo-rullst in 13.0.0-alpha.4 keep
 # its lighter-test status (unit and binary tests in the CLI shard).
 cargo-rullst-extras/**
+# Example applications to copy from, moved in 13.0.0-alpha.4 from the CLI
+# blueprints (excluded above with cargo-rullst/**); their own tests run in the
+# workspace suite.
+examples/erp/**
+examples/lms/**
+examples/portfolio/**
 
 # Test-only modules included with `#[cfg(test)] #[path = "..."] mod ...;` or
 # `#[cfg(test)] mod tests;` backed by a `tests/` directory under `src/`.

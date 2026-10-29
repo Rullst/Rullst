@@ -306,6 +306,18 @@ fn scripts_running_the_moved_extras_commands_are_reviewed() {
     assert!(!runs_extras_command("cargo rullst green"));
 }
 
+/// A fixed script name is reviewed under the name the directory lists, once,
+/// also on case-insensitive file systems where `justfile` opens `Justfile`.
+#[test]
+fn a_capitalised_justfile_is_reviewed_once_under_its_own_name() {
+    let project = Project::new();
+    project.write("Justfile", "review:\n    cargo rullst ai review --staged\n");
+    assert_eq!(
+        project.findings("[package]\nname = \"my-app\"\n"),
+        vec![("Justfile".to_string(), "V13-CLI-EXTRAS", 2)]
+    );
+}
+
 #[test]
 fn scripts_running_the_removed_self_updater_are_reviewed() {
     let project = Project::new();

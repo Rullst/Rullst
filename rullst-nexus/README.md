@@ -234,8 +234,8 @@ the `Extension<T>` extractor.
 without the credentials it returns `NexusBuildError::MissingCredential`, so an
 application that propagates the error does not start. To serve the
 application without Nexus until the credentials are configured, match that
-variant and skip `nest_axum`, as the generated Blog, Portfolio and ERP starters
-do; the
+variant and skip `nest_axum`, as the Portfolio and ERP examples of the Rullst
+repository do; the
 [Nexus guide](https://github.com/Rullst/Rullst/blob/main/docs/src/4-rullst-nexus.md#serving-the-application-without-nexus)
 shows the pattern.
 
@@ -314,10 +314,10 @@ accepts the request only with a single `Sec-Fetch-Site: same-origin`, a header
 page scripts cannot set, so documents of other origins or local ports stay
 rejected.
 
-The generated Blog, Portfolio and ERP starters use
+The Portfolio and ERP examples of the Rullst repository use
 `NexusAuthPolicy::local_development_or_basic_from_env()`: debug builds select
 that loopback-only policy, while release builds require the validated
-environment credentials above. The SaaS and LMS starters use
+environment credentials above. The generated SaaS starter and the LMS example use
 `local_development_or_application` with a generated authorizer that admits the
 user of the epoch-checked login cookie whose `users.is_admin` is true.
 Applications can always select a policy explicitly when testing a production

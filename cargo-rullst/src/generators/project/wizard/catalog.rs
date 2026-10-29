@@ -1,65 +1,52 @@
-//! The choices `cargo rullst new` offers, as data: blueprints with a one-line
+//! The choices `cargo rullst new` offers, as data: starters with a one-line
 //! description, primary databases and optional features.
 
 use super::PolyglotIntegration;
 use super::plan::Database;
-use crate::blueprints::{
-    BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, ERP_BLUEPRINT_ID, LMS_BLUEPRINT_ID,
-    PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
-};
+use crate::blueprints::{BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 
-/// One starter blueprint.
+/// One starter: a blueprint, and for the Blank blueprint the application kind.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Blueprint {
-    pub(crate) id: usize,
+pub(crate) struct Starter {
+    pub(crate) blueprint: usize,
+    /// The headless JSON API form of the Blank blueprint (`--api`).
+    pub(crate) api: bool,
     pub(crate) name: &'static str,
     /// The `--blueprint` value.
     pub(crate) flag: &'static str,
     pub(crate) summary: &'static str,
 }
 
-/// Every public blueprint, in stable ID order.
-pub(crate) const BLUEPRINTS: [Blueprint; 6] = [
-    Blueprint {
-        id: BLANK_BLUEPRINT_ID,
+/// Every starter, in the order the wizard lists them.
+pub(crate) const STARTERS: [Starter; 3] = [
+    Starter {
+        blueprint: BLANK_BLUEPRINT_ID,
+        api: false,
         name: "Blank",
         flag: "blank",
-        summary: "Minimal HTMX page or JSON API; Nexus CMS not included",
+        summary: "A server-rendered web page with HTMX; add what you need",
     },
-    Blueprint {
-        id: LMS_BLUEPRINT_ID,
-        name: "LMS Platform",
-        flag: "lms",
-        summary: "Courses, lessons, video player and learner accounts",
+    Starter {
+        blueprint: BLANK_BLUEPRINT_ID,
+        api: true,
+        name: "API",
+        flag: "api",
+        summary: "A headless JSON API with token-protected writes; no HTML",
     },
-    Blueprint {
-        id: SAAS_BLUEPRINT_ID,
-        name: "SaaS Starter",
+    Starter {
+        blueprint: SAAS_BLUEPRINT_ID,
+        api: false,
+        name: "SaaS",
         flag: "saas",
         summary: "Authentication, Stripe billing and a pricing page",
     },
-    Blueprint {
-        id: BLOG_BLUEPRINT_ID,
-        name: "Blog / Press",
-        flag: "blog",
-        summary: "Posts and feed, pre-wired with Nexus CMS",
-    },
-    Blueprint {
-        id: PORTFOLIO_BLUEPRINT_ID,
-        name: "Portfolio",
-        flag: "portfolio",
-        summary: "Developer showcase with a profile edited in Nexus CMS",
-    },
-    Blueprint {
-        id: ERP_BLUEPRINT_ID,
-        name: "ERP Pocket",
-        flag: "erp",
-        summary: "Inventory, stock movements and orders with an auto-CMS",
-    },
 ];
 
-pub(crate) fn blueprint(id: usize) -> Option<&'static Blueprint> {
-    BLUEPRINTS.iter().find(|blueprint| blueprint.id == id)
+/// The starter a blueprint and application kind make up.
+pub(crate) fn starter(blueprint: usize, api: bool) -> Option<&'static Starter> {
+    STARTERS
+        .iter()
+        .find(|starter| starter.blueprint == blueprint && starter.api == api)
 }
 
 /// One primary database answer.

@@ -271,7 +271,7 @@ pub(crate) fn run_new_with_vcs(
     if blueprint_selection == BLANK_BLUEPRINT_ID {
         lines.push(Line::new().push(
             Tone::Muted,
-            "  Nexus CMS: not included in the minimal Blank starter. CMS-backed blueprints configure it explicitly.",
+            "  Nexus CMS: not included in the minimal Blank starter; the SaaS starter configures it.",
         ));
     }
     terminal.print(&lines)?;

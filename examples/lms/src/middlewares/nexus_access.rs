@@ -1,0 +1,50 @@
+//! Lets the application's administrators into Nexus (`/nexus`) with their
+//! login session in release builds; debug builds keep Nexus on loopback.
+use crate::models::user::User;
+use rullst::nexus::{NexusAccess, NexusAuthorizer, NexusAuthorizerError};
+use rullst::web::axum::http::request::Parts;
+
+/// Signed-in users whose `is_admin` column is true. Nexus asks on every
+/// request, so signing out, "sign out everywhere" or clearing `is_admin`
+/// takes effect on the next one.
+pub struct NexusAdmins;
+
+impl NexusAuthorizer for NexusAdmins {
+    async fn authorize(&self, request: &Parts) -> Result<NexusAccess, NexusAuthorizerError> {
+        let Some(cookie) = rullst::auth::extract_session_cookie(&request.headers) else {
+            return Ok(NexusAccess::SignIn);
+        };
+        let app_key = rullst::auth::get_app_key()
+            .map_err(|_| NexusAuthorizerError::new("the application key is unavailable"))?;
+        let Ok(claims) = rullst::auth::decrypt_session_claims(&cookie, &app_key) else {
+            return Ok(NexusAccess::SignIn);
+        };
+        match User::find(claims.user_id).await {
+            Ok(Some(user)) if user.accepts_session(&claims) => Ok(if user.is_admin {
+                NexusAccess::allow(format!("user:{}", user.id))
+            } else {
+                NexusAccess::Deny
+            }),
+            // Unknown account or revoked cookie.
+            Ok(_) => Ok(NexusAccess::SignIn),
+            Err(_) => Err(NexusAuthorizerError::new("the user lookup failed")),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn a_request_without_a_session_is_sent_to_sign_in() {
+        let (request, ()) = rullst::web::axum::http::Request::get("/nexus")
+            .body(())
+            .expect("request")
+            .into_parts();
+        assert_eq!(
+            NexusAdmins.authorize(&request).await,
+            Ok(NexusAccess::SignIn)
+        );
+    }
+}

@@ -5,23 +5,21 @@ use std::fs;
 use std::path::Path;
 
 pub mod blank;
-pub mod blog;
 pub mod common;
 pub mod deploy;
-pub mod erp;
 pub mod k8s;
-pub mod lms;
-pub mod portfolio;
+mod moved;
 pub mod saas;
 mod security_tests;
 
-/// Public blueprint IDs are an on-disk/CLI compatibility contract. Never reorder them.
+pub use moved::MovedBlueprint;
+
+/// Public blueprint IDs are an on-disk/CLI compatibility contract. Never reorder
+/// them. IDs 1 (LMS), 3 (Blog), 4 (Portfolio) and 5 (ERP) belonged to the
+/// blueprints that moved to the repository's `examples/` in 13.0.0-alpha.4
+/// ([`MovedBlueprint`]); they are never reused.
 pub const BLANK_BLUEPRINT_ID: usize = 0;
-pub const LMS_BLUEPRINT_ID: usize = 1;
 pub const SAAS_BLUEPRINT_ID: usize = 2;
-pub const BLOG_BLUEPRINT_ID: usize = 3;
-pub const PORTFOLIO_BLUEPRINT_ID: usize = 4;
-pub const ERP_BLUEPRINT_ID: usize = 5;
 
 #[allow(clippy::too_many_arguments)]
 pub fn apply(
@@ -45,22 +43,13 @@ pub fn apply(
             orm_pattern,
             frontend_engine,
         ),
-        LMS_BLUEPRINT_ID => {
-            lms::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine)
-        }
         SAAS_BLUEPRINT_ID => {
             saas::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine)
         }
-        BLOG_BLUEPRINT_ID => {
-            blog::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine)
-        }
-        PORTFOLIO_BLUEPRINT_ID => {
-            portfolio::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine)
-        }
-        ERP_BLUEPRINT_ID => {
-            erp::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine)
-        }
         _ => {
+            if let Some(moved) = MovedBlueprint::from_id(id) {
+                return Err(moved.into());
+            }
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 format!("unknown blueprint ID {id}"),
@@ -105,31 +94,41 @@ mod tests {
     #[test]
     fn sst_blueprint_ids_remain_stable() {
         assert_eq!(BLANK_BLUEPRINT_ID, 0);
-        assert_eq!(LMS_BLUEPRINT_ID, 1);
         assert_eq!(SAAS_BLUEPRINT_ID, 2);
-        assert_eq!(BLOG_BLUEPRINT_ID, 3);
-        assert_eq!(PORTFOLIO_BLUEPRINT_ID, 4);
-        assert_eq!(ERP_BLUEPRINT_ID, 5);
     }
 
     #[test]
     fn stable_ids_select_the_expected_manifest() {
-        let lms = lms::file_manifest("demo", false, "Active Record", "Zero-Bundle HTMX");
         let saas = saas::file_manifest("demo", false, "Active Record", "Zero-Bundle HTMX");
-        let blog = blog::file_manifest("demo", false, "Active Record", "Zero-Bundle HTMX");
-
-        assert!(lms.iter().any(|(path, _)| *path == "src/models/course.rs"));
-        assert!(
-            lms.iter()
-                .any(|(path, _)| *path == "src/models/course_module.rs")
-        );
-        assert!(lms.iter().all(|(path, _)| *path != "src/models/quiz.rs"));
-        assert!(lms.iter().all(|(_, source)| !source.contains("datetime(")));
         assert!(
             saas.iter()
                 .any(|(path, _)| *path == "src/models/subscription.rs")
         );
-        assert!(blog.iter().any(|(path, _)| *path == "src/models/post.rs"));
+    }
+
+    #[test]
+    fn retired_ids_point_to_their_examples_without_writing() {
+        for (id, name) in [(1, "lms"), (3, "blog"), (4, "portfolio"), (5, "erp")] {
+            let root = tempfile::tempdir().expect("temporary blueprint directory");
+            let target = root.path().join("app");
+            let error = apply(
+                id,
+                &target,
+                "demo",
+                "demo",
+                false,
+                false,
+                true,
+                "Active Record",
+                "Zero-Bundle HTMX",
+            )
+            .expect_err("a retired blueprint ID");
+            let moved = error
+                .downcast_ref::<MovedBlueprint>()
+                .unwrap_or_else(|| panic!("{id}: {error}"));
+            assert_eq!(moved.name(), name);
+            assert!(!target.exists(), "{id} wrote files");
+        }
     }
 
     /// Every SQLx-backed blueprint manifest, in both hot-reload layouts.
@@ -142,14 +141,7 @@ mod tests {
                     "blank",
                     blank::file_manifest("demo", "demo", false, hot, true, orm, frontend),
                 ),
-                ("lms", lms::file_manifest("demo", hot, orm, frontend)),
                 ("saas", saas::file_manifest("demo", hot, orm, frontend)),
-                ("blog", blog::file_manifest("demo", hot, orm, frontend)),
-                (
-                    "portfolio",
-                    portfolio::file_manifest("demo", hot, orm, frontend),
-                ),
-                ("erp", erp::file_manifest("demo", hot, orm, frontend)),
             ]);
         }
         manifests
@@ -205,34 +197,6 @@ mod tests {
     }
 
     #[test]
-    fn explicit_id_seeds_resynchronize_postgres_sequences() {
-        let mut seeded_tables = 0;
-        for (blueprint, manifest) in sqlx_blueprint_manifests() {
-            for (path, source) in manifest {
-                for seed in source.split("INSERT INTO ").skip(1) {
-                    let Some(table) = seed
-                        .split_once(" (id,")
-                        .map(|(table, _)| table)
-                        .filter(|table| !table.contains(char::is_whitespace))
-                    else {
-                        continue;
-                    };
-                    seeded_tables += 1;
-                    let reset = format!(
-                        "setval(pg_get_serial_sequence('{table}', 'id'), (SELECT MAX(id) FROM {table}))"
-                    );
-                    assert!(
-                        source.contains(&reset),
-                        "{blueprint}:{path} seeds explicit {table} ids without advancing its PostgreSQL sequence"
-                    );
-                    assert!(source.contains("Orm::driver()? == \"postgres\""));
-                }
-            }
-        }
-        assert!(seeded_tables > 0, "no explicit-id seed was inspected");
-    }
-
-    #[test]
     fn indexed_string_columns_are_bounded_for_mysql() {
         // MySQL/MariaDB reject an index on a TEXT column without a prefix
         // length, and `string()`/`timestamps()` columns are TEXT.
@@ -279,7 +243,7 @@ mod tests {
     #[test]
     fn credential_submissions_are_rate_limited_in_auth_starters() {
         for (blueprint, manifest) in sqlx_blueprint_manifests() {
-            if !matches!(blueprint, "lms" | "saas") {
+            if blueprint != "saas" {
                 continue;
             }
             let routers = manifest
@@ -307,7 +271,7 @@ mod tests {
         // `to_json()` feeds audit rows and the post-commit Redis model events,
         // and it omits only `#[orm(hidden)]` fields.
         for (blueprint, manifest) in sqlx_blueprint_manifests() {
-            if !matches!(blueprint, "lms" | "saas") {
+            if blueprint != "saas" {
                 continue;
             }
             let user = manifest
@@ -332,7 +296,7 @@ mod tests {
                 .unwrap_or_else(|| panic!("missing {wanted}"))
         };
         for (blueprint, manifest) in sqlx_blueprint_manifests() {
-            if !matches!(blueprint, "lms" | "saas") {
+            if blueprint != "saas" {
                 continue;
             }
             let user = file(&manifest, "src/models/user.rs");
@@ -384,14 +348,7 @@ mod tests {
                 .filter(|(path, _)| matches!(*path, "src/main.rs" | "src/lib.rs"))
                 .map(|(_, source)| source.as_str())
                 .collect::<String>();
-            let route = match blueprint {
-                "saas" => {
-                    ".route(\"/logout/everywhere\", rullst::routing::post(controllers::auth_controller::logout_everywhere)\n        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))"
-                }
-                _ => {
-                    "post(\"/logout/everywhere\" => controllers::auth_controller::logout_everywhere),"
-                }
-            };
+            let route = ".route(\"/logout/everywhere\", rullst::routing::post(controllers::auth_controller::logout_everywhere)\n        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))";
             assert!(
                 routers.contains(route),
                 "{blueprint}: unmounted sign-out everywhere"
@@ -399,45 +356,6 @@ mod tests {
             assert!(
                 file(&manifest, "src/pages/auth.rs").contains("action=\"/logout/everywhere\""),
                 "{blueprint}: no sign-out everywhere form"
-            );
-        }
-    }
-
-    #[test]
-    fn content_blueprints_render_under_the_production_csp() {
-        // Production headers send `style-src 'self' 'nonce-…'; font-src 'self';
-        // img-src 'self' data:`, which blocks style attributes, nonce-less
-        // inline styles, remote fonts and remote images.
-        for (blueprint, manifest) in sqlx_blueprint_manifests() {
-            if !matches!(blueprint, "blog" | "portfolio") {
-                continue;
-            }
-            let mut styles = 0;
-            for (path, source) in &manifest {
-                for blocked in [
-                    "style=\"",
-                    "fonts.googleapis.com",
-                    "raw.githubusercontent.com",
-                ] {
-                    assert!(
-                        !source.contains(blocked),
-                        "{blueprint}:{path} uses {blocked}"
-                    );
-                }
-                styles += source.matches("<style").count();
-                assert_eq!(
-                    source.matches("<style").count(),
-                    source.matches("<style nonce={csp_nonce}>").count(),
-                    "{blueprint}:{path} has an inline style without the CSP nonce"
-                );
-            }
-            assert!(styles > 0, "{blueprint} renders no stylesheet");
-            assert!(
-                manifest
-                    .iter()
-                    .any(|(path, source)| path.starts_with("src/controllers/")
-                        && source
-                            .contains("csp_nonce: Option<Extension<rullst::security::CspNonce>>"))
             );
         }
     }
@@ -465,7 +383,7 @@ mod tests {
 
     #[test]
     fn html_blueprints_write_the_official_favicon() {
-        for blueprint in [BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID, ERP_BLUEPRINT_ID] {
+        for blueprint in [BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID] {
             let root = tempfile::tempdir().expect("temporary blueprint directory");
             apply(
                 blueprint,

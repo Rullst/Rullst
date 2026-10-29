@@ -167,8 +167,9 @@ The common failures have their own title and fix: not inside a Rullst project
 (pointing to an enclosing project root when there is one), a missing tool
 (`cargo`, `rustup`, `git`, `docker`, `flyctl`, ...), a missing Rust target
 (`rustup target add <target>`), an unreachable database, a port already in
-use, permission denied, invalid input, network failures and an interrupted
-prompt. Anything else gets a generic report naming the failed command.
+use, permission denied, invalid input, network failures, an interrupted
+prompt and a starter that moved to the repository's examples (`new --blueprint
+lms|blog|portfolio|erp`). Anything else gets a generic report naming the failed command.
 Connection-string passwords (up to the host, even when they contain an
 unencoded `@`), `*_KEY`/`*_SECRET`/`*_TOKEN`/`password` values (also under the
 quoted keys of JSON or `Debug` maps), bearer tokens and well-known credential
@@ -271,15 +272,17 @@ wizard. It asks, one screen at a time:
    starting with a letter; Rust keywords and existing paths are refused). A
    name given on the command line is checked by the same package-name rules
    before the first question;
-2. the **blueprint**, each with a one-line description and a compact preview
-   of the file tree it generates. The preview is rendered by the real project
-   writers into a private temporary directory that is removed immediately;
-   nothing is built and no network is used;
-3. for the Blank starter, **full-stack web app** or **JSON API**;
-4. the **primary database** (Turso and *No database* only for Blank);
-5. **optional features** (zero or more): AI, Redis adapters, Dockerfile
+2. the **starter** — **Blank** (a server-rendered web page with HTMX),
+   **API** (the Blank starter as a headless JSON API) or **SaaS**
+   (authentication, Stripe billing and a pricing page) — each with a one-line
+   description and a compact preview of the file tree it generates. The
+   preview is rendered by the real project writers into a private temporary
+   directory that is removed immediately; nothing is built and no network is
+   used;
+3. the **primary database** (Turso and *No database* only for Blank and API);
+4. **optional features** (zero or more): AI, Redis adapters, Dockerfile
    and the Turso, MongoDB, DuckDB, SurrealDB and Qdrant add-ons;
-6. a **review** of the answers, the file tree and the commands `new` will run
+5. a **review** of the answers, the file tree and the commands `new` will run
    (the initial migration, unless skipped or database-free), with *Create
    the project*, *Back* and *Cancel*.
 
@@ -300,23 +303,25 @@ generated welcome page (`http://127.0.0.1:<port>`, where the port comes from
 APIs show a `curl` command instead).
 
 The choices that materially change the generated application:
-* **Starter Blueprint:** Blank, LMS Platform, SaaS Starter, Blog / Press,
-  Portfolio and ERP Pocket (`--blueprint` values `blank`, `lms`, `saas`,
-  `blog`, `portfolio` and `erp`).
+* **Starter:** Blank, API and SaaS (`--blueprint` values `blank`, `api` and
+  `saas`; `api` is the Blank blueprint with `--api`). The LMS, Blog, Portfolio
+  and ERP blueprints left the CLI in 13.0.0-alpha.4 and are now complete
+  applications in the repository's `examples/` directory; see
+  [Starters that moved to the examples](#starters-that-moved-to-the-examples).
 * **Persistence:** a primary relational backend (SQLite, PostgreSQL, MySQL,
   MariaDB, or bounded Turso-primary for blank/API) plus optional Turso/libSQL,
   MongoDB, DuckDB, SurrealDB, and Qdrant capabilities. The optional selector
   accepts zero or more choices and omits capabilities already selected by the
   primary profile or flags. Specialized adapters remain separate from SQLx
   Active Record.
-* **Application profile:** HTML blueprints use the audited `html!` SSR/HTMX path;
-  `--api` uses the headless JSON path. Repository, LiveView, Wasm Island,
+* **Application profile:** the Blank and SaaS starters use the audited `html!`
+  SSR/HTMX path; API (`--api`) uses the headless JSON path. Repository, LiveView, Wasm Island,
   Pico.css and Tera foundations remain application-owned APIs and are not
   presented as equivalent generated profiles.
 * **Arguments:**
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
-  * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it. Its example write route, `POST /api/messages`, is a bearer machine endpoint: clients send `Authorization: Bearer <API_TOKEN>` with the random `API_TOKEN` written to `.env`, and the server does not start without it (see [which security layer to use](security-layers.md#what-generated-applications-already-have)). The interactive wizard then skips its blueprint and build-type questions instead of letting their Full-Stack default replace the flag.
+  * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering), the same as `--blueprint api`; `--blueprint saas` rejects it instead of ignoring it. Its example write route, `POST /api/messages`, is a bearer machine endpoint: clients send `Authorization: Bearer <API_TOKEN>` with the random `API_TOKEN` written to `.env`, and the server does not start without it (see [which security layer to use](security-layers.md#what-generated-applications-already-have)). The interactive wizard then skips its starter question instead of letting its Blank default replace the flag.
   * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The
     `.dockerignore` mirrors the generated `.gitignore`: it excludes `.env` and
     `.env.*` (except `.env.example`), SQLite and DuckDB files
@@ -359,9 +364,9 @@ The choices that materially change the generated application:
   * `--qdrant`: Adds Qdrant as a side store for bounded dense-vector operations and generates empty/`mock_*`-compatible environment fields; it is not the SQL primary.
   * `--nix` and `--buildah` were removed in 13.0.0-alpha.4; see [Advanced deployment](advanced-deployment.md).
   * `--default`: Skips every question and uses deterministic defaults for anything no flag sets (name `app`, Blank, SQLite, no features), intended for CI and reproducible scaffolding.
-  * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects the blueprint; the wizard skips that question.
+  * `--blueprint <blank|api|saas>`: Selects the starter; the wizard skips that question. `lms`, `blog`, `portfolio` and `erp` still parse but fail before anything is written, naming the example that replaced them (exit status 1).
   * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary database; the wizard skips that question. Network databases must be configured before migration bootstrap. The SQLx backends (`sqlite`, `postgres`, `mysql`, `mariadb`) work with every starter. `turso` is accepted only with the Blank starter (web page or `--api`) and has no Nexus, Studio database pages, `Schema` migrations or SQLx ORM; the wizard's choice, `--help` and the review/dry-run screen say so. See [Database Support](database-support.md).
-  * `--no-database`: Generates the blank blueprint without a primary relational database; it conflicts with `--database` and rejects database-dependent blueprints.
+  * `--no-database`: Generates the Blank or API starter without a primary relational database; it conflicts with `--database` and `--blueprint saas` rejects it.
   * `--ai`: Enables the umbrella AI facade in the generated manifest.
   * `--redis`: Enables the umbrella Redis queue and cache capabilities and the Redis-structures side store (the direct ORM Redis feature).
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. `cargo rullst dev` applies pending migrations when it starts; run `cargo rullst db:migrate` explicitly otherwise.
@@ -370,9 +375,9 @@ The choices that materially change the generated application:
 
 Since v13, `--blueprint`, `--database`, `--no-database`, `--ai` and `--redis`
 no longer require `--default`: in a terminal they answer their questions and
-the wizard asks the rest. `--api`, `--no-database` and `--database turso`
-select the Blank starter. The retired `--hot-reload` still requires
-`--default` and is rejected.
+the wizard asks the rest. `--api` selects the API starter; `--no-database` and
+`--database turso` limit the starter question to Blank and API. The retired
+`--hot-reload` still requires `--default` and is rejected.
 
 When the generating Linux host has `mold` or `lld`, the project's
 `.cargo/config.toml` selects it to speed up local linking. That file describes
@@ -389,7 +394,7 @@ state the size and build-time effect on one starter.
 
 Without `--skip-initial-migration`, project creation performs the first Cargo
 build before applying migrations. A clean first build can take several minutes,
-especially for the larger LMS/SaaS profiles; the animated status remains visible
+especially for the larger SaaS profile; the animated status remains visible
 while Cargo is working. Later migration and server runs reuse that project-local
 build cache.
 
@@ -406,10 +411,10 @@ network-dependent bootstrap work:
 cargo rullst new packaged-saas --default --blueprint saas --skip-initial-migration
 ```
 
-A deterministic profile can pin the blueprint, database and optional features:
+A deterministic profile can pin the starter, database and optional features:
 
 ```bash
-cargo rullst new operations-portal --default --blueprint erp \
+cargo rullst new operations-portal --default --blueprint saas \
   --database mariadb \
   --ai --redis --skip-initial-migration
 ```
@@ -430,15 +435,16 @@ profiles keep `rullst-orm`'s default drivers for its `AnyPool`.
 #### Generated-project verification boundary
 
 The repository does not treat template rendering as sufficient evidence. A
-structural contract materializes 18 internal blueprint/profile shapes (nine
-public directly linked layouts plus nine legacy DLL layouts retained for regression) and checks paths, Rust syntax and manifests. A slower eight-case set
-crosses every blueprint, hot and non-hot layouts, database/API boundaries and a
-release build, runs every generated test target, and constructs the public
-router of each hot-reload project using offline-safe defaults. A separate
-seven-case test invokes the public `cargo rullst new` binary and verifies exact
-feature selection for SQLite, PostgreSQL, MySQL, MariaDB, AI, Redis, Turso,
-MongoDB, DuckDB, SurrealDB and Qdrant across all six public blueprints plus a
-polyglot profile. The invocation starts outside the source checkout, proving
+structural contract materializes 10 internal starter/profile shapes (five
+public directly linked layouts plus five legacy DLL layouts retained for
+regression) and checks paths, Rust syntax and manifests. A slower four-case
+set crosses every starter, hot and non-hot layouts, database/API boundaries and
+a SaaS release build, runs every generated test target, and constructs the
+public router of each hot-reload project using offline-safe defaults. A
+separate seven-case test invokes the public `cargo rullst new` binary and
+verifies exact feature selection for SQLite, PostgreSQL, MySQL, MariaDB, AI,
+Redis, Turso, MongoDB, DuckDB, SurrealDB and Qdrant across the Blank, API and
+SaaS starters plus a polyglot profile. The invocation starts outside the source checkout, proving
 that an unpublished pre-release CLI retains its exact matching checkout as a
 path source instead of requesting unavailable registry packages.
 
@@ -450,16 +456,26 @@ gates prove reproducible local generation and bounded offline construction;
 they do not prove provider accounts, production deployment, browser behavior
 or application-specific authorization.
 
-The LMS blueprint generates a small starter: catalog, courses, modules,
-lessons, an accessible player, enrollment, progress, login and a Nexus admin.
-Like every starter it reloads under `cargo rullst dev`/`dash` (the retired
-`--hot-reload` DLL profile is rejected for every blueprint). It has no module
-profiles; v13 retired `--lms-modules` and the earlier complete Academy
-scaffold.
+#### Starters that moved to the examples
 
-```bash
-cargo rullst new academy --default --blueprint lms --skip-initial-migration
-```
+Since 13.0.0-alpha.4 `cargo rullst new` offers three starters: Blank, API and
+SaaS. The other blueprints left the CLI and live on as complete applications
+in the Rullst repository, tested in its workspace:
+
+| Former `--blueprint` | Example | What it shows |
+| :--- | :--- | :--- |
+| `lms` | [`examples/lms`](https://github.com/Rullst/Rullst/tree/main/examples/lms) | Course catalog, modules and lessons, accessible player, enrollment, owner-bound progress, sign-in and a Nexus admin |
+| `portfolio` | [`examples/portfolio`](https://github.com/Rullst/Rullst/tree/main/examples/portfolio) | A developer portfolio edited in Nexus |
+| `erp` | [`examples/erp`](https://github.com/Rullst/Rullst/tree/main/examples/erp) | Products, stock movements and orders behind one administrator policy |
+| `blog` | [`examples/blog`](https://github.com/Rullst/Rullst/tree/main/examples/blog) | The blog showcase (a larger application than the old starter) |
+
+`--blueprint lms`, `blog`, `portfolio` or `erp` still parses but fails before
+anything is written: the report names the example directory and its GitHub URL
+and exits with status 1. The examples are applications to copy from, not
+supported starters: there is no generator or upgrade path behind them. Each
+README says how to run it and how to switch its workspace dependencies to the
+published crates. Applications generated earlier from these blueprints keep
+working: their code is theirs.
 
 ### `cargo rullst tour` (v13)
 A short guided walkthrough of the main commands in seven skippable steps:
@@ -1143,7 +1159,8 @@ script. The existing source is edited in three recognized places:
 
 - the router: `.merge_axum(crate::pwa::router().into_axum())` follows the one
   `.merge_axum(rullst::health::health_router())` of the crate root (a merge in
-  a `return` expression, such as the ERP fallback router, does not count);
+  a `return` expression, such as the fallback router of an application
+  generated from the former ERP starter, does not count);
 - every page layout in `src/`: `{crate::pwa::head()}` before the `</head>` of
   an `html!` document, the same tags before the `</head>` of a document
   written in a string, and `render_page_with_lang(...)` calls become
@@ -1281,8 +1298,7 @@ anything when `src/models/user.rs`, `src/models/password_reset.rs`,
 `src/middlewares/auth_middleware.rs` or `src/pages/auth.rs` already exists,
 when a `*_create_password_reset_tokens_table.rs` migration exists, or
 when a `*_create_users.rs`/`*_create_users_table.rs` migration already creates
-the users table (the blank database starter and the SaaS/LMS blueprints ship
-one). It also refuses a project without a SQL migration runner (`pub mod
+the users table (the blank database starter and the SaaS starter ship one). It also refuses a project without a SQL migration runner (`pub mod
 migrations;` in `src/main.rs` or `src/lib.rs` plus a
 `rullst::artisan!(crate::migrations::get_migrations())` call, which database
 starters include), such as a `--no-database` starter, because nothing would
@@ -1292,8 +1308,8 @@ routes (including `POST /logout/everywhere` and `/password/change` behind
 `auth_middleware`, and `credential_rate_limit` on the password submissions),
 the security baseline and the mail settings (`MAIL_DRIVER`, `MAIL_FROM`,
 `RULLST_PUBLIC_ORIGIN`) remain application work, as does calling
-`User::revoke_sessions` when you deactivate an account. The SaaS and LMS
-starters ship the same password flows already mounted.
+`User::revoke_sessions` when you deactivate an account. The SaaS starter and
+the LMS example (`examples/lms`) ship the same password flows already mounted.
 
 ### `cargo rullst make:mfa`
 Scaffolds a server-side RFC 6238 TOTP second factor: `src/controllers/mfa.rs`
@@ -1324,7 +1340,8 @@ credentials. Recovery codes and factor reset remain application work.
 ### `cargo rullst make:oauth <provider>` (v13 prerelease preview)
 
 Adds sign-in with Google, GitHub, Microsoft or Apple to the account model of
-`cargo rullst auth` or of the SaaS and LMS starters. Run it once per provider;
+`cargo rullst auth` or of the SaaS starter (and of applications generated from
+the former LMS starter, such as `examples/lms`). Run it once per provider;
 other providers are refused until they have a generator and tests.
 
 ```bash
@@ -1342,8 +1359,8 @@ and documents its settings in `.env.example`; a second provider adds no
 migration and shares the table, the flow and the linking policy. The command
 enables the `oauth` umbrella feature and the challenge store of the project's
 database (`oauth-sqlite`, `oauth-postgres` or `oauth-mysql`) and adds an
-application feature `oauth-mock = ["rullst/oauth-mock"]`. In the SaaS and LMS
-starters it also mounts the routes after the password login, with the same
+application feature `oauth-mock = ["rullst/oauth-mock"]`. In the SaaS starter
+and LMS-starter applications it also mounts the routes after the password login, with the same
 `credential_rate_limit`, calls `controllers::oauth::<provider>::initialize()?`
 at the start of `router()` and adds a "Sign in with …" link to the login page;
 for a `cargo rullst auth` project, whose router is the application's, it
@@ -2262,8 +2279,8 @@ assessments, score events, durable automation and audit, content safety,
 privacy and distributed abuse controls) against the declarations in a
 `rullst.academy-evidence.v1` file passed with `--evidence <file>`. It reads
 only that file and never inspects the project, so it needs no Academy
-scaffold: v13 removed the complete Academy scaffold, and the LMS starter
-generates no evidence file. Without `--evidence` every requirement is
+scaffold: v13 removed the complete Academy scaffold, and the LMS example
+(the former LMS starter) has no evidence file. Without `--evidence` every requirement is
 `NOT_EVALUATED`.
 
 Each requirement is reported as `PASS`, `FAIL`, `SKIPPED` or `NOT_EVALUATED`.

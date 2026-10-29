@@ -320,7 +320,7 @@ scoping and the audit stay as with every policy.
 `NexusAuthPolicy::local_development_or_application(Admins)` keeps the
 credential-free loopback policy in debug builds.
 
-The SaaS and LMS starters use it. Their `src/middlewares/nexus_access.rs`
+The SaaS starter and the LMS example use it. Their `src/middlewares/nexus_access.rs`
 admits the user of the epoch-checked login cookie whose `users.is_admin` column
 is true, so signing out everywhere or a password change also ends Nexus
 access. `is_admin` defaults to false and is declared `#[orm(db_default)]`:
@@ -334,8 +334,8 @@ users get the same column, ready for `NexusAuthPolicy::application`.
 #### Serving the application without Nexus
 
 Because the helper fails closed, a release build without
-`NEXUS_ADMIN_USERNAME`/`NEXUS_ADMIN_PASSWORD` cannot build Nexus. The Blog,
-Portfolio and ERP starters then start without `/nexus` (the ERP, whose back
+`NEXUS_ADMIN_USERNAME`/`NEXUS_ADMIN_PASSWORD` cannot build Nexus. The
+Portfolio and ERP examples then start without `/nexus` (the ERP, whose back
 office shares the Nexus policy, serves only `/health` and `/ready`) and print
 one line naming the variables; a weak, placeholder or unreadable credential
 still stops startup. In your own application, mount Nexus only when its policy
@@ -472,9 +472,9 @@ not recovered uniformly across all supported SQL dialects. Protect database
 permissions and send records to an independently operated immutable sink when
 that property is required.
 
-## 👤 Example: Dynamic Profile Settings in Blueprints
+## 👤 Example: Dynamic Profile Settings
 
-Starter blueprints like **Portfolio** use explicit Nexus metadata to expose
+Applications like the **Portfolio** example (`examples/portfolio`) use explicit Nexus metadata to expose
 single-row or multi-row site configuration settings (such as developer name,
 title, bio, email, personal website, avatar photo, and social links).
 

@@ -6494,6 +6494,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rullst-erp-example"
+version = "13.0.0-alpha.3"
+dependencies = [
+ "rullst",
+ "rullst-orm",
+ "serde",
+ "sqlx",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "rullst-iot"
 version = "13.0.0-alpha.3"
 dependencies = [
@@ -6517,6 +6529,20 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "zeroize",
+]
+
+[[package]]
+name = "rullst-lms-example"
+version = "13.0.0-alpha.3"
+dependencies = [
+ "rullst",
+ "rullst-auth",
+ "rullst-orm",
+ "rullst-security",
+ "serde",
+ "sqlx",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -6686,6 +6712,17 @@ dependencies = [
  "quote",
  "syn 3.0.9",
  "trybuild",
+]
+
+[[package]]
+name = "rullst-portfolio-example"
+version = "13.0.0-alpha.3"
+dependencies = [
+ "rullst",
+ "rullst-orm",
+ "sqlx",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

@@ -1,0 +1,59 @@
+use crate::models::experience::Experience;
+use crate::models::profile::Profile;
+use crate::models::project::Project;
+use crate::models::skill::Skill;
+use crate::pages::home;
+use rullst::response::Html;
+use rullst::server::{Extension, IntoResponse, Response, StatusCode};
+
+/// The production security headers allow only nonce-bound inline styles; the
+/// nonce is absent (and unneeded) when no CSP is sent, as in development.
+fn nonce(csp_nonce: &Option<Extension<rullst::security::CspNonce>>) -> &str {
+    csp_nonce
+        .as_ref()
+        .map(|Extension(nonce)| nonce.as_str())
+        .unwrap_or_default()
+}
+
+/// A failed query is an outage, not an empty portfolio.
+fn unavailable(error: rullst_orm::Error) -> Response {
+    eprintln!("Portfolio query failed: {error}");
+    StatusCode::SERVICE_UNAVAILABLE.into_response()
+}
+
+pub async fn index(csp_nonce: Option<Extension<rullst::security::CspNonce>>) -> Response {
+    // The page shows the first profile: Nexus can delete the seeded one and
+    // create another under a new id. Without a profile nobody's identity is shown.
+    let profile = match Profile::query().order_by("id").first().await {
+        Ok(Some(profile)) => profile,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                "No portfolio profile exists yet. Create one in Nexus.",
+            )
+                .into_response();
+        }
+        Err(error) => return unavailable(error),
+    };
+    let projects = match Project::all().await {
+        Ok(projects) => projects,
+        Err(error) => return unavailable(error),
+    };
+    let experiences = match Experience::all().await {
+        Ok(experiences) => experiences,
+        Err(error) => return unavailable(error),
+    };
+    let skills = match Skill::all().await {
+        Ok(skills) => skills,
+        Err(error) => return unavailable(error),
+    };
+
+    Html(home::render(
+        &profile,
+        &projects,
+        &experiences,
+        &skills,
+        nonce(&csp_nonce),
+    ))
+    .into_response()
+}

@@ -13,7 +13,8 @@ of data.
 ## Make the application installable
 
 Run the generator at the root of an application created from an HTML starter
-(Blank, SaaS, LMS, Blog, Portfolio or ERP):
+(Blank or SaaS, or an application generated from the former LMS, Blog,
+Portfolio or ERP starters):
 
 ```bash
 cargo rullst make:pwa --name "Field Notes" --short-name Notes

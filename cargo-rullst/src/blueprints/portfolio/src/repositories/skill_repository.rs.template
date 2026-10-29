@@ -1,9 +1,0 @@
-use crate::models::skill::Skill;
-
-pub struct SkillRepository;
-
-impl SkillRepository {
-    pub async fn all() -> Result<Vec<Skill>, rullst_orm::Error> {
-        Skill::all().await
-    }
-}

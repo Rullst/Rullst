@@ -1,9 +1,0 @@
-use crate::models::experience::Experience;
-
-pub struct ExperienceRepository;
-
-impl ExperienceRepository {
-    pub async fn all() -> Result<Vec<Experience>, rullst_orm::Error> {
-        Experience::all().await
-    }
-}

@@ -86,8 +86,7 @@ The binary creates the schema and seed posts in the same database that
 `Server`, Studio and the `db:*` Artisan commands use: the process
 `DATABASE_URL`, then `DATABASE_URL` from `.env`, then `[database].url` from
 `Rullst.toml` (`sqlite://blog.db?mode=rwc`, which creates `blog.db` on first
-start). A deployment's `DATABASE_URL`, such as the one in `Foundry.toml`, is
-therefore honored.
+start). A deployment's `DATABASE_URL` is therefore honored.
 
 Open `http://127.0.0.1:3000`, then use the Studio and Nexus buttons. Studio is
 served on `http://127.0.0.1:5555`; Nexus accepts only a verified loopback peer in

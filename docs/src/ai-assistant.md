@@ -149,8 +149,8 @@ Describe the product and let the assistant drive the steps:
 › let's build a small course platform with courses and lessons
 ```
 
-Outside a project it starts with `cargo rullst new` (choosing a blueprint such
-as `lms`, `saas` or `blank`) and continues inside the new directory. Then it
+Outside a project it starts with `cargo rullst new` (choosing the `blank`,
+`api` or `saas` starter) and continues inside the new directory. Then it
 works through models with migrations, `db:migrate` (development only),
 controllers and `routes!`, `html!` views, and tests, running `cargo check`
 between steps. Each step is a set of actions you review; send another message

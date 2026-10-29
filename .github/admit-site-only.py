@@ -30,7 +30,7 @@ PLAN = sibling("plan-verification")
 TIMING = sibling("report-ci-timings")
 SHARDS = (
     "workspace", "cli-standard", "cli-profiles-basic", "cli-profiles-relational",
-    "cli-profiles-polyglot", "cli-lms", "cli-saas-foundation", "cli-saas-product",
+    "cli-profiles-polyglot", "cli-saas-foundation", "cli-saas-product",
 )
 RUNTIME_JOBS = frozenset({
     "Code Quality & Format", "Check MSRV (Rust 1.96.0)",

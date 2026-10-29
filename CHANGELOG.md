@@ -85,6 +85,19 @@ A prepared version section does not establish that its tag or crates exist.
   longer guesses an image name. A carbon figure appears only as an SCI
   estimate labelled `estimate`, from your `--cpu-watts` and `--grid-intensity`;
   the JSON schema is `rullst.green.v1`.
+- **Breaking:** `cargo rullst new` offers three starters: Blank, API and SaaS.
+  The wizard asks for one of the three (API is the Blank starter as a JSON
+  API) instead of a blueprint followed by a web/API question, and
+  `--blueprint api` joins `blank` and `saas` (`--api` keeps working). The LMS,
+  Blog, Portfolio and ERP blueprints were removed: `--blueprint lms`, `blog`,
+  `portfolio` or `erp` fails before writing anything with a report that names
+  the example replacing it and its GitHub URL. LMS, ERP and Portfolio are now
+  complete applications in the repository's `examples/lms`, `examples/erp`
+  and `examples/portfolio`, tested in its workspace (the blog showcase is
+  `examples/blog`); copy one to start from it. Applications generated earlier
+  from these blueprints keep working. The terminal assistant in
+  `cargo-rullst-extras` proposes only the three starters.
+- The blog example no longer ships a `Foundry.toml`.
 
 ### Dependencies
 

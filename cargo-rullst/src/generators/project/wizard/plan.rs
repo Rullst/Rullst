@@ -1,6 +1,6 @@
 //! The complete answer set for one `cargo rullst new` run.
 
-use super::catalog::{FEATURES, Feature, storage_order};
+use super::catalog::{FEATURES, Feature, Starter, storage_order};
 use super::{PolyglotIntegration, ProjectWizardOptions, V12_FRONTEND_ENGINE, V12_ORM_PATTERN};
 use crate::blueprints::BLANK_BLUEPRINT_ID;
 
@@ -95,6 +95,14 @@ impl ProjectPlan {
                 !(turso_primary && *feature == Feature::Storage(PolyglotIntegration::Turso))
             })
             .collect()
+    }
+
+    /// Takes `starter`'s blueprint and application kind, then adjusts the
+    /// answers it does not support.
+    pub(crate) fn choose(&mut self, starter: &Starter) {
+        self.blueprint = starter.blueprint;
+        self.api = starter.api;
+        self.fit_blueprint();
     }
 
     /// Adjusts answers a newly chosen blueprint does not support.

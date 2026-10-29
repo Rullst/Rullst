@@ -9,10 +9,7 @@
 use std::collections::BTreeSet;
 use std::path::{Component, Path};
 
-use cargo_rullst::blueprints::{
-    self, BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, ERP_BLUEPRINT_ID, LMS_BLUEPRINT_ID,
-    PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
-};
+use cargo_rullst::blueprints::{self, BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 use cargo_rullst::cli::Cli;
 use cargo_rullst::generators::audit::scan_idor_vulnerabilities;
 use cargo_rullst::generators::project::cargo_toml::build_cargo_toml;
@@ -27,30 +24,14 @@ struct BlueprintSpec {
     key: &'static str,
 }
 
-const BLUEPRINTS: [BlueprintSpec; 6] = [
+const BLUEPRINTS: [BlueprintSpec; 2] = [
     BlueprintSpec {
         id: BLANK_BLUEPRINT_ID,
         key: "blank",
     },
     BlueprintSpec {
-        id: LMS_BLUEPRINT_ID,
-        key: "lms",
-    },
-    BlueprintSpec {
         id: SAAS_BLUEPRINT_ID,
         key: "saas",
-    },
-    BlueprintSpec {
-        id: BLOG_BLUEPRINT_ID,
-        key: "blog",
-    },
-    BlueprintSpec {
-        id: PORTFOLIO_BLUEPRINT_ID,
-        key: "portfolio",
-    },
-    BlueprintSpec {
-        id: ERP_BLUEPRINT_ID,
-        key: "erp",
     },
 ];
 
@@ -73,23 +54,8 @@ fn manifest_for(
             orm_pattern,
             frontend_engine,
         ),
-        LMS_BLUEPRINT_ID => {
-            blueprints::lms::file_manifest("matrix_app", hot_reload, orm_pattern, frontend_engine)
-        }
         SAAS_BLUEPRINT_ID => {
             blueprints::saas::file_manifest("matrix_app", hot_reload, orm_pattern, frontend_engine)
-        }
-        BLOG_BLUEPRINT_ID => {
-            blueprints::blog::file_manifest("matrix_app", hot_reload, orm_pattern, frontend_engine)
-        }
-        PORTFOLIO_BLUEPRINT_ID => blueprints::portfolio::file_manifest(
-            "matrix_app",
-            hot_reload,
-            orm_pattern,
-            frontend_engine,
-        ),
-        ERP_BLUEPRINT_ID => {
-            blueprints::erp::file_manifest("matrix_app", hot_reload, orm_pattern, frontend_engine)
         }
         _ => panic!("unregistered blueprint ID {}", spec.id),
     }
@@ -172,7 +138,7 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
                                 .map(|(_, contents)| contents.as_str())
                                 .collect::<Vec<_>>()
                                 .join("\n");
-                            if spec.id == SAAS_BLUEPRINT_ID || spec.id == LMS_BLUEPRINT_ID {
+                            if spec.id == SAAS_BLUEPRINT_ID {
                                 // Release builds admit the application's own
                                 // administrators: no NEXUS_ADMIN_* credentials.
                                 assert!(
@@ -180,21 +146,6 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
                                         "NexusAuthPolicy::local_development_or_application(\n        middlewares::nexus_access::NexusAdmins,"
                                     ) && rust_sources.contains("Ok(Some(user)) if user.accepts_session(&claims) => Ok(if user.is_admin {"),
                                     "{case}: Nexus local/application access policy drifted"
-                                );
-                            } else if spec.id != BLANK_BLUEPRINT_ID {
-                                assert!(
-                                    rust_sources.contains(
-                                        "NexusAuthPolicy::local_development_or_basic_from_env()"
-                                    ),
-                                    "{case}: Nexus local/release access policy drifted"
-                                );
-                                // Missing credentials leave Nexus unmounted
-                                // instead of stopping the application.
-                                assert!(
-                                    rust_sources.contains(
-                                        "Err(rullst::nexus::NexusBuildError::MissingCredential { variable }) => {\n            eprintln!("
-                                    ),
-                                    "{case}: a release build without Nexus credentials must still start"
                                 );
                             }
                             assert!(
@@ -246,7 +197,7 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
         }
     }
 
-    assert_eq!(cases, 18, "the documented v12 structural matrix changed");
+    assert_eq!(cases, 10, "the documented structural matrix changed");
 }
 
 #[test]
@@ -444,75 +395,38 @@ fn english_starter_pages_declare_english() {
             .map(|(_, source)| source)
             .collect::<Vec<_>>()
             .join("\n");
-            // `render_page` and the ERP page declared Portuguese on English UI.
+            // `render_page` declared Portuguese on English UI.
             assert!(!sources.contains("pt-BR"), "{}", spec.key);
             assert!(!sources.contains("render_page(&htmx"), "{}", spec.key);
             if spec.id == BLANK_BLUEPRINT_ID {
                 assert!(sources.contains("render_page_with_lang(&htmx, \"en\", "));
-            }
-            if spec.id == ERP_BLUEPRINT_ID {
-                assert!(sources.contains("<html lang=\"en\" class=\"dark\">"));
             }
         }
     }
 }
 
 #[test]
-fn saas_and_erp_emit_csp_compatible_same_origin_stylesheets() {
+fn saas_emits_csp_compatible_same_origin_stylesheets() {
     let saas =
         blueprints::saas::file_manifest("styled_app", false, "Active Record", "Zero-Bundle HTMX");
-    let erp =
-        blueprints::erp::file_manifest("styled_app", false, "Active Record", "Zero-Bundle HTMX");
+    let stylesheet = saas
+        .iter()
+        .find(|(path, _)| *path == "static/rullst.css")
+        .map(|(_, contents)| contents.as_str())
+        .expect("SaaS must emit a same-origin stylesheet");
+    assert!(stylesheet.contains(".pricing-grid"));
 
-    for (label, files, expected_selector) in
-        [("SaaS", &saas, ".pricing-grid"), ("ERP", &erp, ".glass")]
-    {
-        let stylesheet = files
-            .iter()
-            .find(|(path, _)| *path == "static/rullst.css")
-            .map(|(_, contents)| contents.as_str())
-            .unwrap_or_else(|| panic!("{label} must emit a same-origin stylesheet"));
-        assert!(stylesheet.contains(expected_selector));
-
-        let page = files
-            .iter()
-            .find(|(path, _)| {
-                *path
-                    == if label == "SaaS" {
-                        "src/pages/billing.rs"
-                    } else {
-                        "src/pages/erp.rs"
-                    }
-            })
-            .map(|(_, contents)| contents.as_str())
-            .unwrap_or_else(|| panic!("{label} page"));
-        assert!(page.contains("href=\"/static/rullst.css\""));
-        assert!(page.contains("href=\"/static/rullst.png\""));
-        assert!(!page.contains("fonts.googleapis.com"));
-        assert!(!page.contains("cdn.tailwindcss.com"));
-        assert!(!page.contains("<style"));
-    }
-
-    let saas_page = saas
+    let page = saas
         .iter()
         .find(|(path, _)| *path == "src/pages/billing.rs")
         .map(|(_, contents)| contents.as_str())
         .expect("SaaS billing page");
-    assert!(!saas_page.contains("style=\""));
-
-    let erp_page = erp
-        .iter()
-        .find(|(path, _)| *path == "src/pages/erp.rs")
-        .map(|(_, contents)| contents.as_str())
-        .expect("ERP page");
-    assert!(erp_page.contains("nonce={csp_nonce}"));
-    assert!(!erp_page.contains("\"#{}\""));
-    let erp_controller = erp
-        .iter()
-        .find(|(path, _)| *path == "src/controllers/erp_controller.rs")
-        .map(|(_, contents)| contents.as_str())
-        .expect("ERP controller");
-    assert!(erp_controller.contains("Extension<rullst::security::CspNonce>"));
+    assert!(page.contains("href=\"/static/rullst.css\""));
+    assert!(page.contains("href=\"/static/rullst.png\""));
+    assert!(!page.contains("fonts.googleapis.com"));
+    assert!(!page.contains("cdn.tailwindcss.com"));
+    assert!(!page.contains("<style"));
+    assert!(!page.contains("style=\""));
 }
 
 #[test]
@@ -537,21 +451,6 @@ fn state_changing_html_blueprints_emit_and_enforce_csrf_tokens() {
         assert!(blank.contains("name=\"_token\""));
         assert!(blank.contains("rullst::rpc::RpcResult<CounterResponse>"));
         assert!(blank.contains("increment_counter_rpc_router().into_axum()"));
-
-        let erp = blueprints::erp::file_manifest(
-            "csrf_app",
-            hot_reload,
-            "Active Record",
-            "Zero-Bundle HTMX",
-        )
-        .into_iter()
-        .filter(|(path, _)| path.ends_with(".rs"))
-        .map(|(_, source)| source)
-        .collect::<Vec<_>>()
-        .join("\n");
-        assert!(erp.contains("rullst::security::csrf_middleware"));
-        assert!(erp.contains("Extension<rullst::security::CsrfToken>"));
-        assert_eq!(erp.matches("name=\"_token\"").count(), 3);
     }
 }
 

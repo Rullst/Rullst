@@ -19,7 +19,7 @@ runs from a checkout of the commit under review.
 | `rullst-capital` | Payment webhook signature, freshness and replay verification. |
 | `rullst-nexus`, `rullst-studio` | The Nexus administrator boundary (loopback in debug builds, Basic Auth over verified TLS in release) and that Studio stays a debug-only, loopback-only tool. |
 | `rullst-macros` | Output escaping of `html!`. |
-| `cargo-rullst` starters | The code `cargo rullst new` generates for the Blank (HTML and `--api`), Blog, Portfolio, SaaS, LMS and ERP blueprints, and the `audit` command. |
+| `cargo-rullst` starters | The code `cargo rullst new` generates for the Blank, API and SaaS starters, and the `audit` command. The LMS, ERP and Portfolio applications (former starters) are workspace examples under `examples/`. |
 
 Endpoints worth a direct look in the starters: SaaS `/login`, `/register`,
 `/logout`, `/dashboard`, `/billing/checkout`, `/billing/portal`,
@@ -105,8 +105,9 @@ cd ../audit-saas
 cargo test
 ```
 
-Use `--blueprint blank`, `blank --api`, `blog`, `portfolio`, `lms` or `erp`
-for the other starters. `cargo test` runs the generated `src/security_tests.rs`
+Use `--blueprint blank` or `api` for the other starters; the LMS, ERP and
+Portfolio examples run their tests with `cargo test -p rullst-lms-example` (or
+`-erp-`, `-portfolio-`) from the repository. `cargo test` runs the generated `src/security_tests.rs`
 offline against the starter's own router behind the staging/production
 baseline: security headers, CSRF, WAF, and where the starter has them, the
 sign-in rate limit (SaaS, LMS), the owner check of the lesson routes (LMS) and
@@ -145,7 +146,7 @@ cargo-deny (`.github/workflows/cargo-deny.yml`); locally, `cargo deny check`.
 ## What to test first
 
 1. **Authentication and sessions:** login, registration and logout in the SaaS
-   and LMS starters; session cookie attributes and fixation; the credential
+   starter and the LMS example; session cookie attributes and fixation; the credential
    rate limit and its keying behind a proxy (`[security] trusted_proxies`);
    passkeys and OAuth state in `rullst-auth` and `rullst-connect`.
 2. **CSRF:** every write route in staging, including multipart bodies (the

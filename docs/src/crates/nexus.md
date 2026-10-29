@@ -46,13 +46,13 @@ credentials makes `local_development_or_basic_from_env()` return
 `NexusBuildError::MissingCredential`; the
 [Nexus guide](../4-rullst-nexus.md#serving-the-application-without-nexus)
 shows how to start the application without Nexus in that case, as the
-generated Blog, Portfolio and ERP starters do.
+Portfolio and ERP examples do.
 
 An application with its own login can instead select
 `NexusAuthPolicy::application(authorizer)`: its `NexusAuthorizer` sees each
 request and answers `Allow` (with the audit actor ID), `SignIn` (redirect to
 the login page, or `401` with `HX-Redirect` for fragments and mutations),
-`Deny` (`403`) or an error (`503`). The SaaS and LMS starters use it, through
+`Deny` (`403`) or an error (`503`). The SaaS starter and the LMS example use it, through
 `local_development_or_application`, for signed-in users whose `users.is_admin`
 is true; see
 [Using the application's sign-in](../4-rullst-nexus.md#using-the-applications-sign-in).
@@ -67,7 +67,7 @@ proxy its own lockout bucket. Never derive either from an untrusted forwarded
 header.
 
 `NexusAuthPolicy::protect_router` can apply the same administrator boundary to
-application-owned operational routes, as the ERP blueprint does for its whole
+application-owned operational routes, as the ERP example does for its whole
 back office: the dashboard and the inventory mutations.
 
 ## Capability boundary

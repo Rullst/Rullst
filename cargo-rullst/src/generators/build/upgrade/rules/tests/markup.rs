@@ -215,7 +215,7 @@ fn markup_rules_name_the_html_markup_migration_row() {
 /// v13 project gets no `html!` migration finding.
 #[test]
 fn generated_starters_and_auth_views_have_no_markup_findings() {
-    use crate::blueprints::{blank, blog, erp, lms, portfolio, saas};
+    use crate::blueprints::{blank, saas};
 
     let (orm, frontend) = ("Active Record", "Zero-Bundle HTMX");
     let mut sources = vec![(
@@ -228,14 +228,7 @@ fn generated_starters_and_auth_views_have_no_markup_findings() {
                 "blank",
                 blank::file_manifest("demo", "demo", false, hot, true, orm, frontend),
             ),
-            ("lms", lms::file_manifest("demo", hot, orm, frontend)),
             ("saas", saas::file_manifest("demo", hot, orm, frontend)),
-            ("blog", blog::file_manifest("demo", hot, orm, frontend)),
-            (
-                "portfolio",
-                portfolio::file_manifest("demo", hot, orm, frontend),
-            ),
-            ("erp", erp::file_manifest("demo", hot, orm, frontend)),
         ] {
             sources.extend(
                 manifest
@@ -250,5 +243,5 @@ fn generated_starters_and_auth_views_have_no_markup_findings() {
         scanned_views += usize::from(source.contains("html!"));
         assert_eq!(markup_findings(source), vec![], "{path}");
     }
-    assert!(scanned_views >= 8, "only {scanned_views} sources use html!");
+    assert!(scanned_views >= 7, "only {scanned_views} sources use html!");
 }

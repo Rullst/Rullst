@@ -269,36 +269,6 @@ fn every_cli_migration_template_uses_the_facade_paths() {
             ),
         ),
         (
-            "blog",
-            include_str!(
-                "../blueprints/blog/src/migrations/m20260601000000_create_posts_table.rs.template"
-            ),
-        ),
-        (
-            "erp",
-            include_str!(
-                "../blueprints/erp/src/migrations/m20260601000000_create_erp_tables.rs.template"
-            ),
-        ),
-        (
-            "lms tables",
-            include_str!(
-                "../blueprints/lms/src/migrations/m20260601000000_create_lms_tables.rs.template"
-            ),
-        ),
-        (
-            "lms access",
-            include_str!(
-                "../blueprints/lms/src/migrations/m20260827000000_add_learning_access.rs.template"
-            ),
-        ),
-        (
-            "portfolio",
-            include_str!(
-                "../blueprints/portfolio/src/migrations/m20260701000000_create_portfolio_tables.rs.template"
-            ),
-        ),
-        (
             "saas",
             include_str!(
                 "../blueprints/saas/src/migrations/m20260601000000_create_users_table.rs.template"

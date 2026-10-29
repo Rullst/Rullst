@@ -16,8 +16,9 @@ fn compact(stream: &TokenStream) -> String {
 
 /// Where `.merge_axum(rullst::health::health_router())` ends in `source`,
 /// and whether the PWA router is mounted. A merge inside a `return`
-/// expression builds a fallback router (the ERP starter returns only the
-/// probes when its credentials are missing) and is not counted.
+/// expression builds a fallback router (an application generated from the
+/// former ERP starter returns only the probes when its credentials are
+/// missing) and is not counted.
 fn scan(trees: &[TokenTree], in_return: bool, ends: &mut Vec<usize>, mounted: &mut bool) {
     let mut returning = in_return;
     for (index, tree) in trees.iter().enumerate() {

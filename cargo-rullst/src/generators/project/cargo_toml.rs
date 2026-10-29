@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-use crate::blueprints::{BLANK_BLUEPRINT_ID, LMS_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+use crate::blueprints::{BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 use crate::generators::project::PolyglotIntegration;
 
 fn is_matching_local_package(path: &Path, crate_name: &str, crate_version: &str) -> bool {
@@ -124,12 +124,9 @@ pub fn build_cargo_toml(
     if blueprint_selection != BLANK_BLUEPRINT_ID {
         rullst_features.push("nexus");
     }
-    if matches!(blueprint_selection, LMS_BLUEPRINT_ID | SAAS_BLUEPRINT_ID) {
-        // `mail` sends the password reset links and password-changed notices.
-        rullst_features.extend(["auth", "mail"]);
-    }
     if blueprint_selection == SAAS_BLUEPRINT_ID {
-        rullst_features.push("capital");
+        // `mail` sends the password reset links and password-changed notices.
+        rullst_features.extend(["auth", "mail", "capital"]);
     }
 
     let rullst_line = if rullst_features.is_empty() {
@@ -227,7 +224,7 @@ rust-version = "1.96.0"
         ));
     }
 
-    if matches!(blueprint_selection, LMS_BLUEPRINT_ID | SAAS_BLUEPRINT_ID) {
+    if blueprint_selection == SAAS_BLUEPRINT_ID {
         let auth_dep = dependency_line(current_dir, "rullst-auth", crate_version)?;
         cargo_toml.push_str(&auth_dep);
     }

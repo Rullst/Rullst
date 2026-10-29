@@ -277,7 +277,7 @@ impl NexusAuthPolicy {
 
     /// Uses credential-free loopback access in debug builds and the
     /// application's sign-in ([`Self::application`]) in release builds, as
-    /// the generated SaaS and LMS starters do.
+    /// the generated SaaS starter does.
     pub fn local_development_or_application(authorizer: impl NexusAuthorizer) -> Self {
         if cfg!(debug_assertions) {
             Self::loopback_only(LocalNexusAccess::loopback_only())
