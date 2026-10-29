@@ -437,3 +437,16 @@ fn the_project_walk_reads_root_scripts_and_kubernetes_manifests_only() {
         ]
     );
 }
+
+/// Project files are read up to 1 MiB; a larger one is skipped.
+#[test]
+fn project_files_are_read_up_to_1_mib() {
+    let project = Project::new();
+    project.write("Foundry.toml", &"x".repeat(1024 * 1024));
+    assert_eq!(
+        project.findings("[package]\nname = \"app\"\n"),
+        vec![("Foundry.toml".to_string(), "V13-FOUNDRY-SERVICE", 1)]
+    );
+    project.write("Foundry.toml", &"x".repeat(1024 * 1024 + 1));
+    assert_eq!(project.findings("[package]\nname = \"app\"\n"), vec![]);
+}

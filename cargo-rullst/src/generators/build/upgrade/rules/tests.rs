@@ -5,6 +5,7 @@ use super::*;
 mod data;
 mod docs;
 mod files;
+mod limits;
 mod markup;
 mod releases;
 mod scanner;
