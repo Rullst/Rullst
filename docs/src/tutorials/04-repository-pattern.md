@@ -93,20 +93,36 @@ impl Repository<User> for PgUserRepository {
 All values are parameterized. SQL identifiers and the query shape remain
 application-owned source code.
 
+This adapter targets PostgreSQL (`PgPool`, `$1` placeholders) and a `users`
+table with `BIGINT` ids. Inside a generated project, `rullst::db::Orm::pool()?`
+returns the application's pool as `RullstPool`, which is `sqlx::SqlitePool`
+with the SQLite starter and `sqlx::PgPool` with PostgreSQL: clone it into the
+adapter and write the queries for that database.
+
 ---
 
 ## Step 2: Inject the concrete adapter through Axum state
 
 ```rust,ignore
 use std::sync::Arc;
-use axum::{extract::State, http::StatusCode, Json};
+use rullst::web::axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    Json,
+};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+pub struct EmailQuery {
+    email: String,
+}
 
 pub async fn get_user_by_email(
     State(repository): State<Arc<PgUserRepository>>,
-    email: String,
+    Query(query): Query<EmailQuery>,
 ) -> Result<Json<User>, StatusCode> {
     repository
-        .find_by_email(&email)
+        .find_by_email(&query.email)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .map(Json)
@@ -114,7 +130,11 @@ pub async fn get_user_by_email(
 }
 ```
 
-Returning `Json<User>` also requires `User` to derive `serde::Serialize`.
+`rullst::Router` has no `with_state`: build this route on an `axum::Router`,
+call `.with_state(Arc::new(repository))` and mount it with `merge_axum`, as
+[Tutorial 08](08-routing-and-middlewares.md#step-3-share-application-state)
+shows. Returning `Json<User>` also requires `User` to derive
+`serde::Serialize`.
 Production handlers should map internal database errors to an application error
 without returning query or credential details to clients.
 
