@@ -28,8 +28,8 @@ pub fn interactive_chart(props: InteractiveChartProps) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         format!(
-            "<button type=\"button\">Count: {}</button>",
-            props.initial_value
+            "<button type=\"button\" data-counter=\"{}\">Count: {}</button>",
+            props.initial_value, props.initial_value
         )
     }
 
@@ -43,6 +43,7 @@ pub fn interactive_chart(props: InteractiveChartProps) {
             value = value.saturating_add(1);
             button.set_text_content(Some(&format!("Count: {value}")));
         });
+
         if element
             .add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())
             .is_ok()
@@ -63,7 +64,10 @@ also declares the module in `src/islands/mod.rs`, adds `pub mod islands;` to
 On the server the island function returns `rullst::html::Markup`: the
 component's HTML wrapped in its `data-island` element. Place it in a page by
 interpolating the call inside `html!`, as `{interactive_chart(props)}`; it is
-inserted as HTML, not escaped.
+inserted as HTML, not escaped. The module belongs to the library target
+(`src/lib.rs`), so the starters' `src/main.rs` imports it through the package
+name, with `-` written as `_`:
+`use <package_name>::islands::interactive_chart::{interactive_chart, InteractiveChartProps};`.
 
 ## Build and load the artifact
 

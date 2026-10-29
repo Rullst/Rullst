@@ -78,5 +78,6 @@ fn publish_for_school() -> Result<(), Box<dyn std::error::Error>> {
 The tenant wrapper limits names and payloads (64 KiB), but the application still
 owns authentication, room-level authorization, connection lifecycle and replay.
 Use `rullst::live::live_ws_handler` for the separate per-connection LiveComponent
-flow, or build an Axum WebSocket handler around these primitives. A distributed
+flow ([Tutorial 16](16-liveview-server-driven-ui.md)), or build an Axum
+WebSocket handler around these primitives. A distributed
 transport is still roadmap work.
