@@ -59,7 +59,7 @@ axum = { workspace = true, features = ["macros", "ws"] }
 http-body = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "fs", "io-util", "sync", "net", "signal"] }
 rullst-orm = { workspace = true, optional = true }
-sqlx = { workspace = true, features = ["runtime-tokio", "macros"], optional = true }
+sqlx = { workspace = true, features = ["runtime-tokio"], optional = true }
 tower = { workspace = true, features = ["util"] }
 tower-http = { workspace = true, features = ["fs", "trace", "cors"] }
 tower-layer = { workspace = true }

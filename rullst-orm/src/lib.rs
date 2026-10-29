@@ -16,10 +16,11 @@
 //! here.
 //!
 //! Start with the [`Orm`](struct@Orm) pool, `#[derive(Orm)]`,
-//! [`schema::Schema`] and [`Orm::transaction`]. The code that
-//! `#[derive(Orm)]` generates names the `tokio` and `tracing` crates, and
-//! `#[derive(FromRow)]` names `sqlx`, so the application depends on those
-//! three directly. The
+//! [`schema::Schema`] and [`Orm::transaction`]. `#[derive(Orm)]` also
+//! implements [`FromRow`](trait@FromRow) (since 13.0.0-alpha.4, so do not
+//! derive it as well), and the code it generates reaches SQLx, `tokio` and
+//! `tracing` through this crate: a model needs no other dependency, and the
+//! build compiles no SQLx macro crate. The
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-orm/README.md)
 //! and the [ORM guide](https://rullst.github.io/Rullst/book/crates/orm.html)
 //! have a quick start and the query, transaction and security boundaries.
@@ -142,6 +143,10 @@ pub mod value;
 mod tests;
 
 // Re-exports
+/// SQLx's row-decoding trait, which `#[derive(Orm)]` implements for each
+/// model. This crate does not enable SQLx's derive macros; a struct that is
+/// not a model can implement it by hand, or derive it with `sqlx::FromRow`
+/// after enabling SQLx's `derive` feature in the application's manifest.
 pub use _sqlx::FromRow;
 pub use admin::dashboard_html;
 pub use async_trait::async_trait;

@@ -158,7 +158,9 @@ proptest = "1.11.0"
 insta = { version = "1.41", features = ["yaml"] }
 reqwest = "0.13.4"
 base64 = "0.23.0"
-sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"] }
+# `derive`: guides show plain structs deriving `sqlx::FromRow`, which an
+# application enables itself; Rullst crates never enable SQLx macros.
+sqlx = { workspace = true, features = ["sqlite", "runtime-tokio", "derive"] }
 actix-web = { version = "4", default-features = false }
 
 [[bench]]

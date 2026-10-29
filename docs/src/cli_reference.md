@@ -864,8 +864,9 @@ automatically.
 
 ### `cargo rullst make:model <name>`
 Creates a model struct in `src/models/` with the ORM annotations. SQLx projects
-receive `FromRow` plus `Orm` and import only those two derives (`use
-rullst::db::{FromRow, Orm};`), so the new file compiles without warnings;
+receive `#[derive(Debug, Clone, Orm)]`, which also implements `FromRow` (since
+13.0.0-alpha.4), and import only what it uses (`use rullst::db::{Orm,
+RowSnapshot};`), so the new file compiles without warnings;
 Turso-primary projects receive
 `#[derive(rullst_orm::Orm)] #[orm(backend = "turso")]` and an `i64` primary
 key. Backend detection reads the generated manifest and does not treat an

@@ -2482,16 +2482,27 @@ lower-cased on PostgreSQL, so `Schema::create("UserProfiles", ...)` creates the
 queries. MySQL/MariaDB and SQLite keep the name as written.
 
 Only `skip`, `default`, `json`, and `json(nullable)` from SQLx field metadata
-are compatible with generated ORM persistence in v12 and v13. Two field
-options keep a field out of generated writes, with different meanings:
+are compatible with generated ORM persistence in v12 and v13. Since
+13.0.0-alpha.4 `#[derive(Orm)]` implements `sqlx::FromRow` for the model
+itself, so applications build without SQLx's `macros`/`derive` features and
+the `sqlx-macros` crate, and a model must not also derive `FromRow` (E0119).
+The generated impl is generic over the row type like SQLx's derive and gives
+these options SQLx's meaning: `skip` fills the field with `Default::default()`
+without reading the row, `default` does so when the row has no such column,
+`json`/`json(nullable)` decode through SQLx `Json`, and a struct-level
+`#[sqlx(default)]` takes a missing column from `Self::default()`. Relation
+fields are never read and start from `Default::default()`. A model that needs
+its own `FromRow` (written by hand, or SQLx's derive with SQLx's `derive`
+feature enabled by the application) declares `#[orm(custom_from_row)]`. Two
+field options keep a field out of generated writes, with different meanings:
 
 | Option | The column | Generated reads (`FromRow`) | `INSERT` / `save()` / `update_partial()` | WHERE / ORDER BY / GROUP BY / `select` |
 | --- | --- | --- | --- | --- |
-| `#[orm(skip)]` | is not a database column for the ORM | the application's SQLx `FromRow` still reads it unless `#[sqlx(skip)]` | never written | rejected at run time with `Validation` |
+| `#[orm(skip)]` | is not a database column for the ORM | the model's `FromRow` still reads it unless `#[sqlx(skip)]` | never written | rejected at run time with `Validation` |
 | `#[orm(db_default)]` | exists and is managed by the database (a default, a trigger or explicit SQL) | read | never written (the `INSERT` takes the column `DEFAULT`) | allowed |
 
 `#[orm(skip)]` removes a field from generated SQL (writes, filters and
-projections) but not from the application's SQLx `FromRow`, which still reads
+projections) but not from the model's `FromRow`, which still reads
 the column from `SELECT *`. A field without a table column therefore needs
 `#[sqlx(skip)]` (alone or together with `#[orm(skip)]`, which are distinct
 options) or `#[sqlx(default)]`. A column the table has that generated writes

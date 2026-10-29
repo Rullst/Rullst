@@ -182,13 +182,23 @@ Install the v13 prerelease with an exact pin:
 ```bash
 cargo add rullst-orm@=13.0.0-alpha.4 -F strict-sqlite
 cargo add tokio -F full
-cargo add sqlx@0.9 --no-default-features
 ```
 
-`#[derive(FromRow)]` names `sqlx`, so the application depends on the same 0.9
-release directly. The code that `#[derive(Orm)]` generates needs nothing else:
-since 13.0.0-alpha.4 it reaches `tracing` and `tokio` through `rullst_orm`.
-`tokio` runs the example's `#[tokio::main]`.
+The code that `#[derive(Orm)]` generates needs nothing else: since
+13.0.0-alpha.4 it reaches SQLx, `tracing` and `tokio` through `rullst_orm`,
+and it implements SQLx's `FromRow` for the model itself, so do not also
+derive `FromRow` (two implementations do not compile, E0119). The build
+therefore compiles no SQLx macro crate. `tokio` runs the example's
+`#[tokio::main]`.
+
+`rullst-orm` does not enable SQLx's `macros` or `derive` features. To use
+`sqlx::query!` or `#[derive(sqlx::FromRow)]` on your own structs, enable
+them in your manifest, for example
+`sqlx = { version = "0.9", default-features = false, features = ["derive"] }`
+(`macros` for `query!`). This builds `sqlx-macros` and, for the
+compile-time macros, a second copy of the SQLx driver for the build host. A
+model whose `FromRow` you write yourself, by hand or with that derive,
+declares `#[orm(custom_from_row)]` so `#[derive(Orm)]` does not generate one.
 
 Select the driver of your database: `strict-sqlite`, `strict-postgres` or
 `strict-mysql`, or `drivers-all` for all three on SQLx's dynamic `Any` pool.
