@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793307626391,
+  "lastUpdate": 1793312260089,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -19035,6 +19035,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4260,
             "range": "± 176",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b59f9ad7a5ffe2a4ed574aa7d72e777268d7c7ea",
+          "message": "Merge pull request #575 from Rullst/docs/v13-audit-first-hour\n\ndocs: audit the first-hour pages for 13.0 (overview, getting started, maturity, zero-to-complete)",
+          "timestamp": "2026-10-29T18:57:25-03:00",
+          "tree_id": "427a66742828fd39bb488124226b5ab1e5bb3c40",
+          "url": "https://github.com/Rullst/Rullst/commit/b59f9ad7a5ffe2a4ed574aa7d72e777268d7c7ea"
+        },
+        "date": 1793312259138,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1034,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 757,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1786,
+            "range": "± 85",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4185,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
