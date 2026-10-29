@@ -1074,7 +1074,6 @@ dependencies = [
  "sqlx",
  "syn 3.0.9",
  "tokio",
- "tracing",
 ]
 
 [[package]]

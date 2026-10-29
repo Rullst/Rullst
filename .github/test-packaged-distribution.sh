@@ -441,7 +441,9 @@ mkdir -p "$partial_dir/tests"
 {
   printf '[package]\nname = "rullst-packaged-partial-update"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
   printf 'rullst = { version = "=%s", default-features = false, features = ["strict-sqlite"] }\n' "$version"
-  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }\nsqlx = { version = "0.9.0", default-features = false }\ntracing = "0.1.44"\n'
+  # `sqlx` for `#[derive(FromRow)]`, `tokio` for `#[tokio::test]`: the `Orm`
+  # derive itself needs no dependency beyond the facade.
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }\nsqlx = { version = "0.9.0", default-features = false }\n'
   cat <<'TOML'
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }

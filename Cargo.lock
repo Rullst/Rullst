@@ -6479,7 +6479,6 @@ dependencies = [
  "serde",
  "sqlx",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -6519,7 +6518,6 @@ dependencies = [
  "serde",
  "sqlx",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -6699,7 +6697,6 @@ dependencies = [
  "rullst-orm",
  "sqlx",
  "tokio",
- "tracing",
 ]
 
 [[package]]
