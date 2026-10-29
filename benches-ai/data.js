@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793269926788,
+  "lastUpdate": 1793271777055,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -16251,6 +16251,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 266,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1ea88e637fec950f9bb5f9afe37f19009053108",
+          "message": "Merge pull request #559 from Rullst/perf/v13-alpha4-compile-time\n\nperf(cli): shorter dev builds for generated starters",
+          "timestamp": "2026-10-29T07:42:31-03:00",
+          "tree_id": "13f390f85a9f2ed566ced5a999804a75e1bb3b92",
+          "url": "https://github.com/Rullst/Rullst/commit/b1ea88e637fec950f9bb5f9afe37f19009053108"
+        },
+        "date": 1793271776333,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1421,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 260,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 271,
+            "range": "± 0",
             "unit": "ns/iter"
           }
         ]
