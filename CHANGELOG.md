@@ -9,6 +9,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Added
+
+- `llms.txt` now lists the longest reference pages (the migration guide, threat
+  models, roadmap, workflows and similar; not the spec or the CLI reference)
+  under an `## Optional` section, as llmstxt.org recommends, and
+  `.github/validate-site.py` generates `llms.txt` and `llms-full.txt` and fails
+  when a `SUMMARY.md` page is missing from either or a size bound is exceeded.
+  The README, the terminal-assistant guide and the project-context guide link
+  both files.
+
 ### Changed
 
 - The `cargo rullst` opening animates on every run (any key skips it).

@@ -16,6 +16,12 @@ status if either output is missing, modified or stale. New projects receive the
 same inventory and instructions. Existing automatic scaffold hooks refresh the
 map; a refresh failure is reported while preserving the completed scaffold.
 
+The documentation site also publishes `llms.txt` and `llms-full.txt` at
+<https://rullst.github.io/Rullst/llms.txt> and
+<https://rullst.github.io/Rullst/llms-full.txt>: an index of the framework's
+book and its full text, for assistants that need framework documentation rather
+than your application's inventory.
+
 The versioned `rullst.project-context.v1` map contains the project and dependency
 names, normalized dependency requirements, requested dependency features,
 declared Cargo feature names,

@@ -265,6 +265,16 @@ page defines each promise and labels the CLI generators.
 
 </details>
 
+## 🤖 For AI assistants
+
+The documentation site publishes [`llms.txt`](https://rullst.github.io/Rullst/llms.txt)
+(an index of every book page in reading order) and
+[`llms-full.txt`](https://rullst.github.io/Rullst/llms-full.txt) (the full
+Markdown of those pages in one file). Projects created with Rullst get their own
+`AGENTS.md`, `.llms.txt` and `.rullst/context-map.json`
+(`cargo rullst generate:ai-context`), and commands whose result is data accept
+`--json` ([machine-readable output](https://rullst.github.io/Rullst/book/cli_reference.html#machine-readable-output)).
+
 ## 🎓 Learn with Rullst Academy
 
 [Rullst Academy](https://academy.rullst.win/) is a free learning platform — built

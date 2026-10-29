@@ -5,6 +5,9 @@ from __future__ import annotations
 
 from html.parser import HTMLParser
 from hashlib import sha256
+import importlib.util
+import re
+import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -14,6 +17,31 @@ DOCS = ROOT / "docs"
 HOME = DOCS / "home_template.html"
 BENCH_TEMPLATES = sorted(DOCS.glob("benches*_template.html"))
 README = ROOT / "README.md"
+
+
+LLMS_INDEX_LIMIT = 128 * 1024
+LLMS_FULL_LIMIT = 8 * 1024 * 1024
+SUMMARY_PAGE = re.compile(r"\[[^\]]+\]\(([^)]+\.md)\)")
+
+
+def validate_llms() -> int:
+    """Generate llms.txt and llms-full.txt and check they cover SUMMARY.md."""
+    spec = importlib.util.spec_from_file_location("generate_llms_txt", ROOT / ".github/generate-llms-txt.py")
+    assert spec is not None and spec.loader is not None, "cannot load generate-llms-txt.py"
+    generator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(generator)
+    with tempfile.TemporaryDirectory(prefix="rullst-site-llms-") as temp:
+        assert generator.main(["--docs", str(DOCS), "--out", temp]) == 0, "llms generator failed"
+        index = (Path(temp) / "llms.txt").read_text(encoding="utf-8")
+        full = (Path(temp) / "llms-full.txt").read_text(encoding="utf-8")
+    assert 0 < len(index.encode()) < LLMS_INDEX_LIMIT, "llms.txt size is out of bounds"
+    assert 0 < len(full.encode()) < LLMS_FULL_LIMIT, "llms-full.txt size is out of bounds"
+    pages = list(dict.fromkeys(SUMMARY_PAGE.findall((DOCS / "src/SUMMARY.md").read_text(encoding="utf-8"))))
+    for page in pages:
+        url = generator.page_url(page)
+        assert f"]({url})" in index, f"llms.txt is missing {page}"
+        assert f"Source: {url}\n" in full, f"llms-full.txt is missing {page}"
+    return len(pages)
 
 
 class Document(HTMLParser):
@@ -178,13 +206,18 @@ def main() -> None:
         assert "fonts.googleapis.com" not in benchmark_source, f"{template}: undocumented remote fonts"
 
     workflow = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
+    assert "generate-llms-txt.py --out public_site" in workflow, "pages workflow does not publish llms.txt"
     for required_copy in ("docs/site.css", "docs/site.js", "images"):
         assert required_copy in workflow, f"pages workflow does not publish {required_copy}"
 
     assert (DOCS / "site.css").read_text(encoding="utf-8").count("{") == (
         DOCS / "site.css"
     ).read_text(encoding="utf-8").count("}"), "unbalanced site CSS blocks"
-    print(f"validated landing page and {len(BENCH_TEMPLATES)} benchmark templates")
+    llms_pages = validate_llms()
+    print(
+        f"validated landing page, {len(BENCH_TEMPLATES)} benchmark templates "
+        f"and llms.txt/llms-full.txt for {llms_pages} book pages"
+    )
 
 
 if __name__ == "__main__":

@@ -28,9 +28,12 @@ node .github/site-browser-smoke.mjs
 
 The Pages build also writes `llms.txt` (an index of every book page in
 `SUMMARY.md` order) and `llms-full.txt` (their Markdown, with mdBook include
-directives expanded) to the site root with `.github/generate-llms-txt.py`.
+directives expanded; pages over 64 KiB other than the spec and the CLI
+reference are listed under `## Optional`) to the site root with `.github/generate-llms-txt.py`.
 They are generated on every deployment and never edited by hand; preview them
 with `python3 .github/generate-llms-txt.py --out <directory>`.
+`validate-site.py` generates both files and fails when either is missing a
+`SUMMARY.md` page or exceeds its size bound (128 KiB and 8 MiB).
 
 The browser test checks desktop and 390/320-pixel layouts, keyboard and mobile
 navigation, clipboard success/denial, privacy disclosure, reduced motion,
