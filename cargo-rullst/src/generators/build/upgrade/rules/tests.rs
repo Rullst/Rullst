@@ -8,6 +8,7 @@ mod files;
 mod markup;
 mod releases;
 mod scanner;
+mod syntax;
 
 /// Codes and lines found in one Rust source.
 fn scan_with(source: &str, file_name: &str, facts: &WorkspaceFacts) -> Vec<(&'static str, usize)> {
