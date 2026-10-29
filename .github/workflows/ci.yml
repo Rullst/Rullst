@@ -35,6 +35,7 @@ on:
           - cli-saas-foundation
           - cli-saas-product
           - cli-saas-journey
+          - vm-deployment
   # PRs to main run the Linux gate; the nightly run restores the full
   # cross-platform matrix on the default branch.
   schedule:
@@ -125,6 +126,7 @@ jobs:
     if: >-
       !cancelled() &&
       (github.event_name != 'workflow_dispatch' || inputs.shard != 'packaged-distribution' || inputs.platform == 'all') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard != 'vm-deployment') &&
       (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     name: Code Quality & Format
     runs-on: ubuntu-latest
@@ -177,7 +179,7 @@ jobs:
     # expensive cross-platform suite starts when the PR is ready for review.
     if: >-
       !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
-      (github.event_name != 'workflow_dispatch' || inputs.shard != 'packaged-distribution') &&
+      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'packaged-distribution' && inputs.shard != 'vm-deployment')) &&
       (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     runs-on: ${{ matrix.os }}
     # Generated CLI applications are real independent Cargo workspaces. Keep
@@ -820,6 +822,88 @@ jobs:
           path: packaged-checksums.txt
           if-no-files-found: error
           retention-days: 30
+
+  vm-deployment:
+    name: Generated VM deployment (${{ matrix.engine }})
+    # Builds and starts what `cargo rullst deploy` writes. Full manual runs
+    # (release admission), the nightly run and the `vm-deployment` diagnostic
+    # always run it; ready pull requests only when the deploy generator, its
+    # templates or this check change (a first step decides). Branch pushes
+    # skip it, so their job inventory is unchanged.
+    if: >-
+      !cancelled() && github.event_name != 'push' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'vm-deployment')
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      RULLST_DISABLE_UPDATE_CHECK: "true"
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [docker, podman]
+    steps:
+      - name: Checkout source without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The pull-request merge commit and its base parent.
+          fetch-depth: 2
+
+      - name: Select the pull requests that change the deployment path
+        id: selection
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" != pull_request ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only HEAD^1 HEAD)"
+          if grep -Eq '^(cargo-rullst/src/generators/(deploy\.rs|project/docker\.rs)|cargo-rullst/src/blueprints/deploy\.rs|\.github/check-vm-deploy\.py)$' <<< "$changed"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No deployment generator change; the nightly and release runs cover this job."
+          fi
+
+      - name: Set up content-addressed compiler cache
+        if: steps.selection.outputs.run == 'true'
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up Rust toolchain
+        if: steps.selection.outputs.run == 'true'
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
+          cache: false
+
+      - name: Install podman-compose and allow rootless ports 80 and 443 as the VM guide does
+        if: steps.selection.outputs.run == 'true' && matrix.engine == 'podman'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman-compose
+          echo 'net.ipv4.ip_unprivileged_port_start=80' | sudo tee /etc/sysctl.d/99-rullst-ports.conf
+          sudo sysctl --system > /dev/null
+          podman version
+          podman-compose version
+          podman info --format 'rootless={{.Host.Security.Rootless}} network={{.Host.NetworkBackend}} storage={{.Store.GraphDriverName}} cgroups={{.Host.CgroupsVersion}}'
+
+      - name: Package the release archives without publication
+        if: steps.selection.outputs.run == 'true'
+        run: |
+          cargo fetch --locked
+          bash .github/package-release.sh --no-verify
+
+      - name: Build, start and check the generated deployment files
+        if: steps.selection.outputs.run == 'true'
+        env:
+          ENGINE: ${{ matrix.engine }}
+        run: python3 .github/check-vm-deploy.py --engine "$ENGINE" --packages target/package
 
   quality-scorecard:
     name: Evidence quality scorecard (observational)

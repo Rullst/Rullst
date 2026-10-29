@@ -161,7 +161,8 @@ class WorkflowGuardTests(unittest.TestCase):
                    "feature-boundaries", "threat-model-release-minimum", "versioned-ai-evals",
                    "generated-release-access", "facade-composition", "storage-s3", "msrv"}
         distribution = {"native-cli-artifacts", "packaged-distribution"}
-        self.assertEqual(set(jobs), runtime | distribution | {"scope", "site-validation", "quality-scorecard"})
+        self.assertEqual(set(jobs), runtime | distribution | {"scope", "site-validation", "quality-scorecard",
+                                                              "vm-deployment"})
         for name, body in jobs.items():
             self.assertEqual(len(re.findall(r"(?m)^    if:", body)), 1 if name != "scope" else 0, name)
         for name in distribution:
@@ -187,6 +188,19 @@ class WorkflowGuardTests(unittest.TestCase):
         self.assertIn("RULLST_CI_SHARD: ${{ inputs.shard }}", jobs["scope"])
         self.assertIn("RULLST_CI_PLATFORM: ${{ inputs.platform }}", jobs["scope"])
         self.assertIn("inputs.shard != 'packaged-distribution' || inputs.platform == 'all'", jobs["check"])
+        # The deployment job never runs on branch pushes (site-only admission
+        # reads their job inventory), always runs in full manual runs and its
+        # own diagnostic, and filters pull requests by path in its first step.
+        deployment = jobs["vm-deployment"]
+        guard = deployment.split("    runs-on:", 1)[0]
+        for clause in ("!cancelled()", "github.event_name != 'push'",
+                       "inputs.shard == 'all' || inputs.shard == 'vm-deployment'"):
+            self.assertIn(clause, guard)
+        self.assertNotIn("inputs.platform", guard)
+        self.assertIn("python3 .github/check-vm-deploy.py", deployment)
+        self.assertIn("if [ \"$EVENT_NAME\" != pull_request ]", deployment)
+        for name in ("check", "test"):
+            self.assertIn("inputs.shard != 'vm-deployment'", jobs[name].split("    runs-on:", 1)[0])
 
 
 if __name__ == "__main__":
