@@ -183,10 +183,13 @@ def plan(candidate: Snapshot, github: GitHub, now: datetime | None = None,
             "campaign_seconds": SECONDS,
             "max_source_age_days": MAX_AGE.days, "total_targets": len(candidate.inventory),
             "execution_sha256": candidate.contract, "global_input_sha256": candidate.global_hash,
+            # Packages whose inputs could not be bounded use the whole repository.
+            "whole_repository_inputs": getattr(candidate, "fail_closed", {}),
             "selected": selected, "reused": [reused[key] for key in sorted(reused)],
             "considered": considered, "blocked_by_newer_run": sorted(blocked),
             "policy_sha256": digest({name: (ROOT / name).read_text() for name in
                                       (".github/fuzz_evidence.py", ".github/fuzz_evidence_inputs.py",
+                                       ".github/fuzz_build_graph.py", ".github/fuzz_source_scan.py",
                                        ".github/release_line.py", ".github/release-required-workflows.json",
                                        ".github/fuzz_reviewed_context.py",
                                        ".github/test-fuzz-reviewed-context.py", CONTEXT_REVIEW, DOC_REVIEW)})}
@@ -220,6 +223,8 @@ def main() -> int:
         report = plan(candidate, github, force_full=args.force_full)
         write_report(report, args.output)
         print(f"Fuzz evidence: {len(report['reused'])}/{report['total_targets']} reusable; {len(report['selected'])} require execution.")
+        for directory, reasons in report["whole_repository_inputs"].items():
+            print(f"{directory}: whole repository is an input ({'; '.join(reasons)})")
         if args.require_complete and report["selected"]:
             return 1
         return 0

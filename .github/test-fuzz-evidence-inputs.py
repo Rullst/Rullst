@@ -9,6 +9,23 @@ import unittest
 from unittest.mock import patch
 
 from fuzz_evidence_inputs import ROOT, Snapshot, execution_contract, reviewed_document_blobs
+from fuzz_source_scan import source_facts
+
+# Fixture graph, mirroring the real shape: most parents depend on a shared
+# core crate, the facade also reaches mail, the ORM reaches its macro crate.
+CORE_USERS = ("rullst", "rullst-ai", "rullst-capital", "rullst-mail", "rullst-nexus",
+              "rullst-security", "rullst-studio")
+PARENT_DEPENDENCIES = {
+    **{parent: ['rullst-core = { workspace = true }'] for parent in CORE_USERS},
+    "rullst": ['rullst-core = { workspace = true }', 'rullst-mail = { workspace = true }'],
+    "rullst-orm": ['rullst-orm-macros = { path = "../rullst-orm-macros" }'],
+}
+REACHES = {
+    "rullst-core": {f"{parent}/fuzz" for parent in CORE_USERS},
+    "rullst-mail": {"rullst-mail/fuzz", "rullst/fuzz"},
+    "rullst-orm-macros": {"rullst-orm/fuzz"},
+}
+PARSER = "rullst-orm-macros/src/parser.rs"
 
 
 class InputTests(unittest.TestCase):
@@ -19,10 +36,6 @@ class InputTests(unittest.TestCase):
         self.run_git("init", "-q")
         self.run_git("config", "user.email", "fixture@example.invalid")
         self.run_git("config", "user.name", "Fixture")
-        # Background auto-maintenance can still be writing objects/pack when
-        # the temporary repository is removed, so keep it off in fixtures.
-        self.run_git("config", "maintenance.auto", "false")
-        self.run_git("config", "gc.auto", "0")
         # A detached `git gc --auto` can still be writing objects/pack when the
         # temporary directory is removed (ENOTEMPTY), so keep git in the foreground.
         self.run_git("config", "gc.auto", "0")
@@ -33,17 +46,41 @@ class InputTests(unittest.TestCase):
         self.write(".github/release-required-workflows.json",
                    '{"schema_version":2,"required_branch":"main"}')
         self.write(".github/workflows/fuzzing.yml", (ROOT / ".github/workflows/fuzzing.yml").read_text())
-        self.write("rullst-mail/Cargo.toml", '[package]\nname="mail"\nversion="1.0.0"\n')
-        self.write("rullst-core/src/lib.rs", "pub fn shared() {}\n")
-        self.write("Cargo.toml", "[workspace]\n")
+        self.write(".github/validate-fuzz-targets.py", "print('inventory')\n")
+        self.write("Cargo.toml", '[workspace]\nmembers = ["rullst-*"]\n\n[workspace.dependencies]\n'
+                   'rullst-core = { path = "rullst-core" }\nrullst-mail = { path = "rullst-mail" }\n'
+                   'helper = { path = "helper" }\nrand = "0.10"\n')
         self.write(".cargo/config.toml", "[build]\njobs=2\n")
         self.write("Cargo.lock", "root lock")
+        self.write("rust-toolchain.toml", '[toolchain]\nchannel = "1.99.1"\n')
+        for path in ("CHANGELOG.md", "README.md", "docs/src/guide.md", "docs/src/tutorial.md",
+                     "cargo-rullst/src/main.rs", "examples/blog/src/main.rs", ".github/workflows/ci.yml",
+                     "shared/table.txt", "helper/src/lib.rs"):
+            self.write(path, "original\n")
+        self.write("cargo-rullst/Cargo.toml", '[package]\nname="cargo-rullst"\n[dependencies]\n'
+                   'rullst-core = { workspace = true }\n')
+        self.write("helper/Cargo.toml", '[package]\nname="helper"\n')
+        self.crate("rullst-core", [])
+        self.crate("rullst-orm-macros", [], lib='[lib]\nproc-macro = true\n')
+        self.write(PARSER, "pub fn parse() {}\n")
+        for parent in sorted({item["dir"].removesuffix("/fuzz") for item in self.inventory}):
+            self.crate(parent, PARENT_DEPENDENCIES.get(parent, []))
+        self.write("rullst-mail/Cargo.toml", '[package]\nname="mail"\nversion="1.0.0"\n'
+                   '[dependencies]\nrullst-core = { workspace = true }\n')
         for item in self.inventory:
             directory = item["dir"]
-            self.write(f"{directory}/Cargo.toml", '[package]\nname="fixture"\n[dependencies]\nparent={path=".."}\n')
+            self.write(f"{directory}/Cargo.toml", '[package]\nname="fixture"\n'
+                       '[workspace]\nmembers = ["."]\n[dependencies]\nparent={path=".."}\n')
             self.write(f"{directory}/Cargo.lock", "locked graph")
             self.write(f'{directory}/fuzz_targets/{item["target"]}.rs', "fn main() {}\n")
+        self.write("rullst-orm/fuzz/fuzz_targets/fuzz_parser.rs",
+                   '#[path = "../../../rullst-orm-macros/src/parser.rs"]\nmod parser;\nfn main() {}\n')
         self.base = Snapshot(self.commit(), self.root)
+
+    def crate(self, directory, dependencies, lib=""):
+        self.write(f"{directory}/Cargo.toml", f'[package]\nname="{directory}"\n{lib}'
+                   "[dependencies]\n" + "".join(f"{line}\n" for line in dependencies))
+        self.write(f"{directory}/src/lib.rs", "pub fn shared() {}\n")
 
     def run_git(self, *args):
         return subprocess.check_output(["git", *args], cwd=self.root, stderr=subprocess.PIPE).decode().strip()
@@ -53,15 +90,42 @@ class InputTests(unittest.TestCase):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text)
 
+    def append(self, path, text):
+        with (self.root / path).open("a") as output:
+            output.write(text)
+
+    def touch(self, path):
+        """Change a file's blob without changing its meaning (or create it)."""
+        if (self.root / path).exists():
+            self.append(path, "\n# changed\n" if path.endswith((".toml", ".py", ".gitattributes"))
+                        else "\n// changed\n")
+        else:
+            self.write(path, "fn main() {}\n" if path.endswith(".rs") else "new\n")
+
     def commit(self):
-        self.run_git("add", ".")
-        self.run_git("commit", "-qm", "test(fuzz): change fixture")
+        self.run_git("add", "-A", ".")
+        self.run_git("commit", "-qm", "test(fuzz): change fixture", "--allow-empty")
         return self.run_git("rev-parse", "HEAD")
 
     def changed(self):
         current = Snapshot(self.commit(), self.root)
         return {directory for directory in self.base.directories
                 if self.base.fingerprint(directory) != current.fingerprint(directory)}
+
+    def rebase(self):
+        """Use the current commit as the evidence source for the next change."""
+        self.base = Snapshot(self.commit(), self.root)
+        return self.base
+
+    def reset(self):
+        self.run_git("reset", "-q", "--hard", self.base.sha)
+        self.run_git("clean", "-qfd")
+
+    def test_fixture_graph_matches_cargo_path_dependencies(self):
+        self.assertEqual(self.base.fail_closed, {})
+        self.assertEqual(self.base.reached["rullst/fuzz"], ["rullst", "rullst-core", "rullst-mail", "rullst/fuzz"])
+        self.assertEqual(self.base.reached["rullst-orm/fuzz"], ["rullst-orm", "rullst-orm-macros", "rullst-orm/fuzz"])
+        self.assertEqual(self.base.reached["rullst-iot/fuzz"], ["rullst-iot", "rullst-iot/fuzz"])
 
     def test_release_line_is_read_from_the_selected_git_object(self):
         self.write(".github/release-required-workflows.json",
@@ -80,6 +144,25 @@ class InputTests(unittest.TestCase):
         self.assertEqual(Snapshot(self.base.sha, self.root).release_branch, "main")
         self.assertNotEqual(current.global_hash, self.base.global_hash)
 
+    def test_documentation_changelog_readme_cli_examples_and_other_ci_files_are_not_inputs(self):
+        cases = {
+            "docs": ("docs/src/guide.md", "docs/src/new-page.md", "docs/book.toml"),
+            "changelog/readme": ("CHANGELOG.md", "README.md", "ROADMAP.md"),
+            "cli": ("cargo-rullst/src/main.rs", "cargo-rullst/Cargo.toml", "cargo-rullst/templates/x.rs"),
+            "other": ("examples/blog/src/main.rs", ".github/workflows/ci.yml", ".github/new-check.py",
+                      "new-unclassified-input", "deny.toml", "oss-fuzz/projects/rullst/build.sh"),
+        }
+        for name, paths in cases.items():
+            with self.subTest(name):
+                self.reset()
+                for path in paths:
+                    self.write(path, "changed\n")
+                self.assertEqual(self.changed(), set())
+        self.reset()
+        (self.root / "docs/src/guide.md").unlink()
+        (self.root / "CHANGELOG.md").chmod(0o755)
+        self.assertEqual(self.changed(), set())
+
     def test_reviewed_fixture_and_dev_dependency_changes_preserve_fuzz_inputs(self):
         for path in ("rullst-mail/tests/feedback.rs", ".github/mobile-ui-browser-smoke.mjs",
                      ".github/billing-csp-browser-smoke.mjs", "Cargo.lock", "WORKFLOWS.md",
@@ -92,13 +175,13 @@ class InputTests(unittest.TestCase):
                      "rullst-core/src/server/dev_telemetry/n_plus_one_tests.rs",
                      "rullst-core/src/server/stack_tests.rs"):
             self.write(path, "changed test or non-input")
-        with (self.root / "rullst-mail/Cargo.toml").open("a") as output:
-            output.write('[dev-dependencies]\nrand={workspace=true}\n')
+        self.append("rullst-mail/Cargo.toml", '[dev-dependencies]\nrand={workspace=true}\n')
         self.assertEqual(self.changed(), set())
 
     def document_review_fixture(self):
         # Exercise every reviewed path against real blobs in the fixture's Git
         # history. Stub only the trusted review table, not source discovery.
+        # The core crate consumes README.md, so that document stays an input.
         review = {}
         for path in reviewed_document_blobs():
             self.write(path, "original documentation\n")
@@ -107,10 +190,11 @@ class InputTests(unittest.TestCase):
             after = self.run_git("hash-object", path)
             self.write(path, "original documentation\n")
             review[path] = [before, after]
+        self.write("rullst-core/src/lib.rs", 'pub const TEXT: &str = include_str!("../../README.md");\n')
         policy = patch("fuzz_evidence_inputs.reviewed_document_blobs", return_value=review)
         policy.start()
         self.addCleanup(policy.stop)
-        self.base = Snapshot(self.commit(), self.root)
+        self.rebase()
         return review
 
     def test_exact_reviewed_document_contents_preserve_all_package_inputs(self):
@@ -118,76 +202,206 @@ class InputTests(unittest.TestCase):
             self.write(path, "reviewed publication documentation\n")
         self.assertEqual(self.changed(), set())
 
-    def test_third_document_blob_new_path_mode_and_deletion_invalidate_all(self):
-        review = self.document_review_fixture()
-        for path in review:
-            with self.subTest(path=path):
-                self.run_git("reset", "--hard", self.base.sha)
-                self.write(path, "unreviewed later document contents\n")
-                self.assertEqual(self.changed(), self.base.directories)
-        for operation in ("delete", "executable", "new-path"):
+    def test_consumed_document_third_blob_mode_and_deletion_invalidate_consumers(self):
+        self.document_review_fixture()
+        for operation in ("content", "delete", "executable"):
             with self.subTest(operation=operation):
-                self.run_git("reset", "--hard", self.base.sha)
+                self.reset()
                 target = self.root / "README.md"
-                if operation == "delete":
+                if operation == "content":
+                    self.write("README.md", "unreviewed later document contents\n")
+                elif operation == "delete":
                     target.unlink()
-                elif operation == "executable":
-                    target.chmod(0o755)
                 else:
-                    self.write("docs/src/unreviewed.md", "reviewed publication documentation\n")
+                    target.chmod(0o755)
+                self.assertEqual(self.changed(), REACHES["rullst-core"])
+        self.reset()
+        self.write("docs/src/unreviewed.md", "reviewed publication documentation\n")
+        self.assertEqual(self.changed(), set())
+
+    def test_new_document_consumer_invalidates_the_packages_that_reach_it(self):
+        self.write("rullst-iot/src/lib.rs", 'pub const TEXT: &str = include_str!("../../README.md");\n')
+        self.assertEqual(self.changed(), {"rullst-iot/fuzz"})
+        self.rebase()
+        self.write("README.md", "now consumed by a fuzzed crate\n")
+        self.assertEqual(self.changed(), {"rullst-iot/fuzz"})
+
+    def test_reached_crate_change_invalidates_only_the_packages_that_reach_it(self):
+        for package, expected in REACHES.items():
+            for path in (f"{package}/src/lib.rs", f"{package}/Cargo.toml", f"{package}/build.rs",
+                         f"{package}/tests/unreviewed.rs", f"{package}/README.md"):
+                with self.subTest(path=path):
+                    self.reset()
+                    if path.endswith("Cargo.toml"):
+                        # The mail manifest's identity is its parsed content.
+                        self.append(path, "\n[features]\nchanged = []\n")
+                    else:
+                        self.touch(path)
+                    self.assertEqual(self.changed(), expected)
+        self.reset()
+        (self.root / "rullst-core/src/lib.rs").unlink()
+        self.assertEqual(self.changed(), REACHES["rullst-core"])
+        self.reset()
+        (self.root / "rullst-core/src/lib.rs").chmod(0o755)
+        self.assertEqual(self.changed(), REACHES["rullst-core"])
+
+    def test_orm_macro_parser_still_invalidates_orm_fuzzing_through_either_route(self):
+        self.write(PARSER, "pub fn parse() { let _ = 1; }\n")
+        self.assertEqual(self.changed(), {"rullst-orm/fuzz"})
+        # Without the Cargo edge, the harness `#[path]` alone still reaches it.
+        self.reset()
+        self.write("rullst-orm/Cargo.toml", '[package]\nname="rullst-orm"\n')
+        self.rebase()
+        self.assertEqual(self.base.reached["rullst-orm/fuzz"], ["rullst-orm", "rullst-orm/fuzz"])
+        self.write(PARSER, "pub fn parse() { let _ = 2; }\n")
+        self.assertEqual(self.changed(), {"rullst-orm/fuzz"})
+        self.write("rullst-orm-macros/src/lib.rs", "pub fn unrelated() {}\n")
+        self.assertEqual(self.changed(), {"rullst-orm/fuzz"})  # only the parser commit above
+        self.rebase()
+        self.write("rullst-orm-macros/src/lib.rs", "pub fn unrelated_again() {}\n")
+        self.assertEqual(self.changed(), set())
+
+    def test_global_inputs_invalidate_every_package(self):
+        for path in ("Cargo.toml", "rust-toolchain.toml", "rust-toolchain", ".cargo/config.toml",
+                     ".cargo/mutants.toml", ".gitattributes", ".github/validate-fuzz-targets.py",
+                     ".github/release_line.py"):
+            with self.subTest(path=path):
+                self.reset()
+                self.touch(path)
                 self.assertEqual(self.changed(), self.base.directories)
 
-    def test_new_runtime_document_consumer_invalidates_reviewed_equivalence(self):
-        self.document_review_fixture()
-        self.write("rullst-core/src/lib.rs", 'pub const TEXT: &str = include_str!("../../README.md");')
-        self.write("README.md", "reviewed publication documentation\n")
-        self.assertEqual(self.changed(), self.base.directories)
+    def test_new_path_dependency_brings_the_new_crate_into_the_scope(self):
+        self.write("helper/src/lib.rs", "pub fn unrelated() {}\n")
+        self.assertEqual(self.changed(), set())
+        original = self.base
+        for section, spec in (("dependencies", 'helper = { path = "../helper" }'),
+                              ("dependencies", "helper = { workspace = true }"),
+                              ("build-dependencies", 'helper = { path = "../helper" }'),
+                              ("dev-dependencies", 'helper = { path = "../helper" }'),
+                              ('target."cfg(unix)".dependencies', 'helper = { path = "../helper" }'),
+                              ("patch.crates-io", 'helper = { path = "../helper" }')):
+            with self.subTest(section=section, spec=spec):
+                self.base = original
+                self.reset()
+                self.write("rullst-iot/Cargo.toml", f'[package]\nname="rullst-iot"\n[{section}]\n{spec}\n')
+                self.assertEqual(self.changed(), {"rullst-iot/fuzz"})
+                self.assertIn("helper", self.rebase().reached["rullst-iot/fuzz"])
+                self.write("helper/src/lib.rs", "pub fn now_fuzzed() {}\n")
+                self.assertEqual(self.changed(), {"rullst-iot/fuzz"})
+
+    def test_registry_dependency_changes_stay_inside_their_manifest(self):
+        for section in ("dependencies", "build-dependencies", 'target."cfg(unix)".dependencies'):
+            with self.subTest(section=section):
+                self.reset()
+                self.write("rullst-mail/Cargo.toml", '[package]\nname="mail"\nversion="1.0.0"\n'
+                           f'[{section}]\nnew_dep="1"\n[features]\nrullst-core = []\n')
+                self.assertEqual(self.changed(), REACHES["rullst-mail"])
+
+    def test_include_outside_the_package_is_an_input_of_its_consumers(self):
+        self.write("rullst-iot/src/lib.rs", 'pub const T: &str = include_str!("../../shared/table.txt");\n'
+                   '#[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../docs/src/guide.md"))]\n'
+                   "pub struct Documented;\n")
+        self.rebase()
+        for path in ("shared/table.txt", "docs/src/guide.md"):
+            with self.subTest(path=path):
+                self.reset()
+                self.write(path, "changed\n")
+                self.assertEqual(self.changed(), {"rullst-iot/fuzz"})
+        self.reset()
+        (self.root / "shared/table.txt").unlink()
+        self.assertEqual(self.changed(), {"rullst-iot/fuzz"})
+        self.reset()
+        self.write("docs/src/tutorial.md", "unrelated documentation\n")
+        self.assertEqual(self.changed(), set())
+
+    def test_included_code_is_scanned_and_corpus_seeds_are_data(self):
+        self.write("rullst-iot/src/lib.rs", 'include!("generated.rs.in");\n')
+        self.write("rullst-iot/src/generated.rs.in", 'const T: &str = include_str!("../../shared/table.txt");\n')
+        self.write("rullst-iot/fuzz/corpus/fuzz_ota/seed.rs", 'fn main() { std::fs::read("x"); (\n')
+        self.rebase()
+        self.assertEqual(self.base.fail_closed, {})
+        self.write("shared/table.txt", "reached through included code\n")
+        self.assertEqual(self.changed(), {"rullst-iot/fuzz"})
+
+    def test_macro_forwarded_book_includes_are_inputs_of_the_facade_only(self):
+        self.write("rullst/src/book.rs", "macro_rules! tutorial {\n"
+                   "    ($name:ident, $path:literal) => { #[doc = include_str!($path)] pub mod $name {} };\n}\n"
+                   'tutorial!(guide, "../../docs/src/tutorial.md");\n')
+        self.rebase()
+        self.write("docs/src/tutorial.md", "changed tutorial\n")
+        self.assertEqual(self.changed(), {"rullst/fuzz"})
+        self.write("docs/src/guide.md", "changed unrelated guide\n")
+        self.assertEqual(self.changed(), {"rullst/fuzz"})  # still only the tutorial commit
+        self.rebase()
+        self.write("docs/src/guide.md", "changed unrelated guide again\n")
+        self.assertEqual(self.changed(), set())
+
+    def test_unresolvable_escapes_fail_closed_to_the_whole_repository(self):
+        cases = {
+            "computed include": 'const T: &str = include_str!(concat!("../", "x"));',
+            "above the repository": 'const T: &str = include_str!("../../../outside.txt");',
+            "absolute include": 'const T: &str = include_str!("/etc/hostname");',
+            "absolute module": '#[path = "/tmp/module.rs"]\nmod outside;',
+            "aliased include macro": "macro_rules! inc { ($p:literal) => { include_str!($p) }; }\n"
+                                     "use inc as renamed;\nconst T: &str = inc!(\"../../shared/table.txt\");",
+            "path dependency above the repository": None,
+            "unreviewed proc-macro I/O": None,
+            "build script process": None,
+            "harness file access": None,
+            "unsupported Cargo configuration": None,
+        }
+        original = self.base
+        for name, source in cases.items():
+            with self.subTest(name):
+                self.base = original
+                self.reset()
+                if source is not None:
+                    self.write("rullst-iot/src/lib.rs", source + "\n")
+                elif name.startswith("path dependency"):
+                    self.append("rullst-iot/Cargo.toml", '[build-dependencies]\nfar = { path = "../../far" }\n')
+                elif name.startswith("unreviewed"):
+                    self.append("rullst-orm-macros/src/lib.rs", 'fn read() { let _ = std::fs::read("x"); }\n')
+                elif name.startswith("build"):
+                    self.write("rullst-iot/build.rs", 'fn main() { std::process::Command::new("git"); }\n')
+                elif name.startswith("harness"):
+                    self.write("rullst-iot/fuzz/fuzz_targets/fuzz_ota.rs", 'fn main() { std::fs::read("x"); }\n')
+                else:
+                    self.write(".cargo/config.toml", 'paths = ["../vendor"]\n[build]\njobs=2\n')
+                closed = Snapshot(self.commit(), self.root)
+                expected = (self.base.directories if name.startswith("unsupported")
+                            else {"rullst-orm/fuzz"} if name.startswith("unreviewed") else {"rullst-iot/fuzz"})
+                self.assertEqual(set(closed.fail_closed), expected)
+                self.assertEqual({directory for directory, reached in closed.reached.items() if reached is None},
+                                 expected)
+                # Any later change, even an unreferenced document, now reruns it.
+                self.base = closed
+                self.write("docs/src/guide.md", "unrelated documentation\n")
+                self.assertEqual(self.changed(), expected)
+
+    def test_reviewed_proc_macro_io_and_build_script_paths_are_resolved(self):
+        self.append("rullst-orm-macros/src/lib.rs", 'fn read() { let _ = std::fs::read("x"); }\n')
+        self.write("rullst-iot/build.rs", 'fn main() { let _ = std::fs::read("../shared/table.txt"); }\n')
+        commit = self.commit()
+        oid = self.run_git("rev-parse", f"{commit}:rullst-orm-macros/src/lib.rs")
+        with patch.dict("fuzz_build_graph.REVIEWED_COMPILE_IO", {"rullst-orm-macros/src/lib.rs": {oid}}):
+            self.base = Snapshot(commit, self.root)
+            self.assertEqual(self.base.fail_closed, {})
+            self.write("shared/table.txt", "read by the build script\n")
+            self.assertEqual(self.changed(), {"rullst-iot/fuzz"})
 
     def test_every_package_harness_and_lock_invalidates_its_entire_package(self):
         for directory in self.base.directories:
+            parent = directory.removesuffix("/fuzz")
+            expected = {directory} | REACHES.get(parent, set())
             for suffix in ("Cargo.lock", "extra-fixture.txt"):
                 with self.subTest(directory=directory, suffix=suffix):
-                    self.run_git("reset", "--hard", self.base.sha)
+                    self.reset()
                     self.write(f"{directory}/{suffix}", "changed")
-                    self.assertEqual(self.changed(), {directory})
-        self.run_git("reset", "--hard", self.base.sha)
+                    self.assertEqual(self.changed(), expected)
+        self.reset()
         item = self.inventory[0]
         self.write(f'{item["dir"]}/fuzz_targets/{item["target"]}.rs', "fn main() { let _ = 42; }")
         self.assertEqual(self.changed(), {item["dir"]})
-
-    def test_runtime_toolchain_unknown_files_and_configuration_invalidate_all(self):
-        for path in ("rullst-core/src/lib.rs", "new-unclassified-input", "rust-toolchain.toml",
-                     ".cargo/config.toml", "Cargo.toml", "rullst-mail/build.rs",
-                     "rullst-mail/tests/unreviewed.rs", ".github/validate-fuzz-targets.py"):
-            with self.subTest(path=path):
-                self.run_git("reset", "--hard", self.base.sha)
-                self.write(path, "changed")
-                self.assertEqual(self.changed(), self.base.directories)
-
-    def test_normal_and_build_dependencies_are_not_ignored(self):
-        for section in ("dependencies", "build-dependencies", 'target."cfg(unix)".dependencies'):
-            self.run_git("reset", "--hard", self.base.sha)
-            with (self.root / "rullst-mail/Cargo.toml").open("a") as output:
-                output.write(f'[{section}]\nnew_dep="1"\n')
-            self.assertEqual(self.changed(), self.base.directories)
-
-    def test_deleted_input_and_executable_bit_are_not_ignored(self):
-        (self.root / "rullst-core/src/lib.rs").unlink()
-        self.assertEqual(self.changed(), self.base.directories)
-        self.run_git("reset", "--hard", self.base.sha)
-        (self.root / "rullst-core/src/lib.rs").chmod(0o755)
-        self.assertEqual(self.changed(), self.base.directories)
-
-    def test_unproven_package_isolation_falls_back_to_global_inputs(self):
-        item = self.inventory[0]
-        path = f'{item["dir"]}/fuzz_targets/{item["target"]}.rs'
-        self.write(path, 'const DATA: &str = include_str!("../../other/fuzz/fixture");')
-        self.assertEqual(self.changed(), self.base.directories)
-        # Later changes in a different package still invalidate the consumer.
-        self.base = Snapshot(self.run_git("rev-parse", "HEAD"), self.root)
-        other = next(directory for directory in self.base.directories if directory != item["dir"])
-        self.write(f"{other}/fixture", "changed again")
-        self.assertEqual(self.changed(), self.base.directories)
 
     def test_shared_execution_contract_includes_budget_flags_tools_and_runner(self):
         path = ".github/workflows/fuzzing.yml"
@@ -210,6 +424,14 @@ class InputTests(unittest.TestCase):
                             original.replace("  workflow_dispatch:", "  workflow_dispatch: &hidden")):
             with self.assertRaises(ValueError):
                 execution_contract(unsupported)
+
+    def test_scripts_named_by_the_fuzz_workflow_are_global_inputs(self):
+        self.write(".github/fuzz_helper.py", "VALUE = 1\n")
+        self.write(".github/validate-fuzz-targets.py", "import fuzz_helper\n")
+        self.rebase()
+        self.assertIn(".github/fuzz_helper.py", [entry[0] for entry in self.base.global_entries])
+        self.write(".github/fuzz_helper.py", "VALUE = 2\n")
+        self.assertEqual(self.changed(), self.base.directories)
 
     def test_duplicate_target_or_unknown_inventory_shape_is_rejected(self):
         self.inventory[-1] = self.inventory[0]
@@ -234,6 +456,40 @@ class InputTests(unittest.TestCase):
             Snapshot(self.commit(), self.root)
         with self.assertRaises(ValueError):
             Snapshot("--help", self.root)
+
+
+class SourceScanTests(unittest.TestCase):
+    def refs(self, source):
+        facts = source_facts(source.encode())
+        self.assertIsNone(facts.error)
+        return [(kind, form, value) for kind, form, value, _ in facts.refs]
+
+    def test_comments_and_strings_never_count_as_includes(self):
+        self.assertEqual(self.refs('// include_str!("../x")\n/* /* include!("../y") */ */\n'
+                                   'const S: &str = "include_str!(\\"../z\\")";\n'
+                                   'const R: &str = r#"#[path = "../w"]"#;\n'), [])
+
+    def test_include_forms_and_path_attributes_are_classified(self):
+        self.assertEqual(self.refs('#![cfg_attr(docsrs, doc = include_str!("../README.md"))]\n'
+                                   '#[cfg_attr(unix, path = "unix.rs")] mod os;\n'
+                                   'const B: &[u8] = include_bytes!(r"data.bin");\n'
+                                   'include!(concat!(env!("OUT_DIR"), "/gen.rs"));\n'
+                                   'const C: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/a", "/b"));\n'
+                                   'catalog!(default = "en", dir = "../locales");\n'),
+                         [("data", "lit", "../README.md"), ("mod", "lit", "unix.rs"),
+                          ("data", "lit", "data.bin"), ("code", "out", None),
+                          ("data", "manifest", "/a/b"), ("key", "lit", "../locales")])
+
+    def test_generated_code_is_not_proc_macro_io_but_computed_includes_are(self):
+        facts = source_facts(b'fn f() { quote! { std::fs::read("x") }; }')
+        self.assertEqual(facts.compile_io, [])
+        facts = source_facts(b"fn f() { quote! { include_bytes!(#path) }; }")
+        self.assertEqual(facts.compile_io, ["generated data path"])
+        self.assertEqual(source_facts(b'fn f() { std::env::var("X"); }').compile_io, ["env"])
+
+    def test_unbalanced_source_is_reported(self):
+        self.assertIsNotNone(source_facts(b"fn f() { (").error)
+        self.assertIsNotNone(source_facts(b"/* unterminated").error)
 
 
 if __name__ == "__main__":
