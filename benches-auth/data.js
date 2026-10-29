@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793294279541,
+  "lastUpdate": 1793298144486,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -18843,6 +18843,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3139,
             "range": "± 60",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "34a22dc18bde5718ab0bca2ef06809040cc1f6ca",
+          "message": "Merge pull request #566 from Rullst/docs/v13-audit-crates-security\n\ndocs: audit the crate guides and security pages for 13.0",
+          "timestamp": "2026-10-29T15:02:39-03:00",
+          "tree_id": "f3215ce2ac94d99a6c7d70d282e6150902a8b872",
+          "url": "https://github.com/Rullst/Rullst/commit/34a22dc18bde5718ab0bca2ef06809040cc1f6ca"
+        },
+        "date": 1793298143435,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1095,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 820,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1927,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2780,
+            "range": "± 22",
             "unit": "ns/iter"
           }
         ]
