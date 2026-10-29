@@ -127,26 +127,12 @@ jobs:
         id: ownership
         run: bash .github/check-crates-ownership.sh
 
-      - name: Admit only reviewed first publications before packaging
+      - name: Refuse unregistered packages before packaging
         if: steps.ownership.outputs.has_unregistered == 'true'
         run: |
-          # check-crates-ownership.sh already refused a foreign owner and any
-          # 404 outside this tagged source's bootstrap allowlist. Recheck the
-          # evidence against the allowlist so nothing else reaches packaging.
-          if ! jq -e --slurpfile policy .github/crates-ownership-policy.json \
-            'all(.packages[];
-              .registry_status == "registered"
-              or (.registry_status == "unregistered-reviewed-bootstrap"
-                and (.crate as $crate | $policy[0].bootstrap_unregistered | index($crate) != null)))' \
-            target/package/crates-ownership.json >/dev/null; then
-            echo "An unregistered release package is not in the reviewed bootstrap allowlist; see docs/src/release-recovery.md."
-            exit 1
-          fi
-          jq -r '.packages[] | select(.registry_status == "unregistered-reviewed-bootstrap") | .crate' \
-            target/package/crates-ownership.json |
-            while IFS= read -r crate; do
-              echo "::notice title=First publication::${crate}: first publication; needs CRATES_IO_BOOTSTRAP_TOKEN in the crates-io environment (docs/src/release-recovery.md)."
-            done
+          # The publish job refuses first publications; fail now, not hours later.
+          echo "An unregistered release package needs a reviewed bootstrap change; see docs/src/release-recovery.md."
+          exit 1
 
       - name: Validate tag and package every publishable crate
         env:
@@ -438,7 +424,6 @@ jobs:
           path: publication-evidence
 
       - name: Verify immutable publication inputs
-        id: inputs
         run: |
           (
             cd verified-crates
@@ -449,25 +434,8 @@ jobs:
           if jq -e '.has_unregistered == false and all(.packages[]; .registry_status == "registered")' \
             publication-evidence/crates-ownership-prepublish.json >/dev/null; then
             echo "All release packages are registered and owned by the reviewed owner."
-            echo "has_unregistered=false" >> "$GITHUB_OUTPUT"
-          elif jq -e '.has_unregistered == true and all(.packages[]; .registry_status == "registered" or .registry_status == "unregistered-reviewed-bootstrap")' \
-            publication-evidence/crates-ownership-prepublish.json >/dev/null; then
-            # check-crates-ownership.sh admits a 404 only for a name in the
-            # tagged source's reviewed bootstrap allowlist.
-            echo "Reviewed bootstrap names are unregistered; their first publication needs the one-time credential."
-            echo "has_unregistered=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Publication refuses unexpected ownership state."
-            exit 1
-          fi
-
-      - name: Require a one-time credential for first publication
-        if: steps.inputs.outputs.has_unregistered == 'true'
-        env:
-          CRATES_IO_BOOTSTRAP_TOKEN: ${{ secrets.CRATES_IO_BOOTSTRAP_TOKEN }}
-        run: |
-          if [ -z "$CRATES_IO_BOOTSTRAP_TOKEN" ]; then
-            echo "CRATES_IO_BOOTSTRAP_TOKEN is required while reviewed crate names remain unregistered."
+            echo "Stable publication refuses bootstrap or unexpected ownership state."
             exit 1
           fi
 
@@ -496,11 +464,8 @@ jobs:
       - name: Publish all workspace crates in dependency order
         env:
           CARGO_HOME: /tmp/rullst-publish-cargo-home
-          # Exposed only while reviewed bootstrap names remain unregistered.
-          CRATES_IO_BOOTSTRAP_TOKEN: ${{ steps.inputs.outputs.has_unregistered == 'true' && secrets.CRATES_IO_BOOTSTRAP_TOKEN || '' }}
           CRATES_IO_TRUSTED_TOKEN: ${{ steps.auth.outputs.token }}
           OWNERSHIP_EVIDENCE: ${{ github.workspace }}/publication-evidence/crates-ownership-prepublish.json
-          OWNERSHIP_POLICY: ${{ github.workspace }}/publication-source/.github/crates-ownership-policy.json
           PUBLISH_WORKDIR: /tmp/rullst-publish-work
           RELEASE_TAG: ${{ github.ref_name }}
           VERIFIED_CRATES: ${{ github.workspace }}/verified-crates
@@ -521,26 +486,10 @@ jobs:
               --arg crate "$crate" \
               '.packages[] | select(.crate == $crate) | .registry_status' \
               "$OWNERSHIP_EVIDENCE")"
-            case "$registry_status" in
-              registered)
-                crate_token="$CRATES_IO_TRUSTED_TOKEN"
-                ;;
-              unregistered-reviewed-bootstrap)
-                # The one-time credential is only for the tagged source's
-                # reviewed bootstrap allowlist.
-                if ! jq -e --arg crate "$crate" \
-                  '.bootstrap_unregistered | index($crate) != null' \
-                  "$OWNERSHIP_POLICY" >/dev/null; then
-                  echo "${crate} is unregistered but not in the reviewed bootstrap allowlist."
-                  return 1
-                fi
-                crate_token="$CRATES_IO_BOOTSTRAP_TOKEN"
-                ;;
-              *)
-                echo "Unexpected registry status for ${crate}: ${registry_status}"
-                return 1
-                ;;
-            esac
+            if [ "$registry_status" != "registered" ]; then
+              echo "Unexpected registry status for ${crate}: ${registry_status}"
+              return 1
+            fi
 
             expected_checksum="$(sha256sum "$verified_archive" | cut -d ' ' -f 1)"
             attempts=0
@@ -563,8 +512,8 @@ jobs:
                 -u CARGO_TARGET_DIR \
                 -u RUSTC_WRAPPER \
                 -u RUSTC_WORKSPACE_WRAPPER \
-                CARGO_REGISTRY_TOKEN="$crate_token" \
-                CARGO_REGISTRIES_CRATES_IO_TOKEN="$crate_token" \
+                CARGO_REGISTRY_TOKEN="$CRATES_IO_TRUSTED_TOKEN" \
+                CARGO_REGISTRIES_CRATES_IO_TOKEN="$CRATES_IO_TRUSTED_TOKEN" \
                 cargo publish \
                   --manifest-path "$WORKSPACE_MANIFEST" \
                   --package "$crate" \

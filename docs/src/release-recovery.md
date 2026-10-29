@@ -28,25 +28,17 @@ immediately before publication. Every registered package must include
 bootstrap allowlist. A name registered by another owner, an unexpected missing
 name, an API error, or a malformed policy stops the release.
 
-The one-time bootstrap procedure below was completed before the first v12 RC
-and for the four new v13 names in 13.0.0-alpha.1 (see below). For
-13.0.0-alpha.4 it is again the reviewed path for one name,
-`cargo-rullst-extras` (see
-[its section](#first-publication-of-cargo-rullst-extras-1300-alpha4)).
-Every registered name still publishes only with Trusted Publishing. The token
-path applies only to a name that crates.io does not know and that the tagged
-source lists in the bootstrap allowlist:
+The following one-time bootstrap procedure was completed before the first v12
+RC and again for the four new v13 names (see below). All twenty package names
+are now registered, so future releases must use Trusted Publishing and must not
+recreate a bootstrap secret unless a new, reviewed package name is introduced:
 
-- `.github/release-preflight.py` and the release verification job accept such
-  a name and report it as a first publication that needs
-  `CRATES_IO_BOOTSTRAP_TOKEN` in the `crates-io` environment. Any other
-  unregistered name, a name registered by another owner and a registry error
-  are refused, as before.
-- The publish job requires the secret only while such a name exists, and the
-  publish loop hands it only to that name's `cargo publish`.
-
-Adding a name to the allowlist is itself a reviewed change. With an empty
-allowlist, every unregistered name is refused before the admission.
+**Historical procedure:** the current `release.yml` has removed this token
+fallback and refuses every unregistered package, including on prerelease tags.
+Adding a name to the allowlist does not enable publication. Do not set the old
+secret and expect the steps below to work on the current workflow. A new name
+needs a reviewed change that restores the fallback, merged before the release
+admission, as [PR #452](https://github.com/Rullst/Rullst/pull/452) did.
 
 1. Protect the GitHub `crates-io` environment with required review and tag
    deployment rules.
@@ -66,9 +58,8 @@ allowlist, every unregistered name is refused before the admission.
    Trusted Publishing token.
 6. After all new packages are indexed, configure the same Trusted Publisher for
    each of them, enable crates.io's trusted-publishing-only protection, revoke
-   the bootstrap token, delete the GitHub environment secret, and, in a
-   reviewed change, empty the bootstrap allowlist and remove the token path
-   from `release.yml`.
+   the bootstrap token, delete the GitHub environment secret, and remove the
+   names from the bootstrap allowlist in a reviewed change.
 
 Trusted Publishing cannot be configured before a crate's first release. The
 one-time token is therefore an explicit, bounded exception, not a permanent
@@ -99,52 +90,17 @@ allowlist. The maintainer then completed step 6 for the four crates:
 - enable trusted-publishing-only updates;
 - revoke the token and delete the environment secret.
 
+The next release's ownership check verifies that `venelouis` owns all twenty
+names.
+
 **Lesson:** check for unregistered names before the admission. The release
 verification job accepted reviewed bootstrap names, so the refusal surfaced only
-in the publish job, two hours into the run. Since then:
-- `.github/release-preflight.py` refuses, before the admission is dispatched,
-  every unregistered name that is not in the bootstrap allowlist, and the
-  verification job refuses it before packaging;
-- for an allowlisted name, both report the first publication and its
-  credential instead, so a missing token is known before the tag.
+in the publish job, two hours into the run.
+- `.github/release-preflight.py` now refuses an unregistered name before the
+  admission is dispatched.
+- The verification job refuses it before packaging.
 
-### First publication of `cargo-rullst-extras` (13.0.0-alpha.4)
-
-`cargo-rullst-extras` is a new, reviewed package name in the release order,
-after `cargo-rullst`, and the only name in the bootstrap allowlist. It depends
-on `cargo-rullst` at the same prerelease version, so, like `rullst-media` in
-13.0.0-alpha.1, it cannot be registered outside the release that publishes that
-version. The other twenty names are registered and keep Trusted Publishing.
-
-Before the tag (steps 3 and 4 above):
-1. Run `python3 .github/release-preflight.py v13.0.0-alpha.4` on the release
-   head. It must report `cargo-rullst-extras: first publication; needs
-   CRATES_IO_BOOTSTRAP_TOKEN in the crates-io environment` and refuse nothing
-   else.
-2. On crates.io, create an API token with only the `publish-new` endpoint
-   scope and an expiry a few days after the planned tag. Restrict its crate
-   scope to `cargo-rullst-extras` if the form accepts a name that is not
-   registered yet; otherwise leave the crate scope empty and rely on
-   `publish-new` and the short expiry.
-3. Store it only as the `CRATES_IO_BOOTSTRAP_TOKEN` secret of the protected
-   `crates-io` environment (Settings → Environments → `crates-io`), never as a
-   repository or organization secret.
-4. The preflight and the verification job cannot read an environment secret.
-   After the environment approval, the publish job checks that the secret is
-   set and stops before uploading anything when it is missing: add it and
-   re-run the failed job.
-
-After publication (step 6 above):
-1. Check that `cargo-rullst-extras` 13.0.0-alpha.4 is indexed with the release
-   checksum and that `venelouis` owns it.
-2. Configure its Trusted Publisher (`Rullst/Rullst`, `release.yml`, environment
-   `crates-io`) and enable trusted-publishing-only updates.
-3. Revoke the token on crates.io and delete the `CRATES_IO_BOOTSTRAP_TOKEN`
-   environment secret.
-4. In a reviewed change, empty the bootstrap allowlist and remove the token
-   path from `release.yml` (the publish job's credential check and per-package
-   token selection), as after 13.0.0-alpha.1. The next release's ownership
-   check then verifies that `venelouis` owns all twenty-one names.
+A change that restores the fallback must also remove that early refusal.
 
 ## Determine the exact state
 
@@ -209,7 +165,7 @@ verification.
 Recovery is complete only when:
 
 - every version in the tagged release inventory is indexed with its retained
-  checksum (16 packages for v12; 21 in the current v13 candidate);
+  checksum (16 packages for v12; 20 in the current v13 candidate);
 - a clean consumer resolves only registry packages and compiles;
 - documentation/index pages are reachable;
 - the incident timeline and any yanks/replacements are recorded;

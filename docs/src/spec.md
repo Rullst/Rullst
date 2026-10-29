@@ -337,11 +337,8 @@ reporting a refresh failure without concealing the completed source edits.
 Archive-only acceptance must install the packaged CLI and compile
 generated SaaS consumers with both opt-ins and no workspace source paths.
 This is packaging eligibility, not a published version or registration claim.
-The release workflow refuses an unregistered crate unless the tagged source's
-reviewed bootstrap allowlist names it for a one-time first publication
-([release recovery](release-recovery.md#name-ownership-and-first-publication-credentials));
-initial registration, reviewed ownership and Trusted Publishing configuration
-are separate prerequisites.
+The stable publisher still refuses an unregistered crate; initial registration,
+reviewed ownership and Trusted Publishing configuration are separate prerequisites.
 
 The native `DeclarationGate` contract processes an authenticated first-party
 `AgeDeclaration` without requiring an external issuer or a signing key for the

@@ -128,9 +128,8 @@ Before releasing, make sure:
 - [ ] Every package in [the release order](.github/release-order.json) has
   synchronized manifest versions and exact internal requirements (`=X.Y.Z`)
   at the selected release version; `.github/release-preflight.jq` refuses a
-  caret requirement. The current v13 candidate inventory has 21 packages, including
-  `rullst-privacy`, `rullst-supervision`, `rullst-media`, `rullst-labs` and
-  `cargo-rullst-extras`.
+  caret requirement. The current v13 candidate inventory has 20 packages, including
+  `rullst-privacy`, `rullst-supervision`, `rullst-media` and `rullst-labs`.
   Labs ships its contracts only; the Labs runner candidate was removed from
   13.0 and is not packaged. A successful archive rehearsal does not by itself
   authorize publication.
@@ -155,14 +154,8 @@ Once everything is stable and verified:
    problems that `release.yml` would otherwise find hours later:
    - packages not at the tagged version, or a missing changelog section;
    - a stale head or an existing tag;
-   - a foreign-owned crate name, or an unregistered name outside the reviewed
-     bootstrap allowlist in `.github/crates-ownership-policy.json`;
+   - an unregistered or foreign-owned crate name;
    - a version already on crates.io.
-
-   It reports an allowlisted unregistered name as a first publication that
-   needs `CRATES_IO_BOOTSTRAP_TOKEN` in the `crates-io` environment; set that
-   secret before the tag (see
-   [first-publication credentials](docs/src/release-recovery.md#name-ownership-and-first-publication-credentials)).
 
    For a change that can behave differently in release builds
    (`cfg(debug_assertions)`, release profile), dispatch `proptest.yml` on its
@@ -190,7 +183,7 @@ GitHub Actions will automatically execute the topological crate publish pipeline
 2. 📦 Foundations: `rullst-orm`, `rullst-core`, `rullst-messaging`
 3. 📦 Domain crates: `rullst-connect`, `rullst-iot`, `rullst-security`, `rullst-ai`, `rullst-capital`, `rullst-mail`, `rullst-auth`, then the v13 candidates `rullst-privacy`, `rullst-supervision`, `rullst-media` and `rullst-labs`
 4. 📦 Dashboards: `rullst-nexus`, `rullst-studio`
-5. 📦 Main bundle & CLI: `rullst`, `cargo-rullst`, then the optional `cargo-rullst-extras`
+5. 📦 Main bundle & CLI: `rullst`, `cargo-rullst`
 
 Before publication, the workflow:
 - requires every admission workflow at the tagged SHA, including the full
@@ -283,25 +276,16 @@ short-lived branches ── reviewed pull requests ──▶ v12 (12.x) / main (
 
 ## 🔑 One-time GitHub Setup Required
 
-The twenty crates published up to 13.0.0-alpha.3 are registered on crates.io
-and publish through Trusted Publishing with GitHub OIDC. The protected
-`crates-io` environment must require review and be configured for
-`release.yml`.
+All twenty release crates are registered on crates.io and publish through
+Trusted Publishing with GitHub OIDC. The protected `crates-io` environment must
+require review and be configured for `release.yml`.
 
 The four v13 names were first published in 13.0.0-alpha.1 with a one-time
 token, described under
 [v13 package registration](docs/src/release-recovery.md#v13-package-registration).
-That fallback was removed afterwards and is restored for 13.0.0-alpha.4 for one
-name: `cargo-rullst-extras`, added to the release order after `cargo-rullst`
-and the only entry of the bootstrap allowlist in
-`.github/crates-ownership-policy.json`. Its first publication needs a
-short-lived `publish-new` token stored only as the `CRATES_IO_BOOTSTRAP_TOKEN`
-secret of the `crates-io` environment before the tag; after publication the
-maintainer configures its Trusted Publisher, revokes the token, deletes the
-secret, and empties the allowlist and removes the token path in a reviewed
-change. The exact steps are in
-[first publication of `cargo-rullst-extras`](docs/src/release-recovery.md#first-publication-of-cargo-rullst-extras-1300-alpha4).
-Any other unregistered name is still refused.
+That fallback was removed again, and the bootstrap allowlist in
+`.github/crates-ownership-policy.json` is empty. `release.yml` refuses
+publication while any release package is unregistered.
 
 Do not maintain a permanent repository-wide registry token.
 
