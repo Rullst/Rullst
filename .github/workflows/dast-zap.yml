@@ -64,7 +64,7 @@ jobs:
           test -x target/release/rullst-blog-example
           test -x target/release/rullst-lms-example
 
-      - name: Materialize the generated API and the LMS example
+      - name: Materialize the generated API, the SaaS starter and the LMS example
         run: |
           dast_root="$RUNNER_TEMP/rullst-zap"
           printf 'DAST_ROOT=%s\n' "$dast_root" >> "$GITHUB_ENV"
@@ -76,27 +76,43 @@ jobs:
             --database sqlite \
             --api \
             --skip-initial-migration
+          ./target/release/cargo-rullst new "$dast_root/zap-saas" \
+            --default \
+            --blueprint saas \
+            --skip-initial-migration
           # The LMS starter moved to examples/lms in 13.0.0-alpha.4: scan the
           # workspace build from a scratch copy of its directory (static/,
           # Rullst.toml and a .env whose APP_KEY comes from the job).
           cp -R examples/lms "$dast_root/zap-lms-app"
           grep -v '^APP_KEY=' examples/lms/.env.example > "$dast_root/zap-lms-app/.env"
 
-          cp Cargo.lock "$dast_root/zap-blank-api/Cargo.lock"
+          # The generated manifests name the framework crates as a published
+          # CLI does; this checkout's crates replace them through
+          # [patch.crates-io], so the build works before publication.
+          for project in zap-blank-api zap-saas; do
+            cp Cargo.lock "$dast_root/$project/Cargo.lock"
+            python3 .github/dast-generated-app.py registry-patch "$dast_root/$project"
+          done
 
-      - name: Build the generated API in release mode
+      - name: Build the generated applications in release mode
         timeout-minutes: 100
         run: |
-          CARGO_TARGET_DIR="$GITHUB_WORKSPACE/target" cargo build \
-            --release \
-            --offline \
-            --manifest-path "$DAST_ROOT/zap-blank-api/Cargo.toml"
+          for project in zap-blank-api zap-saas; do
+            CARGO_TARGET_DIR="$GITHUB_WORKSPACE/target" cargo build \
+              --release \
+              --offline \
+              --manifest-path "$DAST_ROOT/$project/Cargo.toml"
+          done
 
       - name: Apply application migrations
         run: |
           (
             cd "$DAST_ROOT/zap-blank-api"
             "$GITHUB_WORKSPACE/target/release/zap-blank-api" db:migrate
+          )
+          (
+            cd "$DAST_ROOT/zap-saas"
+            "$GITHUB_WORKSPACE/target/release/zap-saas" db:migrate
           )
           (
             cd "$DAST_ROOT/zap-lms-app"
@@ -266,6 +282,99 @@ jobs:
             fi
           fi
 
+      - name: Start generated SaaS starter
+        run: |
+          log_path="$RUNNER_TEMP/zap-saas.log"
+          pid_path="$RUNNER_TEMP/zap-saas.pid"
+          # Production refuses mock billing: a placeholder Stripe test key, a
+          # strong webhook secret, an HTTPS redirect and an explicit plan
+          # allowlist, as in docs/src/vm-deployment.md. The scan never reaches
+          # a checkout (it needs a signed-in POST), so Stripe is not contacted.
+          (
+            cd "$DAST_ROOT/zap-saas"
+            export BILLING_API_KEY="sk_test_rullst_dast_$(openssl rand -hex 8)"
+            export BILLING_WEBHOOK_SECRET="whsec_$(openssl rand -hex 24)"
+            export BILLING_REDIRECT_URL=https://localhost/dashboard
+            export BILLING_ALLOWED_PLAN_IDS=price_starter,price_pro
+            export RULLST_PUBLIC_ORIGIN=https://localhost
+            exec "$GITHUB_WORKSPACE/target/release/zap-saas"
+          ) > "$log_path" 2>&1 &
+          server_pid=$!
+          printf '%s\n' "$server_pid" > "$pid_path"
+
+          ready=false
+          for _ in {1..30}; do
+            if curl --user-agent 'Mozilla/5.0 (Rullst DAST readiness)' \
+              --fail --silent --show-error --max-time 5 \
+              http://127.0.0.1:3000/ > /dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$ready" != true ]]; then
+            tail -200 "$log_path"
+            exit 1
+          fi
+
+      - name: Register a disposable SaaS account for the signed-in scan
+        # Before the public scan: its form submissions spend the per-client
+        # credential budget that registration also uses.
+        run: python3 .github/dast-generated-app.py session http://127.0.0.1:3000
+
+      - name: Scan SaaS starter public pages (blocking)
+        id: zap_saas_public
+        continue-on-error: true
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        timeout-minutes: 45
+        with:
+          target: http://127.0.0.1:3000
+          docker_name: ${{ env.ZAP_DOCKER_IMAGE }}
+          cmd_options: -a -m 2 -c .zap/generated-apps.tsv
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-saas-public
+
+      - name: Scan SaaS starter signed-in pages (blocking)
+        id: zap_saas_account
+        continue-on-error: true
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        timeout-minutes: 45
+        env:
+          # The action passes these to ZAP, which sets the session cookie on
+          # every request to the starter. POST forms are not submitted, so
+          # the spider cannot sign out, revoke the session or start a checkout.
+          ZAP_AUTH_HEADER: Cookie
+          ZAP_AUTH_HEADER_VALUE: ${{ env.SAAS_ZAP_COOKIE }}
+          ZAP_AUTH_HEADER_SITE: 127.0.0.1
+        with:
+          target: http://127.0.0.1:3000/dashboard
+          docker_name: ${{ env.ZAP_DOCKER_IMAGE }}
+          cmd_options: -a -m 2 -c .zap/generated-apps.tsv -z "-config spider.postform=false"
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-saas-account
+
+      - name: Confirm the signed-in scan kept its session
+        id: saas_session
+        continue-on-error: true
+        run: python3 .github/dast-generated-app.py check-session http://127.0.0.1:3000
+
+      - name: Stop SaaS starter
+        if: always()
+        run: |
+          pid_path="$RUNNER_TEMP/zap-saas.pid"
+          if [[ -f "$pid_path" ]]; then
+            server_pid=$(< "$pid_path")
+            if kill -0 "$server_pid" 2>/dev/null; then
+              kill "$server_pid"
+              wait "$server_pid" || true
+            fi
+          fi
+
       - name: Upload application logs
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -280,6 +389,9 @@ jobs:
         env:
           REST_API_OUTCOME: ${{ steps.zap_api.outcome }}
           LMS_OUTCOME: ${{ steps.zap_lms.outcome }}
+          SAAS_PUBLIC_OUTCOME: ${{ steps.zap_saas_public.outcome }}
+          SAAS_ACCOUNT_OUTCOME: ${{ steps.zap_saas_account.outcome }}
+          SAAS_SESSION_OUTCOME: ${{ steps.saas_session.outcome }}
         run: |
           failed=false
           if [[ "$REST_API_OUTCOME" != success ]]; then
@@ -288,6 +400,14 @@ jobs:
           fi
           if [[ "$LMS_OUTCOME" != success ]]; then
             echo "LMS example ZAP gate: $LMS_OUTCOME"
+            failed=true
+          fi
+          if [[ "$SAAS_PUBLIC_OUTCOME" != success ]]; then
+            echo "SaaS starter public ZAP gate: $SAAS_PUBLIC_OUTCOME"
+            failed=true
+          fi
+          if [[ "$SAAS_ACCOUNT_OUTCOME" != success || "$SAAS_SESSION_OUTCOME" != success ]]; then
+            echo "SaaS starter signed-in ZAP gate: $SAAS_ACCOUNT_OUTCOME (session kept: $SAAS_SESSION_OUTCOME)"
             failed=true
           fi
           if [[ "$failed" == true ]]; then
