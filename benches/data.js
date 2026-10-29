@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793273657050,
+  "lastUpdate": 1793288586963,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -29407,6 +29407,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1039,
             "range": "± 35",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27440eb88706fe739bf7cc5a72908e61c45d6f9a",
+          "message": "Merge pull request #561 from Rullst/fix/v13-alpha4-admission-tests\n\ntest: keep the Miri audit scope and the mail queue test deterministic",
+          "timestamp": "2026-10-29T12:37:39-03:00",
+          "tree_id": "a0c3b968ff75e6f5729fca23dc665ea81a2f2aa4",
+          "url": "https://github.com/Rullst/Rullst/commit/27440eb88706fe739bf7cc5a72908e61c45d6f9a"
+        },
+        "date": 1793288584036,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 666,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 895,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 425,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2098,
+            "range": "± 224",
             "unit": "ns/iter"
           }
         ]
