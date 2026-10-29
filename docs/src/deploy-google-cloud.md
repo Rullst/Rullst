@@ -46,7 +46,8 @@ gcloud compute instances add-tags <instance-name> --tags web --zone <zone>
 
 Also review the default network's other rules (for example the one that allows
 all internal traffic or RDP) and remove what you do not use. Port 80 must stay
-open: Caddy uses it to obtain and renew certificates.
+open: Caddy uses it to obtain and renew certificates. For HTTP/3 also allow
+`udp:443`; without it browsers use HTTPS over TCP.
 
 ## 3. DNS
 
