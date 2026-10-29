@@ -312,6 +312,7 @@ impl LiveRedisData {
                 .set_password(password);
             connection = connection.set_redis_settings(settings);
         }
+        crate::redis_tls::install_provider_for(&connection);
         let client = redis::Client::open(connection).map_err(|_| redis_error())?;
         let manager_config = ConnectionManagerConfig::new()
             .set_number_of_retries(1)

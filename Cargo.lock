@@ -6660,6 +6660,7 @@ dependencies = [
  "redis",
  "reqwest",
  "rullst-orm-macros",
+ "rustls",
  "sea-orm",
  "serde",
  "serde_json",
