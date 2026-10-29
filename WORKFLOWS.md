@@ -30,14 +30,13 @@ observation, not a successful test receipt. Promotion of v13 source to `main`
 requires a normally admitted PR; existing tags, packages and running feature
 campaigns are retained. `v13` remains transitional while that admission runs.
 
-The default-branch Dependabot configuration targets Cargo and Actions on both
-`main` and `v12`. Minor/patch Cargo changes share a PR; Actions share one tools
-PR per line. On `v12`, Dependabot ignores SemVer-major Cargo updates (including
-Cargo's breaking `0.x` minors) and the held `aws-smithy-types` constraint:
-majors are evaluated on `main` first. Updates still require compatibility/MSRV
-and protected CI; group membership is not approval. Old Dependabot PRs are
-closed after equivalent updates have entered their destination source line, or
-with a comment when that line's policy excludes them.
+The default-branch Dependabot configuration targets Cargo (the root and the
+eleven fuzz workspaces) and Actions on `main` only; `v12` receives no updates
+after its end of life on 16 October 2026. Minor/patch Cargo changes share a PR,
+the OpenTelemetry and utoipa families each have their own, and Actions share one
+tools PR. Updates still require compatibility/MSRV and protected CI; group
+membership is not approval. Old Dependabot PRs are closed after equivalent
+updates have entered `main`, or with a comment when its policy excludes them.
 
 ## Mainline execution model
 
@@ -67,8 +66,8 @@ Linux/macOS/Windows matrix on the default branch. Ready pull requests to the
 maintained `v12` line and transitional `v13` keep the complete matrix, blocking
 line coverage, SemVer fan-out and CodeQL before merge. Any matrix can be
 requested manually. Each operating system
-executes seven parallel shards: the non-CLI workspace (which includes the LMS,
-ERP and Portfolio examples), ordinary CLI targets, three public-profile groups
+executes seven parallel shards: the non-CLI workspace (which includes the Blog,
+ERP, LMS, Portfolio and WebGPU examples), ordinary CLI targets, three public-profile groups
 and two generated-starter groups.
 The basic/relational/polyglot and foundation/product partitions retain every original
 case while bounding the longest Windows and macOS jobs. No test is omitted;
@@ -288,7 +287,7 @@ single blocking dependency for the quality scorecard. Each threat-model shard
 primes the reviewed lockfile before its deliberately offline generated-project
 checks, so it does not inherit a hidden source-cache dependency from another
 job. The umbrella's
-`cfg(doctest)` aggregation reads all 51 public tutorial files directly, so that
+`cfg(doctest)` aggregation reads all 48 public tutorial files directly, so that
 same command discovers the versioned Rust blocks, compiles or executes complete
 examples, and records explicitly contextual fragments as ignored instead of pretending
 they are standalone programs. Its pinned live Redis job also proves that
@@ -332,8 +331,8 @@ release-ready.
 
 ## Recommended branch-protection profiles
 
-**`main` (v13 development)** requires the fast gate that every ready pull
-request emits: Code Quality & Format; Run Tests (ubuntu-latest / workspace) and
+**`main` (v13 development)** requires the fast gate of 19 checks that every
+ready pull request emits: Code Quality & Format; Run Tests (ubuntu-latest / workspace) and
 (ubuntu-latest / cli-standard); Check MSRV (Rust 1.96.0); ORM strict-sqlite,
 strict-postgres and strict-mysql; Redis live contracts; Generated release access
 boundaries; Facade shared-local recovery composition; Versioned deterministic AI
@@ -349,9 +348,10 @@ the required vulnerability gate. The macOS/Windows and CLI-profile shards,
 public feature boundaries, threat-model minimum, coverage, SemVer and CodeQL run
 after merge, nightly or weekly. They remain release-admission requirements.
 
-**`v12` (stable maintenance)** keeps the complete profile with an up-to-date
-base: every Linux/macOS/Windows test shard, public feature boundaries, the
-threat-model minimum, CodeQL, documentation and workflow lint.
+**`v12` (frozen; end of life on 16 October 2026)** keeps the complete profile
+of 46 checks with an up-to-date base: every Linux/macOS/Windows test shard,
+public feature boundaries, the threat-model minimum, CodeQL, documentation and
+workflow lint.
 
 Do not configure a path-filtered, scheduled, manual, deployment, or tag-only
 workflow as a universal required check: an intentionally skipped workflow may
@@ -360,8 +360,12 @@ blocking when relevant paths change.
 Pages, benchmarks, fuzzing, sanitizers,
 Kani, Miri, mutation testing, udeps, ZAP, Scorecard, and release provenance
 belong to deeper evidence or release policy. GitHub repository rulesets remain
-the enforcement source; this document records the recommended profile and does
-not claim that the hosted setting is already enabled.
+the enforcement source; this document records the recommended profile. On
+29 October 2026 the hosted rulesets matched it: the
+[development-branch ruleset](https://github.com/Rullst/Rullst/rules/24175738)
+on `main` and the
+[maintained-branch ruleset](https://github.com/Rullst/Rullst/rules/24080901)
+on `v12` (see [GOVERNANCE.md](GOVERNANCE.md#change-and-release-controls)).
 
 ### Observed v13 protection
 
@@ -378,7 +382,9 @@ This initial merge profile does not replace the release policy's 28 complete
 workflow receipts, manual native/security jobs, package inspection or protected
 crates.io deployment approval. The additional automatic security workflows
 are enabled on v13 by this preparation change; the profile above names only
-checks already emitted by the integration candidate.
+checks already emitted by the integration candidate. The `v13` branch was later
+retired into `main`, and the release policy now requires 25 workflow receipts
+(`.github/release-required-workflows.json`).
 
 ## Phase 4 release-engineering status
 
@@ -999,7 +1005,7 @@ dependency graph make static estimates unreliable.
 | [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main/v12/v13 push and PR, daily, manual | Blocking | Cargo Audit over the production lock and all eleven fuzz-package locks with one advisory-database fetch. Scheduled and manual runs add a job that audits the protected `v12` locks, because scheduled workflows only check out the default branch. The v12 candidate applies no advisory exceptions; future exceptions must pass the separate owner/expiry governance check. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, eight-shard multi-OS tests including Cargo-aware doctests sourced from all 51 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from full/CLI manual Rust CI or admitted tag release | Blocking caller job; required release evidence | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories before attestation. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Validates the shared 42-target inventory and eleven package lockfiles, restores each real target corpus, performs a bounded warm-up, minimizes it, uploads the result and warms the campaign's content-addressed compiler cache; individual target failures are retained but tolerated, while dependency-lock drift remains a hard failure. |
