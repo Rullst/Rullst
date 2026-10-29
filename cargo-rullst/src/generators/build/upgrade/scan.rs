@@ -71,4 +71,23 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
         std::fs::remove_file(outside).unwrap();
     }
+
+    #[cfg(unix)]
+    #[test]
+    fn build_output_and_nested_packages_are_not_walked() {
+        let root =
+            std::env::temp_dir().join(format!("rullst-upgrade-skip-{}", rand::random::<u64>()));
+        let outside = root.with_extension("outside.rs");
+        std::fs::write(&outside, "fn outside() {}\n").unwrap();
+        for directory in ["src", "target/debug", "member/src"] {
+            std::fs::create_dir_all(root.join(directory)).unwrap();
+        }
+        std::fs::write(root.join("member/Cargo.toml"), "[package]\n").unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("target/debug/linked.rs")).unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("member/src/linked.rs")).unwrap();
+
+        reject_symlinked_sources(std::slice::from_ref(&root)).unwrap();
+        std::fs::remove_dir_all(root).unwrap();
+        std::fs::remove_file(outside).unwrap();
+    }
 }

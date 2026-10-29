@@ -564,12 +564,21 @@ the changed lines and fails when a mutant survives. Resolve a red result
 before merging, with a test that fails with the mutant or, when the mutant is
 truly equivalent, with an entry in the list below. Branch protection does not
 require the check yet. `.github/mutants-pr-exclude.txt` lists the files it
-skips: the CLI, whose generated-project suites are too slow to rerun per
-mutant, the experimental `cargo-rullst-extras` (lighter tests by design), and
-adapters exercised only by wrappers that own a disposable
-PostgreSQL, MySQL or authenticated Redis server. Those files remain the
-manual campaign's responsibility, through its
+skips: the experimental `cargo-rullst-extras` (lighter tests by design), and
+adapters exercised only by wrappers that own a disposable PostgreSQL, MySQL or
+authenticated Redis server. Those files remain the manual campaign's
+responsibility, through its
 [contract mode](#owned-server-contract-mutation-runs).
+
+The CLI's integration suites build generated projects, which is too slow to
+repeat for every mutant, so `.github/mutants-pr.sh` runs two passes. The
+workspace pass tests each mutant with its package's whole test suite and
+leaves `cargo-rullst` out; the CLI pass mutates only the files listed in
+`.github/mutants-pr-cli.txt` and tests them with the CLI's library unit tests
+(`cargo test --lib`), the scope of a targeted `mutants.yml` run with
+`test_scope=lib`. A CLI file joins the list once such a run leaves no missed
+mutant apart from accepted equivalents; the other CLI files are not mutated by
+the gate.
 
 ### Accepted equivalent mutants
 
@@ -602,8 +611,13 @@ all-feature build can only open against a PostgreSQL server:
 `rullst-core/tests/artisan_open_pool.rs` opens one in a PostgreSQL
 testcontainer and runs `db:status` in a child process, so runs with Docker
 measure the guard, and runs without it skip the test unless
-`RULLST_REQUIRE_TESTCONTAINERS=true`) gave every missed mutant in their files
-a test, except these.
+`RULLST_REQUIRE_TESTCONTAINERS=true`), the `cargo-rullst` campaign (targeted
+runs, with the CLI's library unit tests, of the self-update, audit, `add` and
+consumer-file, doctor, deploy and `upgrade` files; it covers the files
+`.github/mutants-pr-cli.txt` lists, and ROADMAP.md names the survivors left in
+the others) and the Studio remote-mode campaign (targeted runs of every
+`rullst-studio/src/remote` file and of the `rullst-studio` binary with the
+package's tests) gave every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
@@ -622,6 +636,20 @@ entry only when its exact cargo-mutants name is also listed in
 | `cargo-rullst/src/generators/audit_report/a11y.rs`: `attributes`, the end `index + 1` after `>` with `index - 1` or `index * 1` | The tag scanner resumes at the next `<`; the byte before a closing `>` cannot open a tag, because a tag name never starts with `>`. |
 | `cargo-rullst-extras/src/green/procfs.rs`: `ticks_per_second`, `> 0` with `>= 0` | The clock tick rate is always positive. |
 | `cargo-rullst-extras/src/green/procfs.rs`: the non-Unix `ticks_per_second` with `Some(0)` or `Some(1)` | Not compiled on Linux. |
+| `cargo-rullst/src/generators/doctor/probe.rs`: `run`, `stdout.len() > OUTPUT_LIMIT` with `>=` | An output of exactly `OUTPUT_LIMIT` bytes is cut at its own length, which leaves it unchanged. |
+| `cargo-rullst/src/generators/doctor/database.rs`: `tcp_reachable`, delete the `TimedOut \| WouldBlock` arm | `TcpStream::connect_timeout` reports its timeout as a `TimedOut` error whose text is `connection timed out`, which the catch-all arm passes through unchanged, and never returns `WouldBlock` on Linux. |
+| `cargo-rullst/src/generators/output_guard.rs`: `write_output`, the `NotFound` guard of `fs::metadata` with `true` | `reject_symlink` has already returned every other `lstat` error, and for a path that is not a symlink `stat` fails exactly when `lstat` does. |
+| `cargo-rullst/src/generators/output_guard.rs`: `write_output`, the `!parent.as_os_str().is_empty()` guard with `true` | `tempfile` creates its file for the empty directory `""` in the current directory, as it does for `"."`. |
+| `cargo-rullst/src/generators/consumer_files.rs`: `reject_links`, the `NotFound` guard with `true` | Any other `lstat` failure of an ancestor (permission, not a directory, name too long) recurs with the same error when the path itself is read or created. |
+| `cargo-rullst/src/update/project/permissions_unix.rs`: `xattr_names`, `size > MAX_XATTR_NAMES` with `==` or `>=` | Linux never reports a name list longer than 64 KiB, and a list of exactly 64 KiB cannot hold only `security.selinux`, so `has_unreproduced_attribute` refuses it with the same error. |
+| `cargo-rullst/src/update/cache/unix.rs`: `options`, `NOFOLLOW \| NONBLOCK` with `^` | The two flags occupy disjoint bits, so OR and XOR give the same value. |
+| `cargo-rullst/src/update/cache/unix.rs`: `load_at`, `FILE_LIMIT + 1` with `-` or `*` | `validate_file` has already refused a file longer than `FILE_LIMIT`. Reading one byte less shortens only a file of exactly `FILE_LIMIT` bytes, whose body `decode` refuses either way because it allows 64 bytes less, and a file that grows during the read is refused either way. |
+| `cargo-rullst/src/generators/audit_source.rs`: `tokenized_views` and `mark_code_tokens`, `index < tokens.len()` with `<=`, and `tokenized_views`, `index = last + 1` with `last - 1` or `last * 1` | At `tokens.len()` neither attribute lookup finds a token, so the loop steps past the end or stops. Resuming on an item's last token or the one before it revisits its terminating `;` or `{ .. }`, which cannot start `#[cfg(test)]`; at the end of the input a re-found attribute only adds a range inside the item already blanked. |
+| `cargo-rullst/src/generators/build/upgrade/backup/restore.rs`: `is_link` with `false`, and its Windows reparse-point test with `&` replaced by `\|` or `^` or `!=` by `==` | On Linux `lstat` never reports a symlink as the regular file or directory that `validate_file` and `validate_directory_creation` also require, and the Windows test is not compiled. |
+| `cargo-rullst/src/generators/build/upgrade/backup/restore.rs`: `restore_from`, the index read's `MAX_INDEX_BYTES + 1` and the staging copy's `expected_size + 1` with `*` | The index and each snapshot have already been bounded by their metadata, so reading one byte more matters only for a file that grows between that check and the read, which a test cannot arrange. |
+| `cargo-rullst/src/generators/deploy_doctor/input.rs`: `linked` with `false` and its Windows reparse-point test; in `read`, the ancestor `linked(..) \|\| !is_dir()`, the file `!is_file() \|\| linked(..) \|\| len > MAX_FILE` and the opened-file re-check with `&&`, `NOFOLLOW \| NONBLOCK` with `&` or `^`, and `MAX_FILE + 1` with `*` | On Linux `lstat` never reports a symlink as a file or directory, and the Windows test is not compiled. A non-directory ancestor fails the final lookup with `NotADirectory`, and a directory, FIFO or oversized file that passes a weakened check is refused after opening or reading with the same `File` error. The open flags, the re-check and the extra byte matter only when the file is replaced or grows between `lstat`, `open` and the read, which a test cannot arrange. |
+| `cargo-rullst/src/update/project/snapshot.rs`: the non-Windows `linked` with `false`; in `read`, `NOFOLLOW \| NONBLOCK` with `&` or `^`, the opened-file re-check `!opened.is_file() \|\| linked(..) \|\| len != ...` with `&&`, and `MAX_FILE + 1` with `*` | `lstat` never reports a symlink as a file or directory, so the type checks refuse links either way. `read` has already refused links, special files and files over 64 MiB, so the open flags, the re-check after opening and the extra byte matter only when the file is replaced or grows between `lstat`, `open` and the read, which a test cannot arrange. |
+| `rullst-studio/src/remote/history.rs`: `Sample::from_outcome`, `window.requests > 0` with `>=` | With no request the rate is `0 / 0`, which `finite` drops, so the sample stores no rate either way. |
 | `rullst-iot/src/coap.rs` (`CoapRequest::encode` twice, `append_option`), `rullst-iot/src/mqtt.rs` (`MqttPublish::encode`) and `rullst-iot/src/i2c.rs` (`I2cHelper::try_build_read_frame`): `\|` with `^` | The operands occupy disjoint bits, so OR and XOR build the same byte. |
 | `rullst-iot/src/coap.rs`: `CoapRequest::encode`, `payload.len() > MAX_COAP_DATAGRAM_BYTES` with `==` or `>=` | `CoapRequest::payload` already bounds the payload, and `ensure_room` rejects the same lengths with the same error. |
 | `rullst-iot/src/mqtt.rs`: `MqttPublish::encode`, `remaining_length > MQTT_MAX_VARIABLE_BYTE_INTEGER` with `==` or `>=` | The builders keep topic and payload far below that limit, and `variable_byte_integer` repeats the check with the same error. |
@@ -728,7 +756,8 @@ RASP decoder, the HTML snapshot normaliser and the accessibility scanner so
 that every step consumes input, and bounded the WAF linear-time test, which
 removed their timeouts. The core campaign ran the queue worker, realtime,
 multipart CSRF, byteranges and long PII masking tests against a deadline
-instead, which turned their timeouts into caught mutants. The remaining ones
+instead, which turned their timeouts into caught mutants; the CLI campaign
+bounded the update cache's FIFO test the same way. The remaining ones
 turn forward progress into a loop that never ends without allocating, in code
 every test of the file reaches, so no single test can fail first:
 
@@ -738,6 +767,11 @@ every test of the file reaches, so no single test can fail first:
   scanner's `level` and `path` loops, where an index step (`+= 1`, `+= 2`,
   `next + 1`, `end + 1`, `end + 2`) becomes `-` or `*`, or `path` returns
   `0` or `1`, and the scan revisits the same token forever.
+- `cargo-rullst/src/generators/audit_source.rs`: the token scans of
+  `tokenized_views`, `item_end`, `mark_code_tokens` and `doc_attribute`, where
+  an index step (`+= 1`) becomes `-=` or `*=`, `item_end` returns `0` or `1`,
+  or `doc_attribute` returns `Some(0)` or `Some(1)` or its `next + 1` becomes
+  `-`, and the scan revisits the same token forever.
 - `rullst-security/src/log_redactor.rs`: the bearer, identifier, separator
   and escaped-quote scans, where an index step (`+= 1`, `+= 2`) becomes `-`
   or `*`, a key offset (`cursor + offset`, `key_start +
@@ -978,7 +1012,7 @@ dependency graph make static estimates unreliable.
 | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main/v12/v13 push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
 | [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Blocking release scope; bounded evidence | Pinned nightly-only Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts without changing Rullst's stable toolchain or MSRV. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. |
 | [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | A source-bound inventory preflight followed by eighty lossless pinned cargo-mutants 27.1.0 shards with four concurrent jobs over that source's all-feature workspace, each shard with a pinned Redis service for the `RULLST_TEST_REDIS_URL` contracts, one validated production-file diagnostic, one owned-server contract (`mode=contract`: a PostgreSQL or Redis wrapper's adapter mutants against the server it owns, or the ORM crates against the `rullst-orm` SQLite suite), or policy-bound exact-SHA recovery of reviewed failed fragments. Successful immutable artifacts may be reused, but the content-addressed aggregate still requires every reviewed candidate exactly once and carries source/run/branch/tool/inventory provenance. Findings stay informational, while baseline/tool/invocation failures, missing artifacts, incomplete classification and reviewed-inventory drift fail the run. The completed v12 receipt is run `34761010296`: 14,391/14,391 classified and a conservative 70.57% caught. |
-| [`mutants-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants-pr.yml) | pull requests to main that change Rust | Blocking by policy; not a required check | Lists the pinned cargo-mutants 27.1.0 all-feature mutants on the Rust lines the pull request changes, skipping the globs in `.github/mutants-pr-exclude.txt`, and tests them in at most eight shards with a Redis service and the targeted-run timeouts and memory cap. A missed mutant fails the run; unviable and timed-out mutants do not. See [Pull-request mutation gate](#pull-request-mutation-gate). |
+| [`mutants-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants-pr.yml) | pull requests to main that change Rust | Blocking by policy; not a required check | Lists the pinned cargo-mutants 27.1.0 all-feature mutants on the Rust lines the pull request changes, skipping the globs in `.github/mutants-pr-exclude.txt` and every CLI file not listed in `.github/mutants-pr-cli.txt` (listed CLI files run against the CLI's library tests), and tests them in at most eight shards with a Redis service and the targeted-run timeouts and memory cap. A missed mutant fails the run; unviable and timed-out mutants do not. See [Pull-request mutation gate](#pull-request-mutation-gate). |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main/v12/v13 push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
 | [`pages.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pages.yml) | main push, manual | Deploy | Validates and deploys the current development landing page, local visual assets, mdBook and benchmark hub/dashboards to GitHub Pages while preserving history data fetched from `gh-pages`. |
 | [`pqc-compliance.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pqc-compliance.yml) | relevant main changes and PRs, weekly, manual | Blocking | Signed OTA and Vault tests, RustSec audit, and simulator-boundary checks; explicitly no PQC/HSM certification. |

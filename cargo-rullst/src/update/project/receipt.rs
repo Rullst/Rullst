@@ -145,3 +145,7 @@ impl Verified {
             .map_err(|error| ProjectError::Planning(error.to_string()))
     }
 }
+
+#[cfg(test)]
+#[path = "receipt_tests.rs"]
+mod tests;

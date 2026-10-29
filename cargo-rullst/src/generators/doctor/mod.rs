@@ -232,3 +232,7 @@ pub(crate) fn run(options: DoctorOptions) -> Result<(), Box<dyn std::error::Erro
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "run_tests.rs"]
+mod run_tests;

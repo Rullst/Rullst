@@ -2,10 +2,10 @@
 //! `REMOTE-01`, `REMOTE-02`, `REMOTE-05`, `REMOTE-07`).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use super::client::FetchLimits;
+use super::client::{FetchError, FetchLimits};
 use super::router::{RemoteState, form_token_valid, router};
 use super::server_test::{TOKEN, TempDir, start};
-use super::{RemoteStudioOptions, state};
+use super::{RemoteStudioError, RemoteStudioOptions, run_remote_studio, state};
 use axum::Router;
 use axum::body::Body;
 use axum::http::{Method, Request, StatusCode, header};
@@ -286,4 +286,122 @@ fn form_tokens_compare_whole_values() {
     assert!(!form_token_valid("abc123", "abc124"));
     assert!(!form_token_valid("abc123", "abc12"));
     assert!(!form_token_valid("abc123", ""));
+    // Equal byte differences must not cancel out.
+    assert!(!form_token_valid("ab", "ba"));
+}
+
+#[tokio::test]
+async fn removal_needs_the_form_token_and_forgets_the_project() {
+    let studio = studio().await;
+    let form = add_form(&studio, "shop", "https://shop.example");
+    assert_eq!(
+        post(&studio, "/studio/projects", Some(ORIGIN), &form).await,
+        StatusCode::SEE_OTHER
+    );
+    let wrong = format!("form_token={}&name=shop", "0".repeat(64));
+    assert_eq!(
+        post(&studio, "/studio/projects/remove", Some(ORIGIN), &wrong).await,
+        StatusCode::FORBIDDEN
+    );
+    assert_eq!(studio.state.store.load().unwrap().len(), 1);
+
+    studio
+        .state
+        .monitoring
+        .observe("shop", &Err(FetchError::Timeout));
+    assert!(studio.state.monitoring.last_status("shop").is_some());
+    let remove = format!("form_token={}&name=shop", studio.state.form_token);
+    assert_eq!(
+        post(&studio, "/studio/projects/remove", Some(ORIGIN), &remove).await,
+        StatusCode::SEE_OTHER
+    );
+    assert_eq!(studio.state.monitoring.last_status("shop"), None);
+    let (status, page) = get(&studio, "/studio?notice=removed").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(page.contains("Project removed"));
+    assert!(page.contains("Its token was deleted from this machine."));
+}
+
+#[tokio::test]
+async fn forms_up_to_8_kib_are_read() {
+    let studio = studio().await;
+    let base_url = format!("https://shop.example/{}", "a".repeat(480));
+    let form = format!(
+        "form_token={}&name=shop&base_url={}&token={}",
+        studio.state.form_token,
+        urlencoding::encode(&base_url),
+        "t".repeat(512)
+    );
+    assert!(form.len() > 1_100, "{}", form.len());
+    assert_eq!(
+        post(&studio, "/studio/projects", Some(ORIGIN), &form).await,
+        StatusCode::SEE_OTHER
+    );
+    let oversized = format!("{form}&padding={}", "p".repeat(8 * 1024));
+    assert_eq!(
+        post(&studio, "/studio/projects", Some(ORIGIN), &oversized).await,
+        StatusCode::PAYLOAD_TOO_LARGE
+    );
+}
+
+#[tokio::test]
+async fn an_unreadable_project_list_is_reported_instead_of_a_page() {
+    let studio = studio().await;
+    let projects = studio._directory.paths().projects;
+    std::fs::create_dir_all(projects.parent().unwrap()).unwrap();
+    std::fs::write(&projects, "not json").unwrap();
+    for uri in ["/studio", "/studio/radar"] {
+        let (status, page) = get(&studio, uri).await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{uri}");
+        assert!(page.contains("The project list is unavailable"), "{uri}");
+        assert!(
+            page.contains("the project list file is malformed; fix or remove it"),
+            "{uri}"
+        );
+    }
+}
+
+#[test]
+fn startup_errors_are_fixed_text() {
+    assert_eq!(
+        RemoteStudioError::Randomness.to_string(),
+        "operating-system randomness is unavailable"
+    );
+    assert_eq!(
+        RemoteStudioError::Client.to_string(),
+        "the HTTP client could not be created"
+    );
+    let io = std::io::Error::new(std::io::ErrorKind::AddrInUse, "in use");
+    assert_eq!(
+        RemoteStudioError::Io(io).to_string(),
+        "Studio could not listen: in use"
+    );
+}
+
+#[tokio::test]
+async fn the_form_token_is_256_random_bits_in_hex() {
+    let (first, second) = (studio().await, studio().await);
+    let token = &first.state.form_token;
+    assert_eq!(token.len(), 64);
+    assert!(
+        token
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    );
+    assert_ne!(token, &second.state.form_token);
+}
+
+#[tokio::test]
+async fn a_port_in_use_stops_the_studio_with_an_error() {
+    let taken = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let directory = TempDir::new("port-in-use");
+    let mut options = RemoteStudioOptions::new(directory.paths());
+    options.port = taken.local_addr().unwrap().port();
+    let outcome = tokio::time::timeout(Duration::from_secs(10), run_remote_studio(options))
+        .await
+        .expect("the Studio should stop instead of serving");
+    assert!(
+        matches!(outcome, Err(RemoteStudioError::Io(_))),
+        "{outcome:?}"
+    );
 }

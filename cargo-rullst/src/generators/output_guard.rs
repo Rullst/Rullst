@@ -203,4 +203,78 @@ mod tests {
         assert_eq!(fs::read_to_string(&victim).unwrap(), "outside");
         assert!(!directory.path().join("missing").exists());
     }
+
+    #[cfg(unix)]
+    #[test]
+    fn lookup_errors_other_than_absence_are_reported() {
+        let directory = tempfile::tempdir().unwrap();
+        let file = directory.path().join("file");
+        fs::write(&file, "not a directory").unwrap();
+        let below = file.join("child");
+        assert!(reject_existing("outputs", std::slice::from_ref(&below), "").is_err());
+        assert!(reject_symlink(&below).is_err());
+    }
+
+    /// Runs `existing_migrations` in a child test process inside a project.
+    #[test]
+    fn existing_migrations_child_fixture() {
+        let Some(report) = std::env::var_os("RULLST_OUTPUT_GUARD_REPORT") else {
+            return;
+        };
+        let text = match existing_migrations(&["_create_users.rs".to_string()]) {
+            Ok(paths) => format!("ok {paths:?}"),
+            Err(error) => format!("err {}", error.kind()),
+        };
+        fs::write(report, text).unwrap();
+    }
+
+    fn existing_migrations_in(project: &Path) -> String {
+        let report = project.join("report");
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "generators::output_guard::tests::existing_migrations_child_fixture",
+                "--nocapture",
+            ])
+            .current_dir(project)
+            .env("RULLST_OUTPUT_GUARD_REPORT", &report)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .status()
+            .unwrap();
+        assert!(status.success());
+        fs::read_to_string(report).unwrap()
+    }
+
+    #[test]
+    fn existing_migrations_lists_only_matching_files_of_the_project() {
+        let project = tempfile::tempdir().unwrap();
+        assert_eq!(existing_migrations_in(project.path()), "ok []");
+        let migrations = project.path().join("src/migrations");
+        fs::create_dir_all(&migrations).unwrap();
+        for name in [
+            "20260101_create_users.rs",
+            "20250101_create_users.rs",
+            "20260102_create_posts.rs",
+        ] {
+            fs::write(migrations.join(name), "").unwrap();
+        }
+        // The listed paths use the platform's separator after the directory.
+        let expected: Vec<String> = ["20250101_create_users.rs", "20260101_create_users.rs"]
+            .iter()
+            .map(|name| {
+                std::path::Path::new("src/migrations")
+                    .join(name)
+                    .display()
+                    .to_string()
+            })
+            .collect();
+        assert_eq!(
+            existing_migrations_in(project.path()),
+            format!("ok {expected:?}")
+        );
+        fs::remove_dir_all(&migrations).unwrap();
+        fs::write(&migrations, "not a directory").unwrap();
+        assert!(existing_migrations_in(project.path()).starts_with("err "));
+    }
 }

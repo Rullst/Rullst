@@ -187,3 +187,7 @@ pub(super) fn locked_versions(
     }
     Ok(locked)
 }
+
+#[cfg(test)]
+#[path = "isolated_tests.rs"]
+mod tests;

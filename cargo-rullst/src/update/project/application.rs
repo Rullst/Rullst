@@ -205,3 +205,7 @@ fn validate_scope(change: &super::review::Change) -> Result<(), ProjectError> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "application_tests.rs"]
+mod tests;

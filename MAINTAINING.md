@@ -112,7 +112,10 @@ and fails on any surviving mutant.
 - Code compiled only without some feature is invisible to the gate; code in
   `*_tests.rs`, `tests.rs`, `tests/` and the paths in
   [`.github/mutants-pr-exclude.txt`](.github/mutants-pr-exclude.txt) is not
-  mutated.
+  mutated. Of `cargo-rullst`, only the files in
+  [`.github/mutants-pr-cli.txt`](.github/mutants-pr-cli.txt) are mutated, and
+  their mutants run against the CLI's library unit tests only, so a CLI test
+  that kills one must live in the library (`src/`), not in `tests/`.
 - A redundant condition produces an equivalent mutant (for example
   `a == X || b == X || a != b`, where the middle term never changes the
   result). Simplify the code instead of documenting the mutant.
@@ -179,7 +182,9 @@ Full measurements run on hosted runners with `mutants.yml`
 -f test_scope=package [-f shard=k/n]`). A dispatch from a branch runs that
 branch's version of the workflow. Download each run's `outcomes.json`, list
 the `MissedMutant` and `Timeout` entries, and kill them with tests as in
-section 4. Record campaign status (what is measured, what remains) in
+section 4. Measure `cargo-rullst` files with `-f test_scope=lib`, the scope the
+pull-request gate uses for them; a file reaches the gate's
+`.github/mutants-pr-cli.txt` once that run leaves only accepted equivalents. Record campaign status (what is measured, what remains) in
 `ROADMAP.md`; mutants that only a live provider response reaches stay with
 provider sandbox testing.
 

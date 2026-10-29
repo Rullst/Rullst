@@ -3,7 +3,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::crypto::SecretKey;
-use super::projects::{ProjectError, ProjectStore, validate_base_url, validate_name};
+use super::projects::{
+    ProjectError, ProjectStore, token_context, validate_base_url, validate_name, webhook_context,
+};
 use super::server_test::{TOKEN, TempDir};
 
 #[test]
@@ -226,4 +228,83 @@ fn files_are_private_and_links_are_refused() {
         store.add("blog", "https://blog.example", TOKEN),
         Err(ProjectError::Storage)
     );
+}
+
+#[test]
+fn secrets_never_print_and_sealed_values_are_bounded() {
+    let directory = TempDir::new("crypto-bound");
+    let key = SecretKey::load_or_create(&directory.path().join("k")).unwrap();
+    // 3041 bytes seal to exactly the 4096-character bound.
+    let largest = "s".repeat(3041);
+    let sealed = key.seal(&largest, b"context").unwrap();
+    assert_eq!(sealed.len(), 4096);
+    let opened = key.open(&sealed, b"context").unwrap();
+    assert_eq!(opened.expose(), largest);
+    assert_eq!(format!("{opened:?}"), "[REDACTED]");
+    let larger = key.seal(&format!("{largest}s"), b"context").unwrap();
+    assert!(larger.len() > 4096);
+    assert!(key.open(&larger, b"context").is_err());
+}
+
+#[test]
+fn errors_and_sealing_contexts_are_fixed_text() {
+    assert_eq!(
+        ProjectError::NotFound.to_string(),
+        "no project has this name"
+    );
+    assert_eq!(
+        ProjectError::Storage.to_string(),
+        "the project list or its key could not be read or written"
+    );
+    assert_eq!(
+        webhook_context("shop", "https://shop.example/"),
+        b"rullst-studio/webhook\nshop\nhttps://shop.example/".to_vec()
+    );
+    assert_eq!(
+        token_context("shop", "https://shop.example/"),
+        b"rullst-studio/token\nshop\nhttps://shop.example/".to_vec()
+    );
+}
+
+#[test]
+fn a_base_url_may_fill_512_characters_and_never_carries_credentials() {
+    let longest = format!("https://shop.example/{}", "a".repeat(491));
+    assert_eq!(longest.len(), 512);
+    assert!(validate_base_url(&longest).is_ok());
+    assert_eq!(
+        validate_base_url(&format!("{longest}a")).unwrap_err(),
+        ProjectError::InvalidUrl
+    );
+    for input in ["https://user@shop.example", "https://:x@shop.example"] {
+        assert_eq!(
+            validate_base_url(input).unwrap_err(),
+            ProjectError::InvalidUrl,
+            "{input}"
+        );
+    }
+}
+
+#[test]
+fn a_file_with_another_version_or_an_invalid_name_is_malformed() {
+    let directory = TempDir::new("stored-fields");
+    let paths = directory.paths();
+    let store = ProjectStore::new(paths.clone());
+    store.add("shop", "https://shop.example", TOKEN).unwrap();
+    let original: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&paths.projects).unwrap()).unwrap();
+    for (pointer, value) in [
+        ("/version", serde_json::json!(2)),
+        ("/projects/0/name", serde_json::json!("-shop")),
+    ] {
+        let mut edited = original.clone();
+        *edited.pointer_mut(pointer).unwrap() = value;
+        std::fs::write(&paths.projects, serde_json::to_vec(&edited).unwrap()).unwrap();
+        assert_eq!(
+            store.load().unwrap_err(),
+            ProjectError::InvalidFile,
+            "{pointer}"
+        );
+    }
+    std::fs::write(&paths.projects, serde_json::to_vec(&original).unwrap()).unwrap();
+    assert_eq!(store.load().unwrap().len(), 1);
 }

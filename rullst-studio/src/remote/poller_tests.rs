@@ -3,12 +3,13 @@
 
 use super::alerts::AlertRules;
 use super::client::FetchLimits;
-use super::poller::{clamp_interval, poll_round};
+use super::poller::{clamp_interval, poll_round, run};
 use super::projects::WebhookChange;
 use super::router::RemoteState;
 use super::server_test::{TOKEN, TempDir, start};
 use super::{RemoteStudioOptions, state};
-use std::time::Duration;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 async fn remote_state(directory: &TempDir) -> RemoteState {
     let mut options = RemoteStudioOptions::new(directory.paths());
@@ -101,4 +102,23 @@ async fn an_unreachable_watched_project_alerts_once_per_cool_down() {
     assert_eq!(history.alerts(10).await.unwrap().len(), 2);
     assert_eq!(state.monitoring.open_alerts(), 2);
     assert_eq!(history.samples("down", 0).await.unwrap().len(), 3);
+}
+
+#[tokio::test]
+async fn the_poller_runs_a_round_every_interval() {
+    let directory = TempDir::new("poller-run");
+    let state = Arc::new(remote_state(&directory).await);
+    let history = state.history.clone().unwrap();
+    // Every round refreshes the open-alert count, here to zero.
+    state.monitoring.set_open_alerts(99);
+    tokio::time::pause();
+    let task = tokio::spawn(run(state.clone(), history, Duration::from_secs(15)));
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while state.monitoring.open_alerts() != 0 && Instant::now() < deadline {
+        // The paused clock reaches the next round; real time lets SQLite answer.
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    task.abort();
+    assert_eq!(state.monitoring.open_alerts(), 0);
 }

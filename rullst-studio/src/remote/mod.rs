@@ -38,6 +38,8 @@ mod alerts_tests;
 #[cfg(test)]
 mod client_tests;
 #[cfg(test)]
+mod document_tests;
+#[cfg(test)]
 mod history_tests;
 #[cfg(test)]
 mod poller_tests;

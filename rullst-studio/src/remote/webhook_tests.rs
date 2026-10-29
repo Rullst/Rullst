@@ -171,3 +171,14 @@ async fn delivery_posts_the_alert_once_and_reports_a_fixed_status() {
         "failed: unreachable"
     );
 }
+
+#[test]
+fn a_webhook_url_may_fill_2048_characters() {
+    let longest = format!("https://hooks.example/{}", "a".repeat(2_048 - 22));
+    assert_eq!(longest.len(), 2_048);
+    assert!(validate_webhook_url(&longest).is_ok());
+    assert_eq!(
+        validate_webhook_url(&format!("{longest}a")).unwrap_err(),
+        ProjectError::InvalidWebhook
+    );
+}

@@ -207,3 +207,7 @@ impl State {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "state_tests.rs"]
+mod tests;

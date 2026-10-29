@@ -50,23 +50,25 @@ pub(crate) fn version_check(requirement: Option<&str>, cli_version: &str) -> Che
         );
     }
     match (requirement_major(requirement), cli_major) {
-        (Some(project), Some(cli)) if project == cli => Check::pass(
-            ID,
-            TITLE,
-            format!("rullst {requirement} matches this CLI ({cli_version})"),
-        ),
-        (Some(project), Some(cli)) if project < cli => Check::warn(
-            ID,
-            TITLE,
-            format!("project uses rullst {requirement}; this CLI is {cli_version}"),
-            "cargo rullst upgrade --dry-run, then cargo rullst upgrade",
-        ),
-        (Some(_), Some(_)) => Check::warn(
-            ID,
-            TITLE,
-            format!("project uses rullst {requirement}, newer than this CLI ({cli_version})"),
-            "Install the matching CLI: cargo install cargo-rullst --locked",
-        ),
+        (Some(project), Some(cli)) => match project.cmp(&cli) {
+            std::cmp::Ordering::Equal => Check::pass(
+                ID,
+                TITLE,
+                format!("rullst {requirement} matches this CLI ({cli_version})"),
+            ),
+            std::cmp::Ordering::Less => Check::warn(
+                ID,
+                TITLE,
+                format!("project uses rullst {requirement}; this CLI is {cli_version}"),
+                "cargo rullst upgrade --dry-run, then cargo rullst upgrade",
+            ),
+            std::cmp::Ordering::Greater => Check::warn(
+                ID,
+                TITLE,
+                format!("project uses rullst {requirement}, newer than this CLI ({cli_version})"),
+                "Install the matching CLI: cargo install cargo-rullst --locked",
+            ),
+        },
         _ => Check::info(
             ID,
             TITLE,
@@ -335,3 +337,7 @@ pub(crate) fn lockfile_check(root: &Path) -> Check {
         )
     }
 }
+
+#[cfg(test)]
+#[path = "project_tests.rs"]
+mod tests;

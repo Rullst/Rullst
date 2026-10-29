@@ -405,6 +405,19 @@ fn a_failed_fix_keeps_the_warning_with_a_manual_command() {
     let check = report.check("toolchain.components").unwrap();
     assert_eq!(check.status, Status::Warn);
     assert!(check.detail.starts_with("--fix could not install them"));
+    // Only the components check is replaced; every other check stays.
+    let ids: Vec<&str> = report.groups[0]
+        .checks
+        .iter()
+        .map(|check| check.id)
+        .collect();
+    assert_eq!(
+        ids.iter()
+            .filter(|id| **id == "toolchain.components")
+            .count(),
+        1
+    );
+    assert!(ids.contains(&"toolchain.rustc"));
     assert_eq!(
         check.fix.as_deref(),
         Some("Install them manually: rustup component add rustfmt clippy")

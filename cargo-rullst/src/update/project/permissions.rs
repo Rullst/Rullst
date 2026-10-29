@@ -99,4 +99,40 @@ mod tests {
         assert!(bounded(policies).is_err());
         assert!(inspected.get() < 33);
     }
+
+    fn policy(descriptor: usize) -> Permissions {
+        Permissions {
+            readonly: false,
+            unix_mode: None,
+            unix_owner: None,
+            windows_descriptor: Some("x".repeat(descriptor)),
+        }
+    }
+
+    #[test]
+    fn the_aggregate_budget_is_exactly_one_mebibyte() {
+        let empty = serde_json::to_vec(&policy(0)).unwrap().len();
+        let fill = || (0..32).map(|_| Ok(policy(32 * 1024 - empty)));
+        assert_eq!(bounded(fill()).unwrap().len(), 32);
+        assert!(bounded(fill().chain([Ok(policy(0))])).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn capture_many_records_one_policy_per_file() {
+        let temp = tempfile::tempdir().unwrap();
+        fs::write(temp.path().join("Cargo.toml"), "x").unwrap();
+        let records = [
+            snapshot::record("Cargo.toml", Some(b"x")),
+            snapshot::record("Cargo.lock", None),
+        ];
+        let policies = Permissions::capture_many(temp.path(), records.iter()).unwrap();
+        assert_eq!(
+            policies,
+            [
+                Permissions::capture(temp.path(), &records[0]).unwrap(),
+                Permissions::capture(temp.path(), &records[1]).unwrap(),
+            ]
+        );
+    }
 }

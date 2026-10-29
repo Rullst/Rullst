@@ -430,3 +430,7 @@ mod tests {
         ));
     }
 }
+
+#[cfg(test)]
+#[path = "audit_evidence_tests.rs"]
+mod evidence_tests;

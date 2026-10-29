@@ -306,3 +306,7 @@ mod tests {
         assert!(env_file(&(entries + "KEY_512=value\n")).is_err());
     }
 }
+
+#[cfg(test)]
+#[path = "input_tests.rs"]
+mod parsing_tests;

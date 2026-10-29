@@ -329,6 +329,10 @@ fn requirement_floor(comparator: &Comparator) -> Option<Version> {
 }
 
 #[cfg(test)]
+#[path = "manifest_tests.rs"]
+mod table_tests;
+
+#[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;

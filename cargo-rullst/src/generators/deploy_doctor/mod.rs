@@ -144,3 +144,7 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), DoctorError> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "tests.rs"]
+mod tests;
