@@ -90,7 +90,7 @@ fn interactive_blank_wizard_validates_names_and_composes_the_full_profile() {
             Answer::One(0),                    // Blank
             Answer::One(1),                    // JSON API
             Answer::One(4),                    // Turso primary
-            Answer::Many(vec![0, 4, 5, 6, 7]), // AI + every add-on offered
+            Answer::Many(vec![0, 3, 4, 5, 6]), // AI + every add-on offered
             Answer::One(0),                    // Create
         ],
     );
@@ -135,7 +135,7 @@ fn interactive_blank_wizard_validates_names_and_composes_the_full_profile() {
     assert_eq!(
         features.selection,
         Selection::Many {
-            checked: vec![false; 8]
+            checked: vec![false; 7]
         }
     );
     assert_eq!(
@@ -265,7 +265,6 @@ fn profile_flags_skip_their_questions_and_their_features() {
         offered,
         [
             "Redis adapters",
-            "Nix flake",
             "Turso / libSQL add-on",
             "DuckDB",
             "SurrealDB",
@@ -325,7 +324,7 @@ fn back_returns_to_the_previous_question_with_the_earlier_answer_selected() {
     assert_eq!(
         ui.screens[7].selection,
         Selection::Many {
-            checked: vec![false, true, false, false, false, false, false, false, false]
+            checked: vec![false, true, false, false, false, false, false, false]
         }
     );
     assert_eq!(plan.blueprint, BLANK_BLUEPRINT_ID);
@@ -495,5 +494,5 @@ fn the_library_wizard_does_not_offer_packaging_it_cannot_apply() {
         .iter()
         .map(|choice| choice.label.as_str())
         .collect();
-    assert!(!offered.contains(&"Dockerfile") && !offered.contains(&"Nix flake"));
+    assert!(!offered.contains(&"Dockerfile"));
 }

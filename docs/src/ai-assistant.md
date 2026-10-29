@@ -3,8 +3,31 @@
 `cargo rullst ai` is a chat in your terminal that knows Rullst's conventions and
 your project's layout. It can answer questions and propose concrete changes —
 scaffolding commands, file edits and `cargo check` — that you review one at a
-time. It is a v13 preview. The full option list is in the
-[CLI reference](cli_reference.md#cargo-rullst-ai-v13-preview).
+time. It is Experimental and ships in the optional `cargo-rullst-extras`
+package (since 13.0.0-alpha.4). The full option list is in the
+[CLI reference](cli_reference.md#cargo-rullst-ai-extras).
+
+## Context for other assistants
+
+Assistants outside this CLI can read the site's
+[`llms.txt`](https://rullst.github.io/Rullst/llms.txt) (an index of every page
+of this book) and [`llms-full.txt`](https://rullst.github.io/Rullst/llms-full.txt)
+(their full Markdown). For an application, `cargo rullst generate:ai-context`
+writes `.llms.txt`, `.rullst/context-map.json` and an `AGENTS.md` (see
+[project context](project-context.md)), and the data commands print JSON with
+`--json` ([machine-readable output](cli_reference.md#machine-readable-output)).
+
+## Install
+
+Install the extras with the same version as the CLI:
+
+```bash
+cargo install cargo-rullst-extras --version =13.0.0-alpha.3 --locked
+```
+
+`cargo rullst ai …` runs `cargo-rullst-extras ai …` found on `PATH`, with the
+same arguments and exit status. Without the extras, `cargo rullst ai` prints
+that install command and exits with status 1.
 
 ## 1. Try it offline
 
@@ -110,7 +133,7 @@ database migrations yourself with `cargo rullst db:migrate`.
 | --- | --- |
 | Create or replace a file below the project root | Paths outside the project, `..`, absolute paths, symlinks, Windows short names (`GIT~1`) or reserved device names |
 | Replace one exact text occurrence in a file | `.git/`, `target/`, `.cargo/`, `.env*` (except `.env.example`), keys, credentials, `Cargo.lock`, toolchain files |
-| `cargo rullst make:*`, `generate:*` (not `generate:models`), `db:status`, `doctor`, `audit`, `inspect routes`/`models`/`schema`, the read-only `ai review` | `deploy`, `foundry:*`, `upgrade`, `update`, `pkg`, `db:rollback`, `db:seed`, `doctor --fix`, `audit --network`, `inspect <file>`, other `ai` subcommands, shell commands |
+| `cargo rullst make:*`, `generate:*` (not `generate:models`), `db:status`, `doctor`, `audit`, `inspect routes`/`models`/`schema`, the read-only `ai review` | `deploy`, `upgrade`, `update`, `pkg`, `db:rollback`, `db:seed`, `doctor --fix`, `audit --network`, `inspect <file>`, other `ai` subcommands, shell commands |
 | `cargo rullst db:migrate` in a development or test project, confirmed on its own | `db:migrate` when the environment the application would use (process `RULLST_ENV`/`APP_ENV` first, then `.env`, then `[app].env`) is staging or production |
 | Outside a project: `cargo rullst new <name> --default [--blueprint …] [--database …]`, confirmed on its own | `new` inside a project or over an existing directory |
 | `cargo check`, `cargo test` (simple flags only) | `cargo run`, `cargo install`, `--manifest-path`, `--config`, `-Z` |

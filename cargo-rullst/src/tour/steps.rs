@@ -124,9 +124,9 @@ pub(crate) const STEPS: [Step; 7] = [
         command: "ai",
         title: "Work with AI",
         explanation: &[
-            "`cargo rullst ai` is a terminal assistant that knows Rullst and your",
-            "project; `ai connect` chooses a model provider (offline mock without",
-            "one). `generate:ai-context` writes .llms.txt for any other assistant.",
+            "`cargo rullst ai` (optional cargo-rullst-extras) is a terminal",
+            "assistant that knows Rullst and your project; `ai connect` chooses a",
+            "model provider. `generate:ai-context` writes .llms.txt for any assistant.",
         ],
         try_commands: &[
             "cargo rullst ai",

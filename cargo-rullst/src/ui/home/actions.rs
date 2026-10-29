@@ -10,6 +10,8 @@ use colored::Colorize;
 pub(in crate::ui) enum HomeAction {
     /// Runs `<program> <command>` directly.
     Command(&'static str),
+    /// Runs a `cargo-rullst-extras` command, or shows how to install it.
+    Extras(&'static str),
     Scaffold,
     Database,
     Deploy,
@@ -44,7 +46,7 @@ impl HomeEntry {
     }
 }
 
-const PROJECT_ENTRIES: [HomeEntry; 11] = [
+const PROJECT_ENTRIES: [HomeEntry; 13] = [
     HomeEntry::new(
         "🚀  Start Dev Server         ",
         "(cargo rullst dev · hot reload)",
@@ -57,7 +59,7 @@ const PROJECT_ENTRIES: [HomeEntry; 11] = [
     ),
     HomeEntry::new(
         "🧰  Scaffold Code            ",
-        "(make:controller, make:model, LiveView, gRPC...)",
+        "(make:controller, make:model, LiveView, Islands...)",
         HomeAction::Scaffold,
     ),
     HomeEntry::new(
@@ -72,13 +74,23 @@ const PROJECT_ENTRIES: [HomeEntry; 11] = [
     ),
     HomeEntry::new(
         "🚢  Deploy                   ",
-        "(Guided PaaS or Foundry SSH pipeline)",
+        "(Dockerfile + compose.yaml + Caddyfile for a VM)",
         HomeAction::Deploy,
     ),
     HomeEntry::new(
         "📁  All Project Operations   ",
-        "(Auth, Desktop, Docker, Nix, Upgrade...)",
+        "(Auth, PWA, Docker, Deploy, Upgrade...)",
         HomeAction::ProjectOperations,
+    ),
+    HomeEntry::new(
+        "🤖  AI Assistant             ",
+        "(cargo rullst ai · extras)",
+        HomeAction::Extras("ai"),
+    ),
+    HomeEntry::new(
+        "🌱  Green Report             ",
+        "(cargo rullst green · extras)",
+        HomeAction::Extras("green"),
     ),
     HomeEntry::new(
         "✨  Create New Project       ",

@@ -18,5 +18,6 @@
   "rullst-nexus",
   "rullst-studio",
   "rullst",
-  "cargo-rullst"
+  "cargo-rullst",
+  "cargo-rullst-extras"
 ]

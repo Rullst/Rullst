@@ -11,6 +11,7 @@ mod choices;
 mod commands;
 pub(crate) mod completions;
 mod dispatch;
+pub(crate) mod forward;
 pub(crate) mod info;
 pub(crate) mod next_steps;
 pub(crate) mod runtime;

@@ -49,10 +49,22 @@ class GeneratedFilesTests(unittest.TestCase):
 
     def test_order_follows_summary(self):
         expected = [GENERATOR.page_url(page) for page in summary_pages()]
-        linked = re.findall(r"^- \[[^\]]+\]\((\S+)\)", self.index, re.M)
-        self.assertEqual(list(dict.fromkeys(linked)), expected)
+        main, _, optional = self.index.partition("\n## Optional\n")
+        linked = re.findall(r"^- \[[^\]]+\]\((\S+)\)", main, re.M)
+        linked_optional = re.findall(r"^- \[[^\]]+\]\((\S+)\)", optional, re.M)
+        # Every page is listed once; "Optional" keeps SUMMARY order within itself.
+        self.assertEqual(sorted(set(linked) | set(linked_optional)), sorted(expected))
+        self.assertEqual(set(linked) & set(linked_optional), set())
+        self.assertEqual(linked_optional, [url for url in expected if url in linked_optional])
+        self.assertEqual(linked, [url for url in expected if url in linked])
         sources = re.findall(r"^Source: (\S+)$", self.full, re.M)
         self.assertEqual(sources, expected)
+
+    def test_long_reference_pages_are_optional(self):
+        _, _, optional = self.index.partition("\n## Optional\n")
+        self.assertIn(GENERATOR.page_url("workflows.md"), optional)
+        self.assertNotIn(GENERATOR.page_url("spec.md"), optional)
+        self.assertNotIn(GENERATOR.page_url("cli_reference.md"), optional)
 
     def test_every_page_starts_with_its_title_and_source(self):
         headers = re.findall(r"^---\n\n# .+\n\nSource: (\S+)\n\n", self.full, re.M)
@@ -128,6 +140,17 @@ class FixtureBookTests(unittest.TestCase):
         self.assertIn("[kept](guide/page.md)", full)
         self.assertIn("[back](https://rullst.github.io/Rullst/book/intro.html)", full)
         self.assertNotIn("hidden -->", full)
+
+    def test_long_pages_move_to_optional_and_empty_parts_disappear(self):
+        long = "# Long\n\nA long page.\n\n" + "word " * (GENERATOR.OPTIONAL_BYTES // 5 + 10)
+        (self.docs / "src/guide/page.md").write_text(long)
+        index, full = GENERATOR.generate(self.docs)
+        self.assertNotIn("## Part One\n\n- [Guide]", index)
+        (self.docs / "src/SUMMARY.md").write_text("# Summary\n\n# Only\n\n- [Guide](guide/page.md)\n")
+        self.assertNotIn("## Only", GENERATOR.generate(self.docs)[0])
+        self.assertIn("\n## Optional\n\n- [Guide](https://rullst.github.io/Rullst/book/guide/page.html)"
+                      ": A long page.", index)
+        self.assertIn("Source: https://rullst.github.io/Rullst/book/guide/page.html", full)
 
     def test_missing_include_fails(self):
         (self.docs / "src/intro.md").write_text("# Intro\n\n{{#include missing.md}}\n")

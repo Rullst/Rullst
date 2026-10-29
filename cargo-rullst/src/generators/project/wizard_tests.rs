@@ -297,13 +297,13 @@ fn profile_flags_lock_their_questions() {
         options: ProjectScaffoldOptions {
             api: true,
             wants_ai: true,
-            buildah: true,
+            docker: true,
             ..ProjectScaffoldOptions::default()
         },
         ..NewProjectRequest::default()
     });
     assert!(locked.name && locked.blueprint && locked.application && locked.ai);
-    assert!(locked.docker && !locked.database && !locked.redis && !locked.nix);
+    assert!(locked.docker && !locked.database && !locked.redis);
 
     for options in [
         ProjectScaffoldOptions {

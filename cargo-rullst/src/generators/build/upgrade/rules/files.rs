@@ -276,6 +276,63 @@ fn removed_mail_driver_line(text: &str) -> Option<usize> {
     None
 }
 
+/// A script line running a command that moved to cargo-rullst-extras in
+/// 13.0.0-alpha.4: `rullst footprint` or `rullst ai` as a whole word.
+pub(super) fn runs_extras_command(line: &str) -> bool {
+    ["rullst footprint", "rullst ai"].iter().any(|command| {
+        line.match_indices(command).any(|(index, _)| {
+            line[index + command.len()..]
+                .chars()
+                .next()
+                .is_none_or(|next| {
+                    !(next.is_ascii_alphanumeric() || matches!(next, '-' | '_' | ':'))
+                })
+        })
+    })
+}
+
+/// A script line running the self-updater removed in 13.0.0-alpha.4:
+/// `rullst update check|verify|stage|install`, or `update guided` with its
+/// CLI-installation flags.
+pub(super) fn runs_removed_update_command(line: &str) -> bool {
+    ["check", "verify", "stage", "install"]
+        .iter()
+        .any(|command| line.contains(&format!("rullst update {command}")))
+        || (line.contains("rullst update guided")
+            && (line.contains("--scope") || line.contains("--root")))
+}
+
+/// Whether `line` passes `flag` as a whole word (`--nix`, not `--nixpkgs`).
+fn has_flag(line: &str, flag: &str) -> bool {
+    line.split(|character: char| character.is_whitespace() || character == '=')
+        .any(|word| word == flag)
+}
+
+/// A script line running `deploy` with a platform target removed in
+/// 13.0.0-alpha.4 (Fly.io, Railway or Render).
+pub(super) fn runs_removed_deploy_target(line: &str) -> bool {
+    line.contains("rullst deploy")
+        && ["fly", "railway", "render"].iter().any(|platform| {
+            ["--platform ", "--platform=", "-p "]
+                .iter()
+                .any(|option| line.contains(&format!("{option}{platform}")))
+        })
+}
+
+/// A script line running a generator removed in 13.0.0-alpha.4: Foundry,
+/// `nixify`, Buildah, `make:grpc`, or `new --nix|--buildah`.
+pub(super) fn runs_removed_generator(line: &str) -> bool {
+    [
+        "rullst foundry:",
+        "rullst nixify",
+        "generate:buildah",
+        "make:grpc",
+    ]
+    .iter()
+    .any(|command| line.contains(command))
+        || (line.contains("rullst new") && (has_flag(line, "--nix") || has_flag(line, "--buildah")))
+}
+
 /// A lowercase DNS label, as Kubernetes object names require.
 fn dns_label(name: &str) -> bool {
     !name.is_empty()
@@ -343,6 +400,24 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
     }
     if read_small(&root.join("Foundry.toml")).is_some() {
         push(&FOUNDRY_SERVICE, "Foundry.toml", 1);
+        push(&DEPLOY_GENERATORS_REMOVED, "Foundry.toml", 1);
+    }
+    // Files the removed deploy targets and generators wrote.
+    for file in ["fly.toml", "render.yaml", "railway.json", "railway.toml"] {
+        if read_small(&root.join(file)).is_some() {
+            push(&DEPLOY_TARGETS_REMOVED, file, 1);
+        }
+    }
+    if read_small(&root.join("flake.nix")).is_some_and(|text| {
+        text.contains("Rullst Nix Development Environment")
+            || text.contains("description = \"A Rullst Application\"")
+    }) {
+        push(&DEPLOY_GENERATORS_REMOVED, "flake.nix", 1);
+    }
+    for file in ["build_buildah.sh", "src/grpc/mod.rs"] {
+        if read_small(&root.join(file)).is_some() {
+            push(&DEPLOY_GENERATORS_REMOVED, file, 1);
+        }
     }
     if let Some(text) = read_small(&root.join("docker-compose.prod.yml"))
         && !text.contains("172.31.250.10")
@@ -421,12 +496,25 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
         }
     }
     for script in scripts {
-        if let Some(text) = read_small(&root.join(&script))
-            && let Some(line) = line_of(&text, |line| {
-                line.contains("rullst omni") || line.contains("make:omni")
-            })
-        {
+        let Some(text) = read_small(&root.join(&script)) else {
+            continue;
+        };
+        if let Some(line) = line_of(&text, |line| {
+            line.contains("rullst omni") || line.contains("make:omni")
+        }) {
             push(&OMNI_REMOVED, &script, line);
+        }
+        if let Some(line) = line_of(&text, runs_extras_command) {
+            push(&CLI_EXTRAS, &script, line);
+        }
+        if let Some(line) = line_of(&text, runs_removed_update_command) {
+            push(&CLI_SELF_UPDATE, &script, line);
+        }
+        if let Some(line) = line_of(&text, runs_removed_deploy_target) {
+            push(&DEPLOY_TARGETS_REMOVED, &script, line);
+        }
+        if let Some(line) = line_of(&text, runs_removed_generator) {
+            push(&DEPLOY_GENERATORS_REMOVED, &script, line);
         }
     }
     if kubernetes

@@ -87,6 +87,7 @@ what your application needs.
 | `rullst-security` | Core | Defense-in-depth middleware, guards and audit helpers. |
 | `rullst` (facade) | Core | Its own API is Core. A feature that re-exports another crate has that crate's tier: `iot` and every `privacy` feature are experimental. |
 | `cargo-rullst` | Core | Some generators have their own label; see [CLI generators](#cli-generators). |
+| `cargo-rullst-extras` | Experimental | Optional companion executable since 13.0.0-alpha.4: the terminal AI assistant (`cargo rullst ai`) and measured efficiency figures (`cargo rullst green`). Lighter tests than the CLI; see the [CLI reference](cli_reference.md#extras-cargo-rullst-extras). |
 | `rullst-auth` | Extension | Passwords, sessions, passkeys and authorization helpers. |
 | `rullst-connect` | Extension | OAuth2/OIDC identity integrations. |
 | `rullst-mail` | Extension | Transactional email and delivery controls; see the [crate page](crates/mail.md) for the supported drivers. |
@@ -113,15 +114,15 @@ experimental `rullst-privacy`.
 
 | Generator | Commands | Tier | Why |
 | :--- | :--- | :--- | :--- |
-| Foundry | `foundry:init`, `foundry:deploy` | Experimental | Assumes a prepared systemd/Caddy VPS with root or passwordless `sudo`. It replaces the global Caddyfile and has no automatic rollback. |
-| Nix | `nixify`, `new --nix` | Experimental | Writes `flake.nix` and `.envrc` as starting points. Reproducibility depends on your pinned inputs. |
-| Buildah | `generate:buildah`, `new --buildah` | Experimental | Rootless image builds depend on the host's Buildah and container setup. |
-| gRPC | `make:grpc` | Experimental | Writes a Tonic service and `.proto` file. It does not edit `Cargo.toml`, add a `build.rs` or start a server. |
 | IoT | `make:iot` | Experimental | Generates a telemetry module on top of the experimental `rullst-iot`. |
 
 For an experimental generator, the generated files, their layout, and the
 command's flags may change between 13.x releases. Review the diff when you
 regenerate.
+
+13.0.0-alpha.4 removed the experimental Foundry, Nix, Buildah and gRPC
+generators and the Fly.io, Railway and Render targets of `deploy`; see
+[Advanced deployment](advanced-deployment.md) for those setups.
 
 ## How a tier changes
 

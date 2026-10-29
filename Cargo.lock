@@ -1475,7 +1475,6 @@ dependencies = [
 name = "cargo-rullst"
 version = "13.0.0-alpha.3"
 dependencies = [
- "async-trait",
  "axum",
  "brotli",
  "chrono",
@@ -1494,7 +1493,6 @@ dependencies = [
  "ratatui",
  "regex",
  "reqwest",
- "rullst-ai",
  "rullst-core",
  "rustix",
  "semver",
@@ -1515,6 +1513,29 @@ dependencies = [
  "walkdir",
  "windows-sys 0.61.2",
  "zstd",
+]
+
+[[package]]
+name = "cargo-rullst-extras"
+version = "13.0.0-alpha.3"
+dependencies = [
+ "async-trait",
+ "axum",
+ "cargo-rullst",
+ "chrono",
+ "clap",
+ "dialoguer",
+ "dotenvy",
+ "reqwest",
+ "rullst-ai",
+ "rullst-core",
+ "rustix",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "toml",
 ]
 
 [[package]]

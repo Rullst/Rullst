@@ -81,6 +81,7 @@ rullst-nexus|
 rullst-studio|
 rullst|
 cargo-rullst|
+cargo-rullst-extras|
 
 # Independent infrastructure and adapter boundaries.
 rullst-orm|redis

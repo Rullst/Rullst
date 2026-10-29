@@ -139,7 +139,7 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M27** | Kubernetes manifest scaffolding and `/health`/`/ready` probes | `[x] Implemented (scaffolding scope)` — generated manifests remain deployment inputs that operators must review | v12 hardening |
 | **M28** | Compile-time DI and `Inject<T>` | `[x] Implemented (foundation)` — the typed container exists; “zero cost” remains a benchmarkable goal rather than a guarantee | v12 hardening |
 | **M29** | Scalar playground at `/docs` and OpenAPI generation | `[~] Partial` *(worth finishing — the UI/router/generator exist, but full OpenAPI fidelity requires typed schemas and validation rather than syntax inference)* | v13 |
-| **M30** | Tonic/gRPC and Protobuf scaffolding | `[~] Partial` *(worth finishing — `make:grpc` emits a starting service, but a distinct supported `rullst-grpc` crate and generated-project conformance matrix do not yet exist)* | v13 |
+| **M30** | Tonic/gRPC and Protobuf scaffolding | `[ ] Not implemented — removed` *(13.0.0-alpha.4 removed the `make:grpc` starting-service generator to keep the CLI lean; gRPC stays possible with an application's own `tonic` setup, and a supported `rullst-grpc` crate is not planned)* | v13 |
 | **M31** | Aerospace, autonomous vehicles, robotics, and defense (`rullst-orbit` / `rullst-auto`) | `[ ] Not implemented` *(extraordinary, but not worth placing inside the web-framework Core; consider a separate safety-critical project only after hardware, standards, certification, and governance exist)* | Separate future program |
 | **M32** | Architecture: first-class Axum/Tower escape hatches and precise proc-macro diagnostics | `[x] Implemented (bounded)` — router conversion/interoperability and `syn::Error` diagnostics exist; continue compatibility tests | v12 hardening |
 | **M33** | SaaS: `#[rullst::gate]` and `GateGuard` declarative entitlements | `[~] Bounded foundation` *(typed current-state plan authorization and its authenticated SaaS consumer passed PR #221; the proposed attribute/guard syntax and broader declarative entitlement model remain open)* | v13 |
@@ -351,7 +351,8 @@ contains the more detailed evidence and acceptance boundaries.
 ### Efficiency and sustainability
 
 - **Measured green-software reports and efficient defaults** *(planned —
-  `cargo rullst footprint` with an SCI-based (ISO/IEC 21031:2024) method,
+  `cargo rullst green` in the optional `cargo-rullst-extras` (measured
+  figures only, carbon as a labelled SCI estimate per ISO/IEC 21031:2024),
   a reproducible cross-framework benchmark, tuned release and HTTP caching
   defaults, carbon-aware deferrable jobs. Reports state their method and
   limits; no unsubstantiated "greener than" claims. See the
@@ -525,6 +526,13 @@ suite. Extend this boundary in `cargo-rullst`; do not introduce another crate
 or count this proposal as completed work in the capability ledger.
 
 Implementation and acceptance order:
+
+**13.0.0-alpha.4 removes the CLI self-updater** (`update check`, `update
+verify`, `update stage`, `update install` and the CLI half of `update guided`):
+the CLI is installed and updated with `cargo install cargo-rullst --version =X
+--locked`, and a once-a-day notice prints that command. The project
+preparation commands below stay. The paragraphs that follow record the 12.1.0
+to 13.0.0-alpha.3 history.
 
 Published 12.1.0 discovery uses interactive-only, offline/CI-aware notices and
 bounded HTTPS metadata. It rejects redirects, yanked versions, prereleases and
@@ -828,7 +836,10 @@ to the counts above.
   verification totals 2 and 2, the 64 MiB preparation report 4; and 7
   installation review and apply mutants that only a live catalog and
   Sigstore-verified artifacts reach. The Studio remote mode
-  (20 files) was measured in the same campaign and has no survivor left.
+  (20 files) was measured in the same campaign and has no survivor left. The self-updater's binary replacement was removed in
+  13.0.0-alpha.4; its 13 measured files left the gate list with it, and
+  `generators/deploy.rs` and `update/guided.rs`, rewritten in that release,
+  left it until they are measured again.
 - **Turso/libSQL beyond the blank and API starters**, if users ask for it.
   Turso can be the primary database only in those starters and does not work
   with `#[derive(Orm)]`, `Schema`, `artisan!`, `Server::with_db`, Nexus or

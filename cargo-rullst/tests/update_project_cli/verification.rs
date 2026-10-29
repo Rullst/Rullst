@@ -70,6 +70,7 @@ fn verification_runs_real_locked_checks_and_tests_only_in_a_fresh_candidate() {
     assert!(fixture.base.join("build-executed").exists());
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(report["schema_version"], "rullst.project-verification.v1");
+    assert_eq!(report["schema"], "rullst.project-verification.v1");
     assert_eq!(report["phase"], "verified");
     assert_eq!(report["application_authorized"], false);
     assert_eq!(report["production_ready"], false);
@@ -104,7 +105,12 @@ fn verification_runs_real_locked_checks_and_tests_only_in_a_fresh_candidate() {
             &fs::read(candidate.parent().unwrap().join("verification.json")).unwrap()
         )
         .unwrap(),
-        report
+        {
+            // The printed copy adds `schema`; the persisted evidence file does not.
+            let mut printed = report.clone();
+            printed.as_object_mut().unwrap().remove("schema");
+            printed
+        }
     );
 }
 
@@ -195,6 +201,7 @@ fn dry_run_shows_selected_commands_without_execution_and_conflicting_policy_is_r
         report["schema_version"],
         "rullst.project-verification-plan.v1"
     );
+    assert_eq!(report["schema"], "rullst.project-verification-plan.v1");
     assert_eq!(report["execution_authorized"], false);
     assert_eq!(report["application_authorized"], false);
     assert!(

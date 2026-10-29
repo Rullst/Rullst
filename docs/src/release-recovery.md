@@ -102,6 +102,16 @@ in the publish job, two hours into the run.
 
 A change that restores the fallback must also remove that early refusal.
 
+### `cargo-rullst-extras` (planned for 13.0.0-alpha.4)
+
+`cargo-rullst-extras` is a new, reviewed package name in the release order,
+after `cargo-rullst`, and is listed in the bootstrap allowlist. Listing it does
+not enable publication: until the maintainer either restores the reviewed
+fallback above (with a one-time `publish-new` token) or registers the name in
+another reviewed way, `release-preflight.py` and the verification job refuse
+the release because the name is unregistered. After the first publication,
+complete step 6 for it and empty the allowlist again.
+
 ## Determine the exact state
 
 For each package in `.github/release-order.json`:

@@ -1,0 +1,46 @@
+[package]
+name = "cargo-rullst-extras"
+version = "13.0.0-alpha.3"
+authors = ["Rullst Core Team"]
+edition = "2024"
+rust-version = "1.96.0"
+description = "Optional Rullst CLI extras: the terminal AI assistant (`cargo rullst ai`) and measured efficiency figures (`cargo rullst green`)."
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/Rullst/Rullst"
+homepage = "https://rullst.github.io"
+documentation = "https://rullst.github.io/Rullst/book/cli_reference.html"
+keywords = ["rullst", "cli", "ai", "green", "devtools"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "cargo-rullst-extras"
+path = "src/main.rs"
+doc = false
+
+[dependencies]
+# The main CLI's library, pinned to this exact release by the workspace.
+cargo-rullst = { workspace = true }
+rullst-ai = { workspace = true }
+rullst-core = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true, features = ["clock"] }
+clap = { version = "4.6.1", features = ["derive"] }
+dialoguer = "0.12.0"
+dotenvy = { workspace = true }
+reqwest = { workspace = true, features = ["json", "rustls"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tempfile = "3.27.0"
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+toml = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1.1.4", features = ["fs", "param", "process"] }
+
+[dev-dependencies]
+axum = { workspace = true }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)'] }

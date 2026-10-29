@@ -26,7 +26,7 @@ pub(super) fn command() -> Command {
 pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
     let report = execute(matches)?;
     if matches.get_flag("json") || matches.get_flag("dry-run") {
-        println!("{}", serde_json::to_string_pretty(&report)?);
+        super::print_report(&report)?;
     } else {
         println!(
             "Candidate checks/tests passed. Review: {}/verification.json",

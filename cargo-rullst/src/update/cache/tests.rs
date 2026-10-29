@@ -16,7 +16,6 @@ fn roundtrip_is_private_bounded_and_atomic() {
     store_at(&base, BODY, 100).unwrap();
     let first = load_at(&base, 200).unwrap();
     assert_eq!(first.body, BODY);
-    assert_eq!(first.age_seconds, 100);
     let directory = base.join("rullst-update-v1");
     assert_eq!(fs::metadata(&directory).unwrap().mode() & 0o077, 0);
     assert_eq!(
@@ -43,6 +42,8 @@ fn expiration_future_and_bad_headers_fail_closed() {
     assert!(load_at(&base, 99).is_err());
     assert!(load_at(&base, 100 + MAX_AGE_SECONDS).is_err());
     assert!(load_at(&base, 100 + MAX_AGE_SECONDS - 1).is_ok());
+    // The update notice asks crates.io at most once a day.
+    assert_eq!(MAX_AGE_SECONDS, 86_400);
     for bad in [
         b"legacy-format".as_slice(),
         b"rullst-update-cache-v1\n-1\n{}",
@@ -270,10 +271,8 @@ fn a_cache_file_one_byte_over_its_bound_is_refused_before_decoding() {
 fn cache_timestamps_have_at_most_20_digits() {
     let entry = |timestamp: &str| [HEADER, timestamp.as_bytes(), b"\n", BODY].concat();
     assert_eq!(
-        decode(&entry("00000000000000000100"), 100)
-            .unwrap()
-            .age_seconds,
-        0
+        decode(&entry("00000000000000000100"), 100).unwrap().body,
+        BODY
     );
     assert!(matches!(
         decode(&entry("000000000000000000100"), 100),
@@ -291,15 +290,6 @@ fn base_directory_child_fixture() {
     let text = match std::env::var("RULLST_CACHE_OPERATION").as_deref() {
         Ok("store") => store(BODY, 100).map(|()| String::new()),
         Ok("cache-store") => super::super::store(BODY).map(|()| String::new()),
-        Ok("manifest-bounds") => Ok([0, 16 * 1024, 16 * 1024 + 1]
-            .map(|size| {
-                if super::super::verification_manifest(&vec![b'm'; size]).is_ok() {
-                    "kept"
-                } else {
-                    "refused"
-                }
-            })
-            .join(" ")),
         Ok("workspaces") => (|| -> Result<String, CacheError> {
             let dropped = super::super::project_workspace()?;
             let dropped_path = dropped.path().to_path_buf();
@@ -433,20 +423,6 @@ fn ancestors_must_be_directories_without_other_writers() {
 }
 
 #[test]
-fn installation_roots_report_lookup_errors_other_than_absence() {
-    if rustix::process::geteuid().is_root() {
-        return;
-    }
-    let temp = fixture();
-    let parent = temp.path().canonicalize().unwrap().join("unsearchable");
-    fs::create_dir(&parent).unwrap();
-    fs::set_permissions(&parent, fs::Permissions::from_mode(0o600)).unwrap();
-    let result = installation_root(&parent.join("installed"));
-    fs::set_permissions(&parent, fs::Permissions::from_mode(0o700)).unwrap();
-    assert!(result.is_err());
-}
-
-#[test]
 fn stores_and_project_workspaces_live_in_the_private_cache() {
     let temp = fixture();
     let xdg = temp.path().canonicalize().unwrap().join("xdg");
@@ -496,7 +472,7 @@ fn cache_operation(xdg: &Path, name: &str) -> String {
 }
 
 #[test]
-fn the_cache_api_stores_bounds_manifests_and_removes_unretained_workspaces() {
+fn the_cache_api_stores_and_removes_unretained_workspaces() {
     let temp = fixture();
     let xdg = temp.path().canonicalize().unwrap().join("xdg");
     assert_eq!(cache_operation(&xdg, "cache-store"), "ok ");
@@ -504,20 +480,17 @@ fn the_cache_api_stores_bounds_manifests_and_removes_unretained_workspaces() {
         load_at(&xdg, super::super::now().unwrap()).unwrap().body,
         BODY
     );
-    assert_eq!(
-        cache_operation(&xdg, "manifest-bounds"),
-        "ok refused kept refused"
-    );
     assert_eq!(cache_operation(&xdg, "workspaces"), "ok false true true");
 }
 
 #[test]
-fn catalogs_expire_after_six_hours_and_the_clock_is_real() {
+fn catalogs_expire_after_a_day_and_the_clock_is_real() {
     let temp = fixture();
     let base = temp.path().canonicalize().unwrap();
     store_at(&base, BODY, 100).unwrap();
-    assert!(load_at(&base, 100 + 21_599).is_ok());
-    assert!(load_at(&base, 100 + 21_600).is_err());
+    assert_eq!(super::super::MAX_AGE_SECONDS, 86_400);
+    assert!(load_at(&base, 100 + 86_399).is_ok());
+    assert!(load_at(&base, 100 + 86_400).is_err());
     assert!(super::super::now().unwrap() > 1_700_000_000);
 }
 

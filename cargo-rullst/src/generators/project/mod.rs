@@ -14,15 +14,12 @@ use std::path::{Path, PathBuf};
 
 pub(crate) use command::{new_command, run_new_command};
 pub use docker::generate_docker_files;
-pub use env_config::{generate_buildah_script, generate_nix_files};
 pub use wizard::{PolyglotIntegration, ProjectWizardOptions, run_project_wizard};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ProjectScaffoldOptions {
     pub api: bool,
     pub docker: bool,
-    pub buildah: bool,
-    pub nix: bool,
     pub use_defaults: bool,
     pub turso: bool,
     pub mongodb: bool,
@@ -203,42 +200,6 @@ pub(crate) fn create_new_project_with_cli_options(
         skip_initial_migration,
         dry_run: false,
     })
-}
-
-#[deprecated(
-    since = "12.0.0",
-    note = "use create_new_project_with_options to avoid positional flag mixups"
-)]
-#[allow(clippy::too_many_arguments)]
-pub fn create_new_project(
-    name_arg: Option<&str>,
-    api: bool,
-    docker: bool,
-    nix: bool,
-    buildah: bool,
-    use_defaults: bool,
-    turso: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    create_new_project_with_options(
-        name_arg,
-        ProjectScaffoldOptions {
-            api,
-            docker,
-            buildah,
-            nix,
-            use_defaults,
-            turso,
-            mongodb: false,
-            duckdb: false,
-            surrealdb: false,
-            qdrant: false,
-            database: None,
-            no_database: false,
-            hot_reload: false,
-            wants_ai: false,
-            wants_redis: false,
-        },
-    )
 }
 
 #[cfg(test)]

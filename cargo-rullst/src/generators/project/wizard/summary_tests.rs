@@ -100,8 +100,6 @@ fn plan() -> ProjectPlan {
         ai: false,
         redis: false,
         docker: false,
-        nix: false,
-        buildah: false,
         requested: Vec::new(),
         add_ons: Vec::new(),
         skip_initial_migration: false,
@@ -141,7 +139,7 @@ fn summary_reflects_api_database_free_features_and_unavailable_previews() {
     lean.api = true;
     lean.database = Database::None;
     lean.ai = true;
-    lean.buildah = true;
+    lean.docker = true;
     lean.add_ons = vec![PolyglotIntegration::Qdrant];
     let lines = texts(summary(&lean, None, 8080).lines());
     let text = lines.join("\n");
@@ -151,7 +149,7 @@ fn summary_reflects_api_database_free_features_and_unavailable_previews() {
     );
     assert!(text.contains("Database     none"), "{text}");
     assert!(
-        text.contains("Features     AI features, Dockerfile, Qdrant, Buildah script"),
+        text.contains("Features     AI features, Dockerfile, Qdrant"),
         "{text}"
     );
     assert!(text.contains("Files        preview unavailable"), "{text}");

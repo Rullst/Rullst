@@ -10,11 +10,16 @@
     )
 )]
 
-mod ai;
 pub mod blueprints;
 pub mod cli;
+#[doc(hidden)]
+pub mod diff;
+#[doc(hidden)]
+pub mod extras;
 pub mod generators;
 pub mod pkg;
+#[doc(hidden)]
+pub mod term;
 mod tour;
 pub mod ui;
 mod update;
@@ -30,51 +35,74 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         args.remove(1);
     }
 
+    // `ai` and `green` belong to cargo-rullst-extras: everything after the
+    // subcommand reaches it unparsed, `--help` included.
+    if let Some(subcommand) = args.get(1).filter(|name| cli::forward::is_extras(name)) {
+        return cli::forward::run(subcommand, args.get(2..).unwrap_or_default());
+    }
+
+    // At most once a day, in an interactive terminal: announces a newer
+    // cargo-rullst with its install command. Never installs anything.
+    ui::trigger_background_update_check();
+
     if args.len() == 1 {
-        ui::trigger_background_update_check();
         ui::show_interactive_dashboard()?;
     } else {
-        // Unknown commands get "did you mean" suggestions and exit status 2.
-        let matches = cli::runtime::parse(command(), args)?;
-        if cli::runtime::run_extension(&matches)? {
-            return Ok(());
-        }
-        if let Some(add) = matches.subcommand_matches("add") {
-            generators::add::run(add)?;
-        } else if let Some(assistant) = matches.subcommand_matches("ai") {
-            ai::run(assistant)?;
-        } else if let Some(footprint) = matches.subcommand_matches("footprint") {
-            generators::footprint::run(footprint)?;
-        } else if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
-            generators::deploy_doctor::run(doctor)?;
-        } else if let Some(api) = matches.subcommand_matches("generate:api") {
-            generators::api_contract::run(api)?;
-        } else if let Some(context) = matches.subcommand_matches("generate:ai-context") {
-            generators::ai_context::run(context)?;
-        } else if let Some(privacy) = matches.subcommand_matches("make:privacy") {
-            generators::privacy::run(privacy)?;
-            generators::ai_context::refresh_after_scaffold();
-        } else if let Some(age_gate) = matches.subcommand_matches("make:age-gate") {
-            generators::age_gate::run(age_gate)?;
-            generators::ai_context::refresh_after_scaffold();
-        } else if let Some(pwa) = matches.subcommand_matches("make:pwa") {
-            generators::pwa::run(pwa)?;
-        } else if let Some(oauth) = matches.subcommand_matches("make:oauth") {
-            generators::oauth::run(oauth)?;
-            generators::ai_context::refresh_after_scaffold();
-        } else if let Some(update) = matches.subcommand_matches("update") {
-            update::run(update)?;
-        } else if let Some(tour) = matches.subcommand_matches("tour") {
-            tour::run(tour)?;
-        } else if let Some(new) = matches.subcommand_matches("new") {
-            let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
-            generators::project::run_new_command(&cli.command, new)?;
-        } else {
-            let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
-            cli::run_cli_command(&cli.command)?;
-        }
-        cli::next_steps::print_after_success(&matches);
+        run_command(args)?;
+        ui::update_check::print_pending_notice();
     }
+    Ok(())
+}
+
+/// Parses and runs one command (everything except the home screen).
+#[cfg_attr(mutants, mutants::skip)]
+fn run_command(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+    // Unknown commands get "did you mean" suggestions and exit status 2.
+    let matches = cli::runtime::parse(command(), args)?;
+    if cli::runtime::run_extension(&matches)? {
+        return Ok(());
+    }
+    if let Some(add) = matches.subcommand_matches("add") {
+        generators::add::run(add)?;
+    } else if let Some((name, extras)) = matches
+        .subcommand()
+        .filter(|(name, _)| cli::forward::is_extras(name))
+    {
+        // Reached only when a global flag precedes the subcommand.
+        let arguments: Vec<String> = extras
+            .get_many::<String>("arguments")
+            .map(|values| values.cloned().collect())
+            .unwrap_or_default();
+        return cli::forward::run(name, &arguments);
+    } else if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
+        generators::deploy_doctor::run(doctor)?;
+    } else if let Some(api) = matches.subcommand_matches("generate:api") {
+        generators::api_contract::run(api)?;
+    } else if let Some(context) = matches.subcommand_matches("generate:ai-context") {
+        generators::ai_context::run(context)?;
+    } else if let Some(privacy) = matches.subcommand_matches("make:privacy") {
+        generators::privacy::run(privacy)?;
+        generators::ai_context::refresh_after_scaffold();
+    } else if let Some(age_gate) = matches.subcommand_matches("make:age-gate") {
+        generators::age_gate::run(age_gate)?;
+        generators::ai_context::refresh_after_scaffold();
+    } else if let Some(pwa) = matches.subcommand_matches("make:pwa") {
+        generators::pwa::run(pwa)?;
+    } else if let Some(oauth) = matches.subcommand_matches("make:oauth") {
+        generators::oauth::run(oauth)?;
+        generators::ai_context::refresh_after_scaffold();
+    } else if let Some(update) = matches.subcommand_matches("update") {
+        update::run(update)?;
+    } else if let Some(tour) = matches.subcommand_matches("tour") {
+        tour::run(tour)?;
+    } else if let Some(new) = matches.subcommand_matches("new") {
+        let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
+        generators::project::run_new_command(&cli.command, new)?;
+    } else {
+        let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
+        cli::run_cli_command(&cli.command)?;
+    }
+    cli::next_steps::print_after_success(&matches);
     Ok(())
 }
 
@@ -92,8 +120,7 @@ pub(crate) fn command() -> clap::Command {
         .subcommand(generators::oauth::command())
         .subcommand(generators::api_contract::command())
         .subcommand(generators::deploy_doctor::command())
-        .subcommand(generators::footprint::command())
-        .subcommand(ai::command())
+        .subcommands(cli::forward::commands())
         .subcommand(tour::command())
         // Extend executable syntax without changing the published v12 enum.
         .mut_subcommand("generate:ai-context", generators::ai_context::command)

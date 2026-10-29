@@ -3,6 +3,7 @@ members = [
     "rullst",
     "rullst-macros",
     "cargo-rullst",
+    "cargo-rullst-extras",
     "rullst-orm",
     "rullst-orm-macros",
     "rullst-connect",

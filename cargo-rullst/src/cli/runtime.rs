@@ -62,7 +62,12 @@ pub(crate) fn extend(command: Command) -> Command {
         })
         .mut_subcommand("inspect", |inspect| {
             inspect.arg(json_flag(
-                "Print `inspect routes` as versioned JSON (rullst.cli-routes.v1)",
+                "Print `inspect routes`, `models` or `schema` as versioned JSON (rullst.cli-routes.v1, rullst.cli-models.v1, rullst.cli-schema.v1)",
+            ))
+        })
+        .mut_subcommand("pkg", |pkg| {
+            pkg.arg(json_flag(
+                "Print `pkg list` as versioned JSON (rullst.cli-pkg.v1)",
             ))
         })
 }
@@ -263,6 +268,20 @@ pub(crate) fn run_extension(matches: &ArgMatches) -> Result<bool, Box<dyn Error>
                 .map_or("routes", String::as_str);
             crate::generators::inspect::print_json(target)?;
         }
+        Some(("pkg", sub)) if flag(sub, "json") => {
+            let action = sub.get_one::<String>("action").map_or("", String::as_str);
+            if action != "list" {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "--json is available for `pkg list` only",
+                )
+                .into());
+            }
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&crate::pkg::pkg_list_json()?)?
+            );
+        }
         _ => return Ok(false),
     }
     Ok(true)
@@ -307,7 +326,8 @@ mod tests {
             "doctor",
             "update",
             "deploy:doctor",
-            "footprint",
+            "ai",
+            "green",
         ] {
             assert!(command.find_subcommand(name).is_some(), "{name}");
         }
@@ -396,13 +416,13 @@ mod tests {
             Some("Did you mean `cargo rullst make:model`?")
         );
 
-        let args = arguments(&["rullst", "update", "chekk"]);
-        let (path, update) = level(&command, &args, "chekk");
+        let args = arguments(&["rullst", "update", "projetc"]);
+        let (path, update) = level(&command, &args, "projetc");
         assert_eq!(path, ["update"]);
         let names = super::super::suggest::command_names(update);
         assert_eq!(
-            super::super::suggest::suggestions("chekk", &names),
-            ["check"]
+            super::super::suggest::suggestions("projetc", &names),
+            ["project"]
         );
 
         let none = unknown_command("zzz", "cargo rullst", &[]);

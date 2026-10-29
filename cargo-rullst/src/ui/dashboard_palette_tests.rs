@@ -30,7 +30,12 @@ fn the_palette_runs_commands_with_their_required_arguments() {
                 "sqlite://app.db",
             ],
         ),
-        ("update check", vec![], vec![], vec!["update", "check"]),
+        (
+            "update project prepare",
+            vec![],
+            vec![],
+            vec!["update", "project", "prepare"],
+        ),
         ("doctor", vec![], vec![], vec!["doctor"]),
     ] {
         let mut ui = FakeUi {

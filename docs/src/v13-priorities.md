@@ -39,8 +39,8 @@ file or a claim that all of them were committed for 13.0.0.
 | Proposed category | Themes | Existing roadmap labels |
 | :--- | ---: | :--- |
 | A — invest and maintain | 25 | 5 bounded implemented; 20 partial |
-| B — defer expansion until justified | 16 | 8 partial; 8 not implemented |
-| Total | 41 | 5 bounded implemented; 28 partial; 8 not implemented |
+| B — defer expansion until justified | 16 | 7 partial; 9 not implemented |
+| Total | 41 | 5 bounded implemented; 27 partial; 9 not implemented |
 
 Use a separate **C — high maintenance cost** marker across either category.
 The initial review flags 12 existing implementation themes below (11 in A and
@@ -120,7 +120,7 @@ existing counts, not delivered APIs or additional top-level milestones.
 | M23 | Auto-healing production code or databases | A safely bounded, approved repair contract; no general autonomous mutation promise. |
 | M24 | Additional IoT transport/firmware/hardware integrations | Selected boards, actual devices and transport/rollback interoperability tests. Preserve existing no_std and manifest contracts. |
 | M25 | Embassy integration | Stable hardware/transport boundaries and a maintained target application. |
-| M30 | Dedicated gRPC crate and broader scaffolding | A concrete service consumer and protobuf compatibility matrix; the existing generator still receives fixes. |
+| M30 | Dedicated gRPC crate and broader scaffolding | A concrete service consumer and protobuf compatibility matrix. The `make:grpc` generator was removed in 13.0.0-alpha.4. |
 | M31 | Aerospace, autonomous vehicles and defence | A separate project with domain expertise, governance, hardware and applicable certification. |
 | M36 | Natural-language database copilot | Concrete operator demand and a read-only, bounded, explainable contract; production writes remain separate. |
 | M37 | AI autofix workflow | A confined local patch/review/test/rollback journey with demonstrated value over existing development tools. |

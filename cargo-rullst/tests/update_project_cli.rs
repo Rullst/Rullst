@@ -149,6 +149,8 @@ fn preserves_dirty_untracked_deleted_and_ignored_lock_inputs_without_running_bui
         report["schema_version"],
         "rullst.project-preparation-result.v1"
     );
+    assert_eq!(report["schema"], "rullst.project-preparation-result.v1");
+    assert!(!output.stdout.contains(&0x1b));
     let stage = Path::new(report["prepared_directory"].as_str().unwrap());
     let candidate = stage.join("candidate");
     assert!(!stage.starts_with(&fixture.app));

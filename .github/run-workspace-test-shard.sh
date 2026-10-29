@@ -38,7 +38,7 @@ case "$shard" in
     python3 examples/saas/run.py
     ;;
   workspace)
-    cargo test --workspace --exclude cargo-rullst \
+    cargo test --workspace --exclude cargo-rullst --exclude cargo-rullst-extras \
       --all-features --no-fail-fast "${profile_args[@]}"
     ;;
   cli-updates)
@@ -47,7 +47,7 @@ case "$shard" in
     cargo test -p cargo-rullst -p rullst-core --all-features \
       "${profile_args[@]}" --lib update::
     cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
-      "${profile_args[@]}" --test update_discovery_cli --test update_verification_cli \
+      "${profile_args[@]}" --test update_cli \
       --test update_project_cli --test upgrade_cli
     ;;
   cli-standard)
@@ -69,6 +69,10 @@ case "$shard" in
       "${profile_args[@]}" "${test_targets[@]}"
     cargo test -p cargo-rullst -p rullst-core --all-features \
       "${profile_args[@]}" --doc
+    # The optional extras (`cargo rullst ai|green`); this also builds the
+    # binary the AI terminal smoke finds on PATH.
+    cargo test -p cargo-rullst-extras --all-features --no-fail-fast \
+      "${profile_args[@]}"
     ;;
   cli-profiles-basic)
     RULLST_CI_PROFILE_GROUP=basic \

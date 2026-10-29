@@ -1,19 +1,22 @@
-// src/ui/update_check.rs — Background version check and update banner.
+// src/ui/update_check.rs — The daily "a newer cargo-rullst is available" notice.
+//
+// Advisory only: the CLI never downloads, verifies or replaces its own
+// binary. In an interactive terminal (not CI, `RULLST_DISABLE_UPDATE_CHECK`
+// or `CARGO_NET_OFFLINE`), the crates.io catalog is fetched in the background
+// at most once a day and kept in the private user cache; a newer release found
+// there is announced at most once a day with the exact install command.
 
-use colored::*;
 use semver::Version;
 use std::io::{IsTerminal, Read};
 use std::sync::{
-    OnceLock,
+    Mutex,
     atomic::{AtomicBool, Ordering},
 };
 
 pub(crate) const CATALOG_LIMIT: u64 = 256 * 1024;
 pub(crate) const CATALOG_URL: &str = "https://crates.io/api/v1/crates/cargo-rullst";
-// Notices are advisory, not installation authority. Do not trust the legacy
-// shared temporary file. Discovery keeps only a process-local validated result;
-// a persistent, cross-platform private cache needs its own reviewed contract.
-static AVAILABLE_UPDATE: OnceLock<Version> = OnceLock::new();
+/// The release this process announces, taken by the first caller.
+static PENDING: Mutex<Option<Version>> = Mutex::new(None);
 static DISCOVERY_STARTED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, thiserror::Error)]
@@ -62,14 +65,33 @@ fn update_check_disabled() -> bool {
         || enabled_env_flag(std::env::var_os("CI").as_deref())
 }
 
-fn eligible_update(current: &Version, latest: &Version) -> bool {
+/// A newer release of the same major worth announcing: a stable release, or
+/// any newer release when the installed CLI is itself a prerelease (the user
+/// chose that train). Never build metadata or another major.
+pub(crate) fn eligible_update(current: &Version, latest: &Version) -> bool {
     latest > current
         && latest.major == current.major
-        && latest.pre.is_empty()
+        && (latest.pre.is_empty() || !current.pre.is_empty())
         && latest.build.is_empty()
 }
 
-fn select_update(reader: impl Read, current: &str) -> Result<Option<Version>, DiscoveryError> {
+/// The command the notice prints for `version`.
+pub(crate) fn install_command(version: &Version) -> String {
+    format!("cargo install cargo-rullst --version ={version} --locked")
+}
+
+/// The one-line notice for `version`.
+pub(crate) fn notice_text(version: &Version) -> String {
+    format!(
+        "A newer cargo-rullst is available: {}",
+        install_command(version)
+    )
+}
+
+pub(crate) fn select_update(
+    reader: impl Read,
+    current: &str,
+) -> Result<Option<Version>, DiscoveryError> {
     let mut body = Vec::new();
     reader.take(CATALOG_LIMIT + 1).read_to_end(&mut body)?;
     if body.len() as u64 > CATALOG_LIMIT {
@@ -88,13 +110,18 @@ fn select_update(reader: impl Read, current: &str) -> Result<Option<Version>, Di
         .max())
 }
 
-/// Read a completed advisory check without network or filesystem access.
-/// The result is only a newer non-yanked stable version in this CLI's major.
+/// The release to announce in this process, at most once: the first call
+/// takes it. `None` when nothing newer is known, the notice was already shown
+/// today or the check is silenced.
 pub fn check_update_available() -> Option<String> {
     if update_check_disabled() {
         return None;
     }
-    AVAILABLE_UPDATE.get().map(ToString::to_string)
+    PENDING
+        .lock()
+        .ok()
+        .and_then(|mut pending| pending.take())
+        .map(|version| version.to_string())
 }
 
 pub(crate) fn discovery_client() -> reqwest::ClientBuilder {
@@ -108,17 +135,6 @@ pub(crate) fn discovery_client() -> reqwest::ClientBuilder {
             env!("CARGO_PKG_VERSION"),
             " (https://github.com/Rullst/Rullst)"
         ))
-}
-
-async fn fetch_update(
-    client: &reqwest::Client,
-    url: &str,
-    current: &str,
-) -> Result<Option<Version>, DiscoveryError> {
-    match fetch_catalog(client, url).await? {
-        Some(bytes) => select_update(bytes.as_slice(), current),
-        None => Ok(None),
-    }
 }
 
 pub(crate) async fn fetch_catalog(
@@ -140,104 +156,88 @@ pub(crate) async fn fetch_catalog(
     Ok(Some(bytes))
 }
 
+/// The catalog body within one total deadline, which also covers a slow
+/// trickle of body chunks (a per-read timeout would restart on each chunk).
+async fn bounded_fetch(
+    client: &reqwest::Client,
+    url: &str,
+    budget: std::time::Duration,
+) -> Result<Option<Vec<u8>>, DiscoveryError> {
+    tokio::time::timeout(budget, fetch_catalog(client, url))
+        .await
+        .map_err(|_| DiscoveryError::Timeout)?
+}
+
+#[cfg(test)]
 async fn bounded_discovery(
     client: &reqwest::Client,
     url: &str,
     current: &str,
     budget: std::time::Duration,
 ) -> Result<Option<Version>, DiscoveryError> {
-    // One total deadline also covers a slow trickle of body chunks. A blocking
-    // Read timeout alone can restart for each read and is not a total deadline.
-    tokio::time::timeout(budget, fetch_update(client, url, current))
-        .await
-        .map_err(|_| DiscoveryError::Timeout)?
+    match bounded_fetch(client, url, budget).await? {
+        Some(bytes) => select_update(bytes.as_slice(), current),
+        None => Ok(None),
+    }
 }
 
-fn discover_update() -> Result<Option<Version>, DiscoveryError> {
+/// One bounded crates.io request for the `cargo-rullst` catalog.
+pub(crate) fn fetch_release_catalog() -> Result<Option<Vec<u8>>, DiscoveryError> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
     runtime.block_on(async {
         let client = discovery_client().build()?;
-        bounded_discovery(
-            &client,
-            CATALOG_URL,
-            env!("CARGO_PKG_VERSION"),
-            std::time::Duration::from_secs(4),
-        )
-        .await
+        bounded_fetch(&client, CATALOG_URL, std::time::Duration::from_secs(4)).await
     })
 }
 
-/// Start at most one bounded advisory request in an interactive process.
-/// Failure is silent; this function never installs or changes project files.
+/// Prepares this process's notice from the cached catalog and, at most once
+/// a day, refreshes that catalog in a background thread. Only interactive
+/// terminals outside CI take part; nothing here can fail or delay a command,
+/// and nothing is installed.
 pub fn trigger_background_update_check() {
     if update_check_disabled()
         || !std::io::stdin().is_terminal()
         || !std::io::stdout().is_terminal()
+        || !std::io::stderr().is_terminal()
         || DISCOVERY_STARTED.swap(true, Ordering::AcqRel)
     {
         return;
     }
-
-    let started = std::thread::Builder::new()
-        .name("rullst-update-notice".into())
-        .spawn(|| {
-            if let Ok(Some(version)) = discover_update() {
-                let _ = AVAILABLE_UPDATE.set(version);
-            }
-        });
-    if started.is_err() {
-        DISCOVERY_STARTED.store(false, Ordering::Release);
+    let outcome = crate::update::notice::start();
+    if let (Some(version), Ok(mut pending)) = (outcome.announce, PENDING.lock()) {
+        *pending = Some(version);
+    }
+    if outcome.refresh {
+        let started = std::thread::Builder::new()
+            .name("rullst-update-notice".into())
+            .spawn(crate::update::notice::refresh);
+        if started.is_err() {
+            DISCOVERY_STARTED.store(false, Ordering::Release);
+        }
     }
 }
 
-/// Print a syntactically validated, same-major stable-version notice.
+/// Prints the notice for `latest_version` when it is a valid release this
+/// CLI should announce.
 pub fn print_update_banner(latest_version: &str) {
-    let current_version = env!("CARGO_PKG_VERSION");
     let (Ok(current), Ok(latest)) = (
-        Version::parse(current_version),
+        Version::parse(env!("CARGO_PKG_VERSION")),
         Version::parse(latest_version),
     ) else {
         return;
     };
-    if !eligible_update(&current, &latest) {
-        return;
+    if eligible_update(&current, &latest) {
+        println!("\n  {}\n", notice_text(&latest));
     }
-    println!();
-    println!(
-        "{}",
-        "┌────────────────────────────────────────────────────────────┐"
-            .cyan()
-            .bold()
-    );
-    println!(
-        "{}  🚀 {} {:<19} {}",
-        "│".cyan().bold(),
-        "New cargo-rullst available:".bold().yellow(),
-        format!("{} → {}", current_version, latest_version)
-            .green()
-            .bold(),
-        "│".cyan().bold()
-    );
-    println!(
-        "{}  Install that exact CLI, then run                     {}",
-        "│".cyan().bold(),
-        "│".cyan().bold()
-    );
-    println!(
-        "{}  {} to migrate the project transactionally. {}",
-        "│".cyan().bold(),
-        "'cargo rullst upgrade'".magenta().bold(),
-        "│".cyan().bold()
-    );
-    println!(
-        "{}",
-        "└────────────────────────────────────────────────────────────┘"
-            .cyan()
-            .bold()
-    );
-    println!();
+}
+
+/// After a command: prints the pending notice, if any, on standard error.
+pub(crate) fn print_pending_notice() {
+    if let Some(version) = check_update_available().and_then(|text| Version::parse(&text).ok()) {
+        eprintln!("{}", notice_text(&version));
+    }
 }
 
 #[cfg(test)]

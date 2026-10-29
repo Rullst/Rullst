@@ -231,29 +231,16 @@ fn packaging_generators_name_the_binary_after_the_parsed_package() {
         "{dockerfile}"
     );
     assert!(dockerfile.contains("CMD [\"/app/shop\"]"), "{dockerfile}");
-    project.succeeds(&["generate:buildah"]);
-    let script = project.read("build_buildah.sh");
-    assert!(script.contains("-t shop:latest ."), "{script}");
 }
 
 #[test]
 fn packaging_generators_refuse_to_replace_customized_files() {
     let project = Project::new();
     let customized = "# customized\n";
-    for (command, path) in [
-        ("dockerize", "Dockerfile"),
-        ("nixify", ".envrc"),
-        ("generate:buildah", "build_buildah.sh"),
-    ] {
-        fs::write(project.path(path), customized).expect("custom packaging file");
-        let refused = project.fails(&[command]);
-        assert!(refused.contains("refusing to overwrite"), "{refused}");
-        assert_unchanged(&project, path, customized);
-    }
-    assert!(
-        !project.path("flake.nix").exists(),
-        "nixify must not write flake.nix when .envrc exists"
-    );
+    fs::write(project.path("Dockerfile"), customized).expect("custom packaging file");
+    let refused = project.fails(&["dockerize"]);
+    assert!(refused.contains("refusing to overwrite"), "{refused}");
+    assert_unchanged(&project, "Dockerfile", customized);
 
     #[cfg(unix)]
     {

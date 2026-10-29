@@ -21,6 +21,7 @@
     { "name": "rullst-nexus", "rc_floor": 90, "local_target": 95 },
     { "name": "rullst-studio", "rc_floor": 90, "local_target": 94 },
     { "name": "rullst", "rc_floor": 90, "local_target": 96 },
-    { "name": "cargo-rullst", "rc_floor": 90, "local_target": 95 }
+    { "name": "cargo-rullst", "rc_floor": 90, "local_target": 95 },
+    { "name": "cargo-rullst-extras", "rc_floor": 90, "local_target": 90 }
   ]
 }

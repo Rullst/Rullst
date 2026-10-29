@@ -20,12 +20,6 @@ pub enum Commands {
         /// Optional: generates the current Dockerfile packaging scaffold
         #[arg(long)]
         docker: bool,
-        /// Optional: generates rootless OCI build.sh script via Buildah
-        #[arg(long)]
-        buildah: bool,
-        /// Optional: generates Nix flake and direnv setup for reproducible environments
-        #[arg(long)]
-        nix: bool,
         /// Optional: skips interactive prompts and uses default values (useful for CI)
         #[arg(long)]
         default: bool,
@@ -167,19 +161,8 @@ pub enum Commands {
         #[arg(default_value = "PaymentDunningEmail")]
         name: String,
     },
-    /// Initializes a Foundry.toml manifest for a reviewed SSH deployment
-    #[command(name = "foundry:init")]
-    FoundryInit,
-    /// Deploys the Rullst application to the cloud provider configured in Foundry.toml
-    #[command(name = "foundry:deploy")]
-    FoundryDeploy,
     /// Generates a Dockerfile (and .dockerignore when absent) for the project
     Dockerize,
-    /// Generates a rootless OCI image build script via Buildah
-    #[command(name = "generate:buildah")]
-    GenerateBuildah,
-    /// Generates Nix environment files (flake.nix, .envrc)
-    Nixify,
     /// Scaffolds and configures CORS middleware
     #[command(name = "make:cors")]
     MakeCors,
@@ -241,16 +224,10 @@ pub enum Commands {
         /// Name of the LiveComponent (e.g. Counter or UserFeed)
         name: String,
     },
-    /// Scaffolds a new gRPC service and Protobuf schema in proto/ and src/grpc/
-    #[command(name = "make:grpc")]
-    MakeGrpc {
-        /// Name of the gRPC service (e.g. UserService or OrderService)
-        name: String,
-    },
-    /// Deploys application to PaaS cloud providers (Fly.io, Railway, Render, VPS)
+    /// Writes the Dockerfile, compose.yaml and Caddyfile to run the app on a Linux VM with Docker or Podman
     Deploy {
-        /// Target deployment platform (fly, railway, render, vps)
-        #[arg(short, long)]
+        /// Accepted for compatibility: `vps` is the only path (fly, railway and render were removed)
+        #[arg(short, long, hide = true)]
         platform: Option<String>,
     },
     /// Plans or applies a transactional Rullst project upgrade

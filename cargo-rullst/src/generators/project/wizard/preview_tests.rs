@@ -12,8 +12,6 @@ fn plan(name: &str, blueprint: usize) -> ProjectPlan {
         ai: false,
         redis: false,
         docker: false,
-        nix: false,
-        buildah: false,
         requested: Vec::new(),
         add_ons: Vec::new(),
         skip_initial_migration: false,
@@ -90,18 +88,13 @@ fn previews_follow_profile_and_packaging_choices() {
 
     let mut packaged = plan("probe", BLANK_BLUEPRINT_ID);
     packaged.docker = true;
-    packaged.nix = true;
-    packaged.buildah = true;
     let packaged = rendered_files(&packaged).expect("packaged preview");
-    for path in [
-        "Dockerfile",
-        ".dockerignore",
-        "flake.nix",
-        ".envrc",
-        "build_buildah.sh",
-    ] {
+    for path in ["Dockerfile", ".dockerignore"] {
         assert!(packaged.iter().any(|file| file == path), "{path}");
         assert!(!html.iter().any(|file| file == path), "{path}");
+    }
+    for removed in ["flake.nix", ".envrc", "build_buildah.sh"] {
+        assert!(!packaged.iter().any(|file| file == removed), "{removed}");
     }
 
     assert_eq!(rendered_files(&plan("bad name", BLANK_BLUEPRINT_ID)), None);

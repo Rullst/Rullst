@@ -159,7 +159,7 @@ fn a_missing_ai_command_falls_back_to_the_context_generator() {
     guided(&mut ui).unwrap();
     assert_eq!(ui.runs, [vec!["generate:ai-context", "--help"]]);
     assert!(ui.printed.contains(
-        &"`cargo rullst ai` is not part of this build; showing `cargo rullst generate:ai-context --help` instead."
+        &"`cargo rullst ai` needs cargo-rullst-extras; showing `cargo rullst generate:ai-context --help` instead."
             .to_string()
     ));
 

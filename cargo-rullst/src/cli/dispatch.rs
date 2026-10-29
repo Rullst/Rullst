@@ -11,7 +11,6 @@ use crate::generators::{
     controller::create_new_controller,
     cors_jwt::{create_cors_middleware, create_jwt_middleware},
     db::run_project_db_command,
-    foundry::{run_foundry_deploy, scaffold_foundry_config},
     inspect::inspect_project,
     introspect::generate_models_from_db,
     mail::{MailableKind, create_new_mailable},
@@ -35,8 +34,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             name,
             api,
             docker,
-            buildah,
-            nix,
             default,
             blueprint,
             database,
@@ -56,8 +53,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                 ProjectScaffoldOptions {
                     api: *api,
                     docker: *docker,
-                    buildah: *buildah,
-                    nix: *nix,
                     use_defaults: *default,
                     turso: *turso,
                     mongodb: *mongodb,
@@ -146,12 +141,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::MakeMailDunning { name } => {
             create_new_mailable(name, MailableKind::Dunning)?;
         }
-        Commands::FoundryInit => {
-            scaffold_foundry_config()?;
-        }
-        Commands::FoundryDeploy => {
-            run_foundry_deploy()?;
-        }
         Commands::Dockerize => {
             // `.dockerignore` is only created when absent; never write through a link.
             reject_symlink(Path::new(".dockerignore"))?;
@@ -169,28 +158,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                 None,
                 None,
             )?;
-        }
-        Commands::GenerateBuildah => {
-            reject_existing(
-                "Buildah script",
-                &[PathBuf::from("build_buildah.sh")],
-                REGENERATE_HINT,
-            )?;
-            // The binary and image are named after `[package].name`, as in `deploy`.
-            let proj_name = crate::generators::platform_name::package_name(Path::new("Cargo.toml"))
-                .unwrap_or_else(|| "app".to_string());
-            crate::generators::project::generate_buildah_script(
-                std::path::Path::new("."),
-                &proj_name,
-            )?;
-        }
-        Commands::Nixify => {
-            reject_existing(
-                "Nix environment files",
-                &[PathBuf::from("flake.nix"), PathBuf::from(".envrc")],
-                REGENERATE_HINT,
-            )?;
-            crate::generators::project::generate_nix_files(std::path::Path::new("."))?;
         }
         Commands::MakeCors => {
             create_cors_middleware()?;
@@ -338,9 +305,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::MakeLive { name } => {
             crate::generators::live::create_new_live_component(name)?;
-        }
-        Commands::MakeGrpc { name } => {
-            crate::generators::grpc::create_new_grpc_service(name)?;
         }
         Commands::Deploy { platform } => {
             crate::generators::deploy::run_deploy(platform.as_deref())?;

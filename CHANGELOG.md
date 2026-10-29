@@ -9,11 +9,82 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Added
+
+- `llms.txt` now lists the longest reference pages (the migration guide, threat
+  models, roadmap, workflows and similar; not the spec or the CLI reference)
+  under an `## Optional` section, as llmstxt.org recommends, and
+  `.github/validate-site.py` generates `llms.txt` and `llms-full.txt` and fails
+  when a `SUMMARY.md` page is missing from either or a size bound is exceeded.
+  The README, the terminal-assistant guide and the project-context guide link
+  both files.
+
+- `--json` follows one contract (CLI reference, "Machine-readable output"):
+  standard output is exactly one JSON document with a top-level `schema` field
+  (`rullst.<name>.v1`), no escape codes, human messages and failures on standard
+  error, exit statuses unchanged. `info`, `doctor`, `audit`, `inspect routes`,
+  `deploy:doctor`, `academy:doctor`, `upgrade --dry-run`, `update project
+  prepare|verify|review|apply|recover` and `green` now also carry `schema`; the
+  `schema_version` field they already had stays with the same value. The
+  `update project review` document gains a top-level `rullst.project-review-report.v1`
+  `schema` (its nested review keeps `rullst.project-review.v1`).
+- New `--json` output: `cargo rullst inspect models --json`
+  (`rullst.cli-models.v1`), `inspect schema --json` (`rullst.cli-schema.v1`) and
+  `pkg list --json` (`rullst.cli-pkg.v1`). `inspect --json` for any other target
+  and `pkg add --json` are refused on standard error.
+
 ### Changed
 
 - The `cargo rullst` opening animates on every run (any key skips it).
   `RULLST_OPENING=daily` restores the once-a-day animation and
   `RULLST_OPENING=static` turns it off; `RULLST_REDUCED_MOTION` still applies.
+- **Breaking:** the terminal AI assistant (`cargo rullst ai`) and
+  `cargo rullst footprint` moved to the new optional package
+  `cargo-rullst-extras` (Experimental), so the main CLI no longer depends on
+  `rullst-ai`. Install it with the same version as the CLI
+  (`cargo install cargo-rullst-extras --version =<version> --locked`);
+  `cargo rullst ai …` and `cargo rullst green …` then run it from `PATH` with
+  the same arguments and exit status. Without it they print that install
+  command and exit with status 1, and the home menu shows the command instead
+  of failing. `cargo rullst upgrade` flags scripts and workflows that run
+  `rullst ai` or `rullst footprint` (`V13-CLI-EXTRAS`).
+- **Breaking:** `cargo rullst deploy` has one path: for any Linux VM with
+  Docker or Podman it writes, when absent, the Dockerfile (keeping its
+  dependency-cache stage), a new `compose.yaml` (the app and Caddy with
+  automatic HTTPS, read-only root filesystems, every capability dropped except
+  Caddy's `NET_BIND_SERVICE`, no new privileges and a `/health` check) and the
+  `Caddyfile`, and trusts Caddy in `Rullst.toml`. The Fly.io, Railway and
+  Render targets were removed (`--platform vps` is still accepted), and
+  `deploy` now refuses a package name that is not a valid Cargo name.
+  `cargo rullst upgrade` flags existing provider files and scripts
+  (`V13-DEPLOY-TARGETS-REMOVED`).
+- **Breaking:** removed `cargo rullst foundry:init`, `foundry:deploy`,
+  `nixify`, `generate:buildah`, `make:grpc` and the `new --nix` and
+  `new --buildah` flags. Files they generated stay yours; the new Advanced
+  deployment guide covers Nix, Buildah, Podman Quadlet and Kubernetes.
+  `cargo rullst upgrade` flags `Foundry.toml`, a `nixify` `flake.nix`,
+  `build_buildah.sh`, `src/grpc/mod.rs` and scripts that run these commands
+  (`V13-DEPLOY-GENERATORS-REMOVED`).
+- **Breaking:** the CLI no longer installs or replaces itself. `cargo rullst
+  update check`, `update verify`, `update stage` and `update install` were
+  removed, and `update guided` now runs only the project flow (its `--scope`,
+  `--root`, `--allow-major` and `--prerelease` flags were removed). Install a
+  newer CLI with `cargo install cargo-rullst --version =<version> --locked`.
+  At most once a day, in an interactive terminal, the CLI prints that command
+  when crates.io has a newer release of its major, now including newer
+  prereleases for a prerelease CLI; `RULLST_DISABLE_UPDATE_CHECK`,
+  `CARGO_NET_OFFLINE`, `CI` and non-terminal streams silence it. The project
+  update commands (`update project …`) are unchanged, and `cargo rullst
+  upgrade` flags scripts that run the removed commands
+  (`V13-CLI-SELF-UPDATE-REMOVED`).
+- **Breaking:** `footprint` is now `green` and reports only measured figures:
+  release binary size, a local container image's size (`--image`, through
+  Docker or Podman), idle memory, the `Cargo.lock` dependency count and, with
+  the new `--bench`, CPU time per request. It no longer reports requests per
+  second, latency or peak memory, no longer reads RAPL energy counters and no
+  longer guesses an image name. A carbon figure appears only as an SCI
+  estimate labelled `estimate`, from your `--cpu-watts` and `--grid-intensity`;
+  the JSON schema is `rullst.green.v1`.
 
 ### Dependencies
 

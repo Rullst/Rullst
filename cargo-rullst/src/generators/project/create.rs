@@ -70,7 +70,7 @@ pub(crate) fn write_project_files(
         &options.frontend_engine,
     )?;
 
-    if plan.docker || plan.buildah {
+    if plan.docker {
         let (provider, redis) = (
             Some(options.db_provider.as_str()),
             Some(options.wants_redis),
@@ -80,31 +80,9 @@ pub(crate) fn write_project_files(
             Report::Quiet => docker::write_docker_files(path, project_name, provider, redis)?,
         }
     }
-    if plan.nix {
-        match report {
-            Report::Print => env_config::generate_nix_files(path)?,
-            Report::Quiet => env_config::write_nix_files(path)?,
-        }
-    }
     match report {
         Report::Print => crate::generators::ai_context::generate_ai_context(Some(path))?,
         Report::Quiet => crate::generators::ai_context::write_project_context(path)?,
-    }
-    Ok(())
-}
-
-/// Files written after the initial migration.
-pub(crate) fn write_late_files(
-    path: &Path,
-    plan: &ProjectPlan,
-    identity: &ProjectIdentity,
-    report: Report,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if plan.buildah {
-        match report {
-            Report::Print => env_config::generate_buildah_script(path, identity.package_name())?,
-            Report::Quiet => env_config::write_buildah_script(path, identity.package_name())?,
-        }
     }
     Ok(())
 }
@@ -249,7 +227,6 @@ pub(crate) fn run_new_with_vcs(
     if db_needed && !request.skip_initial_migration {
         bootstrap_database(path);
     }
-    write_late_files(path, &plan, &identity, Report::Print)?;
     if vcs == Vcs::Git && vcs::ensure_gitignore(path)? {
         println!(
             "{}",

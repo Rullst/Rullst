@@ -43,7 +43,6 @@ pub(crate) struct Locked {
     pub(crate) ai: bool,
     pub(crate) redis: bool,
     pub(crate) docker: bool,
-    pub(crate) nix: bool,
 }
 
 /// The starting answers and what the flags fixed.
@@ -51,7 +50,7 @@ pub(crate) struct Locked {
 pub(crate) struct Setup {
     pub(crate) plan: ProjectPlan,
     pub(crate) locked: Locked,
-    /// Offer Dockerfile/Nix (only the CLI path can act on them).
+    /// Offer the Dockerfile (only the CLI path can act on it).
     pub(crate) offer_packaging: bool,
     pub(crate) dry_run: bool,
     /// The port shown in the review's "Then" line.
@@ -177,7 +176,6 @@ impl<P: FnMut(&ProjectPlan) -> Option<Vec<String>>> Flow<P> {
                 Feature::Ai => !locked.ai,
                 Feature::Redis => !locked.redis,
                 Feature::Docker => self.setup.offer_packaging && !locked.docker,
-                Feature::Nix => self.setup.offer_packaging && !locked.nix,
                 Feature::Storage(integration) => {
                     !plan.requested.contains(integration)
                         && !(*integration == PolyglotIntegration::Turso

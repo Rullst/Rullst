@@ -1,8 +1,12 @@
-//! Advisory catalog cache. Never an artifact, signature or installation authority.
+//! Private user cache: the advisory crates.io catalog behind the daily update
+//! notice, and the private workspaces of project preparations. Never an
+//! artifact, signature or installation authority.
 //! Fail closed on platforms without an implemented private-directory verifier.
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub(super) const MAX_AGE_SECONDS: u64 = 6 * 60 * 60;
+/// One crates.io request a day at most: the update notice reuses a catalog
+/// younger than this.
+pub(super) const MAX_AGE_SECONDS: u64 = 24 * 60 * 60;
 
 #[cfg(any(unix, windows))]
 #[path = "cache/codec.rs"]
@@ -19,7 +23,6 @@ pub(super) enum CacheError {
 
 pub(super) struct CachedCatalog {
     pub body: Vec<u8>,
-    pub age_seconds: u64,
 }
 
 #[cfg(any(unix, windows))]
@@ -68,14 +71,6 @@ mod platform {
         ))
     }
 
-    pub(super) fn verification_manifest(
-        _body: &[u8],
-    ) -> Result<tempfile::NamedTempFile, CacheError> {
-        Err(CacheError::Invalid(
-            "private artifact verification is unavailable on this platform",
-        ))
-    }
-
     pub(super) fn project_workspace() -> Result<std::path::PathBuf, CacheError> {
         Err(CacheError::Invalid(
             "private project preparation is unavailable on this platform",
@@ -87,42 +82,6 @@ mod platform {
     ) -> Result<(std::path::PathBuf, std::fs::File), CacheError> {
         Err(CacheError::Invalid(
             "private project verification is unavailable on this platform",
-        ))
-    }
-
-    pub(super) fn installation_root(
-        _path: &std::path::Path,
-    ) -> Result<std::path::PathBuf, CacheError> {
-        Err(CacheError::Invalid(
-            "private CLI installation is unavailable on this platform",
-        ))
-    }
-
-    pub(super) fn installation_file(_path: &std::path::Path) -> Result<(), CacheError> {
-        Err(CacheError::Invalid(
-            "private CLI installation is unavailable on this platform",
-        ))
-    }
-
-    pub(super) fn create_installation_directory(
-        _path: &std::path::Path,
-    ) -> Result<std::path::PathBuf, CacheError> {
-        Err(CacheError::Invalid(
-            "private installation is unavailable on this platform",
-        ))
-    }
-
-    pub(super) fn new_installation_file(
-        _path: &std::path::Path,
-    ) -> Result<std::fs::File, CacheError> {
-        Err(CacheError::Invalid(
-            "private installation is unavailable on this platform",
-        ))
-    }
-
-    pub(super) fn installation_lock(_path: &std::path::Path) -> Result<std::fs::File, CacheError> {
-        Err(CacheError::Invalid(
-            "private installation is unavailable on this platform",
         ))
     }
 
@@ -139,35 +98,6 @@ pub(super) fn load() -> Result<CachedCatalog, CacheError> {
 
 pub(super) fn store(body: &[u8]) -> Result<(), CacheError> {
     platform::store(body, now()?)
-}
-
-// Shares only the private filesystem boundary, never cached catalog authority.
-pub(super) fn verification_manifest(body: &[u8]) -> Result<tempfile::NamedTempFile, CacheError> {
-    if body.is_empty() || body.len() > 16 * 1024 {
-        return Err(CacheError::Invalid("invalid verification manifest size"));
-    }
-    platform::verification_manifest(body)
-}
-
-pub(super) fn installation_file(path: &std::path::Path) -> Result<(), CacheError> {
-    platform::installation_file(path)
-}
-
-pub(super) fn create_installation_directory(
-    path: &std::path::Path,
-) -> Result<std::path::PathBuf, CacheError> {
-    platform::create_installation_directory(path)
-}
-
-pub(super) fn new_installation_file(path: &std::path::Path) -> Result<std::fs::File, CacheError> {
-    platform::new_installation_file(path)
-}
-
-pub(super) fn installation_lock(path: &std::path::Path) -> Result<FileLease, CacheError> {
-    acquire(
-        platform::installation_lock(path)?,
-        "installation destination is busy",
-    )
 }
 
 pub(super) struct PrivateWorkspace {
@@ -291,8 +221,4 @@ fn project_path(
 #[cfg_attr(mutants, mutants::skip)]
 pub(super) fn private_file_descriptor() -> Result<String, CacheError> {
     platform::private_file_descriptor()
-}
-
-pub(super) fn installation_root(path: &std::path::Path) -> Result<std::path::PathBuf, CacheError> {
-    platform::installation_root(path)
 }

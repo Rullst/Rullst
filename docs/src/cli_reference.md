@@ -18,6 +18,79 @@ or platforms and carry their own **Maturity** label below the command name:
 *Supported* or *Experimental*. The [maturity tiers](maturity.md#cli-generators) page
 explains what each label promises.
 
+## Extras (`cargo-rullst-extras`)
+
+The terminal AI assistant ([`cargo rullst ai`](#cargo-rullst-ai-extras)) and
+the efficiency report ([`cargo rullst green`](#cargo-rullst-green-extras))
+live in the optional, Experimental `cargo-rullst-extras` package, so the main
+CLI stays small. Install it with the same version as the CLI:
+
+```bash
+cargo install cargo-rullst-extras --version =13.0.0-alpha.3 --locked
+```
+
+`cargo rullst ai …` and `cargo rullst green …` run `cargo-rullst-extras ai …`
+and `cargo-rullst-extras green …`, found on `PATH` the way Cargo finds its own
+`cargo-<name>` plugins: every argument, `--help` included, passes through
+unchanged, and the extras' exit status becomes the command's exit status. Only
+absolute `PATH` entries are searched, so an executable in the current
+directory is never run. Without the extras, the command prints the exact
+install command above and exits with status 1; the home menu marks both
+entries `extras` and shows the install command instead of failing. The extras
+also run on their own (`cargo-rullst-extras ai`, or `cargo rullst-extras ai`);
+the assistant's allowlisted `cargo rullst` actions then run the
+`cargo-rullst` executable from `PATH`.
+
+## Machine-readable output
+
+A command whose result is data accepts `--json`. The contract is the same for
+all of them:
+
+* Standard output carries exactly one JSON document and nothing else: no
+  progress lines, banners, tables or ANSI escape codes, whether or not the
+  terminal supports colour.
+* The document has a top-level `schema` field naming its shape and version,
+  `rullst.<name>.v1`. A new field is added without a new version; a removed or
+  renamed field, or a changed meaning, gets `v2`. Documents that predate this
+  contract also keep their `schema_version` field, with the same value.
+* Human messages, progress and failures go to standard error. Exit statuses are
+  the same with and without `--json`: a failed check or a refused request still
+  exits non-zero, and the document is still printed when the command could
+  compute one (`doctor`, `deploy:doctor` and `academy:doctor` print their
+  report and then exit with status 1 when a check fails).
+* A request that has no JSON form (for example `pkg add --json`) is refused on
+  standard error with a non-zero exit status and prints nothing on standard
+  output.
+
+| Command | `schema` |
+| --- | --- |
+| `cargo rullst info --json` | `rullst.cli-info.v1` |
+| `cargo rullst doctor --json` | `rullst.cli-doctor.v1` |
+| `cargo rullst audit --json` | `rullst.cli-audit.v1` |
+| `cargo rullst inspect routes --json` | `rullst.cli-routes.v1` |
+| `cargo rullst inspect models --json` | `rullst.cli-models.v1` |
+| `cargo rullst inspect schema --json` | `rullst.cli-schema.v1` |
+| `cargo rullst pkg list --json` | `rullst.cli-pkg.v1` |
+| `cargo rullst upgrade --dry-run --json` | `rullst.upgrade-plan.v1` |
+| `cargo rullst deploy:doctor --json` | `rullst.deployment-diagnostic.v1` |
+| `cargo rullst academy:doctor --json` | `rullst.academy-diagnostic.v1` |
+| `cargo rullst update project prepare --json` | `rullst.project-preparation-result.v1` |
+| `cargo rullst update project verify --dry-run` or `--json` | `rullst.project-verification-plan.v1` (dry run), `rullst.project-verification.v1` |
+| `cargo rullst update project review --json` | `rullst.project-review-report.v1` |
+| `cargo rullst update project apply --json` and `recover --json` | `rullst.project-application.v1` |
+| `cargo rullst ai status --json` (extras) | `rullst.ai-status.v1` |
+| `cargo rullst ai review --json` (extras) | `rullst.ai-review.v1` |
+| `cargo rullst green --json` (extras) | `rullst.green.v1` |
+
+`pkg list --json` prints `{"schema": "rullst.cli-pkg.v1", "table":
+"dependencies", "packages": ["rullst-auth"]}`; `table` is
+`workspace.dependencies` for a virtual workspace manifest. `audit --report json`
+is a different interface: it writes `SECURITY_REPORT.json`
+(`rullst.cli-audit-report.v1`) and cannot be combined with `--json`. The
+files `cargo rullst generate:ai-context` writes (`rullst.project-context.v1`)
+are described in [project context](project-context.md). `db:status` is
+printed by your application, not by the CLI, and has no `--json` form yet.
+
 ---
 
 ## 🏗️ 1. Project Initialization & Maintenance
@@ -34,8 +107,11 @@ and a summary of where you are.
   `.env`, then `[database].url` in `Rullst.toml`; `TURSO_DATABASE_URL` for a
   Turso-primary project), the number of `src/migrations` files and the latest
   one, and the Git branch. Connection URLs are never displayed. The menu leads
-  with dev, dash, scaffolding, database, `doctor` and deploy, and keeps every
-  project operation of earlier releases. Started from a subdirectory, menu
+  with dev, dash, scaffolding, database, `doctor` and deploy, keeps every
+  project operation of earlier releases, and offers **AI Assistant** and
+  **Green Report**, marked `extras`: without
+  [`cargo-rullst-extras`](#extras-cargo-rullst-extras) they print its install
+  command instead of failing. Started from a subdirectory, menu
   commands run at the project root (except `new`). The migration count is the
   files on disk; run `cargo rullst db:status` for the applied state.
 * **Outside a project**: the summary links the docs ([start here](start-here.md)
@@ -69,11 +145,13 @@ terminal, `CI` is set or `TERM=dumb`, the CLI prints the plain line, the
 summary and the equivalent commands, then exits successfully without
 prompting.
 
-In a terminal the home also asks crates.io in the background for a newer
-stable `cargo-rullst` of the same major and prints a notice under the summary
-when that answer has already arrived; nothing is installed or cached.
-`RULLST_DISABLE_UPDATE_CHECK=1`, `CARGO_NET_OFFLINE=true` or `CI=true` turns
-the query off.
+In a terminal, at most once a day, the home (or any command, on standard
+error after it finishes) prints `A newer cargo-rullst is available: cargo
+install cargo-rullst --version =X --locked` when crates.io has a newer release
+of the same major; the catalog is fetched in the background at most once a day
+and cached privately, and nothing is installed. `RULLST_DISABLE_UPDATE_CHECK=1`,
+`CARGO_NET_OFFLINE=true` or `CI=true` turns it off. See
+[Update notice and installing a newer CLI](#cargo-rullst-update-check-1210-working-source-unreleased).
 
 ### Errors and exit codes
 Every failure is printed on standard error by one shared report:
@@ -114,8 +192,8 @@ or `RUST_BACKTRACE` is set.
 | `2` | Usage error: an unknown command, invalid arguments or an argument that is not valid UTF-8. |
 
 An unknown command lists the closest commands at the level where it was typed
-(`cargo rullst make:modek` suggests `make:model`; `cargo rullst update chekk`
-suggests `update check`; `cargo rullst db` lists the `db:*` group). Ranking
+(`cargo rullst make:modek` suggests `make:model`; `cargo rullst update projetc`
+suggests `update project`; `cargo rullst db` lists the `db:*` group). Ranking
 ignores case and separators (`make-model`), then uses edit distance with
 transpositions, an exact `group:name` segment (`migrate`) and prefixes.
 
@@ -129,7 +207,7 @@ plain line without escape sequences or carriage returns.
 
 After a generator succeeds, the CLI prints up to three concrete **Next steps**
 (for example `cargo rullst db:migrate` after `make:model -m`). Generators that
-already print their own instructions (`new`, `auth`, `foundry:init`,
+already print their own instructions (`new`, `auth`, `deploy`,
 `make:k8s`) add none, and `--json` invocations never print them.
 
 ### `cargo rullst completions <shell>`
@@ -156,6 +234,7 @@ source, migration files, Git branch). It reads local files and runs
 
 ```json
 {
+  "schema": "rullst.cli-info.v1",
   "schema_version": "rullst.cli-info.v1",
   "cli": { "name": "cargo-rullst", "version": "13.0.0" },
   "platform": { "os": "linux", "arch": "x86_64" },
@@ -198,8 +277,8 @@ wizard. It asks, one screen at a time:
    nothing is built and no network is used;
 3. for the Blank starter, **full-stack web app** or **JSON API**;
 4. the **primary database** (Turso and *No database* only for Blank);
-5. **optional features** (zero or more): AI, Redis adapters, Dockerfile, Nix
-   flake and the Turso, MongoDB, DuckDB, SurrealDB and Qdrant add-ons;
+5. **optional features** (zero or more): AI, Redis adapters, Dockerfile
+   and the Turso, MongoDB, DuckDB, SurrealDB and Qdrant add-ons;
 6. a **review** of the answers, the file tree and the commands `new` will run
    (the initial migration, unless skipped or database-free), with *Create
    the project*, *Back* and *Cancel*.
@@ -240,7 +319,7 @@ The choices that materially change the generated application:
   * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it. Its example write route, `POST /api/messages`, is a bearer machine endpoint: clients send `Authorization: Bearer <API_TOKEN>` with the random `API_TOKEN` written to `.env`, and the server does not start without it (see [which security layer to use](security-layers.md#what-generated-applications-already-have)). The interactive wizard then skips its blueprint and build-type questions instead of letting their Full-Stack default replace the flag.
   * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The
     `.dockerignore` mirrors the generated `.gitignore`: it excludes `.env` and
-    `.env.*` (except `.env.example`), `Foundry.toml`, SQLite and DuckDB files
+    `.env.*` (except `.env.example`), SQLite and DuckDB files
     (`*.db`, `*.sqlite`, `*.sqlite3`, `*.duckdb` and their journals, one list
     shared by both files) and the
     host-local `.cargo/config.toml` described below, so the builder's
@@ -271,15 +350,14 @@ The choices that materially change the generated application:
     Compose services, persistent-volume ownership, backup/restore and platform
     deployment hardening remain explicit project work. Every starter mounts
     `rullst::health::health_router()`, so the `/health` and `/ready` probes
-    written by `make:k8s`, `deploy` and `foundry:deploy` answer `200` without
-    authentication.
+    used by `make:k8s` manifests and the `deploy` Caddyfile answer `200`
+    without authentication.
   * `--turso`: Adds Turso/libSQL as a side store beside the primary database: the direct Hrana HTTP v3 adapter, checked migrations and its real-SQL offline development fallback. It does not imply transparent replication.
   * `--mongodb`: Adds MongoDB as a side store: typed document CRUD and its deterministic offline store.
   * `--duckdb`: Adds DuckDB as a side store for in-process analytics; the optional native dependency increases the first build time.
   * `--surrealdb`: Adds SurrealDB as a side store: HTTP document CRUD and bounded read-only graph queries.
   * `--qdrant`: Adds Qdrant as a side store for bounded dense-vector operations and generates empty/`mock_*`-compatible environment fields; it is not the SQL primary.
-  * `--nix` (**Experimental**): Adds `flake.nix` and `.envrc` (direnv) starting points; reproducibility still depends on pinned inputs and external services.
-  * `--buildah` (**Experimental**): Adds rootless Buildah container-build files where supported. The image is tagged with the lowercase, `-`-separated form of the package name (`my_startup` becomes `my-startup:latest`), the same name `make:k8s` uses, because OCI repository and Kubernetes names reject uppercase letters and `_`.
+  * `--nix` and `--buildah` were removed in 13.0.0-alpha.4; see [Advanced deployment](advanced-deployment.md).
   * `--default`: Skips every question and uses deterministic defaults for anything no flag sets (name `app`, Blank, SQLite, no features), intended for CI and reproducible scaffolding.
   * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects the blueprint; the wizard skips that question.
   * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary database; the wizard skips that question. Network databases must be configured before migration bootstrap. The SQLx backends (`sqlite`, `postgres`, `mysql`, `mariadb`) work with every starter. `turso` is accepted only with the Blank starter (web page or `--api`) and has no Nexus, Studio database pages, `Schema` migrations or SQLx ORM; the wizard's choice, `--help` and the review/dry-run screen say so. See [Database Support](database-support.md).
@@ -485,195 +563,70 @@ providers, or replace the project's test suite. Follow the
 
 <a id="cargo-rullst-update-check-1210-working-source-unreleased"></a>
 
-### `cargo rullst update check` (since 12.1.0)
+### Update notice and installing a newer CLI
 
-Advisory release discovery; it does not install a CLI or migrate an application.
-
-```bash
-cargo rullst update check
-cargo rullst update check --to VERSION --json
-cargo rullst update check --refresh
-cargo rullst update check --offline --json
-cargo rullst update check --no-cache
-```
-
-The default stays in the installed major's stable channel. Exact other-major
-targets require `--allow-major`; prereleases also require `--prerelease`.
-Downgrades, yanked targets and ambiguous metadata fail closed. The bounded
-HTTPS query reports the selected release's declared Rust minimum and the
-current platform; it does not prove compatibility or artifact authenticity.
-On Linux/macOS, explicit discovery caches validated metadata for up to six
-hours under `$XDG_CACHE_HOME/rullst-update-v1` or
-`$HOME/.cache/rullst-update-v1`. An unsafe owner, permissions, linked file,
-oversized body or invalid timestamp prevents reuse. The directory is private
-and writer contention does not block discovery; an unusable cache falls back
-to the registry only when online. Cache failures never authorize an install.
-
-`--offline` and `CARGO_NET_OFFLINE=true` use only a fresh cache and fail without
-network access if none is usable. `--refresh` bypasses cache reads;
-`--no-cache` disables both cache reads and writes. Neither bypasses the offline
-environment setting. Windows uses `%LOCALAPPDATA%/rullst-update-v1` with an
-atomically created protected user/SYSTEM/Administrators DACL. Handle-based
-checks reject foreign owners, unsafe grants, reparse points and hard links;
-UNC paths and alternate data streams are unsupported. Unsafe ACLs are not
-modified. Native cache acceptance is recorded in the
-[maintenance checkpoint](v12.md#1210-delivery-checkpoint-unreleased).
-Ordinary dashboard notices remain process-local and never write this cache.
-
-`--json` uses `rullst.update-discovery.v1`, includes metadata source/age and
-grants no installation, project or deployment authority. Cached metadata is
-not proof of current yank status or artifact authenticity. See the
-[upgrade guide](tutorials/36-assisted-framework-upgrades.md).
-
-<a id="cargo-rullst-update-verify-1210-working-source-unreleased"></a>
-
-### `cargo rullst update verify` (since 12.1.0)
-
-Authenticate a downloaded native CLI inventory and both executables:
+The CLI never downloads, verifies or replaces its own binary. Install a newer
+one with Cargo, using its exact version:
 
 ```bash
-cargo rullst update verify --to VERSION --directory ./downloaded-cli --json
+cargo install cargo-rullst --version =VERSION --locked
 ```
 
-This requires the exact release's `cli-manifest-TARGET.json`,
-`cargo-rullst-VERSION-TARGET[.exe]` and `rullst-VERSION-TARGET[.exe]`.
-The directory may contain other downloads; only these fixed names are read.
-No archive is extracted and no downloaded executable is run. Releases since
-12.1.0 publish this inventory for Linux x64 GNU, Windows x64 MSVC and macOS
-x64/ARM64; 12.0.0 has none. The v13 prereleases publish it for the same
-targets; select one exactly, such as `--to 13.0.0-alpha.3`, with the
-major/prerelease opt-ins described below.
+At most once a day, in an interactive terminal, `cargo rullst` tells you when a
+newer release of its major is on crates.io: a newer stable release, or for a
+prerelease CLI also a newer prerelease. The notice prints that exact command
+(`A newer cargo-rullst is available: cargo install cargo-rullst --version =X
+--locked`) on the home screen, or on standard error after a command finishes.
+It never delays or fails a command:
 
-The caller-installed GitHub CLI must be available through an absolute trusted
-PATH entry and support [attestation verification](https://cli.github.com/manual/gh_attestation_verify).
-The command checks a temporary private copy of the manifest against the exact
-official repository, release workflow, source tag/commit and GitHub issuer,
-rejects self-hosted attestations, and compares both binary sizes and SHA-256
-digests. Missing/failed/timed-out verification is an error, with no fallback
-to checksums. It requires network access; `--offline` and `CARGO_NET_OFFLINE`
-reject before filesystem/network I/O. Major/prerelease opt-ins match `check`.
+- the crates.io catalog is fetched in a background thread at most once a day
+  (one bounded HTTPS request, 4 seconds in total, no redirects) and kept in
+  the private user cache (`$XDG_CACHE_HOME/rullst-update-v1`,
+  `$HOME/.cache/rullst-update-v1` or `%LOCALAPPDATA%\rullst-update-v1`;
+  unsafe owners, permissions or links make it unusable);
+- the notice itself reads only that cache, and the day of the last notice and
+  of the last request are small stamps in `rullst-ui-v1/` in the same cache
+  base;
+- `RULLST_DISABLE_UPDATE_CHECK=1`, `CARGO_NET_OFFLINE=true`, `CI`, and any
+  standard stream that is not a terminal silence it completely: no request,
+  no file and no output.
 
-JSON uses `rullst.update-verification.v1`. Only `artifact_verified` is true;
-installation, execution, project writes and deployment remain unauthorized.
-The report covers the bytes read during this invocation, is not an installation
-token and does not recheck registry yank status. A later installer must validate
-current release eligibility and reread/reverify the candidate. Hostile same-user
-writers and a compromised verifier/PATH are outside this boundary.
-
-### `cargo rullst update stage` (since 12.1.0)
-
-```bash
-cargo rullst update stage --to VERSION --json
-```
-
-This exact version must be published and non-yanked. Another major requires
-`--allow-major`; a prerelease separately requires `--prerelease`. `--offline`
-and `CARGO_NET_OFFLINE` reject before filesystem/network work. The command reads
-fresh registry metadata, downloads the official platform manifest, authenticates
-it with the caller-installed GitHub CLI, then downloads the two named binaries.
-Redirects stay on HTTPS GitHub/release-assets hosts, with at most two redirects.
-The manifest is limited to 16 KiB; each binary to its authenticated size and at
-most 128 MiB. Each request has a 120-second total timeout. Exact hashes and sizes
-must match. Ordinary failures remove the private stage. Forced termination can
-leave an incomplete private directory; subsequent stages never reuse its files.
-
-The `rullst.cli-staging.v1` report names the retained private directory and source
-identity. Files remain unexecuted and uninstalled. No project files change. This
-report grants no future installation authority: an installer must revalidate the
-release, provenance and file contents. Native staging checks remain release
-requirements.
+**Removed in 13.0.0-alpha.4:** the self-updater (`update check`,
+`update verify`, `update stage` and `update install review|apply|recover`)
+and the CLI half of `update guided` (`--scope`, `--root`, `--allow-major`,
+`--prerelease`). The native CLI executables and their manifests stay
+attached to each GitHub release and can be checked by hand as described in
+[Verifying a release](https://github.com/Rullst/Rullst/blob/main/SECURITY.md#verifying-a-release).
 
 <a id="cargo-rullst-update-guided-1210-working-source-unreleased"></a>
 
 ### `cargo rullst update guided` (since 12.1.0)
 
 ```bash
-cargo rullst update guided --to VERSION --scope both \
-  --root "$HOME/.local/share/rullst-cli" --project ./my-app
-cargo rullst update guided --to VERSION --scope project --project ./my-app --offline
+cargo rullst update guided --to VERSION --project ./my-app
+cargo rullst update guided --to VERSION --project ./my-app --offline
 ```
 
-This interactive entry point composes the same authenticated installation and
-isolated project commands described below. `--scope cli`, `project` or `both`
-selects the work; `both` is the default and requires an absolute `--root`.
-Each complete review appears before its own default-no confirmation. The flow
-reuses the exact version, directories and review digests without shell commands
-or manual copying. It reports elapsed milliseconds per executed stage, excluding
-time spent answering prompts. Declining stops before the next operation;
-completed steps and their recovery records remain available.
+This interactive entry point composes the isolated project commands described
+below: prepare, verify, review and apply. `--to` must be in this CLI's major,
+because the running CLI carries only its own major's migration rules; to move
+to another major, install that CLI first and run its guided flow. Each complete
+review appears before its own default-no confirmation. The flow reuses the
+exact version, directories and review digest without shell commands or manual
+copying. It reports elapsed milliseconds per executed stage, excluding time
+spent answering prompts. Declining stops before the next operation; completed
+steps and their recovery records remain available.
 
-CLI download/review uses the network. Project verification separately asks
-whether Cargo may use the network and requires explicit consent to execute
-trusted build scripts, macros and tests. `--offline` keeps project verification
-offline and rejects scopes containing CLI installation. Feature selection and
-command deadlines use the same `--all-features`, `--features`,
-`--no-default-features` and `--timeout-seconds` options as project verification.
-The running CLI cannot acquire another major's migration rules by installing
-it: use `--scope cli --allow-major` first, then explicitly invoke the new CLI's
-project flow. PATH, databases and deployments are not changed.
+Project verification asks whether Cargo may use the network and requires
+explicit consent to execute trusted build scripts, macros and tests.
+`--offline` keeps it offline. Feature selection and command deadlines use the
+same `--all-features`, `--features`, `--no-default-features` and
+`--timeout-seconds` options as project verification. PATH, databases and
+deployments are not changed.
 
 Piped input/output rejects before I/O; use the explicit commands with JSON and
-review digests for automation. This flow does not bypass release eligibility,
-provenance, ownership or recovery checks.
-
-### `cargo rullst update install review` (since 12.1.0)
-
-```bash
-cargo rullst update install review --to VERSION --directory STAGED_FILES \
-  --root "$HOME/.local/share/rullst-cli" --json
-```
-
-The absolute installation root must be new/empty or contain exactly the two
-updater-owned binaries and its bounded root-bound installation receipt. Its
-parent must already exist and pass owner/ancestor checks. An existing destination
-must be private (`0700` on Unix or a protected caller DACL on Windows). Unknown
-files and package-manager installations are refused. No permissions are repaired.
-The original attested manifest bytes and private single-link binaries must still
-match; review reauthenticates the prior manifest and uses the installed version
-to reject downgrades even when the reviewing CLI is older.
-
-Review fetches fresh registry eligibility, verifies official provenance and
-exact local binary hashes, then rechecks the destination. JSON binds source,
-version, native target, destination and exact prior receipt to `review_sha256`, lists the future
-version probes and supplies an exact Cargo source-install command for separately
-reviewed manager use. Offline mode rejects before I/O. The destination is not
-created and neither the probes nor fallback command run. The digest grants no
-writes until passed explicitly to `apply`.
-
-### `cargo rullst update install apply` / `recover` (since 12.1.0)
-
-```bash
-cargo rullst update install apply --to VERSION --directory STAGED_FILES \
-  --root "$HOME/.local/share/rullst-cli" --approved-review REVIEW_SHA256 --json
-cargo rullst update install recover --root "$HOME/.local/share/rullst-cli" \
-  --approved-review REVIEW_SHA256 --json
-```
-
-Apply repeats registry, provenance, file and destination checks. It refuses a
-changed review. A destination-local lock coordinates installations even when
-callers use different advisory caches. Private copies on the destination
-filesystem must pass both approved `--version` checks (15 seconds and 4 KiB per
-output stream each) before any installed entry is replaced. The CLI retains
-verified predecessor bytes and a bounded intent, then replaces the two binary
-entries and receipt. A running older executable is moved aside, never truncated.
-The three replacements are individually performed; this is not an atomic swap
-or a power-loss durability guarantee.
-
-An interrupted replacement reports the same root and approval digest needed for
-recovery. Recovery authenticates the recorded manifests again, accepts only the
-recorded before/after states and restores the exact predecessor. For a first
-installation, it removes only its recorded new entries. Unrelated edits reject
-without being overwritten; repeated successful recovery is a no-op. Both
-commands reject offline mode before I/O. They never change PATH, compile source,
-migrate a project or deploy an application.
-
-Keep the private `.rullst-install-*` sibling: it holds the destination lock,
-receipt ownership record and recovery evidence. The selected operation remains
-recoverable. Later installs prune only verified older completed/recovered
-operations; at most eight operation directories may be retained. Unknown or
-incomplete historical evidence requires manual review. On Windows, closing an
-older running CLI may be necessary before its historical executable is pruned.
-Native fault and complete user-journey acceptance remain release requirements.
+review digests for automation. This flow does not bypass ownership or recovery
+checks.
 
 <a id="cargo-rullst-update-project-prepare-1210-working-source-unreleased"></a>
 
@@ -1254,30 +1207,47 @@ root, and a name whose module or type would not be a non-keyword Rust
 identifier (for example `../notes`, `self` or `Bad.Name`) is rejected before
 anything is written.
 
-### `cargo rullst make:grpc <ServiceName>`
-**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
+### `cargo rullst deploy`
+Writes the files that run the application on any Linux VM with Docker or
+Podman, each only when it is absent (existing files are kept, and nothing is
+written through a link):
 
-Scaffolds a new gRPC service implementation in `src/grpc/<name>.rs` and Protobuf schema definition in `proto/<name>.proto` powered by `tonic`.
+* `Dockerfile` and `.dockerignore`: the same multi-stage build as
+  `dockerize`, with its dependency-cache (planner) stage and a distroless,
+  non-root runtime image;
+* `compose.yaml`: the app and a Caddy reverse proxy with automatic HTTPS for
+  `DOMAIN`. Both containers have a read-only root filesystem, every capability
+  dropped (Caddy keeps only `NET_BIND_SERVICE` for ports 80 and 443) and
+  `no-new-privileges`; the app reads `.env.production` and keeps its data in
+  the `app_data` volume; the app's `/health` endpoint is checked from the
+  Caddy container, because the app image has no shell or HTTP client. It works
+  with `docker compose` and `podman compose`;
+* `Caddyfile`: proxies to the app and stops routing to it while `/health`
+  fails.
 
-### `cargo rullst deploy [--platform <fly|railway|render|vps>]`
-Guided deployment helper that generates cloud manifests (`fly.toml`,
-`railway.json`, `render.yaml`, or `docker-compose.prod.yml`) and invokes the
-selected provider CLI where supported. A provider CLI that is not installed
-only prints the manual commands; one that runs and fails (`flyctl deploy`,
-`railway up`) makes `deploy` exit non-zero. The Fly.io `app` name uses the same
-lowercase label as `make:k8s` (`my_app` becomes `my-app`), while the
-`Dockerfile` and Railway start command keep the package's binary name. An
-unknown `--platform` value is rejected before anything is written, including
-the `Dockerfile` the command otherwise scaffolds when it is missing.
-`--platform vps` pins the Caddy container to `172.31.250.10` on a
-`172.31.250.0/24` compose network and adds that address to `[security]
-trusted_proxies` in `Rullst.toml` (creating the file before a missing
-`Dockerfile` is scaffolded, so the image copies it), so rate limits see each
-client instead of Caddy. An existing `trusted_proxies` list is left unchanged
-with a warning. Fly.io, Railway and Render print a notice while `Rullst.toml`
-trusts no proxy, because their proxy networks are provider-specific.
-Credentials, migrations, availability, DNS/TLS and rollback remain operator
-responsibilities.
+Caddy is pinned to `172.31.250.10` on a `172.31.250.0/24` compose network,
+and the command adds that address to `[security] trusted_proxies` in
+`Rullst.toml` (before a missing `Dockerfile` is scaffolded, so the image
+copies it), so rate limits see each client instead of Caddy. An existing
+`trusted_proxies` list is left unchanged with a warning. The command prints
+the next steps: create `.env.production`, point DNS at the VM, run
+`DOMAIN=example.com docker compose up -d --build` (or
+`podman compose up -d --build`) and run `db:migrate` once per release.
+Nothing is uploaded, started or deployed. A `Cargo.toml` package name that is
+not a valid Cargo name is refused before anything is written, because the
+Dockerfile names the binary after it.
+
+Step by step: [Deploy to a Linux VM](vm-deployment.md), and the guides for
+[Hetzner Cloud](deploy-hetzner.md), [DigitalOcean](deploy-digitalocean.md),
+[Oracle Cloud](deploy-oracle-cloud.md) and [Google Cloud](deploy-google-cloud.md).
+
+**Removed in 13.0.0-alpha.4:** the Fly.io, Railway and Render targets
+(`--platform fly|railway|render` now fails before writing anything;
+`--platform vps`, the former name of this path, is still accepted). Provider
+files you already have keep working with the provider's own CLI. Nix,
+Buildah, Podman Quadlet and Kubernetes are described in
+[Advanced deployment](advanced-deployment.md). Credentials, migrations,
+availability, DNS and rollback remain operator responsibilities.
 
 ### `cargo rullst auth`
 Creates an authentication starting point in your codebase, including:
@@ -1576,7 +1546,11 @@ with dependency metadata, configuration key names and source paths. It creates
 `--check` detects missing, altered or stale inventory without writing files.
 See [project context](project-context.md) for limits, exclusions and legacy migration.
 
-### `cargo rullst ai` (v13 preview)
+### `cargo rullst ai` (extras)
+**Maturity:** Experimental; part of the optional
+[`cargo-rullst-extras`](#extras-cargo-rullst-extras) package since
+13.0.0-alpha.4.
+
 A terminal assistant that knows Rullst and the current project. It answers
 questions and proposes changes that you review one by one. A walkthrough is in
 [the terminal AI assistant guide](ai-assistant.md).
@@ -1962,94 +1936,62 @@ their source at startup and on every change (siblings without a source file are
 kept).
 * **Flags:** `--debug` (Compiles with debug information, generating a larger binary).
 
-### `cargo rullst footprint` (v13)
-Runs a bounded closed-loop load against the app and reports requests per
-second, latency p50/p95/p99, errors, the app process's CPU time (Linux
-`/proc/<pid>/stat`), peak and idle RSS (`VmHWM`/`VmRSS`), the binary size, the
-Docker image size when a local daemon has an image named after the package,
-energy and a Software Carbon Intensity (SCI, ISO/IEC 21031:2024) figure. Every
-value shows its method; anything unavailable is `NOT MEASURED` with the reason.
+### `cargo rullst green` (extras)
+**Maturity:** Experimental; part of the optional
+[`cargo-rullst-extras`](#extras-cargo-rullst-extras) package. It replaces
+`cargo rullst footprint` (13.0.0-alpha.1 to alpha.3).
+
+Reports figures it measured for the app, each with its method: the release
+binary size, a local container image's size (`--image`, through `docker` or
+`podman image inspect`), the idle resident memory of the started app (Linux
+`VmRSS`), the third-party dependency count from `Cargo.lock` and, with
+`--bench`, the app process's CPU time during a bounded closed-loop loopback
+load and the CPU time per request. Anything unavailable is `NOT MEASURED` with
+the reason. It measures no energy: a Software Carbon Intensity (SCI,
+ISO/IEC 21031:2024) figure appears only as an estimate labelled `estimate`,
+computed from the measured CPU time, your `--cpu-watts` and your
+`--grid-intensity`, with every input shown.
 
 Without `--url` it builds the release binary (reusing an existing build),
 starts it with `RULLST_ENV=production` (or `--env staging`, which accepts the
 starters' mock billing credentials) on a free `127.0.0.1` port, measures it
 and stops it. With `--url` it measures an app already running on loopback and
-refuses any other host; it makes no network calls beyond loopback and never
-fetches grid intensity. Energy is measured from readable RAPL package counters
-(whole package, includes other processes), otherwise estimated as CPU time ×
-`--cpu-watts` and labelled `estimate`, otherwise `NOT MEASURED`. SCI is
-computed only when energy is known and `--grid-intensity` is given.
+refuses any other host; it makes no network calls beyond loopback and the
+local container engine, and never fetches grid intensity.
 
 ```bash
-cargo rullst footprint --duration 5s
-cargo rullst footprint --url http://127.0.0.1:3000 --path /health --json
+cargo rullst green --image my-app:latest
+cargo rullst green --url http://127.0.0.1:3000 --path /health --bench --json
+cargo rullst green --bench --cpu-watts 15 --grid-intensity 120
 ```
 
 * **Flags:** `--url <http://127.0.0.1:PORT>`, `--env <production|staging>`
   (default `production`; not with `--url`), `--path <PATH>` (default `/`),
-  `--duration <10s|1m|1500ms>` (default `10s`, 1 s to 10 min),
-  `--concurrency <N>` (default 4, at most 256), `--grid-intensity <gCO2e/kWh>`,
-  `--cpu-watts <W>`, `--embodied <gCO2e>`, `--json` (versioned
-  `rullst.cli-footprint.v1`).
+  `--image <NAME>`, `--bench`, `--duration <10s|1m|1500ms>` (default `10s`,
+  1 s to 10 min; needs `--bench`), `--concurrency <N>` (default 4, at most
+  256; needs `--bench`), `--cpu-watts <W>` (needs `--bench`),
+  `--grid-intensity <gCO2e/kWh>` (needs `--cpu-watts`), `--embodied <gCO2e>`
+  (needs `--grid-intensity`), `--json` (versioned `rullst.green.v1`).
 * **Exit status:** `0` when the measurement ran, even with `NOT MEASURED`
   fields; `1` when the build failed or the app could not be started or reached;
   `2` for invalid arguments.
 
-See the [footprint guide](footprint.md) for what each number means, the RAPL
-permission note and how to choose a grid intensity.
+See the [green guide](green.md) for what each figure means and how to choose a
+grid intensity.
 
-### `cargo rullst dockerize` / `cargo rullst nixify`
-**Maturity:** `nixify` and `generate:buildah` are Experimental; `dockerize`
-follows the CLI's Core tier · [tiers](maturity.md#cli-generators)
+### `cargo rullst dockerize`
 
-Injects infrastructure files into a pre-existing project (similar to the flags
-used in `new`): `dockerize` writes a `Dockerfile` (plus `.dockerignore` when
-absent), `nixify` writes `flake.nix` and `.envrc`, and `generate:buildah`
-writes `build_buildah.sh`, which builds the `Dockerfile` rootless with
-`buildah bud`. All three refuse to replace an existing file;
-move a customized file aside to regenerate its template. The Dockerfile's binary
-and the Buildah image are named after `[package].name`, read with a TOML parser
-(`app` when `Cargo.toml` has no package name).
+Writes the `Dockerfile` (plus `.dockerignore` when absent) into an existing
+project, as `new --docker` does. It refuses to replace an existing
+`Dockerfile`; move a customized file aside to regenerate the template. The
+binary is named after `[package].name`, read with a TOML parser (`app` when
+`Cargo.toml` has no package name). `cargo rullst deploy` writes the same
+Dockerfile together with `compose.yaml` and the `Caddyfile`.
 
-### `cargo rullst foundry:init`
-**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
-
-Generates the `Foundry.toml` deployment manifest at the project root containing
-SSH access settings and environment variables for a compatible systemd-based
-Linux VPS. Before writing it, the command creates `.gitignore` when missing and
-appends `Foundry.toml` unless an exact, non-negated `Foundry.toml` line already
-ignores it. The manifest is created owner-readable only (`0600` on Unix);
-operators must still verify that secrets were never committed.
-
-### `cargo rullst foundry:deploy`
-**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
-
-Executes an SSH deployment pipeline: local release build, remote directory and
-systemd provisioning, `scp` transfer, environment/Caddy configuration, service
-restart, and a bounded remote-local `/health` probe. It requires a preinstalled,
-reviewed `curl`, systemd, and Caddy installation plus root or passwordless
-non-interactive `sudo`. Candidate files are staged under an application-specific
-`/opt/rullst/<app>` root: the binary is the executable Cargo reports for the
-package (so `CARGO_TARGET_DIR`, `build.target-dir`, a workspace target directory
-and `build.target` are honored; with several binaries, `package.default-run` or
-the one named after the package is chosen), uploaded into
-`/opt/rullst/<app>/incoming` (mode `0700`, owned by the SSH user), and its
-owner and the SHA-256 of the local build are checked before it is installed.
-The Caddy configuration is validated, and `.previous` copies of replaced files
-are retained. The service environment file holds the `[env]` table plus
-`PORT`, the `[app] port` (default 3000) that Caddy proxies to and the health
-check probes, unless `[env]` sets `PORT` itself; an `[env] PORT` different from
-`[app] port` is rejected. It also sets `HOST="127.0.0.1"` unless `[env]` sets
-`HOST` or `RULLST_HOST`: a production server otherwise binds `0.0.0.0`, and only
-Caddy needs that plain-HTTP port. Keep it private when overriding `HOST`. The
-application runs as a dedicated
-`rullst-<app>` system account (created with `useradd`) under a sandboxed unit
-(`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, no
-capabilities except `CAP_NET_BIND_SERVICE` for a port below 1024) and can write
-only under `/opt/rullst/<app>/data`. The current command replaces the global
-`/etc/caddy/Caddyfile`; it does not perform migrations, data backup, external
-reachability check, or automatic rollback. It
-does not guarantee zero downtime and does not support IPv6 SCP targets.
+**Removed in 13.0.0-alpha.4:** `nixify`, `generate:buildah`, `foundry:init`,
+`foundry:deploy` and `make:grpc`. Files they generated stay yours; see
+[Advanced deployment](advanced-deployment.md) for Nix, Buildah, Podman
+Quadlet and Kubernetes.
 
 ## 🛡️ 6. Security, Compliance & System Diagnostics
 
@@ -2077,6 +2019,7 @@ route, dependency, and local network patterns.
 
 ```json
 {
+  "schema": "rullst.cli-audit.v1",
   "schema_version": "rullst.cli-audit.v1",
   "issues_found": 0,
   "checks": [
@@ -2282,6 +2225,7 @@ the exit status rules:
 
 ```json
 {
+  "schema": "rullst.cli-doctor.v1",
   "schema_version": "rullst.cli-doctor.v1",
   "cli_version": "13.0.0",
   "ok": false,
@@ -2338,10 +2282,11 @@ describes the exact scope):
 * `cargo rullst inspect model`: Lists the structs and public fields in `src/models`.
 * `cargo rullst inspect schema`: Prints the ORM model schema derived from `#[derive(Orm)]` structs as JSON.
 * `cargo rullst inspect routes --json`: Prints the recognized routes as one
-  `rullst.cli-routes.v1` document (`--json` is accepted only for routes):
+  `rullst.cli-routes.v1` document:
 
 ```json
 {
+  "schema": "rullst.cli-routes.v1",
   "schema_version": "rullst.cli-routes.v1",
   "complete": true,
   "incomplete_reason": null,
@@ -2353,6 +2298,19 @@ describes the exact scope):
 
 `complete` is `false` when the bounded source walk stopped early or `src/` is
 missing, with the reason in `incomplete_reason`.
+
+`--json` is accepted for `routes`, `models` and `schema` (since
+13.0.0-alpha.4):
+
+* `inspect models --json` prints `rullst.cli-models.v1`: `complete`,
+  `incomplete_reason` and `files`, one entry per `src/models/*.rs` file (not
+  `mod.rs`, no symlinks) with its public `struct` and `enum` items. A struct has
+  `fields` (`name`, `type`); an enum has `variants`. A file that is not valid
+  Rust is named in `incomplete_reason`.
+* `inspect schema --json` prints `rullst.cli-schema.v1`: the same `source` and
+  `models` as the human output (`struct`, `table`, `fields` with `name`,
+  `rust_type`, `optional`), or, when the project provides `rullst-schema.json`,
+  `source: "rullst-schema.json"` with the parsed file under `snapshot`.
 
 ---
 
@@ -2372,9 +2330,9 @@ cargo rullst inspect model
 # Open the local Studio compatibility UI on 127.0.0.1:5555
 cargo rullst studio
 
-# Ask the terminal AI assistant (offline demo until `cargo rullst ai connect`)
+# Ask the terminal AI assistant (needs cargo-rullst-extras; offline demo until `cargo rullst ai connect`)
 cargo rullst ai "add a posts page"
 
-# Run the reviewed Foundry pipeline on a compatible, prepared VPS (experimental)
-cargo rullst foundry:deploy
+# Write the Dockerfile, compose.yaml and Caddyfile for a Linux VM (Docker or Podman)
+cargo rullst deploy
 ```

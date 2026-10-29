@@ -246,6 +246,7 @@ crate is labelled Core, Extension or Experimental; see the
 | [rullst-macros](https://github.com/Rullst/Rullst/tree/main/rullst-macros) | Compile-time HTML and application macros | Core |
 | [rullst-orm-macros](https://github.com/Rullst/Rullst/tree/main/rullst-orm-macros) | Typed ORM code generation | Core |
 | [cargo-rullst](https://github.com/Rullst/Rullst/tree/main/cargo-rullst) | Project scaffolding, development and upgrade CLI | Core |
+| [cargo-rullst-extras](https://github.com/Rullst/Rullst/tree/main/cargo-rullst-extras) | Optional CLI extras: the terminal AI assistant (`cargo rullst ai`) and measured efficiency figures (`cargo rullst green`) | Experimental |
 
 The v13 workspace on `main` also contains four new packages, all in the
 Experimental tier:
@@ -263,6 +264,16 @@ not mean broken. The [maturity tiers](https://github.com/Rullst/Rullst/blob/main
 page defines each promise and labels the CLI generators.
 
 </details>
+
+## 🤖 For AI assistants
+
+The documentation site publishes [`llms.txt`](https://rullst.github.io/Rullst/llms.txt)
+(an index of every book page in reading order) and
+[`llms-full.txt`](https://rullst.github.io/Rullst/llms-full.txt) (the full
+Markdown of those pages in one file). Projects created with Rullst get their own
+`AGENTS.md`, `.llms.txt` and `.rullst/context-map.json`
+(`cargo rullst generate:ai-context`), and commands whose result is data accept
+`--json` ([machine-readable output](https://rullst.github.io/Rullst/book/cli_reference.html#machine-readable-output)).
 
 ## 🎓 Learn with Rullst Academy
 
@@ -445,7 +456,7 @@ Since 12.x, with 13.0.0-alpha.3 adding the first six items. Details are in the
 - `rullst-mail` providers other than Resend, AWS SES, SendPulse and SMTP: write
   a `MailDriver` in your application.
 - The planned `rullst-gateway` was abandoned and never published: configure an
-  established reverse proxy (`deploy --platform vps` writes a Caddyfile).
+  established reverse proxy (`cargo rullst deploy` writes a Caddyfile).
 - The unpublished `rullst-labs-runner` candidate: bring your own runner (see the
   Labs runner contract).
 
@@ -455,8 +466,9 @@ Each row has its replacement in the
 In development for v13: email login and scoped API tokens, active-session
 management with remote logout, private S3/R2 storage with resumable uploads,
 durable outgoing webhooks and recurring jobs, Redis Streams messaging,
-distributed tracing, a recoverable Live UI, `cargo rullst ai`, a terminal
-assistant that proposes reviewed changes to your project, a `cargo rullst new`
+distributed tracing, a recoverable Live UI, `cargo rullst ai` (in the optional
+`cargo-rullst-extras`), a terminal assistant that proposes reviewed changes to
+your project, a `cargo rullst new`
 wizard that previews the files and commands before writing anything
 (`--dry-run` without prompts) and `cargo rullst tour`, a guided walkthrough of
 the main commands. The v13 CLI also adds live request metrics to
@@ -468,10 +480,11 @@ findings to `cargo rullst upgrade`; and `cargo rullst audit --report`, a
 Markdown, HTML or JSON security evidence report mapped to OWASP ASVS 5.0
 Level 1, with a personal-data inventory and accessibility checks
 ([guide](https://rullst.github.io/Rullst/book/security-report.html)). It is
-evidence for a reviewer, not a certification. `cargo rullst footprint` runs a
-bounded local load and reports requests/s, latency, CPU time, memory, sizes and
-energy where the machine exposes it, each with its method
-([guide](https://rullst.github.io/Rullst/book/footprint.html)).
+evidence for a reviewer, not a certification. `cargo rullst green` (also in
+`cargo-rullst-extras`) reports measured binary and image size, idle memory,
+dependency count and benchmark CPU time, each with its method, and a carbon
+figure only as a labelled SCI estimate from your own inputs
+([guide](https://rullst.github.io/Rullst/book/green.html)).
 `cargo rullst add <capability>` enables mail, auth, AI, Nexus or Studio in an
 existing project (feature, `.env.example` placeholders and the code to paste;
 `--dry-run` shows the diff), and `cargo rullst new` initializes a Git

@@ -112,9 +112,8 @@ for name, answers in [
         original = (app / "Cargo.toml").read_bytes()
         lock = (app / "Cargo.lock").read_bytes()
         status, output, answered = terminal(
-            ["update", "guided", "--to", version, "--scope", "project",
-             "--project", str(app), "--offline", "--timeout-seconds", "30",
-             *(["--prerelease"] if "-" in version else [])], env, answers)
+            ["update", "guided", "--to", version,
+             "--project", str(app), "--offline", "--timeout-seconds", "30"], env, answers)
         assert answered == len(answers), output.decode()
         assert (status == 0) == (name != "failing-project"), output.decode()
         assert not (app / "target").exists()

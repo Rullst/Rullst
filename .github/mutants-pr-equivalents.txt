@@ -160,17 +160,6 @@ cargo-rullst/src/generators/doctor/database.rs:108:21: delete match arm std::io:
 cargo-rullst/src/generators/doctor/probe.rs:38:29: replace > with >= in run
 cargo-rullst/src/generators/output_guard.rs:101:25: replace match guard !parent.as_os_str().is_empty() with true in write_output
 cargo-rullst/src/generators/output_guard.rs:85:23: replace match guard error.kind() == io::ErrorKind::NotFound with true in write_output
-cargo-rullst/src/update/artifacts.rs:150:32: replace match guard cfg!(target_env = "gnu") with true in native_target
-cargo-rullst/src/update/artifacts.rs:151:34: replace match guard cfg!(target_env = "msvc") with false in native_target
-cargo-rullst/src/update/artifacts.rs:151:34: replace match guard cfg!(target_env = "msvc") with true in native_target
-cargo-rullst/src/update/artifacts.rs:152:9: delete match arm ("macos", "aarch64") in native_target
-cargo-rullst/src/update/artifacts.rs:153:9: delete match arm ("macos", "x86_64") in native_target
-cargo-rullst/src/update/artifacts/download.rs:194:31: replace * with + in write_bounded
-cargo-rullst/src/update/artifacts/files.rs:31:5: replace linked -> bool with false
-cargo-rullst/src/update/artifacts/files.rs:41:43: replace | with ^ in open
-cargo-rullst/src/update/artifacts/files.rs:63:21: replace + with * in read_bounded
-cargo-rullst/src/update/artifacts/files.rs:79:37: replace + with * in digest
-cargo-rullst/src/update/artifacts/files.rs:82:29: replace * with + in digest
 cargo-rullst/src/update/cache/unix.rs:140:53: replace | with ^ in options
 cargo-rullst/src/update/cache/unix.rs:206:26: replace + with * in load_at
 cargo-rullst/src/update/cache/unix.rs:206:26: replace + with - in load_at

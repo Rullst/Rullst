@@ -3,28 +3,28 @@ use super::*;
 use clap::CommandFactory;
 
 #[test]
-fn parses_nix_and_buildah_flags_without_swapping_them() {
-    let nix =
-        Cli::try_parse_from(["rullst", "new", "demo", "--default", "--nix"]).expect("Nix CLI");
+fn the_removed_deployment_generators_are_unknown_commands_and_flags() {
+    for removed in [
+        &["rullst", "new", "demo", "--default", "--nix"][..],
+        &["rullst", "new", "demo", "--default", "--buildah"],
+        &["rullst", "nixify"],
+        &["rullst", "generate:buildah"],
+        &["rullst", "foundry:init"],
+        &["rullst", "foundry:deploy"],
+        &["rullst", "make:grpc", "Users"],
+    ] {
+        assert!(Cli::try_parse_from(removed).is_err(), "{removed:?}");
+    }
+    let deploy = Cli::try_parse_from(["rullst", "deploy"]).expect("deploy");
     assert!(matches!(
-        nix.command,
-        Commands::New {
-            nix: true,
-            buildah: false,
-            ..
-        }
+        deploy.command,
+        Commands::Deploy { platform: None }
     ));
-
-    let buildah = Cli::try_parse_from(["rullst", "new", "demo", "--default", "--buildah"])
-        .expect("Buildah CLI");
-    assert!(matches!(
-        buildah.command,
-        Commands::New {
-            nix: false,
-            buildah: true,
-            ..
-        }
-    ));
+    let help = Cli::command()
+        .find_subcommand("deploy")
+        .and_then(|deploy| deploy.get_about().map(ToString::to_string))
+        .unwrap_or_default();
+    assert!(help.contains("Docker or Podman"), "{help}");
 }
 
 #[test]

@@ -78,7 +78,8 @@ Each crate also has a v13 [maturity tier](maturity.md): **Core** (`rullst`,
 `rullst-security`, `cargo-rullst`), **Extension** (`rullst-auth`,
 `rullst-connect`, `rullst-mail`, `rullst-capital`, `rullst-ai`, `rullst-nexus`,
 `rullst-studio`, `rullst-messaging`) or **Experimental** (`rullst-iot`,
-`rullst-privacy`, `rullst-supervision`, `rullst-media`, `rullst-labs`). The tier
+`rullst-privacy`, `rullst-supervision`, `rullst-media`, `rullst-labs`,
+`cargo-rullst-extras`). The tier
 sets the 13.x stability and validation promise; the matrix below records what
 each crate implements.
 
@@ -97,7 +98,7 @@ each crate implements.
 | **`rullst-studio`** | Local Developer Control Room (`http://127.0.0.1:5555`), clean route navigation, live system telemetry visualizers. | 🟢 **`[Implemented / Bounded]`**: Local control center, `RadarSnapshot` telemetry, database/migration surfaces when configured, and explicit `Unavailable` states for unconnected probes. The data browser reads/filters SQLx tables with 25-row pages, 256-character cells and 256-byte search terms and, only after the verified debug-loopback/same-origin middleware installs an unforgeable request marker, can update primitive non-key values or delete exactly one complete-primary-key-selected row. A table whose key includes a column outside the identifier boundary or column cap stays read-only, and each write commits in a transaction only when exactly one row changed. Values are bound, request/schema/value cardinality is bounded, backend-specific types remain read-only and SQLite/PostgreSQL/MySQL/MariaDB have executable mutation contracts. This is not application tenant/RBAC, audit, rollback or shared-production administration. The supplied queue snapshot exposes only backend records; SQLite can explicitly retain 1–100,000 successful jobs with atomic pruning and purge while deleting them by default. Retained payload access/policy belongs to the host. An explicitly supplied memory/Redis `Cache` exposes at most 100 metadata rows in the UI; logical keys become process-bound HMAC tokens, values never leave the driver, and only individual local invalidation is available. A separately mounted push-only trace router accepts 1–128 attribute-free v1 spans under 128 KiB after HMAC-SHA256, source/ID/clock/nonce validation and atomic replay rejection; the bounded in-process viewer derives slow-query and repeated-label heuristics without SQL or bindings. It is not OTLP, durable trace storage, a key manager or remote Studio authentication. Successful feature-flag toggles invalidate all warm `DbFeatureDriver` caches in the same process through a constant-size epoch. Cross-process/direct-writer invalidation remains TTL-bound unless the application distributes the signal. |
 | **`rullst-nexus`** | Auto-generated Admin CMS (`/nexus`), dynamic model CRUD, AI Admin Assistant (`/nexus/chat`), SOC Threat Radar. | 🟢 **`[Implemented / Bounded]`**: `#[derive(Nexus)]` emits registered named-field metadata with inferred primitive or explicit semantic widgets; the panel provides parameterized CRUD/search/sort/pagination plus bounded selected-record delete/deactivate. Construction is fail-closed, requires an authentication policy and admin role layer, validates bounded unambiguous model/field/enum/relation metadata, enforces server-side field policy, caps form pairs and field bytes, rejects unknown/protected/duplicate or semantically invalid form values, minimizes database errors returned to clients, and escapes record/model metadata on audited paths. Boolean widgets are inferred; enum options and multiline intent are explicit because an unrelated Rust field type does not expose those semantics to the struct derive. Deactivation requires a writable Boolean `is_active`/`active`. In v13 an opt-in application policy admits each request through the host's own sign-in (`NexusAuthorizer`), models may declare composite primary keys, and date/time fields bind typed values that native PostgreSQL/MySQL date and time columns accept.<br/>🟢 **`[Implemented / Opt-in Bounded]`**: a registered text `tenant` column scopes every built-in read, create, update, delete and batch operation to a trusted Core `TenantContext`; create injects the context value and missing context fails closed. `with_required_audit` transactionally couples successful mutations to a minimized fixed-schema row containing the built-in authenticated actor, optional tenant, table/action, optional known key, count, committed outcome, correlation ID, timestamp and format version; missing audit storage rolls back the mutation. The audit table is in the same relational database, mutable by its administrators, records no denied attempts, and may omit an automatically generated create key. Host identity/membership/domain policy, global-model and custom-route authorization, database privileges, schema/type compatibility, retention/backup/replication and immutable external audit delivery remain application/deployment contracts. |
 | **`rullst-macros`** | Procedural macros (`html!`, `#[server_function]`, `#[island]`, `#[live_component]`/`#[live_event]`, `#[memoize]`, `#[require_role]`, `#[derive(Billable)]`) and the deprecated `#[route]` compatibility marker. ORM derives live in `rullst-orm-macros`; `rullst::runtime::main` re-exports Tokio's entry-point macro. | 🟢 **`[Implemented / Bounded]`**: Compile-time `html!` escaping into composable `Markup` with explicit `RawHtml`, role/billing/live/memoize attributes, and `trybuild` diagnostics. A concrete async `#[server_function]` returning `RpcResult<T>` generates a matching explicit native router and Wasm caller over the bounded `rullst.client` v1 JSON envelope: owned Serde parameters/results, same-origin `/api/rpc/...` path, 256 KiB request/response policy, request correlation, media-type/version/schema checks, CSRF-cookie forwarding and message-free failure codes. The host must mount the route inside production security, authenticated identity, tenant, authorization and rate-limit layers; application idempotency and browser/network interoperability beyond CI are not inferred. `#[island]` hydration remains experimental. |
-| **`cargo-rullst`** | Developer CLI toolkit, scaffolding generators (`make:*`), project blueprints, AST IDOR static route scanner. | 🟢 **`[Implemented / Bounded]`**: Interactive wizard, generators, heuristic IDOR scanner, CycloneDX exporter, toolchain doctor and a fail-closed Academy evidence diagnostic that explicitly does not certify a deployment. Version 12 deterministic generation can explicitly select the blueprint, primary database or database-free blank profile, AI, Redis and additive persistence capabilities. It deliberately fixes generated database-backed application code to Active Record and full-stack rendering to server-side `html!` plus HTMX; Repository/Data Mapper and the LiveView, Wasm Island, Pico.css and Tera foundations remain application APIs rather than equivalent v12 generator profiles. The optional storage multi-select remains public and accepts zero or more Turso/libSQL, MongoDB, DuckDB, SurrealDB and Qdrant add-ons with their distinct capability boundaries. SQLx manifests disable the umbrella and direct `rullst-orm` defaults and select one strict primary backend. A structural gate retains 18 internal layouts: nine directly linked public shapes and nine legacy DLL regression shapes. A minimal eight-case matrix still checks legacy templates and release boundaries without advertising DLL runtime support. Seven additional public-CLI profiles exercise all six blueprints plus distinct database/AI/Redis/polyglot axes; the CLI-level polyglot case compiles while dedicated ORM matrices own adapter runtime evidence. `dash` uses bounded logs/input, probes application and Studio availability, observes its child process, reports configured rather than presumed-connected persistence, runs migrations asynchronously and restores terminal/process state on exit; neon motion is optional and has reduced-motion/color-free modes. In v13 `dash` also polls the application's loopback `/_rullst/dev-telemetry` feed once a second for requests/s, p50/p95 latency, 5xx errors, recent requests and, only when the application reports them, ORM operation and queue figures and a possible-N+1 panel (route, label fingerprint, count, hint); a missing feed shows a "telemetry not available" panel with enabling steps instead of numbers. `r` restarts the owned process from its current snapshot and `?` opens help, while `dev` stays plain apart from one hint line. Also in v13, `new` runs an interactive wizard only in a terminal (blueprint descriptions with file-tree previews from the real generators, database and optional-feature questions, a review with create/back/cancel); profile flags skip their questions, a run without a terminal requires `--default`, and `new --dry-run` prints the plan, file tree and commands without writing. `new` also initializes a Git repository like `cargo new` unless the destination is inside a work tree (`--vcs none` skips it), and `add <capability>` enables the `mail`, `auth`, `ai`, `nexus` or `studio` facade feature through a comment-preserving manifest edit, appends placeholder or `mock_*` variables to `.env.example`, prints the wiring snippet instead of editing application source, changes nothing on a second run and previews its diff with `--dry-run`. `tour` is an offline walkthrough, `doctor --json` emits `rullst.cli-doctor.v1` and exits 1 when a check fails, `completions <shell>` prints a completion script, `info [--json]` reports `rullst.cli-info.v1`, and `inspect routes --json` and `audit --json` emit `rullst.cli-routes.v1` and `rullst.cli-audit.v1`. `audit --report` writes a Markdown, HTML or JSON (`rullst.cli-audit-report.v1`) static evidence report mapped to OWASP ASVS 5.0.0 Level 1, with a personal-data inventory, accessibility heuristics and a `NOT EVALUATED` list; it is not a certification and exits 1 when a check reports `FINDINGS` or `ERROR`. `footprint` runs a bounded closed-loop load on loopback only, against the release binary it builds and starts in production mode or an already running `--url`, and reports requests/s, latency percentiles, errors, Linux `/proc` CPU time and RSS, binary and local Docker image size, RAPL-measured or explicitly labelled `--cpu-watts` estimated energy, and an SCI (ISO/IEC 21031:2024) figure only from a user-provided grid intensity; unavailable values are `NOT MEASURED`, `--json` emits `rullst.cli-footprint.v1`, and it is a measurement report, not a certification. A bare `cargo rullst` opens a context-aware home with a command palette (non-interactive runs print the commands and exit 0); failures render as one report with secrets masked, and unknown commands exit 2 with suggestions. The public development commands now use supervised process restart: coalesced source/asset/configuration changes trigger a real build, compile failures retain the current application, and successful candidates run from owned executable snapshots. A debug/development-only same-origin generation probe drives browser refresh and verifies startup identity; process state resets and shutdown is bounded. The CLI rejects legacy DLL profile generation after the Windows LMS/ORM state-split finding. The retained experimental loader is not a public v12 workflow or stable Rust ABI; see the release audit and supervised-reload tutorial. `make:chat-session` emits registered SQLx or Turso-primary models, reversible migrations and application-owned bounded chat memory; materialized contracts run persistent mock conversations on both backends and prove collision refusal. `make:billing --model` likewise emits SQLx/Turso-primary persistence plus Stripe pricing, authenticated checkout/portal and mandatory signed-webhook code; its materialized contract compiles, migrates, persists, denies cross-owner subscription mutation before customer binding and refuses existing outputs on both backends.<br/>🟢 **`[Implemented / Bounded]`**: In v13 the LMS blueprint is a small starter: a catalog of courses, modules and lessons, an accessible lesson player, enrollment, owner-bound idempotent lesson progress, Argon2id sign-in/registration and a Nexus admin. The complete Academy scaffold (school-scoped assessment/publication/completion, roles, leaderboard, automation/outbox/workers, in-app notifications and the privacy-request foundation) and its `--lms-modules` profiles were retired. Its SSR catalog performs limited, ORM-parameterized title/category filtering; generated auth/catalog/course/player shells consume the Core CSP nonce without remote page dependencies or inline style attributes and include keyboard landmarks, visible focus and reduced-motion handling. Lesson presentation distinguishes video/audio, accepts only HTTPS or root-relative media sources, requires a captions track URL for video and a bounded transcript/language for both. Generator source assertions check the player's nonce, captions track, bounds and absence of autoplay; the materialized SQLite project's own tests (with and without the reloadable layout) cover catalog query bounds, per-render progress keys and the learning service's owner boundary, not player rendering, real-browser playback or caption quality. Like the other starters its generator has an internal reloadable `src/lib.rs` layout that only tests reach; the public CLI rejects DLL hot-reload generation (the hidden legacy `--hot-reload` flag), and the starter reloads through supervised process restart (`cargo rullst dev`).<br/>🟠 **`[Partial]`**: DLL hot-reload generation, complete generated frontend alternatives, full Turso-primary parity beyond Blank/API, media upload/hosting/transcoding, advanced/localized search, caption/transcript quality and localization, WCAG/browser evidence, distributed failover, PostgreSQL/MySQL isolation, visual authoring, exported telemetry and the separately operated Academy remain roadmap or release-engineering work. |
+| **`cargo-rullst`** | Developer CLI toolkit, scaffolding generators (`make:*`), project blueprints, AST IDOR static route scanner. | 🟢 **`[Implemented / Bounded]`**: Interactive wizard, generators, heuristic IDOR scanner, CycloneDX exporter, toolchain doctor and a fail-closed Academy evidence diagnostic that explicitly does not certify a deployment. Version 12 deterministic generation can explicitly select the blueprint, primary database or database-free blank profile, AI, Redis and additive persistence capabilities. It deliberately fixes generated database-backed application code to Active Record and full-stack rendering to server-side `html!` plus HTMX; Repository/Data Mapper and the LiveView, Wasm Island, Pico.css and Tera foundations remain application APIs rather than equivalent v12 generator profiles. The optional storage multi-select remains public and accepts zero or more Turso/libSQL, MongoDB, DuckDB, SurrealDB and Qdrant add-ons with their distinct capability boundaries. SQLx manifests disable the umbrella and direct `rullst-orm` defaults and select one strict primary backend. A structural gate retains 18 internal layouts: nine directly linked public shapes and nine legacy DLL regression shapes. A minimal eight-case matrix still checks legacy templates and release boundaries without advertising DLL runtime support. Seven additional public-CLI profiles exercise all six blueprints plus distinct database/AI/Redis/polyglot axes; the CLI-level polyglot case compiles while dedicated ORM matrices own adapter runtime evidence. `dash` uses bounded logs/input, probes application and Studio availability, observes its child process, reports configured rather than presumed-connected persistence, runs migrations asynchronously and restores terminal/process state on exit; neon motion is optional and has reduced-motion/color-free modes. In v13 `dash` also polls the application's loopback `/_rullst/dev-telemetry` feed once a second for requests/s, p50/p95 latency, 5xx errors, recent requests and, only when the application reports them, ORM operation and queue figures and a possible-N+1 panel (route, label fingerprint, count, hint); a missing feed shows a "telemetry not available" panel with enabling steps instead of numbers. `r` restarts the owned process from its current snapshot and `?` opens help, while `dev` stays plain apart from one hint line. Also in v13, `new` runs an interactive wizard only in a terminal (blueprint descriptions with file-tree previews from the real generators, database and optional-feature questions, a review with create/back/cancel); profile flags skip their questions, a run without a terminal requires `--default`, and `new --dry-run` prints the plan, file tree and commands without writing. `new` also initializes a Git repository like `cargo new` unless the destination is inside a work tree (`--vcs none` skips it), and `add <capability>` enables the `mail`, `auth`, `ai`, `nexus` or `studio` facade feature through a comment-preserving manifest edit, appends placeholder or `mock_*` variables to `.env.example`, prints the wiring snippet instead of editing application source, changes nothing on a second run and previews its diff with `--dry-run`. `tour` is an offline walkthrough, `doctor --json` emits `rullst.cli-doctor.v1` and exits 1 when a check fails, `completions <shell>` prints a completion script, `info [--json]` reports `rullst.cli-info.v1`, and `inspect routes --json` and `audit --json` emit `rullst.cli-routes.v1` and `rullst.cli-audit.v1`. Since 13.0.0-alpha.4 every `--json` command follows one contract (CLI reference, "Machine-readable output"): standard output is exactly one JSON document with a top-level `schema` field (`rullst.<name>.v1`; earlier documents keep their `schema_version` with the same value), human messages and failures go to standard error and exit statuses are unchanged; `inspect models --json`, `inspect schema --json` and `pkg list --json` emit `rullst.cli-models.v1`, `rullst.cli-schema.v1` and `rullst.cli-pkg.v1`. `audit --report` writes a Markdown, HTML or JSON (`rullst.cli-audit-report.v1`) static evidence report mapped to OWASP ASVS 5.0.0 Level 1, with a personal-data inventory, accessibility heuristics and a `NOT EVALUATED` list; it is not a certification and exits 1 when a check reports `FINDINGS` or `ERROR`. Since 13.0.0-alpha.4 `ai` and `green` (formerly `footprint`) belong to the optional, Experimental `cargo-rullst-extras` executable: `cargo rullst ai|green …` runs `cargo-rullst-extras ai|green …` from an absolute `PATH` entry (Cargo's plugin trust model) with unchanged arguments and exit status, and without it prints the exact `cargo install cargo-rullst-extras --version =<this version> --locked` command and exits 1; the home menu marks both entries `extras` and shows that command instead of failing. `green` reports only measured figures, each with its method (release binary size, a named local image's size through `docker`/`podman image inspect`, the started app's idle Linux `VmRSS`, the `Cargo.lock` third-party package count and, with `--bench`, the app's `/proc` CPU time during a bounded closed-loop loopback load and per request); it measures no energy, gives a carbon figure only as an SCI (ISO/IEC 21031:2024) estimate labelled `estimate` from the measured CPU time, the user's `--cpu-watts` and `--grid-intensity` (and optional `--embodied`), reports unavailable values as `NOT MEASURED`, emits `rullst.green.v1` with `--json`, and is a measurement report, not a certification. A bare `cargo rullst` opens a context-aware home with a command palette (non-interactive runs print the commands and exit 0); failures render as one report with secrets masked, and unknown commands exit 2 with suggestions. The public development commands now use supervised process restart: coalesced source/asset/configuration changes trigger a real build, compile failures retain the current application, and successful candidates run from owned executable snapshots. A debug/development-only same-origin generation probe drives browser refresh and verifies startup identity; process state resets and shutdown is bounded. The CLI rejects legacy DLL profile generation after the Windows LMS/ORM state-split finding. The retained experimental loader is not a public v12 workflow or stable Rust ABI; see the release audit and supervised-reload tutorial. `make:chat-session` emits registered SQLx or Turso-primary models, reversible migrations and application-owned bounded chat memory; materialized contracts run persistent mock conversations on both backends and prove collision refusal. `make:billing --model` likewise emits SQLx/Turso-primary persistence plus Stripe pricing, authenticated checkout/portal and mandatory signed-webhook code; its materialized contract compiles, migrates, persists, denies cross-owner subscription mutation before customer binding and refuses existing outputs on both backends.<br/>🟢 **`[Implemented / Bounded]`**: In v13 the LMS blueprint is a small starter: a catalog of courses, modules and lessons, an accessible lesson player, enrollment, owner-bound idempotent lesson progress, Argon2id sign-in/registration and a Nexus admin. The complete Academy scaffold (school-scoped assessment/publication/completion, roles, leaderboard, automation/outbox/workers, in-app notifications and the privacy-request foundation) and its `--lms-modules` profiles were retired. Its SSR catalog performs limited, ORM-parameterized title/category filtering; generated auth/catalog/course/player shells consume the Core CSP nonce without remote page dependencies or inline style attributes and include keyboard landmarks, visible focus and reduced-motion handling. Lesson presentation distinguishes video/audio, accepts only HTTPS or root-relative media sources, requires a captions track URL for video and a bounded transcript/language for both. Generator source assertions check the player's nonce, captions track, bounds and absence of autoplay; the materialized SQLite project's own tests (with and without the reloadable layout) cover catalog query bounds, per-render progress keys and the learning service's owner boundary, not player rendering, real-browser playback or caption quality. Like the other starters its generator has an internal reloadable `src/lib.rs` layout that only tests reach; the public CLI rejects DLL hot-reload generation (the hidden legacy `--hot-reload` flag), and the starter reloads through supervised process restart (`cargo rullst dev`).<br/>🟠 **`[Partial]`**: DLL hot-reload generation, complete generated frontend alternatives, full Turso-primary parity beyond Blank/API, media upload/hosting/transcoding, advanced/localized search, caption/transcript quality and localization, WCAG/browser evidence, distributed failover, PostgreSQL/MySQL isolation, visual authoring, exported telemetry and the separately operated Academy remain roadmap or release-engineering work. |
 
 The matrix omits `rullst-orm-macros`, which ships the ORM derives described in
 section 5, and the v13 candidates `rullst-privacy`, `rullst-supervision`,
@@ -4260,6 +4261,11 @@ final release admission remains separate. See the
 
 ### 11.3. Terminal AI Assistant (v13 preview)
 
+Since 13.0.0-alpha.4 the assistant ships in the optional, Experimental
+`cargo-rullst-extras` executable, which `cargo rullst ai …` runs from `PATH`;
+its allowlisted `cargo rullst` actions run the forwarding CLI (`RULLST_CLI`)
+or `cargo-rullst` from an absolute `PATH` entry.
+
 `cargo rullst ai` sends every request through `rullst-ai`'s guarded clients:
 OpenAI, DeepSeek, a local OpenAI-compatible server (literal loopback IP only)
 and loopback Ollama stream over the bounded OpenAI-compatible SSE transport,
@@ -4389,41 +4395,23 @@ assistant, not a claim that compilation proves production compatibility.
   test suite, authorization negatives and deployment smoke tests remain
   mandatory human-owned gates.
 
-  **12.1.0 advisory discovery:** the
-  CLI checks for notices only on interactive dashboard startup, respects
-  explicit offline/CI/notification-disable flags, and retains at most one
-  validated result in process memory. It no longer reads or writes the legacy
-  shared temporary cache. Discovery uses a fixed HTTPS registry endpoint,
-  denies redirects, caps the response at 256 KiB and applies one four-second
-  network/body deadline. Notices select a newer, non-yanked stable version in
-  the installed major, not an arbitrary registry maximum. They authorize no
-  installation or project changes. The explicit `cargo rullst update check`
-  command now reports an exact eligible CLI release, its declared MSRV and the
-  current OS/architecture. `--to` pins selection; another major requires
-  `--allow-major`, and a prerelease separately requires `--prerelease`.
-  `--json` emits `rullst.update-discovery.v1` with every execution/write/artifact
-  authority false. It does not certify compiler/platform compatibility.
-  Explicit discovery now reuses a six-hour advisory cache on Unix platforms.
-  The caller-owned cache base and its ancestors are checked before using a
-  private `0700` directory; regular single-link `0600` files, bounded reads,
-  no-follow opens, a non-blocking writer lock and staged atomic replacement
-  protect the cache. Cached catalogs are parsed and selected again, never
-  accepted as artifact/installation authority. `--offline` never requests the
-  network or writes; missing, invalid, expired or future-dated caches fail.
-  `--refresh` skips cached reads; `--no-cache` disables persistence entirely.
-  Ordinary interactive notices remain process-local, not filesystem writers.
-  The Windows implementation uses `%LOCALAPPDATA%/rullst-update-v1`, a protected
-  DACL created atomically for the caller, SYSTEM and Administrators, handle-based
-  owner/access checks, no reparse points or multi-link files, bounded reads and
-  non-blocking staged replacement. Local-drive ancestors must exclude untrusted
-  replacement/control rights; UNC paths and alternate data streams are rejected.
-  ACLs are never repaired implicitly. Native Windows cache contracts passed at
-  the [documented maintenance checkpoint](v12.md#1210-delivery-checkpoint-unreleased).
-  A hostile same-user/root/administrator process
-  and authenticated release verification are outside this advisory cache's
-  contract. Verified CLI installation and the expanded project acceptance
-  transaction passed their declared platform and release gates in the
-  [12.1.0 publication](v12.md#1210-published-maintenance-release).
+  **Update notice (13.0.0-alpha.4):** the CLI never downloads, verifies or
+  replaces its own binary; a newer one is installed with
+  `cargo install cargo-rullst --version =X --locked`. At most once a day, in
+  an interactive terminal (every standard stream a terminal, not `CI`,
+  `RULLST_DISABLE_UPDATE_CHECK` or `CARGO_NET_OFFLINE`), the CLI prints that
+  exact command when crates.io has a newer non-yanked release of its major: a
+  stable release, or for a prerelease CLI also a newer prerelease; never build
+  metadata or another major. The notice reads only the private catalog cache
+  and is shown on the home screen or on standard error after a command. A
+  background thread refreshes that cache at most once a day with one fixed
+  HTTPS request (no redirects, 256 KiB cap, one four-second deadline); a
+  failure is silent. Daily stamps in the user cache (`rullst-ui-v1/`) record
+  the last notice and the last request. The cache keeps the 12.1.0 Unix and
+  Windows private-directory checks (caller-owned `0700` directory or protected
+  DACL, single-link private files, no-follow bounded reads, non-blocking
+  staged replacement) and reuses a catalog for at most 24 hours. It grants no
+  installation, project or deployment authority.
 
   **Native CLI artifact preparation:** the candidate pipeline builds both CLI
   entry points on the four targets in `.github/cli-artifact-targets.json` and
@@ -4451,87 +4439,24 @@ assistant, not a claim that compilation proves production compatibility.
   and matching checksums by themselves remain insufficient authority. This
   pipeline change is unaccepted until its native and release evidence passes.
 
-  **Explicit local artifact verification:** `cargo rullst update verify`
-  takes a caller-selected directory and exact `--to` version. It accepts only
-  the native supported target, a bounded release inventory and both standalone
-  binaries with matching sizes and SHA-256 digests. It authenticates a private
-  snapshot of the manifest through the caller-installed GitHub CLI, pinning
-  github.com, Rullst/Rullst, `.github/workflows/release.yml`, the exact source
-  tag/commit, GitHub's OIDC issuer and hosted runners. Failure, absence or timeout
-  of that verifier is a rejection; there is no checksum-only fallback. This
-  explicit operation can access attestation services and create a temporary
-  private manifest, but never executes candidate binaries or changes installed
-  files. Offline mode rejects before I/O. Its report describes only the bytes
-  just read, is not a reusable installation token, and does not establish
-  current registry eligibility or protect against hostile same-user writers.
-  Installation must independently revalidate the selected release and bytes.
-
-  **Authenticated download (12.1.0):**
-  `update stage --to EXACT_VERSION` fetches a fresh non-yanked registry
-  selection and uses only the fixed official
-  release URL with at most two HTTPS redirects through GitHub/release-assets hosts,
-  authenticates the bounded manifest before requesting executable bytes, and
-  stages at most two 128 MiB binaries in fresh private caller-owned storage.
-  Exact sizes and hashes must match the authenticated manifest. Ordinary failures
-  discard the stage; forced termination can leave an incomplete private directory
-  that later stages never reuse. Success records source/version/target and grants no execution,
-  installation or project authority. Offline mode rejects before I/O; install
-  must independently revalidate eligibility, provenance and bytes.
-
-  **Managed CLI installation (12.1.0):**
-  `update install review` authenticates a fresh eligible local candidate and
-  previews a new/empty or receipt-owned private destination, a root/source-bound digest,
-  proposed version smoke checks and the pinned Cargo source fallback. It does
-  not create the installation directory, execute binaries or install files.
-  An existing destination must contain exactly the two private single-link
-  executables and a bounded `rullst.cli-installation.v1` receipt binding the
-  canonical root to the original attested manifest bytes. Their hashes and the
-  prior manifest's provenance are revalidated; unknown/package-manager entries
-  and divergent files reject. Selection uses that installed version, so a stale
-  CLI cannot authorize its downgrade. The review digest binds the exact prior
-  receipt and rechecks local state after network verification.
-  `update install apply --approved-review SHA256` uses an explicit installation
-  root separate from the advisory cache and existing package-manager roots.
-  First installation accepts only a new/empty private caller-owned directory;
-  later updates require the updater's strict receipt and exact installed hashes.
-  Never take over unknown binaries or Cargo/Homebrew/system-manager records;
-  show the pinned manager/source-install command when that owner must update it.
-  A preview authenticates an exact eligible native candidate and binds its
-  source/files, destination and prior installed state to a review digest. Apply
-  requires the matching review digest, rechecks fresh registry/provenance/bytes, holds a
-  destination-local lock and copies candidates to private staging on that
-  filesystem before execution or replacement. Only the declared `--version`
-  probes run, with a 15-second deadline and 4 KiB per output stream per binary.
-  Both must report the selected version without stderr. Authenticated prior bytes
-  and a bounded intent are saved before replacing either entry point. Old entries
-  are moved aside instead of truncating executing images; per-file operations
-  are not an atomic two-binary swap and do not promise power-loss durability.
-  Windows in-use failures report the root and approval digest for recovery.
-  `update install recover --approved-review SHA256` accepts only the selected
-  operation's before/after states, rejects foreign edits and reauthenticates
-  both manifests before restoring the exact predecessor. Interrupted first
-  installation removes only the recorded new entries. Repeated recovery is
-  idempotent; an unrelated older version is never a recovery target.
-  The private destination-local sibling stores a root-bound owner marker, lock,
-  selected operation and at most eight operation directories, independently of
-  advisory cache settings. New operations prune only verified terminal older
-  evidence, retaining the selected recovery. Unknown files and incomplete
-  unselected operations require manual review. An in-use historical executable
-  can require closing the older CLI before pruning. PATH/shell configuration, source
-  compilation, project migration and deployment remain separate consent scopes.
-  Native concurrency, interruption, disk faults, executable-lock and complete
-  user-journey acceptance remain release gates.
+  **Self-updater removed (13.0.0-alpha.4):** `update check`, `update verify`,
+  `update stage` and `update install review|apply|recover` (12.1.0 to
+  13.0.0-alpha.3) were removed with their download, provenance, installation
+  receipt, rollback and pruning machinery. The native CLI executables and
+  their `rullst.cli-artifacts.v1` manifests remain attested GitHub release
+  assets that users verify by hand (see SECURITY.md, "Verifying a release").
 
   **Guided update composition:** `update guided --to EXACT_VERSION` is an
-  opt-in interactive composition of the same checked commands. An explicit
-  `cli`, `project` or `both` scope reuses the selected version, directories and
-  review digests. Show each complete review before a default-no approval;
-  distinguish authenticated download, CLI probe/replacement, trusted project
-  execution/network access and original-file application. No blanket approval
-  or noninteractive implicit yes is accepted. Declining stops before the next
-  operation, preserving any already completed step and its recovery evidence.
-  The current CLI's versioned migration rules remain authoritative: installing
-  another major does not teach this running process that major's migrations.
+  opt-in interactive composition of the project commands (prepare, verify,
+  review, apply). It reuses the selected version, directories and review
+  digest. Show each complete review before a default-no approval; distinguish
+  trusted project execution/network access and original-file application. No
+  blanket approval or noninteractive implicit yes is accepted. Declining stops
+  before the next operation, preserving any already completed step and its
+  recovery evidence. The current CLI's versioned migration rules remain
+  authoritative, so `--to` must be in its major; since 13.0.0-alpha.4 the flow
+  installs no CLI (`--scope`, `--root`, `--allow-major` and `--prerelease`
+  were removed).
   Existing structured commands remain the automation interface. Report elapsed
   time per executed stage, excluding user input; do not promise instant upgrades.
 

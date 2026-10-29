@@ -3,7 +3,12 @@
 use super::*;
 
 /// Every release the catalog dates rules with, oldest first.
-const RELEASES: &[&str] = &["13.0.0-alpha.1", "13.0.0-alpha.2", "13.0.0-alpha.3"];
+const RELEASES: &[&str] = &[
+    "13.0.0-alpha.1",
+    "13.0.0-alpha.2",
+    "13.0.0-alpha.3",
+    "13.0.0-alpha.4",
+];
 
 fn version(text: &str) -> Version {
     Version::parse(text).unwrap()
@@ -61,6 +66,15 @@ fn rules_carry_the_release_of_their_change() {
             "V13-RULLST-DEFAULT-FEATURES",
             "V13-OMNI-REMOVED",
             "V13-OFFLINE-SYNC-REMOVED",
+        ]
+    );
+    assert_eq!(
+        codes_introduced_in("13.0.0-alpha.4"),
+        [
+            "V13-DEPLOY-TARGETS-REMOVED",
+            "V13-DEPLOY-GENERATORS-REMOVED",
+            "V13-CLI-SELF-UPDATE-REMOVED",
+            "V13-CLI-EXTRAS"
         ]
     );
     assert_eq!(codes_introduced_in("13.0.0-alpha.1").len(), 95);

@@ -276,16 +276,20 @@ short-lived branches ── reviewed pull requests ──▶ v12 (12.x) / main (
 
 ## 🔑 One-time GitHub Setup Required
 
-All twenty release crates are registered on crates.io and publish through
-Trusted Publishing with GitHub OIDC. The protected `crates-io` environment must
-require review and be configured for `release.yml`.
+The twenty crates published up to 13.0.0-alpha.3 are registered on crates.io
+and publish through Trusted Publishing with GitHub OIDC. The protected
+`crates-io` environment must require review and be configured for
+`release.yml`.
 
 The four v13 names were first published in 13.0.0-alpha.1 with a one-time
 token, described under
 [v13 package registration](docs/src/release-recovery.md#v13-package-registration).
-That fallback was removed again, and the bootstrap allowlist in
-`.github/crates-ownership-policy.json` is empty. `release.yml` refuses
-publication while any release package is unregistered.
+That fallback was removed again. `release.yml` refuses publication while any
+release package is unregistered. The bootstrap allowlist in
+`.github/crates-ownership-policy.json` lists `cargo-rullst-extras`, added to
+the release order for 13.0.0-alpha.4 and not yet registered: its first
+publication needs the maintainer's reviewed bootstrap step (see
+[`cargo-rullst-extras`](docs/src/release-recovery.md#cargo-rullst-extras-planned-for-1300-alpha4)).
 
 Do not maintain a permanent repository-wide registry token.
 
