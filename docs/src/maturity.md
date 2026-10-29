@@ -87,6 +87,7 @@ what your application needs.
 | `rullst-security` | Core | Defense-in-depth middleware, guards and audit helpers. |
 | `rullst` (facade) | Core | Its own API is Core. A feature that re-exports another crate has that crate's tier: `iot` and every `privacy` feature are experimental. |
 | `cargo-rullst` | Core | Some generators have their own label; see [CLI generators](#cli-generators). |
+| `cargo-rullst-extras` | Experimental | Optional companion executable since 13.0.0-alpha.4: the terminal AI assistant (`cargo rullst ai`) and measured efficiency figures (`cargo rullst green`). Lighter tests than the CLI; see the [CLI reference](cli_reference.md#extras-cargo-rullst-extras). |
 | `rullst-auth` | Extension | Passwords, sessions, passkeys and authorization helpers. |
 | `rullst-connect` | Extension | OAuth2/OIDC identity integrations. |
 | `rullst-mail` | Extension | Transactional email and delivery controls; see the [crate page](crates/mail.md) for the supported drivers. |

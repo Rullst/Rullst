@@ -235,7 +235,7 @@ pub(super) fn render_json_report(
 
 /// A finding as `cargo rullst ai upgrade` presents it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct AssistFinding {
+pub struct AssistFinding {
     pub code: &'static str,
     pub label: &'static str,
     pub must_change: bool,

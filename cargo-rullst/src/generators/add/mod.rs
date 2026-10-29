@@ -188,7 +188,7 @@ fn report(plan: &AddPlan, dry_run: bool, style: Style) -> String {
         ));
     }
     if dry_run {
-        let diff_style = crate::ai::term::Style {
+        let diff_style = crate::term::Style {
             color: !style.is_plain(),
         };
         for change in &plan.changes {
@@ -197,7 +197,7 @@ fn report(plan: &AddPlan, dry_run: bool, style: Style) -> String {
                 None => format!("--- /dev/null\n+++ {} (new file)", change.file),
             };
             out.push_str(&format!("\n{}\n", style.paint(&header, style::BRIGHT)));
-            let (diff, _) = crate::ai::diff::render(
+            let (diff, _) = crate::diff::render(
                 change.before.as_deref().unwrap_or_default(),
                 &change.after,
                 diff_style,

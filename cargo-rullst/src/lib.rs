@@ -10,11 +10,16 @@
     )
 )]
 
-mod ai;
 pub mod blueprints;
 pub mod cli;
+#[doc(hidden)]
+pub mod diff;
+#[doc(hidden)]
+pub mod extras;
 pub mod generators;
 pub mod pkg;
+#[doc(hidden)]
+pub mod term;
 mod tour;
 pub mod ui;
 mod update;
@@ -30,6 +35,12 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         args.remove(1);
     }
 
+    // `ai` and `green` belong to cargo-rullst-extras: everything after the
+    // subcommand reaches it unparsed, `--help` included.
+    if let Some(subcommand) = args.get(1).filter(|name| cli::forward::is_extras(name)) {
+        return cli::forward::run(subcommand, args.get(2..).unwrap_or_default());
+    }
+
     if args.len() == 1 {
         ui::trigger_background_update_check();
         ui::show_interactive_dashboard()?;
@@ -41,10 +52,16 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
         if let Some(add) = matches.subcommand_matches("add") {
             generators::add::run(add)?;
-        } else if let Some(assistant) = matches.subcommand_matches("ai") {
-            ai::run(assistant)?;
-        } else if let Some(footprint) = matches.subcommand_matches("footprint") {
-            generators::footprint::run(footprint)?;
+        } else if let Some((name, extras)) = matches
+            .subcommand()
+            .filter(|(name, _)| cli::forward::is_extras(name))
+        {
+            // Reached only when a global flag precedes the subcommand.
+            let arguments: Vec<String> = extras
+                .get_many::<String>("arguments")
+                .map(|values| values.cloned().collect())
+                .unwrap_or_default();
+            return cli::forward::run(name, &arguments);
         } else if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
             generators::deploy_doctor::run(doctor)?;
         } else if let Some(api) = matches.subcommand_matches("generate:api") {
@@ -92,8 +109,7 @@ pub(crate) fn command() -> clap::Command {
         .subcommand(generators::oauth::command())
         .subcommand(generators::api_contract::command())
         .subcommand(generators::deploy_doctor::command())
-        .subcommand(generators::footprint::command())
-        .subcommand(ai::command())
+        .subcommands(cli::forward::commands())
         .subcommand(tour::command())
         // Extend executable syntax without changing the published v12 enum.
         .mut_subcommand("generate:ai-context", generators::ai_context::command)

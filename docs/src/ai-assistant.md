@@ -3,8 +3,21 @@
 `cargo rullst ai` is a chat in your terminal that knows Rullst's conventions and
 your project's layout. It can answer questions and propose concrete changes —
 scaffolding commands, file edits and `cargo check` — that you review one at a
-time. It is a v13 preview. The full option list is in the
-[CLI reference](cli_reference.md#cargo-rullst-ai-v13-preview).
+time. It is Experimental and ships in the optional `cargo-rullst-extras`
+package (since 13.0.0-alpha.4). The full option list is in the
+[CLI reference](cli_reference.md#cargo-rullst-ai-extras).
+
+## Install
+
+Install the extras with the same version as the CLI:
+
+```bash
+cargo install cargo-rullst-extras --version =13.0.0-alpha.3 --locked
+```
+
+`cargo rullst ai …` runs `cargo-rullst-extras ai …` found on `PATH`, with the
+same arguments and exit status. Without the extras, `cargo rullst ai` prints
+that install command and exits with status 1.
 
 ## 1. Try it offline
 

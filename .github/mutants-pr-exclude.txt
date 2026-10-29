@@ -9,6 +9,9 @@
 
 # Generated-project integration suites are too slow to rerun per mutant.
 cargo-rullst/**
+# The experimental extras moved out of cargo-rullst in 13.0.0-alpha.4 keep
+# its lighter-test status (unit and binary tests in the CLI shard).
+cargo-rullst-extras/**
 
 # Test-only modules included with `#[cfg(test)] #[path = "..."] mod ...;` or
 # `#[cfg(test)] mod tests;` backed by a `tests/` directory under `src/`.

@@ -393,6 +393,8 @@ fn home_entries_lead_with_the_context_and_run_real_commands() {
         HomeAction::Command("doctor"),
         HomeAction::Deploy,
         HomeAction::ProjectOperations,
+        HomeAction::Extras("ai"),
+        HomeAction::Extras("green"),
         HomeAction::NewProject,
         HomeAction::Palette,
         HomeAction::Help,
@@ -407,6 +409,10 @@ fn home_entries_lead_with_the_context_and_run_real_commands() {
         if let HomeAction::Command(command) = entry.action {
             <crate::cli::Cli as clap::Parser>::try_parse_from(["cargo-rullst", command])
                 .unwrap_or_else(|error| panic!("{command}: {error}"));
+        }
+        if let HomeAction::Extras(command) = entry.action {
+            assert!(crate::cli::forward::is_extras(command), "{command}");
+            assert!(entry.hint.ends_with(" · extras)"), "{}", entry.hint);
         }
     }
 }

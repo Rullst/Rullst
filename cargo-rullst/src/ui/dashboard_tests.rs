@@ -16,6 +16,7 @@ struct FakeUi {
     prompts: Vec<String>,
     brand_count: usize,
     geiger: bool,
+    extras: bool,
 }
 
 impl FakeUi {
@@ -65,6 +66,15 @@ impl DashboardUi for FakeUi {
 
     fn geiger_available(&mut self) -> bool {
         self.geiger
+    }
+
+    fn extras_installed(&mut self) -> bool {
+        self.extras
+    }
+
+    fn notice(&mut self, text: &str) -> DashboardResult<()> {
+        self.prompts.push(format!("notice|{text}"));
+        Ok(())
     }
 }
 
@@ -405,7 +415,7 @@ fn project_home_offers_quick_actions_and_every_submenu() {
         (vec![4], "doctor"),
         (vec![5, 0], "deploy"),
         (vec![6, 6], "dockerize"),
-        (vec![7], "new"),
+        (vec![9], "new"),
     ] {
         let mut ui = FakeUi::with_selections(selections.clone());
         let mut commands = Vec::new();
@@ -421,7 +431,7 @@ fn project_home_offers_quick_actions_and_every_submenu() {
         );
     }
 
-    for selection in [9, 10, usize::MAX] {
+    for selection in [11, 12, usize::MAX] {
         let mut ui = FakeUi::with_selections([selection]);
         let mut run = |_| -> DashboardResult<()> { panic!("choice must not execute") };
         run_dashboard(&mut ui, "cargo-rullst", &home, &mut run)
@@ -429,12 +439,45 @@ fn project_home_offers_quick_actions_and_every_submenu() {
     }
 
     // Back from all project operations returns to the same project home.
-    let mut ui = FakeUi::with_selections([6, 10, 10]);
+    let mut ui = FakeUi::with_selections([6, 10, 12]);
     let mut run = |_| -> DashboardResult<()> { panic!("back then exit must not execute") };
     run_dashboard(&mut ui, "cargo-rullst", &home, &mut run).expect("back returns home");
     assert_eq!(ui.brand_count, 1);
     assert_eq!(ui.prompts.len(), 3);
     assert!(ui.prompts[2].contains("Start Dev Server"));
+}
+
+#[test]
+fn extras_entries_run_when_installed_and_show_the_install_command_otherwise() {
+    let home = project_home(None);
+    for (selection, name) in [(7, "ai"), (8, "green")] {
+        let mut ui = FakeUi {
+            extras: true,
+            ..FakeUi::with_selections([selection])
+        };
+        let mut commands = Vec::new();
+        run_dashboard(&mut ui, "cargo-rullst", &home, &mut |command| {
+            commands.push(command);
+            Ok(())
+        })
+        .expect("installed extras run");
+        assert_eq!(
+            commands,
+            vec![vec!["cargo-rullst".to_string(), name.to_string()]]
+        );
+        assert!(ui.prompts[0].contains(&format!("(cargo rullst {name} · extras)")));
+
+        let mut ui = FakeUi::with_selections([selection]);
+        let mut run = |_| -> DashboardResult<()> { panic!("missing extras must not run") };
+        run_dashboard(&mut ui, "cargo-rullst", &home, &mut run).expect("a hint, not a failure");
+        assert_eq!(
+            ui.prompts[1],
+            format!(
+                "notice|`cargo rullst {name}` is part of the optional cargo-rullst-extras package. Install it with:\n  cargo install cargo-rullst-extras --version ={} --locked",
+                env!("CARGO_PKG_VERSION")
+            )
+        );
+    }
 }
 
 #[test]

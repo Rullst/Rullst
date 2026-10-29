@@ -307,7 +307,8 @@ mod tests {
             "doctor",
             "update",
             "deploy:doctor",
-            "footprint",
+            "ai",
+            "green",
         ] {
             assert!(command.find_subcommand(name).is_some(), "{name}");
         }

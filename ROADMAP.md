@@ -351,7 +351,8 @@ contains the more detailed evidence and acceptance boundaries.
 ### Efficiency and sustainability
 
 - **Measured green-software reports and efficient defaults** *(planned —
-  `cargo rullst footprint` with an SCI-based (ISO/IEC 21031:2024) method,
+  `cargo rullst green` in the optional `cargo-rullst-extras` (measured
+  figures only, carbon as a labelled SCI estimate per ISO/IEC 21031:2024),
   a reproducible cross-framework benchmark, tuned release and HTTP caching
   defaults, carbon-aware deferrable jobs. Reports state their method and
   limits; no unsubstantiated "greener than" claims. See the

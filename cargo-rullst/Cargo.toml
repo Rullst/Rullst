@@ -45,8 +45,6 @@ required-features = ["maintainer-tools"]
 maintainer-tools = []
 
 [dependencies]
-async-trait = { workspace = true }
-rullst-ai = { workspace = true }
 rullst-core = { workspace = true }
 clap = { version = "4.6.1", features = ["derive"] }
 clap_complete = "4.6.11"
@@ -95,7 +93,7 @@ tower = { workspace = true, features = ["util"] }
 tower-http = { workspace = true, features = ["cors"] }
 
 [package.metadata.cargo-machete]
-ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "tracing-opentelemetry", "urlencoding", "notify", "ring", "rullst-auth"]
+ignored = ["rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "tracing-opentelemetry", "urlencoding", "notify", "ring", "rullst-auth"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)'] }

@@ -263,6 +263,7 @@ release:
 | 13.0.0-alpha.1 | The other 95 rules |
 | 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
+| 13.0.0-alpha.4 | `V13-CLI-EXTRAS` |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -274,8 +275,9 @@ The plan takes the application's Rullst version to be the oldest version that
 a Rullst requirement in the workspace manifests admits (`=13.0.0-alpha.3`,
 or `13.0.0-alpha.1`, a caret requirement) or that `Cargo.lock` holds. When that
 version is a 13.0 prerelease, only the rules introduced after it apply: an
-alpha.2 application gets the seven alpha.3 rules and an alpha.1 application the
-alpha.2 and alpha.3 rules, because the earlier changes are already in the
+alpha.3 application gets the alpha.4 rules, an alpha.2 application the seven
+alpha.3 rules and the alpha.4 rules, and an alpha.1 application the alpha.2,
+alpha.3 and alpha.4 rules, because the earlier changes are already in the
 version it runs. The plan says what it skipped:
 
 ```text
@@ -314,6 +316,10 @@ plan as before; findings of skipped rules are absent from `source_findings`
 and `finding_counts`.
 
 ## Assisted fixes with `cargo rullst ai upgrade`
+
+`cargo rullst ai` is part of the optional `cargo-rullst-extras` package since
+13.0.0-alpha.4; install it with the same version as the CLI
+(`cargo install cargo-rullst-extras --version =13.0.0-alpha.3 --locked`).
 
 ```bash
 cargo rullst ai upgrade                 # plan, then a reviewed session
@@ -455,13 +461,13 @@ is classified for `rullst-upgrade-rules-v4`:
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
   application source (11 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (95 rows);
+  the affected API, feature or configuration, which the rules locate (96 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
   of inputs that previously failed) (93 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 107 rules. A row can map to several rules and a rule to
+has 108 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -569,7 +575,7 @@ the rule together.
 | Blank JSON API starter | (c) none | — | Generator output; existing API projects keep their behaviour |
 | CLI audit lockfile | (c) none | — | CLI |
 | RASP shell signatures | (c) none | — | Request matching; not detectable in source |
-| CLI footprint report | (c) none | — | New CLI command |
+| CLI footprint report | (c) none | — | New CLI command; replaced by `green` (CLI extras row) |
 | CLI `dev`/`dash` shutdown | (c) none | — | CLI |
 | CLI `dev --ts-sync` | (c) none | — | CLI |
 | CLI `dash` live metrics | (c) none | — | CLI |
@@ -665,6 +671,7 @@ the rule together.
 | Connect GitHub email | (b) review | `V13-CONNECT-GITHUB-EMAIL` | `GithubProvider` and `Connect::driver("github", ...)` |
 | Account mail link lifetime | (c) none | — | Only reset lifetimes that previously failed change; the link wording is not located |
 | Generated reset link lifetime | (c) none | — | Generator output; existing projects keep their code |
+| CLI extras (`ai`, `green`) | (b) review | `V13-CLI-EXTRAS` | `rullst ai` or `rullst footprint` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 
 ## Planned simpler update experience
 

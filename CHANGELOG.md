@@ -14,6 +14,24 @@ A prepared version section does not establish that its tag or crates exist.
 - The `cargo rullst` opening animates on every run (any key skips it).
   `RULLST_OPENING=daily` restores the once-a-day animation and
   `RULLST_OPENING=static` turns it off; `RULLST_REDUCED_MOTION` still applies.
+- **Breaking:** the terminal AI assistant (`cargo rullst ai`) and
+  `cargo rullst footprint` moved to the new optional package
+  `cargo-rullst-extras` (Experimental), so the main CLI no longer depends on
+  `rullst-ai`. Install it with the same version as the CLI
+  (`cargo install cargo-rullst-extras --version =<version> --locked`);
+  `cargo rullst ai …` and `cargo rullst green …` then run it from `PATH` with
+  the same arguments and exit status. Without it they print that install
+  command and exit with status 1, and the home menu shows the command instead
+  of failing. `cargo rullst upgrade` flags scripts and workflows that run
+  `rullst ai` or `rullst footprint` (`V13-CLI-EXTRAS`).
+- **Breaking:** `footprint` is now `green` and reports only measured figures:
+  release binary size, a local container image's size (`--image`, through
+  Docker or Podman), idle memory, the `Cargo.lock` dependency count and, with
+  the new `--bench`, CPU time per request. It no longer reports requests per
+  second, latency or peak memory, no longer reads RAPL energy counters and no
+  longer guesses an image name. A carbon figure appears only as an SCI
+  estimate labelled `estimate`, from your `--cpu-watts` and `--grid-intensity`;
+  the JSON schema is `rullst.green.v1`.
 
 ## [13.0.0-alpha.3] - 2026-10-23
 

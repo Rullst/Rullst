@@ -20,6 +20,10 @@ trait DashboardUi {
     /// Whether `cargo geiger` runs; the audit item requests it only then,
     /// because a requested but missing Geiger fails the whole audit.
     fn geiger_available(&mut self) -> bool;
+    /// Whether `cargo-rullst-extras` is on `PATH`; `ai` and `green` need it.
+    fn extras_installed(&mut self) -> bool;
+    /// Shows `text` instead of running a command.
+    fn notice(&mut self, text: &str) -> DashboardResult<()>;
 }
 
 struct DialoguerUi {
@@ -76,6 +80,23 @@ impl DashboardUi for DialoguerUi {
             .status()
             .is_ok_and(|status| status.success())
     }
+
+    fn extras_installed(&mut self) -> bool {
+        crate::cli::forward::installed()
+    }
+
+    fn notice(&mut self, text: &str) -> DashboardResult<()> {
+        println!("{text}");
+        Ok(())
+    }
+}
+
+/// What the home shows for an extras entry when the extras are missing.
+fn extras_hint(name: &str) -> String {
+    format!(
+        "`cargo rullst {name}` is part of the optional cargo-rullst-extras package. Install it with:\n  {}",
+        crate::cli::forward::install_command()
+    )
 }
 
 pub fn execute_command(cmd_args: Vec<String>) -> DashboardResult<()> {
@@ -431,6 +452,8 @@ where
 
     match entry.action {
         HomeAction::Command(name) => run(command(name)),
+        HomeAction::Extras(name) if ui.extras_installed() => run(command(name)),
+        HomeAction::Extras(name) => ui.notice(&extras_hint(name)),
         HomeAction::Scaffold => handle_scaffold_code(ui, program, run),
         HomeAction::Database => handle_database_operations(ui, program, run),
         HomeAction::Deploy => handle_deploy(ui, program, run),

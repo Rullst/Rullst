@@ -37,6 +37,14 @@ cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
 Pin the framework the same way in `Cargo.toml` (`"=13.0.0-alpha.3"`); the
 [v13 migration guide](migration-v13.md) explains why and what changed.
 
+The terminal AI assistant (`cargo rullst ai`) and the efficiency report
+(`cargo rullst green`) are optional extras. Install them, when you want them,
+with the same version:
+
+```bash
+cargo install cargo-rullst-extras --version =13.0.0-alpha.3 --locked
+```
+
 Source reviewers who intentionally need checkout-local changes can instead
 clone this repository and install the CLI from that exact checkout. On `main`
 this installs the v13 development CLI:
@@ -45,6 +53,7 @@ this installs the v13 development CLI:
 git clone --branch main https://github.com/Rullst/Rullst.git
 cd Rullst
 cargo install --locked --path cargo-rullst
+cargo install --locked --path cargo-rullst-extras   # optional: ai and green
 cd ..
 ```
 

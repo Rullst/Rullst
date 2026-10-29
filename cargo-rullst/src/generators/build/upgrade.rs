@@ -15,7 +15,7 @@ pub(crate) use isolated::{
 use crate::ui::spinner::with_spinner;
 use colored::Colorize;
 use manifest::ManifestUpgradePlan;
-pub(crate) use report::AssistFinding;
+pub use report::AssistFinding;
 use rules::{FindingKind, SourceScan};
 use semver::Version;
 use std::path::{Path, PathBuf};
@@ -134,7 +134,7 @@ fn plan_project(
 }
 
 /// The dry-run plan `cargo rullst ai upgrade` grounds its session in.
-pub(crate) struct AssistPlan {
+pub struct AssistPlan {
     pub target: String,
     pub catalog: &'static str,
     /// Dependency requirements `cargo rullst upgrade` would still change.
@@ -145,7 +145,7 @@ pub(crate) struct AssistPlan {
 }
 
 /// Plans an upgrade of the project at `root` without writing anything.
-pub(crate) fn assist_plan(
+pub fn assist_plan(
     root: &Path,
     requested: Option<&str>,
     all_rules: bool,

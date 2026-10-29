@@ -41,7 +41,8 @@ changes.
 | **`rullst-nexus`** | Extension | Auto-generated Admin CMS (`/nexus`), model CRUD interfaces, AI Admin Assistant (`/nexus/chat`), SOC Threat Radar. |
 | **`rullst-macros`** | Core | Procedural macros (`html!`, `#[route]`, `#[server_function]`, `#[require_role]`, `#[island]`, `#[live_component]`, `#[memoize]`, `#[derive(Billable)]`); `#[rullst::runtime::main]` is Tokio's macro re-exported by Core. |
 | **`rullst-orm-macros`** | Core | `#[derive(Orm)]`, `Enum`, `Nexus` and `PersonalData` derives and the `#[rullst_orm::test]` sandbox attribute. |
-| **`cargo-rullst`** | Core | Developer CLI: `new` wizard and `make:*` generators, `dev`/`dash`, `doctor`, assisted `upgrade` and `ai`, AST IDOR scanner and guided deployment helpers. |
+| **`cargo-rullst`** | Core | Developer CLI: `new` wizard and `make:*` generators, `dev`/`dash`, `doctor`, assisted `upgrade`, AST IDOR scanner and guided deployment helpers; forwards `ai` and `green` to `cargo-rullst-extras` when it is on `PATH`. |
+| **`cargo-rullst-extras`** *(first published in 13.0.0-alpha.4)* | Experimental | Optional companion executable built on the `cargo-rullst` library: the terminal AI assistant (`cargo rullst ai`) and `green` (measured binary/image size, idle memory, dependency count and benchmark CPU time; carbon only as a labelled SCI estimate from user inputs). Lighter tests; outside the PR mutation gate. |
 | **`rullst-labs`** *(v13 prerelease, first published in 13.0.0-alpha.1)* | Experimental | Bring your own runner: trusted bounded exercise/authorization/grading contracts, optional encrypted shared-local SQLite jobs, fenced leases/cancellation/retention and pinned controller receipts. It never executes learner code; an application-owned, separately deployed runner implements the documented controller contract (`docs/src/labs-runner-contract.md`, non-executing `byo_runner_controller` example). The `rullst-labs-runner` candidate was removed from the 13.0 workspace and remains in git history. Labs is in the 13.0 release inventory and was first published in 13.0.0-alpha.1; final release acceptance remains outstanding. |
 | **`rullst-media`** *(v13 prerelease, first published in 13.0.0-alpha.1)* | Experimental | Optional Bunny Stream lifecycle, scoped upload/playback grants, exact-body notifications, shared-local SQLite reconciliation and browser upload module. PR #227 passed hosted/platform and installed-archive source admission. Actual provider/CDN interoperability remains unvalidated; no final release admission or blueprint/facade default is implied. |
 | **`rullst-supervision`** *(v13 prerelease, first published in 13.0.0-alpha.1)* | Experimental | Optional exam/parental contracts, exact collection acknowledgement, typed browser/capture observations, bounded camera-presence/audio-activity adapter orchestration and shared-local SQLite authority/session/retention state. The host owns authenticated membership, capture permission, models, reviewer workflow and verified relationships. No media model, automatic grading or device-wide control is included. PR #226 is merged; hosted checks and retrospective installed-archive validation passed. Final release admission remains separate. |
@@ -162,6 +163,7 @@ cargo publish -p rullst-studio
 # Step 5: Umbrella Metapackage & Developer CLI
 cargo publish -p rullst
 cargo publish -p cargo-rullst
+cargo publish -p cargo-rullst-extras
 ```
 
 The machine-readable source of truth is `.github/release-order.json`; the

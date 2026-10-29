@@ -18,6 +18,29 @@ or platforms and carry their own **Maturity** label below the command name:
 *Supported* or *Experimental*. The [maturity tiers](maturity.md#cli-generators) page
 explains what each label promises.
 
+## Extras (`cargo-rullst-extras`)
+
+The terminal AI assistant ([`cargo rullst ai`](#cargo-rullst-ai-extras)) and
+the efficiency report ([`cargo rullst green`](#cargo-rullst-green-extras))
+live in the optional, Experimental `cargo-rullst-extras` package, so the main
+CLI stays small. Install it with the same version as the CLI:
+
+```bash
+cargo install cargo-rullst-extras --version =13.0.0-alpha.3 --locked
+```
+
+`cargo rullst ai …` and `cargo rullst green …` run `cargo-rullst-extras ai …`
+and `cargo-rullst-extras green …`, found on `PATH` the way Cargo finds its own
+`cargo-<name>` plugins: every argument, `--help` included, passes through
+unchanged, and the extras' exit status becomes the command's exit status. Only
+absolute `PATH` entries are searched, so an executable in the current
+directory is never run. Without the extras, the command prints the exact
+install command above and exits with status 1; the home menu marks both
+entries `extras` and shows the install command instead of failing. The extras
+also run on their own (`cargo-rullst-extras ai`, or `cargo rullst-extras ai`);
+the assistant's allowlisted `cargo rullst` actions then run the
+`cargo-rullst` executable from `PATH`.
+
 ---
 
 ## 🏗️ 1. Project Initialization & Maintenance
@@ -34,8 +57,11 @@ and a summary of where you are.
   `.env`, then `[database].url` in `Rullst.toml`; `TURSO_DATABASE_URL` for a
   Turso-primary project), the number of `src/migrations` files and the latest
   one, and the Git branch. Connection URLs are never displayed. The menu leads
-  with dev, dash, scaffolding, database, `doctor` and deploy, and keeps every
-  project operation of earlier releases. Started from a subdirectory, menu
+  with dev, dash, scaffolding, database, `doctor` and deploy, keeps every
+  project operation of earlier releases, and offers **AI Assistant** and
+  **Green Report**, marked `extras`: without
+  [`cargo-rullst-extras`](#extras-cargo-rullst-extras) they print its install
+  command instead of failing. Started from a subdirectory, menu
   commands run at the project root (except `new`). The migration count is the
   files on disk; run `cargo rullst db:status` for the applied state.
 * **Outside a project**: the summary links the docs ([start here](start-here.md)
@@ -1576,7 +1602,11 @@ with dependency metadata, configuration key names and source paths. It creates
 `--check` detects missing, altered or stale inventory without writing files.
 See [project context](project-context.md) for limits, exclusions and legacy migration.
 
-### `cargo rullst ai` (v13 preview)
+### `cargo rullst ai` (extras)
+**Maturity:** Experimental; part of the optional
+[`cargo-rullst-extras`](#extras-cargo-rullst-extras) package since
+13.0.0-alpha.4.
+
 A terminal assistant that knows Rullst and the current project. It answers
 questions and proposes changes that you review one by one. A walkthrough is in
 [the terminal AI assistant guide](ai-assistant.md).
@@ -1962,41 +1992,48 @@ their source at startup and on every change (siblings without a source file are
 kept).
 * **Flags:** `--debug` (Compiles with debug information, generating a larger binary).
 
-### `cargo rullst footprint` (v13)
-Runs a bounded closed-loop load against the app and reports requests per
-second, latency p50/p95/p99, errors, the app process's CPU time (Linux
-`/proc/<pid>/stat`), peak and idle RSS (`VmHWM`/`VmRSS`), the binary size, the
-Docker image size when a local daemon has an image named after the package,
-energy and a Software Carbon Intensity (SCI, ISO/IEC 21031:2024) figure. Every
-value shows its method; anything unavailable is `NOT MEASURED` with the reason.
+### `cargo rullst green` (extras)
+**Maturity:** Experimental; part of the optional
+[`cargo-rullst-extras`](#extras-cargo-rullst-extras) package. It replaces
+`cargo rullst footprint` (13.0.0-alpha.1 to alpha.3).
+
+Reports figures it measured for the app, each with its method: the release
+binary size, a local container image's size (`--image`, through `docker` or
+`podman image inspect`), the idle resident memory of the started app (Linux
+`VmRSS`), the third-party dependency count from `Cargo.lock` and, with
+`--bench`, the app process's CPU time during a bounded closed-loop loopback
+load and the CPU time per request. Anything unavailable is `NOT MEASURED` with
+the reason. It measures no energy: a Software Carbon Intensity (SCI,
+ISO/IEC 21031:2024) figure appears only as an estimate labelled `estimate`,
+computed from the measured CPU time, your `--cpu-watts` and your
+`--grid-intensity`, with every input shown.
 
 Without `--url` it builds the release binary (reusing an existing build),
 starts it with `RULLST_ENV=production` (or `--env staging`, which accepts the
 starters' mock billing credentials) on a free `127.0.0.1` port, measures it
 and stops it. With `--url` it measures an app already running on loopback and
-refuses any other host; it makes no network calls beyond loopback and never
-fetches grid intensity. Energy is measured from readable RAPL package counters
-(whole package, includes other processes), otherwise estimated as CPU time ×
-`--cpu-watts` and labelled `estimate`, otherwise `NOT MEASURED`. SCI is
-computed only when energy is known and `--grid-intensity` is given.
+refuses any other host; it makes no network calls beyond loopback and the
+local container engine, and never fetches grid intensity.
 
 ```bash
-cargo rullst footprint --duration 5s
-cargo rullst footprint --url http://127.0.0.1:3000 --path /health --json
+cargo rullst green --image my-app:latest
+cargo rullst green --url http://127.0.0.1:3000 --path /health --bench --json
+cargo rullst green --bench --cpu-watts 15 --grid-intensity 120
 ```
 
 * **Flags:** `--url <http://127.0.0.1:PORT>`, `--env <production|staging>`
   (default `production`; not with `--url`), `--path <PATH>` (default `/`),
-  `--duration <10s|1m|1500ms>` (default `10s`, 1 s to 10 min),
-  `--concurrency <N>` (default 4, at most 256), `--grid-intensity <gCO2e/kWh>`,
-  `--cpu-watts <W>`, `--embodied <gCO2e>`, `--json` (versioned
-  `rullst.cli-footprint.v1`).
+  `--image <NAME>`, `--bench`, `--duration <10s|1m|1500ms>` (default `10s`,
+  1 s to 10 min; needs `--bench`), `--concurrency <N>` (default 4, at most
+  256; needs `--bench`), `--cpu-watts <W>` (needs `--bench`),
+  `--grid-intensity <gCO2e/kWh>` (needs `--cpu-watts`), `--embodied <gCO2e>`
+  (needs `--grid-intensity`), `--json` (versioned `rullst.green.v1`).
 * **Exit status:** `0` when the measurement ran, even with `NOT MEASURED`
   fields; `1` when the build failed or the app could not be started or reached;
   `2` for invalid arguments.
 
-See the [footprint guide](footprint.md) for what each number means, the RAPL
-permission note and how to choose a grid intensity.
+See the [green guide](green.md) for what each figure means and how to choose a
+grid intensity.
 
 ### `cargo rullst dockerize` / `cargo rullst nixify`
 **Maturity:** `nixify` and `generate:buildah` are Experimental; `dockerize`
@@ -2372,7 +2409,7 @@ cargo rullst inspect model
 # Open the local Studio compatibility UI on 127.0.0.1:5555
 cargo rullst studio
 
-# Ask the terminal AI assistant (offline demo until `cargo rullst ai connect`)
+# Ask the terminal AI assistant (needs cargo-rullst-extras; offline demo until `cargo rullst ai connect`)
 cargo rullst ai "add a posts page"
 
 # Run the reviewed Foundry pipeline on a compatible, prepared VPS (experimental)

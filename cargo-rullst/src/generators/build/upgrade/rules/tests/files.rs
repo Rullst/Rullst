@@ -1,4 +1,4 @@
-use super::super::files::{manifest_findings, project_findings};
+use super::super::files::{manifest_findings, project_findings, runs_extras_command};
 use super::*;
 
 fn plan(path: PathBuf, original: &str) -> ManifestUpgradePlan {
@@ -264,6 +264,42 @@ fn generated_project_files_are_reviewed() {
         .map(|(path, code, line)| (path.to_string(), *code, *line))
         .collect();
     assert_eq!(found, expected);
+}
+
+#[test]
+fn scripts_running_the_moved_extras_commands_are_reviewed() {
+    let project = Project::new();
+    project
+        .write(
+            ".github/workflows/green.yml",
+            "steps:\n  - run: cargo install rullst-ai\n  - run: cargo rullst footprint --json\n",
+        )
+        .write("justfile", "review:\n    cargo rullst ai review --staged\n")
+        .write("deploy.sh", "#!/bin/sh\nrullst ai\n")
+        .write(
+            "Makefile",
+            "context:\n\tcargo rullst generate:ai-context\n\tcargo rullst aide\n\tcargo rullst ai-x\n",
+        );
+    let mut found = project.findings("[package]\nname = \"my-app\"\n");
+    found.sort();
+    assert_eq!(
+        found,
+        [
+            (
+                ".github/workflows/green.yml".to_string(),
+                "V13-CLI-EXTRAS",
+                3
+            ),
+            ("deploy.sh".to_string(), "V13-CLI-EXTRAS", 2),
+            ("justfile".to_string(), "V13-CLI-EXTRAS", 2),
+        ]
+    );
+    assert!(runs_extras_command("cargo rullst ai"));
+    assert!(runs_extras_command("x=$(cargo rullst ai status --json)"));
+    assert!(runs_extras_command("cargo rullst footprint;"));
+    assert!(!runs_extras_command("cargo rullst ai:x"));
+    assert!(!runs_extras_command("cargo rullst ai_x"));
+    assert!(!runs_extras_command("cargo rullst green"));
 }
 
 #[test]

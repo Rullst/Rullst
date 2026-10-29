@@ -350,6 +350,9 @@ rules! {
     PAGE_LANGUAGE: "V13-RENDER-PAGE-LANGUAGE", Review, "13.0.0-alpha.1", "Starter page language",
         "`render_page` declares `lang=\"pt-BR\"`; English pages should use `render_page_with_lang`",
         "Call `rullst::htmx::render_page_with_lang(&htmx, \"en\", title, content)` with the page's language.";
+    CLI_EXTRAS: "V13-CLI-EXTRAS", Review, "13.0.0-alpha.4", "CLI extras (`ai`, `green`)",
+        "`cargo rullst ai` and `footprint` moved to the optional cargo-rullst-extras package (`footprint` is now `green`); these scripts run them",
+        "Install `cargo-rullst-extras` with the same `--version` as cargo-rullst where the scripts run (`cargo install cargo-rullst-extras --version =<version> --locked`), and replace `cargo rullst footprint` with `cargo rullst green` (`--bench` for CPU time, JSON `rullst.green.v1`).";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

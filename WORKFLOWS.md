@@ -565,7 +565,8 @@ before merging, with a test that fails with the mutant or, when the mutant is
 truly equivalent, with an entry in the list below. Branch protection does not
 require the check yet. `.github/mutants-pr-exclude.txt` lists the files it
 skips: the CLI, whose generated-project suites are too slow to rerun per
-mutant, and adapters exercised only by wrappers that own a disposable
+mutant, the experimental `cargo-rullst-extras` (lighter tests by design), and
+adapters exercised only by wrappers that own a disposable
 PostgreSQL, MySQL or authenticated Redis server. Those files remain the
 manual campaign's responsibility, through its
 [contract mode](#owned-server-contract-mutation-runs).
@@ -619,9 +620,8 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-mail/src/facade/driver.rs`: delete the `(Some(_), Some(_))` arm of `ses_credentials` | That arm exists only without the `aws-ses` feature, which the all-feature build does not compile. |
 | `cargo-rullst/src/generators/audit_report/secrets.rs`: `redact_secrets`, both `found > 0` with `>=` | Replacing zero matches leaves the line unchanged. |
 | `cargo-rullst/src/generators/audit_report/a11y.rs`: `attributes`, the end `index + 1` after `>` with `index - 1` or `index * 1` | The tag scanner resumes at the next `<`; the byte before a closing `>` cannot open a tag, because a tag name never starts with `>`. |
-| `cargo-rullst/src/generators/footprint/procfs.rs`: `ticks_per_second`, `> 0` with `>= 0` | The clock tick rate is always positive. |
-| `cargo-rullst/src/generators/footprint/procfs.rs`: the non-Unix `ticks_per_second` with `Some(0)` or `Some(1)` | Not compiled on Linux. |
-| `cargo-rullst/src/generators/footprint/energy.rs`: `discover`, `root == POWERCAP_ROOT` with `!=` | On Linux `!cfg!(target_os = "linux")` is false, so the comparison is never evaluated. |
+| `cargo-rullst-extras/src/green/procfs.rs`: `ticks_per_second`, `> 0` with `>= 0` | The clock tick rate is always positive. |
+| `cargo-rullst-extras/src/green/procfs.rs`: the non-Unix `ticks_per_second` with `Some(0)` or `Some(1)` | Not compiled on Linux. |
 | `rullst-iot/src/coap.rs` (`CoapRequest::encode` twice, `append_option`), `rullst-iot/src/mqtt.rs` (`MqttPublish::encode`) and `rullst-iot/src/i2c.rs` (`I2cHelper::try_build_read_frame`): `\|` with `^` | The operands occupy disjoint bits, so OR and XOR build the same byte. |
 | `rullst-iot/src/coap.rs`: `CoapRequest::encode`, `payload.len() > MAX_COAP_DATAGRAM_BYTES` with `==` or `>=` | `CoapRequest::payload` already bounds the payload, and `ensure_room` rejects the same lengths with the same error. |
 | `rullst-iot/src/mqtt.rs`: `MqttPublish::encode`, `remaining_length > MQTT_MAX_VARIABLE_BYTE_INTEGER` with `==` or `>=` | The builders keep topic and payload far below that limit, and `variable_byte_integer` repeats the check with the same error. |

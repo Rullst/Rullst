@@ -276,6 +276,21 @@ fn removed_mail_driver_line(text: &str) -> Option<usize> {
     None
 }
 
+/// A script line running a command that moved to cargo-rullst-extras in
+/// 13.0.0-alpha.4: `rullst footprint` or `rullst ai` as a whole word.
+pub(super) fn runs_extras_command(line: &str) -> bool {
+    ["rullst footprint", "rullst ai"].iter().any(|command| {
+        line.match_indices(command).any(|(index, _)| {
+            line[index + command.len()..]
+                .chars()
+                .next()
+                .is_none_or(|next| {
+                    !(next.is_ascii_alphanumeric() || matches!(next, '-' | '_' | ':'))
+                })
+        })
+    })
+}
+
 /// A lowercase DNS label, as Kubernetes object names require.
 fn dns_label(name: &str) -> bool {
     !name.is_empty()
@@ -421,12 +436,16 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
         }
     }
     for script in scripts {
-        if let Some(text) = read_small(&root.join(&script))
-            && let Some(line) = line_of(&text, |line| {
-                line.contains("rullst omni") || line.contains("make:omni")
-            })
-        {
+        let Some(text) = read_small(&root.join(&script)) else {
+            continue;
+        };
+        if let Some(line) = line_of(&text, |line| {
+            line.contains("rullst omni") || line.contains("make:omni")
+        }) {
             push(&OMNI_REMOVED, &script, line);
+        }
+        if let Some(line) = line_of(&text, runs_extras_command) {
+            push(&CLI_EXTRAS, &script, line);
         }
     }
     if kubernetes
