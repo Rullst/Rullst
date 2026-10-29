@@ -385,9 +385,47 @@ fn release_profile_is_optimized_and_keeps_unwinding_panics() {
         assert_eq!(release["strip"].as_str(), Some("symbols"));
         // Aborting on panic would let one failing handler stop the server.
         assert!(release.get("panic").is_none(), "{manifest}");
+        assert_eq!(
+            release.as_table().map(toml::Table::len),
+            Some(3),
+            "{manifest}"
+        );
         let profiles = parsed["profile"].as_table().expect("profile table");
-        assert_eq!(profiles.len(), 1, "debug builds keep Cargo's defaults");
+        let mut names: Vec<&str> = profiles.keys().map(String::as_str).collect();
+        names.sort_unstable();
+        assert_eq!(names, ["dev", "release"], "{manifest}");
         assert!(parsed.get("workspace").is_some(), "{manifest}");
+    }
+}
+
+#[test]
+fn dev_profile_keeps_line_tables_for_the_application_only() {
+    for (hot_reload, db_needed, blueprint) in [
+        (false, false, BLANK_BLUEPRINT_ID),
+        (false, true, BLANK_BLUEPRINT_ID),
+        (true, true, BLANK_BLUEPRINT_ID),
+        (false, true, SAAS_BLUEPRINT_ID),
+    ] {
+        let manifest = build_cargo_toml(
+            "dev-app",
+            hot_reload,
+            db_needed,
+            "Sqlite",
+            &[],
+            false,
+            false,
+            blueprint,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("manifest");
+        let parsed: toml::Value = toml::from_str(&manifest).expect("valid Cargo manifest");
+        // Line tables keep file:line in the application's panics and
+        // backtraces; only `debug` departs from Cargo's development defaults.
+        let expected: toml::Value =
+            toml::from_str("debug = \"line-tables-only\"\npackage.\"*\".debug = false\n")
+                .expect("expected profile");
+        assert_eq!(parsed["profile"]["dev"], expected, "{manifest}");
     }
 }
 
