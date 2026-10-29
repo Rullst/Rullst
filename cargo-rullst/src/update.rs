@@ -58,4 +58,14 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn an_operation_other_than_project_or_guided_is_refused() {
+        let matches = command()
+            .subcommand(Command::new("other"))
+            .try_get_matches_from(["update", "other"])
+            .unwrap();
+        let error = run(&matches).unwrap_err();
+        assert_eq!(error.to_string(), "unsupported update operation");
+    }
 }
