@@ -48,7 +48,15 @@ fn the_tour_covers_the_main_commands_in_five_to_seven_steps() {
     let commands: Vec<&str> = STEPS.iter().map(|step| step.command).collect();
     assert_eq!(
         commands,
-        ["new", "dev", "dash", "make:*", "db:*", "doctor", "ai"]
+        [
+            "new",
+            "dev",
+            "dash",
+            "make:*",
+            "db:*",
+            "doctor",
+            "generate:ai-context"
+        ]
     );
     for step in STEPS {
         assert!(!step.explanation.is_empty() && !step.try_commands.is_empty());
@@ -58,9 +66,8 @@ fn the_tour_covers_the_main_commands_in_five_to_seven_steps() {
         let arguments = step.example.arguments;
         let read_only = arguments.contains(&"--help") || arguments.contains(&"--dry-run");
         assert!(read_only, "{} example must be read-only", step.command);
-        if let Some(fallback) = step.example.fallback {
-            assert!(fallback.contains(&"--help"));
-        }
+        // `cargo rullst ai` was removed in 13.0.0-alpha.4.
+        assert_ne!(arguments.first(), Some(&"ai"));
     }
 }
 
@@ -69,7 +76,7 @@ fn list_prints_every_step_without_prompting_or_colour_codes() {
     let text: Vec<String> = list_lines().iter().map(Line::text).collect();
     assert_eq!(text[0], "Rullst tour · 7 steps");
     assert!(text.contains(&"1. Create a project  (new)".to_string()));
-    assert!(text.contains(&"7. Work with AI  (ai)".to_string()));
+    assert!(text.contains(&"7. Work with AI  (generate:ai-context)".to_string()));
     assert!(text.contains(
         &"   Example  cargo rullst new tour-demo --default --dry-run  (previews a project; creates nothing)"
             .to_string()
@@ -151,18 +158,16 @@ fn back_and_previous_return_and_quit_stops_immediately() {
 }
 
 #[test]
-fn a_missing_ai_command_falls_back_to_the_context_generator() {
+fn the_ai_step_runs_the_context_generator_help() {
     let mut answers = vec![Answer::One(0); 6];
     answers.extend([Answer::One(1), Answer::One(0)]);
     let mut ui = tour(&answers);
-    ui.missing = vec!["ai"];
     guided(&mut ui).unwrap();
     assert_eq!(ui.runs, [vec!["generate:ai-context", "--help"]]);
-    assert!(ui.printed.contains(
-        &"`cargo rullst ai` needs cargo-rullst-extras; showing `cargo rullst generate:ai-context --help` instead."
-            .to_string()
-    ));
+}
 
+#[test]
+fn a_missing_command_is_reported_and_not_run() {
     let mut ui = tour(&[Answer::One(1), Answer::One(2)]);
     ui.missing = vec!["new"];
     guided(&mut ui).unwrap();

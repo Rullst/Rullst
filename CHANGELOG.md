@@ -13,38 +13,39 @@ A prepared version section does not establish that its tag or crates exist.
 
 Fourth v13 prerelease, for evaluation. It makes the main CLI leaner and the
 framework easier for AI assistants to drive; the framework crates' APIs are
-unchanged from 13.0.0-alpha.3. The terminal AI assistant and `green` move to
-the optional, Experimental `cargo-rullst-extras`, which `cargo rullst ai` and
-`cargo rullst green` run when it is installed; `green` (formerly `footprint`)
+unchanged from 13.0.0-alpha.3, and the release still has twenty packages.
+`green` (formerly `footprint`), an Experimental command of the main CLI,
 reports only measured figures (binary and image size, idle memory, dependency
 count, CPU time per request) and a carbon figure only as a labelled SCI
-estimate from your inputs. Foundry, `nixify`, Buildah, `make:grpc`, the
-Fly.io, Render and Railway deploy targets and the self-updater's binary
-replacement are removed; a daily notice prints the install command for a
-newer CLI instead. `cargo rullst deploy` has one path, a Dockerfile,
-`compose.yaml` and `Caddyfile` for any Linux VM with Docker or Podman, with
-guides for a Linux VM, Hetzner Cloud, DigitalOcean, Oracle Cloud and Google
-Cloud and an Advanced deployment page (Nix, Buildah, Podman Quadlet,
-Kubernetes). `cargo rullst new` offers three starters, Blank, API and SaaS;
-LMS, ERP and Portfolio are complete applications under the repository's
+estimate from your inputs. The terminal AI assistant (`cargo rullst ai`) is
+removed: use your editor's or terminal's assistant with the project's
+`AGENTS.md` and the published `llms.txt`. Foundry, `nixify`, Buildah,
+`make:grpc`, the Fly.io, Render and Railway deploy targets and the
+self-updater's binary replacement are removed; a daily notice prints the
+install command for a newer CLI instead. `cargo rullst deploy` has one path, a
+Dockerfile, `compose.yaml` and `Caddyfile` for any Linux VM with Docker or
+Podman, with guides for a Linux VM, Hetzner Cloud, DigitalOcean, Oracle Cloud
+and Google Cloud and an Advanced deployment page (Nix, Buildah, Podman
+Quadlet, Kubernetes). `cargo rullst new` offers three starters, Blank, API and
+SaaS; LMS, ERP and Portfolio are complete applications under the repository's
 `examples/`. Every `--json` output follows one documented contract, and the
 site's `llms.txt` gains an optional section. Generated projects get a
 development profile that shortened cold builds by 15 to 19 % and rebuilds
 after an edit by about half on the measuring machine. The CLI had its first
 targeted mutation campaign and joins the pull-request mutation gate, and
 `crypto-bigint` moves to 0.7.10 after crates.io yanked the release the
-workspace used. Pin `=13.0.0-alpha.4`. Upgrade steps are in the
-[v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md#upgrading-an-alpha3-application-to-alpha4).
+workspace used. This release is the 13.0 feature freeze: 13.0.0-rc.1 will
+carry only fixes and documentation. Pin `=13.0.0-alpha.4`. Upgrade steps are in
+the [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md#upgrading-an-alpha3-application-to-alpha4).
 
-**Breaking (CLI only):** `cargo rullst ai` and `cargo rullst green` need
-`cargo-rullst-extras`, installed with
-`cargo install cargo-rullst-extras --version =13.0.0-alpha.4 --locked`;
-`foundry:init`, `foundry:deploy`, `nixify`, `generate:buildah`, `make:grpc`,
-the Fly.io, Render and Railway deploy targets and `update check`, `verify`,
-`stage` and `install` are removed; and `--blueprint lms|blog|portfolio|erp`
-fails with a pointer to the example that replaces it. Files those commands
-generated stay yours; `cargo rullst upgrade` reports them and the scripts that
-run removed commands.
+**Breaking (CLI only):** `cargo rullst ai` is removed (it prints what replaces
+it and exits with status 1), `cargo rullst footprint` is now
+`cargo rullst green`; `foundry:init`, `foundry:deploy`, `nixify`,
+`generate:buildah`, `make:grpc`, the Fly.io, Render and Railway deploy targets
+and `update check`, `verify`, `stage` and `install` are removed; and
+`--blueprint lms|blog|portfolio|erp` fails with a pointer to the example that
+replaces it. Files those commands generated stay yours; `cargo rullst upgrade`
+reports them and the scripts that run removed commands.
 
 ### Known limitations
 
@@ -60,29 +61,32 @@ run removed commands.
   removed commands. An alpha.2 application follows the
   [alpha.2 to alpha.3 checklist](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md#upgrading-an-alpha2-application-to-alpha3)
   first.
-- `cargo-rullst-extras` (`cargo rullst ai` and `green`) is Experimental: it
-  has lighter tests than the main CLI and is outside the pull-request mutation
-  gate. Its first publication on crates.io uses a one-time token, as the four
-  new v13 packages did in 13.0.0-alpha.1; Trusted Publishing is configured for
-  it after this release.
-- `green` measures idle memory and CPU time only on Linux (other systems report
-  them as not measured) and an image size only through a local Docker or
-  Podman socket. Its carbon figure is an SCI estimate from the
+- `cargo rullst green` is Experimental and outside the pull-request mutation
+  gate: no mutation campaign has measured its files yet, so they are not in
+  `.github/mutants-pr-cli.txt`; unit tests and a loopback integration test
+  cover it. It measures idle memory and CPU time only on Linux (other systems
+  report them as not measured) and an image size only through a local Docker
+  or Podman socket. Its carbon figure is an SCI estimate from the
   `--cpu-watts` and `--grid-intensity` you give, not a measurement.
-- On Windows, the main CLI's handling of Ctrl+C while it runs
-  `cargo-rullst-extras` is verified by build and tests only, not in an
-  interactive terminal.
+- The development error page still offers a "Fix with cargo rullst ai" panel
+  with a `cargo rullst ai fix <error-id>` command, and the retired
+  `POST /_rullst/autofix` answers with that command, although `cargo rullst ai`
+  was removed in this release (running it prints the removal notice). Give the
+  error, its location and the stack trace on the page to your own assistant.
 - `cargo rullst deploy`: the generated Dockerfile, `compose.yaml` and
   `Caddyfile` are checked by content tests; no automated test builds or starts
   them with Docker or Podman. The provider guides and the Advanced deployment
   page were written from the providers' and tools' documentation, not followed
   end to end on real accounts.
-- Most of a generated project's first build is framework dependencies: on the
-  measuring machine the `aws-lc-sys` build script (the cryptography behind
-  the HTTPS client, reached through Studio → `rullst-capital` →
-  `reqwest`/`rustls`) took about 52 s, and SQLx's compile-time macros compile
-  some crates, SQLite among them, a second time. Reducing them is planned for
-  13.0.0-beta.1.
+- Most of a generated project's first build is framework dependencies. Rullst
+  keeps `aws-lc-rs` as the TLS crypto provider (rustls' post-quantum hybrid
+  key exchange), so the `aws-lc-sys` build script (about 52 s on the measuring
+  machine, reached through Studio → `rullst-capital` → `reqwest`/`rustls`)
+  stays in a project's first build; later builds reuse it, and the generated
+  Dockerfile's dependency layer (the cargo-chef approach) caches it in images.
+  SQLx's compile-time macros compile some crates, SQLite among them, a second
+  time, and Nexus pulls `rullst-ai` into the SaaS starter: reducing these is
+  planned for 13.0.0-rc.1 if it needs no breaking change, otherwise for 13.1.
 - Turso/libSQL is a primary database only in the Blank and API starters and
   does not work with the SQLx `#[derive(Orm)]`, `Schema`, `artisan!`/`db:*`,
   `Server::with_db`, Nexus or Studio's database pages.
@@ -145,8 +149,7 @@ run removed commands.
   under an `## Optional` section, as llmstxt.org recommends, and
   `.github/validate-site.py` generates `llms.txt` and `llms-full.txt` and fails
   when a `SUMMARY.md` page is missing from either or a size bound is exceeded.
-  The README, the terminal-assistant guide and the project-context guide link
-  both files.
+  The README and the project-context guide link both files.
 
 - `--json` follows one contract (CLI reference, "Machine-readable output"):
   standard output is exactly one JSON document with a top-level `schema` field
@@ -167,16 +170,19 @@ run removed commands.
 - The `cargo rullst` opening animates on every run (any key skips it).
   `RULLST_OPENING=daily` restores the once-a-day animation and
   `RULLST_OPENING=static` turns it off; `RULLST_REDUCED_MOTION` still applies.
-- **Breaking:** the terminal AI assistant (`cargo rullst ai`) and
-  `cargo rullst footprint` moved to the new optional package
-  `cargo-rullst-extras` (Experimental), so the main CLI no longer depends on
-  `rullst-ai`. Install it with the same version as the CLI
-  (`cargo install cargo-rullst-extras --version =<version> --locked`);
-  `cargo rullst ai …` and `cargo rullst green …` then run it from `PATH` with
-  the same arguments and exit status. Without it they print that install
-  command and exit with status 1, and the home menu shows the command instead
-  of failing. `cargo rullst upgrade` flags scripts and workflows that run
-  `rullst ai` or `rullst footprint` (`V13-CLI-EXTRAS`).
+- **Breaking:** the terminal AI assistant of the earlier 13.0 prereleases,
+  `cargo rullst ai` (with `connect`, `status`, `disconnect`, `upgrade`, `fix`
+  and `review`), was removed; its code stays in git history. `cargo rullst ai …`
+  now prints that it was removed and what to use instead (your editor's or
+  terminal's assistant with the project's `AGENTS.md`, which
+  `cargo rullst generate:ai-context` writes, and the published `llms.txt`) and
+  exits with status 1. It is hidden from help, completions, the command
+  palette and the home screen, and the tour's AI step shows
+  `generate:ai-context`. The main CLI no longer depends on `rullst-ai`; the
+  `rullst-ai` crate is unchanged. The `upgrade` plan and failure hints no
+  longer point at `ai upgrade`, and `add ai` suggests `generate:ai-context`.
+  `cargo rullst upgrade` flags scripts and workflows that run `rullst ai` or
+  `rullst footprint` (`V13-CLI-AI-REMOVED`).
 - **Breaking:** `cargo rullst deploy` has one path: for any Linux VM with
   Docker or Podman it writes, when absent, the Dockerfile (keeping its
   dependency-cache stage), a new `compose.yaml` (the app and Caddy with
@@ -206,7 +212,9 @@ run removed commands.
   update commands (`update project …`) are unchanged, and `cargo rullst
   upgrade` flags scripts that run the removed commands
   (`V13-CLI-SELF-UPDATE-REMOVED`).
-- **Breaking:** `footprint` is now `green` and reports only measured figures:
+- **Breaking:** `footprint` is now `green`, an Experimental command of the
+  same CLI (the home screen offers it as Green Report), and reports only
+  measured figures:
   release binary size, a local container image's size (`--image`, through
   Docker or Podman), idle memory, the `Cargo.lock` dependency count and, with
   the new `--bench`, CPU time per request. It no longer reports requests per
@@ -224,8 +232,7 @@ run removed commands.
   complete applications in the repository's `examples/lms`, `examples/erp`
   and `examples/portfolio`, tested in its workspace (the blog showcase is
   `examples/blog`); copy one to start from it. Applications generated earlier
-  from these blueprints keep working. The terminal assistant in
-  `cargo-rullst-extras` proposes only the three starters.
+  from these blueprints keep working.
 - The blog example no longer ships a `Foundry.toml`.
 - `cargo rullst new` writes a `[profile.dev]` into the generated `Cargo.toml`:
   `debug = "line-tables-only"` for the application, so panics and backtraces

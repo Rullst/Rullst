@@ -30,7 +30,7 @@ pub(super) struct Options {
 
 pub(crate) fn command() -> Command {
     Command::new("green")
-        .about("Measure binary and image size, idle memory, dependencies and benchmark CPU time; an SCI carbon estimate only from inputs you supply")
+        .about("(experimental) Measure binary and image size, idle memory, dependencies and benchmark CPU time; an SCI carbon estimate only from inputs you supply")
         .arg(
             Arg::new("url")
                 .long("url")

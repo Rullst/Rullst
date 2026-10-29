@@ -94,7 +94,7 @@ homologated.
 | M34 | Schema-driven TypeScript/React/Dart/Swift SDKs | 🟡 v13 prerelease foundation — one bounded OpenAPI 3.1 profile generates Rust codecs and a strict TypeScript client; React, Dart and Swift remain open |
 | M35 | Distributed OpenTelemetry waterfall in Studio | 🟡 Still to implement — partial |
 | M36 | Read-only explainable natural-language SQL assistant | ⏳ Still to implement — not started |
-| M37 | Reviewable one-click error-console patch workflow | 🟡 v13 prerelease preview — the error page hands off to `cargo rullst ai fix <error-id>` (diff, confirmation, git checkpoint, `cargo check`); copy-and-run rather than one click, no edit audit trail beyond the checkpoint, live-provider fix quality unmeasured and hot-reload mode not covered |
+| M37 | Reviewable one-click error-console patch workflow | 🟡 v13 prerelease preview — the error page records a bounded panic context and makes no network request, but its hand-off still names `cargo rullst ai fix <error-id>`, which 13.0.0-alpha.4 removed with the terminal assistant; a replacement hand-off, a one-click flow and the hot-reload mode remain open |
 | M38 | Vendor-specific SQLite replica/synchronization profile | ⏳ Still to implement — not started |
 | M39 | Optional self-hosted `rullst-gateway` load balancer | ⏳ Not implemented — abandoned on 8 October 2026 in favour of generated Caddy/nginx configuration; kept in the not-started count |
 | M40 | `rullst-labs` contracts with a bring-your-own runner | 🟡 v13 prerelease foundation — trusted job/lease/grading contracts and a documented runner contract; the `rullst-labs-runner` candidate was removed from 13.0, so execution is application-owned; full offensive CTF arenas require external isolated infrastructure |

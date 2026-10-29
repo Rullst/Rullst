@@ -11,9 +11,6 @@
 # slow to rerun per mutant, so mutants-pr.sh leaves the CLI out of the
 # workspace pass and mutates only the files in mutants-pr-cli.txt, which it
 # tests with the CLI's library unit tests.
-# The experimental extras moved out of cargo-rullst in 13.0.0-alpha.4 keep
-# its lighter-test status (unit and binary tests in the CLI shard).
-cargo-rullst-extras/**
 # Example applications to copy from, moved in 13.0.0-alpha.4 from the CLI
 # blueprints (excluded above with cargo-rullst/**); their own tests run in the
 # workspace suite.

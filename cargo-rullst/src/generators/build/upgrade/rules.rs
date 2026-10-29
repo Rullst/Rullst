@@ -81,7 +81,7 @@ pub(crate) struct Rule {
     pub row: &'static str,
     /// One line shown in the plan.
     pub message: &'static str,
-    /// How to fix it; given to `cargo rullst ai upgrade`.
+    /// How to fix it; a failed Cargo gate repeats it for removed-API findings.
     pub guidance: &'static str,
 }
 

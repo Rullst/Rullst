@@ -62,8 +62,9 @@ When instructing an AI to add a feature in Rullst:
    and consult the matching version of the Rullst documentation.
 2. Say: "Create a new Controller following the pattern established in `auth_controller.rs`". Today's AIs are brilliant at pattern matching. Rullst provides the skeleton, the AI fills in the meat.
 3. Use the generators! Ask the AI to use `cargo rullst make:controller` in the terminal (if it's an autonomous agent), ensuring the correct file structure.
-4. Or use the v13 [terminal assistant](ai-assistant.md), `cargo rullst ai`
-   (in the optional `cargo-rullst-extras` package): it knows Rullst's conventions and the project inventory, and proposes only
-   reviewed actions (file edits inside the project, allowlisted `cargo rullst`
-   commands, `cargo check`/`cargo test`), each confirmed after a diff or the
-   exact command.
+4. Run `cargo rullst generate:ai-context` so the assistant in your editor or
+   terminal reads the project's `AGENTS.md` and its `.llms.txt` inventory, and
+   point it at the framework's published
+   [`llms.txt`](https://rullst.github.io/Rullst/llms.txt). Review every edit it
+   proposes. (`cargo rullst ai`, the terminal assistant of the earlier 13.0
+   prereleases, was removed in 13.0.0-alpha.4.)

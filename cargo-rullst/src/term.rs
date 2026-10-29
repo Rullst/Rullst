@@ -1,22 +1,19 @@
 //! Terminal policy shared by `cargo rullst add` previews and the
-//! `cargo-rullst-extras` assistant: colour, whether prompts may run and how
-//! untrusted text is made safe to print. Not a stable API.
+//! `cargo rullst green` report: colour and how untrusted text is made safe to
+//! print.
 //!
 //! The rules match the CLI home screen (`NO_COLOR`, `CI`, `TERM=dumb` and
-//! non-TTY streams select plain, non-interactive behaviour). Model output,
-//! file contents and command output are untrusted, so every byte that reaches
-//! the terminal goes through [`sanitize`] first: an escape sequence from a
-//! model could otherwise rewrite the screen, set the window title or write to
-//! the clipboard.
+//! non-TTY streams select plain output). File contents and command output are
+//! untrusted, so every byte that reaches the terminal goes through
+//! [`sanitize`] first: an escape sequence could otherwise rewrite the screen,
+//! set the window title or write to the clipboard.
 
 use std::io::IsTerminal;
 
-/// The environment inputs that decide colour and interactivity.
+/// The environment inputs that decide colour.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct TermEnv {
-    pub stdin_tty: bool,
     pub stdout_tty: bool,
-    pub stderr_tty: bool,
     pub no_color: bool,
     pub ci: bool,
     pub dumb: bool,
@@ -26,9 +23,7 @@ impl TermEnv {
     pub fn detect() -> Self {
         let var = |name: &str| std::env::var(name).ok();
         Self {
-            stdin_tty: std::io::stdin().is_terminal(),
             stdout_tty: std::io::stdout().is_terminal(),
-            stderr_tty: std::io::stderr().is_terminal(),
             no_color: std::env::var_os("NO_COLOR").is_some(),
             ci: var("CI").is_some_and(|value| {
                 !matches!(
@@ -43,12 +38,6 @@ impl TermEnv {
     /// Colour only for a terminal that has not opted out.
     pub fn color(&self) -> bool {
         self.stdout_tty && !self.no_color && !self.ci && !self.dumb
-    }
-
-    /// Prompts (and therefore action execution) need every standard stream
-    /// to be a terminal outside automation.
-    pub fn interactive(&self) -> bool {
-        self.stdin_tty && self.stdout_tty && self.stderr_tty && !self.ci && !self.dumb
     }
 }
 
@@ -124,40 +113,31 @@ mod tests {
 
     fn tty() -> TermEnv {
         TermEnv {
-            stdin_tty: true,
             stdout_tty: true,
-            stderr_tty: true,
             ..TermEnv::default()
         }
     }
 
     #[test]
-    fn automation_and_opt_outs_disable_colour_and_prompts() {
-        assert!(tty().color() && tty().interactive());
-        let no_color = TermEnv {
-            no_color: true,
-            ..tty()
-        };
-        assert!(!no_color.color() && no_color.interactive());
+    fn automation_and_opt_outs_disable_colour() {
+        assert!(tty().color());
         for env in [
+            TermEnv {
+                no_color: true,
+                ..tty()
+            },
             TermEnv { ci: true, ..tty() },
             TermEnv {
                 dumb: true,
                 ..tty()
             },
+            TermEnv {
+                stdout_tty: false,
+                ..tty()
+            },
         ] {
-            assert!(!env.color() && !env.interactive());
+            assert!(!env.color(), "{env:?}");
         }
-        let piped = TermEnv {
-            stdin_tty: false,
-            ..tty()
-        };
-        assert!(piped.color() && !piped.interactive());
-        let redirected = TermEnv {
-            stdout_tty: false,
-            ..tty()
-        };
-        assert!(!redirected.color() && !redirected.interactive());
     }
 
     #[test]

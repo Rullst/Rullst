@@ -3,7 +3,7 @@
 //! is an estimate. Plain under `NO_COLOR`, `CI` or when stdout is not a
 //! terminal.
 use super::report::{Metric, Report};
-use cargo_rullst::term::Style;
+use crate::term::Style;
 
 struct Row {
     label: &'static str,

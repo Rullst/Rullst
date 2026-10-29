@@ -1,5 +1,5 @@
 use super::super::files::{
-    manifest_findings, project_findings, runs_extras_command, runs_removed_deploy_target,
+    manifest_findings, project_findings, runs_removed_cli_command, runs_removed_deploy_target,
     runs_removed_generator, runs_removed_update_command,
 };
 use super::*;
@@ -271,7 +271,7 @@ fn generated_project_files_are_reviewed() {
 }
 
 #[test]
-fn scripts_running_the_moved_extras_commands_are_reviewed() {
+fn scripts_running_the_removed_ai_or_footprint_commands_are_reviewed() {
     let project = Project::new();
     project
         .write(
@@ -291,19 +291,21 @@ fn scripts_running_the_moved_extras_commands_are_reviewed() {
         [
             (
                 ".github/workflows/green.yml".to_string(),
-                "V13-CLI-EXTRAS",
+                "V13-CLI-AI-REMOVED",
                 3
             ),
-            ("deploy.sh".to_string(), "V13-CLI-EXTRAS", 2),
-            ("justfile".to_string(), "V13-CLI-EXTRAS", 2),
+            ("deploy.sh".to_string(), "V13-CLI-AI-REMOVED", 2),
+            ("justfile".to_string(), "V13-CLI-AI-REMOVED", 2),
         ]
     );
-    assert!(runs_extras_command("cargo rullst ai"));
-    assert!(runs_extras_command("x=$(cargo rullst ai status --json)"));
-    assert!(runs_extras_command("cargo rullst footprint;"));
-    assert!(!runs_extras_command("cargo rullst ai:x"));
-    assert!(!runs_extras_command("cargo rullst ai_x"));
-    assert!(!runs_extras_command("cargo rullst green"));
+    assert!(runs_removed_cli_command("cargo rullst ai"));
+    assert!(runs_removed_cli_command(
+        "x=$(cargo rullst ai status --json)"
+    ));
+    assert!(runs_removed_cli_command("cargo rullst footprint;"));
+    assert!(!runs_removed_cli_command("cargo rullst ai:x"));
+    assert!(!runs_removed_cli_command("cargo rullst ai_x"));
+    assert!(!runs_removed_cli_command("cargo rullst green"));
 }
 
 /// A fixed script name is reviewed under the name the directory lists, once,
@@ -314,7 +316,7 @@ fn a_capitalised_justfile_is_reviewed_once_under_its_own_name() {
     project.write("Justfile", "review:\n    cargo rullst ai review --staged\n");
     assert_eq!(
         project.findings("[package]\nname = \"my-app\"\n"),
-        vec![("Justfile".to_string(), "V13-CLI-EXTRAS", 2)]
+        vec![("Justfile".to_string(), "V13-CLI-AI-REMOVED", 2)]
     );
 }
 

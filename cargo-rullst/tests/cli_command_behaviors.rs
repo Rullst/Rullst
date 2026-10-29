@@ -240,21 +240,20 @@ fn assert_files(root: &Path, paths: &[&str]) {
 #[test]
 fn public_help_inventory_renders_every_command_group() {
     let groups = cargo_rullst::ui::get_help_groups();
-    assert_eq!(groups.len(), 9);
-    let extras = groups
+    assert_eq!(groups.len(), 8);
+    let commands: Vec<&str> = groups
         .iter()
-        .find(|(title, _)| title.contains("cargo install cargo-rullst-extras"))
-        .expect("the extras group names its install command");
-    let extras: Vec<&str> = extras.1.iter().map(|(command, _)| *command).collect();
-    assert_eq!(
-        extras,
-        ["cargo rullst ai [goal]", "cargo rullst green [--bench]"]
-    );
+        .flat_map(|(_, commands)| commands)
+        .map(|(command, _)| *command)
+        .collect();
+    assert!(commands.contains(&"cargo rullst upgrade"));
+    assert!(commands.contains(&"cargo rullst green [--bench] [--json]"));
+    // `cargo rullst ai` was removed in 13.0.0-alpha.4 and is not offered.
     assert!(
-        groups
+        !commands
             .iter()
-            .flat_map(|(_, commands)| commands)
-            .any(|(command, _)| *command == "cargo rullst upgrade")
+            .any(|command| command.starts_with("cargo rullst ai ")),
+        "{commands:?}"
     );
     cargo_rullst::ui::show_help_reference();
 
@@ -505,6 +504,25 @@ fn unknown_commands_completions_info_and_json_views_are_scriptable() {
         "NO_COLOR keeps the report plain"
     );
     assert!(unknown.stdout.is_empty());
+
+    // `cargo rullst ai` was removed in 13.0.0-alpha.4: any arguments, `--help`
+    // and a preceding global flag included, get the same report and status 1.
+    for arguments in [&["ai"][..], &["ai", "--help"], &["-v", "ai", "fix", "0123"]] {
+        let removed = fixture.command(arguments);
+        assert_eq!(removed.status.code(), Some(1), "{arguments:?}");
+        let stderr = String::from_utf8_lossy(&removed.stderr);
+        assert!(
+            stderr.starts_with("error: `cargo rullst ai` was removed\n"),
+            "{stderr}"
+        );
+        assert!(stderr.contains("removed in 13.0.0-alpha.4"), "{stderr}");
+        assert!(stderr.contains("AGENTS.md"), "{stderr}");
+        assert!(
+            stderr.contains("migration-v13.html#upgrading-an-alpha3-application-to-alpha4"),
+            "{stderr}"
+        );
+        assert!(removed.stdout.is_empty(), "{arguments:?}");
+    }
 
     let completions = fixture.succeeds(&["completions", "bash"]);
     assert!(completions.contains("_rullst()") && completions.contains("make:model"));

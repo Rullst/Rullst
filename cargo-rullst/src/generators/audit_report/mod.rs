@@ -16,7 +16,6 @@ mod render_html;
 mod render_json;
 mod render_md;
 mod secrets;
-pub(crate) use secrets::redact_secrets;
 mod sources;
 mod summary;
 mod web;

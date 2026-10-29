@@ -279,12 +279,6 @@ jobs:
         if: runner.os == 'Linux' && matrix.shard == 'cli-standard'
         run: python3 .github/cli-home-pty-smoke.py target/debug/cargo-rullst
 
-      - name: Exercise the AI assistant in a real terminal
-        # `cargo rullst ai` forwards to cargo-rullst-extras on PATH; the
-        # cli-standard shard built it next to cargo-rullst.
-        if: runner.os == 'Linux' && matrix.shard == 'cli-standard'
-        run: PATH="$PWD/target/debug:$PATH" python3 .github/cli-ai-pty-smoke.py target/debug/cargo-rullst
-
       - name: Exercise the create wizard and tour in a real terminal
         if: runner.os == 'Linux' && matrix.shard == 'cli-standard'
         run: python3 .github/cli-create-pty-smoke.py target/debug/cargo-rullst

@@ -7,8 +7,6 @@ pub(crate) struct Example {
     pub(crate) arguments: &'static [&'static str],
     /// What running it does; shown next to the offer.
     pub(crate) effect: &'static str,
-    /// Run instead when this CLI build lacks the first subcommand.
-    pub(crate) fallback: Option<&'static [&'static str]>,
 }
 
 /// One stop of the tour.
@@ -38,7 +36,6 @@ pub(crate) const STEPS: [Step; 7] = [
         example: Example {
             arguments: &["new", "tour-demo", "--default", "--dry-run"],
             effect: "previews a project; creates nothing",
-            fallback: None,
         },
     },
     Step {
@@ -53,7 +50,6 @@ pub(crate) const STEPS: [Step; 7] = [
         example: Example {
             arguments: &["dev", "--help"],
             effect: "read-only: lists its options",
-            fallback: None,
         },
     },
     Step {
@@ -67,7 +63,6 @@ pub(crate) const STEPS: [Step; 7] = [
         example: Example {
             arguments: &["dash", "--help"],
             effect: "read-only: lists its options",
-            fallback: None,
         },
     },
     Step {
@@ -85,7 +80,6 @@ pub(crate) const STEPS: [Step; 7] = [
         example: Example {
             arguments: &["make:model", "--help"],
             effect: "read-only: lists its options",
-            fallback: None,
         },
     },
     Step {
@@ -103,7 +97,6 @@ pub(crate) const STEPS: [Step; 7] = [
         example: Example {
             arguments: &["db:status", "--help"],
             effect: "read-only: lists its options",
-            fallback: None,
         },
     },
     Step {
@@ -117,26 +110,23 @@ pub(crate) const STEPS: [Step; 7] = [
         example: Example {
             arguments: &["doctor", "--help"],
             effect: "read-only: lists its options",
-            fallback: None,
         },
     },
     Step {
-        command: "ai",
+        command: "generate:ai-context",
         title: "Work with AI",
         explanation: &[
-            "`cargo rullst ai` (optional cargo-rullst-extras) is a terminal",
-            "assistant that knows Rullst and your project; `ai connect` chooses a",
-            "model provider. `generate:ai-context` writes .llms.txt for any assistant.",
+            "Writes AGENTS.md and a .llms.txt map of your project for the AI",
+            "assistant in your editor or terminal; the framework's own index is",
+            "https://rullst.github.io/Rullst/llms.txt.",
         ],
         try_commands: &[
-            "cargo rullst ai",
-            "cargo rullst ai connect",
             "cargo rullst generate:ai-context",
+            "cargo rullst generate:ai-context --check",
         ],
         example: Example {
-            arguments: &["ai", "--help"],
+            arguments: &["generate:ai-context", "--help"],
             effect: "read-only: lists its options",
-            fallback: Some(&["generate:ai-context", "--help"]),
         },
     },
 ];

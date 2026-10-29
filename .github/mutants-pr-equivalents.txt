@@ -131,8 +131,6 @@ rullst-nexus/src/nexus/crud/form.rs:194:32: replace match guard matches!(f.kind,
 # below has a row in WORKFLOWS.md "Accepted equivalent mutants".
 cargo-rullst/src/generators/audit_report/a11y.rs:183:47: replace + with * in attributes
 cargo-rullst/src/generators/audit_report/a11y.rs:183:47: replace + with - in attributes
-cargo-rullst/src/generators/audit_report/secrets.rs:171:22: replace > with >= in redact_secrets
-cargo-rullst/src/generators/audit_report/secrets.rs:179:18: replace > with >= in redact_secrets
 cargo-rullst/src/generators/audit_source.rs:119:21: replace < with <= in mark_code_tokens
 cargo-rullst/src/generators/audit_source.rs:42:17: replace < with <= in tokenized_views
 cargo-rullst/src/generators/audit_source.rs:50:26: replace + with * in tokenized_views
