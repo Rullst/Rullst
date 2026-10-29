@@ -23,7 +23,7 @@ mail-smtp = ["dep:lettre"]
 aws-ses = ["dep:aws-sdk-sesv2", "dep:aws-smithy-types"]
 capital-invoice = ["dep:rullst-capital", "rullst-capital/invoice-pdf"]
 sqlite = ["dep:sqlx", "sqlx/sqlite", "dep:url"]
-postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls", "dep:url"]
+postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "dep:url"]
 
 [dependencies]
 rullst-core = { workspace = true }

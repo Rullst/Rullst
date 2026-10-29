@@ -19,7 +19,7 @@ sqlite = ["sqlx/sqlite", "dep:aes-gcm", "dep:serde_json", "dep:sqlx", "dep:url",
 orm-outbox = ["dep:rullst-orm", "dep:serde_json"]
 redis-streams = ["dep:redis", "dep:rustls", "dep:url", "tokio/time"]
 
-schedules-postgres = ["dep:subtle","dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls", "dep:url", "dep:aes-gcm", "dep:zeroize", "dep:serde_json", "dep:chrono", "dep:cron", "dep:getrandom", "tokio/time"]
+schedules-postgres = ["dep:subtle","dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "dep:url", "dep:aes-gcm", "dep:zeroize", "dep:serde_json", "dep:chrono", "dep:cron", "dep:getrandom", "tokio/time"]
 
 webhooks = ["sqlite", "dep:reqwest", "dep:hmac", "dep:base64", "tokio/net", "tokio/time"]
 

@@ -12,7 +12,7 @@ description = "ERP example (products, stock movements and orders behind the Nexu
 rullst = { workspace = true, features = ["orm", "strict-sqlite", "studio", "nexus"] }
 rullst-orm = { workspace = true, features = ["strict-sqlite"] }
 serde = { workspace = true }
-sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls", "sqlite"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "sqlite"] }
 tokio = { workspace = true, features = ["full"] }
 # `#[derive(Orm)]` expands `#[tracing::instrument]` in the application crate.
 tracing = { workspace = true }
