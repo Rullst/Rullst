@@ -129,7 +129,8 @@ cd first_app
 cargo rullst dev
 ```
 
-The first source build can take several minutes. `--skip-initial-migration`
+The first source build can take several minutes (measured figures and tips:
+[Build times](build-times.md)). `--skip-initial-migration`
 defers the generator's bootstrap work; the development command runs the
 initial migration before starting a generated database-backed app. Never point
 this learning project at a production database.

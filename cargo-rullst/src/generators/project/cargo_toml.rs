@@ -229,12 +229,11 @@ rust-version = "1.96.0"
         cargo_toml.push_str(&auth_dep);
     }
 
+    // No direct `rullst-connect`: `make:oauth` enables the facade's `oauth-*`
+    // feature, and an unused dependency only lengthens the first build.
     if blueprint_selection == SAAS_BLUEPRINT_ID {
         let capital_dep = dependency_line(current_dir, "rullst-capital", crate_version)?;
         cargo_toml.push_str(&capital_dep);
-
-        let connect_dep = dependency_line(current_dir, "rullst-connect", crate_version)?;
-        cargo_toml.push_str(&connect_dep);
     }
 
     let security_dep = dependency_line(current_dir, "rullst-security", crate_version)?;
@@ -253,16 +252,31 @@ web-sys = { version = "0.3", features = ["Document", "Element", "EventTarget", "
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
 "#,
     );
+    cargo_toml.push_str(DEV_PROFILE);
     cargo_toml.push_str(RELEASE_PROFILE);
     cargo_toml.push_str("\n[workspace]\n");
 
     Ok(cargo_toml)
 }
 
+/// The `[profile.dev]` of every generated manifest (see its comments). The
+/// measurements behind it are in the book's "Build times" page.
+pub(crate) const DEV_PROFILE: &str = r#"
+# Faster debug builds (`cargo build`, `cargo test`, `cargo rullst dev`): your
+# code keeps line tables, so panics and backtraces still show file:line, and
+# dependencies are built without debug information. For a debugger that shows
+# variables, set `debug = true` in both sections.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+"#;
+
 /// The `[profile.release]` of every generated manifest (see its comments).
 pub(crate) const RELEASE_PROFILE: &str = r#"
-# Smaller release binaries. Debug builds keep Cargo's defaults. `panic` stays
-# "unwind" on purpose: a panicking handler must not take the server down.
+# Smaller release binaries. `panic` stays "unwind" on purpose: a panicking
+# handler must not take the server down.
 # `strip = "symbols"` removes symbol names from release backtraces; use
 # `strip = "debuginfo"` when you need symbolized production backtraces.
 [profile.release]

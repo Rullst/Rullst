@@ -386,11 +386,13 @@ exclude it, so CI runners, teammates and the container builder (which has
 neither linker) build with the toolchain default.
 
 Since v13 the generated `Cargo.toml` also has a `[profile.release]` with
-`lto = "thin"`, `codegen-units = 1` and `strip = "symbols"`. Debug builds keep
-Cargo's defaults, and `panic` stays `unwind` so one panicking handler cannot
-stop the server. Release builds take longer and their backtraces lose symbol
-names; the [measured release defaults](green-software-roadmap.md#measured-release-defaults)
-state the size and build-time effect on one starter.
+`lto = "thin"`, `codegen-units = 1` and `strip = "symbols"`; `panic` stays
+`unwind` so one panicking handler cannot stop the server. Release builds take
+longer and their backtraces lose symbol names; the [measured release defaults](green-software-roadmap.md#measured-release-defaults)
+state the size and build-time effect on one starter. Since 13.0.0-alpha.4 it
+has a `[profile.dev]` as well: the application keeps line tables (file:line in
+panics and backtraces) and dependencies are built without debug information,
+which shortens debug builds and rebuilds; see [Build times](build-times.md).
 
 Without `--skip-initial-migration`, project creation performs the first Cargo
 build before applying migrations. A clean first build can take several minutes,

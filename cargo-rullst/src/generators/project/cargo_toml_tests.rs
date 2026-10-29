@@ -60,6 +60,51 @@ fn stable_blueprint_ids_enable_only_their_required_domain_features() {
 }
 
 #[test]
+fn starters_declare_only_the_framework_crates_their_code_uses() {
+    let direct = |blueprint| {
+        let manifest = build_cargo_toml(
+            "direct",
+            false,
+            true,
+            "Sqlite",
+            &[],
+            false,
+            false,
+            blueprint,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("manifest");
+        let parsed: toml::Value = toml::from_str(&manifest).expect("valid Cargo manifest");
+        let mut names = parsed["dependencies"]
+            .as_table()
+            .expect("dependencies")
+            .keys()
+            .filter(|name| name.starts_with("rullst"))
+            .cloned()
+            .collect::<Vec<_>>();
+        names.sort();
+        names
+    };
+    // `make:oauth` enables the facade's `oauth-*` feature, so the SaaS
+    // starter does not compile `rullst-connect` and its JWT stack up front.
+    assert_eq!(
+        direct(SAAS_BLUEPRINT_ID),
+        [
+            "rullst",
+            "rullst-auth",
+            "rullst-capital",
+            "rullst-orm",
+            "rullst-security"
+        ]
+    );
+    assert_eq!(
+        direct(BLANK_BLUEPRINT_ID),
+        ["rullst", "rullst-orm", "rullst-security"]
+    );
+}
+
+#[test]
 fn blank_database_project_does_not_compile_an_unmounted_nexus() {
     let blank = build_cargo_toml(
         "blank-db",
@@ -385,9 +430,47 @@ fn release_profile_is_optimized_and_keeps_unwinding_panics() {
         assert_eq!(release["strip"].as_str(), Some("symbols"));
         // Aborting on panic would let one failing handler stop the server.
         assert!(release.get("panic").is_none(), "{manifest}");
+        assert_eq!(
+            release.as_table().map(toml::Table::len),
+            Some(3),
+            "{manifest}"
+        );
         let profiles = parsed["profile"].as_table().expect("profile table");
-        assert_eq!(profiles.len(), 1, "debug builds keep Cargo's defaults");
+        let mut names: Vec<&str> = profiles.keys().map(String::as_str).collect();
+        names.sort_unstable();
+        assert_eq!(names, ["dev", "release"], "{manifest}");
         assert!(parsed.get("workspace").is_some(), "{manifest}");
+    }
+}
+
+#[test]
+fn dev_profile_keeps_line_tables_for_the_application_only() {
+    for (hot_reload, db_needed, blueprint) in [
+        (false, false, BLANK_BLUEPRINT_ID),
+        (false, true, BLANK_BLUEPRINT_ID),
+        (true, true, BLANK_BLUEPRINT_ID),
+        (false, true, SAAS_BLUEPRINT_ID),
+    ] {
+        let manifest = build_cargo_toml(
+            "dev-app",
+            hot_reload,
+            db_needed,
+            "Sqlite",
+            &[],
+            false,
+            false,
+            blueprint,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("manifest");
+        let parsed: toml::Value = toml::from_str(&manifest).expect("valid Cargo manifest");
+        // Line tables keep file:line in the application's panics and
+        // backtraces; only `debug` departs from Cargo's development defaults.
+        let expected: toml::Value =
+            toml::from_str("debug = \"line-tables-only\"\npackage.\"*\".debug = false\n")
+                .expect("expected profile");
+        assert_eq!(parsed["profile"]["dev"], expected, "{manifest}");
     }
 }
 
