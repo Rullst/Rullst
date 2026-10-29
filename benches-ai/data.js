@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793294535859,
+  "lastUpdate": 1793299519214,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -16443,6 +16443,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 186,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ef9d6f2e910f72a03592e39d63d3d6655af8f8d4",
+          "message": "Merge pull request #563 from Rullst/refactor/v13-alpha4-green-only\n\nrefactor(cli)!: move green into the main CLI, remove cargo rullst ai and the extras package",
+          "timestamp": "2026-10-29T15:22:09-03:00",
+          "tree_id": "cfe2955cd3f1006cef5c184c5429993d59a50c53",
+          "url": "https://github.com/Rullst/Rullst/commit/ef9d6f2e910f72a03592e39d63d3d6655af8f8d4"
+        },
+        "date": 1793299518103,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1313,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 237,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 271,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
