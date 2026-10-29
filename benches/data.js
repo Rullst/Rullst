@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793301132813,
+  "lastUpdate": 1793306749772,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -29785,6 +29785,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 994,
             "range": "± 43",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a89cd289210b300e4748f175382b99d586eb6068",
+          "message": "Merge pull request #571 from Rullst/docs/v13-audit-packages\n\ndocs(crates): audit the crates.io and docs.rs pages of the 20 packages",
+          "timestamp": "2026-10-29T17:42:15-03:00",
+          "tree_id": "0d30873c80856c6b20199a9611d5bca2e77a364b",
+          "url": "https://github.com/Rullst/Rullst/commit/a89cd289210b300e4748f175382b99d586eb6068"
+        },
+        "date": 1793306746870,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 677,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 879,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 426,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1746,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
