@@ -1,6 +1,6 @@
 # Rullst Telemetry, Spans & Process Observability 📡
 
-Rullst v12 exposes three related but separate observability surfaces:
+Rullst exposes three related but separate observability surfaces:
 
 - `RadarSnapshot` samples supported process and Tokio runtime data;
 - `radar_metrics_router()` exposes those samples in Prometheus text format;
@@ -11,8 +11,8 @@ The optional `telemetry` Cargo feature also installs an OpenTelemetry tracing
 layer. None of these components proves a performance target or replaces a
 durable production observability backend.
 
-The v13 prerelease (13.0.0-alpha.1) adds an explicit, minimized cross-process profile
-and repairs legacy OTLP transport initialization. See
+Rullst 13 (since 13.0.0-alpha.1) adds an explicit, minimized cross-process
+profile and repairs legacy OTLP transport initialization. See
 [distributed operation tracing](distributed-tracing.md) for parent trust,
 approved labels, owned shutdown, actual collector tests and admission status.
 
@@ -86,9 +86,10 @@ or a parent/child tracing model.
 
 ## OpenTelemetry export
 
-The following legacy initializer example targets the v13 prerelease repair.
-Prefer the owned profile linked above when you need explicit metadata policy
-and flush/shutdown. Enable the feature and opt in to the prerelease explicitly:
+The legacy initializer below uses the OTLP transport repaired in v13. Prefer
+the owned profile linked above when you need explicit metadata policy and
+flush/shutdown. Enable the feature with the exact prerelease version (Cargo
+never selects a prerelease on its own):
 
 ```toml
 [dependencies]
