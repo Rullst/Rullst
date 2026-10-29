@@ -11,7 +11,7 @@ use argon2::{
 pub fn hash_password(password: &str) -> Result<String, AuthError> {
     if password.len() > MAX_PASSWORD_BYTES {
         return Err(AuthError::PasswordHashError(
-            "Password exceeds maximum length of 72 characters".to_string(),
+            "Password exceeds maximum length of 72 bytes".to_string(),
         ));
     }
     let argon2 = Argon2::default();

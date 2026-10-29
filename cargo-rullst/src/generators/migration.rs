@@ -20,7 +20,7 @@ pub fn create_new_migration(name: &str) -> Result<(), Box<dyn std::error::Error>
 
     println!(
         "{}",
-        format!("🛠️ Gerando migração Rullst: {}...", file_stem)
+        format!("🛠️ Generating Rullst migration: {}...", file_stem)
             .cyan()
             .bold()
     );
