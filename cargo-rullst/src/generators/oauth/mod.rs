@@ -1,6 +1,6 @@
 //! `cargo rullst make:oauth <provider>`: sign-in with Google, GitHub,
-//! Microsoft or Apple for the `make:auth`, SaaS and LMS account model (v13
-//! preview).
+//! Microsoft or Apple for the account model of `cargo rullst auth`, the SaaS
+//! starter and the LMS example (v13 preview).
 //!
 //! The generated code keeps login challenges in the application database
 //! through `rullst::connect::challenge`, links provider identities in one
@@ -28,7 +28,7 @@ const UNKNOWN_PROVIDER: &str = "make:oauth supports only: google, github, micros
 
 pub(crate) fn command() -> Command {
     Command::new("make:oauth")
-        .about("Add sign-in with an OAuth/OpenID Connect provider to the make:auth, SaaS or LMS accounts (v13 preview)")
+        .about("Add sign-in with an OAuth/OpenID Connect provider to the accounts of `cargo rullst auth`, the SaaS starter or the LMS example (v13 preview)")
         .arg(
             Arg::new("provider")
                 .required(true)

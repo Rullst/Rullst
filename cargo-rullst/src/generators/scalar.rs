@@ -91,8 +91,27 @@ pub fn generate_scalar_docs() -> Result<(), Box<dyn std::error::Error>> {
         "http://localhost:3000/docs".bold().yellow()
     );
     println!("   💡 Spec Source: {}", "/openapi.json".bold());
+    if !declares_controllers(Path::new("src/main.rs")) {
+        println!(
+            "   ⚠️  src/main.rs does not declare the controllers module yet: add {}",
+            "mod controllers;".bold()
+        );
+    }
 
     Ok(())
+}
+
+/// Whether the crate root at `main` declares `mod controllers` (a missing or
+/// unreadable file counts as declared, so nothing is suggested).
+fn declares_controllers(main: &Path) -> bool {
+    match fs::read_to_string(main) {
+        Ok(source) => source.lines().any(|line| {
+            let line = line.trim_start();
+            let line = line.strip_prefix("pub ").unwrap_or(line);
+            line.starts_with("mod controllers;") || line.starts_with("mod controllers {")
+        }),
+        Err(_) => true,
+    }
 }
 
 #[cfg(test)]
@@ -120,5 +139,21 @@ mod tests {
             ErrorKind::AlreadyExists
         );
         assert_eq!(fs::read(path).expect("controller"), b"first");
+    }
+
+    #[test]
+    fn a_missing_controllers_module_declaration_is_detected() {
+        let dir = tempdir().expect("temporary directory");
+        let main = dir.path().join("main.rs");
+        assert!(
+            declares_controllers(&main),
+            "a missing file suggests nothing"
+        );
+        fs::write(&main, "mod routes;\nfn main() {}\n").expect("main.rs");
+        assert!(!declares_controllers(&main));
+        fs::write(&main, "mod routes;\npub mod controllers;\n").expect("main.rs");
+        assert!(declares_controllers(&main));
+        fs::write(&main, "    mod controllers;\n").expect("main.rs");
+        assert!(declares_controllers(&main));
     }
 }

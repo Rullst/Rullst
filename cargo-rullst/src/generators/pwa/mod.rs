@@ -71,7 +71,10 @@ struct Plan {
     edits: Vec<Edit>,
     created: Vec<String>,
     changed: Vec<String>,
+    /// Layouts this run wires.
     layouts: usize,
+    /// Layouts that already linked the manifest.
+    present: usize,
 }
 
 impl Plan {
@@ -86,10 +89,20 @@ impl Plan {
         for path in &self.changed {
             report.push_str(&format!("  updated  {path}\n"));
         }
-        report.push_str(&format!(
-            "{} page layout(s) link the manifest and register /sw.js.\nReplace the placeholder icons in static/icons/ and read PWA.md before release.\n",
-            self.layouts
-        ));
+        if self.layouts == 0 {
+            report.push_str(&format!(
+                "{} page layout(s) already link the manifest and register /sw.js.\n",
+                self.present
+            ));
+        } else {
+            report.push_str(&format!(
+                "{} page layout(s) link the manifest and register /sw.js.\n",
+                self.layouts
+            ));
+        }
+        report.push_str(
+            "Replace the placeholder icons in static/icons/ and read PWA.md before release.\n",
+        );
         report
     }
 }
@@ -161,6 +174,7 @@ fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
         created: Vec::new(),
         changed: Vec::new(),
         layouts: 0,
+        present: 0,
     };
 
     let sources = source_walk::rust_sources(&root.join("src"));
@@ -184,6 +198,7 @@ fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
             .map_err(|error| invalid(format!("make:pwa could not read {name}: {error}")))?;
         plan.layouts += wiring.wired;
         present += wiring.present;
+        plan.present += wiring.present;
         if path == crate_root {
             crate_root_source = Some((source, wiring.source));
         } else if wiring.wired > 0 {
