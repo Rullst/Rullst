@@ -17,20 +17,21 @@ as your product needs it.
 | What you want to do | Start here | Your first visible result |
 | --- | --- | --- |
 | “Take me from an empty folder to a complete app.” | [Zero to a complete app](tutorials/zero-to-complete-app.md), about an hour | Sign-in, owner-only CRUD pages, tests, a security report and a production build |
-| “Give me an application I can explore.” | [CLI installation and blueprints](1-getting-started.md) | Generated Rust, a local web page and a development loop |
+| “Give me an application I can explore.” | [CLI installation and starters](1-getting-started.md) | Generated Rust, a local web page and a development loop |
 | “Show me how the framework actually works.” | [Zero to Hello Rullst](tutorials/01-hello-world.md) | One complete typed route you write yourself |
 | “I need a backend for another client.” | [Your first JSON REST API](tutorials/rest-api-quickstart.md) | A real HTTP response you can inspect with curl |
 
 For the simplest first experiment, choose **Blank + SQLite**, or Blank with
-`--no-database` if you do not need persistence yet. The larger LMS and SaaS
-blueprints have more moving parts and longer first builds. You can explore
-them after your toolchain and local workflow are working.
+`--no-database` if you do not need persistence yet. The larger SaaS starter,
+and the LMS, ERP and Portfolio [examples](examples.md), have more moving parts
+and longer first builds. You can explore them after your toolchain and local
+workflow are working.
 
 ## A small loop that teaches a lot
 
 1. **Run it.** Reach the local page or JSON endpoint before adding features.
 2. **Find the code.** Open `src/main.rs`, then the generated controllers, models
-   and pages that exist in your chosen blueprint.
+   and pages that exist in your chosen starter.
 3. **Make one visible change.** Edit a heading or response field. With
    `cargo rullst dev`, watch the rebuild and process restart; with plain
    `cargo run`, stop and restart it yourself.

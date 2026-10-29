@@ -9,7 +9,7 @@ loopback peers. It is not a shared-environment authentication system; do not
 expose raw subrouters publicly without application-level authentication,
 authorization, TLS, and network policy.
 
-Generated Blank/API, Blog, Portfolio, LMS, ERP, and SaaS applications start the
+Generated Blank, API and SaaS applications (and the LMS, ERP, Portfolio and blog examples) start the
 standalone server only in debug builds and link to `http://127.0.0.1:5555`.
 Release builds do not start it; runtime `RULLST_ENV` or legacy `APP_ENV` values
 cannot override that compile-time boundary.

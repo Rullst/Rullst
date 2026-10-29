@@ -47,13 +47,14 @@
 
 ```bash
 cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
-cargo rullst new my_app    # choose Blank/API, Blog, SaaS, LMS, Portfolio or ERP
+cargo rullst new my_app    # choose the Blank, API or SaaS starter
 cd my_app
 cargo rullst dev           # rebuilds and restarts every time you save
 ```
 
 That's it: a running application, generated as readable Rust you can change —
-no hidden runtime magic. This installs the 13.0.0-alpha.3 prerelease; the v12
+no hidden runtime magic. Complete applications to copy from — an LMS, an ERP, a
+portfolio and a blog — live in [`examples/`](examples/). This installs the 13.0.0-alpha.3 prerelease; the v12
 line reached end of life on 16 October 2026 (see below).
 
 [Installation and prerequisites](https://rullst.github.io/Rullst/book/1-getting-started.html)
@@ -343,7 +344,7 @@ green main gates:
 | [Property testing](https://github.com/Rullst/Rullst/actions/workflows/proptest.yml) | Weekly/manual release-mode invariant testing with 10,000 configured cases. |
 | [TSan and ASan](https://github.com/Rullst/Rullst/actions/workflows/sanitizers.yml) | Daily/manual package matrices on a pinned verifier-only nightly. |
 | [Fuzzing](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) / [corpus minimization](https://github.com/Rullst/Rullst/actions/workflows/corpus-sync.yml) | Forty-two manual libFuzzer jobs; weekly/manual corpus maintenance is informational. |
-| [OWASP ZAP](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Manual baseline over three release surfaces: generated REST API and LMS starter are blocking with no ignored alerts; the deliberately CDN-backed blog showcase remains an explicitly informational boundary. |
+| [OWASP ZAP](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Manual baseline over three release surfaces: the generated REST API and the LMS example are blocking with no ignored alerts; the deliberately CDN-backed blog showcase remains an explicitly informational boundary. |
 | [Kani](https://github.com/Rullst/Rullst/actions/workflows/kani.yml), [Miri](https://github.com/Rullst/Rullst/actions/workflows/miri.yml), [mutation testing](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml), [cargo-udeps](https://github.com/Rullst/Rullst/actions/workflows/udeps.yml) | Manual or scheduled research signals: selected Kani/Miri scopes are strict, while mutation and unused-dependency findings remain explicitly informational. |
 | [v13 Verus pilot](https://github.com/Rullst/Rullst/blob/main/.github/workflows/verus.yml) | Optional production-linked age-policy proof with pinned tooling and three negative controls. Hosted registration/acceptance remains pending; no framework-wide correctness claim. |
 | [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys development documentation from `main`; it is not a code-quality gate. |
@@ -496,7 +497,7 @@ alongside the results.
 
 ## 🤝 Build Rullst with us
 
-Try a blueprint, report a reproducible bug, improve a tutorial or contribute a
+Try a starter or an example, report a reproducible bug, improve a tutorial or contribute a
 focused change with tests. Documentation, accessibility and integration feedback
 matter as much as new features.
 

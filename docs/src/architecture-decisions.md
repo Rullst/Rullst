@@ -39,7 +39,7 @@ The first database selector chooses exactly one SQL Active Record backend:
 | PostgreSQL | SQLx PostgreSQL pool and live container CRUD/schema contract. |
 | MySQL | SQLx MySQL pool and live MySQL CRUD/schema contract. |
 | MariaDB | The same MySQL protocol implementation with a separate live MariaDB contract. |
-| Turso | Typed Turso/libSQL primary profile for the blank full-stack or API starter; SQLx-specific blueprints do not offer it. |
+| Turso | Typed Turso/libSQL primary profile for the Blank and API starters; the SQLx-specific SaaS starter does not offer it. |
 
 The Blank starter can instead have no primary database (`--no-database`, or
 **No database** in the v13 wizard).
@@ -82,10 +82,11 @@ have equivalent tests.
 
 ## Full-stack versus headless API
 
-- Full-stack blueprints include server-rendered routes and relevant local tool
-  integration.
-- `--api` generates a JSON-oriented Blank project without HTML view rendering;
-  product blueprints reject it instead of silently retaining their HTML routes.
+- Full-stack starters (Blank, SaaS) include server-rendered routes and relevant
+  local tool integration.
+- `--api` (the API starter) generates a JSON-oriented Blank project without HTML
+  view rendering; the SaaS starter rejects it instead of silently retaining its
+  HTML routes.
 
 Generated code is application code. Review its routes, auth boundaries,
 database schema and dependencies before deployment.

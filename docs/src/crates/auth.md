@@ -125,7 +125,7 @@ if the current browser should stay signed in.
 - `rullst-auth` has no session middleware: the application loads the stored
   epoch, which costs one lookup per request.
 
-`cargo rullst auth` and the SaaS and LMS starters generate this wiring: a
+`cargo rullst auth` and the SaaS starter generate this wiring (the LMS example has it too): a
 `users.session_epoch` column, epoch cookies at sign-in and registration, the
 check in `auth_middleware`, `User::revoke_sessions`, a
 `POST /logout/everywhere` route, and a password change and a password reset

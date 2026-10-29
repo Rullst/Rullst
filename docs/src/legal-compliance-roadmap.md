@@ -69,7 +69,7 @@ These are building blocks, not compliance claims; see each page for limits:
 | 4 | **Retention policies** | Declarative per-model retention, scheduled purge/anonymization, configurable access-log retention (e.g. Marco Civil) |
 | 5 | **Cookie and tracking defaults** | Starters keep strictly necessary cookies only; an optional consent component gates analytics and marketing |
 | 6 | **Incident-response support** | Security-event export and a breach timeline template (e.g. 72 h under GDPR, ANPD deadlines) |
-| 7 | **Children and education** | Age assurance and parental-consent flows (COPPA, ECA Digital, GDPR Art. 8); FERPA/LGPD notes for the LMS starter |
+| 7 | **Children and education** | Age assurance and parental-consent flows (COPPA, ECA Digital, GDPR Art. 8); FERPA/LGPD notes for the LMS example |
 | 8 | **AI transparency** | Disclosure helpers for chatbots and AI-generated content (AI Act), provider data-use notes in `rullst-ai` |
 | 9 | **Accessibility** | WCAG 2.2 AA targets for starters, Studio and Nexus, with automated checks in CI |
 | 10 | **Data residency** | Region configuration and documentation for storage, mail and AI providers (PIPL and transfer rules) |

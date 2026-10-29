@@ -20,7 +20,7 @@ the code behind it, then explore the tools that fit your next idea.
 ## Documentation Hub
 
 - [✨ Why Rullst?](./why-Rullst.md)
-- [📖 Getting Started & Blueprints Showcase](./1-getting-started.md)
+- [📖 Getting Started & Starters](./1-getting-started.md)
 - [🤖 Rullst AI: Developing with Autonomous Agents](./2-rullst-ai.md)
 - [📊 Rullst Studio: Real-Time Monitoring & Radar](./3-rullst-studio.md)
 - [⚙️ Rullst Nexus: Explicit Admin CMS](./4-rullst-nexus.md)

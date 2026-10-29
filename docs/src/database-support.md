@@ -34,9 +34,9 @@ across stores.
 
 Notes:
 
-1. `cargo rullst new` refuses `--database turso` with any blueprint other than
-   Blank. The LMS, SaaS, Blog, Portfolio and ERP starters use SQLx models,
-   `Schema` migrations and Nexus, so they need a SQLx database.
+1. `cargo rullst new` refuses `--database turso` with the SaaS starter (Blank
+   and API accept it). SaaS uses SQLx models, `Schema` migrations and Nexus,
+   so it needs a SQLx database.
 2. `#[derive(Orm)]` with `#[orm(backend = "turso")]` generates the `TursoModel`
    contract instead of SQLx code: `all`, `find`, `save`, `create`, `delete`,
    `count` and `paginate`, plus filtered reads through

@@ -83,11 +83,12 @@ We have completely redesigned the project creation experience. Instead of rememb
 cargo rullst
 ```
 
-It opens an interactive home menu. The example below creates a Portfolio:
+It opens an interactive home menu. The example below creates a SaaS application:
 1. Select **Create New Project**.
-2. **App Name**: Provide a simple lowercase name (e.g., `my_portfolio`).
-3. **Starter Blueprint**: Choose **Portfolio**. Labels and decorative suffixes
-   can change; use the blueprint name as your reference.
+2. **App Name**: Provide a simple lowercase name (e.g., `my_saas`).
+3. **Starter**: Choose **SaaS** (the other starters are **Blank** and **API**).
+   Labels and decorative suffixes can change; use the starter name as your
+   reference.
 4. Choose your primary database. **SQLite** is the simplest local first run;
    PostgreSQL, MySQL and MariaDB require their database service to be running.
 5. Leave **optional storage add-ons** empty unless you need an add-on.
@@ -96,7 +97,7 @@ It opens an interactive home menu. The example below creates a Portfolio:
 > [!NOTE]
 > **v13 preview: the first run in about a minute.** The v13 CLI replaces those
 > prompts with a create wizard: `cargo rullst new my_app` (or **Create New
-> Project** on the home screen) asks for the blueprint, showing a one-line
+> Project** on the home screen) asks for the starter, showing a one-line
 > description and a preview of its file tree, then the database and optional
 > features, and ends on a review of the files and of the commands it will run
 > before anything is written. Esc goes back; Cancel creates nothing. When it
@@ -110,7 +111,7 @@ It opens an interactive home menu. The example below creates a Portfolio:
 > [CLI reference](cli_reference.md#cargo-rullst-new-name).
 
 ```bash
-cd my_portfolio
+cd my_saas
 cargo rullst dev
 ```
 
@@ -147,57 +148,29 @@ this learning project at a production database.
 > application-owned integration. See the [Architecture Choices Guide](architecture-decisions.md).
 
 
-## 3. Rullst Blueprints Showcase
+## 3. Rullst Starters
 
-The Rullst framework accelerates your development by providing **Blueprints**. A Blueprint is a highly-polished, pre-built application template that serves as the foundation for your project.
-
-When you run `cargo rullst`, the wizard asks you to select a blueprint. The
-blueprints use the Rullst color scheme and server-rendered HTML/HTMX patterns;
-allocation and latency depend on the generated page and runtime.
+`cargo rullst new` generates one of three starters. The wizard asks which one
+(or pass `--blueprint blank`, `api` or `saas`); each uses the Rullst color
+scheme and server-rendered HTML/HTMX patterns, and allocation and latency
+depend on the generated page and runtime.
 
 ## 1. Blank Starter
 **Use Case:** Custom, from-scratch development.
 This is the minimal template powered by server-rendered `html!` views and HTMX
 without a project-local JavaScript bundle. It includes a simple reactive counter
 to demonstrate server-driven communication. Other frontend foundations remain
-available as application APIs, but v12 does not advertise them as equivalent
-generated blueprints.
+available as application APIs, but are not advertised as equivalent generated
+starters.
 
-## 2. Portfolio 🔥
-**Use Case:** Developer showcases and personal branding.
-**Status:** HOT!
-A visually stunning, glassmorphic portfolio template designed specifically for Rullst/AI developers. It includes:
-- **Profile Settings in Nexus CMS (`/nexus`)**: Edit your name, title, bio, email, website URL, avatar photo, GitHub, and LinkedIn links live without changing code.
-- A responsive sidebar and Hero section with glowing glassmorphism effects.
-- Interactive Experience timeline and Skills tags.
-- Project cards showcase with live external links.
+## 2. API Starter
+**Use Case:** Headless JSON services.
+The Blank starter without HTML (`--blueprint api`, or `--api`): JSON routes, an
+example write route protected by a bearer `API_TOKEN` written to `.env`, and
+the same production security baseline. It can run without a database
+(`--no-database`) or with Turso as its primary.
 
-The Portfolio and Blog pages bind their inline styles to the per-request CSP
-nonce and use system fonts, so they keep their styling under the production
-security headers. That policy admits only same-origin and `data:` images: put a
-custom avatar under `static/` (the default is `/static/rullst.png`) rather than
-linking a remote URL, or deliberately extend `img-src` in the `[security] csp`
-setting of `Rullst.toml`.
-
-## 3. LMS Platform Starter
-**Use Case:** Online learning products and course platforms.
-A small, readable learning foundation featuring:
-- A course catalog with search, course pages, modules and lessons.
-- An accessible server-rendered video/audio player with explicit source,
-  caption and transcript admission rules.
-- Registration, login, enrollment and owner-bound, idempotent lesson progress.
-- Password change and password reset by email (single-use links built from
-  `RULLST_PUBLIC_ORIGIN`); both sign out the account's other sessions.
-- A Nexus admin for categories, courses, modules, lessons, users and enrollments.
-
-It remains a starter rather than a finished education product. Upload hosting,
-media transcoding and signed delivery, advanced/localized search, billing-linked
-entitlements, distributed failover, native offline playback, real-browser/WCAG
-evidence and PostgreSQL/MySQL isolation evidence remain application or roadmap
-work, as do quizzes, schools, roles and notifications: v13 replaced the earlier
-complete Academy scaffold with this starter.
-
-## 4. SaaS App Starter
+## 3. SaaS App Starter
 **Use Case:** Subscription-based products and billing.
 An opinionated SaaS starting point, pre-wired with:
 - User authentication (login, signup, session management, sign out
@@ -206,48 +179,28 @@ An opinionated SaaS starting point, pre-wired with:
 - Stripe pricing panels and subscription checkout views.
 - Secure user dashboard.
 
-## 5. Blog / Press
-**Use Case:** Content creation and articles.
-A database-backed, server-rendered blog/CMS blueprint. It features:
-- A beautiful article reading view with typography optimized for readability.
-- Article CRUD through the Nexus admin (`/nexus`) and a paged, server-rendered
-  index and reading view. Markdown parsing is not part of the current generated
-  starter.
-- `robots.txt` and `sitemap.xml` with absolute URLs from `RULLST_PUBLIC_ORIGIN`.
+## Larger example applications
 
-## 6. ERP Pocket
-**Use Case:** Business management, stock, and inventory tracking.
-An inventory-oriented back-office starter. It features:
-- A complex relational database schema (Products and Orders).
-- Full CRUD operations with HTMX.
-- A sleek, split-pane dashboard for simultaneous product listing and order creation.
-
-The dashboard lists customer names and revenue, so every ERP route shares the
-Nexus administrator policy described below: loopback-only in a debug build and
-Basic Auth with the `NEXUS_ADMIN_*` credentials behind verified TLS in a release
-build. A release build without those credentials starts but serves only
-`/health` and `/ready`, and prints which variable is missing. Per-employee
-accounts and roles remain application work.
-
-An order reserves its stock with one conditional `UPDATE` and records the order
-in the same transaction, so concurrent sales cannot oversell and a failed
-insert leaves the stock untouched. Quantities must be 1–10,000; invalid input,
-missing products and insufficient stock return `422`, `404` and `409`, and a
-database failure returns `503` instead of redirecting as if it succeeded. The
-dashboard pages through products, lists the 20 newest orders and computes its
-revenue, order and low-stock totals in SQL over every row.
+Until 13.0.0-alpha.4 the CLI also generated LMS, Blog, Portfolio and ERP
+starters. They are now complete applications in the repository's
+[`examples/`](examples.md) directory — `examples/lms` (courses, lessons, an
+accessible player, enrollment and owner-bound progress), `examples/erp`
+(products, stock and orders), `examples/portfolio` (a developer showcase edited
+in Nexus) and the `examples/blog` showcase — tested in the workspace. Copy one
+to start a bigger application; `cargo rullst new --blueprint lms` (or `erp`,
+`portfolio`, `blog`) now points to the example instead of generating it.
 
 ---
 
 > [!TIP]
-> **Blueprint evolution:** Blueprints are continuously checked by generator
+> **Starter evolution:** Starters are continuously checked by generator
 > smoke tests. Treat generated code as an application starting point: inspect its
 > configuration and rerun `cargo check` and security tests after customization.
 
 ### Local Studio and Nexus access
 
-The Blog, Portfolio, LMS, ERP, and SaaS blueprints expose visible buttons for
-both control surfaces during local development:
+The SaaS starter (and the LMS, ERP, Portfolio and blog examples) expose
+visible buttons for both control surfaces during local development:
 
 - **Nexus** is mounted at `/nexus` and accepts only a verified loopback peer in a
   debug build, so the first local click needs no placeholder password.
@@ -259,13 +212,13 @@ the legacy `APP_ENV` alias. A
 release build does not start the generated Studio task, and Nexus needs a
 real sign-in:
 
-- **SaaS and LMS** admit the user signed in to the application whose
+- **SaaS** (and the LMS example) admit the user signed in to the application whose
   `users.is_admin` column is true, checked on every request; no extra
   credentials. Grant the first administrator with your database client
   (`UPDATE users SET is_admin = TRUE WHERE email = 'you@example.com';`); that
   administrator can grant others from the Users model in Nexus. See
   [using the application's sign-in](4-rullst-nexus.md#using-the-applications-sign-in).
-- **Blog, Portfolio and ERP** require unique `NEXUS_ADMIN_USERNAME` and
+- **The Portfolio and ERP examples** require unique `NEXUS_ADMIN_USERNAME` and
   `NEXUS_ADMIN_PASSWORD` values (Basic Auth behind verified TLS). Without them
   the application starts without `/nexus` (the ERP without its back office)
   and prints one line naming the missing variable; see
@@ -294,8 +247,8 @@ The wizard deliberately makes two separate decisions:
 read it before you choose.
 
 After generation, the default flow compiles the new application once and runs
-its initial migration. A clean first build can take several minutes for larger
-blueprints. Use `--skip-initial-migration` when the network database is not yet
+its initial migration. A clean first build can take several minutes for the
+larger SaaS starter. Use `--skip-initial-migration` when the network database is not yet
 configured, then run `cargo rullst db:migrate` from the generated project.
 `cargo rullst dev` applies pending migrations when it starts, but a deployed
 server never does: run the binary's `db:migrate` command on each release, as
@@ -308,12 +261,12 @@ cargo rullst new edge_app --default --database mariadb --turso --mongodb \
   --skip-initial-migration
 ```
 
-Automation can pin the supported blueprint, database and optional runtime
-capabilities. The v12 application architecture is intentionally fixed to Active
+Automation can pin the supported starter, database and optional runtime
+capabilities. The application architecture is intentionally fixed to Active
 Record plus server-rendered `html!`/HTMX:
 
 ```bash
-cargo rullst new learning_portal --default --blueprint lms \
+cargo rullst new subscriptions --default --blueprint saas \
   --database postgres --ai \
   --skip-initial-migration
 ```
@@ -370,8 +323,8 @@ struct User {
 ordering and pagination then execute through the primary `TursoOrm` store.
 `make:model --migration`, `make:migration`, `db:migrate`, `db:status`, and
 `db:rollback` preserve this backend. The current first-class scaffold contract
-is deliberately limited to the blank/API profile; SQLx-specific LMS, SaaS,
-blog, portfolio, and ERP blueprints reject `--database turso` until ported.
+is deliberately limited to the Blank and API starters; the SQLx-specific SaaS
+starter rejects `--database turso` until ported.
 Transparent embedded-replica synchronization is not claimed.
 
 `TursoStore` remains available for prepared SQL, bounded result

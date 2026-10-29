@@ -66,8 +66,8 @@ Then follow [Deploy to a Linux VM](../vm-deployment.md).
 ### Client addresses behind the proxy
 
 Every deployment puts a reverse proxy in front of the application, so the
-socket peer of each request is the proxy. Rate limits, such as the SaaS and LMS
-starters' ten login/registration submissions per client per minute, would then
+socket peer of each request is the proxy. Rate limits, such as the SaaS
+starter's ten login/registration submissions per client per minute, would then
 treat every visitor as one client. The generated Caddy container has a fixed
 address on the private network in `compose.yaml`, and `cargo rullst deploy`
 lists that address in `Rullst.toml` (an existing `trusted_proxies` list is
@@ -117,7 +117,7 @@ Server::new(router())
 also work), from the process environment and then `.env`, overrides
 `auto_migrate`, so a deployment that runs `db:migrate` as a separate job can
 set `RULLST_AUTO_MIGRATE=false`. Projects that `cargo rullst new` generates
-with an SQLx database (Blank, Blank API, SaaS, LMS, Blog, Portfolio and ERP)
+with an SQLx database (Blank, API and SaaS)
 already call `with_migrations` but not `auto_migrate`, so setting
 `RULLST_AUTO_MIGRATE=true` is enough; a project generated before
 13.0.0-alpha.2 needs the line above in `src/main.rs`. A Turso starter applies

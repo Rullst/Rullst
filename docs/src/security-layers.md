@@ -37,13 +37,13 @@ contracts, and both crates are in the Core [maturity tier](maturity.md).
 
 ## What generated applications already have
 
-| Blueprint | Mounted for you | Not mounted |
+| Starter | Mounted for you | Not mounted |
 | :--- | :--- | :--- |
-| Every blueprint | `Server` applies the Core baseline in **staging and production**: secure headers, CORS (only when `cors_allow_origins` is set), WAF and CSRF. PII masking stays off unless `enable_pii_masking = true`. In **development** the baseline adds only CORS (and machine-endpoint authentication when configured) and a report-only WAF that logs what it would refuse. | No `rullst-security` middleware layer (RASP, DLP, `SecureHeadersLayer`, honeypot, CSWSH, schema guard) is mounted by any blueprint. No global rate limit or Traffic Shield is configured. Trusted proxies are configured only when `cargo rullst deploy --platform vps` writes its Caddy address into `[security] trusted_proxies`. |
-| Blank (full stack), SaaS, LMS, ERP | Core `csrf_middleware` and `headers_middleware` on the router too, so development behaves like production. | — |
-| Blank JSON API | Core `headers_middleware` on the router. The example write route `POST /api/messages` is an exact machine endpoint (`Server::with_machine_endpoints`): clients send `Authorization: Bearer <API_TOKEN>` (a random value in the generated `.env`), requests with cookies are refused, and startup fails without `API_TOKEN`. | No CSRF layer on the router. In staging and production the `Server` baseline requires CSRF on every other write route, so add each new JSON write route to `machine_endpoints()` in `src/main.rs` (a `{id}` segment covers routes such as `PUT /api/posts/{id}`), or send the double-submit token from a browser. `make:controller --api` prints these lines. |
-| Blog, Portfolio | Only the `Server` baseline (staging and production). | No router-level layers in development. |
-| SaaS, LMS | A Core token-bucket limit on the credential routes; the SaaS `[security]` section exempts the exact signed billing webhook path from CSRF. LMS uses `rullst_security::{UserContext, RbacGuard}`. | Login jail, MFA (add it with `make:mfa`), audit chain. |
+| Every starter | `Server` applies the Core baseline in **staging and production**: secure headers, CORS (only when `cors_allow_origins` is set), WAF and CSRF. PII masking stays off unless `enable_pii_masking = true`. In **development** the baseline adds only CORS (and machine-endpoint authentication when configured) and a report-only WAF that logs what it would refuse. | No `rullst-security` middleware layer (RASP, DLP, `SecureHeadersLayer`, honeypot, CSWSH, schema guard) is mounted by any starter. No global rate limit or Traffic Shield is configured. Trusted proxies are configured only when `cargo rullst deploy --platform vps` writes its Caddy address into `[security] trusted_proxies`. |
+| Blank (full stack), SaaS (and the LMS and ERP examples) | Core `csrf_middleware` and `headers_middleware` on the router too, so development behaves like production. | — |
+| API (Blank JSON API) | Core `headers_middleware` on the router. The example write route `POST /api/messages` is an exact machine endpoint (`Server::with_machine_endpoints`): clients send `Authorization: Bearer <API_TOKEN>` (a random value in the generated `.env`), requests with cookies are refused, and startup fails without `API_TOKEN`. | No CSRF layer on the router. In staging and production the `Server` baseline requires CSRF on every other write route, so add each new JSON write route to `machine_endpoints()` in `src/main.rs` (a `{id}` segment covers routes such as `PUT /api/posts/{id}`), or send the double-submit token from a browser. `make:controller --api` prints these lines. |
+| Portfolio example | Only the `Server` baseline (staging and production). | No router-level layers in development. |
+| SaaS (and the LMS example) | A Core token-bucket limit on the credential routes; the SaaS `[security]` section exempts the exact signed billing webhook path from CSRF. The LMS example uses `rullst_security::{UserContext, RbacGuard}`. | Login jail, MFA (add it with `make:mfa`), audit chain. |
 
 Every generated `Cargo.toml` already lists `rullst-security`, so adding a layer
 needs no new dependency.
@@ -53,9 +53,9 @@ Since 13.0 every generated project also has `src/security_tests.rs`, which
 staging/production baseline (`apply_security_baseline`, as `Server` composes
 it). It checks the security headers, that a write without the CSRF token is
 refused and one with it passes, and that the WAF refuses an injection probe
-but accepts the prose "Please select an option". SaaS and LMS add the sign-in
-rate limit, LMS the owner check of its lesson routes, and the Blank JSON API
-the bearer token of its machine endpoint. Keep these tests passing as you
+but accepts the prose "Please select an option". SaaS adds the sign-in rate
+limit and the API starter the bearer token of its machine endpoint; the LMS
+example also checks the owner of its lesson routes. Keep these tests passing as you
 change routes; they do not replace your own authorization tests.
 
 ## Recommended production composition

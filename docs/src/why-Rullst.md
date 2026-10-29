@@ -247,7 +247,7 @@ Rullst tests representative generated projects and maintains structural
 matrices instead of assuming that a template is correct because its source
 file compiles inside the CLI crate.
 
-The LMS starter is more than a landing-page mock: it generates a course
+The LMS example (`examples/lms`, a CLI starter until 13.0.0-alpha.4) is more than a landing-page mock: it has a course
 catalog with modules and lessons, sign-in and registration, enrollment,
 owner-bound idempotent lesson progress and a Nexus admin. Its accessible lesson
 presentation supports bounded video/audio metadata, requires a WebVTT captions
@@ -341,7 +341,7 @@ the more responsible decision.
    moving development branch.
 
 This page was reviewed against the immutable v12 stable release and its
-repository-owned evidence; the LMS starter description follows v13 development
+repository-owned evidence; the LMS example description follows v13 development
 on `main`. It remains a concise map of the strongest
 implemented ideas, not a substitute for the detailed contracts or
 application-specific validation.

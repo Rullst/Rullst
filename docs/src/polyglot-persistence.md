@@ -57,7 +57,7 @@ cargo rullst new edge_app --default --database mariadb --turso --mongodb \
 
 MariaDB shares the SQLx MySQL protocol implementation but has its own live
 container contract. `--turso` is additive; `--database turso` is the explicit
-primary selection and currently rejects SQLx-specific non-blank blueprints.
+primary selection and currently rejects the SQLx-specific SaaS starter.
 
 ## Turso / libSQL as the primary ORM
 

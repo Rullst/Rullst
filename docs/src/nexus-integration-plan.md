@@ -44,8 +44,8 @@ validate the session and the administrator permission on every request before
 data access, and Nexus creates the principal only after it allows the request
 (see the [Nexus guide](4-rullst-nexus.md#using-the-applications-sign-in)). It
 is a read-write mode with Nexus's CSRF, role and audit boundaries, not the
-read-only mode with domain-service writes planned below; the SaaS and LMS
-starters use it with a generated `users.is_admin` check.
+read-only mode with domain-service writes planned below; the SaaS starter and
+the LMS example use it with a generated `users.is_admin` check.
 
 ## Delivery order
 
