@@ -179,7 +179,7 @@ counts only a dispatched run:
 
 | Workflow | Evidence | RC interpretation |
 | :--- | :--- | :--- |
-| `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase, a fresh generated REST API and the LMS example (`examples/lms`, release-built from the workspace) | REST/LMS warnings and failures block unless an exact rule ID is versioned as `INFO` with a local explanation in `.zap/`; those configs are passed explicitly to the pinned scanner and unlisted warnings remain live. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
+| `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase, a fresh generated REST API, a fresh generated SaaS starter (public pages, then its signed-in pages with a disposable account's session) and the LMS example (`examples/lms`, release-built from the workspace) | REST/SaaS/LMS warnings and failures block unless an exact rule ID is versioned as `INFO` with a local explanation in `.zap/`; those configs are passed explicitly to the pinned scanner and unlisted warnings remain live. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
 | `fuzzing.yml` | All 42 declared libFuzzer targets from the validated shared inventory | **Required release evidence:** release mode validates all 42 targets and independently verifies reusable input-equivalent evidence; packages with remaining targets run locked compilation preflights and new 5.5-hour campaigns; target-specific corpora are restored and saved, while failure reproducers are retained. Dependency-lock drift fails preflight, campaign and corpus jobs. The proc-macro parser uses strict processes of at most 30 minutes sharing one corpus, which bounds sanitizer RSS without weakening the total budget. Original reused results must be at most seven days old, come from an ancestor on the same release line, and prove the complete budget. The final candidate still runs the evidence boundary and publication independently recomputes all 42 results. [Reuse policy](docs/src/fuzz-evidence.md). A strict five-minute single-target diagnostic accelerates correction feedback but is explicitly ineligible as release evidence. This is bounded evidence, not proof for every input. |
 | `kani.yml` | Twenty named bounded formal harnesses in ten supported runtime/library packages | **Required release evidence for the declared harnesses:** every proof has an isolated strict matrix job. Rullst itself stays on stable Rust 1.99.0 with a Rust 1.96 MSRV; only the separately built Kani verifier uses its pinned `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) because the latest stable Kani bundle's Rust 1.93 compiler cannot compile the framework. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
 | `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | **Required release evidence for the declared scopes:** every selected scope is strict. This nightly-only interpreter uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
@@ -559,16 +559,32 @@ higher component result for the repository total.
   exercised rather than reporting a zero-test library pass. There is no MSan
   job in the current sanitizer workflow.
 - The manual ZAP workflow materializes, release-builds and migrates a fresh
-  REST API through the real CLI, and release-builds and migrates the LMS
-  example from the workspace (the LMS starter moved to `examples/lms` in
-  13.0.0-alpha.4). Both baselines fail on any
+  REST API and a fresh SaaS starter through the real CLI, and release-builds
+  and migrates the LMS example from the workspace (the LMS starter moved to
+  `examples/lms` in 13.0.0-alpha.4). The generated manifests name the
+  framework crates as a published CLI writes them, and
+  `.github/dast-generated-app.py` resolves them from the checkout through
+  `[patch.crates-io]`, so the build is the same before and after a stable
+  release. The SaaS starter runs in production with placeholder Stripe
+  settings (production refuses mock billing; no checkout is reached). One
+  baseline crawls its public pages (pricing, sign-in, registration, password
+  reset); its form submissions fail the CSRF check because ZAP does not return
+  the `Secure` cookie over plain HTTP. A second baseline sends the session
+  cookie of an account registered for the run with every request
+  (`ZAP_AUTH_HEADER`), so it crawls the dashboard and password-change pages and
+  submits the forms with a valid CSRF token. `.zap/saas-starter-account.tsv`
+  puts only the POST-only sign-out and billing commands out of scope (signing
+  out everywhere would revoke the scanning session; checkout and portal open a
+  provider session), and the session must still open the dashboard after the
+  scan. These baselines fail on any
   warning/failure, preserve INFO observations and use no ignored rules. The
   release blog showcase is scanned separately but remains informational because
   its documented presentation boundary deliberately uses a relaxed CSP and
   third-party assets. Its rules retain those external-asset findings for review
   and reduce only evidenced token/state signals or escaped showcase reflections
-  to INFO; they do not hide findings with `IGNORE`. These three targets are representative evidence, not
-  coverage of every starter, authenticated role, browser, proxy or deployment.
+  to INFO; they do not hide findings with `IGNORE`. These four targets are representative evidence, not
+  coverage of every starter, authenticated role (Nexus administrators are not
+  scanned), browser, proxy or deployment.
 - Property tests and benchmarks are scheduled/manual evidence. The property
   workflow preserves the complete all-feature release-mode regression suite in
   seven parallel shards and separately runs the ORM and Connect property
@@ -1024,7 +1040,7 @@ dependency graph make static estimates unreliable.
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Validates the shared 42-target inventory and eleven package lockfiles, restores each real target corpus, performs a bounded warm-up, minimizes it, uploads the result and warms the campaign's content-addressed compiler cache; individual target failures are retained but tolerated, while dependency-lock drift remains a hard failure. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation with a pinned, zero-retry, bounded-concurrency nextest scheduler and retained JUnit inventory; a focused default-SQLite pass for ORM/Studio/Nexus/the facade; exact local 90% floors; and blocking OIDC-authenticated Codecov upload. Scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |
-| [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml) | manual | Blocking generated targets plus informational showcase | Pins the ZAP image by digest, scans fresh release/migrated REST API and LMS starter surfaces as blocking gates, scans the CDN-backed blog showcase informationally, and uploads separate reports plus application logs. |
+| [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml) | manual | Blocking generated targets plus informational showcase | Pins the ZAP image by digest, scans fresh release/migrated REST API, SaaS starter (public and signed-in) and LMS surfaces as blocking gates, scans the CDN-backed blog showcase informationally, and uploads separate reports plus application logs. |
 | [`documentation.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/documentation.yml) | main/v12/v13 push and PR, weekly, manual | Blocking plus informational external scan | Builds the mdBook; validates landing/benchmark templates, project identity, the README workflow count, local assets, pinned external chart scripts and all requested social links. Real Chromium checks desktop/390px/320px layout, keyboard/mobile navigation, clipboard success/denial, privacy disclosure, reduced motion, no-JS navigation, and absence of external landing requests/browser storage. This is a bounded browser contract, not WCAG certification. Also validates the 190-claim historical roadmap denominator and repository-local links. Scheduled/manual runs preserve an informational external-link report. |
 | [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | main/v12/v13 push and PR, manual | Blocking | Boots the release Blog application and checks HTTP, headers, CSRF form flow, SQLite persistence, and the persisted page parsed by real headless Chromium. |
 | [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | Blocking release campaign or diagnostic | Release mode maintains all 42 targets through independently verified, at-most-seven-day input-equivalent evidence or fresh 5.5-hour jobs. Changed fuzz packages rerun their sibling targets; shared or unclassified input changes require all targets. Selected packages retain locked preflights, corpus caching and failure reproducers. `force_full` always requests a new full campaign; the current-commit boundary and independent tag-admission check remain mandatory. Lock drift is always rejected. The parser restarts its ASan process at most every 30 minutes while preserving the budget. Single-target diagnostic mode runs for five minutes and the evidence boundary marks it ineligible for release. |
