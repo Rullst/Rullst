@@ -241,7 +241,7 @@ For local integration tests without physical hardware attached, enable the simul
 
 ```toml
 [dependencies]
-rullst-iot = { version = "=13.0.0-alpha.3", features = ["experimental-simulators"] }
+rullst-iot = { version = "=13.0.0-alpha.4", features = ["experimental-simulators"] }
 ```
 
 This exposes `SimulatedMqttPayloadFormatter`, `SimulatedHsmDevice`, and `SimulatedPqcFixture` for deterministic sandbox execution.

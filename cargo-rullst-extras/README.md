@@ -16,8 +16,8 @@ every scenario; see the
 Install it with exactly the same version as `cargo-rullst`:
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
-cargo install cargo-rullst-extras --version =13.0.0-alpha.3 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
+cargo install cargo-rullst-extras --version =13.0.0-alpha.4 --locked
 ```
 
 `cargo rullst ai …` and `cargo rullst green …` run the `cargo-rullst-extras`

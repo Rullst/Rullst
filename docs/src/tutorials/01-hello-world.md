@@ -53,7 +53,7 @@ selects a prerelease on its own, and the v12 line reached end of life on
 16 October 2026, so a plain `cargo add rullst` would pick an unmaintained 12.x:
 
 ```bash
-cargo add rullst@=13.0.0-alpha.3
+cargo add rullst@=13.0.0-alpha.4
 cargo add tokio --features full
 ```
 
@@ -122,7 +122,7 @@ prerelease from crates.io (name the exact version; Cargo never picks a
 prerelease on its own):
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 cargo rullst --help
 ```
 

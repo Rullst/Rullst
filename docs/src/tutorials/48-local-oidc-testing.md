@@ -1,7 +1,7 @@
 # 48. Signed Local OIDC Testing
 
 > [!IMPORTANT]
-> Dependency examples pin the v13 prerelease `=13.0.0-alpha.3` exactly: Cargo
+> Dependency examples pin the v13 prerelease `=13.0.0-alpha.4` exactly: Cargo
 > never selects a prerelease on its own, and the v12 line reached end of life
 > on 16 October 2026 (see the [release record](../v12.md)). Commit Cargo.lock
 > for reproducible builds. Use path dependencies only when intentionally
@@ -19,7 +19,7 @@ Enable the Axum feature in development:
 
 ```toml
 [dev-dependencies]
-rullst-connect = { version = "=13.0.0-alpha.3", features = ["axum"] }
+rullst-connect = { version = "=13.0.0-alpha.4", features = ["axum"] }
 ```
 
 Mount the router only on an exact loopback listener:

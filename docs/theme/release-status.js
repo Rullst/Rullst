@@ -24,7 +24,7 @@
     const message = document.createElement("span");
     message.append(
       "v13 development on ", mainLink,
-      "; 13.0.0-alpha.3 is the active prerelease. The v12 line reached end of life on 16 October 2026 and the ",
+      "; 13.0.0-alpha.4 is the active prerelease. The v12 line reached end of life on 16 October 2026 and the ",
       v12Link, " branch is frozen."
     );
 

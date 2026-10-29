@@ -13,8 +13,8 @@
 
 > [!IMPORTANT]
 > This page describes the v13 prerelease source, and its dependency examples
-> pin the published `13.0.0-alpha.3` exactly: Cargo never selects a prerelease
-> on its own, and a plain `"13.0.0-alpha.3"` would also accept later alphas
+> pin the published `13.0.0-alpha.4` exactly: Cargo never selects a prerelease
+> on its own, and a plain `"13.0.0-alpha.4"` would also accept later alphas
 > (see the [v13 migration guide](../migration-v13.md)). The v12 line
 > (`rullst-orm@12`) reached end of life on 16 October 2026; see the
 > [release record](../v12.md). Use a path dependency only for checkout-local
@@ -180,7 +180,7 @@ and the side stores have their own APIs, as
 Install the v13 prerelease with an exact pin:
 
 ```bash
-cargo add rullst-orm@=13.0.0-alpha.3 -F strict-sqlite
+cargo add rullst-orm@=13.0.0-alpha.4 -F strict-sqlite
 cargo add tokio -F full
 ```
 
@@ -463,7 +463,7 @@ native enums specifically require `strict-postgres`, because SQLx's dynamic
 `Any` driver cannot decode custom PostgreSQL types:
 
 ```toml
-rullst-orm = { version = "=13.0.0-alpha.3", features = ["strict-postgres"] }
+rullst-orm = { version = "=13.0.0-alpha.4", features = ["strict-postgres"] }
 ```
 
 Derive one label contract and use it in schema code:

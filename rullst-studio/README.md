@@ -51,7 +51,7 @@ prerelease; Cargo never selects a prerelease on its own, so pin it exactly
 (the v12 line, `rullst-studio@12`, reached end of life on 16 October 2026):
 
 ```bash
-cargo add rullst-studio@=13.0.0-alpha.3
+cargo add rullst-studio@=13.0.0-alpha.4
 ```
 
 ### Launching the Studio

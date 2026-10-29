@@ -46,7 +46,7 @@
 ## ⚡ Rullst in 30 seconds
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 cargo rullst new my_app    # choose the Blank, API or SaaS starter
 cd my_app
 cargo rullst dev           # rebuilds and restarts every time you save
@@ -54,7 +54,7 @@ cargo rullst dev           # rebuilds and restarts every time you save
 
 That's it: a running application, generated as readable Rust you can change —
 no hidden runtime magic. Complete applications to copy from — an LMS, an ERP, a
-portfolio and a blog — live in [`examples/`](examples/). This installs the 13.0.0-alpha.3 prerelease; the v12
+portfolio and a blog — live in [`examples/`](examples/). This installs the 13.0.0-alpha.4 prerelease; the v12
 line reached end of life on 16 October 2026 (see below).
 
 [Installation and prerequisites](https://rullst.github.io/Rullst/book/1-getting-started.html)
@@ -393,7 +393,7 @@ migrate production data. [Assisted upgrade tutorial](https://rullst.github.io/Ru
 ## 🚀 What's next: v13
 
 This `main` branch is where **v13** is being built; its latest prerelease,
-`13.0.0-alpha.3`, is on crates.io. **The v12 line reached end of life on
+`13.0.0-alpha.4`, is on crates.io. **The v12 line reached end of life on
 16 October 2026**: 12.3.0 is its last release and the
 [`v12`](https://github.com/Rullst/Rullst/tree/v12) branch is frozen (v5 is no
 longer maintained either). crates.io has since yanked the `zip` releases that
@@ -404,11 +404,11 @@ selects a prerelease on its own, so `cargo install cargo-rullst` and
 prerelease:
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.3 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 ```
 
 In a hand-written `Cargo.toml`, pin it with `=` too: a plain
-`"13.0.0-alpha.3"` is a caret requirement that also accepts later alphas,
+`"13.0.0-alpha.4"` is a caret requirement that also accepts later alphas,
 which may break the API. Select the database profile you use (plus
 capabilities such as `auth` or `nexus`). Up to 13.0.0-alpha.2 the default
 features compiled the SQLite, PostgreSQL and MySQL drivers, so turn them off;
@@ -416,7 +416,7 @@ from alpha.3 the defaults are empty and a database-free application compiles
 no database code:
 
 ```toml
-rullst = { version = "=13.0.0-alpha.3", default-features = false, features = ["strict-postgres"] }
+rullst = { version = "=13.0.0-alpha.4", default-features = false, features = ["strict-postgres"] }
 ```
 
 `cargo rullst new` already turns the default features off and, from

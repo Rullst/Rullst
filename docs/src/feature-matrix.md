@@ -2,17 +2,18 @@
 
 > [!IMPORTANT]
 > This page describes the v13 prerelease source, and its dependency examples
-> pin the published `13.0.0-alpha.3` exactly: Cargo never selects a prerelease
-> on its own, and a plain `"13.0.0-alpha.3"` would also accept later alphas
+> pin the published `13.0.0-alpha.4` exactly: Cargo never selects a prerelease
+> on its own, and a plain `"13.0.0-alpha.4"` would also accept later alphas
 > (see the [v13 migration guide](migration-v13.md)). The v12 line reached end
 > of life on 16 October 2026; see the [release record](v12.md). Commit
 > Cargo.lock for reproducible builds, and use path dependencies only when
 > intentionally testing checkout-local changes.
 
-This page is the public feature contract for the 20 packages in the v13
+This page is the public feature contract for the 21 packages in the v13
 [release inventory](../../.github/release-order.json): the 16 published 12.x
-packages plus the `rullst-privacy`, `rullst-supervision`, `rullst-media` and
-`rullst-labs` candidates, first published in the 13.0.0-alpha.1 prerelease.
+packages, the `rullst-privacy`, `rullst-supervision`, `rullst-media` and
+`rullst-labs` candidates, first published in the 13.0.0-alpha.1 prerelease,
+and the optional `cargo-rullst-extras`, added in 13.0.0-alpha.4.
 The package manifests remain the machine-readable
 source of truth. The matrix explains the behavior those names select in this
 v13 source and makes the default build visible before an application adopts
@@ -85,7 +86,7 @@ Select what the application uses:
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.3", default-features = false, features = ["strict-sqlite", "queue-sqlite"] }
+rullst = { version = "=13.0.0-alpha.4", default-features = false, features = ["strict-sqlite", "queue-sqlite"] }
 ```
 
 Each `strict-*` backend enables `orm`; `drivers-all` enables `orm` with all
@@ -185,7 +186,7 @@ over one file-backed SQLite URL:
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.3", default-features = false, features = [
+rullst = { version = "=13.0.0-alpha.4", default-features = false, features = [
   "auth-sqlite",
   "capital-quota-sql",
   "mail-sqlite",
@@ -458,6 +459,7 @@ These packages have no public optional Cargo features:
 | --- | --- |
 | `rullst-macros` | Core procedural macros |
 | `cargo-rullst` | CLI commands, generators, auditing, and deployment helpers; its internal `maintainer-tools` feature only builds the repository's `sync-badges` tool and is not part of the installed CLI |
+| `cargo-rullst-extras` | The terminal AI assistant (`cargo rullst ai`) and `cargo rullst green` (Experimental) |
 
 No optional feature does not mean that a provider is contacted automatically.
 External integrations still require explicit runtime configuration and use the
@@ -469,21 +471,21 @@ Minimal HTTP runtime (from 13.0.0-alpha.3 the defaults are empty, so
 `default-features = false` changes nothing there):
 
 ```toml
-rullst = { version = "=13.0.0-alpha.3", default-features = false }
+rullst = { version = "=13.0.0-alpha.4", default-features = false }
 ```
 
 SQLite application with the ORM, every SQLx driver and the SQLite queue,
 which were the defaults up to 13.0.0-alpha.2 and must be named since alpha.3:
 
 ```toml
-rullst = { version = "=13.0.0-alpha.3", features = ["orm", "drivers-all", "queue-sqlite"] }
+rullst = { version = "=13.0.0-alpha.4", features = ["orm", "drivers-all", "queue-sqlite"] }
 ```
 
 PostgreSQL application with explicit domain integrations:
 
 ```toml
 rullst = {
-    version = "=13.0.0-alpha.3",
+    version = "=13.0.0-alpha.4",
     default-features = false,
     features = ["strict-postgres", "auth", "security", "telemetry"]
 }
@@ -492,14 +494,14 @@ rullst = {
 Embedded IoT model without the standard library:
 
 ```toml
-rullst-iot = { version = "=13.0.0-alpha.3", default-features = false }
+rullst-iot = { version = "=13.0.0-alpha.4", default-features = false }
 ```
 
 Experimental IoT fixtures are deliberately separate:
 
 ```toml
 rullst-iot = {
-    version = "=13.0.0-alpha.3",
+    version = "=13.0.0-alpha.4",
     default-features = false,
     features = ["experimental-simulators"]
 }

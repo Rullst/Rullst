@@ -194,7 +194,7 @@ The `experimental-simulators` feature exposes deterministic fixtures named
 
 ```toml
 # The v13 prerelease, pinned exactly; the v12 line reached end of life.
-rullst-iot = { version = "=13.0.0-alpha.3", features = ["experimental-simulators"] }
+rullst-iot = { version = "=13.0.0-alpha.4", features = ["experimental-simulators"] }
 ```
 
 They do **not** provide hardware-backed keys, signatures, ML-KEM/Kyber,

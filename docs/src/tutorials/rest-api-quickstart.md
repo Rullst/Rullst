@@ -6,7 +6,7 @@ Start here when your frontend is a separate app, mobile client or integration.
 [complete API learning-path index](../api-reference.md#httprest-a-connected-learning-path).
 
 This quickstart creates one runnable JSON endpoint without a database or an AI
-provider. It targets the v13 prerelease `13.0.0-alpha.3`; the v12 line reached
+provider. It targets the v13 prerelease `13.0.0-alpha.4`; the v12 line reached
 end of life (see the [release record](../v12.md)). Production adoption still needs
 application review and immutable artifacts; pinning end-of-life v5 does not
 make it supported again.
@@ -16,7 +16,7 @@ make it supported again.
 ```bash
 cargo new first_rullst_api
 cd first_rullst_api
-cargo add rullst@=13.0.0-alpha.3
+cargo add rullst@=13.0.0-alpha.4
 cargo add tokio --features macros,rt-multi-thread
 cargo add serde --features derive
 ```

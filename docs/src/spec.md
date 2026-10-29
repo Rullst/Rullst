@@ -472,8 +472,8 @@ defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidenc
 
 ### v13 source-train and adoption preparation
 
-The development train uses one version, currently `13.0.0-alpha.3`, for every
-publishable package, and exact (`=13.0.0-alpha.3`) internal requirements, so
+The development train uses one version, currently `13.0.0-alpha.4`, for every
+publishable package, and exact (`=13.0.0-alpha.4`) internal requirements, so
 Cargo cannot pair packages from different prereleases. This prepares the CLI's
 actual major-version behavior; it is not a publication or stable-release claim.
 The privacy package joins the candidate inventory with explicit optional facade

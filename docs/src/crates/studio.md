@@ -1,7 +1,7 @@
 # Rullst Studio 📊
 
 > [!IMPORTANT]
-> This page describes the v13 prerelease, published as `13.0.0-alpha.3`. Cargo
+> This page describes the v13 prerelease, published as `13.0.0-alpha.4`. Cargo
 > never selects a prerelease on its own, so its dependency example pins that
 > version exactly. The v12 line (`rullst-studio@12`) reached end of life on
 > 16 October 2026; see the [release record](../v12.md). Use a path dependency only for checkout-local
@@ -55,7 +55,7 @@ views from the sources explicitly supplied by the application.
 ## 🚀 Quickstart
 
 Install the v13 prerelease with an exact pin:
-`cargo add rullst-studio@=13.0.0-alpha.3`.
+`cargo add rullst-studio@=13.0.0-alpha.4`.
 
 ### Launching the Studio
 

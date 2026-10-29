@@ -87,7 +87,7 @@ Copy the directory into your own project and replace the `workspace = true`
 dependencies with the published crates, for example:
 
 ```toml
-rullst = { version = "=13.0.0-alpha.3", features = ["orm", "strict-sqlite", "studio", "nexus", "auth", "mail"] }
+rullst = { version = "=13.0.0-alpha.4", features = ["orm", "strict-sqlite", "studio", "nexus", "auth", "mail"] }
 ```
 
 and the same version for `rullst-orm`, `rullst-auth` and `rullst-security`. It is tested in this

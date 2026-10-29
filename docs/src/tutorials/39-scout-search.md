@@ -1,14 +1,14 @@
 # 39. Scout Search Providers
 
 > [!IMPORTANT]
-> Dependency examples pin the v13 prerelease `=13.0.0-alpha.3` exactly: Cargo
+> Dependency examples pin the v13 prerelease `=13.0.0-alpha.4` exactly: Cargo
 > never selects a prerelease on its own, and the v12 line reached end of life
 > on 16 October 2026 (see the [release record](../v12.md)). Commit Cargo.lock
 > for reproducible builds. Use path dependencies only when intentionally
 > testing checkout-local changes.
 > The result ordering, SQL fallback, indexed-field, `restore()`/`force_delete()`
 > projection and hit-cap rules below describe the v13 prerelease source
-> (`13.0.0-alpha.3`).
+> (`13.0.0-alpha.4`).
 
 Scout connects a `#[orm(searchable)]` SQLx model to one search backend. The
 model database remains authoritative; the search index is a projection updated
@@ -20,7 +20,7 @@ With the umbrella crate:
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.3", features = ["orm-scout"] }
+rullst = { version = "=13.0.0-alpha.4", features = ["orm-scout"] }
 ```
 
 Or enable `scout-http` directly on `rullst-orm`. The feature supplies bounded

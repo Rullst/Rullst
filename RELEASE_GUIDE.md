@@ -334,7 +334,7 @@ git push origin v13.X.Y
 | `rullst` | Check `rullst/Cargo.toml` |
 | `rullst-macros` | Check `rullst-macros/Cargo.toml` |
 | `cargo-rullst` | Check `cargo-rullst/Cargo.toml` |
-| Current `main` line | `13.0.0-alpha.3` prerelease source; only a reviewed tag publishes it, a branch merge does not |
+| Current `main` line | `13.0.0-alpha.4` prerelease source; only a reviewed tag publishes it, a branch merge does not |
 | Former maintenance line | Frozen `v12`; end of life since 16 October 2026 |
 | Legacy source | Immutable `v5.0.0` tag and published archive |
 | Published v13 prereleases | `13.0.0-alpha.1` / `v13.0.0-alpha.1` (October 11, 2026); check [crates.io](https://crates.io/crates/rullst/versions) for later ones |
