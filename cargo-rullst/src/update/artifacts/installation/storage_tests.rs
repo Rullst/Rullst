@@ -78,7 +78,8 @@ fn new_operations_refuse_unknown_entries_and_stop_at_eight() {
     );
 }
 
-#[cfg(unix)]
+// Linux only: the root path passes 1 KiB, longer than macOS allows a path to be.
+#[cfg(target_os = "linux")]
 #[test]
 fn storage_of_a_deeply_nested_root_can_be_reopened() {
     use std::os::unix::fs::DirBuilderExt;

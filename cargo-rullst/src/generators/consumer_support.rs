@@ -200,8 +200,11 @@ mod tests {
 
     #[test]
     fn only_the_recognized_saas_authentication_is_accepted() {
-        let root = tempfile::tempdir().unwrap();
-        assert!(recognized_auth(root.path(), "lms").is_err());
+        let directory = tempfile::tempdir().unwrap();
+        // Scaffolds refuse symlinked paths, and macOS keeps temporary
+        // directories below the `/var` -> `/private/var` link.
+        let root = directory.path().canonicalize().unwrap();
+        assert!(recognized_auth(root.as_path(), "lms").is_err());
         let baseline = crate::blueprints::saas::file_manifest(
             "unused",
             false,
@@ -213,18 +216,18 @@ mod tests {
             "src/controllers/auth_controller.rs",
         ] {
             let (_, content) = baseline.iter().find(|(path, _)| *path == name).unwrap();
-            let path = root.path().join(name);
+            let path = root.as_path().join(name);
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             fs::write(path, content).unwrap();
         }
-        recognized_auth(root.path(), "saas").unwrap();
-        let middleware = root.path().join("src/middlewares/auth_middleware.rs");
+        recognized_auth(root.as_path(), "saas").unwrap();
+        let middleware = root.as_path().join("src/middlewares/auth_middleware.rs");
         let edited = format!(
             "{}\nfn custom() {{}}\n",
             fs::read_to_string(&middleware).unwrap()
         );
         fs::write(&middleware, edited).unwrap();
-        assert!(recognized_auth(root.path(), "saas").is_err());
+        assert!(recognized_auth(root.as_path(), "saas").is_err());
     }
 
     #[test]
