@@ -311,3 +311,97 @@ fn lookup_failures_other_than_a_missing_entry_are_errors() {
     let error = validate_directory_creation(&fixture.root(), Path::new(&long)).unwrap_err();
     assert!(matches!(error, RestoreError::Io(_)), "{error}");
 }
+
+/// An index of exactly 8 MiB is read whole and parsed, not refused as
+/// oversized; it ends in a two-byte character, so a shorter read would not
+/// be UTF-8.
+#[test]
+fn an_index_of_exactly_8_mib_is_parsed() {
+    use std::io::{Seek, SeekFrom, Write};
+    let fixture = Fixture::new();
+    let mut index = File::create(fixture.backup.join("index.tsv")).unwrap();
+    index.set_len(MAX_INDEX_BYTES - 2).unwrap();
+    index.seek(SeekFrom::End(0)).unwrap();
+    index.write_all("é".as_bytes()).unwrap();
+    drop(index);
+    assert_eq!(
+        fixture.run().unwrap_err().to_string(),
+        "invalid upgrade backup: malformed index entry"
+    );
+    fixture.unchanged_manifest();
+}
+
+#[test]
+fn a_snapshot_of_several_mebibytes_is_restored() {
+    let fixture = Fixture::new();
+    File::options()
+        .write(true)
+        .open(fixture.backup.join("files/src/main.rs"))
+        .unwrap()
+        .set_len(2 * 1024 * 1024)
+        .unwrap();
+    fixture.run().unwrap();
+    assert_eq!(
+        fs::metadata(fixture.root().join("src/main.rs"))
+            .unwrap()
+            .len(),
+        2 * 1024 * 1024
+    );
+}
+
+#[test]
+fn the_backup_directory_itself_is_not_a_backup() {
+    let fixture = Fixture::new();
+    let error = restore_from(
+        &fixture.root(),
+        &fixture.root().join("target/rullst-upgrades"),
+    )
+    .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "invalid upgrade backup: backup must be inside this project's target/rullst-upgrades directory"
+    );
+}
+
+#[test]
+fn only_the_root_lockfile_may_be_absent() {
+    let fixture = Fixture::new();
+    fixture.index("present\tCargo.toml\nabsent\tsrc/main.rs\n");
+    assert_eq!(
+        fixture.run().unwrap_err().to_string(),
+        "invalid upgrade backup: only a newly created root Cargo.lock may be removed"
+    );
+    fixture.unchanged_manifest();
+}
+
+/// Snapshots totalling exactly 512 MiB pass planning, which then stops on a
+/// later entry; more than 512 MiB stops on the snapshot that passes it. The
+/// snapshots are sparse and planning fails before anything is copied.
+#[test]
+fn snapshots_may_total_at_most_512_mib() {
+    let plan_total = |count: usize, size: u64| {
+        let fixture = Fixture::new();
+        let mut index = String::new();
+        for number in 0..count {
+            let name = format!("src/part{number}.rs");
+            File::create(fixture.backup.join("files").join(&name))
+                .unwrap()
+                .set_len(size)
+                .unwrap();
+            index.push_str(&format!("present\t{name}\n"));
+        }
+        index.push_str("absent\tsrc/main.rs\n");
+        fixture.index(&index);
+        let error = fixture.run().unwrap_err().to_string();
+        fixture.unchanged_manifest();
+        error
+    };
+    assert_eq!(
+        plan_total(8, MAX_FILE_BYTES),
+        "invalid upgrade backup: only a newly created root Cargo.lock may be removed"
+    );
+    assert_eq!(
+        plan_total(9, 60 * 1024 * 1024),
+        "invalid upgrade backup: snapshot exceeds 64 MiB/file or 512 MiB/restore"
+    );
+}
