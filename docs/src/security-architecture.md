@@ -246,6 +246,62 @@ ends at the first `/`, `?`, `#`, whitespace, quote, `<`, `>`, backtick or
 control character, or after 2,048 bytes; unencoded delimiters in a password
 therefore end detection early.
 
+## Cryptography providers
+
+Rullst uses two cryptography libraries, each with one role (since
+13.0.0-alpha.4):
+
+| Component | Library | Why |
+| --- | --- | --- |
+| Every TLS connection Rullst makes: outbound HTTPS (reqwest: AI and payment providers, OAuth, webhooks, S3 storage, Studio's remote poller), SQLx (PostgreSQL and MySQL), Redis (Redis Streams messaging, ORM Redis data and cache), SMTP (`mail-smtp`), MongoDB (`orm-mongodb`) and OTLP telemetry | `aws-lc-rs`, as the rustls crypto provider | Post-quantum hybrid key exchange (`X25519MLKEM768`, offered first) and a FIPS-capable build |
+| HMAC, digests, randomness and signatures in `rullst-auth`, `rullst-capital`, `rullst-core`, `rullst-labs`, `rullst-media`, `rullst-privacy`, `rullst-studio` and `rullst-supervision` | `ring`, used directly | Portable to wasm and edge targets, where `aws-lc-rs` is not available |
+
+`ring` is not a rustls provider in Rullst: no Rullst crate enables rustls' `ring`
+feature. JWT signing (`rullst-auth` `jwt`) uses `jsonwebtoken`'s `aws_lc_rs`
+backend.
+
+How each client chooses its provider:
+
+- SQLx and MongoDB select aws-lc-rs at compile time (`tls-rustls-aws-lc-rs`,
+  `rustls-tls-aws-lc`). SQLx switches to ring as soon as any crate in the
+  application enables one of its ring TLS features (`tls-rustls`,
+  `tls-rustls-ring` and the `tls-rustls-ring-*` variants), so an application's
+  own `sqlx` dependency should use `tls-rustls-aws-lc-rs`, as generated
+  projects do.
+- reqwest (and therefore the OTLP exporter) and lettre use the rustls process
+  default when one is installed, otherwise aws-lc-rs.
+- Redis uses only the process default. When none is installed and the
+  application's dependencies enable both ring and aws-lc-rs, rustls cannot
+  choose and panics, so Rullst installs aws-lc-rs before a `rediss://`
+  connection.
+
+Rullst installs aws-lc-rs as the rustls process default when none is
+installed: at `Server` start-up, before telemetry and the database pool, when
+Core's `orm`, `storage-s3` or `telemetry` feature is enabled (the Core features
+that build rustls clients); when the OTLP exporter builds its HTTP client; before
+a Redis TLS connection; and in the standalone `rullst-studio` binary. It never
+replaces an installed provider, so an application chooses its own by installing
+it first, at the top of `main`, before `Server::run` and before it builds any
+client:
+
+```rust,ignore
+#[rullst::runtime::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // With `rustls = { version = "0.23", features = ["fips"] }`; any rustls
+    // `CryptoProvider` works the same way.
+    rustls::crypto::default_fips_provider()
+        .install_default()
+        .map_err(|_| "a rustls provider was already installed")?;
+    // Build clients and start the `Server` here.
+    Ok(())
+}
+```
+
+Rullst does not enable rustls' `fips` feature (it needs CMake and Go to build
+the AWS-LC FIPS module) and makes no FIPS validation claim. An application
+that adds a ring rustls feature of its own can keep aws-lc-rs as the default
+this way; SQLx then still uses ring, as described above.
+
 ## Audit chains
 
 Audit records use an unambiguous canonical representation and an HMAC key of

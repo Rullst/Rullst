@@ -3769,6 +3769,20 @@ provider](capital-custom-provider.md)); the
   rotation retirement, compaction, retention, backup, transport, retry,
   acknowledgement and dead-letter handling remain operator/application work.
 
+### 7.7. Cryptography Providers (since 13.0.0-alpha.4)
+* **TLS:** `aws-lc-rs` is the rustls crypto provider of every TLS connection
+  a Rullst crate makes (reqwest, SQLx, Redis, SMTP, MongoDB, OTLP). No Rullst
+  crate enables rustls' `ring` feature or a ring TLS feature of SQLx, MongoDB,
+  lettre or testcontainers.
+* **Primitives:** `ring` stays a direct dependency for HMAC, digests,
+  randomness and signatures, because it builds for wasm and edge targets.
+* **Process default:** `Server` start-up (Core `orm`, `storage-s3` or
+  `telemetry`), the OTLP exporter, Redis TLS connections and the standalone
+  `rullst-studio` binary install aws-lc-rs as the rustls process default only
+  when none is installed; an application's provider installed first is kept.
+  Installation never panics. See
+  [cryptography providers](security-architecture.md#cryptography-providers).
+
 ---
 
 ## 📡 8. IoT, Firmware Security & Protocol Frames (`rullst-iot`)
