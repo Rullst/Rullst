@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793250265417,
+  "lastUpdate": 1793261206995,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -18507,6 +18507,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4194,
             "range": "± 40",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "25aa0268e54dcee69526edb62ef22879bf225612",
+          "message": "Merge pull request #557 from Rullst/test/v13-alpha3-cli-mutation\n\ntest(cli): targeted mutation campaign and CLI mutation gate",
+          "timestamp": "2026-10-29T04:44:43-03:00",
+          "tree_id": "1f09fcc854f27cfe3072b486658b6288fcd214d4",
+          "url": "https://github.com/Rullst/Rullst/commit/25aa0268e54dcee69526edb62ef22879bf225612"
+        },
+        "date": 1793261206141,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1052,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 751,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1835,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4263,
+            "range": "± 44",
             "unit": "ns/iter"
           }
         ]
