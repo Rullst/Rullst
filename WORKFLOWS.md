@@ -162,7 +162,9 @@ The candidate still requires its own successful fuzz workflow; the admission
 checker independently verifies every reused original job and source digest.
 No other workflow gains cross-commit credit from this exception.
 
-The workflows below run **only when requested manually**:
+The workflows below are **started manually** for release evidence. `kani.yml`
+and `miri.yml` also run weekly on `main` (next table), but release admission
+counts only a dispatched run:
 
 | Workflow | Evidence | RC interpretation |
 | :--- | :--- | :--- |
@@ -183,7 +185,7 @@ These workflows are **periodic and manually runnable**:
 | Cadence | Workflows | Mode |
 | :--- | :--- | :--- |
 | Daily | `audit.yml`, `ci.yml`, `sanitizers.yml` | Cargo Audit (default branch and `v12` locks) is blocking; the nightly `ci.yml` run executes the complete Linux/macOS/Windows matrix on `main`; TSan/ASan are blocking when executed. |
-| Weekly | `bench.yml`, `cargo-deny.yml`, `codeql.yml`, `corpus-sync.yml`, `coverage.yml`, `documentation.yml`, `pqc-compliance.yml`, `proptest.yml`, `scorecards.yml`, `security-audit.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. Corpus sync warms and minimizes the same 42 validated target corpora with bounded parallelism. |
+| Weekly | `bench.yml`, `cargo-deny.yml`, `codeql.yml`, `corpus-sync.yml`, `coverage.yml`, `documentation.yml`, `kani.yml`, `miri.yml`, `pqc-compliance.yml`, `proptest.yml`, `scorecards.yml`, `security-audit.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. Corpus sync warms and minimizes the same 42 validated target corpora with bounded parallelism. Miri (Wednesday 01:17 UTC) and Kani (Thursday 01:47 UTC) run their full strict matrices so that a regression shows up within a week rather than at release admission. |
 
 All remaining test/build workflows run on the documented push, pull-request or
 path filters and also expose a manual rerun. For an RC or stable checkpoint,
@@ -191,7 +193,12 @@ first use the automatic mainline suite, then run the exact-SHA manual admission
 set: full-platform `ci.yml`, release-mode `fuzzing.yml`, `dast-zap.yml`,
 `kani.yml`, `miri.yml`, `sanitizers.yml` and `proptest.yml`. The tag workflow checks those receipts through
 `.github/release-required-workflows.json`; the fuzz receipt is accepted only
-when all 42 named target jobs and its evidence boundary succeeded. Physical
+when all 42 named target jobs and its evidence boundary succeeded. A scheduled
+run of `ci.yml`, `sanitizers.yml`, `kani.yml`, `miri.yml` or `proptest.yml` is
+never a receipt, even on the candidate commit: admission accepts only
+`workflow_dispatch` runs, and each scheduled run has its own concurrency group
+(`-nightly` or `-weekly` suffix), so it cannot cancel, or be cancelled by, the
+dispatched admission run on `main`. Physical
 devices, store approval, live provider accounts, external security review and
 human release approval remain outside GitHub Actions.
 
@@ -444,8 +451,10 @@ higher component result for the repository total.
 
 ### Formal, dynamic, and stress analysis
 
-- Kani and Miri are manual research evidence scoped to the harnesses/packages
-  that actually execute. Rullst itself remains pinned to stable Rust 1.99.1
+- Kani and Miri are bounded evidence scoped to the harnesses/packages that
+  actually execute. Both run weekly on `main` so that a regression appears
+  between releases; release admission still requires a dispatched run on the
+  exact candidate commit. Rullst itself remains pinned to stable Rust 1.99.1
   and keeps Rust 1.96 as its declared MSRV. Kani builds reviewed upstream
   revision `8fcd6d90ed07b559e553ca8a92b95f2db69b2c78` with the verifier's own pinned
   `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) into a bundle and
@@ -1009,9 +1018,9 @@ dependency graph make static estimates unreliable.
 | [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | main/v12/v13 push and PR, manual | Blocking | Boots the release Blog application and checks HTTP, headers, CSRF form flow, SQLite persistence, and the persisted page parsed by real headless Chromium. |
 | [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | Blocking release campaign or diagnostic | Release mode maintains all 42 targets through independently verified, at-most-seven-day input-equivalent evidence or fresh 5.5-hour jobs. Changed fuzz packages rerun their sibling targets; shared or unclassified input changes require all targets. Selected packages retain locked preflights, corpus caching and failure reproducers. `force_full` always requests a new full campaign; the current-commit boundary and independent tag-admission check remain mandatory. Lock drift is always rejected. The parser restarts its ASan process at most every 30 minutes while preserving the budget. Single-target diagnostic mode runs for five minutes and the evidence boundary marks it ineligible for release. |
 | [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/iot-integration.yml) | main/v12/v13 push and PR, manual | Blocking | Host IoT tests, signed OTA invariants, and one Cortex-M no-std build; no hardware claim. |
-| [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | manual | Blocking release scope; bounded evidence | Builds an immutable reviewed Kani snapshot with the verifier-only `nightly-2026-08-01` compiler, while Rullst stays on stable Rust 1.99.0 with a Rust 1.96 MSRV. It verifies twenty named bounded harnesses in isolated jobs across ten supported packages. Proof failures fail their matrix jobs; the proc-macro-only crate remains outside Kani's supported targets. |
+| [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | weekly (Thursday 01:47 UTC), manual | Blocking release scope; bounded evidence | Builds an immutable reviewed Kani snapshot with the verifier-only `nightly-2026-08-01` compiler, while Rullst stays on stable Rust 1.99.0 with a Rust 1.96 MSRV. It verifies twenty named bounded harnesses in isolated jobs across ten supported packages. Proof failures fail their matrix jobs; the proc-macro-only crate remains outside Kani's supported targets. |
 | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main/v12/v13 push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
-| [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Blocking release scope; bounded evidence | Pinned nightly-only Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts without changing Rullst's stable toolchain or MSRV. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. |
+| [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | weekly (Wednesday 01:17 UTC), manual | Blocking release scope; bounded evidence | Pinned nightly-only Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts without changing Rullst's stable toolchain or MSRV. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. |
 | [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | A source-bound inventory preflight followed by eighty lossless pinned cargo-mutants 27.1.0 shards with four concurrent jobs over that source's all-feature workspace, each shard with a pinned Redis service for the `RULLST_TEST_REDIS_URL` contracts, one validated production-file diagnostic, one owned-server contract (`mode=contract`: a PostgreSQL or Redis wrapper's adapter mutants against the server it owns, or the ORM crates against the `rullst-orm` SQLite suite), or policy-bound exact-SHA recovery of reviewed failed fragments. Successful immutable artifacts may be reused, but the content-addressed aggregate still requires every reviewed candidate exactly once and carries source/run/branch/tool/inventory provenance. Findings stay informational, while baseline/tool/invocation failures, missing artifacts, incomplete classification and reviewed-inventory drift fail the run. The completed v12 receipt is run `34761010296`: 14,391/14,391 classified and a conservative 70.57% caught. |
 | [`mutants-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants-pr.yml) | pull requests to main that change Rust | Blocking by policy; not a required check | Lists the pinned cargo-mutants 27.1.0 all-feature mutants on the Rust lines the pull request changes, skipping the globs in `.github/mutants-pr-exclude.txt` and every CLI file not listed in `.github/mutants-pr-cli.txt` (listed CLI files run against the CLI's library tests), and tests them in at most eight shards with a Redis service and the targeted-run timeouts and memory cap. A missed mutant fails the run; unviable and timed-out mutants do not. See [Pull-request mutation gate](#pull-request-mutation-gate). |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main/v12/v13 push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
@@ -1176,8 +1185,9 @@ target in all eleven packages before its forty-two 5.5-hour campaigns. Five
 scheduling tests cover all forty-two diagnostic selections, the complete package inventory,
 invalid inputs and compiler failure propagation. No sanitizer, instrumentation,
 corpus or campaign duration is weakened, and diagnostics remain ineligible as
-release evidence. Fuzzing, Miri, Kani and mutation campaigns remain manual;
-an ordinary push does not automatically dispatch them.
+release evidence. Fuzzing and mutation campaigns remain manual, and Miri and
+Kani run weekly besides their dispatched admission runs; an ordinary push does
+not start any of them.
 
 Read-only local commands (the planner inspects commits, not uncommitted files):
 

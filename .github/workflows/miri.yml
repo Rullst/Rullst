@@ -1,10 +1,15 @@
-name: Miri UB Detection (manual bounded evidence)
+name: Miri UB Detection (bounded evidence)
 
 on:
-  workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
+  # Release admission requires a dispatched run on the exact candidate commit;
+  # the weekly run catches regressions between releases and is not evidence.
+  workflow_dispatch:
+  schedule:
+    - cron: '17 1 * * 3' # Wednesdays 01:17 UTC
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # A weekly run must not cancel, or be cancelled by, a dispatched admission run.
+  group: ${{ github.workflow }}-${{ github.ref }}${{ github.event_name == 'schedule' && '-weekly' || '' }}
   cancel-in-progress: true
 
 permissions:

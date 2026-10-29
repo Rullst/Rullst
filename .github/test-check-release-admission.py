@@ -25,17 +25,21 @@ SHA = "0123456789abcdef0123456789abcdef01234567"
 
 
 class ReleaseAdmissionTests(unittest.TestCase):
-    def exercise_candidate(self, reusable, missing_workflow=None, missing_boundary=False):
+    def exercise_candidate(self, reusable, missing_workflow=None, missing_boundary=False,
+                           scheduled=()):
         policy = MODULE.load_object(SCRIPT.with_name("release-required-workflows.json"))
         _, requirements = MODULE.validate_policy(policy)
         by_id = {index: requirement for index, requirement in enumerate(requirements, 1)}
         by_name = {requirement.workflow: index for index, requirement in by_id.items()}
 
         def runs(api, repository, workflow, sha, branch, event, token):
+            # A workflow in `scheduled` only has its weekly/nightly run on the
+            # candidate, even if the API ignored the requested event filter.
             return {"workflow_runs": [{"id": by_name[workflow], "head_sha":
                     "f" * 40 if workflow == missing_workflow else sha,
-                    "head_branch": branch, "event": event, "status": "completed",
-                    "conclusion": "success"}]}
+                    "head_branch": branch,
+                    "event": "schedule" if workflow in scheduled else event,
+                    "status": "completed", "conclusion": "success"}]}
 
         def jobs(api, repository, run_id, token):
             requirement = by_id[run_id]
@@ -73,6 +77,50 @@ class ReleaseAdmissionTests(unittest.TestCase):
         for workflow in ("ci.yml", "miri.yml", "kani.yml", "codeql.yml"):
             result, _ = self.exercise_candidate(True, missing_workflow=workflow)
             self.assertEqual(result, 1, workflow)
+
+    def test_scheduled_runs_never_replace_the_dispatched_admission_runs(self):
+        # Miri and Kani also run weekly (sanitizers nightly, proptest weekly)
+        # on main; a scheduled success on the exact candidate is not evidence.
+        for workflow in ("miri.yml", "kani.yml", "sanitizers.yml", "proptest.yml", "ci.yml"):
+            with self.subTest(workflow=workflow):
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr):
+                    result, _ = self.exercise_candidate(True, scheduled={workflow})
+                self.assertEqual(result, 1)
+        result, _ = self.exercise_candidate(True, scheduled=())
+        self.assertEqual(result, 0)
+        payload = {"workflow_runs": [{"id": 7, "head_sha": SHA, "head_branch": "main",
+                                      "event": "schedule", "status": "completed",
+                                      "conclusion": "success"}]}
+        self.assertEqual(MODULE.exact_successful_run_ids(payload, SHA, "main", "workflow_dispatch"), [])
+        self.assertEqual(MODULE.exact_successful_run_ids(payload, SHA, "main", "schedule"), [7])
+
+    def test_policy_cannot_accept_scheduled_evidence(self):
+        policy = MODULE.load_object(SCRIPT.with_name("release-required-workflows.json"))
+        for workflow in ("miri.yml", "kani.yml"):
+            entry = next(item for item in policy["workflows"] if item["workflow"] == workflow)
+            entry["event"] = "schedule"
+            with self.subTest(workflow=workflow), self.assertRaisesRegex(SystemExit, "unsupported event"):
+                MODULE.validate_policy(policy)
+            entry["event"] = "workflow_dispatch"
+
+    def test_scheduled_manual_gates_keep_dispatch_and_their_own_concurrency_group(self):
+        workflows = SCRIPT.parent / "workflows"
+        for workflow in sorted(MODULE.MANDATORY_MANUAL_WORKFLOWS):
+            text = (workflows / workflow).read_text(encoding="utf-8")
+            triggers = "\n" + text.split("\non:\n", 1)[1].split("\nconcurrency:\n", 1)[0]
+            group = text.split("\nconcurrency:\n", 1)[1].split("\n\n", 1)[0]
+            with self.subTest(workflow=workflow):
+                self.assertRegex(triggers, r"(?m)^  workflow_dispatch:")
+                self.assertIn("group: ${{ github.workflow }}-", group)
+                self.assertIn("cancel-in-progress: true", group)
+                if "\n  schedule:\n" in triggers:
+                    # The dispatched run on main keeps the plain group; a
+                    # scheduled run on the same ref gets a suffixed one.
+                    self.assertRegex(group, r"\$\{\{ github\.event_name == 'schedule' && '-[a-z]+' \|\| '' \}\}")
+        for workflow in ("miri.yml", "kani.yml"):
+            text = (workflows / workflow).read_text(encoding="utf-8")
+            self.assertRegex(text.split("\nconcurrency:\n", 1)[0], r"(?m)^  schedule:\n    - cron: '[0-9]+ [0-9]+ \* \* [0-6]'")
 
     def test_accepts_only_completed_success_for_exact_sha_and_event(self) -> None:
         payload = {
