@@ -17,6 +17,7 @@ pub(crate) enum DoctorError {
 #[derive(Serialize)]
 struct Report {
     schema_version: &'static str,
+    schema: &'static str,
     scope: &'static str,
     deployment_verified: bool,
     inspection_complete: bool,
@@ -37,6 +38,7 @@ impl Report {
     fn new(source: &'static str) -> Self {
         Self {
             schema_version: "rullst.deployment-diagnostic.v1",
+            schema: "rullst.deployment-diagnostic.v1",
             scope: "local_configuration_snapshot",
             deployment_verified: false,
             inspection_complete: false,
@@ -142,3 +144,7 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), DoctorError> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "tests.rs"]
+mod tests;

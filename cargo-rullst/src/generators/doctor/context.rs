@@ -120,3 +120,7 @@ pub(crate) fn lookup(
         .get(key)
         .map(|value| (value.to_string(), Source::DotEnv))
 }
+
+#[cfg(test)]
+#[path = "context_tests.rs"]
+mod tests;

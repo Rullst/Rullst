@@ -27,6 +27,11 @@ SUMMARY = (
     "Rullst book in reading order; llms-full.txt holds their full Markdown."
 )
 DESCRIPTION_LIMIT = 200
+# Pages whose Markdown exceeds this many bytes are listed under "Optional" in
+# llms.txt (the llmstxt.org convention for material a reader may skip), unless
+# they are named in CORE_REFERENCE: those two answer most assistant questions.
+OPTIONAL_BYTES = 64 * 1024
+CORE_REFERENCE = {"spec.md", "cli_reference.md"}
 
 CHAPTER = re.compile(r"^(?P<indent>\s*)(?:[-*]\s+)?\[(?P<title>[^\]]+)\]\((?P<path>[^)]*)\)\s*$")
 HEADING = re.compile(r"^(?P<level>#{1,6})\s+(?P<text>.+?)\s*#*\s*$")
@@ -224,18 +229,26 @@ def generate(docs):
              f"Full text of every page: {SITE_URL}llms-full.txt", ""]
     full = [f"# {TITLE} book: full text", "", f"> {SUMMARY}", ""]
     seen = set()
+    optional = []
     for name, entries in sections:
-        index += [f"## {name}", ""]
+        lines = []
         for title, page in entries:
             text = render_page(page, source, repository, pages)
             description = describe(text)
             entry = f"- [{title}]({page_url(page)})"
-            index.append(f"{entry}: {description}" if description else entry)
+            line = f"{entry}: {description}" if description else entry
+            if len(text.encode()) > OPTIONAL_BYTES and page not in CORE_REFERENCE:
+                optional.append(line)
+            else:
+                lines.append(line)
             if page in seen:
                 continue
             seen.add(page)
             full += ["---", "", f"# {title}", "", f"Source: {page_url(page)}", "", text, ""]
-        index.append("")
+        if lines:
+            index += [f"## {name}", "", *lines, ""]
+    if optional:
+        index += ["## Optional", "", *optional, ""]
     return "\n".join(index).rstrip() + "\n", "\n".join(full).rstrip() + "\n"
 
 

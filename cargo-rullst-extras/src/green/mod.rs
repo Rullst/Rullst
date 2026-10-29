@@ -266,6 +266,7 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
     });
     Ok(Report {
         schema_version: report::SCHEMA_VERSION,
+        schema: report::SCHEMA_VERSION,
         cli_version: env!("CARGO_PKG_VERSION"),
         measured_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
         machine: Machine::current(),

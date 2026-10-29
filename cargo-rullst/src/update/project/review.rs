@@ -19,7 +19,7 @@ pub(super) fn command() -> Command {
 pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
     let report = execute(matches)?;
     if matches.get_flag("json") {
-        println!("{}", serde_json::to_string_pretty(&report)?);
+        super::print_report(&report)?;
     } else {
         print!("{}", report["diff"].as_str().unwrap_or(""));
         println!("Review SHA-256: {}", report["review_sha256"]);
@@ -33,7 +33,7 @@ pub(super) fn execute(matches: &ArgMatches) -> Result<serde_json::Value, Project
         .get_one::<PathBuf>("verified")
         .ok_or(ProjectError::Invalid("a verified directory is required"))?;
     let evidence = Evidence::load(requested)?;
-    let report = serde_json::json!({"review":evidence.proposal,"review_sha256":evidence.digest,"diff":evidence.diff});
+    let report = serde_json::json!({"schema":"rullst.project-review-report.v1","review":evidence.proposal,"review_sha256":evidence.digest,"diff":evidence.diff});
     Ok(report)
 }
 
@@ -146,3 +146,7 @@ pub(super) struct Change {
     pub before: snapshot::Record,
     pub after: snapshot::Record,
 }
+
+#[cfg(all(test, unix))]
+#[path = "evidence_tests.rs"]
+mod tests;

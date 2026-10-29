@@ -173,6 +173,12 @@ fn a_sample_takes_the_documents_aggregates_or_marks_the_project_unreachable() {
             queue_failed_total: Some(4),
         }
     );
+    let mut idle = document("/orders/{id}");
+    idle["http"]["window"]["requests"] = serde_json::json!(0);
+    idle["http"]["window"]["status"]["5xx"] = serde_json::json!(0);
+    let idle: MonitorDocument = serde_json::from_value(idle).unwrap();
+    // No request in the window: no rate rather than 0/0.
+    assert_eq!(Sample::from_outcome(79, &Ok(idle)).error_rate_percent, None);
     let down = Sample::from_outcome(78, &Err(FetchError::Timeout));
     assert!(!down.reachable);
     assert_eq!(down.requests_per_second, None);

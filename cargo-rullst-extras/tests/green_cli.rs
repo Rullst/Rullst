@@ -68,6 +68,7 @@ fn the_benchmark_measures_cpu_and_labels_the_estimate() {
     );
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(report["schema_version"], "rullst.green.v1");
+    assert_eq!(report["schema"], "rullst.green.v1");
     assert_eq!(report["target"]["mode"], "existing_url");
     assert_eq!(report["target"]["url"], format!("{url}/"));
     let benchmark = &report["benchmark"];

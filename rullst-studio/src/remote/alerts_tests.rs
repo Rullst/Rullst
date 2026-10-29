@@ -207,6 +207,10 @@ fn thresholds_are_range_checked() {
             ..rules()
         },
         AlertRules {
+            p95_ms: Some(0.0),
+            ..rules()
+        },
+        AlertRules {
             p95_ms: Some(600_001.0),
             ..rules()
         },
@@ -237,4 +241,11 @@ fn thresholds_are_range_checked() {
         }
         .valid()
     );
+}
+
+#[test]
+fn a_saved_rule_set_without_a_cool_down_waits_15_minutes() {
+    let rules: AlertRules = serde_json::from_str("{}").unwrap();
+    assert_eq!(rules.cooldown_minutes, 15);
+    assert_eq!(rules, AlertRules::default());
 }

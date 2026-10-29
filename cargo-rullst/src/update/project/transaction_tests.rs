@@ -371,3 +371,85 @@ fn killed_commit_retains_a_readable_intent_and_recoverable_before_after_states()
         );
     }
 }
+
+fn scope_error(fixture: &Fixture, change: impl FnOnce(&mut Replacement)) -> String {
+    let mut replacements = fixture.replacements();
+    change(&mut replacements[1]);
+    Staged::create(&fixture.root, &fixture.content, replacements)
+        .err()
+        .map(|error| error.to_string())
+        .unwrap_or_default()
+}
+
+#[test]
+fn replacements_keep_their_path_and_only_the_lockfile_may_be_deleted() {
+    let fixture = Fixture::new();
+    let scope = "project preparation rejected: invalid source replacement scope";
+    assert_eq!(
+        scope_error(&fixture, |replacement| replacement.desired.path =
+            "Cargo.lock".into()),
+        scope
+    );
+    assert_eq!(
+        scope_error(&fixture, |replacement| replacement.desired =
+            snapshot::record("Cargo.toml", None)),
+        scope
+    );
+    let mut replacements = fixture.replacements();
+    replacements[0].desired = snapshot::record("Cargo.lock", None);
+    fs::remove_file(fixture.content.join("Cargo.lock")).unwrap();
+    assert!(Staged::create(&fixture.root, &fixture.content, replacements).is_ok());
+}
+
+#[cfg(unix)]
+#[test]
+fn a_failed_directory_sync_counts_the_completed_replacement() {
+    use std::os::unix::fs::PermissionsExt;
+    if rustix::process::geteuid().is_root() {
+        return;
+    }
+    let fixture = Fixture::new();
+    let staged = Staged::create(&fixture.root, &fixture.content, fixture.replacements()).unwrap();
+    let root = fixture.root.clone();
+    let error = staged
+        .commit_with(&fixture.root, |_, temporary, path, absent| {
+            replace(temporary, path, absent)?;
+            // The directory sync after this replacement cannot open the root.
+            fs::set_permissions(&root, fs::Permissions::from_mode(0o000))?;
+            Ok(())
+        })
+        .err()
+        .unwrap();
+    fs::set_permissions(&fixture.root, fs::Permissions::from_mode(0o700)).unwrap();
+    assert_eq!(error.0, 1);
+    assert_eq!(
+        fs::read_to_string(fixture.root.join("Cargo.lock")).unwrap(),
+        "after Cargo.lock"
+    );
+}
+
+#[test]
+fn application_records_may_fill_but_not_exceed_8_mib() {
+    let directory = tempfile::tempdir().unwrap();
+    write_record(
+        directory.path(),
+        "largest.json",
+        &vec![b' '; 8 * 1024 * 1024],
+    )
+    .unwrap();
+    assert_eq!(
+        fs::metadata(directory.path().join("largest.json"))
+            .unwrap()
+            .len(),
+        8_388_608
+    );
+    assert!(
+        write_record(
+            directory.path(),
+            "larger.json",
+            &vec![b' '; 8 * 1024 * 1024 + 1]
+        )
+        .is_err()
+    );
+    assert!(!directory.path().join("larger.json").exists());
+}

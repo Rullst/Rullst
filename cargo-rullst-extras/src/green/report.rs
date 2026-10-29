@@ -50,6 +50,7 @@ impl<T> Metric<T> {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct Report {
     pub schema_version: &'static str,
+    pub schema: &'static str,
     pub cli_version: &'static str,
     pub measured_at: String,
     pub machine: Machine,

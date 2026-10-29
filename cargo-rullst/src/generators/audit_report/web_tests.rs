@@ -202,3 +202,72 @@ fn an_unparsable_configuration_is_an_error_not_a_clean_result() {
         assert!(matches!(check.status, EvidenceStatus::Error(_)));
     }
 }
+
+#[test]
+fn coep_values_are_classified() {
+    for (value, expected) in [
+        ("require-corp", None),
+        ("credentialless", None),
+        (
+            "unsafe-none",
+            Some("disables cross-origin embedder isolation"),
+        ),
+        (
+            "bogus",
+            Some("is not one of require-corp, credentialless or unsafe-none"),
+        ),
+    ] {
+        let config = format!("[security]\ncoep = \"{value}\"\n");
+        let (_root, sources, config) = load(&[
+            (
+                "src/main.rs",
+                "fn main() { Server::new(router()).run(3000); }\n",
+            ),
+            ("Rullst.toml", &config),
+        ]);
+        let coep: Vec<_> = messages(&headers(&sources, &config))
+            .into_iter()
+            .filter(|message| message.contains("coep"))
+            .collect();
+        match expected {
+            None => assert!(coep.is_empty(), "{value}: {coep:?}"),
+            Some(text) => {
+                assert_eq!(coep.len(), 1, "{value}: {coep:?}");
+                assert!(coep[0].contains(text), "{value}: {coep:?}");
+            }
+        }
+    }
+}
+
+#[test]
+fn only_named_attributed_cookie_literals_and_builders_are_counted() {
+    let (_root, sources, config) = load(&[
+        (
+            "src/main.rs",
+            "fn set() { let a = \"=abc; Path=/\"; let b = \"bad name=1; Path=/\"; let c = \"plain=1; nothing\"; let d = \"theme=dark; Path=/; SameSite=Lax; Secure\"; }\nfn builder() { Cookie::build(\"sid\").http_only(false); }\n",
+        ),
+        ("Rullst.toml", "[security]\ncsrf_same_site = \"Strict\"\n"),
+    ]);
+    let check = cookies(&sources, &config);
+    assert!(
+        check.detail.starts_with(
+            "2 cookie construction(s) recognized in production source; CSRF cookie SameSite: Strict;"
+        ),
+        "{}",
+        check.detail
+    );
+    assert_eq!(check.findings.len(), 1, "{:?}", messages(&check));
+}
+
+#[test]
+fn csrf_same_site_must_be_lax_strict_or_none() {
+    for (value, invalid) in [("Lax", false), ("strict", false), ("Bogus", true)] {
+        let config = format!("[security]\ncsrf_same_site = \"{value}\"\n");
+        let (_root, sources, config) =
+            load(&[("src/main.rs", "fn main() {}\n"), ("Rullst.toml", &config)]);
+        let found = messages(&cookies(&sources, &config))
+            .iter()
+            .any(|message| message.contains("`csrf_same_site` is not Lax, Strict or None"));
+        assert_eq!(found, invalid, "{value}");
+    }
+}

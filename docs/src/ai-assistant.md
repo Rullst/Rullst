@@ -7,6 +7,16 @@ time. It is Experimental and ships in the optional `cargo-rullst-extras`
 package (since 13.0.0-alpha.4). The full option list is in the
 [CLI reference](cli_reference.md#cargo-rullst-ai-extras).
 
+## Context for other assistants
+
+Assistants outside this CLI can read the site's
+[`llms.txt`](https://rullst.github.io/Rullst/llms.txt) (an index of every page
+of this book) and [`llms-full.txt`](https://rullst.github.io/Rullst/llms-full.txt)
+(their full Markdown). For an application, `cargo rullst generate:ai-context`
+writes `.llms.txt`, `.rullst/context-map.json` and an `AGENTS.md` (see
+[project context](project-context.md)), and the data commands print JSON with
+`--json` ([machine-readable output](cli_reference.md#machine-readable-output)).
+
 ## Install
 
 Install the extras with the same version as the CLI:

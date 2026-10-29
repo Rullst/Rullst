@@ -82,7 +82,7 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
         .ok_or(ProjectError::Invalid("unsupported project operation"))?;
     let report = prepare(matches)?;
     if matches.get_flag("json") {
-        println!("{}", serde_json::to_string_pretty(&report)?);
+        print_report(&report)?;
     } else {
         println!("Prepared source copy: {}", report["prepared_directory"]);
         println!("Candidate: {}", report["candidate_directory"]);
@@ -93,6 +93,21 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
             "Preparation grants no execution or application authority. Preview checks with update project verify --prepared DIRECTORY --dry-run."
         );
     }
+    Ok(())
+}
+
+/// Prints a `--json` report as the one document on stdout. The persisted
+/// evidence files keep their `schema_version`; the printed copy also carries the
+/// `schema` field every `--json` command has (see the CLI reference).
+pub(super) fn print_report(report: &serde_json::Value) -> Result<(), ProjectError> {
+    let mut printed = report.clone();
+    if let Some(object) = printed.as_object_mut()
+        && !object.contains_key("schema")
+        && let Some(version) = object.get("schema_version").cloned()
+    {
+        object.insert("schema".to_owned(), version);
+    }
+    println!("{}", serde_json::to_string_pretty(&printed)?);
     Ok(())
 }
 
@@ -120,12 +135,26 @@ fn prepare(matches: &ArgMatches) -> Result<serde_json::Value, ProjectError> {
         ));
     }
     let candidate = stage.path().join("candidate");
-    let baseline = stage.path().join("before");
-    let records = snapshot::copy(&root, &baseline, &candidate, &paths)?;
+    let prepared = prepare_into(root, target, &paths, stage.path())?;
+    let path = stage.retain();
+    let report = serde_json::json!({"schema_version":"rullst.project-preparation-result.v1",
+        "prepared_directory":path, "candidate_directory":candidate, "preparation":prepared});
+    Ok(report)
+}
+
+/// Copies the inventoried project into `stage` and writes its preparation record.
+fn prepare_into(
+    root: PathBuf,
+    target: &str,
+    paths: &BTreeSet<String>,
+    stage: &Path,
+) -> Result<Prepared, ProjectError> {
+    let candidate = stage.join("candidate");
+    let records = snapshot::copy(&root, &stage.join("before"), &candidate, paths)?;
     let manifests = manifests(&candidate)?;
     let plan = crate::generators::build::prepare_manifests(&candidate, manifests, target)
         .map_err(|error| ProjectError::Planning(error.to_string()))?;
-    snapshot::unchanged(&root, &paths, &records)?;
+    snapshot::unchanged(&root, paths, &records)?;
     let prepared = Prepared {
         schema_version: "rullst.project-preparation.v1".into(),
         phase: "prepared".into(),
@@ -141,11 +170,8 @@ fn prepare(matches: &ArgMatches) -> Result<serde_json::Value, ProjectError> {
     if serialized.len() > 64 * 1024 * 1024 {
         return Err(ProjectError::Invalid("preparation report exceeds 64 MiB"));
     }
-    std::fs::write(stage.path().join("preparation.json"), serialized)?;
-    let path = stage.retain();
-    let report = serde_json::json!({"schema_version":"rullst.project-preparation-result.v1",
-        "prepared_directory":path, "candidate_directory":candidate, "preparation":prepared});
-    Ok(report)
+    std::fs::write(stage.join("preparation.json"), serialized)?;
+    Ok(prepared)
 }
 
 pub(super) fn execute(matches: &ArgMatches) -> Result<serde_json::Value, ProjectError> {
@@ -215,3 +241,7 @@ fn manifests(root: &Path) -> Result<Vec<PathBuf>, ProjectError> {
     paths.insert(root.join("Cargo.toml").canonicalize()?);
     Ok(paths.into_iter().collect())
 }
+
+#[cfg(test)]
+#[path = "project/project_tests.rs"]
+mod tests;

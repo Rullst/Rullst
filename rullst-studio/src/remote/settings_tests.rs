@@ -139,6 +139,14 @@ async fn history_and_alerts_render_escaped_and_alerts_can_be_acknowledged() {
     assert!(page.contains("Acknowledge all"));
     assert!(page.contains(r#"border-rose-500/30">1</span>"#));
 
+    // A wrong form token from this Studio's own page acknowledges nothing.
+    let wrong = format!("form_token={}", "0".repeat(64));
+    assert_eq!(
+        post(&studio, "/studio/alerts/acknowledge", Some(ORIGIN), &wrong).await,
+        StatusCode::FORBIDDEN
+    );
+    assert_eq!(history.unacknowledged().await.unwrap(), 1);
+
     let body = format!("form_token={}", studio.state.form_token);
     assert_eq!(
         post(&studio, "/studio/alerts/acknowledge", Some(ORIGIN), &body).await,
@@ -162,4 +170,32 @@ async fn an_unwatched_project_has_an_empty_history() {
     let (status, page) = get(&studio, "/studio/history?project=shop").await;
     assert_eq!(status, StatusCode::OK);
     assert!(page.contains("No history yet"));
+}
+
+#[tokio::test]
+async fn the_settings_form_shows_the_saved_rules() {
+    let studio = studio().await;
+    studio
+        .state
+        .store
+        .add("shop", "https://shop.example", TOKEN)
+        .unwrap();
+    let body = settings(
+        &studio.state.form_token,
+        "watch=on&p95_ms=250&cooldown_minutes=30",
+    );
+    assert_eq!(
+        post(&studio, "/studio/alerts/settings", Some(ORIGIN), &body).await,
+        StatusCode::SEE_OTHER
+    );
+    let (_, page) = get(&studio, "/studio/alerts").await;
+    for expected in [
+        r#"name="watch" value="on" checked />"#,
+        r#"name="unreachable" value="on" />"#,
+        r#"name="p95_ms" inputmode="decimal" value="250""#,
+        r#"name="error_rate_percent" inputmode="decimal" value="""#,
+        r#"name="cooldown_minutes" inputmode="decimal" value="30""#,
+    ] {
+        assert!(page.contains(expected), "{expected}");
+    }
 }

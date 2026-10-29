@@ -138,6 +138,39 @@ fn other_scope(cells: String) -> Markup {
     );
 }
 
+/// `RawHtml` around a method call, each on its own line: of a view method
+/// found above, or on a local bound to `html!` output; also inside `impl`
+/// blocks.
+#[test]
+fn raw_html_around_method_calls_in_impl_blocks_must_change() {
+    let source = r#"
+struct Card;
+impl Card {
+    fn render(&self) -> String {
+        html! { <b>"card"</b> }
+    }
+    fn page(&self, rows: &[Row]) -> Markup {
+        let cells = html! { <td>"cell"</td> };
+        html! {
+            <main>
+                {RawHtml(self.render())}
+                {RawHtml(cells.clone())}
+                {RawHtml(rows.to_vec())}
+            </main>
+        }
+    }
+}
+"#;
+    assert_eq!(
+        markup_findings(source),
+        vec![
+            ("V13-HTML-MARKUP-RETURN", 4),
+            ("V13-HTML-RAW-MARKUP", 11),
+            ("V13-HTML-RAW-MARKUP", 12),
+        ]
+    );
+}
+
 #[test]
 fn raw_html_around_islands_and_mounted_live_components_must_change() {
     let source = r#"

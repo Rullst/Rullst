@@ -27,6 +27,7 @@ fn sample(bench: bool, grid_intensity: Option<f64>) -> Report {
         requests: benchmark.requests,
     });
     Report {
+        schema: "rullst.green.v1",
         schema_version: report::SCHEMA_VERSION,
         cli_version: "13.0.0-test",
         measured_at: "2026-10-08T12:00:00Z".to_string(),
@@ -103,6 +104,7 @@ fn json_keys_are_stable_whatever_was_measured() {
         "machine.os",
         "measured_at",
         "notes",
+        "schema",
         "schema_version",
         "sci_estimate.energy_kwh",
         "sci_estimate.energy_method",
@@ -145,6 +147,7 @@ fn json_keys_are_stable_whatever_was_measured() {
 
     let value = serde_json::to_value(sample(true, Some(100.0))).unwrap();
     assert_eq!(value["schema_version"], "rullst.green.v1");
+    assert_eq!(value["schema"], "rullst.green.v1");
     assert_eq!(value["benchmark"]["status"], "run");
     assert_eq!(value["benchmark"]["cpu_ms_per_request"]["value"], 3.75);
     assert_eq!(value["sci_estimate"]["status"], "estimate");

@@ -160,6 +160,10 @@ fn recovery_handles_a_partial_application_and_removes_only_its_new_lockfile() {
         serde_json::from_slice::<Value>(&restored.stdout).unwrap()["file_operations"],
         1
     );
+    assert_eq!(
+        serde_json::from_slice::<Value>(&restored.stdout).unwrap()["schema"],
+        "rullst.project-application.v1"
+    );
     assert!(!fixture.app.join("Cargo.lock").exists());
     assert_eq!(fs::read(fixture.app.join("Cargo.toml")).unwrap(), original);
 }

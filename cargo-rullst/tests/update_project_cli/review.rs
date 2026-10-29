@@ -53,6 +53,7 @@ fn review_binds_complete_dependency_diff_without_reexecuting_or_applying() {
         report["review"]["schema_version"],
         "rullst.project-review.v1"
     );
+    assert_eq!(report["schema"], "rullst.project-review-report.v1");
     assert_eq!(report["review"]["application_authorized"], false);
     assert_eq!(report["review"]["changes"].as_array().unwrap().len(), 1);
     let diff = report["diff"].as_str().unwrap();

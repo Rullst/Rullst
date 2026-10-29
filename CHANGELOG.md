@@ -9,6 +9,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Added
+
+- `llms.txt` now lists the longest reference pages (the migration guide, threat
+  models, roadmap, workflows and similar; not the spec or the CLI reference)
+  under an `## Optional` section, as llmstxt.org recommends, and
+  `.github/validate-site.py` generates `llms.txt` and `llms-full.txt` and fails
+  when a `SUMMARY.md` page is missing from either or a size bound is exceeded.
+  The README, the terminal-assistant guide and the project-context guide link
+  both files.
+
+- `--json` follows one contract (CLI reference, "Machine-readable output"):
+  standard output is exactly one JSON document with a top-level `schema` field
+  (`rullst.<name>.v1`), no escape codes, human messages and failures on standard
+  error, exit statuses unchanged. `info`, `doctor`, `audit`, `inspect routes`,
+  `deploy:doctor`, `academy:doctor`, `upgrade --dry-run`, `update project
+  prepare|verify|review|apply|recover` and `green` now also carry `schema`; the
+  `schema_version` field they already had stays with the same value. The
+  `update project review` document gains a top-level `rullst.project-review-report.v1`
+  `schema` (its nested review keeps `rullst.project-review.v1`).
+- New `--json` output: `cargo rullst inspect models --json`
+  (`rullst.cli-models.v1`), `inspect schema --json` (`rullst.cli-schema.v1`) and
+  `pkg list --json` (`rullst.cli-pkg.v1`). `inspect --json` for any other target
+  and `pkg add --json` are refused on standard error.
+
 ### Changed
 
 - The `cargo rullst` opening animates on every run (any key skips it).

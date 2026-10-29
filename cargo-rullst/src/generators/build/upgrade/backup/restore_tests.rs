@@ -243,3 +243,166 @@ fn a_locked_windows_destination_reports_interruption_and_retains_backup() {
     assert!(error.contains("backup retained"), "{error}");
     assert!(fixture.backup.join("files/Cargo.toml").exists());
 }
+
+/// Each clause of the path contract on its own, with the exact reason: a
+/// restore through `restore_from` also fails on later checks, which hides a
+/// clause that stopped working.
+#[test]
+fn index_paths_must_be_portable_snapshot_files() {
+    let unsafe_path = "invalid upgrade backup: unsafe relative path";
+    let outside = "invalid upgrade backup: file outside the upgrade snapshot contract";
+    for (path, expected) in [
+        ("", unsafe_path),
+        ("a:b.rs", unsafe_path),
+        ("a\u{7}b.rs", unsafe_path),
+        ("../main.rs", unsafe_path),
+        ("src/../main.rs", unsafe_path),
+        ("/main.rs", unsafe_path),
+        ("target/main.rs", unsafe_path),
+        ("src/Target/main.rs", unsafe_path),
+        (".git/main.rs", unsafe_path),
+        ("src/.GIT/main.rs", unsafe_path),
+        ("src/notes.txt", outside),
+        ("src/Cargo.lock", outside),
+    ] {
+        let error = validate_relative_restore_path(Path::new(path)).unwrap_err();
+        assert_eq!(error.to_string(), expected, "{path:?}");
+    }
+    for path in [
+        "Cargo.lock",
+        "Cargo.toml",
+        "crates/api/Cargo.toml",
+        "src/main.rs",
+        "src/targets/git.rs",
+    ] {
+        validate_relative_restore_path(Path::new(path)).unwrap();
+    }
+}
+
+#[test]
+fn a_file_is_not_a_directory_to_create() {
+    let fixture = Fixture::new();
+    for path in ["Cargo.toml", "src/main.rs/nested"] {
+        let error = validate_directory_creation(&fixture.root(), Path::new(path)).unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "invalid upgrade backup: symlink, reparse point or non-directory parent",
+            "{path}"
+        );
+    }
+    validate_directory_creation(&fixture.root(), Path::new("src/missing/deeper")).unwrap();
+    assert!(
+        validate_file(&fixture.root(), Path::new("src/missing.rs"))
+            .unwrap()
+            .is_none()
+    );
+}
+
+/// Only a missing entry counts as absent; any other lookup failure stops the
+/// restore. Linux and macOS refuse a 300-byte name (`ENAMETOOLONG`); Windows
+/// reports such a name with a different error, so the test is Unix-only.
+#[cfg(unix)]
+#[test]
+fn lookup_failures_other_than_a_missing_entry_are_errors() {
+    let fixture = Fixture::new();
+    let long = "a".repeat(300);
+    let error = validate_file(&fixture.root(), Path::new(&format!("{long}.rs"))).unwrap_err();
+    assert!(matches!(error, RestoreError::Io(_)), "{error}");
+    let error = validate_directory_creation(&fixture.root(), Path::new(&long)).unwrap_err();
+    assert!(matches!(error, RestoreError::Io(_)), "{error}");
+}
+
+/// An index of exactly 8 MiB is read whole and parsed, not refused as
+/// oversized; it ends in a two-byte character, so a shorter read would not
+/// be UTF-8.
+#[test]
+fn an_index_of_exactly_8_mib_is_parsed() {
+    use std::io::{Seek, SeekFrom, Write};
+    let fixture = Fixture::new();
+    let mut index = File::create(fixture.backup.join("index.tsv")).unwrap();
+    // A literal size, so a changed bound cannot move the fixture with it.
+    index.set_len(8 * 1024 * 1024 - 2).unwrap();
+    index.seek(SeekFrom::End(0)).unwrap();
+    index.write_all("é".as_bytes()).unwrap();
+    drop(index);
+    assert_eq!(
+        fixture.run().unwrap_err().to_string(),
+        "invalid upgrade backup: malformed index entry"
+    );
+    fixture.unchanged_manifest();
+}
+
+#[test]
+fn a_snapshot_of_several_mebibytes_is_restored() {
+    let fixture = Fixture::new();
+    File::options()
+        .write(true)
+        .open(fixture.backup.join("files/src/main.rs"))
+        .unwrap()
+        .set_len(2 * 1024 * 1024)
+        .unwrap();
+    fixture.run().unwrap();
+    assert_eq!(
+        fs::metadata(fixture.root().join("src/main.rs"))
+            .unwrap()
+            .len(),
+        2 * 1024 * 1024
+    );
+}
+
+#[test]
+fn the_backup_directory_itself_is_not_a_backup() {
+    let fixture = Fixture::new();
+    let error = restore_from(
+        &fixture.root(),
+        &fixture.root().join("target/rullst-upgrades"),
+    )
+    .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "invalid upgrade backup: backup must be inside this project's target/rullst-upgrades directory"
+    );
+}
+
+#[test]
+fn only_the_root_lockfile_may_be_absent() {
+    let fixture = Fixture::new();
+    fixture.index("present\tCargo.toml\nabsent\tsrc/main.rs\n");
+    assert_eq!(
+        fixture.run().unwrap_err().to_string(),
+        "invalid upgrade backup: only a newly created root Cargo.lock may be removed"
+    );
+    fixture.unchanged_manifest();
+}
+
+/// Snapshots totalling exactly 512 MiB pass planning, which then stops on a
+/// later entry; more than 512 MiB stops on the snapshot that passes it. The
+/// snapshots are sparse and planning fails before anything is copied.
+#[test]
+fn snapshots_may_total_at_most_512_mib() {
+    let plan_total = |count: usize, size: u64| {
+        let fixture = Fixture::new();
+        let mut index = String::new();
+        for number in 0..count {
+            let name = format!("src/part{number}.rs");
+            File::create(fixture.backup.join("files").join(&name))
+                .unwrap()
+                .set_len(size)
+                .unwrap();
+            index.push_str(&format!("present\t{name}\n"));
+        }
+        index.push_str("absent\tsrc/main.rs\n");
+        fixture.index(&index);
+        let error = fixture.run().unwrap_err().to_string();
+        fixture.unchanged_manifest();
+        error
+    };
+    assert_eq!(
+        plan_total(8, 64 * 1024 * 1024),
+        "invalid upgrade backup: only a newly created root Cargo.lock may be removed"
+    );
+    assert_eq!(
+        plan_total(9, 60 * 1024 * 1024),
+        "invalid upgrade backup: snapshot exceeds 64 MiB/file or 512 MiB/restore"
+    );
+}

@@ -132,6 +132,7 @@ impl DeclaredStatus {
 #[derive(Debug, PartialEq, Eq, Serialize)]
 struct AcademyDiagnostic {
     schema_version: &'static str,
+    schema: &'static str,
     certification: bool,
     contract_satisfied: bool,
     checks: Vec<DiagnosticCheck>,
@@ -198,6 +199,7 @@ fn evaluate(evidence: EvidenceFile) -> Result<AcademyDiagnostic, AcademyDoctorEr
 
     Ok(AcademyDiagnostic {
         schema_version: DIAGNOSTIC_SCHEMA,
+        schema: DIAGNOSTIC_SCHEMA,
         certification: false,
         contract_satisfied,
         checks,

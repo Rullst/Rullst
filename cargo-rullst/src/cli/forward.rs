@@ -1,7 +1,9 @@
 //! `cargo rullst ai …` and `cargo rullst green …` run the optional
 //! `cargo-rullst-extras` executable found on `PATH`, the way Cargo finds its
 //! own `cargo-<name>` plugins. Arguments pass through unparsed and the
-//! extras' exit status becomes this process's exit status.
+//! extras' exit status becomes this process's exit status. On Unix the
+//! extras replace this process, as Cargo runs its plugins, so Ctrl+C reaches
+//! only them; elsewhere this process waits and leaves Ctrl+C to them.
 
 use crate::ui::error_report::{self, AlreadyReported, Friendly};
 use crate::ui::style::Style;
@@ -9,6 +11,7 @@ use clap::{Arg, ArgAction, Command};
 use std::error::Error;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
+#[cfg(any(not(unix), test))]
 use std::process::ExitStatus;
 
 /// The extras executable, without the platform's executable suffix.
@@ -138,17 +141,36 @@ pub(crate) fn run_with(
     if let Ok(cli) = std::env::current_exe() {
         command.env(CLI_VARIABLE, cli);
     }
-    let status = command.status().map_err(|error| {
-        std::io::Error::new(
-            error.kind(),
-            format!("could not start {}: {error}", program.display()),
-        )
-    })?;
-    passthrough(status, subcommand)
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        // Returns only when the extras could not be started.
+        let error = command.exec();
+        Err(start_failure(&program, error).into())
+    }
+    #[cfg(not(unix))]
+    {
+        // While this listener lives, Ctrl+C does not end this process; the
+        // extras, attached to the same console, receive it and decide.
+        #[cfg(windows)]
+        let _interrupts = tokio::signal::windows::ctrl_c();
+        let status = command
+            .status()
+            .map_err(|error| start_failure(&program, error))?;
+        passthrough(status, subcommand)
+    }
+}
+
+fn start_failure(program: &Path, error: std::io::Error) -> std::io::Error {
+    std::io::Error::new(
+        error.kind(),
+        format!("could not start {}: {error}", program.display()),
+    )
 }
 
 /// The extras' exit status as this process's: the same code, or 128 plus
 /// the signal number when a signal ended them.
+#[cfg(any(not(unix), test))]
 fn passthrough(status: ExitStatus, subcommand: &str) -> Result<(), Box<dyn Error>> {
     if status.success() {
         return Ok(());
@@ -160,6 +182,7 @@ fn passthrough(status: ExitStatus, subcommand: &str) -> Result<(), Box<dyn Error
     .into())
 }
 
+#[cfg(any(not(unix), test))]
 fn exit_code(status: ExitStatus) -> u8 {
     if let Some(code) = status.code() {
         return u8::try_from(code).unwrap_or(1);

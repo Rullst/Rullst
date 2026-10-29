@@ -219,11 +219,23 @@ fn fifo_catalog_and_lock_are_rejected_without_waiting_for_a_peer() {
     let catalog = directory.join(CATALOG);
     fs::remove_file(&catalog).unwrap();
     create_test_fifo(&catalog);
-    assert!(load_at(&base, 100).is_err());
     let lock = directory.join("catalog.lock");
     fs::remove_file(&lock).unwrap();
     create_test_fifo(&lock);
-    assert!(store_at(&base, BODY, 100).is_err());
+    // An open that waits for a writer would block forever; fail instead.
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let refused = (
+            load_at(&base, 100).is_err(),
+            store_at(&base, BODY, 100).is_err(),
+        );
+        let _ = sender.send(refused);
+    });
+    let refused = receiver
+        .recv_timeout(std::time::Duration::from_secs(30))
+        .expect("opening a FIFO must not wait for a peer");
+    assert_eq!(refused, (true, true));
+    drop(temp);
 }
 
 fn create_test_fifo(path: &Path) {
@@ -237,4 +249,291 @@ fn create_test_fifo(path: &Path) {
             .expect("POSIX mkfifo is required by the Unix test environment")
             .success()
     );
+}
+
+#[test]
+fn a_cache_file_one_byte_over_its_bound_is_refused_before_decoding() {
+    let temp = fixture();
+    let base = temp.path().canonicalize().unwrap();
+    store_at(&base, &vec![b'x'; CATALOG_LIMIT as usize], 100).unwrap();
+    let file = options()
+        .write(true)
+        .open(base.join("rullst-update-v1").join(CATALOG))
+        .unwrap();
+    file.set_len(256 * 1024 + 64 + 1).unwrap();
+    assert!(matches!(
+        load_at(&base, 100),
+        Err(CacheError::Invalid("catalog cache exceeds its size limit"))
+    ));
+}
+
+#[test]
+fn cache_timestamps_have_at_most_20_digits() {
+    let entry = |timestamp: &str| [HEADER, timestamp.as_bytes(), b"\n", BODY].concat();
+    assert_eq!(
+        decode(&entry("00000000000000000100"), 100).unwrap().body,
+        BODY
+    );
+    assert!(matches!(
+        decode(&entry("000000000000000000100"), 100),
+        Err(CacheError::Invalid("invalid catalog cache timestamp"))
+    ));
+}
+
+/// Runs `base_directory` in a child test process with its own environment.
+#[test]
+fn base_directory_child_fixture() {
+    let Some(report) = std::env::var_os("RULLST_CACHE_BASE_REPORT") else {
+        return;
+    };
+    let create = std::env::var_os("RULLST_CACHE_BASE_CREATE").is_some();
+    let text = match std::env::var("RULLST_CACHE_OPERATION").as_deref() {
+        Ok("store") => store(BODY, 100).map(|()| String::new()),
+        Ok("cache-store") => super::super::store(BODY).map(|()| String::new()),
+        Ok("workspaces") => (|| -> Result<String, CacheError> {
+            let dropped = super::super::project_workspace()?;
+            let dropped_path = dropped.path().to_path_buf();
+            drop(dropped);
+            let kept = super::super::project_workspace()?;
+            let kept_path = kept.path().to_path_buf();
+            let retained = kept.retain();
+            Ok(format!(
+                "{} {} {}",
+                dropped_path.exists(),
+                retained == kept_path,
+                retained.exists()
+            ))
+        })(),
+        Ok("workspace") => project_workspace().map(|path| path.display().to_string()),
+        _ => base_directory(create).map(|path| path.display().to_string()),
+    };
+    let text = match text {
+        Ok(text) => format!("ok {text}"),
+        Err(error) => format!("err {error}"),
+    };
+    fs::write(report, text).unwrap();
+}
+
+fn base_directory_in_child(environment: &[(&str, &std::ffi::OsStr)], create: bool) -> String {
+    let temp = fixture();
+    let report = temp.path().join("report");
+    let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+    command
+        .args([
+            "--exact",
+            "update::cache::platform::tests::base_directory_child_fixture",
+            "--nocapture",
+        ])
+        .env("RULLST_CACHE_BASE_REPORT", &report)
+        .env_remove("XDG_CACHE_HOME")
+        .env_remove("RULLST_CACHE_BASE_CREATE")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null());
+    for (name, value) in environment {
+        command.env(name, value);
+    }
+    if create {
+        command.env("RULLST_CACHE_BASE_CREATE", "1");
+    }
+    assert!(command.status().unwrap().success());
+    fs::read_to_string(report).unwrap()
+}
+
+#[test]
+fn the_cache_base_comes_from_xdg_or_home_and_is_created_only_on_request() {
+    let temp = fixture();
+    let base = temp.path().canonicalize().unwrap();
+    let xdg = base.join("xdg");
+    let selected = [("XDG_CACHE_HOME", xdg.as_os_str())];
+    assert!(base_directory_in_child(&selected, false).starts_with("err "));
+    assert!(!xdg.exists());
+    assert_eq!(
+        base_directory_in_child(&selected, true),
+        format!("ok {}", xdg.display())
+    );
+    assert_eq!(
+        fs::metadata(&xdg).unwrap().permissions().mode() & 0o777,
+        0o700
+    );
+    let home = base.join("home");
+    fs::create_dir(&home).unwrap();
+    fs::set_permissions(&home, fs::Permissions::from_mode(0o700)).unwrap();
+    assert_eq!(
+        base_directory_in_child(
+            &[
+                ("XDG_CACHE_HOME", std::ffi::OsStr::new("")),
+                ("HOME", home.as_os_str()),
+            ],
+            true
+        ),
+        format!("ok {}", home.join(".cache").display())
+    );
+}
+
+#[test]
+fn cache_paths_must_be_absolute_without_traversal() {
+    validate_absolute(Path::new("/var/cache")).unwrap();
+    for path in ["relative/cache", "/var/../cache"] {
+        assert!(validate_absolute(Path::new(path)).is_err(), "{path}");
+    }
+}
+
+#[test]
+fn cache_directories_are_owned_directories() {
+    let temp = fixture();
+    let file = temp.path().join("file");
+    fs::write(&file, b"x").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o600)).unwrap();
+    assert!(validate_directory(&file, false).is_err());
+    validate_directory(temp.path(), true).unwrap();
+}
+
+#[test]
+fn creating_a_private_directory_reports_errors_other_than_existence() {
+    let temp = fixture();
+    let path = temp.path().join("private");
+    create_private_directory(&path).unwrap();
+    create_private_directory(&path).unwrap();
+    assert!(create_private_directory(&temp.path().join("missing").join("child")).is_err());
+}
+
+#[test]
+fn ancestors_must_be_directories_without_other_writers() {
+    let temp = fixture();
+    let base = temp.path().canonicalize().unwrap();
+    validate_ancestors(&base).unwrap();
+    let file = base.join("file");
+    fs::write(&file, b"x").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o600)).unwrap();
+    assert!(validate_ancestors(&file).is_err());
+    // Only root's sticky directories may be group or world writable.
+    let sticky = base.join("sticky");
+    fs::create_dir(&sticky).unwrap();
+    fs::set_permissions(&sticky, fs::Permissions::from_mode(0o1770)).unwrap();
+    assert!(validate_ancestors(&sticky).is_err());
+    let shared = Path::new("/var/mail");
+    if let Ok(metadata) = fs::symlink_metadata(shared)
+        && metadata.is_dir()
+        && metadata.uid() == 0
+        && metadata.mode() & 0o022 != 0
+        && metadata.mode() & 0o1000 == 0
+    {
+        assert!(validate_ancestors(shared).is_err());
+    }
+}
+
+#[test]
+fn stores_and_project_workspaces_live_in_the_private_cache() {
+    let temp = fixture();
+    let xdg = temp.path().canonicalize().unwrap().join("xdg");
+    let operation = |name: &str| {
+        base_directory_in_child(
+            &[
+                ("XDG_CACHE_HOME", xdg.as_os_str()),
+                ("RULLST_CACHE_OPERATION", std::ffi::OsStr::new(name)),
+            ],
+            false,
+        )
+    };
+    assert_eq!(operation("store"), "ok ");
+    assert_eq!(load_at(&xdg, 101).unwrap().body, BODY);
+    let workspace = PathBuf::from(operation("workspace").strip_prefix("ok ").unwrap());
+    assert!(workspace.starts_with(xdg.join("rullst-update-v1")));
+    assert_eq!(
+        fs::metadata(&workspace).unwrap().permissions().mode() & 0o777,
+        0o700
+    );
+}
+
+#[test]
+fn a_cache_file_of_exactly_its_bound_is_read_and_then_decoded() {
+    let temp = fixture();
+    let base = temp.path().canonicalize().unwrap();
+    store_at(&base, BODY, 100).unwrap();
+    let file = options()
+        .write(true)
+        .open(base.join("rullst-update-v1").join(CATALOG))
+        .unwrap();
+    file.set_len(256 * 1024 + 64).unwrap();
+    assert!(matches!(
+        load_at(&base, 100),
+        Err(CacheError::Invalid("invalid cached catalog size"))
+    ));
+}
+
+fn cache_operation(xdg: &Path, name: &str) -> String {
+    base_directory_in_child(
+        &[
+            ("XDG_CACHE_HOME", xdg.as_os_str()),
+            ("RULLST_CACHE_OPERATION", std::ffi::OsStr::new(name)),
+        ],
+        false,
+    )
+}
+
+#[test]
+fn the_cache_api_stores_and_removes_unretained_workspaces() {
+    let temp = fixture();
+    let xdg = temp.path().canonicalize().unwrap().join("xdg");
+    assert_eq!(cache_operation(&xdg, "cache-store"), "ok ");
+    assert_eq!(
+        load_at(&xdg, super::super::now().unwrap()).unwrap().body,
+        BODY
+    );
+    assert_eq!(cache_operation(&xdg, "workspaces"), "ok false true true");
+}
+
+#[test]
+fn catalogs_expire_after_a_day_and_the_clock_is_real() {
+    let temp = fixture();
+    let base = temp.path().canonicalize().unwrap();
+    store_at(&base, BODY, 100).unwrap();
+    assert_eq!(super::super::MAX_AGE_SECONDS, 86_400);
+    assert!(load_at(&base, 100 + 86_399).is_ok());
+    assert!(load_at(&base, 100 + 86_400).is_err());
+    assert!(super::super::now().unwrap() > 1_700_000_000);
+}
+
+#[test]
+fn a_dropped_lease_unlocks_even_while_another_handle_survives() {
+    let temp = fixture();
+    let path = temp.path().join("lease.lock");
+    let file = options()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&path)
+        .unwrap();
+    let duplicate = file.try_clone().unwrap();
+    let lease = super::super::acquire(file, "busy").unwrap();
+    drop(lease);
+    assert!(File::open(&path).unwrap().try_lock().is_ok());
+    drop(duplicate);
+}
+
+#[test]
+fn preparations_are_canonical_uuids_inside_the_private_cache() {
+    let temp = fixture();
+    let directory = temp.path().canonicalize().unwrap();
+    let id = uuid::Uuid::new_v4();
+    let name = format!("project-{id}");
+    assert_eq!(
+        super::super::project_path(&directory.join(&name), &directory).unwrap(),
+        directory.join(&name)
+    );
+    let elsewhere = directory.join("elsewhere");
+    fs::create_dir(&elsewhere).unwrap();
+    for requested in [
+        directory.join(format!("project-{}", id.to_string().to_uppercase())),
+        directory.join("project-latest"),
+        directory.join(id.to_string()),
+        elsewhere.join(&name),
+    ] {
+        assert!(
+            super::super::project_path(&requested, &directory).is_err(),
+            "{}",
+            requested.display()
+        );
+    }
 }

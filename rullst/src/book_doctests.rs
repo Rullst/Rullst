@@ -150,10 +150,6 @@ tutorial!(
     "../../docs/src/tutorials/27-zero-cost-di.md"
 );
 tutorial!(
-    tutorial_28_grpc_microservices,
-    "../../docs/src/tutorials/28-grpc-microservices.md"
-);
-tutorial!(
     tutorial_29_embedded_iot_edge,
     "../../docs/src/tutorials/29-embedded-iot-edge.md"
 );

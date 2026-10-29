@@ -76,6 +76,7 @@ struct ProjectInfo {
 #[derive(Debug, PartialEq, Eq, Serialize)]
 pub(crate) struct Info {
     schema_version: &'static str,
+    schema: &'static str,
     cli: Cli,
     platform: Platform,
     toolchain: Toolchain,
@@ -114,6 +115,7 @@ impl Info {
     ) -> Self {
         Self {
             schema_version: SCHEMA_VERSION,
+            schema: SCHEMA_VERSION,
             cli: Cli {
                 name: "cargo-rullst",
                 version: env!("CARGO_PKG_VERSION"),

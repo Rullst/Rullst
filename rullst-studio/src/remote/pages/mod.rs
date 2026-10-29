@@ -7,6 +7,8 @@ pub(crate) mod alerts;
 pub(crate) mod history;
 pub(crate) mod monitor;
 pub(crate) mod projects;
+#[cfg(test)]
+mod tests;
 
 /// The page being shown, for the navigation highlight.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

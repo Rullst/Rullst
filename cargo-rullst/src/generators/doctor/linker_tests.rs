@@ -96,7 +96,19 @@ fn the_hint_is_a_warning_with_the_exact_snippet_and_skipped_when_not_needed() {
     );
     let lld = check(&facts(false, false, false, true)).unwrap();
     assert_eq!(lld.detail, "not configured; ld.lld is installed");
-    assert!(lld.fix.unwrap().ends_with("\"link-arg=-fuse-ld=lld\"]"));
+    let lld_fix = lld.fix.unwrap();
+    assert!(
+        lld_fix.starts_with("Add to .cargo/config.toml:"),
+        "{lld_fix}"
+    );
+    assert!(lld_fix.ends_with("\"link-arg=-fuse-ld=lld\"]"));
+    let only_mold = check(&facts(false, false, true, false)).unwrap();
+    assert!(
+        only_mold
+            .fix
+            .unwrap()
+            .starts_with("Add to .cargo/config.toml:")
+    );
     let neither = check(&facts(false, false, false, false)).unwrap();
     assert!(neither.detail.contains("neither mold nor ld.lld"));
     assert!(neither.fix.unwrap().starts_with("Install mold"));
@@ -148,4 +160,38 @@ fn detection_reports_rust_lld_as_the_x86_64_gnu_default() {
     assert!(!detect(directory.path(), &old, &vars).unwrap().default_lld);
     let missing = detect(directory.path(), &Probe::default(), &vars).unwrap();
     assert_eq!(missing.default_lld, x86_64_gnu);
+}
+
+#[test]
+fn linker_names_end_at_whitespace_unit_separators_and_quotes() {
+    assert!(selects_fast_linker("-fuse-ld=mold"));
+    for flags in [
+        "-C link-arg=-fuse-ld=bfd\u{1f}mold",
+        "-C link-arg=-fuse-ld=bfd\"mold",
+        "-C link-arg=-fuse-ld=bfd mold",
+    ] {
+        assert!(!selects_fast_linker(flags), "{flags:?}");
+    }
+}
+
+#[test]
+fn a_configured_or_default_fast_linker_needs_no_hint() {
+    assert!(check(&facts(true, false, false, false)).is_none());
+    assert!(check(&facts(false, true, false, false)).is_none());
+    assert!(check(&facts(false, false, false, false)).is_some());
+}
+
+#[test]
+fn large_cargo_configs_are_still_read() {
+    let root = tempfile::tempdir().unwrap();
+    let project = root.path().join("app");
+    fs::create_dir_all(project.join(".cargo")).unwrap();
+    let padding = format!("# {}\n", "x".repeat(4000));
+    fs::write(
+        project.join(".cargo/config.toml"),
+        format!("{padding}[target.aarch64-unknown-linux-gnu]\nrustflags = [\"-C\", \"link-arg=-fuse-ld=mold\"]\n"),
+    )
+    .unwrap();
+    let none: HashMap<String, String> = HashMap::new();
+    assert!(configured(&project, None, TRIPLE, &none));
 }

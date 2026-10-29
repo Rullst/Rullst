@@ -26,7 +26,7 @@ pub(super) fn command() -> Command {
 pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
     let report = execute(matches)?;
     if matches.get_flag("json") || matches.get_flag("dry-run") {
-        println!("{}", serde_json::to_string_pretty(&report)?);
+        super::print_report(&report)?;
     } else {
         println!(
             "Candidate checks/tests passed. Review: {}/verification.json",
@@ -280,5 +280,129 @@ mod tests {
                     .all(|command| !command.args.iter().any(|arg| arg == "generate-lockfile"))
             );
         }
+    }
+
+    fn parsed(args: &[&str]) -> Result<Vec<String>, ProjectError> {
+        let matches = command()
+            .try_get_matches_from(["verify", "--prepared", "."].iter().chain(args))
+            .unwrap();
+        features(&matches)
+    }
+
+    #[test]
+    fn feature_policies_are_bounded_cargo_feature_names() {
+        assert!(parsed(&[]).unwrap().is_empty());
+        assert_eq!(parsed(&["--all-features"]).unwrap(), ["--all-features"]);
+        let list = "serde,tls/rustls,my-feature_2";
+        assert_eq!(
+            parsed(&["--no-default-features", "--features", list]).unwrap(),
+            ["--no-default-features", "--features", list]
+        );
+        let longest = format!(
+            "{},{}",
+            vec!["a".repeat(127); 15].join(","),
+            "b".repeat(128)
+        );
+        assert_eq!(longest.len(), 2048);
+        assert_eq!(parsed(&["--features", &longest]).unwrap()[1], longest);
+        let too_long = format!(
+            "{},{}",
+            vec!["a".repeat(127); 14].join(","),
+            vec!["b".repeat(128); 2].join(",")
+        );
+        assert_eq!(too_long.len(), 2049);
+        for rejected in [
+            too_long,
+            "c".repeat(129),
+            "a,,b".into(),
+            "a;b".into(),
+            "a b".into(),
+            "a=b".into(),
+        ] {
+            assert!(parsed(&["--features", &rejected]).is_err(), "{rejected}");
+        }
+    }
+
+    #[test]
+    fn verification_runs_exactly_these_cargo_commands() {
+        let features = ["--features".to_string(), "serde".to_string()];
+        assert_eq!(
+            serde_json::to_value(commands(&features, true)).unwrap(),
+            serde_json::json!([
+                {"program": "rustc", "args": ["--version", "--verbose"]},
+                {"program": "cargo", "args": ["--version"]},
+                {"program": "cargo", "args": ["update", "--workspace", "--offline"]},
+                {"program": "cargo", "args": ["check", "--workspace", "--locked", "--all-targets", "--offline", "--features", "serde"]},
+                {"program": "cargo", "args": ["test", "--workspace", "--locked", "--offline", "--features", "serde"]},
+            ])
+        );
+    }
+
+    #[test]
+    fn project_code_runs_only_with_explicit_authorization() {
+        let refused = "project preparation rejected: review the preparation first; --allow-project-code is required because Cargo builds and tests execute project code";
+        let missing = std::env::temp_dir().join("rullst-missing-preparation");
+        let verify = |flags: &[&str]| {
+            let matches = command()
+                .try_get_matches_from(
+                    ["verify", "--prepared", missing.to_str().unwrap()]
+                        .iter()
+                        .chain(flags),
+                )
+                .unwrap();
+            execute(&matches).unwrap_err().to_string()
+        };
+        assert_eq!(verify(&[]), refused);
+        let matches = command()
+            .try_get_matches_from(["verify", "--prepared", missing.to_str().unwrap()])
+            .unwrap();
+        assert!(run(&matches).is_err());
+        // Reviewing the plan needs no authorization; it then fails on the
+        // missing preparation instead.
+        assert_ne!(verify(&["--dry-run"]), refused);
+        if std::env::var_os("CARGO_NET_OFFLINE").is_none() {
+            assert_ne!(
+                verify(&["--dry-run", "--allow-network"]),
+                "project preparation rejected: --allow-network conflicts with CARGO_NET_OFFLINE"
+            );
+        }
+    }
+
+    #[test]
+    fn verification_may_change_only_the_lockfile() {
+        let project = super::super::tests::prepared_project();
+        let state = State::load(&project.stage).unwrap();
+        let copy = tempfile::tempdir().unwrap();
+        let root = copy.path();
+        let lock = "version = 4\n";
+        let fill = |root: &Path| {
+            for input in &state.candidate_records {
+                if input.path != "Cargo.lock" && input.sha256.is_some() {
+                    let target = root.join(&input.path);
+                    fs::create_dir_all(target.parent().unwrap()).unwrap();
+                    fs::copy(state.candidate.join(&input.path), target).unwrap();
+                }
+            }
+            fs::write(root.join("Cargo.lock"), lock).unwrap();
+        };
+        fill(root);
+        let files = accepted_files(root, &state).unwrap();
+        assert_eq!(files.len(), 3);
+        assert_eq!(
+            files.iter().find(|file| file.path == "Cargo.lock").unwrap(),
+            &snapshot::record("Cargo.lock", Some(lock.as_bytes()))
+        );
+        fs::write(root.join("src/main.rs"), "fn main() { changed() }\n").unwrap();
+        assert_eq!(
+            accepted_files(root, &state).unwrap_err().to_string(),
+            "project preparation rejected: project execution changed a prepared source input"
+        );
+        let copy = tempfile::tempdir().unwrap();
+        fill(copy.path());
+        fs::write(copy.path().join("build.rs"), "").unwrap();
+        assert_eq!(
+            accepted_files(copy.path(), &state).unwrap_err().to_string(),
+            "project preparation rejected: verification generated or removed unexpected source files"
+        );
     }
 }

@@ -268,3 +268,7 @@ mod tests {
         assert!(!patch.contains(base.to_str().unwrap()));
     }
 }
+
+#[cfg(test)]
+#[path = "process_tests.rs"]
+mod process_tests;
