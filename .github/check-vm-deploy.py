@@ -78,8 +78,10 @@ class Step:
 
 
 def run(command: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None,
-        timeout: int = 600, capture: bool = False, check: bool = True) -> subprocess.CompletedProcess:
-    log("$ " + " ".join(command))
+        timeout: int = 600, capture: bool = False, check: bool = True,
+        quiet: bool = False) -> subprocess.CompletedProcess:
+    if not quiet:
+        log("$ " + " ".join(command))
     result = subprocess.run(
         command, cwd=cwd, env=env, timeout=timeout, text=True,
         stdout=subprocess.PIPE if capture else None,
@@ -118,13 +120,13 @@ class Engine:
         return run([self.name, "compose", *args], cwd=project, env=self.env, **options)
 
     def inspect(self, container: str) -> dict:
-        return json.loads(self.output("inspect", container))[0]
+        return json.loads(self.output("inspect", container, quiet=True))[0]
 
     def containers(self, service: str | None = None) -> list[str]:
         filters = ["--filter", f"label=com.docker.compose.project={PROJECT}"]
         if service:
             filters += ["--filter", f"label=com.docker.compose.service={service}"]
-        return self.output("ps", "-aq", *filters).split()
+        return self.output("ps", "-aq", *filters, quiet=True).split()
 
 
 def extract_archives(packages: Path, version: str, work: Path) -> tuple[Path, list[str]]:
