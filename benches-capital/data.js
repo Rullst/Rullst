@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793250700143,
+  "lastUpdate": 1793261669151,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -13905,6 +13905,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/9ea4745628fdbfaf646141c8473fd6d34c745479"
         },
         "date": 1793250699570,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "25aa0268e54dcee69526edb62ef22879bf225612",
+          "message": "Merge pull request #557 from Rullst/test/v13-alpha3-cli-mutation\n\ntest(cli): targeted mutation campaign and CLI mutation gate",
+          "timestamp": "2026-10-29T04:44:43-03:00",
+          "tree_id": "1f09fcc854f27cfe3072b486658b6288fcd214d4",
+          "url": "https://github.com/Rullst/Rullst/commit/25aa0268e54dcee69526edb62ef22879bf225612"
+        },
+        "date": 1793261668301,
         "tool": "cargo",
         "benches": [
           {
