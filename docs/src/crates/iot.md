@@ -2,7 +2,7 @@
 ### *"Embedded Sensor Protocols, Ed25519 OTA Gate & Edge Computing for Rust"*
 
 > [!IMPORTANT]
-> This page describes the v13 prerelease, published as `13.0.0-alpha.2`. Cargo
+> This page describes the v13 prerelease, published as `13.0.0-alpha.4`. Cargo
 > never selects a prerelease on its own, so its dependency examples pin that
 > version exactly. The v12 line (`rullst-iot@12`) reached end of life on
 > 16 October 2026; see the [release record](../v12.md). Use a path dependency only for checkout-local
