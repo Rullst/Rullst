@@ -187,7 +187,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
         let exec = query #(#bind_updates)*.bind(self.id) #update_tenant_binding;
         let timeout = rullst_orm::schema::get_query_timeout();
         let update_result = if let Some(t) = timeout {
-            tokio::time::timeout(t, exec.execute(&mut *conn))
+            rullst_orm::_tokio::time::timeout(t, exec.execute(&mut *conn))
                 .await
                 .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
         } else {
@@ -248,7 +248,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                         let exec = query #(#bind_inserts)*;
                         let timeout = rullst_orm::schema::get_query_timeout();
                         if let Some(t) = timeout {
-                            tokio::time::timeout(t, exec.fetch_one(&mut *conn))
+                            rullst_orm::_tokio::time::timeout(t, exec.fetch_one(&mut *conn))
                                 .await
                                 .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
                         } else {
@@ -267,7 +267,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                         let exec = query #(#bind_inserts)*;
                         let timeout = rullst_orm::schema::get_query_timeout();
                         if let Some(t) = timeout {
-                            tokio::time::timeout(t, exec.execute(&mut *conn))
+                            rullst_orm::_tokio::time::timeout(t, exec.execute(&mut *conn))
                                 .await
                                 .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
                         } else {

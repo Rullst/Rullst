@@ -146,7 +146,7 @@ pub fn generate_delete_all_methods(parsed: &ParsedModel) -> TokenStream {
             }
             let timeout = rullst_orm::schema::get_query_timeout();
             if let Some(t) = timeout {
-                tokio::time::timeout(t, query.execute(executor))
+                rullst_orm::_tokio::time::timeout(t, query.execute(executor))
                     .await
                     .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
             } else {

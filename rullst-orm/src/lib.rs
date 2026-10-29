@@ -85,6 +85,8 @@ pub use serde_json as _serde_json;
 #[doc(hidden)]
 pub use sqlx as _sqlx;
 #[doc(hidden)]
+pub use tokio as _tokio;
+#[doc(hidden)]
 pub use tracing as _tracing;
 
 #[cfg(feature = "pgvector")]

@@ -65,7 +65,12 @@ fn models() -> Vec<DeriveInput> {
     vec![
         parse_quote! {
             #[derive(Orm)]
-            pub struct Lesson { pub id: i32, pub title: String }
+            pub struct Lesson {
+                pub id: i32,
+                pub title: String,
+                #[orm(has_many = "Note", foreign_key = "lesson_id", local_key = "id")]
+                notes: Option<Vec<Note>>,
+            }
         },
         parse_quote! {
             #[derive(Orm)]
@@ -116,20 +121,21 @@ fn the_span_is_built_before_the_body_and_entered_only_while_enabled() {
 }
 
 #[test]
-fn derived_models_name_tracing_only_through_rullst_orm() {
+fn derived_models_reach_tracing_and_tokio_only_through_rullst_orm() {
     for input in models() {
         let generated = expansion(&input);
         let text = generated.to_string();
-        // `#[tracing::instrument]` expands to `::tracing` paths, which only a
-        // direct `tracing` dependency of the application resolves.
+        // `#[tracing::instrument]` expands to `::tracing` paths and a bare
+        // `tokio::` path needs a `tokio` dependency: either resolves only
+        // when the application declares that crate itself.
         assert!(!text.contains("_tracing :: instrument"), "{text}");
-        assert!(
-            !identifiers(generated)
-                .iter()
-                .any(|ident| ident == "tracing"),
-            "{text}"
-        );
+        let crates = identifiers(generated)
+            .into_iter()
+            .filter(|ident| ident == "tracing" || ident == "tokio")
+            .collect::<Vec<_>>();
+        assert!(crates.is_empty(), "{crates:?}: {text}");
         assert!(text.contains("rullst_orm :: _tracing :: info_span !"));
+        assert!(text.contains("rullst_orm :: _tokio :: time :: timeout ("));
     }
 }
 

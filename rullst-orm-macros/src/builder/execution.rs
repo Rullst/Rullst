@@ -163,7 +163,7 @@ pub fn generate_execution_methods(
                 }
                 let timeout = rullst_orm::schema::get_query_timeout();
                 if let Some(t) = timeout {
-                    tokio::time::timeout(t, query.fetch_one(pool))
+                    rullst_orm::_tokio::time::timeout(t, query.fetch_one(pool))
                         .await
                         .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
                 } else {
@@ -221,7 +221,7 @@ pub fn generate_execution_methods(
                 }
                 let timeout = rullst_orm::schema::get_query_timeout();
                 if let Some(t) = timeout {
-                    tokio::time::timeout(t, query.fetch_one(pool))
+                    rullst_orm::_tokio::time::timeout(t, query.fetch_one(pool))
                         .await
                         .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
                 } else {
@@ -262,7 +262,7 @@ pub fn generate_execution_methods(
                 }
                 let timeout = rullst_orm::schema::get_query_timeout();
                 if let Some(t) = timeout {
-                    tokio::time::timeout(t, query.fetch_all(executor))
+                    rullst_orm::_tokio::time::timeout(t, query.fetch_all(executor))
                         .await
                         .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
                 } else {
