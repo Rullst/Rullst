@@ -141,6 +141,8 @@ cargo-rullst/src/generators/build/upgrade/backup/restore.rs:275:5: replace is_li
 cargo-rullst/src/generators/build/upgrade/backup/restore.rs:278:36: replace & with ^ in is_link
 cargo-rullst/src/generators/build/upgrade/backup/restore.rs:278:36: replace & with | in is_link
 cargo-rullst/src/generators/build/upgrade/backup/restore.rs:278:44: replace != with == in is_link
+cargo-rullst/src/generators/build/upgrade/backup/restore.rs:53:31: replace + with * in restore_from
+cargo-rullst/src/generators/build/upgrade/backup/restore.rs:71:75: replace + with * in restore_from
 cargo-rullst/src/generators/consumer_files.rs:65:27: replace match guard error.kind() == io::ErrorKind::NotFound with true in reject_links
 cargo-rullst/src/generators/deploy_doctor/input.rs:109:26: replace || with && in read
 cargo-rullst/src/generators/deploy_doctor/input.rs:109:45: replace || with && in read
