@@ -41,8 +41,9 @@ docker inspect my-cloud-saas:<git-sha>
 ```
 
 Pin the deployed image by digest. Run the application's tests and a container
-scanner against the exact candidate. The CLI's `deploy` command scaffolds or
-invokes Fly.io, Railway, Render and VPS paths; AWS App Runner/ECS and Google
+scanner against the exact candidate. The CLI's `deploy` command writes a
+`Dockerfile`, `compose.yaml` and `Caddyfile` for a Linux VM (see
+[Deploy to a Linux VM](../vm-deployment.md)); AWS App Runner/ECS and Google
 Cloud Run configuration remains explicit cloud work.
 
 ## 4. Configure the cloud boundary

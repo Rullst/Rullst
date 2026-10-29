@@ -375,8 +375,8 @@ Before it serves real users:
   development `.env`, it reports `[FAIL] environment_target: Set RULLST_ENV
   to the requested --target (production or staging).` On 12.x, review the
   [deployment preparation checklist](31-end-to-end-saas-aws-gcp.md) by hand;
-- choose a platform: [guided PaaS deployment](26-one-click-paas-deploy.md)
-  (`cargo rullst deploy` writes Fly.io, Railway, Render or VPS files),
+- choose a platform: [guided container deployment](26-one-click-paas-deploy.md)
+  (`cargo rullst deploy` writes a `Dockerfile`, `compose.yaml` and `Caddyfile` for a Linux VM; see [Deploy to a Linux VM](../vm-deployment.md)),
   [Kubernetes](25-kubernetes-deployment.md), or a container from
   `cargo rullst dockerize`. Run migrations once per release, before starting
   the new version.

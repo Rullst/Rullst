@@ -226,8 +226,8 @@ wizard. It asks, one screen at a time:
    nothing is built and no network is used;
 3. for the Blank starter, **full-stack web app** or **JSON API**;
 4. the **primary database** (Turso and *No database* only for Blank);
-5. **optional features** (zero or more): AI, Redis adapters, Dockerfile, Nix
-   flake and the Turso, MongoDB, DuckDB, SurrealDB and Qdrant add-ons;
+5. **optional features** (zero or more): AI, Redis adapters, Dockerfile
+   and the Turso, MongoDB, DuckDB, SurrealDB and Qdrant add-ons;
 6. a **review** of the answers, the file tree and the commands `new` will run
    (the initial migration, unless skipped or database-free), with *Create
    the project*, *Back* and *Cancel*.
@@ -268,7 +268,7 @@ The choices that materially change the generated application:
   * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it. Its example write route, `POST /api/messages`, is a bearer machine endpoint: clients send `Authorization: Bearer <API_TOKEN>` with the random `API_TOKEN` written to `.env`, and the server does not start without it (see [which security layer to use](security-layers.md#what-generated-applications-already-have)). The interactive wizard then skips its blueprint and build-type questions instead of letting their Full-Stack default replace the flag.
   * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The
     `.dockerignore` mirrors the generated `.gitignore`: it excludes `.env` and
-    `.env.*` (except `.env.example`), `Foundry.toml`, SQLite and DuckDB files
+    `.env.*` (except `.env.example`), SQLite and DuckDB files
     (`*.db`, `*.sqlite`, `*.sqlite3`, `*.duckdb` and their journals, one list
     shared by both files) and the
     host-local `.cargo/config.toml` described below, so the builder's
@@ -1185,6 +1185,10 @@ the next steps: create `.env.production`, point DNS at the VM, run
 Nothing is uploaded, started or deployed. A `Cargo.toml` package name that is
 not a valid Cargo name is refused before anything is written, because the
 Dockerfile names the binary after it.
+
+Step by step: [Deploy to a Linux VM](vm-deployment.md), and the guides for
+[Hetzner Cloud](deploy-hetzner.md), [DigitalOcean](deploy-digitalocean.md),
+[Oracle Cloud](deploy-oracle-cloud.md) and [Google Cloud](deploy-google-cloud.md).
 
 **Removed in 13.0.0-alpha.4:** the Fly.io, Railway and Render targets
 (`--platform fly|railway|render` now fails before writing anything;
