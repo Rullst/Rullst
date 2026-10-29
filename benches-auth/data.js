@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793261206995,
+  "lastUpdate": 1793263673043,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -18555,6 +18555,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4263,
             "range": "± 44",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "03d3eabebd3c8ea8e20b9403f44ce16f4567e6b7",
+          "message": "Merge pull request #555 from Rullst/feat/v13-alpha4-lean-cli\n\nfeat(cli)!: lean main CLI, cargo-rullst-extras, deployment guides and --json contract",
+          "timestamp": "2026-10-29T05:28:27-03:00",
+          "tree_id": "6b58842afed0ef71a91246cda98080194af01036",
+          "url": "https://github.com/Rullst/Rullst/commit/03d3eabebd3c8ea8e20b9403f44ce16f4567e6b7"
+        },
+        "date": 1793263672098,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1029,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 748,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1786,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4265,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
