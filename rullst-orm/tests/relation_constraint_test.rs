@@ -4,9 +4,9 @@
 
 use std::sync::Arc;
 
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "constraint_accounts")]
 struct ConstraintAccount {
     id: i32,
@@ -24,14 +24,14 @@ struct ConstraintAccount {
     tags: Option<Vec<ConstraintTag>>,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "constraint_tags")]
 struct ConstraintTag {
     id: i32,
     label: String,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "constraint_documents")]
 struct ConstraintDocument {
     id: i32,
@@ -40,7 +40,7 @@ struct ConstraintDocument {
     filename: String,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "constraint_owners")]
 struct Owner {
     id: i32,
@@ -49,7 +49,7 @@ struct Owner {
 
 /// `belongs_to` without `foreign_key` reads `<related model>_id` from this
 /// model (`owner_id`), not `<this model>_id`.
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "constraint_pets")]
 struct ConstraintPet {
     id: i32,

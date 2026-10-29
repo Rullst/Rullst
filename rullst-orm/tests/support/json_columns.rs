@@ -1,9 +1,9 @@
 //! `#[sqlx(json)]` fields round-trip through the generated INSERT, UPDATE and
-//! partial update on a strict driver, whose `FromRow` decodes them through
+//! partial update on a strict driver, whose derived `FromRow` decodes them through
 //! SQLx `Json`. `Preferences` implements only Serde, not `Encode`.
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -12,7 +12,7 @@ pub struct Preferences {
     pub beta: bool,
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "json_profiles")]
 pub struct JsonProfile {
     pub id: i32,

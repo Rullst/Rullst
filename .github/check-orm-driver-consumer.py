@@ -16,13 +16,13 @@ import tomllib
 
 
 DRIVERS = {"strict-postgres": "postgres", "strict-mysql": "mysql", "strict-sqlite": "sqlite"}
-SOURCE = """use rullst_orm::{FromRow, Orm};
+SOURCE = """use rullst_orm::Orm;
 
 #[derive(Debug, Clone, Copy, rullst_orm::Enum)]
 #[rullst_enum(type_name = "consumer_state", rename_all = "snake_case")]
 pub enum State { Active, Disabled }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "consumer_records")]
 pub struct Record {
     pub id: i32,
@@ -31,7 +31,7 @@ pub struct Record {
 
 // Auditable, tenant-scoped and soft-deleting, so every generated query span
 // (restore and force_delete included) is compiled too.
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "consumer_notes", tenant_column = "tenant_id", auditable)]
 pub struct Note {
     pub id: i32,

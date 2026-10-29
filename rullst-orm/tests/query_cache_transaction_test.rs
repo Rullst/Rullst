@@ -3,11 +3,11 @@
     not(any(feature = "strict-postgres", feature = "strict-mysql"))
 ))]
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "cache_transaction_records")]
 struct CacheTransactionRecord {
     pub id: i32,

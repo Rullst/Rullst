@@ -387,7 +387,7 @@
       <h2>📝 What's Being Measured</h2>
       <div class="code-block">
 <span class="cmt">// The current CPU benchmark constructs this query-builder value.</span>
-<span class="kw">#[derive</span>(<span class="mac">Debug, FromRow, Orm</span>)<span class="kw">]</span>
+<span class="kw">#[derive</span>(<span class="mac">Debug, Orm</span>)<span class="kw">]</span>
 <span class="kw">#[orm</span>(table = <span class="str">"users"</span>)<span class="kw">]</span>
 <span class="kw">struct</span> <span class="fn">User</span> { id: i32, name: String, email: String }
 

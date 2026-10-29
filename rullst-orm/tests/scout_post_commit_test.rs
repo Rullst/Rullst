@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use rullst_orm::{Error, Orm, SearchEngine, set_search_engine};
 use serde_json::Value;
 
-#[derive(Debug, Clone, rullst_orm::FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "scout_post_commit_models", searchable)]
 struct ScoutPostCommitModel {
     pub id: i32,

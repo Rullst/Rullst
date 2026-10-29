@@ -22,9 +22,9 @@ records a compiled dependency profile (`rullst` with `strict-sqlite`, plus
 # #[cfg(feature = "orm")]
 # mod example {
 use rullst::orm as rullst_orm;
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "lessons", tenant_column = "tenant_id", auditable)]
 pub struct Lesson {
     pub id: i32,

@@ -2344,9 +2344,9 @@ isolation, response failures and extracted consumers are required evidence.
 
 ### 5.1. Model Definition & CRUD
 ```rust,no_run
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,

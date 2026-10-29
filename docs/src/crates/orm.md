@@ -198,10 +198,10 @@ Since 13.0.0-alpha.3 the crate enables no driver by default; without one,
 ### Zero-to-Hero Example
 
 ```rust,no_run
-use rullst_orm::{Orm, FromRow};
+use rullst_orm::Orm;
 
 // 1. Just add the Orm macro to your struct!
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 pub struct User {
     pub id: i32, // ID = 0 means it hasn't been saved yet
     pub name: String,
@@ -252,9 +252,9 @@ fields marked `#[orm(db_default)]`.
 `RowSnapshot`, and `save()` writes only the columns that this handle changed:
 
 ```rust,no_run
-use rullst_orm::{FromRow, Orm, RowSnapshot};
+use rullst_orm::{Orm, RowSnapshot};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "profiles")]
 pub struct Profile {
     pub id: i32,
@@ -331,9 +331,9 @@ column still race, and the last one wins:
   PostgreSQL and `?` on SQLite and MySQL/MariaDB.
 
 ```rust,no_run
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "students")]
 pub struct Student {
     pub id: i32,
@@ -373,9 +373,9 @@ names only the constraint, because the database's own text can quote the
 rejected value (MySQL reports `Duplicate entry 'alice@example.com'`).
 
 ```rust,no_run
-use rullst_orm::{Error, FromRow, Orm};
+use rullst_orm::{Error, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "members")]
 pub struct Member {
     pub id: i32,
@@ -412,9 +412,9 @@ missing values with `where_null`. `RullstValue` is `#[non_exhaustive]`; give a
 `match` on it a wildcard arm.
 
 ```rust,no_run
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "progress")]
 pub struct Progress {
     pub id: i32,
@@ -638,9 +638,9 @@ default:
 ```rust,ignore
 // Needs a strict driver feature (see below).
 use rullst_orm::chrono::{DateTime, NaiveDate, Utc};
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "events")]
 pub struct Event {
     pub id: i32,
@@ -669,7 +669,7 @@ ORM writes never touch it. `#[orm(skip)]` means something else: the field is
 not a database column for the ORM, so a filter, ordering, grouping or
 `select` on it fails with `Error::Validation`. A skipped field that the table
 does not have also needs `#[sqlx(skip)]` (or `#[sqlx(default)]`), because the
-application's SQLx `FromRow` still reads `#[orm(skip)]` fields.
+model's `FromRow` still reads `#[orm(skip)]` fields.
 
 | Option | The column | Filters, ordering, grouping, `select` | ORM writes |
 | --- | --- | --- | --- |

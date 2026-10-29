@@ -3,9 +3,9 @@
 
 mod partial_update_contract;
 
-use rullst_orm::{Error, FromRow, Orm, Policy};
+use rullst_orm::{Error, Orm, Policy};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "partial_lessons", policy = "LessonPolicy")]
 struct Lesson {
     id: i32,

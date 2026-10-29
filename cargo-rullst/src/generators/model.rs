@@ -179,9 +179,9 @@ pub(crate) fn render_model(
 ) -> String {
     match backend {
         ProjectOrmBackend::Sqlx => format!(
-            r#"use rullst::db::{{FromRow, Orm, RowSnapshot}};
+            r#"use rullst::db::{{Orm, RowSnapshot}};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "{plural_name}")]
 pub struct {pascal_name} {{
     pub id: i32,
@@ -253,8 +253,8 @@ mod tests {
             .lines()
             .filter(|line| line.starts_with("use "))
             .collect();
-        assert_eq!(imports, ["use rullst::db::{FromRow, Orm, RowSnapshot};"]);
-        assert!(model.contains("#[derive(Debug, Clone, FromRow, Orm)]"));
+        assert_eq!(imports, ["use rullst::db::{Orm, RowSnapshot};"]);
+        assert!(model.contains("#[derive(Debug, Clone, Orm)]"));
         assert!(model.contains("#[orm(table = \"blog_posts\")]"));
         assert!(model.contains("pub struct BlogPost {\n    pub id: i32,"));
         assert!(model.contains("    #[sqlx(skip)]\n    pub snapshot: RowSnapshot,\n}"));

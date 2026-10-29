@@ -1,10 +1,10 @@
 //! A model whose only persisted column is `id` must insert and update on
 //! every driver (`DEFAULT VALUES`, or `() VALUES ()` on MySQL/MariaDB).
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_markers")]
 struct ContractMarker {
     id: i32,

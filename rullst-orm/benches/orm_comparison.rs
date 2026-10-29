@@ -12,8 +12,8 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 use sea_orm::entity::prelude::*;
 use sea_orm::{ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, QuerySelect, Set};
 use std::path::{Path, PathBuf};
@@ -23,7 +23,7 @@ const ROW_COUNT: i32 = 100;
 const SQLITE_POLICY: &str =
     "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000;";
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "bench_users")]
 struct RullstUser {
     pub id: i32,

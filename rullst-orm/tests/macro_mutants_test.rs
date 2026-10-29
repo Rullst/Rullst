@@ -1,6 +1,4 @@
-use rullst_orm::_sqlx::FromRow;
-
-#[derive(rullst_orm::Orm, Debug, Clone, PartialEq, FromRow)]
+#[derive(rullst_orm::Orm, Debug, Clone, PartialEq)]
 #[orm(table_name = "test_mutants")]
 #[orm(soft_delete)]
 struct MutantModel {

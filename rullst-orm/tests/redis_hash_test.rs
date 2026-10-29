@@ -2,9 +2,8 @@
 
 use rullst_orm::Orm;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Orm, FromRow, PartialEq, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, Orm, PartialEq, Default)]
 #[orm(table = "redis_test_docs")]
 pub struct RedisDoc {
     pub id: i32,

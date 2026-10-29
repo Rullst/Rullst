@@ -2,16 +2,16 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::{Error, FromRow, Orm};
+use rullst_orm::{Error, Orm};
 
-#[derive(Clone, Debug, PartialEq, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, PartialEq, rullst_orm::Orm)]
 #[orm(table = "shared_users")]
 struct SharedUser {
     id: i32,
     name: String,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "shared_posts")]
 struct SharedPost {
     id: i32,
@@ -22,7 +22,7 @@ struct SharedPost {
     author: Option<SharedUser>,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "shared_members")]
 struct SharedMember {
     id: i32,
@@ -37,7 +37,7 @@ struct SharedMember {
     notices: Option<Vec<SharedNotice>>,
 }
 
-#[derive(Clone, Debug, PartialEq, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, PartialEq, rullst_orm::Orm)]
 #[orm(table = "shared_notices")]
 struct SharedNotice {
     id: i32,
@@ -46,14 +46,14 @@ struct SharedNotice {
 }
 
 /// Deliberately not `Clone`: sharing it among parents must fail closed.
-#[derive(Debug, FromRow, rullst_orm::Orm)]
+#[derive(Debug, rullst_orm::Orm)]
 #[orm(table = "shared_badges")]
 struct SharedBadge {
     id: i32,
     label: String,
 }
 
-#[derive(Debug, FromRow, rullst_orm::Orm)]
+#[derive(Debug, rullst_orm::Orm)]
 #[orm(table = "shared_holders")]
 struct SharedHolder {
     id: i32,

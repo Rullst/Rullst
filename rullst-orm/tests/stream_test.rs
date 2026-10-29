@@ -2,12 +2,12 @@
 
 use futures::StreamExt;
 use rullst_orm::{
-    Error, FromRow, Orm,
+    Error, Orm,
     schema::{Blueprint, Schema},
 };
 use std::fs;
 
-#[derive(FromRow, rullst_orm::Orm, Debug, Clone, PartialEq)]
+#[derive(rullst_orm::Orm, Debug, Clone, PartialEq)]
 #[orm(table = "stream_test_users")]
 pub struct StreamUser {
     pub id: i32,

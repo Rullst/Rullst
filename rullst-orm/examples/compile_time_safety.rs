@@ -1,9 +1,9 @@
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 
 // When we derive Orm, it will generate a `UserColumn` enum automatically
 // because our struct is named `User`!
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,

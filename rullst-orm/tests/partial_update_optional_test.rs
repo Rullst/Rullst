@@ -3,7 +3,7 @@
 // ORM initialization is process-global, so this contract has its own test binary.
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "optional_products")]
 pub struct OptionalProduct {
     pub id: i32,

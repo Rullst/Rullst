@@ -5,9 +5,9 @@
 use std::sync::Mutex;
 
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{Error, FromRow, Orm, SearchEngine, set_search_engine};
+use rullst_orm::{Error, Orm, SearchEngine, set_search_engine};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_articles", searchable)]
 struct ContractArticle {
     id: i32,

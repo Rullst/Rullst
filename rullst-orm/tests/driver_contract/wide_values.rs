@@ -1,10 +1,10 @@
 //! `i64` values and `None` bind on every driver: filters on a `BIGINT`
 //! column beyond `i32`, `Option` filters and a raw `NULL` assignment.
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_wide_values")]
 struct ContractWideValue {
     id: i32,

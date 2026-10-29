@@ -17,9 +17,9 @@ rejected), floating-point numbers, dates (`chrono` `NaiveDate`; `DateTime<Utc>` 
 semantic widgets that Rust's type alone cannot reveal are selected explicitly:
 
 ```rust
-use rullst::db::{FromRow, Nexus, Orm};
+use rullst::db::{Nexus, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "users")]
 #[nexus(label = "Users", icon = "👥")]
 pub struct User {
@@ -129,7 +129,7 @@ A table keyed by several columns, such as `lesson_progress (user_id,
 lesson_id)`, lists them all, in key order:
 
 ```rust,ignore
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "lesson_progress")]
 #[nexus(primary_key = "user_id, lesson_id")]
 pub struct LessonProgress {
@@ -382,9 +382,9 @@ rows. The column must be a text, non-primary-key field. The derive makes it
 hidden and read-only so browser form data cannot choose the tenant:
 
 ```rust
-use rullst::db::{FromRow, Nexus, Orm};
+use rullst::db::{Nexus, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "projects", tenant = "organization_id")]
 pub struct Project {
     pub id: i32,
@@ -448,9 +448,9 @@ single-row or multi-row site configuration settings (such as developer name,
 title, bio, email, personal website, avatar photo, and social links).
 
 ```rust
-use rullst::db::{Orm, FromRow, Nexus};
+use rullst::db::{Orm, Nexus};
 
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "profile")]
 pub struct Profile {
     pub id: i32,

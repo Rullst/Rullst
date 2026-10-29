@@ -3,14 +3,12 @@
 //! database, so they run under every feature combination.
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::FromRow;
-
 const DIAGNOSIS: &str = "F32.1 moderate depressive episode";
 const RECOVERY_NOTE: &str = "call sister before discharge";
 const CPF: &str = "123.456.789-00";
 const INTERNAL_CODE: &str = "internal-7731";
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "protected_patients", auditable, searchable)]
 struct Patient {
     id: i32,

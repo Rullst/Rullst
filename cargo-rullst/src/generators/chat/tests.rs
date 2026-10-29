@@ -68,7 +68,7 @@ fn malformed_or_missing_rullst_dependency_fails_closed() {
 #[test]
 fn sqlx_chat_models_track_dirty_columns_and_turso_models_do_not() {
     let model = render_chat_models(ProjectOrmBackend::Sqlx);
-    assert!(model.starts_with("use rullst::db::{FromRow, Orm, RowSnapshot};\n"));
+    assert!(model.starts_with("use rullst::db::{Orm, RowSnapshot};\n"));
     assert_eq!(
         model
             .matches("    #[sqlx(skip)]\n    pub snapshot: RowSnapshot,\n}")

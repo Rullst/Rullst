@@ -13,11 +13,11 @@
 // database latency claims.
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 
 // ── model used throughout ────────────────────────────────────────────────
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "bench_users")]
 struct BenchUser {
     pub id: i32,

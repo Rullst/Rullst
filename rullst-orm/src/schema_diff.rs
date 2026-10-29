@@ -248,7 +248,7 @@ mod tests {
         std::fs::write(
             directory.join("models.rs"),
             r#"
-                #[derive(FromRow, Orm)]
+                #[derive(Orm)]
                 #[orm(tenant_column = "account_id", soft_delete(column = "removed_at"), table = "user_projects")]
                 struct Project {
                     id: i64,

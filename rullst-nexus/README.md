@@ -129,9 +129,9 @@ The derive hides and protects that field, and Nexus obtains its value only from
 the trusted `TenantContext` installed by application authentication middleware:
 
 ```rust,ignore
-use rullst::db::{FromRow, Nexus, Orm};
+use rullst::db::{Nexus, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "projects", tenant = "organization_id")]
 struct Project {
     id: i64,
