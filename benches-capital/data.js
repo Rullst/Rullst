@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793312720092,
+  "lastUpdate": 1793316289451,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -14384,6 +14384,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ee766c56805d1667d33f9a8cab90f960e1fd2147",
+          "message": "Merge pull request #578 from Rullst/test/v13-alpha4-deploy-smoke\n\ntest(deploy): build and start the generated deployment in CI with Docker and rootless Podman",
+          "timestamp": "2026-10-29T20:01:21-03:00",
+          "tree_id": "cf1e9ed54ab3d4b57e9a55ce458ba5194694dd31",
+          "url": "https://github.com/Rullst/Rullst/commit/ee766c56805d1667d33f9a8cab90f960e1fd2147"
+        },
+        "date": 1793316288393,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
