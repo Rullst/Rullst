@@ -4,6 +4,16 @@
 //! HSM bindings, or post-quantum cryptography. It does provide bounded MQTT 5
 //! PUBLISH and CoAP request encoders. Deterministic fixtures resembling other
 //! capabilities require the explicit `experimental-simulators` feature.
+//!
+//! **Maturity: Experimental**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). The API may
+//! change between 13.x releases, and nothing here has been validated on
+//! physical hardware or against a live broker. The default `std` feature can be
+//! disabled for `no_std` targets. Start with [`OtaManager`] for the signed
+//! firmware gate, or [`MqttPublish`] and [`CoapRequest`] for the packet
+//! encoders. The crate guide's [module
+//! status](https://rullst.github.io/Rullst/book/crates/iot.html#module-status)
+//! table says what each module implements.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 

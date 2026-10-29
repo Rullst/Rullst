@@ -51,7 +51,7 @@ The canonical example source lives in this directory. A separately deployed
 `Rullst/examples` repository is not updated by publishing the framework crates.
 When synchronizing that deployment:
 
-1. copy or merge the example from the exact v12 release commit;
+1. copy or merge the example from the commit of the release tag you deploy;
 2. pin the published `rullst`/component crates to the matching exact version and
    preserve its lockfile;
 3. set `RULLST_PUBLIC_ORIGIN` to the external HTTPS origin;
@@ -60,7 +60,7 @@ When synchronizing that deployment:
 5. retain the offline-fixture labels unless live provider-account conformance is
    tested separately and documented provider by provider.
 
-The v12 CSRF middleware is request-idempotent, so composing this example's
+The CSRF middleware is request-idempotent, so composing this example's
 explicit layer with `Server`'s production baseline emits one matching token. Do
 not work around CSRF by disabling either validation or secure cookie attributes.
 

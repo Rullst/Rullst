@@ -1,3 +1,23 @@
+//! Rullst Studio: the local developer control room for a Rullst application.
+//!
+//! It serves bounded views under `/studio` from sources the application
+//! supplies: a database inspector and ER diagram, OpenAPI reference, queue,
+//! cache, feature-flag, configuration, request and trace views. [`run_studio`]
+//! starts the debug-only server on `127.0.0.1:5555`; [`Studio`] with
+//! [`LocalStudioAccess::loopback_only`] builds the same router for explicit
+//! composition. Both reject release builds and any peer that is not verified as
+//! loopback. There is no production or shared authentication mode.
+//!
+//! **Maturity: Extension**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)), optional and
+//! supported for its documented scope. The default features are `drivers-all`
+//! (every ORM driver) and `queue-sqlite` (Core's SQLite queue); with
+//! `default-features = false`, `strict-sqlite`, `strict-postgres` or
+//! `strict-mysql` selects one backend. The non-default `remote` feature builds
+//! the standalone `rullst-studio` binary for remote projects. See the [crate
+//! guide](https://rullst.github.io/Rullst/book/crates/studio.html) and the
+//! [README](https://github.com/Rullst/Rullst/blob/main/rullst-studio/README.md).
+
 extern crate rullst_core as rullst;
 // Mutation testing covers only the remote-projects mode (`remote`), whose
 // tokens, outbound client, escaping and alerts are security relevant. The

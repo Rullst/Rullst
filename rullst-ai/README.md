@@ -2,7 +2,28 @@
 
 `rullst-ai` is a provider-agnostic LLM client with mandatory outbound prompt-injection checks,
 PII masking, deterministic offline fixtures, JSON mode, explicit JSON Schema output, and a bounded
-tenant-aware RAG pipeline.
+tenant-aware RAG pipeline. It is an **Extension** crate in the
+[maturity tiers](https://rullst.github.io/Rullst/book/maturity.html): optional, and supported
+for the scope documented here.
+
+## Installation
+
+This README describes the v13 prerelease. Cargo never selects a prerelease on its own, so pin
+it exactly:
+
+```toml
+[dependencies]
+rullst-ai = "=13.0.0-alpha.4"
+# With durable SQL chat memory (SqlChatMemory):
+# rullst-ai = { version = "=13.0.0-alpha.4", features = ["sql-memory"] }
+```
+
+Through the umbrella crate, enable the `ai` feature (and `ai-sql-memory` for `SqlChatMemory`)
+and use the crate as `rullst::ai`. You can start without a provider account: empty or `mock_*`
+credentials select the deterministic [offline mode](#offline-mode).
+The [book page](https://rullst.github.io/Rullst/book/crates/ai.html) and the
+[provider capability matrix](https://rullst.github.io/Rullst/book/ai-provider-capabilities.html)
+cover the same API with more context.
 
 ## Provider capabilities
 
@@ -465,7 +486,8 @@ HTTP dispatch and cover every capability the provider declares. Unsupported
 live capabilities remain typed errors in offline mode.
 
 `AiClient::auto()` checks `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`,
-`DEEPSEEK_API_KEY`, `GROQ_API_KEY` (with `GROQ_MODEL`), and `OLLAMA_HOST`. If none is configured,
+`DEEPSEEK_API_KEY`, `GROQ_API_KEY` (with `GROQ_MODEL`), and `OLLAMA_HOST` (with an optional
+`OLLAMA_MODEL`, default `llama3`). If none is configured,
 it selects an offline OpenAI fixture; it never probes localhost implicitly. `OLLAMA_HOST` (and
 the host given to `OllamaProvider::new`) is read the way Ollama reads it: a scheme-less
 `127.0.0.1:11434` or `localhost` means `http` and port 11434 unless a port is named.

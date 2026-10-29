@@ -7,6 +7,24 @@ a standalone Redis transport with Rullst-owned delivery indexes; hosted source
 and package admission passed in PR #236, and final release admission remains
 separate.
 
+**Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
+
+## Installation
+
+This README describes the v13 prerelease; Cargo never selects a prerelease on
+its own, so pin it exactly:
+
+```bash
+cargo add rullst-messaging@=13.0.0-alpha.4
+```
+
+The in-memory broker needs no feature. The optional parts, each described
+below, are the Cargo features `sqlite`, `orm-outbox`, `redis-streams`,
+`schedules-postgres` and `webhooks` (which enables `sqlite`). In a Rullst
+application, enable `messaging` on `rullst` (the crate is then
+`rullst::messaging`), or `messaging-sqlite`, `messaging-orm-outbox`,
+`messaging-redis`, `messaging-schedules-postgres` or `messaging-webhooks`.
+
 ## Implemented boundary
 
 - versioned `rullst.messaging.v1` envelopes;
@@ -42,7 +60,8 @@ The optional remote profile is documented separately in the
 It uses verified TLS, exact replay, server-time lease fencing, bounded retry/DLQ,
 explicit provisioning and partial-write quarantine. It does not implement native
 `XREADGROUP` interoperability, replication/failover, automatic repair or at-rest
-encryption. The facade feature is `messaging-redis`. Local tests use a disposable
+encryption. The crate feature is `redis-streams` (`RedisBroker`); the facade
+feature is `messaging-redis`. Local tests use a disposable
 Redis service, including actual restart, TLS failures and an ORM outbox journey.
 
 ## Durable local profile
@@ -121,8 +140,8 @@ transaction. A supervised worker claims that row and passes it to an
 `OrmOutboxRelay` bound to one exact stream and broker topic.
 
 `publish_claim` validates the claim and publishes its JSON. The broker
-idempotency key is the lowercase hex SHA-256 of the stream, `/`, then the outbox
-`event_key`: the ORM makes event keys unique only within a stream, while a
+idempotency key is the lowercase hex SHA-256 of the stream name, followed by
+`/` and the outbox `event_key`: the ORM makes event keys unique only within a stream, while a
 broker deduplicates per topic, so relays of different streams can share one
 topic without suppressing or conflicting with each other's events.
 `relay_and_ack` then acknowledges the

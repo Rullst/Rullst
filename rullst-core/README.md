@@ -1,6 +1,11 @@
 # Rullst Core ⚙️
 
-`rullst-core` encapsulates the foundational primitives, routing engines, state management, and configuration layers of the Rullst Framework. It acts as the beating heart that orchestrates HTTP handlers, middleware, and backend worker systems.
+`rullst-core` is the runtime of the Rullst framework: the HTTP server and
+Axum-based routing, the default security baseline, configuration, health and
+lifecycle probes, queues, scheduling, caching, storage, realtime and Live UI,
+i18n and process telemetry. The `rullst` facade re-exports it.
+
+**Maturity: Core** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
 
 ## ✨ Features
 
@@ -19,16 +24,19 @@
   cookie or a bounded `Accept-Language` parse and offers a CSRF-protected
   `POST` switch route. See [the guide](https://github.com/Rullst/Rullst/blob/main/docs/src/i18n.md).
 - **Runtime Telemetry:** Exposes process/runtime snapshots and tracing-span collection for consumers such as Rullst Studio.
-- **Distributed Tracing Candidate (v13):** Optional `telemetry::distributed`
-  adds explicit parent trust, approved operation labels, minimized OTLP export
-  and an owned lifecycle. Independent Messaging processes and a standard TLS
-  collector passed local acceptance; hosted source/package admission is pending.
+- **Distributed Tracing Candidate (v13):** `telemetry::distributed` (the
+  optional `telemetry` feature) adds explicit parent trust, approved operation
+  labels, minimized OTLP export and an owned lifecycle. Independent Messaging
+  processes and a standard TLS collector passed local acceptance, and hosted
+  source/package admission passed in PR #236; final release admission remains
+  separate.
   See [the profile](https://github.com/Rullst/Rullst/blob/main/docs/src/distributed-tracing.md).
 - **Recoverable Live UI Candidate (v13):** Explicitly mounted typed views add
   current authorization, complete snapshots, transactional revision conflicts
   and bounded WebSocket recovery. The included browser module never replays
-  uncertain mutations. Local protocol/Chromium restart acceptance passed;
-  hosted source/package admission is pending. See [adoption and limits](https://github.com/Rullst/Rullst/blob/main/docs/src/live-recovery.md).
+  uncertain mutations. Local protocol/Chromium restart acceptance passed, and
+  hosted source/package admission passed in PR #236; final release admission
+  remains separate. See [adoption and limits](https://github.com/Rullst/Rullst/blob/main/docs/src/live-recovery.md).
 - **Lifecycle-aware Readiness:** An opt-in process lifecycle gates new requests
   during startup, dependency unavailability, and graceful drain. It accepts at
   most 32 immutable component labels and exposes counts—not labels or errors—on
@@ -52,7 +60,7 @@
   evidence required in staging and production. Nothing is mounted without a
   credential. See [the guide](https://github.com/Rullst/Rullst/blob/main/docs/src/production-monitoring.md).
 - **Typed Failures:** Server, scheduler, queue, storage, and resilience APIs expose structured errors for fallible paths. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
-- **Dependency Injection:** Type-safe, intuitive global state management across routes and background workers.
+- **Dependency Injection:** A type-indexed container (`di::Container`) shares state across routes and background workers.
 - **Environment Management:** Native `dotenv` and TOML configuration loaders for the Development, Test, Staging and Production environments.
   `Server` and the Artisan `db:*`/`studio` commands resolve the database the
   same way: process `DATABASE_URL`, then `./.env` (never overriding the
@@ -155,18 +163,21 @@
 - **Resumable Private Upload Candidate (v13):** Separate `storage-multipart`
   adds exact-size parts, SHA-256 checks, encrypted tenant/object-bound recovery
   records, completion reconciliation and abort. Native disposable S3 restart and
-  adversarial protocol tests passed locally; full hosted admission remains required.
+  adversarial protocol tests passed locally, and hosted source/package admission
+  passed in PR #239; final release admission remains separate.
   See [private multipart uploads](https://github.com/Rullst/Rullst/blob/main/docs/src/private-multipart-uploads.md).
 
 ## 🚀 Usage
 
-Most developers will not depend on `rullst-core` directly, as it is re-exported seamlessly through the primary `rullst` crate. 
+Most applications depend on the `rullst` crate, which re-exports
+`rullst-core`. A plugin or middleware crate can depend on Core directly. This
+README describes the v13 prerelease; Cargo never selects a prerelease on its
+own, so pin it exactly (the v12 line, `rullst-core@12`, reached end of life on
+16 October 2026):
 
-If you are developing a plugin or advanced middleware for the Rullst ecosystem, you can add it explicitly:
-
-This README describes the v13 prerelease; Cargo never selects a
-prerelease on its own, so pin it exactly (the v12 line, `rullst-core@12`, reached end of life on 16 October 2026):
-`cargo add rullst-core@=13.0.0-alpha.4`.
+```bash
+cargo add rullst-core@=13.0.0-alpha.4
+```
 
 Core is runtime-only by default. Add just the database capabilities the
 application needs:
@@ -176,8 +187,9 @@ application needs:
 rullst-core = { version = "=13.0.0-alpha.4", features = ["orm", "queue-sqlite"] }
 ```
 
-Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis`,
-`scheduler-tz` or `telemetry` only when that integration is required. `orm` adds no SQLx driver:
+Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis` (or `redis` for
+both), `scheduler-tz`, `storage-s3`, `storage-multipart` or `telemetry` only
+when that integration is required. `orm` adds no SQLx driver:
 pair it with `drivers-all` or one `strict-*` backend (`queue-sqlite` adds only
 SQLite). Since 13.0.0-alpha.3 the primary `rullst` crate has no default
 feature either: an application that uses the ORM or the SQLite queue enables
@@ -219,6 +231,8 @@ The process-local registry does not probe dependencies, authorize application
 requests, coordinate replicas, or guarantee load-balancer propagation.
 
 ### Minimal HTTP Server
+
+The example also needs Tokio (`cargo add tokio -F full`):
 
 ```rust
 use rullst_core::{Router, Server};

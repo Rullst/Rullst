@@ -27,6 +27,10 @@
 //! guide at <https://rullst.github.io/Rullst/book/security-layers.html> compares
 //! these layers with the Core baseline and gives one recommended production
 //! stack.
+//!
+//! **Maturity: Core**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). Crate guide:
+//! <https://rullst.github.io/Rullst/book/crates/security.html>.
 
 pub mod error;
 pub use error::*;

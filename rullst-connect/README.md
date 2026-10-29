@@ -6,7 +6,12 @@
 [![Build](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=for-the-badge&logo=github)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml)
 [![License](https://img.shields.io/crates/l/rullst-connect?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-**Rullst Connect** is an elegant, async-first, and Developer Experience (DX) focused OAuth2 authentication library for Rust. It simplifies the integration of social logins into your Rust web applications, providing a standardized interface across multiple providers.
+**Rullst Connect** is the async OAuth 2.0 and OpenID Connect client of the
+Rullst framework. Each sign-in provider implements one `Provider` trait and
+returns a common `ConnectUser`; it also works in plain Axum or Actix
+applications.
+
+**Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
 
 ## 🛡️ Security Engineering
 
@@ -105,8 +110,9 @@ Official support for 11 core providers:
      `email` claim, which Microsoft does not verify; `email_verified` is
      `Some(true)` only when the token also carries the optional claim
      `xms_edov: true` (request `email` and `xms_edov` in the app
-     registration's Token configuration), otherwise `None`. It has no
-     `get_user_from_token`: the identity comes only from the code exchange.
+     registration's Token configuration), otherwise `None`. Its
+     `get_user_from_token` always returns an error: the identity comes only
+     from the code exchange.
    - `MicrosoftProvider` reads Microsoft Graph `/me` through the multi-tenant
      `common` authority, so any Entra tenant and personal Microsoft accounts
      can sign in, and returns no tenant ID; `email` is Graph `mail` or,
@@ -245,6 +251,10 @@ Or manually add it to your `Cargo.toml`:
 rullst-connect = "=13.0.0-alpha.4"
 tokio = { version = "1.52", features = ["full"] }
 ```
+
+In a Rullst application, enable the `oauth` feature of `rullst` instead
+(`oauth-sqlite`, `oauth-postgres`, `oauth-mysql` and `oauth-mock` add the
+matching features); the crate is then `rullst::connect`.
 
 ## 🚀 Quick Start
 
@@ -400,14 +410,17 @@ Sign in with Apple is different: `AppleProvider` always requests
 cross-site POST body. `AuthSession` reads only the query string, and a
 `SameSite=Lax` or `Strict` session cookie is not sent on that POST, so the
 managed `begin_oidc_session` + `AuthSession` flow cannot complete an Apple
-login with a 12.x release. Use the manual state/PKCE/nonce flow with a
-dedicated `SameSite=None; Secure; HttpOnly` challenge cookie, as described in the
-[server-bound OAuth/OIDC tutorial](https://rullst.github.io/Rullst/book/tutorials/42-server-bound-oauth-sessions.html#sign-in-with-apple-form-post-callback).
+login. Use one of:
 
-The v13 prerelease (13.0.0-alpha.1) adds `AuthSessionForm`, which consumes
-the `begin_oidc_session` challenge from the form POST body (at most 16 KiB).
-The session cookie that holds that challenge must still be
-`SameSite=None; Secure`, so give the Apple routes their own session layer.
+- the challenge store above with `ChallengeCookie::for_cross_site_post`, which
+  is what `cargo rullst make:oauth apple` generates;
+- `AuthSessionForm` (since 13.0.0-alpha.1), which consumes the
+  `begin_oidc_session` challenge from the form POST body (at most 16 KiB). The
+  session cookie that holds that challenge must still be
+  `SameSite=None; Secure`, so give the Apple routes their own session layer.
+
+The [server-bound OAuth/OIDC tutorial](https://rullst.github.io/Rullst/book/tutorials/42-server-bound-oauth-sessions.html#sign-in-with-apple-form-post-callback)
+explains the form POST callback.
 
 ### 3. Consume the Callback and Get the User
 
@@ -636,11 +649,16 @@ set expires.
 
 ## 🧑‍💻 Full Example with Axum
 
-You can find a complete working server using the **Axum** framework in the examples directory. Just run:
+The repository's [`rullst-connect/examples/axum_server.rs`](https://github.com/Rullst/Rullst/blob/main/rullst-connect/examples/axum_server.rs)
+is a complete Axum server with Google and GitHub sign-in. From a checkout of
+the repository, run it with offline `mock_*` credentials:
 
 ```bash
-cargo run --example axum_server
+cargo run -p rullst-connect --example axum_server --features mock
 ```
+
+Set `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` and
+`GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET` to use the real providers.
 
 ## 📦 Releasing a New Version
 
@@ -653,7 +671,8 @@ and machine-readable `.github/release-order.json`.
 
 ## 🤝 Contributing
 
-Feel free to open Issues and submit Pull Requests! Want to add a new provider? It's easy! Just implement the `Provider` trait.
+Issues and pull requests are welcome. To use a provider this crate does not
+ship, implement the `Provider` trait in your application.
 
 ## 📄 License
 

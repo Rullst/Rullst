@@ -1,7 +1,20 @@
 //! Trusted exercise and grading contracts. This crate never executes learner code.
 //! Bring your own runner: an application-owned, separately deployed and isolated
-//! runner claims leased jobs and returns signed receipts. See the controller
-//! contract in the Rullst book and the non-executing `byo_runner_controller` example.
+//! runner claims leased jobs and returns signed receipts. See the
+//! [controller contract](https://rullst.github.io/Rullst/book/labs-runner-contract.html)
+//! in the Rullst book and the non-executing `byo_runner_controller` example.
+//!
+//! **Maturity: Experimental**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). The API may
+//! change between 13.x releases.
+//!
+//! No feature is enabled by default; the default build holds the bounded,
+//! versioned exercise, submission, authorization and receipt contracts with no
+//! executor or network/runtime dependency. Enable `sqlite` for the encrypted
+//! shared-local job store (`sqlite::SqliteLabs`) and `receipt-signing` in the
+//! runner's trusted controller. The
+//! [README](https://github.com/Rullst/Rullst/blob/main/rullst-labs/README.md)
+//! describes the application and runner boundary.
 #![forbid(unsafe_code)]
 
 mod authorization;

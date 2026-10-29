@@ -7,6 +7,14 @@ InfinitePay adapter. Provider method coverage is not uniform; inspect the
 selected adapter and test it in the provider sandbox. Other gateways are
 integrated by implementing the provider traits in application code.
 
+`rullst-capital` is an **Extension** crate in the
+[maturity tiers](https://rullst.github.io/Rullst/book/maturity.html): optional,
+and supported for the scope documented here, with InfinitePay marked
+experimental inside it. Start with the [Quickstart](#-quickstart) for the
+Cargo features; the [book page](https://rullst.github.io/Rullst/book/crates/capital.html)
+and the [SaaS billing tutorial](https://rullst.github.io/Rullst/book/tutorials/19-saas-billing-capital.html)
+walk through a complete integration.
+
 ## 🚀 Core Features
 
 - **Provider-neutral contracts:** `BillingProvider` and `MeteredBillingProvider`
@@ -71,7 +79,8 @@ application, as shown in
 
 ## ✨ Supported Providers
 
-The 12.1 SaaS/`make:billing` Stripe integration persists authorized
+The Stripe integration that the SaaS starter and `make:billing` generate
+(since 12.1) persists authorized
 customer bindings, immutable attempts, Checkout Session IDs and atomic event
 receipts. It reconciles current provider state under database revision fencing
 and resumes existing open sessions. Configure the account, credentials, recurring
@@ -218,14 +227,14 @@ metering or webhook paths and says nothing about another provider.
    observability and reconciliation controls are ready, perform the smallest
    provider-permitted real transaction and retain redacted evidence.
 
-The generated SaaS blueprint currently provides a durable Stripe application
+The SaaS starter currently generates a durable Stripe application
 boundary only. It is not a conformance application for every Capital adapter.
 A release claim should name the exact provider, operation, environment and
 observed result rather than saying that “payments work.” See the official
 [Stripe testing](https://docs.stripe.com/testing) and
 [sandbox](https://docs.stripe.com/sandboxes) guidance.
 
-Stripe's v12 normalized path accepts subscription `created`, `updated`,
+Stripe's normalized subscription path (since v12) accepts `created`, `updated`,
 `deleted`, `paused` and `resumed` events. It requires a subscription object,
 bounded subscription/customer IDs and exactly one non-truncated price item;
 multi-item subscriptions need an application-specific integration. Missing
@@ -351,29 +360,27 @@ prerelease; Cargo never selects a prerelease on its own, so pin it exactly
 rullst-capital = "=13.0.0-alpha.4"
 ```
 
-Native invoice PDF is independently opt-in. One-call Mail delivery uses the
-downstream `rullst-mail/capital-invoice` feature, or `rullst/capital-mail` when
-using the umbrella crate:
+The default `axum` feature provides the Axum webhook middleware; everything
+else is opt-in, directly or through the umbrella `rullst` crate, whose
+`capital` feature exposes this crate as `rullst::capital`:
 
-```toml
-rullst = { version = "=13.0.0-alpha.4", features = ["capital-mail"] }
-```
+| `rullst-capital` feature | `rullst` feature | Adds |
+| :--- | :--- | :--- |
+| `axum` (default) | `capital` | Axum webhook middleware (`verify_webhook`, `verify_webhook_with_state`) |
+| `actix` | `capital-actix` | Actix Web webhook middleware |
+| `invoice-pdf` | `capital-pdf` | Native PDF rendering of invoices |
+| `rullst-mail/capital-invoice` | `capital-mail` | One-call delivery of a paid invoice through Mail (includes `invoice-pdf`) |
+| `quota-sql` | `capital-quota-sql` | Durable relational quota accounting (`SqlQuotaStore`) |
+| `webhook-sql` | `capital-webhook-sql` | Durable cross-process webhook replay claims (`SqlWebhookReplayStore`) and the Stripe event inbox (`SqlStripeEventInbox`) |
 
-Durable relational quota accounting is separately opt-in:
+For example:
 
 ```toml
 rullst = { version = "=13.0.0-alpha.4", features = ["capital-quota-sql"] }
 # Or directly: rullst-capital = { version = "=13.0.0-alpha.4", features = ["quota-sql"] }
 ```
 
-Durable cross-process webhook replay claims are independently opt-in:
-
-```toml
-rullst = { version = "=13.0.0-alpha.4", features = ["capital-webhook-sql"] }
-# Or directly: rullst-capital = { version = "=13.0.0-alpha.4", features = ["webhook-sql"] }
-```
-
-Applications using the umbrella crate can derive the bounded billing facade on
+Applications using the umbrella crate (feature `capital`) can derive the bounded billing facade on
 any named struct with an `email: String` field. Optional
 `subscription_id: Option<String>` and `tier: Option<String>` fields enable the
 corresponding helpers; provider initialization remains explicit:
@@ -470,7 +477,7 @@ unique application retry key:
 use rullst::capital::{Billable as _, CapitalError, StripeProvider};
 
 async fn collect(
-    workspace: &impl rullst::capital::Billable,
+    workspace: &(impl rullst::capital::Billable + Sync),
     stripe: &StripeProvider,
 ) -> Result<(), CapitalError> {
     let receipt = workspace
@@ -595,22 +602,26 @@ also take an explicit provider through
 ### Creating Checkout Sessions
 
 ```rust
-use rullst_capital::provider;
+use rullst_capital::{CapitalError, provider};
 
-async fn checkout_handler() -> Result<String, String> {
-    if let Some(p) = provider() {
-        let checkout_url = p.create_checkout_session(
-            "customer@example.com",
-            "plan_pro_monthly",
-            "https://mysaas.com/billing/success",
-        ).await?;
-        
-        Ok(checkout_url)
-    } else {
-        Err("No billing provider configured".to_string())
-    }
+async fn checkout_handler() -> Result<String, CapitalError> {
+    let Some(p) = provider() else {
+        return Err(CapitalError::ConfigurationError(
+            "No billing provider configured".to_string(),
+        ));
+    };
+    p.create_checkout_session(
+        "customer@example.com",
+        "plan_pro_monthly",
+        "https://mysaas.com/billing/success",
+    )
+    .await
 }
 ```
+
+This is the legacy email-based trait method. For Stripe, prefer the
+customer-bound `create_subscription_checkout` described in
+[Customer-bound Stripe subscription checkout](#customer-bound-stripe-subscription-checkout-121).
 
 ### Intercepting and Verifying Webhooks
 

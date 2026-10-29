@@ -1,3 +1,22 @@
+//! The `cargo rullst` command-line interface for Rullst applications.
+//!
+//! Install it as a Cargo subcommand. Name the exact version, the one this page
+//! documents: Cargo never selects a prerelease on its own.
+//!
+//! ```text
+//! cargo install cargo-rullst --version =<version> --locked
+//! cargo rullst new my_app
+//! ```
+//!
+//! `cargo rullst new` creates a project from the Blank, API or SaaS starter;
+//! `cargo rullst --help` lists every command, and `cargo rullst` alone opens an
+//! interactive home screen. The supported interface is the commands, their
+//! flags and the versioned `--json` output described in the
+//! [CLI reference](https://rullst.github.io/Rullst/book/cli_reference.html).
+//! This library is the CLI's implementation, shared by its binaries and tests;
+//! it is not documented as a framework API. Applications depend on the
+//! [`rullst`](https://docs.rs/rullst) crate instead.
+
 #![cfg_attr(
     not(test),
     deny(
