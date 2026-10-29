@@ -1,6 +1,7 @@
 // src/builder/chunking.rs — Offset and stable primary-key chunk traversal.
 
 use crate::parser::ParsedModel;
+use crate::query_span::instrument_query;
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -12,30 +13,12 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
     // order ambiguous.
     let default_order = format!("{table_name}.id ASC");
 
-    vec![quote! {
-        /// Processes rows in offset-based pages.
-        ///
-        /// Without an `order_by`, pages follow the primary key, because SQL
-        /// gives consecutive offset queries no stable order otherwise. An
-        /// explicit `limit()` caps the rows handed to the handler in total and
-        /// an explicit `offset()` is where the traversal starts. Prefer
-        /// [`Self::chunk_by_id`] when the handler mutates the same table;
-        /// offset pagination can skip rows after deletes or reordering.
-        #[rullst_orm::_tracing::instrument(
-            name = "rullst.orm.query",
-            target = "rullst_orm",
-            skip(self, handler),
-            fields(
-                orm.model = stringify!(#name),
-                orm.table = #table_name,
-                orm.operation = "chunk"
-            )
-        )]
-        pub async fn chunk<F, Fut>(&self, size: usize, mut handler: F) -> Result<(), rullst_orm::Error>
-        where
-            F: FnMut(Vec<#name>) -> Fut + Send,
-            Fut: std::future::Future<Output = ()> + Send,
-        {
+    let chunk_traced = instrument_query(
+        name,
+        table_name,
+        "chunk",
+        &["size"],
+        quote! {
             if size == 0 {
                 return Err(rullst_orm::Error::Validation(
                     "chunk() requires a size greater than zero".to_string()
@@ -64,6 +47,60 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
                 })?;
             }
             Ok(())
+        },
+    );
+    let chunk_by_id_traced = instrument_query(
+        name,
+        table_name,
+        "chunk_by_id",
+        &["size"],
+        quote! {
+            if size == 0 {
+                return Err(rullst_orm::Error::Validation(
+                    "chunk_by_id() requires a size greater than zero".to_string()
+                ));
+            }
+            let mut remaining = self.__rullst_explicit_limit();
+            let mut cursor: Option<i32> = None;
+            while let Some(page) = Self::__rullst_chunk_page(size, remaining) {
+                let mut builder = self.clone();
+                builder.order_bindings.clear();
+                builder.order_by = Some(#default_order.to_string());
+                builder.freeze_scope();
+                builder.limit = Some(page);
+                // An explicit offset skips rows once, before the first page;
+                // later pages continue after the last seen key.
+                builder.offset = if cursor.is_none() { self.offset } else { None };
+                if let Some(last_seen_id) = cursor {
+                    builder = builder.__rullst_where_own("id", ">", last_seen_id);
+                }
+                let results = builder.get().await?;
+                let count = results.len();
+                if count == 0 { break; }
+                cursor = results.last().map(|model| model.id);
+                handler(results).await?;
+                if count < page { break; }
+                remaining = remaining.map(|left| left.saturating_sub(count));
+            }
+            Ok(())
+        },
+    );
+
+    vec![quote! {
+        /// Processes rows in offset-based pages.
+        ///
+        /// Without an `order_by`, pages follow the primary key, because SQL
+        /// gives consecutive offset queries no stable order otherwise. An
+        /// explicit `limit()` caps the rows handed to the handler in total and
+        /// an explicit `offset()` is where the traversal starts. Prefer
+        /// [`Self::chunk_by_id`] when the handler mutates the same table;
+        /// offset pagination can skip rows after deletes or reordering.
+        pub async fn chunk<F, Fut>(&self, size: usize, mut handler: F) -> Result<(), rullst_orm::Error>
+        where
+            F: FnMut(Vec<#name>) -> Fut + Send,
+            Fut: std::future::Future<Output = ()> + Send,
+        {
+            #chunk_traced
         }
 
         /// Transaction-aware counterpart of [`Self::chunk`], with the same
@@ -111,49 +148,12 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
         /// `limit()` caps the rows handed to the handler in total, and an
         /// explicit `offset()` skips that many rows before the first page. The
         /// handler is fallible and stops traversal on its first error.
-        #[rullst_orm::_tracing::instrument(
-            name = "rullst.orm.query",
-            target = "rullst_orm",
-            skip(self, handler),
-            fields(
-                orm.model = stringify!(#name),
-                orm.table = #table_name,
-                orm.operation = "chunk_by_id"
-            )
-        )]
         pub async fn chunk_by_id<F, Fut>(&self, size: usize, mut handler: F) -> Result<(), rullst_orm::Error>
         where
             F: FnMut(Vec<#name>) -> Fut + Send,
             Fut: std::future::Future<Output = Result<(), rullst_orm::Error>> + Send,
         {
-            if size == 0 {
-                return Err(rullst_orm::Error::Validation(
-                    "chunk_by_id() requires a size greater than zero".to_string()
-                ));
-            }
-            let mut remaining = self.__rullst_explicit_limit();
-            let mut cursor: Option<i32> = None;
-            while let Some(page) = Self::__rullst_chunk_page(size, remaining) {
-                let mut builder = self.clone();
-                builder.order_bindings.clear();
-                builder.order_by = Some(#default_order.to_string());
-                builder.freeze_scope();
-                builder.limit = Some(page);
-                // An explicit offset skips rows once, before the first page;
-                // later pages continue after the last seen key.
-                builder.offset = if cursor.is_none() { self.offset } else { None };
-                if let Some(last_seen_id) = cursor {
-                    builder = builder.__rullst_where_own("id", ">", last_seen_id);
-                }
-                let results = builder.get().await?;
-                let count = results.len();
-                if count == 0 { break; }
-                cursor = results.last().map(|model| model.id);
-                handler(results).await?;
-                if count < page { break; }
-                remaining = remaining.map(|left| left.saturating_sub(count));
-            }
-            Ok(())
+            #chunk_by_id_traced
         }
 
         /// Transaction-aware counterpart of [`Self::chunk_by_id`].

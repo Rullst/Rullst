@@ -4,6 +4,7 @@ use crate::models::mutation_parts::{
     TenantPredicate, deleted_effects, instance_hook, tenant_guard, tenant_predicate,
 };
 use crate::parser::ParsedModel;
+use crate::query_span::instrument_query;
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -147,14 +148,12 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         }
     }
 
-    quote! {
-        #[rullst_orm::_tracing::instrument(
-            name = "rullst.orm.query",
-            target = "rullst_orm",
-            skip(self),
-            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "delete")
-        )]
-        pub async fn delete(&self) -> Result<(), rullst_orm::Error> {
+    let delete_traced = instrument_query(
+        name,
+        table_name,
+        "delete",
+        &[],
+        quote! {
             rullst_orm::__transaction_access::ensure_allowed()?;
             let scoped_transaction = rullst_orm::CURRENT_TX
                 .try_with(|transaction| transaction.clone())
@@ -183,20 +182,14 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             }
             transaction.commit().await?;
             post_commit.commit().await
-        }
-
-        /// Deletes through a caller-owned transaction.
-        ///
-        /// Strict post-commit effects require this transaction to be managed by
-        /// `Orm::transaction`; a raw SQLx transaction cannot expose its later
-        /// commit decision to the ORM.
-        #[rullst_orm::_tracing::instrument(
-            name = "rullst.orm.query",
-            target = "rullst_orm",
-            skip(self, tx),
-            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "delete_with_tx")
-        )]
-        pub async fn delete_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
+        },
+    );
+    let delete_with_tx_traced = instrument_query(
+        name,
+        table_name,
+        "delete_with_tx",
+        &[],
+        quote! {
             use rullst_orm::_sqlx::Acquire;
             let mut savepoint = (&mut **tx).begin().await?;
             let operation_callbacks = rullst_orm::post_commit::PostCommitScope::new();
@@ -222,6 +215,21 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             savepoint.commit().await?;
             operation_callbacks.promote_to_parent().await?;
             Ok(())
+        },
+    );
+
+    quote! {
+        pub async fn delete(&self) -> Result<(), rullst_orm::Error> {
+            #delete_traced
+        }
+
+        /// Deletes through a caller-owned transaction.
+        ///
+        /// Strict post-commit effects require this transaction to be managed by
+        /// `Orm::transaction`; a raw SQLx transaction cannot expose its later
+        /// commit decision to the ORM.
+        pub async fn delete_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
+            #delete_with_tx_traced
         }
 
         /// Runs the delete statement and its callbacks; returns the locked

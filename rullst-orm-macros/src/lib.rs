@@ -28,6 +28,7 @@ mod models;
 mod nexus;
 mod parser;
 mod privacy;
+mod query_span;
 mod relationships;
 mod sandbox_test;
 mod turso;

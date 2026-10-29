@@ -7,6 +7,7 @@
 //! rejects `with_trashed()`/`only_trashed()`, which would re-stamp trashed rows.
 
 use crate::parser::{ParsedModel, SoftDeleteConfig};
+use crate::query_span::instrument_query;
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -87,25 +88,32 @@ pub fn generate_delete_all_methods(parsed: &ParsedModel) -> TokenStream {
     } else {
         quote! {}
     };
+    let delete_all_traced = instrument_query(
+        name,
+        table_name,
+        "delete_all",
+        &[],
+        quote! {
+            rullst_orm::dispatch_executor!(pool, |pool| self.delete_all_with_tx_internal(pool).await)
+        },
+    );
+    let delete_all_with_tx_traced = instrument_query(
+        name,
+        table_name,
+        "delete_all_with_tx",
+        &[],
+        quote! {
+            self.delete_all_with_tx_internal(&mut **tx).await
+        },
+    );
+
     quote! {
-    #[rullst_orm::_tracing::instrument(
-        name = "rullst.orm.query",
-        target = "rullst_orm",
-        skip(self),
-        fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "delete_all")
-    )]
     pub async fn delete_all(&self) -> Result<u64, rullst_orm::Error> {
-        rullst_orm::dispatch_executor!(pool, |pool| self.delete_all_with_tx_internal(pool).await)
+        #delete_all_traced
     }
 
-    #[rullst_orm::_tracing::instrument(
-        name = "rullst.orm.query",
-        target = "rullst_orm",
-        skip(self, tx),
-        fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "delete_all_with_tx")
-    )]
     pub async fn delete_all_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<u64, rullst_orm::Error> {
-        self.delete_all_with_tx_internal(&mut **tx).await
+        #delete_all_with_tx_traced
     }
 
     async fn delete_all_with_tx_internal<'e, E>(&self, executor: E) -> Result<u64, rullst_orm::Error>
