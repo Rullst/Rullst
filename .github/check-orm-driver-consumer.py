@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Compile a standalone ORM consumer and reject unrelated SQLx driver edges."""
+"""Compile a standalone ORM consumer and reject unrelated SQLx driver edges.
+
+The consumer depends on nothing but `rullst-orm` and `sqlx` (which
+`#[derive(FromRow)]` names): code that `#[derive(Orm)]` generates must reach
+`tracing` and its other dependencies through `rullst_orm`.
+"""
 
 import argparse
 import json
@@ -24,6 +29,17 @@ pub struct Record {
     pub name: String,
 }
 
+// Auditable, tenant-scoped and soft-deleting, so every generated query span
+// (restore and force_delete included) is compiled too.
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "consumer_notes", tenant_column = "tenant_id", auditable)]
+pub struct Note {
+    pub id: i32,
+    pub tenant_id: String,
+    pub body: String,
+    pub deleted_at: Option<String>,
+}
+
 // Compile real generated entrypoints against the selected concrete executor.
 // Live connection/rollback contracts run separately in the database matrix.
 pub async fn exercise(record: &mut Record) -> Result<(), rullst_orm::Error> {
@@ -36,6 +52,15 @@ pub async fn exercise(record: &mut Record) -> Result<(), rullst_orm::Error> {
     let _ = Record::find_with_tx(record.id, &mut transaction).await?;
     transaction.rollback().await?;
     record.delete().await
+}
+
+pub async fn exercise_note(note: &mut Note) -> Result<(), rullst_orm::Error> {
+    note.save().await?;
+    let _ = Note::query().paginate(1, 10).await?;
+    Note::query().chunk_by_id(10, |_| async { Ok(()) }).await?;
+    note.delete().await?;
+    note.restore().await?;
+    note.force_delete().await
 }
 
 pub async fn exercise_enum() -> Result<State, rullst_orm::Error> {
@@ -58,11 +83,10 @@ def main():
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
     workspace = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))["workspace"]["dependencies"]
-    macro_dependencies = ""
-    for name in ["sqlx", "tokio", "tracing"]:
-        entry = workspace[name]
-        version = entry["version"] if isinstance(entry, dict) else entry
-        macro_dependencies += f'{name} = {{ version = {json.dumps(version)}, default-features = false }}\n'
+    # `#[derive(FromRow)]` names `sqlx`; nothing else is declared.
+    sqlx = workspace["sqlx"]
+    sqlx_version = sqlx["version"] if isinstance(sqlx, dict) else sqlx
+    sqlx_dependency = f'sqlx = {{ version = {json.dumps(sqlx_version)}, default-features = false }}\n'
     with tempfile.TemporaryDirectory(prefix="rullst-orm-driver-consumer-") as temporary:
         project = Path(temporary)
         (project / "src").mkdir()
@@ -71,7 +95,7 @@ def main():
             'edition = "2024"\npublish = false\n[workspace]\n[dependencies]\n'
             f'rullst-orm = {{ path = {json.dumps(str(root / "rullst-orm"))}, '
             f'default-features = false, features = [{json.dumps(args.feature)}] }}\n'
-            + macro_dependencies
+            + sqlx_dependency
             + '[lints.rust]\nunexpected_cfgs = { level = "warn", check-cfg = [\'cfg(feature, values("redis"))\'] }\n',
             encoding="utf-8",
         )
