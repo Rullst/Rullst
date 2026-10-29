@@ -15,6 +15,12 @@ A prepared version section does not establish that its tag or crates exist.
   `RULLST_OPENING=daily` restores the once-a-day animation and
   `RULLST_OPENING=static` turns it off; `RULLST_REDUCED_MOTION` still applies.
 
+### Dependencies
+
+- `crypto-bigint` 0.7.6 → 0.7.10 (with `ctutils` 0.4.7) in the workspace and
+  the `rullst` and `rullst-nexus` fuzz lockfiles: crates.io yanked 0.7.6
+  through 0.7.8.
+
 ## [13.0.0-alpha.3] - 2026-10-23
 
 Third v13 prerelease, for evaluation. It fixes the problems found while
