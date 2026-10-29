@@ -99,6 +99,7 @@ rullst-core|queue-redis
 rullst-core|cache-redis
 rullst-core|scheduler-tz
 rullst-nexus|tz
+rullst-nexus|ai
 rullst-core|storage-s3
 rullst-core|storage-multipart
 rullst-core|telemetry
@@ -235,6 +236,7 @@ rullst|security-redis
 rullst|iot
 rullst|telemetry
 rullst|nexus
+rullst|nexus-ai
 rullst|nexus-tz
 rullst|studio
 rullst|drivers-all
