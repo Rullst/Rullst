@@ -113,10 +113,6 @@ experimental `rullst-privacy`.
 
 | Generator | Commands | Tier | Why |
 | :--- | :--- | :--- | :--- |
-| Foundry | `foundry:init`, `foundry:deploy` | Experimental | Assumes a prepared systemd/Caddy VPS with root or passwordless `sudo`. It replaces the global Caddyfile and has no automatic rollback. |
-| Nix | `nixify`, `new --nix` | Experimental | Writes `flake.nix` and `.envrc` as starting points. Reproducibility depends on your pinned inputs. |
-| Buildah | `generate:buildah`, `new --buildah` | Experimental | Rootless image builds depend on the host's Buildah and container setup. |
-| gRPC | `make:grpc` | Experimental | Writes a Tonic service and `.proto` file. It does not edit `Cargo.toml`, add a `build.rs` or start a server. |
 | IoT | `make:iot` | Experimental | Generates a telemetry module on top of the experimental `rullst-iot`. |
 
 For an experimental generator, the generated files, their layout, and the

@@ -445,7 +445,7 @@ Since 12.x, with 13.0.0-alpha.3 adding the first six items. Details are in the
 - `rullst-mail` providers other than Resend, AWS SES, SendPulse and SMTP: write
   a `MailDriver` in your application.
 - The planned `rullst-gateway` was abandoned and never published: configure an
-  established reverse proxy (`deploy --platform vps` writes a Caddyfile).
+  established reverse proxy (`cargo rullst deploy` writes a Caddyfile).
 - The unpublished `rullst-labs-runner` candidate: bring your own runner (see the
   Labs runner contract).
 

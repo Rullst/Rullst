@@ -8,7 +8,7 @@ installed-archive checks subsequently passed in
 [PR #224](https://github.com/Rullst/Rullst/pull/224); the final release campaign
 remains separate. It is a deployment test
 and reference boundary, not a new load-balancer crate or an automatic cloud/VPS
-deployment feature. Foundry's generated production configuration remains separate.
+deployment feature. The generated `compose.yaml` of `cargo rullst deploy` is separate.
 
 Run on Linux with Docker and the repository Rust toolchain:
 
@@ -82,7 +82,7 @@ The [shared passkey candidate](shared-passkey-ceremonies.md) addresses one such
 state boundary and retains its own acceptance requirements.
 
 The offline [`deploy:doctor`](deployment-diagnostic.md) inspects only a local
-configuration snapshot. A generated multi-replica Foundry profile and additional
+configuration snapshot. A generated multi-replica profile and additional
 deployment topologies remain follow-up work. No firewall, SSH, IAM or
 host security configuration is changed by this increment.
 
