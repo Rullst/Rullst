@@ -68,11 +68,6 @@ reports them and the scripts that run removed commands.
   report them as not measured) and an image size only through a local Docker
   or Podman socket. Its carbon figure is an SCI estimate from the
   `--cpu-watts` and `--grid-intensity` you give, not a measurement.
-- The development error page still offers a "Fix with cargo rullst ai" panel
-  with a `cargo rullst ai fix <error-id>` command, and the retired
-  `POST /_rullst/autofix` answers with that command, although `cargo rullst ai`
-  was removed in this release (running it prints the removal notice). Give the
-  error, its location and the stack trace on the page to your own assistant.
 - `cargo rullst deploy`: the generated Dockerfile, `compose.yaml` and
   `Caddyfile` are checked by content tests; no automated test builds or starts
   them with Docker or Podman. The provider guides and the Advanced deployment
@@ -183,6 +178,15 @@ reports them and the scripts that run removed commands.
   longer point at `ai upgrade`, and `add ai` suggests `generate:ai-context`.
   `cargo rullst upgrade` flags scripts and workflows that run `rullst ai` or
   `rullst footprint` (`V13-CLI-AI-REMOVED`).
+- The development error page's "Fix with cargo rullst ai" panel is now "Ask
+  your AI assistant": a read-only prompt to copy into your own assistant, with
+  the error message, its location, the first project stack frames and the
+  request method and path, and, when the server records the error, the path of
+  its JSON context (`/_rullst/errors/{id}`, loopback only). The retired
+  `POST /_rullst/autofix` still answers `410 Gone` and never edits files; it
+  now points to that panel, and its `command` field is replaced by
+  `context_url`. Only `Server`'s development stack, which serves that context,
+  records panics; the hot-reload server no longer shows ids it cannot serve.
 - **Breaking:** `cargo rullst deploy` has one path: for any Linux VM with
   Docker or Podman it writes, when absent, the Dockerfile (keeping its
   dependency-cache stage), a new `compose.yaml` (the app and Caddy with
