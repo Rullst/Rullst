@@ -478,30 +478,8 @@ if [ ! -x "$rullst_bin" ]; then
 fi
 "$rullst_bin" --version
 
-# The optional extras install from their own archive with the same pins, and
-# the main CLI forwards `ai`/`green` to the executable it finds on PATH.
-extras_package="$packages_dir/cargo-rullst-extras-${version}"
-if [ ! -f "$extras_package/Cargo.lock" ]; then
-  echo "The packaged cargo-rullst-extras archive must include Cargo.lock."
-  exit 1
-fi
-append_package_patches "$extras_package/Cargo.toml"
-"$cargo_bin" install \
-  --path "$extras_package" \
-  --root "$install_root" \
-  --offline \
-  --locked \
-  --force
-extras_bin="$install_root/bin/cargo-rullst-extras"
-if [ -f "${extras_bin}.exe" ]; then
-  extras_bin="${extras_bin}.exe"
-fi
-if [ ! -x "$extras_bin" ]; then
-  echo "The packaged extras did not install the cargo-rullst-extras binary."
-  exit 1
-fi
-"$extras_bin" --version
-PATH="$install_root/bin:$PATH" "$rullst_bin" green --help > /dev/null
+# `green` is part of the installed CLI since 13.0.0-alpha.4.
+"$rullst_bin" green --help > /dev/null
 
 # The CLI's starters since 13.0.0-alpha.4; LMS, Blog, Portfolio and ERP are
 # repository examples, and asking for one fails before anything is written.

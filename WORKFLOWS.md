@@ -566,8 +566,8 @@ the changed lines and fails when a mutant survives. Resolve a red result
 before merging, with a test that fails with the mutant or, when the mutant is
 truly equivalent, with an entry in the list below. Branch protection does not
 require the check yet. `.github/mutants-pr-exclude.txt` lists the files it
-skips: the experimental `cargo-rullst-extras` (lighter tests by design), and
-adapters exercised only by wrappers that own a disposable PostgreSQL, MySQL or
+skips: the workspace example applications, test-only modules and adapters
+exercised only by wrappers that own a disposable PostgreSQL, MySQL or
 authenticated Redis server. Those files remain the manual campaign's
 responsibility, through its
 [contract mode](#owned-server-contract-mutation-runs).
@@ -634,10 +634,9 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-media/src/s3/signing.rs`: `settings` with `Default::default()` | Adapter URLs hold only unreserved characters, `%XX` and `/` without empty or dot segments, so single or double encoding and path normalisation give the same canonical URI. |
 | `rullst-mail/src/facade/driver.rs`: `DigestHasher::finish` with `1` | `finish` is never called; the digest is read from the SHA-256 state. |
 | `rullst-mail/src/facade/driver.rs`: delete the `(Some(_), Some(_))` arm of `ses_credentials` | That arm exists only without the `aws-ses` feature, which the all-feature build does not compile. |
-| `cargo-rullst/src/generators/audit_report/secrets.rs`: `redact_secrets`, both `found > 0` with `>=` | Replacing zero matches leaves the line unchanged. |
 | `cargo-rullst/src/generators/audit_report/a11y.rs`: `attributes`, the end `index + 1` after `>` with `index - 1` or `index * 1` | The tag scanner resumes at the next `<`; the byte before a closing `>` cannot open a tag, because a tag name never starts with `>`. |
-| `cargo-rullst-extras/src/green/procfs.rs`: `ticks_per_second`, `> 0` with `>= 0` | The clock tick rate is always positive. |
-| `cargo-rullst-extras/src/green/procfs.rs`: the non-Unix `ticks_per_second` with `Some(0)` or `Some(1)` | Not compiled on Linux. |
+| `cargo-rullst/src/generators/green/procfs.rs`: `ticks_per_second`, `> 0` with `>= 0` | The clock tick rate is always positive. |
+| `cargo-rullst/src/generators/green/procfs.rs`: the non-Unix `ticks_per_second` with `Some(0)` or `Some(1)` | Not compiled on Linux. |
 | `cargo-rullst/src/generators/doctor/probe.rs`: `run`, `stdout.len() > OUTPUT_LIMIT` with `>=` | An output of exactly `OUTPUT_LIMIT` bytes is cut at its own length, which leaves it unchanged. |
 | `cargo-rullst/src/generators/doctor/database.rs`: `tcp_reachable`, delete the `TimedOut \| WouldBlock` arm | `TcpStream::connect_timeout` reports its timeout as a `TimedOut` error whose text is `connection timed out`, which the catch-all arm passes through unchanged, and never returns `WouldBlock` on Linux. |
 | `cargo-rullst/src/generators/output_guard.rs`: `write_output`, the `NotFound` guard of `fs::metadata` with `true` | `reject_symlink` has already returned every other `lstat` error, and for a path that is not a symlink `stat` fails exactly when `lstat` does. |
