@@ -243,3 +243,71 @@ fn a_locked_windows_destination_reports_interruption_and_retains_backup() {
     assert!(error.contains("backup retained"), "{error}");
     assert!(fixture.backup.join("files/Cargo.toml").exists());
 }
+
+/// Each clause of the path contract on its own, with the exact reason: a
+/// restore through `restore_from` also fails on later checks, which hides a
+/// clause that stopped working.
+#[test]
+fn index_paths_must_be_portable_snapshot_files() {
+    let unsafe_path = "invalid upgrade backup: unsafe relative path";
+    let outside = "invalid upgrade backup: file outside the upgrade snapshot contract";
+    for (path, expected) in [
+        ("", unsafe_path),
+        ("a:b.rs", unsafe_path),
+        ("a\u{7}b.rs", unsafe_path),
+        ("../main.rs", unsafe_path),
+        ("src/../main.rs", unsafe_path),
+        ("/main.rs", unsafe_path),
+        ("target/main.rs", unsafe_path),
+        ("src/Target/main.rs", unsafe_path),
+        (".git/main.rs", unsafe_path),
+        ("src/.GIT/main.rs", unsafe_path),
+        ("src/notes.txt", outside),
+        ("src/Cargo.lock", outside),
+    ] {
+        let error = validate_relative_restore_path(Path::new(path)).unwrap_err();
+        assert_eq!(error.to_string(), expected, "{path:?}");
+    }
+    for path in [
+        "Cargo.lock",
+        "Cargo.toml",
+        "crates/api/Cargo.toml",
+        "src/main.rs",
+        "src/targets/git.rs",
+    ] {
+        validate_relative_restore_path(Path::new(path)).unwrap();
+    }
+}
+
+#[test]
+fn a_file_is_not_a_directory_to_create() {
+    let fixture = Fixture::new();
+    for path in ["Cargo.toml", "src/main.rs/nested"] {
+        let error = validate_directory_creation(&fixture.root(), Path::new(path)).unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "invalid upgrade backup: symlink, reparse point or non-directory parent",
+            "{path}"
+        );
+    }
+    validate_directory_creation(&fixture.root(), Path::new("src/missing/deeper")).unwrap();
+    assert!(
+        validate_file(&fixture.root(), Path::new("src/missing.rs"))
+            .unwrap()
+            .is_none()
+    );
+}
+
+/// Only a missing entry counts as absent; any other lookup failure stops the
+/// restore. Linux and macOS refuse a 300-byte name (`ENAMETOOLONG`); Windows
+/// reports such a name with a different error, so the test is Unix-only.
+#[cfg(unix)]
+#[test]
+fn lookup_failures_other_than_a_missing_entry_are_errors() {
+    let fixture = Fixture::new();
+    let long = "a".repeat(300);
+    let error = validate_file(&fixture.root(), Path::new(&format!("{long}.rs"))).unwrap_err();
+    assert!(matches!(error, RestoreError::Io(_)), "{error}");
+    let error = validate_directory_creation(&fixture.root(), Path::new(&long)).unwrap_err();
+    assert!(matches!(error, RestoreError::Io(_)), "{error}");
+}
