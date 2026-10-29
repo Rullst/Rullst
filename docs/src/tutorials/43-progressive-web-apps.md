@@ -121,7 +121,10 @@ visits.
   the new worker next to the old one; the page shows "A new version of this
   app is available" with a **Reload** button, which sends `SKIP_WAITING` to
   the waiting worker and reloads once it takes control. The old cache is then
-  deleted. Without a version change, users keep the files stored at install.
+  deleted. Until the served worker changes (a new version, or an edit to
+  `src/pwa/sw.js`), browsers keep the installed one and do not fetch the
+  offline page again; network-first pages and files still refresh their
+  stored copy whenever they load online.
 
 ## Data while offline
 
@@ -246,14 +249,17 @@ no copy of your pages: deploying the site updates it.
 The site must already be served over HTTPS at its final host. Then:
 
 ```bash
-cargo rullst make:pwa --android --host notes.acme.dev --package-id dev.acme.notes
+cargo rullst make:pwa --name "Field Notes" --short-name Notes \
+  --android --host notes.acme.dev --package-id dev.acme.notes
 ```
 
 `--host` is the site's host name (no scheme or path) and `--package-id` the
 Android application ID, which you own and can never change once published
 (`com.example.*` is refused). `make:pwa --android` can run after a plain
-`make:pwa` with the same flags; it adds only `android/twa-manifest.json` and
-`PWA-ANDROID.md`. The configuration repeats the web manifest: name, short
+`make:pwa` when it repeats that run's flags, as here; it then adds only
+`android/twa-manifest.json` and `PWA-ANDROID.md`. Other values would change
+the files already written, so the run stops before writing anything. The
+configuration repeats the web manifest: name, short
 name as `launcherName`, colours, `display`, start URL, the 512 icon as
 `iconUrl` and the maskable one as `maskableIconUrl`, plus
 `webManifestUrl`, `fullScopeUrl`, `appVersion` `1`/`appVersionCode` `1` and
@@ -262,8 +268,8 @@ name as `launcherName`, colours, `display`, start URL, the 512 icon as
 
 ### 2. Install Bubblewrap and create the upload key
 
-Bubblewrap needs Node.js 18 or later and JDK 17, and offers to install the
-Android command-line tools on its first run:
+Bubblewrap needs Node.js 18 or later and JDK 17; on its first run it offers
+to download the JDK and the Android command-line tools:
 
 ```bash
 npm i -g @bubblewrap/cli
