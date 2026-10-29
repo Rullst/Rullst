@@ -140,12 +140,11 @@ pub(crate) enum Feature {
     Ai,
     Redis,
     Docker,
-    Nix,
     Storage(PolyglotIntegration),
 }
 
 /// Every optional feature, in the order the wizard lists them.
-pub(crate) const FEATURES: [(Feature, &str, &str); 9] = [
+pub(crate) const FEATURES: [(Feature, &str, &str); 8] = [
     (
         Feature::Ai,
         "AI features",
@@ -160,11 +159,6 @@ pub(crate) const FEATURES: [(Feature, &str, &str); 9] = [
         Feature::Docker,
         "Dockerfile",
         "multi-stage container image and .dockerignore",
-    ),
-    (
-        Feature::Nix,
-        "Nix flake",
-        "reproducible dev shell with direnv",
     ),
     (
         Feature::Storage(PolyglotIntegration::Turso),

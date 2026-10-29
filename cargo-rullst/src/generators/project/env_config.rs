@@ -1,11 +1,10 @@
-// cargo-rullst/src/generators/project/env_config.rs — Environment, gitignore, Nix, and Buildah configuration.
+// cargo-rullst/src/generators/project/env_config.rs — Environment, gitignore and linker configuration.
 
 use crate::blueprints::{
     BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, LMS_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
 };
 use crate::generators::project::PolyglotIntegration;
 use crate::generators::project::has_binary;
-use colored::*;
 use rand::distr::{Alphanumeric, SampleString};
 use std::fs;
 use std::path::Path;
@@ -306,115 +305,6 @@ pub(crate) fn append_api_token(path: &Path) -> Result<(), Box<dyn std::error::Er
         content.push_str(SECTION);
         content.push_str(&format!("API_TOKEN={value}\n"));
         fs::write(path.join(file), content)?;
-    }
-    Ok(())
-}
-
-pub fn generate_nix_files(project_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    write_nix_files(project_path)?;
-    println!(
-        "{}",
-        "  ✅ flake.nix (Nix reproducible environment)".green()
-    );
-    println!("{}", "  ✅ .envrc (direnv support)".green());
-
-    Ok(())
-}
-
-/// [`generate_nix_files`] without progress output (used by previews).
-pub(crate) fn write_nix_files(project_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let flake_nix = r#"{
-  description = "A Rullst Application";
-
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    rust-overlay.url = "github:oxalica/rust-overlay";
-    flake-utils.url = "github:numtide/flake-utils";
-    crane.url = "github:ipetkov/crane";
-  };
-
-  outputs = { self, nixpkgs, rust-overlay, flake-utils, crane, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        overlays = [ (import rust-overlay) ];
-        pkgs = import nixpkgs {
-          inherit system overlays;
-        };
-        rustVersion = pkgs.rust-bin.stable.latest.default.override {
-          extensions = [ "rust-src" "rust-analyzer" ];
-        };
-        craneLib = crane.mkLib pkgs;
-      in
-      {
-        devShell = pkgs.mkShell {
-          buildInputs = [
-            rustVersion
-            pkgs.pkg-config
-            pkgs.openssl
-            pkgs.sqlite
-          ];
-          shellHook = ''
-            echo "🦀 Welcome to the Rullst Nix Development Environment 🦀"
-          '';
-        };
-      }
-    );
-}
-"#;
-
-    let envrc = r#"use flake
-"#;
-
-    fs::write(project_path.join("flake.nix"), flake_nix)?;
-    fs::write(project_path.join(".envrc"), envrc)?;
-    Ok(())
-}
-
-pub fn generate_buildah_script(
-    project_path: &Path,
-    project_name: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    write_buildah_script(project_path, project_name)?;
-    println!(
-        "{}",
-        "\n📦 Buildah script generated! To build an OCI image rootless:".cyan()
-    );
-    Ok(())
-}
-
-/// [`generate_buildah_script`] without progress output (used by previews).
-pub(crate) fn write_buildah_script(
-    project_path: &Path,
-    project_name: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if project_name.is_empty()
-        || !project_name.chars().all(|character| {
-            character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-')
-        })
-    {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "Buildah image name contains unsupported characters",
-        )
-        .into());
-    }
-    // OCI repository names are lowercase; `make:k8s` references the same name.
-    let image = crate::blueprints::k8s::container_name(project_name);
-    let buildah_script = format!(
-        r#"#!/usr/bin/env bash
-set -euo pipefail
-
-echo "🦀 Building rootless OCI image {image}:latest..."
-buildah bud -f Dockerfile -t {image}:latest .
-echo "✅ Build complete!"
-"#
-    );
-    let script_path = project_path.join("build_buildah.sh");
-    fs::write(&script_path, buildah_script)?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&script_path, fs::Permissions::from_mode(0o755))?;
     }
     Ok(())
 }

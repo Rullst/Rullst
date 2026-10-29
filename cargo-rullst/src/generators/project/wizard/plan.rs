@@ -22,8 +22,6 @@ pub(crate) struct ProjectPlan {
     pub(crate) ai: bool,
     pub(crate) redis: bool,
     pub(crate) docker: bool,
-    pub(crate) nix: bool,
-    pub(crate) buildah: bool,
     /// Storage adapters requested by flags, in flag order.
     pub(crate) requested: Vec<PolyglotIntegration>,
     /// Storage add-ons chosen in the wizard.
@@ -66,8 +64,7 @@ impl ProjectPlan {
         match feature {
             Feature::Ai => self.ai,
             Feature::Redis => self.redis,
-            Feature::Docker => self.docker || self.buildah,
-            Feature::Nix => self.nix,
+            Feature::Docker => self.docker,
             Feature::Storage(integration) => self.integrations().contains(&integration),
         }
     }
@@ -77,7 +74,6 @@ impl ProjectPlan {
             Feature::Ai => self.ai = enabled,
             Feature::Redis => self.redis = enabled,
             Feature::Docker => self.docker = enabled,
-            Feature::Nix => self.nix = enabled,
             Feature::Storage(integration) => {
                 self.add_ons.retain(|candidate| *candidate != integration);
                 if enabled {

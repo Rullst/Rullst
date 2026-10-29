@@ -87,8 +87,6 @@ pub(crate) fn run_new_command(
         name,
         api,
         docker,
-        buildah,
-        nix,
         default,
         blueprint,
         database,
@@ -111,8 +109,6 @@ pub(crate) fn run_new_command(
         options: super::ProjectScaffoldOptions {
             api: *api,
             docker: *docker,
-            buildah: *buildah,
-            nix: *nix,
             use_defaults: *default,
             turso: *turso,
             mongodb: *mongodb,

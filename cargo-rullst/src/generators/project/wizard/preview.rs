@@ -28,7 +28,6 @@ pub(crate) fn rendered_files(plan: &ProjectPlan) -> Option<Vec<String>> {
         create::Report::Quiet,
     )
     .ok()?;
-    create::write_late_files(&root, plan, &identity, create::Report::Quiet).ok()?;
     list_files(&root)
 }
 

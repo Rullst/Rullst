@@ -1,6 +1,6 @@
 //! Concrete next steps printed after a generator succeeds. The table lives
 //! here, in one place; generators that already print their own instructions
-//! (`new`, `auth`, `foundry:init`, `make:k8s`) are deliberately absent.
+//! (`new`, `auth`, `deploy`, `make:k8s`) are deliberately absent.
 //! Nothing is printed for `--json` invocations.
 
 use crate::ui::home::display_safe;
@@ -102,11 +102,6 @@ pub(crate) fn hints(name: &str, matches: &ArgMatches) -> Vec<Hint> {
             "open the app on localhost and install it from the browser",
         )],
         "dockerize" => vec![hint("docker build -t app .", "build the container image")],
-        "generate:buildah" => vec![hint("./build_buildah.sh", "build the OCI image rootless")],
-        "nixify" => vec![hint(
-            "direnv allow",
-            "load the Nix environment (or nix develop)",
-        )],
         "generate:openapi" => vec![hint(
             "cargo rullst make:scalar",
             "serve an interactive API playground",

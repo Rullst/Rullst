@@ -62,10 +62,6 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "Scaffold LiveView Server-Driven UI component",
                 ),
                 (
-                    "cargo rullst make:grpc <Name>",
-                    "Scaffold gRPC microservice & Protobuf schema",
-                ),
-                (
                     "cargo rullst make:k8s",
                     "Generate Kubernetes manifests & health probes",
                 ),
@@ -156,17 +152,10 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
             "🚀  DEPLOY",
             vec![
                 (
-                    "cargo rullst deploy [--platform=...]",
-                    "Guided PaaS deploy (Fly, Railway, Render, VPS Caddy)",
+                    "cargo rullst deploy",
+                    "Dockerfile + compose.yaml + Caddyfile for a Linux VM",
                 ),
-                ("cargo rullst dockerize", "Generate Docker files"),
-                (
-                    "cargo rullst generate:buildah",
-                    "Generate rootless OCI build script",
-                ),
-                ("cargo rullst nixify", "Generate Nix environment files"),
-                ("cargo rullst foundry:init", "Create Foundry.toml manifest"),
-                ("cargo rullst foundry:deploy", "Deploy via SSH pipeline"),
+                ("cargo rullst dockerize", "Generate the Dockerfile only"),
             ],
         ),
         (

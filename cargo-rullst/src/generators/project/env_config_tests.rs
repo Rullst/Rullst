@@ -1,25 +1,6 @@
 use super::*;
 
 #[test]
-fn nix_and_buildah_generators_emit_distinct_artifacts() {
-    let root =
-        std::env::temp_dir().join(format!("rullst-container-flags-{}", rand::random::<u64>()));
-    fs::create_dir_all(&root).expect("temporary project");
-
-    generate_nix_files(&root).expect("Nix files");
-    assert!(root.join("flake.nix").is_file());
-    assert!(root.join(".envrc").is_file());
-    assert!(!root.join("build_buildah.sh").exists());
-
-    generate_buildah_script(&root, "demo-app").expect("Buildah script");
-    let script = fs::read_to_string(root.join("build_buildah.sh")).expect("Buildah source");
-    assert!(script.contains("buildah bud"));
-    assert!(script.contains("demo-app:latest"));
-
-    fs::remove_dir_all(root).expect("temporary project cleanup");
-}
-
-#[test]
 fn generated_environment_uses_the_canonical_rullst_name() {
     let root = std::env::temp_dir().join(format!("rullst-env-name-{}", rand::random::<u64>()));
     fs::create_dir_all(&root).expect("temporary project");
@@ -134,34 +115,6 @@ fn turso_primary_has_no_fictitious_sqlx_database_url() {
     assert!(development.contains("TURSO_OFFLINE_PATH=turso-development.db"));
     assert!(!root.join("Rullst.toml").exists());
 
-    fs::remove_dir_all(root).expect("temporary project cleanup");
-}
-
-#[test]
-fn buildah_tags_a_lowercase_image_name() {
-    let root = tempfile::tempdir().expect("temporary project");
-    generate_buildah_script(root.path(), "My_App").expect("Buildah script");
-    let script = fs::read_to_string(root.path().join("build_buildah.sh")).expect("script");
-    // `buildah bud -t My_App:latest` fails: repository names are lowercase.
-    assert!(script.contains("buildah bud -f Dockerfile -t my-app:latest .\n"));
-    assert!(!script.contains("My_App"));
-}
-
-#[test]
-fn buildah_write_failures_are_propagated() {
-    let missing_parent = std::env::temp_dir()
-        .join(format!("rullst-missing-buildah-{}", rand::random::<u64>()))
-        .join("project");
-    assert!(generate_buildah_script(&missing_parent, "demo").is_err());
-}
-
-#[test]
-// TM-DEPLOY-05: validated generator inputs cannot cross into shell syntax.
-fn buildah_image_name_cannot_inject_shell_commands() {
-    let root = std::env::temp_dir().join(format!("rullst-buildah-name-{}", rand::random::<u64>()));
-    fs::create_dir_all(&root).expect("temporary project");
-    assert!(generate_buildah_script(&root, "demo; touch compromised").is_err());
-    assert!(!root.join("build_buildah.sh").exists());
     fs::remove_dir_all(root).expect("temporary project cleanup");
 }
 

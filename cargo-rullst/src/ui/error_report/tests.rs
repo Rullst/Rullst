@@ -53,9 +53,9 @@ fn the_common_failures_get_specific_titles_fixes_and_docs() {
             "https://docs.docker.com/get-docker/",
         ),
         (
-            facts("`flyctl` not found in PATH"),
-            "`flyctl` is not installed",
-            "fly.io",
+            facts("`kubectl` not found in PATH"),
+            "`kubectl` is not installed",
+            "kubernetes.io",
         ),
         (
             facts("error communicating with database: Connection refused (os error 111)"),

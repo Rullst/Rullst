@@ -500,22 +500,13 @@ fn database_forwarding_and_complete_project_packaging_use_controlled_cargo() {
     }
 
     let generated = project.run_with_path(
-        &[
-            "new",
-            "packaged-app",
-            "--default",
-            "--docker",
-            "--buildah",
-            "--nix",
-        ],
+        &["new", "packaged-app", "--default", "--docker"],
         Some(&tools),
     );
     assert!(generated.status.success());
     for path in [
         "packaged-app/Cargo.toml",
         "packaged-app/Dockerfile",
-        "packaged-app/build_buildah.sh",
-        "packaged-app/flake.nix",
         "packaged-app/.cargo-invocations",
     ] {
         assert!(project.root.join(path).is_file(), "missing {path}");

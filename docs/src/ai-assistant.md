@@ -123,7 +123,7 @@ database migrations yourself with `cargo rullst db:migrate`.
 | --- | --- |
 | Create or replace a file below the project root | Paths outside the project, `..`, absolute paths, symlinks, Windows short names (`GIT~1`) or reserved device names |
 | Replace one exact text occurrence in a file | `.git/`, `target/`, `.cargo/`, `.env*` (except `.env.example`), keys, credentials, `Cargo.lock`, toolchain files |
-| `cargo rullst make:*`, `generate:*` (not `generate:models`), `db:status`, `doctor`, `audit`, `inspect routes`/`models`/`schema`, the read-only `ai review` | `deploy`, `foundry:*`, `upgrade`, `update`, `pkg`, `db:rollback`, `db:seed`, `doctor --fix`, `audit --network`, `inspect <file>`, other `ai` subcommands, shell commands |
+| `cargo rullst make:*`, `generate:*` (not `generate:models`), `db:status`, `doctor`, `audit`, `inspect routes`/`models`/`schema`, the read-only `ai review` | `deploy`, `upgrade`, `update`, `pkg`, `db:rollback`, `db:seed`, `doctor --fix`, `audit --network`, `inspect <file>`, other `ai` subcommands, shell commands |
 | `cargo rullst db:migrate` in a development or test project, confirmed on its own | `db:migrate` when the environment the application would use (process `RULLST_ENV`/`APP_ENV` first, then `.env`, then `[app].env`) is staging or production |
 | Outside a project: `cargo rullst new <name> --default [--blueprint …] [--database …]`, confirmed on its own | `new` inside a project or over an existing directory |
 | `cargo check`, `cargo test` (simple flags only) | `cargo run`, `cargo install`, `--manifest-path`, `--config`, `-Z` |

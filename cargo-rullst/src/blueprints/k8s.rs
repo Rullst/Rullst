@@ -5,7 +5,7 @@
 ///
 /// Package names may contain uppercase letters and `_`, which Kubernetes and
 /// OCI registries reject, e.g. `my_startup` becomes `my-startup`. This is the
-/// same label `make:k8s` and `fly.toml` use (`generators::platform_name`).
+/// same label `make:k8s` uses (`generators::platform_name`).
 pub fn container_name(package_name: &str) -> String {
     crate::generators::platform_name::dns_label(package_name)
 }

@@ -71,7 +71,7 @@ fn dry_runs_preview_exactly_the_files_a_real_run_writes_and_write_nothing() {
         &["--blueprint", "blog"],
         &["--blueprint", "portfolio", "--database", "mysql"],
         &["--blueprint", "erp", "--mongodb", "--qdrant"],
-        &["--docker", "--nix", "--buildah", "--database", "turso"],
+        &["--docker", "--database", "turso"],
     ];
     for (index, profile) in profiles.iter().enumerate() {
         let name = format!("profile-{index}");

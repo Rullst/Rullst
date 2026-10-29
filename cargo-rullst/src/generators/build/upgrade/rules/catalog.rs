@@ -350,6 +350,12 @@ rules! {
     PAGE_LANGUAGE: "V13-RENDER-PAGE-LANGUAGE", Review, "13.0.0-alpha.1", "Starter page language",
         "`render_page` declares `lang=\"pt-BR\"`; English pages should use `render_page_with_lang`",
         "Call `rullst::htmx::render_page_with_lang(&htmx, \"en\", title, content)` with the page's language.";
+    DEPLOY_TARGETS_REMOVED: "V13-DEPLOY-TARGETS-REMOVED", Review, "13.0.0-alpha.4", "CLI deploy targets removed",
+        "`cargo rullst deploy` no longer writes or runs Fly.io, Railway or Render files; this project has one or runs `deploy --platform` with them",
+        "The file stays yours and keeps working with the provider's own CLI. `cargo rullst deploy` now writes a Dockerfile, compose.yaml and Caddyfile for any Linux VM; other targets: https://rullst.github.io/Rullst/book/advanced-deployment.html";
+    DEPLOY_GENERATORS_REMOVED: "V13-DEPLOY-GENERATORS-REMOVED", Review, "13.0.0-alpha.4", "CLI Foundry, Nix, Buildah and gRPC generators removed",
+        "13.0 removed `foundry:init|deploy`, `nixify`/`new --nix`, `generate:buildah`/`new --buildah` and `make:grpc`; this file came from one of them or runs them",
+        "Generated files stay yours; nothing regenerates or updates them. Keep or retire them (gRPC code needs your own tonic and tonic-build setup) and see https://rullst.github.io/Rullst/book/advanced-deployment.html for Nix, Buildah, Podman Quadlet and Kubernetes.";
     CLI_SELF_UPDATE: "V13-CLI-SELF-UPDATE-REMOVED", Review, "13.0.0-alpha.4", "CLI self-update removed",
         "the CLI no longer installs itself: `update check|verify|stage|install` and `update guided --scope|--root` were removed; these scripts run them",
         "Install the CLI with `cargo install cargo-rullst --version =<version> --locked` (verify downloaded release binaries by hand as SECURITY.md shows), and keep only `update project …` or `update guided --to <version> --project <path>`.";

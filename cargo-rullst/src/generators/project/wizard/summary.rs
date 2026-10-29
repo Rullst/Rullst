@@ -254,10 +254,7 @@ pub(crate) fn summary(plan: &ProjectPlan, files: Option<&[String]>, port: u16) -
             Line::new().push(Tone::Warning, TURSO_PRIMARY_LIMITS),
         ));
     }
-    let mut features: Vec<&str> = plan.features().into_iter().map(feature_name).collect();
-    if plan.buildah {
-        features.push("Buildah script");
-    }
+    let features: Vec<&str> = plan.features().into_iter().map(feature_name).collect();
     let features = if features.is_empty() {
         "none".to_string()
     } else {

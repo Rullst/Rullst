@@ -203,7 +203,7 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
                                 ) && rust_sources.contains("run_studio(5555)"),
                                 "{case}: Studio must be a debug-build-only local service"
                             );
-                            // `make:k8s`, `deploy` and `foundry:deploy` probe these routes.
+                            // `make:k8s` and the `deploy` Caddyfile probe these routes.
                             assert!(
                                 rust_sources
                                     .contains(".merge_axum(rullst::health::health_router())"),
@@ -747,10 +747,7 @@ fn public_cli_command_inventory_is_explicit_and_complete() {
         "doctor",
         "dockerize",
         "eject",
-        "foundry:deploy",
-        "foundry:init",
         "generate:ai-context",
-        "generate:buildah",
         "generate:diagram",
         "generate:models",
         "generate:openapi",
@@ -761,7 +758,6 @@ fn public_cli_command_inventory_is_explicit_and_complete() {
         "make:chat-session",
         "make:controller",
         "make:cors",
-        "make:grpc",
         "make:iot",
         "make:island",
         "make:jwt",
@@ -779,7 +775,6 @@ fn public_cli_command_inventory_is_explicit_and_complete() {
         "make:scalar",
         "make:worker",
         "new",
-        "nixify",
         "pkg",
         "studio",
         "upgrade",

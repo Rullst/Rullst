@@ -163,7 +163,10 @@ pub(super) fn write_next_steps(out: &mut impl Write, home: &Home) -> io::Result<
             ),
             ("cargo rullst db:migrate", "Run pending migrations"),
             ("cargo rullst doctor", "Check the toolchain and environment"),
-            ("cargo rullst deploy", "Deploy with the guided PaaS flow"),
+            (
+                "cargo rullst deploy",
+                "Write the Dockerfile, compose.yaml and Caddyfile for a VM",
+            ),
         ],
         Home::Outside => &[("cargo rullst new <name>", "Create a new Rullst application")],
     };

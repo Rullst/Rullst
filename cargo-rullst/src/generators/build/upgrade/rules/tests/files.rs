@@ -1,5 +1,6 @@
 use super::super::files::{
-    manifest_findings, project_findings, runs_extras_command, runs_removed_update_command,
+    manifest_findings, project_findings, runs_extras_command, runs_removed_deploy_target,
+    runs_removed_generator, runs_removed_update_command,
 };
 use super::*;
 
@@ -252,6 +253,7 @@ fn generated_project_files_are_reviewed() {
         (".github/workflows/release.yml", "V13-OMNI-REMOVED", 2),
         (".gitignore", "V13-GITIGNORE-DATABASES", 1),
         ("Cargo.toml", "V13-K8S-NAMES", 2),
+        ("Foundry.toml", "V13-DEPLOY-GENERATORS-REMOVED", 1),
         ("Foundry.toml", "V13-FOUNDRY-SERVICE", 1),
         ("Makefile", "V13-OMNI-REMOVED", 4),
         ("docker-compose.prod.yml", "V13-VPS-DEPLOY-PROXY", 1),
@@ -344,6 +346,88 @@ fn scripts_running_the_removed_self_updater_are_reviewed() {
     ] {
         assert!(!runs_removed_update_command(kept), "{kept}");
     }
+}
+
+#[test]
+fn files_and_scripts_of_the_removed_deploy_targets_and_generators_are_reviewed() {
+    let project = Project::new();
+    project
+        .write("fly.toml", "app = \"demo\"\n")
+        .write("render.yaml", "services: []\n")
+        .write("railway.json", "{}\n")
+        .write("railway.toml", "[build]\n")
+        .write(
+            "flake.nix",
+            "{\n  description = \"A Rullst Application\";\n}\n",
+        )
+        .write("build_buildah.sh", "#!/bin/sh\nbuildah bud -f Dockerfile -t demo:latest .\n")
+        .write("src/grpc/mod.rs", "pub mod users;\n")
+        .write(
+            ".github/workflows/deploy.yml",
+            "steps:\n  - run: cargo rullst deploy --platform=fly\n  - run: cargo rullst foundry:deploy\n",
+        );
+    let mut found = project.findings("[package]\nname = \"my-app\"\n");
+    found.sort();
+    let expected: Vec<(String, &str, usize)> = [
+        (
+            ".github/workflows/deploy.yml",
+            "V13-DEPLOY-GENERATORS-REMOVED",
+            3,
+        ),
+        (
+            ".github/workflows/deploy.yml",
+            "V13-DEPLOY-TARGETS-REMOVED",
+            2,
+        ),
+        ("build_buildah.sh", "V13-DEPLOY-GENERATORS-REMOVED", 1),
+        ("flake.nix", "V13-DEPLOY-GENERATORS-REMOVED", 1),
+        ("fly.toml", "V13-DEPLOY-TARGETS-REMOVED", 1),
+        ("railway.json", "V13-DEPLOY-TARGETS-REMOVED", 1),
+        ("railway.toml", "V13-DEPLOY-TARGETS-REMOVED", 1),
+        ("render.yaml", "V13-DEPLOY-TARGETS-REMOVED", 1),
+        ("src/grpc/mod.rs", "V13-DEPLOY-GENERATORS-REMOVED", 1),
+    ]
+    .iter()
+    .map(|(path, code, line)| (path.to_string(), *code, *line))
+    .collect();
+    assert_eq!(found, expected);
+
+    for removed in [
+        "cargo rullst deploy --platform fly",
+        "cargo rullst deploy -p railway",
+        "cargo rullst deploy --platform=render",
+    ] {
+        assert!(runs_removed_deploy_target(removed), "{removed}");
+    }
+    for kept in [
+        "cargo rullst deploy",
+        "cargo rullst deploy --platform vps",
+        "fly deploy",
+    ] {
+        assert!(!runs_removed_deploy_target(kept), "{kept}");
+    }
+    for removed in [
+        "cargo rullst foundry:init",
+        "cargo rullst nixify",
+        "cargo rullst generate:buildah",
+        "cargo rullst make:grpc Users",
+        "cargo rullst new app --default --nix",
+        "cargo rullst new app --buildah --default",
+    ] {
+        assert!(runs_removed_generator(removed), "{removed}");
+    }
+    for kept in [
+        "cargo rullst new app --default",
+        "nix develop --nixpkgs",
+        "cargo rullst make:k8s",
+    ] {
+        assert!(!runs_removed_generator(kept), "{kept}");
+    }
+
+    // A hand-written flake is not the generator's.
+    let own = Project::new();
+    own.write("flake.nix", "{ description = \"my app\"; }\n");
+    assert_eq!(own.findings("[package]\nname = \"my-app\"\n"), vec![]);
 }
 
 #[test]

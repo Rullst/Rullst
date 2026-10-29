@@ -87,7 +87,7 @@ homologated.
 | M27 | Kubernetes scaffolding and health/readiness probes | ✅ Implemented — scaffolding scope |
 | M28 | Compile-time DI and `Inject<T>` | ✅ Implemented — foundation |
 | M29 | Scalar playground and complete OpenAPI generation | 🟡 Still to implement — partial |
-| M30 | Tonic/gRPC and Protobuf support | 🟡 Still to implement — partial |
+| M30 | Tonic/gRPC and Protobuf support | ⏳ Not implemented — the `make:grpc` generator was removed in 13.0.0-alpha.4; applications use their own `tonic` setup |
 | M31 | Aerospace/autonomous/defence systems | ⏳ Separate safety-critical programme; outside the general framework suite |
 | M32 | Axum/Tower escape hatches and proc-macro diagnostics | ✅ Implemented — bounded |
 | M33 | Server-side declarative SaaS entitlements | 🟡 v13 prerelease foundation — typed current-state plan authorization with an authenticated SaaS consumer; the declarative `#[rullst::gate]`/`GateGuard` model remains open |
@@ -100,8 +100,8 @@ homologated.
 | M40 | `rullst-labs` contracts with a bring-your-own runner | 🟡 v13 prerelease foundation — trusted job/lease/grading contracts and a documented runner contract; the `rullst-labs-runner` candidate was removed from 13.0, so execution is application-owned; full offensive CTF arenas require external isolated infrastructure |
 | M41 | Privacy controls and proportional age assurance | 🟡 v13 prerelease foundation — policy, signed evidence, asynchronous replay, SQLite and PostgreSQL adapters; combined hosted acceptance, consumer journeys and broader privacy work remain open |
 
-The labels match the root roadmap inventory: **5 implemented, 28 partial, and
-7 not started** inside the 40-milestone framework programme. M31 is excluded
+The labels match the root roadmap inventory: **5 implemented, 27 partial, and
+8 not started** inside the 40-milestone framework programme. M31 is excluded
 because it is a separately governed safety-critical programme. The 35 milestones
 without strict closure have different sizes and overlap existing published
 capabilities; their count does not measure remaining engineering effort or

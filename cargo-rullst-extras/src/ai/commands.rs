@@ -5,7 +5,7 @@
 use std::time::Duration;
 
 /// `cargo rullst` subcommands the assistant may propose inside a project.
-/// Deliberately absent: deploy, foundry:*, upgrade, update, pkg, dev, dash,
+/// Deliberately absent: deploy, upgrade, update, pkg, dev, dash,
 /// studio, build*, eject, hook:install, db:rollback/seed, auth and
 /// generate:models (which would route a database connection string through
 /// the model). `new` is validated separately by [`validate_new`],
@@ -32,7 +32,6 @@ pub(super) const RULLST_ALLOWLIST: &[&str] = &[
     "make:mfa",
     "make:scalar",
     "make:live",
-    "make:grpc",
     "make:privacy",
     "make:age-gate",
     "make:pwa",
@@ -41,7 +40,6 @@ pub(super) const RULLST_ALLOWLIST: &[&str] = &[
     "generate:diagram",
     "generate:ai-context",
     "generate:api",
-    "generate:buildah",
     "db:status",
     "db:migrate",
     "doctor",

@@ -59,7 +59,7 @@ const PROJECT_ENTRIES: [HomeEntry; 13] = [
     ),
     HomeEntry::new(
         "🧰  Scaffold Code            ",
-        "(make:controller, make:model, LiveView, gRPC...)",
+        "(make:controller, make:model, LiveView, Islands...)",
         HomeAction::Scaffold,
     ),
     HomeEntry::new(
@@ -74,12 +74,12 @@ const PROJECT_ENTRIES: [HomeEntry; 13] = [
     ),
     HomeEntry::new(
         "🚢  Deploy                   ",
-        "(Guided PaaS or Foundry SSH pipeline)",
+        "(Dockerfile + compose.yaml + Caddyfile for a VM)",
         HomeAction::Deploy,
     ),
     HomeEntry::new(
         "📁  All Project Operations   ",
-        "(Auth, Desktop, Docker, Nix, Upgrade...)",
+        "(Auth, PWA, Docker, Deploy, Upgrade...)",
         HomeAction::ProjectOperations,
     ),
     HomeEntry::new(

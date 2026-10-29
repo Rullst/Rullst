@@ -4,8 +4,7 @@ use std::{collections::VecDeque, io};
 
 use super::{
     DashboardResult, DashboardUi, Home, PaletteEntry, handle_auth_billing,
-    handle_database_operations, handle_deploy, handle_existing_project, handle_scaffold_code,
-    run_dashboard,
+    handle_database_operations, handle_existing_project, handle_scaffold_code, run_dashboard,
 };
 
 #[derive(Default)]
@@ -96,7 +95,6 @@ fn scaffold_menu_maps_every_choice_to_the_documented_command() {
         (4, "make:migration", vec![]),
         (5, "make:live", vec![]),
         (6, "make:island", vec![]),
-        (9, "make:grpc", vec![]),
     ];
     for (selection, action, extra) in named_cases {
         let mut ui = FakeUi::with_input(selection, "Example");
@@ -140,7 +138,7 @@ fn scaffold_menu_maps_every_choice_to_the_documented_command() {
 #[test]
 fn model_introspection_collects_the_required_driver_and_url() {
     let mut ui = FakeUi {
-        selections: [10, 1].into(),
+        selections: [9, 1].into(),
         inputs: ["postgres://localhost/app".to_string()].into(),
         ..FakeUi::default()
     };
@@ -173,26 +171,9 @@ fn model_introspection_collects_the_required_driver_and_url() {
         crate::cli::Commands::GenerateModels { .. }
     ));
 
-    let mut ui = FakeUi::with_selections([10, usize::MAX]);
+    let mut ui = FakeUi::with_selections([9, usize::MAX]);
     let mut run = |_| -> DashboardResult<()> { panic!("an unknown driver must not execute") };
     handle_scaffold_code(&mut ui, "cargo-rullst", &mut run).expect("unknown drivers are ignored");
-}
-
-#[test]
-fn grpc_scaffold_passes_the_required_service_name() {
-    let mut ui = FakeUi::with_input(9, "UserService");
-    let mut commands = Vec::new();
-    handle_scaffold_code(&mut ui, "cargo-rullst", &mut |command| {
-        commands.push(command);
-        Ok(())
-    })
-    .expect("gRPC choice should be accepted");
-    let parsed = <crate::cli::Cli as clap::Parser>::try_parse_from(&commands[0])
-        .expect("make:grpc arguments must parse");
-    assert!(matches!(
-        parsed.command,
-        crate::cli::Commands::MakeGrpc { ref name } if name == "UserService"
-    ));
 }
 
 #[test]
@@ -254,24 +235,9 @@ fn database_auth_and_deploy_menus_map_every_choice() {
     .expect("audit choice should be accepted");
     assert_eq!(commands[0].last().map(String::as_str), Some("--geiger"));
 
-    for (selection, action) in [(0, "deploy"), (1, "foundry:init"), (2, "foundry:deploy")] {
-        let mut ui = FakeUi::with_selections([selection]);
-        let mut commands = Vec::new();
-        handle_deploy(&mut ui, "cargo-rullst", &mut |command| {
-            commands.push(command);
-            Ok(())
-        })
-        .expect("deploy choice should be accepted");
-        assert_eq!(
-            commands,
-            vec![vec!["cargo-rullst".to_string(), action.to_string()]]
-        );
-    }
-
     for handler in [
         handle_database_operations::<FakeUi, fn(Vec<String>) -> DashboardResult<()>>,
         handle_auth_billing::<FakeUi, fn(Vec<String>) -> DashboardResult<()>>,
-        handle_deploy::<FakeUi, fn(Vec<String>) -> DashboardResult<()>>,
     ] {
         let mut ui = FakeUi::with_selections([usize::MAX]);
         let mut run: fn(Vec<String>) -> DashboardResult<()> =
@@ -287,8 +253,8 @@ fn project_menu_reaches_direct_nested_and_back_paths() {
         (1, "dash"),
         (5, "make:pwa"),
         (6, "dockerize"),
-        (7, "nixify"),
-        (9, "upgrade"),
+        (7, "deploy"),
+        (8, "upgrade"),
     ] {
         let mut ui = FakeUi::with_selections([selection]);
         let mut commands = Vec::new();
@@ -307,7 +273,6 @@ fn project_menu_reaches_direct_nested_and_back_paths() {
         (vec![2, 7], "make:scalar"),
         (vec![3, 2], "db:status"),
         (vec![4, 1], "make:mfa"),
-        (vec![8, 2], "foundry:deploy"),
     ] {
         let mut ui = FakeUi::with_selections(selections);
         let mut commands = Vec::new();
@@ -322,7 +287,7 @@ fn project_menu_reaches_direct_nested_and_back_paths() {
         );
     }
 
-    let mut ui = FakeUi::with_selections([10, 3]);
+    let mut ui = FakeUi::with_selections([9, 3]);
     let mut run = |_| -> DashboardResult<()> { panic!("back then exit must not execute") };
     handle_existing_project(&mut ui, "cargo-rullst", &Home::Outside, &mut run)
         .expect("back should return to the main dashboard");
@@ -413,7 +378,7 @@ fn project_home_offers_quick_actions_and_every_submenu() {
         (vec![2, 7], "make:scalar"),
         (vec![3, 0], "db:migrate"),
         (vec![4], "doctor"),
-        (vec![5, 0], "deploy"),
+        (vec![5], "deploy"),
         (vec![6, 6], "dockerize"),
         (vec![9], "new"),
     ] {
@@ -439,7 +404,7 @@ fn project_home_offers_quick_actions_and_every_submenu() {
     }
 
     // Back from all project operations returns to the same project home.
-    let mut ui = FakeUi::with_selections([6, 10, 12]);
+    let mut ui = FakeUi::with_selections([6, 9, 12]);
     let mut run = |_| -> DashboardResult<()> { panic!("back then exit must not execute") };
     run_dashboard(&mut ui, "cargo-rullst", &home, &mut run).expect("back returns home");
     assert_eq!(ui.brand_count, 1);

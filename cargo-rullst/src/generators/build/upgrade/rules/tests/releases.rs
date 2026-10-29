@@ -70,7 +70,12 @@ fn rules_carry_the_release_of_their_change() {
     );
     assert_eq!(
         codes_introduced_in("13.0.0-alpha.4"),
-        ["V13-CLI-SELF-UPDATE-REMOVED", "V13-CLI-EXTRAS"]
+        [
+            "V13-DEPLOY-TARGETS-REMOVED",
+            "V13-DEPLOY-GENERATORS-REMOVED",
+            "V13-CLI-SELF-UPDATE-REMOVED",
+            "V13-CLI-EXTRAS"
+        ]
     );
     assert_eq!(codes_introduced_in("13.0.0-alpha.1").len(), 95);
     assert!(codes_introduced_in("13.0.0-alpha.1").contains(&"V13-RENDER-PAGE-LANGUAGE"));

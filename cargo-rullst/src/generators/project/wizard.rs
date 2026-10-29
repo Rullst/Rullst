@@ -180,8 +180,6 @@ fn initial_plan(request: &NewProjectRequest<'_>, requested: &[PolyglotIntegratio
         ai: options.wants_ai,
         redis: options.wants_redis,
         docker: options.docker,
-        nix: options.nix,
-        buildah: options.buildah,
         requested: requested.to_vec(),
         add_ons: Vec::new(),
         skip_initial_migration: request.skip_initial_migration,
@@ -202,8 +200,7 @@ fn locked_questions(request: &NewProjectRequest<'_>) -> flow::Locked {
         database: options.database.is_some() || options.no_database,
         ai: options.wants_ai,
         redis: options.wants_redis,
-        docker: options.docker || options.buildah,
-        nix: options.nix,
+        docker: options.docker,
     }
 }
 

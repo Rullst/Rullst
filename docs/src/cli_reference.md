@@ -157,7 +157,7 @@ plain line without escape sequences or carriage returns.
 
 After a generator succeeds, the CLI prints up to three concrete **Next steps**
 (for example `cargo rullst db:migrate` after `make:model -m`). Generators that
-already print their own instructions (`new`, `auth`, `foundry:init`,
+already print their own instructions (`new`, `auth`, `deploy`,
 `make:k8s`) add none, and `--json` invocations never print them.
 
 ### `cargo rullst completions <shell>`
@@ -299,15 +299,14 @@ The choices that materially change the generated application:
     Compose services, persistent-volume ownership, backup/restore and platform
     deployment hardening remain explicit project work. Every starter mounts
     `rullst::health::health_router()`, so the `/health` and `/ready` probes
-    written by `make:k8s`, `deploy` and `foundry:deploy` answer `200` without
-    authentication.
+    used by `make:k8s` manifests and the `deploy` Caddyfile answer `200`
+    without authentication.
   * `--turso`: Adds Turso/libSQL as a side store beside the primary database: the direct Hrana HTTP v3 adapter, checked migrations and its real-SQL offline development fallback. It does not imply transparent replication.
   * `--mongodb`: Adds MongoDB as a side store: typed document CRUD and its deterministic offline store.
   * `--duckdb`: Adds DuckDB as a side store for in-process analytics; the optional native dependency increases the first build time.
   * `--surrealdb`: Adds SurrealDB as a side store: HTTP document CRUD and bounded read-only graph queries.
   * `--qdrant`: Adds Qdrant as a side store for bounded dense-vector operations and generates empty/`mock_*`-compatible environment fields; it is not the SQL primary.
-  * `--nix` (**Experimental**): Adds `flake.nix` and `.envrc` (direnv) starting points; reproducibility still depends on pinned inputs and external services.
-  * `--buildah` (**Experimental**): Adds rootless Buildah container-build files where supported. The image is tagged with the lowercase, `-`-separated form of the package name (`my_startup` becomes `my-startup:latest`), the same name `make:k8s` uses, because OCI repository and Kubernetes names reject uppercase letters and `_`.
+  * `--nix` and `--buildah` were removed in 13.0.0-alpha.4; see [Advanced deployment](advanced-deployment.md).
   * `--default`: Skips every question and uses deterministic defaults for anything no flag sets (name `app`, Blank, SQLite, no features), intended for CI and reproducible scaffolding.
   * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects the blueprint; the wizard skips that question.
   * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary database; the wizard skips that question. Network databases must be configured before migration bootstrap. The SQLx backends (`sqlite`, `postgres`, `mysql`, `mariadb`) work with every starter. `turso` is accepted only with the Blank starter (web page or `--api`) and has no Nexus, Studio database pages, `Schema` migrations or SQLx ORM; the wizard's choice, `--help` and the review/dry-run screen say so. See [Database Support](database-support.md).
@@ -1157,30 +1156,43 @@ root, and a name whose module or type would not be a non-keyword Rust
 identifier (for example `../notes`, `self` or `Bad.Name`) is rejected before
 anything is written.
 
-### `cargo rullst make:grpc <ServiceName>`
-**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
+### `cargo rullst deploy`
+Writes the files that run the application on any Linux VM with Docker or
+Podman, each only when it is absent (existing files are kept, and nothing is
+written through a link):
 
-Scaffolds a new gRPC service implementation in `src/grpc/<name>.rs` and Protobuf schema definition in `proto/<name>.proto` powered by `tonic`.
+* `Dockerfile` and `.dockerignore`: the same multi-stage build as
+  `dockerize`, with its dependency-cache (planner) stage and a distroless,
+  non-root runtime image;
+* `compose.yaml`: the app and a Caddy reverse proxy with automatic HTTPS for
+  `DOMAIN`. Both containers have a read-only root filesystem, every capability
+  dropped (Caddy keeps only `NET_BIND_SERVICE` for ports 80 and 443) and
+  `no-new-privileges`; the app reads `.env.production` and keeps its data in
+  the `app_data` volume; the app's `/health` endpoint is checked from the
+  Caddy container, because the app image has no shell or HTTP client. It works
+  with `docker compose` and `podman compose`;
+* `Caddyfile`: proxies to the app and stops routing to it while `/health`
+  fails.
 
-### `cargo rullst deploy [--platform <fly|railway|render|vps>]`
-Guided deployment helper that generates cloud manifests (`fly.toml`,
-`railway.json`, `render.yaml`, or `docker-compose.prod.yml`) and invokes the
-selected provider CLI where supported. A provider CLI that is not installed
-only prints the manual commands; one that runs and fails (`flyctl deploy`,
-`railway up`) makes `deploy` exit non-zero. The Fly.io `app` name uses the same
-lowercase label as `make:k8s` (`my_app` becomes `my-app`), while the
-`Dockerfile` and Railway start command keep the package's binary name. An
-unknown `--platform` value is rejected before anything is written, including
-the `Dockerfile` the command otherwise scaffolds when it is missing.
-`--platform vps` pins the Caddy container to `172.31.250.10` on a
-`172.31.250.0/24` compose network and adds that address to `[security]
-trusted_proxies` in `Rullst.toml` (creating the file before a missing
-`Dockerfile` is scaffolded, so the image copies it), so rate limits see each
-client instead of Caddy. An existing `trusted_proxies` list is left unchanged
-with a warning. Fly.io, Railway and Render print a notice while `Rullst.toml`
-trusts no proxy, because their proxy networks are provider-specific.
-Credentials, migrations, availability, DNS/TLS and rollback remain operator
-responsibilities.
+Caddy is pinned to `172.31.250.10` on a `172.31.250.0/24` compose network,
+and the command adds that address to `[security] trusted_proxies` in
+`Rullst.toml` (before a missing `Dockerfile` is scaffolded, so the image
+copies it), so rate limits see each client instead of Caddy. An existing
+`trusted_proxies` list is left unchanged with a warning. The command prints
+the next steps: create `.env.production`, point DNS at the VM, run
+`DOMAIN=example.com docker compose up -d --build` (or
+`podman compose up -d --build`) and run `db:migrate` once per release.
+Nothing is uploaded, started or deployed. A `Cargo.toml` package name that is
+not a valid Cargo name is refused before anything is written, because the
+Dockerfile names the binary after it.
+
+**Removed in 13.0.0-alpha.4:** the Fly.io, Railway and Render targets
+(`--platform fly|railway|render` now fails before writing anything;
+`--platform vps`, the former name of this path, is still accepted). Provider
+files you already have keep working with the provider's own CLI. Nix,
+Buildah, Podman Quadlet and Kubernetes are described in
+[Advanced deployment](advanced-deployment.md). Credentials, migrations,
+availability, DNS and rollback remain operator responsibilities.
 
 ### `cargo rullst auth`
 Creates an authentication starting point in your codebase, including:
@@ -1912,58 +1924,19 @@ cargo rullst green --bench --cpu-watts 15 --grid-intensity 120
 See the [green guide](green.md) for what each figure means and how to choose a
 grid intensity.
 
-### `cargo rullst dockerize` / `cargo rullst nixify`
-**Maturity:** `nixify` and `generate:buildah` are Experimental; `dockerize`
-follows the CLI's Core tier · [tiers](maturity.md#cli-generators)
+### `cargo rullst dockerize`
 
-Injects infrastructure files into a pre-existing project (similar to the flags
-used in `new`): `dockerize` writes a `Dockerfile` (plus `.dockerignore` when
-absent), `nixify` writes `flake.nix` and `.envrc`, and `generate:buildah`
-writes `build_buildah.sh`, which builds the `Dockerfile` rootless with
-`buildah bud`. All three refuse to replace an existing file;
-move a customized file aside to regenerate its template. The Dockerfile's binary
-and the Buildah image are named after `[package].name`, read with a TOML parser
-(`app` when `Cargo.toml` has no package name).
+Writes the `Dockerfile` (plus `.dockerignore` when absent) into an existing
+project, as `new --docker` does. It refuses to replace an existing
+`Dockerfile`; move a customized file aside to regenerate the template. The
+binary is named after `[package].name`, read with a TOML parser (`app` when
+`Cargo.toml` has no package name). `cargo rullst deploy` writes the same
+Dockerfile together with `compose.yaml` and the `Caddyfile`.
 
-### `cargo rullst foundry:init`
-**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
-
-Generates the `Foundry.toml` deployment manifest at the project root containing
-SSH access settings and environment variables for a compatible systemd-based
-Linux VPS. Before writing it, the command creates `.gitignore` when missing and
-appends `Foundry.toml` unless an exact, non-negated `Foundry.toml` line already
-ignores it. The manifest is created owner-readable only (`0600` on Unix);
-operators must still verify that secrets were never committed.
-
-### `cargo rullst foundry:deploy`
-**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
-
-Executes an SSH deployment pipeline: local release build, remote directory and
-systemd provisioning, `scp` transfer, environment/Caddy configuration, service
-restart, and a bounded remote-local `/health` probe. It requires a preinstalled,
-reviewed `curl`, systemd, and Caddy installation plus root or passwordless
-non-interactive `sudo`. Candidate files are staged under an application-specific
-`/opt/rullst/<app>` root: the binary is the executable Cargo reports for the
-package (so `CARGO_TARGET_DIR`, `build.target-dir`, a workspace target directory
-and `build.target` are honored; with several binaries, `package.default-run` or
-the one named after the package is chosen), uploaded into
-`/opt/rullst/<app>/incoming` (mode `0700`, owned by the SSH user), and its
-owner and the SHA-256 of the local build are checked before it is installed.
-The Caddy configuration is validated, and `.previous` copies of replaced files
-are retained. The service environment file holds the `[env]` table plus
-`PORT`, the `[app] port` (default 3000) that Caddy proxies to and the health
-check probes, unless `[env]` sets `PORT` itself; an `[env] PORT` different from
-`[app] port` is rejected. It also sets `HOST="127.0.0.1"` unless `[env]` sets
-`HOST` or `RULLST_HOST`: a production server otherwise binds `0.0.0.0`, and only
-Caddy needs that plain-HTTP port. Keep it private when overriding `HOST`. The
-application runs as a dedicated
-`rullst-<app>` system account (created with `useradd`) under a sandboxed unit
-(`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, no
-capabilities except `CAP_NET_BIND_SERVICE` for a port below 1024) and can write
-only under `/opt/rullst/<app>/data`. The current command replaces the global
-`/etc/caddy/Caddyfile`; it does not perform migrations, data backup, external
-reachability check, or automatic rollback. It
-does not guarantee zero downtime and does not support IPv6 SCP targets.
+**Removed in 13.0.0-alpha.4:** `nixify`, `generate:buildah`, `foundry:init`,
+`foundry:deploy` and `make:grpc`. Files they generated stay yours; see
+[Advanced deployment](advanced-deployment.md) for Nix, Buildah, Podman
+Quadlet and Kubernetes.
 
 ## 🛡️ 6. Security, Compliance & System Diagnostics
 
@@ -2289,6 +2262,6 @@ cargo rullst studio
 # Ask the terminal AI assistant (needs cargo-rullst-extras; offline demo until `cargo rullst ai connect`)
 cargo rullst ai "add a posts page"
 
-# Run the reviewed Foundry pipeline on a compatible, prepared VPS (experimental)
-cargo rullst foundry:deploy
+# Write the Dockerfile, compose.yaml and Caddyfile for a Linux VM (Docker or Podman)
+cargo rullst deploy
 ```

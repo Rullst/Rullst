@@ -151,7 +151,6 @@ where
         "🏝️  Wasm Island Component (cargo rullst make:island)",
         "📡  Scalar API Playground (cargo rullst make:scalar)",
         "☸️  Kubernetes Manifests  (cargo rullst make:k8s)",
-        "🔌  gRPC Microservice     (cargo rullst make:grpc)",
         "🤖  Introspect DB Models  (cargo rullst generate:models)",
     ]
     .map(str::to_string);
@@ -199,12 +198,7 @@ where
         8 => {
             return run(vec![program.to_string(), "make:k8s".to_string()]);
         }
-        9 => (
-            "Enter gRPC service name (e.g. UserService):",
-            "make:grpc",
-            vec![],
-        ),
-        10 => return introspect_models(ui, program, run),
+        9 => return introspect_models(ui, program, run),
         _ => return Ok(()),
     };
 
@@ -297,27 +291,6 @@ where
     run(args)
 }
 
-fn handle_deploy<U, F>(ui: &mut U, program: &str, run: &mut F) -> DashboardResult<()>
-where
-    U: DashboardUi,
-    F: FnMut(Vec<String>) -> DashboardResult<()>,
-{
-    let choices = [
-        "🚀  Guided PaaS Deploy         (cargo rullst deploy)",
-        "⚙️  Initialize Foundry Config  (cargo rullst foundry:init)",
-        "🚀  Deploy via SSH Pipeline    (cargo rullst foundry:deploy)",
-    ]
-    .map(str::to_string);
-    let selection = ui.select("Choose deployment action:\n", &choices)?;
-    let cmd = match selection {
-        0 => "deploy",
-        1 => "foundry:init",
-        2 => "foundry:deploy",
-        _ => return Ok(()),
-    };
-    run(vec![program.to_string(), cmd.to_string()])
-}
-
 fn handle_existing_project<U, F>(
     ui: &mut U,
     program: &str,
@@ -339,7 +312,7 @@ where
         ),
         format!(
             "🛠  Scaffold Code            {}",
-            "(Controllers, Models, LiveView, Islands, gRPC)".dimmed()
+            "(Controllers, Models, LiveView, Islands)".dimmed()
         ),
         format!(
             "🗄  Database Operations      {}",
@@ -355,15 +328,11 @@ where
         ),
         format!(
             "🐳  Dockerize Project        {}",
-            "(Generate Dockerfile & docker-compose)".dimmed()
+            "(Generate the Dockerfile and .dockerignore)".dimmed()
         ),
         format!(
-            "❄️  Nixify Project           {}",
-            "(Generate Nix flake for reproducible env)".dimmed()
-        ),
-        format!(
-            "🚀  Deploy to Cloud          {}",
-            "(Guided PaaS: Fly, Railway, Render, VPS)".dimmed()
+            "🚀  Deploy to a Linux VM     {}",
+            "(Dockerfile, compose.yaml, Caddyfile)".dimmed()
         ),
         format!(
             "🔄  Safe Upgrade             {}",
@@ -382,10 +351,9 @@ where
         4 => handle_auth_billing(ui, program, run),
         5 => run(vec![program.to_string(), "make:pwa".to_string()]),
         6 => run(vec![program.to_string(), "dockerize".to_string()]),
-        7 => run(vec![program.to_string(), "nixify".to_string()]),
-        8 => handle_deploy(ui, program, run),
-        9 => run(vec![program.to_string(), "upgrade".to_string()]),
-        10 => {
+        7 => run(vec![program.to_string(), "deploy".to_string()]),
+        8 => run(vec![program.to_string(), "upgrade".to_string()]),
+        9 => {
             ui.show_home(home)?;
             run_dashboard(ui, program, home, run)
         }
@@ -456,7 +424,7 @@ where
         HomeAction::Extras(name) => ui.notice(&extras_hint(name)),
         HomeAction::Scaffold => handle_scaffold_code(ui, program, run),
         HomeAction::Database => handle_database_operations(ui, program, run),
-        HomeAction::Deploy => handle_deploy(ui, program, run),
+        HomeAction::Deploy => run(command("deploy")),
         HomeAction::ProjectOperations => handle_existing_project(ui, program, home, run),
         HomeAction::Palette => run_palette(ui, program, home, run),
         HomeAction::NewProject => run(command("new")),

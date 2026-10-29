@@ -24,6 +24,23 @@ A prepared version section does not establish that its tag or crates exist.
   command and exit with status 1, and the home menu shows the command instead
   of failing. `cargo rullst upgrade` flags scripts and workflows that run
   `rullst ai` or `rullst footprint` (`V13-CLI-EXTRAS`).
+- **Breaking:** `cargo rullst deploy` has one path: for any Linux VM with
+  Docker or Podman it writes, when absent, the Dockerfile (keeping its
+  dependency-cache stage), a new `compose.yaml` (the app and Caddy with
+  automatic HTTPS, read-only root filesystems, every capability dropped except
+  Caddy's `NET_BIND_SERVICE`, no new privileges and a `/health` check) and the
+  `Caddyfile`, and trusts Caddy in `Rullst.toml`. The Fly.io, Railway and
+  Render targets were removed (`--platform vps` is still accepted), and
+  `deploy` now refuses a package name that is not a valid Cargo name.
+  `cargo rullst upgrade` flags existing provider files and scripts
+  (`V13-DEPLOY-TARGETS-REMOVED`).
+- **Breaking:** removed `cargo rullst foundry:init`, `foundry:deploy`,
+  `nixify`, `generate:buildah`, `make:grpc` and the `new --nix` and
+  `new --buildah` flags. Files they generated stay yours; the new Advanced
+  deployment guide covers Nix, Buildah, Podman Quadlet and Kubernetes.
+  `cargo rullst upgrade` flags `Foundry.toml`, a `nixify` `flake.nix`,
+  `build_buildah.sh`, `src/grpc/mod.rs` and scripts that run these commands
+  (`V13-DEPLOY-GENERATORS-REMOVED`).
 - **Breaking:** the CLI no longer installs or replaces itself. `cargo rullst
   update check`, `update verify`, `update stage` and `update install` were
   removed, and `update guided` now runs only the project flow (its `--scope`,

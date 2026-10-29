@@ -185,8 +185,8 @@ pub async fn head() {}
         for (name, body) in [
             (
                 "cargo",
-                // A `foundry:deploy` build reports its binary outside `target/`,
-                // as with CARGO_TARGET_DIR or a configured build target.
+                // A build reports its binary outside `target/`, as with
+                // CARGO_TARGET_DIR or a configured build target.
                 "#!/bin/sh\nfor argument in \"$@\"; do\n  if [ \"$argument\" = --message-format=json-render-diagnostics ]; then\n    printf '{\"reason\":\"compiler-artifact\",\"manifest_path\":\"%s/Cargo.toml\",\"target\":{\"kind\":[\"bin\"],\"name\":\"cli-fixture\"},\"profile\":{\"test\":false},\"executable\":\"%s/custom-target/release/cli-fixture\"}\\n' \"$PWD\" \"$PWD\"\n  fi\ndone\nexit 0\n",
             ),
             ("rustup", "#!/bin/sh\nexit 0\n"),
@@ -194,11 +194,6 @@ pub async fn head() {}
             ("docker", "#!/bin/sh\necho 'Docker version fixture'\n"),
             ("git", "#!/bin/sh\necho 'git version fixture'\n"),
             ("npm", "#!/bin/sh\nexit 0\n"),
-            ("ssh", "#!/bin/sh\n/bin/cat >/dev/null\nexit 0\n"),
-            (
-                "scp",
-                "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"${0%/*}/scp-arguments\"\nexit 0\n",
-            ),
             // An empty TCP listener inventory for `audit --network`.
             ("ss", "#!/bin/sh\nexit 0\n"),
         ] {
@@ -245,7 +240,16 @@ fn assert_files(root: &Path, paths: &[&str]) {
 #[test]
 fn public_help_inventory_renders_every_command_group() {
     let groups = cargo_rullst::ui::get_help_groups();
-    assert_eq!(groups.len(), 8);
+    assert_eq!(groups.len(), 9);
+    let extras = groups
+        .iter()
+        .find(|(title, _)| title.contains("cargo install cargo-rullst-extras"))
+        .expect("the extras group names its install command");
+    let extras: Vec<&str> = extras.1.iter().map(|(command, _)| *command).collect();
+    assert_eq!(
+        extras,
+        ["cargo rullst ai [goal]", "cargo rullst green [--bench]"]
+    );
     assert!(
         groups
             .iter()
@@ -288,7 +292,6 @@ fn public_generators_materialize_and_preserve_reviewable_outputs() {
     fixture.succeeds(&["make:worker", "EmailDelivery"]);
     fixture.succeeds(&["make:island", "ProgressChart"]);
     fixture.succeeds(&["make:live", "LiveCounter"]);
-    fixture.succeeds(&["make:grpc", "Course"]);
 
     // Names that cannot be Rust identifiers never reach the filesystem.
     let live_index = fs::read_to_string(fixture.root.join("src/live/mod.rs")).expect("live index");
@@ -330,19 +333,12 @@ fn public_generators_materialize_and_preserve_reviewable_outputs() {
             "src/workers/email_delivery_worker.rs",
             "src/islands/progress_chart.rs",
             "src/live/live_counter.rs",
-            "proto/course.proto",
-            "src/grpc/course.rs",
         ],
     );
     assert!(
         fixture
             .fails(&["make:live", "LiveCounter"])
             .contains("already exists")
-    );
-    assert!(
-        fixture
-            .fails(&["make:grpc", "Course"])
-            .contains("overwrite")
     );
 
     fixture.succeeds(&["generate:openapi"]);
@@ -459,11 +455,8 @@ fn inspection_packaging_and_deploy_scaffolds_cover_safe_offline_paths() {
     assert!(!schema.contains("not found"), "{schema}");
 
     fixture.succeeds(&["dockerize"]);
-    fixture.succeeds(&["generate:buildah"]);
-    fixture.succeeds(&["nixify"]);
     fixture.succeeds(&["make:k8s"]);
     fixture.succeeds(&["make:scalar"]);
-    fixture.succeeds(&["foundry:init"]);
     fixture.succeeds(&["hook:install"]);
     fixture.succeeds(&["eject"]);
 
@@ -471,36 +464,21 @@ fn inspection_packaging_and_deploy_scaffolds_cover_safe_offline_paths() {
         &fixture.root,
         &[
             "Dockerfile",
-            "build_buildah.sh",
-            "flake.nix",
-            ".envrc",
             "k8s/deployment.yaml",
             "src/controllers/docs_controller.rs",
-            "Foundry.toml",
             ".git/hooks/pre-commit",
             "src/ejected_main.rs",
         ],
     );
     assert!(fixture.fails(&["eject"]).contains("overwrite"));
 
-    for platform in ["render", "vps", "fly", "railway"] {
-        fixture.succeeds(&["deploy", "--platform", platform]);
-    }
+    fixture.succeeds(&["deploy"]);
     assert!(
         fixture
             .fails(&["deploy", "--platform", "unsupported"])
             .contains("Unknown platform")
     );
-    assert_files(
-        &fixture.root,
-        &[
-            "render.yaml",
-            "docker-compose.prod.yml",
-            "Caddyfile",
-            "fly.toml",
-            "railway.json",
-        ],
-    );
+    assert_files(&fixture.root, &["compose.yaml", "Caddyfile"]);
 }
 
 #[test]
@@ -653,41 +631,6 @@ fn diagnostics_audit_and_build_are_exercised_with_controlled_tool_processes() {
             .status
             .success()
     );
-
-    fixture.succeeds_with_path(&["foundry:init"], &tools);
-    let foundry_path = fixture.root.join("Foundry.toml");
-    let foundry = fs::read_to_string(&foundry_path)
-        .expect("Foundry manifest")
-        .replace(
-            "APP_KEY = \"CHANGE_ME_TO_A_SECURE_RANDOM_KEY\"",
-            "APP_KEY = \"fixture-secret-with-adequate-length\"",
-        );
-    fs::write(foundry_path, foundry).expect("configured Foundry manifest");
-    // The fake Cargo builds nothing and reports custom-target/release; deploy
-    // hashes and uploads that binary, never a stale one under target/.
-    for (directory, contents) in [
-        ("custom-target/release", &b"fixture binary"[..]),
-        ("target/release", &b"stale binary"[..]),
-    ] {
-        let release = fixture.root.join(directory);
-        fs::create_dir_all(&release).expect("release directory");
-        fs::write(release.join("cli-fixture"), contents).expect("release binary fixture");
-    }
-    fixture.succeeds_with_path(&["foundry:deploy"], &tools);
-    let uploaded = fs::read_to_string(tools.join("scp-arguments")).expect("scp arguments");
-    // Cargo (here `$PWD`) reports the resolved path, not the symlinked spelling.
-    let reported = format!(
-        "{}/custom-target/release/cli-fixture",
-        fixture
-            .root
-            .canonicalize()
-            .expect("resolved fixture root")
-            .display()
-    );
-    assert!(uploaded.lines().any(|line| line == reported), "{uploaded}");
-    // The configured `~/.ssh/id_rsa` expands under the isolated HOME only.
-    let key = format!("{}/.ssh/id_rsa", fixture.home().display());
-    assert!(uploaded.lines().any(|line| line == key), "{uploaded}");
 
     assert_files(
         &fixture.root,
