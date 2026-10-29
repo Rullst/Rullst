@@ -233,6 +233,8 @@ def wait_until_healthy(engine: Engine, first_start: bool, deadline: float = 300)
                               f"restarts {state.get('RestartCount')})")
             state = engine.inspect(caddy[0])["State"]
             health = (state.get("Health") or state.get("Healthcheck") or {}).get("Status")
+            if state.get("Status") != "running":
+                health = state.get("Status")
             if health == "healthy":
                 log(f"ok: compose reports Caddy healthy after {time.monotonic() - started:.0f}s")
                 return app[0], caddy[0]
@@ -344,20 +346,22 @@ def diagnostics(engine: Engine) -> None:
 
 
 def restart(engine: Engine, vm: Path) -> None:
-    """`compose restart`. Rootless Podman on the Ubuntu runner may fail to tear
-    down its pasta network namespace; that is reported as a warning (with the
-    kernel's AppArmor messages) and `compose up -d` starts what stopped."""
-    result = engine.compose(vm, "restart", capture=True, check=False, timeout=300)
-    log(result.stdout)
-    if result.returncode == 0:
+    """`docker compose restart`. With podman-compose, `restart` exits 0 while it
+    can leave Caddy stopped ("container state improper", or "rootless netns:
+    kill network process: permission denied" on the Ubuntu runner), so the
+    Podman job recreates both containers with `down` and `up -d` instead; the
+    volumes stay, which is the stronger persistence check."""
+    if engine.name == "docker":
+        engine.compose(vm, "restart", timeout=300)
         return
-    if engine.name != "podman" or "rootless netns" not in result.stdout:
-        raise Failure(f"`{engine.name} compose restart` exited with {result.returncode}")
-    log("::warning title=Rootless Podman restart::`podman compose restart` failed to stop "
-        "the rootless network namespace (see the log); ran `podman compose up -d`")
-    denials = run(["sudo", "dmesg"], capture=True, check=False, quiet=True).stdout
-    log("\n".join(line for line in denials.splitlines() if "apparmor" in line.lower())[-4000:])
-    engine("info", "--format", "network={{.Host.RootlessNetworkCmd}}", check=False)
+    result = engine.compose(vm, "down", capture=True, check=False, timeout=300)
+    log(result.stdout)
+    expect(not engine.containers(), "`podman compose down` removed the containers (volumes kept)")
+    if "rootless netns" in result.stdout:
+        log("::warning title=Rootless Podman::`podman compose down` could not stop the rootless "
+            "network process; the containers were removed and start again below")
+        denials = run(["sudo", "dmesg"], capture=True, check=False, quiet=True).stdout
+        log("\n".join(line for line in denials.splitlines() if "apparmor" in line.lower())[-3000:])
     engine.compose(vm, "up", "-d", timeout=600)
 
 
