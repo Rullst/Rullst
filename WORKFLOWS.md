@@ -644,7 +644,6 @@ entry only when its exact cargo-mutants name is also listed in
 | `cargo-rullst/src/generators/consumer_files.rs`: `reject_links`, the `NotFound` guard with `true` | Any other `lstat` failure of an ancestor (permission, not a directory, name too long) recurs with the same error when the path itself is read or created. |
 | `cargo-rullst/src/update/artifacts.rs`: `native_target`, the `cfg!(target_env = "gnu")` guard with `true`, the `cfg!(target_env = "msvc")` guard with `true` or `false`, and deleting either macOS arm | On the x86_64 GNU/Linux host the first guard is already true and the Windows and macOS patterns never match. |
 | `cargo-rullst/src/update/project/permissions_unix.rs`: `xattr_names`, `size > MAX_XATTR_NAMES` with `==` or `>=` | Linux never reports a name list longer than 64 KiB, and a list of exactly 64 KiB cannot hold only `security.selinux`, so `has_unreproduced_attribute` refuses it with the same error. |
-| `cargo-rullst/src/update/project/receipt.rs`: `Verified::validate`, the `\|\|` before `!seen.insert(...)` with `&&` | A repeated path cannot also equal the preparation's record at its position, because those records are unique, so `file.path != input.path` rejects it with the same error. |
 | `cargo-rullst/src/update/cache/unix.rs`: `options`, `NOFOLLOW \| NONBLOCK` with `^` | The two flags occupy disjoint bits, so OR and XOR give the same value. |
 | `cargo-rullst/src/update/cache/unix.rs`: `load_at`, `FILE_LIMIT + 1` with `-` or `*` | `validate_file` has already refused a file longer than `FILE_LIMIT`. Reading one byte less shortens only a file of exactly `FILE_LIMIT` bytes, whose body `decode` refuses either way because it allows 64 bytes less, and a file that grows during the read is refused either way. |
 | `rullst-studio/src/remote/history.rs`: `Sample::from_outcome`, `window.requests > 0` with `>=` | With no request the rate is `0 / 0`, which `finite` drops, so the sample stores no rate either way. |
@@ -757,6 +756,11 @@ every test of the file reaches, so no single test can fail first:
   scanner's `level` and `path` loops, where an index step (`+= 1`, `+= 2`,
   `next + 1`, `end + 1`, `end + 2`) becomes `-` or `*`, or `path` returns
   `0` or `1`, and the scan revisits the same token forever.
+- `cargo-rullst/src/generators/audit_source.rs`: the token scans of
+  `tokenized_views`, `item_end`, `mark_code_tokens` and `doc_attribute`, where
+  an index step (`+= 1`) becomes `-=` or `*=`, `item_end` returns `0` or `1`,
+  or `doc_attribute` returns `Some(0)` or `Some(1)` or its `next + 1` becomes
+  `-`, and the scan revisits the same token forever.
 - `rullst-security/src/log_redactor.rs`: the bearer, identifier, separator
   and escaped-quote scans, where an index step (`+= 1`, `+= 2`) becomes `-`
   or `*`, a key offset (`cursor + offset`, `key_start +

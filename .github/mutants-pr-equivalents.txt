@@ -123,7 +123,6 @@ cargo-rullst/src/update/cache/unix.rs:206:26: replace + with - in load_at
 cargo-rullst/src/update/cache/unix.rs:206:26: replace + with * in load_at
 cargo-rullst/src/update/project/permissions_unix.rs:106:17: replace > with == in xattr_names
 cargo-rullst/src/update/project/permissions_unix.rs:106:17: replace > with >= in xattr_names
-cargo-rullst/src/update/project/receipt.rs:124:17: replace || with && in Verified::validate
 
 # rullst-studio remote mode (alpha.3 campaign, targeted runs with the package's
 # tests): see WORKFLOWS.md "Accepted equivalent mutants".
