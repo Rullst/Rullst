@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793263673043,
+  "lastUpdate": 1793269632217,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -18603,6 +18603,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4265,
             "range": "± 27",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "344f9437ea0242ac1f1400e35c888faa0ee86fca",
+          "message": "Merge pull request #558 from Rullst/feat/v13-alpha4-starters-examples\n\nfeat(cli)!: keep the Blank, API and SaaS starters; LMS, ERP and Portfolio become examples",
+          "timestamp": "2026-10-29T07:09:19-03:00",
+          "tree_id": "5f17e4d69d48d8cae7703b74394bd91d8b92c188",
+          "url": "https://github.com/Rullst/Rullst/commit/344f9437ea0242ac1f1400e35c888faa0ee86fca"
+        },
+        "date": 1793269631291,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 827,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 633,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1469,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2172,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
