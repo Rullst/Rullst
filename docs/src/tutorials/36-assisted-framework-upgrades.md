@@ -436,7 +436,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (99 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (95 rows).
+  of inputs that previously failed) (96 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
 has 111 rules. A row can map to several rules and a rule to
@@ -644,6 +644,7 @@ the rule together.
 | Account mail link lifetime | (c) none | — | Only reset lifetimes that previously failed change; the link wording is not located |
 | Generated reset link lifetime | (c) none | — | Generator output; existing projects keep their code |
 | CLI deploy targets removed | (b) review | `V13-DEPLOY-TARGETS-REMOVED` | `fly.toml`, `render.yaml`, `railway.json`, `railway.toml`, and `deploy --platform fly\|railway\|render` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
+| SQLite database in the deployed image | (c) none | — | Generator output for new Dockerfiles; an existing Dockerfile without `DATABASE_URL` is not located, and `cargo rullst deploy` warns when it keeps one; introduced in 13.0.0-alpha.4 |
 | CLI Foundry, Nix, Buildah and gRPC generators removed | (b) review | `V13-DEPLOY-GENERATORS-REMOVED` | `Foundry.toml`, a `nixify` `flake.nix`, `build_buildah.sh`, `src/grpc/mod.rs`, and the removed commands in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 | CLI self-update removed | (b) review | `V13-CLI-SELF-UPDATE-REMOVED` | `rullst update check\|verify\|stage\|install`, or `update guided` with `--scope`/`--root`, in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 | CLI `ai` removed, `footprint` renamed `green` | (b) review | `V13-CLI-AI-REMOVED` | `rullst ai` or `rullst footprint` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
