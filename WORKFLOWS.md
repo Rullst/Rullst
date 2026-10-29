@@ -612,7 +612,7 @@ testcontainer and runs `db:status` in a child process, so runs with Docker
 measure the guard, and runs without it skip the test unless
 `RULLST_REQUIRE_TESTCONTAINERS=true`), the `cargo-rullst` campaign (targeted
 runs, with the CLI's library unit tests, of the self-update, audit, `add` and
-consumer-file, doctor and deploy files; it covers the files
+consumer-file, doctor, deploy and `upgrade` files; it covers the files
 `.github/mutants-pr-cli.txt` lists, and ROADMAP.md names the survivors left in
 the others) and the Studio remote-mode campaign (targeted runs of every
 `rullst-studio/src/remote` file and of the `rullst-studio` binary with the
