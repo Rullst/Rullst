@@ -14,10 +14,9 @@ and one coordinated CLI and release train.
 > exact version as [Getting Started](1-getting-started.md) shows). This page
 > lists implemented or explicitly bounded capabilities;
 > it is not a production-readiness certificate. The
-> [framework specification](spec.md),
-> [capability ledger](capability-ledger.md), and
-> [v12 stable release record](v12.md) are authoritative when a shorter description
-> and the code disagree.
+> [framework specification](spec.md) and
+> [capability ledger](capability-ledger.md) hold the detailed contracts; where
+> they and this summary disagree, they win.
 
 ## The short answer
 
@@ -196,9 +195,10 @@ values and returns `Markup`, so views nest without re-escaping, while
 server rendering is the default path for applications that do not need a
 project-local SPA bundle.
 
-LiveView, selected Wasm islands, Tera, and packaging helpers are optional
-strategies with separate maturity and operational requirements. Rullst does
-not claim that every frontend mode is interchangeable or bundle-free.
+LiveView and selected Wasm islands are optional strategies with separate
+maturity and operational requirements, and a template engine such as Tera is
+the application's own choice. Rullst does not claim that every frontend mode
+is interchangeable or bundle-free.
 
 The same server-rendered application becomes installable without a second
 codebase: `cargo rullst make:pwa` adds a web app manifest, a service worker
@@ -242,16 +242,17 @@ and retention. See the [telemetry guide](telemetry-guide.md).
 ### 9. Scaffolding is treated as shipped code
 
 The CLI can generate projects, routes, models, migrations, auth, mail, billing,
-deployment manifests, LMS foundations, and other bounded application slices.
+deployment manifests, and other bounded application slices.
 Rullst tests representative generated projects and maintains structural
 matrices instead of assuming that a template is correct because its source
 file compiles inside the CLI crate.
 
-The LMS example (`examples/lms`, a CLI starter until 13.0.0-alpha.4) is more than a landing-page mock: it has a course
+The LMS example (`examples/lms`, the CLI's LMS starter up to 13.0.0-alpha.3)
+is more than a landing-page mock: it has a course
 catalog with modules and lessons, sign-in and registration, enrollment,
 owner-bound idempotent lesson progress and a Nexus admin. Its accessible lesson
 presentation supports bounded video/audio metadata, requires a WebVTT captions
-track for video and renders escaped transcripts. In v13 this small starter
+track for video and renders escaped transcripts. In v13 this small application
 replaces the complete Academy scaffold that v12 generated (assessment, scores,
 leaderboard, automation, notifications and school boundaries). It is a
 foundation for a learning product, not a claim that Rullst generates pedagogy,
@@ -331,7 +332,8 @@ the more responsible decision.
 
 ## How to evaluate Rullst today
 
-1. Start with the [Zero-to-Hero tutorial](tutorials/01-hello-world.md).
+1. Start with [Zero to Hello Rullst](tutorials/01-hello-world.md) or
+   [Zero to a complete app](tutorials/zero-to-complete-app.md).
 2. Check the exact capability you need in the
    [specification](spec.md) and [capability ledger](capability-ledger.md).
 3. Enable only the required Cargo features and inspect their dependency graph.
@@ -340,8 +342,6 @@ the more responsible decision.
 5. Pin an immutable release or commit for evaluation; do not deploy from a
    moving development branch.
 
-This page was reviewed against the immutable v12 stable release and its
-repository-owned evidence; the LMS example description follows v13 development
-on `main`. It remains a concise map of the strongest
-implemented ideas, not a substitute for the detailed contracts or
-application-specific validation.
+This page describes the v13 prerelease line (`13.0.0-alpha.4`). It remains a
+concise map of the strongest implemented ideas, not a substitute for the
+detailed contracts or application-specific validation.
