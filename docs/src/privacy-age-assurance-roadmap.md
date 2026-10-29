@@ -8,9 +8,9 @@ SQLite adapter adds atomic persisted consumption, quota and clock rollback
 checks. The optional PostgreSQL candidate adds shared claims across application
 hosts with explicit initialization and real-database concurrency, cancellation,
 expiry, configuration, restricted-role and server-restart tests; the optional
-`consent-postgres` adapter shares consent state the same way. Initial package
-registration, final release acceptance, broader privacy workflows and concrete
-live age providers remain open. Native declarations, independent optional
+`consent-postgres` adapter shares consent state the same way. Final release
+acceptance, broader privacy workflows and concrete live age providers remain
+open. Native declarations, independent optional
 consent and authenticated SaaS preference/profile-export journeys now have
 focused test evidence; v13 removed the generated LMS journeys with the complete
 Academy scaffold. These do not implement every roadmap responsibility. This
@@ -195,12 +195,12 @@ may classify facial data differently. Both the image and derived result need a
 reviewed processing basis and safeguards; “age estimation only” is not a blanket
 exemption. [GDPR, recital 51 and Article 9](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng).
 
-## Blueprints, examples and Academy
+## Starters, examples and Academy
 
 All generated application shapes should share the reviewed privacy defaults.
 Generate an operator-completed data inventory and configuration, notices that
 identify missing information, and accessible preference/rights routes where
-the selected blueprint processes personal data. Do not insert camera flows,
+the selected starter processes personal data. Do not insert camera flows,
 cookie banners or a heavyweight provider into a database-free starter that has
 no corresponding need.
 
@@ -223,7 +223,7 @@ mock flow is not deployment evidence for either production or staging.
 | **P0.1** | Bounded privacy policy, consent/withdrawal, rights/retention contracts and explicit age/guardian evidence types | Deterministic tests for withdrawal, purpose changes, expired evidence, replay, tenant isolation and production mock rejection. |
 | **P0.2 — approved 13.0.0 foundation** | First real privacy workflow and provider-neutral age gate, including an authenticated first-party declaration where the selected policy permits it | Durable state, session/tenant/action binding, effective rights-adapter execution, outage/cancellation handling and rejection of mocks or declarations used for stronger-policy actions. |
 | **Optional provider expansion** | One reviewed external age adapter with an appropriate alternative | Native protocol and authorized sandbox evidence, capture/session binding, evaluated method strength, data lifecycle and appeal flow. The independent foundation cannot claim this integration before these gates pass. |
-| **P0.3** | SaaS/LMS blueprint adoption and versioned examples/Academy migration | Browser/API negatives, no optional tracking before permission, real export/delete execution, backup-restore behavior and no image/identity leakage. |
+| **P0.3** | SaaS starter and LMS example adoption and versioned examples/Academy migration | Browser/API negatives, no optional tracking before permission, real export/delete execution, backup-restore behavior and no image/identity leakage. |
 | **After foundation** | More regional profiles, credential issuers and an optional local facial estimator | Per-profile review; model provenance/licensing, integrity-pinned weights, supported devices, threshold error rates, demographic fairness and attack evaluations. No bundled unvalidated “simple AI”. |
 
 The release owner approved the independent foundation and optional-provider
