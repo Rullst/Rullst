@@ -48,7 +48,6 @@ fn an_unchanged_preparation_loads_its_inputs() {
 fn every_identity_and_authority_field_of_the_record_is_checked() {
     let project = prepared_project();
     let original = record(&project.stage);
-    let source = original["source"].as_str().unwrap().to_string();
     for (field, value) in [
         (
             "schema_version",
@@ -59,12 +58,21 @@ fn every_identity_and_authority_field_of_the_record_is_checked() {
         ("execution_authorized", serde_json::json!(true)),
         ("application_authorized", serde_json::json!(true)),
         ("files", serde_json::json!([])),
-        ("source", serde_json::json!(format!("{source}/../source"))),
     ] {
         let mut changed = original.clone();
         changed[field] = value;
         save(&project.stage, &changed);
         assert_eq!(error(&project.stage), INVALID, "{field}");
+    }
+    // A non-canonical spelling of the source. Not on Windows, whose canonical
+    // paths are verbatim (`\\?\`) and refuse `..` with an I/O error first.
+    #[cfg(not(windows))]
+    {
+        let source = original["source"].as_str().unwrap();
+        let mut changed = original.clone();
+        changed["source"] = serde_json::json!(format!("{source}/../source"));
+        save(&project.stage, &changed);
+        assert_eq!(error(&project.stage), INVALID, "source");
     }
     let mut duplicate = original.clone();
     let first = duplicate["files"][0].clone();

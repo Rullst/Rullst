@@ -39,6 +39,9 @@ fn sqlite_paths_keep_their_spelling() {
     );
 }
 
+// Not on Windows, which retries a refused loopback connection for longer
+// than the probe waits and so reports a timeout.
+#[cfg(not(windows))]
 #[test]
 fn a_refused_connection_is_named() {
     assert_eq!(

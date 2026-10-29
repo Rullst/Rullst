@@ -259,9 +259,19 @@ mod tests {
         ] {
             fs::write(migrations.join(name), "").unwrap();
         }
+        // The listed paths use the platform's separator after the directory.
+        let expected: Vec<String> = ["20250101_create_users.rs", "20260101_create_users.rs"]
+            .iter()
+            .map(|name| {
+                std::path::Path::new("src/migrations")
+                    .join(name)
+                    .display()
+                    .to_string()
+            })
+            .collect();
         assert_eq!(
             existing_migrations_in(project.path()),
-            r#"ok ["src/migrations/20250101_create_users.rs", "src/migrations/20260101_create_users.rs"]"#
+            format!("ok {expected:?}")
         );
         fs::remove_dir_all(&migrations).unwrap();
         fs::write(&migrations, "not a directory").unwrap();
