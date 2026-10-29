@@ -13,6 +13,7 @@ fn tuple_and_or_catch_all_arms_cover_new_field_kinds() {
     for source in [
         "fn a(k: &FieldKind, f: bool) -> u8 { match (k, f) { (FieldKind::Text, _) => 1, (_, _) => 0 } }",
         "fn a(k: &FieldKind) -> u8 { match k { FieldKind::Text => 1, FieldKind::Date | _ => 0 } }",
+        "fn a(k: &FieldKind) -> u8 { match k { FieldKind::Text => 1, other => 0 } }",
     ] {
         assert_eq!(found(source), [], "{source}");
     }
@@ -89,4 +90,69 @@ fn credential_lengths_need_len_and_a_registration_limit() {
 fn methods_in_impl_blocks_are_scanned() {
     let source = "\nstruct Pages;\nimpl Pages {\n    pub fn index_page(&self, posts: Vec<Post>) -> String {\n        String::new()\n    }\n}\n";
     assert_eq!(found(source), [("V13-PAGE-CSP-NONCE", 4)]);
+}
+
+#[test]
+fn searchable_tables_must_be_lowercase_identifiers() {
+    let model = |table: &str| {
+        format!(
+            "#[derive(Orm)]\n#[orm(searchable, table = \"{table}\")]\npub struct Post {{\n    pub id: i32,\n}}\n"
+        )
+    };
+    for table in ["posts", "post_tags", "posts2"] {
+        assert_eq!(found(&model(table)), [], "{table}");
+    }
+    for table in ["9posts", "pOsts", "Posts", "post-tags"] {
+        assert_eq!(
+            found(&model(table)),
+            [("V13-ORM-SEARCHABLE-TABLE", 2)],
+            "{table}"
+        );
+    }
+}
+
+#[test]
+fn only_the_turso_backend_keeps_text_timestamps() {
+    let model = |backend: &str| {
+        format!(
+            "#[derive(Orm)]\n#[orm(table = \"posts\", backend = \"{backend}\")]\npub struct Post {{\n    pub created_at: String,\n}}\n"
+        )
+    };
+    assert_eq!(found(&model("turso")), []);
+    assert_eq!(found(&model("postgres")), [("V13-TEXT-TIMESTAMPS", 4)]);
+}
+
+#[test]
+fn relation_keys_that_the_relation_ignores_must_change() {
+    let field = |options: &str| {
+        format!(
+            "#[derive(Orm)]\npub struct Post {{\n    #[orm({options})]\n    pub author: i64,\n}}\n"
+        )
+    };
+    for options in [
+        "belongs_to = \"User\", foreign_key = \"user_id\", local_key = \"id\"",
+        "morph_to = \"owner\", local_key = \"id\"",
+        "has_many = \"Comment\", related_key = \"post_id\"",
+        "has_one = \"Profile\", related_key = \"user_id\"",
+    ] {
+        assert_eq!(
+            found(&field(options)),
+            [("V13-ORM-IGNORED-RELATION-KEY", 3)],
+            "{options}"
+        );
+    }
+    for options in [
+        "belongs_to = \"User\", foreign_key = \"user_id\", related_key = \"id\"",
+        "has_many = \"Comment\", local_key = \"id\"",
+    ] {
+        assert_eq!(found(&field(options)), [], "{options}");
+    }
+}
+
+#[test]
+fn a_nexus_model_annotates_one_primary_key() {
+    let twice = "#[derive(Nexus)]\npub struct Product {\n    #[nexus(primary_key)]\n    pub id: i64,\n    #[nexus(primary_key)]\n    pub code: String,\n}\n";
+    assert_eq!(found(twice), [("V13-NEXUS-PRIMARY-KEY", 5)]);
+    let once = "#[derive(Nexus)]\npub struct Product {\n    #[nexus(primary_key)]\n    pub id: i64,\n    #[nexus(hidden)]\n    pub secret: String,\n    #[nexus(label = \"Code\")]\n    pub code: String,\n}\n";
+    assert_eq!(found(once), []);
 }
