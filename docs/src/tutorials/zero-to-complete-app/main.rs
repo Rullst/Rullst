@@ -95,6 +95,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!("🚀 SaaS server starting on port 3000...");
     Server::new(router)
+        .with_migrations(crate::migrations::get_migrations())
+        // Production monitoring is off. To serve the read-only
+        // `GET /_rullst/monitor/v1` document, uncomment the next lines and set
+        // RULLST_MONITOR_TOKENS (see .env.example); without a token nothing is
+        // mounted. Guide: https://rullst.github.io/Rullst/book/production-monitoring.html
+        // .with_monitor(
+        //     rullst::monitor::Monitor::new()
+        //         .with_application(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")),
+        // )
         .run(3000)
         .await?;
 

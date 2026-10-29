@@ -9,11 +9,14 @@ build. Plan for about an hour, most of it waiting for the first build.
 This page is one path from an empty folder to a working app. Each step links
 to the tutorial that explains it in depth.
 
-> **How this page was recorded.** Every command after the installation, and
-> every output, comes from a run on 8 October 2026 with the 13.0 development
-> CLI built from `main` (`13.0.0-alpha.1`), SQLite and Linux. Output is shortened with `…`, and your
-> timestamps will differ. Steps marked **New in 13.0** need that release; each
-> says what to do on 12.x.
+> **How this page was recorded.** The commands and outputs come from a run on
+> 8 October 2026 with the 13.0 development CLI (`13.0.0-alpha.1`), SQLite and
+> Linux. On 29 October 2026 the steps that need no build were repeated with
+> `13.0.0-alpha.4`: creating the app, the two generators, the security report
+> and the IDOR check printed what this page shows, and the files under
+> `zero-to-complete-app/` follow that release's SaaS starter. The test list in
+> step 6 is taken from the alpha.4 sources; build times and sizes are from the
+> first run. Output is shortened with `…`, and your timestamps will differ.
 
 ## 1. Install Rust and the CLI
 
@@ -37,8 +40,8 @@ cargo rullst new notes --default --blueprint saas --database sqlite
 cd notes
 ```
 
-The first build compiles every dependency and takes several minutes (3 min 31 s
-on the recording machine). It ends with:
+The first build compiles every dependency and takes several minutes (see
+[Build times](../build-times.md) for measured figures). It ends with:
 
 ```text
 📦 Bootstrapping Database...
@@ -55,8 +58,7 @@ Next steps
   Prefer a live dashboard? cargo rullst dash · new to Rullst? cargo rullst tour
 ```
 
-The 12.x CLI prints a shorter summary and does not create the Git repository;
-there, run `git init` first. Commit the generated files now. The security
+Commit the generated files now. The security
 report in step 7 reads the files Git tracks, and the generated `.gitignore`
 already leaves out `.env` and the SQLite database:
 
@@ -201,16 +203,17 @@ More on [authentication](11-authentication-system.md) and
 
 ## 6. Run the tests
 
-**New in 13.0:** every new project ships `src/security_tests.rs`. Its tests
+Every new project ships `src/security_tests.rs`. Its tests
 build the app from `router()`, wrap it in the baseline that `Server` adds in
 production, and check offline that responses carry the security headers, that
 a write is refused without the CSRF token and accepted with it, and that the
 WAF refuses an injection probe but accepts ordinary prose. The SaaS starter
 also checks that repeated sign-in attempts are rate limited. The tests request
 `/health`, `/logout` and `/login`; your notes routes sit behind the same
-baseline because they are part of `router()`.
+baseline because they are part of `router()`. The starter's sign-in
+controller and its Nexus access check have unit tests of their own.
 
-The controller adds two unit tests of its own: one proves that only the owner
+The notes controller adds two unit tests: one proves that only the owner
 passes `authorize`, the other that an empty title fails validation. None of
 these tests needs a database or the network:
 
@@ -219,23 +222,23 @@ cargo test
 ```
 
 ```text
-running 8 tests
+running 9 tests
 test controllers::auth_controller::tests::length_limits_count_what_the_form_counts ... ok
-test controllers::auth_controller::tests::registration_timestamps_use_the_current_timestamp_text ... ok
+test controllers::auth_controller::tests::registration_timestamps_are_current_utc_instants ... ok
 test controllers::notes_controller::tests::only_the_owner_may_open_a_note ... ok
 test controllers::notes_controller::tests::an_empty_title_is_rejected ... ok
+test middlewares::nexus_access::tests::a_request_without_a_session_is_sent_to_sign_in ... ok
 test security_tests::production_responses_carry_the_security_headers ... ok
 test security_tests::the_waf_refuses_injection_and_accepts_prose ... ok
 test security_tests::csrf_refuses_a_write_without_the_token ... ok
 test security_tests::repeated_sign_in_attempts_are_rate_limited ... ok
 
-test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in …
 ```
 
-**On 12.x**, the starter has no `src/security_tests.rs`, so `cargo test` runs
-only the four unit tests.
+The order of the lines can differ from run to run.
 
-## 7. Check the app with the security report (New in 13.0)
+## 7. Check the app with the security report
 
 ```bash
 cargo rullst audit --report
@@ -266,11 +269,7 @@ Report written to SECURITY_REPORT.md
 the starter's `User` and `BillingCustomer` models. The vulnerable-dependency
 check needs `cargo-audit` installed. To see the IDOR check work, delete one
 `rullst-access` comment and run `cargo rullst audit --idor`: it fails and
-names the route.
-
-**On 12.x**, run `cargo rullst audit --idor` for the route check, and
-`cargo rullst audit --compliance` for an evidence report. See
-[the security report guide](../security-report.md).
+names the route. See [the security report guide](../security-report.md).
 
 ## 8. Develop with live reload
 
@@ -295,7 +294,7 @@ Open `http://127.0.0.1:3000/register`, create an account, then go to
 `http://127.0.0.1:3000/notes`. Saving a source file rebuilds and restarts the
 app; a failed build keeps the previous one running. `cargo rullst dash` runs
 the same loop inside a terminal dashboard with live requests, latency, errors
-and database metrics. **New in 13.0:** when one request repeats the same ORM
+and database metrics. When one request repeats the same ORM
 operation three or more times, the dashboard adds a **POSSIBLE N+1 QUERIES**
 panel with the route, the operation and the count; see the
 [N+1 query warning](../cli_reference.md#n1-query-warning). Stop either with
@@ -320,21 +319,21 @@ cargo rullst build
 ```
 
 The release binary is `target/release/notes` (15.3 MiB in the recorded run).
-**New in 13.0:** Cargo builds it with the `[profile.release]` that
+Cargo builds it with the `[profile.release]` that
 `cargo rullst new` wrote into `Cargo.toml`: thin LTO, one codegen unit and
 stripped symbols. `panic` stays `unwind`, so one panicking handler cannot stop
 the server.
 
 The build also writes Brotli and Zstandard copies of the files in `static/`,
-which the server prefers; run it again after changing an asset. **New in
-13.0:** the `/static` mount also sets cache headers. A file name with a content
+which the server prefers; run it again after changing an asset. The
+`/static` mount also sets cache headers. A file name with a content
 hash, such as `app.3f9a2c1b.css`, is cached for a year as `immutable`; other
 files, such as the starter's `rullst.css`, get `Cache-Control: no-cache` and
 are revalidated with their `ETag`. Started with the development `.env`, the
 binary answered `200` on `/health`, redirected `/notes` to `/login`, and served
 `/static/rullst.css` Brotli-compressed with `no-cache` and an `ETag`.
 
-**New in 13.0:** measure the build with `cargo rullst green` (Experimental).
+Measure the build with `cargo rullst green` (Experimental).
 On its own, `cargo rullst green --path /health` starts the release binary with
 `RULLST_ENV=production`, which the SaaS starter refuses until the production
 billing settings exist:
@@ -346,8 +345,9 @@ error: App could not be started
                  Error: BillingConfigError("production billing requires real credentials, a strong webhook secret, an HTTPS redirect URL, and an explicit plan allowlist")
 ```
 
-Until then, start `./target/release/notes` with the development `.env` and
-measure it from a second terminal:
+Until then, either pass `--env staging`, which the starter accepts with its
+mock billing credentials, or start `./target/release/notes` with the
+development `.env` and measure it from a second terminal:
 
 ```bash
 cargo rullst green --url http://127.0.0.1:3000 --path /health --bench
@@ -368,11 +368,10 @@ Before it serves real users:
 - create a production environment file with `RULLST_ENV=production`, a new
   `APP_KEY` and the billing settings described in the generated `BILLING.md`;
   never reuse the development `.env`;
-- **New in 13.0:** check that file with
+- check that file with
   `cargo rullst deploy:doctor --env-file .env.production`. Run against the
-  development `.env`, it reports `[FAIL] environment_target: Set RULLST_ENV
-  to the requested --target (production or staging).` On 12.x, review the
-  [deployment preparation checklist](31-end-to-end-saas-aws-gcp.md) by hand;
+  development `.env`, it fails with `[FAIL] environment_target`, because that
+  file does not set `RULLST_ENV=production`;
 - choose a platform: [guided container deployment](26-one-click-paas-deploy.md)
   (`cargo rullst deploy` writes a `Dockerfile`, `compose.yaml` and `Caddyfile` for a Linux VM; see [Deploy to a Linux VM](../vm-deployment.md)),
   [Kubernetes](25-kubernetes-deployment.md), or a container from
@@ -385,7 +384,7 @@ Before it serves real users:
   app, and see [the CLI reference](../cli_reference.md) for every command.
 - Add [background jobs](20-background-jobs-queues.md),
   [email](../crates/mail.md) or [real billing](19-saas-billing-capital.md).
-  **New in 13.0:** work that can wait, such as reports and exports, can be
+  Work that can wait, such as reports and exports, can be
   [deferred to an allowed time window](../crates/core.md#deferrable-jobs-and-time-windows).
 - Before launch, read the [security architecture](../security-architecture.md)
   and check each crate's [maturity tier](../maturity.md).
