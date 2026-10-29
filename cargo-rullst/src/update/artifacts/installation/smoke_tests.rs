@@ -1,4 +1,6 @@
 //! The candidate version probe accepts only one exact, quiet version line.
+// Every probe is a shell script, so the tests run on Unix only.
+#[cfg(unix)]
 use super::*;
 
 #[cfg(unix)]

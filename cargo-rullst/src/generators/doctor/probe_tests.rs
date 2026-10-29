@@ -1,6 +1,8 @@
 //! Probes report found/success and a bounded, cleaned first output line.
 use super::*;
 
+// Only the Unix tests below run their probes through `sh`.
+#[cfg(unix)]
 fn bounded(program: &'static str, args: &'static [&'static str]) -> Probe {
     // Bounded, so a truncation loop that never ends fails instead of hanging.
     let (sender, receiver) = std::sync::mpsc::channel();
