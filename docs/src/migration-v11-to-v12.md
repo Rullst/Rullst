@@ -1,5 +1,11 @@
 # Migration guide: v11-era dependencies to v12
 
+> [!NOTE]
+> **Historical guide (v12).** The 12.x line reached end of life on 16 October
+> 2026. The v13 CLI upgrades only v12 and v13 projects: bring the application
+> to v12 with this guide and the v12 CLI, then follow
+> [Preparing an application for v13](migration-v13.md).
+
 There is no repository tag for a `rullst` umbrella v11 release. The v5/v6 source
 line did, however, consume ecosystem packages such as `rullst-connect = 11`.
 This guide therefore targets applications whose manifests or lockfiles contain

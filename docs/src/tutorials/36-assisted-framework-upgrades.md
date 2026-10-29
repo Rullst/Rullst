@@ -1,6 +1,6 @@
 # 36. Assisted framework upgrades
 
-Rullst v12 introduces a bounded upgrade transaction for existing applications.
+Rullst v12 introduced a bounded upgrade transaction for existing applications.
 The goal is to make the safe, repeatable part a single command while refusing
 to guess about application data or security policy.
 
@@ -86,12 +86,12 @@ ignore keys they do not know.
 Use an explicit target to make the selected published version visible:
 
 ```bash
-cargo rullst upgrade --to 12.1.0 --dry-run
+cargo rullst upgrade --to 13.0.0-alpha.4 --dry-run
 ```
 
 Other targets must exist in the registry and belong to the installed CLI's
-major train. This restriction prevents a v12 rules engine from pretending it
-understands an eventual v13 migration.
+major train, so a CLI never applies rules it does not carry: a v12 CLI cannot
+plan a v13 migration, and the v13 CLI cannot downgrade a project.
 
 ## 3. Apply the transaction
 
