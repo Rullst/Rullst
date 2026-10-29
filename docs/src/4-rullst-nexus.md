@@ -7,38 +7,6 @@ registered Rullst models.
 panel. Rullst builds CRUD, search, pagination, and batch routes from that
 registration; it does not discover an arbitrary database schema automatically.
 
-<a id="mobile-maintenance-in-1210-and-v13-unreleased"></a>
-
-## Mobile maintenance in 12.1.0
-
-The [Portfolio report, issues 3 and 4](https://github.com/Rullst/examples/blob/0182464b68a5adaf89fca65af8dd00142d78ad49/docs/portfolio-errors-found.md)
-identified a drawer that could not be dismissed on small screens and a
-desktop-only Portfolio layout. The changes shipped in **12.1.0** and are absent from
-12.0.0:
-
-- Nexus supplies a close button, click/touch backdrop, Escape and link dismissal,
-  focus containment and return, and synchronized `aria-expanded` state. Closed
-  mobile links are inert; the background is inert while the drawer is open.
-  Desktop resizing clears that state. Without JavaScript, ordinary navigation
-  stays visible. The drawer does not require HTMX or a CDN to dismiss.
-- The Portfolio generator stacks its sections below 900px, tightens spacing
-  below 640px, wraps long content and keeps project cards inside the viewport.
-  Reduced-motion preferences stop decorative animations.
-
-Update the application dependencies and lockfile to 12.1.0 or later, then
-remove the temporary `nexus_mobile_patch` middleware that buffers and rewrites
-Nexus HTML. Retaining it can introduce duplicate close controls,
-backdrops and event handlers. Do not remove authentication, authorization, TLS,
-CSRF or other security middleware along with that presentation-only patch.
-
-Existing Portfolio projects own their generated `src/pages/home.rs`: updating
-the CLI or dependency alone does **not** replace that file. Compare its styles
-with a fresh Portfolio scaffold, apply the responsive CSS while preserving your
-content/design, and remove conflicting old overrides. Verify narrow screens,
-long names/URLs, keyboard focus, touch dismissal, desktop resizing and reduced
-motion before redeployment. Other repositories and deployed Azure applications
-are not modified by these framework changes.
-
 ## Derive and register a model
 
 The `Nexus` derive generates `NexusModel` metadata for named-field structs. It
@@ -328,8 +296,9 @@ ORM writes never touch it, so neither a form nor `save()` grants it, while
 `User::query().where_eq("is_admin", true)` still filters on it. Grant the first administrator with your
 database client, for example
 `UPDATE users SET is_admin = TRUE WHERE email = 'you@example.com';`; that
-administrator can then grant others from the Users model in Nexus. `make:auth`
-users get the same column, ready for `NexusAuthPolicy::application`.
+administrator can then grant others from the Users model in Nexus. The
+`users` table that `cargo rullst auth` generates has the same column, ready for
+`NexusAuthPolicy::application`.
 
 #### Serving the application without Nexus
 
@@ -507,8 +476,8 @@ let nexus = rullst::nexus::Nexus::new()
     .try_build()?;
 ```
 
-Administrators can edit the registered profile fields at `/nexus`. A blueprint
-that reads those fields on each request can show the persisted values without a
+Administrators can edit the registered profile fields at `/nexus`. An
+application that reads those fields on each request can show the persisted values without a
 code change or redeployment; cache policy remains application-owned.
 
 Batch deletion is available for every registered model. Batch deactivation is
@@ -544,3 +513,40 @@ the page from the server.
 In a generated debug application, open `/nexus` from the same machine. In a
 release deployment, configure strong unique credentials and the verified TLS
 boundary before exposing the route.
+
+<a id="mobile-maintenance-in-1210-and-v13-unreleased"></a>
+
+## Mobile maintenance in 12.1.0
+
+This section is for applications still on 12.0.x; 12.1.0 and every 13.0
+prerelease include these changes.
+
+The [Portfolio report, issues 3 and 4](https://github.com/Rullst/examples/blob/0182464b68a5adaf89fca65af8dd00142d78ad49/docs/portfolio-errors-found.md)
+identified a drawer that could not be dismissed on small screens and a
+desktop-only Portfolio layout. The changes shipped in **12.1.0** and are absent from
+12.0.0:
+
+- Nexus supplies a close button, click/touch backdrop, Escape and link dismissal,
+  focus containment and return, and synchronized `aria-expanded` state. Closed
+  mobile links are inert; the background is inert while the drawer is open.
+  Desktop resizing clears that state. Without JavaScript, ordinary navigation
+  stays visible. The drawer does not require HTMX or a CDN to dismiss.
+- The Portfolio generator (since 13.0.0-alpha.4 the
+  [`examples/portfolio`](https://github.com/Rullst/Rullst/tree/main/examples/portfolio)
+  application) stacks its sections below 900px, tightens spacing
+  below 640px, wraps long content and keeps project cards inside the viewport.
+  Reduced-motion preferences stop decorative animations.
+
+Update the application dependencies and lockfile to 12.1.0 or later, then
+remove the temporary `nexus_mobile_patch` middleware that buffers and rewrites
+Nexus HTML. Retaining it can introduce duplicate close controls,
+backdrops and event handlers. Do not remove authentication, authorization, TLS,
+CSRF or other security middleware along with that presentation-only patch.
+
+Existing Portfolio projects own their generated `src/pages/home.rs`: updating
+the CLI or dependency alone does **not** replace that file. Compare its styles
+with `examples/portfolio/src/pages/home.rs`, apply the responsive CSS while preserving your
+content/design, and remove conflicting old overrides. Verify narrow screens,
+long names/URLs, keyboard focus, touch dismissal, desktop resizing and reduced
+motion before redeployment. Other repositories and deployed Azure applications
+are not modified by these framework changes.

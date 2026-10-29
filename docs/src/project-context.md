@@ -1,8 +1,10 @@
 # Generated project instructions and context
 
-The v13 CLI candidate generates a bounded project inventory and creates an
-application `AGENTS.md` when none exists. It preserves existing instructions.
-This is a source-navigation aid; the map does not establish that a feature is
+Since v13, `cargo rullst new` and `cargo rullst generate:ai-context` write a
+bounded project inventory and create an application `AGENTS.md` when none
+exists; existing instructions are preserved. Point your own coding assistant at
+`AGENTS.md` and `.llms.txt`. This is a
+source-navigation aid; the map does not establish that a feature is
 implemented, a test passed, a provider is configured or a deployment is secure.
 
 ```bash
@@ -13,8 +15,11 @@ cargo rullst generate:ai-context --check
 The first command writes `.llms.txt` and `.rullst/context-map.json`. The second
 recomputes their expected content without writing and returns a nonzero exit
 status if either output is missing, modified or stale. New projects receive the
-same inventory and instructions. Existing automatic scaffold hooks refresh the
-map; a refresh failure is reported while preserving the completed scaffold.
+same inventory and instructions. `make:controller`, `make:model`,
+`make:middleware`, `make:worker`, `make:island`, `auth`, `make:billing`,
+`make:cors`, `make:jwt`, `make:privacy`, `make:age-gate` and `make:oauth`
+refresh the map after they write; a refresh failure is reported while
+preserving the completed scaffold.
 
 The documentation site also publishes `llms.txt` and `llms-full.txt` at
 <https://rullst.github.io/Rullst/llms.txt> and
