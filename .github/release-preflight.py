@@ -4,7 +4,7 @@
 Run on the release branch head before dispatching the manual admission
 workflows:
 
-    python3 .github/release-preflight.py v13.0.0-alpha.2
+    python3 .github/release-preflight.py v13.0.0-alpha.4
 
 It only reads Git, the source tree and public crates.io endpoints. Each check
 mirrors a refusal that release.yml would otherwise reach after the full
@@ -12,8 +12,10 @@ admission and two hours of packaging:
 - every release package is publishable at the tagged version;
 - CHANGELOG.md renders release notes for that version;
 - the tag does not exist yet and HEAD is the release branch head;
-- every package name is registered and owned by the reviewed owner
-  (release.yml refuses first publications);
+- every package name is registered and owned by the reviewed owner, or is
+  unregistered and listed in the bootstrap allowlist of the checked-out
+  source (reported as a first publication that needs the one-time
+  CRATES_IO_BOOTSTRAP_TOKEN in the crates-io environment);
 - no package already has that version on crates.io.
 """
 
@@ -33,7 +35,7 @@ import urllib.request
 from release_line import policy_line, tagged_version
 
 HERE = Path(__file__).resolve().parent
-RECOVERY = "docs/src/release-recovery.md#v13-package-registration"
+RECOVERY = "docs/src/release-recovery.md#name-ownership-and-first-publication-credentials"
 
 Fetch = Callable[[str], tuple[int, Any]]
 
@@ -58,17 +60,35 @@ def fetch_json(url: str) -> tuple[int, Any]:
         return error.code, None
 
 
-def registry_failures(
-    packages: list[str], version: str, owner: str, fetch: Fetch, pause: float = 0.0
-) -> list[str]:
+def registry_findings(
+    packages: list[str],
+    version: str,
+    owner: str,
+    fetch: Fetch,
+    bootstrap: frozenset[str] = frozenset(),
+    pause: float = 0.0,
+) -> tuple[list[str], list[str]]:
+    """Return (failures, first publications) for the release packages.
+
+    A name that crates.io does not know is accepted only when the checked-out
+    source lists it in the reviewed bootstrap allowlist; release.yml then
+    publishes it with the one-time credential. Every other 404 is refused.
+    """
     failures: list[str] = []
+    first: list[str] = []
     for name in packages:
         status, owners = fetch(f"https://crates.io/api/v1/crates/{name}/owners")
         if status == 404:
-            failures.append(
-                f"{name} is not registered on crates.io; release.yml refuses first "
-                f"publications. Merge a reviewed bootstrap change before the admission ({RECOVERY})."
-            )
+            if name in bootstrap:
+                first.append(
+                    f"{name}: first publication; needs CRATES_IO_BOOTSTRAP_TOKEN in the "
+                    f"crates-io environment ({RECOVERY})"
+                )
+            else:
+                failures.append(
+                    f"{name} is not registered on crates.io and is not in the reviewed "
+                    f"bootstrap allowlist (.github/crates-ownership-policy.json) ({RECOVERY})"
+                )
             continue
         if status != 200 or not isinstance(owners, dict):
             failures.append(f"crates.io owner lookup for {name} returned HTTP {status}")
@@ -88,7 +108,14 @@ def registry_failures(
             failures.append(f"crates.io version lookup for {name} {version} returned HTTP {status}")
         if pause:
             time.sleep(pause)
-    return failures
+    return failures, first
+
+
+def bootstrap_names(policy: dict[str, Any]) -> frozenset[str]:
+    names = policy.get("bootstrap_unregistered", [])
+    if not isinstance(names, list) or not all(isinstance(name, str) for name in names):
+        raise ValueError("bootstrap_unregistered must be a list of crate names")
+    return frozenset(names)
 
 
 def git(root: Path, *args: str) -> str:
@@ -121,7 +148,7 @@ def notes_failures(root: Path, version: str) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("tag", help="the tag to create, for example v13.0.0-alpha.2")
+    parser.add_argument("tag", help="the tag to create, for example v13.0.0-alpha.4")
     parser.add_argument("--root", type=Path, default=Path.cwd())
     args = parser.parse_args()
     root = args.root
@@ -130,10 +157,10 @@ def main() -> int:
         _, branch = policy_line(policy)
         version = tagged_version(args.tag, policy)
         packages = load("check-release-source").validate_packages(root, version)
-        owner = json.loads((root / ".github/crates-ownership-policy.json").read_text())[
-            "expected_owner"
-        ]
-    except (OSError, ValueError, KeyError, TypeError) as error:
+        ownership = json.loads((root / ".github/crates-ownership-policy.json").read_text())
+        owner = ownership["expected_owner"]
+        bootstrap = bootstrap_names(ownership)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
         print(f"release preflight: {error}", file=sys.stderr)
         return 1
 
@@ -142,14 +169,20 @@ def main() -> int:
         failures += git_failures(root, args.tag, branch)
     except subprocess.CalledProcessError as error:
         failures.append(f"git failed: {(error.stderr or '').strip()}")
-    failures += registry_failures(packages, version, owner, fetch_json, pause=0.2)
+    registry, first = registry_findings(packages, version, owner, fetch_json, bootstrap, pause=0.2)
+    failures += registry
 
+    for notice in first:
+        print(f"release preflight: {notice}")
     if failures:
         print(f"release preflight refused {args.tag}:", file=sys.stderr)
         for failure in failures:
             print(f"- {failure}", file=sys.stderr)
         return 1
-    print(f"release preflight passed: {args.tag}, {len(packages)} packages, origin/{branch}")
+    print(
+        f"release preflight passed: {args.tag}, {len(packages)} packages "
+        f"({len(first)} reviewed first publication(s)), origin/{branch}"
+    )
     return 0
 
 
