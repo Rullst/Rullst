@@ -22,7 +22,13 @@ Enable the Axum feature in development:
 rullst-connect = { version = "=13.0.0-alpha.4", features = ["axum"] }
 ```
 
-Mount the router only on an exact loopback listener:
+A project that enables the `rullst` facade's `oauth` feature (as
+`cargo rullst make:oauth` does) already has this feature: the module is
+`rullst::connect::mock_idp`.
+
+Mount the router only on an exact loopback listener. Axum is reached through
+the `rullst::web::axum` re-export, because generated projects do not depend on
+Axum directly:
 
 ```rust,no_run
 use rullst_connect::mock_idp::{MockIdpConfig, mock_router_with_config};
@@ -37,7 +43,7 @@ let config = MockIdpConfig::try_new(
     callback,
 )?;
 let listener = tokio::net::TcpListener::bind("127.0.0.1:8080").await?;
-axum::serve(listener, mock_router_with_config(config)).await?;
+rullst::web::axum::serve(listener, mock_router_with_config(config)).await?;
 # Ok(())
 # }
 ```
@@ -50,7 +56,8 @@ control how the host serves it.
 ## Configure the ordinary OIDC client
 
 Use non-placeholder local credentials so `OidcProvider` traverses the HTTP
-fixture instead of selecting the separate network-free credential fallback:
+fixture: empty or `mock_*` credentials select the separate network-free
+credential fallback instead (and are rejected without the `mock` feature):
 
 ```rust,no_run
 use rullst_connect::providers::OidcProvider;

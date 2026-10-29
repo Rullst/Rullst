@@ -178,7 +178,7 @@ opaque sessions, including [active-session management](../session-management.md)
 `api-tokens-sqlite`/`api-tokens-postgres` add
 [scoped API tokens](../api-tokens.md). The facade features are
 `auth-sessions-*`, `auth-email-login-*` and `auth-api-tokens-*`. These
-v13 prerelease candidates are opt-in and do not enable JWT or OAuth.
+v13 additions are opt-in and do not enable JWT or OAuth.
 
 ## WebAuthn/passkeys
 
@@ -194,7 +194,7 @@ fails. Revoked records remain in inventory and continue to consume quota.
 
 Challenge state remains process-local inside `PasskeyAuth`, so a multi-instance
 deployment using that API needs sticky ceremony routing or a custom shared challenge layer.
-The optional v13 `passkey-postgres` candidate adds a separately bound shared manager
+The optional `passkey-postgres` feature (added in v13) adds a separately bound shared manager
 with real PostgreSQL/browser evidence; see [shared passkey ceremonies](../shared-passkey-ceremonies.md).
 The adapter does not establish normative WebAuthn conformance, encrypt or
 replicate the database, or replace application device-ownership policy.

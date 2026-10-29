@@ -8,7 +8,10 @@ description = "Bounded privacy and proportional age-assurance contracts for Rull
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/Rullst/Rullst"
+homepage = "https://rullst.github.io"
 documentation = "https://docs.rs/rullst-privacy"
+keywords = ["privacy", "age-assurance", "consent", "attestation", "rullst"]
+categories = ["web-programming"]
 include = ["src/**", "README.md", "LICENSE", "Cargo.toml", "Cargo.lock"]
 
 [features]

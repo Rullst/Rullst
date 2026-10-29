@@ -71,14 +71,18 @@ package's own tests.
 | [`examples/erp`](https://github.com/Rullst/Rullst/tree/main/examples/erp) | Products, stock movements and orders; the dashboard, forms and Nexus share one administrator policy. |
 | [`examples/portfolio`](https://github.com/Rullst/Rullst/tree/main/examples/portfolio) | A developer portfolio read from the database and edited in Nexus, checked in a mobile Chromium viewport in Linux CI. |
 
-Run one from its directory, after copying `.env.example` to `.env` and setting
-`APP_KEY`:
+Run one from its directory, so the server finds `.env`, `Rullst.toml` and its
+static files:
 
 ```bash
 cd examples/lms
+cp .env.example .env   # then set APP_KEY to 32 random characters, e.g. `openssl rand -hex 16`
 cargo run -p rullst-lms-example -- db:migrate
 cargo run -p rullst-lms-example
 ```
+
+The ERP and Portfolio examples work the same way with `rullst-erp-example` and
+`rullst-portfolio-example`.
 
 To start your own application from one, copy the directory and replace its
 `workspace = true` dependencies with the published crates (each README shows

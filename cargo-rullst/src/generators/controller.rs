@@ -167,7 +167,7 @@ pub struct UpdateDto {{
     // Add fields for update
 }}
 
-/// Retorna a lista de recursos
+/// Lists the resources
 pub async fn index() -> impl IntoResponse {{
     Json(serde_json::json!({{
         "controller": "{camel_name}",
@@ -176,7 +176,7 @@ pub async fn index() -> impl IntoResponse {{
     }}))
 }}
 
-/// Retorna um recurso específico
+/// Shows one resource
 pub async fn show(Path(id): Path<i32>) -> impl IntoResponse {{
     Json(serde_json::json!({{
         "controller": "{camel_name}",
@@ -192,7 +192,7 @@ pub async fn store(Json(_payload): Json<CreateDto>) -> impl IntoResponse {{
     }}))
 }}
 
-/// Atualiza um recurso existente
+/// Updates an existing resource
 pub async fn update(Path(id): Path<i32>, Json(_payload): Json<UpdateDto>) -> impl IntoResponse {{
     Json(serde_json::json!({{
         "id": id,
@@ -200,7 +200,7 @@ pub async fn update(Path(id): Path<i32>, Json(_payload): Json<UpdateDto>) -> imp
     }}))
 }}
 
-/// Deleta um recurso
+/// Deletes a resource
 pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
     Json(serde_json::json!({{
         "id": id,
@@ -224,7 +224,7 @@ pub struct UpdateDto {{
     // Add fields for update
 }}
 
-/// Retorna a lista de recursos
+/// Lists the resources
 pub async fn index() -> impl IntoResponse {{
     Html(html! {{
         <div style="font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #0f172a; color: #f8fafc; padding: 2rem; box-sizing: border-box;">
@@ -243,10 +243,10 @@ pub async fn index() -> impl IntoResponse {{
     }})
 }}
 
-/// Retorna um recurso específico
+/// Shows one resource
 pub async fn show(Path(id): Path<i32>) -> impl IntoResponse {{
     Html(html! {{ 
-        <div>"Detalhes do recurso "{{id}}</div> 
+        <div>"Resource "{{id}}</div> 
     }})
 }}
 
@@ -255,12 +255,12 @@ pub async fn store(Form(_payload): Form<CreateDto>) -> impl IntoResponse {{
     Html(html! {{ <div>"Resource created successfully"</div> }})
 }}
 
-/// Atualiza um recurso existente
+/// Updates an existing resource
 pub async fn update(Path(id): Path<i32>, Form(_payload): Form<UpdateDto>) -> impl IntoResponse {{
     Html(html! {{ <div>"Resource "{{id}}" updated successfully"</div> }})
 }}
 
-/// Deleta um recurso
+/// Deletes a resource
 pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
     Html(html! {{ <div>"Resource "{{id}}" deleted successfully"</div> }})
 }}

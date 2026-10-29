@@ -85,17 +85,21 @@ pub async fn page_handler() -> Markup {
 }
 ```
 
-Register the matching Axum WebSocket route:
+Register the page and the matching WebSocket route, for example in the
+`routes![...]` list of `router()`:
 
 ```rust,ignore
-use axum::{routing::get, Router};
 use rullst::live::live_ws_handler;
 
-let app = Router::new().route(
-    "/ws/counter",
-    get(live_ws_handler::<CounterComponent>),
-);
+let app = rullst::routes![
+    get("/counter" => page_handler),
+    get("/ws/counter" => live_ws_handler::<CounterComponent>),
+];
 ```
+
+The page must also load HTMX and its WebSocket extension (see the takeaways).
+The command's own hint uses `/ws/counter_component`; any path works as long as
+`Live::mount` and the route name the same one.
 
 ---
 

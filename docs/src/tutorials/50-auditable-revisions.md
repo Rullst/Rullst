@@ -1,4 +1,4 @@
-# Auditable Revisions
+# 50. Auditable Revisions
 
 Rullst SQLx models can bind each instance mutation to a validated principal and
 restore eligible update revisions as a new compensating mutation. The audit

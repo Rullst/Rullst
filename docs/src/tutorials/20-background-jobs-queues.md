@@ -13,13 +13,21 @@ cargo rullst make:worker EmailWorker
 ```
 
 This creates `src/workers/email_worker.rs`, registers it in
-`src/workers/mod.rs`, and provides `start_workers`. Replace the generated log-only
-body with the application operation. Avoid logging the complete job payload,
-because it can contain personal or secret data.
+`src/workers/mod.rs` (declared in `src/main.rs`), and provides
+`start_workers(worker)`, which registers every generated handler and starts the
+worker. Replace the generated log-only body with the application operation.
+Avoid logging the complete job payload, because it can contain personal or
+secret data.
 
 ---
 
 ## Step 2: Create a queue and keep its worker handle alive
+
+`Queue::sqlite` needs the `queue-sqlite` feature of `rullst`, which the starters
+do not enable: add `"queue-sqlite"` to the `features` list of the `rullst`
+dependency in `Cargo.toml`. The example below registers its handler by hand;
+with the generated module, pass the `Worker` to `workers::start_workers`
+instead.
 
 ```rust,no_run
 use rullst::queue::{Queue, QueueError, Worker, WorkerHandle};

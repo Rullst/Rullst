@@ -29,8 +29,12 @@ An outer, application-owned authentication layer must first validate the
 session/token and insert `TenantMembership::try_new(...)` from trusted identity
 claims. Without that extension, `TenantLayer` returns `403 Forbidden`. If the
 requested subdomain is not in the authenticated membership set, it also returns
-403. In Axum, remember that subsequently added layers run first; test the final
-middleware order in-process.
+403. A request that names no tenant (and, with the subdomain strategy, has no
+`with_domain_fallback`) uses the membership's default
+(`TenantMembership::with_default`, or the only tenant of a single-tenant
+membership) and is refused with 403 when there is none. In Axum, remember that
+subsequently added layers run first; test the final middleware order
+in-process.
 
 `TenantStrategy::Header` and `TenantStrategy::Parameter` are also available,
 but they remain untrusted selection hints. Query parameters additionally leak
@@ -38,8 +42,8 @@ more easily through history, referrers and access logs. The built-in subdomain
 parser reads the `Host` header, or the HTTP/2 `:authority` when no `Host` is
 sent, and selects the first label only for hostnames with at least three
 labels; a `www` label is never a tenant. When the apex domain sits under a
-multi-label public suffix such as `.com.br` or `.co.uk`, set the v13
-prerelease `TenantConfig::with_base_domain("escola.com.br")`: the tenant is then the
+multi-label public suffix such as `.com.br` or `.co.uk`, set
+`TenantConfig::with_base_domain("escola.com.br")` (added in v13): the tenant is then the
 label immediately to the left of that domain, and the apex itself uses
 `with_domain_fallback` (which only the subdomain strategy reads). Custom-domain
 ownership and trusted-proxy normalization remain application and deployment

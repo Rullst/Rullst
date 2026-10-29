@@ -54,7 +54,8 @@ external delivery.
 
 ## Compatibility rule
 
-Within the stable v12 line:
+Within a stable major line (v12, and v13 from 13.0.0; `rullst-security` is a
+Core crate):
 
 - fields cannot be removed, renamed, or change meaning;
 - a new required field or incompatible type requires a new schema version;
@@ -70,7 +71,7 @@ byte/record quotas, versioned length/digest frames and restart validation.
 `AuthenticatedSiemSpool` is a distinct opt-in file format that authenticates
 sequence, named rotation key, predecessor and exact payload before JSON decode;
 verified reads set `verified_hmac=true` only after the complete chain passes.
-Release evidence still belongs to the exact RC tag SHA.
+Release evidence still belongs to the exact release tag SHA.
 
 ## CEF boundary
 

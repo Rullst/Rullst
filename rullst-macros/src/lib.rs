@@ -1,3 +1,20 @@
+//! Procedural macros of the Rullst framework: `html!`, `#[server_function]`,
+//! `#[require_role]`, `#[derive(Billable)]`, the catalog macro behind
+//! `rullst::i18n::catalog!`, and the `#[island]`, `#[live_component]`,
+//! `#[live_event]` and `#[memoize]` attributes.
+//!
+//! **Maturity: Core**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). `#[island]`,
+//! `#[live_component]`/`#[live_event]` and `#[memoize]` are experimental
+//! compatibility surfaces with a weaker promise; `#[route]` is a deprecated
+//! marker that registers nothing (use `rullst::routes!`).
+//!
+//! Use these macros through the `rullst` facade rather than this crate: the
+//! expansions call `rullst::…` paths, `#[require_role]` needs the facade's
+//! `auth` feature and `#[derive(Billable)]` its `capital` feature. This crate
+//! has no Cargo features of its own. The
+//! [README](https://github.com/Rullst/Rullst/blob/main/rullst-macros/README.md)
+//! lists the contract and the limits of each macro.
 #![cfg_attr(mutants, mutants::skip)]
 extern crate proc_macro;
 

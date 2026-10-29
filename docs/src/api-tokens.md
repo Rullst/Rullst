@@ -61,8 +61,9 @@ For exact mutating machine routes, compose
 `service.machine_verifier(required_scopes)` with
 `MachineEndpoint::verified_bearer(Method::POST, "/api/orders", verifier)` and
 the Core security baseline. The verifier requires one `Authorization: Bearer`
-header and inserts the principal as an Axum extension. Cookies, Origin and
-browser fetch-site headers cannot substitute for machine authentication.
+header and inserts the principal as an Axum extension. It rejects a request
+that carries `Cookie`, `Origin` or `Sec-Fetch-Site`, so ambient browser
+credentials cannot substitute for machine authentication.
 Only the verified exact method/path receives the machine CSRF exception;
 ordinary browser routes retain CSRF, and WAF/headers remain active. Apply bounded
 bodies, ingress rate limits and no-store responses. GET/read routes can call

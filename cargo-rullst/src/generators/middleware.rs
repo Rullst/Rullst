@@ -159,7 +159,7 @@ fn inject_middleware_module_in_main() -> Result<(), Box<dyn std::error::Error>> 
             fs::write(main_path, main_content)?;
             println!(
                 "{}",
-                "ℹ️ Adicionado 'pub mod middlewares;' ao src/main.rs automaticamente.".cyan()
+                "ℹ️ Added 'pub mod middlewares;' to src/main.rs.".cyan()
             );
         }
     }

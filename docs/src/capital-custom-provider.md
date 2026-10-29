@@ -12,15 +12,17 @@ row "Capital providers and NFS-e removed".
 This guide walks through a complete adapter for a fictitious gateway,
 **AcmePay**. The code below is included from
 [`rullst-capital/examples/custom_provider.rs`](https://github.com/Rullst/Rullst/blob/main/rullst-capital/examples/custom_provider.rs),
-which CI compiles and which runs offline:
+which CI compiles and which runs offline from a clone of the Rullst repository:
 
 ```text
 cargo run -p rullst-capital --example custom_provider
 ```
 
 In an application, the same types are available through the facade as
-`rullst::capital::*` with the `capital` feature. The example's HMAC check uses
-`ring`, `hex` and `subtle`; add equivalent crates to your own `Cargo.toml`.
+`rullst::capital::*` with the `capital` feature. `BillingProvider` is an
+`#[async_trait]` trait: use the `async-trait` crate, as the example does, or
+the facade's `rullst::async_trait`. The example's HMAC check uses `ring`, `hex`
+and `subtle`; add equivalent crates to your own `Cargo.toml`.
 
 ## What the framework does and what the adapter does
 

@@ -66,9 +66,7 @@ fn test_password_length_limits() {
     let err = hash_password(&p_73).unwrap_err();
     assert_eq!(
         err,
-        AuthError::PasswordHashError(
-            "Password exceeds maximum length of 72 characters".to_string()
-        )
+        AuthError::PasswordHashError("Password exceeds maximum length of 72 bytes".to_string())
     );
 
     // verify_password

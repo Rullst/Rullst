@@ -34,12 +34,17 @@ When this function is compiled for the native server, its written body runs.
 When compiled for `wasm32`, calling `add(20, 22).await` serializes `(20, 22)`
 and returns the decoded `RpcResult<SumResponse>`. Transport failures are
 machine-readable `RpcFailure` values; they never become a fabricated default
-application value.
+application value. The caller exists only in a `wasm32-unknown-unknown` build
+of the crate, such as the island build in
+[Tutorial 18](18-wasm-islands-rust.md).
 
 ## Mount the generated route inside server policy
 
 Merge the generated router before applying the standard security baseline and
-your domain layers:
+your domain layers. `rullst::Server` applies that baseline to the router it
+serves, so there it is enough to merge the generated router into the
+application router; the example calls `apply_security_baseline` directly to
+show the composition:
 
 ```rust,no_run
 # use rullst::{Router, server_function};
@@ -75,9 +80,10 @@ without it (as in Development) the caller sends no token and lets the server
 decide, and a non-JSON `403` is reported as `rpc.csrf_token_missing`. Other
 non-JSON failures are `rpc.http_failure`; `retryable()` is `true` for `429`,
 `502`, `503` and `504` and for any response with `Retry-After`, which covers
-the framework's lifecycle-drain and Traffic Shield rejections. The application must still add session/authentication, trusted
-tenant resolution, object/role authorization and rate limiting in the order
-documented by `ProductionPreset`. Never accept role, owner or tenant authority
+the framework's lifecycle-drain and Traffic Shield rejections. The
+application must still add session/authentication, trusted tenant resolution,
+object/role authorization and rate limiting in the order documented by
+`ProductionPreset`. Never accept role, owner or tenant authority
 from a function argument.
 
 ## Failure codes
@@ -107,7 +113,7 @@ wrong shape), the failure echoes that identifier. The caller therefore receives
 the body is parsed and still use a server-generated identifier; the generated
 client applies the same limits before sending.
 
-## Exact v12 limits
+## Exact limits
 
 - zero to 16 simple identifier parameters;
 - owned parameter types and one owned output type implementing the needed

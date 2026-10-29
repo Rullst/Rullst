@@ -6,6 +6,10 @@ responder or a durable SIEM integration.
 
 ## 1. Compose local request controls
 
+`rullst::Server` already applies secure headers and the WAF in staging and
+production. This example composes the `rullst-security` layers on a plain Axum
+router:
+
 ```rust,no_run
 use axum::Router;
 use rullst_security::{CspSecurityLayer, HoneypotLayer, HoneypotState, RaspSecurityLayer};
@@ -55,9 +59,12 @@ durable audit and human approval where appropriate.
 
 ## 3. Inspect the local Studio view
 
-Mount Studio only through its documented access capability and open
-`/studio/security`. The page renders current local telemetry and keeps
-unavailable sources visibly unavailable. A multi-instance deployment needs a
+In a debug build the generated starters start Studio in the same process with
+`rullst::studio::run_studio(5555)`, which serves only loopback peers
+(`LocalStudioAccess::loopback_only()`). Open
+`http://127.0.0.1:5555/studio/security`. The page renders this process's
+current `SecurityStore` telemetry and keeps unavailable sources visibly
+unavailable. A multi-instance deployment needs a
 shared, authenticated event pipeline with retry, acknowledgement, retention and
 dead-letter handling before it can be described as an operational SIEM.
 

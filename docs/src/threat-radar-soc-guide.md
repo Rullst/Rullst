@@ -48,7 +48,7 @@ networks.
 record integrity and sequence continuity. It detects modifications only when the
 key is protected and the complete sequence is retained. A writer that restarts
 must resume from the newest persisted record with `AuditChain::try_resume`
-(v13 prerelease); a fresh chain restarts at genesis and the retained trail no
+(new in v13); a fresh chain restarts at genesis and the retained trail no
 longer verifies as one sequence. One writer must own each persisted chain.
 
 The dashboard must display `Unavailable` until an audit source and continuity

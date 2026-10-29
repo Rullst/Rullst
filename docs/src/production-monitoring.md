@@ -2,8 +2,8 @@
 
 Rullst Studio's local pages are a development tool: they run only in debug
 builds, on `127.0.0.1:5555`, and read the local process. To watch an application in
-staging or production, 13.0.0-alpha.3 adds a read-only monitoring endpoint to
-the application itself:
+staging or production, Rullst 13 (since 13.0.0-alpha.3) adds a read-only
+monitoring endpoint to the application itself:
 
 ```text
 GET /_rullst/monitor/v1
@@ -202,7 +202,7 @@ route, and the endpoint's own requests are not counted in its statistics.
   "schema": "rullst.monitor.v1",
   "generated_at": 1792648800,
   "application": { "name": "shop", "version": "1.4.0" },
-  "framework": { "name": "rullst", "version": "13.0.0-alpha.3" },
+  "framework": { "name": "rullst", "version": "13.0.0-alpha.4" },
   "uptime_seconds": 86400,
   "process": {
     "memory_rss_mb": 48.2,
@@ -297,13 +297,15 @@ switcher in the header. It only connects outwards to your projects; nothing
 new is collected or stored on the servers.
 
 ```bash
-cargo install rullst-studio --features remote --locked
+cargo install rullst-studio --version =13.0.0-alpha.4 --features remote --locked
 rullst-studio                  # http://127.0.0.1:5556/studio
 # or, with the CLI installed:
 cargo rullst studio --remote   # --port 7000 for another port
 ```
 
-The `remote` feature is not enabled by default: applications that mount
+Pin the version: a plain `cargo install rullst-studio` selects the
+end-of-life 12.3.0, which has no `remote` feature. The `remote` feature is not
+enabled by default: applications that mount
 Studio's local pages in development do not build its HTTP client, encryption
 or SQLite history.
 
@@ -419,7 +421,8 @@ matched route, takes a read lock on the route table, updates that route's
 counters under its own lock, and gives the request a scope in which ORM
 operations are counted. Measured on an 8-thread Linux machine in a release
 build (`cargo test --release -p rullst-core --lib monitor::overhead_tests --
---ignored --nocapture`): a trivial Axum route took 0.72 µs per request without
+--ignored --nocapture --test-threads=1`, from a clone of the Rullst
+repository): a trivial Axum route took 0.72 µs per request without
 the recorder and 1.32 µs with it, so about **0.6 µs per request**; the
 statistics update alone took about 96 ns, and 70 to 80 ns per call with 4 to 8
 threads recording at once. Memory is bounded: about 1 KiB per route pattern

@@ -29,7 +29,7 @@ pub use session_claims::{
 
 #[cfg(feature = "oauth")]
 pub mod connect {
-    //! Re-export do rullst-connect para fornecer autenticação OAuth2 (Google, GitHub, etc.) nativamente no framework.
+    //! Re-export of `rullst-connect`: OAuth2/OpenID Connect sign-in (Google, GitHub, Microsoft, Apple).
     pub use rullst_connect::*;
 }
 

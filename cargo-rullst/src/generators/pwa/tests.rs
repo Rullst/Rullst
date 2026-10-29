@@ -71,6 +71,7 @@ fn every_html_starter_is_wired_once_and_a_second_run_changes_nothing() {
         let again = plan(&root, &PwaFlags::default()).unwrap();
         assert!(again.edits.is_empty(), "blueprint {blueprint}");
         assert_eq!(again.layouts, 0);
+        assert_eq!(again.present, layouts, "blueprint {blueprint}");
         assert_eq!(
             again.report(),
             "The PWA files and wiring are already in place; nothing changed.\n"
@@ -515,6 +516,13 @@ fn android_files_can_be_added_after_the_web_files() {
         ["android/twa-manifest.json", "PWA-ANDROID.md"]
     );
     assert!(android.changed.is_empty());
+    // The layouts were wired by the first run; the report says so.
+    let report = android.report();
+    assert!(
+        report.contains("page layout(s) already link the manifest"),
+        "{report}"
+    );
+    assert!(!report.contains("\n0 page layout(s)"), "{report}");
     writes::apply(&android.edits).unwrap();
     let notes = read(&root, "PWA-ANDROID.md");
     assert!(notes.starts_with("# Google Play (Trusted Web Activity)\n"));

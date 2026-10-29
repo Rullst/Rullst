@@ -11,7 +11,8 @@ observations. `parental` provides course/window policies. `sqlite` selects both
 and the shared-local durable adapter. Optional `analysis` defines bounded camera
 presence/audio activity adapters; combining it with `sqlite` adds authorization,
 concurrency leases and deadline checks around invocation. There are no default
-features or Core dependencies.
+features or Core dependencies. Pin the prerelease exactly, for example
+`rullst-supervision = { version = "=13.0.0-alpha.4", features = ["sqlite"] }`.
 
 An application can opt into visibility, focus, clipboard occurrence and
 fullscreen events. No clipboard contents, camera/audio model, media capture,
@@ -19,7 +20,8 @@ other-window inventory or device-wide control is included. An application can
 supply a local model or external adapter. Observations never determine misconduct,
 identity, attendance or grades.
 
-Run the deterministic, explicitly simulated adapter example without credentials:
+From a clone of the repository, run the deterministic, explicitly simulated
+adapter example without credentials:
 
 ```bash
 cargo run -p rullst-supervision --example observation_adapter --features sqlite,analysis
@@ -58,5 +60,5 @@ repaired retrospectively, as recorded in the
 and package-admission requirements remain separate.
 The standalone package is now included in the v13 release inventory and was
 first published on crates.io as `13.0.0-alpha.1`. Final release acceptance
-remains outstanding; `13.0.0-alpha.2` is a prerelease, not a stable release. Applications
+remains outstanding; `13.0.0-alpha.4` is a prerelease, not a stable release. Applications
 opt in explicitly; no default framework dependency is added.

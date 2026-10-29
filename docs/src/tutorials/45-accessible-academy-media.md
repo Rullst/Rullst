@@ -6,7 +6,7 @@ browser receives accessible media markup and an escaped transcript.
 
 ## Start from the LMS example
 
-Until 13.0.0-alpha.4 `cargo rullst new --blueprint lms` generated this
+Before 13.0.0-alpha.4, `cargo rullst new --blueprint lms` generated this
 application; it now lives in the Rullst repository as
 [`examples/lms`](https://github.com/Rullst/Rullst/tree/main/examples/lms). From
 a checkout of the repository:
@@ -16,9 +16,10 @@ cd examples/lms
 cargo test -p rullst-lms-example
 ```
 
-Copy the directory to start your own academy (its README shows how to switch
-to the published crates). It includes the course catalog, modules, lessons,
-this accessible player, enrollment, progress, login and a Nexus admin. Earlier
+Copy the directory to start your own academy (its README shows how to run it
+and how to switch to the published crates). It includes the course catalog,
+modules, lessons, this accessible player, enrollment, progress, login and a
+Nexus admin. Earlier
 releases also generated a complete Academy (assessment, gamification,
 automation and notifications); v13 removed it in favor of this smaller
 application.
@@ -55,8 +56,9 @@ video lessons use the `static/media/memory-safety.en.vtt` and
 lessons in Nexus (`/nexus`) with your own content. Add your reviewed
 audio/video asset or application-specific object-storage delivery, then use a
 same-origin path such as `/static/media/lesson.webm`. If you choose a remote
-host, add only that reviewed origin to the application's `media-src` CSP; do
-not weaken the policy to arbitrary HTTPS. Core also defaults COEP to
+host, add only that reviewed origin to a `media-src` directive of the `csp`
+template under `[security]` in `Rullst.toml`; do not weaken the policy to
+arbitrary HTTPS. Core also defaults COEP to
 `require-corp`, so the remote media server must emit a compatible
 `Cross-Origin-Resource-Policy` response. When a reviewed server cannot do so,
 an application can explicitly set `coep = "credentialless"` under `[security]`
