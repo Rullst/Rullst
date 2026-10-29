@@ -54,7 +54,7 @@ cargo rullst dev           # rebuilds and restarts every time you save
 
 That's it: a running application, generated as readable Rust you can change —
 no hidden runtime magic. Complete applications to copy from — an LMS, an ERP, a
-portfolio and a blog — live in [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples). This installs the 13.0.0-alpha.4 prerelease; the v12
+portfolio and a blog — live in [`examples/`](examples/). This installs the 13.0.0-alpha.4 prerelease; the v12
 line reached end of life on 16 October 2026 (see below).
 
 [Installation and prerequisites](https://rullst.github.io/Rullst/book/1-getting-started.html)
@@ -319,7 +319,7 @@ and [quality scorecard](https://rullst.github.io/Rullst/book/quality-scorecard.h
 
 | Continuous or change-aware gate | Development `main` status | Actual scope |
 | :--- | :---: | :--- |
-| **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain) | Format, all-target/all-feature Clippy, a Linux gate on pull requests, every Linux shard after merge and the complete Linux/macOS/Windows matrix nightly; Cargo-aware doctests sourced from all 48 tutorial pages, strict DB boundaries, feature boundaries, generated-code checks, and MSRV 1.96.0. |
+| **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain) | Format, all-target/all-feature Clippy, a Linux gate on pull requests, every Linux shard after merge and the complete Linux/macOS/Windows matrix nightly; Cargo-aware doctests sourced from all 51 tutorial pages, strict DB boundaries, feature boundaries, generated-code checks, and MSRV 1.96.0. |
 | **Declared MSRV** | [![MSRV 1.96.0](https://img.shields.io/badge/MSRV-1.96.0-f74c00?style=flat-square&logo=rust)](https://rullst.github.io/Rullst/book/compatibility-policy.html) | Every publishable manifest declares Rust 1.96.0 and CI runs an explicit workspace all-feature check with that toolchain. |
 | **GitHub Actions lint** | [![Workflow Lint](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/workflow-lint.yml?branch=main&style=flat-square&label=Workflow%20Lint)](https://github.com/Rullst/Rullst/actions/workflows/workflow-lint.yml?query=branch%3Amain) | Validates workflow syntax, expressions, embedded shell, and full-SHA third-party Action pins. |
 | **Documentation** | [![Documentation](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/documentation.yml?branch=main&style=flat-square&label=Docs)](https://github.com/Rullst/Rullst/actions/workflows/documentation.yml?query=branch%3Amain) | Builds the mdBook and rejects broken local links and anchors; scheduled/manual runs also preserve an informational external-link report. |
@@ -388,7 +388,7 @@ cargo rullst upgrade
 The CLI coordinates dependency updates, backs up controlled files and runs
 compiler checks. Review the plan and your application's behavior; it does not
 migrate production data. [Assisted upgrade tutorial](https://rullst.github.io/Rullst/book/tutorials/36-assisted-framework-upgrades.html)
-· [v13 adoption guide](https://rullst.github.io/Rullst/book/migration-v13.html)
+· [v5 → v12 migration guide](https://rullst.github.io/Rullst/book/migration-v5-to-v12.html)
 
 ## 🚀 What's next: v13
 
@@ -443,7 +443,7 @@ the next six. Details are in the
   ([guide](https://rullst.github.io/Rullst/book/vm-deployment.html)).
 - **Three starters and complete examples:** `cargo rullst new` offers Blank,
   API and SaaS; the LMS, ERP, Portfolio and blog applications are in
-  [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples) to copy from.
+  [`examples/`](examples/) to copy from.
 - **For AI assistants:** every `--json` output follows one contract with a
   `schema` id, and the site publishes `llms.txt` and `llms-full.txt`.
 - **Faster development builds:** generated projects get a development profile
@@ -492,9 +492,9 @@ the next six. Details are in the
   `cargo install cargo-rullst --version =<version> --locked`, which a daily
   notice prints.
 - The LMS, Blog, Portfolio and ERP starters of `cargo rullst new`: they are
-  complete applications in [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples).
+  complete applications in [`examples/`](examples/).
 
-Each item has its replacement in the
+Each row has its replacement in the
 [v13 adoption guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md).
 
 In development for v13: email login and scoped API tokens, active-session
@@ -522,8 +522,8 @@ figure only as a labelled SCI estimate from your own inputs
 `cargo rullst add <capability>` enables mail, auth, AI, Nexus or Studio in an
 existing project (feature, `.env.example` placeholders and the code to paste;
 `--dry-run` shows the diff), and `cargo rullst new` initializes a Git
-repository (`--vcs none` skips it). Until 13.0.0 is released, these are
-prerelease features, not a stable release.
+repository (`--vcs none` skips it). Until v13 is released, these are
+development candidates, not shipped features.
 
 [v13 roadmap](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md)
 · [v13 adoption guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)
