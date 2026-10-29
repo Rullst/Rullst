@@ -333,7 +333,7 @@ jobs:
         with:
           target: http://127.0.0.1:3000
           docker_name: ${{ env.ZAP_DOCKER_IMAGE }}
-          cmd_options: -a -m 2 -c .zap/generated-apps.tsv
+          cmd_options: -a -m 2 -c .zap/saas-starter.tsv
           fail_action: true
           allow_issue_writing: false
           artifact_name: zap-saas-public
@@ -345,15 +345,16 @@ jobs:
         timeout-minutes: 45
         env:
           # The action passes these to ZAP, which sets the session cookie on
-          # every request to the starter. POST forms are not submitted, so
-          # the spider cannot sign out, revoke the session or start a checkout.
+          # every request to the starter. The rules file puts the POST-only
+          # sign-out and billing commands out of scope, so the spider cannot
+          # revoke the session or start a checkout.
           ZAP_AUTH_HEADER: Cookie
           ZAP_AUTH_HEADER_VALUE: ${{ env.SAAS_ZAP_COOKIE }}
           ZAP_AUTH_HEADER_SITE: 127.0.0.1
         with:
           target: http://127.0.0.1:3000/dashboard
           docker_name: ${{ env.ZAP_DOCKER_IMAGE }}
-          cmd_options: -a -m 2 -c .zap/generated-apps.tsv -z "-config spider.postform=false"
+          cmd_options: -a -m 2 -c .zap/saas-starter-account.tsv
           fail_action: true
           allow_issue_writing: false
           artifact_name: zap-saas-account
