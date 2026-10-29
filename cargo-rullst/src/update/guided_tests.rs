@@ -18,28 +18,15 @@ impl Ui for Scripted {
     }
 }
 
-fn options(scope: &str) -> Options {
-    let prerelease = (!semver::Version::parse(env!("CARGO_PKG_VERSION"))
-        .unwrap()
-        .pre
-        .is_empty())
-    .then_some("--prerelease");
+fn options() -> Options {
     let matches = command()
-        .try_get_matches_from(
-            [
-                "guided",
-                "--to",
-                env!("CARGO_PKG_VERSION"),
-                "--scope",
-                scope,
-                "--root",
-                "/private/cli with spaces",
-                "--project",
-                "project with 'quotes' $(literal)",
-            ]
-            .into_iter()
-            .chain(prerelease),
-        )
+        .try_get_matches_from([
+            "guided",
+            "--to",
+            env!("CARGO_PKG_VERSION"),
+            "--project",
+            "project with 'quotes' $(literal)",
+        ])
         .unwrap();
     Options::parse(&matches).unwrap()
 }
@@ -55,10 +42,6 @@ fn reply(args: &[OsString]) -> Result<Value> {
         .map(|word| word.to_str().unwrap())
         .collect::<Vec<_>>();
     Ok(match words.as_slice() {
-        ["stage", ..] => json!({"directory":"/private/download with spaces"}),
-        ["install", "review", ..] => {
-            json!({"review_sha256":"a".repeat(64),"review":{"root":"/private/cli with spaces"}})
-        }
         ["project", "prepare", ..] => {
             json!({"prepared_directory":"/private/preparation with spaces"})
         }
@@ -69,26 +52,24 @@ fn reply(args: &[OsString]) -> Result<Value> {
             json!({"verified_directory":"/private/verification with spaces"})
         }
         ["project", "review", ..] => json!({"review_sha256":"b".repeat(64),"diff":"-old\n+new"}),
-        ["install" | "project", "apply", ..] => json!({"applied":true}),
+        ["project", "apply", ..] => json!({"applied":true}),
         _ => return Err("unexpected composed command".into()),
     })
 }
 
 #[test]
 fn decline_and_closed_input_never_reach_the_next_mutating_stage() {
-    for (scope, answers, expected) in [
-        ("cli", vec![], 0),
-        ("cli", vec![true, false], 2),
-        ("project", vec![], 0),
-        ("project", vec![true, false, false], 2),
-        ("project", vec![true, false, true, false], 4),
+    for (answers, expected) in [
+        (vec![], 0),
+        (vec![true, false, false], 2),
+        (vec![true, false, true, false], 4),
     ] {
         let mut ui = Scripted {
             answers: answers.into(),
             ..Default::default()
         };
         let mut calls = Vec::new();
-        flow(&options(scope), &mut ui, |args| {
+        flow(&options(), &mut ui, |args| {
             calls.push(args.to_vec());
             reply(args)
         })
@@ -104,26 +85,25 @@ fn decline_and_closed_input_never_reach_the_next_mutating_stage() {
 }
 
 #[test]
-fn both_flow_reuses_exact_paths_and_separate_review_digests_without_shell_interpolation() {
+fn the_project_flow_reuses_exact_paths_and_the_review_digest_without_shell_interpolation() {
     let mut ui = Scripted {
-        answers: vec![true, true, true, false, true, true].into(),
+        answers: vec![true, false, true, true].into(),
         ..Default::default()
     };
     let mut calls = Vec::new();
-    flow(&options("both"), &mut ui, |args| {
+    flow(&options(), &mut ui, |args| {
         calls.push(args.to_vec());
         reply(args)
     })
     .unwrap();
-    assert_eq!(calls.len(), 8);
-    assert_eq!(calls[2].last().unwrap(), &OsString::from("a".repeat(64)));
-    assert_eq!(calls[7].last().unwrap(), &OsString::from("b".repeat(64)));
-    assert!(calls[3].contains(&OsString::from("project with 'quotes' $(literal)")));
-    assert!(calls[4].contains(&OsString::from("--dry-run")));
-    assert!(!calls[4].contains(&OsString::from("--allow-project-code")));
-    assert!(calls[5].contains(&OsString::from("--allow-project-code")));
-    assert!(!calls[5].contains(&OsString::from("--allow-network")));
-    assert_eq!(ui.shown.last().unwrap()["completed_scope"], "both");
+    assert_eq!(calls.len(), 5);
+    assert!(calls[0].contains(&OsString::from("project with 'quotes' $(literal)")));
+    assert!(calls[1].contains(&OsString::from("--dry-run")));
+    assert!(!calls[1].contains(&OsString::from("--allow-project-code")));
+    assert!(calls[2].contains(&OsString::from("--allow-project-code")));
+    assert!(!calls[2].contains(&OsString::from("--allow-network")));
+    assert_eq!(calls[4].last().unwrap(), &OsString::from("b".repeat(64)));
+    assert_eq!(ui.shown.last().unwrap()["completed"], "project");
     assert_eq!(
         ui.shown
             .iter()
@@ -141,7 +121,7 @@ fn failed_verification_stops_before_review_or_application_and_does_not_consume_a
     };
     let mut calls = Vec::new();
     assert!(
-        flow(&options("project"), &mut ui, |args| {
+        flow(&options(), &mut ui, |args| {
             calls.push(args.to_vec());
             if args.contains(&OsString::from("--allow-project-code")) {
                 return Err("project test failed".into());
@@ -158,7 +138,7 @@ fn failed_verification_stops_before_review_or_application_and_does_not_consume_a
 
 #[test]
 fn offline_project_never_offers_network_and_malformed_results_stop_before_apply() {
-    let mut config = options("project");
+    let mut config = options();
     config.offline = true;
     let mut ui = Scripted {
         answers: vec![true, true, true].into(),
@@ -170,32 +150,31 @@ fn offline_project_never_offers_network_and_malformed_results_stop_before_apply(
         answers: vec![true, true].into(),
         ..Default::default()
     };
-    assert!(flow(&options("cli"), &mut ui, |_| Ok(json!({"wrong":"result"}))).is_err());
+    assert!(flow(&options(), &mut ui, |_| Ok(json!({"wrong":"result"}))).is_err());
     assert_eq!(ui.answers.len(), 1);
 }
 
 #[test]
-fn project_major_jump_stops_before_installation_even_with_explicit_cli_major_opt_in() {
+fn a_major_jump_stops_before_any_step_and_cli_installation_flags_are_gone() {
     let major = semver::Version::parse(env!("CARGO_PKG_VERSION"))
         .unwrap()
         .major
         + 1;
     let matches = command()
-        .try_get_matches_from([
-            "guided",
-            "--to",
-            &format!("{major}.0.0"),
-            "--scope",
-            "both",
-            "--root",
-            "/private/cli",
-            "--allow-major",
-        ])
+        .try_get_matches_from(["guided", "--to", &format!("{major}.0.0")])
         .unwrap();
     assert!(
         Options::parse(&matches)
             .unwrap_err()
             .to_string()
-            .contains("major-specific")
+            .contains("target major's migration rules")
     );
+    for flag in ["--scope", "--root", "--allow-major", "--prerelease"] {
+        assert!(
+            command()
+                .try_get_matches_from(["guided", "--to", "13.0.0", flag, "x"])
+                .is_err(),
+            "{flag}"
+        );
+    }
 }

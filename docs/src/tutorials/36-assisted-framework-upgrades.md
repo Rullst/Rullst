@@ -263,7 +263,7 @@ release:
 | 13.0.0-alpha.1 | The other 95 rules |
 | 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
-| 13.0.0-alpha.4 | `V13-CLI-EXTRAS` |
+| 13.0.0-alpha.4 | `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-EXTRAS` |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -461,13 +461,13 @@ is classified for `rullst-upgrade-rules-v4`:
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
   application source (11 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (96 rows);
+  the affected API, feature or configuration, which the rules locate (97 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
   of inputs that previously failed) (93 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 108 rules. A row can map to several rules and a rule to
+has 109 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -671,48 +671,20 @@ the rule together.
 | Connect GitHub email | (b) review | `V13-CONNECT-GITHUB-EMAIL` | `GithubProvider` and `Connect::driver("github", ...)` |
 | Account mail link lifetime | (c) none | — | Only reset lifetimes that previously failed change; the link wording is not located |
 | Generated reset link lifetime | (c) none | — | Generator output; existing projects keep their code |
+| CLI self-update removed | (b) review | `V13-CLI-SELF-UPDATE-REMOVED` | `rullst update check\|verify\|stage\|install`, or `update guided` with `--scope`/`--root`, in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 | CLI extras (`ai`, `green`) | (b) review | `V13-CLI-EXTRAS` | `rullst ai` or `rullst footprint` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 
 ## Planned simpler update experience
 
-**Since 12.1.0 (not in 12.0.0):** advisory discovery is available through these
-commands:
-
-```bash
-cargo rullst update check
-cargo rullst update check --to 12.1.0 --json
-cargo rullst update check --offline
-cargo rullst update check --refresh
-cargo rullst update check --no-cache
-```
-
-The default selects an eligible stable CLI in the installed major. An exact
-newer major needs `--allow-major`, and an exact prerelease also needs
-`--prerelease`. Neither flag authorizes migration or provides future-major
-rules. Unknown/yanked versions and downgrades are rejected. The report includes
-the exact version, declared Rust minimum, release-notes link and current
-OS/architecture; it does not certify compatibility. JSON uses
-`rullst.update-discovery.v1`; reject unknown schemas. Metadata checksums are
-not proof of publisher identity, and every authority field remains false.
-No CLI/project files change. Linux/macOS explicit checks reuse a private,
-owner/permission-checked catalog for six hours. `--offline` and
-`CARGO_NET_OFFLINE=true` read only a fresh cache and revalidate its metadata;
-missing, expired or invalid caches fail without network access or writes.
-`--refresh` forces online discovery and `--no-cache` disables persistence;
-neither overrides the offline environment setting. JSON includes source and
-age, never installation authority. The old shared cache is not trusted.
-Windows has a protected owner/DACL cache implementation, with native cache
-acceptance recorded in the [maintenance checkpoint](../v12.md#1210-delivery-checkpoint-unreleased).
-Online discovery can recover from an unavailable cache. See the
-[CLI reference](../cli_reference.md#cargo-rullst-update-check-1210-working-source-unreleased)
-for locations and boundaries.
-
-`cargo rullst update verify --to VERSION --directory PATH`
-also authenticates an already-downloaded native manifest through the installed
-GitHub CLI, then checks the matching executables' sizes and hashes. Its
-[separate verification contract](../cli_reference.md#cargo-rullst-update-verify-1210-working-source-unreleased)
-does not install or execute those files, replace project files, or establish
-current registry eligibility.
+**Since 13.0.0-alpha.4** the CLI never downloads or replaces its own binary.
+Install a newer CLI with Cargo and its exact version
+(`cargo install cargo-rullst --version =VERSION --locked`). At most once a day,
+in an interactive terminal, the CLI prints that command when crates.io has a
+newer release of its major; see the
+[CLI reference](../cli_reference.md#cargo-rullst-update-check-1210-working-source-unreleased).
+The 12.1.0 to 13.0.0-alpha.3 self-updater (`update check`, `update verify`,
+`update stage` and `update install`) was removed; the project commands below
+remain.
 
 `cargo rullst update project prepare --project PATH --json`
 copies the Git working directory into private storage and edits only the
@@ -733,16 +705,15 @@ record and shows the full dependency diff with a review digest. Use the returned
 the reviewed manifests/root lockfile. The matching `recover` command restores
 only that operation and refuses unrelated edits.
 
-The [safe-update priority](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#safe-update-experience) proposes
-one guided flow for CLI installation, project preparation, validation and
-approved application. The **12.1.0** CLI composes those
-commands through `cargo rullst update guided --to 12.1.0 --scope both --root
-ABSOLUTE_PRIVATE_DIRECTORY --project PATH`. Each approval defaults to no and
-follows its complete review. Version, directories and digests are carried
-between steps; separate prompts govern download, CLI installation, trusted
-project execution/network and original-file application. `--scope project
---offline` uses local project preparation/verification without CLI downloads.
-See the [guided command](../cli_reference.md#cargo-rullst-update-guided-1210-working-source-unreleased).
+The [safe-update priority](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#safe-update-experience)
+proposes one guided flow for project preparation, validation and approved
+application. `cargo rullst update guided --to VERSION --project PATH` composes
+those commands. Each approval defaults to no and follows its complete review.
+Version, directories and digests are carried between steps; separate prompts
+govern trusted project execution/network and original-file application.
+`--offline` keeps verification local. Since 13.0.0-alpha.4 the flow no longer
+installs a CLI (`--scope` and `--root` were removed): install the target CLI
+with Cargo first. See the [guided command](../cli_reference.md#cargo-rullst-update-guided-1210-working-source-unreleased).
 File recovery does not replace database backups or application acceptance
 tests, and updating the CLI alone never updates a deployed application.
 

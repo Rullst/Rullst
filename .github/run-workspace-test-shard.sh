@@ -47,7 +47,7 @@ case "$shard" in
     cargo test -p cargo-rullst -p rullst-core --all-features \
       "${profile_args[@]}" --lib update::
     cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
-      "${profile_args[@]}" --test update_discovery_cli --test update_verification_cli \
+      "${profile_args[@]}" --test update_cli \
       --test update_project_cli --test upgrade_cli
     ;;
   cli-standard)

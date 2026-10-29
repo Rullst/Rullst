@@ -4395,41 +4395,23 @@ assistant, not a claim that compilation proves production compatibility.
   test suite, authorization negatives and deployment smoke tests remain
   mandatory human-owned gates.
 
-  **12.1.0 advisory discovery:** the
-  CLI checks for notices only on interactive dashboard startup, respects
-  explicit offline/CI/notification-disable flags, and retains at most one
-  validated result in process memory. It no longer reads or writes the legacy
-  shared temporary cache. Discovery uses a fixed HTTPS registry endpoint,
-  denies redirects, caps the response at 256 KiB and applies one four-second
-  network/body deadline. Notices select a newer, non-yanked stable version in
-  the installed major, not an arbitrary registry maximum. They authorize no
-  installation or project changes. The explicit `cargo rullst update check`
-  command now reports an exact eligible CLI release, its declared MSRV and the
-  current OS/architecture. `--to` pins selection; another major requires
-  `--allow-major`, and a prerelease separately requires `--prerelease`.
-  `--json` emits `rullst.update-discovery.v1` with every execution/write/artifact
-  authority false. It does not certify compiler/platform compatibility.
-  Explicit discovery now reuses a six-hour advisory cache on Unix platforms.
-  The caller-owned cache base and its ancestors are checked before using a
-  private `0700` directory; regular single-link `0600` files, bounded reads,
-  no-follow opens, a non-blocking writer lock and staged atomic replacement
-  protect the cache. Cached catalogs are parsed and selected again, never
-  accepted as artifact/installation authority. `--offline` never requests the
-  network or writes; missing, invalid, expired or future-dated caches fail.
-  `--refresh` skips cached reads; `--no-cache` disables persistence entirely.
-  Ordinary interactive notices remain process-local, not filesystem writers.
-  The Windows implementation uses `%LOCALAPPDATA%/rullst-update-v1`, a protected
-  DACL created atomically for the caller, SYSTEM and Administrators, handle-based
-  owner/access checks, no reparse points or multi-link files, bounded reads and
-  non-blocking staged replacement. Local-drive ancestors must exclude untrusted
-  replacement/control rights; UNC paths and alternate data streams are rejected.
-  ACLs are never repaired implicitly. Native Windows cache contracts passed at
-  the [documented maintenance checkpoint](v12.md#1210-delivery-checkpoint-unreleased).
-  A hostile same-user/root/administrator process
-  and authenticated release verification are outside this advisory cache's
-  contract. Verified CLI installation and the expanded project acceptance
-  transaction passed their declared platform and release gates in the
-  [12.1.0 publication](v12.md#1210-published-maintenance-release).
+  **Update notice (13.0.0-alpha.4):** the CLI never downloads, verifies or
+  replaces its own binary; a newer one is installed with
+  `cargo install cargo-rullst --version =X --locked`. At most once a day, in
+  an interactive terminal (every standard stream a terminal, not `CI`,
+  `RULLST_DISABLE_UPDATE_CHECK` or `CARGO_NET_OFFLINE`), the CLI prints that
+  exact command when crates.io has a newer non-yanked release of its major: a
+  stable release, or for a prerelease CLI also a newer prerelease; never build
+  metadata or another major. The notice reads only the private catalog cache
+  and is shown on the home screen or on standard error after a command. A
+  background thread refreshes that cache at most once a day with one fixed
+  HTTPS request (no redirects, 256 KiB cap, one four-second deadline); a
+  failure is silent. Daily stamps in the user cache (`rullst-ui-v1/`) record
+  the last notice and the last request. The cache keeps the 12.1.0 Unix and
+  Windows private-directory checks (caller-owned `0700` directory or protected
+  DACL, single-link private files, no-follow bounded reads, non-blocking
+  staged replacement) and reuses a catalog for at most 24 hours. It grants no
+  installation, project or deployment authority.
 
   **Native CLI artifact preparation:** the candidate pipeline builds both CLI
   entry points on the four targets in `.github/cli-artifact-targets.json` and
@@ -4457,87 +4439,24 @@ assistant, not a claim that compilation proves production compatibility.
   and matching checksums by themselves remain insufficient authority. This
   pipeline change is unaccepted until its native and release evidence passes.
 
-  **Explicit local artifact verification:** `cargo rullst update verify`
-  takes a caller-selected directory and exact `--to` version. It accepts only
-  the native supported target, a bounded release inventory and both standalone
-  binaries with matching sizes and SHA-256 digests. It authenticates a private
-  snapshot of the manifest through the caller-installed GitHub CLI, pinning
-  github.com, Rullst/Rullst, `.github/workflows/release.yml`, the exact source
-  tag/commit, GitHub's OIDC issuer and hosted runners. Failure, absence or timeout
-  of that verifier is a rejection; there is no checksum-only fallback. This
-  explicit operation can access attestation services and create a temporary
-  private manifest, but never executes candidate binaries or changes installed
-  files. Offline mode rejects before I/O. Its report describes only the bytes
-  just read, is not a reusable installation token, and does not establish
-  current registry eligibility or protect against hostile same-user writers.
-  Installation must independently revalidate the selected release and bytes.
-
-  **Authenticated download (12.1.0):**
-  `update stage --to EXACT_VERSION` fetches a fresh non-yanked registry
-  selection and uses only the fixed official
-  release URL with at most two HTTPS redirects through GitHub/release-assets hosts,
-  authenticates the bounded manifest before requesting executable bytes, and
-  stages at most two 128 MiB binaries in fresh private caller-owned storage.
-  Exact sizes and hashes must match the authenticated manifest. Ordinary failures
-  discard the stage; forced termination can leave an incomplete private directory
-  that later stages never reuse. Success records source/version/target and grants no execution,
-  installation or project authority. Offline mode rejects before I/O; install
-  must independently revalidate eligibility, provenance and bytes.
-
-  **Managed CLI installation (12.1.0):**
-  `update install review` authenticates a fresh eligible local candidate and
-  previews a new/empty or receipt-owned private destination, a root/source-bound digest,
-  proposed version smoke checks and the pinned Cargo source fallback. It does
-  not create the installation directory, execute binaries or install files.
-  An existing destination must contain exactly the two private single-link
-  executables and a bounded `rullst.cli-installation.v1` receipt binding the
-  canonical root to the original attested manifest bytes. Their hashes and the
-  prior manifest's provenance are revalidated; unknown/package-manager entries
-  and divergent files reject. Selection uses that installed version, so a stale
-  CLI cannot authorize its downgrade. The review digest binds the exact prior
-  receipt and rechecks local state after network verification.
-  `update install apply --approved-review SHA256` uses an explicit installation
-  root separate from the advisory cache and existing package-manager roots.
-  First installation accepts only a new/empty private caller-owned directory;
-  later updates require the updater's strict receipt and exact installed hashes.
-  Never take over unknown binaries or Cargo/Homebrew/system-manager records;
-  show the pinned manager/source-install command when that owner must update it.
-  A preview authenticates an exact eligible native candidate and binds its
-  source/files, destination and prior installed state to a review digest. Apply
-  requires the matching review digest, rechecks fresh registry/provenance/bytes, holds a
-  destination-local lock and copies candidates to private staging on that
-  filesystem before execution or replacement. Only the declared `--version`
-  probes run, with a 15-second deadline and 4 KiB per output stream per binary.
-  Both must report the selected version without stderr. Authenticated prior bytes
-  and a bounded intent are saved before replacing either entry point. Old entries
-  are moved aside instead of truncating executing images; per-file operations
-  are not an atomic two-binary swap and do not promise power-loss durability.
-  Windows in-use failures report the root and approval digest for recovery.
-  `update install recover --approved-review SHA256` accepts only the selected
-  operation's before/after states, rejects foreign edits and reauthenticates
-  both manifests before restoring the exact predecessor. Interrupted first
-  installation removes only the recorded new entries. Repeated recovery is
-  idempotent; an unrelated older version is never a recovery target.
-  The private destination-local sibling stores a root-bound owner marker, lock,
-  selected operation and at most eight operation directories, independently of
-  advisory cache settings. New operations prune only verified terminal older
-  evidence, retaining the selected recovery. Unknown files and incomplete
-  unselected operations require manual review. An in-use historical executable
-  can require closing the older CLI before pruning. PATH/shell configuration, source
-  compilation, project migration and deployment remain separate consent scopes.
-  Native concurrency, interruption, disk faults, executable-lock and complete
-  user-journey acceptance remain release gates.
+  **Self-updater removed (13.0.0-alpha.4):** `update check`, `update verify`,
+  `update stage` and `update install review|apply|recover` (12.1.0 to
+  13.0.0-alpha.3) were removed with their download, provenance, installation
+  receipt, rollback and pruning machinery. The native CLI executables and
+  their `rullst.cli-artifacts.v1` manifests remain attested GitHub release
+  assets that users verify by hand (see SECURITY.md, "Verifying a release").
 
   **Guided update composition:** `update guided --to EXACT_VERSION` is an
-  opt-in interactive composition of the same checked commands. An explicit
-  `cli`, `project` or `both` scope reuses the selected version, directories and
-  review digests. Show each complete review before a default-no approval;
-  distinguish authenticated download, CLI probe/replacement, trusted project
-  execution/network access and original-file application. No blanket approval
-  or noninteractive implicit yes is accepted. Declining stops before the next
-  operation, preserving any already completed step and its recovery evidence.
-  The current CLI's versioned migration rules remain authoritative: installing
-  another major does not teach this running process that major's migrations.
+  opt-in interactive composition of the project commands (prepare, verify,
+  review, apply). It reuses the selected version, directories and review
+  digest. Show each complete review before a default-no approval; distinguish
+  trusted project execution/network access and original-file application. No
+  blanket approval or noninteractive implicit yes is accepted. Declining stops
+  before the next operation, preserving any already completed step and its
+  recovery evidence. The current CLI's versioned migration rules remain
+  authoritative, so `--to` must be in its major; since 13.0.0-alpha.4 the flow
+  installs no CLI (`--scope`, `--root`, `--allow-major` and `--prerelease`
+  were removed).
   Existing structured commands remain the automation interface. Report elapsed
   time per executed stage, excluding user input; do not promise instant upgrades.
 

@@ -71,7 +71,7 @@ syn = { version = "3.0.5", features = ["full", "visit", "visit-mut"] }
 tokio = { workspace = true, features = ["full"] }
 brotli = "9.0.0"
 zstd = "0.14.0"
-reqwest = { workspace = true, features = ["json", "rustls", "blocking"] }
+reqwest = { workspace = true, features = ["json", "rustls"] }
 rand = { workspace = true }
 quote = "1.0.47"
 proc-macro2 = { version = "1.0.107", features = ["span-locations"] }

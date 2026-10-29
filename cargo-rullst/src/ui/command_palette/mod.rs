@@ -28,7 +28,7 @@ pub(crate) struct RequiredArgument {
 /// One runnable command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct PaletteEntry {
-    /// Words after the program, such as `["update", "check"]`.
+    /// Words after the program, such as `["update", "guided"]`.
     pub path: Vec<String>,
     /// `path` joined by spaces.
     pub name: String,

@@ -1,4 +1,6 @@
-use super::super::files::{manifest_findings, project_findings, runs_extras_command};
+use super::super::files::{
+    manifest_findings, project_findings, runs_extras_command, runs_removed_update_command,
+};
 use super::*;
 
 fn plan(path: PathBuf, original: &str) -> ManifestUpgradePlan {
@@ -300,6 +302,48 @@ fn scripts_running_the_moved_extras_commands_are_reviewed() {
     assert!(!runs_extras_command("cargo rullst ai:x"));
     assert!(!runs_extras_command("cargo rullst ai_x"));
     assert!(!runs_extras_command("cargo rullst green"));
+}
+
+#[test]
+fn scripts_running_the_removed_self_updater_are_reviewed() {
+    let project = Project::new();
+    project
+        .write(
+            ".github/workflows/cli.yml",
+            "steps:\n  - run: cargo rullst update project prepare --json\n  - run: cargo rullst update stage --to 13.0.0 --json\n",
+        )
+        .write(
+            "upgrade.sh",
+            "#!/bin/sh\ncargo rullst update guided --to 13.0.0 --scope both --root /opt/cli\n",
+        );
+    let mut found = project.findings("[package]\nname = \"my-app\"\n");
+    found.sort();
+    assert_eq!(
+        found,
+        [
+            (
+                ".github/workflows/cli.yml".to_string(),
+                "V13-CLI-SELF-UPDATE-REMOVED",
+                3
+            ),
+            ("upgrade.sh".to_string(), "V13-CLI-SELF-UPDATE-REMOVED", 2),
+        ]
+    );
+    for removed in [
+        "cargo rullst update check --json",
+        "rullst update verify --to 13.0.0 --directory d",
+        "cargo rullst update install apply --root r",
+        "cargo rullst update guided --to 13.0.0 --root /opt",
+    ] {
+        assert!(runs_removed_update_command(removed), "{removed}");
+    }
+    for kept in [
+        "cargo rullst update project verify --prepared p",
+        "cargo rullst update guided --to 13.0.0 --project .",
+        "cargo update --workspace",
+    ] {
+        assert!(!runs_removed_update_command(kept), "{kept}");
+    }
 }
 
 #[test]

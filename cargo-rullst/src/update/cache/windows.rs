@@ -136,18 +136,6 @@ pub(super) fn store(body: &[u8], now: u64) -> Result<(), CacheError> {
     store_at(&base_directory()?, body, now)
 }
 
-pub(super) fn verification_manifest(body: &[u8]) -> Result<tempfile::NamedTempFile, CacheError> {
-    let identity = Identity::current()?;
-    let directory = cache_directory(&base_directory()?, true, &identity)?;
-    let mut file = tempfile::Builder::new()
-        .prefix("verify-manifest-")
-        .tempfile_in(directory)?;
-    validate_file(file.as_file(), &identity)?;
-    file.write_all(body)?;
-    file.as_file().sync_all()?;
-    Ok(file)
-}
-
 pub(super) fn project_workspace() -> Result<PathBuf, CacheError> {
     let identity = Identity::current()?;
     let directory = cache_directory(&base_directory()?, true, &identity)?;
@@ -204,7 +192,6 @@ mod tests {
         store_at(base.path(), BODY, 100).unwrap();
         let cached = load_at(base.path(), 101).unwrap();
         assert_eq!(cached.body, BODY);
-        assert_eq!(cached.age_seconds, 1);
         assert!(load_at(base.path(), 99).is_err());
         assert!(load_at(base.path(), 100 + super::super::MAX_AGE_SECONDS).is_err());
         store_at(base.path(), b"replacement", 102).unwrap();
@@ -260,80 +247,4 @@ mod tests {
 // Used only for a new lockfile that has no original access policy to preserve.
 pub(super) fn private_file_descriptor() -> Result<String, CacheError> {
     Ok(Identity::current()?.private_file_descriptor())
-}
-
-pub(super) fn installation_root(requested: &Path) -> Result<PathBuf, CacheError> {
-    validate_path(requested)?;
-    let name = requested.file_name().ok_or(CacheError::Invalid(
-        "installation needs a named destination directory",
-    ))?;
-    let text = name
-        .to_str()
-        .ok_or(CacheError::Invalid("installation name must be ASCII"))?;
-    if text.is_empty()
-        || text.len() > 128
-        || text.ends_with(['.', ' '])
-        || !text
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b"-_. ".contains(&b))
-    {
-        return Err(CacheError::Invalid(
-            "installation name must use bounded ASCII without a trailing dot or space",
-        ));
-    }
-    let parent = requested
-        .parent()
-        .ok_or(CacheError::Invalid("installation needs an existing parent"))?
-        .canonicalize()?;
-    let identity = Identity::current()?;
-    for ancestor in parent.ancestors() {
-        identity.validate(
-            &directory_handle(ancestor)?,
-            ancestor != parent,
-            false,
-            true,
-        )?;
-    }
-    let root = parent.join(name);
-    match fs::symlink_metadata(&root) {
-        Ok(_) => {
-            identity.validate(&directory_handle(&root)?, false, true, true)?;
-            return Ok(root.canonicalize()?);
-        }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
-        Err(error) => return Err(error.into()),
-    }
-    Ok(root)
-}
-
-pub(super) fn installation_file(path: &Path) -> Result<(), CacheError> {
-    Identity::current()?.validate(&options(false).open(path)?, false, true, false)
-}
-
-pub(super) fn create_installation_directory(path: &Path) -> Result<PathBuf, CacheError> {
-    let path = installation_root(path)?;
-    Identity::current()?.create_directory(&path)?;
-    installation_root(&path)
-}
-
-pub(super) fn new_installation_file(path: &Path) -> Result<File, CacheError> {
-    let identity = Identity::current()?;
-    let file = identity.create_file(path)?;
-    identity.validate(&file, false, true, false)?;
-    Ok(file)
-}
-
-pub(super) fn installation_lock(path: &Path) -> Result<File, CacheError> {
-    let file = match new_installation_file(path) {
-        Ok(file) => file,
-        Err(CacheError::Io(error)) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-            options(true).open(path)?
-        }
-        Err(error) => return Err(error),
-    };
-    Identity::current()?.validate(&file, false, true, false)?;
-    if file.metadata()?.len() != 0 {
-        return Err(CacheError::Invalid("invalid installation lock"));
-    }
-    Ok(file)
 }

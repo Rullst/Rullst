@@ -291,6 +291,17 @@ pub(super) fn runs_extras_command(line: &str) -> bool {
     })
 }
 
+/// A script line running the self-updater removed in 13.0.0-alpha.4:
+/// `rullst update check|verify|stage|install`, or `update guided` with its
+/// CLI-installation flags.
+pub(super) fn runs_removed_update_command(line: &str) -> bool {
+    ["check", "verify", "stage", "install"]
+        .iter()
+        .any(|command| line.contains(&format!("rullst update {command}")))
+        || (line.contains("rullst update guided")
+            && (line.contains("--scope") || line.contains("--root")))
+}
+
 /// A lowercase DNS label, as Kubernetes object names require.
 fn dns_label(name: &str) -> bool {
     !name.is_empty()
@@ -446,6 +457,9 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
         }
         if let Some(line) = line_of(&text, runs_extras_command) {
             push(&CLI_EXTRAS, &script, line);
+        }
+        if let Some(line) = line_of(&text, runs_removed_update_command) {
+            push(&CLI_SELF_UPDATE, &script, line);
         }
     }
     if kubernetes

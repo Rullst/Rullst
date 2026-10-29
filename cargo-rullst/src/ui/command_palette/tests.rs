@@ -20,7 +20,7 @@ fn entries_cover_every_runtime_command_with_their_required_arguments() {
         "info",
         "deploy:doctor",
         "make:privacy",
-        "update check",
+        "update guided",
         "update project prepare",
     ] {
         find(&entries, name);
@@ -64,7 +64,7 @@ fn typing_filters_and_ranks_the_runtime_commands() {
     assert_eq!(first("doctor"), "doctor");
     assert_eq!(first("mig"), "db:migrate");
     assert_eq!(first("completions"), "completions");
-    assert_eq!(first("update ch"), "update check");
+    assert_eq!(first("update gu"), "update guided");
     assert_eq!(matches("", &entries).len(), entries.len());
     assert!(matches("zzzzqqqq", &entries).is_empty());
 }

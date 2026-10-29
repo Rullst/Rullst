@@ -20,8 +20,7 @@ pub(super) fn decode(bytes: &[u8], now: u64) -> Result<CachedCatalog, CacheError
         .ok()
         .and_then(|v| v.parse().ok())
         .ok_or(CacheError::Invalid("invalid catalog cache timestamp"))?;
-    let age_seconds = now
-        .checked_sub(timestamp)
+    now.checked_sub(timestamp)
         .filter(|age| *age < MAX_AGE_SECONDS)
         .ok_or(CacheError::Invalid(
             "catalog cache is expired or dated in the future; refresh online",
@@ -32,6 +31,5 @@ pub(super) fn decode(bytes: &[u8], now: u64) -> Result<CachedCatalog, CacheError
     }
     Ok(CachedCatalog {
         body: body.to_vec(),
-        age_seconds,
     })
 }

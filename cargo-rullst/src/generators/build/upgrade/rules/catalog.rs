@@ -350,6 +350,9 @@ rules! {
     PAGE_LANGUAGE: "V13-RENDER-PAGE-LANGUAGE", Review, "13.0.0-alpha.1", "Starter page language",
         "`render_page` declares `lang=\"pt-BR\"`; English pages should use `render_page_with_lang`",
         "Call `rullst::htmx::render_page_with_lang(&htmx, \"en\", title, content)` with the page's language.";
+    CLI_SELF_UPDATE: "V13-CLI-SELF-UPDATE-REMOVED", Review, "13.0.0-alpha.4", "CLI self-update removed",
+        "the CLI no longer installs itself: `update check|verify|stage|install` and `update guided --scope|--root` were removed; these scripts run them",
+        "Install the CLI with `cargo install cargo-rullst --version =<version> --locked` (verify downloaded release binaries by hand as SECURITY.md shows), and keep only `update project …` or `update guided --to <version> --project <path>`.";
     CLI_EXTRAS: "V13-CLI-EXTRAS", Review, "13.0.0-alpha.4", "CLI extras (`ai`, `green`)",
         "`cargo rullst ai` and `footprint` moved to the optional cargo-rullst-extras package (`footprint` is now `green`); these scripts run them",
         "Install `cargo-rullst-extras` with the same `--version` as cargo-rullst where the scripts run (`cargo install cargo-rullst-extras --version =<version> --locked`), and replace `cargo rullst footprint` with `cargo rullst green` (`--bench` for CPU time, JSON `rullst.green.v1`).";

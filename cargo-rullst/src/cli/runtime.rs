@@ -397,13 +397,13 @@ mod tests {
             Some("Did you mean `cargo rullst make:model`?")
         );
 
-        let args = arguments(&["rullst", "update", "chekk"]);
-        let (path, update) = level(&command, &args, "chekk");
+        let args = arguments(&["rullst", "update", "projetc"]);
+        let (path, update) = level(&command, &args, "projetc");
         assert_eq!(path, ["update"]);
         let names = super::super::suggest::command_names(update);
         assert_eq!(
-            super::super::suggest::suggestions("chekk", &names),
-            ["check"]
+            super::super::suggest::suggestions("projetc", &names),
+            ["project"]
         );
 
         let none = unknown_command("zzz", "cargo rullst", &[]);

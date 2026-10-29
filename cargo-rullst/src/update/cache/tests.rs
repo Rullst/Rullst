@@ -16,7 +16,6 @@ fn roundtrip_is_private_bounded_and_atomic() {
     store_at(&base, BODY, 100).unwrap();
     let first = load_at(&base, 200).unwrap();
     assert_eq!(first.body, BODY);
-    assert_eq!(first.age_seconds, 100);
     let directory = base.join("rullst-update-v1");
     assert_eq!(fs::metadata(&directory).unwrap().mode() & 0o077, 0);
     assert_eq!(
@@ -43,6 +42,8 @@ fn expiration_future_and_bad_headers_fail_closed() {
     assert!(load_at(&base, 99).is_err());
     assert!(load_at(&base, 100 + MAX_AGE_SECONDS).is_err());
     assert!(load_at(&base, 100 + MAX_AGE_SECONDS - 1).is_ok());
+    // The update notice asks crates.io at most once a day.
+    assert_eq!(MAX_AGE_SECONDS, 86_400);
     for bad in [
         b"legacy-format".as_slice(),
         b"rullst-update-cache-v1\n-1\n{}",

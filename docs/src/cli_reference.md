@@ -95,11 +95,13 @@ terminal, `CI` is set or `TERM=dumb`, the CLI prints the plain line, the
 summary and the equivalent commands, then exits successfully without
 prompting.
 
-In a terminal the home also asks crates.io in the background for a newer
-stable `cargo-rullst` of the same major and prints a notice under the summary
-when that answer has already arrived; nothing is installed or cached.
-`RULLST_DISABLE_UPDATE_CHECK=1`, `CARGO_NET_OFFLINE=true` or `CI=true` turns
-the query off.
+In a terminal, at most once a day, the home (or any command, on standard
+error after it finishes) prints `A newer cargo-rullst is available: cargo
+install cargo-rullst --version =X --locked` when crates.io has a newer release
+of the same major; the catalog is fetched in the background at most once a day
+and cached privately, and nothing is installed. `RULLST_DISABLE_UPDATE_CHECK=1`,
+`CARGO_NET_OFFLINE=true` or `CI=true` turns it off. See
+[Update notice and installing a newer CLI](#cargo-rullst-update-check-1210-working-source-unreleased).
 
 ### Errors and exit codes
 Every failure is printed on standard error by one shared report:
@@ -140,8 +142,8 @@ or `RUST_BACKTRACE` is set.
 | `2` | Usage error: an unknown command, invalid arguments or an argument that is not valid UTF-8. |
 
 An unknown command lists the closest commands at the level where it was typed
-(`cargo rullst make:modek` suggests `make:model`; `cargo rullst update chekk`
-suggests `update check`; `cargo rullst db` lists the `db:*` group). Ranking
+(`cargo rullst make:modek` suggests `make:model`; `cargo rullst update projetc`
+suggests `update project`; `cargo rullst db` lists the `db:*` group). Ranking
 ignores case and separators (`make-model`), then uses edit distance with
 transpositions, an exact `group:name` segment (`migrate`) and prefixes.
 
@@ -511,195 +513,70 @@ providers, or replace the project's test suite. Follow the
 
 <a id="cargo-rullst-update-check-1210-working-source-unreleased"></a>
 
-### `cargo rullst update check` (since 12.1.0)
+### Update notice and installing a newer CLI
 
-Advisory release discovery; it does not install a CLI or migrate an application.
-
-```bash
-cargo rullst update check
-cargo rullst update check --to VERSION --json
-cargo rullst update check --refresh
-cargo rullst update check --offline --json
-cargo rullst update check --no-cache
-```
-
-The default stays in the installed major's stable channel. Exact other-major
-targets require `--allow-major`; prereleases also require `--prerelease`.
-Downgrades, yanked targets and ambiguous metadata fail closed. The bounded
-HTTPS query reports the selected release's declared Rust minimum and the
-current platform; it does not prove compatibility or artifact authenticity.
-On Linux/macOS, explicit discovery caches validated metadata for up to six
-hours under `$XDG_CACHE_HOME/rullst-update-v1` or
-`$HOME/.cache/rullst-update-v1`. An unsafe owner, permissions, linked file,
-oversized body or invalid timestamp prevents reuse. The directory is private
-and writer contention does not block discovery; an unusable cache falls back
-to the registry only when online. Cache failures never authorize an install.
-
-`--offline` and `CARGO_NET_OFFLINE=true` use only a fresh cache and fail without
-network access if none is usable. `--refresh` bypasses cache reads;
-`--no-cache` disables both cache reads and writes. Neither bypasses the offline
-environment setting. Windows uses `%LOCALAPPDATA%/rullst-update-v1` with an
-atomically created protected user/SYSTEM/Administrators DACL. Handle-based
-checks reject foreign owners, unsafe grants, reparse points and hard links;
-UNC paths and alternate data streams are unsupported. Unsafe ACLs are not
-modified. Native cache acceptance is recorded in the
-[maintenance checkpoint](v12.md#1210-delivery-checkpoint-unreleased).
-Ordinary dashboard notices remain process-local and never write this cache.
-
-`--json` uses `rullst.update-discovery.v1`, includes metadata source/age and
-grants no installation, project or deployment authority. Cached metadata is
-not proof of current yank status or artifact authenticity. See the
-[upgrade guide](tutorials/36-assisted-framework-upgrades.md).
-
-<a id="cargo-rullst-update-verify-1210-working-source-unreleased"></a>
-
-### `cargo rullst update verify` (since 12.1.0)
-
-Authenticate a downloaded native CLI inventory and both executables:
+The CLI never downloads, verifies or replaces its own binary. Install a newer
+one with Cargo, using its exact version:
 
 ```bash
-cargo rullst update verify --to VERSION --directory ./downloaded-cli --json
+cargo install cargo-rullst --version =VERSION --locked
 ```
 
-This requires the exact release's `cli-manifest-TARGET.json`,
-`cargo-rullst-VERSION-TARGET[.exe]` and `rullst-VERSION-TARGET[.exe]`.
-The directory may contain other downloads; only these fixed names are read.
-No archive is extracted and no downloaded executable is run. Releases since
-12.1.0 publish this inventory for Linux x64 GNU, Windows x64 MSVC and macOS
-x64/ARM64; 12.0.0 has none. The v13 prereleases publish it for the same
-targets; select one exactly, such as `--to 13.0.0-alpha.3`, with the
-major/prerelease opt-ins described below.
+At most once a day, in an interactive terminal, `cargo rullst` tells you when a
+newer release of its major is on crates.io: a newer stable release, or for a
+prerelease CLI also a newer prerelease. The notice prints that exact command
+(`A newer cargo-rullst is available: cargo install cargo-rullst --version =X
+--locked`) on the home screen, or on standard error after a command finishes.
+It never delays or fails a command:
 
-The caller-installed GitHub CLI must be available through an absolute trusted
-PATH entry and support [attestation verification](https://cli.github.com/manual/gh_attestation_verify).
-The command checks a temporary private copy of the manifest against the exact
-official repository, release workflow, source tag/commit and GitHub issuer,
-rejects self-hosted attestations, and compares both binary sizes and SHA-256
-digests. Missing/failed/timed-out verification is an error, with no fallback
-to checksums. It requires network access; `--offline` and `CARGO_NET_OFFLINE`
-reject before filesystem/network I/O. Major/prerelease opt-ins match `check`.
+- the crates.io catalog is fetched in a background thread at most once a day
+  (one bounded HTTPS request, 4 seconds in total, no redirects) and kept in
+  the private user cache (`$XDG_CACHE_HOME/rullst-update-v1`,
+  `$HOME/.cache/rullst-update-v1` or `%LOCALAPPDATA%\rullst-update-v1`;
+  unsafe owners, permissions or links make it unusable);
+- the notice itself reads only that cache, and the day of the last notice and
+  of the last request are small stamps in `rullst-ui-v1/` in the same cache
+  base;
+- `RULLST_DISABLE_UPDATE_CHECK=1`, `CARGO_NET_OFFLINE=true`, `CI`, and any
+  standard stream that is not a terminal silence it completely: no request,
+  no file and no output.
 
-JSON uses `rullst.update-verification.v1`. Only `artifact_verified` is true;
-installation, execution, project writes and deployment remain unauthorized.
-The report covers the bytes read during this invocation, is not an installation
-token and does not recheck registry yank status. A later installer must validate
-current release eligibility and reread/reverify the candidate. Hostile same-user
-writers and a compromised verifier/PATH are outside this boundary.
-
-### `cargo rullst update stage` (since 12.1.0)
-
-```bash
-cargo rullst update stage --to VERSION --json
-```
-
-This exact version must be published and non-yanked. Another major requires
-`--allow-major`; a prerelease separately requires `--prerelease`. `--offline`
-and `CARGO_NET_OFFLINE` reject before filesystem/network work. The command reads
-fresh registry metadata, downloads the official platform manifest, authenticates
-it with the caller-installed GitHub CLI, then downloads the two named binaries.
-Redirects stay on HTTPS GitHub/release-assets hosts, with at most two redirects.
-The manifest is limited to 16 KiB; each binary to its authenticated size and at
-most 128 MiB. Each request has a 120-second total timeout. Exact hashes and sizes
-must match. Ordinary failures remove the private stage. Forced termination can
-leave an incomplete private directory; subsequent stages never reuse its files.
-
-The `rullst.cli-staging.v1` report names the retained private directory and source
-identity. Files remain unexecuted and uninstalled. No project files change. This
-report grants no future installation authority: an installer must revalidate the
-release, provenance and file contents. Native staging checks remain release
-requirements.
+**Removed in 13.0.0-alpha.4:** the self-updater (`update check`,
+`update verify`, `update stage` and `update install review|apply|recover`)
+and the CLI half of `update guided` (`--scope`, `--root`, `--allow-major`,
+`--prerelease`). The native CLI executables and their manifests stay
+attached to each GitHub release and can be checked by hand as described in
+[Verifying a release](https://github.com/Rullst/Rullst/blob/main/SECURITY.md#verifying-a-release).
 
 <a id="cargo-rullst-update-guided-1210-working-source-unreleased"></a>
 
 ### `cargo rullst update guided` (since 12.1.0)
 
 ```bash
-cargo rullst update guided --to VERSION --scope both \
-  --root "$HOME/.local/share/rullst-cli" --project ./my-app
-cargo rullst update guided --to VERSION --scope project --project ./my-app --offline
+cargo rullst update guided --to VERSION --project ./my-app
+cargo rullst update guided --to VERSION --project ./my-app --offline
 ```
 
-This interactive entry point composes the same authenticated installation and
-isolated project commands described below. `--scope cli`, `project` or `both`
-selects the work; `both` is the default and requires an absolute `--root`.
-Each complete review appears before its own default-no confirmation. The flow
-reuses the exact version, directories and review digests without shell commands
-or manual copying. It reports elapsed milliseconds per executed stage, excluding
-time spent answering prompts. Declining stops before the next operation;
-completed steps and their recovery records remain available.
+This interactive entry point composes the isolated project commands described
+below: prepare, verify, review and apply. `--to` must be in this CLI's major,
+because the running CLI carries only its own major's migration rules; to move
+to another major, install that CLI first and run its guided flow. Each complete
+review appears before its own default-no confirmation. The flow reuses the
+exact version, directories and review digest without shell commands or manual
+copying. It reports elapsed milliseconds per executed stage, excluding time
+spent answering prompts. Declining stops before the next operation; completed
+steps and their recovery records remain available.
 
-CLI download/review uses the network. Project verification separately asks
-whether Cargo may use the network and requires explicit consent to execute
-trusted build scripts, macros and tests. `--offline` keeps project verification
-offline and rejects scopes containing CLI installation. Feature selection and
-command deadlines use the same `--all-features`, `--features`,
-`--no-default-features` and `--timeout-seconds` options as project verification.
-The running CLI cannot acquire another major's migration rules by installing
-it: use `--scope cli --allow-major` first, then explicitly invoke the new CLI's
-project flow. PATH, databases and deployments are not changed.
+Project verification asks whether Cargo may use the network and requires
+explicit consent to execute trusted build scripts, macros and tests.
+`--offline` keeps it offline. Feature selection and command deadlines use the
+same `--all-features`, `--features`, `--no-default-features` and
+`--timeout-seconds` options as project verification. PATH, databases and
+deployments are not changed.
 
 Piped input/output rejects before I/O; use the explicit commands with JSON and
-review digests for automation. This flow does not bypass release eligibility,
-provenance, ownership or recovery checks.
-
-### `cargo rullst update install review` (since 12.1.0)
-
-```bash
-cargo rullst update install review --to VERSION --directory STAGED_FILES \
-  --root "$HOME/.local/share/rullst-cli" --json
-```
-
-The absolute installation root must be new/empty or contain exactly the two
-updater-owned binaries and its bounded root-bound installation receipt. Its
-parent must already exist and pass owner/ancestor checks. An existing destination
-must be private (`0700` on Unix or a protected caller DACL on Windows). Unknown
-files and package-manager installations are refused. No permissions are repaired.
-The original attested manifest bytes and private single-link binaries must still
-match; review reauthenticates the prior manifest and uses the installed version
-to reject downgrades even when the reviewing CLI is older.
-
-Review fetches fresh registry eligibility, verifies official provenance and
-exact local binary hashes, then rechecks the destination. JSON binds source,
-version, native target, destination and exact prior receipt to `review_sha256`, lists the future
-version probes and supplies an exact Cargo source-install command for separately
-reviewed manager use. Offline mode rejects before I/O. The destination is not
-created and neither the probes nor fallback command run. The digest grants no
-writes until passed explicitly to `apply`.
-
-### `cargo rullst update install apply` / `recover` (since 12.1.0)
-
-```bash
-cargo rullst update install apply --to VERSION --directory STAGED_FILES \
-  --root "$HOME/.local/share/rullst-cli" --approved-review REVIEW_SHA256 --json
-cargo rullst update install recover --root "$HOME/.local/share/rullst-cli" \
-  --approved-review REVIEW_SHA256 --json
-```
-
-Apply repeats registry, provenance, file and destination checks. It refuses a
-changed review. A destination-local lock coordinates installations even when
-callers use different advisory caches. Private copies on the destination
-filesystem must pass both approved `--version` checks (15 seconds and 4 KiB per
-output stream each) before any installed entry is replaced. The CLI retains
-verified predecessor bytes and a bounded intent, then replaces the two binary
-entries and receipt. A running older executable is moved aside, never truncated.
-The three replacements are individually performed; this is not an atomic swap
-or a power-loss durability guarantee.
-
-An interrupted replacement reports the same root and approval digest needed for
-recovery. Recovery authenticates the recorded manifests again, accepts only the
-recorded before/after states and restores the exact predecessor. For a first
-installation, it removes only its recorded new entries. Unrelated edits reject
-without being overwritten; repeated successful recovery is a no-op. Both
-commands reject offline mode before I/O. They never change PATH, compile source,
-migrate a project or deploy an application.
-
-Keep the private `.rullst-install-*` sibling: it holds the destination lock,
-receipt ownership record and recovery evidence. The selected operation remains
-recoverable. Later installs prune only verified older completed/recovered
-operations; at most eight operation directories may be retained. Unknown or
-incomplete historical evidence requires manual review. On Windows, closing an
-older running CLI may be necessary before its historical executable is pruned.
-Native fault and complete user-journey acceptance remain release requirements.
+review digests for automation. This flow does not bypass ownership or recovery
+checks.
 
 <a id="cargo-rullst-update-project-prepare-1210-working-source-unreleased"></a>
 

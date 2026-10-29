@@ -24,6 +24,18 @@ A prepared version section does not establish that its tag or crates exist.
   command and exit with status 1, and the home menu shows the command instead
   of failing. `cargo rullst upgrade` flags scripts and workflows that run
   `rullst ai` or `rullst footprint` (`V13-CLI-EXTRAS`).
+- **Breaking:** the CLI no longer installs or replaces itself. `cargo rullst
+  update check`, `update verify`, `update stage` and `update install` were
+  removed, and `update guided` now runs only the project flow (its `--scope`,
+  `--root`, `--allow-major` and `--prerelease` flags were removed). Install a
+  newer CLI with `cargo install cargo-rullst --version =<version> --locked`.
+  At most once a day, in an interactive terminal, the CLI prints that command
+  when crates.io has a newer release of its major, now including newer
+  prereleases for a prerelease CLI; `RULLST_DISABLE_UPDATE_CHECK`,
+  `CARGO_NET_OFFLINE`, `CI` and non-terminal streams silence it. The project
+  update commands (`update project …`) are unchanged, and `cargo rullst
+  upgrade` flags scripts that run the removed commands
+  (`V13-CLI-SELF-UPDATE-REMOVED`).
 - **Breaking:** `footprint` is now `green` and reports only measured figures:
   release binary size, a local container image's size (`--image`, through
   Docker or Podman), idle memory, the `Cargo.lock` dependency count and, with

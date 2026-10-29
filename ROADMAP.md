@@ -527,6 +527,13 @@ or count this proposal as completed work in the capability ledger.
 
 Implementation and acceptance order:
 
+**13.0.0-alpha.4 removes the CLI self-updater** (`update check`, `update
+verify`, `update stage`, `update install` and the CLI half of `update guided`):
+the CLI is installed and updated with `cargo install cargo-rullst --version =X
+--locked`, and a once-a-day notice prints that command. The project
+preparation commands below stay. The paragraphs that follow record the 12.1.0
+to 13.0.0-alpha.3 history.
+
 Published 12.1.0 discovery uses interactive-only, offline/CI-aware notices and
 bounded HTTPS metadata. It rejects redirects, yanked versions, prereleases and
 unsolicited major jumps.
@@ -816,7 +823,7 @@ Work items for later prereleases, not shipped features. They add no milestone
 to the counts above.
 
 - **Targeted `cargo-rullst` mutation campaign** (its branch continues after the
-  alpha.3 candidate): self-update signature and checksum verification, upgrade
+  alpha.3 candidate; the self-updater it covered was removed in alpha.4): upgrade
   rules, the audit and IDOR scanner, manifest editing, `doctor` and the
   deployment configuration generators. Until it finishes, `cargo-rullst` is
   not mutation-measured.

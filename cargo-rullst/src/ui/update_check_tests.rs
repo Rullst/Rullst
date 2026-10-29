@@ -50,7 +50,7 @@ fn ignores_yanked_prerelease_foreign_invalid_and_build_metadata_versions() {
 }
 
 #[test]
-fn stable_release_can_replace_its_rc_but_another_rc_is_not_selected() {
+fn a_prerelease_cli_hears_about_newer_prereleases_and_stables_of_its_major() {
     let bytes = catalog(&[
         ("12.0.0", false, "cargo-rullst"),
         ("12.0.0-rc.2", false, "cargo-rullst"),
@@ -59,6 +59,30 @@ fn stable_release_can_replace_its_rc_but_another_rc_is_not_selected() {
         select_update(Cursor::new(bytes), "12.0.0-rc.1").unwrap(),
         Some(Version::parse("12.0.0").unwrap())
     );
+    let alphas = catalog(&[
+        ("13.0.0-alpha.4", false, "cargo-rullst"),
+        ("13.0.0-alpha.3", false, "cargo-rullst"),
+        ("14.0.0-alpha.1", false, "cargo-rullst"),
+    ]);
+    assert_eq!(
+        select_update(Cursor::new(alphas), "13.0.0-alpha.3").unwrap(),
+        Some(Version::parse("13.0.0-alpha.4").unwrap())
+    );
+    let current = Version::parse("13.0.0-alpha.3").unwrap();
+    for (version, eligible) in [
+        ("13.0.0-alpha.4", true),
+        ("13.0.0", true),
+        ("13.1.0-beta.1", true),
+        ("13.0.0-alpha.2", false),
+        ("13.0.0-alpha.4+build", false),
+        ("14.0.0", false),
+    ] {
+        assert_eq!(
+            eligible_update(&current, &Version::parse(version).unwrap()),
+            eligible,
+            "{version}"
+        );
+    }
 }
 
 #[test]

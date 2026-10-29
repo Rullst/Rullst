@@ -34,17 +34,23 @@ fn cache_base(var: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
 
 /// The stamp file path for the current user, if a cache base is configured.
 pub(super) fn marker_path() -> Option<PathBuf> {
-    cache_base(|name| std::env::var_os(name)).map(|base| base.join(DIRECTORY).join(FILE))
+    stamp_path(FILE)
+}
+
+/// The path of another daily stamp (such as the update notice's) next to
+/// the opening's, if a cache base is configured.
+pub(crate) fn stamp_path(file: &str) -> Option<PathBuf> {
+    cache_base(|name| std::env::var_os(name)).map(|base| base.join(DIRECTORY).join(file))
 }
 
 /// Today's local date as the stamp content.
-pub(super) fn today() -> String {
+pub(crate) fn today() -> String {
     chrono::Local::now().format("%Y-%m-%d").to_string()
 }
 
 /// Claims today's animation: returns `true` only when the stamp did not
 /// already hold `today` and was successfully replaced by it.
-pub(super) fn claim_daily_animation(path: &Path, today: &str) -> bool {
+pub(crate) fn claim_daily_animation(path: &Path, today: &str) -> bool {
     match read_stamp(path) {
         Ok(Some(stamp)) if stamp == today => false,
         Ok(_) => write_stamp(path, today).is_ok(),

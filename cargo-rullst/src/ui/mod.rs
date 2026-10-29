@@ -9,7 +9,7 @@ mod dashboard_brand;
 pub(crate) mod error_report;
 pub mod help;
 pub(crate) mod home;
-mod opening_marker;
+pub(crate) mod opening_marker;
 mod palette;
 pub(crate) mod screen;
 pub mod spinner;

@@ -68,7 +68,10 @@ fn rules_carry_the_release_of_their_change() {
             "V13-OFFLINE-SYNC-REMOVED",
         ]
     );
-    assert_eq!(codes_introduced_in("13.0.0-alpha.4"), ["V13-CLI-EXTRAS"]);
+    assert_eq!(
+        codes_introduced_in("13.0.0-alpha.4"),
+        ["V13-CLI-SELF-UPDATE-REMOVED", "V13-CLI-EXTRAS"]
+    );
     assert_eq!(codes_introduced_in("13.0.0-alpha.1").len(), 95);
     assert!(codes_introduced_in("13.0.0-alpha.1").contains(&"V13-RENDER-PAGE-LANGUAGE"));
 }
