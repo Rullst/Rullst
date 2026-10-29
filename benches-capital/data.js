@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793261669151,
+  "lastUpdate": 1793264119467,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -13947,6 +13947,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/25aa0268e54dcee69526edb62ef22879bf225612"
         },
         "date": 1793261668301,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "03d3eabebd3c8ea8e20b9403f44ce16f4567e6b7",
+          "message": "Merge pull request #555 from Rullst/feat/v13-alpha4-lean-cli\n\nfeat(cli)!: lean main CLI, cargo-rullst-extras, deployment guides and --json contract",
+          "timestamp": "2026-10-29T05:28:27-03:00",
+          "tree_id": "6b58842afed0ef71a91246cda98080194af01036",
+          "url": "https://github.com/Rullst/Rullst/commit/03d3eabebd3c8ea8e20b9403f44ce16f4567e6b7"
+        },
+        "date": 1793264118536,
         "tool": "cargo",
         "benches": [
           {
