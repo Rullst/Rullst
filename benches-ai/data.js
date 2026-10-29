@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793307959385,
+  "lastUpdate": 1793312616061,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -16587,6 +16587,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 391,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b59f9ad7a5ffe2a4ed574aa7d72e777268d7c7ea",
+          "message": "Merge pull request #575 from Rullst/docs/v13-audit-first-hour\n\ndocs: audit the first-hour pages for 13.0 (overview, getting started, maturity, zero-to-complete)",
+          "timestamp": "2026-10-29T18:57:25-03:00",
+          "tree_id": "427a66742828fd39bb488124226b5ab1e5bb3c40",
+          "url": "https://github.com/Rullst/Rullst/commit/b59f9ad7a5ffe2a4ed574aa7d72e777268d7c7ea"
+        },
+        "date": 1793312615225,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1648,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 328,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 402,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
