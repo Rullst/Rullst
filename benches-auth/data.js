@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793269632217,
+  "lastUpdate": 1793271529931,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -18651,6 +18651,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2172,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1ea88e637fec950f9bb5f9afe37f19009053108",
+          "message": "Merge pull request #559 from Rullst/perf/v13-alpha4-compile-time\n\nperf(cli): shorter dev builds for generated starters",
+          "timestamp": "2026-10-29T07:42:31-03:00",
+          "tree_id": "13f390f85a9f2ed566ced5a999804a75e1bb3b92",
+          "url": "https://github.com/Rullst/Rullst/commit/b1ea88e637fec950f9bb5f9afe37f19009053108"
+        },
+        "date": 1793271529228,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 951,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 761,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1721,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3767,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
