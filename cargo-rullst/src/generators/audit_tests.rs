@@ -55,6 +55,7 @@ fn source_scans_do_not_follow_a_symlinked_directory_loop() {
 
 /// Runs `run_audit` in a child test process inside a fixture project, with
 /// no external programs on `PATH`.
+/// Miri cannot start processes, so the tests that run it are ignored there.
 #[test]
 fn audit_child_fixture() {
     let Some(report) = std::env::var_os("RULLST_AUDIT_REPORT") else {
@@ -133,6 +134,7 @@ fn checks(summary: &serde_json::Value) -> Vec<String> {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn a_full_audit_counts_every_finding_once() {
     let project = tempfile::tempdir().unwrap();
     let root = project.path();
@@ -177,6 +179,7 @@ fn a_full_audit_counts_every_finding_once() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn a_clean_project_passes_the_audit() {
     let project = tempfile::tempdir().unwrap();
     let root = project.path();
@@ -205,6 +208,7 @@ fn a_clean_project_passes_the_audit() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn unreadable_secrets_and_missing_sources_are_incomplete_checks() {
     let project = tempfile::tempdir().unwrap();
     let root = project.path();
@@ -326,6 +330,7 @@ const ONE_FINDING: &str =
 
 #[cfg(unix)]
 #[test]
+#[cfg_attr(miri, ignore)]
 fn cargo_audit_outcomes_are_reported_and_counted() {
     for (status, modes, expected, outcome) in [
         ("0", "", "no_findings", "ok"),
@@ -342,6 +347,7 @@ fn cargo_audit_outcomes_are_reported_and_counted() {
 
 #[cfg(unix)]
 #[test]
+#[cfg_attr(miri, ignore)]
 fn requested_geiger_runs_count_failures_and_absence() {
     for (variable, value, issues) in [
         ("FAKE_GEIGER", "0", 0),
@@ -359,6 +365,7 @@ fn requested_geiger_runs_count_failures_and_absence() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn without_idor_mode_routes_still_count_and_absent_source_does_not() {
     let project = project_with("fn routes() { get(\"/users/{id}\" => show); }\n");
     let audit = audit_with(project.path(), "no-idor", &[]);
@@ -377,6 +384,7 @@ fn without_idor_mode_routes_still_count_and_absent_source_does_not() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn recommendations_and_failures_follow_the_issue_count() {
     let clean = project_with("");
     let audit = audit_with(clean.path(), "ai", &[]);
@@ -401,6 +409,7 @@ fn recommendations_and_failures_follow_the_issue_count() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn a_failed_sbom_is_an_incomplete_check() {
     let project = project_with("");
     let audit = audit_with(project.path(), "sbom", &[]);
@@ -410,6 +419,7 @@ fn a_failed_sbom_is_an_incomplete_check() {
 
 #[cfg(unix)]
 #[test]
+#[cfg_attr(miri, ignore)]
 fn no_open_port_is_reported_only_for_a_complete_empty_scan() {
     const NONE: &str = "No open local listening ports detected.";
     let project = project_with("");
@@ -431,6 +441,7 @@ fn no_open_port_is_reported_only_for_a_complete_empty_scan() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn the_public_entry_points_run_the_audit() {
     for modes in ["wrapper", "wrapper-exceptions"] {
         let project = project_with("fn routes() { get(\"/users/{id}\" => show); }\n");
