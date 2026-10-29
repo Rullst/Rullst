@@ -131,7 +131,7 @@ Put these in a file on the VM named `.env.production`, next to
 | :--- | :--- |
 | `RULLST_ENV=production` | Turns on the production behavior: Secure cookies, strict headers, and a refusal to start with unsafe configuration. The generated `Dockerfile` already sets it. |
 | `APP_KEY=<long random value>` | The application secret that protects sessions. Create one with `openssl rand -hex 32`. Never reuse a development value. |
-| `DATABASE_URL=...` | For SQLite the generated `Dockerfile` already points it at `/app/data`, inside the `app_data` volume; leave it out. For PostgreSQL or MySQL, the connection URL of your database. |
+| `DATABASE_URL=...` | For SQLite (the starters' default) the `Dockerfile` that `cargo rullst deploy` writes already points it at `/app/data/rullst.db`, inside the `app_data` volume; leave it out. A `Dockerfile` from an earlier `deploy` or `dockerize` may lack that line (`deploy` warns): add `ENV DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc` to its last stage, or set it here. For PostgreSQL or MySQL, the connection URL of your database. |
 | Other secrets | Mail, payment and AI keys also go here, as environment variables, never in the source or the image. |
 
 You can check this file before you start anything, without sending it
