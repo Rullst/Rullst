@@ -348,9 +348,10 @@ def diagnostics(engine: Engine) -> None:
 def restart(engine: Engine, vm: Path) -> None:
     """`docker compose restart`. With podman-compose, `restart` exits 0 while it
     can leave Caddy stopped ("container state improper", or "rootless netns:
-    kill network process: permission denied" on the Ubuntu runner), so the
-    Podman job recreates both containers with `down` and `up -d` instead; the
-    volumes stay, which is the stronger persistence check."""
+    kill network process: permission denied": Ubuntu 26.04's AppArmor profile
+    for pasta refuses podman's SIGTERM), so the Podman job recreates both
+    containers with `down` and `up -d` instead; the volumes stay, which is the
+    stronger persistence check."""
     if engine.name == "docker":
         engine.compose(vm, "restart", timeout=300)
         return
@@ -361,7 +362,7 @@ def restart(engine: Engine, vm: Path) -> None:
         log("::warning title=Rootless Podman::`podman compose down` could not stop the rootless "
             "network process; the containers were removed and start again below")
         denials = run(["sudo", "dmesg"], capture=True, check=False, quiet=True).stdout
-        log("\n".join(line for line in denials.splitlines() if "apparmor" in line.lower())[-3000:])
+        log("\n".join(line for line in denials.splitlines() if 'profile="pasta"' in line)[-3000:])
     engine.compose(vm, "up", "-d", timeout=600)
 
 
