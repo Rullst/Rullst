@@ -98,6 +98,19 @@ A prepared version section does not establish that its tag or crates exist.
   from these blueprints keep working. The terminal assistant in
   `cargo-rullst-extras` proposes only the three starters.
 - The blog example no longer ships a `Foundry.toml`.
+- `cargo rullst new` writes a `[profile.dev]` into the generated `Cargo.toml`:
+  `debug = "line-tables-only"` for the application, so panics and backtraces
+  of your code still show file and line, and `debug = false` for every
+  dependency. On the measuring machine the first `cargo build` of the
+  starters took 15 to 19 % less time, a rebuild after editing a handler about
+  half as long (for example 2.32 s to 1.34 s on the API starter) and `target/`
+  about 41 % less disk. Release builds and `cargo check` behave as before.
+  Existing applications can copy the two sections; the new
+  [Build times](docs/src/build-times.md) page has the measurements and tips.
+- The SaaS starter no longer declares `rullst-connect`, which its code does
+  not use (`cargo rullst make:oauth` enables the facade's `oauth-*` feature);
+  its first build compiles 12 fewer packages. Code that imports
+  `rullst_connect` directly adds the dependency, as the OAuth tutorials show.
 
 ## [13.0.0-alpha.3] - 2026-10-23
 
