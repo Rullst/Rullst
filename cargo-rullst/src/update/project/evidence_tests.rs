@@ -464,3 +464,55 @@ fn review_prints_the_diff_and_its_digest() {
 
 #[path = "evidence_intent_tests.rs"]
 mod intent;
+
+/// Loads the evidence named by `RULLST_REVALIDATE_VERIFIED`, then changes
+/// the mode of `RULLST_REVALIDATE_FILE` and reports both revalidations, one
+/// per line; does nothing unless a parent test names a report file.
+#[test]
+fn revalidation_child_fixture() {
+    use std::os::unix::fs::PermissionsExt;
+    let Some(report) = std::env::var_os("RULLST_REVALIDATE_REPORT") else {
+        return;
+    };
+    let verified = PathBuf::from(std::env::var_os("RULLST_REVALIDATE_VERIFIED").unwrap());
+    let changed = PathBuf::from(std::env::var_os("RULLST_REVALIDATE_FILE").unwrap());
+    let evidence = Evidence::load(&verified).unwrap();
+    let mode = fs::metadata(&changed).unwrap().permissions().mode() & 0o777;
+    let mode = if mode == 0o600 { 0o640 } else { 0o600 };
+    fs::set_permissions(&changed, fs::Permissions::from_mode(mode)).unwrap();
+    let outcome = [
+        evidence.revalidate(),
+        evidence.revalidate_ignoring(&std::collections::BTreeSet::new()),
+    ]
+    .map(|result| result.map_or_else(|error| error.to_string(), |()| "ok".to_string()))
+    .join("\n");
+    fs::write(report, outcome).unwrap();
+}
+
+/// The review digest covers file modes when the evidence is loaded; a mode
+/// changed after that is refused by the revalidation before and after staging.
+#[test]
+fn revalidation_refuses_a_mode_changed_after_loading() {
+    let project = cached_project();
+    let report = project.xdg.parent().unwrap().join("revalidation");
+    let status = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "update::project::review::tests::revalidation_child_fixture",
+            "--nocapture",
+        ])
+        .env("XDG_CACHE_HOME", &project.xdg)
+        .env("RULLST_REVALIDATE_REPORT", &report)
+        .env("RULLST_REVALIDATE_VERIFIED", &project.verified)
+        .env("RULLST_REVALIDATE_FILE", project.source.join("Cargo.toml"))
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let refused = "project preparation rejected: source permissions changed after review";
+    assert_eq!(
+        fs::read_to_string(report).unwrap(),
+        format!("{refused}\n{refused}")
+    );
+}
