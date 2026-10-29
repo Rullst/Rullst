@@ -124,6 +124,8 @@ fn random_suffix() -> io::Result<String> {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
+    // Only the Unix tests, which check links and modes, need a directory.
+    #[cfg(unix)]
     use super::super::server_test::TempDir;
     use super::*;
 
