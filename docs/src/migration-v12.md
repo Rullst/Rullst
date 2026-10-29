@@ -1,5 +1,10 @@
 # Migrating an application to Rullst v12
 
+> [!NOTE]
+> **Historical guide (v12).** The 12.x line reached end of life on 16 October
+> 2026. Use these pages only to bring an older application to v12, then follow
+> [Preparing an application for v13](migration-v13.md).
+
 Rullst v12 is a coordinated release train of 16 packages. Upgrade all direct
 `rullst-*` dependencies together; mixing v12 facade/runtime crates with older
 domain crates is outside the supported compatibility contract.
