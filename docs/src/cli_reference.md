@@ -1217,8 +1217,10 @@ written through a link):
   the `app_data` volume; the app's `/health` endpoint is checked from the
   Caddy container, because the app image has no shell or HTTP client. It works
   with `docker compose` and `podman compose`;
-* `Caddyfile`: proxies to the app and stops routing to it while `/health`
-  fails.
+* `Caddyfile`: proxies to the app, checks its `/health` every 5 seconds and
+  stops routing to it while that fails, and holds each request for up to 15
+  seconds while the app is down (a restart or an update) instead of answering
+  `503` at once.
 
 Caddy is pinned to `172.31.250.10` on a `172.31.250.0/24` compose network,
 and the command adds that address to `[security] trusted_proxies` in

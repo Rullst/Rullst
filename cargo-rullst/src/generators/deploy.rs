@@ -260,8 +260,37 @@ mod tests {
             !COMPOSE_YAML.contains('\t'),
             "YAML indentation is spaces only"
         );
-        assert!(CADDYFILE.contains("reverse_proxy app:3000 {\n"));
-        assert!(CADDYFILE.contains("health_uri /health\n"));
+        assert!(CADDYFILE.contains("\treverse_proxy app:3000 {\n"));
+        assert!(CADDYFILE.contains("\t\thealth_uri /health\n"));
+    }
+
+    // Caddy's first active check runs before the app listens, and with a
+    // 30-second interval the site answered 503 for up to 30 seconds after
+    // every start (found by .github/check-vm-deploy.py).
+    #[test]
+    fn caddy_recovers_quickly_and_holds_requests_while_the_app_restarts() {
+        let directives = CADDYFILE
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty() && !line.starts_with('#'))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            directives,
+            [
+                "{$DOMAIN:localhost} {",
+                "reverse_proxy app:3000 {",
+                "health_uri /health",
+                "health_interval 5s",
+                "lb_try_duration 15s",
+                "}",
+                "}",
+            ]
+        );
+        // `caddy fmt` indents with tabs; spaces log a warning at every start.
+        assert!(
+            CADDYFILE.lines().all(|line| !line.starts_with(' ')),
+            "{CADDYFILE}"
+        );
     }
 
     #[test]
