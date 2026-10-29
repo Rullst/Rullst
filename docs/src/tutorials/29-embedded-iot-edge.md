@@ -15,6 +15,22 @@ post-quantum implementations.
 > [module status](../crates/iot.md#module-status) lists which modules are working
 > implementations and which are only data models or contracts.
 
+## Add the crate
+
+In a Rullst application, `cargo rullst make:iot TemperatureSensor` turns on the
+`iot` feature of `rullst`, writes `src/iot/temperature_sensor.rs` (a
+`TemperatureSensorDevice` that returns `SensorTelemetry` readings) and declares
+the `iot` modules. The crate is then reachable as `rullst::iot`, so the
+`rullst_iot::` paths below become `rullst::iot::`.
+
+A firmware crate depends on `rullst-iot` directly and turns off its default
+`std` feature:
+
+```toml
+[dependencies]
+rullst-iot = { version = "=13.0.0-alpha.4", default-features = false }
+```
+
 ## Build a telemetry model and Modbus request
 
 ```rust
