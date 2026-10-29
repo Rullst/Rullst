@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793308058425,
+  "lastUpdate": 1793312720092,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -14330,6 +14330,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_active",
             "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b59f9ad7a5ffe2a4ed574aa7d72e777268d7c7ea",
+          "message": "Merge pull request #575 from Rullst/docs/v13-audit-first-hour\n\ndocs: audit the first-hour pages for 13.0 (overview, getting started, maturity, zero-to-complete)",
+          "timestamp": "2026-10-29T18:57:25-03:00",
+          "tree_id": "427a66742828fd39bb488124226b5ab1e5bb3c40",
+          "url": "https://github.com/Rullst/Rullst/commit/b59f9ad7a5ffe2a4ed574aa7d72e777268d7c7ea"
+        },
+        "date": 1793312719124,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 18,
             "range": "± 0",
             "unit": "ns/iter"
           },
