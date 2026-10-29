@@ -1,7 +1,8 @@
 //! Concrete next steps printed after a generator succeeds. The table lives
 //! here, in one place; generators that already print their own instructions
-//! (`new`, `auth`, `deploy`, `make:k8s`) are deliberately absent.
-//! Nothing is printed for `--json` invocations.
+//! (`new`, `auth`, `deploy`, `make:k8s`) are deliberately absent, and
+//! `make:migration:auto` prints [`apply_migration`] itself, only when it
+//! wrote a migration. Nothing is printed for `--json` invocations.
 
 use crate::ui::home::display_safe;
 use crate::ui::style::{self, Style};
@@ -86,7 +87,7 @@ pub(crate) fn hints(name: &str, matches: &ArgMatches) -> Vec<Hint> {
             hint(DEV, "run the app"),
         ],
         "make:migration" => vec![hint(MIGRATE, "apply it once up/down are filled in")],
-        "make:migration:auto" | "make:billing" | "make:mfa" | "make:chat-session" => {
+        "make:billing" | "make:mfa" | "make:chat-session" => {
             vec![hint(MIGRATE, "apply the generated migrations")]
         }
         "make:middleware" | "make:cors" | "make:jwt" | "make:live" | "make:worker" => {
@@ -142,6 +143,21 @@ pub(crate) fn render(hints: &[Hint], style: Style) -> String {
     out
 }
 
+/// The next step after `make:migration:auto` wrote a migration.
+pub(crate) fn apply_migration() -> Hint {
+    hint(MIGRATE, "apply the generated migration")
+}
+
+/// Prints the "Next steps" block of a generator that chooses its own hints.
+pub(crate) fn print(hints: &[Hint]) {
+    let text = render(hints, Style::stdout());
+    if !text.is_empty() {
+        let mut stdout = std::io::stdout();
+        let _ = stdout.write_all(text.as_bytes());
+        let _ = stdout.flush();
+    }
+}
+
 /// Prints the hints for the subcommand in `matches`, unless it ran with `--json`.
 pub(crate) fn print_after_success(matches: &ArgMatches) {
     let Some((name, sub)) = matches.subcommand() else {
@@ -150,12 +166,7 @@ pub(crate) fn print_after_success(matches: &ArgMatches) {
     if flag(sub, "json") {
         return;
     }
-    let text = render(&hints(name, sub), Style::stdout());
-    if !text.is_empty() {
-        let mut stdout = std::io::stdout();
-        let _ = stdout.write_all(text.as_bytes());
-        let _ = stdout.flush();
-    }
+    print(&hints(name, sub));
 }
 
 #[cfg(test)]
@@ -207,6 +218,8 @@ mod tests {
             &["rullst", "doctor"][..],
             &["rullst", "auth"],
             &["rullst", "db:status"],
+            // Prints its own next step, only when it wrote a migration.
+            &["rullst", "make:migration:auto"],
         ] {
             let (name, sub) = matches_for(args);
             assert!(hints(&name, &sub).is_empty(), "{args:?}");

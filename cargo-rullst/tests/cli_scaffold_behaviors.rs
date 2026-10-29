@@ -381,7 +381,16 @@ pub struct Marker;
         ),
     )
     .expect("skip the unmappable field");
-    project.succeeds(&["make:migration:auto"]);
+    let generated = project.run(&["make:migration:auto"]);
+    let generated_text = String::from_utf8_lossy(&generated.stdout).to_string();
+    assert!(generated.status.success(), "{generated_text}");
+    // Only a written migration is followed by the step that applies it.
+    assert!(
+        generated_text.contains("Next steps")
+            && generated_text.contains("cargo rullst db:migrate")
+            && generated_text.contains("apply the generated migration"),
+        "{generated_text}"
+    );
     let migrations = fs::read_to_string(project.root.join("src/migrations/mod.rs"))
         .expect("auto-migration registry");
     assert!(migrations.contains("auto_sync"));
@@ -398,20 +407,72 @@ pub struct Marker;
     syn::parse_file(&auto_migration).expect("auto migration with a new table must parse");
 }
 
+/// A configuration `make:migration:auto` cannot diff fails with a report
+/// instead of succeeding and suggesting to apply a migration it never wrote.
 #[test]
-fn automatic_migration_reports_missing_and_unsupported_configuration() {
+fn automatic_migration_fails_without_a_sqlite_database_to_compare() {
     let missing = Project::new();
-    missing.succeeds(&["make:migration:auto"]);
-    assert!(!missing.root.join("src/migrations").exists());
-
+    let no_database = Project::new();
+    // A `--no-database` starter's .env has no DATABASE_URL.
+    fs::write(no_database.root.join(".env"), "APP_KEY=example\n").expect("environment");
     let unsupported = Project::new();
     fs::write(
         unsupported.root.join(".env"),
-        "DATABASE_URL=postgres://localhost/example\n",
+        "DATABASE_URL=postgres://user:hunter2@localhost/example\n",
     )
     .expect("unsupported database environment");
-    unsupported.succeeds(&["make:migration:auto"]);
-    assert!(!unsupported.root.join("src/migrations").exists());
+    let turso = Project::new();
+    fs::write(
+        turso.root.join("Cargo.toml"),
+        "[package]\nname = \"turso-fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = { version = \"13\", features = [\"orm\", \"orm-turso\"] }\n",
+    )
+    .expect("Turso manifest");
+    for (project, reason) in [
+        (&missing, "There is no .env file"),
+        (&no_database, ".env sets no DATABASE_URL"),
+        (&unsupported, "DATABASE_URL in .env is not a SQLite URL"),
+        (&turso, "this project's primary database is Turso"),
+    ] {
+        let output = project.run(&["make:migration:auto"]);
+        let text = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(output.status.code(), Some(1), "{text}");
+        assert!(text.contains("No migration generated"), "{text}");
+        assert!(text.contains(reason), "{text}");
+        assert!(
+            text.contains("cargo rullst make:migration <name>"),
+            "{text}"
+        );
+        assert!(!text.contains("Next steps"), "{text}");
+        assert!(!text.contains("hunter2"), "the report repeats no URL");
+        assert!(!project.root.join("src/migrations").exists());
+    }
+}
+
+/// Nothing to add is a success, but without a step to apply a migration.
+#[test]
+fn automatic_migration_in_sync_writes_nothing_and_suggests_nothing() {
+    let project = Project::new();
+    let database = project.root.join("empty.sqlite");
+    fs::write(
+        project.root.join(".env"),
+        format!("DATABASE_URL={}\n", sqlite_database_url(&database)),
+    )
+    .expect("database environment");
+    let output = project.run(&["make:migration:auto"]);
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.status.success(), "{text}");
+    assert!(text.contains("already in sync"), "{text}");
+    assert!(text.contains("no migration was written"), "{text}");
+    assert!(!text.contains("Next steps"), "{text}");
+    assert!(!project.root.join("src/migrations").exists());
 }
 
 #[test]

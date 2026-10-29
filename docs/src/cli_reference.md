@@ -183,7 +183,8 @@ plain line without escape sequences or carriage returns.
 After a generator succeeds, the CLI prints up to three concrete **Next steps**
 (for example `cargo rullst db:migrate` after `make:model -m`). Generators that
 already print their own instructions (`new`, `auth`, `deploy`,
-`make:k8s`) add none, and `--json` invocations never print them.
+`make:k8s`) add none, `make:migration:auto` adds one only when it wrote a
+migration, and `--json` invocations never print them.
 
 ### `cargo rullst completions <shell>`
 Prints a completion script for `bash`, `zsh`, `fish`, `powershell` or `elvish`
@@ -924,7 +925,13 @@ fallible typed migration registry. The name is lowercased with `-` mapped to
 the file, when an `m*.rs` file there is not a valid Rust module name.
 
 `cargo rullst make:migration:auto` (SQLite `DATABASE_URL` in `.env` only)
-compares the `#[derive(Orm)]` models under `src/` with the database. It ignores
+compares the `#[derive(Orm)]` models under `src/` with the database. Without a
+`.env`, without a `DATABASE_URL` (a `--no-database` project), with a
+non-SQLite URL or in a Turso-primary project there is nothing to compare: it
+prints a "No migration generated" report naming the reason and exits with
+status 1. When the database already matches the models it writes nothing and
+exits with status 0; only a written migration is followed by the
+`cargo rullst db:migrate` next step. It ignores
 framework tables (`migrations` and `rullst_*`) and writes a migration only for
 additive changes (new tables or columns), with drops of model-less tables or
 columns included as commented-out code for review. When only such destructive

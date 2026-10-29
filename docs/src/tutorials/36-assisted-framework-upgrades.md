@@ -436,7 +436,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (99 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (96 rows).
+  of inputs that previously failed) (97 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
 has 111 rules. A row can map to several rules and a rule to
@@ -650,6 +650,7 @@ the rule together.
 | Core error console assistant panel | (c) none | — | Development-only page; `handle_autofix` response readers are not located; introduced in 13.0.0-alpha.4 |
 | CLI starters moved to the examples | (c) none | — | CLI behaviour; applications generated from the removed starters keep their code; introduced in 13.0.0-alpha.4 |
 | CLI `--no-database` files | (c) none | — | Generator output for new projects; an empty `rullst.db` is not located; introduced in 13.0.0-alpha.4 |
+| CLI `make:migration:auto` without a database to compare | (c) none | — | CLI exit status; scripts that run it are not located; introduced in 13.0.0-alpha.4 |
 
 ## Planned simpler update experience
 

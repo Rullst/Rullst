@@ -233,130 +233,168 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
     if !crate::generators::is_rullst_project() {
         return Err(crate::ui::error_report::ProjectRequired.into());
     }
+    let db_url = auto_migration_database_url()?;
 
-    if project_orm_backend() == ProjectOrmBackend::Turso {
-        println!(
-            "{}",
-            "Automatic schema diff is not available for Turso-primary projects. Use `cargo rullst make:migration <name>` and review the generated reversible SQL."
-                .yellow()
-        );
-        return Ok(());
+    println!(
+        "{}",
+        "🔍 Comparing the models with the database schema..."
+            .cyan()
+            .bold()
+    );
+
+    use sqlx::{Row, SqlitePool};
+    let pool = SqlitePool::connect(&db_url).await?;
+
+    let mut db_tables = vec![];
+    let rows = sqlx::query(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+    )
+    .fetch_all(&pool)
+    .await?;
+    for row in rows {
+        let table_name: String = row.get("name");
+        validate_database_identifier(&table_name, "table")?;
+        db_tables.push(table_name);
     }
 
-    let dotenv_path = Path::new(".env");
-    if dotenv_path.exists() {
-        let env_content = fs::read_to_string(dotenv_path)?;
-        let mut db_url = String::new();
-        for line in env_content.lines() {
-            if line.starts_with("DATABASE_URL=") {
-                db_url = line
-                    .replace("DATABASE_URL=", "")
-                    .replace("\"", "")
-                    .trim()
-                    .to_string();
-                break;
-            }
+    let mut db_schema = std::collections::HashMap::new();
+    for table in db_tables {
+        let mut cols = vec![];
+        let pragma_rows = sqlx::query("SELECT name FROM pragma_table_info(?) ORDER BY cid")
+            .bind(&table)
+            .fetch_all(&pool)
+            .await?;
+        for prow in pragma_rows {
+            let cname: String = prow.get("name");
+            validate_database_identifier(&cname, "column")?;
+            cols.push(cname);
         }
+        db_schema.insert(table, cols);
+    }
 
-        if db_url.is_empty() || !db_url.starts_with("sqlite:") {
+    let ast_tables = super::schema_diff::extract_tables_from_ast();
+    for table in &ast_tables {
+        validate_database_identifier(&table.table_name, "table")?;
+        for field in &table.fields {
+            validate_database_identifier(&field.name, "column")?;
+        }
+    }
+
+    let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
+    let file_stem = format!("m{}_{}", timestamp, "auto_sync");
+    // Nothing to add is a success without a migration, so no next step
+    // tells the user to apply one.
+    let Some(template) = render_auto_migration(&file_stem, &ast_tables, &db_schema)? else {
+        let destructive = destructive_differences(&ast_tables, &db_schema);
+        if destructive.is_empty() {
             println!(
                 "{}",
-                "?? Auto migrations currently only support SQLite. Skipping auto-sync.".yellow()
+                "✅ The database is already in sync with the models; no migration was written."
+                    .green()
             );
-            return Ok(());
-        }
-
-        println!(
-            "{}",
-            "?? Analysing AST and Database Schema...".cyan().bold()
-        );
-
-        use sqlx::{Row, SqlitePool};
-        let pool = SqlitePool::connect(&db_url).await?;
-
-        let mut db_tables = vec![];
-        let rows = sqlx::query(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
-        )
-        .fetch_all(&pool)
-        .await?;
-        for row in rows {
-            let table_name: String = row.get("name");
-            validate_database_identifier(&table_name, "table")?;
-            db_tables.push(table_name);
-        }
-
-        let mut db_schema = std::collections::HashMap::new();
-        for table in db_tables {
-            let mut cols = vec![];
-            let pragma_rows = sqlx::query("SELECT name FROM pragma_table_info(?) ORDER BY cid")
-                .bind(&table)
-                .fetch_all(&pool)
-                .await?;
-            for prow in pragma_rows {
-                let cname: String = prow.get("name");
-                validate_database_identifier(&cname, "column")?;
-                cols.push(cname);
-            }
-            db_schema.insert(table, cols);
-        }
-
-        let ast_tables = super::schema_diff::extract_tables_from_ast();
-        for table in &ast_tables {
-            validate_database_identifier(&table.table_name, "table")?;
-            for field in &table.fields {
-                validate_database_identifier(&field.name, "column")?;
-            }
-        }
-
-        let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
-        let file_stem = format!("m{}_{}", timestamp, "auto_sync");
-        let Some(template) = render_auto_migration(&file_stem, &ast_tables, &db_schema)? else {
-            let destructive = destructive_differences(&ast_tables, &db_schema);
-            if destructive.is_empty() {
-                println!("{}", "? Database is already in sync with AST!".green());
-            } else {
-                println!(
-                    "{}",
-                    "No additive changes. These database objects have no model; drop them only in a reviewed `cargo rullst make:migration`:"
-                        .yellow()
-                );
-                for (table, column) in destructive {
-                    match column {
-                        Some(column) => println!("  - column {table}.{column}"),
-                        None => println!("  - table {table}"),
-                    }
+        } else {
+            println!(
+                "{}",
+                "No additive changes, so no migration was written. These database objects have no model; drop them only in a reviewed `cargo rullst make:migration`:"
+                    .yellow()
+            );
+            for (table, column) in destructive {
+                match column {
+                    Some(column) => println!("  - column {table}.{column}"),
+                    None => println!("  - table {table}"),
                 }
             }
-            return Ok(());
-        };
-
-        let migrations_dir = Path::new("src/migrations");
-        if !migrations_dir.exists() {
-            fs::create_dir_all(migrations_dir)?;
         }
-        let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
+        return Ok(());
+    };
 
-        fs::write(&migration_path, template)?;
-        println!(
-            "{}",
-            format!(
-                "? Auto-migration created safely at '{}'!",
-                migration_path.display()
-            )
-            .green()
-            .bold()
-        );
-
-        crate::generators::migration::regenerate_migrations_mod()?;
-    } else {
-        println!(
-            "{}",
-            "? No .env file found. Auto migrations require a DATABASE_URL.".red()
-        );
+    let migrations_dir = Path::new("src/migrations");
+    if !migrations_dir.exists() {
+        fs::create_dir_all(migrations_dir)?;
     }
+    let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
 
+    fs::write(&migration_path, template)?;
+    println!(
+        "{}",
+        format!(
+            "✅ Auto-migration created at '{}'.",
+            crate::generators::slash_path(&migration_path)
+        )
+        .green()
+        .bold()
+    );
+
+    crate::generators::migration::regenerate_migrations_mod()?;
+    crate::cli::next_steps::print(&[crate::cli::next_steps::apply_migration()]);
     Ok(())
+}
+
+/// The SQLite `DATABASE_URL` in `.env` that `make:migration:auto` compares the
+/// models with. Without one there is nothing to compare, so the command fails
+/// (exit status 1) with a report instead of succeeding without a migration.
+fn auto_migration_database_url() -> Result<String, Box<dyn std::error::Error>> {
+    const MAKE_MIGRATION: &str = "Write the migration with `cargo rullst make:migration <name>` and fill in its up and down steps.";
+    if project_orm_backend() == ProjectOrmBackend::Turso {
+        return Err(no_migration(
+            "make:migration:auto compares the models with a SQLx SQLite database; this project's primary database is Turso.",
+            MAKE_MIGRATION,
+        ));
+    }
+    let with_sqlite = "Set `DATABASE_URL=sqlite://db.sqlite?mode=rwc` in .env (projects created with `--database sqlite` have it) and run the command again, or write the migration with `cargo rullst make:migration <name>`.";
+    let env_content = match fs::read_to_string(".env") {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Err(no_migration(
+                "There is no .env file, so there is no DATABASE_URL to compare the models with.",
+                with_sqlite,
+            ));
+        }
+        Err(error) => return Err(error.into()),
+    };
+    let db_url = env_content
+        .lines()
+        .find_map(|line| line.strip_prefix("DATABASE_URL="))
+        .map(|value| value.replace('"', "").trim().to_string())
+        .unwrap_or_default();
+    if db_url.is_empty() {
+        return Err(no_migration(
+            ".env sets no DATABASE_URL (a project created with `--no-database` has none), so there is no database to compare the models with.",
+            with_sqlite,
+        ));
+    }
+    if !db_url.starts_with("sqlite:") {
+        // The URL may hold credentials, so the report never repeats it.
+        return Err(no_migration(
+            "DATABASE_URL in .env is not a SQLite URL; make:migration:auto compares the models only with a SQLite database.",
+            MAKE_MIGRATION,
+        ));
+    }
+    Ok(db_url)
+}
+
+/// Prints the "No migration generated" report; the exit status is 1.
+fn no_migration(happened: &str, fix: &str) -> Box<dyn std::error::Error> {
+    use crate::ui::error_report::{self, AlreadyReported, Friendly};
+    let friendly = Friendly {
+        title: "No migration generated".to_string(),
+        happened: happened.to_string(),
+        fix: Some(fix.to_string()),
+        docs: Some(
+            "https://rullst.github.io/Rullst/book/cli_reference.html#cargo-rullst-makemigration-name",
+        ),
+    };
+    eprint!(
+        "{}",
+        error_report::render(
+            &friendly,
+            &[],
+            None,
+            false,
+            crate::ui::style::Style::stderr()
+        )
+    );
+    AlreadyReported::new(1, format!("make:migration:auto: {happened}")).into()
 }
 
 #[path = "migration_auto.rs"]
