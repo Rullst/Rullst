@@ -144,7 +144,8 @@ from `GET /_rullst/dev-telemetry` (v13). `Server` mounts this endpoint next to
 the development reload routes, so it exists only when all of these hold:
 
 - a debug build (`debug_assertions`);
-- the Development environment (section 4.1 of the specification);
+- the Development environment (`RULLST_ENV`, legacy `APP_ENV` or `[app].env`;
+  see [Tutorial 09](tutorials/09-environment-config.md));
 - a valid `RULLST_DEV_GENERATION`, which the `cargo rullst dev`/`dash`
   supervisor sets for the process it starts.
 
