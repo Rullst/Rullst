@@ -2,6 +2,8 @@
 
 `rullst-security` is the dedicated security suite for the **Rullst Framework**. It uses bounded in-memory state, established cryptographic primitives, and defense-in-depth middleware. Its WAF/RASP rules are heuristic controls and must be combined with secure application design, authentication, authorization, TLS, monitoring, and timely dependency updates.
 
+**Maturity: Core** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
+
 Every control here is opt-in: `rullst-core`'s `Server` already mounts the
 runtime baseline (headers, CORS, a small WAF and CSRF) in staging and
 production, and nothing in this crate protects traffic until you mount the
@@ -30,8 +32,9 @@ how, its known limits and what you must still do.
 
 ### 🛡️ 3. Rullst RBAC Guard (`rullst_security::rbac`)
 *Role-Based Access Control & BOLA/IDOR Defense*
-- **Declarative Authorization:** Inspects `UserContext` roles and fine-grained capabilities (`RbacGuard::authorize`).
-- **BOLA / IDOR checks:** `RbacGuard::authorize_owner_or_role` compares the resource owner with the authenticated subject. It protects only the handlers that call it, with an owner taken from your database rather than from the request.
+- **Role checks:** `RbacGuard::authorize` requires a `UserContext` role (compared case-insensitively; the `admin` role always passes). `UserContext::has_permission` checks fine-grained permissions added with `with_permissions`.
+- **BOLA / IDOR checks:** `RbacGuard::authorize_owner_or_role` passes when the authenticated subject owns the resource or has the given role or `admin`. It protects only the handlers that call it, with an owner taken from your database rather than from the request.
+- **Tenant boundary:** `RbacGuard::authorize_tenant` requires an exact tenant match that no role, `admin` included, bypasses; `authorize_tenant_owner_or_role` checks the tenant first, then owner or role.
 
 ### 📜 4. Rullst Audit Log (`rullst_security::audit`)
 *HMAC-SHA256 Tamper-Evident Trail*
@@ -199,6 +202,20 @@ how, its known limits and what you must still do.
   external-length violations. A trusted external checkpoint is still needed
   to detect removal of a complete valid tail.
 
+### 🧰 11. Other modules
+
+- **Field encryption (`vault`):** `FieldEncryptor` encrypts stored values with
+  AES-256-GCM and `VaultSecret` zeroizes a secret held in memory. Key
+  generation, custody and rotation remain yours.
+- **Secure headers (`headers`):** `SecureHeadersLayer` with a configurable
+  `SecureHeadersConfig` (HSTS, frame options, referrer, permissions and
+  cross-origin policies, and a CSP with a per-request nonce).
+- **WebSocket origins (`cswsh`):** `cswsh_guard_middleware` checks the
+  `Origin` of WebSocket upgrades: same origin by default, or the exact
+  allowlist of a `CswsPolicy`.
+- **Decoy routes (`deception`):** `deception_trap_middleware` refuses and
+  records probes of registered decoy paths without banning the peer.
+
 ---
 
 ## 📦 Installation
@@ -212,6 +229,11 @@ prerelease; Cargo never selects a prerelease on its own, so pin it exactly
 rullst-security = "=13.0.0-alpha.4"
 ```
 
+The shared Redis limiter needs the `redis-rate-limit` feature. In a Rullst
+application you can enable the `security` feature of `rullst` instead
+(`security-redis` adds `redis-rate-limit`); the crate is then available as
+`rullst::security_runtime`.
+
 ---
 
 ## ⚡ Quickstart Code Examples
@@ -221,15 +243,26 @@ rullst-security = "=13.0.0-alpha.4"
 ```rust
 use axum::{Router, routing::get};
 use rullst_security::{HoneypotLayer, HoneypotState, CspSecurityLayer};
+use std::net::SocketAddr;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = HoneypotState::default(); // Catches /.env, /admin.php, etc.
 
     let app = Router::new()
         .route("/api/data", get(|| async { "Protected Data" }))
         .layer(CspSecurityLayer::default())
         .layer(HoneypotLayer::new(state));
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
+    // The honeypot bans the socket peer, which axum provides only through
+    // `ConnectInfo`: without it a trap hit is refused but nobody is banned.
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await?;
+    Ok(())
 }
 ```
 
