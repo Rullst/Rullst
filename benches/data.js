@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793238970597,
+  "lastUpdate": 1793249407001,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -29083,6 +29083,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1973,
             "range": "± 34",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9ea4745628fdbfaf646141c8473fd6d34c745479",
+          "message": "Merge pull request #554 from Rullst/docs/v13-maintenance-cost-snapshot\n\ndocs(maintenance): add a measured per-crate cost snapshot for 13.0.0-alpha.3",
+          "timestamp": "2026-10-29T01:20:42-03:00",
+          "tree_id": "ff9f1d4704562a2537d501c84804393b0c8aa706",
+          "url": "https://github.com/Rullst/Rullst/commit/9ea4745628fdbfaf646141c8473fd6d34c745479"
+        },
+        "date": 1793249404278,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 675,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 896,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 427,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2004,
+            "range": "± 39",
             "unit": "ns/iter"
           }
         ]
