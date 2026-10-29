@@ -130,30 +130,30 @@ fn verify_download<S: RollbackCounterStore>(
     counter_store: &mut S,
     running_partition: BootPartition,
 ) -> Result<OtaCommit, OtaError> {
-let manifest = OtaManifest::from_firmware(
-    "board-revision-a",
-    "12.1.0",
-    121,
-    firmware,
-)?;
-// `running_partition` is the bank the platform bootloader started.
-let mut ota = OtaManager::new_with_running_partition(
-    "board-revision-a",
-    "12.0.0",
-    running_partition,
-    trusted_public_key,
-    counter_store,
-)?;
+    let manifest = OtaManifest::from_firmware(
+        "board-revision-a",
+        "1.1.0",
+        121,
+        firmware,
+    )?;
+    // `running_partition` is the bank the platform bootloader started.
+    let mut ota = OtaManager::new_with_running_partition(
+        "board-revision-a",
+        "1.0.0",
+        running_partition,
+        trusted_public_key,
+        counter_store,
+    )?;
 
-ota.verify_update(&manifest, firmware, signature)?;
-let target = ota.verified_target_partition()?;
+    ota.verify_update(&manifest, firmware, signature)?;
+    let target = ota.verified_target_partition()?;
 
-// The platform must flash and read back `target` before this call.
-// It must coordinate the returned receipt with its bootloader afterward.
-let receipt = ota.commit_verified_update_with_store(counter_store)?;
-debug_assert_eq!(receipt.target_partition(), target);
+    // The platform must flash and read back `target` before this call.
+    // It must coordinate the returned receipt with its bootloader afterward.
+    let receipt = ota.commit_verified_update_with_store(counter_store)?;
+    debug_assert_eq!(receipt.target_partition(), target);
 
-Ok(receipt)
+    Ok(receipt)
 }
 ```
 
