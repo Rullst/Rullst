@@ -18,17 +18,10 @@ appear in the passing form and are already answered there.
 **How to use it.** Open the project's Silver form, select the answer in the
 second column and paste the justification. Where the form requires a URL
 (marked "URL required"), paste the evidence link after the justification.
-Pages added together with this guide (the assurance case, release
-verification and reproducible archives) resolve only after the change is
-merged to `main` and the book is published.
 
-## Blocking
-
-These MUST criteria are not met yet:
-
-| Criterion | What is missing |
-| --- | --- |
-| `documentation_achievements` | The README does not show the Best Practices badge yet. [PR #447](https://github.com/Rullst/Rullst/pull/447) adds it; merge it, then answer **Met** with the justification in the Basics table. |
+Every MUST criterion is met. The last one, `documentation_achievements`, was
+met when [PR #447](https://github.com/Rullst/Rullst/pull/447) added the badge to
+the README on 10 October 2026.
 
 Owner confirmations recorded on 9 October 2026:
 
@@ -38,8 +31,8 @@ Owner confirmations recorded on 9 October 2026:
 - **`documentation_current`** and **`documentation_roadmap`:** `SECURITY.md` names
   12.3.0, and `ROADMAP.md` has a dated twelve-month section.
 - **`sites_password_security`:** the demo applications on `rullst.win` are
-  project sites. They are built from the Rullst starters, which hash passwords
-  with Argon2id (`rullst-auth`); the answer is Met.
+  project sites. They are built with Rullst and sign users in with
+  `rullst-auth`, which hashes passwords with Argon2id; the answer is Met.
 
 ## Basics
 
@@ -53,21 +46,21 @@ Owner confirmations recorded on 9 October 2026:
 | `roles_responsibilities` (URL required) | Met | GOVERNANCE.md names the maintainer and release decision maker, the successor maintainer and the contributor role, with each role's duties and limits (including AI assistants). | [GOVERNANCE.md, roles](https://github.com/Rullst/Rullst/blob/main/GOVERNANCE.md#roles-and-decisions) |
 | `access_continuity` (URL required) | Met | Since 8 October 2026 a successor maintainer holds GitHub organization ownership (with 2FA), release-environment approval, ownership of every crate on crates.io and recovery access to the security inbox, verified through the APIs and a test issue (#440) and re-checked yearly. | [GOVERNANCE.md, continuity](https://github.com/Rullst/Rullst/blob/main/GOVERNANCE.md#continuity), [successor checklist](https://github.com/Rullst/Rullst/blob/main/docs/successor.md) |
 | `bus_factor` (URL required) | Unmet | There is one active maintainer. The successor holds every credential needed to continue the project, but does not maintain it day to day, so fewer than two people can currently carry the work. | [GOVERNANCE.md](https://github.com/Rullst/Rullst/blob/main/GOVERNANCE.md#roles-and-decisions) |
-| `documentation_roadmap` (URL required) | Met | ROADMAP.md describes what is planned (v12 maintenance, the v13 line and its priorities, ideas after 13.0) and what is not (abandoned milestones such as M39, work assigned to a separate programme). The v13 maintenance scope records what was removed and why. | [ROADMAP.md](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md), [v13 maintenance scope](https://rullst.github.io/Rullst/book/v13-maintenance-scope.html) |
+| `documentation_roadmap` (URL required) | Met | ROADMAP.md describes what is planned (the v13 line and its release path, its priorities, ideas after 13.0) and what is not (abandoned milestones such as M39, work assigned to a separate programme). The v13 maintenance scope records what was removed and why. | [ROADMAP.md](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md), [v13 maintenance scope](https://rullst.github.io/Rullst/book/v13-maintenance-scope.html) |
 | `documentation_architecture` (URL required) | Met | The framework specification documents the directory conventions, crates and capabilities and the core APIs; the architecture-decisions guide and security architecture describe the main components and their boundaries. | [Framework spec](https://rullst.github.io/Rullst/book/spec.html), [architecture choices](https://rullst.github.io/Rullst/book/architecture-decisions.html) |
 | `documentation_security` (URL required) | Met | SECURITY.md, the security architecture, the security-layers guide and the claims ledger state what users can and cannot expect, including the limits of each control. | [Security architecture](https://rullst.github.io/Rullst/book/security-architecture.html), [which layer to use](https://rullst.github.io/Rullst/book/security-layers.html), [SECURITY.md](https://github.com/Rullst/Rullst/blob/main/SECURITY.md) |
 | `documentation_quick_start` (URL required) | Met | The README quickstart and the "Start here" and "Zero to a complete app" guides take a new user from installation to a running application. | [README quickstart](https://github.com/Rullst/Rullst#quickstart), [Start here](https://rullst.github.io/Rullst/book/start-here.html) |
 | `documentation_current` | Met | Guide code is compiled as doctests, and every documentation change runs the book build, offline link and anchor checks on Markdown and rendered HTML, a browser smoke test and a spell check. Documentation is updated with the behavior it describes. | [documentation.yml](https://github.com/Rullst/Rullst/blob/main/.github/workflows/documentation.yml), [book doctests](https://github.com/Rullst/Rullst/blob/main/rullst/src/book_doctests.rs) |
-| `documentation_achievements` (URL required) | Unmet until PR #447 merges | After PR #447: the README front page shows and links the OpenSSF Best Practices badge next to the OpenSSF Scorecard badge. | [README](https://github.com/Rullst/Rullst#readme) |
+| `documentation_achievements` (URL required) | Met | The README front page shows and links the OpenSSF Best Practices badge next to the OpenSSF Scorecard badge. | [README](https://github.com/Rullst/Rullst#readme) |
 | `accessibility_best_practices` | Met | Browser smoke tests of the documentation site check the skip link, ARIA states, keyboard navigation and reduced motion. `cargo rullst audit --report` checks image text alternatives, form labels and page language in generated applications. No formal WCAG conformance is claimed. | [site-browser-smoke.mjs](https://github.com/Rullst/Rullst/blob/main/.github/site-browser-smoke.mjs), [audit report](https://rullst.github.io/Rullst/book/security-report.html) |
 | `internationalization` | Unmet | Documentation, CLI and generated starters are English only. The framework has a few locale hooks (account mail in English, Portuguese and Spanish; a configurable HTML `lang`), but no general message-catalog localization. | [account mail](https://rullst.github.io/Rullst/book/account-mail-v12-1.html) |
-| `sites_password_security` | Met | Project sites that keep accounts are the demo applications on rullst.win; they are built from the Rullst starters, whose sign-in stores only Argon2id password hashes (rullst-auth). The repository, releases, book and crates.io use GitHub/crates.io sign-in and store no passwords. | [rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth) |
+| `sites_password_security` | Met | Project sites that keep accounts are the demo applications on rullst.win; they are built with Rullst and sign users in with rullst-auth, which stores only Argon2id password hashes. The repository, releases, book and crates.io use GitHub/crates.io sign-in and store no passwords. | [rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth) |
 
 ## Change Control
 
 | Criterion | Answer | Justification to paste | Evidence |
 | --- | --- | --- | --- |
-| `maintenance_or_update` | Met | v12 is maintained on a protected branch with patch and minor releases while v13 develops on `main`. Deprecated APIs stay for at least one minor release, every major has a migration guide, and `cargo rullst upgrade` previews and applies upgrades. | [Compatibility policy](https://rullst.github.io/Rullst/book/compatibility-policy.html), [v13 migration](https://rullst.github.io/Rullst/book/migration-v13.html) |
+| `maintenance_or_update` | Met | v12 received patch and minor releases on a protected branch until its end of life on 16 October 2026, with an announced migration path to v13, which develops on `main`. Deprecated APIs stay for at least one minor release, every major has a migration guide, and `cargo rullst upgrade` previews and applies upgrades. | [Compatibility policy](https://rullst.github.io/Rullst/book/compatibility-policy.html), [v13 migration](https://rullst.github.io/Rullst/book/migration-v13.html) |
 
 ## Reporting
 
@@ -91,7 +84,7 @@ Owner confirmations recorded on 9 October 2026:
 | `installation_standard_variables` | Met | `cargo install` honors `CARGO_INSTALL_ROOT`, `--root` and `CARGO_HOME`, Cargo's conventions for the installation location. Libraries are never installed system-wide. | [Getting started](https://rullst.github.io/Rullst/book/1-getting-started.html) |
 | `installation_development_quick` | Met | After cloning, rustup installs the toolchain pinned in `rust-toolchain.toml`, and `cargo build` and `cargo test` work; CONTRIBUTING.md lists the steps. | [CONTRIBUTING.md, development setup](https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md#development-setup) |
 | `external_dependencies` (URL required) | Met | The Cargo manifests and `Cargo.lock` list every dependency with exact versions and checksums; each release also attaches a CycloneDX SBOM. | [Cargo.lock](https://github.com/Rullst/Rullst/blob/main/Cargo.lock), [Cargo.toml](https://github.com/Rullst/Rullst/blob/main/Cargo.toml) |
-| `dependency_monitoring` | Met | Dependabot checks Cargo and GitHub Actions weekly for `main` and `v12`. `cargo audit` runs on every push and pull request and daily, `cargo deny` on every push and pull request, and a release stops on any advisory. | [dependabot.yml](https://github.com/Rullst/Rullst/blob/main/.github/dependabot.yml), [audit.yml](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml), [cargo-deny.yml](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) |
+| `dependency_monitoring` | Met | Dependabot checks Cargo (including the fuzz workspaces) and GitHub Actions weekly on `main`; `v12` gets no updates after its end of life. `cargo audit` runs on every push and pull request and daily, `cargo deny` on every push and pull request, and a release stops on any advisory. | [dependabot.yml](https://github.com/Rullst/Rullst/blob/main/.github/dependabot.yml), [audit.yml](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml), [cargo-deny.yml](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) |
 | `updateable_reused_components` | Met | Dependencies come from crates.io through Cargo and update with `cargo update` or Dependabot. The only vendored files are versioned htmx and Pico CSS browser assets (the version is in the file name), which are updated by hand. | [Cargo.toml](https://github.com/Rullst/Rullst/blob/main/Cargo.toml) |
 | `interfaces_current` | Met | CI builds with `-D warnings`, so calling a deprecated dependency API fails the build. Every remaining `allow(deprecated)` is in a test of one of Rullst's own deprecated compatibility APIs. | [ci.yml](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) |
 | `automated_integration_testing` | Met | Every push and pull request to `main`, `v12` and `v13` runs the automated test suite in GitHub Actions and reports the result on the commit; a nightly run covers Linux, macOS and Windows. | [ci.yml](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) |
@@ -130,9 +123,8 @@ Owner confirmations recorded on 9 October 2026:
 
 | Answer | Count | Criteria |
 | --- | ---: | --- |
-| Met | 49 | All others |
-| Unmet | 6 | `documentation_achievements` (MUST, until PR #447 merges), `dco`, `bus_factor`, `internationalization`, `crypto_algorithm_agility` (SHOULD), `version_tags_signed` (SUGGESTED) |
+| Met | 50 | All others |
+| Unmet | 5 | `dco`, `bus_factor`, `internationalization` and `crypto_algorithm_agility` (SHOULD); `version_tags_signed` (SUGGESTED) |
 
-Once PR #447 is merged, every MUST criterion is answered Met. The unmet
-SHOULD and SUGGESTED criteria do not block Silver if their justifications are
-filled in. See also the [OpenSSF Scorecard evidence](openssf-scorecard.md).
+Every MUST criterion is answered Met. The unmet SHOULD and SUGGESTED criteria
+do not block Silver because their justifications are filled in. See also the [OpenSSF Scorecard evidence](openssf-scorecard.md).
