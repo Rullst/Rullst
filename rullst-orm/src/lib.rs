@@ -1,3 +1,28 @@
+//! Active Record models, a typed query builder, schema migrations and managed
+//! transactions on SQLx for SQLite, PostgreSQL and MySQL/MariaDB, with opt-in
+//! Redis, search, vector and document stores.
+//!
+//! **Maturity: Core**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). The optional
+//! store adapters document their own validation boundaries.
+//!
+//! The crate enables no database driver by default (since 13.0.0-alpha.3).
+//! Choose `strict-sqlite`, `strict-postgres` or `strict-mysql`, or
+//! `drivers-all` for all three on SQLx's `Any` pool; without one,
+//! [`Orm::init`] returns an error that names the feature to enable. Other
+//! features add integrations: `redis`, `scout-http`, `pgvector`, `ai`,
+//! `qdrant`, `mongodb`, `duckdb`, `turso` and `surrealdb`. docs.rs builds this
+//! page with the default features, so the items behind them are not listed
+//! here.
+//!
+//! Start with the [`Orm`](struct@Orm) pool, `#[derive(Orm)]`,
+//! [`schema::Schema`] and [`Orm::transaction`]. The code that
+//! `#[derive(Orm)]` generates names the `tokio` and `tracing` crates, and
+//! `#[derive(FromRow)]` names `sqlx`, so the application depends on those
+//! three directly. The
+//! [README](https://github.com/Rullst/Rullst/blob/main/rullst-orm/README.md)
+//! and the [ORM guide](https://rullst.github.io/Rullst/book/crates/orm.html)
+//! have a quick start and the query, transaction and security boundaries.
 pub use sqlx;
 
 /// The `chrono` crate whose `DateTime<Utc>`, `NaiveDateTime`, `NaiveDate` and

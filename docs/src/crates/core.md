@@ -24,7 +24,7 @@ it), `retry_failed_job` moves a failed job to the tail of the pending list while
 keeping its attempt counter, and `purge_failed_jobs` deletes every failed job
 and dead letter.
 
-The v13 prerelease `list_job_previews(limit, max_field_bytes)` (on
+The v13 `list_job_previews(limit, max_field_bytes)` (on
 `QueueDriver` and the `Queue` facade) lists the same records as
 `QueuedJobPreview`s whose payload and error hold at most `max_field_bytes`
 bytes, cut on a UTF-8 boundary, with `payload_truncated`/`error_truncated`
@@ -84,8 +84,8 @@ does not exceed `job_timeout` with `QueueError::InvalidConfiguration`.
 Stalled-lease recovery runs when a worker starts and then every
 `min(stalled_after, 60 s)`, and it is queue-wide: it returns every processing
 lease in the shared SQLite table or Redis namespace that is older than the
-recovering worker's `stalled_after`, including leases of other workers. In the
-v13 prerelease source, workers claim through `QueueDriver::pop_with_lease`
+recovering worker's `stalled_after`, including leases of other workers. Since
+v13, workers claim through `QueueDriver::pop_with_lease`
 with their own `stalled_after`; SQLite and Redis store that lease with the
 claim and recovery honours it whatever age the recovering worker uses, so a
 pool with a short `stalled_after` no longer requeues a slower pool's running
@@ -97,7 +97,7 @@ A job that crashes, aborts or hangs its worker would otherwise be recovered and
 claimed forever, so the SQLite and Redis drivers count stalled leases per job
 and fail the job, instead of requeuing it, when its fifth lease stalls. The
 failure is listed and retryable like any other failed job, and
-`retry_failed_job` restarts the count. In the v13 prerelease source,
+`retry_failed_job` restarts the count. Since v13,
 `SqliteDriver::try_with_max_stalled_leases` and
 `RedisDriver::try_with_max_stalled_leases` change the ceiling (1–1,000, default
 `DEFAULT_MAX_STALLED_LEASES` = 5).
@@ -158,10 +158,12 @@ embedded supervisors and deterministic tests. The lifecycle does not run
 dependency probes, coordinate replicas, authorize users, or guarantee load
 balancer propagation.
 
-The v13 drain candidate retains admission through the response body, including
+Since v13, the drain retains admission through the response body, including
 streaming/trailers, error and cancellation. It does not track upgraded connections
 or prove client receipt. The [two-replica deployment contract](../deployment-acceptance.md)
-exercises this boundary through a real proxy; full hosted admission remains pending.
+exercises this boundary through a real proxy; its hosted workspace and
+installed-archive checks passed in PR #224, and the final release campaign
+remains separate.
 
 ## ✨ Core Features & Subsystems
 
@@ -276,12 +278,12 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   for identifiers assigned a variant named `"enabled"`, and `enabled` (no
   identifier) is false for an A/B flag in every driver, including a
   `DbFeatureDriver` row without a rollout percentage; gate code on
-  `variant`. The v13 prerelease
+  `variant`. The v13
   `FeatureManager::overrides()` returns the first-priority
   `MemoryFeatureDriver` of `FeatureManager::default()` (and of the global
   `feature::manager()` when it uses the default pipeline), so programmatic
   overrides reach it.
-- **Project settings (v13 prerelease):** `config::project_setting(name)`
+- **Project settings (v13):** `config::project_setting(name)`
   (also `rullst::config::project_setting`) reads an application setting from
   the process environment first and then `./.env`, which never overrides the
   environment and is never loaded into it, by `Server` or by Artisan
@@ -378,7 +380,7 @@ network can choose the client address, so never list client-reachable ranges.
 
 ### Deferrable jobs and time windows
 
-Opt-in v13 prerelease API. Work that need not run immediately (reports,
+Opt-in v13 API. Work that need not run immediately (reports,
 exports, re-indexing) can be dispatched with a `Deferral`: a deadline
 (`run_by`) and up to 24 daily `TimeWindow`s, each with an optional fixed UTC
 offset (daylight-saving changes are not applied, except for the windows of
@@ -491,7 +493,7 @@ images without `tzdata` working. A task's label in scheduler errors is the
 expression followed by the zone, such as `0 7 * * * [America/Sao_Paulo]`.
 
 `Scheduler::deferrable_task_in_tz(expression, zone, deferral, handler)`
-(13.0.0-alpha.3) is the zoned form of `deferrable_task`: its ticks follow
+(added in 13.0.0-alpha.3) is the zoned form of `deferrable_task`: its ticks follow
 `task_in_tz`, and its `TimeWindow`s are wall times of the same zone, so
 `TimeWindow::daily(22, 0, 6, 0)` stays 22:00–06:00 local time across a
 daylight-saving change. Window boundaries follow the same rule as ticks: one
@@ -567,4 +569,4 @@ not inspect, for routes that accept text such as code samples (see
 
 ## 🔐 Security Audit & Reliability
 
-Repository workflows exercise Core with unit, integration, fuzz, and Miri jobs within their declared scopes. Consult the exact workflow run and commit for evidence; these tools do not prove the absence of every panic, leak, or vulnerability.
+Repository workflows exercise Core with unit and integration tests on every change, and with fuzz and Miri campaigns started on demand, within their declared scopes. Consult the exact workflow run and commit for evidence; these tools do not prove the absence of every panic, leak, or vulnerability.

@@ -8,6 +8,10 @@ description = "Bounded transparent exam and parental supervision for Rullst"
 license = "MIT"
 repository = "https://github.com/Rullst/Rullst"
 readme = "README.md"
+homepage = "https://rullst.github.io"
+documentation = "https://docs.rs/rullst-supervision"
+keywords = ["supervision", "exam", "parental", "education", "rullst"]
+categories = ["web-programming"]
 
 [features]
 default = []

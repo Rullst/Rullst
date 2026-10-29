@@ -1,7 +1,7 @@
 # rullst-privacy
 
-v13 release candidate for proportional age assurance and optional consent,
-first published in the 13.0.0-alpha.1 prerelease. The package is in the v13
+Proportional age assurance and optional consent for the v13 line, first
+published in the 13.0.0-alpha.1 prerelease. The package is in the v13
 distribution inventory. It is not part of v12 or the default `rullst`
 dependency graph.
 
@@ -10,7 +10,9 @@ the API may change between 13.x releases and not every real-world scenario is
 validated yet. Experimental does not mean broken.
 
 Enable `age-assurance` for age checks or `consent` for independent purpose-bound
-choices. No feature is enabled by default. Broader rights-request, retention and regional-policy support
+choices. No feature is enabled by default. Pin the prerelease exactly, for
+example `rullst-privacy = { version = "=13.0.0-alpha.4", features = ["consent-sqlite"] }`,
+or use the umbrella features below. Broader rights-request, retention and regional-policy support
 is tracked in the [privacy roadmap](https://github.com/Rullst/Rullst/blob/main/docs/src/privacy-age-assurance-roadmap.md).
 
 ## Optional umbrella features

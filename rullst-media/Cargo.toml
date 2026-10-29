@@ -8,6 +8,10 @@ description = "Explicit private video lifecycle with Bunny Stream and S3-compati
 license = "MIT"
 repository = "https://github.com/Rullst/Rullst"
 readme = "README.md"
+homepage = "https://rullst.github.io"
+documentation = "https://docs.rs/rullst-media"
+keywords = ["video", "streaming", "bunny", "s3", "rullst"]
+categories = ["multimedia::video", "web-programming"]
 
 [features]
 default = []

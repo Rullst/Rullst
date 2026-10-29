@@ -1,12 +1,20 @@
 # v12 security claims and evidence ledger
 
+> **Historical (v12).** This ledger records the claims of the v12 release
+> line, which reached end of life on 16 October 2026; it is not updated for
+> v13. For v13, see the [security assurance case](assurance-case.md), the
+> [threat models](threat-models.md) (TM-13.0) and the machine-readable
+> `.github/threat-model-release-minimum.json`.
+
 This page is the canonical boundary for security claims made by the Rullst v12
 release notes. Each row names the narrow behavior implemented in the repository,
 the tests that exercise it, and a known limit. A security statement that is not
 represented here is not a v12 release guarantee.
 
 The evidence links point to source-controlled tests; links to files that v13
-removed point to the `v12.1.2` tag. A passing local run proves only that
+removed point to the `v12.1.2` tag. The other links open the current `main`
+source, which may have changed since v12; the frozen `v12` branch holds the
+code these claims describe. A passing local run proves only that
 checkout and environment; the release workflow attaches the same
 checks to the immutable tag SHA. None of these rows is a certification, external
 audit, proof of complete OWASP coverage, or substitute for an application's own
@@ -81,9 +89,9 @@ link to the `v12.1.2` tag; see the [v13 migration guide](migration-v13.md).
 | The Academy production preset normalizes all twelve declared boundaries and fails unless each has one explicit evidenced `PASS`. | [`ProductionPreset::academy`](../../rullst-core/src/production.rs) and the [Academy CLI diagnostic](../../cargo-rullst/src/generators/academy_doctor.rs) | [Preset negatives](../../rullst-core/src/production.rs), [diagnostic normalization tests](../../cargo-rullst/src/generators/academy_doctor.rs), [process-level CLI tests](../../cargo-rullst/tests/academy_doctor_cli.rs), and [CLI inventory contract](../../cargo-rullst/tests/scaffold_contracts.rs) | Evidence is caller-declared and the diagnostic always reports `certification: false`; it does not inspect a deployment, prove the declaration true, or replace independent review. |
 | Live Alipay RSA2 verification and NFS-e homologation/production fail closed instead of returning simulated success. NFS-e local preparation separately enforces pinned XSDs, PKCS#12 XMLDSig, deterministic issuance JSON, bounded signed-authorization and structured-rejection parsing and bounded mTLS construction. | [Alipay adapter](https://github.com/Rullst/Rullst/blob/v12.1.2/rullst-capital/src/providers/alipay.rs), [NFS-e signer](https://github.com/Rullst/Rullst/blob/v12.1.2/rullst-capital/src/fiscal/signer.rs), [protocol codec](https://github.com/Rullst/Rullst/blob/v12.1.2/rullst-capital/src/fiscal/protocol.rs), [schema boundary](https://github.com/Rullst/Rullst/blob/v12.1.2/rullst-capital/src/fiscal/schema.rs), and [NFS-e client](https://github.com/Rullst/Rullst/blob/v12.1.2/rullst-capital/src/fiscal/client.rs) | Alipay unsupported-path tests plus fiscal builder, signature verification, protocol binding/tamper/decompression negatives, official-artifact opt-in validation, and environment tests | Offline fixtures and local schema/cryptographic/protocol validity are not legal compliance, certificate trust, tax authorization, settlement, live response evidence, independent review, or provider homologation. |
 
-## Release use
+## Release use (v12)
 
-Before an RC or stable release, reviewers should:
+Before a v12 RC or stable release, reviewers had to:
 
 1. run the linked tests through the workspace trifecta on the candidate SHA;
 2. attach multi-OS CI and packaged-distribution evidence to that same SHA;
@@ -91,6 +99,7 @@ Before an RC or stable release, reviewers should:
 4. keep every remaining boundary visible in the release notes; and
 5. leave the release at `NO-GO` if a claimed control lacks matching evidence.
 
-Threat assumptions and abuse cases live in the [v12 threat models](threat-models.md).
+The v12 threat assumptions and abuse cases are model version TM-12.10 on the
+frozen `v12` branch; the [current threat models](threat-models.md) are TM-13.0.
 The broader implementation/roadmap boundary lives in the
 [capability ledger](capability-ledger.md).

@@ -7,9 +7,9 @@ Start here when your frontend is a separate app, mobile client or integration.
 
 This quickstart creates one runnable JSON endpoint without a database or an AI
 provider. It targets the v13 prerelease `13.0.0-alpha.4`; the v12 line reached
-end of life (see the [release record](../v12.md)). Production adoption still needs
-application review and immutable artifacts; pinning end-of-life v5 does not
-make it supported again.
+end of life (see the [release record](../v12.md)). You need Rust 1.96.0 or
+newer ([Tutorial 01](01-hello-world.md#1-install-rust-and-cargo) shows how to
+install it).
 
 ## 1. Create the application
 
@@ -90,9 +90,9 @@ Stop the server with `Ctrl+C`.
 
 ## 4. Prefer a generated API foundation?
 
-After [installing the matching v12 CLI](../1-getting-started.md), it can scaffold
-a headless API directly. Use a different directory from the hand-written
-example above:
+After [installing the v13 CLI](../1-getting-started.md#1-installation), it can
+scaffold a headless API directly. Use a different directory from the
+hand-written example above:
 
 ```bash
 cargo rullst new generated_api --default --api --no-database \
@@ -101,8 +101,11 @@ cd generated_api
 cargo run
 ```
 
-This generates the blueprint's own routes, not an exact copy of the health
-handler above. Read its controller and route registration before choosing a
-URL to test. Use `cargo rullst make:controller project --api` for additional JSON
+This is the API starter (the Blank starter without HTML). Its routes are
+registered in `router()` in `src/main.rs`, not copied from the health handler
+above: `GET /` answers with a JSON welcome message (`curl http://127.0.0.1:3000/`),
+`POST /api/messages` requires `Authorization: Bearer <API_TOKEN>` with the
+random token written to `.env`, and `/health` and `/ready` serve container
+probes. Use `cargo rullst make:controller project --api` for additional JSON
 controllers. Generated parameterized data routes still require explicit
 ownership or tenant authorization; see [RBAC and IDOR protection](13-rbac-authorization.md).

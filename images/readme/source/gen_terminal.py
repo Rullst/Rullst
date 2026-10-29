@@ -3,7 +3,7 @@ import html
 import pathlib
 import sys
 
-W, H = 1200, 568
+W, H = 1200, 540
 T = 17.0  # loop length in seconds
 X0, Y0, LH = 34, 92, 31
 CHAR = 10.2  # estimated advance at 17px; covers adapt if a font is wider
@@ -18,21 +18,21 @@ C = {
 # (start second, typed?, segments[(text, color, bold)])
 LINES = [
     (0.6, True, [("$ ", "g", True), ("cargo rullst new", "w", False)]),
-    (2.1, False, [("✔ ", "g", True), ("🚀 What's the New App Name? ", "b", True),
-                  ("(lowercase, no spaces, must start with a letter) · ", "d", False), ("my_saas", "c", True)]),
-    (3.3, False, [("✔ ", "g", True), ("👉 Select a Starter Blueprint · ", "b", True),
-                  ("SaaS App Starter ", "c", True), ("(Authentication + Stripe payments billing template)", "d", False)]),
-    (4.4, False, [("✔ ", "g", True), ("🗄️ Will your project need a Database? · ", "b", True), ("yes", "c", True)]),
-    (5.3, False, [("✔ ", "g", True), ("💾 Select the primary DB · ", "b", True), ("SQLite", "c", True)]),
-    (6.4, False, [("  ✅ Database tables created successfully.", "g", False)]),
-    (7.2, False, [("How to run:", "b", True)]),
-    (7.5, False, [("  cd my_saas", "c", False)]),
-    (7.8, False, [("    cargo rullst dev   ", "w", False), ("(standard output)", "d", False)]),
+    (1.9, False, [("◆ ", "g", True), ("New Rullst app", "o", True),
+                  ("  A few questions, then a review before anything is written.", "d", False)]),
+    (2.9, False, [("✔ ", "g", True), ("Project name (letters, digits, _ or -)", "b", True), (" · ", "d", False),
+                  ("my_saas", "c", True)]),
+    (3.8, False, [("✔ ", "g", True), ("Starter", "b", True), (" · ", "d", False), ("SaaS", "c", True)]),
+    (4.6, False, [("✔ ", "g", True), ("Database", "b", True), (" · ", "d", False), ("SQLite", "c", True)]),
+    (5.4, False, [("✔ ", "g", True), ("Features", "b", True), (" · ", "d", False), ("none", "c", True)]),
+    (6.6, False, [("  ✅ Database tables created successfully.", "g", False)]),
+    (7.3, False, [("✨ Project 'my_saas' created successfully!", "g", True)]),
     (8.9, True, [("$ ", "g", True), ("cd my_saas && cargo rullst dev", "w", False)]),
-    (10.9, False, [("   Compiling ", "g", True), ("my_saas v0.1.0", "w", False)]),
+    (10.9, False, [("Building the application...", "w", False)]),
     (12.0, False, [("Rullst framework serving on ", "w", False), ("http://127.0.0.1:3000", "c", False)]),
     (12.6, False, [("🚀 Visit: ", "b", True), ("http://localhost:3000", "g", True), (" to see the result!", "b", True)]),
 ]
+SECOND_COMMAND = 8  # index of the `cargo rullst dev` line
 TYPE_SPEED = 0.055
 FADE_START, FADE_END = 16.2, 16.8
 
@@ -44,7 +44,7 @@ def pct(t: float) -> str:
 def build(freeze: float | None = None) -> str:
     css, body = [], []
     for i, (start, typed, segs) in enumerate(LINES):
-        y = Y0 + i * LH + (LH if i >= 9 else 0)  # blank line before the second command
+        y = Y0 + i * LH + (LH if i >= SECOND_COMMAND else 0)  # blank line before it
         spans = "".join(
             f'<tspan fill="{C[c]}"{" font-weight=\"700\"" if bold else ""}>{html.escape(text)}</tspan>'
             for text, c, bold in segs
@@ -77,7 +77,7 @@ def build(freeze: float | None = None) -> str:
     frozen = f"*{{animation-play-state:paused!important;animation-delay:-{freeze}s!important}}" if freeze is not None else ""
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-labelledby="t d">
 <title id="t">cargo rullst new — from zero to a running SaaS</title>
-<desc id="d">Terminal recording: cargo rullst new asks for the app name, blueprint and database, creates the SaaS starter with SQLite, then cargo rullst dev compiles and serves it at http://localhost:3000.</desc>
+<desc id="d">Terminal recording: cargo rullst new asks for the project name, starter, database and optional features, creates the SaaS starter with SQLite, then cargo rullst dev builds it and serves it at http://localhost:3000.</desc>
 <style>
 text{{font-family:{MONO};font-size:17px}}
 @keyframes blink{{0%,49%{{opacity:1}}50%,100%{{opacity:0}}}}

@@ -38,8 +38,8 @@ In the sample application: `POST /posts`, `/posts/repository`, `/checkout`,
   hardening, and volumetric DDoS.
 - The deliberate mock credentials and offline fixtures of `examples/`
   (see `examples/blog/README.md`).
-- The v13 candidates first published in the 13.0.0-alpha.1 prerelease
-  (`rullst-privacy`, `rullst-labs`, `rullst-media`, `rullst-supervision`)
+- The Experimental-tier crates added in v13 (`rullst-privacy`, `rullst-labs`,
+  `rullst-media`, `rullst-supervision`; see [maturity tiers](maturity.md))
   unless the engagement names them.
 
 ## Threat models
@@ -111,7 +111,7 @@ Portfolio examples run their tests with `cargo test -p rullst-lms-example` (or
 offline against the starter's own router behind the staging/production
 baseline: security headers, CSRF, WAF, and where the starter has them, the
 sign-in rate limit (SaaS, LMS), the owner check of the lesson routes (LMS) and
-the bearer token of the JSON API (`blank --api`). Treat these as a floor, not
+the bearer token of the JSON API (`--blueprint api`). Treat these as a floor, not
 as your test plan.
 
 ## Tooling

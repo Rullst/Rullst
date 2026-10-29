@@ -253,7 +253,7 @@ pub fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
             fs::write(main_path, main_content)?;
             println!(
                 "{}",
-                "ℹ️ Adicionado 'pub mod middlewares;' ao src/main.rs.".cyan()
+                "ℹ️ Added 'pub mod middlewares;' to src/main.rs.".cyan()
             );
         }
     }
@@ -352,7 +352,7 @@ pub fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
             fs::write(main_path, main_content)?;
             println!(
                 "{}",
-                "ℹ️ Adicionado 'pub mod middlewares;' ao src/main.rs.".cyan()
+                "ℹ️ Added 'pub mod middlewares;' to src/main.rs.".cyan()
             );
         }
     }
@@ -370,8 +370,8 @@ pub fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
         "{}",
         "     .layer(rullst::server::from_fn(middlewares::jwt_middleware::jwt_middleware))".cyan()
     );
-    println!("{}", "  2. Acesse os claims no controller:".cyan());
-    println!("{}", "     pub async fn meu_endpoint(rullst::server::Extension(claims): rullst::server::Extension<Claims>) -> impl IntoResponse".cyan());
+    println!("{}", "  2. Read the claims in a handler:".cyan());
+    println!("{}", "     pub async fn my_endpoint(rullst::server::Extension(claims): rullst::server::Extension<Claims>) -> impl IntoResponse".cyan());
 
     Ok(())
 }

@@ -23,8 +23,9 @@ enum AwsSesTransport {
 /// AWS SES v2 delivery with deterministic mock, explicit proxy and native modes.
 ///
 /// [`Self::try_new`] retains the mock/proxy contract. Enable the `aws-ses`
-/// feature and use [`Self::try_native`] or [`Self::from_native_config`] for
-/// official AWS SDK delivery authenticated with Signature Version 4.
+/// feature and use `AwsSesDriver::try_native` or
+/// `AwsSesDriver::from_native_config` for official AWS SDK delivery
+/// authenticated with Signature Version 4.
 pub struct AwsSesDriver {
     region: String,
     transport: AwsSesTransport,

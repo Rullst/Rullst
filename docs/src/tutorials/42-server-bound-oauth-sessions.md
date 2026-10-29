@@ -20,7 +20,8 @@ does not choose the application's account-linking or authorization policy.
 
 ### Generate it
 
-In a project with the `cargo rullst auth`, SaaS or LMS account model:
+In a project with the account model of `cargo rullst auth`, the SaaS starter
+or the LMS example (`examples/lms`):
 
 ```bash
 cargo rullst make:oauth google      # or github, microsoft, apple
@@ -247,9 +248,9 @@ let app = app.layer(sessions);
 `SameSite::Lax` permits the ordinary top-level OAuth callback, a cross-site
 `GET` redirect, while reducing cross-site cookie exposure. It does not cover a
 provider that returns the callback as a cross-site `POST`; see
-[Sign in with Apple](#sign-in-with-apple-form-post-callback). Production still requires HTTPS, a durable shared
-store where multiple instances are used, bounded store retention, protected
-keys and an explicit reverse-proxy policy.
+[Sign in with Apple](#sign-in-with-apple-form-post-callback). Production still
+requires HTTPS, a durable shared store where multiple instances are used,
+bounded store retention, protected keys and an explicit reverse-proxy policy.
 
 ## Start OAuth 2.0 with state and PKCE
 
@@ -306,8 +307,8 @@ the query-string flow do not fit that request:
 Do not relax the application's authenticated session cookie to
 `SameSite=None` to work around this. Keep the Apple challenge in a dedicated,
 short-lived store reached through its own `SameSite=None; Secure; HttpOnly`
-cookie scoped to the Apple routes. With a 12.x release, validate the posted form
-with the framework-neutral primitives:
+cookie scoped to the Apple routes. Without the managed extractor of the next
+section, validate the posted form with the framework-neutral primitives:
 
 ```rust,ignore
 use rullst_connect::extractors::AuthCallback;
@@ -362,8 +363,8 @@ authenticated session as usual.
 
 ### Managed form POST callback
 
-The v13 prerelease (13.0.0-alpha.1) adds `AuthSessionForm`, the form POST
-counterpart of `AuthSession`. It reads an `application/x-www-form-urlencoded`
+`AuthSessionForm` (added in 13.0.0-alpha.1) is the form POST counterpart of
+`AuthSession`. It reads an `application/x-www-form-urlencoded`
 `POST` body of at most 16 KiB, ignores `id_token` and `user`, and consumes the
 same challenge that `begin_oidc_session` stored, with the same expiry,
 constant-time state comparison and single use. A non-`POST` request, another
@@ -565,11 +566,11 @@ Before release, test the exact deployed provider and browser path:
    the provider's real or restricted environment.
 5. Account creation/linking cannot attach an attacker-controlled provider
    identity to an existing local account.
-   Native or mobile clients do not sign in by sending a provider access token
+6. Native or mobile clients do not sign in by sending a provider access token
    to `get_user_from_token`: a userinfo response does not prove the token was
    issued to this application's `client_id`. Verify their ID token with
    `verify_id_token` (Google, `OidcProvider`) and a server-issued nonce.
-6. Denial, timeout, provider outage and abandoned-login recovery have bounded
+7. Denial, timeout, provider outage and abandoned-login recovery have bounded
    user-visible behavior without logging credentials.
 
 The local Rullst regressions prove generation, round-trip, mismatch, missing

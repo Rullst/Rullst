@@ -23,7 +23,7 @@ pub fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "{}",
-        "\n🏝️  Iniciando a compilação do Rullst Wasm Island Client...\n"
+        "\n🏝️  Compiling the Rullst Wasm island client...\n"
             .cyan()
             .bold()
     );

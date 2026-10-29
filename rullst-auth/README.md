@@ -4,10 +4,36 @@
 role-based authorization middleware, WebAuthn/passkey ceremony verification, and
 an opt-in application JWT policy.
 
-Application JWTs are enabled with `jwt`. The `sqlite` feature also enables JWT
-and adds durable shared JWT revocation plus passkey device state. OAuth2/OIDC
-providers remain a separate trust boundary enabled with `oauth`, which
-re-exports `rullst-connect`.
+**Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
+
+## Installation
+
+This README describes the v13 prerelease; Cargo never selects a prerelease on
+its own, so pin it exactly:
+
+```bash
+cargo add rullst-auth@=13.0.0-alpha.4
+```
+
+Passwords, cookie sessions, passkey ceremonies, RBAC and policies need no
+feature. The optional parts are Cargo features:
+
+- `jwt`: the application JWT policy (`ApplicationJwtPolicy`).
+- `sqlite`: `jwt` plus durable SQLite JWT revocation and the SQLite passkey
+  device registry.
+- `passkey-postgres`: passkey ceremonies shared between hosts through
+  PostgreSQL.
+- `recovery-sqlite` / `recovery-postgres`: `recovery::SqlRecoveryStore`
+  (password recovery and revocable server-side sessions);
+  `email-login-sqlite` / `email-login-postgres` and `api-tokens-sqlite` /
+  `api-tokens-postgres` build on them.
+- `oauth`: re-exports `rullst-connect` as `rullst_auth::connect`. OAuth2/OIDC
+  providers remain a separate trust boundary.
+
+In a Rullst application, enable the `auth` feature of `rullst` (the crate is
+then `rullst::auth`), plus `auth-jwt`, `auth-sqlite`, `auth-passkey-postgres`,
+`auth-sessions-sqlite`/`-postgres`, `auth-email-login-sqlite`/`-postgres` or
+`auth-api-tokens-sqlite`/`-postgres` for the optional parts.
 
 ## Passwords
 
@@ -34,6 +60,10 @@ unknown emails alike.
 `decrypt_session` and `decrypt_session_claims` use a versioned AES-256-GCM
 envelope with authenticated metadata and an operating-system nonce. `APP_KEY` must contain at least 32 bytes,
 must not be a documented placeholder, and must satisfy the entropy check.
+`get_app_key` reads it from the `APP_KEY` environment variable, then `.env`,
+then `Rullst.toml`. Without one, staging and production fail with
+`AuthError::MissingAppKey`; other environments generate a development key in
+`.rullst_dev_key`.
 
 The cookie helpers select `Secure` from `RULLST_ENV`, then `APP_ENV`, then `.env`, then
 `Rullst.toml`. When either process variable is set, `.env` is not read for that decision. A
@@ -299,8 +329,8 @@ Implement `HasRole` for the authenticated user type and install
 `RequireRoleLayer::<User>::new("Admin")`. Authentication middleware must insert that user into
 Axum request extensions before the role layer executes.
 
-Applications using the umbrella crate may alternatively place
-`#[rullst::require_role("Admin")]` on an async handler whose authenticated
+Applications using the umbrella crate (with its `auth` feature) may
+alternatively place `#[rullst::require_role("Admin")]` on an async handler whose authenticated
 extractor binds the inner value as `user`:
 
 ```rust,no_run

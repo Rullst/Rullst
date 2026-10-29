@@ -1,3 +1,36 @@
+//! The Rullst framework: one dependency for the Core runtime and, through Cargo
+//! features, the optional Rullst crates.
+//!
+//! The crate root re-exports `rullst-core`: the HTTP [`Server`], the
+//! [`routes!`] and [`html!`] macros, configuration, the security baseline,
+//! queues, realtime and the other Core modules. Each optional crate appears
+//! under its own module when you enable its feature:
+//!
+//! | Feature | Module | Crate | Tier |
+//! | :--- | :--- | :--- | :--- |
+//! | `orm` with `drivers-all` or one `strict-*` profile | `rullst::orm` (also in `rullst::db`) | `rullst-orm` | Core |
+//! | `security` | `rullst::security::runtime` | `rullst-security` | Core |
+//! | `auth` | `rullst::auth` | `rullst-auth` | Extension |
+//! | `oauth` | `rullst::connect` | `rullst-connect` | Extension |
+//! | `mail` | `rullst::mail` | `rullst-mail` | Extension |
+//! | `capital` | `rullst::capital` | `rullst-capital` | Extension |
+//! | `ai` | `rullst::ai` | `rullst-ai` | Extension |
+//! | `messaging` | `rullst::messaging` | `rullst-messaging` | Extension |
+//! | `nexus` | `rullst::nexus` | `rullst-nexus` | Extension |
+//! | `studio` | `rullst::studio` | `rullst-studio` | Extension |
+//! | `iot` | `rullst::iot` | `rullst-iot` | Experimental |
+//! | `privacy` | `rullst::privacy` | `rullst-privacy` | Experimental |
+//!
+//! There is no default feature, so a database-free application compiles no
+//! database code. Pin the exact version with `=` and name the features you use,
+//! for example `features = ["strict-postgres", "auth"]`; `cargo rullst new`
+//! writes this for you. docs.rs builds this page with the default (empty)
+//! feature set, so the optional modules are not listed here: each crate has
+//! its own documentation.
+//!
+//! Guides, tutorials and the maturity tiers are in the
+//! [Rullst book](https://rullst.github.io/Rullst/book/).
+
 extern crate self as rullst;
 
 pub use rullst_core::*;

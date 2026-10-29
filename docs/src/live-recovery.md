@@ -175,7 +175,7 @@ persists domain state. Keep revision epochs consistent when restoring backups.
 Configure the proxy for WebSocket upgrades and suitable idle timeouts; TLS,
 proxy behavior, replication and failover need deployment-specific validation.
 This candidate does not add WebSocket ticket issuance, frame encryption, DOM
-patching, an offline mutation queue or automatic blueprint migration.
+patching, an offline mutation queue or automatic starter migration.
 
 ## Executable acceptance
 

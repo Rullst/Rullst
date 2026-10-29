@@ -1,6 +1,6 @@
 # Transparent exam and parental supervision
 
-**Status: v13 release candidate, first published in the 13.0.0-alpha.1
+**Status: v13 candidate, first published in the 13.0.0-alpha.1
 prerelease.** The implemented contract and observation extension passed combined
 source/archive acceptance in PR #239. The package is included in the release
 inventory, pending final release acceptance. It supplies no verified guardianship, device-wide
@@ -92,8 +92,9 @@ Events do not extend lifetime. They are incomplete, forgeable reports and never
 establish cheating, attendance, attention, identity or time spent learning.
 No event changes grades, answers, enrollment or penalties.
 
-There is no camera, microphone, screen capture, key logging, clipboard content,
-browsing history, location, fingerprint or arbitrary payload collection. The
+The crate captures no camera, microphone or screen media, and collects no key
+logging, clipboard content, browsing history, location, fingerprint or arbitrary
+payload; camera and audio findings come only from the host's adapters. The
 consumer must show active/paused/ended state and stop sending after pause/end.
 No-JavaScript controls must still work without claiming visibility observations.
 
@@ -188,8 +189,8 @@ own equivalent acceptance.
 ## Application integration
 
 v13 no longer generates a supervision consumer: `make:supervision` targeted the
-complete Academy LMS, which was replaced by a smaller starter. Integrate the
-crate directly. The host application authenticates the actor, checks membership
+complete Academy LMS, which v13 removed (the smaller LMS is now the
+`examples/lms` application, without supervision). Integrate the crate directly. The host application authenticates the actor, checks membership
 and authority, provisions operators out of band and wires the SSR controls and
 retention workers to the contracts above. Existing stores are never upgraded or
 enabled by default. The removed generator remains in the git history as a

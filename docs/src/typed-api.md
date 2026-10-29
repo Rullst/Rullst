@@ -1,6 +1,6 @@
 # Schema-first Rust and TypeScript APIs
 
-This is a **v13 candidate, first published in the 13.0.0-alpha.1 prerelease**. `generate:api` consumes one explicit
+`cargo rullst generate:api` is new in v13 (first published in 13.0.0-alpha.1). It consumes one explicit
 OpenAPI 3.1 JSON document and generates Rust DTOs/operation codecs, a TypeScript
 client and a canonical OpenAPI copy. It does not infer request or response types
 from a route handler, install dependencies or mount routes. The earlier
@@ -9,8 +9,8 @@ helpers with placeholder/unchecked types.
 
 ## Generate and check
 
-Use the CLI built from the reviewed v13 source as described in the
-[adoption guide](migration-v13.md):
+Use the v13 CLI (`cargo install cargo-rullst --version =13.0.0-alpha.4 --locked`;
+see [Getting started](1-getting-started.md)). From the project root:
 
 ```bash
 cargo rullst generate:api --schema api/profile.json --output src/profile_api
@@ -78,8 +78,10 @@ This minimal input uses the explicit `rullst.api.v1` profile:
 
 ## Server wiring and authorization
 
-Add direct `serde` (with `derive`), `serde_json` and `rullst-security` dependencies
-matching the reviewed framework source. Import `contract.rs` as an application
+Add direct `serde` (with `derive`), `serde_json` and `rullst-security`
+dependencies; pin `rullst-security` to the same exact version as `rullst`
+(`rullst-security = "=13.0.0-alpha.4"`), because `contract.rs` uses its
+`schema_guard::JsonSchemaPolicy`. Import `contract.rs` as an application
 module and construct `Contract::new()` once during startup; handle configuration
 errors before serving traffic. Each `op_<operationId>` module provides `METHOD`,
 `PATH`, a typed `Params`, `decode_params` and typed response variants plus

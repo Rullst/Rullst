@@ -13,7 +13,7 @@ The optional path belongs in `rullst-auth`. Enable `passkey-postgres`, or
 verification engine. The first real adapter is opt-in PostgreSQL, because it
 serves separate application hosts. A shared SQLite ceremony adapter, additional
 algorithms/attestation formats and discoverable-account login are separate work.
-No blanket blueprint rewrite or new public crate is proposed.
+It rewrites no starter and adds no public crate.
 
 ## Identity and API boundary
 
@@ -120,8 +120,9 @@ is not a production identity service or a generated authentication controller.
 
 ## Acceptance
 
-Local evidence includes 85 normal all-feature Auth tests, strict all-target
-Clippy and production zero-panic checks. The explicit PostgreSQL fixture passes
+When PR #223 admitted it, local evidence included 85 normal all-feature Auth
+tests, strict all-target Clippy and production zero-panic checks. The explicit
+PostgreSQL fixture passes
 independent managers/pools, actual ES256 registration/assertion, wrong bindings,
 credential snapshots, parallel completion, post-consumption expiry, quotas,
 corruption, lock-wait expiry, cancellation, stalled transport, a separate process
@@ -130,11 +131,11 @@ Chromium's virtual authenticator completes registration and authentication
 through different HTTP managers and a PostgreSQL credential-counter CAS; missing
 cookie/CSRF and assertion replay are rejected. These checks do not demonstrate
 physical authenticator/device-fleet interoperability or failover safety.
-A focused real-database mutation sample detects all 21 selected changes to
+A focused real-database mutation sample detected all 21 selected changes to
 binding fingerprints, allowed credentials, issuance, consumption and expiry.
 This is a bounded sample, not a whole-Auth mutation score.
 
-Remaining acceptance and maintenance requirements:
+Changes to this path keep these acceptance and maintenance requirements:
 
 Use real PostgreSQL with two independently constructed managers and pools, then
 a new process and database restart. Cover registration/assertion with actual

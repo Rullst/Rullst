@@ -40,17 +40,21 @@ pub fn configure_di() -> Result<Arc<Container>, std::env::VarError> {
 }
 ```
 
-`security_runtime` requires the umbrella `security` feature. A secret manager
-should inject the real value in production; `VaultSecret` reduces accidental
-formatting and zeroizes its owned allocation on drop, but it is not key custody
-or secure memory.
+`security_runtime` requires the umbrella `security` feature. The generated
+starters depend on `rullst-security` directly, so they can use
+`rullst_security::VaultSecret` instead. `std::env::var` reads only the process
+environment (Rullst never loads `.env` into it); use
+`rullst::config::project_setting` to fall back to `.env` in development. A
+secret manager should inject the real value in production; `VaultSecret`
+reduces accidental formatting and zeroizes its owned allocation on drop, but it
+is not key custody or secure memory.
 
 ---
 
 ## Step 2: Attach the container and extract a service
 
 ```rust,ignore
-use axum::{Extension, Json, routing::post};
+use rullst::server::{Extension, Json, post};
 use rullst::{Router, di::Inject};
 
 pub async fn process_payment(

@@ -161,9 +161,10 @@ multi-region ordering and exactly-once effects are outside this profile.
 
 ## Outbox and executable evidence
 
-Add `messaging-orm-outbox` to relay committed relational events through the
-existing `OrmOutboxRelay<RedisBroker>`. Commit the domain write and event in the
-same ORM transaction. A worker publishes the stream-scoped durable event key, then ACKs its
+Add `messaging-orm-outbox`, with the application's database feature
+(`strict-postgres`, `strict-mysql`, `strict-sqlite` or `drivers-all`), to relay
+committed relational events through the existing `OrmOutboxRelay<RedisBroker>`.
+Commit the domain write and event in the same ORM transaction. A worker publishes the stream-scoped durable event key, then ACKs its
 exact outbox claim. Crashing between these operations produces an exact broker
 replay when reclaimed. This still does not create a distributed transaction.
 

@@ -1,3 +1,20 @@
+//! Derive and attribute macros of `rullst-orm`: `#[derive(Orm)]`,
+//! `#[derive(TursoModel)]`, `#[derive(Enum)]`, `#[derive(PersonalData)]`,
+//! `#[derive(Nexus)]` and the `#[rullst_orm::test]` sandbox attribute.
+//!
+//! **Maturity: Core**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). Depend on
+//! `rullst-orm` (or on the `rullst` facade with its `orm` feature) rather than
+//! on this crate: the generated code calls the `rullst-orm` runtime, which
+//! re-exports these macros and enables the matching features of this crate.
+//! `#[derive(Nexus)]` also needs the `rullst` facade with its `nexus` feature.
+//!
+//! The derives reject unknown or duplicate options and unsupported model
+//! shapes at compile time. The
+//! [README](https://github.com/Rullst/Rullst/blob/main/rullst-orm-macros/README.md)
+//! documents the options and their limits, and the
+//! [ORM guide](https://rullst.github.io/Rullst/book/crates/orm.html) shows them
+//! in use.
 extern crate proc_macro;
 
 use proc_macro::TokenStream;

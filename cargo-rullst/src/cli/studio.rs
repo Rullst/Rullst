@@ -21,11 +21,21 @@ pub(super) fn launch_error(outcome: io::Result<std::process::ExitStatus>) -> Res
         Err(error) if error.kind() == io::ErrorKind::NotFound => Err(io::Error::new(
             io::ErrorKind::NotFound,
             format!(
-                "{BINARY} is not installed; install it with `cargo install {BINARY} --features remote --locked`"
+                "{BINARY} is not installed; install it with `{}`",
+                install_command()
             ),
         )),
         Err(error) => Err(error),
     }
+}
+
+/// The install command for the `rullst-studio` of this CLI's release. The
+/// version is named because Cargo never selects a prerelease on its own.
+fn install_command() -> String {
+    format!(
+        "cargo install {BINARY} --version ={} --features remote --locked",
+        env!("CARGO_PKG_VERSION")
+    )
 }
 
 /// Runs `rullst-studio` in the foreground until it stops.
@@ -46,7 +56,10 @@ mod tests {
         assert_eq!(missing.kind(), io::ErrorKind::NotFound);
         assert_eq!(
             missing.to_string(),
-            "rullst-studio is not installed; install it with `cargo install rullst-studio --features remote --locked`"
+            format!(
+                "rullst-studio is not installed; install it with `cargo install rullst-studio --version ={} --features remote --locked`",
+                env!("CARGO_PKG_VERSION")
+            )
         );
         let denied = launch_error(Err(io::Error::new(
             io::ErrorKind::PermissionDenied,

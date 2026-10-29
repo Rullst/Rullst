@@ -7,7 +7,7 @@ is small and then to a private temporary file, so a large upload never sits in
 memory as a whole.
 
 Use it for ordinary form uploads that pass through the application. For large
-files that a browser sends straight to S3 or R2 in resumable parts, see
+files that the application forwards to S3 or R2 in resumable parts, see
 [resumable private multipart uploads](private-multipart-uploads.md) instead.
 
 ## A handler

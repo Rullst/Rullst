@@ -4,6 +4,8 @@
 Applications should normally depend on `rullst-orm`, not this proc-macro crate
 directly, because generated code calls the matching runtime API.
 
+**Maturity: Core** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
+
 ## Derive and attribute contracts
 
 | Macro | Bounded contract |

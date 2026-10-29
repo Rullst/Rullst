@@ -139,4 +139,4 @@ passed; the standalone production feature graph contains no SQL backend or ORM.
 Combined hosted workspace/platform and extracted-package source admission
 subsequently passed in
 [PR #239](v13-delivery-plan.md#seven-increment-source-admission-and-package-preparation-on-september-22).
-Final release admission remains separate; no v13 publication is implied.
+Final release admission remains separate.
