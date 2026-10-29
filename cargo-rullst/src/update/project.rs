@@ -82,7 +82,7 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
         .ok_or(ProjectError::Invalid("unsupported project operation"))?;
     let report = prepare(matches)?;
     if matches.get_flag("json") {
-        println!("{}", serde_json::to_string_pretty(&report)?);
+        print_report(&report)?;
     } else {
         println!("Prepared source copy: {}", report["prepared_directory"]);
         println!("Candidate: {}", report["candidate_directory"]);
@@ -93,6 +93,21 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
             "Preparation grants no execution or application authority. Preview checks with update project verify --prepared DIRECTORY --dry-run."
         );
     }
+    Ok(())
+}
+
+/// Prints a `--json` report as the one document on stdout. The persisted
+/// evidence files keep their `schema_version`; the printed copy also carries the
+/// `schema` field every `--json` command has (see the CLI reference).
+pub(super) fn print_report(report: &serde_json::Value) -> Result<(), ProjectError> {
+    let mut printed = report.clone();
+    if let Some(object) = printed.as_object_mut()
+        && !object.contains_key("schema")
+        && let Some(version) = object.get("schema_version").cloned()
+    {
+        object.insert("schema".to_owned(), version);
+    }
+    println!("{}", serde_json::to_string_pretty(&printed)?);
     Ok(())
 }
 

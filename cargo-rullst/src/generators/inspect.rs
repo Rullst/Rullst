@@ -88,17 +88,30 @@ fn inspect_routes() -> Result<(), Box<dyn std::error::Error>> {
 
 type RouteRow = (String, String, String);
 
-/// `inspect routes --json`: the recognized route declarations as the
-/// versioned `rullst.cli-routes.v1` document on stdout.
+/// `inspect <routes|models|schema> --json`: the target as one versioned
+/// document (`rullst.cli-routes.v1`, `rullst.cli-models.v1` or
+/// `rullst.cli-schema.v1`) on stdout.
 pub(crate) fn print_json(target: &str) -> Result<(), Box<dyn std::error::Error>> {
-    if !matches!(target, "route" | "routes") {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("--json is available for `inspect routes` only, not `inspect {target}`"),
-        )
-        .into());
-    }
-    let document = routes_document(Path::new("src"))?;
+    let document = match target {
+        "route" | "routes" => serde_json::to_value(routes_document(Path::new("src"))?)?,
+        "model" | "models" => super::inspect_json::models_document(Path::new("src/models")),
+        "schema" => {
+            let tables = super::schema_diff::extract_tables_from_ast();
+            super::inspect_json::schema_document(
+                Path::new("rullst-schema.json"),
+                model_schema(&tables),
+            )?
+        }
+        other => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!(
+                    "--json is available for `inspect routes`, `inspect models` and `inspect schema`, not `inspect {other}`"
+                ),
+            )
+            .into());
+        }
+    };
     println!("{}", serde_json::to_string_pretty(&document)?);
     Ok(())
 }
@@ -106,6 +119,7 @@ pub(crate) fn print_json(target: &str) -> Result<(), Box<dyn std::error::Error>>
 #[derive(serde::Serialize)]
 struct RoutesDocument {
     schema_version: &'static str,
+    schema: &'static str,
     complete: bool,
     incomplete_reason: Option<String>,
     routes: Vec<RouteEntry>,
@@ -126,6 +140,7 @@ fn routes_document(src_dir: &Path) -> Result<RoutesDocument, Box<dyn std::error:
     };
     let document = RoutesDocument {
         schema_version: "rullst.cli-routes.v1",
+        schema: "rullst.cli-routes.v1",
         complete: incomplete.is_none(),
         incomplete_reason: incomplete,
         routes: routes
@@ -319,6 +334,7 @@ mod tests {
         let document =
             serde_json::to_value(routes_document(&src).expect("document")).expect("serializable");
         assert_eq!(document["schema_version"], "rullst.cli-routes.v1");
+        assert_eq!(document["schema"], "rullst.cli-routes.v1");
         assert_eq!(document["complete"], true);
         assert!(document["incomplete_reason"].is_null());
         assert_eq!(document["routes"][0]["method"], "GET");
@@ -332,7 +348,7 @@ mod tests {
         .expect("serializable");
         assert_eq!(missing["complete"], false);
         assert_eq!(missing["incomplete_reason"], "src/ directory not found");
-        assert!(print_json("models").is_err());
+        assert!(print_json("macros").is_err());
         assert_eq!(route_handler(" posts::show),"), "posts::show");
         assert_eq!(route_handler(" handler(state) ,"), "handler(state)");
         assert_eq!(route_handler(" plain"), "plain");

@@ -33,6 +33,7 @@ pub mod doctor;
 pub mod eject;
 pub mod hook;
 pub mod inspect;
+mod inspect_json;
 pub mod introspect;
 pub mod iot;
 pub mod island;

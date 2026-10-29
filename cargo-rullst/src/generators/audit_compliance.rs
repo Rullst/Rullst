@@ -74,6 +74,7 @@ pub(crate) struct CheckSummary {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub(crate) struct AuditSummary {
     pub schema_version: &'static str,
+    pub schema: &'static str,
     pub issues_found: usize,
     pub checks: Vec<CheckSummary>,
 }
@@ -99,6 +100,7 @@ fn check_summary(id: &'static str, status: &EvidenceStatus) -> CheckSummary {
 pub(crate) fn summary(evidence: &ComplianceEvidence, issues_found: usize) -> AuditSummary {
     AuditSummary {
         schema_version: "rullst.cli-audit.v1",
+        schema: "rullst.cli-audit.v1",
         issues_found,
         checks: vec![
             check_summary("secret_scan", &evidence.secret_scan),

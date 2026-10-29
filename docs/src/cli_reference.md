@@ -41,6 +41,56 @@ also run on their own (`cargo-rullst-extras ai`, or `cargo rullst-extras ai`);
 the assistant's allowlisted `cargo rullst` actions then run the
 `cargo-rullst` executable from `PATH`.
 
+## Machine-readable output
+
+A command whose result is data accepts `--json`. The contract is the same for
+all of them:
+
+* Standard output carries exactly one JSON document and nothing else: no
+  progress lines, banners, tables or ANSI escape codes, whether or not the
+  terminal supports colour.
+* The document has a top-level `schema` field naming its shape and version,
+  `rullst.<name>.v1`. A new field is added without a new version; a removed or
+  renamed field, or a changed meaning, gets `v2`. Documents that predate this
+  contract also keep their `schema_version` field, with the same value.
+* Human messages, progress and failures go to standard error. Exit statuses are
+  the same with and without `--json`: a failed check or a refused request still
+  exits non-zero, and the document is still printed when the command could
+  compute one (`doctor`, `deploy:doctor` and `academy:doctor` print their
+  report and then exit with status 1 when a check fails).
+* A request that has no JSON form (for example `pkg add --json`) is refused on
+  standard error with a non-zero exit status and prints nothing on standard
+  output.
+
+| Command | `schema` |
+| --- | --- |
+| `cargo rullst info --json` | `rullst.cli-info.v1` |
+| `cargo rullst doctor --json` | `rullst.cli-doctor.v1` |
+| `cargo rullst audit --json` | `rullst.cli-audit.v1` |
+| `cargo rullst inspect routes --json` | `rullst.cli-routes.v1` |
+| `cargo rullst inspect models --json` | `rullst.cli-models.v1` |
+| `cargo rullst inspect schema --json` | `rullst.cli-schema.v1` |
+| `cargo rullst pkg list --json` | `rullst.cli-pkg.v1` |
+| `cargo rullst upgrade --dry-run --json` | `rullst.upgrade-plan.v1` |
+| `cargo rullst deploy:doctor --json` | `rullst.deployment-diagnostic.v1` |
+| `cargo rullst academy:doctor --json` | `rullst.academy-diagnostic.v1` |
+| `cargo rullst update project prepare --json` | `rullst.project-preparation-result.v1` |
+| `cargo rullst update project verify --dry-run` or `--json` | `rullst.project-verification-plan.v1` (dry run), `rullst.project-verification.v1` |
+| `cargo rullst update project review --json` | `rullst.project-review-report.v1` |
+| `cargo rullst update project apply --json` and `recover --json` | `rullst.project-application.v1` |
+| `cargo rullst ai status --json` (extras) | `rullst.ai-status.v1` |
+| `cargo rullst ai review --json` (extras) | `rullst.ai-review.v1` |
+| `cargo rullst green --json` (extras) | `rullst.green.v1` |
+
+`pkg list --json` prints `{"schema": "rullst.cli-pkg.v1", "table":
+"dependencies", "packages": ["rullst-auth"]}`; `table` is
+`workspace.dependencies` for a virtual workspace manifest. `audit --report json`
+is a different interface: it writes `SECURITY_REPORT.json`
+(`rullst.cli-audit-report.v1`) and cannot be combined with `--json`. The
+files `cargo rullst generate:ai-context` writes (`rullst.project-context.v1`)
+are described in [project context](project-context.md). `db:status` is
+printed by your application, not by the CLI, and has no `--json` form yet.
+
 ---
 
 ## 🏗️ 1. Project Initialization & Maintenance
@@ -184,6 +234,7 @@ source, migration files, Git branch). It reads local files and runs
 
 ```json
 {
+  "schema": "rullst.cli-info.v1",
   "schema_version": "rullst.cli-info.v1",
   "cli": { "name": "cargo-rullst", "version": "13.0.0" },
   "platform": { "os": "linux", "arch": "x86_64" },
@@ -1968,6 +2019,7 @@ route, dependency, and local network patterns.
 
 ```json
 {
+  "schema": "rullst.cli-audit.v1",
   "schema_version": "rullst.cli-audit.v1",
   "issues_found": 0,
   "checks": [
@@ -2173,6 +2225,7 @@ the exit status rules:
 
 ```json
 {
+  "schema": "rullst.cli-doctor.v1",
   "schema_version": "rullst.cli-doctor.v1",
   "cli_version": "13.0.0",
   "ok": false,
@@ -2229,10 +2282,11 @@ describes the exact scope):
 * `cargo rullst inspect model`: Lists the structs and public fields in `src/models`.
 * `cargo rullst inspect schema`: Prints the ORM model schema derived from `#[derive(Orm)]` structs as JSON.
 * `cargo rullst inspect routes --json`: Prints the recognized routes as one
-  `rullst.cli-routes.v1` document (`--json` is accepted only for routes):
+  `rullst.cli-routes.v1` document:
 
 ```json
 {
+  "schema": "rullst.cli-routes.v1",
   "schema_version": "rullst.cli-routes.v1",
   "complete": true,
   "incomplete_reason": null,
@@ -2244,6 +2298,19 @@ describes the exact scope):
 
 `complete` is `false` when the bounded source walk stopped early or `src/` is
 missing, with the reason in `incomplete_reason`.
+
+`--json` is accepted for `routes`, `models` and `schema` (since
+13.0.0-alpha.4):
+
+* `inspect models --json` prints `rullst.cli-models.v1`: `complete`,
+  `incomplete_reason` and `files`, one entry per `src/models/*.rs` file (not
+  `mod.rs`, no symlinks) with its public `struct` and `enum` items. A struct has
+  `fields` (`name`, `type`); an enum has `variants`. A file that is not valid
+  Rust is named in `incomplete_reason`.
+* `inspect schema --json` prints `rullst.cli-schema.v1`: the same `source` and
+  `models` as the human output (`struct`, `table`, `fields` with `name`,
+  `rust_type`, `optional`), or, when the project provides `rullst-schema.json`,
+  `source: "rullst-schema.json"` with the parsed file under `snapshot`.
 
 ---
 

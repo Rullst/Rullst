@@ -19,7 +19,7 @@ pub(super) fn command(name: &'static str) -> Command {
 pub(super) fn run(matches: &ArgMatches, recovery: bool) -> Result<(), ProjectError> {
     let report = execute(matches, recovery)?;
     if matches.get_flag("json") {
-        println!("{}", serde_json::to_string_pretty(&report)?);
+        super::print_report(&report)?;
     } else {
         println!(
             "{} {} reviewed file operations. Recovery record: {}",

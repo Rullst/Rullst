@@ -200,6 +200,7 @@ pub(super) fn render_json_report(
         .map(|path| relative_report_path(root, path))
         .collect::<Vec<_>>();
     serde_json::to_string_pretty(&serde_json::json!({
+        "schema": "rullst.upgrade-plan.v1",
         "schema_version": "rullst.upgrade-plan.v1",
         "rule_catalog": rules::RULE_CATALOG_VERSION,
         "target": target.to_string(),

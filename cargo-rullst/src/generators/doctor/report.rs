@@ -126,6 +126,7 @@ pub(crate) struct Summary {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub(crate) struct Report {
     pub schema_version: &'static str,
+    pub schema: &'static str,
     pub cli_version: &'static str,
     /// `false` when any check failed.
     pub ok: bool,
@@ -151,6 +152,7 @@ impl Report {
         }
         Self {
             schema_version: SCHEMA_VERSION,
+            schema: SCHEMA_VERSION,
             cli_version: env!("CARGO_PKG_VERSION"),
             ok: summary.fail == 0,
             summary,

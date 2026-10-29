@@ -107,6 +107,25 @@ pub fn pkg_list() -> Result<Vec<String>, PackageError> {
     Ok(packages)
 }
 
+/// `pkg list --json`: the `rullst.cli-pkg.v1` document, with nothing else
+/// printed. `table` names the manifest table that was read.
+pub fn pkg_list_json() -> Result<serde_json::Value, PackageError> {
+    list_document(Path::new("Cargo.toml"))
+}
+
+fn list_document(manifest: &Path) -> Result<serde_json::Value, PackageError> {
+    let packages = packages_from_manifest(manifest)?;
+    let table = match DependencyTable::of(&read_manifest(manifest)?) {
+        DependencyTable::Package => "dependencies",
+        DependencyTable::Workspace => "workspace.dependencies",
+    };
+    Ok(serde_json::json!({
+        "schema": "rullst.cli-pkg.v1",
+        "table": table,
+        "packages": packages,
+    }))
+}
+
 /// The table `pkg` edits and lists.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum DependencyTable {
@@ -268,6 +287,35 @@ mod tests {
             parsed["dependencies"]["rullst-example"].as_str(),
             Some("12.0.0")
         );
+    }
+
+    #[test]
+    fn the_list_document_names_the_table_and_the_sorted_rullst_packages() {
+        let directory = tempdir().expect("temporary directory");
+        let manifest = directory.path().join("Cargo.toml");
+        fs::write(
+            &manifest,
+            "[package]\nname = \"demo\"\n\n[dependencies]\nserde = \"1\"\nrullst-orm = \"13\"\nrullst-auth = \"13\"\n",
+        )
+        .expect("fixture manifest");
+        assert_eq!(
+            list_document(&manifest).expect("document"),
+            serde_json::json!({
+                "schema": "rullst.cli-pkg.v1",
+                "table": "dependencies",
+                "packages": ["rullst-auth", "rullst-orm"],
+            })
+        );
+
+        fs::write(
+            &manifest,
+            "[workspace]\nmembers = []\n\n[workspace.dependencies]\nrullst-core = \"13\"\n",
+        )
+        .expect("workspace manifest");
+        let workspace = list_document(&manifest).expect("workspace document");
+        assert_eq!(workspace["table"], "workspace.dependencies");
+        assert_eq!(workspace["packages"], serde_json::json!(["rullst-core"]));
+        assert!(list_document(&directory.path().join("missing.toml")).is_err());
     }
 
     #[test]
