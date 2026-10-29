@@ -26,7 +26,7 @@ The [threat models](threat-models.md) (model version TM-13.0; v12 keeps
 TM-12.10) use a lightweight STRIDE review. Each model separates untrusted
 network input, authenticated application identity, process-local state, shared
 durable state and third-party or hardware trust, and names abuse cases with
-stable IDs such as `AUTH-06` or `STUDIO-01`. There are 19 models:
+stable IDs such as `AUTH-06` or `STUDIO-01`. There are 21 models:
 
 | Area | Models |
 | --- | --- |
@@ -42,15 +42,18 @@ stable IDs such as `AUTH-06` or `STUDIO-01`. There are 19 models:
 The machine-readable minimum in
 [`.github/threat-model-release-minimum.json`](https://github.com/Rullst/Rullst/blob/main/.github/threat-model-release-minimum.json)
 binds 52 abuse-case IDs to 70 evidence rows and 69 exact tests across thirteen
-crates. `check-threat-model-release-minimum.sh` rejects missing markers,
-missing tests and filters that match zero tests, then runs each test with
-`--exact`. It runs in four CI shards and again in the release workflow.
+crates and the LMS example. `check-threat-model-release-minimum.sh` rejects
+missing markers, missing tests and filters that match zero tests, then runs
+each test with `--exact`. It runs in four `ci.yml` shards after every merge to
+`main` and nightly (pull requests to `main` skip it), and release admission
+requires those four shards to have passed on the exact tagged commit.
 Changes to authentication, authorization, tenant resolution, webhooks, AI
 tools, OTA or the release flow must reference an abuse-case ID (see
 [review and change control](threat-models.md#review-and-change-control)).
 
-Related evidence: the [v12 security claims ledger](v12-security-claims.md)
-lists each narrow claim with its tests and known limits, and the
+Related evidence: the historical [v12 security claims ledger](v12-security-claims.md)
+lists each narrow v12 claim with its tests and known limits (for v13 this
+page and the threat models take its place), and the
 [external audit kit](external-audit-kit.md) gives third-party reviewers the
 scope, a sample application and tooling.
 
@@ -67,7 +70,7 @@ scope, a sample application and tooling.
 | Developer tools ↔ network | Remote access to Studio and debug endpoints | Debug-only, Development-only, loopback-only mounting; same-origin checks for state changes | `TM-STUDIO-1`, `TM-NEXUS-1` |
 | Monitoring client ↔ application | Requests to the opt-in `/_rullst/monitor/v1` endpoint | Off by default; bearer tokens compared in constant time or the application's authorizer; TLS evidence in staging and production; per-client rate limit and lockout; aggregates keyed by route pattern only (`rullst-core/src/monitor/`) | `TM-STUDIO-2` |
 | Firmware signer ↔ device | OTA manifests | Ed25519 manifest signatures and a caller-provided rollback counter (`rullst-iot/src/ota.rs`) | `TM-IOT-1` |
-| Contributor and CI ↔ repository; tag ↔ artifact ↔ registry | Pull requests, dependencies, build runners | Protected branches with 46 required checks, pinned Actions, release admission of the exact SHA, attestations and reproducible archives ([verifying a release](../../SECURITY.md#verifying-a-release)) | `TM-DEPLOY-1` |
+| Contributor and CI ↔ repository; tag ↔ artifact ↔ registry | Pull requests, dependencies, build runners | Protected branches with required status checks and no bypass actors, pinned Actions, release admission of the exact SHA, attestations and reproducible archives ([verifying a release](../../SECURITY.md#verifying-a-release)) | `TM-DEPLOY-1` |
 | CLI ↔ filesystem and processes | Project names, paths, templates | Identifier and path validation in generators; fixed programs with argument arrays | `TM-DEPLOY-1` |
 
 ## Secure design principles
@@ -83,7 +86,7 @@ The argument follows Saltzer and Schroeder's principles.
 | Separation of privilege | Releases pass through separate jobs: admit the exact SHA, verify, attest without executing source, reproduce, then publish from a protected `crates-io` environment that requires a reviewer. Branch rules have no bypass actors. | `release.yml`, [governance](../../GOVERNANCE.md) |
 | Least common mechanism | Tenant data is scoped per request through `TenantContext` and ORM tenant columns, with fail-closed checks, instead of one shared unscoped query path. Studio and the debug consoles are separate mechanisms, mounted only in debug Development builds and reachable only from loopback. | [spec, tenant scope contract](spec.md), [threat models](threat-models.md) |
 | Psychological acceptability | Secure behavior is the default path: `cargo rullst new` scaffolds the baseline, `cargo rullst doctor` reports a security baseline, `cargo rullst audit` checks routes, and `html!` escapes without extra calls. | [CLI reference](cli_reference.md), [which security layer to use](security-layers.md) |
-| Open design | The source, threat models, claims ledger and audit kit are public. Security relies on keys and verified controls, not on secret designs. | [threat models](threat-models.md), [claims ledger](v12-security-claims.md), [external audit kit](external-audit-kit.md) |
+| Open design | The source, threat models, claims ledger and audit kit are public. Security relies on keys and verified controls, not on secret designs. | [threat models](threat-models.md), [v12 claims ledger](v12-security-claims.md), [external audit kit](external-audit-kit.md) |
 
 ## Countering common implementation weaknesses
 
@@ -111,14 +114,18 @@ Security headers add defense in depth: HSTS, a nonce-based CSP,
 
 ## How the argument is kept true
 
-- **Per change:** formatting, Clippy with `-D warnings`, the test suite, the
-  threat-model release minimum, `cargo audit`, `cargo deny`, the unsafe policy,
-  the zero-panic Clippy gates and the crate-archive reproducibility check run
-  on pull requests. CodeQL
-  analyzes Rust and JavaScript/TypeScript after every push to `main`, on pull
-  requests to the maintained lines and weekly.
+- **Per change:** formatting, Clippy with `-D warnings`, the Linux `workspace`
+  and `cli-standard` test shards, `cargo audit`, `cargo deny`, the unsafe
+  policy, the zero-panic Clippy gates, the crate-archive reproducibility check
+  and a mutation check of the changed Rust lines (`mutants-pr.yml`) run on pull
+  requests to `main`. The push
+  after a merge to `main` adds every Linux shard, the threat-model release
+  minimum, coverage, SemVer checks and CodeQL, and the nightly run covers
+  Linux, macOS and Windows. CodeQL analyzes Rust and JavaScript/TypeScript
+  after every push to `main` and weekly.
 - **Coverage:** line coverage must stay at or above 90% (`coverage.yml`, after
-  every push to `main`); `main` measured 92.56% on 9 October 2026.
+  every push to `main`); `main` measured 93.96% on 29 October 2026
+  ([run 40865935687](https://github.com/Rullst/Rullst/actions/runs/40865935687)).
 - **Scheduled and on demand:** nightly sanitizers, and manual fuzzing, Miri,
   Kani and mutation campaigns. See the
   [workflow guide](workflows.md).
