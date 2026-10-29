@@ -13,10 +13,10 @@ with an exact version:
 cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 ```
 
-`cargo-rullst` is a Core package. A few generators depend on outside toolchains
-or platforms and carry their own **Maturity** label below the command name:
-*Supported* or *Experimental*. The [maturity tiers](maturity.md#cli-generators) page
-explains what each label promises.
+`cargo-rullst` is a Core package. Two commands carry their own **Maturity**
+label below the command name, *Experimental*: `make:iot` and `green`. The
+[maturity tiers](maturity.md#cli-generators) page explains what the label
+promises.
 
 ## Machine-readable output
 
@@ -139,8 +139,9 @@ error: Not inside a Rullst project
 
 The common failures have their own title and fix: not inside a Rullst project
 (pointing to an enclosing project root when there is one), a missing tool
-(`cargo`, `rustup`, `git`, `docker`, `flyctl`, ...), a missing Rust target
-(`rustup target add <target>`), an unreachable database, a port already in
+(`cargo`, `rustc`, `rustup`, `git`, `docker`, `wasm-bindgen`, `kubectl` or
+`npm`), a missing Rust target (`rustup target add <target>`), an unreachable
+database, a port already in
 use, permission denied, invalid input, network failures, an interrupted
 prompt and a starter that moved to the repository's examples (`new --blueprint
 lms|blog|portfolio|erp`). Anything else gets a generic report naming the failed command.
@@ -405,8 +406,9 @@ Generated SQLx applications disable the default features of both the umbrella
 one strict primary profile (`strict-sqlite`, `strict-postgres`, or
 `strict-mysql`; MariaDB uses the MySQL protocol). This prevents an implicit
 SQLite default from masking the chosen backend and keeps the other drivers,
-including bundled SQLite, out of the build. Turso-primary and database-free
-profiles keep `rullst-orm`'s default drivers for its `AnyPool`.
+including bundled SQLite, out of the build. Turso-primary projects enable
+`rullst-orm`'s `turso` feature (which includes SQLx's SQLite driver), and
+database-free projects depend on neither the ORM nor a SQLx driver.
 
 #### Generated-project verification boundary
 
@@ -507,7 +509,7 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
-The v13 CLI's `rullst-upgrade-rules-v4` catalog (107 rules) parses Rust sources
+The v13 CLI's `rullst-upgrade-rules-v4` catalog (111 rules) parses Rust sources
 (with `syn`; comments, doc comments and strings never match an API rule), Cargo
 manifests and generated project files, and reports each finding as
 `MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed
@@ -729,8 +731,9 @@ rejected. Git produces the full dependency diff with external helpers, text
 conversion and paging disabled; output is bounded to 8 MiB. No build/test runs
 and original files remain untouched.
 
-JSON contains `rullst.project-review.v1`, before/after file hashes, the full
-`diff` and `review_sha256` binding its evidence and contents. The digest is not
+JSON (`rullst.project-review-report.v1`) contains the `review` record
+(`rullst.project-review.v1`) with before/after file hashes, the full `diff`
+and `review_sha256` binding its evidence and contents. The digest is not
 authorization to apply changes; review does not invoke the legacy in-place
 upgrade command. The digest also binds the source access policies.
 
@@ -923,9 +926,11 @@ fallible typed migration registry. The name is lowercased with `-` mapped to
 `add_index.v2`, are rejected. Regenerating `src/migrations/mod.rs` fails, naming
 the file, when an `m*.rs` file there is not a valid Rust module name.
 
-`cargo rullst make:migration:auto` (SQLite `DATABASE_URL` in `.env` only)
-compares the `#[derive(Orm)]` models under `src/` with the database. It ignores
-framework tables (`migrations` and `rullst_*`) and writes a migration only for
+### `cargo rullst make:migration:auto`
+Takes no arguments and needs a SQLite `DATABASE_URL` in `.env`; with another
+database, a Turso-primary project or no `.env`, it prints a notice and writes
+nothing. It compares the `#[derive(Orm)]` models under `src/` with the
+database. It ignores framework tables (`migrations` and `rullst_*`) and writes a migration only for
 additive changes (new tables or columns), with drops of model-less tables or
 columns included as commented-out code for review. When only such destructive
 differences remain, it lists them and writes no migration. Column types follow
@@ -943,6 +948,10 @@ such columns with `make:migration`.
 Scaffolds a SaaS billing starting point with subscription models, authenticated
 billing routes, and signed-webhook integration points. Provider credentials,
 tenant policy, and deployment behavior still require application configuration.
+* **Optional Flags:**
+  * `--model <MODEL>` (default `User`): The billable model; the subscription
+    and customer tables reference it through a `<model>_id` column (`Team`
+    gives `team_id`).
 
 Empty or `mock_*` credentials select a local development fixture, which is
 refused in production. Other credentials select the real Stripe profile
@@ -1206,7 +1215,10 @@ written through a link):
 
 * `Dockerfile` and `.dockerignore`: the same multi-stage build as
   `dockerize`, with its dependency-cache (planner) stage and a distroless,
-  non-root runtime image;
+  non-root runtime image. When the `[database] url` in `Rullst.toml` (or,
+  without one, `DATABASE_URL` in `.env.example`) is SQLite, the image sets
+  `DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc`, so the database lives
+  in the `app_data` volume; an existing Dockerfile without it gets a warning;
 * `compose.yaml`: the app and a Caddy reverse proxy with automatic HTTPS for
   `DOMAIN`. Both containers have a read-only root filesystem, every capability
   dropped (Caddy keeps only `NET_BIND_SERVICE` for ports 80 and 443) and
@@ -1214,8 +1226,10 @@ written through a link):
   the `app_data` volume; the app's `/health` endpoint is checked from the
   Caddy container, because the app image has no shell or HTTP client. It works
   with `docker compose` and `podman compose`;
-* `Caddyfile`: proxies to the app and stops routing to it while `/health`
-  fails.
+* `Caddyfile`: proxies to the app, checks its `/health` every 5 seconds and
+  stops routing to it while that fails, and holds each request for up to 15
+  seconds while the app is down (a restart or an update) instead of answering
+  `503` at once.
 
 Caddy is pinned to `172.31.250.10` on a `172.31.250.0/24` compose network,
 and the command adds that address to `[security] trusted_proxies` in
@@ -1469,7 +1483,9 @@ development tool; do not expose it publicly without an independently reviewed
 authentication, authorization, and TLS boundary.
 
 `cargo rullst studio --remote [--port PORT]` needs no project: it starts the
-installed standalone `rullst-studio` binary (`cargo install rullst-studio --features remote --locked`),
+installed standalone `rullst-studio` binary
+(`cargo install rullst-studio --version =13.0.0-alpha.4 --features remote --locked`;
+Cargo installs a prerelease only when its version is named),
 which serves Studio's remote-projects mode on `127.0.0.1:5556` (or `PORT`)
 and reads the [production monitoring endpoint](production-monitoring.md#watch-your-projects-from-studio)
 of the projects you add. Without the binary it explains how to install it.
@@ -1479,7 +1495,8 @@ of the projects you add. Without the binary it explains how to install it.
 ## 🧠 4. Analyzers and Code Generators (`generate:*`)
 
 ### `cargo rullst generate:openapi`
-Reads recognizable route and Rustdoc patterns and generates an OpenAPI V3 draft.
+Reads recognizable route and Rustdoc patterns and writes an OpenAPI 3.0 draft to
+`openapi.json` in the project root.
 Dynamic routes, custom extractors, and semantic constraints may require manual
 edits; validate the result with an OpenAPI validator before publishing it.
 
@@ -1559,16 +1576,6 @@ error context. Credentials that
 checkpoints under `refs/rullst/ai-checkpoints/`, until you delete them. See
 the [migration guide](migration-v13.md#upgrading-an-alpha3-application-to-alpha4).
 
-### `cargo rullst audit [--ai] [--compliance] [--idor]`
-Runs bounded source/configuration checks and can invoke installed dependency
-scanners. Static findings require human review and are not a penetration test or
-compliance certification.
-* **Flags:**
-  * `--ai`: Prints fixed, rule-based remediation suggestions after the checks. It calls no AI model or network service; the flag keeps its legacy name.
-  * `--compliance`: Writes `SECURITY_COMPLIANCE.md`, an evidence report. Each executed check is `NO FINDINGS`, `NO FINDINGS OUTSIDE EXCEPTIONS`, `FINDINGS`, `GENERATED`, `OBSERVED`, `NOT CHECKED`, or `ERROR`, and control families outside the command's scope are `NOT EVALUATED`. It never reports `PASS` and does not confer SOC 2 or ISO 27001 certification.
-  * `--idor`: Fails on parameterized routes without an adjacent `// rullst-access: public|owner|role|admin — reason` classification and the recognized guard required by non-public classifications. `public` is accepted only for recognized GET routes. This bounded heuristic cannot prove domain authorization correctness.
-  * `--report [md|html|json]` (13.0): Writes an evidence report mapped to OWASP ASVS 5.0.0 Level 1, with a personal-data inventory and accessibility heuristics; see [the security report guide](security-report.md) and the flag details [below](#cargo-rullst-audit).
-
 ### `cargo rullst eject [--force] [--output <path>]`
 Writes a reviewable Axum/Tokio entry-point template (`src/ejected_main.rs`). It
 is not a translation of the project's `main.rs`: it serves a placeholder route
@@ -1608,6 +1615,37 @@ starting a server, expanding macros or connecting to a database.
     * `model` or `models`: Lists the structs, enums and `pub` fields declared in `src/models`.
     * `schema`: Prints, as JSON, the table, fields, Rust types and optionality of every `#[derive(Orm)]` struct under `src/` (the extractor `make:migration:auto` uses). It describes the models, not the live database. A project-provided `rullst-schema.json` is printed instead when present; Rullst does not generate that file.
     * `<path/to/file.rs>`: Displays the first 40 lines of any target Rust file with line numbers.
+* **Optional Flags:**
+  * `--json`: Prints `routes`, `models` or `schema` as one versioned document
+    (`models` and `schema` since 13.0.0-alpha.4); another target with `--json`
+    is refused.
+
+`inspect routes --json` prints `rullst.cli-routes.v1`:
+
+```json
+{
+  "schema": "rullst.cli-routes.v1",
+  "schema_version": "rullst.cli-routes.v1",
+  "complete": true,
+  "incomplete_reason": null,
+  "routes": [
+    { "method": "GET", "path": "/posts/{id}", "handler": "controllers::posts::show" }
+  ]
+}
+```
+
+`complete` is `false` when the bounded source walk stopped early or `src/` is
+missing, with the reason in `incomplete_reason`.
+
+* `inspect models --json` prints `rullst.cli-models.v1`: `complete`,
+  `incomplete_reason` and `files`, one entry per `src/models/*.rs` file (not
+  `mod.rs`, no symlinks) with its public `struct` and `enum` items. A struct has
+  `fields` (`name`, `type`); an enum has `variants`. A file that is not valid
+  Rust is named in `incomplete_reason`.
+* `inspect schema --json` prints `rullst.cli-schema.v1`: the same `source` and
+  `models` as the human output (`struct`, `table`, `fields` with `name`,
+  `rust_type`, `optional`), or, when the project provides `rullst-schema.json`,
+  `source: "rullst-schema.json"` with the parsed file under `snapshot`.
 
 ---
 
@@ -1727,8 +1765,9 @@ The footer lists `d` and `Tab` only on terminals at least 120 columns wide; the
 help always lists every key.
 
 The animated neon palette is enabled only for an interactive terminal. Set
-`RULLST_REDUCED_MOTION=1` to keep colors with static rendering, or `NO_COLOR=1`
-for a color-free, static interface. Non-interactive automation should use
+`RULLST_REDUCED_MOTION=1` (or `true`/`yes`) to stop the animation and keep the
+colors. `NO_COLOR` removes the colors only; set both for a color-free, static
+interface. Non-interactive automation should use
 `cargo rullst dev`; `dash` fails clearly when no terminal is attached.
 
 ### `cargo rullst dev`
@@ -1773,7 +1812,7 @@ existing library crate types, and honors an explicit `lib.name`. The command
 checks/installs the Rust target and `wasm-bindgen-cli`; any failed tool step
 aborts. Bundle size and browser performance depend on the generated application
 and must be measured.
-* **Flags:** `--debug` (Avoids extreme minification so you can inspect and debug Wasm sourcemaps).
+* **Flags:** `--debug` (builds the Wasm library with Cargo's debug profile instead of `--release`).
 
 ### `cargo rullst build`
 Creates the monolithic final Production binary of the backend and writes Brotli
@@ -1783,7 +1822,7 @@ sibling over its source, so rerun the command after editing an asset and before
 building an image; `cargo rullst dev` removes siblings that are not newer than
 their source at startup and on every change (siblings without a source file are
 kept).
-* **Flags:** `--debug` (Compiles with debug information, generating a larger binary).
+* **Flags:** `--debug` (builds with Cargo's debug profile instead of `--release`).
 
 ### `cargo rullst green`
 **Maturity:** Experimental. It replaces `cargo rullst footprint` (13.0.0-alpha.1
@@ -1833,8 +1872,11 @@ Writes the `Dockerfile` (plus `.dockerignore` when absent) into an existing
 project, as `new --docker` does. It refuses to replace an existing
 `Dockerfile`; move a customized file aside to regenerate the template. The
 binary is named after `[package].name`, read with a TOML parser (`app` when
-`Cargo.toml` has no package name). `cargo rullst deploy` writes the same
-Dockerfile together with `compose.yaml` and the `Caddyfile`.
+`Cargo.toml` has no package name). As in `deploy`, a project whose
+`Rullst.toml` (or `.env.example`) names a SQLite database gets
+`DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc` in the image. `cargo
+rullst deploy` writes the same Dockerfile together with `compose.yaml` and the
+`Caddyfile`.
 
 **Removed in 13.0.0-alpha.4:** `nixify`, `generate:buildah`, `foundry:init`,
 `foundry:deploy` and `make:grpc`. Files they generated stay yours; see
@@ -1845,17 +1887,20 @@ Quadlet and Kubernetes.
 
 ### `cargo rullst audit`
 Executes bounded automated checks across recognized source, configuration,
-route, dependency, and local network patterns.
+route, dependency, and local network patterns, and can invoke installed
+dependency scanners. Static findings require human review and are not a
+penetration test or compliance certification.
 * **Optional Flags:**
-  * `--ai`: Prints fixed, rule-based remediation suggestions; no AI model or network service is called.
-  * `--compliance`: Generates the evidence report described above (no `PASS` results); it is not a SOC 2, ISO 27001, or transport certification.
-  * `--idor`: Fails on parameterized routes without an explicit adjacent access classification. `owner` requires `RbacGuard::authorize_owner_or_role`; `role` requires a recognized role guard; `admin` requires `RequireRoleLayer` or `NexusAuthPolicy::protect_router`; `public` is restricted to recognized GET routes. The marker goes on the route's line or the line above it; in a multi-line `.route(` call, on the line above the path literal. The guard may appear anywhere in the same crate's `src` tree outside comments and `#[cfg(test)]` items, so the check does not prove that the route is mounted behind it. Manual review and runtime negative tests remain required.
+  * `--ai`: Prints fixed, rule-based remediation suggestions after the checks. It calls no AI model or network service; the flag keeps its legacy name.
+  * `--compliance`: Writes `SECURITY_COMPLIANCE.md`, an evidence report. Each executed check is `NO FINDINGS`, `NO FINDINGS OUTSIDE EXCEPTIONS`, `FINDINGS`, `GENERATED`, `OBSERVED`, `NOT CHECKED`, or `ERROR`, and control families outside the command's scope are `NOT EVALUATED`. It never reports `PASS` and is not a SOC 2, ISO 27001, or transport certification.
+  * `--idor`: Fails on parameterized routes without an explicit adjacent `// rullst-access: public|owner|role|admin — reason` classification. `owner` requires `RbacGuard::authorize_owner_or_role`; `role` requires a recognized role guard; `admin` requires `RequireRoleLayer` or `NexusAuthPolicy::protect_router`; `public` is restricted to recognized GET routes. The marker goes on the route's line or the line above it; in a multi-line `.route(` call, on the line above the path literal. The guard may appear anywhere in the same crate's `src` tree outside comments and `#[cfg(test)]` items, so the check does not prove that the route is mounted behind it. Manual review and runtime negative tests remain required.
   * `--geiger`: Inventories `unsafe` in the dependency tree. Unsafe may be justified and requires review; the command does not prove a zero-unsafe invariant.
   * `--sbom`: Generates a standardized **CycloneDX 1.5 JSON** Software Bill of Materials (`sbom-cyclonedx.json`) from `Cargo.lock`, with the SHA-256 checksums the lockfile records. It contains no license metadata.
   * `--audit-ignore RUSTSEC-YYYY-NNNN`: Passes one explicit, repeatable advisory exception to `cargo audit`. A successful run is reported as **NO FINDINGS OUTSIDE EXCEPTIONS**, not “no findings”; the caller must separately version, own, review, and expire every exception.
   * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan. The TCP listener inventory runs `ss -ltnH` (Linux iproute2). Where it cannot run, as on macOS, Windows or a Linux image without iproute2, the check is reported as `ERROR` and the command exits non-zero instead of reporting a clean scan.
   * `--report [md|html|json]` (new in 13.0): Runs the static report checks
-    below and writes `SECURITY_REPORT.md` (the default), `SECURITY_REPORT.html`
+    below (mapped to OWASP ASVS 5.0.0 Level 1, with a personal-data inventory
+    and accessibility heuristics) and writes `SECURITY_REPORT.md` (the default), `SECURITY_REPORT.html`
     or `SECURITY_REPORT.json` in the current directory; `--output <path>`
     chooses another file (its directory must exist). It reuses the `cargo audit`
     step with its `--audit-ignore` exceptions and the `--idor` scanner, and
@@ -2123,53 +2168,16 @@ The command exits with status `1` until every requirement has an evidenced
 `PASS`. Evidence strings are caller declarations, not verified proof; see the
 [Academy production-boundary diagnostic](security-architecture.md#academy-production-boundary-diagnostic).
 
-### `cargo rullst inspect [target]`
-Prints static structural summaries in the terminal (the analyzer entry above
-describes the exact scope):
-* `cargo rullst inspect route`: Lists the recognized one-line `get`/`post`/`put`/`delete` route declarations.
-* `cargo rullst inspect model`: Lists the structs and public fields in `src/models`.
-* `cargo rullst inspect schema`: Prints the ORM model schema derived from `#[derive(Orm)]` structs as JSON.
-* `cargo rullst inspect routes --json`: Prints the recognized routes as one
-  `rullst.cli-routes.v1` document:
-
-```json
-{
-  "schema": "rullst.cli-routes.v1",
-  "schema_version": "rullst.cli-routes.v1",
-  "complete": true,
-  "incomplete_reason": null,
-  "routes": [
-    { "method": "GET", "path": "/posts/{id}", "handler": "controllers::posts::show" }
-  ]
-}
-```
-
-`complete` is `false` when the bounded source walk stopped early or `src/` is
-missing, with the reason in `incomplete_reason`.
-
-`--json` is accepted for `routes`, `models` and `schema` (since
-13.0.0-alpha.4):
-
-* `inspect models --json` prints `rullst.cli-models.v1`: `complete`,
-  `incomplete_reason` and `files`, one entry per `src/models/*.rs` file (not
-  `mod.rs`, no symlinks) with its public `struct` and `enum` items. A struct has
-  `fields` (`name`, `type`); an enum has `variants`. A file that is not valid
-  Rust is named in `incomplete_reason`.
-* `inspect schema --json` prints `rullst.cli-schema.v1`: the same `source` and
-  `models` as the human output (`struct`, `table`, `fields` with `name`,
-  `rust_type`, `optional`), or, when the project provides `rullst-schema.json`,
-  `source: "rullst-schema.json"` with the parsed file under `snapshot`.
-
 ---
 
 ## 🛠️ Quick CLI Cheat Sheet
 
 ```bash
-# Create a new project with fast-linker scaffolding
+# Create a new project (the wizard asks for the starter, database and features)
 cargo rullst new my_app
 
 # Reverse-engineer ORM models from an existing database
-cargo rullst make:models-from-db --driver postgres --url "postgres://user:pass@localhost:5432/mydb"
+cargo rullst generate:models --driver postgres --url "postgres://user:pass@localhost:5432/mydb"
 
 # Statically inspect routes, models, or schemas in the terminal
 cargo rullst inspect route

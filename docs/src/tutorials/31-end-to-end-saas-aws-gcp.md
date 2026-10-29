@@ -26,8 +26,10 @@ placeholder before supplying live credentials.
 ## 2. Supply secrets outside source control
 
 Use AWS Secrets Manager, Google Secret Manager or an equivalent deployment
-boundary for values such as `DATABASE_URL`, provider keys, webhook secrets and
-the Rullst field-encryption key. Do not bake `.env` into an image.
+boundary for values such as `APP_KEY`, `DATABASE_URL`, provider keys, webhook
+secrets and, if you use encrypted model fields, `RULLST_ENCRYPTION_KEY`. Do not
+bake `.env` into an image (the generated `.dockerignore` keeps `.env` and
+`.env.*` out of the build context).
 
 Set `RULLST_ENV=production` and make startup fail when a required production
 adapter or credential is missing. Empty and `mock_*` provider credentials are
