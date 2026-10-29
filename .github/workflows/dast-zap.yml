@@ -292,8 +292,9 @@ jobs:
           # a checkout (it needs a signed-in POST), so Stripe is not contacted.
           (
             cd "$DAST_ROOT/zap-saas"
-            export BILLING_API_KEY="sk_test_rullst_dast_$(openssl rand -hex 8)"
-            export BILLING_WEBHOOK_SECRET="whsec_$(openssl rand -hex 24)"
+            BILLING_API_KEY="sk_test_rullst_dast_$(openssl rand -hex 8)"
+            BILLING_WEBHOOK_SECRET="whsec_$(openssl rand -hex 24)"
+            export BILLING_API_KEY BILLING_WEBHOOK_SECRET
             export BILLING_REDIRECT_URL=https://localhost/dashboard
             export BILLING_ALLOWED_PLAN_IDS=price_starter,price_pro
             export RULLST_PUBLIC_ORIGIN=https://localhost
