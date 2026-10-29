@@ -182,7 +182,13 @@ Install the v13 prerelease with an exact pin:
 ```bash
 cargo add rullst-orm@=13.0.0-alpha.4 -F strict-sqlite
 cargo add tokio -F full
+cargo add sqlx@0.9 --no-default-features
 ```
+
+`#[derive(FromRow)]` names `sqlx`, so the application depends on the same 0.9
+release directly. The code that `#[derive(Orm)]` generates needs nothing else:
+since 13.0.0-alpha.4 it reaches `tracing` and `tokio` through `rullst_orm`.
+`tokio` runs the example's `#[tokio::main]`.
 
 Select the driver of your database: `strict-sqlite`, `strict-postgres` or
 `strict-mysql`, or `drivers-all` for all three on SQLx's dynamic `Any` pool.
