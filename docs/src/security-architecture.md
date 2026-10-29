@@ -50,8 +50,8 @@ hosted workspace and installed-archive checks passed in PR #224; the final
 release campaign remains separate. It does not certify a cloud account, VPS or
 production topology.
 
-The separate [local configuration diagnostic](deployment-diagnostic.md) candidate
-reuses Core validation through `deploy:doctor`, with explicit environment-source
+The separate v13 [local configuration diagnostic](deployment-diagnostic.md),
+`cargo rullst deploy:doctor`, reuses Core validation with explicit environment-source
 selection and bounded, redacted reports. It identifies what was actually
 inspected and lists unobserved controls; its source merged in PR #225 after
 hosted checks, and its archive gate passed in a later exact-commit run.
