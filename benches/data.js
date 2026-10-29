@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793121050344,
+  "lastUpdate": 1793238970597,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -29029,6 +29029,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1621,
             "range": "± 30",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "06a0a04888f93ad0d24bdf1d80c2225ac6b2cf2c",
+          "message": "Merge pull request #553 from Rullst/chore/v13-jsonschema-0.60\n\nchore(deps): update jsonschema to 0.60.1 in the workspace and fuzz lockfiles",
+          "timestamp": "2026-10-28T22:28:07-03:00",
+          "tree_id": "15f4ef6a44dd092c93890338913f7c044e544151",
+          "url": "https://github.com/Rullst/Rullst/commit/06a0a04888f93ad0d24bdf1d80c2225ac6b2cf2c"
+        },
+        "date": 1793238967863,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 700,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 907,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 424,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1973,
+            "range": "± 34",
             "unit": "ns/iter"
           }
         ]
