@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793261427181,
+  "lastUpdate": 1793263885648,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -18285,6 +18285,60 @@ window.BENCHMARK_DATA = {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 13,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "03d3eabebd3c8ea8e20b9403f44ce16f4567e6b7",
+          "message": "Merge pull request #555 from Rullst/feat/v13-alpha4-lean-cli\n\nfeat(cli)!: lean main CLI, cargo-rullst-extras, deployment guides and --json contract",
+          "timestamp": "2026-10-29T05:28:27-03:00",
+          "tree_id": "6b58842afed0ef71a91246cda98080194af01036",
+          "url": "https://github.com/Rullst/Rullst/commit/03d3eabebd3c8ea8e20b9403f44ce16f4567e6b7"
+        },
+        "date": 1793263884708,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5454,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 587,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 14,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
