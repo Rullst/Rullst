@@ -320,7 +320,8 @@ fn an_index_of_exactly_8_mib_is_parsed() {
     use std::io::{Seek, SeekFrom, Write};
     let fixture = Fixture::new();
     let mut index = File::create(fixture.backup.join("index.tsv")).unwrap();
-    index.set_len(MAX_INDEX_BYTES - 2).unwrap();
+    // A literal size, so a changed bound cannot move the fixture with it.
+    index.set_len(8 * 1024 * 1024 - 2).unwrap();
     index.seek(SeekFrom::End(0)).unwrap();
     index.write_all("é".as_bytes()).unwrap();
     drop(index);
@@ -397,7 +398,7 @@ fn snapshots_may_total_at_most_512_mib() {
         error
     };
     assert_eq!(
-        plan_total(8, MAX_FILE_BYTES),
+        plan_total(8, 64 * 1024 * 1024),
         "invalid upgrade backup: only a newly created root Cargo.lock may be removed"
     );
     assert_eq!(

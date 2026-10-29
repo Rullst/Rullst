@@ -56,8 +56,9 @@ fn rust_files_up_to_2_mib_are_scanned() {
     std::fs::write(root.join("src/main.rs"), "fn main() {}\n").unwrap();
     std::fs::write(root.join("src/notes.txt"), "not Rust {\n").unwrap();
     let comment = |bytes: u64| format!("//{}\n", "x".repeat(bytes as usize - 3));
-    std::fs::write(root.join("src/large.rs"), comment(MAX_SOURCE_BYTES)).unwrap();
-    std::fs::write(root.join("src/larger.rs"), comment(MAX_SOURCE_BYTES + 1)).unwrap();
+    // Literal sizes, so a changed bound cannot move the fixture with it.
+    std::fs::write(root.join("src/large.rs"), comment(2 * 1024 * 1024)).unwrap();
+    std::fs::write(root.join("src/larger.rs"), comment(2 * 1024 * 1024 + 1)).unwrap();
     let mut scan = SourceScan::default();
     scan_package(root, &WorkspaceFacts::default(), &mut scan).unwrap();
     assert_eq!(scan.unscanned, vec![root.join("src/larger.rs")]);
