@@ -8,11 +8,23 @@ hosted identity service or a claim that every production policy is automatic.
 
 ## Step 1: Run the generator
 
-Run this from a Rullst project root:
+The SaaS starter already contains this code. In a Blank or API project with a
+database, such as the `shop` project of [Tutorial 02](02-cli-generators.md),
+run from the project root:
 
 ```bash
 cargo rullst auth
 ```
+
+Those starters ship a minimal `users` migration
+(`src/migrations/m20260601000000_create_users_table.rs`), and the command
+refuses to add a second one. In a learning project whose `users` table holds
+no data, delete that migration file; if `cargo rullst dev` or
+`cargo rullst db:migrate` already ran, also delete the local SQLite database
+(`db.sqlite`, with any `db.sqlite-wal`/`db.sqlite-shm` beside it), which the
+next run recreates with every migration. Then run `cargo rullst auth` again.
+In an application with real accounts, keep the migration and add the columns
+with `cargo rullst make:migration` instead, as the error message says.
 
 The current command creates:
 
@@ -34,8 +46,7 @@ It also enables the `orm`, `auth` and `mail` umbrella features in
 `Cargo.toml`. It fails before writing anything when one of those files exists,
 when a `*_create_password_reset_tokens_table.rs` migration exists, or when a
 `*_create_users.rs`/`*_create_users_table.rs` migration already creates the
-users table (the blank database starter ships one); add the account columns
-with `cargo rullst make:migration` in that case. Turso-primary projects are not
+users table (see above). Turso-primary projects are not
 supported, and neither is a project without a database migration runner (a
 `--no-database` starter): create the project with a database so `src/main.rs`
 declares `pub mod migrations;` and calls
@@ -98,6 +109,12 @@ let password_change = routes![
     .layer(from_fn(auth_controller::credential_rate_limit)))
 .layer(from_fn(auth_middleware));
 ```
+
+Add each group to the starter's router in `router()` (`src/main.rs`) with
+`.merge_axum(public_auth.into_axum())` and so on, before its
+`.layer(rullst::server::from_fn(rullst::security::csrf_middleware))` line so
+that CSRF protection covers them. The SaaS starter's `router()` shows the same
+routes registered one by one.
 
 `credential_rate_limit` allows ten submissions per minute for each connecting
 peer. Behind a reverse proxy, configure `[security] trusted_proxies` so clients

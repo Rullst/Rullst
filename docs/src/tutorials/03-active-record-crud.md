@@ -4,46 +4,75 @@
 struct. The SQLx-backed model uses an `i32` primary key named `id`; a zero value
 means that `save()` inserts, while a non-zero value means that it updates.
 
+This tutorial continues in the `shop` project of
+[Tutorial 02](02-cli-generators.md), whose `cargo rullst make:model Product
+--migration` wrote `src/models/product.rs` and
+`src/migrations/m<timestamp>_create_products.rs`.
+
 ---
 
 ## Step 1: Define an Active Record model
 
-In `src/models/user.rs`:
+Give the generated migration the columns the model will use. In its `up()`:
+
+```rust,ignore
+Schema::create("products", |table| {
+    table.id();
+    table.string("name").not_null();
+    table.integer("price_cents").not_null();
+    table.timestamps();
+}).await
+```
+
+Then add the matching fields to `src/models/product.rs`:
 
 ```rust
-use rullst_orm::{FromRow, Orm};
+use rullst::db::{FromRow, Orm, RowSnapshot};
 
 #[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "users")]
-pub struct User {
+#[orm(table = "products")]
+pub struct Product {
     pub id: i32,
     pub name: String,
-    pub email: String,
+    pub price_cents: i32,
+    // Remembers the loaded values, so `save()` writes only the columns this
+    // record changed. Build new records with `snapshot: RowSnapshot::default()`.
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 ```
 
-The database table must contain matching columns. Run migrations before using
-the model.
+Apply the migration with `cargo rullst db:migrate` (or restart
+`cargo rullst dev`) before using the model. The model leaves out
+`created_at`/`updated_at`, so inserts keep their database defaults. If
+`cargo rullst dev` already applied the migration while it had only an `id`,
+run `cargo rullst db:rollback` (it reverts the last batch of migrations,
+including this one) and then `cargo rullst db:migrate`;
+[Tutorial 05](05-migrations-and-seeds.md) explains both commands.
 
 ---
 
 ## Step 2: Perform CRUD operations
 
+Call these methods from an `async` handler or seeder, for example in a
+controller of [Tutorial 02](02-cli-generators.md).
+
 ### Create
 
 ```rust,no_run
-# use rullst_orm::{FromRow, Orm};
+# use rullst::db::{FromRow, Orm, RowSnapshot};
 # #[derive(Debug, Clone, FromRow, Orm)]
-# #[orm(table = "users")]
-# struct User { id: i32, name: String, email: String }
-# async fn create_user() -> Result<(), rullst_orm::Error> {
-let mut user = User {
+# #[orm(table = "products")]
+# struct Product { id: i32, name: String, price_cents: i32, #[sqlx(skip)] snapshot: RowSnapshot }
+# async fn create_product() -> Result<(), rullst::orm::Error> {
+let mut product = Product {
     id: 0,
-    name: "Alice Developer".to_string(),
-    email: "alice@example.com".to_string(),
+    name: "Starter kit".to_string(),
+    price_cents: 2_500,
+    snapshot: RowSnapshot::default(),
 };
-user.save().await?;
-// `user.id` now contains the inserted primary key.
+product.save().await?;
+// `product.id` now contains the inserted primary key.
 # Ok(())
 # }
 ```
@@ -51,17 +80,17 @@ user.save().await?;
 ### Read and filter
 
 ```rust,no_run
-# use rullst_orm::{FromRow, Orm};
+# use rullst::db::{FromRow, Orm, RowSnapshot};
 # #[derive(Debug, Clone, FromRow, Orm)]
-# #[orm(table = "users")]
-# struct User { id: i32, name: String, email: String }
-# async fn read_users() -> Result<(), rullst_orm::Error> {
-let user = User::find(1).await?; // Result<Option<User>, rullst_orm::Error>
-let example_users = User::query()
-    .where_like("email", "%@example.com")
+# #[orm(table = "products")]
+# struct Product { id: i32, name: String, price_cents: i32, #[sqlx(skip)] snapshot: RowSnapshot }
+# async fn read_products() -> Result<(), rullst::orm::Error> {
+let product = Product::find(1).await?; // Result<Option<Product>, rullst::orm::Error>
+let kits = Product::query()
+    .where_like("name", "%kit%")
     .get()
     .await?;
-# let _ = (user, example_users);
+# let _ = (product, kits);
 # Ok(())
 # }
 ```
@@ -73,14 +102,15 @@ untrusted request input.
 ### Update
 
 ```rust,no_run
-# use rullst_orm::{FromRow, Orm};
+# use rullst::db::{FromRow, Orm, RowSnapshot};
 # #[derive(Debug, Clone, FromRow, Orm)]
-# #[orm(table = "users")]
-# struct User { id: i32, name: String, email: String }
-# async fn update_user() -> Result<(), rullst_orm::Error> {
-if let Some(mut user) = User::find(1).await? {
-    user.name = "Alice Smith".to_string();
-    user.save().await?;
+# #[orm(table = "products")]
+# struct Product { id: i32, name: String, price_cents: i32, #[sqlx(skip)] snapshot: RowSnapshot }
+# async fn update_product() -> Result<(), rullst::orm::Error> {
+if let Some(mut product) = Product::find(1).await? {
+    product.price_cents = 2_000;
+    // The snapshot makes this an UPDATE of `price_cents` only.
+    product.save().await?;
 }
 # Ok(())
 # }
@@ -89,17 +119,22 @@ if let Some(mut user) = User::find(1).await? {
 ### Delete
 
 ```rust,no_run
-# use rullst_orm::{FromRow, Orm};
+# use rullst::db::{FromRow, Orm, RowSnapshot};
 # #[derive(Debug, Clone, FromRow, Orm)]
-# #[orm(table = "users")]
-# struct User { id: i32, name: String, email: String }
-# async fn delete_user() -> Result<(), rullst_orm::Error> {
-if let Some(user) = User::find(1).await? {
-    user.delete().await?;
+# #[orm(table = "products")]
+# struct Product { id: i32, name: String, price_cents: i32, #[sqlx(skip)] snapshot: RowSnapshot }
+# async fn delete_product() -> Result<(), rullst::orm::Error> {
+if let Some(product) = Product::find(1).await? {
+    product.delete().await?;
 }
 # Ok(())
 # }
 ```
+
+Without a `RowSnapshot` field, `save()` on a loaded record writes every
+column, so the last writer wins; see the
+[ORM guide](../crates/orm.md#concurrent-updates-and-counters) for dirty
+tracking and `update_partial()`.
 
 ---
 
@@ -153,7 +188,8 @@ permanently. Both check the tenant and the policy (`can_restore` /
 - `save`, `find`, `all`, `query`, and `delete` are generated for SQLx-backed
   `Orm` models.
 - Creation uses a normal Rust struct, not a JSON map.
-- CRUD errors are returned as `rullst_orm::Error`; a missing row is `Ok(None)`.
+- CRUD errors are returned as `rullst::orm::Error` (the `rullst_orm::Error`
+  type); a missing row is `Ok(None)`.
   Saving or deleting a handle whose row was deleted meanwhile returns
   `RecordNotFound` instead of silently succeeding.
 - Use a caller-owned transaction and the generated `*_with_tx` methods when a

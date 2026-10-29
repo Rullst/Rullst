@@ -1,6 +1,6 @@
 # Tutorial 06: HTMX-oriented server rendering 🎨
 
-Rullst's default scaffold renders HTML on the server and can use HTMX attributes
+The Blank and SaaS starters render HTML on the server and use HTMX attributes
 for targeted requests and fragment swaps. It does not require a project-local
 SPA bundle, but HTMX itself is browser JavaScript. The CLI's HTML starters write
 a pinned copy to `static/htmx-1.9.12.min.js`, which `rullst::htmx::render_page`
@@ -36,7 +36,8 @@ pub async fn search_users() -> Markup {
 
 `html!` returns `Markup`, escaped HTML that a handler can return directly
 (`text/html; charset=utf-8`). Each `name` is escaped, and the collected rows
-are inserted into the list as HTML.
+are inserted into the list as HTML. Mount the handler in `router()` of
+`src/main.rs` with `get("/api/users/search" => search_users),`.
 
 ### Composing views
 
@@ -93,9 +94,12 @@ as written, and element names may be Rust keywords, such as SVG's
 </div>
 ```
 
-Mount the example search handler as a **GET** route: this example only reads a
-list. GET is not a workaround for CSRF. Commands that change data, send messages
-or incur provider charges must not be converted to GET to avoid validation.
+Put this markup in a page that loads HTMX: the starter's `home` handler returns
+its page through `rullst::htmx::render_page_with_lang`, which adds the
+same-origin HTMX script. The search handler is a **GET** route because it only
+reads a list. GET is not a workaround for CSRF. Commands that change data, send
+messages or incur provider charges must not be converted to GET to avoid
+validation.
 For POST forms, including an AI chat, follow the
 [CSRF form contract](07-forms-and-validation.md#step-3-send-the-csrf-token-with-browser-forms).
 HTMX does not automatically copy Rullst's CSRF cookie into a header or make

@@ -8,10 +8,9 @@ you will be able to point to the handler that produced the page in your browser.
 [Next: CLI generators](02-cli-generators.md)
 
 This tutorial takes a new developer from installing Rust to a running Rullst
-web application. It targets `12.1.2`; check the [release record](../v12.md) for registry availability.
-Production adoption still needs application review and immutable artifacts;
-neither moving `main` nor merely pinning end-of-life v5 satisfies that
-requirement.
+web application. It targets the v13 prerelease `13.0.0-alpha.4`. The v12 line
+reached end of life on 16 October 2026 (see the [release record](../v12.md));
+existing v12 applications follow the [v13 migration guide](../migration-v13.md).
 
 ## 1. Install Rust and Cargo
 
@@ -34,8 +33,9 @@ rustc --version
 cargo --version
 ```
 
-Rullst v12 requires the MSRV recorded in the
-[compatibility policy](../compatibility-policy.md).
+Rullst v13 requires Rust 1.96.0 or newer, the MSRV recorded in the
+[compatibility policy](../compatibility-policy.md). Run `rustup update` if
+`rustc --version` reports an older release.
 
 ## 2. Create a project
 
@@ -60,11 +60,6 @@ cargo add tokio --features full
 Cargo records the resolved dependency graph in `Cargo.lock`. Commit that file
 for an application so its checkout remains reproducible, and review future
 dependency updates before deployment.
-
-Applications that must remain on end-of-life v5 should use its
-[versioned API documentation](https://docs.rs/rullst/5.0.0/rullst/) instead;
-the API below is intentionally different. That reference preserves the old
-API, not a promise of ongoing maintenance or a deployment recommendation.
 
 ## 4. Define the first route
 
@@ -104,16 +99,22 @@ Start the server:
 cargo run
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Stop it with `Ctrl+C`.
+The first build compiles every dependency and can take several minutes
+([Build times](../build-times.md)). When the terminal prints
+`Rullst framework serving on http://127.0.0.1:3000`, open
+[http://127.0.0.1:3000](http://127.0.0.1:3000). Stop the server with `Ctrl+C`.
 
 **Make it yours:** change the heading to your project name, restart with
 `cargo run`, and confirm the response changed. The example's utility class
 names do not install Tailwind by themselves; seeing an unstyled page is not a
-server failure. Use a generated HTML blueprint for a bundled local stylesheet.
+server failure. The Blank and SaaS starters of the CLI ship a local stylesheet
+(`static/rullst.css`).
 
-If the port is already occupied, stop the conflicting process you own or change
-the `.run(3000)` port above. Keep the terminal output: it is the first place to
-look for a build or startup diagnostic.
+If the port is already occupied, stop the conflicting process you own or start
+on another port with `PORT=3001 cargo run`: the `PORT` variable (from the
+environment, then `.env`) takes precedence over the `.run(3000)` argument. Keep
+the terminal output: it is the first place to look for a build or startup
+diagnostic.
 
 ## 6. Continue with the CLI
 
@@ -123,8 +124,11 @@ prerelease on its own):
 
 ```bash
 cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
-cargo rullst --help
+cargo rullst --version
 ```
+
+The second command prints `rullst 13.0.0-alpha.4`. [Tutorial 02](02-cli-generators.md)
+creates a project with it; the hand-written `my_first_app` is not needed there.
 
 The CLI's `new` generator targets the CLI's own framework version. A CLI built
 from a source checkout of `main` is the v13 development line: it emits absolute
@@ -146,5 +150,5 @@ boundary.
   application-defined error that converts the relevant typed framework/domain
   errors; server startup propagates `ServerError` with `?`.
 - The moving `main` branch is an integration source, not an immutable release
-  artifact. For reproducible v12 applications, use the exact crates.io version
-  and its matching immutable release tag after the registry publication receipt exists.
+  artifact. For a reproducible application, pin the exact crates.io version
+  (`=13.0.0-alpha.4`) and commit `Cargo.lock`.

@@ -10,12 +10,16 @@ lists.
 
 ## Step 1: Create a migration
 
+Run this in the `shop` project of [Tutorial 02](02-cli-generators.md), which
+already has `products` and `categories` tables:
+
 ```bash
-cargo rullst make:migration create_products_table
+cargo rullst make:migration create_catalog_items_table
 ```
 
-The command creates `src/migrations/m<timestamp>_create_products_table.rs` and
-regenerates `src/migrations/mod.rs`. Edit the generated `up` and `down` methods:
+The command creates `src/migrations/m<timestamp>_create_catalog_items_table.rs`
+and regenerates `src/migrations/mod.rs`. Edit the generated `up` and `down`
+methods:
 
 ```rust,no_run
 use rullst_orm::{async_trait, schema::{ForeignKeyAction, Migration, Schema}};
@@ -25,11 +29,11 @@ pub struct MigrationImpl;
 #[async_trait]
 impl Migration for MigrationImpl {
     fn name(&self) -> &'static str {
-        "m20260901000000_create_products_table"
+        "m20260901000000_create_catalog_items_table"
     }
 
     async fn up(&self) -> Result<(), rullst_orm::Error> {
-        Schema::create("products", |table| {
+        Schema::create("catalog_items", |table| {
             table.id();
             table.string("name").not_null();
             // MySQL/MariaDB cannot index a TEXT column, so the indexed SKU
@@ -48,13 +52,15 @@ impl Migration for MigrationImpl {
     }
 
     async fn down(&self) -> Result<(), rullst_orm::Error> {
-        Schema::drop_if_exists("products").await
+        Schema::drop_if_exists("catalog_items").await
     }
 }
 ```
 
 Keep the generated timestamp/name in `name()`; the runner uses that stable value
-to record migration state.
+to record migration state. The foreign key needs the referenced table:
+`categories` comes from `cargo rullst make:resource Category`, and this
+migration, generated later, has a later timestamp and runs after it.
 
 `unique()`, `index(...)`, `foreign_id(...)`/`foreign(...)` and `check(...)`
 declare constraints and indexes with the table (see the
@@ -81,12 +87,12 @@ use rullst_orm::schema::{ForeignKeyAction, Schema};
 
 # async fn up() -> Result<(), rullst_orm::Error> {
 Schema::table("products", |table| {
-    table.integer("supplier_id");
+    table.integer("category_id");
     table
-        .foreign("supplier_id")
-        .references("suppliers", "id")
+        .foreign("category_id")
+        .references("categories", "id")
         .on_delete(ForeignKeyAction::SetNull);
-    table.unique_index(&["name", "supplier_id"]);
+    table.unique_index(&["name", "category_id"]);
 })
 .await
 # }
@@ -201,29 +207,45 @@ cross-process advisory lock, so run a single migrator per SQLite database.
 
 ## Step 3: Define and register a seeder
 
-```rust,ignore
-use rullst_orm::{async_trait, Seeder};
+Create `src/seeds.rs` with a seeder for the `Product` model of
+[Tutorial 03](03-active-record-crud.md), and declare `mod seeds;` in
+`src/main.rs`:
 
-pub struct AdminSeeder;
+```rust,ignore
+use rullst::db::{async_trait, RowSnapshot, Seeder};
+use crate::models::product::Product;
+
+pub struct CatalogSeeder;
 
 #[async_trait]
-impl Seeder for AdminSeeder {
-    async fn run(&self) -> Result<(), rullst_orm::Error> {
-        let mut admin = crate::models::User {
+impl Seeder for CatalogSeeder {
+    async fn run(&self) -> Result<(), rullst::orm::Error> {
+        // Idempotent: a second `db:seed` finds the row and adds nothing.
+        let existing = Product::query()
+            .where_eq("name", "Starter kit")
+            .first()
+            .await?;
+        if existing.is_some() {
+            return Ok(());
+        }
+        let mut product = Product {
             id: 0,
-            name: "Admin User".to_string(),
-            email: "admin@example.test".to_string(),
+            name: "Starter kit".to_string(),
+            price_cents: 2_500,
+            snapshot: RowSnapshot::default(),
         };
-        admin.save().await
+        product.save().await
     }
 }
 
 pub fn get_seeders() -> Vec<Box<dyn Seeder>> {
-    vec![Box::new(AdminSeeder)]
+    vec![Box::new(CatalogSeeder)]
 }
 ```
 
-Register migrations and seeders before starting the server:
+Register migrations and seeders before starting the server: in `main()`,
+replace the starter's `rullst::artisan!(crate::migrations::get_migrations());`
+with
 
 ```rust,ignore
 rullst::artisan!(
@@ -252,10 +274,10 @@ seeder fail on a table that does not exist yet:
 Validation error: 1 migration(s) pending, starting with `m20261012_create_users`: run `db:migrate` before `db:seed`
 ```
 
-Seeders execute sequentially. Make development/CI seeders idempotent if the
-command may run more than once. Never commit real passwords or provider secrets;
-for authentication records, hash a test password with `rullst-auth` or create a
-non-login fixture.
+Seeders execute sequentially. Make development/CI seeders idempotent, as above,
+if the command may run more than once. Never commit real passwords or provider
+secrets; for authentication records, hash a test password with `rullst-auth` or
+create a non-login fixture.
 
 ---
 

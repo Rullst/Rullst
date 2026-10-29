@@ -14,7 +14,7 @@ matched against the stock PowerShell product token in `User-Agent`
 ## 🛠️ Step 1: Mount `RaspSecurityLayer` in `main.rs`
 
 ```rust,no_run
-use axum::Router;
+use rullst::web::axum::Router;
 use rullst_security::rasp::RaspSecurityLayer;
 use rullst::Server;
 

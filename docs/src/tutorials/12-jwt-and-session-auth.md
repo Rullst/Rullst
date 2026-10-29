@@ -25,9 +25,15 @@ export JWT_AUDIENCE="rullst-api"
 
 The generated HS256 validator requires `sub`, `iss`, `aud`, `iat`, and `exp`,
 checks expiry, and rejects secrets shorter than 32 bytes, with fewer than 12
-distinct characters, or starting with `mock_`. It reads these variables from
-the process environment on each request. Keep the secret out of source control
-and logs.
+distinct characters, or starting with `mock_`. It reads these variables with
+`std::env::var` on each request, so they must be set in the process
+environment: a value only in `.env` is not seen, and while one is missing a
+request that carries a bearer token receives `500`. Keep the secret out of
+source control and logs.
+
+The same file provides `generate_token(user_id)`, which issues a token with
+these settings that expires after 24 hours. Call it after your own credential
+check, never for an unauthenticated caller.
 
 ---
 

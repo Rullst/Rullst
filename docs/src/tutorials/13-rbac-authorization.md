@@ -19,7 +19,11 @@ pub fn authorize_admin(user: &UserContext) -> Result<(), SecurityError> {
 
 Construct `UserContext` only after authentication. Roles, permissions, and
 tenant membership must come from trusted server-side state, not request headers
-or JSON supplied by the caller.
+or JSON supplied by the caller. In a project with the
+[`cargo rullst auth`](11-authentication-system.md) scaffold, `auth_middleware`
+inserts the signed-in account id as `Extension<i32>`; build the context with
+`UserContext::new(user_id.to_string(), roles)` from roles your application
+stores. Generated projects already depend on `rullst-security`.
 
 ---
 
