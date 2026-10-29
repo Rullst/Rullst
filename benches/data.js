@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793288586963,
+  "lastUpdate": 1793293567682,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -29461,6 +29461,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2098,
             "range": "± 224",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f230beccb0814f0aab06b6a20ed799af17f34c92",
+          "message": "Merge pull request #562 from Rullst/docs/v13-audit-guides-b\n\ndocs: audit the v13 feature guides (i18n, auth, storage, messaging, privacy, supervision, media)",
+          "timestamp": "2026-10-29T13:39:45-03:00",
+          "tree_id": "d6bbbacfb5946b2f1e26c9f2360ca00942d08e61",
+          "url": "https://github.com/Rullst/Rullst/commit/f230beccb0814f0aab06b6a20ed799af17f34c92"
+        },
+        "date": 1793293564256,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 393,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 564,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 271,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1102,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
