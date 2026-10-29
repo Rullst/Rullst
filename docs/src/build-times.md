@@ -116,6 +116,15 @@ compiled twice: once for SQLx's compile-time macros and once for the
 application. None of this depends on your code, so it is paid again only
 after `cargo clean`, a toolchain update or a change of features or profile.
 
+Rullst keeps `aws-lc-rs` as the TLS crypto provider, for rustls'
+post-quantum hybrid key exchange, so the `aws-lc-sys` build script stays in a
+project's first build. Later builds reuse it, and the dependency layer of the
+generated Dockerfile (the cargo-chef approach) caches it in images; moving to
+`ring` is not planned. Compiling SQLite and the other affected crates only
+once, and keeping `rullst-ai` out of the SaaS starter (Nexus pulls it in
+today), are planned for 13.0.0-rc.1 if they need no breaking change,
+otherwise for 13.1.
+
 ## Tips
 
 - **Use `cargo check` while you edit.** It skips code generation and

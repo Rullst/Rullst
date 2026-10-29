@@ -18,29 +18,6 @@ or platforms and carry their own **Maturity** label below the command name:
 *Supported* or *Experimental*. The [maturity tiers](maturity.md#cli-generators) page
 explains what each label promises.
 
-## Extras (`cargo-rullst-extras`)
-
-The terminal AI assistant ([`cargo rullst ai`](#cargo-rullst-ai-extras)) and
-the efficiency report ([`cargo rullst green`](#cargo-rullst-green-extras))
-live in the optional, Experimental `cargo-rullst-extras` package, so the main
-CLI stays small. Install it with the same version as the CLI:
-
-```bash
-cargo install cargo-rullst-extras --version =13.0.0-alpha.4 --locked
-```
-
-`cargo rullst ai …` and `cargo rullst green …` run `cargo-rullst-extras ai …`
-and `cargo-rullst-extras green …`, found on `PATH` the way Cargo finds its own
-`cargo-<name>` plugins: every argument, `--help` included, passes through
-unchanged, and the extras' exit status becomes the command's exit status. Only
-absolute `PATH` entries are searched, so an executable in the current
-directory is never run. Without the extras, the command prints the exact
-install command above and exits with status 1; the home menu marks both
-entries `extras` and shows the install command instead of failing. The extras
-also run on their own (`cargo-rullst-extras ai`, or `cargo rullst-extras ai`);
-the assistant's allowlisted `cargo rullst` actions then run the
-`cargo-rullst` executable from `PATH`.
-
 ## Machine-readable output
 
 A command whose result is data accepts `--json`. The contract is the same for
@@ -78,9 +55,7 @@ all of them:
 | `cargo rullst update project verify --dry-run` or `--json` | `rullst.project-verification-plan.v1` (dry run), `rullst.project-verification.v1` |
 | `cargo rullst update project review --json` | `rullst.project-review-report.v1` |
 | `cargo rullst update project apply --json` and `recover --json` | `rullst.project-application.v1` |
-| `cargo rullst ai status --json` (extras) | `rullst.ai-status.v1` |
-| `cargo rullst ai review --json` (extras) | `rullst.ai-review.v1` |
-| `cargo rullst green --json` (extras) | `rullst.green.v1` |
+| `cargo rullst green --json` (experimental) | `rullst.green.v1` |
 
 `pkg list --json` prints `{"schema": "rullst.cli-pkg.v1", "table":
 "dependencies", "packages": ["rullst-auth"]}`; `table` is
@@ -108,10 +83,9 @@ and a summary of where you are.
   Turso-primary project), the number of `src/migrations` files and the latest
   one, and the Git branch. Connection URLs are never displayed. The menu leads
   with dev, dash, scaffolding, database, `doctor` and deploy, keeps every
-  project operation of earlier releases, and offers **AI Assistant** and
-  **Green Report**, marked `extras`: without
-  [`cargo-rullst-extras`](#extras-cargo-rullst-extras) they print its install
-  command instead of failing. Started from a subdirectory, menu
+  project operation of earlier releases, and offers **Green Report**
+  ([`cargo rullst green`](#cargo-rullst-green), Experimental). Started from a
+  subdirectory, menu
   commands run at the project root (except `new`). The migration count is the
   files on disk; run `cargo rullst db:status` for the applied state.
 * **Outside a project**: the summary links the docs ([start here](start-here.md)
@@ -481,11 +455,11 @@ working: their code is theirs.
 
 ### `cargo rullst tour` (v13)
 A short guided walkthrough of the main commands in seven skippable steps:
-`new`, `dev`, `dash`, `make:*`, `db:*`, `doctor` and `ai`. Each step explains
-what the command family does, lists commands to try and offers one read-only
-example that runs only when you pick it: `cargo rullst new tour-demo --default
---dry-run` for `new` and `--help` for the others (the `ai` step falls back to
-`generate:ai-context --help` in a build without `cargo rullst ai`). Next,
+`new`, `dev`, `dash`, `make:*`, `db:*`, `doctor` and `generate:ai-context`.
+Each step explains what the command family does, lists commands to try and
+offers one read-only example that runs only when you pick it:
+`cargo rullst new tour-demo --default --dry-run` for `new` and `--help` for the
+others. Next,
 Previous (or Esc) and *Quit the tour* move between steps. The tour needs no
 network and never creates or changes a project.
 
@@ -556,8 +530,7 @@ findings; preparations apply every rule. In JSON, each
 or `REVIEW`) and `message` and adds `kind`, `introduced_in`, `migration_row`
 and `migration_url`; the root adds `finding_counts`, `unscanned_sources`,
 `migration_guide` and `rule_selection` (`current_version`, `all_rules`,
-`skipped_rules`, `hidden_findings`). `cargo rullst ai upgrade` proposes reviewed fixes for the
-findings. See the [tutorial](tutorials/36-assisted-framework-upgrades.md#v12-to-v13-source-findings)
+`skipped_rules`, `hidden_findings`). See the [tutorial](tutorials/36-assisted-framework-upgrades.md#v12-to-v13-source-findings)
 and its [rule classification](tutorials/36-assisted-framework-upgrades.md#v12--v13-rule-classification).
 
 Since 12.1, managed requirements use exact `=VERSION` pins. The final
@@ -831,7 +804,7 @@ It runs only at the root of a Rullst project (a `Cargo.toml` whose
 | :--- | :--- | :--- | :--- |
 | `mail` | `mail` | `MAIL_FROM`, `# MAIL_DRIVER`, `# RESEND_API_KEY` | `make:mail Welcome`, `dev` |
 | `auth` | `auth` | `APP_KEY` placeholder | `auth`, `make:mfa` |
-| `ai` | `ai` | `OPENAI_API_KEY=mock_openai_key`, commented Anthropic, Gemini and Ollama entries | `make:chat-session`, `ai connect` |
+| `ai` | `ai` | `OPENAI_API_KEY=mock_openai_key`, commented Anthropic, Gemini and Ollama entries | `make:chat-session`, `generate:ai-context` |
 | `nexus` | `nexus` | empty `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` (required by release builds unless Nexus uses the application's sign-in, `NexusAuthPolicy::application`) | `dev`, then `/nexus` |
 | `studio` | `studio` | none | `dev`, then `http://127.0.0.1:5555` |
 
@@ -1565,169 +1538,23 @@ with dependency metadata, configuration key names and source paths. It creates
 `--check` detects missing, altered or stale inventory without writing files.
 See [project context](project-context.md) for limits, exclusions and legacy migration.
 
-### `cargo rullst ai` (extras)
-**Maturity:** Experimental; part of the optional
-[`cargo-rullst-extras`](#extras-cargo-rullst-extras) package since
-13.0.0-alpha.4.
+### `cargo rullst ai` (removed)
+The terminal AI assistant of the earlier 13.0 prereleases (`ai`, `ai connect`,
+`ai status`, `ai disconnect`, `ai upgrade`, `ai fix` and `ai review`) was
+removed in 13.0.0-alpha.4. `cargo rullst ai …`, with any arguments, prints
+what replaces it and exits with status 1; the command is hidden from `--help`,
+completions, the command palette and the home screen.
 
-A terminal assistant that knows Rullst and the current project. It answers
-questions and proposes changes that you review one by one. A walkthrough is in
-[the terminal AI assistant guide](ai-assistant.md).
-
-```bash
-cargo rullst ai connect                # choose provider, model and key (interactive)
-cargo rullst ai                        # streaming chat in the current project
-cargo rullst ai "add a posts page"     # one goal, then exit
-cargo rullst ai status [--json]        # provider, model and key source (never the key)
-cargo rullst ai disconnect             # delete the saved credentials file
-cargo rullst ai upgrade [--to <VERSION>] [--all-rules] [--dry-run]  # reviewed fixes for upgrade findings
-cargo rullst ai fix <ERROR_ID> [--url <URL>] [--dry-run]  # reviewed fix for a panic on the error page
-cargo rullst ai review [--staged | --base <REF> | --include-untracked] [--json]  # read-only diff review
-```
-
-* **Providers:** OpenAI, Anthropic Claude, Google Gemini, DeepSeek, Ollama and
-  a local OpenAI-compatible server (LM Studio, llama.cpp server, vLLM,
-  LocalAI, Jan), all through `rullst-ai` and its mandatory
-  prompt-injection/PII guardrails. PII masking also applies to your goal and
-  shared files (`help@acme.com` is sent as `h***@acme.com`); the CLI notes when
-  your message is masked and flags a change that writes a masked value back. Every provider streams its answers except an
-  Ollama host that is not a loopback address, which answers at once. A local
-  server must listen on loopback (`http://127.0.0.1:...`, `http://[::1]:...`;
-  `localhost` is pinned to `127.0.0.1`); its model name must match the model
-  the server loaded.
-* **Credentials:** a provider environment variable (`OPENAI_API_KEY`,
-  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `OLLAMA_HOST`,
-  `RULLST_AI_BASE_URL` for a local server) takes precedence over the user
-  credentials file
-  `$XDG_CONFIG_HOME/rullst/credentials.toml` (`~/.config/rullst/...`;
-  `%APPDATA%\rullst\credentials.toml` on Windows). `connect` writes it
-  atomically with mode 0600 in a 0700 directory on Unix, refuses symlinks and
-  refuses a location inside the current project or a git work tree. Keys are
-  never printed. Provider selection: `--provider`, then the saved provider,
-  then the first variable above that is set. Model: `--model`, then
-  `RULLST_AI_MODEL`, then the saved model, then the provider default.
-  `ai status --json` prints one `rullst.ai-status.v1` object (its `schema`
-  field) with the provider, model and credential source.
-* **`connect` flags:** `--provider <openai|anthropic|claude|gemini|deepseek|ollama|local>`,
-  `--model <name>`, `--api-key-stdin` (read the key from the first line of
-  standard input, for scripts), `--host <url>` (Ollama, default
-  `http://127.0.0.1:11434`), `--base-url <url>` (local server, default
-  `http://127.0.0.1:1234/v1`) and the pair `--input-price-per-mtok <n>`
-  `--output-price-per-mtok <n>` (your prices per million tokens, stored with the
-  provider and used only for labelled estimates). Without a terminal,
-  `--provider` is required; interactively, `connect` also offers to record
-  prices.
-* **Chat flags:** `--provider`, `--model` and `--dry-run` (show proposed
-  actions, never execute them). REPL commands: `/add <path>` shares a project
-  file with your next message, `/reset`, `/help`, `/exit`. Ctrl+C cancels the
-  current answer; Ctrl+D exits.
-* **Offline mode:** with no configured provider, or an empty or `mock_*` key,
-  a deterministic offline assistant answers (no network). Inside a project it
-  proposes a two-step demo plan (create and edit `rullst-ai-demo.md`); outside
-  one it first proposes `cargo rullst new rullst-ai-demo` and continues inside
-  it, so the review flow can be tried safely.
-* **Actions:** the model may only propose `write_file`, `edit_file` (one exact
-  replacement), an allowlisted `cargo rullst` command (`make:*`, `generate:*`
-  except `generate:models` and its `make:models-from-db` alias, `db:status`,
-  `db:migrate`, `doctor` without `--fix`, `audit` without `--network` or
-  `--output` (`--compliance`, `--sbom` and `--report` write a file in the
-  project, so they take the checkpoint first),
-  `inspect` with no target or `routes`, `models` or `schema`, never a file path) or `cargo check`/`cargo test`. `db:migrate` is refused when the project environment, resolved as the
-  application server resolves it (the process `RULLST_ENV`, then the process
-  `APP_ENV`, then `RULLST_ENV` or `APP_ENV` from the project `.env`, then
-  `[app].env` in `Rullst.toml`), is staging, production or unrecognized. Outside a project the
-  only action is `cargo rullst new <name> --default` with optional
-  `--blueprint`, `--database`, `--no-database`, `--api`, `--ai`, `--redis` and
-  `--skip-initial-migration` (`--default` is added when missing); the name must
-  be a new lowercase directory in the current directory, and after it succeeds
-  the session continues inside the new project. `new` and `db:migrate` are
-  always confirmed one by one, even after `a`. Paths must stay
-  below the project root (nearest `Cargo.toml`): no `..`, absolute paths,
-  symlinks, `.git/`, `target/`, `.cargo/`, `.env*` (except `.env.example`),
-  credentials, keys, `Cargo.lock` or toolchain files, and no name a filesystem
-  could map onto one of them (Windows 8.3 aliases such as `GIT~1`, reserved
-  device names, trailing dots or spaces, characters HFS+ ignores). Changes to
-  build files, `.github/`, `tests/`, `benches/`, `examples/` and Rust code with
-  tests or procedural macros are flagged in the review. Each action shows a
-  coloured diff or the exact command and asks `[y]es / [n]o / [a]ll this turn
-  / [q]uit turn`. Files are replaced atomically; a replaced file keeps its
-  mode and a new one gets the mode your umask allows. Command arguments may
-  not name an absolute, drive (`C:`),
-  home (`~`) or parent (`..`) path, also as `--flag=value`; the values of
-  `--schema`, `--output` and `--privacy-source` follow the path rules above.
-  Commands run without a shell, with standard input closed, bounded output and
-  a time limit, and finish when the command exits. On Unix each runs in its
-  own process group: Ctrl+C is forwarded to it, and the time limit, or
-  processes it leaves holding its output, stop the whole group (on Windows,
-  only the command itself).
-* **Non-interactive use:** when standard input, output or error is not a
-  terminal, or `CI`/`TERM=dumb` is set, actions are printed as a plan and never
-  executed. `NO_COLOR` disables colour.
-* **Upgrade sessions:** `cargo rullst ai upgrade` (flags `--to`, `--all-rules`,
-  `--provider`, `--model`, `--dry-run`) prints the `cargo rullst upgrade --dry-run` plan and,
-  when it has source findings, starts one goal grounded in them: the trusted
-  instructions carry only the migration rows those findings reference; the
-  findings, each flagged line and the affected files (within the path policy)
-  are untrusted data. Fixes go through the same diff, confirmation, checkpoint
-  and `cargo check` flow; Rullst dependency versions stay with
-  `cargo rullst upgrade`. Without findings no session starts. Offline, the
-  demo rewrites one `render_page` call (`V13-RENDER-PAGE-LANGUAGE`) and
-  proposes `cargo check`. A one-word chat goal `upgrade` now runs this command.
-  See [assisted fixes](tutorials/36-assisted-framework-upgrades.md#assisted-fixes-with-cargo-rullst-ai-upgrade).
-* **Error fixes:** in a debug build running in Development, the error page
-  for a panic shows `cargo rullst ai fix <ERROR_ID>`. The command reads that
-  error (message, location, project backtrace frames, request method and path)
-  from `GET /_rullst/errors/{id}` of the development server: by default
-  `http://127.0.0.1:<PORT>` with the port `cargo rullst dev` uses, or
-  `--url`, which must be plain HTTP on a loopback address (`127.0.0.1`,
-  `[::1]` or `localhost`, pinned to `127.0.0.1`); any other source is refused
-  before a connection. The server keeps at most 32 errors for 30 minutes and
-  forgets them when it restarts, so an unknown or expired id is an error.
-  High-signal secrets are redacted, the context and the source around the
-  location (within the path policy) are sent as untrusted data, and the goal
-  runs as a normal session: diff, confirmation, checkpoint and `cargo check`.
-  Offline, the demo repeats the location it received and proposes
-  `cargo check`.
-* **Reviews:** `cargo rullst ai review` reviews the staged and unstaged
-  changes against `HEAD` (`--staged`: staged only; `--base <REF>`:
-  `git diff <REF>...HEAD`; `--include-untracked`: also untracked files that
-  `.gitignore` does not exclude). It needs a git work tree and is read-only:
-  it never edits files or runs commands, and action blocks in the answer are
-  counted and ignored. Before anything is sent, files under the path policy
-  (`.env*`, keys and certificate stores, credentials, databases,
-  `Cargo.lock`, `.git/`, `target/`) and binary files are omitted and listed,
-  the audit report's high-signal secret patterns are redacted, each file's
-  diff is capped at 24 KiB and the whole review at 96 KiB (truncated and
-  unsent files are listed). The model checks correctness, security (SQLx
-  parameters, CSRF, ownership checks and `rullst-access` classifications,
-  constant-time signature checks), panics in production paths, missing tests
-  and Rullst rules such as bare or conditional `html!` boolean attributes.
-  Findings print with `file:line`, severity and a suggested fix, or as the
-  `rullst.ai-review.v1` JSON document with `--json` (`files.reviewed`,
-  `files.omitted`, `files.truncated`, `redactions`, `findings[]` with `file`,
-  `line`, `severity`, `title`, `detail`, `suggestion`, `summary`,
-  `ignored_actions`, `format_error`, `raw_answer` and `usage`). The offline
-  assistant flags `unwrap()`, `expect()` and `panic!` on added lines outside
-  tests and redacted secrets deterministically. The assistant itself may
-  propose the read-only `cargo rullst ai review` (with `--staged`,
-  `--base <ref>`, `--include-untracked` or `--json`).
-* **Checkpoint:** before the first change of a session the CLI stores a
-  snapshot of the work tree (tracked and untracked, non-ignored files, without
-  `.env*` and `target/`) under `refs/rullst/ai-checkpoints/<UTC timestamp>`,
-  using a temporary index so your index, stash and files are untouched, and
-  prints `git diff <ref>` and `git restore --source=<ref> --worktree -- .`.
-  Outside a git repository it asks before continuing without one. After
-  changes it offers to run `cargo check`.
-* **Untrusted data:** project context, shared files and command output are
-  sent inside delimited `<untrusted-data>` blocks, size-capped and checked by
-  the rullst-ai guardrails (a match is withheld). The project context is a
-  separate system message, so a match there cannot block the conversation.
-* **Usage:** after each answer the CLI shows the tokens the provider reported
-  (input, output and cached input) and the elapsed time, and the session totals
-  on exit. Providers or servers that report nothing show `usage not reported`;
-  counts are never estimated. A cost appears only when you configured prices,
-  labelled `≈ … est. at your prices` (all input tokens at the input price, so
-  cache discounts are not modelled). Rullst ships no price table.
+Use your editor's or terminal's AI assistant instead, with the project's
+`AGENTS.md` and `.llms.txt`
+([`generate:ai-context`](#cargo-rullst-generateai-context---check) writes and
+checks them) and the framework's published
+[`llms.txt`](https://rullst.github.io/Rullst/llms.txt). The `rullst-ai` crate,
+which applications use to call models, is unchanged. Credentials that
+`ai connect` saved stay in `~/.config/rullst/credentials.toml`
+(`$XDG_CONFIG_HOME/rullst/`, or `%APPDATA%\rullst\` on Windows), and its git
+checkpoints under `refs/rullst/ai-checkpoints/`, until you delete them. See
+the [migration guide](migration-v13.md#upgrading-an-alpha3-application-to-alpha4).
 
 ### `cargo rullst audit [--ai] [--compliance] [--idor]`
 Runs bounded source/configuration checks and can invoke installed dependency
@@ -1955,10 +1782,9 @@ their source at startup and on every change (siblings without a source file are
 kept).
 * **Flags:** `--debug` (Compiles with debug information, generating a larger binary).
 
-### `cargo rullst green` (extras)
-**Maturity:** Experimental; part of the optional
-[`cargo-rullst-extras`](#extras-cargo-rullst-extras) package. It replaces
-`cargo rullst footprint` (13.0.0-alpha.1 to alpha.3).
+### `cargo rullst green`
+**Maturity:** Experimental. It replaces `cargo rullst footprint` (13.0.0-alpha.1
+to alpha.3) and is part of the main CLI, so it needs no separate install.
 
 Reports figures it measured for the app, each with its method: the release
 binary size, a local container image's size (`--image`, through `docker` or
@@ -2349,8 +2175,8 @@ cargo rullst inspect model
 # Open the local Studio compatibility UI on 127.0.0.1:5555
 cargo rullst studio
 
-# Ask the terminal AI assistant (needs cargo-rullst-extras; offline demo until `cargo rullst ai connect`)
-cargo rullst ai "add a posts page"
+# Map the project (AGENTS.md, .llms.txt) for your editor's or terminal's AI assistant
+cargo rullst generate:ai-context
 
 # Write the Dockerfile, compose.yaml and Caddyfile for a Linux VM (Docker or Podman)
 cargo rullst deploy

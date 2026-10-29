@@ -182,15 +182,15 @@ unless marked as delivered.
   example (enforced with `missing_docs` and doctests), consistent constructor
   and error patterns across crates, and actionable error messages (the v13 CLI
   error reports are the first step).
-- **Assistant grounding:** keep the `cargo rullst ai` primer and the
-  `generate:ai-context` output in sync with the book, with a test that every
-  command and API the primer names exists.
+- **Assistant grounding:** keep the `generate:ai-context` output and the
+  published `llms.txt` in sync with the book, with a test that every command
+  and API they name exists. (The `cargo rullst ai` primer went with the
+  terminal assistant, removed in 13.0.0-alpha.4.)
 - **Assisted v12 → v13 upgrade (delivered on `main`):** `cargo rullst upgrade`
   performs the backed-up dependency upgrade, `cargo fix` and `cargo check`, and
   reports source findings from `rullst-upgrade-rules-v4`; every row of the
   [v13 migration guide](migration-v13.md) is classified as must-change, review
-  or not detectable. `cargo rullst ai upgrade` proposes reviewed edits grounded
-  in the guide rows those findings reference. See the
+  or not detectable. See the
   [assisted upgrade tutorial](tutorials/36-assisted-framework-upgrades.md#v12-to-v13-source-findings).
 - **Legal and regulatory readiness:** see the
   [legal & regulatory compliance roadmap](legal-compliance-roadmap.md).

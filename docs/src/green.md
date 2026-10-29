@@ -1,6 +1,6 @@
 # Efficiency Figures for an App (`cargo rullst green`)
 
-**Status:** experimental, part of the optional `cargo-rullst-extras` package
+**Status:** experimental command of the main CLI, `cargo-rullst`
 (13.0.0-alpha.4 and later; it replaces `cargo rullst footprint`). Part of the
 [green software roadmap](green-software-roadmap.md).
 
@@ -15,17 +15,13 @@ software.
 
 ## Install
 
-`green` lives in the optional extras, installed next to the CLI with the same
-version:
+`green` is part of the CLI; nothing else to install:
 
 ```bash
-cargo install cargo-rullst-extras --version =13.0.0-alpha.4 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 ```
 
-`cargo rullst green …` then runs `cargo-rullst-extras green …` found on `PATH`
-(see [the CLI reference](cli_reference.md#extras-cargo-rullst-extras)).
-Without the extras, `cargo rullst green` prints that install command and exits
-with status 1.
+Its flags are listed in [the CLI reference](cli_reference.md#cargo-rullst-green).
 
 ```bash
 # Build the release binary, start it on a free loopback port, measure, stop it
@@ -155,7 +151,7 @@ without `--bench`.
 ## Changes from `footprint`
 
 `cargo rullst footprint` (13.0.0-alpha.1 to alpha.3) is now `cargo rullst
-green` in `cargo-rullst-extras`. It no longer reports requests per second,
+green`, in the same `cargo-rullst` package. It no longer reports requests per second,
 latency percentiles or peak RSS, no longer reads RAPL energy counters (whole
 package, including other processes) and no longer guesses an image name from
 the package name. The benchmark runs only with `--bench`, and the JSON schema

@@ -9,11 +9,10 @@
 > Cargo.lock for reproducible builds, and use path dependencies only when
 > intentionally testing checkout-local changes.
 
-This page is the public feature contract for the 21 packages in the v13
+This page is the public feature contract for the 20 packages in the v13
 [release inventory](../../.github/release-order.json): the 16 published 12.x
-packages, the `rullst-privacy`, `rullst-supervision`, `rullst-media` and
-`rullst-labs` candidates, first published in the 13.0.0-alpha.1 prerelease,
-and the optional `cargo-rullst-extras`, added in 13.0.0-alpha.4.
+packages plus the `rullst-privacy`, `rullst-supervision`, `rullst-media` and
+`rullst-labs` candidates, first published in the 13.0.0-alpha.1 prerelease.
 The package manifests remain the machine-readable
 source of truth. The matrix explains the behavior those names select in this
 v13 source and makes the default build visible before an application adopts
@@ -458,8 +457,7 @@ These packages have no public optional Cargo features:
 | Package | Always-available scope |
 | --- | --- |
 | `rullst-macros` | Core procedural macros |
-| `cargo-rullst` | CLI commands, generators, auditing, and deployment helpers; its internal `maintainer-tools` feature only builds the repository's `sync-badges` tool and is not part of the installed CLI |
-| `cargo-rullst-extras` | The terminal AI assistant (`cargo rullst ai`) and `cargo rullst green` (Experimental) |
+| `cargo-rullst` | CLI commands, generators, auditing, deployment helpers and the Experimental `cargo rullst green`; its internal `maintainer-tools` feature only builds the repository's `sync-badges` tool and is not part of the installed CLI |
 
 No optional feature does not mean that a provider is contacted automatically.
 External integrations still require explicit runtime configuration and use the

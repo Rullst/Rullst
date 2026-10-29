@@ -87,7 +87,6 @@ what your application needs.
 | `rullst-security` | Core | Defense-in-depth middleware, guards and audit helpers. |
 | `rullst` (facade) | Core | Its own API is Core. A feature that re-exports another crate has that crate's tier: `iot` and every `privacy` feature are experimental. |
 | `cargo-rullst` | Core | Some generators have their own label; see [CLI generators](#cli-generators). |
-| `cargo-rullst-extras` | Experimental | Optional companion executable since 13.0.0-alpha.4: the terminal AI assistant (`cargo rullst ai`) and measured efficiency figures (`cargo rullst green`). Lighter tests than the CLI; see the [CLI reference](cli_reference.md#extras-cargo-rullst-extras). |
 | `rullst-auth` | Extension | Passwords, sessions, passkeys and authorization helpers. |
 | `rullst-connect` | Extension | OAuth2/OIDC identity integrations. |
 | `rullst-mail` | Extension | Transactional email and delivery controls; see the [crate page](crates/mail.md) for the supported drivers. |
@@ -115,6 +114,7 @@ experimental `rullst-privacy`.
 | Generator | Commands | Tier | Why |
 | :--- | :--- | :--- | :--- |
 | IoT | `make:iot` | Experimental | Generates a telemetry module on top of the experimental `rullst-iot`. |
+| Green report | `green` | Experimental | Measured size, memory, dependency and benchmark CPU figures and a labelled SCI estimate; outside the pull-request mutation gate. See the [green guide](green.md). |
 
 For an experimental generator, the generated files, their layout, and the
 command's flags may change between 13.x releases. Review the diff when you
@@ -122,7 +122,9 @@ regenerate.
 
 13.0.0-alpha.4 removed the experimental Foundry, Nix, Buildah and gRPC
 generators and the Fly.io, Railway and Render targets of `deploy`; see
-[Advanced deployment](advanced-deployment.md) for those setups.
+[Advanced deployment](advanced-deployment.md) for those setups. It also removed
+the terminal AI assistant (`cargo rullst ai`) and renamed `footprint` to
+`green`.
 
 `cargo rullst new` offers three starters with the CLI's Core tier: Blank, API
 and SaaS. 13.0.0-alpha.4 moved the LMS, Blog, Portfolio and ERP starters out of

@@ -23,10 +23,10 @@ Intentions, not promises; dates follow the evidence gates described below.
   `13.0.0-alpha.2` (published as a prerelease on October 17, 2026, with the
   alpha.1 dogfooding fixes), `13.0.0-alpha.3` (published on October 24,
   2026: PWA, Studio production monitor, OAuth providers), `13.0.0-alpha.4`
-  (the candidate prepared on October 29, 2026: a lean CLI with optional
-  extras, deployment guides, three starters), then `13.0.0-beta.1` with the
-  API freeze, further betas and a release candidate
-  driven by user feedback, then `13.0.0` stable with the
+  (the candidate prepared on October 29, 2026 and the 13.0 feature freeze: a
+  lean CLI with `green` built in and the terminal assistant removed,
+  deployment guides, three starters), then `13.0.0-rc.1` with fixes and
+  documentation only, driven by user feedback, then `13.0.0` stable with the
   [maturity tiers](docs/src/maturity.md) applying from that release.
 - **v12:** end of life on 16 October 2026; 12.3.0 is the last release and the
   `v12` branch is frozen. Its unpublished fixes (PR #500 and the RustSec
@@ -148,7 +148,7 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M34** | Multi-target SDK generator for TypeScript, React, Dart, and Swift | `[~] Bounded TypeScript profile` *(one explicit OpenAPI 3.1 profile generates Rust codecs and a strict TypeScript HTTP client, with hosted consumer/archive acceptance in PR #221; React, Dart, Swift and broader schemas remain open)* | v13+ |
 | **M35** | Distributed OpenTelemetry trace-waterfall visualizer in Studio | `[~] Partial` *(Core/facade now has a minimized OTLP propagation/export candidate with local standard-collector TLS and independent-process ancestry evidence; source/package admission passed in PR #236; final release admission remains separate. Studio keeps its separate authenticated ingestion/local viewer; a unified OTLP-backed waterfall, durable storage and cross-host clock/skew presentation remain open. See [the tracing profile](docs/src/distributed-tracing.md))* | v13+ |
 | **M36** | Natural-language-to-SQL Studio data copilot | `[ ] Not implemented` *(worth a read-only, explainable assistant with schema allowlists, parameterization, preview, limits, and approval; autonomous production writes are not worth the risk)* | v13 research |
-| **M37** | One-click AI error-console autofix | `[~] Partial` *(the development error page no longer edits files: it shows a copyable `cargo rullst ai fix <error-id>` command and makes no network request; the dead `/_rullst/autofix` endpoint answers `410 Gone` with that command. The server keeps a bounded, expiring, header- and body-free panic context that only a direct loopback request can read, and the v13 terminal assistant fixes it with confirmed, diff-previewed writes inside the project after a git checkpoint, then offers `cargo check`. Still open: a one-click flow, an edit audit trail beyond the checkpoint ref, evidence of fix quality with live providers, and the hot-reload server, which does not record errors)* | v13 |
+| **M37** | One-click AI error-console autofix | `[~] Partial` *(the development error page no longer edits files and makes no network request. The server keeps a bounded, expiring, header- and body-free panic context that only a direct loopback request can read. The terminal assistant that fixed it (`cargo rullst ai fix`) was removed in 13.0.0-alpha.4, but the page and the dead `/_rullst/autofix` endpoint (`410 Gone`) still name that command, so the hand-off has to be replaced. Still open: a one-click flow, an edit audit trail beyond the checkpoint ref, evidence of fix quality with live providers, and the hot-reload server, which does not record errors)* | v13 |
 | **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
 | **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented — abandoned` *(decided on 8 October 2026: not worth building. A Rullst-owned `rullst-gateway` crate/binary will not be developed. Self-hosted deployments use an established reverse proxy configured by generated files instead: `deploy --platform vps` already writes a Caddyfile, `foundry:deploy` installs a validated Caddy configuration and the [two-replica deployment contract](docs/src/deployment-acceptance.md) exercises Caddy; generated nginx configuration is planned. Readiness/drain signals stay in `rullst-core` for any proxy to consume. Parity with a managed global cloud load balancer remains external infrastructure. The idea stays recorded here and in the `[ ]` count.)* | Abandoned (replaced by generated proxy configuration) |
 | **M40** | Isolated programming labs and learning-game execution | `[~] Experimental implementation — bring your own runner` *(experimental `rullst-labs` contracts, in the 13.0 release inventory, provide durable submissions, exact grading, cancellation, recovery and retention, plus a documented [controller contract](docs/src/labs-runner-contract.md) and a non-executing example controller. The separately deployed Linux Rust/Wasmi `rullst-labs-runner` candidate passed 26 isolated checks and source admission in PRs #228 and #239, but was removed from the 13.0 workspace on 30 September 2026; its source remains in git history. Applications deploy and review their own runner; final release acceptance of `rullst-labs` remains pending. The web process never executes learner code or receives a container control socket. Broader language packs and offensive CTF infrastructure remain separate; see the dedicated roadmap.)* | v13 research/foundation |
@@ -353,8 +353,7 @@ contains the more detailed evidence and acceptance boundaries.
 ### Efficiency and sustainability
 
 - **Measured green-software reports and efficient defaults** *(planned —
-  `cargo rullst green` in the optional `cargo-rullst-extras` (measured
-  figures only, carbon as a labelled SCI estimate per ISO/IEC 21031:2024),
+  the Experimental `cargo rullst green` command (measured figures only, carbon as a labelled SCI estimate per ISO/IEC 21031:2024),
   a reproducible cross-framework benchmark, tuned release and HTTP caching
   defaults, carbon-aware deferrable jobs. Reports state their method and
   limits; no unsubstantiated "greener than" claims. See the
@@ -496,7 +495,7 @@ and publication dates.
 | Order | Outcome | Acceptance boundary |
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |
-| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | The compatible opt-in 12.1.0 flow is published with declared native installation and isolated project acceptance. Carry it into v13 and add explicit major-version migration rules and consumer acceptance; publication of 12.1.0 does not establish 12→13 compatibility. The v13 CLI now reports v12 → v13 source findings (`rullst-upgrade-rules-v4`) and offers reviewed fixes through `cargo rullst ai upgrade`. |
+| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | The compatible opt-in 12.1.0 flow is published with declared native installation and isolated project acceptance. Carry it into v13 and add explicit major-version migration rules and consumer acceptance; publication of 12.1.0 does not establish 12→13 compatibility. The v13 CLI now reports v12 → v13 source findings (`rullst-upgrade-rules-v4`), each linked to its migration row. |
 | **P0 — SaaS maintenance** | Contain affected live operations and repair confirmed examples feedback | Follow the [15-finding triage plus Nexus configuration fix](docs/src/saas-v12-1-v13-triage.md). Compatible v12.1 fixes remain independently deliverable; new payment contracts need durable ownership/idempotency and provider acceptance evidence. |
 | **P0 — privacy and age assurance** | Reusable privacy defaults and age checks proportionate to risk across SaaS, LMS and examples | Complete the [M41 delivery plan](docs/src/privacy-age-assurance-roadmap.md) before additional learning/monitoring features. Reject production mocks and unverifiable results; minimize data, offer alternatives and review jurisdiction profiles. No automatic legal certification. |
 | **P1 — navigable API documentation** | Developers can find a capability, understand its contract and run a realistic example | Connect versioned Rust API references, task-based guides and tested REST examples. Document errors, feature flags, security boundaries and migration paths alongside each prioritized API; see the [documentation plan](#api-documentation-quality). |
@@ -654,9 +653,8 @@ application fixtures; the same-major restriction of the v12 `upgrade` command
 must not be silently removed. Reserve incompatible changes for v13.
 On `main`, the v13 CLI accepts Rullst 12 and 13 projects: `cargo rullst upgrade`
 reports v12 → v13 source findings with their
-[migration-guide](docs/src/migration-v13.md) rows, and `cargo rullst ai upgrade`
-proposes reviewed fixes for them. These support a review; they do not migrate
-an application automatically.
+[migration-guide](docs/src/migration-v13.md) rows. These support a review;
+they do not migrate an application automatically.
 
 Continue new capability work on v13 while actively maintaining the supported
 v12 line with reviewed compatible fixes and dependency updates. The website
@@ -834,12 +832,13 @@ milestone to the counts above.
   notice prints the `cargo install` command for a newer CLI. Each removal has
   a [migration row](docs/src/migration-v13.md) and, where an application can
   be detected using it, an upgrade review rule.
-- `[x]` **`cargo-rullst-extras`** (Experimental, PR #555): the terminal AI
-  assistant and `green` (measured size, memory, dependency and CPU figures;
-  carbon only as a labelled SCI estimate), released with the same version.
-  `cargo rullst ai|green` run it when it is installed. Its first publication
-  uses the one-time token path in the
-  [release recovery runbook](docs/src/release-recovery.md#first-publication-of-cargo-rullst-extras-1300-alpha4).
+- `[x]` **`green` in the main CLI, the terminal assistant removed**:
+  `cargo rullst green` (Experimental; measured size, memory, dependency and
+  CPU figures, carbon only as a labelled SCI estimate) replaces `footprint`
+  in `cargo-rullst`. `cargo rullst ai` was removed from 13.0 (its code stays
+  in git history) and now prints what replaces it; the `rullst-ai` crate is
+  unchanged. A separate `cargo-rullst-extras` package was prepared in PR #555
+  and dropped before publication, so the release still has twenty packages.
 - `[x]` **Deployment guides** (PR #555): one `deploy` path (Dockerfile,
   `compose.yaml` and `Caddyfile` for Docker or Podman), the
   [Linux VM](docs/src/vm-deployment.md), Hetzner Cloud, DigitalOcean, Oracle
@@ -886,16 +885,21 @@ milestone to the counts above.
 Work items for later prereleases, not shipped features. They add no milestone
 to the counts above.
 
-- **13.0.0-beta.1: API freeze and stability scope.** Freeze the public APIs
-  that 13.0 supports and decide which packages and features its stability
-  promise covers, starting from the [maturity tiers](docs/src/maturity.md).
-  After beta.1, breaking changes are limited to defects found in the betas.
-- **Framework build time**, for beta.1. Measured on the generated starters
-  ([Build times](docs/src/build-times.md)): the `aws-lc-sys` build script
-  (about 52 s) reached through Studio → `rullst-capital` → `reqwest`/`rustls`
-  on `aws-lc-rs`; SQLx's compile-time macros compiling some crates, SQLite
-  among them, a second time; and `rullst-nexus` pulling `rullst-ai` into the
-  SaaS starter.
+- **13.0.0-rc.1: fixes and documentation only.** 13.0.0-alpha.4 is the 13.0
+  feature freeze. rc.1 freezes the public APIs that 13.0 supports and states
+  which packages and features its stability promise covers, starting from the
+  [maturity tiers](docs/src/maturity.md). After rc.1, changes are limited to
+  defects found in the release candidate.
+- **Framework build time.** Measured on the generated starters
+  ([Build times](docs/src/build-times.md)). Rullst keeps `aws-lc-rs` as the
+  TLS crypto provider (rustls' post-quantum hybrid key exchange), so the
+  `aws-lc-sys` build script (about 52 s, reached through Studio →
+  `rullst-capital` → `reqwest`/`rustls`) stays in a project's first build;
+  later builds reuse it, and the generated Dockerfile's dependency layer (the
+  cargo-chef approach) caches it in images. Moving to `ring` is not planned. Planned for 13.0.0-rc.1 if they need no breaking change,
+  otherwise for 13.1: SQLx's compile-time macros compiling some crates,
+  SQLite among them, a second time, and `rullst-nexus` pulling `rullst-ai`
+  into the SaaS starter.
 - **Re-measure `generators/deploy.rs` and `update/guided.rs`** with targeted
   `mutants.yml` runs and return them to `.github/mutants-pr-cli.txt` once only
   accepted equivalents are left.
@@ -913,8 +917,7 @@ to the counts above.
 - **Feedback from the platforms upgraded to 13.0.0-alpha.3 and alpha.4.**
   Their reports choose the fixes and priorities of the next prerelease, as
   the alpha.1 and alpha.2 reports did before.
-- **Then 13.0.0-rc.1**, once the betas leave no open defect in the stability
-  scope.
+- **Then 13.0.0**, once rc.1 leaves no open defect in the stability scope.
 
 ### Published and planned release lines
 
@@ -930,7 +933,7 @@ to the counts above.
 | **v13.0.0-alpha.1** | `[x] Published prerelease` | Tag `v13.0.0-alpha.1` at `fc44bf76`; all twenty packages were published on 11 October 2026 for evaluation. See the [delivery plan](docs/src/v13-delivery-plan.md). |
 | **v13.0.0-alpha.2** | `[x] Published prerelease` | All twenty packages were published on 17 October 2026 from tag `v13.0.0-alpha.2` at `0daf4941` ([release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)): the fixes from the alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema` date/time and Nexus changes. A first tag at `669befe6` failed release verification before publishing anything and was replaced. |
 | **v13.0.0-alpha.3** | `[x] Published prerelease` | All twenty packages were published on 24 October 2026 from tag `v13.0.0-alpha.3` at `be336833` ([release run 40129821475](https://github.com/Rullst/Rullst/actions/runs/40129821475)) after all 25 required workflows passed on that commit. See [Delivered in 13.0.0-alpha.3](#delivered-in-1300-alpha3). |
-| **v13.0.0-alpha.4** | `[ ] Release candidate` | Prepared on 29 October 2026 and not yet published; the coordinator records the tag, release run and publication here. Twenty-one packages, including the first publication of `cargo-rullst-extras`. See [Delivered in 13.0.0-alpha.4](#delivered-in-1300-alpha4). |
+| **v13.0.0-alpha.4** | `[ ] Release candidate` | Prepared on 29 October 2026 and not yet published; the coordinator records the tag, release run and publication here. Twenty packages. See [Delivered in 13.0.0-alpha.4](#delivered-in-1300-alpha4). |
 | **v13.x** | `[ ] Next feature line` | Compatible and breaking improvements move together into the next deliberate cycle: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
 The framework may call a milestone implemented only when the same commit passes

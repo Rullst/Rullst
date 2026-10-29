@@ -115,10 +115,7 @@ if let Some(usage) = completion.usage() {
 
 A count the provider does not send stays `None`, offline mocks report none, and
 Rullst ships no price table. The [capability matrix](ai-provider-capabilities.md#token-usage-v13)
-lists the response fields read for each provider. `cargo rullst ai` shows the
-reported usage per answer and per session, and a cost estimate only at the
-per-million-token prices you give `cargo rullst ai connect` (interactively or
-with `--input-price-per-mtok` and `--output-price-per-mtok`).
+lists the response fields read for each provider.
 
 ## Privacy boundary
 
