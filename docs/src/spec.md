@@ -4270,8 +4270,11 @@ replaces it and the migration guide link, and exits with status 1. Developers
 use their editor's or terminal's assistant with the project's `AGENTS.md` and
 `.llms.txt` (`cargo rullst generate:ai-context`) and the published framework
 index (`llms.txt`). The `rullst-ai` crate is unaffected. The development error
-console still names `cargo rullst ai fix <error-id>` in 13.0.0-alpha.4; that
-hand-off is a known limitation, not a supported command.
+page's "Ask your AI assistant" panel replaces `cargo rullst ai fix <error-id>`:
+a read-only prompt quoting only what the page shows (message, location, the
+first project stack frames, request method and path) and, when `Server`
+records the error, the path of its loopback-only JSON context
+(`/_rullst/errors/{id}`). The retired `POST /_rullst/autofix` points there.
 
 ## 🔄 12. Assisted Framework Upgrade Contract
 
