@@ -30,11 +30,12 @@ fn green(arguments: &[&str]) -> Output {
         "version = 4\n\n[[package]]\nname = \"app\"\nversion = \"0.1.0\"\n\n[[package]]\nname = \"serde\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\n",
     )
     .unwrap();
-    Command::new(env!("CARGO_BIN_EXE_cargo-rullst-extras"))
-        .arg("green")
+    Command::new(env!("CARGO_BIN_EXE_cargo-rullst"))
+        .args(["rullst", "green"])
         .args(arguments)
         .current_dir(directory.path())
         .env("NO_COLOR", "1")
+        .env("RULLST_DISABLE_UPDATE_CHECK", "1")
         .env("DOCKER_HOST", "unix:///nonexistent")
         .env("CONTAINER_HOST", "unix:///nonexistent")
         .output()

@@ -254,7 +254,7 @@ impl OwnedApp {
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
-            .map(cargo_rullst::extras::sanitize)
+            .map(crate::ui::error_report::sanitize)
             .collect::<Vec<_>>()
             .join("\n")
     }

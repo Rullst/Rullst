@@ -150,34 +150,14 @@ fn step_screen(index: usize, step: &Step) -> (Screen, Vec<Action>) {
 }
 
 fn run_example<U: TourUi>(ui: &mut U, step: &Step) -> io::Result<()> {
-    let first = step.example.arguments.get(..1).unwrap_or_default();
-    let subcommand = shown(first);
-    let absent = if first
-        .first()
-        .is_some_and(|name| crate::cli::forward::is_extras(name))
-    {
-        "needs cargo-rullst-extras"
-    } else {
-        "is not part of this build"
-    };
-    let arguments = if ui.available(step.example.arguments) {
-        step.example.arguments
-    } else if let Some(fallback) = step
-        .example
-        .fallback
-        .filter(|fallback| ui.available(fallback))
-    {
-        ui.print(&[Line::new().push(
-            Tone::Muted,
-            format!(
-                "`{subcommand}` {absent}; showing `{}` instead.",
-                shown(fallback)
-            ),
-        )])?;
-        fallback
-    } else {
-        return ui.print(&[Line::new().push(Tone::Warning, format!("`{subcommand}` {absent}."))]);
-    };
+    let arguments = step.example.arguments;
+    if !ui.available(arguments) {
+        let subcommand = shown(arguments.get(..1).unwrap_or_default());
+        return ui.print(&[Line::new().push(
+            Tone::Warning,
+            format!("`{subcommand}` is not part of this build."),
+        )]);
+    }
     ui.print(&[Line::new().push(Tone::Muted, format!("$ {}", shown(arguments)))])?;
     let status = match ui.run(arguments) {
         Ok(Some(code)) => format!("exit status {code}"),
@@ -239,9 +219,6 @@ impl TourUi for TerminalTour {
         let (Ok(program), Some(subcommand)) = (std::env::current_exe(), arguments.first()) else {
             return false;
         };
-        if crate::cli::forward::is_extras(subcommand) && !crate::cli::forward::installed() {
-            return false;
-        }
         std::process::Command::new(program)
             .args(["help", subcommand])
             .stdin(std::process::Stdio::null())

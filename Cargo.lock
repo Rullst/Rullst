@@ -1516,29 +1516,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cargo-rullst-extras"
-version = "13.0.0-alpha.4"
-dependencies = [
- "async-trait",
- "axum",
- "cargo-rullst",
- "chrono",
- "clap",
- "dialoguer",
- "dotenvy",
- "reqwest",
- "rullst-ai",
- "rullst-core",
- "rustix",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
- "tokio",
- "toml",
-]
-
-[[package]]
 name = "cast"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

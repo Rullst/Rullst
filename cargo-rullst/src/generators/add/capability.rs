@@ -173,8 +173,8 @@ pub(crate) const CAPABILITIES: [Capability; 5] = [
                 "persist conversations for a chat UI",
             ),
             (
-                "cargo rullst ai connect",
-                "connect the terminal assistant (keys stay outside the project)",
+                "cargo rullst generate:ai-context",
+                "map the project (AGENTS.md, .llms.txt) for your editor's AI assistant",
             ),
         ],
     },

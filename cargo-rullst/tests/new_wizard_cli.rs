@@ -232,7 +232,7 @@ fn the_tour_prints_its_steps_without_a_terminal() {
             "1. Create a project  (new)",
             "   Example  cargo rullst new tour-demo --default --dry-run",
             "4. Generate code  (make:*)",
-            "7. Work with AI  (ai)",
+            "7. Work with AI  (generate:ai-context)",
         ] {
             assert!(listing.contains(expected), "{expected}:\n{listing}");
         }
