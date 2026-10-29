@@ -1,0 +1,9 @@
+pub mod category;
+pub mod course;
+pub mod course_module;
+pub mod enrollment;
+pub mod lesson;
+pub mod lesson_progress;
+pub mod lesson_progress_event;
+pub mod password_reset;
+pub mod user;

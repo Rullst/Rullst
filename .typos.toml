@@ -2,6 +2,9 @@
 extend-exclude = [
     "cargo-rullst/src/blueprints/assets/htmx-1.9.12.min.js",
     "examples/blog/assets/vendor/htmx-1.9.12.min.js",
+    "examples/erp/static/htmx-1.9.12.min.js",
+    "examples/lms/static/htmx-1.9.12.min.js",
+    "examples/portfolio/static/htmx-1.9.12.min.js",
     "examples/blog/assets/vendor/pico-2.1.1.slate.min.css",
     "rullst-nexus/assets/htmx-2.0.4.min.js",
     "rullst-connect/src/providers/apple.rs",

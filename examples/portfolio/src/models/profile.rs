@@ -1,0 +1,19 @@
+use rullst::db::{FromRow, Nexus, Orm, RowSnapshot};
+
+#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[orm(table = "profiles")]
+pub struct Profile {
+    pub id: i32,
+    pub name: String,
+    pub title: String,
+    pub subtitle: String,
+    pub email: String,
+    pub website: String,
+    pub avatar_url: String,
+    pub github_url: String,
+    pub linkedin_url: String,
+    // Remembers the loaded values, so `save()` writes only the columns this
+    // record changed. Build new records with `snapshot: RowSnapshot::default()`.
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
+}

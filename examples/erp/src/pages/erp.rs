@@ -1,0 +1,246 @@
+// Frontend Engine: Zero-Bundle HTMX
+use crate::models::order::Order;
+use crate::models::product::Product;
+use rullst::html;
+
+/// Totals over every order and product, computed in SQL.
+pub struct DashboardSummary {
+    pub revenue: f64,
+    pub orders: i64,
+    pub low_stock: i64,
+}
+
+pub fn dashboard_page(
+    products: rullst_orm::PaginationResult<Product>,
+    orders: Vec<Order>,
+    summary: DashboardSummary,
+    csrf_token: &str,
+    csp_nonce: &str,
+) -> html::Markup {
+    html! {
+        <!DOCTYPE html>
+        <html lang="en" class="dark">
+            <head>
+                <meta charset="UTF-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <title>"Rullst ERP Pocket — Inventory Dashboard"</title>
+                <link rel="icon" type="image/png" href="/static/rullst.png" />
+                <link rel="stylesheet" href="/static/rullst.css" />
+                <script nonce={csp_nonce} src="/static/htmx-1.9.12.min.js"></script>
+            </head>
+            <body class="text-slate-100 min-height-screen pb-12">
+                <div class="max-w-6xl mx-auto px-4 pt-8">
+                    { render_header() }
+                    { render_kpi_cards(&summary) }
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2 flex flex-col gap-8">
+                            { render_products_table(&products, csrf_token) }
+                            { render_orders_table(&orders) }
+                        </div>
+                        <div class="flex flex-col gap-8">
+                            { render_forms(&products.data, csrf_token) }
+                        </div>
+                    </div>
+                </div>
+            </body>
+        </html>
+    }
+}
+
+fn render_header() -> html::Markup {
+    html! {
+        <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-10 pb-6 border-b border-slate-800/40">
+            <div>
+                <span class="px-3 py-1 text-xs font-semibold text-orange-400 bg-orange-950/40 rounded-full border border-orange-800/40">"ERP Pocket"</span>
+                <h1 class="text-3xl font-extrabold tracking-tight mt-2 bg-gradient-to-r from-emerald-400 via-teal-300 to-orange-400 bg-clip-text text-transparent">"Rullst ERP & Stock Portal"</h1>
+                <p class="text-sm text-slate-400 mt-1">"Agile inventory and sales management at runtime."</p>
+            </div>
+            <div class="flex flex-col items-end gap-1">
+                <div class="flex gap-3">
+                    <a href="/nexus" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"⚙️ Nexus CMS"</a>
+                    <a href="http://127.0.0.1:5555" target="_blank" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"📊 Rullst Studio (local)"</a>
+                </div>
+                <span class="text-[10px] text-slate-500 mr-2">"Nexus: local in debug; credentials in release"</span>
+            </div>
+        </header>
+    }
+}
+
+fn render_kpi_cards(summary: &DashboardSummary) -> html::Markup {
+    html! {
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="glass p-6 rounded-2xl flex flex-col justify-between">
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Total Revenue"</span>
+                <span class="text-3xl font-bold mt-2 text-emerald-400">"$ "{format!("{:.2}", summary.revenue)}</span>
+                <span class="text-xs text-emerald-500/80 mt-1">"&uarr; Confirmed revenues"</span>
+            </div>
+            <div class="glass p-6 rounded-2xl flex flex-col justify-between">
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Orders Placed"</span>
+                <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{}", summary.orders)}</span>
+                <span class="text-xs text-orange-400/80 mt-1">"Active sales flow"</span>
+            </div>
+            <div class="glass p-6 rounded-2xl flex flex-col justify-between">
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Critical Stock Alerts"</span>
+                <span class="text-3xl font-bold mt-2 text-rose-400">{format!("{}", summary.low_stock)}</span>
+                <span class="text-xs text-rose-400/80 mt-1">"Items with stock &le; 5 units"</span>
+            </div>
+        </div>
+    }
+}
+
+fn render_products_table(
+    page: &rullst_orm::PaginationResult<Product>,
+    csrf_token: &str,
+) -> html::Markup {
+    let products = &page.data;
+    let previous = (page.current_page > 1).then(|| page.current_page - 1);
+    let next = (page.current_page < page.last_page).then(|| page.current_page + 1);
+    html! {
+        <div class="glass p-6 rounded-2xl">
+            <h2 class="text-xl font-bold mb-4 text-slate-200">"Product Inventory"</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase">
+                            <th class="py-3 px-4">"Product"</th>
+                            <th class="py-3 px-4">"SKU"</th>
+                            <th class="py-3 px-4">"Price"</th>
+                            <th class="py-3 px-4">"Stock"</th>
+                            <th class="py-3 px-4 text-right">"Actions"</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/40 text-sm">
+                        { products.iter().map(|p| {
+                            let badge_color = if p.stock <= 5 { "text-rose-400 bg-rose-950/40" } else { "text-emerald-400 bg-emerald-950/40" };
+                            html! {
+                                <tr>
+                                    <td class="py-3.5 px-4 font-medium text-white">{&p.name}</td>
+                                    <td class="py-3.5 px-4 text-slate-400 font-mono">{&p.sku}</td>
+                                    <td class="py-3.5 px-4 text-slate-300">"$ "{format!("{:.2}", p.price)}</td>
+                                    <td class="py-3.5 px-4">
+                                        <span id={format!("stock-badge-{}", p.id)} class={format!("px-2.5 py-1 text-xs font-semibold rounded-full {}", badge_color)}>
+                                            {format!("{}", p.stock)} " Units"
+                                        </span>
+                                    </td>
+                                    <td class="py-3.5 px-4 text-right">
+                                        <form method="post" action={format!("/products/{}/add-stock", p.id)} hx-post={format!("/products/{}/add-stock", p.id)} hx-target={format!("#stock-badge-{}", p.id)} hx-swap="outerHTML">
+                                            <input type="hidden" name="_token" value={csrf_token} />
+                                            <button type="submit" class="px-2.5 py-1 text-xs font-bold text-orange-400 border border-orange-500/20 hover:border-orange-400 bg-orange-950/20 rounded-md transition-all active:scale-95">
+                                                "+1 Stock"
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        }).collect::<html::Markup>() }
+                    </tbody>
+                </table>
+            </div>
+            <nav class="flex justify-between items-center mt-4 text-xs text-slate-400" aria-label="Product pages">
+                <span>{ previous.map(|page| html! { <a class="text-orange-400" href={format!("/?page={page}")}>"&larr; Previous"</a> }) }</span>
+                <span>{format!("Page {} of {} ({} products)", page.current_page, page.last_page.max(1), page.total)}</span>
+                <span>{ next.map(|page| html! { <a class="text-orange-400" href={format!("/?page={page}")}>"Next &rarr;"</a> }) }</span>
+            </nav>
+        </div>
+    }
+}
+
+fn render_orders_table(orders: &[Order]) -> html::Markup {
+    html! {
+        <div class="glass p-6 rounded-2xl">
+            <h2 class="text-xl font-bold mb-4 text-slate-200">"Recent Orders"</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase">
+                            <th class="py-3 px-4">"ID"</th>
+                            <th class="py-3 px-4">"Customer"</th>
+                            <th class="py-3 px-4">"Qty / Prod ID"</th>
+                            <th class="py-3 px-4">"Total"</th>
+                            <th class="py-3 px-4">"Status"</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/40 text-sm">
+                        { orders.iter().map(|o| html! {
+                            <tr>
+                                <td class="py-3.5 px-4 text-slate-400 font-mono">"#"{format!("{}", o.id)}</td>
+                                <td class="py-3.5 px-4 font-medium text-white">{&o.customer_name}</td>
+                                <td class="py-3.5 px-4 text-slate-400">{format!("{} un. (Ref: Product #{})", o.quantity, o.product_id)}</td>
+                                <td class="py-3.5 px-4 text-emerald-400 font-medium">"$ "{format!("{:.2}", o.total_price)}</td>
+                                <td class="py-3.5 px-4">
+                                    <span class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-950/60 text-emerald-400 border border-emerald-900/60">
+                                        {&o.status}
+                                    </span>
+                                </td>
+                            </tr>
+                        }).collect::<html::Markup>() }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+
+fn render_forms(products: &[Product], csrf_token: &str) -> html::Markup {
+    html! {
+        <div class="flex flex-col">
+            <div class="glass p-6 rounded-2xl border border-indigo-900/20">
+                <h3 class="text-lg font-bold mb-4 text-indigo-400">"Register New Sale"</h3>
+                <p class="text-xs text-slate-500 mb-4">"Lists the products on this inventory page."</p>
+                <form action="/orders" method="POST" class="space-y-4">
+                    <input type="hidden" name="_token" value={csrf_token} />
+                    <div>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Customer Name"</label>
+                        <input type="text" name="customer_name" maxlength="255" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" placeholder="e.g., John Doe" />
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Select Product"</label>
+                        <select name="product_id" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200">
+                            { products.iter().map(|p| {
+                                let disabled_flag = if p.stock <= 0 { " (Out of Stock)" } else { "" };
+                                html! {
+                                    <option value={format!("{}", p.id)}>{&p.name} " - $ "{format!("{:.2}", p.price)}{disabled_flag}</option>
+                                }
+                            }).collect::<html::Markup>() }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Quantity"</label>
+                        <input type="number" name="quantity" min="1" max="10000" value="1" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" />
+                    </div>
+                    <button type="submit" aria-label="Complete Order" aria-busy="false" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
+                        "Complete Order"
+                    </button>
+                </form>
+            </div>
+
+            <div class="glass p-6 rounded-2xl mt-8">
+                <h3 class="text-lg font-bold mb-4 text-slate-200">"Register Product"</h3>
+                <form action="/products" method="POST" class="space-y-4">
+                    <input type="hidden" name="_token" value={csrf_token} />
+                    <div>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Product Name"</label>
+                        <input type="text" name="name" maxlength="255" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="e.g., Hario V60 Filter" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-400 font-medium mb-1">"SKU"</label>
+                            <input type="text" name="sku" maxlength="255" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="HAR-100" />
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 font-medium mb-1">"Unit Price"</label>
+                            <input type="number" step="0.01" min="0" max="1000000" name="price" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="49.90" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Initial Stock"</label>
+                        <input type="number" name="stock" min="0" max="1000000" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="10" />
+                    </div>
+                    <button type="submit" aria-label="Save Product" aria-busy="false" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
+                        "Save Product"
+                    </button>
+                </form>
+            </div>
+        </div>
+    }
+}

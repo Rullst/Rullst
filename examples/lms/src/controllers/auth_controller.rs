@@ -1,0 +1,453 @@
+use crate::models::user::User;
+use crate::pages::auth;
+use rullst::async_runtime::tokio::sync::Semaphore;
+use rullst::auth as rullst_auth;
+use rullst::server::{
+    Extension, Form, HeaderMap, IntoResponse, Next, Redirect, Request, Response, StatusCode, Uri,
+};
+use serde::Deserialize;
+use std::sync::{Arc, LazyLock};
+use std::time::Duration;
+
+// The password helpers below are `pub(crate)` for `password_controller`.
+pub(crate) const DUMMY_PASSWORD_HASH: &str =
+    "$argon2id$v=19$m=19456,t=2,p=1$VE9CZ2d5dHVyWldOajNXZA$M0zU6o5hE/R6B+nJ9hX8+A";
+
+/// Each Argon2id hash or verification holds about 19 MiB on Tokio's blocking
+/// pool, so a burst of submissions must not run unbounded. Raise this to match
+/// the host's memory and cores.
+const MAX_CONCURRENT_PASSWORD_WORK: usize = 4;
+/// How long a submission waits for password capacity before receiving 503.
+const PASSWORD_WORK_WAIT: Duration = Duration::from_secs(2);
+/// Credential submissions each client may make per minute (burst and refill).
+const CREDENTIAL_ATTEMPTS_PER_MINUTE: f64 = 10.0;
+const BUSY_MESSAGE: &str = "Too many sign-in requests are in progress. Try again in a moment.";
+
+static PASSWORD_WORK: LazyLock<Arc<Semaphore>> =
+    LazyLock::new(|| Arc::new(Semaphore::new(MAX_CONCURRENT_PASSWORD_WORK)));
+
+static CREDENTIAL_LIMITER: LazyLock<rullst::RateLimiter> = LazyLock::new(|| {
+    rullst::RateLimiter::new(rullst::RateLimitConfig::per_minute(
+        CREDENTIAL_ATTEMPTS_PER_MINUTE,
+    ))
+});
+
+/// Route middleware for `POST /login`, `POST /register` and the password
+/// change and reset submissions. Each one runs Argon2id or sends mail, so it
+/// is budgeted per client before the handler runs. The
+/// budget is keyed by the connecting peer: behind a reverse proxy, configure
+/// `[security] trusted_proxies` so clients do not share the proxy's budget
+/// (`cargo rullst deploy --platform vps` does this for its Caddy proxy).
+pub async fn credential_rate_limit(request: Request, next: Next) -> Response {
+    rullst::rate_limit_middleware(
+        rullst::RateLimiter::clone(&CREDENTIAL_LIMITER),
+        request,
+        next,
+    )
+    .await
+}
+
+pub(crate) enum PasswordWorkError {
+    /// No password capacity became free within `PASSWORD_WORK_WAIT`.
+    Busy,
+    /// The blocking task panicked.
+    Failed,
+}
+
+/// Runs Argon2 work on the blocking pool while holding one of the bounded
+/// permits. The permit moves into the blocking task, so a disconnected client
+/// cannot release it while the hash is still running.
+pub(crate) async fn run_password_work<T, F>(work: F) -> Result<T, PasswordWorkError>
+where
+    T: Send + 'static,
+    F: FnOnce() -> T + Send + 'static,
+{
+    let permit = rullst::runtime::time::timeout(
+        PASSWORD_WORK_WAIT,
+        Arc::clone(&*PASSWORD_WORK).acquire_owned(),
+    )
+    .await
+    .map_err(|_| PasswordWorkError::Busy)?
+    .map_err(|_| PasswordWorkError::Failed)?;
+    rullst::runtime::task::spawn_blocking(move || {
+        let output = work();
+        drop(permit);
+        output
+    })
+    .await
+    .map_err(|_| PasswordWorkError::Failed)
+}
+
+pub(crate) fn busy(page: impl IntoResponse) -> Response {
+    (StatusCode::SERVICE_UNAVAILABLE, page).into_response()
+}
+
+#[derive(Deserialize)]
+pub struct RegisterDto {
+    pub name: String,
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Deserialize)]
+pub struct LoginDto {
+    pub email: String,
+    pub password: String,
+}
+
+pub(crate) fn normalize_email(email: &str) -> String {
+    email.trim().to_ascii_lowercase()
+}
+
+pub(crate) fn valid_email(email: &str) -> bool {
+    !email.is_empty()
+        && email.len() <= 254
+        && !email.contains(['\r', '\n'])
+        && email.split_once('@').is_some_and(|(local, domain)| {
+            !local.is_empty() && domain.contains('.') && !domain.ends_with('.')
+        })
+}
+
+/// Length as the browser's `minlength`/`maxlength` count it (UTF-16 code
+/// units), so a value the form accepts is not rejected by a byte count.
+fn form_length(value: &str) -> usize {
+    value.encode_utf16().count()
+}
+
+fn valid_name(name: &str) -> bool {
+    !name.is_empty() && form_length(name) <= 120 && !name.contains(['\r', '\n'])
+}
+
+/// `rullst::auth::hash_password` and `verify_password` accept at most 72
+/// bytes, so the upper bound stays in bytes while the minimum counts
+/// characters like the form's `minlength`.
+const MAX_PASSWORD_BYTES: usize = 72;
+pub(crate) const PASSWORD_LENGTH_MESSAGE: &str = "Use a password of at least 12 characters and at most 72 bytes (accented and non-Latin characters take 2 to 4 bytes each)";
+
+pub(crate) fn valid_password(password: &str) -> bool {
+    form_length(password) >= 12 && password.len() <= MAX_PASSWORD_BYTES
+}
+
+/// The current UTC time for the `created_at`/`updated_at` columns of
+/// `timestamps()`. The ORM inserts every field, so the model must carry it.
+pub(crate) fn utc_timestamp() -> rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc> {
+    rullst::orm::chrono::Utc::now()
+}
+
+pub(crate) fn get_csrf_token(headers: &HeaderMap) -> String {
+    headers
+        .get(rullst::server::header::COOKIE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|cookie_header| {
+            cookie_header.split(';').find_map(|cookie| {
+                cookie
+                    .trim()
+                    .strip_prefix("rullst_csrf=")
+                    .map(ToOwned::to_owned)
+            })
+        })
+        .unwrap_or_default()
+}
+
+pub(crate) fn get_csp_nonce(nonce: &Option<Extension<rullst::security::CspNonce>>) -> &str {
+    nonce
+        .as_ref()
+        .map(|Extension(nonce)| nonce.as_str())
+        .unwrap_or_default()
+}
+
+/// A 30-day login cookie carrying the account's current session epoch, so
+/// `User::revoke_sessions` can end it before it expires.
+fn login_cookie(user: &User) -> Result<String, rullst_auth::AuthError> {
+    let epoch = user
+        .current_session_epoch()
+        .ok_or(rullst_auth::AuthError::SessionRevoked)?;
+    rullst_auth::make_login_cookie_with_epoch(user.id, epoch, rullst_auth::DEFAULT_SESSION_MAX_AGE)
+}
+
+pub(crate) fn redirect_with_cookie(target: &'static str, cookie: &str) -> Response {
+    let Ok(header_value) = rullst::server::HeaderValue::from_bytes(cookie.as_bytes()) else {
+        return (StatusCode::INTERNAL_SERVER_ERROR, "Invalid session cookie").into_response();
+    };
+    let mut response = Redirect::to(target).into_response();
+    response
+        .headers_mut()
+        .insert(rullst::server::header::SET_COOKIE, header_value);
+    response
+}
+
+/// Shown on `/login?reset=done`, where a completed password reset redirects.
+const PASSWORD_RESET_NOTICE: &str =
+    "Your password was reset and every device was signed out. Sign in with the new password.";
+
+pub async fn login_view(
+    uri: Uri,
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+) -> impl IntoResponse {
+    let token = csrf
+        .as_ref()
+        .map(|Extension(token)| token.as_str())
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| get_csrf_token(&headers));
+    let notice = (uri.query() == Some("reset=done")).then_some(PASSWORD_RESET_NOTICE);
+    auth::login_page(&token, None, notice, get_csp_nonce(&csp_nonce))
+}
+
+pub async fn login_submit(
+    headers: HeaderMap,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    Form(payload): Form<LoginDto>,
+) -> Response {
+    let token = get_csrf_token(&headers);
+    let nonce = get_csp_nonce(&csp_nonce);
+    let email = normalize_email(&payload.email);
+    let user = match User::find_by_email(&email).await {
+        Ok(user) => user,
+        Err(error) => {
+            eprintln!("Authentication query failed: {error}");
+            return auth::login_page(
+                &token,
+                Some("Authentication is temporarily unavailable"),
+                None,
+                nonce,
+            )
+            .into_response();
+        }
+    };
+
+    let password_hash = user
+        .as_ref()
+        .and_then(|candidate| candidate.password_hash.as_deref())
+        .unwrap_or(DUMMY_PASSWORD_HASH)
+        .to_owned();
+    let password = payload.password;
+    let password_valid =
+        match run_password_work(move || rullst_auth::verify_password(&password, &password_hash))
+            .await
+        {
+            Ok(valid) => valid,
+            Err(PasswordWorkError::Busy) => {
+                return busy(auth::login_page(&token, Some(BUSY_MESSAGE), None, nonce));
+            }
+            Err(PasswordWorkError::Failed) => false,
+        };
+
+    let Some(user) = user.filter(|_| password_valid) else {
+        return auth::login_page(&token, Some("Incorrect email or password"), None, nonce)
+            .into_response();
+    };
+
+    match login_cookie(&user) {
+        Ok(cookie) => redirect_with_cookie("/dashboard", &cookie),
+        Err(error) => {
+            eprintln!("Session creation failed: {error}");
+            auth::login_page(&token, Some("Error starting session"), None, nonce).into_response()
+        }
+    }
+}
+
+pub async fn register_view(
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+) -> impl IntoResponse {
+    let token = csrf
+        .as_ref()
+        .map(|Extension(token)| token.as_str())
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| get_csrf_token(&headers));
+    auth::register_page(&token, None, get_csp_nonce(&csp_nonce))
+}
+
+pub async fn register_submit(
+    headers: HeaderMap,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    Form(payload): Form<RegisterDto>,
+) -> Response {
+    let token = get_csrf_token(&headers);
+    let nonce = get_csp_nonce(&csp_nonce);
+    let name = payload.name.trim();
+    let email = normalize_email(&payload.email);
+    if !valid_name(name) {
+        return auth::register_page(
+            &token,
+            Some("Enter a name between 1 and 120 characters"),
+            nonce,
+        )
+        .into_response();
+    }
+    if !valid_email(&email) {
+        return auth::register_page(&token, Some("Enter a valid email address"), nonce)
+            .into_response();
+    }
+    if !valid_password(&payload.password) {
+        return auth::register_page(&token, Some(PASSWORD_LENGTH_MESSAGE), nonce).into_response();
+    }
+
+    match User::find_by_email(&email).await {
+        Ok(Some(_)) => {
+            return auth::register_page(&token, Some("Email already registered"), nonce)
+                .into_response();
+        }
+        Ok(None) => {}
+        Err(error) => {
+            eprintln!("Registration query failed: {error}");
+            return auth::register_page(
+                &token,
+                Some("Registration is temporarily unavailable"),
+                nonce,
+            )
+            .into_response();
+        }
+    }
+
+    let password = payload.password;
+    let password_hash = match run_password_work(move || rullst_auth::hash_password(&password)).await
+    {
+        Ok(Ok(hash)) => hash,
+        Ok(Err(error)) => {
+            eprintln!("Password hashing failed: {error}");
+            return auth::register_page(&token, Some("Error processing password"), nonce)
+                .into_response();
+        }
+        Err(PasswordWorkError::Busy) => {
+            return busy(auth::register_page(&token, Some(BUSY_MESSAGE), nonce));
+        }
+        Err(PasswordWorkError::Failed) => {
+            eprintln!("Password hashing task failed");
+            return auth::register_page(&token, Some("Error processing password"), nonce)
+                .into_response();
+        }
+    };
+
+    let created_at = utc_timestamp();
+    let mut user = User {
+        id: 0,
+        name: name.to_owned(),
+        email,
+        password_hash: Some(password_hash),
+        oauth_provider: None,
+        oauth_id: None,
+        updated_at: created_at,
+        created_at,
+        // Never set at registration: administrators are granted in the
+        // database or in Nexus. ORM writes leave this `db_default` column to
+        // the database.
+        is_admin: false,
+        // The column defaults to 0; ORM writes leave it to the database.
+        session_epoch: 0,
+        // A new record: `save()` inserts every column.
+        snapshot: rullst::db::RowSnapshot::default(),
+    };
+    let original_id = user.id;
+    let mut transaction = match rullst::db::Orm::begin_transaction().await {
+        Ok(transaction) => transaction,
+        Err(error) => {
+            eprintln!("User transaction could not start: {error}");
+            return auth::register_page(&token, Some("Error creating account"), nonce)
+                .into_response();
+        }
+    };
+    let registration = async {
+        user.save_with_tx(&mut transaction).await?;
+
+        Ok::<(), rullst::orm::Error>(())
+    }
+    .await;
+    if let Err(error) = registration {
+        user.id = original_id;
+        if let Err(rollback_error) = transaction.rollback().await {
+            eprintln!("User creation failed: {error}; rollback also failed: {rollback_error}");
+        } else {
+            eprintln!("User creation failed: {error}");
+        }
+        return auth::register_page(&token, Some("Error creating account"), nonce).into_response();
+    }
+    if let Err(error) = transaction.commit().await {
+        user.id = original_id;
+        eprintln!("User creation failed: {error}");
+        return auth::register_page(&token, Some("Error creating account"), nonce).into_response();
+    }
+
+    match login_cookie(&user) {
+        Ok(cookie) => redirect_with_cookie("/dashboard", &cookie),
+        Err(error) => {
+            eprintln!("Session creation failed: {error}");
+            Redirect::to("/login").into_response()
+        }
+    }
+}
+
+/// Clears this browser's cookie. A copy of it stays valid until it expires or
+/// the account's session epoch changes; `logout_everywhere` changes it.
+pub async fn logout() -> Response {
+    redirect_with_cookie("/login", &rullst_auth::make_logout_cookie())
+}
+
+/// `POST /logout/everywhere`, behind `auth_middleware` and CSRF: bumps the
+/// account's session epoch, which signs out every device, then clears this
+/// browser's cookie.
+pub async fn logout_everywhere(Extension(user_id): Extension<i32>) -> Response {
+    match User::revoke_sessions(user_id).await {
+        Ok(()) => redirect_with_cookie("/login", &rullst_auth::make_logout_cookie()),
+        Err(error) => {
+            eprintln!("Session revocation failed: {error}");
+            StatusCode::SERVICE_UNAVAILABLE.into_response()
+        }
+    }
+}
+
+pub async fn dashboard(
+    rullst::server::Extension(user_id): rullst::server::Extension<i32>,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+) -> Response {
+    match User::find(user_id).await {
+        Ok(Some(user)) => {
+            let csrf_token = csrf
+                .as_ref()
+                .map(|Extension(token)| token.as_str())
+                .unwrap_or_default();
+            auth::dashboard_page(&user.name, csrf_token, get_csp_nonce(&csp_nonce)).into_response()
+        }
+        Ok(None) => Redirect::to("/login").into_response(),
+        Err(error) => {
+            eprintln!("Dashboard user query failed: {error}");
+            StatusCode::SERVICE_UNAVAILABLE.into_response()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn registration_timestamps_are_current_utc_instants() {
+        let before = rullst::orm::chrono::Utc::now();
+        let now = utc_timestamp();
+        assert!(now >= before);
+        // Later than 2026-01-01T00:00:00Z.
+        assert!(now.timestamp() > 1_767_225_599);
+    }
+
+    #[test]
+    fn length_limits_count_what_the_form_counts() {
+        // 30 Cyrillic letters are 60 bytes: accepted, although a byte count
+        // of the minimum would also have accepted only 6 of them.
+        assert!(valid_password(&"ж".repeat(30)));
+        assert!(!valid_password(&"ж".repeat(6)));
+        assert!(valid_password(&"a".repeat(72)));
+        // Hashing rejects more than 72 bytes, so the form's 72 characters
+        // cannot all be two-byte letters.
+        assert!(!valid_password(&"ж".repeat(40)));
+        assert!(!valid_password(&"a".repeat(73)));
+        assert!(valid_name(&"名".repeat(70)));
+        assert!(!valid_name(&"名".repeat(121)));
+        assert!(!valid_name(""));
+        // Browsers count a character outside the BMP as two units.
+        assert_eq!(form_length("🦀"), 2);
+    }
+}

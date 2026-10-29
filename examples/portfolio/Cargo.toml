@@ -1,0 +1,25 @@
+# An example application to copy from, not a supported starter: see README.md.
+[package]
+name = "rullst-portfolio-example"
+version = "13.0.0-alpha.3"
+edition = "2024"
+rust-version = "1.96.0"
+publish = false
+license = "MIT"
+description = "Portfolio example (profile, projects, experience and skills edited in Nexus) built with Rullst"
+
+[dependencies]
+rullst = { workspace = true, features = ["orm", "strict-sqlite", "studio", "nexus"] }
+rullst-orm = { workspace = true, features = ["strict-sqlite"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls", "sqlite"] }
+tokio = { workspace = true, features = ["full"] }
+# `#[derive(Orm)]` expands `#[tracing::instrument]` in the application crate.
+tracing = { workspace = true }
+
+# `#[derive(Orm)]` emits `cfg(feature = "redis")` blocks for Redis model events.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
+
+[package.metadata.cargo-machete]
+# Used only by code that `#[derive(Orm)]` expands.
+ignored = ["tracing"]

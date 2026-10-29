@@ -1,0 +1,308 @@
+use crate::models::order::Order;
+use crate::models::product::Product;
+use crate::pages::erp;
+use rullst::response::Html;
+use rullst::server::{Extension, Form, IntoResponse, Path, Query, Redirect, Response, StatusCode};
+use serde::Deserialize;
+
+/// The largest quantity one order may sell.
+const MAX_ORDER_QUANTITY: i32 = 10_000;
+/// The largest stock one product may hold.
+const MAX_STOCK: i32 = 1_000_000;
+/// The largest unit price a product may have.
+const MAX_PRICE: f64 = 1_000_000.0;
+/// The longest name, SKU or customer name, in UTF-16 code units: what the
+/// forms' `maxlength="255"` counts, so text the form accepts is not refused.
+const MAX_TEXT_UNITS: usize = 255;
+/// Products listed on each dashboard page.
+const PRODUCTS_PER_PAGE: usize = 50;
+/// Orders listed under "Recent Orders", newest first.
+const RECENT_ORDERS: usize = 20;
+/// The deepest dashboard page served. A larger `?page=` is a 404 instead of
+/// an overflowing OFFSET that would be reported as a database outage.
+const MAX_PAGE: usize = 100_000;
+
+#[derive(Debug, Deserialize)]
+pub struct DashboardQuery {
+    pub page: Option<usize>,
+}
+
+/// The KPIs aggregate every row in SQL instead of the capped lists the page
+/// shows.
+async fn dashboard_summary() -> Result<erp::DashboardSummary, rullst_orm::Error> {
+    let revenue = rullst::db::sqlx::query_scalar::<_, Option<f64>>(
+        "SELECT SUM(total_price) FROM orders WHERE status = 'Paid'",
+    )
+    .fetch_one(rullst::db::Orm::read_pool()?)
+    .await?
+    .unwrap_or(0.0);
+    Ok(erp::DashboardSummary {
+        revenue,
+        orders: Order::query().count().await?,
+        low_stock: Product::query().where_lt("stock", 6).count().await?,
+    })
+}
+
+async fn load_dashboard(
+    page: usize,
+) -> Result<
+    (
+        rullst_orm::PaginationResult<Product>,
+        Vec<Order>,
+        erp::DashboardSummary,
+    ),
+    rullst_orm::Error,
+> {
+    let products = Product::query()
+        .order_by("id")
+        .paginate(page, PRODUCTS_PER_PAGE)
+        .await?;
+    let orders = Order::query()
+        .order_by_desc("id")
+        .limit(RECENT_ORDERS)
+        .get()
+        .await?;
+    Ok((products, orders, dashboard_summary().await?))
+}
+
+pub async fn index(
+    Query(query): Query<DashboardQuery>,
+    Extension(csrf_token): Extension<rullst::security::CsrfToken>,
+    Extension(csp_nonce): Extension<rullst::security::CspNonce>,
+) -> Response {
+    let page = query.page.unwrap_or(1).max(1);
+    if page > MAX_PAGE {
+        return rejected(StatusCode::NOT_FOUND, "Page not found");
+    }
+    match load_dashboard(page).await {
+        Ok((products, orders, summary)) => Html(erp::dashboard_page(
+            products,
+            orders,
+            summary,
+            csrf_token.as_str(),
+            csp_nonce.as_str(),
+        ))
+        .into_response(),
+        Err(error) => unavailable(error),
+    }
+}
+
+fn unavailable(error: rullst_orm::Error) -> Response {
+    eprintln!("ERP operation failed: {error}");
+    StatusCode::SERVICE_UNAVAILABLE.into_response()
+}
+
+fn rejected(status: StatusCode, message: &'static str) -> Response {
+    (status, message).into_response()
+}
+
+/// Trimmed text of 1 to `MAX_TEXT_UNITS` characters, counted like the form.
+fn bounded_text(value: &str) -> Option<String> {
+    let value = value.trim();
+    (!value.is_empty() && value.encode_utf16().count() <= MAX_TEXT_UNITS).then(|| value.to_string())
+}
+
+#[derive(Deserialize)]
+pub struct CreateProductPayload {
+    pub name: String,
+    pub sku: String,
+    pub price: f64,
+    pub stock: i32,
+}
+
+pub async fn store_product(Form(payload): Form<CreateProductPayload>) -> Response {
+    let (Some(name), Some(sku)) = (bounded_text(&payload.name), bounded_text(&payload.sku)) else {
+        return rejected(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Name and SKU must be 1-255 characters",
+        );
+    };
+    if !(0.0..=MAX_PRICE).contains(&payload.price) || !(0..=MAX_STOCK).contains(&payload.stock) {
+        return rejected(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Price or stock is out of range",
+        );
+    }
+    let mut product = Product {
+        id: 0,
+        name,
+        sku,
+        price: payload.price,
+        stock: payload.stock,
+        snapshot: rullst::db::RowSnapshot::default(),
+    };
+    match product.save().await {
+        Ok(_) => Redirect::to("/").into_response(),
+        Err(error) => unavailable(error),
+    }
+}
+
+enum StockChange {
+    Updated(i32),
+    AtLimit,
+    UnknownProduct,
+}
+
+/// Adds one unit with a single conditional UPDATE, so concurrent clicks never
+/// overwrite each other's increment.
+async fn increment_stock(id: i32) -> Result<StockChange, rullst_orm::Error> {
+    let postgres = rullst::db::Orm::driver()? == "postgres";
+    let mut transaction = rullst::db::Orm::pool()?.begin().await?;
+    let increment = if postgres {
+        "UPDATE products SET stock = stock + 1 WHERE id = $1 AND stock < $2"
+    } else {
+        "UPDATE products SET stock = stock + 1 WHERE id = ? AND stock < ?"
+    };
+    let updated = rullst::db::sqlx::query(increment)
+        .bind(id)
+        .bind(MAX_STOCK)
+        .execute(&mut *transaction)
+        .await?
+        .rows_affected();
+    let current = if postgres {
+        "SELECT stock FROM products WHERE id = $1"
+    } else {
+        "SELECT stock FROM products WHERE id = ?"
+    };
+    let stock = rullst::db::sqlx::query_scalar::<_, i32>(current)
+        .bind(id)
+        .fetch_optional(&mut *transaction)
+        .await?;
+    transaction.commit().await?;
+    Ok(match stock {
+        None => StockChange::UnknownProduct,
+        Some(_) if updated == 0 => StockChange::AtLimit,
+        Some(stock) => StockChange::Updated(stock),
+    })
+}
+
+pub async fn add_stock(Path(id): Path<i32>) -> Response {
+    let stock = match increment_stock(id).await {
+        Ok(StockChange::Updated(stock)) => stock,
+        Ok(StockChange::AtLimit) => return rejected(StatusCode::CONFLICT, "Stock is at its limit"),
+        Ok(StockChange::UnknownProduct) => {
+            return rejected(StatusCode::NOT_FOUND, "Product not found");
+        }
+        Err(error) => return unavailable(error),
+    };
+
+    // Render only the updated stock badge with HTMX
+    let badge_color = if stock <= 5 {
+        "text-rose-400 bg-rose-950/40"
+    } else {
+        "text-emerald-400 bg-emerald-950/40"
+    };
+    Html(format!(
+        r#"<span id="stock-badge-{}" class="px-2.5 py-1 text-xs font-semibold rounded-full {}">{} Units</span>"#,
+        id, badge_color, stock
+    ))
+    .into_response()
+}
+
+#[derive(Deserialize)]
+pub struct CreateOrderPayload {
+    pub customer_name: String,
+    pub product_id: i32,
+    pub quantity: i32,
+}
+
+enum OrderOutcome {
+    Placed,
+    InsufficientStock,
+    UnknownProduct,
+}
+
+/// Reserves the stock and records the order in one transaction. The
+/// conditional decrement is the stock check, so two concurrent orders cannot
+/// both take the last units, and a failed order insert rolls it back.
+async fn place_order(
+    customer_name: &str,
+    product_id: i32,
+    quantity: i32,
+) -> Result<OrderOutcome, rullst_orm::Error> {
+    let postgres = rullst::db::Orm::driver()? == "postgres";
+    let mut transaction = rullst::db::Orm::pool()?.begin().await?;
+    let reserve = if postgres {
+        "UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $3"
+    } else {
+        "UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?"
+    };
+    let reserved = rullst::db::sqlx::query(reserve)
+        .bind(quantity)
+        .bind(product_id)
+        .bind(quantity)
+        .execute(&mut *transaction)
+        .await?
+        .rows_affected();
+    let unit_price = if postgres {
+        "SELECT price FROM products WHERE id = $1"
+    } else {
+        "SELECT price FROM products WHERE id = ?"
+    };
+    // Returning before `commit` drops the transaction, which rolls it back.
+    let Some(price) = rullst::db::sqlx::query_scalar::<_, f64>(unit_price)
+        .bind(product_id)
+        .fetch_optional(&mut *transaction)
+        .await?
+    else {
+        return Ok(OrderOutcome::UnknownProduct);
+    };
+    if reserved == 0 {
+        return Ok(OrderOutcome::InsufficientStock);
+    }
+    let record = if postgres {
+        "INSERT INTO orders (customer_name, product_id, quantity, total_price, status) VALUES ($1, $2, $3, $4, $5)"
+    } else {
+        "INSERT INTO orders (customer_name, product_id, quantity, total_price, status) VALUES (?, ?, ?, ?, ?)"
+    };
+    rullst::db::sqlx::query(record)
+        .bind(customer_name)
+        .bind(product_id)
+        .bind(quantity)
+        .bind(price * f64::from(quantity))
+        .bind("Paid")
+        .execute(&mut *transaction)
+        .await?;
+    transaction.commit().await?;
+    Ok(OrderOutcome::Placed)
+}
+
+pub async fn store_order(Form(payload): Form<CreateOrderPayload>) -> Response {
+    let Some(customer_name) = bounded_text(&payload.customer_name) else {
+        return rejected(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Customer name must be 1-255 characters",
+        );
+    };
+    if payload.product_id <= 0 || !(1..=MAX_ORDER_QUANTITY).contains(&payload.quantity) {
+        return rejected(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Choose a product and a quantity from 1 to 10000",
+        );
+    }
+    match place_order(&customer_name, payload.product_id, payload.quantity).await {
+        // Redirect to main page to refresh dashboard state
+        Ok(OrderOutcome::Placed) => Redirect::to("/").into_response(),
+        Ok(OrderOutcome::InsufficientStock) => {
+            rejected(StatusCode::CONFLICT, "Not enough stock for this order")
+        }
+        Ok(OrderOutcome::UnknownProduct) => rejected(StatusCode::NOT_FOUND, "Product not found"),
+        Err(error) => unavailable(error),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn text_limits_count_what_the_form_counts() {
+        // 255 accented letters are 510 bytes but satisfy maxlength="255".
+        assert_eq!(bounded_text(&"é".repeat(255)), Some("é".repeat(255)));
+        assert_eq!(bounded_text(&"é".repeat(256)), None);
+        // Browsers count a character outside the BMP as two units.
+        assert!(bounded_text(&"🦀".repeat(127)).is_some());
+        assert!(bounded_text(&"🦀".repeat(128)).is_none());
+        assert_eq!(bounded_text("  "), None);
+    }
+}

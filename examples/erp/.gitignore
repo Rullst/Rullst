@@ -1,0 +1,28 @@
+# Rust build artifacts
+/target
+
+# Commit Cargo.lock for reproducible application/deployment builds.
+
+# Rullst: Database
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3
+*.duckdb
+*.duckdb.wal
+
+# Rullst: Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Rullst: host-local linker selection (mold/lld when found)
+/.cargo/config.toml
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
