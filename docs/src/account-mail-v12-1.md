@@ -1,17 +1,19 @@
-# Account mail in 12.1
+# Account mail (since 12.1)
 
-> **v13 update (8 October 2026):** this page records the 12.1 contract. The v13
-> line removed the Azure Communication Services transport described below,
-> together with the SendGrid, Postmark, Mailjet and Mailtrap transports; they
-> remain in the 12.x line. Account mail in v13 is delivered through Resend,
-> AWS SES, SendPulse, SMTP or an application-owned `MailDriver`; see the
+> **Version note:** this contract was introduced in 12.1 and continues in v13.
+> The v13 line removed the Azure Communication Services transport (its section
+> below is kept for 12.x readers), together with the SendGrid, Postmark,
+> Mailjet and Mailtrap transports; they remain in the 12.x line, which reached
+> end of life on 16 October 2026. Account mail in v13 is delivered through
+> Resend, AWS SES, SendPulse, SMTP or an application-owned `MailDriver`; see the
 > [migration guide](migration-v13.md#changes-from-the-published-1210-source)
 > row "Mail providers removed" and
 > [Writing your own mail transport](mail-custom-transport.md).
 
-This is an opt-in 12.1 source contract. Updating a dependency does not migrate an
+This is an opt-in contract. Updating a dependency does not migrate an
 application's account table, replace its session middleware, configure a sender
-or deploy a worker. See the [release record](v12.md) for publication status.
+or deploy a worker. The [12.x release record](v12.md) lists its first
+publication.
 
 ## Boundaries
 
@@ -23,8 +25,9 @@ or introducing another publishable crate.
 
 Enable `account-mail-postgres` or `account-mail-sqlite` on `rullst`, or the
 corresponding `recovery-*` feature on Auth when supplying a different worker.
-These features do not enable the general ORM. Features remain additive; disable
-umbrella defaults when a backend-exclusive dependency graph is required.
+These features do not enable the general ORM. Features remain additive. In v13
+`rullst` has no default features; on 12.x, disable the umbrella defaults when a
+backend-exclusive dependency graph is required.
 
 ## Adoption sequence
 
@@ -149,14 +152,15 @@ other production deployments supply their own `SuppressionStore`. Verified
 feedback does not automatically mutate an unrelated account registry.
 
 Security templates add no tracking or marketing unsubscribe dependency. Disable
-tracking at the provider/domain/account level as well. In particular,
-[Postmark server settings can override the message flag](https://postmarkapp.com/developer/user-guide/tracking-opens/tracking-opens-per-email).
+tracking at the provider/domain/account level as well; for example, the 12.x
+Postmark transport's
+[server settings can override the message flag](https://postmarkapp.com/developer/user-guide/tracking-opens/tracking-opens-per-email).
 Marketing consent, legal basis, preference withdrawal and retention are
 application responsibilities; enabling Mail cannot establish GDPR/LGPD compliance.
 
-## Azure Communication Services
+## Azure Communication Services (12.x only)
 
-`AzureCommunicationDriver` supports the ACS Email 2023-03-31 REST
+This transport was removed in v13. On 12.x, `AzureCommunicationDriver` supports the ACS Email 2023-03-31 REST
 contract. Set `MAIL_DRIVER=azure-acs` and
 `AZURE_COMMUNICATION_EMAIL_ENDPOINT=https://RESOURCE.communication.azure.com`.
 In Azure Container Apps, `AzureManagedIdentity` uses the platform-injected
