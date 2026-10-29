@@ -12,6 +12,22 @@ const MAX_FILE_BYTES: u64 = 1024 * 1024;
 const MAX_YAML_ENTRIES: usize = 5_000;
 const DEPENDENCY_SECTIONS: [&str; 3] = ["dependencies", "dev-dependencies", "build-dependencies"];
 
+/// The sorted names `root` lists. A fixed name is scanned only when the
+/// directory lists it exactly: on a case-insensitive file system (macOS,
+/// Windows) `Justfile` would otherwise open `justfile` a second time.
+fn root_names(root: &Path) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return Vec::new();
+    };
+    let mut names: Vec<String> = entries
+        .filter_map(Result::ok)
+        .take(MAX_YAML_ENTRIES)
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .collect();
+    names.sort();
+    names
+}
+
 fn finding(rule: &'static Rule, path: PathBuf, line: usize) -> SourceFinding {
     SourceFinding {
         rule,
@@ -455,11 +471,10 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
     {
         push(&MAIL_REMOVED, "Rullst.toml", line);
     }
-    let mut scripts = vec![
-        "Makefile".to_string(),
-        "justfile".to_string(),
-        "Justfile".to_string(),
-    ];
+    let mut scripts: Vec<String> = root_names(root)
+        .into_iter()
+        .filter(|name| matches!(name.as_str(), "Makefile" | "justfile" | "Justfile"))
+        .collect();
     let mut kubernetes = read_small(&root.join("build_buildah.sh")).is_some();
     for entry in WalkDir::new(root)
         .max_depth(4)

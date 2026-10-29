@@ -112,6 +112,12 @@ A prepared version section does not establish that its tag or crates exist.
   its first build compiles 12 fewer packages. Code that imports
   `rullst_connect` directly adds the dependency, as the OAuth tutorials show.
 
+### Dependencies
+
+- `crypto-bigint` 0.7.6 → 0.7.10 (with `ctutils` 0.4.7) in the workspace and
+  the `rullst` and `rullst-nexus` fuzz lockfiles: crates.io yanked 0.7.6
+  through 0.7.8.
+
 ## [13.0.0-alpha.3] - 2026-10-23
 
 Third v13 prerelease, for evaluation. It fixes the problems found while
