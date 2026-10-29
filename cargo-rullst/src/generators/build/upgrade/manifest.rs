@@ -6,6 +6,7 @@ use toml_edit::{DocumentMut, Formatted, Item, Table, Value};
 
 pub(super) const RULLST_PACKAGES: &[&str] = &[
     "cargo-rullst",
+    "cargo-rullst-extras",
     "rullst",
     "rullst-ai",
     "rullst-auth",
