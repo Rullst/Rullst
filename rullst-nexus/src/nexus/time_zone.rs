@@ -13,7 +13,7 @@ use rullst_orm::chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
 /// the zone. A value with `Z`, `±HH:MM` or `±HH` keeps its own offset. The
 /// default is UTC. Select it with [`Nexus::with_time_zone`](super::Nexus::with_time_zone).
 ///
-/// With the `tz` feature, [`NexusTimeZone::named`] follows an IANA zone's
+/// With the `tz` feature, `NexusTimeZone::named` follows an IANA zone's
 /// daylight-saving rules:
 /// - a wall time that a gap skips (clocks move forward) does not exist and
 ///   is refused with a `422` validation error naming the zone;

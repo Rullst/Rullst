@@ -16,7 +16,8 @@ fn random_alphanumeric(length: usize) -> String {
 ///
 /// The application must store the value in a server-side session (or an
 /// equivalently protected, short-lived binding) and consume it after a
-/// constant-time callback comparison such as [`crate::extractors::AuthCallback::verify_state`].
+/// constant-time callback comparison such as `extractors::AuthCallback::verify_state`
+/// (the `extractors` module needs an integration feature such as `axum`).
 pub fn generate_oauth_state() -> String {
     random_alphanumeric(64)
 }

@@ -59,7 +59,6 @@ pub mod lifecycle;
 /// Live state synchronization and server-push connection handlers.
 pub mod live;
 #[cfg(not(target_arch = "wasm32"))]
-/// Opt-in, read-only production monitoring endpoint (`/_rullst/monitor/v1`).
 pub mod monitor;
 #[cfg(not(target_arch = "wasm32"))]
 /// Multitenancy request routing and tenant state isolation layers.
@@ -68,7 +67,6 @@ pub mod multitenant;
 /// Canonical production middleware ordering contract.
 pub mod production;
 #[cfg(not(target_arch = "wasm32"))]
-/// Digital Asset Links for the Google Play package of a Progressive Web App.
 pub mod pwa;
 pub mod query_patterns;
 #[cfg(not(target_arch = "wasm32"))]
