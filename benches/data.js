@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793296070527,
+  "lastUpdate": 1793296991098,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -29569,6 +29569,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1596,
             "range": "± 62",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0d3c99c24c421216bd53c6534066f883ace0e4eb",
+          "message": "Merge pull request #570 from Rullst/fix/v13-alpha4-cli-english\n\nfix(cli): write generator output and generated comments in English",
+          "timestamp": "2026-10-29T14:56:44-03:00",
+          "tree_id": "1e212bedbd4fb87c3ab9fce72486f00b97515c0e",
+          "url": "https://github.com/Rullst/Rullst/commit/0d3c99c24c421216bd53c6534066f883ace0e4eb"
+        },
+        "date": 1793296987386,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 659,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 887,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 411,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2008,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
