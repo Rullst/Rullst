@@ -226,11 +226,24 @@ fn new_projects_are_only_proposed_outside_a_project_with_valid_flags() {
         panic!("expected a new project");
     };
     assert_eq!(directory, &root.join("shop"));
+    let api = prepare(
+        &run(&["new", "shop", "--blueprint", "api"]),
+        None,
+        &root,
+        &overlay,
+    );
+    assert_eq!(
+        api.unwrap().summary(),
+        "cargo rullst new shop --default --blueprint api"
+    );
 
     for args in [
         &["new", "Shop"][..],
         &["new", "../x"],
         &["new", "shop", "--blueprint", "wordpress"],
+        // Moved to the repository's examples in 13.0.0-alpha.4.
+        &["new", "shop", "--blueprint", "lms"],
+        &["new", "shop", "--blueprint", "erp"],
         &["new", "shop", "--database", "oracle"],
         &["new", "shop", "--nix"],
         &["new", "shop", "--blueprint"],

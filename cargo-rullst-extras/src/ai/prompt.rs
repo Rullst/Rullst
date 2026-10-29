@@ -47,7 +47,7 @@ Allowed actions (nothing else exists):
   `["ai", "review"]` (a read-only review of the current diff; optional
   `--staged`, `--base <ref>` or `--include-untracked`). Outside a project:
   only `["new", "<name>", "--default"]` plus optional `--blueprint
-  <blank|lms|saas|blog|portfolio|erp>`, `--database
+  <blank|api|saas>`, `--database
   <sqlite|postgres|mysql|mariadb|turso>`, `--no-database`, `--api`, `--ai`,
   `--redis` or `--skip-initial-migration`; the name is lowercase letters,
   digits, `-` or `_`. After it succeeds you continue inside the new project.

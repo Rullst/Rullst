@@ -294,7 +294,7 @@ const NEW_FLAGS: &[&str] = &[
     "--no-database",
     "--skip-initial-migration",
 ];
-const BLUEPRINTS: &[&str] = &["blank", "lms", "saas", "blog", "portfolio", "erp"];
+const BLUEPRINTS: &[&str] = &["blank", "api", "saas"];
 const DATABASES: &[&str] = &["sqlite", "postgres", "mysql", "mariadb", "turso"];
 
 /// A project name the CLI accepts: a lowercase package name.

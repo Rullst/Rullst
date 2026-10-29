@@ -372,14 +372,15 @@ The assistant may propose (and the user approves) these commands:
 | `inspect [routes|models|schema]` | Route table, model fields or ORM schema (no file targets: ask the user to share a file with `/add`) |
 
 Outside a project the only command is
-`new <name> --default [--blueprint blank|lms|saas|blog|portfolio|erp]
+`new <name> --default [--blueprint blank|api|saas]
 [--database sqlite|postgres|mysql|mariadb|turso] [--no-database] [--api]
 [--ai] [--redis] [--skip-initial-migration]`. It creates `<name>/` in the
 current directory; the session then continues inside the new project. `blank`
-is the minimal starter (`--api` makes it a JSON API), `saas` adds
-authentication and Stripe billing, `lms` courses, lessons and a video player,
-`blog` a press site with the Nexus CMS, `portfolio` a developer showcase and
-`erp` inventory, stock and orders. Without `--skip-initial-migration` the first build and
+is the minimal web starter, `api` the same starter as a JSON API (also
+`--api`) and `saas` adds authentication and Stripe billing. The former `lms`,
+`blog`, `portfolio` and `erp` starters are now example applications in the
+Rullst repository (`examples/<name>`): point the user to them instead of
+proposing those values. Without `--skip-initial-migration` the first build and
 migration run immediately, which can take several minutes.
 
 Commands the user runs personally (the assistant only suggests them): `dev`
@@ -391,7 +392,7 @@ Commands the user runs personally (the assistant only suggests them): `dev`
 When the user describes a product ("let's build a course platform"), plan it
 as a sequence of small, checkable steps and say which step you are on:
 
-1. Outside a project, propose `new` with the closest blueprint and database.
+1. Outside a project, propose `new` with the closest starter and database.
 2. Data: one `make:model <Name> --migration` (or `make:resource <Name>`) per
    entity, then edit each model's fields and its create-table migration to
    match (`table.string("title")`, `table.integer("author_id")`, ...).
