@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793240127588,
+  "lastUpdate": 1793250603347,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -16059,6 +16059,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 406,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9ea4745628fdbfaf646141c8473fd6d34c745479",
+          "message": "Merge pull request #554 from Rullst/docs/v13-maintenance-cost-snapshot\n\ndocs(maintenance): add a measured per-crate cost snapshot for 13.0.0-alpha.3",
+          "timestamp": "2026-10-29T01:20:42-03:00",
+          "tree_id": "ff9f1d4704562a2537d501c84804393b0c8aa706",
+          "url": "https://github.com/Rullst/Rullst/commit/9ea4745628fdbfaf646141c8473fd6d34c745479"
+        },
+        "date": 1793250602731,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1665,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 384,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 407,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
