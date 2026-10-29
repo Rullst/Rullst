@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793249407001,
+  "lastUpdate": 1793260268331,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -29137,6 +29137,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2004,
             "range": "± 39",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "25aa0268e54dcee69526edb62ef22879bf225612",
+          "message": "Merge pull request #557 from Rullst/test/v13-alpha3-cli-mutation\n\ntest(cli): targeted mutation campaign and CLI mutation gate",
+          "timestamp": "2026-10-29T04:44:43-03:00",
+          "tree_id": "1f09fcc854f27cfe3072b486658b6288fcd214d4",
+          "url": "https://github.com/Rullst/Rullst/commit/25aa0268e54dcee69526edb62ef22879bf225612"
+        },
+        "date": 1793260264781,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 690,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 896,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 434,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2058,
+            "range": "± 41",
             "unit": "ns/iter"
           }
         ]
