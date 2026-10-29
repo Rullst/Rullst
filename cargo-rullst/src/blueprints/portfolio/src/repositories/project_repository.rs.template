@@ -1,9 +1,0 @@
-use crate::models::project::Project;
-
-pub struct ProjectRepository;
-
-impl ProjectRepository {
-    pub async fn all() -> Result<Vec<Project>, rullst_orm::Error> {
-        Project::all().await
-    }
-}

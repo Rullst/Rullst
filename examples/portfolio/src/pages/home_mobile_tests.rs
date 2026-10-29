@@ -72,8 +72,22 @@ fn rendered_portfolio_covers_long_content_and_mobile_browser_when_requested() {
         category: long.clone(),
         snapshot: rullst::db::RowSnapshot::default(),
     };
-    let html = render(&profile, &[project], &[experience], &[skill], "");
+    let html = render(&profile, &[project], &[experience], &[skill], "test-nonce");
     assert!(html.contains(&long));
+    // The production CSP allows only nonce-bound inline styles and same-origin
+    // fonts and images (moved from the CLI's former blueprint checks).
+    assert!(html.contains("<style nonce=\"test-nonce\">"));
+    assert_eq!(
+        html.matches("<style").count(),
+        html.matches("<style nonce=\"test-nonce\">").count()
+    );
+    for blocked in [
+        "style=\"",
+        "fonts.googleapis.com",
+        "raw.githubusercontent.com",
+    ] {
+        assert!(!html.contains(blocked), "{blocked}");
+    }
     assert!(html.contains("Projects Showcase"));
     assert!(html.contains("/nexus"));
     check_mobile_ui("portfolio", &html);
