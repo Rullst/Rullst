@@ -860,7 +860,7 @@ jobs:
             exit 0
           fi
           changed="$(git diff --name-only HEAD^1 HEAD)"
-          if grep -Eq '^(cargo-rullst/src/generators/(deploy\.rs|project/docker\.rs)|cargo-rullst/src/blueprints/deploy\.rs|\.github/check-vm-deploy\.py)$' <<< "$changed"; then
+          if grep -Eq '^(cargo-rullst/src/generators/(deploy\.rs|project/docker\.rs)|cargo-rullst/src/blueprints/deploy\.rs|\.github/(check-vm-deploy|vm_deploy_http)\.py)$' <<< "$changed"; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
