@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793239805086,
+  "lastUpdate": 1793250265417,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -18459,6 +18459,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4234,
             "range": "± 78",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9ea4745628fdbfaf646141c8473fd6d34c745479",
+          "message": "Merge pull request #554 from Rullst/docs/v13-maintenance-cost-snapshot\n\ndocs(maintenance): add a measured per-crate cost snapshot for 13.0.0-alpha.3",
+          "timestamp": "2026-10-29T01:20:42-03:00",
+          "tree_id": "ff9f1d4704562a2537d501c84804393b0c8aa706",
+          "url": "https://github.com/Rullst/Rullst/commit/9ea4745628fdbfaf646141c8473fd6d34c745479"
+        },
+        "date": 1793250264815,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1015,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 752,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1815,
+            "range": "± 57",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4194,
+            "range": "± 40",
             "unit": "ns/iter"
           }
         ]
