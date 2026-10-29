@@ -74,9 +74,9 @@ Database, queue, cache and feature-flag writes also require a crate-private
 marker that only this capability installs, so raw subrouters mounted elsewhere
 return `403` for them.
 
-### Remote projects (v13, 13.0.0-alpha.3)
+### Remote projects (added in 13.0.0-alpha.3)
 
-The `rullst-studio` binary (`cargo install rullst-studio --features remote --locked`, then
+The `rullst-studio` binary (`cargo install rullst-studio --version =13.0.0-alpha.4 --features remote --locked`, then
 `rullst-studio [--port PORT]`, or `cargo rullst studio --remote`; library
 users enable the non-default `remote` feature) serves
 Studio on `127.0.0.1:5556` without an application process and reads the

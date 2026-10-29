@@ -53,7 +53,8 @@ risk. An exception is never evidence that the vulnerability is fixed.
 At or before expiry, the owner must either remove the dependency, upgrade to a
 fixed dependency graph, or record a new review with fresh evidence and a new
 short deadline. The reviewer must inspect the dependency path with Cargo Tree
-and run the repository's Cargo Audit, Cargo Deny, and OSV workflows.
+and run the repository's Cargo Audit (`audit.yml`, `security-audit.yml`) and
+Cargo Deny (`cargo-deny.yml`) workflows.
 
 Patched `rustls-webpki`, `event-listener`, and `lru` findings and the removed
 HTTP/2 dependency from Actix's disabled default features are deliberately not

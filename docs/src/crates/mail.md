@@ -49,7 +49,7 @@ localized lifecycle templates and signed feedback. These additions shipped in
 12.1.0; its Azure Communication Services transport was removed in 13.0.
 Existing applications must adopt the new store/worker explicitly.
 
-## Shared suppression candidate (v13)
+## Shared suppression (v13)
 
 Optional `postgres` (facade `mail-postgres`) adds `PostgresSuppressionStore`, a
 recipient suppression and replay store shared by hosts using one PostgreSQL
@@ -72,7 +72,7 @@ enabled automatically. See the
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
 - **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, native SES, the SES bearer proxy and SMTP serialize the same owned-byte model, and SendPulse its non-inline attachments; transports copy or Base64-encode as required.
 - **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. Checks follow the case-insensitive declared type, the filename extension and the content signature together, never the declared type alone. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
-- **🚫 Durable Recipient Suppression (`sqlite`, v13 `postgres`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes; the v13 PostgreSQL candidate shares that state across hosts.
+- **🚫 Durable Recipient Suppression (`sqlite`, v13 `postgres`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes; the v13 PostgreSQL store shares that state across hosts.
 - **📊 Secret-Minimized Delivery Observability:** `ObservedMailDriver` records only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing static observer.
 - **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend delivery uses provider scheduling and rejects a schedule beyond its documented limit (30 days ahead) with `ConfigError` before any request. Real SMTP, SendPulse, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters), checked per DNS label of the link host and user-info only, as the text reads and as a browser resolves the link (tabs and newlines removed, `\` read as `/` for HTTP(S), `https:host` and scheme-relative `\\host` forms, percent-encoded and A-label hosts), so single-script IDNs such as `παράδειγμα.gr` or `пример.com` and non-Latin query text are allowed while all-lookalike Cyrillic labels under a non-Cyrillic TLD are rejected, and dangerous URI schemes (`javascript:`, `data:text/html`).
@@ -468,9 +468,9 @@ and fails before any request with `MailError::ValidationError`. (v13)
 Long-running services should inject a refreshing credential provider or a
 caller-built SDK config instead of freezing credentials:
 
-This snippet intentionally uses the application's direct `aws-config`
-dependency shown above, which is not re-exported by Rullst; it is therefore
-checked in the AWS integration workflow rather than the umbrella doctest:
+This snippet uses the application's direct `aws-config` dependency shown
+above, which Rullst does not re-export, so the book doctests do not compile it
+(`rust,ignore`):
 
 ```rust,ignore
 use rullst_mail::{AwsSesDriver, MailDriver, Message, aws_ses_sdk};

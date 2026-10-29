@@ -7,7 +7,7 @@
 > 16 October 2026; see the [release record](../v12.md). Use a path dependency only for checkout-local
 > review.
 
-Since **12.1.2** (and in this development source), built-in
+Since **12.1.2** (and in v13), built-in
 authorization-code URLs explicitly request `response_type=code`. The
 [OAuth protocol](https://www.rfc-editor.org/rfc/rfc6749#section-4.1.1) and
 [Google request contract](https://developers.google.com/identity/openid-connect/openid-connect#sendauthrequest)
@@ -48,7 +48,7 @@ state of those checks for the referenced commit; they are not an absolute securi
 | **CodeQL SAST** | [![CodeQL](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/codeql.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/codeql.yml) | Advanced semantic code analysis |
 | **Cargo Deny** | [![Cargo Deny](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml) | Banning unmaintained/vulnerable crates |
 | **Cargo Audit** | [![Cargo Audit](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/audit.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/audit.yml) | Continuous scanning for crate vulnerabilities |
-| **Benchmark CI** | [![Benchmark](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/bench.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Continuous performance regression testing |
+| **Benchmark CI** | [![Benchmark](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/bench.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Benchmarks after pushes to `main` and weekly; a regression past 120% posts an alert comment but does not fail the run |
 | **Cargo SemVer** | [![Semver Checks](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/semver.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/semver.yml) | Strict SemVer API breakage checks |
 | **Cargo Machete** | [![Machete](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/machete.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/machete.yml) | Detecting unused and bloated dependencies |
 | **Spellcheck CI** | [![Spellcheck](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/spellcheck.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/spellcheck.yml) | Automated typo detection across docs and code |
@@ -162,7 +162,7 @@ adapter treats its argument as an ID token and checks signature, issuer,
 audience and expiry but no nonce, so a captured Apple ID token for your client
 can be replayed until it expires.
 
-The v13 prerelease (13.0.0-alpha.1) adds that audience-bound entry point for
+v13 (since 13.0.0-alpha.1) adds that audience-bound entry point for
 Google and `OidcProvider`: `verify_id_token(id_token, expected_nonce)` verifies
 the signature through the provider's rotating JWKS and requires the exact
 issuer, `aud` equal to your `client_id` (and, when present, an `azp` equal to
@@ -351,7 +351,7 @@ proxy constructors already apply the bounded retry policy.
 
 `OidcProvider::discover` fetches its metadata before `with_http_client` can
 apply, so pass the proxy client to `OidcProvider::discover_with_client` instead
-(v13 prerelease API); discovery, JWKS and token calls then share it.
+(added in v13); discovery, JWKS and token calls then share it.
 
 Proxy URLs are limited to an HTTP(S) scheme and authority, with no embedded
 credentials, path, query, or fragment. Authenticated non-loopback proxies must
@@ -420,11 +420,14 @@ Sign in with Apple is different: `AppleProvider` always requests
 cross-site POST body. `AuthSession` reads only the query string, and a
 `SameSite=Lax` or `Strict` session cookie is not sent on that POST, so the
 managed `begin_oidc_session` + `AuthSession` flow cannot complete an Apple
-login with a 12.x release. Use the manual state/PKCE/nonce flow with a
-dedicated `SameSite=None; Secure; HttpOnly` challenge cookie, as described in
-[Sign in with Apple: form POST callback](../tutorials/42-server-bound-oauth-sessions.md#sign-in-with-apple-form-post-callback).
+login. In v13, use the store-backed login above with
+`ChallengeCookie::for_cross_site_post`, or `AuthSessionForm` below. The manual
+state/PKCE/nonce flow with a dedicated `SameSite=None; Secure; HttpOnly`
+challenge cookie, described in
+[Sign in with Apple: form POST callback](../tutorials/42-server-bound-oauth-sessions.md#sign-in-with-apple-form-post-callback),
+also works and is the only option on 12.x.
 
-The v13 prerelease (13.0.0-alpha.1) adds `AuthSessionForm`, which consumes
+v13 (since 13.0.0-alpha.1) adds `AuthSessionForm`, which consumes
 the `begin_oidc_session` challenge from the form POST body (at most 16 KiB).
 The session cookie that holds that challenge must still be
 `SameSite=None; Secure`, so give the Apple routes their own session layer.
@@ -514,7 +517,7 @@ generation advances, because the provider has already consumed the prior one;
 the call fails and the next call refreshes with the rotation. The same
 applies when the grant succeeds but the follow-up profile lookup or ID-token
 validation fails: provider adapters then return
-`ConnectError::RefreshIncomplete` (v13 prerelease API), whose `IssuedTokens`
+`ConnectError::RefreshIncomplete` (added in v13), whose `IssuedTokens`
 carry the new tokens to direct `Provider::refresh_token` callers, and the
 session keeps the rotation and returns the underlying error. Persist the
 snapshot after such a failure too.
@@ -640,17 +643,19 @@ async fn exchange_with_pkce<P: Provider>(
 
 ## 🧑‍💻 Full Example with Axum
 
-You can find a complete working server using the **Axum** framework in the examples directory. Just run:
+A complete Axum server is in `rullst-connect/examples/axum_server.rs`. From the
+repository root, without provider credentials (the `mock` feature makes the
+`mock_*` fallback credentials sign in offline):
 
 ```bash
-cargo run --example axum_server
+cargo run -p rullst-connect --example axum_server --features mock
 ```
 
 ## 📦 Releasing a New Version
 
 Connect is released only through the repository-wide, topologically ordered
 release workflow. Do not publish this crate independently from a working tree.
-Follow the [v12 release guide](https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md)
+Follow the [release guide](https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md)
 and require all candidate-SHA gates before creating a release tag.
 
 ## 🤝 Contributing
