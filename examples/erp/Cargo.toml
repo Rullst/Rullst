@@ -22,5 +22,7 @@ tracing = { workspace = true }
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
 
 [package.metadata.cargo-machete]
-# Used only by code that `#[derive(Orm)]` expands.
-ignored = ["tracing"]
+# `tracing`: used only by code that `#[derive(Orm)]` expands. `sqlx`: declared,
+# as `cargo rullst new` does, to select SQLx's runtime, TLS and SQLite
+# features; the code reaches it through `rullst::db::sqlx`.
+ignored = ["tracing", "sqlx"]
