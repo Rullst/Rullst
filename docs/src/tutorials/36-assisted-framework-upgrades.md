@@ -431,15 +431,15 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (11 rows);
+  application source (12 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (99 rows);
+  the affected API, feature or configuration, which the rules locate (100 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (96 rows).
+  of inputs that previously failed) (97 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 111 rules. A row can map to several rules and a rule to
+has 114 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -650,6 +650,9 @@ the rule together.
 | Core error console assistant panel | (c) none | — | Development-only page; `handle_autofix` response readers are not located; introduced in 13.0.0-alpha.4 |
 | CLI starters moved to the examples | (c) none | — | CLI behaviour; applications generated from the removed starters keep their code; introduced in 13.0.0-alpha.4 |
 | ORM derive dependencies | (c) none | — | Fix of code that previously failed to compile; a `tracing` or `tokio` dependency kept for the derive still works; introduced in 13.0.0-alpha.4 |
+| ORM `FromRow` and SQLx macros | (a) must-change | `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS` | Models deriving `FromRow` beside `Orm` (any path, separate derive attributes included) unless `#[orm(custom_from_row)]`; SQLx derives on other structs and enums and `sqlx::…::query!`-family macros when no manifest enables SQLx's `derive`/`macros` (or its default features); introduced in 13.0.0-alpha.4 |
+| Nexus AI assistant feature | (b) review | `V13-NEXUS-AI-FEATURE` | A `rullst` dependency with `nexus`/`nexus-tz` but not `nexus-ai`, or `rullst-nexus` without default features and without `ai`; introduced in 13.0.0-alpha.4 |
+| Generated starter dependencies | (c) none | — | Generator output for new projects; an unused `tracing-subscriber` in an existing project keeps working; introduced in 13.0.0-alpha.4 |
 
 ## Planned simpler update experience
 

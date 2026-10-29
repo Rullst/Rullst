@@ -188,6 +188,9 @@ impl Collector {
 pub(super) struct WorkspaceFacts {
     /// A manifest declares `utoipa` older than 6 (or `utoipa-axum` before 0.3).
     pub utoipa_below_6: bool,
+    /// A manifest enables SQLx's derive or query macros itself: `derive` or
+    /// `macros`, or SQLx's default features, which include `macros`.
+    pub sqlx_macros: bool,
 }
 
 /// Scans the workspace when the plan targets v13.

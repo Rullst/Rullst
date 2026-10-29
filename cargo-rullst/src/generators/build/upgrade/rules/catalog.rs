@@ -366,6 +366,15 @@ rules! {
     CLI_AI_REMOVED: "V13-CLI-AI-REMOVED", Review, "13.0.0-alpha.4", "CLI `ai` removed, `footprint` renamed `green`",
         "`cargo rullst ai` was removed and `cargo rullst footprint` is now `cargo rullst green`; these scripts run them",
         "Replace `cargo rullst footprint` with `cargo rullst green`, part of cargo-rullst (`--bench` for CPU time, JSON `rullst.green.v1`). Remove the `cargo rullst ai` steps: use your editor's or terminal's AI assistant with the project's AGENTS.md (`cargo rullst generate:ai-context`) and https://rullst.github.io/Rullst/llms.txt.";
+    ORM_FROM_ROW: "V13-ORM-FROM-ROW", MustChange, "13.0.0-alpha.4", "ORM `FromRow` and SQLx macros",
+        "`#[derive(Orm)]` now implements `FromRow`, so deriving `FromRow` too no longer compiles (E0119, or \"expected derive macro, found trait\")",
+        "Remove `FromRow` from this derive list and from the `use` line that imports it. A model that keeps its own `FromRow` (hand-written, or SQLx's derive with SQLx's `derive` feature in Cargo.toml) declares `#[orm(custom_from_row)]`.";
+    SQLX_MACROS: "V13-SQLX-MACROS", MustChange, "13.0.0-alpha.4", "ORM `FromRow` and SQLx macros",
+        "this code uses SQLx's derive or query macros, which Rullst crates no longer enable, and no manifest here enables them",
+        "Enable them on the application's own SQLx dependency, `sqlx = { version = \"0.9\", default-features = false, features = [\"derive\"] }` (`\"macros\"` for `query!`), which also builds `sqlx-macros`; or decode into a tuple or a hand-written `FromRow` impl.";
+    NEXUS_AI_FEATURE: "V13-NEXUS-AI-FEATURE", Review, "13.0.0-alpha.4", "Nexus AI assistant feature",
+        "this Nexus dependency no longer includes the AI assistant: `/nexus/chat` answers 404 and the panel shows no assistant link",
+        "If the application uses the assistant, enable `nexus-ai` on `rullst` (or `ai` on a `rullst-nexus` dependency without default features); otherwise nothing is needed, and `rullst-ai` leaves the build.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer
