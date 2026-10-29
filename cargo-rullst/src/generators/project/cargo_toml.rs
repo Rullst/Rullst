@@ -179,7 +179,6 @@ rust-version = "1.96.0"
     cargo_toml.push_str("serde_json = \"1.0\"\n");
     cargo_toml.push_str("tokio = { version = \"1.0\", features = [\"full\"] }\n");
     cargo_toml.push_str("tracing = \"0.1\"\n");
-    cargo_toml.push_str("tracing-subscriber = \"0.3\"\n");
     cargo_toml.push_str(VALIDATOR_DEPENDENCY);
 
     if db_needed || wants_redis || !polyglot_integrations.is_empty() {

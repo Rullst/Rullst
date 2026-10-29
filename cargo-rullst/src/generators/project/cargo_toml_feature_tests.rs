@@ -54,3 +54,11 @@ fn the_nexus_ai_assistant_follows_the_wizard_ai_choice() {
     assert!(!blank_ai.iter().any(|feature| feature.starts_with("nexus")));
 }
 
+#[test]
+fn starters_declare_no_logging_subscriber_their_code_does_not_use() {
+    for blueprint in [BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID] {
+        let manifest = manifest(blueprint, false);
+        assert!(manifest.contains("tracing = \"0.1\""), "{manifest}");
+        assert!(!manifest.contains("tracing-subscriber"), "{manifest}");
+    }
+}
