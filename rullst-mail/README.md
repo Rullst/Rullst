@@ -2,6 +2,11 @@
 
 `rullst-mail` is Rullst's transactional email and mailables engine. Every official dispatch path now passes through one pre-flight pipeline for CRLF protection, recipient deliverability checks, content security scanning, and DLP sanitization before queueing or transport delivery.
 
+It is an **Extension** crate in the
+[maturity tiers](https://rullst.github.io/Rullst/book/maturity.html): optional,
+and supported for the scope documented here. See
+[Installation and Cargo features](#installation-and-cargo-features) to add it.
+
 Resend, SendPulse and the explicit SES bearer-proxy adapter share a
 pooled REST client with redirects and ambient proxy settings disabled, a
 five-second connection deadline and a 30-second request deadline, including
@@ -35,6 +40,34 @@ application, as shown in
 and the offline `examples/custom_transport.rs`
 (`cargo run -p rullst-mail --example custom_transport`).
 
+## Installation and Cargo features
+
+This README describes the v13 prerelease. Cargo never selects a prerelease on
+its own, so pin it exactly (the v12 line, `rullst-mail@12`, reached end of life
+on 16 October 2026):
+
+```toml
+[dependencies]
+rullst-mail = "=13.0.0-alpha.4"
+# With SMTP delivery:
+# rullst-mail = { version = "=13.0.0-alpha.4", features = ["mail-smtp"] }
+```
+
+The default build has no optional feature and includes the `Mail` facade, the
+pre-flight pipeline, Resend, SendPulse, `log`, `memory`, failover, the tenant
+resolver, tracking, attachment inspection, and the SES offline fixture and
+bearer-proxy adapter. The other parts are opt-in, directly or through the
+umbrella `rullst` crate, whose `mail` feature exposes this crate as
+`rullst::mail`:
+
+| `rullst-mail` feature | `rullst` feature | Adds |
+| :--- | :--- | :--- |
+| `mail-smtp` | `mail-smtp` or `mailer` | `SmtpDriver` (Lettre). Without it, `MAIL_DRIVER=smtp` fails with `MailError::ConfigError`. |
+| `aws-ses` | `mail-aws-ses` | Native AWS SES v2 delivery through the official SDK (SigV4) |
+| `sqlite` | `mail-sqlite` | `SqliteSuppressionStore`, the durable local suppression store |
+| `postgres` | `mail-postgres` | `PostgresSuppressionStore`, the shared suppression store |
+| `capital-invoice` | `capital-mail` | `PaidInvoiceDelivery` for Capital's payment-bound invoices |
+
 ## Shared suppression candidate (v13)
 
 Optional `postgres` adds `PostgresSuppressionStore` to the existing guard and
@@ -44,7 +77,7 @@ configuration drift fail closed, and ordinary startup needs no DDL privileges.
 Install the correctly scoped guard in every sending process and worker; it is
 not enabled automatically. See the [shared suppression contract](https://github.com/Rullst/Rullst/blob/main/docs/src/shared-mail-suppression.md)
 for setup, retention, provider-authentication boundaries, restart/worker evidence
-and pending hosted/package admission. The facade feature is `mail-postgres`.
+and admission status. The facade feature is `mail-postgres`.
 Hosts sharing a namespace may differ by up to 300 seconds of clock skew; a
 larger backwards clock step fails closed as `SuppressionUnavailable`.
 
@@ -55,7 +88,7 @@ larger backwards clock step fails closed as `SuppressionUnavailable`.
   - **Resend** (`ResendDriver`) — Native REST API with scheduled delivery & RFC 8058.
   - **SendPulse** (`SendPulseDriver`) — Native transactional REST adapter; see the configuration and bounded contract below.
   - **AWS SES v2** (`AwsSesDriver`, `aws-ses`) — official AWS SDK/SigV4 native transport with temporary/rotating credential support, plus deterministic offline fixture and an explicit legacy proxy boundary.
-  - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with implicit TLS on port 465 and mandatory STARTTLS on every other port.
+  - **Native SMTP** (`SmtpDriver`, `mail-smtp`) — Pure async Lettre transport with implicit TLS on port 465 and mandatory STARTTLS on every other port.
   - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Local zero-I/O in-memory harness with fluent assertions; it is not the hosted Mailtrap service, whose transport v13 removed.
   - **Your own transport** — implement `MailDriver`; see [Writing your own mail transport](https://github.com/Rullst/Rullst/blob/main/docs/src/mail-custom-transport.md).
   - **Log** (`LogDriver`) — Metadata-only terminal and file logging (`storage/logs/mail.log`): a timestamp, attachment count and scheduling flag, never recipients, subject or body.
@@ -85,7 +118,6 @@ larger backwards clock step fails closed as `SuppressionUnavailable`.
 
 ```rust
 use rullst_mail::{Mail, Message};
-use chrono::{Utc, Duration};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -106,14 +138,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unsubscribe_url("https://rullst.dev/unsub/alice");
 
     // The mandatory pipeline validates and sanitizes before queueing or delivery.
-Mail::send(message).await?;
+    Mail::send(message).await?;
 
     Ok(())
 }
 ```
 
+Without a queue, `Mail::send` delivers directly, and among the real transports
+only Resend schedules a future `send_in`/`send_at` time. The `log` driver that
+development uses by default, SMTP, SendPulse and SES reject it with
+`MailError::ConfigError`; drop `.send_in(...)` or use a queue.
+
 For a schedule that survives process restarts, operate a built-in queue and keep
-its worker handle alive:
+its worker handle alive. `Queue::sqlite` needs the `queue-sqlite` feature of
+`rullst-core` (or `rullst`):
 
 ```rust,no_run
 use rullst_core::queue::{Queue, Worker};
@@ -183,20 +221,23 @@ let failover_driver = FailoverDriver::new(primary)
 
 ```rust
 use rullst_core::security::TenantMembership;
-use rullst_mail::{ResendDriver, TenantMailResolver};
+use rullst_mail::{Message, ResendDriver, TenantMailResolver};
 
-let resolver = TenantMailResolver::new();
-let membership = TenantMembership::try_new(["tenant_globex"])?;
-let context = membership.select("tenant_globex")?;
+async fn send_tenant_message(message: &Message) -> Result<(), Box<dyn std::error::Error>> {
+    let resolver = TenantMailResolver::new();
+    let membership = TenantMembership::try_new(["tenant_globex"])?;
+    let context = membership.select("tenant_globex")?;
 
-// Register tenant-specific API credentials during application configuration.
-resolver.register_for_context(
-    &context,
-    ResendDriver::try_new("re_globex...")?,
-)?;
+    // Register tenant-specific API credentials during application configuration.
+    resolver.register_for_context(
+        &context,
+        ResendDriver::try_new("re_globex...")?,
+    )?;
 
-// The context must be derived from trusted authentication/membership state.
-resolver.send_for_context(&context, &message).await?;
+    // The context must be derived from trusted authentication/membership state.
+    resolver.send_for_context(&context, message).await?;
+    Ok(())
+}
 ```
 
 The registry is intentionally process-local. Durable encrypted credential storage,
@@ -385,11 +426,12 @@ is never wrapped.
 
 ```rust
 use rullst_mail::{TrackingEngine, TrackingVerifier, PIXEL_1X1_GIF, Message};
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 fn tracking_example() -> Result<(), Box<dyn std::error::Error>> {
 let secret = b"replace-with-32-or-more-random-key-bytes";
-let now_unix_seconds = 1_800_000_000;
+// Tokens carry their issue time; verification rejects future and expired ones.
+let now_unix_seconds = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
 
 // Fluent open & click tracking injection
 let tracked_msg = Message::new()
@@ -438,9 +480,9 @@ let alert_msg = MailFactory::fake_security_alert("eve@example.com", "Unrecognize
 
 ### 10. Native AWS SES v2 with SigV4
 
-Enable the opt-in official SDK transport (this README describes the v13
-prerelease, so the version is pinned exactly; the v12 line,
-`rullst-mail@12`, reached end of life on 16 October 2026):
+Enable the opt-in official SDK transport (see
+[Installation and Cargo features](#installation-and-cargo-features) for the
+version pin):
 
 ```toml
 [dependencies]
@@ -571,12 +613,14 @@ Environment variables:
   `aws-ses` feature is enabled; both must be present.
 - `AWS_SESSION_TOKEN`: Optional temporary-credential session token.
 - `AWS_SES_BEARER_TOKEN`: Token for an explicitly configured trusted proxy;
-  it is never sent to AWS as a substitute for SigV4.
+  it is never sent to AWS as a substitute for SigV4. `AWS_SES_TOKEN`
+  is also read and takes precedence when both are set.
 - `AWS_SES_ENDPOINT`: Native SDK base endpoint or complete proxy send URL;
   HTTPS is required except for loopback integration tests.
-- `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`: SMTP credentials.
-  `MAIL_PORT` defaults to 25 only when unset or empty; any other value must be
-  an integer from 1 to 65535, or the facade returns `MailError::ConfigError`.
+- `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`: SMTP credentials
+  (the `smtp` driver needs the `mail-smtp` feature). `MAIL_PORT` defaults to
+  25 only when unset or empty; any other value must be an integer from 1 to
+  65535, or the facade returns `MailError::ConfigError`.
 - `MAIL_LOG_PATH`: Path for log file (default: `storage/logs/mail.log`).
 
 For Resend, SendPulse and the SES fixture/proxy,
@@ -684,4 +728,4 @@ required.
 ## 📚 Documentation & Roadmap
 
 - Architecture & Master Roadmap: [`rullst-mail/ROADMAP.md`](https://github.com/Rullst/Rullst/blob/main/rullst-mail/ROADMAP.md)
-- Official Documentation Book: [`docs/src/crates/mail.md`](https://github.com/Rullst/Rullst/blob/main/docs/src/crates/mail.md)
+- Official Documentation Book: [rullst-mail](https://rullst.github.io/Rullst/book/crates/mail.html)
