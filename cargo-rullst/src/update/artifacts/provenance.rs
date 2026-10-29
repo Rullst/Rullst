@@ -191,4 +191,41 @@ mod tests {
         assert!(verify_command(blocked, Duration::from_millis(50)).is_err());
         assert!(start.elapsed() < Duration::from_secs(2));
     }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_verifier_that_succeeds_before_its_deadline_is_accepted() {
+        let mut accepted = Command::new("sh");
+        accepted.args(["-c", "sleep 0.2"]);
+        assert!(verify_command(accepted, Duration::from_secs(30)).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_timed_out_verifier_is_killed() {
+        let temp = tempfile::tempdir().unwrap();
+        let marker = temp.path().join("verifier-still-running");
+        let mut slow = Command::new("sh");
+        slow.arg("-c")
+            .arg("sleep 0.5; touch \"$1\"")
+            .arg("verifier")
+            .arg(&marker);
+        assert!(verify_command(slow, Duration::from_millis(50)).is_err());
+        // The killed shell never reaches `touch`; a surviving one does after
+        // half a second.
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while Instant::now() < deadline {
+            assert!(!marker.exists(), "the timed-out verifier kept running");
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
+
+    #[test]
+    fn verification_without_a_valid_attestation_is_rejected() {
+        // Whether or not GitHub CLI is installed, a file that does not exist
+        // never has a valid attestation.
+        let temp = tempfile::tempdir().unwrap();
+        let manifest = super::super::tests::fixture_manifest();
+        assert!(verify(&temp.path().join("missing-manifest.json"), &manifest).is_err());
+    }
 }

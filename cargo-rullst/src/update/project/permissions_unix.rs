@@ -135,7 +135,9 @@ fn has_unreproduced_attribute(names: &[u8]) -> bool {
         })
 }
 
+// macOS only; the mutation tests run on Linux.
 #[cfg(target_os = "macos")]
+#[cfg_attr(mutants, mutants::skip)]
 #[allow(unsafe_code)]
 mod apple_acl {
     use super::*;
@@ -206,5 +208,71 @@ mod tests {
         ] {
             assert!(has_unreproduced_attribute(names), "{names:?}");
         }
+    }
+
+    fn policy(path: &Path) -> Permissions {
+        capture(Some(path)).unwrap()
+    }
+
+    #[test]
+    fn capture_records_mode_owner_and_read_only_state() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("file");
+        fs::write(&path, "x").unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o444)).unwrap();
+        let read_only = policy(&path);
+        assert!(read_only.readonly);
+        assert_eq!(read_only.unix_mode, Some(0o444));
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o640)).unwrap();
+        assert!(!policy(&path).readonly);
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o4640)).unwrap();
+        if fs::metadata(&path).unwrap().mode() & 0o4000 != 0 {
+            assert!(capture(Some(&path)).is_err());
+        }
+    }
+
+    #[test]
+    fn staging_refuses_a_policy_from_another_platform_or_owner() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("file");
+        fs::write(&path, "x").unwrap();
+        let mut foreign = policy(&path);
+        stage(&foreign, directory.path()).unwrap();
+        foreign.windows_descriptor = Some("O:BA".into());
+        assert!(stage(&foreign, directory.path()).is_err());
+        let mut other = policy(&path);
+        let euid = rustix::process::geteuid().as_raw();
+        other.unix_owner = Some((euid.wrapping_add(1), 0));
+        assert!(stage(&other, directory.path()).is_err());
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[test]
+    fn attribute_names_are_listed_up_to_the_kernel_bound() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("file");
+        fs::write(&path, "x").unwrap();
+        let file = fs::File::open(&path).unwrap();
+        assert!(xattr_names(&file).unwrap().is_empty());
+        let mut expected = Vec::new();
+        for index in 0..5 {
+            let name = format!("user.{index}{}", "n".repeat(240));
+            if rustix::fs::setxattr(&path, name.as_str(), b"", rustix::fs::XattrFlags::empty())
+                .is_err()
+            {
+                // The filesystem does not support user attributes.
+                return;
+            }
+            expected.push(name);
+        }
+        let mut names = xattr_names(&file).unwrap();
+        assert!(names.len() > 1_100);
+        names.pop();
+        let mut listed: Vec<_> = names
+            .split(|byte| *byte == 0)
+            .map(|name| String::from_utf8(name.to_vec()).unwrap())
+            .collect();
+        listed.sort();
+        assert_eq!(listed, expected);
     }
 }

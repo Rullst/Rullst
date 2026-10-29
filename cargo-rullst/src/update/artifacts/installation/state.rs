@@ -171,6 +171,71 @@ mod tests {
         (directory, root, target)
     }
 
+    fn inspect_error(root: &Path, target: &str) -> String {
+        match inspect(root, target) {
+            Ok(_) => panic!("the installation was accepted"),
+            Err(error) => error.to_string(),
+        }
+    }
+
+    fn rewrite_manifest(root: &Path, manifest: String) {
+        let mut value: serde_json::Value =
+            serde_json::from_slice(&fs::read(root.join(RECEIPT)).unwrap()).unwrap();
+        value["manifest"] = serde_json::json!(manifest);
+        fs::write(root.join(RECEIPT), serde_json::to_vec(&value).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn a_receipt_may_fill_but_not_exceed_64_kib() {
+        let root = Path::new("/installed");
+        let fixed = receipt(root, b"").unwrap().len();
+        let manifest = "m".repeat(65_536 - fixed);
+        assert_eq!(receipt(root, manifest.as_bytes()).unwrap().len(), 65_536);
+        let manifest = "m".repeat(65_537 - fixed);
+        assert!(receipt(root, manifest.as_bytes()).is_err());
+    }
+
+    #[test]
+    fn only_the_receipt_and_both_executables_are_updater_owned() {
+        let unknown = "artifact verification rejected: unknown installation entries; refusing package-manager takeover";
+        let (_directory, root, target) = fixture();
+        fs::remove_file(root.join("rullst")).unwrap();
+        fs::create_dir(root.join("rullst")).unwrap();
+        assert_eq!(inspect_error(&root, &target), unknown);
+        let (_directory, root, target) = fixture();
+        write_private(&root.join("notes"), b"a fourth file");
+        assert_eq!(inspect_error(&root, &target), unknown);
+        let (_directory, root, target) = fixture();
+        fs::rename(root.join("rullst"), root.join("rullst-old")).unwrap();
+        assert_eq!(
+            inspect_error(&root, &target),
+            "artifact verification rejected: existing installation lacks exact updater ownership evidence"
+        );
+    }
+
+    #[test]
+    fn receipt_and_installed_manifest_bounds_are_exact() {
+        let (_directory, root, target) = fixture();
+        let mut padded = fs::read(root.join(RECEIPT)).unwrap();
+        padded.resize(64 * 1024, b' ');
+        fs::write(root.join(RECEIPT), padded).unwrap();
+        inspect(&root, &target).unwrap().unwrap();
+
+        let (_directory, root, target) = fixture();
+        let manifest =
+            serde_json::to_string(&super::super::super::tests::fixture_manifest()).unwrap();
+        rewrite_manifest(&root, format!("{manifest:<16384}"));
+        assert_eq!(
+            inspect(&root, &target).unwrap().unwrap().raw_manifest.len(),
+            16_384
+        );
+        let bound = "artifact verification rejected: installed manifest exceeds its bound";
+        rewrite_manifest(&root, format!("{manifest:<16385}"));
+        assert_eq!(inspect_error(&root, &target), bound);
+        rewrite_manifest(&root, String::new());
+        assert_eq!(inspect_error(&root, &target), bound);
+    }
+
     #[test]
     fn receipt_binds_root_platform_both_executables_and_exact_manifest_bytes() {
         let (_directory, root, target) = fixture();

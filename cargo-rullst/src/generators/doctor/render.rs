@@ -125,3 +125,7 @@ pub(crate) fn render(report: &Report, style: Style) -> String {
     }
     out
 }
+
+#[cfg(test)]
+#[path = "render_tests.rs"]
+mod tests;

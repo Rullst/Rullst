@@ -814,11 +814,21 @@ contains and what stays open. They add no milestone to the counts above.
 Work items for later prereleases, not shipped features. They add no milestone
 to the counts above.
 
-- **Targeted `cargo-rullst` mutation campaign** (its branch continues after the
-  alpha.3 candidate): self-update signature and checksum verification, upgrade
-  rules, the audit and IDOR scanner, manifest editing, `doctor` and the
-  deployment configuration generators. Until it finishes, `cargo-rullst` is
-  not mutation-measured.
+- **Targeted `cargo-rullst` mutation campaign** (branch
+  `test/v13-alpha3-cli-mutation`, done when it is merged): hosted targeted runs
+  with the CLI's library tests measured 83 CLI files and 3,189 mutants of
+  the self-update, audit and IDOR scanner, `add` and consumer-file editors,
+  `doctor` and deployment configuration and `upgrade` code. New tests killed
+  1,041 of the 1,129 first-run survivors and 51 are documented
+  equivalents; the 76 files left without a survivor are listed in
+  `.github/mutants-pr-cli.txt`, so `mutants-pr.yml` mutates their changed lines
+  on every pull request. Left: size and count bounds that only very large
+  projects reach (hundreds of mebibytes, or 10,000 to 250,000 files): upgrade
+  snapshot 6, upgrade source walk 3, project snapshot 13, replacement and
+  verification totals 2 and 2, the 64 MiB preparation report 4; and 7
+  installation review and apply mutants that only a live catalog and
+  Sigstore-verified artifacts reach. The Studio remote mode
+  (20 files) was measured in the same campaign and has no survivor left.
 - **Turso/libSQL beyond the blank and API starters**, if users ask for it.
   Turso can be the primary database only in those starters and does not work
   with `#[derive(Orm)]`, `Schema`, `artisan!`, `Server::with_db`, Nexus or

@@ -256,4 +256,147 @@ mod tests {
     async fn nested_runtime_is_rejected_before_network_discovery() {
         assert!(matches!(fetch_catalog(), Err(UpdateError::NestedRuntime)));
     }
+
+    #[test]
+    fn errors_debug_print_their_actionable_message() {
+        assert_eq!(
+            format!("{:?}", UpdateError::NestedRuntime),
+            "cannot run synchronous discovery inside an existing async runtime"
+        );
+    }
+
+    #[test]
+    fn a_downgrade_check_is_refused_before_discovery() {
+        let matches = command()
+            .try_get_matches_from(["update", "check", "--to", "0.0.1"])
+            .unwrap();
+        let error = run(&matches).unwrap_err().to_string();
+        assert_eq!(
+            error,
+            "invalid update selection: downgrades are not authorized by update discovery"
+        );
+    }
+
+    /// Runs `update <args>` in a child test process with its own environment.
+    #[test]
+    fn update_child_fixture() {
+        let Some(report) = std::env::var_os("RULLST_UPDATE_REPORT") else {
+            return;
+        };
+        let args = std::env::var("RULLST_UPDATE_ARGS").unwrap();
+        let matches = command()
+            .try_get_matches_from(std::iter::once("update").chain(args.split(' ')))
+            .unwrap();
+        let text = match run(&matches) {
+            Ok(()) => "ok".to_string(),
+            Err(error) => format!("err {error}"),
+        };
+        std::fs::write(report, text).unwrap();
+    }
+
+    /// A private cache directory; with `catalog`, a fresh cached catalog.
+    #[cfg(unix)]
+    fn cache_home(catalog: Option<&str>) -> tempfile::TempDir {
+        use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
+        let temp = tempfile::tempdir().unwrap();
+        // The cache refuses a group- or world-writable ancestor.
+        std::fs::set_permissions(temp.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+        let xdg = temp.path().join("xdg");
+        std::fs::DirBuilder::new().mode(0o700).create(&xdg).unwrap();
+        if let Some(catalog) = catalog {
+            let cache = xdg.join("rullst-update-v1");
+            std::fs::DirBuilder::new()
+                .mode(0o700)
+                .create(&cache)
+                .unwrap();
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(0o600)
+                .open(cache.join("catalog-v1"))
+                .unwrap();
+            std::io::Write::write_all(
+                &mut file,
+                format!("rullst-update-cache-v1\n{now}\n{catalog}").as_bytes(),
+            )
+            .unwrap();
+        }
+        temp
+    }
+
+    /// The result and standard output of `update <args>`; network requests go
+    /// to a refusing local proxy, so nothing leaves the machine.
+    #[cfg(unix)]
+    fn update_in_child(home: &tempfile::TempDir, args: &str, offline: bool) -> (String, String) {
+        let report = home.path().join("report");
+        let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+        command
+            .args([
+                "--exact",
+                "update::tests::update_child_fixture",
+                "--nocapture",
+            ])
+            .env("XDG_CACHE_HOME", home.path().join("xdg"))
+            .env("RULLST_UPDATE_REPORT", &report)
+            .env("RULLST_UPDATE_ARGS", args)
+            .env("HTTPS_PROXY", "http://127.0.0.1:9")
+            .env("https_proxy", "http://127.0.0.1:9")
+            .env("ALL_PROXY", "http://127.0.0.1:9")
+            .env_remove("NO_PROXY")
+            .env_remove("no_proxy")
+            .env_remove("CARGO_NET_OFFLINE")
+            .stdin(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null());
+        if offline {
+            command.env("CARGO_NET_OFFLINE", "true");
+        }
+        let output = command.output().unwrap();
+        assert!(output.status.success());
+        (
+            std::fs::read_to_string(report).unwrap(),
+            String::from_utf8(output.stdout).unwrap(),
+        )
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn offline_checks_use_only_a_fresh_private_cache() {
+        let catalog = format!(
+            "{{\"versions\":[{{\"crate\":\"cargo-rullst\",\"num\":\"{}\",\"yanked\":false,\"rust_version\":\"1.96.0\",\"checksum\":null}}]}}",
+            env!("CARGO_PKG_VERSION")
+        );
+        let cached = cache_home(Some(&catalog));
+        let (result, stdout) = update_in_child(&cached, "check --offline --json", false);
+        assert_eq!(result, "ok");
+        assert!(
+            stdout.contains("\"schema_version\": \"rullst.update-discovery.v1\""),
+            "{stdout}"
+        );
+        assert!(
+            stdout.contains("\"metadata_source\": \"private-cache\""),
+            "{stdout}"
+        );
+
+        let empty = cache_home(None);
+        let offline = "err offline mode forbids registry discovery: ";
+        for (args, variable) in [("check --offline", false), ("check", true)] {
+            let (result, _) = update_in_child(&empty, args, variable);
+            assert!(result.starts_with(offline), "{args}: {result}");
+            assert!(!result.contains("refresh/no-cache"), "{args}: {result}");
+        }
+        assert_eq!(
+            update_in_child(&empty, "check --no-cache", true).0,
+            "err offline mode forbids registry discovery: refresh/no-cache requires an online request"
+        );
+        // Online, a missing cache falls through to the (refused) network request.
+        let (result, _) = update_in_child(&empty, "check", false);
+        assert!(
+            result.starts_with("err release discovery failed"),
+            "{result}"
+        );
+    }
 }

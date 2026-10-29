@@ -464,3 +464,7 @@ mod tests {
         assert!(error.contains("Unknown platform 'flyio'"));
     }
 }
+
+#[cfg(test)]
+#[path = "deploy_tests.rs"]
+mod provider_tests;

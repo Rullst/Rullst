@@ -1,30 +1,49 @@
-#![cfg_attr(mutants, mutants::skip)]
 extern crate rullst_core as rullst;
+// Mutation testing covers only the remote-projects mode (`remote`), whose
+// tokens, outbound client, escaping and alerts are security relevant. The
+// local Studio pages and their wiring keep the `mutants::skip` below.
 use axum::Router;
 use rullst_core::Queue;
 use std::sync::Arc;
 use utoipa::openapi::OpenApi;
 
+#[cfg_attr(mutants, mutants::skip)]
 pub mod access;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod ai_playground;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod api_playground;
 pub use access::{LocalStudioAccess, StudioBuildError};
+#[cfg_attr(mutants, mutants::skip)]
 mod assets;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod cache_inspector;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod data_browser;
 pub use data_browser::run_studio;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod distributed_traces;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod env_viewer;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod er_diagram;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod feature_flags;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod jobs_monitor;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod logger;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod migration_manager;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod radar_visualizer;
 #[cfg(feature = "remote")]
 pub mod remote;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod revenue_dashboard;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod security_radar;
+#[cfg_attr(mutants, mutants::skip)]
 pub mod traces_visualizer;
 
 pub struct Studio {
@@ -34,12 +53,14 @@ pub struct Studio {
     distributed_traces: distributed_traces::DistributedTraceStore,
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 impl Default for Studio {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 impl Studio {
     pub fn new() -> Self {
         Self {

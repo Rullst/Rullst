@@ -199,3 +199,211 @@ fn project_major_jump_stops_before_installation_even_with_explicit_cli_major_opt
             .contains("major-specific")
     );
 }
+
+#[test]
+fn offline_guidance_is_limited_to_project_verification() {
+    let prerelease = (!semver::Version::parse(env!("CARGO_PKG_VERSION"))
+        .unwrap()
+        .pre
+        .is_empty())
+    .then_some("--prerelease");
+    let parse = |scope: &str| {
+        let matches = command()
+            .try_get_matches_from(
+                [
+                    "guided",
+                    "--to",
+                    env!("CARGO_PKG_VERSION"),
+                    "--scope",
+                    scope,
+                    "--root",
+                    "/private/cli",
+                    "--offline",
+                ]
+                .into_iter()
+                .chain(prerelease),
+            )
+            .unwrap();
+        Options::parse(&matches)
+    };
+    assert_eq!(
+        parse("cli").unwrap_err().to_string(),
+        "guided update rejected: offline mode forbids authenticated CLI installation; use --scope project for offline project verification"
+    );
+    assert!(parse("project").unwrap().offline);
+    if !std::io::stdin().is_terminal() {
+        let matches = command()
+            .try_get_matches_from(["guided", "--to", "99.0.0", "--scope", "project"])
+            .unwrap();
+        assert!(run(&matches).is_err());
+    }
+}
+
+#[test]
+fn guided_steps_dispatch_to_the_checked_commands() {
+    let stage = execute(&["stage", "--to", "99.0.0", "--offline"].map(OsString::from));
+    assert_eq!(
+        stage.unwrap_err().to_string(),
+        "artifact verification rejected: offline mode forbids authenticated downloads"
+    );
+    let project = execute(
+        &[
+            "project",
+            "verify",
+            "--prepared",
+            "/rullst-missing-preparation",
+        ]
+        .map(OsString::from),
+    );
+    assert_eq!(
+        project.unwrap_err().to_string(),
+        "project preparation rejected: review the preparation first; --allow-project-code is required because Cargo builds and tests execute project code"
+    );
+}
+
+/// Runs `update guided --scope project --offline` when a parent test names a
+/// report file; otherwise does nothing.
+#[test]
+fn guided_child_fixture() {
+    let Some(report) = std::env::var_os("RULLST_GUIDED_REPORT") else {
+        return;
+    };
+    let project = std::env::var_os("RULLST_GUIDED_PROJECT").unwrap();
+    let prerelease = (!semver::Version::parse(env!("CARGO_PKG_VERSION"))
+        .unwrap()
+        .pre
+        .is_empty())
+    .then_some(OsString::from("--prerelease"));
+    let matches = command()
+        .try_get_matches_from(
+            [
+                "guided".into(),
+                "--to".into(),
+                env!("CARGO_PKG_VERSION").into(),
+                "--scope".into(),
+                "project".into(),
+                "--project".into(),
+                project,
+                "--offline".into(),
+            ]
+            .into_iter()
+            .chain(prerelease),
+        )
+        .unwrap();
+    let outcome = match run(&matches) {
+        Ok(()) => "ok".to_string(),
+        Err(error) => error.to_string(),
+    };
+    std::fs::write(report, outcome).unwrap();
+}
+
+/// The real terminal: `script` gives the fixture a pseudo-terminal.
+#[cfg(target_os = "linux")]
+mod terminal {
+    use std::io::{Read, Write};
+    use std::process::{Command, Stdio};
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    const PROMPT: &str = "Copy the selected Git project";
+
+    /// The fixture's outcome and terminal output. `pipe_stdout` sends its
+    /// standard output through `cat`; `key` answers the first prompt once it
+    /// is shown. `None` when `script` is not installed.
+    fn in_terminal(pipe_stdout: bool, key: Option<&str>) -> Option<(String, String)> {
+        if Command::new("script").arg("--version").output().is_err() {
+            return None;
+        }
+        let directory = tempfile::tempdir().unwrap();
+        let report = directory.path().join("report");
+        let mut inner = format!(
+            "'{}' --exact update::guided::tests::guided_child_fixture --nocapture",
+            std::env::current_exe().unwrap().display()
+        );
+        if pipe_stdout {
+            inner.push_str(" | cat");
+        }
+        let mut child = Command::new("script")
+            .args(["-qec", &inner, "/dev/null"])
+            .env("RULLST_GUIDED_REPORT", &report)
+            .env("RULLST_GUIDED_PROJECT", directory.path())
+            .env("XDG_CACHE_HOME", directory.path().join("xdg"))
+            .env("TERM", "xterm")
+            .env_remove("CARGO_NET_OFFLINE")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let mut input = child.stdin.take().unwrap();
+        let mut terminal = child.stdout.take().unwrap();
+        let (sender, receiver) = mpsc::channel();
+        std::thread::spawn(move || {
+            let mut buffer = [0u8; 4096];
+            while let Ok(count) = terminal.read(&mut buffer) {
+                if count == 0 || sender.send(buffer[..count].to_vec()).is_err() {
+                    break;
+                }
+            }
+        });
+        let deadline = std::time::Instant::now() + Duration::from_secs(60);
+        let mut output = Vec::new();
+        let mut key = key;
+        loop {
+            match receiver.recv_timeout(Duration::from_millis(200)) {
+                Ok(chunk) => output.extend(chunk),
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+            }
+            if let Some(answer) = key
+                && String::from_utf8_lossy(&output).contains(PROMPT)
+            {
+                // Let the prompt switch the terminal to raw input first.
+                std::thread::sleep(Duration::from_millis(300));
+                input.write_all(answer.as_bytes()).unwrap();
+                input.flush().unwrap();
+                key = None;
+            }
+            if std::time::Instant::now() > deadline {
+                let _ = child.kill();
+                panic!(
+                    "the guided flow did not finish: {}",
+                    String::from_utf8_lossy(&output)
+                );
+            }
+        }
+        drop(input);
+        child.wait().unwrap();
+        Some((
+            std::fs::read_to_string(report).unwrap_or_default(),
+            String::from_utf8_lossy(&output).into_owned(),
+        ))
+    }
+
+    #[test]
+    fn a_terminal_shows_the_plan_and_every_prompt_defaults_to_no() {
+        let Some((outcome, shown)) = in_terminal(false, Some("n")) else {
+            return;
+        };
+        assert_eq!(outcome, "ok", "{shown}");
+        assert!(shown.contains("\"release_notes\""), "{shown}");
+        assert!(shown.contains("\"stopped\": true"), "{shown}");
+
+        let (outcome, shown) = in_terminal(false, Some("y")).unwrap();
+        assert_ne!(outcome, "ok", "{shown}");
+        assert!(!outcome.is_empty(), "{shown}");
+        assert!(!shown.contains("\"stopped\""), "{shown}");
+    }
+
+    #[test]
+    fn standard_output_must_be_a_terminal_too() {
+        let Some((outcome, shown)) = in_terminal(true, None) else {
+            return;
+        };
+        assert_eq!(
+            outcome,
+            "guided update rejected: guided updates require an interactive terminal; use explicit update commands with --json and reviewed approval digests for automation",
+            "{shown}"
+        );
+    }
+}

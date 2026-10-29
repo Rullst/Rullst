@@ -53,6 +53,52 @@ fn authentication_precedes_binary_download_and_exact_bytes_are_required() {
 }
 
 #[test]
+fn the_manifest_may_use_its_whole_16_kib_bound() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut padded = manifest();
+    padded.resize(16 * 1024, b' ');
+    let limits = RefCell::new(Vec::new());
+    stage_into(
+        directory.path(),
+        &Version::new(12, 1, 0),
+        TARGET,
+        |name, limit, path| {
+            limits.borrow_mut().push((name.to_string(), limit));
+            let body = if name.ends_with(".json") {
+                padded.clone()
+            } else {
+                BODY.to_vec()
+            };
+            write_bounded(&body[..], limit, path)
+        },
+        |_, _| Ok(()),
+    )
+    .unwrap();
+    assert_eq!(
+        limits.borrow()[0],
+        (format!("cli-manifest-{TARGET}.json"), 16_384)
+    );
+    assert_eq!(limits.borrow()[1].1, 32);
+}
+
+#[test]
+fn offline_staging_is_refused_before_any_other_check() {
+    let matches = command()
+        .try_get_matches_from(["stage", "--to", "99.0.0", "--offline"])
+        .unwrap();
+    // Inside a runtime, the next check would fail with another message.
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .unwrap();
+    let _entered = runtime.enter();
+    assert_eq!(
+        execute(&matches).unwrap_err().to_string(),
+        "artifact verification rejected: offline mode forbids authenticated downloads"
+    );
+    assert!(run(&matches).is_err());
+}
+
+#[test]
 fn failed_provenance_or_changed_manifest_never_downloads_executables() {
     for mutation in [false, true] {
         let directory = tempfile::tempdir().unwrap();
@@ -117,7 +163,27 @@ fn streaming_downloads_are_bounded_and_cannot_replace_existing_files() {
     assert!(write_bounded(&b"new"[..], 3, &path).is_err());
     assert_eq!(fs::read(&path).unwrap(), b"original");
     let empty = directory.path().join("empty");
-    assert!(write_bounded(&b""[..], 3, &empty).is_err());
+    // Bounded, so a write loop that never sees the end of input fails the test
+    // instead of hanging it.
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = sender.send(write_bounded(&b""[..], 3, &empty).is_err());
+    });
+    assert!(
+        receiver
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .unwrap()
+    );
+}
+
+#[test]
+fn the_download_client_refuses_plain_http() {
+    let error = client()
+        .unwrap()
+        .get("http://127.0.0.1:9/")
+        .send()
+        .unwrap_err();
+    assert!(error.is_builder(), "{error}");
 }
 
 #[test]

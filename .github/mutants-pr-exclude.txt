@@ -2,13 +2,15 @@
 #
 # Each file below is either test-only code or exercised only by a wrapper that
 # owns a disposable database or broker, so a plain `cargo test` reports its
-# mutants as missed.
+# mutants as missed. Both passes of mutants-pr.sh apply this list.
 # Redis contracts that read RULLST_TEST_REDIS_URL are not listed: the gate
 # provides that service. Keep this list to such files; everything else is
 # tested.
 
-# Generated-project integration suites are too slow to rerun per mutant.
-cargo-rullst/**
+# cargo-rullst is not listed: its generated-project integration suites are too
+# slow to rerun per mutant, so mutants-pr.sh leaves the CLI out of the
+# workspace pass and mutates only the files in mutants-pr-cli.txt, which it
+# tests with the CLI's library unit tests.
 
 # Test-only modules included with `#[cfg(test)] #[path = "..."] mod ...;` or
 # `#[cfg(test)] mod tests;` backed by a `tests/` directory under `src/`.

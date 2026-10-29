@@ -110,3 +110,27 @@ pub(crate) fn render(report: &Report) -> Result<String, serde_json::Error> {
     });
     serde_json::to_string_pretty(&document)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::generators::audit_compliance::EvidenceStatus;
+
+    #[test]
+    fn counts_and_exceptions_come_only_from_the_statuses_that_carry_them() {
+        assert_eq!(count(&EvidenceStatus::Findings(3)), json!(3));
+        assert_eq!(count(&EvidenceStatus::Generated(4)), json!(4));
+        assert_eq!(count(&EvidenceStatus::Observed(5)), json!(5));
+        assert_eq!(count(&EvidenceStatus::NoFindings), Value::Null);
+        let governed = EvidenceStatus::NoFindingsOutsideExceptions(vec![
+            "RUSTSEC-2024-0001".into(),
+            "RUSTSEC-2025-0002".into(),
+        ]);
+        assert_eq!(
+            exceptions(&governed),
+            ["RUSTSEC-2024-0001", "RUSTSEC-2025-0002"]
+        );
+        assert_eq!(count(&governed), Value::Null);
+        assert!(exceptions(&EvidenceStatus::Findings(1)).is_empty());
+    }
+}

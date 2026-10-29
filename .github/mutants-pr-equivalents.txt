@@ -125,3 +125,64 @@ rullst-core/src/testing/snapshot.rs:240:89: replace + with * in line_diff
 # rullst-nexus (alpha.3 campaign, hosted all-feature runs with the PostgreSQL
 # SQL matrix): see WORKFLOWS.md "Accepted equivalent mutants".
 rullst-nexus/src/nexus/crud/form.rs:194:32: replace match guard matches!(f.kind, FieldKind::Password) with false in form_html
+
+# cargo-rullst (alpha.3 campaign, targeted runs with the CLI's library unit
+# tests; mutants-pr.sh mutates only the files in mutants-pr-cli.txt): each name
+# below has a row in WORKFLOWS.md "Accepted equivalent mutants".
+cargo-rullst/src/generators/audit_report/a11y.rs:183:47: replace + with * in attributes
+cargo-rullst/src/generators/audit_report/a11y.rs:183:47: replace + with - in attributes
+cargo-rullst/src/generators/audit_report/secrets.rs:171:22: replace > with >= in redact_secrets
+cargo-rullst/src/generators/audit_report/secrets.rs:179:18: replace > with >= in redact_secrets
+cargo-rullst/src/generators/audit_source.rs:119:21: replace < with <= in mark_code_tokens
+cargo-rullst/src/generators/audit_source.rs:42:17: replace < with <= in tokenized_views
+cargo-rullst/src/generators/audit_source.rs:50:26: replace + with * in tokenized_views
+cargo-rullst/src/generators/audit_source.rs:50:26: replace + with - in tokenized_views
+cargo-rullst/src/generators/build/upgrade/backup/restore.rs:275:5: replace is_link -> bool with false
+cargo-rullst/src/generators/build/upgrade/backup/restore.rs:278:36: replace & with ^ in is_link
+cargo-rullst/src/generators/build/upgrade/backup/restore.rs:278:36: replace & with | in is_link
+cargo-rullst/src/generators/build/upgrade/backup/restore.rs:278:44: replace != with == in is_link
+cargo-rullst/src/generators/build/upgrade/backup/restore.rs:53:31: replace + with * in restore_from
+cargo-rullst/src/generators/build/upgrade/backup/restore.rs:71:75: replace + with * in restore_from
+cargo-rullst/src/generators/consumer_files.rs:65:27: replace match guard error.kind() == io::ErrorKind::NotFound with true in reject_links
+cargo-rullst/src/generators/deploy_doctor/input.rs:109:26: replace || with && in read
+cargo-rullst/src/generators/deploy_doctor/input.rs:109:45: replace || with && in read
+cargo-rullst/src/generators/deploy_doctor/input.rs:113:24: replace + with * in read
+cargo-rullst/src/generators/deploy_doctor/input.rs:57:5: replace linked -> bool with false
+cargo-rullst/src/generators/deploy_doctor/input.rs:61:13: replace & with ^ in linked
+cargo-rullst/src/generators/deploy_doctor/input.rs:61:13: replace & with | in linked
+cargo-rullst/src/generators/deploy_doctor/input.rs:62:13: replace != with == in linked
+cargo-rullst/src/generators/deploy_doctor/input.rs:81:30: replace || with && in read
+cargo-rullst/src/generators/deploy_doctor/input.rs:90:28: replace || with && in read
+cargo-rullst/src/generators/deploy_doctor/input.rs:90:49: replace || with && in read
+cargo-rullst/src/generators/deploy_doctor/input.rs:99:43: replace | with & in read
+cargo-rullst/src/generators/deploy_doctor/input.rs:99:43: replace | with ^ in read
+cargo-rullst/src/generators/doctor/database.rs:108:21: delete match arm std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock in tcp_reachable
+cargo-rullst/src/generators/doctor/probe.rs:38:29: replace > with >= in run
+cargo-rullst/src/generators/output_guard.rs:101:25: replace match guard !parent.as_os_str().is_empty() with true in write_output
+cargo-rullst/src/generators/output_guard.rs:85:23: replace match guard error.kind() == io::ErrorKind::NotFound with true in write_output
+cargo-rullst/src/update/artifacts.rs:150:32: replace match guard cfg!(target_env = "gnu") with true in native_target
+cargo-rullst/src/update/artifacts.rs:151:34: replace match guard cfg!(target_env = "msvc") with false in native_target
+cargo-rullst/src/update/artifacts.rs:151:34: replace match guard cfg!(target_env = "msvc") with true in native_target
+cargo-rullst/src/update/artifacts.rs:152:9: delete match arm ("macos", "aarch64") in native_target
+cargo-rullst/src/update/artifacts.rs:153:9: delete match arm ("macos", "x86_64") in native_target
+cargo-rullst/src/update/artifacts/download.rs:194:31: replace * with + in write_bounded
+cargo-rullst/src/update/artifacts/files.rs:31:5: replace linked -> bool with false
+cargo-rullst/src/update/artifacts/files.rs:41:43: replace | with ^ in open
+cargo-rullst/src/update/artifacts/files.rs:63:21: replace + with * in read_bounded
+cargo-rullst/src/update/artifacts/files.rs:79:37: replace + with * in digest
+cargo-rullst/src/update/artifacts/files.rs:82:29: replace * with + in digest
+cargo-rullst/src/update/cache/unix.rs:140:53: replace | with ^ in options
+cargo-rullst/src/update/cache/unix.rs:206:26: replace + with * in load_at
+cargo-rullst/src/update/cache/unix.rs:206:26: replace + with - in load_at
+cargo-rullst/src/update/project/permissions_unix.rs:106:17: replace > with == in xattr_names
+cargo-rullst/src/update/project/permissions_unix.rs:106:17: replace > with >= in xattr_names
+cargo-rullst/src/update/project/snapshot.rs:110:5: replace linked -> bool with false
+cargo-rullst/src/update/project/snapshot.rs:149:43: replace | with & in read
+cargo-rullst/src/update/project/snapshot.rs:149:43: replace | with ^ in read
+cargo-rullst/src/update/project/snapshot.rs:159:26: replace || with && in read
+cargo-rullst/src/update/project/snapshot.rs:159:45: replace || with && in read
+cargo-rullst/src/update/project/snapshot.rs:163:24: replace + with * in read
+
+# rullst-studio remote mode (alpha.3 campaign, targeted runs with the package's
+# tests): see WORKFLOWS.md "Accepted equivalent mutants".
+rullst-studio/src/remote/history.rs:72:51: replace > with >= in Sample::from_outcome

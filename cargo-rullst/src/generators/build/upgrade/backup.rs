@@ -283,4 +283,117 @@ mod tests {
         assert!(UpgradeBackup::restore_from(&root, &backup_root).is_err());
         std::fs::remove_dir_all(root).unwrap();
     }
+
+    fn package_plan(manifest: PathBuf) -> Vec<ManifestUpgradePlan> {
+        vec![ManifestUpgradePlan {
+            path: manifest,
+            original: String::new(),
+            updated: String::new(),
+            is_package: true,
+            matched: 1,
+            source_majors: Default::default(),
+            source_versions: Vec::new(),
+            changes: Vec::new(),
+            warnings: Vec::new(),
+        }]
+    }
+
+    fn package(root: &Path) -> Vec<ManifestUpgradePlan> {
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::write(root.join("Cargo.toml"), "[package]\n").unwrap();
+        std::fs::write(root.join("src/main.rs"), "fn main() {}\n").unwrap();
+        package_plan(root.join("Cargo.toml"))
+    }
+
+    /// The snapshot holds the package's own sources: not a nested package's,
+    /// nor those under build output, VCS, tool or vendored directories.
+    #[test]
+    fn the_snapshot_skips_nested_packages_and_tool_directories() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        let plans = package(root);
+        std::fs::create_dir_all(root.join("nested/src")).unwrap();
+        std::fs::write(root.join("nested/Cargo.toml"), "[package]\n").unwrap();
+        std::fs::write(root.join("nested/src/lib.rs"), "").unwrap();
+        for skipped in [".git", ".rullst", "node_modules", "target", "vendor"] {
+            std::fs::create_dir_all(root.join(skipped).join("src")).unwrap();
+            std::fs::write(root.join(skipped).join("src/lib.rs"), "").unwrap();
+        }
+        std::fs::create_dir_all(root.join("src/models")).unwrap();
+        std::fs::write(root.join("src/models/user.rs"), "").unwrap();
+        std::fs::write(root.join("src/notes.txt"), "").unwrap();
+
+        let backup = UpgradeBackup::create(root, &plans).unwrap();
+        // The index spells paths with the platform's separator.
+        let main = Path::new("src").join("main.rs");
+        let user = Path::new("src").join("models").join("user.rs");
+        assert_eq!(
+            std::fs::read_to_string(backup.root().join("index.tsv")).unwrap(),
+            format!(
+                "absent\tCargo.lock\npresent\tCargo.toml\npresent\t{}\npresent\t{}\n",
+                main.display(),
+                user.display()
+            )
+        );
+    }
+
+    /// Only a symlinked Rust source stops the snapshot; Unix-only because
+    /// creating a symlink on Windows needs a privilege the runners lack.
+    #[cfg(unix)]
+    #[test]
+    fn a_symlink_that_is_not_rust_source_is_left_alone() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        let plans = package(root);
+        std::os::unix::fs::symlink("main.rs", root.join("src/main.txt")).unwrap();
+        UpgradeBackup::create(root, &plans).unwrap();
+        std::os::unix::fs::symlink("main.rs", root.join("src/alias.rs")).unwrap();
+        let error = UpgradeBackup::create(root, &plans).unwrap_err().to_string();
+        assert!(
+            error.starts_with("refusing to upgrade a workspace with symlinked Rust source "),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn reports_are_written_next_to_the_snapshot() {
+        let directory = tempfile::tempdir().unwrap();
+        let backup = UpgradeBackup::create(directory.path(), &package(directory.path())).unwrap();
+        let report = backup.write_reports("# Upgrade\n", "{}").unwrap();
+        assert_eq!(report, backup.root().join("report.md"));
+        assert_eq!(report, backup.report_path());
+        assert_eq!(std::fs::read_to_string(&report).unwrap(), "# Upgrade\n");
+        assert_eq!(
+            std::fs::read_to_string(backup.root().join("report.json")).unwrap(),
+            "{}"
+        );
+    }
+
+    /// A source of exactly 64 MiB is saved; one byte more is refused before
+    /// anything is copied.
+    #[test]
+    fn a_source_file_may_hold_at_most_64_mib() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        let plans = package(root);
+        let source = std::fs::File::options()
+            .write(true)
+            .open(root.join("src/main.rs"))
+            .unwrap();
+        source.set_len(restore::MAX_FILE_BYTES).unwrap();
+        let backup = UpgradeBackup::create(root, &plans).unwrap();
+        assert_eq!(
+            std::fs::metadata(backup.root().join("files/src/main.rs"))
+                .unwrap()
+                .len(),
+            restore::MAX_FILE_BYTES
+        );
+        std::fs::remove_dir_all(root.join("target")).unwrap();
+        source.set_len(restore::MAX_FILE_BYTES + 1).unwrap();
+        let error = UpgradeBackup::create(root, &plans).unwrap_err().to_string();
+        assert_eq!(
+            error,
+            "upgrade snapshot exceeds 64 MiB/file or 512 MiB/backup"
+        );
+    }
 }

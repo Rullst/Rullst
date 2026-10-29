@@ -165,3 +165,50 @@ fn the_catalog_limit_is_checked_before_parsing() {
         Err(SelectionError::Invalid("catalog exceeds 256 KiB"))
     ));
 }
+
+#[test]
+fn a_catalog_may_fill_its_whole_256_kib_bound() {
+    let mut body = catalog(vec![release("12.1.0")]);
+    body.resize(256 * 1024, b' ');
+    let report = resolve(&body, &current(), &stable()).unwrap();
+    assert_eq!(report.target.unwrap().version, "12.1.0");
+}
+
+#[test]
+fn registry_checksums_are_exactly_64_hex_digits() {
+    for checksum in ["g".repeat(64), "a".repeat(63), "a".repeat(65)] {
+        let mut candidate = release("12.1.0");
+        candidate["checksum"] = json!(checksum);
+        assert!(
+            matches!(
+                resolve(&catalog(vec![candidate]), &current(), &stable()),
+                Err(SelectionError::Invalid("malformed registry checksum"))
+            ),
+            "{checksum}"
+        );
+    }
+    let mut candidate = release("12.1.0");
+    candidate["checksum"] = json!("ABCDEF0123456789".repeat(4));
+    let report = resolve(&catalog(vec![candidate]), &current(), &stable()).unwrap();
+    assert_eq!(
+        serde_json::to_value(&report).unwrap()["target"]["registry_checksum"],
+        "abcdef0123456789".repeat(4)
+    );
+}
+
+#[test]
+fn version_strings_are_at_most_64_characters_without_controls() {
+    let longest = format!("12.1.0-{}", "a".repeat(57));
+    assert_eq!(longest.len(), 64);
+    assert_eq!(parse_version(&longest).unwrap().to_string(), longest);
+    let longer = format!("{longest}a");
+    for unsafe_text in [longer.as_str(), "12.1.0\u{7}"] {
+        assert!(
+            matches!(
+                parse_version(unsafe_text),
+                Err(SelectionError::Invalid("unsafe version string"))
+            ),
+            "{unsafe_text}"
+        );
+    }
+}

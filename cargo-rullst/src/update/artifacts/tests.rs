@@ -80,6 +80,34 @@ fn release_and_file_identity_confusion_is_rejected() {
 }
 
 #[test]
+fn the_longest_runner_name_and_largest_binary_are_accepted() {
+    let mut value = fixture();
+    value["build_runner"] = json!("r".repeat(64));
+    value["files"][0]["bytes"] = json!(134_217_728);
+    let manifest = parse(&value).unwrap();
+    assert_eq!(manifest.files[0].bytes, 134_217_728);
+    value["build_runner"] = json!("r".repeat(65));
+    assert!(parse(&value).is_err());
+    value["build_runner"] = json!("");
+    assert!(parse(&value).is_err());
+}
+
+#[test]
+fn a_manifest_may_fill_but_not_exceed_16_kib() {
+    let version = Version::new(12, 1, 0);
+    let mut body = serde_json::to_vec(&fixture()).unwrap();
+    body.resize(16 * 1024, b' ');
+    manifest::Manifest::parse(&body, &version, TARGET).unwrap();
+    body.push(b' ');
+    assert_eq!(
+        manifest::Manifest::parse(&body, &version, TARGET)
+            .unwrap_err()
+            .to_string(),
+        "artifact verification rejected: manifest exceeds its size bound"
+    );
+}
+
+#[test]
 fn all_native_platform_filenames_have_an_exact_contract() {
     for target in [
         TARGET,
@@ -146,6 +174,40 @@ fn manifest_bound_and_report_authority_are_explicit() {
     }
 }
 
+#[test]
+fn only_bounded_nonempty_regular_files_open() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("artifact");
+    fs::write(&path, [7u8; 16]).unwrap();
+    assert!(files::directory(&path).is_err());
+    files::directory(directory.path()).unwrap();
+    files::open(&path, 16).unwrap();
+    assert_eq!(files::read_bounded(&path, 16).unwrap(), [7u8; 16]);
+    assert!(files::open(&path, 15).is_err());
+    fs::write(&path, []).unwrap();
+    assert!(files::open(&path, 16).is_err());
+    let nested = directory.path().join("nested");
+    fs::create_dir(&nested).unwrap();
+    fs::write(nested.join("entry"), b"x").unwrap();
+    assert!(files::open(&nested, manifest::MAX_BINARY).is_err());
+}
+
+/// sysfs reports a 4096-byte size for every attribute and returns less.
+#[cfg(target_os = "linux")]
+#[test]
+fn a_file_shorter_than_its_reported_size_is_rejected() {
+    let path = std::path::Path::new("/sys/devices/system/cpu/online");
+    if !path.exists() {
+        return;
+    }
+    assert_eq!(
+        files::read_bounded(path, 16 * 1024)
+            .unwrap_err()
+            .to_string(),
+        "artifact verification rejected: artifact changed size while reading"
+    );
+}
+
 #[cfg(unix)]
 #[test]
 fn symlinked_binaries_directories_and_fifos_are_rejected_without_blocking() {
@@ -170,4 +232,99 @@ fn symlinked_binaries_directories_and_fifos_are_rejected_without_blocking() {
             .success()
     );
     assert!(manifest.verify_files(directory.path()).is_err());
+}
+
+fn rejection<T: std::fmt::Debug>(result: Result<T, Box<dyn std::error::Error>>) -> String {
+    result.unwrap_err().to_string()
+}
+
+#[test]
+fn artifact_errors_debug_print_their_message() {
+    assert_eq!(
+        format!("{:?}", ArtifactError::Invalid("fixture")),
+        "artifact verification rejected: fixture"
+    );
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
+#[test]
+fn the_native_target_is_the_linux_gnu_release() {
+    assert_eq!(native_target().unwrap(), "x86_64-unknown-linux-gnu");
+}
+
+#[test]
+fn offline_artifact_operations_are_refused_first() {
+    let directory = tempfile::tempdir().unwrap();
+    let directory = directory.path().to_str().unwrap();
+    // Without --allow-major the next check would refuse 99.0.0 differently.
+    let verify = command()
+        .try_get_matches_from([
+            "verify",
+            "--directory",
+            directory,
+            "--to",
+            "99.0.0",
+            "--offline",
+        ])
+        .unwrap();
+    assert_eq!(
+        run(&verify).unwrap_err().to_string(),
+        "artifact verification rejected: offline mode forbids attestation verification"
+    );
+    let stage_matches = stage_command()
+        .try_get_matches_from(["stage", "--to", "99.0.0", "--offline"])
+        .unwrap();
+    let staged = "artifact verification rejected: offline mode forbids authenticated downloads";
+    assert_eq!(rejection(stage(&stage_matches).map(|()| 0)), staged);
+    assert_eq!(rejection(execute("stage", &stage_matches)), staged);
+    let install_matches = install_command()
+        .try_get_matches_from([
+            "install",
+            "recover",
+            "--root",
+            directory,
+            "--approved-review",
+            &"f".repeat(64),
+            "--offline",
+        ])
+        .unwrap();
+    let installed = "artifact verification rejected: offline mode forbids authenticated installation operations";
+    assert_eq!(
+        rejection(installation(&install_matches).map(|()| 0)),
+        installed
+    );
+    assert_eq!(rejection(execute("install", &install_matches)), installed);
+    assert_eq!(
+        rejection(execute("apply", &install_matches)),
+        "artifact verification rejected: unsupported guided artifact operation"
+    );
+}
+
+#[test]
+fn verification_reads_a_whole_16_kib_manifest_before_matching_it() {
+    let Ok(target) = native_target() else {
+        return;
+    };
+    let directory = tempfile::tempdir().unwrap();
+    let mut body = serde_json::to_vec(&fixture()).unwrap();
+    body.resize(16 * 1024, b' ');
+    fs::write(
+        directory.path().join(format!("cli-manifest-{target}.json")),
+        body,
+    )
+    .unwrap();
+    let matches = command()
+        .try_get_matches_from([
+            "verify",
+            "--directory",
+            directory.path().to_str().unwrap(),
+            "--to",
+            "99.0.0",
+            "--allow-major",
+        ])
+        .unwrap();
+    assert_eq!(
+        run(&matches).unwrap_err().to_string(),
+        "artifact verification rejected: manifest does not match the selected release, source or native target"
+    );
 }
