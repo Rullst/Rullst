@@ -201,6 +201,11 @@ class WorkflowGuardTests(unittest.TestCase):
         self.assertIn("if [ \"$EVENT_NAME\" != pull_request ]", deployment)
         for name in ("check", "test"):
             self.assertIn("inputs.shard != 'vm-deployment'", jobs[name].split("    runs-on:", 1)[0])
+        # `cargo rullst auth` against PostgreSQL, MySQL and MariaDB runs after
+        # the relational profiles on Linux, with the CLI that shard built.
+        auth = jobs["test"].split("Run cargo rullst auth on Blank starters", 1)[1].split("      - name:", 1)[0]
+        self.assertIn("if: runner.os == 'Linux' && matrix.shard == 'cli-profiles-relational'", auth)
+        self.assertIn("run: python3 .github/check-auth-starter-sql.py --cli target/debug/cargo-rullst", auth)
 
 
 if __name__ == "__main__":
