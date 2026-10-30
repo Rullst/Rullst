@@ -372,3 +372,7 @@ fn count_query(row: &syn::Ident) -> TokenStream {
         });
     }
 }
+
+#[cfg(test)]
+#[path = "execution_tests.rs"]
+mod tests;
