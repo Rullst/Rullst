@@ -157,6 +157,12 @@ and fails on any surviving mutant.
   `FORMAT_VERSION` when rustdoc's JSON format changed; the script refuses
   another format), regenerate every listing and check that the diff only
   changes how items are rendered.
+- **Public dependencies** (`cargo-deny.yml`): a release library may not move a
+  [public dependency](docs/src/compatibility-policy.md#public-dependencies)
+  off its 13.x line in `.github/public-dependencies.json`
+  (`.github/check-public-dependencies.py`). A crate newly exposed in the API
+  gets a row there and in the policy table. A security exception changes both in
+  the same pull request, and the CHANGELOG marks it.
 - **Feature matrix** (`.github/check-feature-matrix.py`) and feature
   boundaries (`.github/check-feature-boundaries.sh`) must list every facade
   feature.

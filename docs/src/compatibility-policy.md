@@ -113,6 +113,72 @@ normally minor-compatible. Changing default features is treated as an
 operationally significant minor change and requires package and generated-app
 regression tests.
 
+## Public dependencies
+
+Some third-party crates are part of Rullst's public API: their types appear in
+public signatures, trait implementations or re-exports, such as
+`rullst::web::axum` and `rullst::db::sqlx`. For the whole 13.x line, each one
+stays on the version line below.
+
+| Crate | 13.x line | Where the API exposes it |
+| :--- | :--- | :--- |
+| `actix-web` | `4` | Capital and Connect Actix integrations (`capital-actix`, `actix` features) |
+| `async-trait` | `0.1` | `rullst::async_trait` |
+| `aws-sdk-sesv2` | `1` | Mail: `rullst::mail::aws_ses_sdk` and the native `AwsSesDriver` constructors |
+| `axum` | `0.8` | `rullst::web::axum`, `Router`, handlers and extractors of Core, Auth, Security, Capital, Connect, Nexus and Studio |
+| `base64` | `0.23` | Connect: `From<DecodeError>` for `ConnectError` |
+| `chrono` | `0.4` | Core date formatting, `rullst::orm::chrono`, Mail and Capital |
+| `dashmap` | `6` | Security: `SecurityStore` fields |
+| `http` | `1` | `rullst::http` and the header, method and status types of the web crates |
+| `jsonwebtoken` | `11` | Connect: `From<jsonwebtoken::errors::Error>` for `ConnectError` |
+| `mongodb` | `3` | ORM `MongoDbStore` (`orm-mongodb`) |
+| `opentelemetry_sdk` | `0.33` | Core `DistributedTelemetry::layer` (`telemetry`) |
+| `pgvector` | `0.4` | `rullst::orm::Vector` (`orm-pgvector`) |
+| `redis` | `1` | ORM: `From<RedisError>` for `Error` |
+| `reqwest` | `0.13` | AI and Connect error variants and conversions |
+| `secrecy` | `0.10` | Connect tokens (`SecretString`, `prelude::ExposeSecret`) |
+| `serde` | `1` | `Serialize`/`Deserialize` implementations in every crate |
+| `serde_json` | `1` | `serde_json::Value` arguments and results (Core queue, AI, ORM, Connect, Security, IoT) |
+| `sqlx` | `0.9` | `rullst::db::sqlx`, `rullst::orm::sqlx`, `FromRow`, `RullstPool` and ORM signatures |
+| `sqlx-core` | `0.9` | The same SQLx types, through the ORM's direct dependency |
+| `tokio` | `1` | `rullst::runtime`, `rullst::async_runtime::tokio`, channel receivers |
+| `tower` | `0.5` | `rullst::web::tower` |
+| `tower-http` | `0.7` | `rullst::web::tower_http` |
+| `tower-layer` | `0.3` | `Layer` bounds of `Router` and middleware |
+| `tower-service` | `0.3` | `Service` bounds and implementations of middleware |
+| `tower-sessions` | `0.15` | Connect: `begin_oauth_session` and the session extractors |
+| `tracing` | `0.1` | Core telemetry (`TraceParent`) |
+| `tracing-core` | `0.1` | Core `RedactPersonalDataLayer` |
+| `tracing-opentelemetry` | `0.34` | Core `DistributedTelemetry::layer` (`telemetry`) |
+| `tracing-subscriber` | `0.3` | Core `RedactPersonalDataLayer` implements its `Layer` |
+| `url` | `2` | AI `ValidatedEgressUrl::into_url` and Connect |
+| `utoipa` | `6` | Studio: `Studio::with_openapi` |
+| `validator` | `0.21` | `rullst::Validate`, `ValidatedForm` and `ValidatedJson` |
+| `zeroize` | `1` | `Zeroizing` values returned by Auth, Labs and Security |
+
+Types that one of these crates takes from its own dependencies (for example
+`axum-core`, `serde_core`, the SQLx drivers, `tokio-macros` or `actix-http`)
+follow the line of the crate listed.
+
+- A semver-compatible update (a patch, or a compatible minor of a crate at 1.0
+  or later) may ship in any 13.x release.
+- A semver-incompatible update, for example axum 0.8 to 0.9, ships only in a
+  Rullst major release (14.0).
+- **Security exception.** If a vulnerability is fixed only in an incompatible
+  upstream release and the fix cannot be backported, a 13.x minor release may
+  take that update. The CHANGELOG marks it as a security exception, with
+  migration notes.
+- Private dependencies, which do not appear in the public API, may change in
+  any release.
+- Over time Rullst prefers its own types for the commonly used surface.
+  `rullst::web::axum` remains the documented escape hatch to the underlying
+  framework and follows the rules above.
+
+[`.github/public-dependencies.json`](../../.github/public-dependencies.json)
+records the same lines. CI fails when a release library's requirement or locked
+version leaves its line; a security exception changes that file and this table
+in the same pull request.
+
 ## Supported release window
 
 Rullst does not currently promise an LTS or multi-minor backport program.
