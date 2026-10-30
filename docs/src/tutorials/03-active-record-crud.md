@@ -15,6 +15,7 @@ This tutorial continues in the `shop` project of
 
 Give the generated migration the columns the model will use. In its `up()`:
 
+<!-- first-hour: columns replace=src/migrations/m*_create_products.rs from='Schema::create("products"' through='}).await' -->
 ```rust,ignore
 Schema::create("products", |table| {
     table.id();
@@ -26,6 +27,7 @@ Schema::create("products", |table| {
 
 Then add the matching fields to `src/models/product.rs`:
 
+<!-- first-hour: model write=src/models/product.rs -->
 ```rust
 use rullst::db::{FromRow, Orm, RowSnapshot};
 

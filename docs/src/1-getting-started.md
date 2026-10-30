@@ -30,6 +30,7 @@ yanked the `zip` releases its Studio needs), so install the v13 prerelease. Name
 prerelease on its own, so neither a plain `cargo install cargo-rullst` nor
 `^13` installs it:
 
+<!-- first-hour: install -->
 ```bash
 cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 ```
@@ -71,6 +72,7 @@ Add the same `--root <dir>` if you installed with one.
 Run the create wizard with the name of your application (or run
 `cargo rullst` alone and choose **Create New Project** on its home screen):
 
+<!-- first-hour: create -->
 ```bash
 cargo rullst new my_app
 ```
@@ -94,6 +96,7 @@ runs its initial migration, and prints three numbered next steps: `cd my_app`,
 `cargo rullst dev` and the local URL of the generated welcome page, by default
 `http://127.0.0.1:3000`:
 
+<!-- first-hour: run -->
 ```bash
 cd my_app
 cargo rullst dev
@@ -113,6 +116,7 @@ through the main commands without changing a project. Without a terminal
 
 Prefer a small deterministic starter without navigating the wizard?
 
+<!-- first-hour: first-app new-terminal -->
 ```bash
 cargo rullst new first_app --default --blueprint blank --database sqlite \
   --skip-initial-migration
@@ -251,6 +255,7 @@ described in [Before the first deploy](tutorials/26-one-click-paas-deploy.md#bef
 
 The non-interactive flags mirror the second step:
 
+<!-- first-hour: stores new-terminal -->
 ```bash
 cargo rullst new edge_app --default --database mariadb --turso --mongodb \
   --skip-initial-migration
@@ -260,6 +265,7 @@ Automation can pin the supported starter, database and optional runtime
 capabilities. The application architecture is intentionally fixed to Active
 Record plus server-rendered `html!`/HTMX:
 
+<!-- first-hour: automation new-terminal -->
 ```bash
 cargo rullst new subscriptions --default --blueprint saas \
   --database postgres --ai \
@@ -275,6 +281,7 @@ an implicit SQLite default.
 
 To create a Turso-primary API using the current bounded blank starter:
 
+<!-- first-hour: turso-api new-terminal -->
 ```bash
 cargo rullst new edge_app --default --api --database turso \
   --skip-initial-migration
@@ -285,6 +292,7 @@ cargo rullst db:migrate
 The generated `.env` selects a persistent, real-SQL offline fallback and does
 not invent a SQLx `DATABASE_URL`:
 
+<!-- first-hour: turso-env expect-file=.env -->
 ```env
 TURSO_DATABASE_URL=mock_local
 TURSO_AUTH_TOKEN=

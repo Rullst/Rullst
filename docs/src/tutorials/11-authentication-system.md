@@ -12,6 +12,7 @@ The SaaS starter already contains this code. In a Blank or API project with a
 database, such as the `shop` project of [Tutorial 02](02-cli-generators.md),
 run from the project root:
 
+<!-- first-hour: auth -->
 ```bash
 cargo rullst auth
 ```
@@ -62,6 +63,7 @@ Wire the generated view, submit, logout, and authenticated routes in the
 application router. The exact route tree is an application decision; a typical
 mapping is:
 
+<!-- first-hour: auth-routes apply -->
 ```rust,ignore
 use rullst::{routes, routing::post, server::from_fn};
 use crate::controllers::auth_controller;
@@ -89,6 +91,7 @@ let signed_in = routes![
 Mount the password flows the same way: the reset routes are public, the change
 routes need `auth_middleware`, and every submission is rate limited.
 
+<!-- first-hour: password-routes apply -->
 ```rust,ignore
 use crate::controllers::password_controller;
 
@@ -145,6 +148,7 @@ generated authentication middleware.
 
 ## Step 3: Migrate and test
 
+<!-- first-hour: run -->
 ```bash
 cargo rullst db:migrate
 cargo rullst dev
