@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793342509632,
+  "lastUpdate": 1793372976103,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -19419,6 +19419,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4554,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5405596a5463c62f93df94c662c28316a7a7a62a",
+          "message": "Merge pull request #588 from Rullst/feat/v13-alpha4-public-api\n\nfeat: freeze the 13.x public API: hide accidental internals, snapshot gate, public-dependency and support policies",
+          "timestamp": "2026-10-30T11:51:01-03:00",
+          "tree_id": "0ec5e02cfc1003938fa4b0f718de8b457a3cc426",
+          "url": "https://github.com/Rullst/Rullst/commit/5405596a5463c62f93df94c662c28316a7a7a62a"
+        },
+        "date": 1793372975063,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1047,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 750,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1809,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4159,
+            "range": "± 31",
             "unit": "ns/iter"
           }
         ]
