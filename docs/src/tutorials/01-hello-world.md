@@ -28,6 +28,7 @@ winget install --id Rustlang.Rustup
 
 Restart the terminal if necessary, then verify the toolchain:
 
+<!-- first-hour: toolchain -->
 ```bash
 rustc --version
 cargo --version
@@ -39,6 +40,7 @@ Rullst v13 requires Rust 1.96.0 or newer, the MSRV recorded in the
 
 ## 2. Create a project
 
+<!-- first-hour: create -->
 ```bash
 cargo new my_first_app
 cd my_first_app
@@ -52,6 +54,7 @@ Add the v13 prerelease from crates.io. Name its exact version: Cargo never
 selects a prerelease on its own, and the v12 line reached end of life on
 16 October 2026, so a plain `cargo add rullst` would pick an unmaintained 12.x:
 
+<!-- first-hour: add -->
 ```bash
 cargo add rullst@=13.0.0-alpha.4
 cargo add tokio --features full
@@ -65,6 +68,7 @@ dependency updates before deployment.
 
 Replace `src/main.rs` with:
 
+<!-- first-hour: main write=src/main.rs -->
 ```rust,no_run
 use rullst::{html, routes, Markup, Server};
 
@@ -95,6 +99,7 @@ to the process instead of causing a framework-originated panic.
 
 Start the server:
 
+<!-- first-hour: run -->
 ```bash
 cargo run
 ```
@@ -122,6 +127,7 @@ The CLI can generate complete starters and project modules. Install the v13
 prerelease from crates.io (name the exact version; Cargo never picks a
 prerelease on its own):
 
+<!-- first-hour: cli -->
 ```bash
 cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 cargo rullst --version
