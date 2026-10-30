@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793333503316,
+  "lastUpdate": 1793339073648,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -19275,6 +19275,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3776,
             "range": "± 41",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5edd6c3f04c12067ae764c301aff315df9760b2f",
+          "message": "Merge pull request #581 from Rullst/ci/v13-alpha4-schedules-and-gates\n\nci: weekly Miri/Kani, full-matrix label, ZAP on the SaaS starter and a 13.x SemVer baseline",
+          "timestamp": "2026-10-30T02:25:15-03:00",
+          "tree_id": "e4c9e166c260aeafd884916b582b5ace2ebe2b90",
+          "url": "https://github.com/Rullst/Rullst/commit/5edd6c3f04c12067ae764c301aff315df9760b2f"
+        },
+        "date": 1793339072724,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1043,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 748,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1783,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4226,
+            "range": "± 21",
             "unit": "ns/iter"
           }
         ]
