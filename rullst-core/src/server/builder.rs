@@ -369,8 +369,10 @@ impl Server {
     /// Once bound it prints the listen address. When that covers every
     /// interface (`0.0.0.0` or `::`) and a trusted reverse proxy is configured
     /// ([`Self::trusted_proxies`] or `[security] trusted_proxies`), the line
-    /// suggests `HOST=127.0.0.1`, so clients cannot bypass a proxy on the
-    /// same host.
+    /// suggests `HOST=127.0.0.1` when the proxy runs on the same host outside
+    /// a container network, so clients cannot bypass it, and keeping
+    /// `HOST=0.0.0.0` when the proxy reaches the application over a container
+    /// network, as in the generated compose deployment.
     #[cfg_attr(mutants, mutants::skip)]
     pub async fn run(self, port: u16) -> Result<(), ServerError> {
         self.run_with_shutdown(port, shutdown_signal()).await

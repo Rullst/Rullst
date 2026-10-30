@@ -10,7 +10,10 @@ use walkdir::WalkDir;
 
 #[path = "files/features.rs"]
 mod features;
-use features::{enables_sqlx_macros, nexus_without_assistant};
+use features::{
+    enables_sqlx_macros, enables_sqlx_ring_tls, feature_reference, is_sqlx_ring_tls,
+    nexus_without_assistant,
+};
 
 const MAX_FILE_BYTES: u64 = 1024 * 1024;
 const MAX_YAML_ENTRIES: usize = 5_000;
@@ -176,27 +179,12 @@ fn removed_feature_reference(
     text: &str,
     packages: &BTreeMap<String, String>,
 ) -> Option<(usize, &'static Rule)> {
-    let (reference, rule) = document
-        .get("features")
-        .and_then(toml::Value::as_table)?
-        .values()
-        .filter_map(toml::Value::as_array)
-        .flatten()
-        .filter_map(toml::Value::as_str)
-        .find_map(|value| {
-            let (key, feature) = value.split_once('/')?;
-            let key = key.strip_suffix('?').unwrap_or(key);
-            let package = packages.get(key)?;
-            removed_features(package)
-                .iter()
-                .find(|(removed, _)| *removed == feature)
-                .map(|(_, rule)| (value, *rule))
-        })?;
-    let line = line_of(text, |line| {
-        !line.starts_with('#') && line.contains(reference)
+    feature_reference(document, text, packages, |package, feature| {
+        removed_features(package)
+            .iter()
+            .find(|(removed, _)| *removed == feature)
+            .map(|(_, rule)| *rule)
     })
-    .unwrap_or(1);
-    Some((line, rule))
 }
 
 /// Manifest findings and the workspace facts that Rust rules depend on.
@@ -214,6 +202,8 @@ pub(super) fn manifest_findings(
             .iter()
             .map(|(key, package, _)| (key.clone(), package.clone()))
             .collect();
+        // `V13-SQLX-TLS-RING` once per manifest, like a review rule in Rust.
+        let mut ring_tls = None;
         for (key, package, declaration) in declared {
             if let Some(rule) = enabled_removed_feature(&package, &declaration) {
                 findings.push(finding(
@@ -234,7 +224,12 @@ pub(super) fn manifest_findings(
                 ));
             }
             match package.as_str() {
-                "sqlx" => facts.sqlx_macros |= enables_sqlx_macros(&declaration),
+                "sqlx" => {
+                    facts.sqlx_macros |= enables_sqlx_macros(&declaration);
+                    if ring_tls.is_none() && enables_sqlx_ring_tls(&declaration) {
+                        ring_tls = Some(dependency_line(&plan.original, &key));
+                    }
+                }
                 "rullst-labs-runner" => findings.push(finding(
                     &LABS_RUNNER,
                     plan.path.clone(),
@@ -266,6 +261,14 @@ pub(super) fn manifest_findings(
         if let Some((line, rule)) = removed_feature_reference(&document, &plan.original, &packages)
         {
             findings.push(finding(rule, plan.path.clone(), line));
+        }
+        if let Some(line) = ring_tls.or_else(|| {
+            feature_reference(&document, &plan.original, &packages, |package, feature| {
+                is_sqlx_ring_tls(package, feature).then_some(())
+            })
+            .map(|(line, ())| line)
+        }) {
+            findings.push(finding(&SQLX_TLS_RING, plan.path.clone(), line));
         }
     }
     (findings, facts)
