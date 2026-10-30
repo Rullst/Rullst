@@ -1,11 +1,10 @@
 """Per-fuzz-package input scope derived from the Cargo path-dependency graph.
 
-Everything is read from the Git objects of one commit, never a checkout. A
-scope is the set of package directories a fuzz workspace reaches through path
-dependencies, plus files outside them that their sources, build scripts or
-reviewed proc macros reference. Anything that cannot be resolved statically
-records a reason; the caller then treats the whole repository as that fuzz
-package's input (fail closed).
+A scope is the set of package directories a fuzz workspace reaches through
+path dependencies, read from one commit's Git objects, plus files outside them
+that their sources include. Build-time code or anything not resolvable
+statically records a reason: that package's input becomes the whole
+repository (fail closed). Presence is preferred over modelling.
 """
 
 from __future__ import annotations
@@ -16,13 +15,14 @@ import subprocess
 import tomllib
 from pathlib import Path
 
-from fuzz_source_scan import Facts, source_facts
+from fuzz_source_scan import (FILE_ATTRIBUTES, FILE_MACROS, INCLUDES, STD_ATTRIBUTES, STD_MACROS,
+                              Facts, ancestors, climbs, join, source_facts, under)
 
-DEPENDENCY_TABLES = ("dependencies", "dev-dependencies", "dev_dependencies",
-                     "build-dependencies", "build_dependencies")
+DEPENDENCY_TABLES = ("dependencies", "dev-dependencies", "dev_dependencies")
+BUILD_TABLES = ("build-dependencies", "build_dependencies")
 TARGET_TABLES = ("lib", "bin", "example", "test", "bench")
-# Files in a parent directory of a reached package that change its checkout or build.
-ANCESTOR_FILES = (".gitattributes", "rust-toolchain", "rust-toolchain.toml", ".cargo")
+# Files in a parent directory of a reached package that change how it builds.
+ANCESTOR_FILES = ("rust-toolchain", "rust-toolchain.toml", ".cargo")
 CARGO_CONFIGS = (".cargo/config", ".cargo/config.toml")
 # Cargo configuration that cannot point at other repository files. Any other
 # key (paths, patch, source, env, target linker/runner, ...) fails closed.
@@ -31,46 +31,23 @@ CARGO_CONFIG_KEYS = {"alias": None, "term": None, "net": None, "cargo-new": None
 # Proc macros run inside the compiler. Filesystem, process or environment
 # access is accepted only in these reviewed blobs. `rullst-macros`' i18n
 # `catalog!` reads `<invoking package>/<dir>/*.toml` (default `locales`); the
-# package is part of the scope and a `dir = "…"` that leaves it is resolved by
-# the path-argument scan. The test modules are `#[cfg(test)]`. Any other blob
-# fails closed until reviewed; keep earlier blobs while history may use them.
+# package is part of the scope, and a `dir` that climbs with `..` fails closed
+# (path-like argument rule). The test modules are `#[cfg(test)]`. Any other
+# blob fails closed until reviewed; keep earlier blobs while history uses them.
 REVIEWED_COMPILE_IO = {
     "rullst-macros/src/i18n/catalog.rs": frozenset({"fbbfbb76f1e80bfc9938675c6b172dee7ee97d18"}),
     "rullst-macros/src/i18n/catalog_tests.rs": frozenset({"9129f8024076e3a971c430fd70babe7779932f80"}),
     "rullst-macros/src/i18n/emit.rs": frozenset({"19fbff453d52faa3263078214dd7d2cf1eae2224"}),
     "rullst-macros/src/i18n/tests.rs": frozenset({"6327b1f10dd2daf52ee3a9834e773a182dbc47ca"}),
 }
+# Registry macros reviewed never to read files (their URL-like arguments).
+REVIEWED_PLAIN_MACROS = frozenset({"json", "fuzz_target"})
 # Cargo test, bench and example targets are never part of a proc-macro library.
 NON_LIBRARY_DIRECTORIES = ("tests", "benches", "examples")
 MAX_ROUNDS = 8
 
 _FACTS: dict[str, Facts] = {}
 _TOML: dict[str, object] = {}
-
-
-def under(path: str, directory: str) -> bool:
-    return directory == "" or path == directory or path.startswith(directory + "/")
-
-
-def join(base: str, relative: object) -> str | None:
-    """Normalized repository path, or None for absolute, odd or escaping paths."""
-    if (not isinstance(relative, str) or relative.startswith("/") or "\\" in relative
-            or "\0" in relative):
-        return None
-    joined = posixpath.normpath(posixpath.join(base, relative) if base else relative)
-    if joined == ".":
-        return ""
-    if joined == ".." or joined.startswith("../"):
-        return None
-    return joined
-
-
-def ancestors(path: str) -> list[str]:
-    result = []
-    while path:
-        path = posixpath.dirname(path)
-        result.append(path)
-    return result
 
 
 def cat_file(root: Path, oids) -> dict[str, bytes]:
@@ -166,25 +143,31 @@ class Graph:
         if explicit is not None:
             root = join(directory, explicit)
             found = self.manifest(root) if root is not None else None
-            if isinstance(found, dict) and isinstance(found.get("workspace"), dict):
-                return root, None
-            return None, "explicit workspace root is not a workspace"
-        if isinstance(manifest.get("workspace"), dict):
+            if not (isinstance(found, dict) and isinstance(found.get("workspace"), dict)):
+                return None, "explicit workspace root is not a workspace"
+        elif isinstance(manifest.get("workspace"), dict):
             return directory, None
-        for parent in ancestors(directory):
-            found = self.manifest(parent)
-            if found == "invalid":
-                return None, f"unparsable manifest {parent or '.'}/Cargo.toml"
-            if isinstance(found, dict) and isinstance(found.get("workspace"), dict):
-                return parent, None
-        return None, None
+        else:
+            for root in ancestors(directory):
+                found = self.manifest(root)
+                if found == "invalid":
+                    return None, f"unparsable manifest {root or '.'}/Cargo.toml"
+                if isinstance(found, dict) and isinstance(found.get("workspace"), dict):
+                    break
+            else:
+                return None, None
+        # Cargo skips a workspace that excludes the package; do not model it.
+        exclude = found["workspace"].get("exclude", [])
+        if not isinstance(exclude, list) or any(
+                join(root, entry) is None or under(directory, join(root, entry)) for entry in exclude):
+            return None, f"excluded from the workspace at {root or '.'}"
+        return root, None
 
     def package(self, directory: str) -> dict:
         """Edges and properties of one package, cached for every fuzz scope."""
         if directory in self.info:
             return self.info[directory]
-        info = {"edges": [], "reasons": [], "files": set(), "build": None, "proc_macro": False,
-                "lib": "src/lib.rs"}
+        info = {"edges": [], "reasons": [], "files": set(), "proc_macro": False, "lib": "src/lib.rs"}
         self.info[directory] = info
         label = directory or "."
         manifest = self.manifest(directory)
@@ -198,7 +181,8 @@ class Graph:
             info["files"].add(f"{root}/Cargo.toml")
         if root is None and _inherits(manifest):
             info["reasons"].append(f"{label}: workspace inheritance without a workspace root")
-        tables = [manifest.get(name) for name in DEPENDENCY_TABLES]
+        tables, build_tables = [manifest.get(name) for name in DEPENDENCY_TABLES], \
+            [manifest.get(name) for name in BUILD_TABLES]
         for section in ("target", "patch"):
             value = manifest.get(section, {})
             if not isinstance(value, dict):
@@ -209,7 +193,11 @@ class Graph:
                     tables.append(nested)
                 else:
                     tables.extend(nested.get(name) for name in DEPENDENCY_TABLES)
+                    build_tables.extend(nested.get(name) for name in BUILD_TABLES)
         tables.append(manifest.get("replace"))
+        # Build-time code (build scripts and their dependencies) is not modelled.
+        if any(table is not None for table in build_tables):
+            info["reasons"].append(f"{label}: build-dependencies run at build time")
         workspace = self.manifest(root).get("workspace") if root is not None else None
         inherited = workspace.get("dependencies") if isinstance(workspace, dict) else None
         for table in tables:
@@ -233,7 +221,7 @@ class Graph:
                 elif "path" in spec:
                     target = join(base, spec["path"])
                     if target is None:
-                        info["reasons"].append(f"{label}: dependency {name} path leaves the repository")
+                        info["reasons"].append(f"{label}: dependency {name} path cannot be resolved")
                     else:
                         info["edges"].append(target)
         for table in TARGET_TABLES:
@@ -248,20 +236,14 @@ class Graph:
                         info["reasons"].append(f"{label}: [{table}] source outside the package")
                     elif table == "lib":
                         info["lib"] = posixpath.relpath(resolved, directory or ".")
-                if table == "lib" and (target.get("proc-macro") or target.get("proc_macro")):
+                kinds = target.get("crate-type", target.get("crate_type", []))
+                if table == "lib" and (target.get("proc-macro") or target.get("proc_macro")
+                                       or isinstance(kinds, list) and "proc-macro" in kinds):
                     info["proc_macro"] = True
         build = manifest["package"].get("build")
-        if isinstance(build, str):
-            resolved = join(directory, build)
-            if resolved is None or not under(resolved, directory):
-                info["reasons"].append(f"{label}: build script outside the package")
-            else:
-                info["build"] = resolved
-        elif build is None or build is True:
-            default = f"{directory}/build.rs" if directory else "build.rs"
-            info["build"] = default if default in self.files else None
-        elif build is not False:
-            info["reasons"].append(f"{label}: malformed build setting")
+        script = f"{directory}/build.rs" if directory else "build.rs"
+        if build is not False and (build is not None or script in self.files):
+            info["reasons"].append(f"{label}: build script runs at build time")
         return info
 
     def scopes(self) -> dict[str, Scope]:
@@ -315,45 +297,45 @@ class Graph:
         else:
             scope.close("too many nested source inclusions")
             return
-        self.compile_time(scope, facts, edges)
+        self.checks(scope, facts, edges)
 
-    def compile_time(self, scope: Scope, facts: dict[str, Facts], edges: set) -> None:
+    def checks(self, scope: Scope, facts: dict[str, Facts], edges: set) -> None:
         for path in self.sources(scope.directory):
             if facts[path].runtime_io:
                 scope.close(f"{path}: fuzz harness accesses files, processes or the environment")
         for package in sorted(scope.packages):
             info = self.package(package)
-            build = info["build"]
-            if build is not None:
-                item = self.facts([build]).get(build)
-                if item is None or item.error or item.mods:
-                    scope.close(f"{build}: build script with modules or unreadable source")
-                else:
-                    for value in item.build_paths:
-                        target = join(package, value) if value is not None else None
-                        if target is None:
-                            scope.close(f"{build}: build script path {value!r} leaves the repository")
-                        elif not scope.covers(target):
-                            scope.files.add(target)
-                    for operation in sorted(set(item.build_dynamic)):
-                        scope.close(f"{build}: build script uses {operation}")
             if not info["proc_macro"]:
                 continue
-            excluded = {f"{package}/{name}" if package else name for name in NON_LIBRARY_DIRECTORIES
-                        if not under(info["lib"], name)}
-            if any(not any(under(source, item) for item in excluded)
-                   and any(under(target, item) for item in excluded)
-                   for source, target in edges if under(source, package)):
-                excluded = set()
-            for path in self.sources(package):
-                if (not any(under(path, item) for item in excluded)
-                        and facts[path].compile_io
-                        and self.files[path][1] not in REVIEWED_COMPILE_IO.get(path, ())):
-                    uses = ", ".join(sorted(set(facts[path].compile_io)))
+            # Everything the proc-macro library compiles, including `#[path]`
+            # and `include!` targets outside its directory.
+            excluded = [f"{package}/{name}" if package else name for name in NON_LIBRARY_DIRECTORIES
+                        if not under(info["lib"], name)]
+            compiled = {path for path in self.sources(package)
+                        if not any(under(path, item) for item in excluded)}
+            while True:
+                found = {target for source, target in edges if source in compiled and target in facts}
+                found |= {path for target in found if facts[target].mods and not under(target, package)
+                          for path in self.below(posixpath.dirname(target)) if path in facts}
+                if found <= compiled:
+                    break
+                compiled |= found
+            for path in sorted(compiled):
+                item = facts[path]
+                if item.compile_io and self.files[path][1] not in REVIEWED_COMPILE_IO.get(path, ()):
+                    uses = ", ".join(sorted(set(item.compile_io)))
                     scope.close(f"{path}: unreviewed compile-time access ({uses})")
+                for owner, value, position, compared in item.literals:
+                    # A proc macro must not hand a climbing path to any reader
+                    # (comparing a segment with ".." is not reading one).
+                    if (climbs(value) and not compared and not item.inside(position, item.quotes)
+                            and owner not in {("attr", "path"), *(("call", name) for name in INCLUDES)}):
+                        scope.close(f"{path}: proc macro uses path {value!r}")
 
     def resolve(self, scope: Scope, facts: dict[str, Facts]) -> tuple[set[str], set]:
-        calls, aliases, added, edges = {}, set(), set(), set()
+        calls, aliases, renames, added, edges = {}, set(), [], set(), set()
+        defined, opaque, exports = set(), set(), set()
+        proc_macros = {package for package in scope.packages if self.package(package)["proc_macro"]}
         for path, item in facts.items():
             if item.error:
                 scope.close(f"{path}: cannot scan source ({item.error})")
@@ -361,6 +343,43 @@ class Graph:
             for call in item.calls:
                 calls.setdefault(call[0], []).append((path, *call[1:]))
             aliases |= item.aliases
+            renames += item.renames
+            if any(under(path, package) for package in proc_macros):
+                exports |= item.exports
+            if item.defines_macros:
+                scope.close(f"{path}: macro_rules! that defines macros")
+            for name in sorted(INCLUDES.keys() & item.aliases):
+                scope.close(f"{path}: built-in {name}! is renamed")
+            for name, *_ in item.calls:
+                if name in FILE_MACROS:
+                    scope.close(f"{path}: {name}! reads files at compile time")
+            for name, *_ in item.attrs:
+                if name in FILE_ATTRIBUTES:
+                    scope.close(f"{path}: #[{name}] reads files at compile time")
+            # A macro_rules! is transparent when its arguments only reach
+            # built-in macros/attributes (or plain code) inside its body.
+            for name, start, end in item.defs:
+                defined.add(name)
+                if (any(start < open_ < end and dollar and callee not in STD_MACROS
+                        for callee, open_, _, _, dollar, _ in item.calls)
+                        or any(start < open_ < end and dollar and attr not in STD_ATTRIBUTES
+                               for attr, open_, _, dollar in item.attrs)):
+                    opaque.add(name)
+        for original, alias in renames:
+            if original in exports:
+                exports.add(alias)
+        transparent = defined - opaque
+        for path, item in facts.items():
+            for owner, value, *_ in item.literals:
+                # Path-like arguments of macros/attributes whose code is not
+                # scanned (registry crates) may name files: fail closed.
+                if owner is None:
+                    continue
+                kind, name = owner
+                trusted = (name in STD_MACROS or name in transparent or name in REVIEWED_PLAIN_MACROS
+                           if kind == "call" else name in STD_ATTRIBUTES)
+                if not trusted and not (not climbs(value) and name in exports):
+                    scope.close(f"{path}: path-like argument {value!r} of {name}")
 
         def sites(name: str, seen: frozenset) -> set[str] | None:
             """Files whose location resolves paths expanded from `name!`."""
@@ -382,17 +401,10 @@ class Graph:
 
         def target(kind: str, source: str, value: str | None) -> None:
             directory = posixpath.dirname(source)
-            if kind == "key":
-                # Only a relative argument that climbs can leave its package;
-                # absolute keyword values are routes, not repository files.
-                if value is None or value.startswith("/") or ".." not in value.split("/"):
-                    return
-                candidates = {join(directory, value)} | {
-                    join(package, value) for package in scope.packages if under(source, package)}
-            elif value is None or "\\" in value or value.startswith("/") or not value.strip("./"):
+            if value is None or "\\" in value or value.startswith("/") or not value.strip("./"):
                 scope.close(f"{source}: unresolvable {kind} path {value!r}")
                 return
-            elif kind == "mod":
+            if kind == "mod":
                 # Inline modules make the base deeper; consider every depth.
                 parts = posixpath.normpath(value).split("/")
                 ups = 0
@@ -400,11 +412,13 @@ class Graph:
                     ups += 1
                 rest = "/".join(parts[ups:])
                 candidates = {join(directory, "/".join([".."] * up + [rest])) for up in range(ups + 1)}
+                if join(directory, value) is None:
+                    candidates.add(None)
             else:
                 candidates = {join(directory, value)}
             for candidate in candidates:
                 if candidate is None:
-                    scope.close(f"{source}: {kind} path {value!r} leaves the repository")
+                    scope.close(f"{source}: {kind} path {value!r} cannot be resolved")
                     continue
                 if kind in {"code", "mod"}:
                     edges.add((source, candidate))
@@ -421,17 +435,17 @@ class Graph:
                 if item.inside(position, item.quotes):
                     # Generated code resolves against an unknown invocation site;
                     # computed paths are proc-macro compile-time access.
-                    if (form in {"lit", "manifest"} and kind != "key" and value is not None
-                            and (".." in value.split("/") or form == "lit" and value.startswith("/"))):
+                    if form in {"lit", "manifest"} and (climbs(value) or form == "lit" and value.startswith("/")):
                         scope.close(f"{path}: generated {kind} path {value!r} may leave its package")
-                elif form == "out" or form == "dynamic" and kind == "key":
+                elif form == "out":
                     continue
                 elif form == "dynamic" or form == "manifest" and macro is not None:
                     scope.close(f"{path}: {kind} path cannot be resolved statically")
-                elif form == "manifest" and not value.startswith("/"):
-                    scope.close(f"{path}: {kind} path {value!r} after CARGO_MANIFEST_DIR")
                 elif form == "manifest":
-                    for package in [package for package in scope.packages if under(path, package)]:
+                    owners = [package for package in scope.packages if under(path, package)]
+                    if not value.startswith("/") or not owners:
+                        scope.close(f"{path}: CARGO_MANIFEST_DIR {kind} path {value!r} cannot be resolved")
+                    for package in owners if value.startswith("/") else ():
                         target(kind, f"{package}/Cargo.toml" if package else "Cargo.toml", value[1:])
                 elif macro is None and form == "meta":
                     scope.close(f"{path}: macro variable outside macro_rules!")
@@ -443,13 +457,15 @@ class Graph:
                         scope.close(f"{path}: {kind} path inside macro {macro}! has unknown call sites")
                     for base in bases or ():
                         target(kind, base, value)
+                elif macro in aliases:
+                    scope.close(f"{path}: {kind} argument of renamed macro {macro}!")
                 else:
-                    for site, start, _, strings, dollar in calls.get(macro, ()):
+                    for site, start, _, strings, dollar, nested in calls.get(macro, ()):
                         outer = facts[site].macro_at(start)
                         if outer == macro:
                             continue
                         bases = {site} if outer is None else sites(outer, frozenset({macro}))
-                        if (macro in aliases or bases is None or outer is not None and dollar
+                        if (bases is None or nested or outer is not None and dollar
                                 or facts[site].inside(start, facts[site].quotes)):
                             scope.close(f"{path}: {kind} argument of macro {macro}! cannot be resolved")
                             break

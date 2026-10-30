@@ -31,19 +31,20 @@ class FuzzSurfaceChanged(ValueError):
 
 
 # Inputs of every fuzz package: workspace manifest (profiles, patches, inherited
-# dependencies), toolchain, Cargo configuration, checkout attributes, the
-# inventory/release line and the scripts the fuzz workflow runs. `.github/**`
-# paths named by the workflow, and sibling modules they import, are added.
+# dependencies), toolchain, Cargo configuration, every `.gitattributes`
+# (checkout conversion), the inventory/release line and the scripts the fuzz
+# workflow runs. `.github/**` paths named by the workflow, and sibling modules
+# they import, are added.
 GLOBAL_FILES = frozenset({
-    "Cargo.toml", "rust-toolchain", "rust-toolchain.toml", ".gitattributes",
+    "Cargo.toml", "rust-toolchain", "rust-toolchain.toml",
     INVENTORY, ".github/release-required-workflows.json", ".github/release_line.py",
     ".github/validate-fuzz-targets.py",
 })
 GLOBAL_TREES = (".cargo",)
 
 # Reviewed non-inputs, not a glob-based exclusion of all tests or documentation.
-# They apply inside reached packages, to the global set and to a scope that
-# fails closed; a file a reached package explicitly references stays an input.
+# They apply only to the global set and to a scope that fails closed: every
+# file of a reached package, and every file it references, is an input.
 # The fuzz crates are separate workspaces with their own retained Cargo.lock.
 # Admission/control code is trusted reviewed policy, never execution evidence.
 NON_INPUTS = frozenset({
@@ -51,10 +52,11 @@ NON_INPUTS = frozenset({
     ".github/fuzz_reviewed_context.py", ".github/test-fuzz-reviewed-context.py",
     "Cargo.lock", "WORKFLOWS.md", "docs/src/fuzz-evidence.md",
     ".github/mobile-ui-browser-smoke.mjs", ".github/billing-csp-browser-smoke.mjs",
-    "rullst-mail/tests/feedback.rs",
     ".github/fuzz_evidence_inputs.py", ".github/fuzz_evidence.py",
     ".github/fuzz_build_graph.py", ".github/fuzz_source_scan.py",
+    ".github/check-fuzz-build-graph.py",
     ".github/test-fuzz-evidence.py", ".github/test-fuzz-evidence-inputs.py",
+    ".github/test-fuzz-build-graph.py",
     ".github/test-fuzz-preflight.py",
     ".github/check-release-admission.py", ".github/test-check-release-admission.py",
     ".github/workflows/release.yml", ".github/workflows/workflow-lint.yml",
@@ -69,9 +71,6 @@ NON_INPUTS = frozenset({
     ".github/workflows/audit.yml", ".github/workflows/security-audit.yml",
     ".github/workflows/pqc-compliance.yml",
     ".github/workflows/ai-sentinel-pr.yml",
-    # `#[cfg(test)]` Core modules: fuzz targets never compile library unit tests.
-    "rullst-core/src/server/dev_telemetry/n_plus_one_tests.rs",
-    "rullst-core/src/server/stack_tests.rs",
 })
 
 
@@ -173,7 +172,8 @@ class Snapshot:
         self.contract = execution_contract(self.workflow)
         # Discovery reads the original Git objects; reviewed normalization only
         # changes the identity of documents that remain inputs.
-        self.scopes = Graph(self.files, root, self.directories).scopes()
+        self.graph = Graph(self.files, root, self.directories)
+        self.scopes = self.graph.scopes()
         self.fail_closed = {directory: scope.reasons for directory, scope in sorted(self.scopes.items())
                             if scope.reasons}
         reviewed_docs = reviewed_document_blobs()
@@ -204,17 +204,13 @@ class Snapshot:
         for directory, scope in self.scopes.items():
             if scope.reasons:
                 # Fail closed: every tracked file except reviewed non-inputs.
-                selected, referenced = set(paths), set()
+                selected = {path for path in paths if path not in NON_INPUTS and path != WORKFLOW}
                 self.reached[directory] = None
             else:
-                selected = {path for package in scope.packages for path in self._below(paths, package)}
-                referenced = {path for item in scope.files for path in self._below(paths, item)}
-                selected |= referenced
+                selected = {path for item in (*scope.packages, *scope.files)
+                            for path in self._below(paths, item)}
                 self.reached[directory] = sorted(scope.packages)
-            self.packages[directory] = [
-                entry(path) for path in sorted(selected)
-                if path not in global_paths
-                and (path in referenced or path not in NON_INPUTS and path != WORKFLOW)]
+            self.packages[directory] = [entry(path) for path in sorted(selected) if path not in global_paths]
         self.global_hash = digest({"files": self.global_entries, "execution": self.contract})
 
     @staticmethod
@@ -239,7 +235,8 @@ class Snapshot:
                     named.add(sibling)
                     pending.append(sibling)
         return {path for path in identity_files
-                if (path in GLOBAL_FILES or any(under(path, item) for item in (*GLOBAL_TREES, *named)))
+                if (path in GLOBAL_FILES or path.rsplit("/", 1)[-1] == ".gitattributes"
+                    or any(under(path, item) for item in (*GLOBAL_TREES, *named)))
                 and path not in NON_INPUTS and path != WORKFLOW}
 
     def read(self, path: str) -> bytes:

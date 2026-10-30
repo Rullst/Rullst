@@ -69,6 +69,7 @@ jobs:
         run: |
           python3 .github/test-fuzz-reviewed-context.py
           python3 .github/test-fuzz-evidence-inputs.py
+          python3 .github/test-fuzz-build-graph.py
           python3 .github/test-fuzz-evidence.py
 
       - name: Validate and export matrix
