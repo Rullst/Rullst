@@ -26,11 +26,37 @@ where
     let mut made = 1;
     loop {
         match attempt().await {
-            Err(sqlx::Error::PoolTimedOut) if made < ATTEMPTS => made += 1,
+            Err(sqlx::Error::PoolTimedOut) if made < ATTEMPTS => {
+                made += 1;
+                #[cfg(test)]
+                count_retry();
+            }
             outcome => return outcome,
         }
     }
 }
+
+#[cfg(test)]
+thread_local! {
+    /// Steps tried again on this thread. A `#[tokio::test]` polls the store
+    /// on its own thread, so a test reads the retries that it caused.
+    static RETRIED: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+fn count_retry() {
+    RETRIED.with(|retried| retried.set(retried.get() + 1));
+}
+
+/// The steps tried again on the current thread so far.
+#[cfg(test)]
+pub(crate) fn retried() -> u32 {
+    RETRIED.with(std::cell::Cell::get)
+}
+
+#[cfg(test)]
+#[path = "sqlite_establish_tests.rs"]
+mod stalled;
 
 #[cfg(test)]
 mod tests {
