@@ -141,6 +141,37 @@ the release policy's required jobs, but a failure fails the full manual run
 that admission requires. Real DNS, Let's Encrypt, provider accounts, Arm
 images and reboots are not covered.
 
+`First-hour documentation` runs `.github/check-first-hour.py`: it follows the
+path the documentation gives a newcomer, running the shell blocks and applying
+the code blocks marked `<!-- first-hour: … -->` in the README quickstart, the
+[getting-started page](docs/src/1-getting-started.md), tutorials
+[01](docs/src/tutorials/01-hello-world.md),
+[02](docs/src/tutorials/02-cli-generators.md),
+[03](docs/src/tutorials/03-active-record-crud.md),
+[05](docs/src/tutorials/05-migrations-and-seeds.md) and
+[11](docs/src/tutorials/11-authentication-system.md) (the last four in one
+`shop` project) and the [REST API quickstart](docs/src/tutorials/rest-api-quickstart.md),
+in reading order. The marker grammar is in `.github/first_hour_docs.py`; what
+each page says happens (files written, `/health`, the welcome page, the API
+starter's bearer-protected `POST /api/messages`, migrations, rollback and
+seeding in SQLite, sign-up and sign-in after `cargo rullst auth`) is checked by
+`.github/first_hour_checks.py`, keyed by page and step. The CLI is installed
+from the packaged archives, and a `[patch.crates-io]` in the scratch
+directory's `.cargo/config.toml` resolves the unpublished release crates to
+them, so every project is built as written; only `cargo add rullst@=<version>`
+is replaced by the line it writes while that version is not on crates.io.
+`cargo rullst new` without `--default` answers the wizard with Enter in a
+pseudo-terminal, and `cargo run`/`cargo rullst dev` run in the background until
+the next block stops them with SIGINT, as Ctrl+C would. A failure is annotated
+on the page's line. The trigger rules are the deployment job's: full manual
+runs, the nightly run and the `first-hour` diagnostic run it; a ready pull
+request runs it only when it changes a marked page, `cargo-rullst/src/` or the
+check, and branch pushes skip it. It is not a required release job.
+`.github/test-first-hour.py` (in the Documentation workflow) validates the
+markers, the documented install versions and the edits offline on every push.
+Pages outside the first hour, external accounts (Turso, Stripe, mail
+providers), PostgreSQL/MySQL servers and the browser itself are not covered.
+
 Manual all-platform `all` and `cli-standard` selections also call the native CLI
 artifact builder for Linux x64, Windows x64, macOS ARM64 and macOS x64. The
 committed target inventory selects explicit runner labels. Both executable entry
@@ -1028,7 +1059,7 @@ dependency graph make static estimates unreliable.
 | [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main/v12/v13 push and PR, daily, manual | Blocking | Cargo Audit over the production lock and all eleven fuzz-package locks with one advisory-database fetch. Scheduled and manual runs add a job that audits the protected `v12` locks, because scheduled workflows only check out the default branch. The v12 candidate applies no advisory exceptions; future exceptions must pass the separate owner/expiry governance check. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, eight-shard multi-OS tests including Cargo-aware doctests sourced from all 51 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, eight-shard multi-OS tests including Cargo-aware doctests sourced from all 51 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), the first-hour documentation path run as written (manual, nightly and pull requests changing a marked page or the CLI), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from full/CLI manual Rust CI or admitted tag release | Blocking caller job; required release evidence | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories before attestation. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Validates the shared 42-target inventory and eleven package lockfiles, restores each real target corpus, performs a bounded warm-up, minimizes it, uploads the result and warms the campaign's content-addressed compiler cache; individual target failures are retained but tolerated, while dependency-lock drift remains a hard failure. |

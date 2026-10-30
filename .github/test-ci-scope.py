@@ -162,7 +162,7 @@ class WorkflowGuardTests(unittest.TestCase):
                    "generated-release-access", "facade-composition", "storage-s3", "msrv"}
         distribution = {"native-cli-artifacts", "packaged-distribution"}
         self.assertEqual(set(jobs), runtime | distribution | {"scope", "site-validation", "quality-scorecard",
-                                                              "vm-deployment"})
+                                                              "vm-deployment", "first-hour"})
         for name, body in jobs.items():
             self.assertEqual(len(re.findall(r"(?m)^    if:", body)), 1 if name != "scope" else 0, name)
         for name in distribution:
@@ -191,16 +191,32 @@ class WorkflowGuardTests(unittest.TestCase):
         # The deployment job never runs on branch pushes (site-only admission
         # reads their job inventory), always runs in full manual runs and its
         # own diagnostic, and filters pull requests by path in its first step.
-        deployment = jobs["vm-deployment"]
-        guard = deployment.split("    runs-on:", 1)[0]
-        for clause in ("!cancelled()", "github.event_name != 'push'",
-                       "inputs.shard == 'all' || inputs.shard == 'vm-deployment'"):
-            self.assertIn(clause, guard)
-        self.assertNotIn("inputs.platform", guard)
-        self.assertIn("python3 .github/check-vm-deploy.py", deployment)
-        self.assertIn("if [ \"$EVENT_NAME\" != pull_request ]", deployment)
-        for name in ("check", "test"):
-            self.assertIn("inputs.shard != 'vm-deployment'", jobs[name].split("    runs-on:", 1)[0])
+        # The first-hour documentation job follows the same rules; neither is
+        # a required release job (release-required-workflows.json).
+        required = json.loads((HERE / "release-required-workflows.json").read_text())
+        required_jobs = {name for workflow in required["workflows"] for name in workflow.get("required_jobs", [])}
+        for shard, script, name in (("vm-deployment", "check-vm-deploy.py", "Generated VM deployment"),
+                                    ("first-hour", "check-first-hour.py", "First-hour documentation")):
+            with self.subTest(job=shard):
+                body = jobs[shard]
+                guard = body.split("    runs-on:", 1)[0]
+                for clause in ("!cancelled()", "github.event_name != 'push'",
+                               "github.event.pull_request.draft == false",
+                               f"inputs.shard == 'all' || inputs.shard == '{shard}'"):
+                    self.assertIn(clause, guard)
+                self.assertNotIn("inputs.platform", guard)
+                self.assertNotIn("needs:", guard)
+                self.assertIn(f"python3 .github/{script}", body)
+                self.assertIn("if [ \"$EVENT_NAME\" != pull_request ]", body)
+                self.assertFalse(any(job.startswith(name) for job in required_jobs))
+                for other in ("check", "test"):
+                    self.assertIn(f"inputs.shard != '{shard}'", jobs[other].split("    runs-on:", 1)[0])
+        options = (HERE / "workflows/ci.yml").read_text().split("    inputs:", 1)[1].split("  schedule:", 1)[0]
+        self.assertIn("          - first-hour\n", options)
+        first_hour = jobs["first-hour"]
+        self.assertIn("python3 .github/check-first-hour.py --pages", first_hour)
+        self.assertIn('rustflags: ""', first_hour)
+        self.assertIn("^(cargo-rullst/src/|", first_hour)
 
 
 if __name__ == "__main__":

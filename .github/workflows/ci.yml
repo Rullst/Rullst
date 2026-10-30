@@ -36,6 +36,7 @@ on:
           - cli-saas-product
           - cli-saas-journey
           - vm-deployment
+          - first-hour
   # PRs to main run the Linux gate; the nightly run restores the full
   # cross-platform matrix on the default branch.
   schedule:
@@ -126,7 +127,7 @@ jobs:
     if: >-
       !cancelled() &&
       (github.event_name != 'workflow_dispatch' || inputs.shard != 'packaged-distribution' || inputs.platform == 'all') &&
-      (github.event_name != 'workflow_dispatch' || inputs.shard != 'vm-deployment') &&
+      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'vm-deployment' && inputs.shard != 'first-hour')) &&
       (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     name: Code Quality & Format
     runs-on: ubuntu-latest
@@ -179,7 +180,7 @@ jobs:
     # expensive cross-platform suite starts when the PR is ready for review.
     if: >-
       !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
-      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'packaged-distribution' && inputs.shard != 'vm-deployment')) &&
+      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'packaged-distribution' && inputs.shard != 'vm-deployment' && inputs.shard != 'first-hour')) &&
       (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     runs-on: ${{ matrix.os }}
     # Generated CLI applications are real independent Cargo workspaces. Keep
@@ -898,6 +899,74 @@ jobs:
         env:
           ENGINE: ${{ matrix.engine }}
         run: python3 .github/check-vm-deploy.py --engine "$ENGINE" --packages target/package
+
+  first-hour:
+    name: First-hour documentation
+    # Runs the README quickstart, the getting-started page and tutorials 01,
+    # 02, 03, 05, 11 and the REST API quickstart as a newcomer would (the
+    # blocks marked `<!-- first-hour: ... -->`). Full manual runs, the nightly
+    # run and the `first-hour` diagnostic always run it; ready pull requests
+    # only when a marked page, the CLI source or this check changes (a first
+    # step decides). Branch pushes skip it, so their job inventory is unchanged.
+    if: >-
+      !cancelled() && github.event_name != 'push' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'first-hour')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      RULLST_DISABLE_UPDATE_CHECK: "true"
+    steps:
+      - name: Checkout source without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The pull-request merge commit and its base parent.
+          fetch-depth: 2
+
+      - name: Select the pull requests that change the first-hour path
+        id: selection
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" != pull_request ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only HEAD^1 HEAD)"
+          pages="$(python3 .github/check-first-hour.py --pages)"
+          if grep -Eq '^(cargo-rullst/src/|\.github/(check-first-hour|first_hour_docs|first_hour_checks)\.py$)' <<< "$changed" ||
+             grep -Fxq -f <(printf '%s\n' "$pages") <<< "$changed"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No first-hour page or CLI change; the nightly and release runs cover this job."
+          fi
+
+      - name: Set up content-addressed compiler cache
+        if: steps.selection.outputs.run == 'true'
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up Rust toolchain
+        if: steps.selection.outputs.run == 'true'
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          # Newcomers build without `-D warnings`; so do the documented projects.
+          rustflags: ""
+          cache: false
+
+      - name: Package the release archives without publication
+        if: steps.selection.outputs.run == 'true'
+        run: |
+          cargo fetch --locked
+          bash .github/package-release.sh --no-verify
+
+      - name: Follow the marked first-hour documentation
+        if: steps.selection.outputs.run == 'true'
+        run: python3 .github/check-first-hour.py --packages target/package
 
   quality-scorecard:
     name: Evidence quality scorecard (observational)
