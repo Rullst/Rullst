@@ -9,43 +9,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
-## [13.0.0-alpha.4] - 2026-10-29
+## [13.0.0-alpha.4] - 2026-10-31
 
-Fourth v13 prerelease, for evaluation. It makes the main CLI leaner and the
-framework easier for AI assistants to drive; the framework crates' APIs are
-unchanged from 13.0.0-alpha.3, and the release still has twenty packages.
-`green` (formerly `footprint`), an Experimental command of the main CLI,
-reports only measured figures (binary and image size, idle memory, dependency
-count, CPU time per request) and a carbon figure only as a labelled SCI
-estimate from your inputs. The terminal AI assistant (`cargo rullst ai`) is
-removed: use your editor's or terminal's assistant with the project's
-`AGENTS.md` and the published `llms.txt`. Foundry, `nixify`, Buildah,
-`make:grpc`, the Fly.io, Render and Railway deploy targets and the
-self-updater's binary replacement are removed; a daily notice prints the
-install command for a newer CLI instead. `cargo rullst deploy` has one path, a
-Dockerfile, `compose.yaml` and `Caddyfile` for any Linux VM with Docker or
-Podman, with guides for a Linux VM, Hetzner Cloud, DigitalOcean, Oracle Cloud
-and Google Cloud and an Advanced deployment page (Nix, Buildah, Podman
-Quadlet, Kubernetes). `cargo rullst new` offers three starters, Blank, API and
-SaaS; LMS, ERP and Portfolio are complete applications under the repository's
-`examples/`. Every `--json` output follows one documented contract, and the
-site's `llms.txt` gains an optional section. Generated projects get a
-development profile that shortened cold builds by 15 to 19 % and rebuilds
-after an edit by about half on the measuring machine. The CLI had its first
-targeted mutation campaign and joins the pull-request mutation gate, and
-`crypto-bigint` moves to 0.7.10 after crates.io yanked the release the
-workspace used. This release is the 13.0 feature freeze: 13.0.0-rc.1 will
-carry only fixes and documentation. Pin `=13.0.0-alpha.4`. Upgrade steps are in
-the [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md#upgrading-an-alpha3-application-to-alpha4).
+Fourth v13 prerelease, for evaluation, and the 13.0 feature freeze:
+13.0.0-rc.1 will carry only fixes and documentation. The main CLI is leaner:
+`green` (formerly `footprint`) is an Experimental command of the main CLI that
+reports only measured figures, and the terminal AI assistant
+(`cargo rullst ai`) is removed. Use your own assistant with the project's
+`AGENTS.md` and the published `llms.txt`; the development error page now gives
+it a ready prompt. `cargo rullst deploy` has one path, a Dockerfile,
+`compose.yaml` and `Caddyfile` for any Linux VM, and CI now builds and starts
+them with Docker and with rootless Podman. `cargo rullst new` offers three
+starters, Blank, API and SaaS; LMS, ERP, Portfolio and Blog are complete
+applications in the repository's `examples/`, and `cargo rullst auth` now
+works on a fresh starter. A documentation audit checked the guides, tutorials,
+references, crate pages and README against the code. In the framework,
+aws-lc-rs is the single rustls crypto provider for every TLS connection;
+`#[derive(Orm)]` generates the model's `FromRow`, so no Rullst crate enables
+SQLx's macros and a generated project's first build is shorter (Blank −15 %,
+SaaS −10 % on the measuring machine, after a new development profile had
+already shortened it by 15 to 19 %); and the Nexus AI assistant is the opt-in
+`nexus-ai` feature. The 13.x public API is frozen: accidental internals are
+hidden, a snapshot gate records each crate's documented API, and the
+compatibility policy defines public dependencies and the 13.x support window.
+CI has 34 workflows, with weekly Miri and Kani runs, a `full-matrix`
+pull-request label, ZAP on the generated SaaS starter, a SemVer baseline for
+13.x, release fuzz evidence derived from each fuzz package's build graph and a
+job that runs the first-hour documentation as written. The release still has
+twenty packages. Pin `=13.0.0-alpha.4`. Upgrade steps are in the
+[v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md#upgrading-an-alpha3-application-to-alpha4).
 
-**Breaking (CLI only):** `cargo rullst ai` is removed (it prints what replaces
-it and exits with status 1), `cargo rullst footprint` is now
-`cargo rullst green`; `foundry:init`, `foundry:deploy`, `nixify`,
-`generate:buildah`, `make:grpc`, the Fly.io, Render and Railway deploy targets
-and `update check`, `verify`, `stage` and `install` are removed; and
-`--blueprint lms|blog|portfolio|erp` fails with a pointer to the example that
-replaces it. Files those commands generated stay yours; `cargo rullst upgrade`
-reports them and the scripts that run removed commands.
+**Breaking:** remove `FromRow` from every model's derive list, because
+`#[derive(Orm)]` now implements it (a model that keeps its own impl declares
+`#[orm(custom_from_row)]`), and enable SQLx's `derive` or `macros` feature
+yourself for `sqlx::query!` or SQLx derives on other types. Add `nexus-ai` to
+keep the Nexus AI assistant (`/nexus/chat`). In the CLI, `cargo rullst ai` is
+removed (it prints what replaces it and exits with status 1) and
+`cargo rullst footprint` is now `cargo rullst green`; `foundry:init`,
+`foundry:deploy`, `nixify`, `generate:buildah`, `make:grpc`, the Fly.io,
+Render and Railway deploy targets and `update check`, `verify`, `stage` and
+`install` are removed; `--blueprint lms|blog|portfolio|erp` fails with a
+pointer to the example that replaces it; and `make:migration:auto` exits with
+status 1 when it has no SQLite database to compare. The separate
+`cargo-rullst-extras` package described while this release was prepared was
+never published: `green` is part of `cargo-rullst`. Files the removed commands
+generated stay yours. `cargo rullst upgrade` reports the models, manifests,
+generated files and scripts it can locate; the checklist lists the rest.
 
 ### Known limitations
 
@@ -54,13 +63,30 @@ reports them and the scripts that run removed commands.
   a new 12.x project no longer resolves its dependencies, and the documented
   v5 to 12.x upgrade path may not resolve either; use this release.
 - Applications generated by earlier prereleases are not changed automatically.
-  They keep the files of the removed generators and deploy targets
-  (`Foundry.toml`, a `nixify` `flake.nix`, `build_buildah.sh`,
-  `src/grpc/mod.rs`, `fly.toml`, `render.yaml`, `railway.json`) until you
-  review them: `cargo rullst upgrade` reports these files and scripts that run
-  removed commands. An alpha.2 application follows the
+  Follow the
+  [alpha.3 to alpha.4 checklist](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md#upgrading-an-alpha3-application-to-alpha4)
+  (an alpha.2 application follows the
   [alpha.2 to alpha.3 checklist](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md#upgrading-an-alpha2-application-to-alpha3)
-  first.
+  first). `cargo rullst upgrade` reports models that derive `FromRow`, Nexus
+  without `nexus-ai`, the files of the removed generators and deploy targets
+  (`Foundry.toml`, a `nixify` `flake.nix`, `build_buildah.sh`,
+  `src/grpc/mod.rs`, `fly.toml`, `render.yaml`, `railway.json`) and scripts
+  that run removed commands. It does not report a deployment `Dockerfile`
+  without the new SQLite `DATABASE_URL`, a `Caddyfile` without the new health
+  checks, or scripts that expect `make:migration:auto` or a removed
+  `--blueprint` to succeed.
+- Projects generated before alpha.4 keep SQLx's `tls-rustls` feature, so their
+  database connections stay on ring while Rullst's other TLS connections use
+  aws-lc-rs, until the feature is changed to `tls-rustls-aws-lc-rs`.
+  `cargo rullst upgrade` reports `tls-rustls`, `tls-rustls-ring` and
+  `tls-rustls-ring-webpki` (`V13-SQLX-TLS-RING`), but not
+  `tls-rustls-ring-native-roots`, whose aws-lc-rs replacement trusts different
+  roots.
+- `cargo rullst auth` on a Blank or API starter adds a migration that extends
+  the starter's `users` table. Tests run it on SQLite with existing rows; on
+  PostgreSQL and MySQL/MariaDB it is checked as generated code only, not run
+  against a server or a real deployment's data. Back up the database and try
+  it on a copy first.
 - `cargo rullst green` is Experimental and outside the pull-request mutation
   gate: no mutation campaign has measured its files yet, so they are not in
   `.github/mutants-pr-cli.txt`; unit tests and a loopback integration test
@@ -68,20 +94,22 @@ reports them and the scripts that run removed commands.
   report them as not measured) and an image size only through a local Docker
   or Podman socket. Its carbon figure is an SCI estimate from the
   `--cpu-watts` and `--grid-intensity` you give, not a measurement.
-- `cargo rullst deploy`: the generated Dockerfile, `compose.yaml` and
-  `Caddyfile` are checked by content tests; no automated test builds or starts
-  them with Docker or Podman. The provider guides and the Advanced deployment
-  page were written from the providers' and tools' documentation, not followed
-  end to end on real accounts.
-- Most of a generated project's first build is framework dependencies. Rullst
-  keeps `aws-lc-rs` as the TLS crypto provider (rustls' post-quantum hybrid
-  key exchange), so the `aws-lc-sys` build script (about 52 s on the measuring
-  machine, reached through Studio → `rullst-capital` → `reqwest`/`rustls`)
-  stays in a project's first build; later builds reuse it, and the generated
+- `cargo rullst deploy`: CI builds the generated Dockerfile and starts the
+  generated `compose.yaml` and `Caddyfile` for the Blank and SaaS starters with
+  Docker and rootless Podman on a GitHub Ubuntu runner, checking HTTPS through
+  Caddy with its local certificate authority, the container hardening,
+  migrations and the SQLite volume across a restart; real domains, DNS and
+  Let's Encrypt, provider accounts and firewalls, Arm images, reboots and
+  PostgreSQL/MySQL deployments are not tested, and on Ubuntu 26.04
+  `podman compose restart` can leave Caddy stopped (use `podman compose down`
+  and `up -d`). The provider guides and the Advanced deployment page were
+  written from the providers' and tools' documentation, not followed end to
+  end on real accounts.
+- A generated starter's first build took about 2 to 2.5 minutes on the
+  measuring machine, most of it framework dependencies. The longest unit is
+  the `aws-lc-sys` build script (about 52 s), which stays because aws-lc-rs is
+  the TLS crypto provider; later builds reuse it, and the generated
   Dockerfile's dependency layer (the cargo-chef approach) caches it in images.
-  SQLx's compile-time macros compile some crates, SQLite among them, a second
-  time, and Nexus pulls `rullst-ai` into the SaaS starter: reducing these is
-  planned for 13.0.0-rc.1 if it needs no breaking change, otherwise for 13.1.
 - Turso/libSQL is a primary database only in the Blank and API starters and
   does not work with the SQLx `#[derive(Orm)]`, `Schema`, `artisan!`/`db:*`,
   `Server::with_db`, Nexus or Studio's database pages.
@@ -119,7 +147,20 @@ reports them and the scripts that run removed commands.
 - Experimental packages keep their documented gaps: IoT is not validated on
   physical hardware; Privacy has no live age provider or verified guardianship;
   Media is validated only against offline mocks; Labs never executes learner
-  code.
+  code. `OtaManager`'s public fields `current_partition`, `status` and
+  `firmware_version` become private, with getters of the same names, in a 13.x
+  minor release: read them, do not assign them.
+- CI runs the commands of the first-hour pages only (the README quickstart,
+  getting started, tutorials 01, 02, 03, 05 and 11 and the REST API
+  quickstart), without PostgreSQL or MySQL servers or external accounts.
+  Other pages' commands are not run, and their Rust blocks marked
+  `rust,ignore` are not compiled.
+- cargo-semver-checks has no 13.x baseline until 13.0.0 is published; until
+  then the public API listings in `.github/public-api/` are the only check of
+  API changes between prereleases.
+- Release fuzz evidence: a change to a book page that the facade's doctests
+  include still reruns the facade's 12 fuzz targets, because the build-graph
+  rule counts included files as inputs.
 - Mutation testing: the first `cargo-rullst` campaign measured 83 files. 30
   mutants remain, all size or count bounds that only very large projects
   reach, in `generators/build/upgrade/backup.rs` and `upgrade/rules.rs` and in
@@ -139,13 +180,59 @@ reports them and the scripts that run removed commands.
 
 ### Added
 
+- CI builds and starts the generated deployment: the `vm-deployment` job of
+  `ci.yml` (`.github/check-vm-deploy.py`) installs the CLI from the packaged
+  archives and, for the Blank and SaaS starters, runs `new`, `deploy` and
+  `deploy:doctor`, then `compose up -d --build` with Docker and with rootless
+  Podman. It checks `/health` over HTTPS verified against Caddy's local
+  certificate authority, the HTTP redirect, that only Caddy publishes ports,
+  read-only root filesystems, dropped capabilities and `no-new-privileges`,
+  `db:migrate`, a database-backed page (SaaS: registration and sign-in with a
+  Secure cookie), the SQLite volume across a restart, the guide's backup
+  command and that no container logged a panic. It runs on full manual runs,
+  nightly, a `vm-deployment` diagnostic shard and ready pull requests that
+  change the deploy generator; admission requires it through the full manual
+  run. Writing it found the SQLite crash loop below and a draft Caddy health
+  interval that answered 503 for up to 30 seconds after a start.
+- CI follows the first-hour documentation as written: the
+  `First-hour documentation` job of `ci.yml` (`.github/check-first-hour.py`)
+  runs the shell blocks and applies the code blocks marked
+  `<!-- first-hour: … -->` in the README quickstart, the getting-started page,
+  tutorials 01, 02, 03, 05 and 11 (the last four in one `shop` project) and
+  the REST API quickstart, in reading order, with the CLI installed from the
+  packaged archives. It checks what each page says happens: files written,
+  `/health`, the welcome page, the API starter's bearer-protected
+  `POST /api/messages`, migrations, rollback and seeding, and sign-up and
+  sign-in after `cargo rullst auth`. It runs on full manual runs, nightly, a
+  `first-hour` diagnostic shard and ready pull requests that change a marked
+  page, the CLI source or the check; it is not a required release job.
+  `.github/test-first-hour.py` validates the markers offline in the
+  Documentation workflow. Running it renamed the getting-started page's Turso
+  API example to `edge_api` (the page created `edge_app` twice) and removed a
+  duplicate import from tutorial 11's route snippet.
+- OWASP ZAP (`dast-zap.yml`, blocking) also scans a freshly generated SaaS
+  starter: its public pages (landing, pricing, sign-in, registration,
+  password reset) and, with a disposable account's session, its signed-in
+  pages. The POST-only sign-out and billing routes are outside the signed-in
+  crawl so it cannot revoke its own session.
+- A `full-matrix` label on a pull request to `main` runs the nightly
+  Linux, macOS and Windows test matrix for that pull request (its labeling run
+  and later pushes) instead of the Linux gate.
+- `cargo rullst upgrade` rules `V13-ORM-FROM-ROW` and `V13-SQLX-MACROS`
+  (must-change), `V13-NEXUS-AI-FEATURE` and `V13-SQLX-TLS-RING` (review); the
+  catalog has 115 rules. `V13-SQLX-TLS-RING` reports an application `sqlx`
+  dependency or `[features]` entry that enables `tls-rustls`,
+  `tls-rustls-ring` or `tls-rustls-ring-webpki`.
+- `docs/src/ai-evaluation.md`: a dated evaluation of 13.0.0-alpha.4 written by
+  an AI assistant (Claude Opus 5.5) at the maintainer's request, linked from
+  the README. It states that the same assistant wrote a large part of this
+  release and that it is not an independent audit.
 - `llms.txt` now lists the longest reference pages (the migration guide, threat
   models, roadmap, workflows and similar; not the spec or the CLI reference)
   under an `## Optional` section, as llmstxt.org recommends, and
   `.github/validate-site.py` generates `llms.txt` and `llms-full.txt` and fails
   when a `SUMMARY.md` page is missing from either or a size bound is exceeded.
   The README and the project-context guide link both files.
-
 - `--json` follows one contract (CLI reference, "Machine-readable output"):
   standard output is exactly one JSON document with a top-level `schema` field
   (`rullst.<name>.v1`), no escape codes, human messages and failures on standard
@@ -162,22 +249,59 @@ reports them and the scripts that run removed commands.
 
 ### Changed
 
+- **Breaking:** `#[derive(Orm)]` implements SQLx's `FromRow` for the model
+  (generic over the row type; `#[sqlx(skip)]`, `default`, `json`,
+  `json(nullable)` and struct-level `default` keep SQLx's meaning; relation
+  fields are never read), and `rullst-orm` and `rullst-core` no longer enable
+  SQLx's `macros` feature; Rullst's own SQLx derives became hand-written
+  impls. Generated applications therefore no longer compile `sqlx-macros` or a
+  build-host copy of SQLx and SQLite: 62 fewer compiled units, and cold builds
+  on the measuring machine 15 % shorter for the Blank starter and 10 % for
+  SaaS ([Build times](docs/src/build-times.md)). Remove `FromRow` from model
+  derive lists and their imports, because deriving it beside `Orm` no longer
+  compiles; the new `#[orm(custom_from_row)]` keeps a hand-written or
+  SQLx-derived impl. Plain structs, `sqlx::Type`/`Encode`/`Decode` derives and
+  `sqlx::query!` need SQLx's `derive` or `macros` feature in the application's
+  own manifest. `cargo rullst upgrade` reports both (`V13-ORM-FROM-ROW`,
+  `V13-SQLX-MACROS`).
+- **Breaking:** the Nexus AI assistant (`/nexus/chat`, `/nexus/chat/query`) is
+  the `ai` feature of `rullst-nexus` (on by default for that crate) and the new
+  `nexus-ai` feature of the `rullst` facade, whose `nexus` feature no longer
+  enables it, so Nexus builds without `rullst-ai`. Without it both routes
+  answer `404 Not Found` with a notice naming the feature, behind the same
+  access policy, and the panel shows no assistant link. An application that
+  uses the assistant adds `nexus-ai` (`V13-NEXUS-AI-FEATURE`).
+  `cargo rullst new` enables `nexus-ai` only when the SaaS starter is created
+  with AI, and generated manifests no longer list the unused
+  `tracing-subscriber`.
+- **Public API freeze.** From 13.0.0 every documented public item is a SemVer
+  promise until 14.0. Internals that were documented by accident are now
+  `#[doc(hidden)]`; they still compile but are outside the 13.x promise. These
+  are helpers called by `html!` and `#[server_function]`, the hot-reload
+  loader, ORM task-local and global query state, the passkey CBOR parser,
+  internal Connect macros and client, and a few Security and Nexus helpers;
+  the migration guide's "Internals hidden from the API documentation" row
+  names their documented replacements. Each library crate's documented API,
+  rendered with its docs.rs features, is recorded in `.github/public-api/`,
+  and a `Public API snapshot` job of the SemVer workflow fails when it changes
+  without an updated listing. The compatibility policy now defines public
+  dependencies (the 33 third-party crates the API exposes, such as axum 0.8,
+  sqlx 0.9, tokio 1, serde 1 and reqwest 0.13, held to one version line for
+  13.x, with a documented security exception; CI enforces this through
+  `.github/public-dependencies.json` in the "Check Dependencies (Licenses,
+  Vulnerabilities)" job) and the 13.x support window (13.x stays the active
+  line for at least 12 months after 13.0.0 and receives security fixes for 12
+  more months after 14.0.0). The `cargo-rullst` library is not public API; the
+  CLI's commands, flags, exit codes and `--json` schemas are.
+- **Breaking (scripts):** `cargo rullst make:migration:auto` exits with
+  status 1 and a "No migration generated" report when there is no SQLite
+  database to compare (no `.env`, no `DATABASE_URL`, a non-SQLite URL or a
+  Turso primary), instead of exiting 0 with a hint to apply migrations it never
+  wrote. It suggests `db:migrate` only after writing a migration; a database
+  already in sync still exits 0.
 - The `cargo rullst` opening animates on every run (any key skips it).
   `RULLST_OPENING=daily` restores the once-a-day animation and
   `RULLST_OPENING=static` turns it off; `RULLST_REDUCED_MOTION` still applies.
-- **Breaking:** the terminal AI assistant of the earlier 13.0 prereleases,
-  `cargo rullst ai` (with `connect`, `status`, `disconnect`, `upgrade`, `fix`
-  and `review`), was removed; its code stays in git history. `cargo rullst ai …`
-  now prints that it was removed and what to use instead (your editor's or
-  terminal's assistant with the project's `AGENTS.md`, which
-  `cargo rullst generate:ai-context` writes, and the published `llms.txt`) and
-  exits with status 1. It is hidden from help, completions, the command
-  palette and the home screen, and the tour's AI step shows
-  `generate:ai-context`. The main CLI no longer depends on `rullst-ai`; the
-  `rullst-ai` crate is unchanged. The `upgrade` plan and failure hints no
-  longer point at `ai upgrade`, and `add ai` suggests `generate:ai-context`.
-  `cargo rullst upgrade` flags scripts and workflows that run `rullst ai` or
-  `rullst footprint` (`V13-CLI-AI-REMOVED`).
 - The development error page's "Fix with cargo rullst ai" panel is now "Ask
   your AI assistant": a read-only prompt to copy into your own assistant, with
   the error message, its location, the first project stack frames and the
@@ -192,30 +316,12 @@ reports them and the scripts that run removed commands.
   dependency-cache stage), a new `compose.yaml` (the app and Caddy with
   automatic HTTPS, read-only root filesystems, every capability dropped except
   Caddy's `NET_BIND_SERVICE`, no new privileges and a `/health` check) and the
-  `Caddyfile`, and trusts Caddy in `Rullst.toml`. The Fly.io, Railway and
-  Render targets were removed (`--platform vps` is still accepted), and
-  `deploy` now refuses a package name that is not a valid Cargo name.
-  `cargo rullst upgrade` flags existing provider files and scripts
-  (`V13-DEPLOY-TARGETS-REMOVED`).
-- **Breaking:** removed `cargo rullst foundry:init`, `foundry:deploy`,
-  `nixify`, `generate:buildah`, `make:grpc` and the `new --nix` and
-  `new --buildah` flags. Files they generated stay yours; the new Advanced
-  deployment guide covers Nix, Buildah, Podman Quadlet and Kubernetes.
-  `cargo rullst upgrade` flags `Foundry.toml`, a `nixify` `flake.nix`,
-  `build_buildah.sh`, `src/grpc/mod.rs` and scripts that run these commands
-  (`V13-DEPLOY-GENERATORS-REMOVED`).
-- **Breaking:** the CLI no longer installs or replaces itself. `cargo rullst
-  update check`, `update verify`, `update stage` and `update install` were
-  removed, and `update guided` now runs only the project flow (its `--scope`,
-  `--root`, `--allow-major` and `--prerelease` flags were removed). Install a
-  newer CLI with `cargo install cargo-rullst --version =<version> --locked`.
-  At most once a day, in an interactive terminal, the CLI prints that command
-  when crates.io has a newer release of its major, now including newer
-  prereleases for a prerelease CLI; `RULLST_DISABLE_UPDATE_CHECK`,
-  `CARGO_NET_OFFLINE`, `CI` and non-terminal streams silence it. The project
-  update commands (`update project …`) are unchanged, and `cargo rullst
-  upgrade` flags scripts that run the removed commands
-  (`V13-CLI-SELF-UPDATE-REMOVED`).
+  `Caddyfile` (it checks the app's `/health` every 5 seconds and holds
+  requests for up to 15 seconds while the app restarts), and trusts Caddy in
+  `Rullst.toml`. The Fly.io, Railway and Render targets were removed
+  (`--platform vps` is still accepted), and `deploy` now refuses a package
+  name that is not a valid Cargo name. `cargo rullst upgrade` flags existing
+  provider files and scripts (`V13-DEPLOY-TARGETS-REMOVED`).
 - **Breaking:** `footprint` is now `green`, an Experimental command of the
   same CLI (the home screen offers it as Green Report), and reports only
   measured figures:
@@ -237,7 +343,6 @@ reports them and the scripts that run removed commands.
   and `examples/portfolio`, tested in its workspace (the blog showcase is
   `examples/blog`); copy one to start from it. Applications generated earlier
   from these blueprints keep working.
-- The blog example no longer ships a `Foundry.toml`.
 - `cargo rullst new` writes a `[profile.dev]` into the generated `Cargo.toml`:
   `debug = "line-tables-only"` for the application, so panics and backtraces
   of your code still show file and line, and `debug = false` for every
@@ -251,14 +356,190 @@ reports them and the scripts that run removed commands.
   not use (`cargo rullst make:oauth` enables the facade's `oauth-*` feature);
   its first build compiles 12 fewer packages. Code that imports
   `rullst_connect` directly adds the dependency, as the OAuth tutorials show.
+- docs.rs builds every published crate on one Linux target with the feature
+  set it documents (`[package.metadata.docs.rs]`): all features for the
+  service and domain crates and IoT; `drivers-all` and the other features
+  except DuckDB's bundled build and the mutually exclusive `strict-*`
+  profiles for the ORM, Core and the facade (whose list does not yet include
+  `nexus-ai`); `tz` for Nexus and `remote` for Studio. docs.rs labels each
+  item with the Cargo features it needs. Every crate's docs.rs landing page
+  states what it provides, its tier and its features, and the crate READMEs
+  on crates.io were corrected (exact pins, feature tables, and examples in
+  `rullst-capital`, `rullst-mail`, `rullst-orm` and `rullst-connect` that did
+  not compile or failed as written).
+- Documentation audit: the guides, tutorials, CLI reference, specification,
+  compatibility policy, migration guide, security pages, plans, README and
+  the site's landing page were checked against the code and the alpha.4 CLI.
+  Tutorials 01–20 now run in order on one Blank project; examples that failed
+  as written were fixed (tutorials 21, 23, 24 and 43 among them); `make:auth`
+  is `cargo rullst auth` everywhere; remote Studio installs name
+  `=13.0.0-alpha.4`, because a plain `cargo install` selects 12.3.0, which has
+  no `remote` feature; the landing page presents the v13 prerelease, the three
+  starters and the examples; and v12-only pages carry a "Historical (v12)"
+  note.
+- CI workflows: `audit.yml`, `cargo-deny.yml` and `security-audit.yml` are
+  merged into `supply-chain.yml` (same required "Check Dependencies
+  (Licenses, Vulnerabilities)" check; all its jobs now also run daily).
+  `pqc-compliance.yml` is now `crypto-containment.yml` and
+  `ai-sentinel-pr.yml` is now `pr-security-evidence.yml`; the ineffective
+  `corpus-sync.yml` is removed. There are 34 workflows, and
+  `validate-site.py` checks the workflow inventory and badges. Scheduled
+  CodeQL, coverage, docs and TruffleHog runs no longer share the push
+  concurrency group that admission needs.
+- CI: Miri runs every Wednesday and Kani every Thursday on `main`, in
+  addition to their release-admission dispatch. Their scheduled runs, and
+  those of the sanitizer and property-test workflows, use their own
+  concurrency group, so they never cancel the dispatched admission run, which
+  is still the only run admission accepts.
+- CI: the SemVer workflow compares each library with the latest stable,
+  non-yanked release of its own major. Before, it compared with the newest
+  version, 13.0.0-alpha.3, and cargo-semver-checks ran no checks; until
+  13.0.0 is published it reports that 13.x has no baseline.
+- Release fuzz evidence: each fuzz package's inputs are now its build graph
+  (its own files, every workspace package it reaches through Cargo
+  dependencies, the files those packages include and a few global files)
+  instead of the whole repository minus a reviewed list. A change to
+  documentation, the changelog, READMEs, the CLI or the examples no longer
+  reruns the 17-hour release campaign, and a change to a shared crate reruns
+  only the fuzz packages that reach it; a pattern the rule does not model
+  makes that package fall back to the whole repository.
+  `.github/check-fuzz-build-graph.py` cross-checks the reached sets against
+  `cargo metadata` ([fuzz evidence](docs/src/fuzz-evidence.md)).
+- The CLI had its first targeted mutation campaign: hosted runs measured 83
+  `cargo-rullst` files and 3,189 mutants, new tests killed 1,041 of the 1,129
+  first-run survivors and 51 are documented equivalents. The files left
+  without a survivor are listed in `.github/mutants-pr-cli.txt`, so the
+  pull-request mutation gate (`mutants-pr.yml`) mutates their changed lines.
+
+### Removed
+
+- **Breaking:** the terminal AI assistant of the earlier 13.0 prereleases,
+  `cargo rullst ai` (with `connect`, `status`, `disconnect`, `upgrade`, `fix`
+  and `review`), was removed; its code stays in git history. `cargo rullst ai …`
+  now prints that it was removed and what to use instead (your editor's or
+  terminal's assistant with the project's `AGENTS.md`, which
+  `cargo rullst generate:ai-context` writes, and the published `llms.txt`) and
+  exits with status 1. It is hidden from help, completions, the command
+  palette and the home screen, and the tour's AI step shows
+  `generate:ai-context`. The main CLI no longer depends on `rullst-ai`; the
+  `rullst-ai` crate is unchanged. The `upgrade` plan and failure hints no
+  longer point at `ai upgrade`, and `add ai` suggests `generate:ai-context`.
+  `cargo rullst upgrade` flags scripts and workflows that run `rullst ai` or
+  `rullst footprint` (`V13-CLI-AI-REMOVED`).
+- **Breaking:** `cargo-rullst-extras`, the separate package for `green` and
+  the assistant described while this release was prepared, was never
+  published. The release has twenty packages, and `green` is a command of
+  `cargo-rullst`.
+- **Breaking:** removed `cargo rullst foundry:init`, `foundry:deploy`,
+  `nixify`, `generate:buildah`, `make:grpc` and the `new --nix` and
+  `new --buildah` flags. Files they generated stay yours; the new Advanced
+  deployment guide covers Nix, Buildah, Podman Quadlet and Kubernetes.
+  `cargo rullst upgrade` flags `Foundry.toml`, a `nixify` `flake.nix`,
+  `build_buildah.sh`, `src/grpc/mod.rs` and scripts that run these commands
+  (`V13-DEPLOY-GENERATORS-REMOVED`).
+- **Breaking:** the CLI no longer installs or replaces itself. `cargo rullst
+  update check`, `update verify`, `update stage` and `update install` were
+  removed, and `update guided` now runs only the project flow (its `--scope`,
+  `--root`, `--allow-major` and `--prerelease` flags were removed). Install a
+  newer CLI with `cargo install cargo-rullst --version =<version> --locked`.
+  At most once a day, in an interactive terminal, the CLI prints that command
+  when crates.io has a newer release of its major, now including newer
+  prereleases for a prerelease CLI; `RULLST_DISABLE_UPDATE_CHECK`,
+  `CARGO_NET_OFFLINE`, `CI` and non-terminal streams silence it. The project
+  update commands (`update project …`) are unchanged, and `cargo rullst
+  upgrade` flags scripts that run the removed commands
+  (`V13-CLI-SELF-UPDATE-REMOVED`).
+- The blog example no longer ships a `Foundry.toml`.
+
+### Fixed
+
+- `cargo rullst auth` now works in fresh Blank and API database starters
+  (alpha.3 refused with "refusing to add a second users table migration"): it
+  keeps the starter's users migration and adds
+  `m<ts>_add_account_columns_to_users_table`, which adds the account columns
+  and unique email index and gives existing rows a
+  `user-<id>@no-email.invalid` placeholder. It also replaces the starter's
+  unchanged `User` with a re-export of the account model. In the SaaS
+  starter, or on a second run, it reports that authentication is already
+  scaffolded and exits 0. Tutorial 11 no longer asks you to delete the
+  starter's migration and database.
+- `cargo rullst new --no-database` no longer writes an empty `rullst.db` or,
+  with `--docker`, a SQLite `DATABASE_URL` in the Dockerfile.
+- `#[derive(Orm)]` no longer requires the application to depend on `tracing`
+  or `tokio`: generated query spans and timeouts go through `rullst_orm`'s
+  hidden re-exports, so a crate deriving a model needs only `rullst-orm` and
+  the `sqlx` that `FromRow` names (before, it failed with E0433 "cannot find
+  `tracing`"). The `rullst.orm.query` spans keep their name, target, level and
+  fields. The ERP, LMS and Portfolio examples dropped their derive-only
+  `tracing` dependency.
+- SQLite applications crash-looped under the generated deployment: `deploy`
+  and `dockerize` wrote no `DATABASE_URL`, so the starters'
+  `sqlite://db.sqlite` pointed into the image's read-only `/app`. For SQLite
+  projects both now set `ENV DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc`,
+  which keeps the database in the data volume, and `deploy` warns when it
+  keeps an existing Dockerfile without it.
+- When a trusted proxy is configured and the server binds every interface,
+  the startup line now also covers a proxy that reaches the application over a
+  container network, as in the generated `compose.yaml`: keep
+  `HOST=0.0.0.0` and publish only the proxy's ports. Before, it suggested only
+  `HOST=127.0.0.1`, which breaks that deployment.
+- `cargo rullst studio --remote` and its help named
+  `cargo install rullst-studio --features remote --locked`, which selects
+  12.3.0 (no `remote` feature) during the prerelease; they now name the CLI's
+  own version. `make:oauth` help no longer names a `make:auth` command,
+  `make:scalar` says to mount `docs_controller::router()` (and warns when
+  `src/main.rs` lacks `mod controllers;`) instead of "then open /docs", and a
+  later `make:pwa` run reports the layouts that already link the manifest
+  instead of "0 page layout(s)".
+- Generator output and generated code comments are in English: `make:migration`,
+  `make:jwt`, `make:middleware` and `build:client` printed Portuguese
+  messages, and generated controllers had Portuguese doc comments and
+  rendered "Detalhes do recurso {id}". `rullst-auth`'s `hash_password`
+  documentation says its limit is 72 bytes, as it checks, not 72 characters.
+
+### Security
+
+- TLS now uses one crypto provider: aws-lc-rs is the rustls provider for every
+  TLS connection Rullst makes (reqwest HTTPS, SQLx, Redis, SMTP, MongoDB and
+  OTLP), and ring remains only a primitives library (HMAC, digests,
+  randomness, signatures) in the crates that use it directly. Before, both
+  providers were compiled into rustls and the process default depended on
+  initialisation order. The SQLx dependencies of the framework crates, the
+  examples and newly generated projects use `tls-rustls-aws-lc-rs` instead of
+  `tls-rustls`/`tls-rustls-ring`. `orm-mongodb` uses MongoDB's
+  `rustls-tls-aws-lc`, `mail-smtp` uses lettre's `aws-lc-rs`, and the
+  testcontainers dev-dependencies use `aws-lc-rs`. The Redis Streams adapter
+  now installs aws-lc-rs instead of ring when no rustls process default
+  exists, and ORM Redis TLS connections do the same instead of risking a
+  provider-selection panic. `Server` start-up (with Core's `orm`, `storage-s3`
+  or `telemetry` feature), the OTLP exporter and the `rullst-studio` binary
+  install aws-lc-rs as the rustls process default when none is installed; a
+  provider the application installs first is kept. Applications whose own
+  `sqlx` dependency lists `tls-rustls` should switch to
+  `tls-rustls-aws-lc-rs`, or SQLx keeps using ring; `cargo rullst upgrade`
+  reports it (`V13-SQLX-TLS-RING`). See "Cryptography providers" in the
+  security architecture guide.
 
 ### Dependencies
 
+- TLS features: SQLx `tls-rustls-aws-lc-rs`, MongoDB `rustls-tls-aws-lc`,
+  lettre `aws-lc-rs` and testcontainers `aws-lc-rs` (see Security).
+- `rullst-orm` and `rullst-core` no longer enable SQLx's `macros` feature, and
+  `rullst-nexus` depends on `rullst-ai` only with its `ai` feature (see
+  Changed).
+- Removed the unused dev-dependencies `insta` (`cargo-rullst`), `proptest`
+  (`rullst`) and `loom` (`rullst-connect`); `Cargo.lock` no longer contains
+  `loom`, `generator` and `scoped-tls`.
 - `crypto-bigint` 0.7.6 → 0.7.10 (with `ctutils` 0.4.7) in the workspace and
   the `rullst` and `rullst-nexus` fuzz lockfiles: crates.io yanked 0.7.6
   through 0.7.8.
 - `jsonschema` `=0.58.6` → `=0.60.1` (`rullst-security`), with no source
   change.
+- Lockfile updates (workspace and fuzz lockfiles): `tokio` 1.54.1, `uuid`
+  1.29.0, `redis` 1.8.0, `duckdb` 1.20000.0, `zstd` 0.14.3, `libc` 0.2.191 and
+  the AWS SigV4 and Smithy crates; CI action pins updated (CodeQL 4.39.1,
+  `setup-python` 7.1.0, `install-action` 2.87.31, `crates-io-auth-action`
+  1.0.6).
 
 ## [13.0.0-alpha.3] - 2026-10-23
 
