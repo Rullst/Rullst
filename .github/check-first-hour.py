@@ -86,22 +86,18 @@ class Session:
         """Runs one command in the reader's directory, streaming its output."""
         return stream(tokens, cwd or self.cwd, self.env, check=check, timeout=timeout)
 
-    def run_commands(self, block: Block, *, check: bool = True) -> Result:
+    def run_commands(self, block: Block) -> Result:
         """The block's commands in order, as a reader types them."""
-        outputs, code, earlier = [], 0, self.server
+        outputs, earlier = [], self.server
         for tokens in docs.commands(block.code):
             if self.server is not earlier:
                 raise Failure(f"{block.where}: a command follows the server in the same block")
-            result = self.command(tokens, block, check=check)
-            outputs.append(result.output)
-            code = code or result.returncode
-            if result.returncode != 0:
-                break
+            outputs.append(self.command(tokens, block).output)
         self.output = "".join(outputs)
-        return Result(code, self.output)
+        return Result(0, self.output)
 
     # Commands ---------------------------------------------------------------
-    def command(self, tokens: list[str], block: Block, *, check: bool) -> Result:
+    def command(self, tokens: list[str], block: Block) -> Result:
         docs.check_command(tokens, self.version, self.crates)
         if tokens[0] == "cd" and len(tokens) == 2:
             target = (self.cwd / tokens[1]).resolve()
@@ -121,10 +117,10 @@ class Session:
             log(f"$ {shlex.join(tokens)}   # installed from the packaged archives")
             return self.run(["cargo", "rullst", "--version"])
         if tokens[:2] == ["cargo", "add"]:
-            return self.cargo_add(tokens, check=check)
+            return self.cargo_add(tokens)
         if tokens[:3] == ["cargo", "rullst", "new"] and "--default" not in tokens:
-            return terminal(tokens, self.cwd, self.env, WIZARD, check=check)
-        return self.run(tokens, check=check)
+            return terminal(tokens, self.cwd, self.env, WIZARD)
+        return self.run(tokens)
 
     def install_cli(self) -> None:
         """`cargo install` from the archive, as users get it; it writes registry pins."""
@@ -155,7 +151,7 @@ class Session:
         self.env["PATH"] = f"{root / 'bin'}{os.pathsep}{self.env['PATH']}"
         self.run(["cargo", "rullst", "--version"], cwd=self.work)
 
-    def cargo_add(self, tokens: list[str], *, check: bool) -> Result:
+    def cargo_add(self, tokens: list[str]) -> Result:
         """`cargo add` as written; an unpublished release crate gets the line it writes."""
         result = self.run(tokens, check=False)
         crate, _, requirement = (tokens[2] if len(tokens) == 3 else "").partition("@")
@@ -170,7 +166,7 @@ class Session:
             log(f"note: {crate} {self.version} is not on crates.io before its release, so the "
                 f'check wrote the line `cargo add` writes: {crate} = "{requirement}"')
             return Result(0, result.output)
-        if check and result.returncode != 0:
+        if result.returncode != 0:
             raise Failure(f"`{shlex.join(tokens)}` exited with {result.returncode}")
         return result
 
@@ -190,7 +186,7 @@ class Session:
         if block.options.get("new-terminal"):
             self.cwd = self.start
         if block.language in docs.SHELL:
-            (checks.RUN.get(key) or (lambda session, b: session.run_commands(b)))(self, block)
+            self.run_commands(block)
         elif block.action == "apply":
             checks.APPLY[key](self, block)
         elif block.action == "output":

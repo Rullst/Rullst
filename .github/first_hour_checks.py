@@ -2,7 +2,6 @@
 
 Hooks are keyed by the page and step of a marked block (first_hour_docs.py):
 
-- RUN runs the block itself, for a page that documents a failure and a retry;
 - APPLY applies an `apply` block as the page's prose says;
 - AFTER runs after the block, for commands and results the prose states;
 - SERVER runs once the server the block started answers on port 3000.
@@ -12,6 +11,7 @@ Each hook quotes or names the sentence of the page it follows.
 
 from __future__ import annotations
 
+import hashlib
 import http.client
 import json
 from pathlib import Path
@@ -236,27 +236,32 @@ def seeded(session, block) -> None:
 
 
 STARTER_USERS = "src/migrations/m20260601000000_create_users_table.rs"
-WORKAROUND = "delete that migration file"
+ACCOUNT_FILES = ("src/models/user.rs", "src/models/password_reset.rs",
+                 "src/controllers/auth_controller.rs", "src/controllers/password_controller.rs",
+                 "src/middlewares/auth_middleware.rs", "src/pages/auth.rs",
+                 "src/migrations/m*_add_account_columns_to_users_table.rs",
+                 "src/migrations/m*_create_password_reset_tokens_table.rs")
 
 
-def auth_generator(session, block) -> None:
-    """`cargo rullst auth` in the Tutorial 02 project, including the retry the
-    page documents for starters that already have a `users` migration."""
-    page = session.page_text(block.page)
-    if WORKAROUND not in page:
-        session.run_commands(block)
-        return
-    first = session.run_commands(block, check=False)
-    expect(first.returncode != 0 and "make:migration" in first.output
-           and not (session.cwd / "src/models/user.rs").exists(),
-           "the first `cargo rullst auth` refuses the starter's users migration and writes nothing")
-    # "delete that migration file; if `cargo rullst dev` or `cargo rullst
-    # db:migrate` already ran, also delete the local SQLite database (`db.sqlite`,
-    # with any `db.sqlite-wal`/`db.sqlite-shm` beside it)"
-    for name in (STARTER_USERS, "db.sqlite", "db.sqlite-wal", "db.sqlite-shm"):
-        (session.cwd / name).unlink(missing_ok=True)
-    log(f"followed the page: deleted {STARTER_USERS} and db.sqlite")
-    session.run_commands(block)
+def project_digest(session) -> str:
+    digest = hashlib.sha256()
+    for path in sorted([session.cwd / "Cargo.toml", *(session.cwd / "src").rglob("*")]):
+        if path.is_file():
+            digest.update(str(path.relative_to(session.cwd)).encode() + b"\0" + path.read_bytes())
+    return digest.hexdigest()
+
+
+def account_scaffold(session, block) -> None:
+    """"The command keeps that migration as it is and adds one that extends the
+    table", replaces the starter's `User` struct with `pub use
+    crate::models::user::User;`, and "after an earlier run, it writes nothing
+    and succeeds"."""
+    expect((session.cwd / STARTER_USERS).is_file(), "the starter's users migration is kept")
+    files_exist(*ACCOUNT_FILES)(session, block)
+    contains("src/main.rs", "pub use crate::models::user::User;")(session, block)
+    before = project_digest(session)
+    session.run(["cargo", "rullst", "auth"])
+    expect(project_digest(session) == before, "a second `cargo rullst auth` writes nothing")
 
 
 def wire_routes(session, block) -> None:
@@ -287,6 +292,10 @@ def wire_routes(session, block) -> None:
 def shop_with_accounts(session, block) -> None:
     """The routes of tutorials 02 and 11, and an account's first sign-up and sign-in."""
     check_health()
+    with database(session) as db:
+        columns = {row[1] for row in db.execute("PRAGMA table_info(users)")}
+    expect({"email", "password_hash", "oauth_provider", "oauth_id", "is_admin", "session_epoch"} <= columns,
+           "db:migrate extended the starter's users table with the account columns")
     code, _, _ = get("/products")
     expect(code == 200, f"GET /products shows the generated placeholder page ({code})")
     browser, password = Browser(), secrets.token_urlsafe(18)
@@ -310,10 +319,6 @@ def shop_with_accounts(session, block) -> None:
     code, _, _ = browser.request("GET", "/password/change")
     expect(code == 200, f"GET /password/change answers a signed-in account ({code})")
 
-
-RUN = {
-    (AUTHENTICATION, "auth"): auth_generator,
-}
 
 APPLY = {
     (AUTHENTICATION, "auth-routes"): wire_routes,
@@ -344,6 +349,7 @@ AFTER = {
     (MIGRATIONS, "migrate"): rolled_back,
     (MIGRATIONS, "seeder"): declare_seeds,
     (MIGRATIONS, "seed"): seeded,
+    (AUTHENTICATION, "auth"): account_scaffold,
 }
 
 SERVER = {
@@ -356,4 +362,4 @@ SERVER = {
     (AUTHENTICATION, "run"): shop_with_accounts,
 }
 
-HOOKS = {"run": RUN, "apply": APPLY, "after": AFTER, "server": SERVER}
+HOOKS = {"apply": APPLY, "after": AFTER, "server": SERVER}
