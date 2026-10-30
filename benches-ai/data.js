@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793339388207,
+  "lastUpdate": 1793342768861,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -16875,6 +16875,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 389,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3627f9cc248301b10336702d4a73bbdbd3531250",
+          "message": "Merge pull request #586 from Rullst/fix/v13-alpha4-auth-starters\n\nfix(cli): make cargo rullst auth work on fresh starters and stop reporting empty generations as success",
+          "timestamp": "2026-10-30T03:26:31-03:00",
+          "tree_id": "8065d6f8f262ceb396b0644ccd33181596d3135d",
+          "url": "https://github.com/Rullst/Rullst/commit/3627f9cc248301b10336702d4a73bbdbd3531250"
+        },
+        "date": 1793342768197,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1952,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 330,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 371,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
