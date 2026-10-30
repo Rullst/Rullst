@@ -18,72 +18,28 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
         table_name,
         "chunk",
         &["size"],
-        quote! {
-            if size == 0 {
-                return Err(rullst_orm::Error::Validation(
-                    "chunk() requires a size greater than zero".to_string()
-                ));
-            }
-            let mut remaining = self.__rullst_explicit_limit();
-            let mut offset = self.offset.unwrap_or(0);
-            let mut builder = self.clone();
-            if builder.order_by.is_none() {
-                builder.order_bindings.clear();
-                builder.order_by = Some(#default_order.to_string());
-            }
-            while let Some(page) = Self::__rullst_chunk_page(size, remaining) {
-                builder.limit = Some(page);
-                builder.offset = Some(offset);
-                let results = builder.get().await?;
-                let count = results.len();
-                if count == 0 { break; }
-                handler(results).await;
-                if count < page { break; }
-                remaining = remaining.map(|left| left.saturating_sub(count));
-                offset = offset.checked_add(count).ok_or_else(|| {
-                    rullst_orm::Error::Validation(
-                        "chunk() offset exceeds the supported range".to_string()
-                    )
-                })?;
-            }
-            Ok(())
-        },
+        offset_pages("chunk", &default_order, quote! { builder.get().await? }),
     );
     let chunk_by_id_traced = instrument_query(
         name,
         table_name,
         "chunk_by_id",
         &["size"],
-        quote! {
-            if size == 0 {
-                return Err(rullst_orm::Error::Validation(
-                    "chunk_by_id() requires a size greater than zero".to_string()
-                ));
-            }
-            let mut remaining = self.__rullst_explicit_limit();
-            let mut cursor: Option<i32> = None;
-            while let Some(page) = Self::__rullst_chunk_page(size, remaining) {
-                let mut builder = self.clone();
-                builder.order_bindings.clear();
-                builder.order_by = Some(#default_order.to_string());
-                builder.freeze_scope();
-                builder.limit = Some(page);
-                // An explicit offset skips rows once, before the first page;
-                // later pages continue after the last seen key.
-                builder.offset = if cursor.is_none() { self.offset } else { None };
-                if let Some(last_seen_id) = cursor {
-                    builder = builder.__rullst_where_own("id", ">", last_seen_id);
-                }
-                let results = builder.get().await?;
-                let count = results.len();
-                if count == 0 { break; }
-                cursor = results.last().map(|model| model.id);
-                handler(results).await?;
-                if count < page { break; }
-                remaining = remaining.map(|left| left.saturating_sub(count));
-            }
-            Ok(())
-        },
+        keyset_pages(
+            "chunk_by_id",
+            &default_order,
+            quote! { builder.get().await? },
+        ),
+    );
+    let chunk_with_tx_body = offset_pages(
+        "chunk_with_tx",
+        &default_order,
+        quote! { builder.get_with_tx(tx).await? },
+    );
+    let chunk_by_id_with_tx_body = keyset_pages(
+        "chunk_by_id_with_tx",
+        &default_order,
+        quote! { builder.get_with_tx(tx).await? },
     );
 
     vec![quote! {
@@ -110,34 +66,7 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
             F: FnMut(Vec<#name>) -> Fut + Send,
             Fut: std::future::Future<Output = ()> + Send,
         {
-            if size == 0 {
-                return Err(rullst_orm::Error::Validation(
-                    "chunk_with_tx() requires a size greater than zero".to_string()
-                ));
-            }
-            let mut remaining = self.__rullst_explicit_limit();
-            let mut offset = self.offset.unwrap_or(0);
-            let mut builder = self.clone();
-            if builder.order_by.is_none() {
-                builder.order_bindings.clear();
-                builder.order_by = Some(#default_order.to_string());
-            }
-            while let Some(page) = Self::__rullst_chunk_page(size, remaining) {
-                builder.limit = Some(page);
-                builder.offset = Some(offset);
-                let results = builder.get_with_tx(tx).await?;
-                let count = results.len();
-                if count == 0 { break; }
-                handler(results).await;
-                if count < page { break; }
-                remaining = remaining.map(|left| left.saturating_sub(count));
-                offset = offset.checked_add(count).ok_or_else(|| {
-                    rullst_orm::Error::Validation(
-                        "chunk_with_tx() offset exceeds the supported range".to_string()
-                    )
-                })?;
-            }
-            Ok(())
+            #chunk_with_tx_body
         }
 
         /// Processes rows in ascending primary-key order without offset drift.
@@ -162,34 +91,7 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
             F: FnMut(Vec<#name>) -> Fut + Send,
             Fut: std::future::Future<Output = Result<(), rullst_orm::Error>> + Send,
         {
-            if size == 0 {
-                return Err(rullst_orm::Error::Validation(
-                    "chunk_by_id_with_tx() requires a size greater than zero".to_string()
-                ));
-            }
-            let mut remaining = self.__rullst_explicit_limit();
-            let mut cursor: Option<i32> = None;
-            while let Some(page) = Self::__rullst_chunk_page(size, remaining) {
-                let mut builder = self.clone();
-                builder.order_bindings.clear();
-                builder.order_by = Some(#default_order.to_string());
-                builder.freeze_scope();
-                builder.limit = Some(page);
-                // An explicit offset skips rows once, before the first page;
-                // later pages continue after the last seen key.
-                builder.offset = if cursor.is_none() { self.offset } else { None };
-                if let Some(last_seen_id) = cursor {
-                    builder = builder.__rullst_where_own("id", ">", last_seen_id);
-                }
-                let results = builder.get_with_tx(tx).await?;
-                let count = results.len();
-                if count == 0 { break; }
-                cursor = results.last().map(|model| model.id);
-                handler(results).await?;
-                if count < page { break; }
-                remaining = remaining.map(|left| left.saturating_sub(count));
-            }
-            Ok(())
+            #chunk_by_id_with_tx_body
         }
 
         /// The size of the next page of a chunked traversal, or `None` once
@@ -202,4 +104,79 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
             }
         }
     }]
+}
+
+/// The body of `chunk`/`chunk_with_tx`: offset pages in the builder's order,
+/// the primary key by default. `fetch` reads one page of `builder`; `method`
+/// names the method in validation errors.
+fn offset_pages(method: &str, default_order: &str, fetch: TokenStream) -> TokenStream {
+    let zero_size = format!("{method}() requires a size greater than zero");
+    let offset_overflow = format!("{method}() offset exceeds the supported range");
+    quote! {
+        if size == 0 {
+            return Err(rullst_orm::Error::Validation(
+                #zero_size.to_string()
+            ));
+        }
+        let mut remaining = self.__rullst_explicit_limit();
+        let mut offset = self.offset.unwrap_or(0);
+        let mut builder = self.clone();
+        if builder.order_by.is_none() {
+            builder.order_bindings.clear();
+            builder.order_by = Some(#default_order.to_string());
+        }
+        while let Some(page) = Self::__rullst_chunk_page(size, remaining) {
+            builder.limit = Some(page);
+            builder.offset = Some(offset);
+            let results = #fetch;
+            let count = results.len();
+            if count == 0 { break; }
+            handler(results).await;
+            if count < page { break; }
+            remaining = remaining.map(|left| left.saturating_sub(count));
+            offset = offset.checked_add(count).ok_or_else(|| {
+                rullst_orm::Error::Validation(
+                    #offset_overflow.to_string()
+                )
+            })?;
+        }
+        Ok(())
+    }
+}
+
+/// The body of `chunk_by_id`/`chunk_by_id_with_tx`: pages in primary-key
+/// order that continue after the last seen key. `fetch` reads one page of
+/// `builder`; `method` names the method in validation errors.
+fn keyset_pages(method: &str, default_order: &str, fetch: TokenStream) -> TokenStream {
+    let zero_size = format!("{method}() requires a size greater than zero");
+    quote! {
+        if size == 0 {
+            return Err(rullst_orm::Error::Validation(
+                #zero_size.to_string()
+            ));
+        }
+        let mut remaining = self.__rullst_explicit_limit();
+        let mut cursor: Option<i32> = None;
+        while let Some(page) = Self::__rullst_chunk_page(size, remaining) {
+            let mut builder = self.clone();
+            builder.order_bindings.clear();
+            builder.order_by = Some(#default_order.to_string());
+            builder.freeze_scope();
+            builder.limit = Some(page);
+            // An explicit offset skips rows once, before the first page;
+            // later pages continue after the last seen key.
+            builder.offset = if cursor.is_none() { self.offset } else { None };
+            if let Some(last_seen_id) = cursor {
+                builder = builder.__rullst_where_own("id", ">", last_seen_id);
+            }
+            let results = #fetch;
+            let count = results.len();
+            if count == 0 { break; }
+            cursor = results.last().map(|model| model.id);
+            handler(results).await?;
+            if count < page { break; }
+            remaining = remaining.map(|left| left.saturating_sub(count));
+        }
+        Ok(())
+    }
 }
