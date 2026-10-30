@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793338317145,
+  "lastUpdate": 1793340924207,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -30325,6 +30325,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1758,
             "range": "± 18",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89a336db4971e447905802852cb8e0f0efbd8f11",
+          "message": "Merge pull request #587 from Rullst/ci/v13-alpha4-workflow-cleanup\n\nci: consolidate the supply-chain workflows, rename misleading ones and prune corpus-sync (37 → 34)",
+          "timestamp": "2026-10-30T03:11:44-03:00",
+          "tree_id": "cba3fd6171d10f64d2afde80b1c163bd19ff367d",
+          "url": "https://github.com/Rullst/Rullst/commit/89a336db4971e447905802852cb8e0f0efbd8f11"
+        },
+        "date": 1793340921250,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 689,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 942,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 412,
+            "range": "± 48",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1688,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
