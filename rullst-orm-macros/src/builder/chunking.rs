@@ -180,3 +180,7 @@ fn keyset_pages(method: &str, default_order: &str, fetch: TokenStream) -> TokenS
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "chunking_tests.rs"]
+mod tests;
