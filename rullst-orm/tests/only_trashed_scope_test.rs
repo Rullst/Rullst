@@ -4,9 +4,9 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::{Error, FromRow, Orm};
+use rullst_orm::{Error, Orm};
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "trashless_line_items")]
 struct TrashlessLineItem {
     id: i32,

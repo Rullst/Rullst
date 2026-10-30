@@ -1,9 +1,9 @@
 //! Typed `Blueprint` helpers round-trip their Rust field types.
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_measurements")]
 struct ContractMeasurement {
     id: i32,

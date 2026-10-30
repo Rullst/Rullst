@@ -23,7 +23,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 rullst-orm-macros = { workspace = true, features = ["runtime-driver-codecs", "runtime-feature-gates"] }
-sqlx = { workspace = true, features = ["any", "runtime-tokio", "macros", "json", "tls-rustls-aws-lc-rs", "chrono"] }
+sqlx = { workspace = true, features = ["any", "runtime-tokio", "json", "tls-rustls-aws-lc-rs", "chrono"] }
 # `TransactionManager` lets a nested `Orm::transaction` open, release and roll
 # back a savepoint on the task-scoped transaction with SQLx's own depth
 # tracking. The `sqlx` facade does not re-export that trait; sqlx pins this

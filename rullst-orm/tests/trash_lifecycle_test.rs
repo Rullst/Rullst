@@ -7,13 +7,13 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use rullst_orm::audit::{AuditContext, with_audit_context};
-use rullst_orm::{Error, FromRow, ModelCommittedEvent, Orm, SearchEngine, set_search_engine};
+use rullst_orm::{Error, ModelCommittedEvent, Orm, SearchEngine, set_search_engine};
 use serde_json::Value;
 
 static BEFORE_DELETE: AtomicUsize = AtomicUsize::new(0);
 static AFTER_DELETE: AtomicUsize = AtomicUsize::new(0);
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(
     table = "trash_customers",
     auditable,

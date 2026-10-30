@@ -12,6 +12,13 @@ This README describes the v13 prerelease (`13.0.0-alpha.4`). Cargo never
 selects a prerelease on its own, so pin it exactly, for example
 `rullst = { version = "=13.0.0-alpha.4", features = ["nexus", "strict-postgres"] }`.
 
+The AI assistant (`/nexus/chat`) is this crate's `ai` feature, enabled by
+default, and the `rullst` facade's `nexus-ai` feature: since 13.0.0-alpha.4
+the facade's `nexus` feature no longer enables it, so Nexus builds without
+`rullst-ai`. Without the feature the panel shows no assistant link and
+`/nexus/chat` and `/nexus/chat/query` answer `404` with a notice naming the
+feature; with it, routes and behaviour are unchanged.
+
 Since 12.1.0, Nexus includes the fixes for mobile drawer dismissal, keyboard
 focus and no-JavaScript navigation. Applications upgrading from 12.0 that use
 the temporary `nexus_mobile_patch` HTML-rewriting workaround must remove that
@@ -129,9 +136,9 @@ The derive hides and protects that field, and Nexus obtains its value only from
 the trusted `TenantContext` installed by application authentication middleware:
 
 ```rust,ignore
-use rullst::db::{FromRow, Nexus, Orm};
+use rullst::db::{Nexus, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "projects", tenant = "organization_id")]
 struct Project {
     id: i64,

@@ -2,12 +2,17 @@
 mod attributes;
 #[path = "parser/field_types.rs"]
 mod field_types;
+#[path = "parser/relation_checks.rs"]
+mod relation_checks;
+#[path = "parser/row_fields.rs"]
+mod row_fields;
 
 use attributes::{FieldAttributes, ModelAttributes};
 #[cfg(test)]
 use attributes::{split_top_level, strip_outer_call, validate_relation_attribute};
 use field_types::{encrypted_field_kind, is_row_snapshot_type};
 pub(crate) use field_types::{is_json_document_type, is_secret_string_type};
+pub use row_fields::{RowField, RowRead};
 use syn::{Data, DeriveInput, Fields};
 
 pub struct ParsedModel {
@@ -64,6 +69,12 @@ pub struct ParsedModel {
     pub has_soft_deletes: bool,
     pub rag_context_fields: Vec<syn::Ident>,
     pub embedding_for: Option<(syn::Ident, String)>,
+    /// Every field in declaration order, for the generated `FromRow`.
+    pub row_fields: Vec<RowField>,
+    /// Struct-level `#[sqlx(default)]`.
+    pub row_default: bool,
+    /// `#[orm(custom_from_row)]`: no `FromRow` impl is generated.
+    pub custom_from_row: bool,
 }
 
 impl ParsedModel {
@@ -158,6 +169,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     let mut relations = vec![];
     let mut rag_context_fields = vec![];
     let mut embedding_for = None;
+    let mut row_fields = Vec::new();
     // If the user explicitly opted in via `#[orm(soft_delete(...))]` the
     // `has_soft_deletes` flag is derived from that. Otherwise we keep the
     // legacy behaviour of detecting a `deleted_at` field by name so
@@ -183,6 +195,16 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         }
 
         let field_attributes = FieldAttributes::parse(field, field_span)?;
+        row_fields.push(RowField {
+            name: field_name.clone(),
+            ty: field.ty.clone(),
+            read: RowRead::of(
+                field_attributes.is_sqlx_skipped,
+                field_attributes.is_relation(),
+                field_attributes.sqlx_json,
+                field_attributes.sqlx_default,
+            ),
+        });
         if is_row_snapshot_type(&field.ty) {
             if !field_attributes.is_sqlx_skipped || field_attributes.is_relation() {
                 return Err(syn::Error::new(
@@ -359,89 +381,11 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         ));
     }
 
-    for relation in &relations {
-        if matches!(
-            relation.rel_type.as_str(),
-            "morph_many" | "morph_one" | "morph_to"
-        ) && relation.morph_name.is_empty()
-        {
-            return Err(syn::Error::new(
-                relation.field_name.span(),
-                format!(
-                    "polymorphic relation `{}` requires `morph_name = \"...\"` (the legacy alias `name` is also accepted)",
-                    relation.field_name
-                ),
-            ));
-        }
-
-        if relation.rel_type != "morph_to" {
-            continue;
-        }
-
-        let morph_id_column = if relation.foreign_key.is_empty() {
-            format!("{}_id", relation.morph_name)
-        } else {
-            relation.foreign_key.clone()
-        };
-        let morph_type_column = format!("{}_type", relation.morph_name);
-        let persisted_field = |column: &str| {
-            normal_fields
-                .iter()
-                .zip(normal_fields_types.iter())
-                .find(|(field, _)| *field == column)
-        };
-
-        let Some((morph_id_field, morph_id_type)) = persisted_field(&morph_id_column) else {
-            return Err(syn::Error::new(
-                relation.field_name.span(),
-                format!(
-                    "morph_to relation `{}` requires persisted id field `{}`",
-                    relation.field_name, morph_id_column
-                ),
-            ));
-        };
-        let id_is_bindable = match morph_id_type {
-            syn::Type::Path(path) if path.qself.is_none() => {
-                path.path.segments.last().is_some_and(|segment| {
-                    matches!(
-                        segment.ident.to_string().as_str(),
-                        "String" | "i32" | "f64" | "bool"
-                    )
-                })
-            }
-            _ => false,
-        };
-        if !id_is_bindable {
-            return Err(syn::Error::new(
-                morph_id_field.span(),
-                "morph_to id fields support String, i32, f64, or bool so they can be bound without lossy conversion",
-            ));
-        }
-
-        let Some((morph_type_field, morph_type_type)) = persisted_field(&morph_type_column) else {
-            return Err(syn::Error::new(
-                relation.field_name.span(),
-                format!(
-                    "morph_to relation `{}` requires persisted discriminator field `{}`",
-                    relation.field_name, morph_type_column
-                ),
-            ));
-        };
-        let discriminator_is_string = match morph_type_type {
-            syn::Type::Path(path) if path.qself.is_none() => path
-                .path
-                .segments
-                .last()
-                .is_some_and(|segment| segment.ident == "String"),
-            _ => false,
-        };
-        if !discriminator_is_string {
-            return Err(syn::Error::new(
-                morph_type_field.span(),
-                "morph_to discriminator fields must use String",
-            ));
-        }
-    }
+    relation_checks::validate_polymorphic_relations(
+        &relations,
+        &normal_fields,
+        &normal_fields_types,
+    )?;
 
     // Synthesise a default `SoftDeleteConfig` for legacy models that
     // declared a `deleted_at` field without an explicit
@@ -486,6 +430,9 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         has_soft_deletes,
         rag_context_fields,
         embedding_for,
+        row_fields,
+        row_default: model_attributes.sqlx_default,
+        custom_from_row: model_attributes.custom_from_row,
     })
 }
 

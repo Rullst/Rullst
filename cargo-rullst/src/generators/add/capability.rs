@@ -182,7 +182,7 @@ pub(crate) const CAPABILITIES: [Capability; 5] = [
         name: "nexus",
         summary: "the authenticated admin CMS at /nexus",
         feature: "nexus",
-        implied_by: &["nexus-tz"],
+        implied_by: &["nexus-ai", "nexus-tz"],
         env_title: "Nexus admin",
         env: &[
             entry(

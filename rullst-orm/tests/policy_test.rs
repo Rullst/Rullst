@@ -3,7 +3,7 @@
 use rullst_orm::Policy;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "documents", policy = "DocumentPolicy")]
 pub struct Document {
     pub id: i32,

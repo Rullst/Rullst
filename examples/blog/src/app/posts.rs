@@ -3,7 +3,6 @@
 use crate::showcase_nav::{render_head_assets, render_showcase_nav};
 use axum::http::StatusCode;
 use axum::{Extension, Form};
-use rullst::db::FromRow;
 use rullst::security::TenantContext;
 use rullst::{html, response::Redirect};
 use rullst_orm::with_tenant;
@@ -19,7 +18,7 @@ use rullst_orm::with_tenant;
 /// The ORM option does not scope Nexus, so the `NexusModel` impl below also
 /// declares `nexus_tenant_column`: the admin panel lists and changes only the
 /// request tenant's posts and never accepts a submitted `tenant_id`.
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "posts", tenant_column = "tenant_id")]
 pub struct Post {
     pub id: i32,

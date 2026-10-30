@@ -193,7 +193,7 @@ pub(super) fn generate(name: &syn::Ident, names: &RelationNames<'_>) -> TokenStr
                     let pivot_pairs: Vec<(i32, i32)> = rullst_orm::dispatch_executor!(read_pool, |executor| {
                         let fetch = pivot_query.fetch_all(executor);
                         match rullst_orm::schema::get_query_timeout() {
-                            Some(t) => tokio::time::timeout(t, fetch).await.map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))?.map_err(rullst_orm::Error::from),
+                            Some(t) => rullst_orm::_tokio::time::timeout(t, fetch).await.map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))?.map_err(rullst_orm::Error::from),
                             None => fetch.await.map_err(rullst_orm::Error::from),
                         }
                     })?;

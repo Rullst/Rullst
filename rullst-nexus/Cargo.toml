@@ -25,7 +25,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
 
 [features]
-default = ["drivers-all"]
+default = ["drivers-all", "ai"]
 drivers-all = ["rullst-core/drivers-all", "rullst-orm/drivers-all"]
 strict-sqlite = ["rullst-core/strict-sqlite", "rullst-orm/strict-sqlite"]
 strict-postgres = ["rullst-core/strict-postgres", "rullst-orm/strict-postgres"]
@@ -33,15 +33,22 @@ strict-mysql = ["rullst-core/strict-mysql", "rullst-orm/strict-mysql"]
 # v13: `NexusTimeZone::named`, `DateTimeUtc` form values in a named IANA time
 # zone (system zoneinfo, bundled `jiff` database as fallback).
 tz = ["dep:jiff"]
+# The AI assistant at `/nexus/chat`, which answers through the providers
+# `rullst-ai` reads from the environment. Without it (v13: the `rullst` facade's
+# `nexus` feature no longer enables it; `nexus-ai` does), Nexus does not
+# depend on `rullst-ai`, hides the assistant link and answers `/nexus/chat`
+# and `/nexus/chat/query` with 404 and a notice naming this feature.
+ai = ["dep:rullst-ai", "dep:ammonia"]
 
 [dependencies]
 rullst-core = { workspace = true, features = ["orm"] }
 rullst-orm = { workspace = true }
 rullst-auth = { workspace = true }
 rullst-security = { workspace = true }
-rullst-ai = { workspace = true }
+rullst-ai = { workspace = true, optional = true }
 axum = { workspace = true }
-ammonia = "4.2.4"
+# Sanitizes the assistant's answers (`ai`).
+ammonia = { version = "4.2.4", optional = true }
 base64 = { workspace = true }
 subtle = { workspace = true }
 serde = { workspace = true }

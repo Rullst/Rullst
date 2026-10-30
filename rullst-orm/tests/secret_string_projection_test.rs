@@ -2,12 +2,12 @@
 //! generated projections, while the query-cache form still round-trips.
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::{FromRow, SecretString};
+use rullst_orm::SecretString;
 
 const CPF: &str = "123.456.789-00";
 const BACKUP_CODE: &str = "backup-4471-9920";
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "secret_customers", auditable, searchable)]
 struct SecretCustomer {
     id: i32,

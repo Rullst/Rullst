@@ -117,7 +117,7 @@ pub struct Holder {
 #[test]
 fn text_timestamps_of_sqlx_models_are_reviewed() {
     let source = r#"
-#[derive(Debug, FromRow, Orm)]
+#[derive(Debug, Orm)]
 #[orm(table = "posts")]
 pub struct Post {
     pub id: i32,
@@ -131,7 +131,7 @@ pub struct Post {
     );
     assert_only(
         r#"
-#[derive(Debug, FromRow, Orm)]
+#[derive(Debug, Orm)]
 pub struct Post {
     pub id: i32,
     pub created_at: DateTime<Utc>,
@@ -250,7 +250,7 @@ fn boot() {
 #[test]
 fn skipped_managed_user_columns_are_reviewed() {
     let source = r#"
-#[derive(Debug, Clone, Default, FromRow, Orm)]
+#[derive(Debug, Clone, Default, Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,
@@ -272,7 +272,7 @@ pub struct User {
     );
     assert_only(
         r#"
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,

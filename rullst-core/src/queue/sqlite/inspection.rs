@@ -7,17 +7,18 @@ use crate::queue::{QueueError, QueuedJobDetail, QueuedJobPreview};
 impl SqliteDriver {
     /// Retrieves a list of all jobs up to the specified limit, sorted by creation time.
     pub async fn list_all_jobs(&self, limit: u32) -> Result<Vec<QueuedJobDetail>, QueueError> {
-        #[derive(sqlx::FromRow)]
-        struct JobRow {
-            id: String,
-            name: String,
-            payload: String,
-            status: String,
-            error: Option<String>,
-            attempts: i32,
-            created_at: String,
-            updated_at: String,
-        }
+        // id, name, payload, status, error, attempts, created_at, updated_at.
+        // A tuple keeps the crate free of SQLx's derive macros.
+        type JobRow = (
+            String,
+            String,
+            String,
+            String,
+            Option<String>,
+            i32,
+            String,
+            String,
+        );
 
         let rows: Vec<JobRow> = sqlx::query_as(
             "SELECT id, name, payload, status, error, attempts, created_at, updated_at FROM rullst_jobs ORDER BY created_at DESC LIMIT ?"
@@ -29,16 +30,20 @@ impl SqliteDriver {
 
         Ok(rows
             .into_iter()
-            .map(|row| QueuedJobDetail {
-                id: row.id,
-                name: row.name,
-                payload: row.payload,
-                status: row.status,
-                error: row.error,
-                attempts: row.attempts,
-                created_at: row.created_at,
-                updated_at: row.updated_at,
-            })
+            .map(
+                |(id, name, payload, status, error, attempts, created_at, updated_at)| {
+                    QueuedJobDetail {
+                        id,
+                        name,
+                        payload,
+                        status,
+                        error,
+                        attempts,
+                        created_at,
+                        updated_at,
+                    }
+                },
+            )
             .collect())
     }
 
@@ -51,17 +56,18 @@ impl SqliteDriver {
         limit: u32,
         max_field_bytes: u32,
     ) -> Result<Vec<QueuedJobPreview>, QueueError> {
-        #[derive(sqlx::FromRow)]
-        struct PreviewRow {
-            id: String,
-            name: String,
-            payload_head: Vec<u8>,
-            status: String,
-            error_head: Option<Vec<u8>>,
-            attempts: i32,
-            created_at: String,
-            updated_at: String,
-        }
+        // id, name, payload_head, status, error_head, attempts, created_at,
+        // updated_at, as a tuple like `list_all_jobs`.
+        type PreviewRow = (
+            String,
+            String,
+            Vec<u8>,
+            String,
+            Option<Vec<u8>>,
+            i32,
+            String,
+            String,
+        );
 
         // CAST ... AS BLOB makes substr count bytes instead of characters.
         let rows: Vec<PreviewRow> = sqlx::query_as(
@@ -77,23 +83,25 @@ impl SqliteDriver {
 
         Ok(rows
             .into_iter()
-            .map(|row| {
-                let (payload, payload_truncated) = field_prefix(&row.payload_head, max_field_bytes);
-                let (error, error_truncated) =
-                    optional_field_prefix(row.error_head.as_deref(), max_field_bytes);
-                QueuedJobPreview {
-                    id: row.id,
-                    name: row.name,
-                    payload,
-                    payload_truncated,
-                    status: row.status,
-                    error,
-                    error_truncated,
-                    attempts: row.attempts,
-                    created_at: row.created_at,
-                    updated_at: row.updated_at,
-                }
-            })
+            .map(
+                |(id, name, payload_head, status, error_head, attempts, created_at, updated_at)| {
+                    let (payload, payload_truncated) = field_prefix(&payload_head, max_field_bytes);
+                    let (error, error_truncated) =
+                        optional_field_prefix(error_head.as_deref(), max_field_bytes);
+                    QueuedJobPreview {
+                        id,
+                        name,
+                        payload,
+                        payload_truncated,
+                        status,
+                        error,
+                        error_truncated,
+                        attempts,
+                        created_at,
+                        updated_at,
+                    }
+                },
+            )
             .collect())
     }
 }

@@ -1,18 +1,18 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{Error, FromRow, ModelCommittedEvent, Orm};
+use rullst_orm::{Error, ModelCommittedEvent, Orm};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "audit_atomic_accounts", auditable)]
 struct AuditedAccount {
     pub id: i32,
     pub name: String,
 }
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "audit_revision_accounts", auditable)]
 struct RevisionAccount {
     pub id: i32,
@@ -21,7 +21,7 @@ struct RevisionAccount {
     pub password: String,
 }
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(
     table = "audit_tenant_revision_accounts",
     auditable,

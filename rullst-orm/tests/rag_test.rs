@@ -1,7 +1,7 @@
 use rullst_orm::{Orm, RagContext};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize, Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, Orm)]
 #[orm(table = "documents")]
 pub struct Document {
     pub id: i32,

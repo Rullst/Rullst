@@ -7,7 +7,7 @@ use rullst_orm::{Error, Orm};
 use tracing::{Event, Subscriber, span};
 use tracing_subscriber::{Layer, layer::Context, prelude::*};
 
-#[derive(Debug, Clone, rullst_orm::FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "telemetry_probe")]
 struct TelemetryProbe {
     id: i32,

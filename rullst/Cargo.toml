@@ -55,6 +55,9 @@ orm-qdrant = ["orm", "rullst-orm/qdrant"]
 orm-redis = ["orm", "rullst-orm/redis"]
 queue-sqlite = ["rullst-core/queue-sqlite", "rullst-studio?/queue-sqlite"]
 nexus = ["dep:rullst-nexus"]
+# v13 (13.0.0-alpha.4): the Nexus AI assistant (`/nexus/chat`), which `nexus`
+# alone no longer enables; it adds `rullst-ai`.
+nexus-ai = ["nexus", "rullst-nexus/ai"]
 nexus-tz = ["nexus", "rullst-nexus/tz"]
 studio = ["dep:rullst-studio", "rullst-core/studio"]
 auth = ["dep:rullst-auth"]
@@ -184,7 +187,9 @@ proptest = "1.11.0"
 insta = { version = "1.41", features = ["yaml"] }
 reqwest = "0.13.4"
 base64 = "0.23.0"
-sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"] }
+# `derive`: guides show plain structs deriving `sqlx::FromRow`, which an
+# application enables itself; Rullst crates never enable SQLx macros.
+sqlx = { workspace = true, features = ["sqlite", "runtime-tokio", "derive"] }
 actix-web = { version = "4", default-features = false }
 
 [[bench]]

@@ -10,19 +10,20 @@ MSRV 1.96, strict linting and an extracted-facade consumer passed. Hosted worksp
 
 ## Application use
 
-The consumer needs its selected `rullst` ORM/database features and direct
-`sqlx`, `tokio` and `tracing` dependencies, which the generated macros reference.
+The consumer needs only its selected `rullst` ORM/database features: since
+13.0.0-alpha.4 the code that `#[derive(Orm)]` generates, the model's
+`FromRow` included, reaches SQLx, `tracing` and `tokio` through `rullst_orm`.
 The [extracted-package consumer](../../.github/test-packaged-distribution.sh)
 records a compiled dependency profile (`rullst` with `strict-sqlite`, plus
-`tokio`, `sqlx` and `tracing`).
+`tokio` for its `#[tokio::test]`).
 
 ```rust,no_run
 # #[cfg(feature = "orm")]
 # mod example {
 use rullst::orm as rullst_orm;
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "lessons", tenant_column = "tenant_id", auditable)]
 pub struct Lesson {
     pub id: i32,

@@ -3,7 +3,7 @@ use libfuzzer_sys::fuzz_target;
 use rullst_orm::Orm;
 use std::sync::Once;
 
-#[derive(Debug, Clone, rullst_orm::FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 pub struct FuzzUser {
     pub id: i32,
     pub name: String,

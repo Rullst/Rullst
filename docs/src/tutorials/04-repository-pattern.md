@@ -12,10 +12,16 @@ not accept a pool and does not provide methods such as `find_one_by`.
 
 ## Step 1: Implement a PostgreSQL repository
 
-```rust,no_run
-use rullst_orm::{async_trait, sqlx, FromRow, Repository};
+This `User` is a plain struct, not a `#[derive(Orm)]` model (which implements
+`FromRow` itself), so it derives SQLx's `FromRow`. Rullst does not enable
+SQLx's derive macros (since 13.0.0-alpha.4): add them to your manifest with
+`sqlx = { version = "0.9", default-features = false, features = ["derive"] }`,
+or implement `FromRow` by hand.
 
-#[derive(Debug, Clone, FromRow)]
+```rust,no_run
+use rullst_orm::{async_trait, sqlx, Repository};
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct User {
     pub id: i64,
     pub name: String,

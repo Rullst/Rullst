@@ -2,16 +2,16 @@
 //! generated writes and raw SQL, without the rejected values.
 
 use rullst_orm::schema::Schema;
-use rullst_orm::{Error, FromRow, Orm};
+use rullst_orm::{Error, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_accounts")]
 struct ContractAccount {
     id: i32,
     email: String,
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_memberships")]
 struct ContractMembership {
     id: i32,

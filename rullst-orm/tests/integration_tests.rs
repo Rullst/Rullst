@@ -11,9 +11,9 @@
 
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, ColumnDefault, Schema};
 use rullst_orm::types::Json;
-use rullst_orm::{FromRow, Orm};
 use serde::{Deserialize, Serialize};
 
 // ── shared JSON payload type ───────────────────────────────────────────────
@@ -23,7 +23,7 @@ struct Payload {
 }
 
 // ── model: users ──────────────────────────────────────────────────────────
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "it_users")]
 struct User {
     pub id: i32,
@@ -32,7 +32,7 @@ struct User {
 }
 
 // ── model: posts (belongs_to User) ────────────────────────────────────────
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "it_posts")]
 struct Post {
     pub id: i32,
@@ -41,7 +41,7 @@ struct Post {
 }
 
 // ── model: json carrier ───────────────────────────────────────────────────
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "it_json_records")]
 struct JsonRecord {
     pub id: i32,
@@ -154,7 +154,7 @@ async fn scenario_crud() {
         .expect("drop it_users");
 }
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "it_parent")]
 struct Parent {
     pub id: i32,
@@ -164,7 +164,7 @@ struct Parent {
     pub deleted_at: Option<String>,
 }
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "it_child")]
 struct Child {
     pub id: i32,
@@ -267,7 +267,7 @@ async fn scenario_cascade_soft_delete() {
 }
 
 // ── Scenario 2: soft deletes ──────────────────────────────────────────────
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "it_soft_users")]
 struct SoftUser {
     pub id: i32,
@@ -344,7 +344,7 @@ async fn scenario_soft_delete() {
 // Verifies that the new `#[orm(soft_delete(field = ..., value = ..., delval = ...))]`
 // configuration produces the correct SQL fragments for SELECT filters,
 // DELETE statements, and restore on every supported driver.
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(
     table = "it_int_soft",
     soft_delete(field = "is_deleted", value = "0", delval = "1")
@@ -355,7 +355,7 @@ struct IntSoftUser {
     pub is_deleted: i32,
 }
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(
     table = "it_ts_soft",
     soft_delete(field = "deleted_at", value = "null", delval = "CURRENT_TIMESTAMP")
@@ -484,13 +484,13 @@ async fn scenario_configurable_soft_delete() {
 // Confirms that fields marked with `#[orm(skip)]` (or its `#[sqlx(skip)]`
 // alias) are excluded from generated INSERT / UPDATE statements and the
 // `*Column` enum, but remain on the struct itself.
-#[derive(Debug, Clone, Default, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, Default, rullst_orm::Orm)]
 #[orm(table = "it_skipped")]
 struct SkippedFieldUser {
     pub id: i32,
     pub name: String,
-    // `#[sqlx(skip)]` is the alias recognised by both this ORM
-    // derive and the `sqlx::FromRow` derive, so the field is excluded
+    // `#[sqlx(skip)]` is recognised by both this ORM derive and the
+    // `FromRow` it generates, so the field is excluded
     // from INSERT / UPDATE column lists, the `*Column` enum, the JSON
     // serialiser *and* the row mapping.
     #[sqlx(skip)]
@@ -626,7 +626,7 @@ async fn scenario_skipped_field() {
 }
 
 // ── Scenario 3: transactions ──────────────────────────────────────────────
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "it_tx_accounts")]
 struct Account {
     pub id: i32,
@@ -729,7 +729,7 @@ async fn scenario_json_column() {
 }
 
 // ── Scenario 5: bulk operations ───────────────────────────────────────────
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "it_bulk_items")]
 struct BulkItem {
     pub id: i32,

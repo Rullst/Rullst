@@ -2,10 +2,10 @@
 //! (SQLite and MySQL/MariaDB accept `OFFSET` only after `LIMIT`), and offset
 //! chunks follow a deterministic order.
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_offset_rows")]
 struct ContractOffsetRow {
     id: i32,

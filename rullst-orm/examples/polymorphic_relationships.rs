@@ -1,9 +1,9 @@
 use rullst_orm::schema::Schema;
-use rullst_orm::{FromRow, Orm, RullstModel};
+use rullst_orm::{Orm, RullstModel};
 
 // The Comment model represents a polymorphic child.
 // It can belong to either a Post or a Video.
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "comments")]
 pub struct Comment {
     pub id: i32,
@@ -13,7 +13,7 @@ pub struct Comment {
 }
 
 // A Post can have many Comments
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "posts")]
 pub struct Post {
     pub id: i32,
@@ -26,7 +26,7 @@ pub struct Post {
 }
 
 // A Video can ALSO have many Comments!
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "videos")]
 pub struct Video {
     pub id: i32,

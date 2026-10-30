@@ -16,13 +16,7 @@ rullst-security = { workspace = true }
 serde = { workspace = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "sqlite"] }
 tokio = { workspace = true, features = ["full"] }
-# `#[derive(Orm)]` expands `#[tracing::instrument]` in the application crate.
-tracing = { workspace = true }
 
 # `#[derive(Orm)]` emits `cfg(feature = "redis")` blocks for Redis model events.
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
-
-[package.metadata.cargo-machete]
-# Used only by code that `#[derive(Orm)]` expands.
-ignored = ["tracing"]

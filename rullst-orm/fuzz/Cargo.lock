@@ -1115,10 +1115,8 @@ dependencies = [
  "libsqlite3-sys",
  "proc-macro2",
  "rullst-orm",
- "sqlx",
  "syn 3.0.9",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -1396,7 +1394,6 @@ dependencies = [
  "sqlx-postgres",
  "sqlx-sqlite",
  "syn 2.0.119",
- "thiserror",
  "tokio",
  "url",
 ]

@@ -4,13 +4,13 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::{Error, FromRow, Json, Orm, RowSnapshot};
+use rullst_orm::{Error, Json, Orm, RowSnapshot};
 use serde_json::json;
 use std::time::Duration;
 
 const ENCRYPTION_KEY: &str = "0123456789abcdef0123456789abcdef";
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "tracked_posts")]
 struct TrackedPost {
     id: i32,

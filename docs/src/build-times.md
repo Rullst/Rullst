@@ -111,10 +111,11 @@ the time of every compiled unit. In the generated API and SaaS builds above
 the longest single unit was the build script of `aws-lc-sys`, the
 cryptography library behind the HTTPS client, at about 52 s; then
 `rullst-core` (about 13 s), `jsonschema` (about 9 s) and the SQLite library
-bundled by `libsqlite3-sys` (about 6 s). Some crates, SQLite among them, are
-compiled twice: once for SQLx's compile-time macros and once for the
-application. None of this depends on your code, so it is paid again only
-after `cargo clean`, a toolchain update or a change of features or profile.
+bundled by `libsqlite3-sys` (about 6 s). Until 13.0.0-alpha.3 some crates,
+SQLite among them, were compiled twice: once for SQLx's compile-time macros
+and once for the application (see below). None of this depends on your code,
+so it is paid again only after `cargo clean`, a toolchain update or a change
+of features or profile.
 
 Rullst keeps `aws-lc-rs` as the TLS crypto provider, for rustls'
 post-quantum hybrid key exchange, so the `aws-lc-sys` build script stays in a
@@ -127,10 +128,40 @@ primitives library (HMAC, digests, randomness, signatures) that the crates
 using those primitives depend on directly, because it also builds for wasm and
 edge targets (see
 [cryptography providers](security-architecture.md#cryptography-providers)).
-Compiling SQLite and the other affected crates only
-once, and keeping `rullst-ai` out of the SaaS starter (Nexus pulls it in
-today), are planned for 13.0.0-rc.1 if they need no breaking change,
-otherwise for 13.1.
+
+### SQLx macros and the Nexus assistant
+
+Rullst never uses `sqlx::query!`, but until 13.0.0-alpha.3 `rullst-orm` and
+`rullst-core` enabled SQLx's `macros` feature for `#[derive(FromRow)]`. Every
+application therefore also compiled `sqlx-macros`, `sqlx-macros-core` and, for
+them, a build-host copy of SQLx, its SQLite driver and the bundled SQLite
+library. Since 13.0.0-alpha.4 `#[derive(Orm)]` implements `FromRow` itself
+and no Rullst crate enables SQLx's macros (see the
+[migration guide](migration-v13.md#changes-from-the-published-1210-source));
+the SaaS starter's Nexus also leaves out its AI assistant and `rullst-ai`
+unless the project is created with AI (`nexus-ai`). `cargo tree -i
+sqlx-macros` prints nothing for the Blank, API and SaaS starters.
+
+Measured on the same machine on 29 October 2026 (Rust 1.99.0,
+`CARGO_BUILD_JOBS=2`, cold `cargo build --offline --timings`, mean of two
+runs, no other Cargo or rustc process during a run). *Before* is the
+alpha.4 development source just before this change. The machine is shared,
+so treat a few seconds as noise: the two SaaS runs after the change took
+163.6 s and 144.8 s.
+
+| Starter | Compiled units | Cold `cargo build` | `target/` |
+| :--- | ---: | ---: | ---: |
+| Blank, before | 442 | 152.5 s | 1.4 GB |
+| Blank, after | 380 | 130.1 s (−15 %) | 1.2 GB |
+| SaaS, before | 469 | 170.5 s | 1.6 GB |
+| SaaS, after | 406 | 154.2 s (−10 %) | 1.4 GB |
+
+The 62 units no longer built are the two SQLx macro crates and the
+build-host copies of SQLx, its SQLite driver and their dependencies, the
+longest being a second run of the SQLite build script (about 12 s); the SaaS
+starter also drops `rullst-ai`. An application that enables SQLx's `derive`
+or `macros` feature itself, for `#[derive(sqlx::FromRow)]` on its own structs
+or `sqlx::query!`, compiles them again.
 
 ## Tips
 
@@ -157,4 +188,7 @@ development builds, copy the `[profile.dev]` and `[profile.dev.package."*"]`
 sections above into your `Cargo.toml`. In an application created from the
 SaaS starter before 13.0.0-alpha.4, you can remove the `rullst-connect`
 dependency when no source file uses `rullst_connect`; `cargo check` tells you
-whether one does.
+whether one does. Upgrading to 13.0.0-alpha.4 removes SQLx's macro crates from
+the build once the models no longer derive `FromRow` and no manifest enables
+SQLx's `macros` or `derive` feature (`cargo rullst upgrade` locates both), and
+`rullst-ai` once Nexus runs without `nexus-ai`.

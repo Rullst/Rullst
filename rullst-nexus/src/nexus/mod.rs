@@ -141,6 +141,9 @@ impl Nexus {
     }
 
     /// Builds the Nexus router only after validating an explicit access policy.
+    ///
+    /// Without the `ai` feature, `/chat` and `/chat/query` answer 404 with a
+    /// notice naming the feature, and the panel shows no assistant link.
     pub fn try_build(self) -> Result<AxumRouter, NexusBuildError> {
         let policy = match self.auth {
             Some(PendingAuthPolicy::Validated(policy)) => validate_policy(policy)?,
@@ -189,8 +192,7 @@ impl Nexus {
                     .post(nexus_update_record)
                     .delete(nexus_delete_record),
             )
-            .route("/chat", get(nexus_chat_page))
-            .route("/chat/query", post(nexus_chat_query))
+            .merge(chat_routes())
             .route("/security", get(nexus_security_page))
             .route("/telemetry", get(nexus_telemetry_page))
             // rullst-access: admin — same-origin shell assets behind the same policy.
@@ -223,6 +225,23 @@ fn deny_all_router() -> AxumRouter {
             "Nexus is unavailable because secure access has not been configured.",
         )
     })
+}
+
+/// The assistant's routes: the AI assistant with the `ai` feature, otherwise
+/// a 404 notice that names the feature, on the same paths.
+fn chat_routes() -> AxumRouter<Arc<NexusState>> {
+    #[cfg(feature = "ai")]
+    {
+        AxumRouter::new()
+            .route("/chat", get(nexus_chat_page))
+            .route("/chat/query", post(nexus_chat_query))
+    }
+    #[cfg(not(feature = "ai"))]
+    {
+        AxumRouter::new()
+            .route("/chat", get(ai_chat::disabled::page))
+            .route("/chat/query", post(ai_chat::disabled::query))
+    }
 }
 
 #[cfg(test)]

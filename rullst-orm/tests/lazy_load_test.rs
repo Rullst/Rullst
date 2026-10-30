@@ -1,7 +1,7 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
 use serde::{Deserialize, Serialize};
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,
@@ -12,7 +12,7 @@ pub struct User {
     pub posts: Option<Vec<Post>>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "posts")]
 pub struct Post {
     pub id: i32,

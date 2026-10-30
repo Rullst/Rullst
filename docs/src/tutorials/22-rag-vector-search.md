@@ -56,15 +56,14 @@ rullst = { version = "=13.0.0-alpha.4", default-features = false, features = [
   "strict-postgres",
   "ai",
 ] }
-# `#[derive(Orm)]` and `FromRow` expand to `rullst_orm::…` and `::sqlx::…`
-# paths, so a crate that derives models depends on both directly.
+# `#[derive(Orm)]`, the model's `FromRow` included, expands to `rullst_orm::…`
+# paths, so a crate that derives models depends on it directly.
 rullst-orm = { version = "=13.0.0-alpha.4", default-features = false, features = ["strict-postgres"] }
-sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "postgres"] }
 ```
 
 Projects generated with `cargo rullst new --database postgres` already list
-the `rullst-orm` and `sqlx` lines; add `orm-pgvector` and `ai` to their
-`rullst` features.
+the `rullst-orm` line; add `orm-pgvector` and `ai` to their `rullst`
+features.
 
 Install the extension through a reviewed PostgreSQL migration and choose the
 dimension used by your embedding provider:
@@ -83,9 +82,9 @@ CREATE TABLE knowledge_chunks (
 The model can use the re-exported typed `Vector`:
 
 ```rust,no_run
-use rullst::orm::{FromRow, Orm, Vector};
+use rullst::orm::{Orm, Vector};
 
-#[derive(Clone, Debug, FromRow, Orm)]
+#[derive(Clone, Debug, Orm)]
 #[orm(table = "knowledge_chunks", tenant_column = "tenant_id")]
 struct KnowledgeChunk {
     id: i32,
@@ -100,9 +99,9 @@ the authenticated tenant scope, and then use the native operators:
 
 ```rust,no_run
 use rullst::ai::AiClient;
-use rullst::orm::{FromRow, Orm, Vector, with_tenant};
+use rullst::orm::{Orm, Vector, with_tenant};
 
-# #[derive(Clone, Debug, FromRow, Orm)]
+# #[derive(Clone, Debug, Orm)]
 # #[orm(table = "knowledge_chunks", tenant_column = "tenant_id")]
 # struct KnowledgeChunk {
 #     id: i32,

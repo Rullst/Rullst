@@ -267,7 +267,7 @@ pub(crate) fn tracked_update(parsed: &ParsedModel, update: &TrackedUpdate<'_>) -
         let timeout = rullst_orm::schema::get_query_timeout();
         let stored: Option<Self> = if returning {
             let row = if let Some(t) = timeout {
-                tokio::time::timeout(t, query.fetch_optional(&mut *conn))
+                rullst_orm::_tokio::time::timeout(t, query.fetch_optional(&mut *conn))
                     .await
                     .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
             } else {
@@ -279,7 +279,7 @@ pub(crate) fn tracked_update(parsed: &ParsedModel, update: &TrackedUpdate<'_>) -
             }
         } else {
             let update_result = if let Some(t) = timeout {
-                tokio::time::timeout(t, query.execute(&mut *conn))
+                rullst_orm::_tokio::time::timeout(t, query.execute(&mut *conn))
                     .await
                     .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
             } else {
@@ -290,7 +290,7 @@ pub(crate) fn tracked_update(parsed: &ParsedModel, update: &TrackedUpdate<'_>) -
                 rullst_orm::_sqlx::AssertSqlSafe(#lookup_sql)
             ).bind(self.id) #tenant_binding;
             if let Some(t) = timeout {
-                tokio::time::timeout(t, lookup.fetch_optional(&mut *conn))
+                rullst_orm::_tokio::time::timeout(t, lookup.fetch_optional(&mut *conn))
                     .await
                     .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
             } else {

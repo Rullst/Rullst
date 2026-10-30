@@ -2,16 +2,16 @@
 //! `Schema::table` behave alike on every driver.
 
 use rullst_orm::schema::{ForeignKeyAction, Schema};
-use rullst_orm::{Error, FromRow, Orm};
+use rullst_orm::{Error, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_authors")]
 struct Author {
     id: i32,
     email: String,
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_books")]
 struct Book {
     id: i32,
@@ -22,7 +22,7 @@ struct Book {
 }
 
 /// `contract_books` after `Schema::table` added two columns.
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_books")]
 struct ReviewedBook {
     id: i32,
