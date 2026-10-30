@@ -101,9 +101,9 @@ Before releasing, make sure:
     (42 targets for v13; 40 for v12). The
     separate `oss-fuzz/projects/rullst` directory remains an unsubmitted local
     integration draft and is not release evidence.
-  - `dast-zap.yml`: Blocking ZAP baselines for a freshly generated REST API and
-    the LMS example (`examples/lms`), plus the explicitly informational blog
-    showcase.
+  - `dast-zap.yml`: Blocking ZAP baselines for a freshly generated REST API, a
+    freshly generated SaaS starter (public and signed-in pages) and the LMS
+    example, plus the explicitly informational blog showcase.
   - `e2e-smoke.yml`: Live SSR, security-header, CSRF and SQLite-persistence
     checks against the release-built Blog application.
 - [ ] You have manually verified the mandatory local trifecta:
