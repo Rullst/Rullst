@@ -1,5 +1,11 @@
 # Migration guide: v5 to v12
 
+> [!NOTE]
+> **Historical guide (v12).** The 12.x line reached end of life on 16 October
+> 2026. The v13 CLI upgrades only v12 and v13 projects: bring the application
+> to v12 with this guide and the v12 CLI, then follow
+> [Preparing an application for v13](migration-v13.md).
+
 Baseline: the repository tag `v5.0.0` and the compatible v5 line. This is a
 multi-major migration. Use a branch and follow the common
 [safe upgrade procedure](migration-v12.md) before applying these changes.
