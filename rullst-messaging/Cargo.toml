@@ -13,6 +13,13 @@ documentation = "https://docs.rs/rullst-messaging"
 keywords = ["messaging", "events", "queue", "pubsub", "broker"]
 categories = ["asynchronous", "network-programming"]
 
+# docs.rs documents every feature on one target; `--cfg docsrs` labels the
+# items that need a feature.
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [features]
 default = []
 sqlite = ["sqlx/sqlite", "dep:aes-gcm", "dep:serde_json", "dep:sqlx", "dep:url", "dep:zeroize"]

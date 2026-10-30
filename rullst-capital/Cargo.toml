@@ -13,6 +13,13 @@ documentation = "https://docs.rs/rullst-capital"
 keywords = ["saas", "mrr", "stripe", "billing", "analytics"]
 categories = ["web-programming"]
 
+# docs.rs documents every feature on one target; `--cfg docsrs` labels the
+# items that need a feature.
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 

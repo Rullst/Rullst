@@ -18,6 +18,7 @@
 //! [crate guide](https://rullst.github.io/Rullst/book/crates/core.html) and the
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-core/README.md)
 //! describe each capability and its limits.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![allow(
     clippy::collapsible_if,
     clippy::unnecessary_map_or,

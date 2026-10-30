@@ -21,6 +21,7 @@
 //! feature of `rullst`.
 //!
 //! Guide: <https://rullst.github.io/Rullst/book/crates/messaging.html>.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod admin;
 mod clock;

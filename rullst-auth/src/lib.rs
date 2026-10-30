@@ -25,6 +25,7 @@
 //! `connect`. In a Rullst application, enable the `auth` feature of `rullst`.
 //!
 //! Guide: <https://rullst.github.io/Rullst/book/crates/auth.html>.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod error;
 pub use error::*;

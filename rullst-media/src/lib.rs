@@ -19,6 +19,7 @@
 //! `bunny` or `s3` together with `sqlite`. See the
 //! [private video guide](https://rullst.github.io/Rullst/book/managed-video.html)
 //! and the [README](https://github.com/Rullst/Rullst/blob/main/rullst-media/README.md).
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 
 mod contracts;

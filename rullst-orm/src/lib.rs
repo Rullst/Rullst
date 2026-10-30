@@ -23,6 +23,8 @@
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-orm/README.md)
 //! and the [ORM guide](https://rullst.github.io/Rullst/book/crates/orm.html)
 //! have a quick start and the query, transaction and security boundaries.
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 pub use sqlx;
 
 /// The `chrono` crate whose `DateTime<Utc>`, `NaiveDateTime`, `NaiveDate` and

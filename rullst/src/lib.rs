@@ -30,6 +30,7 @@
 //!
 //! Guides, tutorials and the maturity tiers are in the
 //! [Rullst book](https://rullst.github.io/Rullst/book/).
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 extern crate self as rullst;
 

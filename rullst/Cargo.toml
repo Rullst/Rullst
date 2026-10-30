@@ -13,6 +13,32 @@ documentation = "https://docs.rs/rullst"
 keywords = ["framework", "web", "async", "tokio", "fullstack"]
 categories = ["web-programming::http-server", "asynchronous"]
 exclude = ["tests/*", "benches/*", "storage/*", "*.db", ".env*"]
+
+# docs.rs documents every feature except `orm-duckdb`, which compiles DuckDB's
+# bundled C++ engine, and the `strict-*` profiles, which select one ORM backend
+# instead of `drivers-all`.
+[package.metadata.docs.rs]
+features = [
+    "drivers-all", "orm", "orm-mongodb", "orm-turso", "orm-surrealdb", "orm-scout",
+    "orm-pgvector", "orm-qdrant", "orm-redis", "queue-sqlite", "queue-redis",
+    "cache-redis", "redis", "scheduler-tz", "storage-s3", "storage-multipart",
+    "telemetry", "nexus", "nexus-tz", "studio", "auth", "auth-jwt", "auth-sqlite",
+    "auth-passkey-postgres", "auth-sessions-sqlite", "auth-sessions-postgres",
+    "auth-email-login-sqlite", "auth-email-login-postgres", "auth-api-tokens-sqlite",
+    "auth-api-tokens-postgres", "account-mail-sqlite", "account-mail-postgres",
+    "mail", "mail-sqlite", "mail-postgres", "mailer", "mail-smtp", "mail-aws-ses",
+    "messaging", "messaging-schedules-postgres", "messaging-webhooks",
+    "messaging-sqlite", "messaging-redis", "messaging-orm-outbox", "privacy",
+    "privacy-age", "privacy-challenge-tokens", "privacy-sqlite", "privacy-postgres",
+    "privacy-consent", "privacy-consent-sqlite", "privacy-consent-postgres", "oauth",
+    "oauth-sqlite", "oauth-postgres", "oauth-mysql", "oauth-mock", "ai",
+    "ai-sql-memory", "capital", "capital-actix", "capital-quota-sql",
+    "capital-webhook-sql", "capital-pdf", "capital-mail", "security",
+    "security-redis", "iot",
+]
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [features]
 # No default feature: a database-free application compiles no SQLx driver.
 # Select `orm` with `drivers-all` or one `strict-*` backend, and `queue-sqlite`.
