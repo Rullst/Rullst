@@ -1148,12 +1148,19 @@ file I/O for 5 to 12 seconds at times, so `initialize` failed there with
 `Storage` or `Busy` and left a new file that a second `initialize` refuses.
 Since 13.0.0-alpha.3, the steps of `initialize` and `open` (for the age-replay
 store, `open`, which also creates a missing file) are tried again when their
-connection times out, three attempts in total (about 15 seconds): no other
-task can use the new pool yet, so the timeout means a slow establishment, not
-contention. Every other operation keeps the single 5-second bound and its
-`Busy` or `Storage` result. Labs keeps the SQLite result code, I/O error kind
-or pool condition behind the last `Storage` error of a thread for its test
-fixtures, never a message, SQL text or path.
+connection times out, three attempts in total (about 15 seconds): no other task
+can use the new pool yet, so the timeout means a slow establishment, not
+contention. Another connection or process that keeps the file locked also
+delays establishment: SQLite's busy timeout for that lock is also 5 seconds,
+and on hosted Windows runners it ended about half a second after the pool wait,
+so the step is tried again. A Windows-only test per store holds the file under
+SQLite's exclusive lock while `open` connects, releases it after the retry and
+checks that `open` succeeds. On Linux the busy timeout ends only milliseconds
+after the pool wait, so the same lock can instead end `open` with SQLite's busy
+result, which is not retried. Every other operation keeps the single 5-second
+bound and its `Busy` or `Storage` result. Labs keeps the SQLite result code,
+I/O error kind or pool condition behind the last `Storage` error of a thread
+for its test fixtures, never a message, SQL text or path.
 
 ### v12 audit correction invariants
 
