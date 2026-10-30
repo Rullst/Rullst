@@ -132,7 +132,7 @@ and fails on any surviving mutant.
 
 ### Other gates that catch maintainers out
 
-- **IDOR audit** (`cargo rullst audit --idor`, run by `ai-sentinel-pr.yml` and
+- **IDOR audit** (`cargo rullst audit --idor`, run by `pr-security-evidence.yml` and
   the `scaffold_contracts` test): every route with a path parameter, test
   fixtures included, needs a `// rullst-access: public|owner|role|admin — reason`
   comment on the line above. `public` is accepted only when `get(` appears on
@@ -150,8 +150,8 @@ and fails on any surviving mutant.
 - **Advisories.** Every exception must appear in `deny.toml`, the ledger
   [`docs/src/security-advisory-exceptions.md`](docs/src/security-advisory-exceptions.md)
   and the `--ignore`/`--audit-ignore` flags of every workflow that scans
-  advisories (`supply-chain.yml`, `pqc-compliance.yml`, `release.yml` and
-  `ai-sentinel-pr.yml`), with an expiry; the governance job in
+  advisories (`supply-chain.yml`, `crypto-containment.yml`, `release.yml` and
+  `pr-security-evidence.yml`), with an expiry; the governance job in
   `supply-chain.yml` compares the three. Prefer an upgrade; an exception is
   temporary and time-bounded.
 - **CodeQL.** Rust results go through

@@ -45,8 +45,8 @@ NON_INPUTS = frozenset({
     # build fuzz code.
     "deny.toml", "docs/src/security-advisory-exceptions.md",
     ".github/workflows/supply-chain.yml",
-    ".github/workflows/pqc-compliance.yml",
-    ".github/workflows/ai-sentinel-pr.yml",
+    ".github/workflows/crypto-containment.yml",
+    ".github/workflows/pr-security-evidence.yml",
     # `#[cfg(test)]` Core modules: fuzz targets never compile library unit tests.
     "rullst-core/src/server/dev_telemetry/n_plus_one_tests.rs",
     "rullst-core/src/server/stack_tests.rs",
