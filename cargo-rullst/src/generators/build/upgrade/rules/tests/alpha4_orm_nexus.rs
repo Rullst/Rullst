@@ -1,6 +1,6 @@
 //! 13.0.0-alpha.4: `#[derive(Orm)]` implements `FromRow`, Rullst crates no
-//! longer enable SQLx's macros, and the facade's `nexus` leaves out the AI
-//! assistant.
+//! longer enable SQLx's macros, the facade's `nexus` leaves out the AI
+//! assistant, and SQLx's TLS uses aws-lc-rs.
 
 use super::super::files::manifest_findings;
 use super::*;
@@ -172,4 +172,69 @@ fn nexus_dependencies_without_the_assistant_are_reviewed() {
     ] {
         assert_eq!(manifest(text).0, [], "{text}");
     }
+}
+
+#[test]
+fn sqlx_dependencies_that_keep_ring_for_tls_are_reviewed() {
+    for (text, line) in [
+        (
+            "[dependencies]\nsqlx = { version = \"0.9\", default-features = false, features = [\"runtime-tokio\", \"tls-rustls\", \"sqlite\"] }\n",
+            2,
+        ),
+        (
+            "[package]\nname = \"app\"\n\n[dependencies.sqlx]\nversion = \"0.9\"\nfeatures = [\"tls-rustls-ring\", \"postgres\"]\n",
+            4,
+        ),
+        // A workspace dependency, and a member adding the feature to it.
+        (
+            "[workspace]\nmembers = [\"app\"]\n\n[workspace.dependencies]\nsqlx = { version = \"0.9\", features = [\"tls-rustls-ring-webpki\"] }\n",
+            5,
+        ),
+        (
+            "[dependencies]\nsqlx = { workspace = true, features = [\"tls-rustls\"] }\n",
+            2,
+        ),
+        (
+            "[dependencies]\ndatabase = { package = \"sqlx\", version = \"0.9\", features = [\"tls-rustls\"] }\n",
+            2,
+        ),
+        // Enabled from `[features]`, also through a renamed key.
+        (
+            "[dependencies]\nsqlx = { version = \"0.9\", features = [\"postgres\"], optional = true }\n\n[features]\n# \"sqlx/tls-rustls\" in a comment\npostgres = [\"dep:sqlx\", \"sqlx?/tls-rustls\"]\n",
+            6,
+        ),
+        (
+            "[dependencies]\ndb = { package = \"sqlx\", version = \"0.9\" }\n\n[features]\ntls = [\"db/tls-rustls-ring\"]\n",
+            5,
+        ),
+        // Reported once per manifest, at the first declaration.
+        (
+            "[dependencies]\nsqlx = { version = \"0.9\", features = [\"tls-rustls\"] }\n\n[dev-dependencies.sqlx]\nversion = \"0.9\"\nfeatures = [\"tls-rustls-ring\"]\n\n[features]\ntls = [\"sqlx/tls-rustls\"]\n",
+            2,
+        ),
+    ] {
+        assert_eq!(manifest(text).0, [("V13-SQLX-TLS-RING", line)], "{text}");
+    }
+    for text in [
+        "[dependencies]\nsqlx = \"0.9\"\n",
+        "[dependencies]\nsqlx = { version = \"0.9\", default-features = false, features = [\"runtime-tokio\", \"tls-rustls-aws-lc-rs\", \"sqlite\"] }\n",
+        // Its aws-lc-rs replacement would change the trusted roots.
+        "[dependencies]\nsqlx = { version = \"0.9\", features = [\"tls-rustls-ring-native-roots\"] }\n",
+        "[dependencies]\nsqlx = { version = \"0.9\", features = [\"tls-native-tls\"] }\n",
+        "[dependencies]\nother = { version = \"1\", features = [\"tls-rustls\"] }\n\n[features]\ntls = [\"other/tls-rustls\", \"tls-rustls\"]\n",
+        "[dependencies]\nsqlx = { version = \"0.9\", features = [\"postgres\"] }\n\n[features]\ntls = [\"sqlx/tls-rustls-aws-lc-rs\"]\n",
+    ] {
+        assert_eq!(manifest(text).0, [], "{text}");
+    }
+}
+
+#[test]
+fn the_sqlx_ring_rule_is_an_alpha4_review_of_the_tls_row() {
+    let rule = &catalog::SQLX_TLS_RING;
+    assert_eq!(rule.kind, FindingKind::Review);
+    assert_eq!(rule.introduced, "13.0.0-alpha.4");
+    assert_eq!(rule.row, "TLS crypto provider");
+    assert!(rule.guidance.contains("`tls-rustls-aws-lc-rs`"));
+    assert!(!rule.introduced_after(&Version::parse("13.0.0-alpha.4").unwrap()));
+    assert!(rule.introduced_after(&Version::parse("13.0.0-alpha.3").unwrap()));
 }
