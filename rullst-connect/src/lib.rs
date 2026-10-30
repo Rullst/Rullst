@@ -26,6 +26,7 @@
 //! enable the `oauth` feature of `rullst`.
 //!
 //! Guide: <https://rullst.github.io/Rullst/book/crates/connect.html>.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod challenge;
 pub mod client;
@@ -38,6 +39,8 @@ pub mod error;
     feature = "rullst"
 ))]
 pub mod extractors;
+// Holds only `#[macro_export]` macros, which live at the crate root.
+#[doc(hidden)]
 #[macro_use]
 pub mod macros;
 pub mod mock_idp;

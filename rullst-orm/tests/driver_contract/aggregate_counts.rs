@@ -1,10 +1,10 @@
 //! `count()` and `paginate()` totals count the rows `get()` returns, including
 //! DISTINCT and GROUP BY queries, through a wrapped derived table.
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_count_orders")]
 struct ContractCountOrder {
     id: i32,

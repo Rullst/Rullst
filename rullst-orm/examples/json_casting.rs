@@ -1,5 +1,5 @@
+use rullst_orm::Orm;
 use rullst_orm::schema::Schema;
-use rullst_orm::{FromRow, Orm};
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct UserPreferences {
@@ -7,7 +7,7 @@ pub struct UserPreferences {
     pub notifications_enabled: bool,
 }
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "users_with_json")]
 pub struct User {
     pub id: i32,

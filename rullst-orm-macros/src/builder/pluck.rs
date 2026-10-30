@@ -87,7 +87,7 @@ fn generate_fetch(method: &str, value_type: TokenStream) -> TokenStream {
                 query = rullst_orm::value::BindRullstValue::bind_rullst_value(query, binding);
             }
             let rows = if let Some(timeout) = rullst_orm::schema::get_query_timeout() {
-                tokio::time::timeout(timeout, query.fetch_all(executor))
+                rullst_orm::_tokio::time::timeout(timeout, query.fetch_all(executor))
                     .await
                     .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
             } else {

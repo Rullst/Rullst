@@ -19,6 +19,11 @@ cargo metadata --no-deps --format-version 1 > "$metadata_path"
 # way cargo-semver-checks 0.51 builds it, with its default feature selection.
 rustdoc_target="${CARGO_TARGET_DIR:-$repository_root/target}/semver-rustdoc"
 
+# The cargo-rullst library is the CLI's implementation, not a public API; the
+# CLI's commands, flags, exit codes and --json schemas are its contract
+# (docs/src/compatibility-policy.md). It is reported as excluded, never compared.
+not_public_api_packages=(cargo-rullst)
+
 # Every feature (explicit, and implicit for optional dependencies without a
 # `dep:` reference) except cargo-semver-checks' heuristically private ones:
 # unstable, nightly, bench, no_std and the _, unstable- and unstable_ prefixes.
@@ -37,6 +42,34 @@ heuristic_features_filter='
   | unique
   | map(select(private_feature | not))
   | join(",")
+'
+
+# The baseline is the latest stable (non-prerelease, non-yanked) release with
+# the same major version as this tree: 12.x for v12 and 13.x for v13. Until a
+# line has a stable release there is no baseline, because its prereleases may
+# change the API; the check then switches on by itself at X.0.0. Input: the
+# crates.io response for one crate; $current: this tree's version. Output:
+#   {"baseline": null}                              no stable release yet
+#   {"baseline": "13.0.0", "release_type": "minor"} unchanged version after a
+#       release: only breaking changes fail, since the next one is at least minor
+#   {"baseline": "13.0.0", "release_type": null}    bumped version: the tool
+#       derives the allowed change from the two versions
+#   {"baseline": "13.0.0", "release_type": "older"} this tree precedes it
+baseline_selection_filter='
+  def release: split("+")[0];
+  def stable: release | test("^[0-9]+\\.[0-9]+\\.[0-9]+$");
+  def numbers: release | split("-")[0] | split(".") | map(tonumber);
+  ($current | numbers) as $now
+  | ($current | release | test("-")) as $prerelease
+  | [.versions[] | select(.yanked == false) | .num | select(stable) | select(numbers[0] == $now[0])]
+  | (map(numbers) | max) as $latest
+  | if $latest == null then {baseline: null}
+    else
+      {baseline: (map(select(numbers == $latest)) | first),
+       release_type: (if $now > $latest then null
+                      elif $now == $latest and ($prerelease | not) then "minor"
+                      else "older" end)}
+    end
 '
 
 # Usage: rustdoc_json WORKSPACE_MANIFEST PACKAGE METADATA_JSON OUTPUT_JSON
@@ -97,6 +130,10 @@ while IFS= read -r package; do
     echo "Invalid package name in .github/release-order.json: $package" >&2
     exit 1
   fi
+  if [[ " ${not_public_api_packages[*]} " == *" $package "* ]]; then
+    echo "::notice title=SemVer scope::$package is excluded: its library is the CLI's implementation, not a public API; its contract is the CLI's commands, flags, exit codes and --json schemas"
+    continue
+  fi
 
   target_kind=$(
     jq -er --arg package "$package" '
@@ -117,10 +154,23 @@ while IFS= read -r package; do
 
   case "$status" in
     200)
-      baseline=$(jq -er '[.versions[] | select(.yanked == false)][0].num' "$response_path")
+      current_version=$(
+        jq -er --arg package "$package" '.packages[] | select(.name == $package) | .version' "$metadata_path"
+      )
+      selection=$(jq -ec --arg current "$current_version" "$baseline_selection_filter" "$response_path")
+      baseline=$(jq -r '.baseline // empty' <<< "$selection")
+      release_type=$(jq -r '.release_type // empty' <<< "$selection")
+      if [[ -z "$baseline" ]]; then
+        echo "::notice title=SemVer baseline::$package has no stable ${current_version%%.*}.x release on crates.io yet; $current_version is compared once ${current_version%%.*}.0.0 is published (prereleases may change the API)"
+        continue
+      fi
       if [[ ! "$baseline" =~ ^[0-9A-Za-z][0-9A-Za-z.+-]{0,127}$ ]]; then
         echo "Invalid baseline version returned for $package" >&2
         exit 1
+      fi
+      if [[ "$release_type" == older ]]; then
+        echo "::notice title=SemVer baseline::$package $current_version precedes its latest stable release $baseline; there is nothing to compare"
+        continue
       fi
       if [[ "$target_kind" != "library" ]]; then
         echo "::notice title=SemVer tool boundary::$package $baseline is a $target_kind target; cargo-semver-checks cannot compare this API surface"
@@ -230,14 +280,15 @@ while IFS= read -r package; do
         exit 1
       fi
 
-      echo "::group::$package against crates.io $baseline (commit $source_commit)"
+      echo "::group::$package $current_version against crates.io $baseline (commit $source_commit)"
       baseline_json="$semver_tmp/$package-$baseline.baseline.json"
       current_json="$semver_tmp/$package.current.json"
       rustdoc_json "$baseline_tree/Cargo.toml" "$package" "$baseline_metadata" "$baseline_json"
       rustdoc_json "$repository_root/Cargo.toml" "$package" "$metadata_path" "$current_json"
       cargo semver-checks check-release \
         --baseline-rustdoc "$baseline_json" \
-        --current-rustdoc "$current_json"
+        --current-rustdoc "$current_json" \
+        ${release_type:+--release-type "$release_type"}
       echo "::endgroup::"
       ;;
     404)

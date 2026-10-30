@@ -6,7 +6,9 @@ derive infers primitive widgets and accepts explicit semantic metadata such as
 `kind = "textarea"` and `kind = "enum", options = "draft, published"`. Nexus
 provides registered-model CRUD, search, pagination, semantically validated form
 widgets, bounded selected-record delete/deactivate actions, telemetry, a
-security view and an optional AI query page. The current interface uses
+security view and an optional AI query page (the `ai` feature of
+`rullst-nexus`, `nexus-ai` on the `rullst` facade; see
+[AI assistant](../4-rullst-nexus.md#ai-assistant)). The current interface uses
 server-side HTML and HTMX; Wasm islands,
 drag-and-drop media management and automatic relationship discovery described by
 older documentation were not implemented. They remain worthwhile separate

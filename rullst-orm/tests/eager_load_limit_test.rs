@@ -3,11 +3,11 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::{Error, FromRow, Orm};
+use rullst_orm::{Error, Orm};
 
 const CAP: usize = 5;
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "eager_posts")]
 struct EagerPost {
     id: i32,
@@ -31,7 +31,7 @@ struct EagerPost {
     tags: Option<Vec<EagerTag>>,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "eager_comments")]
 struct EagerComment {
     id: i32,
@@ -39,7 +39,7 @@ struct EagerComment {
     body: String,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "eager_images")]
 struct EagerImage {
     id: i32,
@@ -48,7 +48,7 @@ struct EagerImage {
     url: String,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "eager_tags")]
 struct EagerTag {
     id: i32,

@@ -1,8 +1,8 @@
-use rullst::db::{FromRow, Orm, RowSnapshot};
+use rullst::db::{Orm, RowSnapshot};
 use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
 use rullst::orm::chrono::{DateTime, Utc};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "course_modules")]
 pub struct CourseModule {
     pub id: i32,

@@ -56,7 +56,7 @@ The derive recognizes `#[sqlx(skip)]`, `#[sqlx(default)]`, `#[sqlx(json)]`, and
 | `#[orm(db_default)]` | a column the database manages: read, never written | allowed |
 
 `#[orm(skip)]` only removes a field from generated
-SQL; the application's `FromRow` still reads it, so a field without a table
+SQL; the model's `FromRow` still reads it, so a field without a table
 column also needs `#[sqlx(skip)]` (the two may be combined) or
 `#[sqlx(default)]`. `#[orm(db_default)]` (v13) keeps a field in reads, filters
 and `to_json()` but leaves it out of the generated `INSERT` (so the column

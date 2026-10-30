@@ -1,8 +1,8 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Clone, Debug, FromRow, Orm)]
+#[derive(Clone, Debug, Orm)]
 #[orm(table = "binding_records")]
 struct BindingRecord {
     id: i32,

@@ -1,6 +1,6 @@
-use rullst::db::{FromRow, Nexus, Orm, RowSnapshot};
+use rullst::db::{Nexus, Orm, RowSnapshot};
 
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "skills")]
 pub struct Skill {
     pub id: i32,

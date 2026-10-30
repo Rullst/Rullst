@@ -1,6 +1,6 @@
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,
@@ -15,7 +15,7 @@ pub struct User {
     pub deleted_at: Option<String>,
 }
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "posts")]
 pub struct Post {
     pub id: i32,

@@ -20,7 +20,10 @@ pub use markup::Markup;
 
 #[path = "html_attribute.rs"]
 mod attribute;
-pub use attribute::{AttributePresence, OptionalAttribute, optional_attr};
+pub use attribute::{AttributePresence, OptionalAttribute};
+// Called by the code that `html!` generates for `name?={value}`.
+#[doc(hidden)]
+pub use attribute::optional_attr;
 
 /// A wrapper to mark a string as safe raw HTML that should NOT be escaped.
 ///

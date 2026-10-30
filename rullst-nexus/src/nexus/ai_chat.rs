@@ -2,18 +2,33 @@ use axum::{extract::State, response::Html};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::nexus::crud::{field_kind_label, sanitize_identifier};
+use crate::nexus::crud::sanitize_identifier;
 use crate::nexus::types::NexusState;
-use crate::nexus::ui::{render_shell, render_sidebar, wants_fragment};
+#[cfg(feature = "ai")]
+use crate::nexus::{
+    crud::field_kind_label,
+    ui::{render_shell, render_sidebar, wants_fragment},
+};
 
+// Compiled in every build, so its tests also run with `ai` (the all-feature
+// mutation gate); only a build without `ai` mounts it.
+pub(crate) mod disabled;
+#[cfg(feature = "ai")]
 mod sanitize;
+#[cfg(feature = "ai")]
 use sanitize::sanitize_chat_html;
+
+/// Whether this build serves the AI assistant (the `ai` feature). Without it
+/// Nexus does not link `rullst-ai`, hides the assistant link, and the router
+/// answers `/chat` and `/chat/query` with 404 and a notice naming the feature.
+pub(crate) const AI_ASSISTANT: bool = cfg!(feature = "ai");
 
 #[derive(Deserialize, Serialize)]
 pub struct ChatRequest {
     pub message: String,
 }
 
+#[cfg(feature = "ai")]
 fn schema_summary(state: &NexusState) -> String {
     state
         .registry
@@ -37,16 +52,27 @@ fn schema_summary(state: &NexusState) -> String {
         .join("\n")
 }
 
+/// Whether an AI provider is configured, and its name or the reason none is.
+/// Without the `ai` feature this reports that the assistant is not enabled.
 pub fn detect_ai_provider() -> (bool, String) {
-    match rullst_ai::AutoAiConfig::from_env() {
-        Ok(config) if !config.provider_names().is_empty() => {
-            (true, config.provider_names().join(" → "))
+    #[cfg(feature = "ai")]
+    {
+        match rullst_ai::AutoAiConfig::from_env() {
+            Ok(config) if !config.provider_names().is_empty() => {
+                (true, config.provider_names().join(" → "))
+            }
+            Ok(_) => (false, "Offline Embedded Intelligence".into()),
+            Err(_) => (false, "AI configuration incomplete or invalid".into()),
         }
-        Ok(_) => (false, "Offline Embedded Intelligence".into()),
-        Err(_) => (false, "AI configuration incomplete or invalid".into()),
+    }
+    #[cfg(not(feature = "ai"))]
+    {
+        (false, "AI assistant not enabled in this build".into())
     }
 }
 
+// The assistant's reply builder behind `nexus_chat_query`.
+#[doc(hidden)]
 pub fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> String {
     let msg_lower = message.to_lowercase();
 
@@ -184,11 +210,26 @@ pub fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> St
 }
 
 /// GET /nexus/chat — AI Assistant Page.
+///
+/// Without the `ai` feature it renders the not-enabled notice instead; the
+/// Nexus router then answers it with 404.
 pub async fn nexus_chat_page(
     State(state): State<Arc<NexusState>>,
     headers: axum::http::HeaderMap,
 ) -> Html<String> {
-    let schema_summary = schema_summary(&state);
+    #[cfg(not(feature = "ai"))]
+    {
+        Html(disabled::page_html(&state, &headers))
+    }
+    #[cfg(feature = "ai")]
+    {
+        chat_page_html(&state, &headers)
+    }
+}
+
+#[cfg(feature = "ai")]
+fn chat_page_html(state: &NexusState, headers: &axum::http::HeaderMap) -> Html<String> {
+    let schema_summary = schema_summary(state);
 
     let mut content = String::new();
     content.push_str("<div class=\"nexus-page-header\">");
@@ -254,49 +295,39 @@ pub async fn nexus_chat_page(
     );
     content.push_str("</form></div></div>");
 
-    if wants_fragment(&headers) {
+    if wants_fragment(headers) {
         Html(content)
     } else {
-        Html(render_shell(
-            &state,
-            &render_sidebar(&state, None),
-            &content,
-        ))
+        Html(render_shell(state, &render_sidebar(state, None), &content))
     }
 }
 
 /// POST /nexus/chat/query — AI Assistant HTMX query endpoint.
+///
+/// Without the `ai` feature it answers the not-enabled notice instead; the
+/// Nexus router then answers it with 404.
 pub async fn nexus_chat_query(
     State(state): State<Arc<NexusState>>,
     axum::extract::Form(req): axum::extract::Form<ChatRequest>,
 ) -> Html<String> {
-    let user_msg = rullst_core::html::escape_str(&req.message);
-
-    let ai_response = if let Ok(config) = rullst_ai::AutoAiConfig::from_env()
-        && !config.provider_names().is_empty()
+    #[cfg(not(feature = "ai"))]
     {
-        let schema_summary = schema_summary(&state);
+        let _ = (state, req);
+        Html(disabled::query_html())
+    }
+    #[cfg(feature = "ai")]
+    {
+        chat_query_html(&state, &req.message).await
+    }
+}
 
-        let system_prompt = format!(
-            "You are Nexus AI Assistant for a Rust web application built with Rullst Framework.\n\
-             Database Schema:\n{}\n\
-             Answer the user's question concisely using only simple semantic HTML such as <p>, <code>, <pre>, <ul>, <li>, and <strong>.",
-            schema_summary
-        );
+#[cfg(feature = "ai")]
+async fn chat_query_html(state: &NexusState, message: &str) -> Html<String> {
+    let user_msg = rullst_core::html::escape_str(message);
 
-        match config
-            .into_client()
-            .chat()
-            .system(&system_prompt)
-            .user(&req.message)
-            .send()
-            .await
-        {
-            Ok(resp) => resp,
-            Err(_) => generate_smart_nexus_ai_response(&req.message, &state),
-        }
-    } else {
-        generate_smart_nexus_ai_response(&req.message, &state)
+    let ai_response = match provider_answer(message, state).await {
+        Some(answer) => answer,
+        None => generate_smart_nexus_ai_response(message, state),
     };
 
     // Provider output and schema-derived fallback output are both untrusted at this boundary.
@@ -316,5 +347,28 @@ pub async fn nexus_chat_query(
     ))
 }
 
-#[cfg(test)]
+/// The configured provider's answer: `None` without a provider or when the
+/// provider fails, so the offline schema assistant answers instead.
+#[cfg(feature = "ai")]
+async fn provider_answer(message: &str, state: &NexusState) -> Option<String> {
+    let config = rullst_ai::AutoAiConfig::from_env()
+        .ok()
+        .filter(|config| !config.provider_names().is_empty())?;
+    let system_prompt = format!(
+        "You are Nexus AI Assistant for a Rust web application built with Rullst Framework.\n\
+         Database Schema:\n{}\n\
+         Answer the user's question concisely using only simple semantic HTML such as <p>, <code>, <pre>, <ul>, <li>, and <strong>.",
+        schema_summary(state)
+    );
+    config
+        .into_client()
+        .chat()
+        .system(&system_prompt)
+        .user(message)
+        .send()
+        .await
+        .ok()
+}
+
+#[cfg(all(test, feature = "ai"))]
 mod tests;

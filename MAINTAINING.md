@@ -132,7 +132,7 @@ and fails on any surviving mutant.
 
 ### Other gates that catch maintainers out
 
-- **IDOR audit** (`cargo rullst audit --idor`, run by `ai-sentinel-pr.yml` and
+- **IDOR audit** (`cargo rullst audit --idor`, run by `pr-security-evidence.yml` and
   the `scaffold_contracts` test): every route with a path parameter, test
   fixtures included, needs a `// rullst-access: public|owner|role|admin — reason`
   comment on the line above. `public` is accepted only when `get(` appears on
@@ -143,37 +143,88 @@ and fails on any surviving mutant.
   `default-features = false` on a `rullst` dependency that is not testing the
   default-features rule) instead of loosening assertions.
 - **Site validation** (`.github/validate-site.py`): the README workflow counts
-  must equal the files in `.github/workflows/`.
+  and the WORKFLOWS.md inventory must match the files in `.github/workflows/`,
+  and every badge or link to a workflow in the READMEs, WORKFLOWS.md,
+  MAINTAINING.md and the book must name an existing file. Renaming, merging or
+  removing a workflow means updating all of them.
+- **Public API snapshot** (`semver.yml`, job `Public API snapshot`). A pull
+  request that changes the documented API of a library crate must commit the
+  regenerated listing: install the pinned nightly once
+  (`rustup toolchain install nightly-2026-08-21 --profile minimal`), then run
+  `python3 .github/public-api.py <package>…` on Linux x86_64, the docs.rs
+  target, and commit `.github/public-api/<package>.txt`. Without arguments it
+  rewrites every listing; `--check` is what CI runs, and `--no-build` reuses the
+  rustdoc JSON of the previous run. Hide helpers that only generated code calls
+  with `#[doc(hidden)]`; they are then not listed. To move the pin, change
+  `TOOLCHAIN` in `.github/public-api.py` and the job's toolchain together (and
+  `FORMAT_VERSION` when rustdoc's JSON format changed; the script refuses
+  another format), regenerate every listing and check that the diff only
+  changes how items are rendered.
+- **Public dependencies** (`supply-chain.yml`, job "Check Dependencies
+  (Licenses, Vulnerabilities)"): a release library may not move a
+  [public dependency](docs/src/compatibility-policy.md#public-dependencies)
+  off its 13.x line in `.github/public-dependencies.json`
+  (`.github/check-public-dependencies.py`). A crate newly exposed in the API
+  gets a row there and in the policy table. A security exception changes both in
+  the same pull request, and the CHANGELOG marks it.
 - **Feature matrix** (`.github/check-feature-matrix.py`) and feature
   boundaries (`.github/check-feature-boundaries.sh`) must list every facade
   feature.
 - **Advisories.** Every exception must appear in `deny.toml`, the ledger
   [`docs/src/security-advisory-exceptions.md`](docs/src/security-advisory-exceptions.md)
-  and the `--ignore`/`--audit-ignore` flags of the audit, security-audit,
-  PQC-compliance, release and AI-sentinel workflows, with an expiry. Prefer an
-  upgrade; an exception is temporary and time-bounded.
+  and the `--ignore`/`--audit-ignore` flags of every workflow that scans
+  advisories (`supply-chain.yml`, `crypto-containment.yml`, `release.yml` and
+  `pr-security-evidence.yml`), with an expiry; the governance job in
+  `supply-chain.yml` compares the three. Prefer an upgrade; an exception is
+  temporary and time-bounded.
 - **CodeQL.** Rust results go through
   `.github/filter-codeql-test-fixtures.py` before upload, which drops the
   listed rules in test code only. Real findings in production code are fixed,
   not filtered.
-- **Windows and macOS** run only on manual dispatch and release admission.
-  Avoid path-separator assumptions and POSIX-only file behaviour in tests;
-  never `Box::leak` in tests (the AddressSanitizer job reports it).
+- **Windows and macOS** run nightly on `main`, on manual dispatch and release
+  admission, and on a pull request labeled `full-matrix` (add the label when a
+  change touches paths, processes or platform-specific code, so the matrix
+  runs before merge). Avoid path-separator assumptions and POSIX-only file
+  behaviour in tests; never `Box::leak` in tests (the AddressSanitizer job
+  reports it).
 
 ## 5. Fuzzing evidence
 
 Release mode of `fuzzing.yml` covers all 42 targets
 (`python3 .github/validate-fuzz-targets.py`) in three waves of about five and
 a half hours each, about 17 hours in total. Evidence from an earlier run is
-reused only for targets whose inputs did not change:
-[`.github/fuzz_evidence_inputs.py`](.github/fuzz_evidence_inputs.py) lists the
-files that are not inputs; every other changed file is a global input and
-reruns every target. A toolchain change always reruns everything.
+reused only for targets whose inputs did not change. A fuzz package's inputs
+are its build graph ([`docs/src/fuzz-evidence.md`](docs/src/fuzz-evidence.md)):
+every crate it reaches through path dependencies, files those crates
+`include_str!`/`#[path]` from elsewhere, and a few global files (root
+`Cargo.toml`, toolchain, `.cargo/**`, every `.gitattributes`, inventory and
+fuzz scripts). Docs, changelog, READMEs outside reached crates, `cargo-rullst`,
+examples and other CI files no longer rerun anything; a change to a shared
+crate reruns only the packages that reach it. A global or toolchain change
+always reruns everything.
+
+The rule guards against accidental drift (refactors, new dependencies, new
+includes), not deliberately obfuscated file access: a maintainer who wanted to
+skip fuzzing could simply not run it. It fails closed (that package's input
+becomes the whole repository, the old behaviour) on patterns it does not
+model: a build script or build-dependency, proc-macro I/O or a proc macro with
+a path dependency or a registry dependency outside `syn`, `quote`,
+`proc-macro2` and `toml`, known file-reading macros (`migrate!`,
+`include_dir!`, `#[folder]`, …), a `..`, absolute or `$VAR` path passed to a
+macro whose code is not scanned, and includes it cannot resolve. The receipt's
+`whole_repository_inputs` says which package fell back and why. The fuzz
+workflow also runs `.github/check-fuzz-build-graph.py`, which fails when
+`cargo metadata --locked` resolves a path package, build script or proc macro
+the scope misses.
 
 Plan releases around this: freeze the code first, then start the release-mode
-run on that exact commit. When a release-only fix touches a file that should
-not invalidate fuzz evidence (release scripts, advisory ledgers), add it to
-the non-input list in the same pull request, with a test.
+run on that exact commit. Adding a build script or build-dependency to a
+fuzzed crate makes every package that reaches it rerun on any change until
+the policy models it. If a reviewed proc-macro reader in `REVIEWED_COMPILE_IO`
+(`.github/fuzz_build_graph.py`) changes, review the new blob and add it with a
+test, or the packages that reach it keep falling back; do the same before
+adding a registry macro to `REVIEWED_PLAIN_MACROS` or a crate to
+`REVIEWED_PROC_MACRO_DEPENDENCIES`.
 
 ## 6. Mutation campaigns
 

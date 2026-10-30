@@ -1,6 +1,6 @@
 use rullst_orm::{Orm, with_tenant};
 
-#[derive(Clone, Debug, Default, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Default, rullst_orm::Orm)]
 #[orm(table = "products", tenant_column = "tenant_id")]
 pub struct Product {
     pub id: i32,

@@ -243,3 +243,31 @@ fn web_starters_list_the_monitor_token_commented_out() {
         }
     }
 }
+
+#[test]
+fn only_sqlite_projects_get_the_local_database_file() {
+    for (db_needed, provider, written) in [
+        (true, "Sqlite", true),
+        // `--no-database` keeps the `Sqlite` provider name.
+        (false, "Sqlite", false),
+        (true, "Postgres", false),
+        (true, "MySQL", false),
+        (true, "Turso", false),
+    ] {
+        let root = tempfile::tempdir().expect("temporary project");
+        generate_env_and_configs(
+            root.path(),
+            db_needed,
+            provider,
+            &[],
+            BLANK_BLUEPRINT_ID,
+            "0123456789abcdef0123456789abcdef",
+        )
+        .expect("environment scaffold");
+        assert_eq!(
+            root.path().join("rullst.db").exists(),
+            written,
+            "{provider} with db_needed={db_needed}"
+        );
+    }
+}

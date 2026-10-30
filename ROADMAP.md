@@ -32,7 +32,8 @@ Intentions, not promises; dates follow the evidence gates described below.
   `v12` branch is frozen. Its unpublished fixes (PR #500 and the RustSec
   updates) stay on the branch; new 12.x projects no longer resolve their
   dependencies after crates.io yanked the `zip` releases its Studio needs.
-- **Assurance:** OpenSSF Best Practices Silver, mutation testing extended from the
+- **Assurance:** keep the OpenSSF Best Practices Silver badge (granted on
+  10 October 2026) current, mutation testing extended from the
   critical v13 code to the whole workspace, and an independent review prepared
   with the [external audit kit](docs/src/external-audit-kit.md).
 - **Selected programmes:** the [green software roadmap](docs/src/green-software-roadmap.md)
@@ -137,7 +138,7 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M23** | Polymorphic core and auto-healing runtime/database | `[~] Partial` *(worth keeping as diagnostics — a schema-error suggestion helper exists; automatic code/schema mutation is not worth enabling by default without validated plans, approval, and rollback)* | v13 |
 | **M24** | Embedded IoT: `no_std` frames and an Ed25519 OTA manifest gate | `[~] Partial` *(the frame/MQTT-PUBLISH/CoAP-request encoders, verification foundation and durable-counter CAS adapter contract exist; download, a hardware-backed store, flashing, boot slots, HSM/PQC, and transport interoperability do not)* | v12 foundation / v13 integrations |
 | **M25** | Async embedded IoT with Embassy | `[ ] Not implemented` *(worth implementing after transport and hardware traits stabilize, because executor integration before those boundaries would create churn)* | v13+ |
-| **M26** | Guided PaaS/VPS deploy for Fly, Railway, Render, and Caddy | `[~] Partial` *(worth hardening — scaffolding and helpers exist, but “one click” and zero downtime are not framework guarantees because credentials, DNS, migrations, health, and rollback remain operator concerns)* | v13 |
+| **M26** | Guided VM/VPS deploy with Caddy | `[~] Partial` *(worth hardening — `cargo rullst deploy` writes a Dockerfile, `compose.yaml` and `Caddyfile` for a Linux VM with Docker or Podman, with guides for Hetzner Cloud, DigitalOcean, Oracle Cloud and Google Cloud; 13.0.0-alpha.4 removed the Fly.io, Render and Railway targets. “One click” and zero downtime are not framework guarantees because credentials, DNS, migrations, health, and rollback remain operator concerns)* | v13 |
 | **M27** | Kubernetes manifest scaffolding and `/health`/`/ready` probes | `[x] Implemented (scaffolding scope)` — generated manifests remain deployment inputs that operators must review | v12 hardening |
 | **M28** | Compile-time DI and `Inject<T>` | `[x] Implemented (foundation)` — the typed container exists; “zero cost” remains a benchmarkable goal rather than a guarantee | v12 hardening |
 | **M29** | Scalar playground at `/docs` and OpenAPI generation | `[~] Partial` *(worth finishing — the UI/router/generator exist, but full OpenAPI fidelity requires typed schemas and validation rather than syntax inference)* | v13 |
@@ -150,7 +151,7 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M36** | Natural-language-to-SQL Studio data copilot | `[ ] Not implemented` *(worth a read-only, explainable assistant with schema allowlists, parameterization, preview, limits, and approval; autonomous production writes are not worth the risk)* | v13 research |
 | **M37** | One-click AI error-console autofix | `[~] Partial` *(the development error page no longer edits files and makes no network request. The server keeps a bounded, expiring, header- and body-free panic context that only a direct loopback request can read. The terminal assistant that fixed it (`cargo rullst ai fix`) was removed in 13.0.0-alpha.4; the page's "Ask your AI assistant" panel now gives a copyable prompt and the recorded-context path to the developer's own assistant, and the dead `/_rullst/autofix` endpoint (`410 Gone`) points there. Still open: a one-click flow, an edit audit trail beyond the checkpoint ref, evidence of fix quality with live providers, and the hot-reload server, which does not record errors)* | v13 |
 | **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
-| **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented — abandoned` *(decided on 8 October 2026: not worth building. A Rullst-owned `rullst-gateway` crate/binary will not be developed. Self-hosted deployments use an established reverse proxy configured by generated files instead: `deploy --platform vps` already writes a Caddyfile, `foundry:deploy` installs a validated Caddy configuration and the [two-replica deployment contract](docs/src/deployment-acceptance.md) exercises Caddy; generated nginx configuration is planned. Readiness/drain signals stay in `rullst-core` for any proxy to consume. Parity with a managed global cloud load balancer remains external infrastructure. The idea stays recorded here and in the `[ ]` count.)* | Abandoned (replaced by generated proxy configuration) |
+| **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented — abandoned` *(decided on 8 October 2026: not worth building. A Rullst-owned `rullst-gateway` crate/binary will not be developed. Self-hosted deployments use an established reverse proxy configured by generated files instead: `cargo rullst deploy` writes a Caddyfile and the [two-replica deployment contract](docs/src/deployment-acceptance.md) exercises Caddy; generated nginx configuration is planned. Readiness/drain signals stay in `rullst-core` for any proxy to consume. Parity with a managed global cloud load balancer remains external infrastructure. The idea stays recorded here and in the `[ ]` count.)* | Abandoned (replaced by generated proxy configuration) |
 | **M40** | Isolated programming labs and learning-game execution | `[~] Experimental implementation — bring your own runner` *(experimental `rullst-labs` contracts, in the 13.0 release inventory, provide durable submissions, exact grading, cancellation, recovery and retention, plus a documented [controller contract](docs/src/labs-runner-contract.md) and a non-executing example controller. The separately deployed Linux Rust/Wasmi `rullst-labs-runner` candidate passed 26 isolated checks and source admission in PRs #228 and #239, but was removed from the 13.0 workspace on 30 September 2026; its source remains in git history. Applications deploy and review their own runner; final release acceptance of `rullst-labs` remains pending. The web process never executes learner code or receives a container control socket. Broader language packs and offensive CTF infrastructure remain separate; see the dedicated roadmap.)* | v13 research/foundation |
 | **M41** | Privacy defaults and proportional age assurance | `[~] Initial foundation` *(opt-in `rullst-privacy` (first published in the 13.0.0-alpha.1 prerelease) age policies, signed evidence, asynchronous replay claims, trusted-clock rechecks, shared-local SQLite and optional PostgreSQL storage across application hosts with focused real-database tests; native declarations, versioned optional consent and generated SaaS preference/profile-export journeys have focused evidence (the LMS consumers were retired with the complete Academy scaffold). The package candidate adds optional facade features and passed hosted/archive source acceptance in PR #221; final release admission, live age providers, guardian verification, broader rights/retention and reviewed regional profiles remain open. See the [privacy roadmap](docs/src/privacy-age-assurance-roadmap.md). No automatic worldwide compliance claim.)* | v13 P0 |
 
@@ -161,7 +162,7 @@ programme**. It includes v13 research and v13+ ambitions, not just features
 selected for 13.0.0 by 26 September. It measures neither release readiness nor
 the percentage of implementation effort already completed.
 
-The label counts below were checked on 21 September 2026 against M1–M41. They include
+The label counts below were checked on 29 October 2026 against M1–M41. They include
 v12 hardening, continuous, next-SemVer, v13 and v13-research rows. M31 is excluded
 because the tracker explicitly assigns aerospace/autonomous/defence work to a
 separately governed future programme rather than the general v12/v13 framework suite.
@@ -171,12 +172,13 @@ decompose these canonical milestones, so a raw sum would double-count work.
 | State | Milestones | Share of the 40-milestone horizon |
 | :--- | ---: | ---: |
 | `[x]` bounded completion | **5** | **12.5%** |
-| `[~]` useful but incomplete foundation | **28** | **70.0%** |
-| `[ ]` not implemented | **7** | **17.5%** |
+| `[~]` useful but incomplete foundation | **27** | **67.5%** |
+| `[ ]` not implemented | **8** | **20.0%** |
 | **Total in the framework programme** | **40** | **100%** |
 
 M39 stays in the `[ ]` row: it was abandoned on 8 October 2026 rather than
-implemented, and the roadmap keeps abandoned ideas recorded.
+implemented, and the roadmap keeps abandoned ideas recorded. M30 moved from
+`[~]` to `[ ]` when 13.0.0-alpha.4 removed the `make:grpc` generator.
 
 There are **35 milestones without strict closure (87.5% of the labels)**. A
 partial milestone can contain substantial published functionality and years of
@@ -344,8 +346,10 @@ contains the more detailed evidence and acceptance boundaries.
   `storage-s3` feature implements bounded private object operations with official
   signing, explicit credentials and deterministic mocks. Hosted source/package
   admission passed in PR #236; final release and provider interoperability remain outstanding; see the
-  [supported contract](docs/src/private-object-storage.md). Multipart streaming
-  and image resizing remain future increments).*
+  [supported contract](docs/src/private-object-storage.md). Server-mediated
+  resumable multipart uploads are the separate opt-in
+  [`storage-multipart`](docs/src/private-multipart-uploads.md) candidate; direct
+  presigned uploads and image resizing remain future increments).*
 - **Mailgun, Brevo, MailerSend, Plunk, and Scaleway transports** *(not implemented
   — worth demand-driven adapters only when each has a maintainer and passes the
   shared offline/live mail contract suite).*
@@ -442,13 +446,18 @@ contains the more detailed evidence and acceptance boundaries.
 
 ### v13 execution priorities
 
+This section records the execution order set in September 2026. Since then the
+v12 line reached end of life (16 October 2026), so its v12 maintenance steps are
+historical, and 13.0.0-alpha.4 is the 13.0 feature freeze; the current plan is
+under [Planned after 13.0.0-alpha.4](#planned-after-1300-alpha4).
+
 The [Verus verification pilot](docs/src/verus-roadmap.md) is planned supporting
 work for the privacy, authentication and payment contracts in M41, M9 and M11.
 Begin with a small production age-policy scope, then evaluate Auth and Capital;
 keep proofs beside their modules and start with a pinned manual workflow.
 Reproducibility, reviewed assumptions, negative controls, consumer compatibility
 and measured CI cost precede mandatory checks on affected v13 changes. This
-does not add a public crate or a v12.1 release requirement.
+does not add a public crate or a release requirement.
 
 **Execution order: verification efficiency, then the compatible 12.1.0 update
 experience, then concentrated v13 product development.** The published v12
@@ -461,8 +470,8 @@ Application API changes still belong to the appropriate release line.
 The compatible **12.1.0** update experience is published. The
 [publication record](docs/src/v12.md#1210-published-maintenance-release)
 links its immutable source and successful release evidence. New capability
-work now belongs to v13; compatible security fixes remain eligible for v12
-maintenance.
+work belongs to v13; compatible security fixes were eligible for v12
+maintenance until its end of life.
 
 [PR #218](https://github.com/Rullst/Rullst/pull/218) admitted the published
 12.1.0 baseline and the SQLite/PostgreSQL replay foundation to protected `v13`
@@ -656,8 +665,8 @@ reports v12 → v13 source findings with their
 [migration-guide](docs/src/migration-v13.md) rows. These support a review;
 they do not migrate an application automatically.
 
-Continue new capability work on v13 while actively maintaining the supported
-v12 line with reviewed compatible fixes and dependency updates. The website
+Continue new capability work on v13; the v12 line is no longer maintained
+after its end of life on 16 October 2026. The website
 redesign is a separate documentation delivery, not a reason to bump framework
 versions or postpone verification work. This plan neither bumps package
 versions nor authorizes publication, and it does not claim that any major
@@ -927,19 +936,40 @@ to the counts above.
 | **v12.x** | `[x] End of life` | Ended on 16 October 2026 with 12.3.0 as the last release; the `v12` branch is frozen. New 12.x projects no longer resolve dependencies after crates.io yanked the `zip` releases its Studio needs; use v13. |
 | **v12.1.0** | `[x] Published compatible minor` | All sixteen packages were published from `b62390b4` on 20 September 2026 UTC. Guided CLI/project updates, SaaS/Nexus fixes, account mail and the other bounded contracts are recorded with immutable source and registry evidence in the [publication record](docs/src/v12.md#1210-published-maintenance-release). |
 | **v12.1.1** | `[x] Published patch` | All sixteen packages were published from `d27db26c` on 24 September 2026 UTC; see the [publication record](docs/src/v12.md#1211-published-maintenance-release). |
-| **v12.1.2** | `[x] Published patch` | Tagged `v12.1.2` on 28 September 2026 UTC from the `v12` maintenance line; its publication evidence is kept in the [maintained v12 release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md). |
-| **v12.2.0** | `[x] Published compatible minor` | Tagged `v12.2.0` at `565e222a` on 3 October 2026 from the `v12` maintenance line; see the [maintained v12 release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md). |
+| **v12.1.2** | `[x] Published patch` | Tagged `v12.1.2` on 28 September 2026 UTC from the `v12` maintenance line; its publication evidence is kept in the [frozen v12 release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md). |
+| **v12.2.0** | `[x] Published compatible minor` | Tagged `v12.2.0` at `565e222a` on 3 October 2026 from the `v12` maintenance line; see the [frozen v12 release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md). |
 | **v12.3.0** | `[x] Latest published stable` | Tagged `v12.3.0` at `67b2d0e5` and published on 9 October 2026: hickory 0.26.3, fewer WAF/RASP false positives and deprecations of the Capital and Mail APIs that 13.0 removes. It is the last 12.x release: the `v12` line reached end of life on 16 October 2026 and no further patch will be published. |
 | **v13.0.0-alpha.1** | `[x] Published prerelease` | Tag `v13.0.0-alpha.1` at `fc44bf76`; all twenty packages were published on 11 October 2026 for evaluation. See the [delivery plan](docs/src/v13-delivery-plan.md). |
 | **v13.0.0-alpha.2** | `[x] Published prerelease` | All twenty packages were published on 17 October 2026 from tag `v13.0.0-alpha.2` at `0daf4941` ([release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)): the fixes from the alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema` date/time and Nexus changes. A first tag at `669befe6` failed release verification before publishing anything and was replaced. |
 | **v13.0.0-alpha.3** | `[x] Published prerelease` | All twenty packages were published on 24 October 2026 from tag `v13.0.0-alpha.3` at `be336833` ([release run 40129821475](https://github.com/Rullst/Rullst/actions/runs/40129821475)) after all 25 required workflows passed on that commit. See [Delivered in 13.0.0-alpha.3](#delivered-in-1300-alpha3). |
 | **v13.0.0-alpha.4** | `[ ] Release candidate` | Prepared on 29 October 2026 and not yet published; the coordinator records the tag, release run and publication here. Twenty packages. See [Delivered in 13.0.0-alpha.4](#delivered-in-1300-alpha4). |
-| **v13.x** | `[ ] Next feature line` | Compatible and breaking improvements move together into the next deliberate cycle: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
+| **v13.0.0-rc.1** | `[ ] Planned` | Fixes and documentation only after the alpha.4 feature freeze; it freezes the public APIs that 13.0 supports. See [Planned after 13.0.0-alpha.4](#planned-after-1300-alpha4). |
+| **v13.0.0** | `[ ] Planned stable` | Follows once rc.1 leaves no open defect in the stability scope; the [maturity tiers](docs/src/maturity.md) apply from this release. |
+| **v13.x** | `[ ] After 13.0.0` | Compatible capabilities continue in 13.1 and later minors: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
 The framework may call a milestone implemented only when the same commit passes
 the repository's formatting, strict lint, full-test, feature-matrix, security, and
 packaging gates. Performance numbers must cite a reproducible benchmark; security
 and compliance claims must state their threat model and evidence scope.
+
+### v14 candidates
+
+Breaking ideas raised during 13.x are collected here instead of shipping in a
+13.x release ([support window](docs/src/compatibility-policy.md#supported-release-window)).
+None is scheduled; v14 development starts only when they justify it.
+
+- Make the internals hidden from the documentation in 13.0.0-alpha.4
+  (`#[doc(hidden)]`) crate-private.
+- Replace third-party types in public error variants and `From` conversions
+  (`reqwest`, `jsonwebtoken`, `base64`, `redis`, `serde_json`) with Rullst
+  error types, so fewer crates are [public dependencies](docs/src/compatibility-policy.md#public-dependencies).
+- Make the `dashmap` fields of `rullst_security::SecurityStore`
+  (`banned_ips`, `honeypot_route_hits`) private, behind methods.
+- Keep one path per item: remove `rullst::rullst_orm` (same as
+  `rullst::orm`), `rullst::security_runtime` (same as
+  `rullst::security::runtime`) and Mail's alias modules `rullst_mail::mail`
+  and `rullst_mail::drivers::mock` (same as the crate root and
+  `rullst_mail::mock`).
 
 ---
 

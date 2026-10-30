@@ -1,5 +1,6 @@
 //! A configured AI provider is reported as active. The process environment is
 //! global, so this binary holds a single test that sets it first.
+#![cfg(feature = "ai")]
 
 mod support;
 use support::{authenticated_test_router, local_request};

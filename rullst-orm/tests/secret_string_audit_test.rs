@@ -4,15 +4,13 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use rullst_orm::audit::{AuditContext, with_audit_context};
-use rullst_orm::{
-    Error, FromRow, ModelCommittedEvent, Orm, SearchEngine, SecretString, set_search_engine,
-};
+use rullst_orm::{Error, ModelCommittedEvent, Orm, SearchEngine, SecretString, set_search_engine};
 use std::sync::{Arc, Mutex};
 
 const CPF: &str = "123.456.789-00";
 const NEW_CPF: &str = "987.654.321-00";
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "secret_patients", auditable, searchable)]
 struct SecretPatient {
     id: i32,

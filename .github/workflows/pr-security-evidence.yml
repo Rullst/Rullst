@@ -1,5 +1,9 @@
 name: PR Security Evidence
 
+# Bounded `cargo rullst audit` heuristics (IDOR routes, dependencies,
+# compliance report) and a CycloneDX SBOM for each pull request. It calls no
+# AI service: until 13.0.0-alpha.4 this file was ai-sentinel-pr.yml.
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]

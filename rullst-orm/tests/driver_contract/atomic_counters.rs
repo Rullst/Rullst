@@ -1,10 +1,10 @@
 //! `save()` writes the whole row, so the last writer wins; `update_partial()`
 //! and one atomic `UPDATE ... SET xp = xp + ?` keep concurrent changes.
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_counters")]
 struct ContractCounter {
     id: i32,

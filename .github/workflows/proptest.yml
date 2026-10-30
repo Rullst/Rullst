@@ -6,7 +6,8 @@ on:
     - cron: '0 6 * * 0'  # Every Sunday at 06:00 UTC (weekly scheduled invariant audit)
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # A scheduled run must not cancel, or be cancelled by, a dispatched admission run.
+  group: ${{ github.workflow }}-${{ github.ref }}${{ github.event_name == 'schedule' && '-weekly' || '' }}
   cancel-in-progress: true
 
 permissions:

@@ -5,7 +5,10 @@ on:
     branches: [main, v12, v13]
   pull_request:
     branches: [main, v12, v13]
-    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
+    # `labeled` lets a maintainer add `full-matrix` to a PR to main: that run,
+    # and every later push while the label stays, use the nightly matrix.
+    # Any other label re-runs the same gate; it never skips a required job.
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft, labeled]
   workflow_dispatch:
     inputs:
       platform:
@@ -43,7 +46,9 @@ on:
     - cron: '30 5 * * *'
 
 concurrency:
-  # A nightly run must not cancel, or be cancelled by, a main push.
+  # A nightly run must not cancel, or be cancelled by, a main push. Every PR
+  # event, `labeled` included, shares the PR's group: the newest run replaces
+  # the older one and itself runs every required job.
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'schedule' && '-nightly' || '' }}
   cancel-in-progress: true
 
@@ -206,10 +211,11 @@ jobs:
       matrix:
         # A ready PR to main runs the Linux workspace and standard CLI gate;
         # the resulting main push runs every Linux shard. The nightly run, PRs
-        # to maintained lines (v12/v13) and full manual runs prove all three
-        # platforms; release admission still requires a full manual run.
-        os: ${{ fromJSON((github.event_name == 'push' || (github.event_name == 'pull_request' && github.base_ref == 'main')) && '["ubuntu-latest"]' || github.event_name == 'workflow_dispatch' && inputs.platform != 'all' && format('["{0}"]', inputs.platform) || '["ubuntu-latest","macos-latest","windows-latest"]') }}
-        shard: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.shard != 'all' && format('["{0}"]', inputs.shard) || github.event_name == 'pull_request' && github.base_ref == 'main' && '["workspace","cli-standard"]' || '["workspace","cli-standard","cli-profiles-basic","cli-profiles-relational","cli-profiles-polyglot","cli-saas-foundation","cli-saas-product"]') }}
+        # to maintained lines (v12/v13), PRs to main labeled `full-matrix` and
+        # full manual runs prove all three platforms; release admission still
+        # requires a full manual run. .github/test-ci-matrix.py evaluates these.
+        os: ${{ fromJSON((github.event_name == 'push' || (github.event_name == 'pull_request' && github.base_ref == 'main' && !contains(github.event.pull_request.labels.*.name, 'full-matrix'))) && '["ubuntu-latest"]' || github.event_name == 'workflow_dispatch' && inputs.platform != 'all' && format('["{0}"]', inputs.platform) || '["ubuntu-latest","macos-latest","windows-latest"]') }}
+        shard: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.shard != 'all' && format('["{0}"]', inputs.shard) || github.event_name == 'pull_request' && github.base_ref == 'main' && !contains(github.event.pull_request.labels.*.name, 'full-matrix') && '["workspace","cli-standard"]' || '["workspace","cli-standard","cli-profiles-basic","cli-profiles-relational","cli-profiles-polyglot","cli-saas-foundation","cli-saas-product"]') }}
     steps:
       - name: Checkout Monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -424,8 +430,11 @@ jobs:
             strict-sqlite)
               cargo test -p rullst-orm --no-default-features \
                 --features strict-sqlite --test matrix_sqlite -- --test-threads=1
+              # Without default features Nexus has no `ai`: the assistant
+              # routes answer the 404 notice.
               cargo test -p rullst-nexus --no-default-features \
-                --features strict-sqlite --test renderer_escaping --locked
+                --features strict-sqlite --test renderer_escaping \
+                --test ai_assistant_feature --locked
               RULLST_REQUIRE_SQLITE_INBOX=1 cargo test -p rullst-capital \
                 --features webhook-sql,rullst-orm/strict-sqlite --test stripe_inbox_sql --locked
               # --all-features selects the PostgreSQL pool, so the SQLite-backed

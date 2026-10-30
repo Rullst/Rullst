@@ -1,12 +1,12 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
 use rullst_orm::{
-    FromRow, Orm,
+    Orm,
     schema::{Blueprint, Schema},
 };
 use std::fs;
 
-#[derive(FromRow, rullst_orm::Orm, Debug, Clone, PartialEq)]
+#[derive(rullst_orm::Orm, Debug, Clone, PartialEq)]
 #[orm(table = "raw_test_users")]
 pub struct RawUser {
     pub id: i32,

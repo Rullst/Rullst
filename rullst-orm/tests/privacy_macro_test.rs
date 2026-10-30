@@ -32,7 +32,7 @@ fn test_personal_data_compliance_schema() {
 }
 
 /// A persisted ORM model: its encrypted columns and explicit table.
-#[derive(PersonalData, Clone, rullst_orm::FromRow, rullst_orm::Orm)]
+#[derive(PersonalData, Clone, rullst_orm::Orm)]
 #[orm(table = "patients")]
 pub struct Patient {
     pub id: i32,

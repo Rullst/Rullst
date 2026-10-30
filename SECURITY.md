@@ -2,21 +2,13 @@
 
 ## Supported Versions
 
-The **12.1.1** security maintenance release's
-[publication record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md#1211-published-maintenance-release)
-retains the source, workflow and verified registry checksums. Applications using
-public example keys must rotate those keys and renew sessions when upgrading.
-
-The **12.3.0** minor release (9 October 2026) is the latest published stable
-release. It locks the hickory DNS family at 0.26.3 for GHSA-5j98-2g5x-46v6,
-GHSA-6w6g-hm98-mhgm and GHSA-6f2x-v7q7-m7m5, stops the Core WAF and the Security
-RASP from refusing ordinary text, and deprecates the Capital and Mail APIs that
-13.0 removes. See the
-[release review](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-3-0-review.md)
-and the [upgrade notes](https://github.com/Rullst/Rullst/blob/v12/docs/src/migration-v12-1.md#upgrading-to-123).
-Earlier fixes, such as the 12.1.2 Nexus stored-value escaping, are included.
-An application-specific patch does not update other installations of the
-published framework.
+`main` develops the next major release. The v12 line reached end of life on
+16 October 2026: the [`v12` branch](https://github.com/Rullst/Rullst/tree/v12)
+is frozen and no further 12.x release is planned. Until 13.0.0 is stable, the
+latest published v13 prerelease is supported as described in
+[Security support for v13 prereleases](#security-support-for-v13-prereleases).
+After the 13.0.0-alpha.4 feature freeze, 13.0.0-rc.1 takes fixes and
+documentation only, and 13.0.0 follows.
 
 Rullst adopts Semantic Versioning for each published crate; crates.io remains
 authoritative for whether an exact package version has been published. Source
@@ -25,17 +17,12 @@ the published versions on [crates.io](https://crates.io/crates/rullst/versions);
 the [v12 release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md)
 documents the end-of-life 12.x line.
 
-`main` develops the next major release. The v12 line reached end of life on
-16 October 2026: the [`v12` branch](https://github.com/Rullst/Rullst/tree/v12)
-is frozen and no further 12.x release is planned. Until 13.0.0 is stable, the
-latest published v13 prerelease is supported as described in
-[Security support for v13 prereleases](#security-support-for-v13-prereleases).
-
 | Version | Supported | Status |
 | :--- | :---: | :--- |
 | **12.x** | :x: | End of life since 16 October 2026; 12.3.0 is the last release. crates.io yanked the `zip` releases its Studio needs, so new 12.x projects no longer resolve dependencies. Move to v13. |
 | **Latest 13.0.0 prerelease** | :white_check_mark: | Only the most recently published prerelease (for example 13.0.0-alpha.4 once it is published). Fixes ship in a new prerelease; see below. |
 | **Earlier 13.0.0 prereleases** | :x: | Not patched; upgrade to the latest prerelease. |
+| **13.x (from 13.0.0)** | planned | Patch releases of the newest 13.x minor carry bug and security fixes. 13.x stays the active line for at least 12 months after 13.0.0, and receives security fixes for 12 more months after 14.0.0. See the [support window](docs/src/compatibility-policy.md#supported-release-window). |
 | **12.0.0-rc.1** | :x: | Immutable evaluation prerelease of the end-of-life 12.x line; move to v13. |
 | **5.0.0** | :x: | Frozen legacy release; no routine maintenance. |
 | < 5.0.0 | :x: | End of life. |
@@ -43,7 +30,20 @@ latest published v13 prerelease is supported as described in
 Individual crates have historically used different version numbers. Before
 reporting an issue, confirm the exact package and version from `Cargo.lock`.
 Security fixes are issued on the current supported line rather than by
-replacing an already published archive.
+replacing an already published archive. An application-specific patch does not
+update other installations of the published framework.
+
+The last 12.x release, **12.3.0** (9 October 2026), locks the hickory DNS family
+at 0.26.3 for GHSA-5j98-2g5x-46v6, GHSA-6w6g-hm98-mhgm and GHSA-6f2x-v7q7-m7m5,
+stops the Core WAF and the Security RASP from refusing ordinary text, and
+deprecates the Capital and Mail APIs that 13.0 removes. See the
+[release review](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-3-0-review.md)
+and the [upgrade notes](https://github.com/Rullst/Rullst/blob/v12/docs/src/migration-v12-1.md#upgrading-to-123).
+It includes the earlier fixes, such as the 12.1.2 Nexus stored-value escaping.
+The **12.1.1** security release's
+[publication record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md#1211-published-maintenance-release)
+retains its source, workflow and verified registry checksums; applications
+that used public example keys must rotate those keys and renew sessions.
 
 ### Security support for v13 prereleases
 
@@ -66,8 +66,8 @@ Until 13.0.0 is published, this policy applies:
   A prerelease with a Critical vulnerability may be yanked from crates.io
   once a fixed prerelease is available.
 - **Your part.** Prereleases may change APIs between versions. Pin the exact
-  version (`=13.0.0-alpha.N`), follow the changelog and move to the newest
-  prerelease promptly.
+  version (`=13.0.0-alpha.N`, later `=13.0.0-rc.N`), follow the changelog and
+  move to the newest prerelease promptly.
 
 The support policy for 13.0.0 and later stable releases will be published
 with 13.0.0.
@@ -92,7 +92,7 @@ agreed channel through that contact. This policy does not publish an encryption 
 
 ### What to Include in Your Report:
 1. **Vulnerability Type**: (e.g., Remote Code Execution, SQL Injection, Authentication Bypass, IDOR/BOLA, CSWSH, Memory Safety violation).
-2. **Affected Crate & Version**: (e.g., `rullst-security v12.1.0`, `rullst-auth v12.1.0`, `cargo-rullst v12.1.0`).
+2. **Affected Crate & Version**: (e.g., `rullst-security 13.0.0-alpha.3`, `rullst-auth 13.0.0-alpha.3`, `cargo-rullst 13.0.0-alpha.3`).
 3. **Proof of Concept (PoC)**: Minimal reproducible example or step-by-step reproduction instructions.
 4. **Estimated Impact**: Criticality assessment, attack vector preconditions, and potential blast radius.
 
@@ -134,7 +134,7 @@ Verify with a recent [GitHub CLI](docs/src/gh-install.md) (it may ask you to
 run `gh auth login` first). Replace the tag and file with the ones you use:
 
 ```sh
-RELEASE_TAG=v12.2.0
+RELEASE_TAG=v13.0.0-alpha.3
 gh release download "$RELEASE_TAG" --repo Rullst/Rullst \
   --pattern "rullst-macros-${RELEASE_TAG#v}.crate" \
   --pattern checksums.txt --pattern rullst-release.sigstore.json
@@ -175,6 +175,9 @@ A successful check exits with status 0; changed bytes, a wrong workflow or a
 wrong commit fail. On 9 October 2026 these commands verified
 `rullst-macros-12.2.0.crate` against tag `v12.2.0` (commit
 `565e222a3249f788a0eb560b7ecd6a2ce379ad47`) and rejected a modified copy and a
+wrong commit. On 29 October 2026 they verified `rullst-macros-13.0.0-alpha.3.crate`
+against tag `v13.0.0-alpha.3` (commit
+`be33683252d29244ea14311790ac66decaf9d299`) and rejected a modified copy and a
 wrong commit.
 
 **Crates from crates.io.** Cargo checks every downloaded crate against the
@@ -187,7 +190,7 @@ are also reproducible from source; see
 
 ---
 
-## 🏛️ Rullst Security Architecture Matrix (v12.1.0)
+## 🏛️ Rullst Security Architecture Matrix
 
 Rullst provides composable defense-in-depth controls for a zero-trust
 application architecture. The matrix below is an implementation inventory, not
@@ -237,6 +240,6 @@ states its limits.
 | **Memory safety & UB** | Selected compatible targets | **Miri; unsupported dependencies/features are reported, not silently counted** |
 | **Dynamic sanitizers** | Declared Linux targets | **Nightly ThreadSanitizer and AddressSanitizer jobs where configured** |
 | **Fuzzing** | Named parsers and protocol inputs | **`cargo-fuzz` / libFuzzer corpora and workflows; OSS-Fuzz enrollment is not currently established** |
-| **Mutation testing** | Source-bound full campaigns or explicitly selected files | **Manual `cargo-mutants` campaigns; survivors and timeouts remain informational findings, and incomplete artifacts cannot establish full coverage** |
+| **Mutation testing** | Changed lines of a pull request; source-bound full campaigns or explicitly selected files | **`mutants-pr.yml` fails a pull request to `main` with a surviving mutant on its changed lines; manual `cargo-mutants` campaigns record survivors and timeouts as findings, and incomplete artifacts cannot establish full coverage** |
 | **Supply chain** | Dependency advisories, policy, SBOM, provenance | **`cargo-audit`, `cargo-deny`, CycloneDX and GitHub attestations; no SLSA level is claimed** |
 | **TLS & cryptography** | Feature-specific transport inventory | **Rustls-preferred first-party paths; no universal zero-C/OpenSSL claim across all optional/transitive features** |

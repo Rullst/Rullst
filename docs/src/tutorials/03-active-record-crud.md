@@ -29,9 +29,9 @@ Then add the matching fields to `src/models/product.rs`:
 
 <!-- first-hour: model write=src/models/product.rs -->
 ```rust
-use rullst::db::{FromRow, Orm, RowSnapshot};
+use rullst::db::{Orm, RowSnapshot};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "products")]
 pub struct Product {
     pub id: i32,
@@ -62,8 +62,8 @@ controller of [Tutorial 02](02-cli-generators.md).
 ### Create
 
 ```rust,no_run
-# use rullst::db::{FromRow, Orm, RowSnapshot};
-# #[derive(Debug, Clone, FromRow, Orm)]
+# use rullst::db::{Orm, RowSnapshot};
+# #[derive(Debug, Clone, Orm)]
 # #[orm(table = "products")]
 # struct Product { id: i32, name: String, price_cents: i32, #[sqlx(skip)] snapshot: RowSnapshot }
 # async fn create_product() -> Result<(), rullst::orm::Error> {
@@ -82,8 +82,8 @@ product.save().await?;
 ### Read and filter
 
 ```rust,no_run
-# use rullst::db::{FromRow, Orm, RowSnapshot};
-# #[derive(Debug, Clone, FromRow, Orm)]
+# use rullst::db::{Orm, RowSnapshot};
+# #[derive(Debug, Clone, Orm)]
 # #[orm(table = "products")]
 # struct Product { id: i32, name: String, price_cents: i32, #[sqlx(skip)] snapshot: RowSnapshot }
 # async fn read_products() -> Result<(), rullst::orm::Error> {
@@ -104,8 +104,8 @@ untrusted request input.
 ### Update
 
 ```rust,no_run
-# use rullst::db::{FromRow, Orm, RowSnapshot};
-# #[derive(Debug, Clone, FromRow, Orm)]
+# use rullst::db::{Orm, RowSnapshot};
+# #[derive(Debug, Clone, Orm)]
 # #[orm(table = "products")]
 # struct Product { id: i32, name: String, price_cents: i32, #[sqlx(skip)] snapshot: RowSnapshot }
 # async fn update_product() -> Result<(), rullst::orm::Error> {
@@ -121,8 +121,8 @@ if let Some(mut product) = Product::find(1).await? {
 ### Delete
 
 ```rust,no_run
-# use rullst::db::{FromRow, Orm, RowSnapshot};
-# #[derive(Debug, Clone, FromRow, Orm)]
+# use rullst::db::{Orm, RowSnapshot};
+# #[derive(Debug, Clone, Orm)]
 # #[orm(table = "products")]
 # struct Product { id: i32, name: String, price_cents: i32, #[sqlx(skip)] snapshot: RowSnapshot }
 # async fn delete_product() -> Result<(), rullst::orm::Error> {
@@ -147,9 +147,9 @@ contract. For a different sentinel, configure it explicitly and ensure the
 migration uses the same representation:
 
 ```rust
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(
     table = "users",
     soft_delete(field = "is_deleted", value = "0", delval = "1")

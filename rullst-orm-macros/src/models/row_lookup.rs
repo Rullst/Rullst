@@ -30,7 +30,7 @@ pub(super) fn locked_row(parsed: &ParsedModel, row: &syn::Ident) -> TokenStream 
                 rullst_orm::_sqlx::AssertSqlSafe(lookup.as_str())
             ).bind(self.id) #tenant_binding;
             let fetched = if let Some(timeout) = rullst_orm::schema::get_query_timeout() {
-                tokio::time::timeout(timeout, query.fetch_optional(&mut **tx))
+                rullst_orm::_tokio::time::timeout(timeout, query.fetch_optional(&mut **tx))
                     .await
                     .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
             } else {

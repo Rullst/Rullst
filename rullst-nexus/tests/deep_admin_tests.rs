@@ -78,8 +78,13 @@ async fn test_nexus_admin_builder_and_extended_routes() {
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
-    // 6. AI Chat assistant in Nexus
+    // 6. AI Chat assistant in Nexus: a 404 notice without the `ai` feature.
     let req = local_request().uri("/chat").body(Body::empty()).unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    let expected = if cfg!(feature = "ai") {
+        StatusCode::OK
+    } else {
+        StatusCode::NOT_FOUND
+    };
+    assert_eq!(res.status(), expected);
 }

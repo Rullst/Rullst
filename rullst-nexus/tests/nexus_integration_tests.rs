@@ -115,15 +115,16 @@ async fn test_nexus_dashboard_and_views() {
         "/",
         "/security",
         "/telemetry",
-        "/chat",
         "/table/users",
         "/table/users/new",
         "/table/users/search?q=alice",
         "/table/complex_records",
         "/table/complex_records/new",
     ];
+    // The assistant page exists with the `ai` feature (a 404 notice without).
+    let assistant = cfg!(feature = "ai").then_some("/chat");
 
-    for route in routes {
+    for route in routes.into_iter().chain(assistant) {
         let req = local_request()
             .uri(route)
             .body(Body::empty())
@@ -210,6 +211,7 @@ async fn test_nexus_crud_unavailable_storage_fails_closed() {
     assert_eq!(res.status(), StatusCode::SEE_OTHER);
 }
 
+#[cfg(feature = "ai")]
 #[tokio::test]
 async fn test_nexus_ai_chat_queries_and_responses() {
     let nexus = Nexus::new().register::<UserModel>();
@@ -274,7 +276,11 @@ async fn test_nexus_htmx_partial_headers() {
 
     // An htmx history cache miss swaps the response into <body>, so every
     // page answers it with the complete shell, never a bare fragment.
-    for route in ["/", "/table/users", "/chat", "/security", "/telemetry"] {
+    let assistant = cfg!(feature = "ai").then_some("/chat");
+    for route in ["/", "/table/users", "/security", "/telemetry"]
+        .into_iter()
+        .chain(assistant)
+    {
         let req = local_request()
             .uri(route)
             .header("hx-request", "true")

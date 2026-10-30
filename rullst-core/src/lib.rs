@@ -13,11 +13,12 @@
 //! (with `drivers-all` or one `strict-sqlite`, `strict-postgres` or
 //! `strict-mysql` backend), `queue-sqlite`, `queue-redis`, `cache-redis` (or
 //! `redis` for both), `scheduler-tz`, `storage-s3`, `storage-multipart` and
-//! `telemetry`. docs.rs builds this page with the default features, so the
-//! items behind them are not listed here. The
-//! [crate guide](https://rullst.github.io/Rullst/book/crates/core.html) and the
+//! `telemetry`. docs.rs builds this page with all of them, using
+//! `drivers-all` for the ORM, and labels each item with the features it needs.
+//! The [crate guide](https://rullst.github.io/Rullst/book/crates/core.html) and the
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-core/README.md)
 //! describe each capability and its limits.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![allow(
     clippy::collapsible_if,
     clippy::unnecessary_map_or,
@@ -132,6 +133,8 @@ pub mod telemetry_spans;
 #[cfg(not(target_arch = "wasm32"))]
 /// Scaffolding tools for robust integration testing.
 pub mod testing;
+#[cfg(not(target_arch = "wasm32"))]
+mod tls_provider;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod uploads;
 #[cfg(not(target_arch = "wasm32"))]

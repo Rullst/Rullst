@@ -3,6 +3,7 @@ pub mod column_enum;
 pub mod crud_ops;
 pub mod delete_ops;
 pub(crate) mod dirty_tracking;
+pub mod from_row;
 pub mod json_ops;
 mod mutation_parts;
 pub mod query_ops;

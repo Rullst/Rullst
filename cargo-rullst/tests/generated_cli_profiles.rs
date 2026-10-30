@@ -401,13 +401,8 @@ fn blank_sqlite_auth_and_mfa_scaffolds_compile() {
             "--skip-initial-migration".as_ref(),
         ],
     );
-    // The blank starter ships its own users table; the auth scaffold owns it here.
-    fs::remove_file(
-        project
-            .path
-            .join("src/migrations/m20260601000000_create_users_table.rs"),
-    )
-    .expect("remove starter users migration");
+    // The starter keeps its users migration; auth adds the account columns
+    // and replaces the starter's `User` with the account model.
     rullst(&project.path, &["auth".as_ref()]);
     rullst(&project.path, &["make:mfa".as_ref()]);
     let features = rullst_features(&project.path);

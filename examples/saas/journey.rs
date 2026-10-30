@@ -73,7 +73,8 @@ fn write_error(error: sqlx::Error) -> StatusCode {
     }
 }
 
-#[derive(Serialize, sqlx::FromRow)]
+// Read as a tuple: a generated application has no SQLx derive macros.
+#[derive(Serialize)]
 struct Note {
     id: i64,
     tenant_id: String,
@@ -87,7 +88,7 @@ async fn authorized_note(
     tenant: &TenantContext,
 ) -> Result<Note, StatusCode> {
     let pool = Orm::pool().map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
-    let note: Note = sqlx::query_as(
+    let (id, tenant_id, owner_id, body): (i64, String, i32, String) = sqlx::query_as(
         "SELECT id, tenant_id, owner_id, body FROM journey_notes WHERE id = ? AND tenant_id = ?",
     )
     .bind(id)
@@ -96,6 +97,12 @@ async fn authorized_note(
     .await
     .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
     .ok_or(StatusCode::NOT_FOUND)?;
+    let note = Note {
+        id,
+        tenant_id,
+        owner_id,
+        body,
+    };
     let context = UserContext::new(user_id.to_string(), vec![])
         .try_with_tenant_id(&tenant.tenant_id)
         .map_err(|_| StatusCode::FORBIDDEN)?;

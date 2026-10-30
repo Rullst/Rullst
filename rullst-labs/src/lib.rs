@@ -15,6 +15,7 @@
 //! runner's trusted controller. The
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-labs/README.md)
 //! describes the application and runner boundary.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 
 mod authorization;

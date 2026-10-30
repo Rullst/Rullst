@@ -1,8 +1,10 @@
 # Nexus application integration plan
 
-Status: proposed scope, reviewed on 25 September 2026. These are planned
-improvements, not APIs available in a published release. The current contract
-remains in the [specification](spec.md#102-rullst-nexus-nexus) and
+Status: proposed scope, reviewed on 25 September 2026, with progress noted up
+to 13.0.0-alpha.4. Except for the parts this page says exist, these are planned
+improvements, not available APIs. 13.0.0-alpha.4 is the 13.0 feature freeze, so
+the remaining stages are not part of 13.0. The current contract remains in the
+[specification](spec.md#102-rullst-nexus-nexus) and
 [Nexus guide](4-rullst-nexus.md).
 
 The goal is to embed Nexus into an existing application without duplicating
@@ -25,11 +27,11 @@ host membership and domain authorization are not inferred from registered
 models, and the mutation audit does not provide an immutable external log.
 
 `FieldMeta.hidden` already excludes a field from list and form rendering, and
-the input validator rejects writes to hidden fields. On `main` its field
-documentation now says so, and the list and edit views select only visible,
-non-password columns (the list also reads the primary key); v12 still documents
-the old form visibility. This rendering behavior is not yet the never-read
-projection contract of stage 3. Field visibility, database projection and
+the input validator rejects writes to hidden fields. In v13 its field
+documentation says so, and the list and edit views select only visible,
+non-password columns (the list also reads the primary key); the end-of-life
+v12 line documents the old form visibility. This rendering behavior is not yet
+the never-read projection contract of stage 3. Field visibility, database projection and
 authorization need distinct documented contracts.
 
 Existing mobile/navigation improvements and pagination links are useful;
@@ -79,27 +81,23 @@ or account-deletion workflows. Additional read-access auditing and assurance
 levels remain separately scoped work; the first read-only mode does not claim
 to provide them.
 
-## Stable v12 maintenance boundary
+## v12 boundary (historical)
 
-Correct inaccurate field documentation and add a tested recipe for conditional
-HTML boolean attributes in the stable documentation. Preserve current APIs,
-MSRV and serialized contracts. Narrow defect fixes follow stable maintenance
-and the [security policy](../../SECURITY.md); new public integration features
-require a versioning decision and are not automatically patch backports.
+This section recorded the boundary while v12 was the maintained stable line;
+v12 reached end of life on 16 October 2026 and receives no further changes (see
+the [security policy](../../SECURITY.md)). The plan was to correct inaccurate
+field documentation and add a tested recipe for conditional HTML boolean
+attributes there, preserving its APIs, MSRV and serialized contracts; new
+public integration features were never patch backports.
 
 For HTML boolean attributes, presence means true: `selected="false"` does not
-disable selection. The current macro escapes and serializes a dynamic value;
-the safe existing recipe emits the complete selected or unselected element,
-including a quoted `selected="selected"` only in the selected branch. See
-[MDN's boolean attribute semantics](https://developer.mozilla.org/en-US/docs/Glossary/Boolean/HTML).
-
-An explicit conditional-attribute API is a separate v13 ergonomics proposal.
-It must preserve escaping and distinguish actual HTML boolean attributes from
-string-valued `aria-*` and `data-*` attributes. Do not reinterpret all false
-values or silently change the stable macro's serialization behavior.
-13.0.0-alpha.2 provides it as `name?={value}` (a `bool` toggles presence, an
-`Option` omits the attribute for `None`) while `name={value}` keeps its
-serialization.
+disable selection (see [MDN's boolean attribute semantics](https://developer.mozilla.org/en-US/docs/Glossary/Boolean/HTML)).
+Since 13.0.0-alpha.2, `html!` writes a conditional attribute as
+`name?={value}`: a `bool` toggles presence and an `Option` omits the attribute
+for `None`, while `name={value}` keeps writing the escaped value as text, which
+is right for `aria-*` and `data-*` attributes. On v12 the safe recipe emits the
+complete selected or unselected element, with a quoted `selected="selected"`
+only in the selected branch.
 
 ## Acceptance and evidence
 
@@ -126,6 +124,7 @@ properties alongside the unchanged workspace and release requirements:
   the full tests, Clippy, formatting, packaging and applicable admission gates;
   passing a downstream application's tests is not framework release admission.
 
-No part of this document claims that these APIs, browser journeys or release
-checks have already been implemented or passed. Scope implementation after
-stable maintenance priorities, starting with one complete read-only journey.
+Apart from the parts this page says exist, no part of this document claims
+that these APIs, browser journeys or release checks have already been
+implemented or passed. Scope implementation after 13.0, starting with one
+complete read-only journey.

@@ -8,10 +8,10 @@
 mod partial_update_contract;
 mod support;
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "matrix_sqlite_users")]
 struct User {
     pub id: i32,

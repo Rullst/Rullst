@@ -18,8 +18,10 @@ pub async fn nexus_telemetry_page(
     let (ai_active, provider_name) = detect_ai_provider();
     let ai_metric_sub = if ai_active {
         format!("Provider configured: {provider_name}; no generation sampled")
-    } else {
+    } else if crate::nexus::ai_chat::AI_ASSISTANT {
         "No LLM provider configured".to_string()
+    } else {
+        provider_name
     };
 
     let snapshot = rullst_core::radar::RadarSnapshot::collect_async().await;

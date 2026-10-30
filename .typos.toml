@@ -13,7 +13,10 @@ extend-exclude = [
     "sbom-cyclonedx.json",
     # CLDR month and weekday names in other languages (generated tables).
     "rullst-core/src/i18n/format/data_dates.rs",
-    "rullst-core/src/i18n/format/cldr_tests.rs"
+    "rullst-core/src/i18n/format/cldr_tests.rs",
+    # Generated public-API listings: paths and names come from the checked
+    # sources and their dependencies (for example `serde::ser`).
+    ".github/public-api/"
 ]
 
 [default.extend-words]

@@ -10,10 +10,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
-use rullst_orm::{Error, FromRow, Orm, Outbox, after_commit};
+use rullst_orm::{Error, Orm, Outbox, after_commit};
 use serde_json::json;
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "nested_records")]
 struct NestedRecord {
     id: i32,

@@ -7,7 +7,8 @@ pub(crate) mod database_url;
 mod dev_errors;
 mod dev_reload;
 pub(crate) mod dev_telemetry;
-/// Dynamic library router loader for hot-reload mode.
+/// Dynamic library router loader for hot-reload mode; `Server` uses it.
+#[doc(hidden)]
 pub mod dylib_loader;
 /// Atomic hot-swappable Tower service.
 pub mod hotswap;

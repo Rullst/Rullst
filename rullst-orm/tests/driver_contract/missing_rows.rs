@@ -2,16 +2,16 @@
 //! (MySQL/MariaDB count matched rows only with `CLIENT_FOUND_ROWS`).
 
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{Error, FromRow, Orm, with_tenant};
+use rullst_orm::{Error, Orm, with_tenant};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_vanishing_notes")]
 struct ContractVanishingNote {
     id: i32,
     title: String,
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_vanishing_cards", tenant_column = "tenant_id")]
 struct ContractVanishingCard {
     id: i32,

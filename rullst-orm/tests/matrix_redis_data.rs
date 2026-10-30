@@ -3,15 +3,15 @@
 mod support;
 
 use rullst_orm::{
-    FromRow, Orm, RedisDataConfig, RedisDataKey, RedisDataStore, RedisField, RedisMember,
-    RedisScanLimit, RedisStructure, RedisStructuresRepository, RedisValue,
+    Orm, RedisDataConfig, RedisDataKey, RedisDataStore, RedisField, RedisMember, RedisScanLimit,
+    RedisStructure, RedisStructuresRepository, RedisValue,
 };
 use serde::{Deserialize, Serialize};
 use testcontainers::GenericImage;
 use testcontainers::core::{IntoContainerPort, WaitFor};
 use testcontainers::runners::AsyncRunner;
 
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, FromRow, PartialEq, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, PartialEq, Default)]
 #[orm(table = "redis_matrix_docs")]
 struct RedisMatrixDoc {
     id: i32,
@@ -19,7 +19,7 @@ struct RedisMatrixDoc {
     views: i64,
 }
 
-#[derive(Clone, Debug, rullst_orm::Orm, FromRow, PartialEq)]
+#[derive(Clone, Debug, rullst_orm::Orm, PartialEq)]
 #[orm(table = "redis_matrix_tenant_docs", tenant_column = "organization_id")]
 struct RedisMatrixTenantDoc {
     id: i32,

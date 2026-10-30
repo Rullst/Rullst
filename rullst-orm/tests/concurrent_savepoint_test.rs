@@ -9,9 +9,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use rullst_orm::{Error, FromRow, Orm};
+use rullst_orm::{Error, Orm};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "savepoint_records")]
 struct SavepointRecord {
     id: i32,

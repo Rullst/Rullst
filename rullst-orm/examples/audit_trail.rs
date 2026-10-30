@@ -3,7 +3,7 @@ use rullst_orm::{
     audit::{AuditContext, with_audit_context},
 };
 
-#[derive(Clone, Debug, Default, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Default, rullst_orm::Orm)]
 #[orm(table = "users", auditable)]
 pub struct User {
     pub id: i32,

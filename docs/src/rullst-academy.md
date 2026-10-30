@@ -1,8 +1,10 @@
 # Rullst Academy product programme
 
-> **Status:** proposed reference product, not a shipped framework capability.
-> Academy must live in a separate repository and depend only on published
-> Rullst packages. Its operation is evidence for the framework; its product
+> **Status:** Rullst Academy runs at [academy.rullst.win](https://academy.rullst.win/)
+> as a separate application; it is not a shipped framework capability. This page
+> records its boundary with the framework and the evidence needed before its
+> operation counts as framework release evidence. Academy must live in a
+> separate repository and depend only on published Rullst packages; its product
 > content and deployment are not part of the `rullst` crate.
 
 Rullst Academy is a web-first platform for learning Rust and Rullst through
@@ -29,8 +31,7 @@ The Academy repository must:
 - contribute only proven, reusable abstractions back to optional framework
   crates;
 - provide application-level upgrade, backup/restore and recovery feedback for
-  future releases; this proposed product is not a prerequisite for the already
-  published v12 release.
+  future releases; Academy is not a prerequisite for any Rullst release.
 
 ## Focused first release
 
@@ -128,8 +129,8 @@ PII masking and secret-minimized audit remain mandatory.
 | Learning domain | The LMS example's (`examples/lms`, the former v13 LMS starter) catalog, modules, lessons, accessible player, enrollment and owner-bound progress; the v12 Academy scaffold's activities, quizzes, review, completion, certificates, leaderboard and automation were retired | those learning features, coherent product UX, content quality, complete authorship and browser E2E |
 | Identity and schools | Session/RBAC helpers; the LMS example has no schools (the v12 school-scoped contracts were retired) | schools and memberships, account recovery, invitations, device/session policy and every cross-school negative |
 | AI tutor | guarded providers, Ollama fallback, bounded tenant-aware RAG and audit contracts | curated corpus, pedagogy, model evaluation, capacity and user-facing failure behavior |
-| Practical projects | queues, outbox and bounded messaging foundations; the `rullst-labs` job and grading contracts (13.0.0-alpha.1 prerelease) | isolated runner, immutable images, resource policy and escape testing |
-| Media | bounded accessible lesson metadata, captions and transcripts; the opt-in `rullst-media` Bunny Stream candidate (13.0.0-alpha.1 prerelease) | upload, storage, scanning, transcoding, caption quality and retention |
+| Practical projects | queues, outbox and bounded messaging foundations; the `rullst-labs` job and grading contracts (published since 13.0.0-alpha.1) | isolated runner, immutable images, resource policy and escape testing |
+| Media | bounded accessible lesson metadata, captions and transcripts; the opt-in `rullst-media` Bunny Stream candidate (published since 13.0.0-alpha.1) | upload, storage, scanning, transcoding, caption quality and retention |
 | Operations | health/readiness, telemetry, deploy scaffolds and upgrade assistant | production topology, TLS/proxy identity, backup/restore, rollback, alerts and incident response |
 
 ## Repository and release boundary
@@ -139,18 +140,18 @@ document records only the intended boundary and the reusable framework
 foundation that already exists; it does not authorize further Academy work in
 the Rullst repository and it is not a framework release gate.
 
-- **v12.0:** close the framework independently through its coverage,
-  CI/package/security, upgrade and release-candidate gates. Academy does not
-  need to exist or run against the RC.
-- **v12.0.x:** maintenance only for confirmed framework defects and security
-  fixes, without an Academy capability programme.
-- **v13:** the next feature line. Reusable improvements discovered by the
-  future external Academy may be proposed with their own bounded contracts;
-  research-heavy or breaking work remains explicitly governed by v13 criteria.
+- **v12:** closed through its own gates without Academy; the line reached end
+  of life on 16 October 2026.
+- **13.0:** 13.0.0-alpha.4 is the feature freeze, 13.0.0-rc.1 takes fixes and
+  documentation only, and Academy does not need to exist or run against either.
+- **After 13.0:** reusable improvements discovered by the external Academy
+  may be proposed with their own bounded contracts; research-heavy or
+  breaking work remains governed by the
+  [maintenance scope](v13-maintenance-scope.md).
 
 The open canonical milestones in the [current roadmap](roadmap.md) belong to
-the long-term v13 horizon. They are not release blockers for v12.0, and Academy
-itself is not part of that milestone denominator.
+the long-term v13 horizon. They do not block 13.0.0, and Academy itself is not
+part of that milestone denominator.
 
 ## Acceptance evidence
 

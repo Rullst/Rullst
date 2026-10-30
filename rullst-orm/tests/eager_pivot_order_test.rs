@@ -6,9 +6,9 @@
 
 use std::sync::Arc;
 
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "ordered_articles")]
 struct OrderedArticle {
     id: i32,
@@ -23,7 +23,7 @@ struct OrderedArticle {
     labels: Option<Vec<OrderedLabel>>,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "ordered_labels")]
 struct OrderedLabel {
     id: i32,

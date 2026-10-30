@@ -1,10 +1,10 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
+use rullst_orm::Orm;
 use rullst_orm::audit::{AuditContext, create_audit_table, with_audit_context};
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "audit_large_documents", auditable)]
 struct Document {
     pub id: i32,

@@ -1,7 +1,13 @@
-"""Conservative, Git-object-based input identity for the reviewed fuzz surface."""
+"""Conservative, Git-object-based input identity for the reviewed fuzz surface.
+
+Each fuzz package's inputs are its Cargo path-dependency graph (see
+`fuzz_build_graph.py`) plus a small global set; anything the graph cannot
+resolve statically makes the whole repository that package's input.
+"""
 
 from __future__ import annotations
 
+import bisect
 import hashlib
 import json
 import re
@@ -10,6 +16,7 @@ import tomllib
 from pathlib import Path
 
 from release_line import FUZZ_TARGET_COUNTS, policy_line
+from fuzz_build_graph import Graph, under
 from fuzz_reviewed_context import REVIEW as CONTEXT_REVIEW, normalized_files
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,7 +29,22 @@ SHA = re.compile(r"[0-9a-f]{40}")
 class FuzzSurfaceChanged(ValueError):
     """A historical inventory cannot certify the current release surface."""
 
+
+# Inputs of every fuzz package: workspace manifest (profiles, patches, inherited
+# dependencies), toolchain, Cargo configuration, every `.gitattributes`
+# (checkout conversion), the inventory/release line and the scripts the fuzz
+# workflow runs. `.github/**` paths named by the workflow, and sibling modules
+# they import, are added.
+GLOBAL_FILES = frozenset({
+    "Cargo.toml", "rust-toolchain", "rust-toolchain.toml",
+    INVENTORY, ".github/release-required-workflows.json", ".github/release_line.py",
+    ".github/validate-fuzz-targets.py",
+})
+GLOBAL_TREES = (".cargo",)
+
 # Reviewed non-inputs, not a glob-based exclusion of all tests or documentation.
+# They apply only to the global set and to a scope that fails closed: every
+# file of a reached package, and every file it references, is an input.
 # The fuzz crates are separate workspaces with their own retained Cargo.lock.
 # Admission/control code is trusted reviewed policy, never execution evidence.
 NON_INPUTS = frozenset({
@@ -30,9 +52,11 @@ NON_INPUTS = frozenset({
     ".github/fuzz_reviewed_context.py", ".github/test-fuzz-reviewed-context.py",
     "Cargo.lock", "WORKFLOWS.md", "docs/src/fuzz-evidence.md",
     ".github/mobile-ui-browser-smoke.mjs", ".github/billing-csp-browser-smoke.mjs",
-    "rullst-mail/tests/feedback.rs",
     ".github/fuzz_evidence_inputs.py", ".github/fuzz_evidence.py",
+    ".github/fuzz_build_graph.py", ".github/fuzz_source_scan.py",
+    ".github/check-fuzz-build-graph.py",
     ".github/test-fuzz-evidence.py", ".github/test-fuzz-evidence-inputs.py",
+    ".github/test-fuzz-build-graph.py",
     ".github/test-fuzz-preflight.py",
     ".github/check-release-admission.py", ".github/test-check-release-admission.py",
     ".github/workflows/release.yml", ".github/workflows/workflow-lint.yml",
@@ -44,12 +68,9 @@ NON_INPUTS = frozenset({
     # Advisory-exception policy is enforced by the audit scanners, which never
     # build fuzz code.
     "deny.toml", "docs/src/security-advisory-exceptions.md",
-    ".github/workflows/audit.yml", ".github/workflows/security-audit.yml",
-    ".github/workflows/pqc-compliance.yml",
-    ".github/workflows/ai-sentinel-pr.yml",
-    # `#[cfg(test)]` Core modules: fuzz targets never compile library unit tests.
-    "rullst-core/src/server/dev_telemetry/n_plus_one_tests.rs",
-    "rullst-core/src/server/stack_tests.rs",
+    ".github/workflows/supply-chain.yml",
+    ".github/workflows/crypto-containment.yml",
+    ".github/workflows/pr-security-evidence.yml",
 })
 
 
@@ -149,47 +170,23 @@ class Snapshot:
         self.directories = {item["dir"] for item in self.inventory}
         self.workflow = self.read(WORKFLOW).decode()
         self.contract = execution_contract(self.workflow)
-        self.global_entries = []
-        self.packages: dict[str, list] = {directory: [] for directory in self.directories}
-        # Includes, process/file access or cross-package path dependencies make
-        # package isolation uncertain. In that case include all fuzz inputs in
-        # the shared identity as well, so any fuzz change reruns every target.
-        isolated = True
-        for directory in self.directories:
-            manifest = tomllib.loads(self.read(f"{directory}/Cargo.toml").decode("utf-8-sig"))
-            if (manifest.get("build") or manifest.get("package", {}).get("build")
-                    or f"{directory}/build.rs" in self.files):
-                isolated = False
-            for section in ("dependencies", "build-dependencies", "dev-dependencies"):
-                for dependency in manifest.get(section, {}).values():
-                    if isinstance(dependency, dict) and "path" in dependency:
-                        # The reviewed shape is a fuzz crate depending on its
-                        # parent runtime crate; unusual paths become global.
-                        if dependency["path"] != "..":
-                            isolated = False
-            if manifest.get("target") or manifest.get("patch"):
-                isolated = False
-            for path in self.files:
-                if path.startswith(directory + "/") and path.endswith(".rs"):
-                    source = self.read(path)
-                    if path == "rullst-orm/fuzz/fuzz_targets/fuzz_parser.rs":
-                        # This reviewed parser module is already a global input.
-                        source = source.replace(b'#[path = "../../../rullst-orm-macros/src/parser.rs"]', b"")
-                    if re.search(rb"include|\bpath\s*=|\b(?:fs|env|process)\s*::|\b(?:File|Command)\s*::", source):
-                        isolated = False
+        # Discovery reads the original Git objects; reviewed normalization only
+        # changes the identity of documents that remain inputs.
+        self.graph = Graph(self.files, root, self.directories)
+        self.scopes = self.graph.scopes()
+        self.fail_closed = {directory: scope.reasons for directory, scope in sorted(self.scopes.items())
+                            if scope.reasons}
         reviewed_docs = reviewed_document_blobs()
         identity_files, self.context_review = normalized_files(
             self.files, self.contract, self.release_branch,
             json.loads((ROOT / CONTEXT_REVIEW).read_text()))
-        for path, (mode, oid) in sorted(identity_files.items()):
-            if path in NON_INPUTS or path == WORKFLOW:
-                continue
+
+        def entry(path: str) -> list:
+            mode, oid = identity_files[path]
             # Only the two explicitly reviewed contents are equivalent. Keep
             # path/mode/deletion in the identity; any third blob is a new input.
             if path in reviewed_docs and mode == "100644" and oid in reviewed_docs[path]:
                 oid = reviewed_docs[path][0]
-            package = next((directory for directory in self.directories
-                            if path.startswith(directory + "/")), None)
             if path == "rullst-mail/Cargo.toml":
                 # A dependency crate's integration-test dependencies are not
                 # built by these independent fuzz workspaces. Retain every
@@ -197,11 +194,50 @@ class Snapshot:
                 manifest = tomllib.loads(self.read(path).decode("utf-8-sig"))
                 manifest.pop("dev-dependencies", None)
                 oid = digest(manifest)
-            entry = [path, mode, oid]
-            (self.packages[package] if package else self.global_entries).append(entry)
-            if package and not isolated:
-                self.global_entries.append(entry)
+            return [path, mode, oid]
+
+        global_paths = self.global_paths(identity_files)
+        self.global_entries = [entry(path) for path in sorted(global_paths)]
+        self.packages: dict[str, list] = {}
+        self.reached: dict[str, list[str] | None] = {}
+        paths = sorted(identity_files)
+        for directory, scope in self.scopes.items():
+            if scope.reasons:
+                # Fail closed: every tracked file except reviewed non-inputs.
+                selected = {path for path in paths if path not in NON_INPUTS and path != WORKFLOW}
+                self.reached[directory] = None
+            else:
+                selected = {path for item in (*scope.packages, *scope.files)
+                            for path in self._below(paths, item)}
+                self.reached[directory] = sorted(scope.packages)
+            self.packages[directory] = [entry(path) for path in sorted(selected) if path not in global_paths]
         self.global_hash = digest({"files": self.global_entries, "execution": self.contract})
+
+    @staticmethod
+    def _below(paths: list[str], directory: str) -> list[str]:
+        start = bisect.bisect_left(paths, directory)
+        end = bisect.bisect_left(paths, directory + "0") if directory else len(paths)
+        return [path for path in paths[start:end] if under(path, directory)]
+
+    def global_paths(self, identity_files: dict) -> set[str]:
+        """Shared inputs, minus reviewed policy and the separately hashed workflow."""
+        named = {match.rstrip("./") for match in re.findall(r"\.github/[A-Za-z0-9_./-]+", self.workflow)}
+        named.discard(".github")
+        pending = [path for path in named if path.endswith(".py") and path not in NON_INPUTS]
+        while pending:
+            script = pending.pop()
+            if script not in self.files:
+                continue
+            for module in re.findall(r"(?m)^\s*(?:from|import)\s+([A-Za-z_][A-Za-z0-9_]*)",
+                                     self.read(script).decode("utf-8", "replace")):
+                sibling = f".github/{module}.py"
+                if sibling in self.files and sibling not in named and sibling not in NON_INPUTS:
+                    named.add(sibling)
+                    pending.append(sibling)
+        return {path for path in identity_files
+                if (path in GLOBAL_FILES or path.rsplit("/", 1)[-1] == ".gitattributes"
+                    or any(under(path, item) for item in (*GLOBAL_TREES, *named)))
+                and path not in NON_INPUTS and path != WORKFLOW}
 
     def read(self, path: str) -> bytes:
         return git("show", f"{self.sha}:{path}", root=self.root)
@@ -216,5 +252,7 @@ class Snapshot:
     def fingerprint(self, directory: str) -> str:
         if directory not in self.packages:
             raise ValueError("unknown fuzz package")
-        # Hash the entire package, including every sibling harness and lock.
-        return digest({"global": self.global_hash, "package": self.packages[directory]})
+        # Hash every reached package (each sibling harness and lock included),
+        # referenced outside file and, when closed, the whole repository.
+        return digest({"global": self.global_hash, "package": self.packages[directory],
+                       "reached": self.reached[directory]})

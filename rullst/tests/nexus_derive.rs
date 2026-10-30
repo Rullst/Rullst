@@ -43,7 +43,7 @@ struct TenantArticle {
 }
 
 /// A real ORM model: Nexus must follow its skip and confidentiality markers.
-#[derive(Clone, Debug, Default, rullst::db::Orm, rullst::db::FromRow, Nexus)]
+#[derive(Clone, Debug, Default, rullst::db::Orm, Nexus)]
 #[allow(dead_code)]
 #[orm(table = "nexus_patients")]
 struct NexusPatient {
