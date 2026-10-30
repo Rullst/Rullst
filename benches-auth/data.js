@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793339073648,
+  "lastUpdate": 1793341583149,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -19323,6 +19323,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4226,
             "range": "± 21",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89a336db4971e447905802852cb8e0f0efbd8f11",
+          "message": "Merge pull request #587 from Rullst/ci/v13-alpha4-workflow-cleanup\n\nci: consolidate the supply-chain workflows, rename misleading ones and prune corpus-sync (37 → 34)",
+          "timestamp": "2026-10-30T03:11:44-03:00",
+          "tree_id": "cba3fd6171d10f64d2afde80b1c163bd19ff367d",
+          "url": "https://github.com/Rullst/Rullst/commit/89a336db4971e447905802852cb8e0f0efbd8f11"
+        },
+        "date": 1793341582573,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1029,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 747,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1773,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4198,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
