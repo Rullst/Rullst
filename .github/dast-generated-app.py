@@ -33,6 +33,8 @@ import tomllib
 import urllib.parse
 
 ROOT = Path(__file__).resolve().parent.parent
+LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
+DASHBOARD = "/dashboard"
 USER_AGENT = "Mozilla/5.0 (Rullst DAST session)"
 ACCOUNT_NAME = "ZAP Scanner"
 DEPENDENCY = re.compile(r'^(?P<name>[A-Za-z0-9_-]+)\s*=\s*\{\s*path\s*=\s*(?:"[^"]*"|\'[^\']*\')')
@@ -98,7 +100,10 @@ def request(base: urllib.parse.SplitResult, method: str, path: str, cookies: dic
             form: dict[str, str] | None = None) -> tuple[int, dict[str, str], dict[str, str], str]:
     """One request without redirects. Production cookies are `Secure`, so they
     are kept by hand rather than by a cookie jar that would drop them on HTTP."""
-    connection = http.client.HTTPConnection(base.hostname, base.port, timeout=30)
+    # Only the app this job started on the runner's loopback is ever contacted.
+    if base.hostname not in LOOPBACK_HOSTS:
+        raise Failure(f"refusing to contact {base.hostname!r}: only loopback hosts are scanned")
+    connection = http.client.HTTPConnection(base.hostname, base.port, timeout=30)  # NOSONAR
     headers = {"User-Agent": USER_AGENT}
     if cookies:
         headers["Cookie"] = "; ".join(f"{name}={value}" for name, value in cookies.items())
@@ -131,12 +136,12 @@ def command_session(base_url: str) -> None:
             "email": f"zap-{secrets.token_hex(6)}@example.com", "password": secrets.token_urlsafe(24)}
     status, issued, headers, _ = request(base, "POST", "/register", cookies, form)
     cookies.update(issued)
-    if status not in (302, 303) or headers["location"] != "/dashboard" or not cookies.get("rullst_session"):
+    if status not in (302, 303) or headers["location"] != DASHBOARD or not cookies.get("rullst_session"):
         raise Failure(f"POST /register answered {status} -> {headers['location']!r} without a session")
-    status, issued, _, body = request(base, "GET", "/dashboard", cookies)
+    status, issued, _, body = request(base, "GET", DASHBOARD, cookies)
     cookies.update(issued)
     if status != 200 or ACCOUNT_NAME not in body:
-        raise Failure(f"GET /dashboard with the new session answered {status}")
+        raise Failure(f"GET {DASHBOARD} with the new session answered {status}")
     session = {name: cookies[name] for name in ("rullst_session", "rullst_csrf")}
     for value in session.values():
         print(f"::add-mask::{value}")
@@ -152,12 +157,13 @@ def command_session(base_url: str) -> None:
 def command_check_session(base_url: str) -> None:
     base = urllib.parse.urlsplit(base_url)
     header = os.environ.get("SAAS_ZAP_COOKIE", "")
-    cookies = dict(item.strip().partition("=")[::2] for item in header.split(";") if "=" in item)
+    cookies = {name: value for name, _, value in
+               (item.strip().partition("=") for item in header.split(";") if "=" in item)}
     if not cookies.get("rullst_session"):
         raise Failure("SAAS_ZAP_COOKIE holds no session")
-    status, _, headers, body = request(base, "GET", "/dashboard", cookies)
+    status, _, headers, body = request(base, "GET", DASHBOARD, cookies)
     if status != 200 or ACCOUNT_NAME not in body:
-        raise Failure(f"the scanned session no longer opens /dashboard ({status} -> {headers['location']!r})")
+        raise Failure(f"the scanned session no longer opens {DASHBOARD} ({status} -> {headers['location']!r})")
     print("The session used by the scan still opens /dashboard.")
 
 
