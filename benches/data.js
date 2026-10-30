@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793330247032,
+  "lastUpdate": 1793331993463,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -30109,6 +30109,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1311,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d3162470d8b473add699616dfecbd40fd4252b10",
+          "message": "Merge pull request #584 from Rullst/docs/v13-alpha4-docsrs\n\ndocs(crates): build docs.rs pages with each crate's real feature set",
+          "timestamp": "2026-10-30T00:42:53-03:00",
+          "tree_id": "e057ab0a538fe59f21fe7fe636d584b0f70af6b3",
+          "url": "https://github.com/Rullst/Rullst/commit/d3162470d8b473add699616dfecbd40fd4252b10"
+        },
+        "date": 1793331990002,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 532,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 692,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 318,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1333,
+            "range": "± 25",
             "unit": "ns/iter"
           }
         ]
