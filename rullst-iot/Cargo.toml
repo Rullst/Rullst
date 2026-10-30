@@ -13,6 +13,13 @@ documentation = "https://docs.rs/rullst-iot"
 keywords = ["iot", "embedded", "firmware", "telemetry", "ed25519"]
 categories = ["embedded", "no-std", "cryptography"]
 
+# docs.rs documents every feature, `std` included, on one hosted target: a
+# `no_std` target cannot build `std`. The labels show what needs `std`.
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [features]
 default = ["std"]
 std = ["ed25519-dalek/std", "serde/std", "serde_json/std"]

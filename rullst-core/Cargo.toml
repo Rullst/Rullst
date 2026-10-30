@@ -13,6 +13,13 @@ documentation = "https://docs.rs/rullst-core"
 keywords = ["rullst", "framework", "web", "runtime", "routing"]
 categories = ["web-programming::http-server", "asynchronous"]
 
+# docs.rs documents every feature except the `strict-*` profiles, which select
+# one ORM backend instead of `drivers-all`.
+[package.metadata.docs.rs]
+features = ["orm", "drivers-all", "queue-sqlite", "redis", "queue-redis", "cache-redis", "scheduler-tz", "storage-s3", "storage-multipart", "telemetry", "studio"]
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 

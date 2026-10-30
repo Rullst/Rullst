@@ -13,6 +13,13 @@ documentation = "https://docs.rs/rullst-studio"
 keywords = ["studio", "dashboard", "telemetry", "debugger", "devtools"]
 categories = ["development-tools", "web-programming"]
 
+# docs.rs documents the default features (`drivers-all`, `queue-sqlite`) plus
+# `remote`; the `strict-*` profiles select one ORM backend instead.
+[package.metadata.docs.rs]
+features = ["remote"]
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 

@@ -13,6 +13,14 @@ documentation = "https://docs.rs/rullst-orm"
 keywords = ["orm", "database", "sqlite", "postgres", "mysql"]
 categories = ["database"]
 
+# docs.rs documents the portable `drivers-all` profile and every integration
+# except `duckdb`, which compiles DuckDB's bundled C++ engine. The `strict-*`
+# profiles select one backend's pool and database type aliases instead.
+[package.metadata.docs.rs]
+features = ["drivers-all", "redis", "mongodb", "turso", "surrealdb", "scout-http", "pgvector", "ai", "qdrant"]
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [dependencies]
 rullst-orm-macros = { workspace = true, features = ["runtime-driver-codecs", "runtime-feature-gates"] }
 sqlx = { workspace = true, features = ["any", "runtime-tokio", "macros", "json", "tls-rustls-aws-lc-rs", "chrono"] }
