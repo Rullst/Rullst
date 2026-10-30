@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793333767942,
+  "lastUpdate": 1793339388207,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -16827,6 +16827,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 279,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5edd6c3f04c12067ae764c301aff315df9760b2f",
+          "message": "Merge pull request #581 from Rullst/ci/v13-alpha4-schedules-and-gates\n\nci: weekly Miri/Kani, full-matrix label, ZAP on the SaaS starter and a 13.x SemVer baseline",
+          "timestamp": "2026-10-30T02:25:15-03:00",
+          "tree_id": "e4c9e166c260aeafd884916b582b5ace2ebe2b90",
+          "url": "https://github.com/Rullst/Rullst/commit/5edd6c3f04c12067ae764c301aff315df9760b2f"
+        },
+        "date": 1793339387302,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1773,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 347,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 389,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
