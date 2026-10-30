@@ -1115,7 +1115,7 @@ covers it. `corpus-sync.yml` was removed (see
 [Fuzzing and OSS-Fuzz](#fuzzing-and-oss-fuzz)); these two stay:
 
 - `mutants.yml` stays: it measures the mutation campaigns (MAINTAINING.md section 6), admits CLI files to `.github/mutants-pr-cli.txt`, and its targeted runs are dispatched and acted on routinely.
-- `udeps.yml` stays: it is the only check of unused dev- and build-dependencies, because `cargo machete` reads only `[dependencies]`; its weekly report has listed the same findings since September 2026 (`insta` in `cargo-rullst`, `proptest` in `rullst` and `loom` in `rullst-connect` are unused; the `rullst-orm` and `rullst-studio` entries are test dependencies the all-feature build compiles out), so clear them to make a new finding visible.
+- `udeps.yml` stays: it is the only check of unused dev- and build-dependencies, because `cargo machete` reads only `[dependencies]`. Its weekly report listed the same findings from September 2026; 13.0.0-alpha.4 removed the three unused ones (`insta` in `cargo-rullst`, `proptest` in `rullst` and `loom` in `rullst-connect`). The remaining `rullst-orm` and `rullst-studio` entries are test dependencies the all-feature build compiles out, so any other entry is a new finding.
 
 ## Verification efficiency — v12 maintenance and v13
 
