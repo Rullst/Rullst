@@ -1,17 +1,18 @@
 # Compatibility, MSRV, deprecation, and support policy
 
 This policy applies to the packages in the [release inventory](../../.github/release-order.json):
-16 published packages in v12.1 and 20 packages in the v13 prerelease train (13.0.0-alpha.4),
-including `rullst-privacy`, `rullst-supervision`, `rullst-media` and `rullst-labs`. They are released as one synchronized release train
-even when a user depends on only one crate. The
+16 packages in the v12 line and 20 in v13, which adds `rullst-privacy`,
+`rullst-supervision`, `rullst-media` and `rullst-labs`. They are released as one
+synchronized release train even when a user depends on only one crate. The
 current supported-version table in [`SECURITY.md`](../../SECURITY.md) remains
 authoritative for releases that are actually available; a version in the
 workspace is not a supported release merely because its manifest exists.
 
 ## Source branches
 
-The permanent branches are `main` (v13 development; latest prerelease 13.0.0-alpha.4), `v12`
-(frozen; 12.x reached end of life on 16 October 2026) and `gh-pages` (generated site/benchmark data).
+The permanent branches are `main` (v13 development and its 13.0.0 prereleases),
+`v12` (frozen; 12.x reached end of life on 16 October 2026) and `gh-pages`
+(generated site/benchmark data).
 Use short-lived feature, fix and Dependabot branches with a pull request to the
 appropriate protected base. Remove those temporary branches after their changes
 are integrated; a superseded PR must identify the replacement preserving its
@@ -77,8 +78,8 @@ handling is the same for every tier.
 
 ## Minimum Supported Rust Version
 
-The v12 release line and the v13 prerelease source both declare **Rust 1.96.0**
-in every publishable manifest.
+The v12 release line and v13 both declare **Rust 1.96.0** in every publishable
+manifest.
 
 - Patch releases do not raise the MSRV.
 - A minor release may raise it only with an explicit changelog entry, updated
@@ -109,9 +110,11 @@ regression tests.
 ## Supported release window
 
 Rullst does not currently promise an LTS or multi-minor backport program.
-Routine fixes target the latest patch of the latest supported stable minor. The
-exact versions receiving security triage are listed in `SECURITY.md`; older
-versions are end-of-life unless that table explicitly says otherwise.
+Routine fixes target the latest patch of the latest supported stable minor.
+Until 13.0.0 is published, only the most recent 13.0.0 prerelease is supported
+and fixes ship in a new prerelease. The exact versions receiving security
+triage are listed in `SECURITY.md`; older versions are end-of-life unless that
+table explicitly says otherwise.
 
 Release candidates receive fixes through a subsequent RC number rather than by
 overwriting a published artifact. Security reports follow the coordinated

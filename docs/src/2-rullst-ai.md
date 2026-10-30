@@ -52,15 +52,15 @@ Rullst's API is designed to give coding tools more explicit source landmarks;
 this can reduce ambiguity but does not measure or guarantee hallucination rates:
 
 - **Explicit Routes:** The `routes![ ... ]` macro is visual and delimited. The AI knows exactly where to add a new route without having to search across scattered files.
-- **Rullst ORM:** Based on Pure SQL (via SQLx) + Derives. AIs are much better at writing pure, correct SQL queries than learning an obscure query builder. Rullst takes advantage of this by using the database in a pure relational way.
-- **Clean Background Workers:** The queue system does not require complex global registration; you simply create an async function.
+- **Rullst ORM:** `#[derive(Orm)]` generates typed Active Record methods and a fluent query builder over SQLx; a query the builder does not cover is written in SQL with bound values (`Orm::raw` or SQLx). See the [ORM page](crates/orm.md).
+- **Explicit background workers:** a worker registers an async handler under a job name (`worker.register("email", ...)`) and is started explicitly; `cargo rullst make:worker` writes both parts.
 
 ## 3. How to Get the Best Results
 
 When instructing an AI to add a feature in Rullst:
 1. Ask it to read the instruction files that actually exist in your application
    and consult the matching version of the Rullst documentation.
-2. Say: "Create a new Controller following the pattern established in `auth_controller.rs`". Today's AIs are brilliant at pattern matching. Rullst provides the skeleton, the AI fills in the meat.
+2. Point it at an existing file: "Create a new controller following the pattern in `src/controllers/auth_controller.rs`" (written by `cargo rullst auth`). A concrete example in the project gives the assistant a pattern to follow.
 3. Use the generators! Ask the AI to use `cargo rullst make:controller` in the terminal (if it's an autonomous agent), ensuring the correct file structure.
 4. Run `cargo rullst generate:ai-context` so the assistant in your editor or
    terminal reads the project's `AGENTS.md` and its `.llms.txt` inventory, and

@@ -15,7 +15,8 @@ It does not tell you whether a feature exists. For that, see the
 | **Experimental** | Applications that opt in and accept change | May change between 13.x releases and is not validated in every scenario. |
 
 > **Prerelease note.** Until stable `13.0.0` is published, every v13 package is
-> a prerelease and may change in any alpha, beta or release candidate. The
+> a prerelease and may change in any prerelease. `13.0.0-alpha.4` is the 13.0
+> feature freeze: `13.0.0-rc.1` carries only fixes and documentation. The
 > promises below begin with `13.0.0`. [`SECURITY.md`](../../SECURITY.md) lists
 > which published versions receive security fixes.
 
@@ -123,13 +124,16 @@ regenerate.
 13.0.0-alpha.4 removed the experimental Foundry, Nix, Buildah and gRPC
 generators and the Fly.io, Railway and Render targets of `deploy`; see
 [Advanced deployment](advanced-deployment.md) for those setups. It also removed
-the terminal AI assistant (`cargo rullst ai`) and renamed `footprint` to
-`green`.
+the terminal AI assistant (`cargo rullst ai`; use your own assistant with the
+project's `AGENTS.md` and the site's
+[`llms.txt`](https://rullst.github.io/Rullst/llms.txt)) and renamed
+`footprint` to `green`.
 
 `cargo rullst new` offers three starters with the CLI's Core tier: Blank, API
 and SaaS. 13.0.0-alpha.4 moved the LMS, Blog, Portfolio and ERP starters out of
-the CLI; the LMS, ERP and Portfolio applications live on as
-[examples](examples.md), which are examples to copy from and carry no tier.
+the CLI; the LMS, ERP, Portfolio and Blog applications in `examples/` replace
+them. These [examples](examples.md) are applications to copy from and carry no
+tier.
 
 ## How a tier changes
 
