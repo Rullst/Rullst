@@ -23,7 +23,7 @@ as your product needs it.
 
 For the simplest first experiment, choose **Blank + SQLite**, or Blank with
 `--no-database` if you do not need persistence yet. The larger SaaS starter,
-and the LMS, ERP and Portfolio [examples](examples.md), have more moving parts
+and the LMS, ERP, Portfolio and Blog [examples](examples.md), have more moving parts
 and longer first builds. You can explore them after your toolchain and local
 workflow are working.
 

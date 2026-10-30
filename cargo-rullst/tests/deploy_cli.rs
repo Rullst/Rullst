@@ -105,6 +105,8 @@ fn deploy_writes_the_vm_files_and_trusts_its_caddy_proxy() {
     let dockerfile = fixture.read("Dockerfile");
     assert!(dockerfile.contains("AS planner"));
     assert!(dockerfile.contains("COPY --chown=10001:10001 Rullst.toml /app/Rullst.toml\n"));
+    // The relative SQLite URL would point into the read-only /app.
+    assert!(dockerfile.contains("ENV DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc\n"));
     let output = text(&deployed);
     assert!(output.contains("podman compose up -d --build"), "{output}");
     assert!(output.contains("/advanced-deployment.html"), "{output}");

@@ -68,41 +68,34 @@ Add the same `--root <dir>` if you installed with one.
 
 ## 2. Creating Your First Project
 
-We have completely redesigned the project creation experience. Instead of remembering complex flags, just run:
+Run the create wizard with the name of your application (or run
+`cargo rullst` alone and choose **Create New Project** on its home screen):
 
 ```bash
-cargo rullst
+cargo rullst new my_app
 ```
 
-It opens an interactive home menu. The example below creates a SaaS application:
-1. Select **Create New Project**.
-2. **App Name**: Provide a simple lowercase name (e.g., `my_saas`).
-3. **Starter**: Choose **SaaS** (the other starters are **Blank** and **API**).
-   Labels and decorative suffixes can change; use the starter name as your
-   reference.
-4. Choose your primary database. **SQLite** is the simplest local first run;
-   PostgreSQL, MySQL and MariaDB require their database service to be running.
-5. Leave **optional storage add-ons** empty unless you need an add-on.
-   That selector accepts zero or more choices; it is not another required database.
+The wizard asks its questions in a terminal and writes nothing until you
+confirm. Esc goes back one question.
 
-> [!NOTE]
-> **v13 preview: the first run in about a minute.** The v13 CLI replaces those
-> prompts with a create wizard: `cargo rullst new my_app` (or **Create New
-> Project** on the home screen) asks for the starter, showing a one-line
-> description and a preview of its file tree, then the database and optional
-> features, and ends on a review of the files and of the commands it will run
-> before anything is written. Esc goes back; Cancel creates nothing. When it
-> finishes it prints three numbered next steps: `cd my_app`,
-> `cargo rullst dev` and the local URL of the generated welcome page, by
-> default `http://127.0.0.1:3000`. With Blank + SQLite and a warm Cargo cache,
-> that page is about a minute away; a cold first build takes longer.
-> `cargo rullst new my_app --default --dry-run` previews the same plan
-> without creating anything, and `cargo rullst tour` walks through the main
-> commands without changing a project. See the
-> [CLI reference](cli_reference.md#cargo-rullst-new-name).
+1. **Starter**: **Blank**, **API** or **SaaS**, each with a one-line
+   description and a preview of the files it generates (see
+   [Rullst Starters](#3-rullst-starters)).
+2. **Database**: the primary database. **SQLite** is the simplest local first
+   run; PostgreSQL, MySQL and MariaDB need their database service running.
+3. **Features**: optional features such as AI, Redis or a storage add-on.
+   Selecting none is valid; a storage add-on is not another primary database.
+4. **Review**: the files and the commands it will run. Choose
+   **Create the project**, **Back** to change an answer, or **Cancel** to
+   exit without creating anything.
+
+For a database-backed app, the CLI then compiles the new application once and
+runs its initial migration, and prints three numbered next steps: `cd my_app`,
+`cargo rullst dev` and the local URL of the generated welcome page, by default
+`http://127.0.0.1:3000`:
 
 ```bash
-cd my_saas
+cd my_app
 cargo rullst dev
 ```
 
@@ -110,6 +103,13 @@ Open the local URL reported by the command. Find the generated page code,
 change a heading and save. Confirm that the changed page appears after the
 successful rebuild/restart. Stop development with `Ctrl+C` before moving or
 removing the project directory.
+
+`cargo rullst new my_app --default --dry-run` prints the plan, its file tree
+and the commands without creating anything, and `cargo rullst tour` walks
+through the main commands without changing a project. Without a terminal
+(in CI or a script), `new` needs `--default`; flags such as `--blueprint` and
+`--database` answer their questions. See the
+[CLI reference](cli_reference.md#cargo-rullst-new-name).
 
 Prefer a small deterministic starter without navigating the wizard?
 
@@ -120,8 +120,9 @@ cd first_app
 cargo rullst dev
 ```
 
-The first source build can take several minutes (measured figures and tips:
-[Build times](build-times.md)). `--skip-initial-migration`
+The first build compiles every dependency and can take several minutes
+(about two and a half minutes for the Blank starter on the machine measured
+in [Build times](build-times.md), which also has tips). `--skip-initial-migration`
 defers the generator's bootstrap work; the development command runs the
 initial migration before starting a generated database-backed app. Never point
 this learning project at a production database.
@@ -134,7 +135,7 @@ this learning project at a production database.
 > marker. In-memory state resets. No hot-reload scaffold option is required.
 > See the [CLI reference](cli_reference.md#cargo-rullst-dev).
 > 
-> Rullst v12 deliberately generates one audited application profile: Active
+> The CLI deliberately generates one audited application profile: Active
 > Record with server-rendered `html!` views and HTMX enhancement. The framework
 > still exposes lower-level repository and client-runtime foundations for
 > application-owned integration. See the [Architecture Choices Guide](architecture-decisions.md).
@@ -147,7 +148,7 @@ this learning project at a production database.
 scheme and server-rendered HTML/HTMX patterns, and allocation and latency
 depend on the generated page and runtime.
 
-## 1. Blank Starter
+### Blank
 **Use Case:** Custom, from-scratch development.
 This is the minimal template powered by server-rendered `html!` views and HTMX
 without a project-local JavaScript bundle. It includes a simple reactive counter
@@ -155,32 +156,32 @@ to demonstrate server-driven communication. Other frontend foundations remain
 available as application APIs, but are not advertised as equivalent generated
 starters.
 
-## 2. API Starter
+### API
 **Use Case:** Headless JSON services.
 The Blank starter without HTML (`--blueprint api`, or `--api`): JSON routes, an
 example write route protected by a bearer `API_TOKEN` written to `.env`, and
 the same production security baseline. It can run without a database
 (`--no-database`) or with Turso as its primary.
 
-## 3. SaaS App Starter
+### SaaS
 **Use Case:** Subscription-based products and billing.
 An opinionated SaaS starting point, pre-wired with:
 - User authentication (login, signup, session management, sign out
   everywhere, password change and password reset by email with links built
   from `RULLST_PUBLIC_ORIGIN`).
 - Stripe pricing panels and subscription checkout views.
-- Secure user dashboard.
+- Secure user dashboard and a Nexus admin for signed-in administrators.
 
-## Larger example applications
+### Larger example applications
 
-Until 13.0.0-alpha.4 the CLI also generated LMS, Blog, Portfolio and ERP
-starters. They are now complete applications in the repository's
+Up to 13.0.0-alpha.3 the CLI also generated LMS, Blog, Portfolio and ERP
+starters. Since 13.0.0-alpha.4 they are complete applications in the repository's
 [`examples/`](examples.md) directory — `examples/lms` (courses, lessons, an
 accessible player, enrollment and owner-bound progress), `examples/erp`
 (products, stock and orders), `examples/portfolio` (a developer showcase edited
 in Nexus) and the `examples/blog` showcase — tested in the workspace. Copy one
 to start a bigger application; `cargo rullst new --blueprint lms` (or `erp`,
-`portfolio`, `blog`) now points to the example instead of generating it.
+`portfolio`, `blog`) creates nothing and names the example instead.
 
 ---
 
@@ -191,7 +192,7 @@ to start a bigger application; `cargo rullst new --blueprint lms` (or `erp`,
 
 ### Local Studio and Nexus access
 
-The SaaS starter (and the LMS, ERP, Portfolio and blog examples) expose
+The SaaS starter (and the LMS, ERP, Portfolio and Blog examples) expose
 visible buttons for both control surfaces during local development:
 
 - **Nexus** is mounted at `/nexus` and accepts only a verified loopback peer in a
@@ -215,12 +216,14 @@ real sign-in:
   the application starts without `/nexus` (the ERP without its back office)
   and prints one line naming the missing variable; see
   [serving the application without Nexus](4-rullst-nexus.md#serving-the-application-without-nexus).
+  The blog example needs the same variables in a release build and does not
+  start without them.
 
 Put production Nexus behind a verified TLS boundary; do not expose Studio
 publicly. Studio has no
 production mode: it runs only in debug builds and on loopback.
 
-## 5. Database configuration and specialized stores
+## 4. Database configuration and specialized stores
 
 The wizard deliberately makes two separate decisions:
 

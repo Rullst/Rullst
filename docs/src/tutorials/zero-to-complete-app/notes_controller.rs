@@ -64,7 +64,7 @@ fn note_form(action: &str, csrf: &CsrfToken, title: &str, body: &str, button: &s
         <form method="post" action={action} hx-post={action} hx-target="#errors">
             <input type="hidden" name="_token" value={csrf.as_str()} />
             <label for="title">"Title"</label>
-            <input id="title" name="title" value={title} required="true" />
+            <input id="title" name="title" value={title} required />
             <label for="body">"Note"</label>
             <textarea id="body" name="body">{body}</textarea>
             <div id="errors" role="alert"></div>

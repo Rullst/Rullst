@@ -1215,7 +1215,10 @@ written through a link):
 
 * `Dockerfile` and `.dockerignore`: the same multi-stage build as
   `dockerize`, with its dependency-cache (planner) stage and a distroless,
-  non-root runtime image;
+  non-root runtime image. When the `[database] url` in `Rullst.toml` (or,
+  without one, `DATABASE_URL` in `.env.example`) is SQLite, the image sets
+  `DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc`, so the database lives
+  in the `app_data` volume; an existing Dockerfile without it gets a warning;
 * `compose.yaml`: the app and a Caddy reverse proxy with automatic HTTPS for
   `DOMAIN`. Both containers have a read-only root filesystem, every capability
   dropped (Caddy keeps only `NET_BIND_SERVICE` for ports 80 and 443) and
@@ -1223,8 +1226,10 @@ written through a link):
   the `app_data` volume; the app's `/health` endpoint is checked from the
   Caddy container, because the app image has no shell or HTTP client. It works
   with `docker compose` and `podman compose`;
-* `Caddyfile`: proxies to the app and stops routing to it while `/health`
-  fails.
+* `Caddyfile`: proxies to the app, checks its `/health` every 5 seconds and
+  stops routing to it while that fails, and holds each request for up to 15
+  seconds while the app is down (a restart or an update) instead of answering
+  `503` at once.
 
 Caddy is pinned to `172.31.250.10` on a `172.31.250.0/24` compose network,
 and the command adds that address to `[security] trusted_proxies` in
@@ -1867,8 +1872,11 @@ Writes the `Dockerfile` (plus `.dockerignore` when absent) into an existing
 project, as `new --docker` does. It refuses to replace an existing
 `Dockerfile`; move a customized file aside to regenerate the template. The
 binary is named after `[package].name`, read with a TOML parser (`app` when
-`Cargo.toml` has no package name). `cargo rullst deploy` writes the same
-Dockerfile together with `compose.yaml` and the `Caddyfile`.
+`Cargo.toml` has no package name). As in `deploy`, a project whose
+`Rullst.toml` (or `.env.example`) names a SQLite database gets
+`DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc` in the image. `cargo
+rullst deploy` writes the same Dockerfile together with `compose.yaml` and the
+`Caddyfile`.
 
 **Removed in 13.0.0-alpha.4:** `nixify`, `generate:buildah`, `foundry:init`,
 `foundry:deploy` and `make:grpc`. Files they generated stay yours; see

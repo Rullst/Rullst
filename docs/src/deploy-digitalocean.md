@@ -37,7 +37,9 @@ rules, leave outbound rules at their defaults, and apply it to the Droplet:
 | HTTP | TCP | 80 | all IPv4 (and IPv6 if you use it) |
 | HTTPS | TCP | 443 | all IPv4 (and IPv6 if you use it) |
 
-Port 80 must stay open: Caddy uses it to obtain and renew certificates.
+Port 80 must stay open: Caddy uses it to obtain and renew certificates. Add a
+UDP 443 rule as well if you want HTTP/3; without it browsers use HTTPS over
+TCP.
 
 If you also run a host firewall such as `ufw`, allow the same three ports
 there. Note that Docker publishes container ports by changing the firewall

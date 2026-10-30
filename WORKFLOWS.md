@@ -123,6 +123,35 @@ repeating the OS test matrix or native artifact builds. It emits no full-matrix
 scorecard and cannot satisfy complete release admission; the final `all`/`all`
 and tag pipelines retain their existing package verification.
 
+`Generated VM deployment (docker)` and `(podman)` run
+`.github/check-vm-deploy.py` (about ten minutes each): they install the CLI
+from the packaged archives and, for the Blank and SaaS starters, run
+`cargo rullst deploy`, copy the project as the
+[VM guide](docs/src/vm-deployment.md) does, check `.env.production` with
+`deploy:doctor`, build the image with the generated `Dockerfile` and start the
+generated `compose.yaml` and `Caddyfile`. They check `/health` over HTTPS
+through Caddy (verified against Caddy's local CA for `localhost`), the
+HTTP-to-HTTPS redirect, that the app port is not published, the read-only root
+filesystem, capabilities and `no-new-privileges` of both containers (read from
+`/proc`), Caddy's trusted-proxy address, `db:migrate`, a database-backed page
+(SaaS: registration and sign-in with a Secure session cookie), that the SQLite
+database stays in its volume across `docker compose restart` (Podman: `down`
+and `up -d`, because podman-compose's `restart` can leave Caddy stopped), the
+guide's backup command and that no container logged a panic. The release
+crates enter the build context as packaged archives through
+`[patch.crates-io]`; the generated deployment files run unmodified. Docker uses
+the runner's daemon; Podman runs rootless through `podman compose` with
+podman-compose and the `net.ipv4.ip_unprivileged_port_start=80` setting the
+guide documents. Full manual runs, the nightly run and the manual
+`vm-deployment` diagnostic run both jobs; a ready pull request runs them only
+when it changes `cargo-rullst/src/generators/deploy.rs`,
+`generators/project/docker.rs`, `blueprints/deploy.rs` or the check (otherwise
+the job succeeds without building), and branch pushes skip them, so the push
+inventory that site-only admission reads is unchanged. They are not listed in
+the release policy's required jobs, but a failure fails the full manual run
+that admission requires. Real DNS, Let's Encrypt, provider accounts, Arm
+images and reboots are not covered.
+
 Manual all-platform `all` and `cli-standard` selections also call the native CLI
 artifact builder for Linux x64, Windows x64, macOS ARM64 and macOS x64. The
 committed target inventory selects explicit runner labels. Both executable entry
@@ -1035,7 +1064,7 @@ dependency graph make static estimates unreliable.
 | [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main/v12/v13 push and PR, daily, manual | Blocking | Cargo Audit over the production lock and all eleven fuzz-package locks with one advisory-database fetch. Scheduled and manual runs add a job that audits the protected `v12` locks, because scheduled workflows only check out the default branch. The v12 candidate applies no advisory exceptions; future exceptions must pass the separate owner/expiry governance check. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, eight-shard multi-OS tests including Cargo-aware doctests sourced from all 51 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from full/CLI manual Rust CI or admitted tag release | Blocking caller job; required release evidence | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories before attestation. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Validates the shared 42-target inventory and eleven package lockfiles, restores each real target corpus, performs a bounded warm-up, minimizes it, uploads the result and warms the campaign's content-addressed compiler cache; individual target failures are retained but tolerated, while dependency-lock drift remains a hard failure. |

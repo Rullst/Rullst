@@ -15,6 +15,7 @@ impl Migration for MigrationImpl {
             table.integer("user_id").not_null();
             table.string("title").not_null();
             table.string("body").not_null();
+            table.timestamps();
         }).await
     }
 
