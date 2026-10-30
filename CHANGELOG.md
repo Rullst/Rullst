@@ -141,9 +141,6 @@ generated files and scripts it can locate; the checklist lists the rest.
 - PWA: the generated icons are placeholders. The Google Play (Bubblewrap) and
   Microsoft Store (PWABuilder) flows are documented, not validated with real
   store submissions; no App Store package is generated.
-- Generated password-reset links last 10 minutes to 24 hours (default 30). In
-  a debug build in development without `MAIL_DRIVER`, the link is printed to
-  the terminal instead of being sent.
 - Experimental packages keep their documented gaps: IoT is not validated on
   physical hardware; Privacy has no live age provider or verified guardianship;
   Media is validated only against offline mocks; Labs never executes learner

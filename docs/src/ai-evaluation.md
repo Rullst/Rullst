@@ -122,7 +122,8 @@ start to change, if the 13.x API stays stable.
 
 1. A 13.x line with no breaking changes for months. The public-API review and
    the SemVer gate exist for this.
-2. A second maintainer, or at least a documented succession plan.
+2. A second maintainer. `GOVERNANCE.md` already records a successor
+   arrangement; an active co-maintainer would reduce the risk further.
 3. Real-account validation of the OAuth, payment and deployment paths.
 4. External users and case studies, beyond the maintainer's own applications.
 5. Fewer Experimental packages, each either promoted or retired with evidence.
