@@ -3,8 +3,8 @@
 **Status: locally verified v13 candidate, 20 September 2026.** One production
 method predicate and three deliberate failing controls have passed the pilot
 harness. A manual workflow is prepared; hosted acceptance and any promotion
-remain pending. There are no new runtime dependencies. It adds no v12.1 gate and
-preserves the existing Kani, Miri, fuzzing, integration and provider acceptance
+remain pending. There are no new runtime dependencies. It adds no release gate
+and preserves the existing Kani, Miri, fuzzing, integration and provider acceptance
 requirements.
 
 The first property uses the existing `AgePolicy::permits` implementation. Expand to
