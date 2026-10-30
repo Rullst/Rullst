@@ -141,6 +141,8 @@ macro_rules! define_provider {
     };
 }
 
+// Shared by the built-in providers; not a provider-authoring API.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! impl_standard_redirect_url {
     ($url:expr) => {
@@ -168,6 +170,8 @@ macro_rules! impl_standard_redirect_url {
     };
 }
 
+// Shared by the built-in providers; not a provider-authoring API.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! impl_standard_refresh_token {
     () => {
