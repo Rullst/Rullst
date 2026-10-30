@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Tests for .github/check-auth-starter-sql.py without a build, a server or a network."""
+"""Tests for .github/check-auth-starter-sql.py and auth_starter_servers.py without a
+build, a server or a network."""
 
 from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
 import re
-import sys
 import unittest
+
+import auth_starter_servers as SERVERS_MODULE
 
 
 SCRIPT = Path(__file__).with_name("check-auth-starter-sql.py")
@@ -15,8 +17,6 @@ SPEC = importlib.util.spec_from_file_location("check_auth_starter_sql", SCRIPT)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError(f"cannot import {SCRIPT}")
 MODULE = importlib.util.module_from_spec(SPEC)
-# Its dataclass resolves annotations through sys.modules.
-sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 CLI = MODULE.ROOT / "cargo-rullst/src"
@@ -70,9 +70,9 @@ class HelperTests(unittest.TestCase):
                 MODULE.point_env_at(broken, "x")
 
     def test_rows_keep_a_trailing_empty_field(self):
-        self.assertEqual(MODULE.parse_rows("email\tvarchar\t255\tNO\t\nis_admin\tint\t\tNO\t0\n"),
+        self.assertEqual(SERVERS_MODULE.parse_rows("email\tvarchar\t255\tNO\t\nis_admin\tint\t\tNO\t0\n"),
                          [("email", "varchar", "255", "NO", ""), ("is_admin", "int", "", "NO", "0")])
-        self.assertEqual(MODULE.parse_rows(""), [])
+        self.assertEqual(SERVERS_MODULE.parse_rows(""), [])
 
     def test_existing_rows_expect_their_placeholder(self):
         rows = [("1", "Ada Lovelace", "t1", "t1"), ("7", "Grace Hopper", "t2", "t2")]
