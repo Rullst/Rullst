@@ -704,9 +704,10 @@ testcontainer and runs `db:status` in a child process, so runs with Docker
 measure the guard, and runs without it skip the test unless
 `RULLST_REQUIRE_TESTCONTAINERS=true`), the `cargo-rullst` campaign (targeted
 runs, with the CLI's library unit tests, of the self-update, audit, `add` and
-consumer-file, doctor, deploy and `upgrade` files; it covers the files
-`.github/mutants-pr-cli.txt` lists, and ROADMAP.md names the survivors left in
-the others) and the Studio remote-mode campaign (targeted runs of every
+consumer-file, doctor, deploy and `upgrade` files, and before 13.0.0-alpha.4
+of the `green` command, `generators/deploy.rs` and `update/guided.rs`; it
+covers the files `.github/mutants-pr-cli.txt` lists, and ROADMAP.md names the
+survivors left in the others) and the Studio remote-mode campaign (targeted runs of every
 `rullst-studio/src/remote` file and of the `rullst-studio` binary with the
 package's tests) gave every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
@@ -726,6 +727,7 @@ entry only when its exact cargo-mutants name is also listed in
 | `cargo-rullst/src/generators/audit_report/a11y.rs`: `attributes`, the end `index + 1` after `>` with `index - 1` or `index * 1` | The tag scanner resumes at the next `<`; the byte before a closing `>` cannot open a tag, because a tag name never starts with `>`. |
 | `cargo-rullst/src/generators/green/procfs.rs`: `ticks_per_second`, `> 0` with `>= 0` | The clock tick rate is always positive. |
 | `cargo-rullst/src/generators/green/procfs.rs`: the non-Unix `ticks_per_second` with `Some(0)` or `Some(1)` | Not compiled on Linux. |
+| `cargo-rullst/src/generators/green/load.rs`: `worker`, `green/artifacts.rs`: `inspect`, and `green/target.rs`: `OwnedApp::wait_ready` and `OwnedApp::stop`, the deadline test `Instant::now() < deadline` with `<=` | An `Instant` reading would have to equal the deadline to the nanosecond, and the loop would then take one more short step. |
 | `cargo-rullst/src/generators/doctor/probe.rs`: `run`, `stdout.len() > OUTPUT_LIMIT` with `>=` | An output of exactly `OUTPUT_LIMIT` bytes is cut at its own length, which leaves it unchanged. |
 | `cargo-rullst/src/generators/doctor/database.rs`: `tcp_reachable`, delete the `TimedOut \| WouldBlock` arm | `TcpStream::connect_timeout` reports its timeout as a `TimedOut` error whose text is `connection timed out`, which the catch-all arm passes through unchanged, and never returns `WouldBlock` on Linux. |
 | `cargo-rullst/src/generators/output_guard.rs`: `write_output`, the `NotFound` guard of `fs::metadata` with `true` | `reject_symlink` has already returned every other `lstat` error, and for a path that is not a symlink `stat` fails exactly when `lstat` does. |
