@@ -986,6 +986,34 @@ the repository's formatting, strict lint, full-test, feature-matrix, security, a
 packaging gates. Performance numbers must cite a reproducible benchmark; security
 and compliance claims must state their threat model and evidence scope.
 
+### 13.x minor candidates and decided non-goals
+
+Recorded on 30 October 2026 with the maintainer. Minor releases may add these
+without breaking the 13.x API ([support window](docs/src/compatibility-policy.md#supported-release-window));
+none is scheduled, and real user demand orders them.
+
+- **Production monitor** (13.1 candidate): desktop notifications in the
+  standalone Studio, remote traces and security radar, and proxy support.
+- **`green` on macOS and Windows**: measure idle memory and CPU time there too
+  (for example through `sysinfo`), not only through Linux `/proc`.
+- **`OtaManager` getters** (Experimental tier): private fields with getters of
+  the same names, as announced in 13.0.0-alpha.4.
+- **Unquoted text in `html!`**: an ergonomic grammar addition, only if users
+  ask for it; quoted literals keep working.
+- **More i18n locales and currency formats**, added as CLDR data when requested.
+
+Decided non-goals (not planned, so they are documented as scope rather than as
+pending work):
+
+- **Full ORM parity for Turso/libSQL.** It would need a second database client
+  path beside SQLx for every ORM feature (`#[derive(Orm)]`, `Schema`,
+  migrations, Studio and Nexus pages), doubling the maintenance and test
+  matrix. Turso stays a bounded primary database for the Blank and API
+  starters with its own client.
+- **Reading the CSRF `_token` from any position of a multipart body.** It would
+  mean buffering uploads before the CSRF check. Generated forms already send
+  `_token` first, and clients can send the `X-CSRF-Token` header.
+
 ### v14 candidates
 
 Breaking ideas raised during 13.x are collected here instead of shipping in a

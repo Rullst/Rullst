@@ -110,9 +110,12 @@ generated files and scripts it can locate; the checklist lists the rest.
   the `aws-lc-sys` build script (about 52 s), which stays because aws-lc-rs is
   the TLS crypto provider; later builds reuse it, and the generated
   Dockerfile's dependency layer (the cargo-chef approach) caches it in images.
-- Turso/libSQL is a primary database only in the Blank and API starters and
-  does not work with the SQLx `#[derive(Orm)]`, `Schema`, `artisan!`/`db:*`,
-  `Server::with_db`, Nexus or Studio's database pages.
+- Turso/libSQL support is deliberately bounded: it is a primary database only
+  in the Blank and API starters, with its own client, and does not work with
+  the SQLx `#[derive(Orm)]`, `Schema`, `artisan!`/`db:*`, `Server::with_db`,
+  Nexus or Studio's database pages. Full ORM parity is not planned (it would
+  duplicate every ORM feature on a second client; see the ROADMAP's decided
+  non-goals).
 - Native date/time `Schema` columns need a strict driver feature
   (`strict-postgres`, `strict-mysql`, `strict-sqlite`). On the SQLx `Any` pool
   `timestamps()` keeps `TEXT` columns.
