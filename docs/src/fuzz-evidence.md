@@ -2,9 +2,9 @@
 
 The v13 release requires all 42 declared targets across eleven fuzz workspaces,
 including challenge-token and signed-attestation checks in `rullst-privacy`.
-The immutable v12 release line retains its 40-target policy. A successful
-`fuzzing.yml` run on the final release-branch commit remains mandatory (`v12`
-for v12, `main` for v13). In release mode,
+The v12 line, at end of life since 16 October 2026, kept its 40-target policy.
+A successful `fuzzing.yml` run on the final release commit on `main` remains
+mandatory. In release mode,
 the planner can credit an original successful campaign when its reviewed inputs
 match the candidate; only targets without eligible evidence execute again.
 `force_full: true` requests every declared execution. Diagnostic mode remains a
@@ -142,17 +142,17 @@ time is not modelled. `.github/check-fuzz-build-graph.py` runs in the fuzz
 workflow's inventory job and fails if `cargo metadata --locked` resolves a
 path package the scope does not reach, a build script the scope did not fail
 closed on, a proc macro it does not check, or a proc macro linking a path
-package or an unreviewed registry crate.
+package or an unreviewed registry crate. The regular locked-resolution,
+all-feature CI and CodeQL checks still run on the changed candidate.
+Unsupported Git layouts, missing history or malformed evidence stop
+verification.
 
 Accepted and out of scope under the threat model above: unreviewed proc-macro
 code computing an absolute path and handing it to the reviewed reader
 (`expand_in` stays crate-visible because the production `catalog!` entry calls
 it); a literal laundered through a local macro so that it sits next to
 `==`/`!=`; an attribute macro reading a literal from the item it annotates;
-`#[link]` library paths; and `..` assembled from characters. The regular locked-resolution,
-all-feature CI and CodeQL checks still run on the changed candidate.
-Unsupported Git layouts, missing history or malformed evidence stop
-verification.
+`#[link]` library paths; and `..` assembled from characters.
 
 ### Reviewed v12.1 publication documentation
 
@@ -212,7 +212,7 @@ fuzz workflow. If some target jobs were reused, it independently reads Git and
 GitHub again and requires complete coverage of the release line's reviewed inventory; it does not trust the
 uploaded receipt. It retains `release-fuzz-evidence.json` for that decision.
 Expired or newly invalidated evidence blocks publication and requires another
-campaign. The other 27 required workflows retain their existing exact-SHA rules.
+campaign. The other 24 required workflows retain their existing exact-SHA rules.
 
 This is reuse of bounded historical testing, not proof that every input is safe
 or that another randomized campaign would find nothing new. It compares tracked

@@ -265,6 +265,10 @@ tutorial!(
     "../../docs/src/polyglot-persistence.md"
 );
 tutorial!(redis_guide, "../../docs/src/redis-guide.md");
+tutorial!(
+    security_architecture,
+    "../../docs/src/security-architecture.md"
+);
 tutorial!(security_layers, "../../docs/src/security-layers.md");
 tutorial!(session_management, "../../docs/src/session-management.md");
 tutorial!(i18n_guide, "../../docs/src/i18n.md");

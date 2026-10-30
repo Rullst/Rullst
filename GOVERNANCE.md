@@ -30,14 +30,19 @@ Automated checks do not establish independent review.
 ## Change and release controls
 
 `main` develops v13; `v12` holds the frozen 12.x line, which reached end of
-life on 16 October 2026. Both remain protected: they require pull requests and
-the named, application-bound checks in their branch policy.
-The public [maintained-branch ruleset](https://github.com/Rullst/Rullst/rules/24080901)
-mirrors their classic protections, including all 46 required checks, an up-to-date
-base, resolved review conversations, and prevention of force pushes and branch
-deletion. It has no bypass actors. The classic protections remain enabled;
-future policy changes must keep both representations synchronized until a
-separately reviewed migration removes the duplication.
+life on 16 October 2026. Both remain protected: they require pull requests,
+resolved review conversations and the named, application-bound checks in their
+branch policy, and they prevent force pushes and branch deletion. A public
+ruleset without bypass actors mirrors each branch's classic protection:
+
+- the [development-branch ruleset](https://github.com/Rullst/Rullst/rules/24175738)
+  requires 19 checks on `main` and does not require an up-to-date base;
+- the [maintained-branch ruleset](https://github.com/Rullst/Rullst/rules/24080901)
+  requires 46 checks and an up-to-date base on `v12`.
+
+The classic protections remain enabled; future policy changes must keep both
+representations synchronized until a separately reviewed migration removes the
+duplication.
 
 The approval count is explicitly zero while there is only one active maintainer.
 Introducing a mandatory independent approval requires an available, authorized

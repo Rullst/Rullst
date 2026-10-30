@@ -11,7 +11,7 @@ description = "Portfolio example (profile, projects, experience and skills edite
 [dependencies]
 rullst = { workspace = true, features = ["orm", "strict-sqlite", "studio", "nexus"] }
 rullst-orm = { workspace = true, features = ["strict-sqlite"] }
-sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls", "sqlite"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "sqlite"] }
 tokio = { workspace = true, features = ["full"] }
 # `#[derive(Orm)]` expands `#[tracing::instrument]` in the application crate.
 tracing = { workspace = true }

@@ -1412,8 +1412,9 @@ verified TLS outside an explicit literal-loopback test mode. Exact configuration
 and an application-supplied deployment generation bind persisted namespaces;
 provisioning is explicit and normal connection must not recreate lost state.
 The TLS adapter preserves an installed Rustls process provider and otherwise
-installs ring before Redis creates its client, avoiding implicit-provider panics
-when dependency features enable multiple providers. Applications requiring a
+installs aws-lc-rs, the framework's Rustls provider, before Redis creates its
+client, avoiding implicit-provider panics when dependency features enable
+multiple providers. Applications requiring a
 different provider install it before broker startup; trust and hostname checks
 remain mandatory.
 Lua mutations are isolated but do not roll back on runtime errors: a persistent
@@ -3776,6 +3777,20 @@ provider](capital-custom-provider.md)); the
   checkpoint. Path/key custody, permissions, single-writer enforcement,
   rotation retirement, compaction, retention, backup, transport, retry,
   acknowledgement and dead-letter handling remain operator/application work.
+
+### 7.7. Cryptography Providers (since 13.0.0-alpha.4)
+* **TLS:** `aws-lc-rs` is the rustls crypto provider of every TLS connection
+  a Rullst crate makes (reqwest, SQLx, Redis, SMTP, MongoDB, OTLP). No Rullst
+  crate enables rustls' `ring` feature or a ring TLS feature of SQLx, MongoDB,
+  lettre or testcontainers.
+* **Primitives:** `ring` stays a direct dependency for HMAC, digests,
+  randomness and signatures, because it builds for wasm and edge targets.
+* **Process default:** `Server` start-up (Core `orm`, `storage-s3` or
+  `telemetry`), the OTLP exporter, Redis TLS connections and the standalone
+  `rullst-studio` binary install aws-lc-rs as the rustls process default only
+  when none is installed; an application's provider installed first is kept.
+  Installation never panics. See
+  [cryptography providers](security-architecture.md#cryptography-providers).
 
 ---
 

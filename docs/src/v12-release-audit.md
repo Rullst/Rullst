@@ -1,5 +1,9 @@
 # v12 stable release audit
 
+> **Historical record.** This audit describes the 12.0.0 release. The 12.x line
+> reached end of life on 16 October 2026 (12.3.0 was its last release); for v13
+> see the [delivery plan](v13-delivery-plan.md).
+
 Status: **Rullst `12.0.0` was published on September 15, 2026** from immutable
 tag [`v12.0.0`](https://github.com/Rullst/Rullst/releases/tag/v12.0.0) at
 commit

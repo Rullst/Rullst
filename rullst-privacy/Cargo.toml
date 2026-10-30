@@ -18,11 +18,11 @@ include = ["src/**", "README.md", "LICENSE", "Cargo.toml", "Cargo.lock"]
 default = []
 consent = ["dep:thiserror"]
 consent-sqlite = ["consent", "dep:ring", "dep:sqlx", "sqlx/sqlite"]
-consent-postgres = ["consent", "dep:ring", "dep:sqlx", "dep:url", "sqlx/postgres", "sqlx/tls-rustls-ring"]
+consent-postgres = ["consent", "dep:ring", "dep:sqlx", "dep:url", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs"]
 age-assurance = ["dep:ring", "dep:serde", "dep:serde_json", "dep:thiserror"]
 challenge-tokens = ["age-assurance", "dep:base64"]
 sqlite = ["age-assurance", "dep:sqlx", "sqlx/sqlite"]
-postgres = ["age-assurance", "dep:sqlx", "dep:url", "sqlx/postgres", "sqlx/tls-rustls-ring"]
+postgres = ["age-assurance", "dep:sqlx", "dep:url", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs"]
 
 [dependencies]
 base64 = { workspace = true, optional = true }
