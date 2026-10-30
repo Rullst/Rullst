@@ -174,6 +174,28 @@ class FailClosedTests(_FIXTURE.Fixture):
             self.append("rullst-orm-macros/src/lib.rs", "// edited after review\n")
             self.assertIn("rullst-orm/fuzz", Snapshot(self.commit(), self.root).fail_closed)
 
+    def test_cargo_metadata_cross_check_reports_what_the_scope_misses(self):
+        spec = importlib.util.spec_from_file_location("check_graph", ROOT / ".github/check-fuzz-build-graph.py")
+        check = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(check)
+
+        def metadata(*packages):
+            items = [{"id": path, "source": None, "manifest_path": str(self.root / path / "Cargo.toml"),
+                      "targets": [{"kind": list(kinds)}]} for path, kinds in packages]
+            items.append({"id": "serde", "source": "registry", "manifest_path": "/x", "targets": [{"kind": ["lib"]}]})
+            return {"packages": items, "resolve": {"nodes": [{"id": item["id"]} for item in items]}}
+
+        fuzz = "rullst-orm/fuzz"
+        consistent = metadata((fuzz, ["bin"]), ("rullst-orm", ["lib"]), ("rullst-orm-macros", ["proc-macro"]))
+        self.assertEqual(check.problems(self.base, fuzz, consistent, self.root), [])
+        for packages, message in (
+                ([("helper", ["lib"])], "Cargo builds helper, which the scope does not reach"),
+                ([("rullst-orm", ["custom-build", "lib"])], "rullst-orm has a build script"),
+                ([("rullst-orm", ["proc-macro"])], "rullst-orm is a proc macro the scope does not check")):
+            with self.subTest(message=message):
+                found = check.problems(self.base, fuzz, metadata((fuzz, ["bin"]), *packages), self.root)
+                self.assertTrue(any(message in item for item in found), found)
+
 
 class SourceScanTests(unittest.TestCase):
     def refs(self, source):

@@ -190,6 +190,7 @@ def plan(candidate: Snapshot, github: GitHub, now: datetime | None = None,
             "policy_sha256": digest({name: (ROOT / name).read_text() for name in
                                       (".github/fuzz_evidence.py", ".github/fuzz_evidence_inputs.py",
                                        ".github/fuzz_build_graph.py", ".github/fuzz_source_scan.py",
+                                       ".github/check-fuzz-build-graph.py",
                                        ".github/release_line.py", ".github/release-required-workflows.json",
                                        ".github/fuzz_reviewed_context.py",
                                        ".github/test-fuzz-reviewed-context.py", CONTEXT_REVIEW, DOC_REVIEW)})}
