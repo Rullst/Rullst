@@ -133,6 +133,8 @@ pub mod telemetry_spans;
 /// Scaffolding tools for robust integration testing.
 pub mod testing;
 #[cfg(not(target_arch = "wasm32"))]
+mod tls_provider;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod uploads;
 #[cfg(not(target_arch = "wasm32"))]
 /// Strongly-typed request validation extractors.

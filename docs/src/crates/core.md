@@ -567,6 +567,14 @@ logs a `warn` event with the rule and path of each request it would refuse.
 not inspect, for routes that accept text such as code samples (see
 [seeing and accepting WAF false positives](../security-layers.md#seeing-and-accepting-waf-false-positives)).
 
+TLS connections use `aws-lc-rs` as the rustls crypto provider; `ring` is only
+a primitives library (HMAC, digests, randomness, signatures). With the `orm`,
+`storage-s3` or `telemetry` feature, `Server` start-up installs aws-lc-rs as the
+rustls process default before telemetry and the database pool build TLS
+clients, and so does the OTLP exporter before it builds its HTTP client. An
+application that installs its own provider first keeps it. See
+[cryptography providers](../security-architecture.md#cryptography-providers).
+
 ## 🔐 Security Audit & Reliability
 
 Repository workflows exercise Core with unit and integration tests on every change, and with fuzz and Miri campaigns started on demand, within their declared scopes. Consult the exact workflow run and commit for evidence; these tools do not prove the absence of every panic, leak, or vulnerability.

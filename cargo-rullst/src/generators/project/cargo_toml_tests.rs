@@ -364,6 +364,15 @@ fn primary_relational_choice_selects_one_strict_profile() {
                 );
             }
         }
+        // SQLx TLS uses aws-lc-rs, the framework's rustls provider.
+        let sqlx = parsed["dependencies"]["sqlx"]["features"]
+            .as_array()
+            .expect("generated SQLx feature array")
+            .iter()
+            .filter_map(toml::Value::as_str)
+            .filter(|feature| feature.starts_with("tls-"))
+            .collect::<Vec<_>>();
+        assert_eq!(sqlx, ["tls-rustls-aws-lc-rs"], "{provider}");
         assert_eq!(
             parsed["dependencies"]["rullst"]["default-features"].as_bool(),
             Some(false),
