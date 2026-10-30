@@ -149,9 +149,11 @@ and fails on any surviving mutant.
   feature.
 - **Advisories.** Every exception must appear in `deny.toml`, the ledger
   [`docs/src/security-advisory-exceptions.md`](docs/src/security-advisory-exceptions.md)
-  and the `--ignore`/`--audit-ignore` flags of the audit, security-audit,
-  PQC-compliance, release and AI-sentinel workflows, with an expiry. Prefer an
-  upgrade; an exception is temporary and time-bounded.
+  and the `--ignore`/`--audit-ignore` flags of every workflow that scans
+  advisories (`supply-chain.yml`, `pqc-compliance.yml`, `release.yml` and
+  `ai-sentinel-pr.yml`), with an expiry; the governance job in
+  `supply-chain.yml` compares the three. Prefer an upgrade; an exception is
+  temporary and time-bounded.
 - **CodeQL.** Rust results go through
   `.github/filter-codeql-test-fixtures.py` before upload, which drops the
   listed rules in test code only. Real findings in production code are fixed,

@@ -94,7 +94,8 @@ fuzz workflow. If some target jobs were reused, it independently reads Git and
 GitHub again and requires complete coverage of the release line's reviewed inventory; it does not trust the
 uploaded receipt. It retains `release-fuzz-evidence.json` for that decision.
 Expired or newly invalidated evidence blocks publication and requires another
-campaign. The other 27 required workflows retain their existing exact-SHA rules.
+campaign. The other workflows in `.github/release-required-workflows.json` retain
+their existing exact-SHA rules.
 
 This is reuse of bounded historical testing, not proof that every input is safe
 or that another randomized campaign would find nothing new. It compares tracked

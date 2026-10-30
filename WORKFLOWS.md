@@ -224,8 +224,8 @@ These workflows are **periodic and manually runnable**:
 
 | Cadence | Workflows | Mode |
 | :--- | :--- | :--- |
-| Daily | `audit.yml`, `ci.yml`, `sanitizers.yml` | Cargo Audit (default branch and `v12` locks) is blocking; the nightly `ci.yml` run executes the complete Linux/macOS/Windows matrix on `main`; TSan/ASan are blocking when executed. |
-| Weekly | `bench.yml`, `cargo-deny.yml`, `codeql.yml`, `corpus-sync.yml`, `coverage.yml`, `documentation.yml`, `kani.yml`, `miri.yml`, `pqc-compliance.yml`, `proptest.yml`, `scorecards.yml`, `security-audit.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. Corpus sync warms and minimizes the same 42 validated target corpora with bounded parallelism. Miri (Wednesday 01:17 UTC) and Kani (Thursday 01:47 UTC) run their full strict matrices so that a regression shows up within a week rather than at release admission. |
+| Daily | `ci.yml`, `sanitizers.yml`, `supply-chain.yml` | Supply Chain (Cargo Audit of the production and fuzz locks, Cargo Deny and the advisory-exception check) is blocking; the nightly `ci.yml` run executes the complete Linux/macOS/Windows matrix on `main`; TSan/ASan are blocking when executed. |
+| Weekly | `bench.yml`, `codeql.yml`, `corpus-sync.yml`, `coverage.yml`, `documentation.yml`, `kani.yml`, `miri.yml`, `pqc-compliance.yml`, `proptest.yml`, `scorecards.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. Corpus sync warms and minimizes the same 42 validated target corpora with bounded parallelism. Miri (Wednesday 01:17 UTC) and Kani (Thursday 01:47 UTC) run their full strict matrices so that a regression shows up within a week rather than at release admission. |
 
 All remaining test/build workflows run on the documented push, pull-request or
 path filters and also expose a manual rerun. For an RC or stable checkpoint,
@@ -390,11 +390,14 @@ unsafe boundary; Check Dependencies (Licenses, Vulnerabilities); Scan for leaked
 secrets; Enforce reviewed internal dependency graph; and Typo Check. It does not
 require an up-to-date base: the full `main` push run and the nightly matrix
 detect interactions between independently green pull requests, and each
-additional rebase would otherwise repeat the whole gate. The two Cargo Audit
-workflows emit an ambiguous `audit` context, so Cargo Deny's advisory check is
-the required vulnerability gate. The macOS/Windows and CLI-profile shards,
-public feature boundaries, threat-model minimum, coverage, SemVer and CodeQL run
-after merge, nightly or weekly. They remain release-admission requirements.
+additional rebase would otherwise repeat the whole gate. Cargo Deny's job in
+`supply-chain.yml` is the required vulnerability gate. Until 13.0.0-alpha.4 the
+two Cargo Audit workflows both emitted an ambiguous `audit` context; their jobs
+now have distinct names (`Cargo Audit (production and fuzz locks)`, `Advisory
+exception governance`), so either could be required without a collision. The
+macOS/Windows and CLI-profile shards, public feature boundaries, threat-model
+minimum, coverage, SemVer and CodeQL run after merge, nightly or weekly. They
+remain release-admission requirements.
 
 **`v12` (stable maintenance)** keeps the complete profile with an up-to-date
 base: every Linux/macOS/Windows test shard, public feature boundaries, the
@@ -1052,7 +1055,7 @@ Dependabot updating the wrapper alone is insufficient. The scan's existing
 scope and verified-secret failure policy remain unchanged. These automation
 updates do not change published crate versions or constitute a v12.0.1 release.
 
-## Workflow inventory (37 definitions)
+## Workflow inventory (35 definitions)
 
 Durations are intentionally omitted because runner load, cache state, and the
 dependency graph make static estimates unreliable.
@@ -1061,9 +1064,7 @@ dependency graph make static estimates unreliable.
 | :--- | :--- | :--- | :--- |
 | [`ai-sentinel-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ai-sentinel-pr.yml) | pull requests | Automated evidence | Generates bounded CLI audit, compliance report, and CycloneDX SBOM artifacts; no certification claim. |
 | [`architecture.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/architecture.yml) | main/v12/v13 push and PR, manual | Blocking | Compares Cargo's publishable non-dev internal dependency graph with the reviewed `crate-architecture-policy.json`; unreviewed normal/build edges, removals, or optionality changes fail, while test-only dev-dependencies do not masquerade as production coupling. |
-| [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main/v12/v13 push and PR, daily, manual | Blocking | Cargo Audit over the production lock and all eleven fuzz-package locks with one advisory-database fetch. Scheduled and manual runs add a job that audits the protected `v12` locks, because scheduled workflows only check out the default branch. The v12 candidate applies no advisory exceptions; future exceptions must pass the separate owner/expiry governance check. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
-| [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
 | [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from full/CLI manual Rust CI or admitted tag release | Blocking caller job; required release evidence | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories before attestation. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
@@ -1086,9 +1087,9 @@ dependency graph make static estimates unreliable.
 | [`release.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/release.yml) | exact-looking version tags | Release | Tag/changelog validation, exact-SHA admission of the full CI matrix (not repeated in the tag run), package-all, evidence bundle, checksums, GitHub build-provenance attestation, changelog-derived release notes, and dependency-order publication. |
 | [`sanitizers.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/sanitizers.yml) | daily, manual | Blocking run | TSan and ASan library matrices on pinned `nightly-2026-08-21`; this verifier toolchain does not change Rullst's stable compiler or MSRV. |
 | [`scorecards.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/scorecards.yml) | main push, weekly, manual | Automated evidence | OpenSSF Scorecard analysis and SARIF/artifact upload; not SLSA certification. |
-| [`security-audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/security-audit.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Cross-checks active advisory IDs and expiry metadata across the ledger, Cargo Deny, and scanner workflows, then independently reruns Cargo Audit. |
 | [`semver.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/semver.yml) | main/v12/v13 push, v12/v13 PR, manual | Blocking | Fans out one job per machine-readable release-order entry and compares each supported library API with the latest stable, non-yanked crates.io release of the same major version (`.github/check-semver.sh`; selection tested by `.github/test-semver-baseline-constraints.py`). Prereleases may change the API, so a line without a stable release has no baseline: each 13.0 prerelease job reports that with a notice and compares nothing, and the 13.x comparison starts by itself once 13.0.0 is published. A tree whose version still equals that release is checked as the next minor release (breaking changes fail, deprecations pass); a bumped version is checked for the change it declares. The frozen `v12` branch runs its own copy of the workflow and script. Never-published packages and proc-macro/binary API surfaces unsupported by `cargo-semver-checks` are reported explicitly. |
 | [`spellcheck.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/spellcheck.yml) | main/v12/v13 push and PR, manual | Blocking | Repository typo scan. |
+| [`supply-chain.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/supply-chain.yml) | main/v12/v13 push and PR, daily, manual | Blocking | Three jobs, which until 13.0.0-alpha.4 were `cargo-deny.yml`, `audit.yml` and `security-audit.yml`. `Check Dependencies (Licenses, Vulnerabilities)` runs Cargo Deny's advisory, license, ban and source policy from `deny.toml` (a required check on `main`). `Cargo Audit (production and fuzz locks)` audits the production lock and all eleven fuzz-package locks with one advisory-database fetch. `Advisory exception governance` checks that the active advisory IDs in the ledger, `deny.toml` and every workflow's `--ignore`/`--audit-ignore` flags agree, and that each ledger row has an owner and an unexpired date. No advisory is ignored today. The daily scheduled run uses its own concurrency group, so it never cancels the `main` push run that release admission requires. The `v12` lock audit was removed at the 12.x end of life (16 October 2026); the frozen `v12` branch keeps its own copies of the old workflows. |
 | [`trufflehog.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/trufflehog.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Verified-secret scan over the configured Git history range. |
 | [`udeps.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/udeps.yml) | weekly, manual | Informational | `cargo-udeps` signal on pinned `nightly-2026-08-21`; command failures are tolerated. |
 | [`unsafe-policy.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/unsafe-policy.yml) | main/v12/v13 push and PR, manual | Blocking | Denies new production unsafe code and validates the reviewed exception allowlist. |

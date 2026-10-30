@@ -4,8 +4,6 @@
   "required_branch": "main",
   "workflows": [
     { "workflow": "architecture.yml", "event": "push" },
-    { "workflow": "audit.yml", "event": "push" },
-    { "workflow": "cargo-deny.yml", "event": "push" },
     {
       "workflow": "ci.yml",
       "event": "workflow_dispatch",
@@ -118,9 +116,9 @@
     { "workflow": "no_std-build.yml", "event": "push" },
     { "workflow": "proptest.yml", "event": "workflow_dispatch" },
     { "workflow": "sanitizers.yml", "event": "workflow_dispatch" },
-    { "workflow": "security-audit.yml", "event": "push" },
     { "workflow": "semver.yml", "event": "push" },
     { "workflow": "spellcheck.yml", "event": "push" },
+    { "workflow": "supply-chain.yml", "event": "push" },
     { "workflow": "trufflehog.yml", "event": "push" },
     { "workflow": "unsafe-policy.yml", "event": "push" },
     { "workflow": "wasm-matrix.yml", "event": "push" },

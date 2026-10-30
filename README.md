@@ -330,7 +330,7 @@ These results are evidence for their stated scope, not a security certification
 of every application built with Rullst.
 
 <details>
-<summary><strong>🛡️ Open the verification dashboard (37 workflows)</strong></summary>
+<summary><strong>🛡️ Open the verification dashboard (35 workflows)</strong></summary>
 
 <p align="center">
   Badges are pinned to the <code>main</code> branch; they report the latest matching run, not a certification or deployment guarantee.
@@ -345,9 +345,7 @@ of every application built with Rullst.
 | **End-to-end smoke** | [![E2E](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/e2e-smoke.yml?branch=main&style=flat-square&label=E2E)](https://github.com/Rullst/Rullst/actions/workflows/e2e-smoke.yml?query=branch%3Amain) | Boots the release blog example and verifies HTTP, security headers, form flow, and SQLite persistence. |
 | **Codecov — whole repository** | [![Whole-repository coverage](https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg)](https://codecov.io/gh/Rullst/Rullst) | The badge reports the current branch aggregate. The enforced repository floor is **≥90%** with zero tolerance. For reference, the [LLVM run](https://github.com/Rullst/Rullst/actions/runs/34895523751) on the v12.0.0 release commit `eb11f892` measured **90.3220%** (79,813/88,365 lines) before Codecov upload. |
 | **Codecov — framework libraries** | [![Framework library coverage](https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg?component=framework_libraries)](https://codecov.io/gh/Rullst/Rullst) | Runtime libraries are enforced separately at **≥90%**. CLI and proc-macro components stay separately visible; [Coverage CI](https://github.com/Rullst/Rullst/actions/workflows/coverage.yml?query=branch%3Amain) uploads their real LCOV evidence with OIDC. |
-| **Cargo Audit** | [![Cargo Audit](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/audit.yml?branch=main&style=flat-square&label=RustSec)](https://github.com/Rullst/Rullst/actions/workflows/audit.yml?query=branch%3Amain) | RustSec advisory scan with only governed, expiring exceptions; the daily run also audits the `v12` locks. |
-| **Security exception governance** | [![Security Governance](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/security-audit.yml?branch=main&style=flat-square&label=Exception%20Policy)](https://github.com/Rullst/Rullst/actions/workflows/security-audit.yml?query=branch%3Amain) | Cross-checks scanner allowlists against the owner/expiry ledger, then independently reruns Cargo Audit. |
-| **Cargo Deny** | [![Cargo Deny](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?branch=main&style=flat-square&label=Cargo%20Deny)](https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml?query=branch%3Amain) | Advisory, license, ban, and source policy. |
+| **Supply chain** | [![Supply Chain](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/supply-chain.yml?branch=main&style=flat-square&label=Supply%20Chain)](https://github.com/Rullst/Rullst/actions/workflows/supply-chain.yml?query=branch%3Amain) | Cargo Deny's advisory, license, ban and source policy; a RustSec Cargo Audit of the production and fuzz locks; and a check that every advisory exception has an owner and an expiry in the ledger. Runs on every push and pull request and daily. |
 | **CodeQL SAST** | [![CodeQL](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/codeql.yml?branch=main&style=flat-square&label=CodeQL)](https://github.com/Rullst/Rullst/actions/workflows/codeql.yml?query=branch%3Amain) | Rust semantic analysis after an all-target/all-feature build, plus JavaScript/TypeScript analysis. |
 | **OpenSSF Scorecard** | [![OpenSSF Scorecard](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard&style=flat-square)](https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst) | The badge renders the score from the official public Scorecard JSON report; the pinned [Scorecard workflow](https://github.com/Rullst/Rullst/actions/workflows/scorecards.yml) publishes OIDC-authenticated results on each `main` push and weekly. A score is evidence, not a security certification. [Evidence and improvements](https://rullst.github.io/Rullst/book/openssf-scorecard.html). |
 | **Cargo Machete** | [![Machete](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/machete.yml?branch=main&style=flat-square&label=Machete)](https://github.com/Rullst/Rullst/actions/workflows/machete.yml?query=branch%3Amain) | Unused direct dependency detection. |
@@ -383,13 +381,13 @@ green main gates:
 Scheduled events use the repository's default branch, so scheduled and
 continuous development evidence refer to `main`; the frozen v12 line has its own branch.
 The branch-protection profiles and the exact scope of all
-37 workflow definitions in this source branch are documented in
+35 workflow definitions in this source branch are documented in
 [WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).
 
 </details>
 
 - 📖 **[CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md)**:
-  the exact scope of all 37 workflow definitions and the branch-protection profiles.
+  the exact scope of all 35 workflow definitions and the branch-protection profiles.
 - 🧰 **[How the repository is maintained](https://github.com/Rullst/Rullst/blob/main/MAINTAINING.md)**:
   workstation rules, CI gates, fuzzing evidence and release admission.
 - 📋 [Capability status](https://rullst.github.io/Rullst/book/capability-status.html)

@@ -1,4 +1,9 @@
-name: Security Audit
+name: Supply Chain
+
+# Cargo Deny, Cargo Audit and the advisory-exception governance check, each in
+# its own job. Until 13.0.0-alpha.4 they were cargo-deny.yml, audit.yml and
+# security-audit.yml. The main ruleset requires the Cargo Deny job by its name,
+# "Check Dependencies (Licenses, Vulnerabilities)": keep that name unchanged.
 
 on:
   push:
@@ -7,10 +12,14 @@ on:
     branches: [main, v12, v13]
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 0' # Run weekly
+    # Daily, so a new RustSec advisory or an expiring exception shows up
+    # within a day even when nothing is pushed.
+    - cron: '0 8 * * *'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # A daily run must not cancel, or be cancelled by, the main push run that
+  # release admission requires.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'schedule' && '-daily' || '' }}
   cancel-in-progress: true
 
 permissions:
@@ -20,21 +29,49 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  audit:
+  cargo-deny:
+    name: Check Dependencies (Licenses, Vulnerabilities)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      
-      - name: Install Rust toolchain
+
+      - name: Install cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          command: check
+          arguments: --workspace
+
+  cargo-audit:
+    name: Cargo Audit (production and fuzz locks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # stable
         with:
           toolchain: 1.99.1
-        
       - name: Install cargo-audit
         uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-audit
+      - name: Audit production and fuzz dependency locks
+        shell: bash
+        run: |
+          cargo audit
+          while IFS= read -r lockfile; do
+            echo "Auditing $lockfile"
+            cargo audit --no-fetch --file "$lockfile"
+          done < <(find . -mindepth 3 -maxdepth 3 \
+            -path '*/fuzz/Cargo.lock' -print | sort)
+
+  advisory-exceptions:
+    name: Advisory exception governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Validate advisory exception governance
         shell: bash
@@ -50,13 +87,12 @@ jobs:
             sed -n '/^\[advisories\]/,/^\[/p' deny.toml |
               grep -oE 'RUSTSEC-[0-9-]+' | sort -u || true
           )"
+          # Read every workflow, so an ignore added to any scanner (this
+          # file, the release evidence bundle, the IoT crypto check or a new
+          # workflow) must also be in the ledger.
           workflow_ids="$(
             grep -h -oE -- '--(audit-)?ignore RUSTSEC-[0-9-]+' \
-              .github/workflows/audit.yml \
-              .github/workflows/security-audit.yml \
-              .github/workflows/pqc-compliance.yml \
-              .github/workflows/release.yml \
-              .github/workflows/ai-sentinel-pr.yml |
+              .github/workflows/*.yml |
               awk '{print $2}' | sort -u || true
           )"
 
@@ -81,6 +117,3 @@ jobs:
             }
             END { exit failed }
           ' docs/src/security-advisory-exceptions.md
-        
-      - name: Run cargo-audit
-        run: cargo audit
