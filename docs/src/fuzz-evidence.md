@@ -20,28 +20,28 @@ Each of the eleven separate fuzz workspaces retains its own dependency lockfile.
 
 A fuzz workspace builds only its own crate and the workspace packages it
 reaches through path dependencies, so its inputs follow that build graph
-(`.github/fuzz_build_graph.py`):
+(`.github/fuzz_build_graph.py`). The rule prefers failing closed on the mere
+presence of a pattern over modelling what it does:
 
 - **The fuzz package and every reached package, whole.** Starting from the
-  fuzz manifest, normal, dev, build, target-specific and `[patch]` entries
-  with a `path`, or `workspace = true` resolving to a path in the root
-  `[workspace.dependencies]`, are followed transitively. Every tracked file
-  below each reached directory is an input: sources, tests, build script,
-  manifest, assets and any fuzz directory nested in it. A fuzz package's
-  lockfile, harnesses and corpus therefore also invalidate the fuzz packages
-  that reach its parent crate.
-- **Files a reached package refers to outside its directory.** Every Rust
+  fuzz manifest, normal, dev, target-specific and `[patch]`/`[replace]`
+  entries with a `path`, or `workspace = true` resolving to a path in the
+  root `[workspace.dependencies]`, are followed transitively. Every tracked
+  file below each reached directory is an input, without exceptions: sources,
+  tests, manifest, assets and any fuzz directory nested in it. A fuzz
+  package's lockfile, harnesses and corpus therefore also invalidate the fuzz
+  packages that reach its parent crate.
+- **Files a reached package includes from outside its directory.** Every Rust
   file of a reached package is scanned for `include_str!`, `include_bytes!`,
-  `include!` (including `concat!(env!("CARGO_MANIFEST_DIR"), …)`), `#[path]`
-  (also inside `cfg_attr`), path arguments forwarded through `macro_rules!`
-  (resolved at each call site), `dir`/`path`/`file`/`folder` arguments that
-  climb with `..`, and literal paths in build scripts. Those targets become
-  inputs of the fuzz packages that reach the referring package; included code
-  is scanned again. Today this adds the 93 book pages of
+  `include!` (including `concat!(env!("CARGO_MANIFEST_DIR"), "/…")`) and
+  `#[path]` (also inside `cfg_attr`; `r#` forms included), with literal paths
+  forwarded through a `macro_rules!` resolved at each call site. Those targets
+  become inputs of the fuzz packages that reach the referring package, and
+  included code is scanned again. Today this adds the 93 book pages of
   `rullst/src/book_doctests.rs` and six `.github/fixtures` sources of the
   facade's tests to `rullst/fuzz`.
 - **Global inputs of every package.** The root `Cargo.toml`,
-  `rust-toolchain(.toml)`, `.cargo/**`, `.gitattributes`, the target
+  `rust-toolchain(.toml)`, `.cargo/**`, every `.gitattributes`, the target
   inventory, release-line policy, `.github/validate-fuzz-targets.py`, every
   other `.github` path the fuzz workflow names (and sibling modules it
   imports), and the workflow's execution contract.
@@ -50,7 +50,8 @@ Anything outside those sets is not an input: `docs/**`, `CHANGELOG.md`,
 `README.md` and other Markdown outside reached packages, `cargo-rullst/**`,
 `examples/**`, the remaining crates, the root lockfile (the eleven fuzz
 workspaces keep their own locks) and other `.github/**` files, unless a
-reached package refers to them.
+reached package includes them. The reviewed non-input list only matters for
+the global set and for a scope that fails closed.
 
 All 42 targets still run after a global-input or execution-contract change,
 with `force_full`, or when no eligible earlier campaign exists. A change in a
@@ -59,32 +60,70 @@ shared crate reruns the packages that reach it: `rullst-core` or
 8 packages (34 targets). A doctest-included book page reruns `rullst/fuzz`
 (12 targets).
 
-The scope **fails closed** (the whole repository becomes that fuzz package's
-input, the previous rule) when it cannot be bounded statically: an include,
-`#[path]` or manifest path that is computed, absolute, contains a backslash or
-leaves the repository; a path dependency without a package manifest; a target
-or build script outside its package; a macro carrying a path that is renamed
-with `as` or called from generated code; a build script using processes,
-`parent()`/`canonicalize`, the working directory or a non-Cargo environment
-variable; a fuzz harness touching files, processes or the environment; Cargo
-configuration other than aliases, build jobs/flags, profiles, terminal or
-network settings; source that cannot be lexed. Proc macros run inside the
-compiler, so filesystem, process or environment access in a reached proc-macro
-crate (outside its `tests`, `benches` and `examples`) also fails closed unless
-the exact blob is reviewed in `REVIEWED_COMPILE_IO`. Only the `rullst-macros`
-i18n `catalog!` reader is reviewed: it reads `<invoking package>/<dir>/*.toml`,
-covered above. The planner's receipt lists every package that fell back and why.
+### When the scope fails closed
 
-The list of reviewed non-inputs still applies inside reached packages: the
-mail feedback integration test, two `#[cfg(test)]` Core modules and the
-top-level `dev-dependencies` table of `rullst-mail/Cargo.toml`. Explicitly
-referenced files are inputs even when listed. Every other manifest field,
-including target-specific, normal and build dependencies, remains an input.
-The regular locked-resolution, all-feature CI and CodeQL checks still run on
-the changed candidate. Unsupported Git layouts, missing history or malformed
-evidence stop verification. Package-local run-time reads resolve from the fuzz
-directory; the scanner does not model library code that reads repository files
-through other relative or absolute paths at run time.
+The whole repository (minus the reviewed non-inputs, the previous rule)
+becomes a fuzz package's input when any of these is present in its graph:
+
+- **Build-time code:** a build script (`build.rs` or `package.build`) or any
+  build-dependency in a reached package. None exists today.
+- **Proc-macro I/O:** a reached proc-macro crate (`proc-macro = true` or
+  `crate-type = ["proc-macro"]`) whose compiled files, including `#[path]`
+  and `include!` targets outside it, use filesystem, process or environment
+  APIs (`fs`, `File`, `Command`, `read_dir`, `exists`, `metadata`, …) or emit
+  computed includes, unless the exact blob is reviewed in
+  `REVIEWED_COMPILE_IO`; or that holds a string with a `..` segment that is
+  not an include path or a `==`/`!=` operand. Only the `rullst-macros` i18n
+  `catalog!` reader is reviewed: it reads `<invoking package>/<dir>/*.toml`.
+- **Known file-reading macros and attributes:** `migrate!`, `query*!`,
+  `include_dir!`, `embed_migrations!`, `include_proto!`, `dotenv!`, `#[folder]`
+  (rust-embed), `#[grammar]` (pest), `#[template]` and similar.
+- **Path-like macro arguments:** a string with a `..` segment or a leading `/`
+  whose innermost enclosing macro call or attribute is not a built-in
+  (formatting, assertions, includes, `quote!`), a `macro_rules!` defined in the
+  scanned sources that passes its arguments only to built-ins, or a reviewed
+  registry macro that never reads files (`json!`, `fuzz_target!`). Leading-`/`
+  routes are also allowed in the workspace's own proc macros and attributes,
+  whose I/O is checked above; a `..` path never is (for example
+  `catalog!(dir = "../x")`). Plain string literals in code, such as WAF
+  traversal patterns, are not affected.
+- **Includes that cannot be resolved:** computed, absolute, with a backslash,
+  leaving the repository, or with a `..` after a placeholder component
+  (`{dir}/..`, `$VAR/..`, `%X%/..`); `CARGO_MANIFEST_DIR` paths inside a
+  macro or in code included from outside every package; `OUT_DIR` paths that
+  climb; generated includes that climb; a renamed built-in include
+  (`use std::include_str as …`); a path inside a `macro_rules!` that is
+  renamed with `as`, called from `quote!`, forwarded from another macro, or
+  given an argument containing a macro call; a macro that defines macros
+  (`macro_rules! $name`); a module tree at the repository root; more than
+  eight levels of nested inclusion; source that cannot be lexed.
+- **Manifests and configuration:** a path dependency without a package
+  manifest or outside the repository; a target outside its package; workspace
+  inheritance without a workspace root or from a workspace that excludes the
+  package; malformed dependency or target tables; Cargo configuration other
+  than aliases, build jobs/flags, profiles, terminal or network settings.
+- **Run-time access in a fuzz harness** to files, processes or the
+  environment.
+
+The planner's receipt lists every package that fell back and why. Every
+other manifest field, including target-specific and normal dependencies,
+remains an input; only the top-level `dev-dependencies` table of
+`rullst-mail/Cargo.toml` is normalized out, as before.
+
+### What is trusted
+
+Third-party crates are pinned by each fuzz workspace's lockfile. Their build
+scripts and proc macros are trusted to read only their own package; the scan
+covers workspace sources, not registry code, and the known-macro list above
+is not exhaustive. Package-local run-time reads resolve from the fuzz
+directory; library code reading repository files through other paths at run
+time is not modelled. `.github/check-fuzz-build-graph.py` runs in the fuzz
+workflow's inventory job and fails if `cargo metadata --locked` resolves a
+path package the scope does not reach, a build script the scope did not fail
+closed on, or a proc macro it does not check. The regular locked-resolution,
+all-feature CI and CodeQL checks still run on the changed candidate.
+Unsupported Git layouts, missing history or malformed evidence stop
+verification.
 
 ### Reviewed v12.1 publication documentation
 

@@ -169,18 +169,29 @@ reused only for targets whose inputs did not change. A fuzz package's inputs
 are its build graph ([`docs/src/fuzz-evidence.md`](docs/src/fuzz-evidence.md)):
 every crate it reaches through path dependencies, files those crates
 `include_str!`/`#[path]` from elsewhere, and a few global files (root
-`Cargo.toml`, toolchain, `.cargo/**`, `.gitattributes`, inventory and fuzz
-scripts). Docs, changelog, READMEs outside reached crates, `cargo-rullst`,
+`Cargo.toml`, toolchain, `.cargo/**`, every `.gitattributes`, inventory and
+fuzz scripts). Docs, changelog, READMEs outside reached crates, `cargo-rullst`,
 examples and other CI files no longer rerun anything; a change to a shared
 crate reruns only the packages that reach it. A global or toolchain change
-always reruns everything. When the scope cannot be bounded statically, that
-package falls back to the whole repository; the receipt's
-`whole_repository_inputs` says why.
+always reruns everything.
+
+The rule fails closed (that package's input becomes the whole repository, the
+old behaviour) on patterns it does not model: a build script or
+build-dependency, proc-macro I/O, known file-reading macros (`migrate!`,
+`include_dir!`, `#[folder]`, …), a `..` or absolute path passed to a macro whose
+code is not scanned, and includes it cannot resolve. The receipt's
+`whole_repository_inputs` says which package fell back and why. The fuzz
+workflow also runs `.github/check-fuzz-build-graph.py`, which fails when
+`cargo metadata --locked` resolves a path package, build script or proc macro
+the scope misses.
 
 Plan releases around this: freeze the code first, then start the release-mode
-run on that exact commit. If a reviewed proc-macro reader in
-`REVIEWED_COMPILE_IO` (`.github/fuzz_build_graph.py`) changes, review the new
-blob and add it with a test, or the packages that reach it keep falling back.
+run on that exact commit. Adding a build script or build-dependency to a
+fuzzed crate makes every package that reaches it rerun on any change until
+the policy models it. If a reviewed proc-macro reader in `REVIEWED_COMPILE_IO`
+(`.github/fuzz_build_graph.py`) changes, review the new blob and add it with a
+test, or the packages that reach it keep falling back; do the same before
+adding a registry macro to `REVIEWED_PLAIN_MACROS`.
 
 ## 6. Mutation campaigns
 
