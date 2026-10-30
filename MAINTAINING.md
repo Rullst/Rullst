@@ -143,7 +143,10 @@ and fails on any surviving mutant.
   `default-features = false` on a `rullst` dependency that is not testing the
   default-features rule) instead of loosening assertions.
 - **Site validation** (`.github/validate-site.py`): the README workflow counts
-  must equal the files in `.github/workflows/`.
+  and the WORKFLOWS.md inventory must match the files in `.github/workflows/`,
+  and every badge or link to a workflow in the READMEs, WORKFLOWS.md,
+  MAINTAINING.md and the book must name an existing file. Renaming, merging or
+  removing a workflow means updating all of them.
 - **Feature matrix** (`.github/check-feature-matrix.py`) and feature
   boundaries (`.github/check-feature-boundaries.sh`) must list every facade
   feature.

@@ -138,6 +138,46 @@ def validate_document(path: Path, document: Document) -> None:
     assert not document.images_without_alt, f"{path}: images missing alt: {document.images_without_alt}"
 
 
+WORKFLOW_REFERENCE = re.compile(r"(?:actions/workflows/|\.github/workflows/)([A-Za-z0-9_.-]+\.ya?ml)")
+INVENTORY_ROW = re.compile(r"^\| \[`([A-Za-z0-9_.-]+\.ya?ml)`\]", re.MULTILINE)
+
+
+def validate_workflow_references(readme: str) -> int:
+    """Keep the WORKFLOWS.md inventory and every badge or link on real files.
+
+    A renamed, merged or removed workflow must leave no stale row, badge or
+    link behind. Links into the frozen v12 branch name that branch's files.
+    """
+    workflows = {
+        path.name
+        for path in (ROOT / ".github" / "workflows").iterdir()
+        if path.suffix in {".yml", ".yaml"}
+    }
+    inventory_text = (ROOT / "WORKFLOWS.md").read_text(encoding="utf-8")
+    assert (
+        f"## Workflow inventory ({len(workflows)} definitions)" in inventory_text
+    ), "WORKFLOWS.md inventory count is stale"
+    rows = INVENTORY_ROW.findall(inventory_text)
+    assert len(rows) == len(set(rows)), "WORKFLOWS.md inventory lists a workflow twice"
+    assert set(rows) == workflows, (
+        "WORKFLOWS.md inventory differs from .github/workflows: "
+        f"missing {sorted(workflows - set(rows))}, stale {sorted(set(rows) - workflows)}"
+    )
+    documents = [
+        README, ROOT / "WORKFLOWS.md", ROOT / "MAINTAINING.md",
+        *sorted(ROOT.glob("*/README.md")), *sorted((DOCS / "src").rglob("*.md")),
+    ]
+    for document in documents:
+        text = readme if document == README else document.read_text(encoding="utf-8")
+        for match in WORKFLOW_REFERENCE.finditer(text):
+            if re.search(r"/(?:blob|tree)/v12/[^\s)]*$", text[max(0, match.start() - 200):match.start()]):
+                continue
+            assert match[1] in workflows, (
+                f"{document.relative_to(ROOT)} names a missing workflow: {match[1]}"
+            )
+    return len(workflows)
+
+
 def main() -> None:
     home, source = parse(HOME)
     validate_document(HOME, home)
@@ -188,13 +228,7 @@ def main() -> None:
     assert all(link in readme for link in demo_links), "README is missing a published example link"
     assert "🌐🦀📜 Rullst 📜🦀🌐" in readme, "README must preserve the project title identity"
     assert slogan in readme, "README must preserve the project slogan"
-    workflow_count = len(
-        [
-            path
-            for path in (ROOT / ".github" / "workflows").iterdir()
-            if path.suffix in {".yml", ".yaml"}
-        ]
-    )
+    workflow_count = validate_workflow_references(readme)
     assert f"({workflow_count} workflows)" in readme, "README workflow dashboard count is stale"
     assert (
         f"{workflow_count} workflow definitions" in readme
