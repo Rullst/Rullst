@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793341609733,
+  "lastUpdate": 1793342534923,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -11979,6 +11979,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 545,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3627f9cc248301b10336702d4a73bbdbd3531250",
+          "message": "Merge pull request #586 from Rullst/fix/v13-alpha4-auth-starters\n\nfix(cli): make cargo rullst auth work on fresh starters and stop reporting empty generations as success",
+          "timestamp": "2026-10-30T03:26:31-03:00",
+          "tree_id": "8065d6f8f262ceb396b0644ccd33181596d3135d",
+          "url": "https://github.com/Rullst/Rullst/commit/3627f9cc248301b10336702d4a73bbdbd3531250"
+        },
+        "date": 1793342534410,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 487,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
