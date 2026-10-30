@@ -283,9 +283,9 @@ To create a Turso-primary API using the current bounded blank starter:
 
 <!-- first-hour: turso-api new-terminal -->
 ```bash
-cargo rullst new edge_app --default --api --database turso \
+cargo rullst new edge_api --default --api --database turso \
   --skip-initial-migration
-cd edge_app
+cd edge_api
 cargo rullst db:migrate
 ```
 
