@@ -74,8 +74,8 @@ Studio's database pages; `#[derive(Orm)]` generates the separate `TursoModel`
 API described below.
 
 ```bash
-cargo rullst new edge_app --default --api --database turso
-cd edge_app
+cargo rullst new edge_api --default --api --database turso
+cd edge_api
 cargo rullst make:model Event --migration
 cargo rullst db:migrate
 ```

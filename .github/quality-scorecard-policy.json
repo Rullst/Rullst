@@ -149,7 +149,7 @@
       "documentation_dx": 14,
       "operations_release": 10,
       "specialist_gate": "none",
-      "finding": "Optional bounded age/challenge and consent APIs have durable SQLite replay/withdrawal, real PostgreSQL lifecycle and generated authenticated SaaS contracts. The initial 85-point ceiling withholds credit for pending installed-distribution acceptance, registry ownership/publication and deployment recovery. Live age providers, verified guardianship and global legal compliance are not implemented. Local Verus evidence is separate from this CI score.",
+      "finding": "Optional bounded age/challenge and consent APIs have durable SQLite replay/withdrawal, real PostgreSQL lifecycle and generated authenticated SaaS contracts. The initial 85-point ceiling was set before the crate was first published in 13.0.0-alpha.1 (it now has two registry owners); until it is reviewed again it withholds credit for pending installed-distribution acceptance and deployment recovery. Live age providers, verified guardianship and global legal compliance are not implemented. Local Verus evidence is separate from this CI score.",
       "evidence": [
         "rullst-privacy/README.md",
         "rullst-privacy/tests",
@@ -167,7 +167,7 @@
       "documentation_dx": 14,
       "operations_release": 10,
       "specialist_gate": "none",
-      "finding": "Optional exam/parental contracts, minimized browser observations and shared-local SQLite state have ownership, retention, replay and restart evidence; the generated LMS consumer was removed with `make:supervision`. The initial 85-point ceiling withholds operations credit for pending ordinary-release archive acceptance, first registry registration and deployment recovery. Signals are untrusted observations, not proof of cheating, verified guardianship or device-wide parental control; remote storage and authoritative media analysis remain external.",
+      "finding": "Optional exam/parental contracts, minimized browser observations and shared-local SQLite state have ownership, retention, replay and restart evidence; the generated LMS consumer was removed with `make:supervision`. The initial 85-point ceiling was set before the crate was first published in 13.0.0-alpha.1; until it is reviewed again it withholds operations credit for pending ordinary-release archive acceptance and deployment recovery. Signals are untrusted observations, not proof of cheating, verified guardianship or device-wide parental control; remote storage and authoritative media analysis remain external.",
       "evidence": ["rullst-supervision/README.md", "rullst-supervision/tests", ".github/test-packaged-distribution.sh", "docs/src/supervision.md"]
     },
     {
@@ -178,7 +178,7 @@
       "documentation_dx": 14,
       "operations_release": 10,
       "specialist_gate": "none",
-      "finding": "Optional Bunny lifecycle and shared-local SQLite state have authorization, protocol, bounded browser upload, notification reconciliation, restart and extracted-consumer evidence. The initial 85-point ceiling withholds operations credit for pending ordinary-release archive acceptance, first registry registration and deployment recovery. Live Bunny/CDN interoperability, entitlement policy and credential/backup operations remain unvalidated or host-owned; protocol fixtures do not establish provider acceptance.",
+      "finding": "Optional Bunny lifecycle and shared-local SQLite state have authorization, protocol, bounded browser upload, notification reconciliation, restart and extracted-consumer evidence. The initial 85-point ceiling was set before the crate was first published in 13.0.0-alpha.1; until it is reviewed again it withholds operations credit for pending ordinary-release archive acceptance and deployment recovery. Live Bunny/CDN interoperability, entitlement policy and credential/backup operations remain unvalidated or host-owned; protocol fixtures do not establish provider acceptance.",
       "evidence": ["rullst-media/README.md", "rullst-media/tests", "rullst-media/examples/private_course_video.rs", ".github/test-media-package.sh", "docs/src/managed-video-roadmap.md"]
     },
     {
@@ -189,7 +189,7 @@
       "documentation_dx": 14,
       "operations_release": 10,
       "specialist_gate": "none",
-      "finding": "Trusted exercise, authorization and grading contracts plus encrypted shared-local SQLite jobs have lease, cancellation, recovery, retention and extracted-consumer evidence. The crate never executes learner code: an application-owned, separately deployed runner implements the documented controller contract. The initial 85-point ceiling withholds operations credit for pending ordinary-release archive acceptance, first registry registration and deployment recovery. Runner isolation is host-owned and not verified by Rullst.",
+      "finding": "Trusted exercise, authorization and grading contracts plus encrypted shared-local SQLite jobs have lease, cancellation, recovery, retention and extracted-consumer evidence. The crate never executes learner code: an application-owned, separately deployed runner implements the documented controller contract. The initial 85-point ceiling was set before the crate was first published in 13.0.0-alpha.1; until it is reviewed again it withholds operations credit for pending ordinary-release archive acceptance and deployment recovery. Runner isolation is host-owned and not verified by Rullst.",
       "evidence": ["rullst-labs/README.md", "rullst-labs/tests", "rullst-labs/examples/byo_runner_controller.rs", ".github/test-labs-package.sh", ".github/check-labs-boundary.py", "docs/src/labs-runner-contract.md"]
     },
     {

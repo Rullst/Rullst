@@ -183,7 +183,6 @@ tower-sessions = "0.15"
 futures-util = "0.3.32"
 tokio-tungstenite = "0.30.0"
 criterion = { version = "0.8.2", features = ["html_reports", "async_tokio"] }
-proptest = "1.11.0"
 insta = { version = "1.41", features = ["yaml"] }
 reqwest = "0.13.4"
 base64 = "0.23.0"
