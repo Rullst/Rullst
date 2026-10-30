@@ -52,11 +52,12 @@ async fn exclusive_lock(path: &Path) -> SqliteConnection {
 ///
 /// Establishing the connection waits for the lock in SQLite's busy handler,
 /// whose 5-second timeout equals the pool wait and is spent in about 60
-/// sleeps. Windows rounds each sleep up to the system timer tick, so the
-/// handler gives up well after the pool wait has ended. On Linux the sleeps
-/// overshoot by microseconds and the handler gives up only about 20 ms after
-/// the pool wait, so a late runtime thread can see `SQLITE_BUSY` first, which
-/// is not retried: the test runs on Windows only.
+/// sleeps. Windows rounds each sleep up to the system timer tick: on hosted
+/// runners the handler gave up after about 5.5 s, while the pool wait ended
+/// within 5.01 s. On Linux the handler gave up after only 5.008 to 5.015 s,
+/// so a late runtime thread can see `SQLITE_BUSY` first, which is not
+/// retried: the test runs on Windows only. A later attempt may time out too
+/// when the runner's disk stalls, so it asserts at least one retry.
 #[tokio::test]
 #[cfg_attr(
     not(windows),
@@ -89,7 +90,7 @@ async fn open_tries_again_when_establishing_its_connection_times_out() {
     let elapsed = started.elapsed();
     let store = opened
         .unwrap_or_else(|error| panic!("open: {error:?} ({:?}) after {elapsed:?}", cause::last()));
-    assert_eq!(super::retried() - before, 1, "after {elapsed:?}");
+    assert!(super::retried() > before, "after {elapsed:?}");
     assert!(elapsed >= Duration::from_secs(5), "after {elapsed:?}");
     store.close().await;
 }

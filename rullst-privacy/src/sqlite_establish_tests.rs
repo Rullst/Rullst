@@ -63,7 +63,7 @@ async fn open_while_locked<T, E: Debug>(
     let (opened, ()) = tokio::join!(opening, releasing);
     let elapsed = started.elapsed();
     let store = opened.unwrap_or_else(|error| panic!("open: {error:?} after {elapsed:?}"));
-    assert_eq!(super::retried() - before, 1, "after {elapsed:?}");
+    assert!(super::retried() > before, "after {elapsed:?}");
     assert!(elapsed >= Duration::from_secs(5), "after {elapsed:?}");
     store
 }
