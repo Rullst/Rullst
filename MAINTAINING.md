@@ -175,11 +175,15 @@ examples and other CI files no longer rerun anything; a change to a shared
 crate reruns only the packages that reach it. A global or toolchain change
 always reruns everything.
 
-The rule fails closed (that package's input becomes the whole repository, the
-old behaviour) on patterns it does not model: a build script or
-build-dependency, proc-macro I/O, known file-reading macros (`migrate!`,
-`include_dir!`, `#[folder]`, …), a `..` or absolute path passed to a macro whose
-code is not scanned, and includes it cannot resolve. The receipt's
+The rule guards against accidental drift (refactors, new dependencies, new
+includes), not deliberately obfuscated file access: a maintainer who wanted to
+skip fuzzing could simply not run it. It fails closed (that package's input
+becomes the whole repository, the old behaviour) on patterns it does not
+model: a build script or build-dependency, proc-macro I/O or a proc macro with
+a path dependency or a registry dependency outside `syn`, `quote`,
+`proc-macro2` and `toml`, known file-reading macros (`migrate!`,
+`include_dir!`, `#[folder]`, …), a `..`, absolute or `$VAR` path passed to a
+macro whose code is not scanned, and includes it cannot resolve. The receipt's
 `whole_repository_inputs` says which package fell back and why. The fuzz
 workflow also runs `.github/check-fuzz-build-graph.py`, which fails when
 `cargo metadata --locked` resolves a path package, build script or proc macro
@@ -191,7 +195,8 @@ fuzzed crate makes every package that reaches it rerun on any change until
 the policy models it. If a reviewed proc-macro reader in `REVIEWED_COMPILE_IO`
 (`.github/fuzz_build_graph.py`) changes, review the new blob and add it with a
 test, or the packages that reach it keep falling back; do the same before
-adding a registry macro to `REVIEWED_PLAIN_MACROS`.
+adding a registry macro to `REVIEWED_PLAIN_MACROS` or a crate to
+`REVIEWED_PROC_MACRO_DEPENDENCIES`.
 
 ## 6. Mutation campaigns
 

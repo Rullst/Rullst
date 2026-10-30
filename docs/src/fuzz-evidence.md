@@ -12,6 +12,14 @@ five-minute, single-target check and cannot replace release evidence.
 
 ## What is compared
 
+**Threat model.** The input rule guards against *accidental* drift: ordinary
+refactors, new dependencies, new includes and new build-time code that a
+fuzzed build would read without anyone noticing. It does not defend against
+deliberately obfuscated file access (a path assembled from characters, a proc
+macro computing an absolute path for the reviewed reader, …); a maintainer who
+wanted to skip fuzzing could simply not run it. Within that model, unknown
+patterns fail closed rather than being modelled.
+
 `.github/fuzz_evidence_inputs.py` reads committed Git objects, not the dirty
 working tree. A SHA-256 identity includes tracked paths, modes and blob IDs,
 the pinned execution environment, preflight and campaign commands, runner
@@ -70,23 +78,36 @@ becomes a fuzz package's input when any of these is present in its graph:
 - **Proc-macro I/O:** a reached proc-macro crate (`proc-macro = true` or
   `crate-type = ["proc-macro"]`) whose compiled files, including `#[path]`
   and `include!` targets outside it, use filesystem, process or environment
-  APIs (`fs`, `File`, `Command`, `read_dir`, `exists`, `metadata`, …) or emit
-  computed includes, unless the exact blob is reviewed in
-  `REVIEWED_COMPILE_IO`; or that holds a string with a `..` segment that is
-  not an include path or a `==`/`!=` operand. Only the `rullst-macros` i18n
-  `catalog!` reader is reviewed: it reads `<invoking package>/<dir>/*.toml`.
+  APIs (`fs`, `File`, `Command`, `read_dir`, `exists`, `is_symlink`,
+  `metadata`, …) or emit computed includes, unless the exact blob is reviewed
+  in `REVIEWED_COMPILE_IO`; that holds a string with a `..` segment that is
+  not an include path or a `==`/`!=` operand; that has any path dependency
+  (a helper crate would hide its I/O from review); or that links a registry
+  crate other than `syn`, `quote`, `proc-macro2` and `toml`
+  (`REVIEWED_PROC_MACRO_DEPENDENCIES`, what `rullst-macros` and
+  `rullst-orm-macros` use; dev-dependencies are not linked and not checked).
+  Only the `rullst-macros` i18n `catalog!` reader is reviewed: it reads
+  `<invoking package>/<dir>/*.toml`.
 - **Known file-reading macros and attributes:** `migrate!`, `query*!`,
   `include_dir!`, `embed_migrations!`, `include_proto!`, `dotenv!`, `#[folder]`
-  (rust-embed), `#[grammar]` (pest), `#[template]` and similar.
-- **Path-like macro arguments:** a string with a `..` segment or a leading `/`
-  whose innermost enclosing macro call or attribute is not a built-in
-  (formatting, assertions, includes, `quote!`), a `macro_rules!` defined in the
-  scanned sources that passes its arguments only to built-ins, or a reviewed
-  registry macro that never reads files (`json!`, `fuzz_target!`). Leading-`/`
-  routes are also allowed in the workspace's own proc macros and attributes,
-  whose I/O is checked above; a `..` path never is (for example
-  `catalog!(dir = "../x")`). Plain string literals in code, such as WAF
-  traversal patterns, are not affected.
+  (rust-embed), `#[grammar]` (pest), `#[template]` and similar, also as an item
+  of `cfg_attr(…)` or when renamed with `use … as …`.
+- **Path-like macro arguments:** a string with a `..` segment, a leading `/`
+  or a leading `$VAR`/`${VAR}`/`%VAR%` placeholder, when any macro call or
+  attribute enclosing it is not trusted. Each `cfg_attr(…)` item counts as an
+  attribute of its own, and names resolve through the file's `use` imports.
+  Trusted are: built-ins (formatting, assertions, includes, `quote!`) only when
+  unqualified or written as `std::`/`core::`/`alloc::` (`quote::`/`syn::` for
+  quote's macros), so `#[sqlx::test(migrations = …)]` is not `#[test]`; a
+  `macro_rules!` defined in the scanned sources, called unqualified or through
+  a workspace crate path, that passes its arguments only to built-ins; and the
+  reviewed registry macros `serde_json::json!` and `libfuzzer_sys::fuzz_target!`
+  by full path. Routes and placeholders (but never `..`, e.g.
+  `catalog!(dir = "../x")`) are also allowed in the workspace's own proc macros
+  and attributes, whose I/O is checked above. An untrusted macro call that
+  contains a call to a local `macro_rules!` holding a path-like literal fails
+  closed too. Plain string literals in code, such as WAF traversal patterns,
+  are not affected.
 - **Includes that cannot be resolved:** computed, absolute, with a backslash,
   leaving the repository, or with a `..` after a placeholder component
   (`{dir}/..`, `$VAR/..`, `%X%/..`); `CARGO_MANIFEST_DIR` paths inside a
@@ -120,7 +141,15 @@ directory; library code reading repository files through other paths at run
 time is not modelled. `.github/check-fuzz-build-graph.py` runs in the fuzz
 workflow's inventory job and fails if `cargo metadata --locked` resolves a
 path package the scope does not reach, a build script the scope did not fail
-closed on, or a proc macro it does not check. The regular locked-resolution,
+closed on, a proc macro it does not check, or a proc macro linking a path
+package or an unreviewed registry crate.
+
+Accepted and out of scope under the threat model above: unreviewed proc-macro
+code computing an absolute path and handing it to the reviewed reader
+(`expand_in` stays crate-visible because the production `catalog!` entry calls
+it); a literal laundered through a local macro so that it sits next to
+`==`/`!=`; an attribute macro reading a literal from the item it annotates;
+`#[link]` library paths; and `..` assembled from characters. The regular locked-resolution,
 all-feature CI and CodeQL checks still run on the changed candidate.
 Unsupported Git layouts, missing history or malformed evidence stop
 verification.
