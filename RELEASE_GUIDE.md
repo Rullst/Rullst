@@ -14,8 +14,9 @@ immutable tags.
 
 The permanent branches are `main`, `v12` and `gh-pages`. Patch releases such as
 12.1.1 use tags, not additional permanent branches. Remove short-lived branches
-after protected integration. Assess every stable fix for a tested forward-port
-to `main`; see the [cross-line maintenance policy](docs/src/compatibility-policy.md#carrying-fixes-between-maintained-lines).
+after protected integration. While v12 was maintained, every stable fix was
+assessed for a tested forward-port to `main`; see the
+[cross-line maintenance policy](docs/src/compatibility-policy.md#carrying-fixes-between-maintained-lines).
 
 The repository separates maintained releases, next-major work, historical
 source and generated site data:
@@ -35,15 +36,15 @@ source and generated site data:
 
 ### Phase 1 — Select the maintenance or development line
 
-Compatible v12 work starts from the latest green `v12` and returns through a
-pull request targeting `v12`. Product features and breaking work start from
-`main` and target `main`. Keep branches short-lived and do not stack work on a
-broken required gate. The example below is for v12 maintenance:
+All work starts from `main` and returns through a pull request targeting
+`main`. The `v12` branch is frozen since the 12.x line reached end of life on
+16 October 2026 and takes no further changes. Keep branches short-lived and do
+not stack work on a broken required gate:
 
 ```powershell
-# Synchronize the maintenance branch before starting a v12 fix
-git switch v12
-git pull --ff-only origin v12
+# Synchronize main before starting a change
+git switch main
+git pull --ff-only origin main
 git switch -c fix/<short-topic>
 ```
 
@@ -148,8 +149,8 @@ Before releasing, make sure:
 Once everything is stable and verified:
 
 1. Freeze feature work and prepare the synchronized version change through a
-   reviewed pull request into the selected release branch (`v12` for v12,
-   `main` for v13).
+   reviewed pull request into `main` (the release branch for v13; the frozen
+   `v12` branch gets no further release).
 2. On the release-branch head, run `python3 .github/release-preflight.py vX.Y.Z`
    before dispatching the manual admission workflows. It refuses, in seconds,
    problems that `release.yml` would otherwise find hours later:
@@ -177,7 +178,8 @@ git push origin v13.X.Y
 
 An RC or stable version is a real public crates.io release. It can be yanked but
 never overwritten; inspect and test every `.crate` before pushing the tag.
-Prereleases require explicit opt-in with a requirement such as `13.0.0-rc.1`.
+Prereleases require explicit opt-in with an exact requirement such as
+`=13.0.0-rc.1`.
 
 GitHub Actions will automatically execute the topological crate publish pipeline:
 1. ✅ `rullst-macros` & `rullst-orm-macros`
@@ -205,14 +207,13 @@ independent certification.
 
 ---
 
-### Phase 4 — Continue v13 while maintaining v12
+### Phase 4 — Continue v13 after v12
 
 The v12 line reached end of life on 16 October 2026 (12.3.0 was its last
-release) and the `v12` branch is frozen, so the v12 maintenance steps of this
-phase are historical. The `main` branch develops v13; the former `v13` branch
-is retired. Start
-next-major work from `main` after
-reviewing its roadmap and differences from the published v12 source:
+release) and the `v12` branch is frozen; this phase no longer maintains it. The
+`main` branch develops v13; the former `v13` branch is retired. Start work from
+`main` after reviewing its roadmap and differences from the published v12
+source:
 
 ```powershell
 git switch main
@@ -220,18 +221,13 @@ git pull --ff-only origin main
 git switch -c feat/<short-topic>
 ```
 
-Carry applicable v12 fixes forward through reviewed changes. Dependabot
-proposes SemVer-major dependency updates only for `main`; evaluate them there
-first. A dependency's major version does not by itself prove that Rullst's
-public API must break, so a compatible major may still be backported to `12.x`
-deliberately (for example, to resolve an advisory). Changes that break Rullst's
-compatibility contract belong to v13.
-Keep the v12 release gates active while v13's own CI policy evolves.
+Dependabot proposes dependency updates only for `main`. A dependency's major
+version does not by itself prove that Rullst's public API must break.
 
 Version 12.3.0, the last 12.x release, is the latest published stable release.
-Carry the compatible 12.1 [update experience](ROADMAP.md#safe-update-experience)
-into v13.
-Synchronize package versions only when the candidate is accepted for release.
+13.0.0-alpha.4 is the 13.0 feature freeze; 13.0.0-rc.1 takes only fixes and
+documentation, and 13.0.0 follows. Synchronize package versions only when the
+candidate is accepted for release.
 A major upgrade needs its own tested migration rules, not just an updated
 installer. Follow the [v13 delivery plan](docs/src/v13-delivery-plan.md) for
 current priorities. This plan does not itself authorize publication.
@@ -241,7 +237,7 @@ current priorities. This plan does not itself authorize publication.
 ## 🔄 Visual Summary
 
 ```
-short-lived branches ── reviewed pull requests ──▶ v12 (12.x) / main (v13)
+short-lived branches ── reviewed pull requests ──▶ main (v13)
                                                    │
                                                    │ exact approved SHA
                                                    ▼
@@ -266,7 +262,7 @@ short-lived branches ── reviewed pull requests ──▶ v12 (12.x) / main (
 > order. A workflow name alone is not evidence; the exact release run must pass.
 
 > [!WARNING]
-> Keep both release branches green and protected. Normal changes arrive through reviewed,
+> Keep `main` green and protected; the frozen `v12` stays protected. Normal changes arrive through reviewed,
 > short-lived branches; emergency direct pushes require the same evidence and
 > must not bypass repository rulesets.
 
@@ -295,9 +291,9 @@ Do not maintain a permanent repository-wide registry token.
 ## 📌 Quick Reference Commands
 
 ```powershell
-# Start a compatible v12 maintenance change (use main for v13 work)
-git switch v12
-git pull --ff-only origin v12
+# Start a change from main
+git switch main
+git pull --ff-only origin main
 git switch -c fix/<short-topic>
 
 # Check status before releasing
@@ -322,5 +318,6 @@ git push origin v13.X.Y
 | Current `main` line | `13.0.0-alpha.4` prerelease source; only a reviewed tag publishes it, a branch merge does not |
 | Former maintenance line | Frozen `v12`; end of life since 16 October 2026 |
 | Legacy source | Immutable `v5.0.0` tag and published archive |
-| Published v13 prereleases | `13.0.0-alpha.1` / `v13.0.0-alpha.1` (October 11, 2026); check [crates.io](https://crates.io/crates/rullst/versions) for later ones |
+| Published v13 prereleases | `13.0.0-alpha.1` (October 11, 2026), `13.0.0-alpha.2` (October 17) and `13.0.0-alpha.3` (October 24); check [crates.io](https://crates.io/crates/rullst/versions) for later ones |
+| Release path | `13.0.0-alpha.4` (feature freeze), then `13.0.0-rc.1` (fixes and documentation only), then `13.0.0` |
 | Latest published stable | Check [crates.io](https://crates.io/crates/rullst) and the [v12 record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md) |

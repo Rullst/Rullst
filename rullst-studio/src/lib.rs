@@ -17,6 +17,7 @@
 //! the standalone `rullst-studio` binary for remote projects. See the [crate
 //! guide](https://rullst.github.io/Rullst/book/crates/studio.html) and the
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-studio/README.md).
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 extern crate rullst_core as rullst;
 // Mutation testing covers only the remote-projects mode (`remote`), whose

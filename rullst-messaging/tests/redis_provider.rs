@@ -19,10 +19,18 @@ fn configuration(endpoint: &str) -> RedisBrokerConfig {
     .unwrap()
 }
 
+fn kx_names(provider: &rustls::crypto::CryptoProvider) -> Vec<rustls::NamedGroup> {
+    provider
+        .kx_groups
+        .iter()
+        .map(|group| group.name())
+        .collect()
+}
+
 /// Port 1 on loopback refuses the connection; the provider choice happens
 /// before connecting.
 #[tokio::test]
-async fn only_tls_connections_install_a_default_crypto_provider() {
+async fn only_tls_connections_install_aws_lc_rs_as_the_default_crypto_provider() {
     let plaintext = configuration("redis://127.0.0.1:1")
         .allow_loopback_for_tests()
         .unwrap();
@@ -34,5 +42,11 @@ async fn only_tls_connections_install_a_default_crypto_provider() {
             .await
             .is_err()
     );
-    assert!(rustls::crypto::CryptoProvider::get_default().is_some());
+    let installed = rustls::crypto::CryptoProvider::get_default().expect("installed provider");
+    // aws-lc-rs, not ring: only aws-lc-rs offers the post-quantum hybrid group.
+    assert_eq!(
+        kx_names(installed),
+        kx_names(&rustls::crypto::aws_lc_rs::default_provider())
+    );
+    assert!(kx_names(installed).contains(&rustls::NamedGroup::X25519MLKEM768));
 }

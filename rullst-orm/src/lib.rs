@@ -12,8 +12,9 @@
 //! [`Orm::init`] returns an error that names the feature to enable. Other
 //! features add integrations: `redis`, `scout-http`, `pgvector`, `ai`,
 //! `qdrant`, `mongodb`, `duckdb`, `turso` and `surrealdb`. docs.rs builds this
-//! page with the default features, so the items behind them are not listed
-//! here.
+//! page with `drivers-all` and every integration except `duckdb`, and labels
+//! each item with the features it needs; a `strict-*` profile changes the
+//! pool and database type aliases to that backend's SQLx types.
 //!
 //! Start with the [`Orm`](struct@Orm) pool, `#[derive(Orm)]`,
 //! [`schema::Schema`] and [`Orm::transaction`]. The code that
@@ -23,6 +24,8 @@
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-orm/README.md)
 //! and the [ORM guide](https://rullst.github.io/Rullst/book/crates/orm.html)
 //! have a quick start and the query, transaction and security boundaries.
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 pub use sqlx;
 
 /// The `chrono` crate whose `DateTime<Utc>`, `NaiveDateTime`, `NaiveDate` and
@@ -123,6 +126,8 @@ pub mod query_cache;
 pub mod raw;
 #[cfg(feature = "redis")]
 pub mod redis_data;
+#[cfg(feature = "redis")]
+mod redis_tls;
 pub mod replica;
 pub mod repository;
 pub mod resource;

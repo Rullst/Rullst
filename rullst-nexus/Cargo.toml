@@ -13,6 +13,13 @@ documentation = "https://docs.rs/rullst-nexus"
 keywords = ["admin", "cms", "crud", "nexus", "dashboard"]
 categories = ["web-programming", "gui"]
 
+# docs.rs documents the default features (every ORM driver) plus `tz`; the
+# `strict-*` profiles select one ORM backend instead of `drivers-all`.
+[package.metadata.docs.rs]
+features = ["tz"]
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
@@ -47,8 +54,8 @@ urlencoding = { workspace = true }
 
 [dev-dependencies]
 rullst-orm = { workspace = true, features = ["drivers-all"] }
-testcontainers = "0.27.3"
-testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql"] }
+testcontainers = { version = "0.27.3", default-features = false, features = ["aws-lc-rs"] }
+testcontainers-modules = { version = "0.15.0", default-features = false, features = ["aws-lc-rs", "postgres", "mysql"] }
 tower = { workspace = true, features = ["util"] }
 
 [package.metadata.cargo-machete]

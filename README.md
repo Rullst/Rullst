@@ -171,6 +171,7 @@ Every capability has a documented boundary — security middleware does not
 replace your authorization rules, and databases are not interchangeable. See the
 [capability ledger](https://rullst.github.io/Rullst/book/capability-ledger.html)
 · [Why Rullst?](https://rullst.github.io/Rullst/book/why-Rullst.html)
+· [An AI assistant's candid evaluation](https://rullst.github.io/Rullst/book/ai-evaluation.html)
 · [Axum & SQLx escape hatches](https://rullst.github.io/Rullst/book/axum-sqlx-migration.html)
 
 <a id="live-examples"></a>

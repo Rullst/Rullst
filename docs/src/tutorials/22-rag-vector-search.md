@@ -59,7 +59,7 @@ rullst = { version = "=13.0.0-alpha.4", default-features = false, features = [
 # `#[derive(Orm)]` and `FromRow` expand to `rullst_orm::…` and `::sqlx::…`
 # paths, so a crate that derives models depends on both directly.
 rullst-orm = { version = "=13.0.0-alpha.4", default-features = false, features = ["strict-postgres"] }
-sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres"] }
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "postgres"] }
 ```
 
 Projects generated with `cargo rullst new --database postgres` already list

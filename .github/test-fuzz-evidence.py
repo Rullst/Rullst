@@ -160,6 +160,26 @@ class EvidenceTests(unittest.TestCase):
         for item in report["reused"]:
             self.assertEqual(item["run_id"], 2 if item["dir"] == "rullst-mail/fuzz" else 1)
 
+    def test_report_names_packages_whose_inputs_are_the_whole_repository(self):
+        self.assertEqual(self.plan()["whole_repository_inputs"], {})
+        self.candidate.fail_closed = {"rullst-iot/fuzz": ["rullst-iot/src/lib.rs: computed include"]}
+        self.candidate.changed.add("rullst-iot/fuzz")
+        report = self.plan()
+        self.assertEqual(report["whole_repository_inputs"], self.candidate.fail_closed)
+        self.assertEqual({item["dir"] for item in report["selected"]}, {"rullst-iot/fuzz"})
+
+    def test_receipt_policy_digest_covers_the_build_graph_and_source_scanner(self):
+        original = evidence.plan(self.candidate, self.github, NOW, force_full=True)["policy_sha256"]
+        read_text = Path.read_text
+        for changed in (".github/fuzz_build_graph.py", ".github/fuzz_source_scan.py"):
+            with self.subTest(changed=changed):
+                def changed_text(path, *args, **kwargs):
+                    content = read_text(path, *args, **kwargs)
+                    return content + "# changed policy" if path == ROOT / changed else content
+                with patch.object(Path, "read_text", changed_text):
+                    updated = evidence.plan(self.candidate, self.github, NOW, force_full=True)["policy_sha256"]
+                self.assertNotEqual(original, updated)
+
     def test_no_prior_evidence_or_force_full_selects_every_target(self):
         self.assertEqual(len(evidence.plan(self.candidate, self.github, NOW, force_full=True)["selected"]), 42)
         self.github.items = []

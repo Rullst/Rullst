@@ -17,6 +17,7 @@
 //! the `rullst` facade's `nexus` feature. See the [crate
 //! guide](https://rullst.github.io/Rullst/book/crates/nexus.html) and the
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-nexus/README.md).
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod nexus;
 pub use nexus::*;

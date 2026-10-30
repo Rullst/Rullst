@@ -22,6 +22,7 @@
 //!
 //! See the [book page](https://rullst.github.io/Rullst/book/crates/capital.html)
 //! and the [README](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md).
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod billable;
 pub mod capital;

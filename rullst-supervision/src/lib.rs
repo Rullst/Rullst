@@ -16,7 +16,7 @@
 //! for bounded camera-presence/audio-activity adapter contracts. Read
 //! [Responsible use](https://rullst.github.io/Rullst/book/supervision.html#responsible-use)
 //! before integrating it.
-
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 
 mod authority;

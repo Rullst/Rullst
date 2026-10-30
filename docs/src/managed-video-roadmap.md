@@ -12,8 +12,8 @@ interoperability remains unvalidated.
 checks and the actual [installed-archive job](https://github.com/Rullst/Rullst/actions/runs/35564717398)
 at `b21d52e7692ffceec689223a04658a95156778a0`, then merged into `v13` at
 `618655c1` on September 21. The final release campaign remains separate; real
-Bunny interoperability has not been tested. Existing LMS fields do not
-automatically enable this service.
+Bunny interoperability has not been tested. The LMS example's media fields do
+not enable this service.
 
 A Bunny Stream integration is selected for implementation after the deployment
 diagnostic and supervision observation base. The owner's subsequent September
@@ -123,5 +123,5 @@ scope. Later application fixes should be contributed back to the framework.
 Implementation also reviewed the official Stream OpenAPI, TUS and advanced CDN
 HMAC documentation. See the [candidate integration and operation guide](managed-video.md)
 for exact support, recovery, provider configuration and acceptance limitations.
-This candidate is not a claim that Bunny is universally cheapest or that the
-published Rullst release already supports it.
+This candidate is not a claim that Bunny is universally cheapest or that real
+Bunny interoperability has been validated.

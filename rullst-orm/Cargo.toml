@@ -13,9 +13,17 @@ documentation = "https://docs.rs/rullst-orm"
 keywords = ["orm", "database", "sqlite", "postgres", "mysql"]
 categories = ["database"]
 
+# docs.rs documents the portable `drivers-all` profile and every integration
+# except `duckdb`, which compiles DuckDB's bundled C++ engine. The `strict-*`
+# profiles select one backend's pool and database type aliases instead.
+[package.metadata.docs.rs]
+features = ["drivers-all", "redis", "mongodb", "turso", "surrealdb", "scout-http", "pgvector", "ai", "qdrant"]
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [dependencies]
 rullst-orm-macros = { workspace = true, features = ["runtime-driver-codecs", "runtime-feature-gates"] }
-sqlx = { workspace = true, features = ["any", "runtime-tokio", "macros", "json", "tls-rustls", "chrono"] }
+sqlx = { workspace = true, features = ["any", "runtime-tokio", "macros", "json", "tls-rustls-aws-lc-rs", "chrono"] }
 # `TransactionManager` lets a nested `Orm::transaction` open, release and roll
 # back a savepoint on the task-scoped transaction with SQLx's own depth
 # tracking. The `sqlx` facade does not re-export that trait; sqlx pins this
@@ -30,7 +38,11 @@ serde_json = { workspace = true }
 # `rullst_orm::chrono`. `serde` lets generated `to_json()` serialize them.
 chrono = { workspace = true, features = ["std", "clock", "serde"] }
 redis = { workspace = true, features = ["tokio-rustls-comp", "connection-manager"], optional = true }
-mongodb = { version = "3.9.1", optional = true }
+# Installs aws-lc-rs as the rustls process default before a Redis TLS connection.
+rustls = { workspace = true, features = ["aws-lc-rs", "std"], optional = true }
+# The default `rustls-tls` feature selects ring; `rustls-tls-aws-lc` keeps
+# MongoDB on aws-lc-rs, the framework's rustls provider.
+mongodb = { version = "3.9.1", default-features = false, features = ["compat-3-0-0", "dns-resolver", "rustls-tls-aws-lc"], optional = true }
 duckdb = { version = "1.10506.1", features = ["bundled"], optional = true }
 url = { version = "2.5.8", optional = true }
 reqwest = { workspace = true, features = ["json", "rustls", "stream"], optional = true }
@@ -58,7 +70,7 @@ walkdir = "2.5.0"
 # or `drivers-all`. Without one, `Orm::init` reports the missing feature.
 default = []
 drivers-all = ["sqlx/sqlite", "sqlx/postgres", "sqlx/mysql"]
-redis = ["dep:redis", "dep:sha2", "dep:url", "rullst-orm-macros/redis"]
+redis = ["dep:redis", "dep:rustls", "dep:sha2", "dep:url", "rullst-orm-macros/redis"]
 mongodb = ["dep:mongodb"]
 duckdb = ["dep:duckdb"]
 turso = ["dep:reqwest", "dep:url", "dep:sha2", "sqlx/sqlite"]
@@ -80,9 +92,9 @@ rand = { workspace = true }
 axum = { workspace = true }
 criterion = { workspace = true, features = ["async_tokio"] }
 diesel = { version = "=2.3.14", default-features = false, features = ["sqlite", "returning_clauses_for_sqlite_3_35"] }
-sea-orm = { version = "=2.0.4", default-features = false, features = ["macros", "runtime-tokio-rustls", "sqlx-sqlite", "sqlite-use-returning-for-3_35"] }
-testcontainers = "0.27.3"
-testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql", "mariadb", "mongo", "surrealdb"] }
+sea-orm = { version = "=2.0.4", default-features = false, features = ["macros", "runtime-tokio", "sqlx-sqlite", "sqlite-use-returning-for-3_35"] }
+testcontainers = { version = "0.27.3", default-features = false, features = ["aws-lc-rs"] }
+testcontainers-modules = { version = "0.15.0", default-features = false, features = ["aws-lc-rs", "postgres", "mysql", "mariadb", "mongo", "surrealdb"] }
 proptest = "1.11.0"
 tracing-subscriber = { workspace = true }
 

@@ -7,6 +7,7 @@
 - [Database Support](database-support.md)
 - [API Reference & REST Learning Path](api-reference.md)
 - [Why Rullst?](why-Rullst.md)
+- [An AI Assistant's Evaluation](ai-evaluation.md)
 - [💡 The Rullst Philosophy](philosophy.md)
 - [Simple Capability Status](capability-status.md)
 - [Maturity Tiers: Core, Extension, Experimental](maturity.md)
