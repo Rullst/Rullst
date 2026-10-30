@@ -51,6 +51,8 @@ pub fn field_kind_label(kind: &FieldKind) -> &'static str {
     }
 }
 
+// Unused by Nexus itself; kept so existing callers still compile.
+#[doc(hidden)]
 #[cfg_attr(mutants, mutants::skip)]
 #[allow(dead_code)]
 pub fn field_kind_sql(kind: &FieldKind) -> &'static str {

@@ -2,6 +2,8 @@ use crate::RullstValue;
 use std::future::Future;
 
 tokio::task_local! {
+    // Scoped by `with_tenant` and read by `get_tenant_id`.
+    #[doc(hidden)]
     pub static CURRENT_TENANT: RullstValue;
 }
 

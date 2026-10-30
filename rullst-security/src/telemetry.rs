@@ -319,6 +319,8 @@ impl SecurityStore {
     }
 }
 
+// Timestamp format of the telemetry store's events.
+#[doc(hidden)]
 pub fn current_timestamp_str() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
@@ -338,6 +340,8 @@ pub fn normalize_ip(value: &str) -> String {
         .unwrap_or_else(|_| "unknown".to_string())
 }
 
+// Alias of `rullst_core::radar::get_process_memory_mb` kept for the telemetry snapshot.
+#[doc(hidden)]
 pub fn get_real_rss_memory_mb() -> Option<f64> {
     rullst_core::radar::get_process_memory_mb()
 }

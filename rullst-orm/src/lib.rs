@@ -216,6 +216,9 @@ pub mod __eager_limit;
 pub mod __relation_key;
 
 tokio::task_local! {
+    // The transaction that `Orm::transaction` scopes; generated model code and
+    // `execute_query!`/`dispatch_executor!` join it.
+    #[doc(hidden)]
     pub static CURRENT_TX: std::sync::Arc<tokio::sync::Mutex<Option<crate::db::Transaction<'static>>>>;
 }
 

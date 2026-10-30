@@ -58,8 +58,9 @@ to the candidate's release line, including the source policy of reused runs.
 Format and Clippy continue to give feedback on draft pull requests. A ready pull
 request to `main` runs the fast Linux gate: the `workspace` and `cli-standard`
 shards, MSRV, strict database features, Redis/S3 contracts, generated access,
-facade composition and AI evals. Line coverage, SemVer and
-CodeQL skip pull requests to `main`. The resulting `main` push runs every Linux
+facade composition and AI evals. Line coverage, the SemVer registry comparison
+and CodeQL skip pull requests to `main`; the SemVer workflow's public-API
+snapshot job runs on ready pull requests to `main`. The resulting `main` push runs every Linux
 shard, public feature boundaries, the threat-model minimum, coverage, SemVer and
 CodeQL. A nightly scheduled run (05:30 UTC) executes the complete
 Linux/macOS/Windows matrix on the default branch. A maintainer can add the
@@ -300,6 +301,21 @@ use `proptest!` still receive their configured 10,000-case runs. SemVer checks
 fan out from the machine-readable release order and validate one published API
 per job, so adding or removing a release package cannot silently drift from the
 matrix.
+
+The `Public API snapshot` job of `semver.yml` runs `.github/public-api.py
+--check` (after its unit tests, `.github/test-public-api.py`). It builds the
+rustdoc JSON of each library package in the release order, except the
+`cargo-rullst` CLI implementation, with the features and rustdoc arguments of
+its `[package.metadata.docs.rs]` table, on the pinned `nightly-2026-08-21`.
+It renders every documented item, signature, field, variant, implementation
+and auto trait into `.github/public-api/<package>.txt` and fails when the result
+differs from the committed file. Items hidden with `#[doc(hidden)]` and blanket
+implementations are not listed. A pull request that changes a public API
+commits the regenerated listing, so the change is reviewed as a diff. The job
+runs on ready pull requests to `main`, on pushes and on manual runs; a manual
+run with `public_api_only` skips the registry comparison. It is not a required
+status check, but a failure fails the `semver.yml` push run that release
+admission requires.
 
 The all-feature coverage pass uses pinned cargo-nextest to schedule the same
 discovered unit and integration tests concurrently. It performs no retry and a
@@ -1096,9 +1112,9 @@ dependency graph make static estimates unreliable.
 | [`release.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/release.yml) | exact-looking version tags | Release | Tag/changelog validation, exact-SHA admission of the full CI matrix (not repeated in the tag run), package-all, evidence bundle, checksums, GitHub build-provenance attestation, changelog-derived release notes, and dependency-order publication. |
 | [`sanitizers.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/sanitizers.yml) | daily, manual | Blocking run | TSan and ASan library matrices on pinned `nightly-2026-08-21`; this verifier toolchain does not change Rullst's stable compiler or MSRV. |
 | [`scorecards.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/scorecards.yml) | main push, weekly, manual | Automated evidence | OpenSSF Scorecard analysis and SARIF/artifact upload; not SLSA certification. |
-| [`semver.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/semver.yml) | main/v12/v13 push, v12/v13 PR, manual | Blocking | Fans out one job per machine-readable release-order entry and compares each supported library API with the latest stable, non-yanked crates.io release of the same major version (`.github/check-semver.sh`; selection tested by `.github/test-semver-baseline-constraints.py`). Prereleases may change the API, so a line without a stable release has no baseline: each 13.0 prerelease job reports that with a notice and compares nothing, and the 13.x comparison starts by itself once 13.0.0 is published. A tree whose version still equals that release is checked as the next minor release (breaking changes fail, deprecations pass); a bumped version is checked for the change it declares. The frozen `v12` branch runs its own copy of the workflow and script. Never-published packages and proc-macro/binary API surfaces unsupported by `cargo-semver-checks` are reported explicitly. |
+| [`semver.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/semver.yml) | main/v12/v13 push, PR, manual | Blocking | Fans out one job per machine-readable release-order entry and compares each supported library API with the latest stable, non-yanked crates.io release of the same major version (`.github/check-semver.sh`; selection tested by `.github/test-semver-baseline-constraints.py`). Prereleases may change the API, so a line without a stable release has no baseline: each 13.0 prerelease job reports that with a notice and compares nothing, and the 13.x comparison starts by itself once 13.0.0 is published. A tree whose version still equals that release is checked as the next minor release (breaking changes fail, deprecations pass); a bumped version is checked for the change it declares. The frozen `v12` branch runs its own copy of the workflow and script. Never-published packages and proc-macro/binary API surfaces unsupported by `cargo-semver-checks` are reported explicitly. The registry comparison skips pull requests to `main`; the `Public API snapshot` job also runs on them and compares each library's documented API with its listing in `.github/public-api/`. |
 | [`spellcheck.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/spellcheck.yml) | main/v12/v13 push and PR, manual | Blocking | Repository typo scan. |
-| [`supply-chain.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/supply-chain.yml) | main/v12/v13 push and PR, daily, manual | Blocking | Three jobs, which until 13.0.0-alpha.4 were `cargo-deny.yml`, `audit.yml` and `security-audit.yml`. `Check Dependencies (Licenses, Vulnerabilities)` runs Cargo Deny's advisory, license, ban and source policy from `deny.toml` (a required check on `main`). `Cargo Audit (production and fuzz locks)` audits the production lock and all eleven fuzz-package locks with one advisory-database fetch. `Advisory exception governance` checks that the active advisory IDs in the ledger, `deny.toml` and every workflow's `--ignore`/`--audit-ignore` flags agree, and that each ledger row has an owner and an unexpired date. No advisory is ignored today. The daily scheduled run uses its own concurrency group, so it never cancels the `main` push run that release admission requires. The `v12` lock audit was removed at the 12.x end of life (16 October 2026); the frozen `v12` branch keeps its own copies of the old workflows. |
+| [`supply-chain.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/supply-chain.yml) | main/v12/v13 push and PR, daily, manual | Blocking | Three jobs, which until 13.0.0-alpha.4 were `cargo-deny.yml`, `audit.yml` and `security-audit.yml`. `Check Dependencies (Licenses, Vulnerabilities)` runs Cargo Deny's advisory, license, ban and source policy from `deny.toml` (a required check on `main`). `Cargo Audit (production and fuzz locks)` audits the production lock and all eleven fuzz-package locks with one advisory-database fetch. `Advisory exception governance` checks that the active advisory IDs in the ledger, `deny.toml` and every workflow's `--ignore`/`--audit-ignore` flags agree, and that each ledger row has an owner and an unexpired date. No advisory is ignored today. The daily scheduled run uses its own concurrency group, so it never cancels the `main` push run that release admission requires. The `v12` lock audit was removed at the 12.x end of life (16 October 2026); the frozen `v12` branch keeps its own copies of the old workflows. Before Cargo Deny, `Check Dependencies (Licenses, Vulnerabilities)` runs `.github/check-public-dependencies.py` (tested by `.github/test-check-public-dependencies.py`), which keeps every [public dependency](docs/src/compatibility-policy.md#public-dependencies) on the 13.x line in `.github/public-dependencies.json`. |
 | [`trufflehog.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/trufflehog.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Verified-secret scan over the configured Git history range. |
 | [`udeps.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/udeps.yml) | weekly, manual | Informational | `cargo-udeps` signal on pinned `nightly-2026-08-21`; command failures are tolerated. |
 | [`unsafe-policy.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/unsafe-policy.yml) | main/v12/v13 push and PR, manual | Blocking | Denies new production unsafe code and validates the reviewed exception allowlist. |

@@ -147,6 +147,26 @@ and fails on any surviving mutant.
   and every badge or link to a workflow in the READMEs, WORKFLOWS.md,
   MAINTAINING.md and the book must name an existing file. Renaming, merging or
   removing a workflow means updating all of them.
+- **Public API snapshot** (`semver.yml`, job `Public API snapshot`). A pull
+  request that changes the documented API of a library crate must commit the
+  regenerated listing: install the pinned nightly once
+  (`rustup toolchain install nightly-2026-08-21 --profile minimal`), then run
+  `python3 .github/public-api.py <package>…` on Linux x86_64, the docs.rs
+  target, and commit `.github/public-api/<package>.txt`. Without arguments it
+  rewrites every listing; `--check` is what CI runs, and `--no-build` reuses the
+  rustdoc JSON of the previous run. Hide helpers that only generated code calls
+  with `#[doc(hidden)]`; they are then not listed. To move the pin, change
+  `TOOLCHAIN` in `.github/public-api.py` and the job's toolchain together (and
+  `FORMAT_VERSION` when rustdoc's JSON format changed; the script refuses
+  another format), regenerate every listing and check that the diff only
+  changes how items are rendered.
+- **Public dependencies** (`supply-chain.yml`, job "Check Dependencies
+  (Licenses, Vulnerabilities)"): a release library may not move a
+  [public dependency](docs/src/compatibility-policy.md#public-dependencies)
+  off its 13.x line in `.github/public-dependencies.json`
+  (`.github/check-public-dependencies.py`). A crate newly exposed in the API
+  gets a row there and in the policy table. A security exception changes both in
+  the same pull request, and the CHANGELOG marks it.
 - **Feature matrix** (`.github/check-feature-matrix.py`) and feature
   boundaries (`.github/check-feature-boundaries.sh`) must list every facade
   feature.
