@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Intelligent, security-conscious, and designed for effortless productivity. Explore Rullst v12: an open-source, Axum-based framework suite with a coordinated CLI, ORM, auth and developer tools.">
+  <meta name="description" content="Intelligent, security-conscious, and designed for effortless productivity. Explore Rullst v13, now in prerelease (13.0.0-alpha.4): an open-source, Axum-based framework suite with a coordinated CLI, ORM, auth and developer tools.">
   <meta name="theme-color" content="#070b15">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta property="og:title" content="Rullst — Intelligent, Security-Conscious, and Designed for Effortless Productivity">
-  <meta property="og:description" content="Build beyond the endpoint with Rullst v12, code you can inspect and boundaries you control.">
+  <meta property="og:description" content="Build beyond the endpoint with Rullst v13, code you can inspect and boundaries you control.">
   <meta property="og:url" content="https://rullst.win/Rullst/">
   <meta property="og:image" content="https://rullst.win/Rullst/Rullst.png">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Rullst — Intelligent, Security-Conscious, and Designed for Effortless Productivity">
-  <meta name="twitter:description" content="A coordinated, open-source Rust framework suite. Explore v12, its source and its evidence.">
+  <meta name="twitter:description" content="A coordinated, open-source Rust framework suite. Explore v13, its source and its evidence.">
   <meta name="twitter:image" content="https://rullst.win/Rullst/Rullst.png">
   <title>Rullst — Intelligent, Security-Conscious, and Designed for Effortless Productivity</title>
   <link rel="canonical" href="https://rullst.win/Rullst/">
@@ -27,9 +27,9 @@
   <div class="ambient-scene" aria-hidden="true"><span></span><span></span><span></span></div>
   <aside class="release-banner" aria-label="Rullst release status">
     <span class="status-dot" aria-hidden="true"></span>
-    <strong>Rullst v12 stable</strong>
-    <span>Use exact release artifacts · review application-specific boundaries before deployment. v5 is end-of-life.</span>
-    <a href="/Rullst/book/v12.html">Release status ↗</a>
+    <strong>Rullst v13 prerelease</strong>
+    <span>13.0.0-alpha.4 is the 13.0 feature freeze; 13.0.0-rc.1 and 13.0.0 follow, so install the exact version. v12 reached end of life on 16 October 2026.</span>
+    <a href="/Rullst/book/compatibility-policy.html#source-branches">Release status ↗</a>
   </aside>
 
   <nav class="site-nav" aria-label="Primary navigation">
@@ -62,7 +62,7 @@
           <a class="button button-primary" href="/Rullst/book/start-here.html">Start building <span aria-hidden="true">↗</span></a>
           <a class="button button-secondary" href="#examples">Try the examples <span aria-hidden="true">↓</span></a>
         </div>
-        <div class="hero-tags" aria-label="Project foundations"><span>Web-first</span><span>16 coordinated crates</span><span>MIT licensed</span></div>
+        <div class="hero-tags" aria-label="Project foundations"><span>Web-first</span><span>20 coordinated packages</span><span>MIT licensed</span></div>
         <p class="hero-note">Axum + Tokio + Tower + SQLx. Your code. Your application policy.</p>
       </div>
 
@@ -94,10 +94,12 @@
             <span>~/your-next-idea</span><span class="terminal-mode">preview</span>
           </div>
           <div class="terminal-body">
-            <p class="terminal-comment"># Start here, with the v12 CLI installed</p>
+            <p class="terminal-comment"># 13.0 is a prerelease, so name the version</p>
+            <div class="command-row"><code><span class="prompt">$</span> <span id="install-command">cargo install cargo-rullst --version =13.0.0-alpha.4 --locked</span></code><button class="copy-command" type="button" data-copy-command="install-command" aria-label="Copy CLI install command">Copy</button></div>
+            <p class="terminal-comment"># Then choose the Blank, API or SaaS starter</p>
             <div class="command-row"><code><span class="prompt">$</span> <span id="new-command">cargo rullst new my_app</span></code><button class="copy-command" type="button" data-copy-command="new-command" aria-label="Copy project creation command">Copy</button></div>
             <details class="workflow-details"><summary>See what comes next <span aria-hidden="true">↗</span></summary>
-            <div class="project-tree" aria-label="Example generated project layout">
+            <div class="project-tree" aria-label="Example layout generated by the SaaS starter">
               <div><span class="tree-branch">├─</span> src/controllers/ <span class="tree-note">your routes</span></div>
               <div><span class="tree-branch">├─</span> src/models/ <span class="tree-note">your data</span></div>
               <div><span class="tree-branch">├─</span> src/pages/ <span class="tree-note">your interface</span></div>
@@ -105,7 +107,7 @@
             </div>
             <p><code><span class="prompt">$</span> cd my_app<br><span class="prompt">$</span> cargo rullst dev</code></p>
             <div class="dev-loop"><span>EDIT</span><b aria-hidden="true">→</b><span>BUILD</span><b aria-hidden="true">→</b><span>RESTART</span><b aria-hidden="true">→</b><span>REFRESH</span></div>
-            <p class="terminal-comment terminal-caption">Workflow illustration · timings depend on your project</p>
+            <p class="terminal-comment terminal-caption">Workflow illustration · SaaS starter layout · timings depend on your project</p>
             </details>
           </div>
         </div>
@@ -151,7 +153,7 @@
           <div class="demo-content"><span class="demo-kicker">03 / PUT YOUR WORK OUT THERE</span><h3>Developer Portfolio</h3><p>A portfolio starting point for presenting projects, skills and experience in a focused web application.</p><a class="button button-secondary" href="https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>Explore Portfolio <span aria-hidden="true">↗</span></a></div>
         </article>
       </div>
-      <div class="demo-footnote"><p>Public demos, not production certifications. Snapshots may lag stable v12; Showcase payment fixtures are not live checkout. Use test data, not sensitive information. Availability is managed separately.</p><a href="https://github.com/Rullst/examples">Source &amp; deployment recipes ↗</a></div>
+      <div class="demo-footnote"><p>Public demos, not production certifications. Each demo is upgraded on its own schedule and can run an earlier Rullst release than 13.0.0-alpha.4; Showcase payment fixtures are not live checkout. Use test data, not sensitive information. Availability is managed separately.</p><a href="https://github.com/Rullst/examples">Source &amp; deployment recipes ↗</a></div>
     </section>
 
     <section id="why" class="shell section" data-reveal>
@@ -164,9 +166,9 @@
         <article class="feature feature-main">
           <span class="feature-index">THE DEVELOPER EXPERIENCE</span>
           <h3>A starting point.<br>Not a starting problem.</h3>
-          <p>Blank, blog, SaaS, LMS, portfolio or ERP. Generate ordinary Rust, follow a coordinated development loop and inspect your application with local tools.</p>
-          <div class="blueprint-chips" aria-label="Available blueprint names"><span>Blank / API</span><span>Blog</span><span>SaaS</span><span>LMS</span><span>Portfolio</span><span>ERP</span></div>
-          <a href="/Rullst/book/cli_reference.html">Find your starting point ↗</a>
+          <p>Start from the Blank, API or SaaS starter, or copy a complete LMS, ERP, portfolio or blog example. Generate ordinary Rust, follow a coordinated development loop and inspect your application with local tools.</p>
+          <div class="blueprint-chips" aria-label="Starters offered by cargo rullst new"><span>Blank</span><span>API</span><span>SaaS</span></div>
+          <a href="/Rullst/book/1-getting-started.html">Find your starting point ↗</a>
         </article>
         <article class="feature">
           <span class="feature-index">SECURITY, EXPLICITLY COMPOSED</span>
@@ -192,14 +194,14 @@
         <div class="section-heading">
           <p class="eyebrow">02 / A coordinated ecosystem</p>
           <h2>One release train.<br><span class="accent-orange">Room to build.</span></h2>
-          <p>Sixteen publishable crates. Compose the capabilities your product needs; inspect the feature gates and limits before you enable them.</p>
+          <p>Twenty packages, released together at one version. Compose the capabilities your product needs; inspect the feature gates and limits before you enable them.</p>
         </div>
         <div class="ecosystem-map" aria-label="Three layers of the Rullst ecosystem">
           <div class="ecosystem-row"><div class="layer-label"><span>01</span><h3>Build &amp; operate</h3></div><div class="crate-links"><a href="/Rullst/book/cli_reference.html">cargo-rullst <small>scaffolding &amp; workflow</small></a><a href="/Rullst/book/spec.html">Studio <small>local developer tools</small></a><a href="/Rullst/book/spec.html">Nexus <small>registered-model admin</small></a></div></div>
           <div class="ecosystem-row"><div class="layer-label"><span>02</span><h3>Product capabilities</h3></div><div class="crate-links"><a href="/Rullst/book/spec.html">Auth &amp; Connect <small>identity boundaries</small></a><a href="/Rullst/book/spec.html">AI &amp; Capital <small>guarded provider adapters</small></a><a href="/Rullst/book/spec.html">Mail &amp; Messaging <small>delivery foundations</small></a></div></div>
           <div class="ecosystem-row"><div class="layer-label"><span>03</span><h3>Application foundation</h3></div><div class="crate-links"><a href="/Rullst/book/spec.html">Core &amp; Security <small>HTTP &amp; defense-in-depth</small></a><a href="/Rullst/book/polyglot-persistence.html">ORM <small>capability-specific data</small></a><a href="/Rullst/book/spec.html">Facade &amp; macros <small>typed composition</small></a></div></div>
         </div>
-        <p class="section-note">Grouped architecture map, not a dependency graph. IoT is a separately bounded foundation, not a v12 hardware-support promise.</p>
+        <p class="section-note">Grouped architecture map, not a dependency graph. The Experimental packages (IoT, Privacy, Supervision, Media and Labs) are optional and not shown; the <a href="/Rullst/book/maturity.html">maturity tiers</a> define what each tier promises.</p>
       </div>
     </section>
 
@@ -209,7 +211,7 @@
         <h2>Make the workflow<br><span class="accent-green">part of the advantage.</span></h2>
       </div>
       <div class="journey-grid">
-        <article><span class="step">01</span><h3>Start with a real use case.</h3><p>Choose a blueprint and database. Optional persistence adds zero or more specialized capabilities—not a second mandatory database.</p><a href="/Rullst/book/tutorials/01-hello-world.html">Zero to Hero ↗</a></article>
+        <article><span class="step">01</span><h3>Start with a real use case.</h3><p>Choose a starter and database. Optional persistence adds zero or more specialized capabilities—not a second mandatory database.</p><a href="/Rullst/book/tutorials/01-hello-world.html">Zero to Hero ↗</a></article>
         <article><span class="step">02</span><h3>Stay in the loop.</h3><p>Use supervised rebuild/restart during development. Failed builds retain the running application; successful restarts reset process-local state.</p><a href="/Rullst/book/tutorials/51-authenticated-hot-reload.html">The development contract ↗</a></article>
         <article><span class="step">03</span><h3>Evolve deliberately.</h3><p>Preview framework upgrades, apply backed-up changes and run compiler checks. Review migrations and application behavior before deployment.</p><a href="/Rullst/book/tutorials/36-assisted-framework-upgrades.html">Assisted upgrades ↗</a></article>
       </div>
@@ -228,7 +230,7 @@
       </div>
       <div class="evidence-grid">
         <a class="evidence-card" href="/Rullst/book/capability-status.html"><span class="evidence-number">01 / CAPABILITIES</span><h3>What's actually there?</h3><p>Implementation, incomplete capabilities and roadmap boundaries in one place.</p><span class="evidence-action">Inspect the status ↗</span></a>
-        <a class="evidence-card" href="/Rullst/book/v12-release-audit.html"><span class="evidence-number">02 / RELEASE REVIEW</span><h3>What was verified?</h3><p>Release evidence, corrections, bounded claims and the checks repeated for stable v12.</p><span class="evidence-action">Open the release audit ↗</span></a>
+        <a class="evidence-card" href="/Rullst/book/v12-release-audit.html"><span class="evidence-number">02 / V12 RELEASE REVIEW</span><h3>What was verified for v12?</h3><p>Historical record of the end-of-life v12 line: release evidence, corrections, bounded claims and the checks repeated for its stable release.</p><span class="evidence-action">Open the v12 release audit ↗</span></a>
         <a class="evidence-card" href="/Rullst/benches/"><span class="evidence-number">03 / PERFORMANCE</span><h3>What did we measure?</h3><p>Eight benchmark groups, exact workloads and methodology—not a production-throughput promise.</p><span class="evidence-action">Explore benchmark history ↗</span></a>
       </div>
       <p class="section-note">Current CI, coverage and OpenSSF evidence are linked from the <a href="https://github.com/Rullst/Rullst#readme">repository verification dashboard</a>. Results belong to their recorded commits.</p>
@@ -243,7 +245,7 @@
 
     <section class="shell release-card" aria-label="Before you deploy" data-reveal>
       <h2>Explore boldly.<br>Deploy responsibly.</h2>
-      <div><p><strong>v12</strong> is the stable release line; select a published version from <a href="https://crates.io/crates/rullst">crates.io</a> and its matching immutable tag rather than the moving <a href="https://github.com/Rullst/Rullst/tree/main">main</a> branch. The legacy <a href="https://github.com/Rullst/Rullst/tree/v5">v5 branch</a> is frozen and no longer maintained. Stable describes the framework API lifecycle, not automatic approval of an application's authorization, provider configuration, operations or deployment.</p><a href="https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md">Check the release guide ↗</a></div>
+      <div><p><strong>v13</strong> is in prerelease: 13.0.0-alpha.4 is the 13.0 feature freeze, followed by 13.0.0-rc.1 (fixes and documentation only) and 13.0.0. Cargo never selects a prerelease on its own, so name the exact version from <a href="https://crates.io/crates/rullst">crates.io</a> (<code>=13.0.0-alpha.4</code>) and use its matching immutable tag rather than the moving <a href="https://github.com/Rullst/Rullst/tree/main">main</a> branch. The v12 line reached end of life on 16 October 2026 with 12.3.0, and the <a href="https://github.com/Rullst/Rullst/tree/v12">v12 branch</a> is frozen; move applications with the <a href="/Rullst/book/migration-v13.html">v12 → v13 adoption guide</a>. The legacy <a href="https://github.com/Rullst/Rullst/tree/v5">v5 branch</a> is no longer maintained either. Prerelease and stable describe the framework API lifecycle, not automatic approval of an application's authorization, provider configuration, operations or deployment.</p><a href="https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md">Check the release guide ↗</a></div>
     </section>
   </main>
 
@@ -252,7 +254,7 @@
       <div class="footer-main">
         <div><a class="brand" href="https://rullst.github.io/">rullst<span class="brand-period">.</span></a><p>Because With Rullst, We Rule!</p><span class="footer-subtitle">An open-source framework suite.<br>Built in the open, with room for you.</span></div>
         <div class="footer-group"><h2>Build</h2><a href="/Rullst/book/">Documentation</a><a href="/Rullst/book/philosophy.html">Our story</a><a href="/Rullst/benches/">Benchmarks</a><a href="https://github.com/Rullst/Rullst">Source code</a><a href="https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md">Contribute</a></div>
-        <div class="footer-group"><h2>Connect</h2><a href="mailto:officialrullst@gmail.com">Contact the team</a><a href="https://github.com/Rullst/Rullst/security/policy">Report a vulnerability</a><a href="#privacy">Privacy notice</a><a href="/Rullst/book/v12.html">Release status</a></div>
+        <div class="footer-group"><h2>Connect</h2><a href="mailto:officialrullst@gmail.com">Contact the team</a><a href="https://github.com/Rullst/Rullst/security/policy">Report a vulnerability</a><a href="#privacy">Privacy notice</a><a href="/Rullst/book/compatibility-policy.html#source-branches">Release status</a></div>
       </div>
       <nav class="social-links" aria-label="Rullst social and community links">
         <a href="https://rullst.github.io">Website ↗</a>

@@ -2,12 +2,13 @@
 
 Because With Rullst, We Rule! Rullst is a modular Rust framework suite built on
 Tokio, Axum, Tower, and SQLx for full-stack applications and the product
-workflows around them. Version 12 is the current stable release line; use the
-capability and release documents to distinguish implemented behavior from
-roadmap work and application-specific responsibilities. This book is built
-from the `main` branch, where v13 is in development; its latest prerelease,
-`13.0.0-alpha.4`, is published, and the **v13 Preview** chapters describe that
-prerelease work.
+workflows around them. Version 13 is in prerelease: `13.0.0-alpha.4` is
+published and is the 13.0 feature freeze. The v12 line reached end of life on
+16 October 2026. Use the capability and release documents to distinguish
+implemented behavior from roadmap work and application-specific
+responsibilities. This book is built from the `main` branch, which can be
+ahead of the latest prerelease; the **v13 Preview** chapters describe features
+that are new in v13.
 
 **Welcome to the Rullst documentation.** Build a small application, understand
 the code behind it, then explore the tools that fit your next idea.
@@ -47,8 +48,10 @@ sources each time it is published, so they describe the same `main` branch.
 - 🧩 **Server-rendered UI:** `html!` and HTMX-oriented scaffolds are the audited
   default. LiveView and Wasm Island primitives exist, while turnkey
   Leptos/Dioxus adapters remain roadmap work.
-- 📖 **Interactive Scalar Docs (`/docs`):** Built-in OpenAPI UI via `cargo rullst make:scalar`.
-- ☸️ **Kubernetes Native:** Cloud-Native manifest scaffolding (`cargo rullst make:k8s`) with `/health` & `/ready` probes.
+- 📖 **Interactive Scalar Docs (`/docs`):** `cargo rullst make:scalar`
+  scaffolds an OpenAPI viewer for your reviewed specification.
+- ☸️ **Kubernetes manifests:** `cargo rullst make:k8s` scaffolds manifests
+  that probe `/health` and `/ready`.
 - 📡 **Rullst Radar & Prometheus:** Process/Tokio observations and a
   Prometheus text exporter, with unavailable probes reported explicitly.
 - 🛡️ **Local AI option:** Use an Ollama endpoint when prompts should stay

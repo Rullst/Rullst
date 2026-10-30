@@ -208,6 +208,7 @@ Since 13.0.0-alpha.3 the crate enables no driver by default; without one,
 ### Zero-to-Hero Example
 
 ```rust,no_run
+use rullst_orm::schema::Schema;
 use rullst_orm::Orm;
 
 // 1. Just add the Orm macro to your struct!
@@ -216,16 +217,25 @@ pub struct User {
     pub id: i32, // ID = 0 means it hasn't been saved yet
     pub name: String,
     pub email: String,
-    #[orm(hidden)] // Won't be exposed in JSON responses
+    #[orm(hidden)] // Excluded from generated to_json(), audit, event and search projections
     pub password: String,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), rullst_orm::Error> {
-    // 2. Initialize the connection pool (Supports SQLite, Postgres, MySQL)
+    // 2. Initialize the connection pool (SQLite, Postgres, MySQL/MariaDB)
     Orm::init("sqlite::memory:").await?;
 
-    // 3. Create a new user
+    // 3. Create the `users` table (a migration does this in an application)
+    Schema::create("users", |table| {
+        table.id();
+        table.string("name");
+        table.string("email");
+        table.string("password");
+    })
+    .await?;
+
+    // 4. Create a new user through the generated Active Record API
     let mut user = User {
         id: 0,
         name: "Alice".to_string(),
@@ -235,7 +245,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
     
     user.save().await?; // Runs INSERT and hydrates the generated ID.
 
-    // 4. Fluent Queries
+    // 5. Fluent Queries
     let active_users = User::query()
         .where_like("email", "%@example.com")
         .order_by_desc("id")
@@ -243,7 +253,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         .get()
         .await?;
 
-    println!("Found users: {:?}", active_users);
+    println!("Found {} user(s)", active_users.len());
 
     Ok(())
 }
@@ -317,7 +327,7 @@ async fn rename(id: i32, name: String) -> Result<(), rullst_orm::Error> {
   looks at the columns only. Since 13.0.0-alpha.3 every SQLx model that the
   CLI writes declares the field: `make:model` (and `make:resource`),
   `generate:models` (with `#[serde(skip)]`; a table with its own `snapshot`
-  column keeps full-row saves), `make:auth`, `make:billing`,
+  column keeps full-row saves), `auth`, `make:billing`,
   `make:chat-session` and the models of every `cargo rullst new` starter
   (Blank, API and SaaS) and of the LMS, ERP and Portfolio examples. Their struct literals set
   `snapshot: RowSnapshot::default()`. Turso models have no dirty tracking.
@@ -415,7 +425,8 @@ Filters such as `where_eq` and `where_in`, `Orm::raw(..).bind(..)` and
 `with_tenant` take any value that converts into `RullstValue`: `String`/`&str`,
 `i32`, `i64`, `u32`, `f64`, `bool`, the `chrono` types `DateTime<Utc>`,
 `NaiveDateTime`, `NaiveDate` and `NaiveTime` (see
-[date and time columns](#date-and-time-columns)) and `Option` of those. `None` binds SQL
+[date and time columns](#date-and-time-columns)), a `#[derive(Enum)]` type
+(see [native database enums](#native-database-enums)) and `Option` of those. `None` binds SQL
 `NULL`, typed as text: on PostgreSQL write `CAST($1 AS BIGINT)` to store it in
 a column of another type. A comparison with `NULL` never matches, so filter
 missing values with `where_null`. `RullstValue` is `#[non_exhaustive]`; give a

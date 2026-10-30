@@ -8,7 +8,9 @@ installed-archive checks subsequently passed in
 [PR #224](https://github.com/Rullst/Rullst/pull/224); the final release campaign
 remains separate. It is a deployment test
 and reference boundary, not a new load-balancer crate or an automatic cloud/VPS
-deployment feature. The generated `compose.yaml` of `cargo rullst deploy` is separate.
+deployment feature. The files `cargo rullst deploy` generates (one app container
+behind Caddy) have their own CI check, `.github/check-vm-deploy.py`, described
+in [Deploy to a Linux VM](vm-deployment.md#what-ci-checks).
 
 Run on Linux with Docker and the repository Rust toolchain:
 

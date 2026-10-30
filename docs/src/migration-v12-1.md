@@ -1,5 +1,10 @@
 # Migrating from 12.0 to 12.1
 
+> [!NOTE]
+> **Historical guide (v12).** The 12.x line reached end of life on 16 October
+> 2026. A 12.x application moves to v13 with
+> [Preparing an application for v13](migration-v13.md).
+
 Version [12.1.1 is published](v12.md#1211-published-maintenance-release).
 Updating dependencies or the CLI does not rewrite generated application files, migrate
 databases or redeploy the Azure examples. Keep the existing application and

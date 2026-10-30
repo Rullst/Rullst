@@ -117,7 +117,9 @@ The generated runtime image has no shell, so container-level `HealthCmd`
 checks do not work; use `HealthCmd=none` and probe `/health` and `/ready` from
 outside (your reverse proxy or monitoring). Put a reverse proxy such as
 Caddy in front for HTTPS, publish the application port to `127.0.0.1` only, and
-set `trusted_proxies` to that proxy's address. `:U` makes Podman chown the
+set `trusted_proxies` to the address the proxy's connections arrive from inside
+the container (with rootless port forwarding this can be a gateway address
+rather than `127.0.0.1`), and nothing broader. `:U` makes Podman chown the
 volume to the container user (10001). Pin the image to a tag or digest and
 change it to update; to roll back, set the previous tag and restart the unit.
 

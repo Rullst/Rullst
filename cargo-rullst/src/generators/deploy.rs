@@ -75,17 +75,14 @@ fn deploy_in(root: &Path, platform_arg: Option<&str>) -> Result<(), Box<dyn std:
 
     // Before the Dockerfile scaffold, so a new Dockerfile copies Rullst.toml.
     trust_proxy(&root.join("Rullst.toml"))?;
+    let database = crate::generators::project::project_database_provider(root);
     let dockerfile = root.join("Dockerfile");
     if fs::symlink_metadata(&dockerfile).is_err() {
-        crate::generators::project::generate_docker_files(root, &project_name, None, None)?;
-    } else if fs::read_to_string(&dockerfile)
-        .is_ok_and(|dockerfile| !dockerfile.contains("Rullst.toml"))
-    {
-        println!(
-            "{}",
-            "  ⚠️ The existing Dockerfile does not copy Rullst.toml, so the image lacks the trusted proxy. Add `COPY --chown=10001:10001 Rullst.toml /app/Rullst.toml` to its runtime stage."
-                .yellow()
-        );
+        crate::generators::project::generate_docker_files(root, &project_name, database, None)?;
+    } else if let Ok(existing) = fs::read_to_string(&dockerfile) {
+        for warning in existing_dockerfile_warnings(&existing, database) {
+            println!("{}", format!("  ⚠️ {warning}").yellow());
+        }
     }
     for (name, contents) in [("compose.yaml", COMPOSE_YAML), ("Caddyfile", CADDYFILE)] {
         let message = if write_if_absent(&root.join(name), contents)? {
@@ -103,6 +100,22 @@ fn deploy_in(root: &Path, platform_arg: Option<&str>) -> Result<(), Box<dyn std:
     }
     println!("{}", next_steps(&project_name));
     Ok(())
+}
+
+/// What an existing Dockerfile, which `deploy` keeps, lacks for the VM path.
+fn existing_dockerfile_warnings(dockerfile: &str, database: Option<&str>) -> Vec<&'static str> {
+    let mut warnings = Vec::new();
+    if !dockerfile.contains("Rullst.toml") {
+        warnings.push(
+            "The existing Dockerfile does not copy Rullst.toml, so the image lacks the trusted proxy. Add `COPY --chown=10001:10001 Rullst.toml /app/Rullst.toml` to its runtime stage.",
+        );
+    }
+    if database == Some("Sqlite") && !dockerfile.contains("DATABASE_URL") {
+        warnings.push(
+            "The existing Dockerfile does not set DATABASE_URL, so the SQLite database would be opened in the read-only /app and the app would stop at startup. Add `ENV DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc` to its runtime stage, or set DATABASE_URL in .env.production.",
+        );
+    }
+    warnings
 }
 
 /// The commands that start the generated files on a VM.
@@ -247,8 +260,37 @@ mod tests {
             !COMPOSE_YAML.contains('\t'),
             "YAML indentation is spaces only"
         );
-        assert!(CADDYFILE.contains("reverse_proxy app:3000 {\n"));
-        assert!(CADDYFILE.contains("health_uri /health\n"));
+        assert!(CADDYFILE.contains("\treverse_proxy app:3000 {\n"));
+        assert!(CADDYFILE.contains("\t\thealth_uri /health\n"));
+    }
+
+    // Caddy's first active check runs before the app listens, and with a
+    // 30-second interval the site answered 503 for up to 30 seconds after
+    // every start (found by .github/check-vm-deploy.py).
+    #[test]
+    fn caddy_recovers_quickly_and_holds_requests_while_the_app_restarts() {
+        let directives = CADDYFILE
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty() && !line.starts_with('#'))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            directives,
+            [
+                "{$DOMAIN:localhost} {",
+                "reverse_proxy app:3000 {",
+                "health_uri /health",
+                "health_interval 5s",
+                "lb_try_duration 15s",
+                "}",
+                "}",
+            ]
+        );
+        // `caddy fmt` indents with tabs; spaces log a warning at every start.
+        assert!(
+            CADDYFILE.lines().all(|line| !line.starts_with(' ')),
+            "{CADDYFILE}"
+        );
     }
 
     #[test]
@@ -310,6 +352,72 @@ mod tests {
             deploy_in(linked.path(), None).unwrap();
             assert!(!target.exists(), "a dangling link is never followed");
         }
+    }
+
+    // A new project's `sqlite://db.sqlite` resolved inside the read-only /app
+    // of the container, so the app stopped at startup (found by
+    // .github/check-vm-deploy.py); the image keeps it in the data volume.
+    #[test]
+    fn deploy_keeps_a_sqlite_database_in_the_data_volume() {
+        let in_volume = "ENV DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc\n";
+        for (config, expected) in [
+            ("[database]\nurl = \"sqlite://db.sqlite\"\n", true),
+            (
+                "[database]\nurl = \"postgres://user:password@localhost:5432/db\"\n",
+                false,
+            ),
+            ("", false),
+        ] {
+            let root = tempfile::tempdir().unwrap();
+            fs::write(
+                root.path().join("Cargo.toml"),
+                "[package]\nname = \"demo_app\"\nversion = \"0.1.0\"\n",
+            )
+            .unwrap();
+            fs::write(root.path().join("Rullst.toml"), config).unwrap();
+            deploy_in(root.path(), None).unwrap();
+            let dockerfile = fs::read_to_string(root.path().join("Dockerfile")).unwrap();
+            assert_eq!(dockerfile.contains(in_volume), expected, "{config}");
+            let deployed = fs::read_to_string(root.path().join("Rullst.toml")).unwrap();
+            assert!(deployed.starts_with(config), "{deployed}");
+        }
+    }
+
+    #[test]
+    fn an_existing_dockerfile_is_kept_with_a_warning_for_what_it_lacks() {
+        let copy = "COPY --chown=10001:10001 Rullst.toml /app/Rullst.toml\n";
+        let current = format!("{copy}ENV DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc\n");
+        assert!(existing_dockerfile_warnings(&current, Some("Sqlite")).is_empty());
+        let warnings = existing_dockerfile_warnings(copy, Some("Sqlite"));
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("ENV DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc"));
+        assert!(existing_dockerfile_warnings(copy, None).is_empty());
+        assert_eq!(
+            existing_dockerfile_warnings("FROM scratch\n", None).len(),
+            1
+        );
+        assert_eq!(
+            existing_dockerfile_warnings("FROM scratch\n", Some("Sqlite")).len(),
+            2
+        );
+
+        let root = tempfile::tempdir().unwrap();
+        fs::write(
+            root.path().join("Cargo.toml"),
+            "[package]\nname = \"demo\"\n",
+        )
+        .unwrap();
+        fs::write(
+            root.path().join("Rullst.toml"),
+            "[database]\nurl = \"sqlite://db.sqlite\"\n",
+        )
+        .unwrap();
+        fs::write(root.path().join("Dockerfile"), copy).unwrap();
+        deploy_in(root.path(), None).unwrap();
+        assert_eq!(
+            fs::read_to_string(root.path().join("Dockerfile")).unwrap(),
+            copy
+        );
     }
 
     // TM-DEPLOY-05: validated generator inputs cannot cross into Dockerfile syntax.
