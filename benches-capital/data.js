@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793333853031,
+  "lastUpdate": 1793339488140,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -14546,6 +14546,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5edd6c3f04c12067ae764c301aff315df9760b2f",
+          "message": "Merge pull request #581 from Rullst/ci/v13-alpha4-schedules-and-gates\n\nci: weekly Miri/Kani, full-matrix label, ZAP on the SaaS starter and a 13.x SemVer baseline",
+          "timestamp": "2026-10-30T02:25:15-03:00",
+          "tree_id": "e4c9e166c260aeafd884916b582b5ace2ebe2b90",
+          "url": "https://github.com/Rullst/Rullst/commit/5edd6c3f04c12067ae764c301aff315df9760b2f"
+        },
+        "date": 1793339487264,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
             "range": "± 0",
             "unit": "ns/iter"
           },
