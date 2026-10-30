@@ -2,9 +2,9 @@
 //! the tenant predicate (PostgreSQL rejects raw `?` markers).
 
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{Error, FromRow, Orm, with_tenant};
+use rullst_orm::{Error, Orm, with_tenant};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_archived_notes", tenant_column = "tenant_id")]
 struct ContractArchivedNote {
     id: i32,

@@ -13,6 +13,13 @@ documentation = "https://docs.rs/rullst-capital"
 keywords = ["saas", "mrr", "stripe", "billing", "analytics"]
 categories = ["web-programming"]
 
+# docs.rs documents every feature on one target; `--cfg docsrs` labels the
+# items that need a feature.
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
@@ -49,8 +56,8 @@ axum = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tower = { workspace = true, features = ["util"] }
 criterion = { workspace = true, features = ["async_tokio"] }
-testcontainers = "0.27.3"
-testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql", "mariadb"] }
+testcontainers = { version = "0.27.3", default-features = false, features = ["aws-lc-rs"] }
+testcontainers-modules = { version = "0.15.0", default-features = false, features = ["aws-lc-rs", "postgres", "mysql", "mariadb"] }
 
 [[bench]]
 name = "capital_bench"

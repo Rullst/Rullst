@@ -38,13 +38,13 @@ pub(super) async fn exercise() {
     feature = "strict-sqlite"
 ))]
 mod native {
+    use rullst_orm::Orm;
     use rullst_orm::chrono::{
         DateTime, Duration, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc,
     };
     use rullst_orm::schema::Schema;
-    use rullst_orm::{FromRow, Orm};
 
-    #[derive(Debug, Clone, PartialEq, FromRow, Orm)]
+    #[derive(Debug, Clone, PartialEq, Orm)]
     #[orm(table = "contract_calendar")]
     struct CalendarEntry {
         id: i32,
@@ -218,10 +218,10 @@ mod native {
 mod any_pool {
     use rullst_orm::chrono::{TimeZone, Utc};
     use rullst_orm::schema::Schema;
-    use rullst_orm::{Error, FromRow, Orm};
+    use rullst_orm::{Error, Orm};
 
     /// SQLx `Any` decodes no `chrono` type, so the fields are text.
-    #[derive(Debug, Clone, FromRow, Orm)]
+    #[derive(Debug, Clone, Orm)]
     #[orm(table = "contract_calendar")]
     struct CalendarText {
         id: i32,

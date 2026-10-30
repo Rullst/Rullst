@@ -282,10 +282,16 @@ async fn test_nexus_full_flow() {
     res_delete.assert_status(200);
     res_delete.assert_see("deleted");
 
-    // 10. AI Chat Page
+    // 10. AI Chat Page: `nexus-ai` serves it, `nexus` alone answers a 404
+    // notice that names the feature.
     let res_chat = app.get("/chat").header("Authorization", &auth_header).await;
-    res_chat.assert_status(200);
-    res_chat.assert_see("AI Query Assistant");
+    if cfg!(feature = "nexus-ai") {
+        res_chat.assert_status(200);
+        res_chat.assert_see("AI Query Assistant");
+    } else {
+        res_chat.assert_status(404);
+        res_chat.assert_see("nexus-ai");
+    }
 }
 
 #[tokio::test]
@@ -360,7 +366,7 @@ async fn test_nexus_foreign_key_and_kinds() {
         .header("x-csrf-token", "test_csrf")
         .form(&chat_data)
         .await;
-    res_chat.assert_status(200);
+    res_chat.assert_status(if cfg!(feature = "nexus-ai") { 200 } else { 404 });
 }
 
 static NEXUS_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
@@ -438,6 +444,7 @@ async fn test_nexus_invalid_tables_and_errors() {
         .header("x-csrf-token", "test_csrf")
         .form(&[("message", "Show all users")])
         .await;
-    // We expect it to hit the endpoint (though the AI config might be offline and return an error HTML block)
-    res.assert_status(200);
+    // We expect it to hit the endpoint (though the AI config might be offline
+    // and return an error HTML block); without `nexus-ai` it is a 404 notice.
+    res.assert_status(if cfg!(feature = "nexus-ai") { 200 } else { 404 });
 }

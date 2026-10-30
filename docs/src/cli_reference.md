@@ -342,7 +342,7 @@ The choices that materially change the generated application:
   * `--blueprint <blank|api|saas>`: Selects the starter; the wizard skips that question. `lms`, `blog`, `portfolio` and `erp` still parse but fail before anything is written, naming the example that replaced them (exit status 1).
   * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary database; the wizard skips that question. Network databases must be configured before migration bootstrap. The SQLx backends (`sqlite`, `postgres`, `mysql`, `mariadb`) work with every starter. `turso` is accepted only with the Blank starter (web page or `--api`) and has no Nexus, Studio database pages, `Schema` migrations or SQLx ORM; the wizard's choice, `--help` and the review/dry-run screen say so. See [Database Support](database-support.md).
   * `--no-database`: Generates the Blank or API starter without a primary relational database; it conflicts with `--database` and `--blueprint saas` rejects it.
-  * `--ai`: Enables the umbrella AI facade in the generated manifest.
+  * `--ai`: Enables the umbrella AI facade in the generated manifest and, with the SaaS starter, the Nexus AI assistant (`nexus-ai`, since 13.0.0-alpha.4); without it the SaaS starter's Nexus has no assistant and no `rullst-ai` dependency.
   * `--redis`: Enables the umbrella Redis queue and cache capabilities and the Redis-structures side store (the direct ORM Redis feature).
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. `cargo rullst dev` applies pending migrations when it starts; run `cargo rullst db:migrate` explicitly otherwise.
   * `--dry-run` (v13): Prints the plan (the answers, a compact file tree with the exact number of files and the commands it would run) and exits without creating anything. With `--default` it never prompts; in a terminal without `--default` the wizard's review ends with *Finish the dry run*.
@@ -509,7 +509,7 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
-The v13 CLI's `rullst-upgrade-rules-v4` catalog (111 rules) parses Rust sources
+The v13 CLI's `rullst-upgrade-rules-v4` catalog (114 rules) parses Rust sources
 (with `syn`; comments, doc comments and strings never match an API rule), Cargo
 manifests and generated project files, and reports each finding as
 `MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed
@@ -867,8 +867,9 @@ automatically.
 
 ### `cargo rullst make:model <name>`
 Creates a model struct in `src/models/` with the ORM annotations. SQLx projects
-receive `FromRow` plus `Orm` and import only those two derives (`use
-rullst::db::{FromRow, Orm};`), so the new file compiles without warnings;
+receive `#[derive(Debug, Clone, Orm)]`, which also implements `FromRow` (since
+13.0.0-alpha.4), and import only what it uses (`use rullst::db::{Orm,
+RowSnapshot};`), so the new file compiles without warnings;
 Turso-primary projects receive
 `#[derive(rullst_orm::Orm)] #[orm(backend = "turso")]` and an `i64` primary
 key. Backend detection reads the generated manifest and does not treat an

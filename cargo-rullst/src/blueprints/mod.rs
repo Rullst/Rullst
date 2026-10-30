@@ -307,7 +307,7 @@ mod tests {
                 !user.contains("#[orm(skip)]"),
                 "{blueprint}: skip is not a column"
             );
-            assert!(user.contains("#[derive(Debug, Clone, Default, FromRow, Orm)]"));
+            assert!(user.contains("#[derive(Debug, Clone, Default, Orm)]"));
             assert!(user.contains(
                 "pub fn accepts_session(&self, claims: &rullst::auth::SessionClaims) -> bool {"
             ));

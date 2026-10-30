@@ -1,6 +1,6 @@
-use rullst::db::{FromRow, Orm, RowSnapshot};
+use rullst::db::{Orm, RowSnapshot};
 use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "courses")]
 pub struct Course {
     pub id: i32,

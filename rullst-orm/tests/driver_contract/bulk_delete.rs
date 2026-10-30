@@ -2,9 +2,9 @@
 //! every driver (MySQL/MariaDB reject PostgreSQL `$n` markers).
 
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm, with_tenant};
+use rullst_orm::{Orm, with_tenant};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_bulk_items", tenant_column = "tenant_id")]
 struct ContractBulkItem {
     id: i32,
@@ -12,7 +12,7 @@ struct ContractBulkItem {
     score: i32,
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_bulk_posts")]
 struct ContractBulkPost {
     id: i32,
@@ -27,7 +27,7 @@ struct ContractBulkPost {
     deleted_at: Option<String>,
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_bulk_comments")]
 struct ContractBulkComment {
     id: i32,

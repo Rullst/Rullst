@@ -8,7 +8,7 @@ edition = "2024"
 cargo-fuzz = true
 
 [package.metadata.cargo-machete]
-ignored = ["sqlx", "tracing", "libsqlite3-sys"]
+ignored = ["libsqlite3-sys"]
 
 [dependencies]
 rullst-orm = { path = "..", features = ["drivers-all"] }
@@ -16,9 +16,7 @@ syn = { version = "3", features = ["full"] }
 proc-macro2 = "1"
 libfuzzer-sys = "0.4"
 tokio = { version = "1.23.1", features = ["full"] }
-sqlx = { version = "0.9", features = ["any", "runtime-tokio"] }
 libsqlite3-sys = { version = "0.37.0", features = ["bundled"] }
-tracing = "0.1"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))', 'cfg(kani)'] }

@@ -41,12 +41,13 @@ a run; it does not turn an informational workflow into a formal assurance.
 
 - NFS-e preparation was removed from the framework in v13; Rullst issues no
   fiscal documents. InfinitePay live checkout and callbacks fail closed.
-- IoT currently provides `no_std` data/frame helpers and Ed25519-signed OTA
-  manifest verification. MQTT transport, HSM, PQC, flashing, and bootloader
-  integration remain roadmap items.
+- IoT currently provides `no_std` data/frame helpers, bounded MQTT 5 PUBLISH
+  and CoAP request encoders, Ed25519-signed OTA manifest verification and a
+  durable rollback-counter CAS contract. MQTT/CoAP transports and session
+  state, HSM, PQC, flashing, and bootloader integration remain roadmap items.
 - `rullst-connect` focuses on OAuth2/OIDC; brokered messaging is deliberately
   outside it. `rullst-messaging` provides the process-local and SQLite brokers
-  and the v13 Redis Streams candidate (13.0.0-alpha.1 prerelease); Kafka and RabbitMQ adapters
+  and the v13 Redis Streams candidate (published since 13.0.0-alpha.1); Kafka and RabbitMQ adapters
   are not implemented. Document queue facilities by their actual module.
 - Security headers provide a strict baseline but cannot guarantee a third-party
   scanner grade for every deployed application.

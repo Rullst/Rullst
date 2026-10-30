@@ -22,6 +22,9 @@ impl Server {
     where
         F: std::future::Future<Output = ()> + Send + 'static,
     {
+        // aws-lc-rs becomes the rustls process default before telemetry and
+        // the database build TLS clients, unless the application chose one.
+        crate::tls_provider::install_default_provider();
         // Uptime counts from process start-up, not from the first probe.
         crate::health::init_health_boot_time_if_unset();
         crate::radar::init_radar_if_unset();

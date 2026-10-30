@@ -7,7 +7,9 @@
 > Findings about those adapters apply to the 12.x line only. It also removed
 > the SendGrid, Postmark, Mailjet, Mailtrap and Azure Communication Services
 > mail transports (including the ACS Managed Identity transport mentioned
-> below); see the migration row "Mail providers removed".
+> below); see the migration row "Mail providers removed". The 12.x line reached
+> end of life on 16 October 2026 (12.3.0 is its last release), so the v12.1
+> maintenance targets below are closed.
 
 ## 2026-09-18 account-mail and follow-up candidate
 
@@ -202,8 +204,9 @@ domain tests. Polar/Paddle account acceptance also remains separate; no
 credentials for those providers were available here. The 12.0 application
 deployment was unchanged.
 
-Use the [12.1 migration guide](migration-v12-1.md) and the Capital provider matrix
-for current behavior; the chronological containment notes below are historical.
+For current behavior use the [v13 migration guide](migration-v13.md) and the
+Capital provider matrix; the [12.1 migration guide](migration-v12-1.md) records
+the 12.1 changes, and the chronological containment notes below are historical.
 
 ## Implementation checkpoints
 
@@ -293,9 +296,10 @@ All eleven v12 adapters are in scope: Stripe, Lemon Squeezy, InfinitePay,
 Polar, Paddle, Razorpay, Mercado Pago, Coinbase Commerce, PicPay, Alipay and Wise.
 Wise is a payout adapter; the others implement the billing trait. Test each
 operation independently and record explicit unsupported boundaries. A passing
-mock or a failure-before-dispatch test is not sandbox acceptance. The generated
-SaaS currently only selects Stripe or Lemon Squeezy; extending that selector
-requires provider-specific configuration and lifecycle contracts.
+mock or a failure-before-dispatch test is not sandbox acceptance. The 12.1
+SaaS generator selected only Stripe or Lemon Squeezy (the v13 SaaS starter uses
+Stripe); extending that selector requires provider-specific configuration and
+lifecycle contracts.
 
 ## Release allocation
 
@@ -325,9 +329,9 @@ on the v12 maintenance line without waiting for all v13 capabilities.
 | **RULLST-001 · P1** Nexus AI configuration | Nexus detection and `AiClient::auto()` both omit Groq configuration. | Add an explicit application-supplied client path or one consistent resolver, with documented precedence. | Reuse configuration across authorized panels; distinguish offline, configured and unavailable. Test Groq-only configuration, failure handling, authorization and safe rendering. |
 | **RULLST-003 · P1** Machine-client WAF denial | Default blocklist rejects curl, Wget, Python and Go regardless of request intent. | Remove those defaults and preserve request inspection and configurable crawler policy; test the production baseline. | Treat User-Agent as a forgeable traffic preference, never authentication or authorization. |
 
-Provider files above are under `rullst-capital/src/`. The shared billing
-template is under `cargo-rullst/src/generators/` and feeds both SaaS and
-`make:billing`; fixes must cover both. The SaaS schema is assembled by
+At the reviewed baseline, provider files above were under `rullst-capital/src/`.
+The shared billing template is under `cargo-rullst/src/generators/` and feeds
+both SaaS and `make:billing`; fixes must cover both. The SaaS schema was assembled by
 `cargo-rullst/src/blueprints/saas/models.rs` from the templates under
 `cargo-rullst/src/blueprints/saas/src/`, with separate SQLx and Turso
 generator templates that also require review.

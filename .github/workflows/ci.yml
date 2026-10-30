@@ -429,8 +429,11 @@ jobs:
             strict-sqlite)
               cargo test -p rullst-orm --no-default-features \
                 --features strict-sqlite --test matrix_sqlite -- --test-threads=1
+              # Without default features Nexus has no `ai`: the assistant
+              # routes answer the 404 notice.
               cargo test -p rullst-nexus --no-default-features \
-                --features strict-sqlite --test renderer_escaping --locked
+                --features strict-sqlite --test renderer_escaping \
+                --test ai_assistant_feature --locked
               RULLST_REQUIRE_SQLITE_INBOX=1 cargo test -p rullst-capital \
                 --features webhook-sql,rullst-orm/strict-sqlite --test stripe_inbox_sql --locked
               # --all-features selects the PostgreSQL pool, so the SQLite-backed

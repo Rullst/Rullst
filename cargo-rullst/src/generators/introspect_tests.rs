@@ -271,14 +271,14 @@ fn generated_models_track_dirty_columns_unless_a_column_is_named_snapshot() {
         not_null: true,
     };
     let code = generate_struct(&table, &[column("id"), column("body")]).expect("model");
-    assert!(code.starts_with("use rullst_orm::{FromRow, Orm, RowSnapshot};\n"));
+    assert!(code.starts_with("use rullst_orm::{Orm, RowSnapshot};\n"));
     assert!(code.ends_with(
         "    pub body: String,\n    // Remembers the loaded values, so `save()` writes only the columns this\n    // record changed. Build new records with `snapshot: RowSnapshot::default()`.\n    #[serde(skip)]\n    #[sqlx(skip)]\n    pub snapshot: RowSnapshot,\n}\n"
     ));
     syn::parse_file(&code).expect("tracked model must parse");
 
     let named = generate_struct(&table, &[column("id"), column("snapshot")]).expect("model");
-    assert!(named.starts_with("use rullst_orm::{FromRow, Orm};\n"));
+    assert!(named.starts_with("use rullst_orm::Orm;\n"));
     assert!(named.ends_with("    pub snapshot: String,\n}\n"));
     assert!(!named.contains("RowSnapshot"));
 }

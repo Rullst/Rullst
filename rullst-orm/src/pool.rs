@@ -385,6 +385,7 @@ impl Orm {
         let cache_namespace = cache_namespace.into();
         crate::query_cache::validate_namespace(&cache_namespace)?;
         let client = crate::_redis::Client::open(redis_url)?;
+        crate::redis_tls::install_provider_for(client.get_connection_info());
         let manager = crate::_redis::aio::ConnectionManager::new(client.clone()).await?;
         REDIS_STATE
             .set(RedisState {

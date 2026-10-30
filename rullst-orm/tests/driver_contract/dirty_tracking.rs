@@ -3,9 +3,9 @@
 //! return the stored row from the UPDATE; MySQL/MariaDB re-read it.
 
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{Error, FromRow, Orm, RowSnapshot, with_tenant};
+use rullst_orm::{Error, Orm, RowSnapshot, with_tenant};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_tracked_profiles")]
 struct ContractTrackedProfile {
     id: i32,
@@ -16,7 +16,7 @@ struct ContractTrackedProfile {
     snapshot: RowSnapshot,
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_tracked_cards", tenant_column = "tenant_id")]
 struct ContractTrackedCard {
     id: i32,

@@ -4,17 +4,17 @@
 ))]
 
 use redis::AsyncCommands;
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "query_cache_live_records")]
 struct QueryCacheLiveRecord {
     pub id: i32,
     pub name: String,
 }
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "query_cache_live_secrets")]
 struct QueryCacheLiveSecret {
     pub id: i32,
@@ -22,7 +22,7 @@ struct QueryCacheLiveSecret {
     pub cpf: rullst_orm::SecretString,
 }
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "query_cache_live_tenant_records", tenant_column = "tenant_id")]
 struct QueryCacheLiveTenantRecord {
     pub id: i32,
@@ -30,7 +30,7 @@ struct QueryCacheLiveTenantRecord {
     pub name: String,
 }
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "query_cache_live_vault")]
 struct QueryCacheLiveVault {
     pub id: i32,

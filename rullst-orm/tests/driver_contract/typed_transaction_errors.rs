@@ -5,16 +5,16 @@
 use std::fmt;
 
 use rullst_orm::schema::Schema;
-use rullst_orm::{Error, FromRow, Orm};
+use rullst_orm::{Error, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_tx_accounts")]
 struct ContractTxAccount {
     id: i32,
     email: String,
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_tx_memberships")]
 struct ContractTxMembership {
     id: i32,

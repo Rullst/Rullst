@@ -13,14 +13,21 @@ documentation = "https://docs.rs/rullst-auth"
 keywords = ["auth", "webauthn", "argon2", "session", "rbac"]
 categories = ["authentication", "web-programming"]
 
+# docs.rs documents every feature on one target; `--cfg docsrs` labels the
+# items that need a feature.
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [features]
 default = []
 oauth = ["dep:rullst-connect"]
 jwt = ["dep:hex", "dep:jsonwebtoken"]
 sqlite = ["jwt", "dep:sqlx", "sqlx/sqlite"]
 recovery-sqlite = ["dep:sqlx", "sqlx/any", "sqlx/sqlite"]
-passkey-postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls"]
-recovery-postgres = ["dep:sqlx", "sqlx/any", "sqlx/postgres", "sqlx/tls-rustls"]
+passkey-postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs"]
+recovery-postgres = ["dep:sqlx", "sqlx/any", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs"]
 email-login-sqlite = ["recovery-sqlite"]
 email-login-postgres = ["recovery-postgres"]
 api-tokens-sqlite = ["recovery-sqlite"]

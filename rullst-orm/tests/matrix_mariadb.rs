@@ -5,12 +5,12 @@ mod support;
 // Driver-neutral contracts, also run on SQLite by `driver_contract_sqlite`.
 mod driver_contract;
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::mariadb::Mariadb;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "mariadb_users")]
 struct User {
     pub id: i32,

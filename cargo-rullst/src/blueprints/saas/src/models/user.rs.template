@@ -1,8 +1,8 @@
-use rullst::db::{Orm, FromRow, RowSnapshot};
+use rullst::db::{Orm, RowSnapshot};
 use rullst::orm::chrono::{DateTime, Utc};
 use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
 
-#[derive(Debug, Clone, Default, FromRow, Orm)]
+#[derive(Debug, Clone, Default, Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,

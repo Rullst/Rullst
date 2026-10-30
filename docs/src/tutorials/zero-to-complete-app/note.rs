@@ -1,6 +1,6 @@
-use rullst::db::{FromRow, Orm, RowSnapshot};
+use rullst::db::{Orm, RowSnapshot};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "notes")]
 pub struct Note {
     pub id: i32,

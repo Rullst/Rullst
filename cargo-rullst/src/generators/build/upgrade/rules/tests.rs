@@ -2,6 +2,7 @@
 
 use super::*;
 
+mod alpha4_orm_nexus;
 mod data;
 mod docs;
 mod files;
@@ -427,6 +428,7 @@ fn utoipa_and_mfa_rules_depend_on_their_context() {
     let source = "fn studio(doc: OpenApi) { Studio::new().with_openapi(doc); }";
     let old = WorkspaceFacts {
         utoipa_below_6: true,
+        ..WorkspaceFacts::default()
     };
     let found = scan_with(source, "lib.rs", &old);
     assert_eq!(found, vec![("V13-STUDIO-UTOIPA-6", 1)]);

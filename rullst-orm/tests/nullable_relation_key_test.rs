@@ -3,9 +3,9 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "nullable_authors")]
 struct NullableAuthor {
     id: i32,
@@ -28,7 +28,7 @@ struct NullableAuthor {
     mentor_posts: Option<Vec<NullablePost>>,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "nullable_posts")]
 struct NullablePost {
     id: i32,
@@ -40,7 +40,7 @@ struct NullablePost {
     author: Option<NullableAuthor>,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "nullable_profiles")]
 struct NullableProfile {
     id: i32,

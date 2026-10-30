@@ -8,8 +8,12 @@ use syn::{Field, spanned::Spanned};
 pub(in crate::parser) struct FieldAttributes {
     pub is_hidden: bool,
     pub is_skipped: bool,
-    /// `#[sqlx(skip)]`: SQLx's `FromRow` does not read the column either.
+    /// `#[sqlx(skip)]`: the model's `FromRow` does not read the column either
+    /// and fills the field with `Default::default()`.
     pub is_sqlx_skipped: bool,
+    /// `#[sqlx(default)]`: `FromRow` fills the field with
+    /// `Default::default()` when the row has no such column.
+    pub sqlx_default: bool,
     pub is_masked: bool,
     pub is_encrypted: bool,
     /// `#[orm(db_default)]`: generated INSERT and full-row UPDATE statements
@@ -81,7 +85,7 @@ impl FieldAttributes {
                 self.is_hidden = true;
             }
             // Tracked apart from `#[sqlx(skip)]`: `#[orm(skip)]` does not stop
-            // SQLx's `FromRow` from reading the column, so the two combine.
+            // the model's `FromRow` from reading the column, so the two combine.
             "skip" => {
                 mark_once(seen, "orm_skip", &meta)?;
                 self.is_skipped = true;
@@ -168,7 +172,10 @@ impl FieldAttributes {
                 self.is_skipped = true;
                 self.is_sqlx_skipped = true;
             }
-            "default" => mark_once(seen, "sqlx_default", &meta)?,
+            "default" => {
+                mark_once(seen, "sqlx_default", &meta)?;
+                self.sqlx_default = true;
+            }
             // FromRow decodes the column through SQLx `Json`; generated writes
             // encode it the same way (see spec §5.1).
             "json" => {
@@ -291,6 +298,7 @@ impl Default for FieldAttributes {
             is_hidden: false,
             is_skipped: false,
             is_sqlx_skipped: false,
+            sqlx_default: false,
             is_masked: false,
             is_encrypted: false,
             is_db_default: false,

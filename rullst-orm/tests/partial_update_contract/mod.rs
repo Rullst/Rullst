@@ -3,10 +3,10 @@
 use rullst_orm::audit::{AuditContext, with_audit_context};
 use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::tenant::with_tenant;
-use rullst_orm::{Error, FromRow, ModelCommittedEvent, Orm, Policy};
+use rullst_orm::{Error, ModelCommittedEvent, Orm, Policy};
 use std::sync::{Arc, Mutex};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(
     table = "partial_lifecycle_lessons",
     tenant_column = "tenant_id",

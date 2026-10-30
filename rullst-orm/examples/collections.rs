@@ -1,7 +1,7 @@
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm, RullstCollection};
+use rullst_orm::{Orm, RullstCollection};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "products")]
 pub struct Product {
     pub id: i32,

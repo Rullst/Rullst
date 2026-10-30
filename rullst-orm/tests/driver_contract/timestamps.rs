@@ -1,7 +1,7 @@
 //! `Blueprint::timestamps()` and TEXT defaults must be accepted by every driver.
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, ColumnDefault, Schema};
-use rullst_orm::{FromRow, Orm};
 
 /// `timestamps()` creates UTC-instant columns with a strict driver feature
 /// and the alpha.1 TEXT columns on the SQLx `Any` pool.
@@ -36,14 +36,14 @@ fn filled(stamp: &Option<Stamp>) -> bool {
     stamp.as_deref().is_some_and(|value| !value.is_empty())
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_timestamped_notes")]
 struct TimestampedNote {
     id: i32,
     title: String,
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_timestamped_notes")]
 struct TimestampedNoteView {
     id: i32,

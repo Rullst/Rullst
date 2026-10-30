@@ -13,13 +13,20 @@ documentation = "https://docs.rs/rullst-messaging"
 keywords = ["messaging", "events", "queue", "pubsub", "broker"]
 categories = ["asynchronous", "network-programming"]
 
+# docs.rs documents every feature on one target; `--cfg docsrs` labels the
+# items that need a feature.
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [features]
 default = []
 sqlite = ["sqlx/sqlite", "dep:aes-gcm", "dep:serde_json", "dep:sqlx", "dep:url", "dep:zeroize"]
 orm-outbox = ["dep:rullst-orm", "dep:serde_json"]
 redis-streams = ["dep:redis", "dep:rustls", "dep:url", "tokio/time"]
 
-schedules-postgres = ["dep:subtle","dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls", "dep:url", "dep:aes-gcm", "dep:zeroize", "dep:serde_json", "dep:chrono", "dep:cron", "dep:getrandom", "tokio/time"]
+schedules-postgres = ["dep:subtle","dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "dep:url", "dep:aes-gcm", "dep:zeroize", "dep:serde_json", "dep:chrono", "dep:cron", "dep:getrandom", "tokio/time"]
 
 webhooks = ["sqlite", "dep:reqwest", "dep:hmac", "dep:base64", "tokio/net", "tokio/time"]
 
@@ -29,7 +36,7 @@ serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"], optional = true }
 rullst-orm = { workspace = true, features = ["drivers-all"], optional = true }
 redis = { workspace = true, features = ["tokio-rustls-comp", "tls-rustls-webpki-roots"], optional = true }
-rustls = { version = "0.23.37", default-features = false, features = ["ring", "std", "tls12"], optional = true }
+rustls = { workspace = true, features = ["aws-lc-rs", "std", "tls12"], optional = true }
 sha2 = { workspace = true }
 sqlx = { workspace = true, features = ["runtime-tokio"], optional = true }
 thiserror = { workspace = true }

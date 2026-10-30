@@ -1,7 +1,7 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
 use serde::{Deserialize, Serialize};
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "products")]
 pub struct Product {
     pub id: i32,

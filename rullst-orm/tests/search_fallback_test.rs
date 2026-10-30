@@ -3,9 +3,9 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::{Error, FromRow, Orm, SecretString};
+use rullst_orm::{Error, Orm, SecretString};
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "fallback_accounts", searchable)]
 struct FallbackAccount {
     id: i32,

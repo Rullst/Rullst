@@ -7,14 +7,14 @@
 //! `is_deleted` with an `i32` sentinel; the `secret` field is excluded
 //! from generated SQL via `#[orm(skip)]`.
 
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
 // `is_deleted: 0` is the "not deleted" sentinel. The `delval`
 // expression `1` is interpolated verbatim into the generated UPDATE
 // statement, so it works on MySQL, PostgreSQL and SQLite alike.
 // Replace `1` with `now()` / `UNIX_TIMESTAMP()` for timestamp-based
 // multi-delete scenarios.
-#[derive(Debug, Clone, Default, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, Default, rullst_orm::Orm)]
 #[orm(
     table = "soft_delete_demo",
     soft_delete(field = "is_deleted", value = "0", delval = "1")
@@ -27,8 +27,8 @@ pub struct SoftDeleteDemo {
     // from generated INSERT / UPDATE column lists, the `*Column` enum
     // and the JSON serialiser. The field remains on the struct so user
     // code can still read/write it locally. We use `#[sqlx(skip)]`
-    // (the alias recognised by both this ORM derive and the
-    // `sqlx::FromRow` derive) so the database row mapping also skips
+    // (recognised by both the write paths of this ORM derive and the
+    // `FromRow` it generates) so the database row mapping also skips
     // the field — there is no `transient_note` column in the schema.
     #[sqlx(skip)]
     pub transient_note: String,

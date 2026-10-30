@@ -30,14 +30,13 @@ observation, not a successful test receipt. Promotion of v13 source to `main`
 requires a normally admitted PR; existing tags, packages and running feature
 campaigns are retained. `v13` remains transitional while that admission runs.
 
-The default-branch Dependabot configuration targets Cargo and Actions on both
-`main` and `v12`. Minor/patch Cargo changes share a PR; Actions share one tools
-PR per line. On `v12`, Dependabot ignores SemVer-major Cargo updates (including
-Cargo's breaking `0.x` minors) and the held `aws-smithy-types` constraint:
-majors are evaluated on `main` first. Updates still require compatibility/MSRV
-and protected CI; group membership is not approval. Old Dependabot PRs are
-closed after equivalent updates have entered their destination source line, or
-with a comment when that line's policy excludes them.
+The default-branch Dependabot configuration targets Cargo (the root and the
+eleven fuzz workspaces) and Actions on `main` only; `v12` receives no updates
+after its end of life on 16 October 2026. Minor/patch Cargo changes share a PR,
+the OpenTelemetry and utoipa families each have their own, and Actions share one
+tools PR. Updates still require compatibility/MSRV and protected CI; group
+membership is not approval. Old Dependabot PRs are closed after equivalent
+updates have entered `main`, or with a comment when its policy excludes them.
 
 ## Mainline execution model
 
@@ -78,8 +77,8 @@ passing required check. Ready pull requests to the
 maintained `v12` line and transitional `v13` keep the complete matrix, blocking
 line coverage, SemVer fan-out and CodeQL before merge. Any matrix can be
 requested manually. Each operating system
-executes seven parallel shards: the non-CLI workspace (which includes the LMS,
-ERP and Portfolio examples), ordinary CLI targets, three public-profile groups
+executes seven parallel shards: the non-CLI workspace (which includes the Blog,
+ERP, LMS, Portfolio and WebGPU examples), ordinary CLI targets, three public-profile groups
 and two generated-starter groups.
 The basic/relational/polyglot and foundation/product partitions retain every original
 case while bounding the longest Windows and macOS jobs. No test is omitted;
@@ -209,7 +208,7 @@ counts only a dispatched run:
 | Workflow | Evidence | RC interpretation |
 | :--- | :--- | :--- |
 | `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase, a fresh generated REST API, a fresh generated SaaS starter (public pages, then its signed-in pages with a disposable account's session) and the LMS example (`examples/lms`, release-built from the workspace) | REST/SaaS/LMS warnings and failures block unless an exact rule ID is versioned as `INFO` with a local explanation in `.zap/`; those configs are passed explicitly to the pinned scanner and unlisted warnings remain live. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
-| `fuzzing.yml` | All 42 declared libFuzzer targets from the validated shared inventory | **Required release evidence:** release mode validates all 42 targets and independently verifies reusable input-equivalent evidence; packages with remaining targets run locked compilation preflights and new 5.5-hour campaigns; target-specific corpora are restored and saved, while failure reproducers are retained. Dependency-lock drift fails preflight, campaign and corpus jobs. The proc-macro parser uses strict processes of at most 30 minutes sharing one corpus, which bounds sanitizer RSS without weakening the total budget. Original reused results must be at most seven days old, come from an ancestor on the same release line, and prove the complete budget. The final candidate still runs the evidence boundary and publication independently recomputes all 42 results. [Reuse policy](docs/src/fuzz-evidence.md). A strict five-minute single-target diagnostic accelerates correction feedback but is explicitly ineligible as release evidence. This is bounded evidence, not proof for every input. |
+| `fuzzing.yml` | All 42 declared libFuzzer targets from the validated shared inventory | **Required release evidence:** release mode validates all 42 targets and independently verifies reusable input-equivalent evidence; packages with remaining targets run locked compilation preflights and new 5.5-hour campaigns; target-specific corpora are restored and saved, while failure reproducers are retained. Dependency-lock drift fails preflight and campaign jobs. The proc-macro parser uses strict processes of at most 30 minutes sharing one corpus, which bounds sanitizer RSS without weakening the total budget. Original reused results must be at most seven days old, come from an ancestor on the same release line, and prove the complete budget. The final candidate still runs the evidence boundary and publication independently recomputes all 42 results. [Reuse policy](docs/src/fuzz-evidence.md). A strict five-minute single-target diagnostic accelerates correction feedback but is explicitly ineligible as release evidence. This is bounded evidence, not proof for every input. |
 | `kani.yml` | Twenty named bounded formal harnesses in ten supported runtime/library packages | **Required release evidence for the declared harnesses:** every proof has an isolated strict matrix job. Rullst itself stays on stable Rust 1.99.0 with a Rust 1.96 MSRV; only the separately built Kani verifier uses its pinned `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) because the latest stable Kani bundle's Rust 1.93 compiler cannot compile the framework. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
 | `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | **Required release evidence for the declared scopes:** every selected scope is strict. This nightly-only interpreter uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
 | `mutants.yml` | A source-bound discovered inventory, eighty lossless shards with at most four running concurrently, their artifacts and a strict aggregate | Informational: a cheap all-feature `--list --json` preflight records the selected source's complete unique inventory before runners start; every shard then uses that release surface, and aggregation requires every reviewed candidate to receive exactly one classification before reporting the conservative caught percentage. A targeted mode retests one validated production Rust file after a correction, with explicit per-mutant test/build timeouts and an optional library-only test scope; it does not replace the complete campaign. Every shard has a pinned Redis service, so the `RULLST_TEST_REDIS_URL` contracts run for each mutant. A contract mode runs one owned-server wrapper's mutation mode, which mutates only that wrapper's PostgreSQL or Redis adapter files and runs only its contract tests against the server it owns; it checks its own outcome count instead of the workspace inventory and aggregate. Recovery modes accept only the repository-reviewed campaign policy, bind the source/run/branch/tool/inventory digest, bisect explicitly authorized failed fragments, reuse immutable successful artifacts and emit a content-addressed aggregate. Missed/time-out exit codes remain findings, while a broken baseline, incomplete artifact set, preflight/classification mismatch, invalid invocation or cargo-mutants internal failure fails the workflow. The v12 campaign completed 14,391/14,391 classifications in run `34761010296`; “pass” does not mean every mutant was killed. |
@@ -334,7 +333,7 @@ single blocking dependency for the quality scorecard. Each threat-model shard
 primes the reviewed lockfile before its deliberately offline generated-project
 checks, so it does not inherit a hidden source-cache dependency from another
 job. The umbrella's
-`cfg(doctest)` aggregation reads all 51 public tutorial files directly, so that
+`cfg(doctest)` aggregation reads all 48 public tutorial files directly, so that
 same command discovers the versioned Rust blocks, compiles or executes complete
 examples, and records explicitly contextual fragments as ignored instead of pretending
 they are standalone programs. Its pinned live Redis job also proves that
@@ -378,8 +377,8 @@ release-ready.
 
 ## Recommended branch-protection profiles
 
-**`main` (v13 development)** requires the fast gate that every ready pull
-request emits: Code Quality & Format; Run Tests (ubuntu-latest / workspace) and
+**`main` (v13 development)** requires the fast gate of 19 checks that every
+ready pull request emits: Code Quality & Format; Run Tests (ubuntu-latest / workspace) and
 (ubuntu-latest / cli-standard); Check MSRV (Rust 1.96.0); ORM strict-sqlite,
 strict-postgres and strict-mysql; Redis live contracts; Generated release access
 boundaries; Facade shared-local recovery composition; Versioned deterministic AI
@@ -398,9 +397,10 @@ macOS/Windows and CLI-profile shards, public feature boundaries, threat-model
 minimum, coverage, SemVer and CodeQL run after merge, nightly or weekly. They
 remain release-admission requirements.
 
-**`v12` (stable maintenance)** keeps the complete profile with an up-to-date
-base: every Linux/macOS/Windows test shard, public feature boundaries, the
-threat-model minimum, CodeQL, documentation and workflow lint.
+**`v12` (frozen; end of life on 16 October 2026)** keeps the complete profile
+of 46 checks with an up-to-date base: every Linux/macOS/Windows test shard,
+public feature boundaries, the threat-model minimum, CodeQL, documentation and
+workflow lint.
 
 Do not configure a path-filtered, scheduled, manual, deployment, or tag-only
 workflow as a universal required check: an intentionally skipped workflow may
@@ -409,8 +409,12 @@ blocking when relevant paths change.
 Pages, benchmarks, fuzzing, sanitizers,
 Kani, Miri, mutation testing, udeps, ZAP, Scorecard, and release provenance
 belong to deeper evidence or release policy. GitHub repository rulesets remain
-the enforcement source; this document records the recommended profile and does
-not claim that the hosted setting is already enabled.
+the enforcement source; this document records the recommended profile. On
+29 October 2026 the hosted rulesets matched it: the
+[development-branch ruleset](https://github.com/Rullst/Rullst/rules/24175738)
+on `main` and the
+[maintained-branch ruleset](https://github.com/Rullst/Rullst/rules/24080901)
+on `v12` (see [GOVERNANCE.md](GOVERNANCE.md#change-and-release-controls)).
 
 ### Observed v13 protection
 
@@ -427,7 +431,9 @@ This initial merge profile does not replace the release policy's 28 complete
 workflow receipts, manual native/security jobs, package inspection or protected
 crates.io deployment approval. The additional automatic security workflows
 are enabled on v13 by this preparation change; the profile above names only
-checks already emitted by the integration candidate.
+checks already emitted by the integration candidate. The `v13` branch was later
+retired into `main`, and the release policy now requires 25 workflow receipts
+(`.github/release-required-workflows.json`).
 
 ## Phase 4 release-engineering status
 
@@ -1076,7 +1082,7 @@ dependency graph make static estimates unreliable.
 | [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml) | manual | Blocking generated targets plus informational showcase | Pins the ZAP image by digest, scans fresh release/migrated REST API, SaaS starter (public and signed-in) and LMS surfaces as blocking gates, scans the CDN-backed blog showcase informationally, and uploads separate reports plus application logs. |
 | [`documentation.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/documentation.yml) | main/v12/v13 push and PR, weekly, manual | Blocking plus informational external scan | Builds the mdBook; validates landing/benchmark templates, project identity, the README workflow count, the inventory below and every workflow badge or link, local assets, pinned external chart scripts and all requested social links. Real Chromium checks desktop/390px/320px layout, keyboard/mobile navigation, clipboard success/denial, privacy disclosure, reduced motion, no-JS navigation, and absence of external landing requests/browser storage. This is a bounded browser contract, not WCAG certification. Also validates the 190-claim historical roadmap denominator and repository-local links. Scheduled/manual runs preserve an informational external-link report. |
 | [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | main/v12/v13 push and PR, manual | Blocking | Boots the release Blog application and checks HTTP, headers, CSRF form flow, SQLite persistence, and the persisted page parsed by real headless Chromium. |
-| [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | Blocking release campaign or diagnostic | Release mode maintains all 42 targets through independently verified, at-most-seven-day input-equivalent evidence or fresh 5.5-hour jobs. Changed fuzz packages rerun their sibling targets; shared or unclassified input changes require all targets. Selected packages retain locked preflights, corpus caching and failure reproducers. `force_full` always requests a new full campaign; the current-commit boundary and independent tag-admission check remain mandatory. Lock drift is always rejected. The parser restarts its ASan process at most every 30 minutes while preserving the budget. Single-target diagnostic mode runs for five minutes and the evidence boundary marks it ineligible for release. |
+| [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | Blocking release campaign or diagnostic | Release mode maintains all 42 targets through independently verified, at-most-seven-day input-equivalent evidence or fresh 5.5-hour jobs. A package's inputs are the crates it reaches through path dependencies, files they include from elsewhere and a few global files; a change reruns the packages whose inputs it touches (all targets for global inputs, none for docs, changelog, CLI or examples), and a package whose inputs cannot be bounded falls back to the whole repository. Selected packages retain locked preflights, corpus caching and failure reproducers. `force_full` always requests a new full campaign; the current-commit boundary and independent tag-admission check remain mandatory. Lock drift is always rejected. The parser restarts its ASan process at most every 30 minutes while preserving the budget. Single-target diagnostic mode runs for five minutes and the evidence boundary marks it ineligible for release. |
 | [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/iot-integration.yml) | main/v12/v13 push and PR, manual | Blocking | Host IoT tests, signed OTA invariants, and one Cortex-M no-std build; no hardware claim. |
 | [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | weekly (Thursday 01:47 UTC), manual | Blocking release scope; bounded evidence | Builds an immutable reviewed Kani snapshot with the verifier-only `nightly-2026-08-01` compiler, while Rullst stays on stable Rust 1.99.0 with a Rust 1.96 MSRV. It verifies twenty named bounded harnesses in isolated jobs across ten supported packages. Proof failures fail their matrix jobs; the proc-macro-only crate remains outside Kani's supported targets. |
 | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main/v12/v13 push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |

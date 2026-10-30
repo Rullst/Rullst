@@ -39,9 +39,11 @@ pub async fn nexus_security_page(
             "<span class=\"nexus-badge nexus-badge-ai-active\">Active: {}</span>",
             provider_name
         )
-    } else {
+    } else if crate::nexus::ai_chat::AI_ASSISTANT {
         "<span class=\"nexus-badge nexus-badge-ai-offline\">Offline / Embedded Intelligence</span>"
             .to_string()
+    } else {
+        format!("<span class=\"nexus-badge nexus-badge-ai-offline\">{provider_name}</span>")
     };
 
     let store = rullst_security::SecurityStore::global();

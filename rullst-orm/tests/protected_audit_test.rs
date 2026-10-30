@@ -4,7 +4,7 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use rullst_orm::audit::{AuditContext, with_audit_context};
-use rullst_orm::{Error, FromRow, ModelCommittedEvent, Orm, SearchEngine, set_search_engine};
+use rullst_orm::{Error, ModelCommittedEvent, Orm, SearchEngine, set_search_engine};
 use std::sync::{Arc, Mutex};
 
 const DIAGNOSIS: &str = "F32.1 moderate depressive episode";
@@ -13,7 +13,7 @@ const RECOVERY_NOTE: &str = "call sister before discharge";
 const CPF: &str = "123.456.789-00";
 const NEW_CPF: &str = "987.654.321-00";
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "audited_patients", auditable, searchable)]
 struct AuditedPatient {
     id: i32,

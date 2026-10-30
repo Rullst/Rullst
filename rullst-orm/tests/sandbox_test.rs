@@ -1,14 +1,11 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
-use rullst_orm::{
-    FromRow,
-    schema::{Blueprint, Schema},
-};
+use rullst_orm::schema::{Blueprint, Schema};
 use std::fs;
 use std::sync::Once;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-#[derive(FromRow, rullst_orm::Orm, Debug, Clone, PartialEq)]
+#[derive(rullst_orm::Orm, Debug, Clone, PartialEq)]
 #[orm(table = "sandbox_users")]
 pub struct SandboxUser {
     pub id: i32,
@@ -104,7 +101,7 @@ fn sandboxed_errors_reach_the_test_harness() {
     ));
 }
 
-#[derive(FromRow, rullst_orm::Orm, Debug, Clone, PartialEq)]
+#[derive(rullst_orm::Orm, Debug, Clone, PartialEq)]
 #[orm(table = "sandbox_events")]
 pub struct SandboxEvent {
     pub id: i32,

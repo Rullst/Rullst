@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use rullst_orm::{Error, ModelCommittedEvent, ModelOperation, Orm, after_commit};
 
-#[derive(Debug, Clone, rullst_orm::FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "post_commit_models")]
 struct PostCommitModel {
     pub id: i32,
@@ -28,7 +28,7 @@ impl PostCommitModelObserver for CommitObserver {
 }
 
 /// A child row whose deferred foreign key is checked only at COMMIT.
-#[derive(Debug, Clone, rullst_orm::FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "deferred_children")]
 struct DeferredChild {
     pub id: i32,

@@ -8,6 +8,10 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+#[path = "files/features.rs"]
+mod features;
+use features::{enables_sqlx_macros, nexus_without_assistant};
+
 const MAX_FILE_BYTES: u64 = 1024 * 1024;
 const MAX_YAML_ENTRIES: usize = 5_000;
 const DEPENDENCY_SECTIONS: [&str; 3] = ["dependencies", "dev-dependencies", "build-dependencies"];
@@ -222,7 +226,15 @@ pub(super) fn manifest_findings(
                 .get("workspace")
                 .and_then(toml::Value::as_bool)
                 .unwrap_or(false);
+            if !inherited && nexus_without_assistant(&package, &declaration) {
+                findings.push(finding(
+                    &NEXUS_AI_FEATURE,
+                    plan.path.clone(),
+                    dependency_line(&plan.original, &key),
+                ));
+            }
             match package.as_str() {
+                "sqlx" => facts.sqlx_macros |= enables_sqlx_macros(&declaration),
                 "rullst-labs-runner" => findings.push(finding(
                     &LABS_RUNNER,
                     plan.path.clone(),

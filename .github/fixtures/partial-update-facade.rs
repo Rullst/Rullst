@@ -1,7 +1,7 @@
 use rullst::orm as rullst_orm;
-use rullst_orm::{Error, FromRow, Orm};
+use rullst_orm::{Error, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "facade_lessons", tenant_column = "tenant_id", auditable)]
 struct Lesson {
     id: i32,
@@ -36,7 +36,7 @@ async fn packaged_facade_partial_updates_share_the_managed_commit() {
         let durable = Lesson::find(id).await.unwrap().unwrap();
         assert_eq!(durable.title, "published");
         assert_eq!(durable.note.as_deref(), Some("preserve"));
-        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_audits WHERE model_type = 'facade_lessons'")
+        let count: i64 = rullst_orm::sqlx::query_scalar("SELECT COUNT(*) FROM rullst_audits WHERE model_type = 'facade_lessons'")
             .fetch_one(Orm::pool().unwrap()).await.unwrap();
         assert_eq!(count, 2);
     })).await;

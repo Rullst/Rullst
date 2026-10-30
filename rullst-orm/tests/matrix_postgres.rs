@@ -6,12 +6,12 @@ mod support;
 // Driver-neutral contracts, also run on SQLite by `driver_contract_sqlite`.
 mod driver_contract;
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::postgres::Postgres;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "pg_users", auditable)]
 struct User {
     pub id: i32,
@@ -19,7 +19,7 @@ struct User {
     pub email: String,
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "pg_tenant_posts", tenant_column = "tenant_id")]
 struct TenantPost {
     pub id: i32,
@@ -27,7 +27,7 @@ struct TenantPost {
     pub author_id: i32,
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "pg_tenant_comments", tenant_column = "tenant_id")]
 struct TenantComment {
     pub id: i32,
@@ -38,14 +38,14 @@ struct TenantComment {
 
 /// Generated SQL names the table unquoted, which PostgreSQL folds to lower
 /// case; `Schema::create` must create the folded relation.
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "PgMixedCaseRecords")]
 struct MixedCaseRecord {
     pub id: i32,
     pub name: String,
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "pg_flags")]
 struct Flag {
     pub id: i32,
@@ -61,7 +61,7 @@ enum AccountStatus {
 
 /// An ORM model whose column is a named PostgreSQL enum.
 #[cfg(feature = "strict-postgres")]
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "pg_native_enum_accounts")]
 struct NativeEnumAccount {
     pub id: i32,

@@ -1,7 +1,7 @@
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 #[cfg(feature = "redis")]
 use std::time::Duration;
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "products")]
 pub struct Product {
     pub id: i32,

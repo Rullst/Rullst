@@ -1,4 +1,5 @@
 use crate::parser::ParsedModel;
+use crate::query_span::instrument_query;
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -12,59 +13,39 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
     } else {
         super::save_docs::SAVE_DOC
     };
-    let clean_return = super::dirty_tracking::clean_save_return(parsed);
     let (keep_snapshot, restore_snapshot) = super::dirty_tracking::snapshot_guard(parsed);
+    let guards = SaveGuards {
+        clean_return: super::dirty_tracking::clean_save_return(parsed),
+        keep_snapshot,
+        restore_snapshot,
+    };
 
     if !parsed.auditable {
+        // The whole transaction rolls back on error, so no savepoint.
+        let save_body = instrument_query(
+            name,
+            table_name,
+            "save",
+            &[],
+            guards.managed_save(
+                quote! { self.__rullst_save_in_tx(&mut transaction) },
+                "save failed",
+            ),
+        );
+        let save_with_tx_body = instrument_query(
+            name,
+            table_name,
+            "save_with_tx",
+            &[],
+            guards.savepoint_save(
+                quote! { self.__rullst_save_in_tx(&mut savepoint) },
+                "save failed",
+            ),
+        );
         return quote! {
             #[doc = #save_doc]
-            #[rullst_orm::_tracing::instrument(
-                name = "rullst.orm.query",
-                target = "rullst_orm",
-                skip(self),
-                fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "save")
-            )]
             pub async fn save(&mut self) -> Result<(), rullst_orm::Error> {
-                rullst_orm::__transaction_access::ensure_allowed()?;
-                #clean_return
-                let scoped_transaction = rullst_orm::CURRENT_TX
-                    .try_with(|transaction| transaction.clone())
-                    .ok();
-                if let Some(transaction) = scoped_transaction {
-                    let mut transaction = transaction.lock().await;
-                    if let Some(tx) = transaction.as_mut() {
-                        return self.save_with_tx(tx).await;
-                    }
-                }
-
-                let original_id = self.id;
-                #keep_snapshot
-                let mut transaction = rullst_orm::Orm::begin_transaction().await?;
-                let post_commit = rullst_orm::post_commit::PostCommitScope::new();
-                // The whole transaction rolls back on error, so no savepoint.
-                let save_result = post_commit
-                    .run(self.__rullst_save_in_tx(&mut transaction))
-                    .await;
-                if let Err(save_error) = save_result {
-                    self.id = original_id;
-                    #restore_snapshot
-                    return match transaction.rollback().await {
-                        Ok(()) => Err(save_error),
-                        Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
-                            "save failed: {}; rollback also failed: {}",
-                            save_error,
-                            rollback_error,
-                        ))),
-                    };
-                }
-                // A failed COMMIT persisted nothing: keep the handle new so a
-                // retry inserts instead of updating a row that never existed.
-                if let Err(commit_error) = transaction.commit().await {
-                    self.id = original_id;
-                    #restore_snapshot
-                    return Err(rullst_orm::Error::from(commit_error));
-                }
-                post_commit.commit().await
+                #save_body
             }
 
             /// Saves through a caller-owned transaction.
@@ -75,41 +56,8 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
             /// Strict post-commit effects require this transaction to be managed by
             /// `Orm::transaction`; a raw SQLx transaction cannot expose its later
             /// commit decision to the ORM.
-            #[rullst_orm::_tracing::instrument(
-                name = "rullst.orm.query",
-                target = "rullst_orm",
-                skip(self, tx),
-                fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "save_with_tx")
-            )]
             pub async fn save_with_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
-                use rullst_orm::_sqlx::Acquire;
-                #clean_return
-                let original_id = self.id;
-                #keep_snapshot
-                let mut savepoint = (&mut **tx).begin().await?;
-                let operation_callbacks = rullst_orm::post_commit::PostCommitScope::new();
-                let save_result = operation_callbacks
-                    .run(self.__rullst_save_in_tx(&mut savepoint))
-                    .await;
-                if let Err(save_error) = save_result {
-                    self.id = original_id;
-                    #restore_snapshot
-                    return match savepoint.rollback().await {
-                        Ok(()) => Err(save_error),
-                        Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
-                            "save failed: {}; savepoint rollback also failed: {}",
-                            save_error,
-                            rollback_error,
-                        ))),
-                    };
-                }
-                if let Err(release_error) = savepoint.commit().await {
-                    self.id = original_id;
-                    #restore_snapshot
-                    return Err(rullst_orm::Error::from(release_error));
-                }
-                operation_callbacks.promote_to_parent().await?;
-                Ok(())
+                #save_with_tx_body
             }
 
             async fn __rullst_save_in_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
@@ -144,76 +92,24 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
         super::update_builder::after_fetch_hook(parsed, &quote::format_ident!("restored"));
     let revision_restore = revision_restore(table_name, &revision_lookup, &restored_after_fetch);
 
-    quote! {
-        #[doc = #save_doc]
-        #[rullst_orm::_tracing::instrument(
-            name = "rullst.orm.query",
-            target = "rullst_orm",
-            skip(self),
-            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "save")
-        )]
-        pub async fn save(&mut self) -> Result<(), rullst_orm::Error> {
-            rullst_orm::__transaction_access::ensure_allowed()?;
-            #clean_return
-            let scoped_transaction = rullst_orm::CURRENT_TX
-                .try_with(|transaction| transaction.clone())
-                .ok();
-            if let Some(transaction) = scoped_transaction {
-                let mut transaction = transaction.lock().await;
-                if let Some(tx) = transaction.as_mut() {
-                    return self.save_with_tx(tx).await;
-                }
-            }
-
-            let original_id = self.id;
-                #keep_snapshot
-            let mut transaction = rullst_orm::Orm::begin_transaction().await?;
-            let post_commit = rullst_orm::post_commit::PostCommitScope::new();
-            let save_result = post_commit
-                .run(self.save_with_tx(&mut transaction))
-                .await;
-            if let Err(save_error) = save_result {
-                self.id = original_id;
-                    #restore_snapshot
-                return match transaction.rollback().await {
-                    Ok(()) => Err(save_error),
-                    Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
-                        "auditable save failed: {}; rollback also failed: {}",
-                        save_error,
-                        rollback_error,
-                    ))),
-                };
-            }
-            // A failed COMMIT persisted nothing: keep the handle new so a
-            // retry inserts instead of updating a row that never existed.
-            if let Err(commit_error) = transaction.commit().await {
-                self.id = original_id;
-                    #restore_snapshot
-                return Err(rullst_orm::Error::from(commit_error));
-            }
-            post_commit.commit().await
-        }
-
-        /// Saves through a caller-owned transaction.
-        ///
-        /// Strict post-commit effects require this transaction to be managed by
-        /// `Orm::transaction`; a raw SQLx transaction cannot expose its later
-        /// commit decision to the ORM.
-        #[rullst_orm::_tracing::instrument(
-            name = "rullst.orm.query",
-            target = "rullst_orm",
-            skip(self, tx),
-            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "save_with_tx")
-        )]
-        pub async fn save_with_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
-            use rullst_orm::_sqlx::Acquire;
-            #clean_return
-            let original_id = self.id;
-                #keep_snapshot
-            let mut savepoint = (&mut **tx).begin().await?;
-            let operation_callbacks = rullst_orm::post_commit::PostCommitScope::new();
-            let save_result = operation_callbacks
-                .run(async {
+    let save_body = instrument_query(
+        name,
+        table_name,
+        "save",
+        &[],
+        guards.managed_save(
+            quote! { self.save_with_tx(&mut transaction) },
+            "auditable save failed",
+        ),
+    );
+    let save_with_tx_body = instrument_query(
+        name,
+        table_name,
+        "save_with_tx",
+        &[],
+        guards.savepoint_save(
+            quote! {
+                async {
                     let tx = &mut savepoint;
                     let is_new = self.id == 0;
                     #tenant_prepare
@@ -228,15 +124,123 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                         #after_tx
                     }
                     Ok::<(), rullst_orm::Error>(())
-                })
+                }
+            },
+            "auditable save failed",
+        ),
+    );
+
+    quote! {
+        #[doc = #save_doc]
+        pub async fn save(&mut self) -> Result<(), rullst_orm::Error> {
+            #save_body
+        }
+
+        /// Saves through a caller-owned transaction.
+        ///
+        /// Strict post-commit effects require this transaction to be managed by
+        /// `Orm::transaction`; a raw SQLx transaction cannot expose its later
+        /// commit decision to the ORM.
+        pub async fn save_with_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
+            #save_with_tx_body
+        }
+
+        #revision_restore
+    }
+}
+
+/// The dirty-tracking pieces both save entrypoints share: the early return of
+/// an unchanged tracked record, and keeping and restoring its snapshot.
+struct SaveGuards {
+    clean_return: TokenStream,
+    keep_snapshot: TokenStream,
+    restore_snapshot: TokenStream,
+}
+
+impl SaveGuards {
+    /// `save()`: joins the task's managed transaction (through `save_with_tx`),
+    /// otherwise runs `write`, a future that saves into `transaction`, in a new
+    /// transaction that commits only when it succeeds. A failed write or
+    /// COMMIT restores `id` and the snapshot; `failure` starts the error
+    /// message of a failed rollback.
+    fn managed_save(&self, write: TokenStream, failure: &str) -> TokenStream {
+        let Self {
+            clean_return,
+            keep_snapshot,
+            restore_snapshot,
+        } = self;
+        let rollback_failed = format!("{failure}: {{}}; rollback also failed: {{}}");
+        quote! {
+            rullst_orm::__transaction_access::ensure_allowed()?;
+            #clean_return
+            let scoped_transaction = rullst_orm::CURRENT_TX
+                .try_with(|transaction| transaction.clone())
+                .ok();
+            if let Some(transaction) = scoped_transaction {
+                let mut transaction = transaction.lock().await;
+                if let Some(tx) = transaction.as_mut() {
+                    return self.save_with_tx(tx).await;
+                }
+            }
+
+            let original_id = self.id;
+            #keep_snapshot
+            let mut transaction = rullst_orm::Orm::begin_transaction().await?;
+            let post_commit = rullst_orm::post_commit::PostCommitScope::new();
+            let save_result = post_commit
+                .run(#write)
                 .await;
             if let Err(save_error) = save_result {
                 self.id = original_id;
-                    #restore_snapshot
+                #restore_snapshot
+                return match transaction.rollback().await {
+                    Ok(()) => Err(save_error),
+                    Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
+                        #rollback_failed,
+                        save_error,
+                        rollback_error,
+                    ))),
+                };
+            }
+            // A failed COMMIT persisted nothing: keep the handle new so a
+            // retry inserts instead of updating a row that never existed.
+            if let Err(commit_error) = transaction.commit().await {
+                self.id = original_id;
+                #restore_snapshot
+                return Err(rullst_orm::Error::from(commit_error));
+            }
+            post_commit.commit().await
+        }
+    }
+
+    /// `save_with_tx()`: runs `write`, a future that saves into `savepoint`,
+    /// in a savepoint of the caller's transaction, so a failed write rolls
+    /// back only itself and restores `id` and the snapshot. Its post-commit
+    /// callbacks move to the enclosing scope once the savepoint is released.
+    fn savepoint_save(&self, write: TokenStream, failure: &str) -> TokenStream {
+        let Self {
+            clean_return,
+            keep_snapshot,
+            restore_snapshot,
+        } = self;
+        let rollback_failed = format!("{failure}: {{}}; savepoint rollback also failed: {{}}");
+        quote! {
+            use rullst_orm::_sqlx::Acquire;
+            #clean_return
+            let original_id = self.id;
+            #keep_snapshot
+            let mut savepoint = (&mut **tx).begin().await?;
+            let operation_callbacks = rullst_orm::post_commit::PostCommitScope::new();
+            let save_result = operation_callbacks
+                .run(#write)
+                .await;
+            if let Err(save_error) = save_result {
+                self.id = original_id;
+                #restore_snapshot
                 return match savepoint.rollback().await {
                     Ok(()) => Err(save_error),
                     Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
-                        "auditable save failed: {}; savepoint rollback also failed: {}",
+                        #rollback_failed,
                         save_error,
                         rollback_error,
                     ))),
@@ -244,14 +248,12 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
             }
             if let Err(release_error) = savepoint.commit().await {
                 self.id = original_id;
-                    #restore_snapshot
+                #restore_snapshot
                 return Err(rullst_orm::Error::from(release_error));
             }
             operation_callbacks.promote_to_parent().await?;
             Ok(())
         }
-
-        #revision_restore
     }
 }
 

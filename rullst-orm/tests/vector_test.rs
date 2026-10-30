@@ -3,9 +3,8 @@
 use rullst_orm::Orm;
 use rullst_orm::schema::Blueprint;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Orm, FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, Orm)]
 pub struct Document {
     pub id: i32,
     pub content: String,

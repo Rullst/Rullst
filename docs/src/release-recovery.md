@@ -122,7 +122,7 @@ performs this check after each package.
 ### Nothing was accepted
 
 Correct the failure on a new commit. If the tag or package content must change,
-use a new prerelease version such as `12.0.0-rc.2`. Never move a published or
+use a new prerelease version such as `13.0.0-rc.2`. Never move a published or
 publicly attested tag to unrelated content.
 
 ### A prefix was accepted with matching checksums

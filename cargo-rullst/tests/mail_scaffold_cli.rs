@@ -258,7 +258,7 @@ fn main() {
     .expect("write generated validation contract");
     let model = fs::read_to_string(project.join("src/models/post.rs")).expect("generated model");
     assert!(
-        model.starts_with("use rullst::db::{FromRow, Orm, RowSnapshot};\n"),
+        model.starts_with("use rullst::db::{Orm, RowSnapshot};\n"),
         "{model}"
     );
     install_workspace_lock(&project, workspace);

@@ -186,9 +186,9 @@ pub(crate) fn render_chat_migration(stem: &str, backend: ProjectOrmBackend) -> S
     }
 }
 
-const SQLX_MODELS: &str = r#"use rullst::db::{FromRow, Orm, RowSnapshot};
+const SQLX_MODELS: &str = r#"use rullst::db::{Orm, RowSnapshot};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "chat_sessions")]
 pub struct ChatSession {
     pub id: i32,
@@ -198,7 +198,7 @@ pub struct ChatSession {
     pub snapshot: RowSnapshot,
 }
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "chat_messages")]
 pub struct ChatMessage {
     pub id: i32,

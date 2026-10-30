@@ -28,7 +28,7 @@ const UNKNOWN: u64 = 0;
 /// Declare it on a model to make `save()` write only the columns that changed:
 ///
 /// ```ignore
-/// #[derive(Debug, Clone, FromRow, Orm)]
+/// #[derive(Debug, Clone, Orm)]
 /// #[orm(table = "posts")]
 /// pub struct Post {
 ///     pub id: i32,

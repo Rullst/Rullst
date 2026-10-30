@@ -36,8 +36,8 @@ at a defined quality level.
 
 ## Known limitations
 
-The published v12.1 context generator concatenates manifest/source content.
-The v13 candidate replaces that with a bounded metadata inventory and preserved
+The v12 context generator (the 12.x line reached end of life on 16 October
+2026) concatenated manifest/source content. The v13 candidate replaces that with a bounded metadata inventory and preserved
 application instructions. It still does not infer a complete semantic contract
 for routes, configuration behavior, model relationships, tests or authorization.
 Task-ranked semantic views remain follow-up work.
@@ -176,8 +176,10 @@ unless marked as delivered.
 
 - **Documentation for humans and assistants:** a "start here" page, short
   per-crate quickstarts, a task-oriented cookbook, and an `llms.txt` index of the
-  book. Visible maturity tiers per crate and per CLI generator were delivered on
-  `main` on 8 October 2026; see [maturity tiers](maturity.md).
+  book. Delivered on 8 October 2026: the Pages workflow publishes
+  [`llms.txt`](https://rullst.github.io/Rullst/llms.txt) and `llms-full.txt`
+  from the book, and visible maturity tiers per crate and per CLI generator
+  (see [maturity tiers](maturity.md)).
 - **Code-level clarity:** every public item documented with a compiling
   example (enforced with `missing_docs` and doctests), consistent constructor
   and error patterns across crates, and actionable error messages (the v13 CLI
@@ -204,10 +206,11 @@ unless marked as delivered.
 | C | Public model/harness results | Exact versions, commit SHA, limitations and repeatable commands |
 | D | Continuous regression programme | Scheduled or manual reruns, versioned baselines and reviewed score changes |
 
-Phases belong to the v13 development line after the stable v12 release. Compatible documentation corrections may
-land in v12 maintenance, but new generator formats, fixtures and public support
-profiles belong to the v13 feature line unless a separate release decision says
-otherwise.
+The v12 line reached end of life on 16 October 2026, so every phase belongs to
+v13 or later. 13.0.0-alpha.4 is the 13.0 feature freeze and 13.0.0-rc.1 takes
+only fixes and documentation: new generator formats, fixtures and public support
+profiles that are not in alpha.4 come after 13.0 unless a separate release
+decision says otherwise.
 
 ## Completion criteria
 

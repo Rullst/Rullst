@@ -67,13 +67,21 @@ pub fn render_sidebar(state: &NexusState, active_table: Option<&str>) -> String 
     } else {
         ""
     };
+    // The assistant link only where the `ai` feature serves the assistant.
+    if crate::nexus::ai_chat::AI_ASSISTANT {
+        let _ = std::fmt::Write::write_fmt(
+            &mut out,
+            format_args!(
+                "<a href=\"/nexus/chat\" class=\"nexus-nav-link nexus-nav-ai{ai_active}\" \
+                 hx-get=\"/nexus/chat\" hx-target=\"#nexus-content\" hx-push-url=\"true\">\
+                 <span class=\"nexus-nav-icon\">&#129302;</span><span>AI Assistant</span></a>"
+            ),
+        );
+    }
     let _ = std::fmt::Write::write_fmt(
         &mut out,
         format_args!(
-            "<a href=\"/nexus/chat\" class=\"nexus-nav-link nexus-nav-ai{ai_active}\" \
-             hx-get=\"/nexus/chat\" hx-target=\"#nexus-content\" hx-push-url=\"true\">\
-             <span class=\"nexus-nav-icon\">&#129302;</span><span>AI Assistant</span></a>\
-             <a href=\"/nexus/security\" class=\"nexus-nav-link nexus-nav-sec{sec_active}\" \
+            "<a href=\"/nexus/security\" class=\"nexus-nav-link nexus-nav-sec{sec_active}\" \
              hx-get=\"/nexus/security\" hx-target=\"#nexus-content\" hx-push-url=\"true\">\
              <span class=\"nexus-nav-icon\">&#128737;</span><span>Threat Radar (SOC)</span></a>\
              <a href=\"/nexus/telemetry\" class=\"nexus-nav-link nexus-nav-tel{tel_active}\" \

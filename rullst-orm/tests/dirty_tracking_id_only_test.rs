@@ -4,9 +4,9 @@
 #![deny(unreachable_code)]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::{FromRow, Orm, RowSnapshot};
+use rullst_orm::{Orm, RowSnapshot};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "markers")]
 struct Marker {
     id: i32,

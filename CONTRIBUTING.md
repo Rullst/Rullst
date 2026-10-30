@@ -76,9 +76,8 @@ verification gates to every contribution, regardless of authorship. See
 
 ## Development Setup
 
-1. Fork the repo and create a short-lived branch from `v12` for v12
-   maintenance, or from `main` for v13 development. Target the same
-   base branch with your pull request.
+1. Fork the repo, create a short-lived branch from `main` and target `main`
+   with your pull request (the `v12` branch is frozen; see below).
 2. Use the repository-pinned toolchain in `rust-toolchain.toml`.
 3. Run `cargo build --workspace --all-features` to build the framework.
 4. Run `cargo test --workspace --all-features` to exercise implemented behavior.
@@ -104,11 +103,11 @@ release responsibilities and current continuity/review limitations.
   integration or verified replacement. The former `v13` branch is retired;
   legacy v5 consumers use the immutable `v5.0.0` tag or crates.io artifact.
 
-Carry every applicable stable fix into `main`, with its regression tests and a
-linked PR or an explicit already-present/not-applicable record. Branches may
-legitimately be both ahead and behind each other. Follow the
+While v12 was maintained, every applicable stable fix was carried into `main`
+with its regression tests; the
 [compatibility and cross-line maintenance policy](docs/src/compatibility-policy.md#carrying-fixes-between-maintained-lines)
-instead of forcing their histories or lockfiles to match.
+records how. The two branches may legitimately be both ahead and behind each
+other; do not force their histories or lockfiles to match.
 
 ## Documentation lifecycle
 

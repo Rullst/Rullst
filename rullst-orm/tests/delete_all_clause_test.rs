@@ -5,16 +5,16 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::{Error, FromRow, Orm, RullstValue};
+use rullst_orm::{Error, Orm, RullstValue};
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "bounded_logs")]
 struct BoundedLog {
     id: i32,
     status: String,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "bounded_notes")]
 struct BoundedNote {
     id: i32,

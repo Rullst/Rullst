@@ -197,7 +197,7 @@ mkdir -p "$consent_dir/tests/consent"
   printf '[features]\ndefault = ["consent", "consent-postgres"]\nconsent = []\nconsent-postgres = []\nconsent-sqlite = []\n\n[dependencies]\n'
   printf 'rullst = { version = "=%s", default-features = false, features = ["privacy-consent-postgres"] }\n' "$version"
   printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "sync", "time"] }\n'
-  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls-ring"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls-aws-lc-rs"] }\n'
 } > "$consent_dir/Cargo.toml"
 cp "$repository_root/rullst-privacy/tests/consent.rs" "$consent_dir/tests/consent.rs"
 cp "$repository_root/rullst-privacy/tests/consent/adapter_failures.rs" "$consent_dir/tests/consent/adapter_failures.rs"
@@ -224,7 +224,7 @@ mkdir -p "$login_dir/tests/email_login"
   printf '[features]\ndefault = ["email-login-sqlite", "email-login-postgres"]\nemail-login-sqlite = []\nemail-login-postgres = []\n\n[dependencies]\n'
   printf 'rullst = { version = "=%s", default-features = false, features = ["auth-email-login-sqlite", "auth-email-login-postgres", "mail"] }\n' "$version"
   printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std"] }\n'
-  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "any", "sqlite", "postgres", "tls-rustls-ring"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "any", "sqlite", "postgres", "tls-rustls-aws-lc-rs"] }\n'
   printf 'tempfile = "3"\nurl = "2.5.8"\nrand = "0.10.1"\nchrono = "0.4.45"\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
 } > "$login_dir/Cargo.toml"
 cp "$repository_root/.github/fixtures/email-login-mail-facade.rs" "$login_dir/tests/email_login_mail.rs"
@@ -255,7 +255,7 @@ mkdir -p "$api_dir/tests/api_tokens"
   printf '[features]\ndefault = ["api-tokens-sqlite", "api-tokens-postgres"]\napi-tokens-sqlite = []\napi-tokens-postgres = []\n\n[dependencies]\n'
   printf 'rullst = { version = "=%s", default-features = false, features = ["auth-api-tokens-sqlite", "auth-api-tokens-postgres"] }\n' "$version"
   printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std"] }\n'
-  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "any", "sqlite", "postgres", "tls-rustls-ring"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "any", "sqlite", "postgres", "tls-rustls-aws-lc-rs"] }\n'
   printf 'tempfile = "3"\nurl = "2.5.8"\nrand = "0.10.1"\naxum = "0.8.9"\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
 } > "$api_dir/Cargo.toml"
 for test in api_token_contract api_token_http api_token_restart; do
@@ -281,7 +281,7 @@ mkdir -p "$mail_pg_dir/tests/suppression_postgres"
   printf '[features]\ndefault = ["postgres"]\npostgres = []\n\n[dependencies]\n'
   printf 'rullst = { version = "=%s", default-features = false, features = ["mail-postgres"] }\n' "$version"
   printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std"] }\n'
-  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls-ring"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls-aws-lc-rs"] }\n'
   printf 'url = "2.5.8"\nrand = "0.10.1"\nasync-trait = "0.1"\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
 } > "$mail_pg_dir/Cargo.toml"
 for test in postgres_suppression postgres_suppression_restart; do
@@ -306,7 +306,7 @@ mkdir -p "$recurring_dir/tests/recurring"
   printf '[features]\ndefault = ["schedules-postgres", "sqlite"]\nschedules-postgres = []\nsqlite = []\n\n[dependencies]\n'
   printf 'rullst = { version = "=%s", default-features = false, features = ["messaging-schedules-postgres", "messaging-sqlite"] }\n' "$version"
   printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std", "io-util"] }\n'
-  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls-ring"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls-aws-lc-rs"] }\n'
   printf 'url = "2.5.8"\nuuid = { version = "1", features = ["v4"] }\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
 } > "$recurring_dir/Cargo.toml"
 for test in recurring_contract recurring_restart; do
@@ -441,7 +441,9 @@ mkdir -p "$partial_dir/tests"
 {
   printf '[package]\nname = "rullst-packaged-partial-update"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
   printf 'rullst = { version = "=%s", default-features = false, features = ["strict-sqlite"] }\n' "$version"
-  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }\nsqlx = { version = "0.9.0", default-features = false }\ntracing = "0.1.44"\n'
+  # `tokio` for `#[tokio::test]`: the `Orm` derive, its `FromRow` included,
+  # needs no dependency beyond the facade.
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }\n'
   cat <<'TOML'
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
