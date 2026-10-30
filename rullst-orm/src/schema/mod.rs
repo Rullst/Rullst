@@ -43,9 +43,13 @@ pub trait SubqueryBuilder {
     }
 }
 
+// State behind the setters and getters below.
+#[doc(hidden)]
 pub static QUERY_LOGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+#[doc(hidden)]
 pub static MAX_QUERY_LIMIT: std::sync::atomic::AtomicUsize =
     std::sync::atomic::AtomicUsize::new(1000);
+#[doc(hidden)]
 pub static QUERY_TIMEOUT_SECS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(30);
 
 pub fn enable_query_log() {
