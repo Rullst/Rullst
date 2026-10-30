@@ -58,7 +58,7 @@ fn dry_runs_preview_exactly_the_files_a_real_run_writes_and_write_nothing() {
     let temporary = tempfile::tempdir().unwrap();
     let profiles: [&[&str]; 6] = [
         &["--blueprint", "blank"],
-        &["--blueprint", "blank", "--api", "--no-database"],
+        &["--blueprint", "blank", "--api", "--no-database", "--docker"],
         &[
             "--blueprint",
             "saas",
@@ -113,6 +113,20 @@ fn dry_runs_preview_exactly_the_files_a_real_run_writes_and_write_nothing() {
             count_files(&temporary.path().join(&name)),
             "{profile:?}: the preview must list what generation writes"
         );
+        // Only a SQLite primary gets the local database file; a
+        // `--no-database` image gets no SQLite DATABASE_URL either.
+        let sqlite = !profile
+            .iter()
+            .any(|flag| ["--no-database", "postgres", "mysql", "turso"].contains(flag));
+        let project = temporary.path().join(&name);
+        assert_eq!(project.join("rullst.db").exists(), sqlite, "{profile:?}");
+        if let Ok(dockerfile) = fs::read_to_string(project.join("Dockerfile")) {
+            assert_eq!(
+                dockerfile.contains("DATABASE_URL=sqlite"),
+                sqlite,
+                "{profile:?}"
+            );
+        }
 
         let again = cli(temporary.path(), &dry);
         assert!(

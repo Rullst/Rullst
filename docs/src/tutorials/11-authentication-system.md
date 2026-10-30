@@ -8,45 +8,58 @@ hosted identity service or a claim that every production policy is automatic.
 
 ## Step 1: Run the generator
 
-The SaaS starter already contains this code. In a Blank or API project with a
-database, such as the `shop` project of [Tutorial 02](02-cli-generators.md),
-run from the project root:
+The SaaS starter already contains this code: there `cargo rullst auth`
+reports that authentication is already scaffolded, writes nothing and exits
+successfully. In a Blank or API project with a database (SQLite, PostgreSQL,
+MySQL or MariaDB), such as the `shop` project of
+[Tutorial 02](02-cli-generators.md), run from the project root:
 
 ```bash
 cargo rullst auth
 ```
 
-Those starters ship a minimal `users` migration
-(`src/migrations/m20260601000000_create_users_table.rs`), and the command
-refuses to add a second one. In a learning project whose `users` table holds
-no data, delete that migration file; if `cargo rullst dev` or
-`cargo rullst db:migrate` already ran, also delete the local SQLite database
-(`db.sqlite`, with any `db.sqlite-wal`/`db.sqlite-shm` beside it), which the
-next run recreates with every migration. Then run `cargo rullst auth` again.
-In an application with real accounts, keep the migration and add the columns
-with `cargo rullst make:migration` instead, as the error message says.
+Those starters ship a minimal `users` table (`id`, `name`, `created_at` and
+`updated_at`, from `src/migrations/m20260601000000_create_users_table.rs`).
+The command keeps that migration as it is and adds one that extends the
+table, so it works whether or not `cargo rullst db:migrate` (or the first
+`cargo rullst dev`) already created the table, and rows already in it keep
+their data. Each existing row gets the placeholder email
+`user-<id>@no-email.invalid` (the reserved `.invalid` domain never receives
+mail) and no password, so it cannot sign in until you set its real email and
+the person resets the password.
 
 The current command creates:
 
 - `src/models/user.rs` and `src/models/password_reset.rs`;
-- `src/migrations/m<timestamp>_create_users_table.rs`,
-  `src/migrations/m<timestamp>_create_password_reset_tokens_table.rs` and the
-  migrations module;
+- `src/migrations/m<timestamp>_create_users_table.rs` or, in a Blank or API
+  starter, `src/migrations/m<timestamp>_add_account_columns_to_users_table.rs`
+  (the `email`, `password_hash`, `oauth_provider`, `oauth_id`, `is_admin` and
+  `session_epoch` columns and the unique index on `email`; rolling it back
+  drops only those), `src/migrations/m<timestamp>_create_password_reset_tokens_table.rs`
+  and the migrations module;
 - `src/controllers/auth_controller.rs` and
   `src/controllers/password_controller.rs`;
 - `src/middlewares/auth_middleware.rs`;
 - `src/pages/auth.rs`;
 - the corresponding module declarations, including `controllers`,
-  `middlewares`, `models` and `pages` in `src/lib.rs` (or `src/main.rs`); and
+  `middlewares`, `models` and `pages` in `src/lib.rs` (or `src/main.rs`);
+- in a Blank or API starter, `pub use crate::models::user::User;` in place of
+  the starter's two-field `User` struct in `src/main.rs`, so the project has
+  one model of `users` (a `User` struct you changed is left alone); and
 - a best-effort refresh of the generated `.llms.txt`,
   `.rullst/context-map.json` and `diagram.md` (a hand-written `diagram.md` is
   left unchanged).
 
 It also enables the `orm`, `auth` and `mail` umbrella features in
-`Cargo.toml`. It fails before writing anything when one of those files exists,
-when a `*_create_password_reset_tokens_table.rs` migration exists, or when a
-`*_create_users.rs`/`*_create_users_table.rs` migration already creates the
-users table (see above). Turso-primary projects are not
+`Cargo.toml`. When every one of those files already exists, as in the SaaS
+starter or after an earlier run, it writes nothing and succeeds. It fails
+before writing anything when only some of them exist, when a
+`*_create_password_reset_tokens_table.rs` or
+`*_add_account_columns_to_users_table.rs` migration exists, or when a
+`*_create_users.rs`/`*_create_users_table.rs` migration other than the
+unchanged starter one creates the users table: then add the columns with
+`cargo rullst make:migration` and integrate the account files by hand, as the
+error message says. Turso-primary projects are not
 supported, and neither is a project without a database migration runner (a
 `--no-database` starter): create the project with a database so `src/main.rs`
 declares `pub mod migrations;` and calls

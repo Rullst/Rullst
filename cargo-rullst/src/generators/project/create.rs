@@ -71,8 +71,10 @@ pub(crate) fn write_project_files(
     )?;
 
     if plan.docker {
+        // A database-free project keeps the `Sqlite` provider name; its
+        // image gets no SQLite DATABASE_URL.
         let (provider, redis) = (
-            Some(options.db_provider.as_str()),
+            db_needed.then_some(options.db_provider.as_str()),
             Some(options.wants_redis),
         );
         match report {
