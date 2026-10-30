@@ -1,5 +1,6 @@
 //! The assistant's routes in a build without the `ai` feature: a notice that
 //! names the feature, which the Nexus router answers with 404.
+#![cfg_attr(feature = "ai", allow(dead_code))]
 
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
@@ -50,3 +51,7 @@ pub(crate) async fn page(
 pub(crate) async fn query() -> (StatusCode, Html<String>) {
     (StatusCode::NOT_FOUND, Html(query_html()))
 }
+
+#[cfg(test)]
+#[path = "disabled_tests.rs"]
+mod tests;

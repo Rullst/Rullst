@@ -10,7 +10,8 @@ use crate::nexus::{
     ui::{render_shell, render_sidebar, wants_fragment},
 };
 
-#[cfg(not(feature = "ai"))]
+// Compiled in every build, so its tests also run with `ai` (the all-feature
+// mutation gate); only a build without `ai` mounts it.
 pub(crate) mod disabled;
 #[cfg(feature = "ai")]
 mod sanitize;
