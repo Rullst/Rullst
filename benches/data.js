@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793332726777,
+  "lastUpdate": 1793337970274,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -30217,6 +30217,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1335,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "361afddcf3fbba4c7400389da67699015e67b4c1",
+          "message": "Merge pull request #582 from Rullst/perf/v13-alpha4-sqlx-macros\n\nperf(orm): derive FromRow in Orm and build generated apps without SQLx macros or rullst-ai",
+          "timestamp": "2026-10-30T02:19:57-03:00",
+          "tree_id": "ffc8988f0c48b6c8efb35ed1419e859072366e08",
+          "url": "https://github.com/Rullst/Rullst/commit/361afddcf3fbba4c7400389da67699015e67b4c1"
+        },
+        "date": 1793337966760,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 681,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 892,
+            "range": "± 109",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 417,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1728,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
