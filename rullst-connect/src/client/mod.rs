@@ -17,5 +17,7 @@ pub use request_builder::{HttpClientExt, RequestBuilder, ResponseWrapper};
 pub use reqwest_client::ReqwestClient;
 pub use traits::{HttpClient, HttpRequest, HttpResponse};
 
+// The shared live client that provider configuration selects.
+#[doc(hidden)]
 pub static DEFAULT_HTTP_CLIENT: std::sync::LazyLock<std::sync::Arc<dyn HttpClient>> =
     std::sync::LazyLock::new(|| std::sync::Arc::new(ReqwestClient::new()));

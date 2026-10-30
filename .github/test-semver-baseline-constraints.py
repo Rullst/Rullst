@@ -118,6 +118,14 @@ class BaselineSelectionTests(unittest.TestCase):
         self.assertNotIn("select(.yanked == false)][0].num", SCRIPT)
 
 
+class ScopeTests(unittest.TestCase):
+    def test_the_cli_library_is_reported_as_excluded_before_any_comparison(self) -> None:
+        self.assertIn("not_public_api_packages=(cargo-rullst)", SCRIPT)
+        notice = SCRIPT.index("::notice title=SemVer scope::$package is excluded")
+        self.assertLess(notice, SCRIPT.index('"https://crates.io/api/v1/crates/$package"'))
+        self.assertLess(notice, SCRIPT.index("cargo semver-checks check-release"))
+
+
 class LockedBaselineTests(unittest.TestCase):
     def test_both_sides_are_documented_from_their_committed_lockfiles(self) -> None:
         self.assertIn('.cargo_vcs_info.json', SCRIPT)

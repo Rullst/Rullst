@@ -22,6 +22,7 @@ documents the end-of-life 12.x line.
 | **12.x** | :x: | End of life since 16 October 2026; 12.3.0 is the last release. crates.io yanked the `zip` releases its Studio needs, so new 12.x projects no longer resolve dependencies. Move to v13. |
 | **Latest 13.0.0 prerelease** | :white_check_mark: | Only the most recently published prerelease (for example 13.0.0-alpha.4 once it is published). Fixes ship in a new prerelease; see below. |
 | **Earlier 13.0.0 prereleases** | :x: | Not patched; upgrade to the latest prerelease. |
+| **13.x (from 13.0.0)** | planned | Patch releases of the newest 13.x minor carry bug and security fixes. 13.x stays the active line for at least 12 months after 13.0.0, and receives security fixes for 12 more months after 14.0.0. See the [support window](docs/src/compatibility-policy.md#supported-release-window). |
 | **12.0.0-rc.1** | :x: | Immutable evaluation prerelease of the end-of-life 12.x line; move to v13. |
 | **5.0.0** | :x: | Frozen legacy release; no routine maintenance. |
 | < 5.0.0 | :x: | End of life. |

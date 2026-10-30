@@ -241,7 +241,9 @@ mod server {
     }
 }
 
+// Called by the code that `#[server_function]` generates.
 #[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
 pub use server::{handle_request, route};
 
 #[cfg(all(test, not(target_arch = "wasm32")))]

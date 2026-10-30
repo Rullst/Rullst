@@ -96,7 +96,7 @@ what your application needs.
 | `rullst-nexus` | Extension | Admin CMS for registered models. |
 | `rullst-studio` | Extension | Local developer control room. |
 | `rullst-messaging` | Extension | Broker-neutral messaging, durable local state and the [Redis Streams profile](redis-messaging.md). |
-| `rullst-iot` | Experimental | Not validated on physical hardware and has no network transport. See the [module status](crates/iot.md#module-status). |
+| `rullst-iot` | Experimental | Not validated on physical hardware and has no network transport. See the [module status](crates/iot.md#module-status). `OtaManager`'s public fields become getters in a 13.x minor release. |
 | `rullst-privacy` | Experimental | First published in the 13.0.0-alpha.1 prerelease. No live age providers or verified guardianship; see the [privacy roadmap](privacy-age-assurance-roadmap.md). |
 | `rullst-supervision` | Experimental | The host owns capture, models and reviewer workflow. Read [Responsible use](supervision.md#responsible-use) first. |
 | `rullst-media` | Experimental | Interoperability with real Bunny Stream accounts, transcoding and CDN delivery is unvalidated; the opt-in `s3` adapter (S3, R2, MinIO) is validated against the offline mock only. See the [managed-video candidate](managed-video.md). |

@@ -3,12 +3,18 @@ name: SemVer Checks
 on:
   push:
     branches: [main, v12, v13]
-  # PRs to main skip this heavy check; it runs after each main push,
-  # on manual runs and on PRs to the maintained lines.
+  # PRs to main skip the heavy registry comparison; it runs after each main
+  # push, on manual runs and on PRs to the maintained lines. The public-API
+  # snapshot check also runs on ready PRs to main.
   pull_request:
-    branches: [v12, v13]
+    branches: [main, v12, v13]
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
+    inputs:
+      public_api_only:
+        description: Run only the public-API snapshot check
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -28,6 +34,9 @@ env:
 jobs:
   plan:
     name: Validate SemVer package inventory
+    if: >-
+      (github.event_name != 'pull_request' || github.base_ref != 'main') &&
+      !inputs.public_api_only
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -48,7 +57,10 @@ jobs:
 
   semver:
     name: SemVer (${{ matrix.package }})
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    if: >-
+      (github.event_name != 'pull_request' ||
+       (github.base_ref != 'main' && github.event.pull_request.draft == false)) &&
+      !inputs.public_api_only
     needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -80,3 +92,33 @@ jobs:
           tool: cargo-semver-checks
       - name: Check published Rust API for SemVer regressions
         run: .github/check-semver.sh "${{ matrix.package }}"
+
+  public-api:
+    name: Public API snapshot
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      # Pinned so that rustdoc's output, and with it every listing, changes
+      # only when the toolchain pin in .github/public-api.py changes.
+      - name: Install pinned Rust Nightly
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # nightly
+        with:
+          toolchain: nightly-2026-08-21
+
+      # Regenerates .github/public-api/<package>.txt from the rustdoc JSON of
+      # each library package (docs.rs features) and fails on any difference.
+      - name: Compare the public API with the committed listings
+        run: |
+          python3 .github/test-public-api.py
+          python3 .github/public-api.py --check
