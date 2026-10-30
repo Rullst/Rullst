@@ -64,7 +64,13 @@ feature names, CLI command and flag identifiers, supported configuration keys,
 serialized public data contracts, and generator output relied on by the
 packaged-distribution tests. Undocumented internals, exact dashboard HTML/CSS,
 test fixtures, deterministic mocks, and third-party provider behavior are not
-stable interfaces.
+stable interfaces. Items hidden from the API documentation with `#[doc(hidden)]`
+are internals too, even where Rust lets code name them (for example helpers
+that generated code calls).
+
+The public API of each library crate, as docs.rs documents it, is recorded in
+[`.github/public-api/`](../../.github/public-api/); a pull request that changes
+it updates that listing, so the change is visible in review.
 
 ### Maturity tiers (v13)
 

@@ -58,8 +58,9 @@ to the candidate's release line, including the source policy of reused runs.
 Format and Clippy continue to give feedback on draft pull requests. A ready pull
 request to `main` runs the fast Linux gate: the `workspace` and `cli-standard`
 shards, MSRV, strict database features, Redis/S3 contracts, generated access,
-facade composition and AI evals. Line coverage, SemVer and
-CodeQL skip pull requests to `main`. The resulting `main` push runs every Linux
+facade composition and AI evals. Line coverage, the SemVer registry comparison
+and CodeQL skip pull requests to `main`; the SemVer workflow's public-API
+snapshot job runs on ready pull requests to `main`. The resulting `main` push runs every Linux
 shard, public feature boundaries, the threat-model minimum, coverage, SemVer and
 CodeQL. A nightly scheduled run (05:30 UTC) executes the complete
 Linux/macOS/Windows matrix on the default branch. Ready pull requests to the
@@ -283,6 +284,21 @@ use `proptest!` still receive their configured 10,000-case runs. SemVer checks
 fan out from the machine-readable release order and validate one published API
 per job, so adding or removing a release package cannot silently drift from the
 matrix.
+
+The `Public API snapshot` job of `semver.yml` runs `.github/public-api.py
+--check` (after its unit tests, `.github/test-public-api.py`). It builds the
+rustdoc JSON of each library package in the release order, except the
+`cargo-rullst` CLI implementation, with the features and rustdoc arguments of
+its `[package.metadata.docs.rs]` table, on the pinned `nightly-2026-08-21`.
+It renders every documented item, signature, field, variant, implementation
+and auto trait into `.github/public-api/<package>.txt` and fails when the result
+differs from the committed file. Items hidden with `#[doc(hidden)]` and blanket
+implementations are not listed. A pull request that changes a public API
+commits the regenerated listing, so the change is reviewed as a diff. The job
+runs on ready pull requests to `main`, on pushes and on manual runs; a manual
+run with `public_api_only` skips the registry comparison. It is not a required
+status check, but a failure fails the `semver.yml` push run that release
+admission requires.
 
 The all-feature coverage pass uses pinned cargo-nextest to schedule the same
 discovered unit and integration tests concurrently. It performs no retry and a
@@ -1057,7 +1073,7 @@ dependency graph make static estimates unreliable.
 | [`sanitizers.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/sanitizers.yml) | daily, manual | Blocking run | TSan and ASan library matrices on pinned `nightly-2026-08-21`; this verifier toolchain does not change Rullst's stable compiler or MSRV. |
 | [`scorecards.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/scorecards.yml) | main push, weekly, manual | Automated evidence | OpenSSF Scorecard analysis and SARIF/artifact upload; not SLSA certification. |
 | [`security-audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/security-audit.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Cross-checks active advisory IDs and expiry metadata across the ledger, Cargo Deny, and scanner workflows, then independently reruns Cargo Audit. |
-| [`semver.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/semver.yml) | main/v12/v13 push, v12/v13 PR, manual | Blocking | Fans out one job per machine-readable release-order entry and compares each supported, already-published library API with its exact latest non-yanked crates.io baseline. Never-published packages and proc-macro/binary API surfaces unsupported by `cargo-semver-checks` are reported explicitly. |
+| [`semver.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/semver.yml) | main/v12/v13 push, PR, manual | Blocking | Fans out one job per machine-readable release-order entry and compares each supported, already-published library API with its exact latest non-yanked crates.io baseline (push, manual and v12/v13 PRs). Never-published packages and proc-macro/binary API surfaces unsupported by `cargo-semver-checks` are reported explicitly. The `Public API snapshot` job also runs on ready PRs to `main` and compares each library's documented API with `.github/public-api/`. |
 | [`spellcheck.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/spellcheck.yml) | main/v12/v13 push and PR, manual | Blocking | Repository typo scan. |
 | [`trufflehog.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/trufflehog.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Verified-secret scan over the configured Git history range. |
 | [`udeps.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/udeps.yml) | weekly, manual | Informational | `cargo-udeps` signal on pinned `nightly-2026-08-21`; command failures are tolerated. |

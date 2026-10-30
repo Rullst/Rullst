@@ -144,6 +144,19 @@ and fails on any surviving mutant.
   default-features rule) instead of loosening assertions.
 - **Site validation** (`.github/validate-site.py`): the README workflow counts
   must equal the files in `.github/workflows/`.
+- **Public API snapshot** (`semver.yml`, job `Public API snapshot`). A pull
+  request that changes the documented API of a library crate must commit the
+  regenerated listing: install the pinned nightly once
+  (`rustup toolchain install nightly-2026-08-21 --profile minimal`), then run
+  `python3 .github/public-api.py <package>…` on Linux x86_64, the docs.rs
+  target, and commit `.github/public-api/<package>.txt`. Without arguments it
+  rewrites every listing; `--check` is what CI runs, and `--no-build` reuses the
+  rustdoc JSON of the previous run. Hide helpers that only generated code calls
+  with `#[doc(hidden)]`; they are then not listed. To move the pin, change
+  `TOOLCHAIN` in `.github/public-api.py` and the job's toolchain together (and
+  `FORMAT_VERSION` when rustdoc's JSON format changed; the script refuses
+  another format), regenerate every listing and check that the diff only
+  changes how items are rendered.
 - **Feature matrix** (`.github/check-feature-matrix.py`) and feature
   boundaries (`.github/check-feature-boundaries.sh`) must list every facade
   feature.
