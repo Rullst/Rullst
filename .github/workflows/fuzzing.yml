@@ -69,7 +69,13 @@ jobs:
         run: |
           python3 .github/test-fuzz-reviewed-context.py
           python3 .github/test-fuzz-evidence-inputs.py
+          python3 .github/test-fuzz-build-graph.py
           python3 .github/test-fuzz-evidence.py
+
+      - name: Cross-check fuzz inputs with Cargo
+        env:
+          RUSTUP_TOOLCHAIN: stable
+        run: python3 .github/check-fuzz-build-graph.py
 
       - name: Validate and export matrix
         id: matrix

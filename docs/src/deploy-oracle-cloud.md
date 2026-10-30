@@ -48,7 +48,8 @@ VM. You must open both.
 
 **In the cloud network:** open the VCN's **Security Lists** (or the instance's
 Network Security Group) and add ingress rules (source `0.0.0.0/0`, TCP) for
-destination ports 22, 80 and 443.
+destination ports 22, 80 and 443 (and UDP 443 if you want HTTP/3; without it
+browsers use HTTPS over TCP).
 
 **On the VM:** Oracle's Ubuntu images ship with `iptables` rules that reject
 other ports. Allow 80 and 443 before the final reject rule and save them:

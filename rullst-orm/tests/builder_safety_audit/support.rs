@@ -1,14 +1,14 @@
 use rullst_orm::{Error, Orm};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "audit_records")]
 pub(super) struct AuditRecord {
     pub(super) id: i32,
     pub(super) name: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "audit_tenant_records", tenant_column = "tenant_id")]
 pub(super) struct AuditTenantRecord {
     pub(super) id: i32,
@@ -16,7 +16,7 @@ pub(super) struct AuditTenantRecord {
     pub(super) name: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "audit_soft_records", soft_delete)]
 pub(super) struct AuditSoftRecord {
     pub(super) id: i32,
@@ -24,7 +24,7 @@ pub(super) struct AuditSoftRecord {
     pub(super) deleted_at: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(
     table = "audit_tenant_records",
     tenant_column = "tenant_id",
@@ -42,7 +42,7 @@ impl AuditScopedRecordQueryBuilder {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "audit_records", policy = "DenyDeletion")]
 pub(super) struct AuditProtectedRecord {
     pub(super) id: i32,
@@ -51,7 +51,7 @@ pub(super) struct AuditProtectedRecord {
 
 struct DenyDeletion;
 
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "audit_records")]
 pub(super) struct AuditParent {
     pub(super) id: i32,
@@ -69,14 +69,14 @@ pub(super) struct AuditParent {
     pub(super) roles: Option<Vec<AuditRole>>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "audit_roles")]
 pub(super) struct AuditRole {
     pub(super) id: i32,
     pub(super) name: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "audit_children")]
 pub(super) struct AuditChild {
     pub(super) id: i32,
@@ -84,7 +84,7 @@ pub(super) struct AuditChild {
     pub(super) name: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
+#[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
 #[orm(table = "audit_records", after_fetch = "verify_exists")]
 pub(super) struct AuditHookRecord {
     pub(super) id: i32,

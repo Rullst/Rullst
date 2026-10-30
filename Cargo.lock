@@ -6442,6 +6442,7 @@ dependencies = [
  "roxmltree",
  "rullst-macros",
  "rullst-orm",
+ "rustls",
  "serde",
  "serde_json",
  "serde_urlencoded",
@@ -6479,7 +6480,6 @@ dependencies = [
  "serde",
  "sqlx",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -6519,7 +6519,6 @@ dependencies = [
  "serde",
  "sqlx",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -6660,6 +6659,7 @@ dependencies = [
  "redis",
  "reqwest",
  "rullst-orm-macros",
+ "rustls",
  "sea-orm",
  "serde",
  "serde_json",
@@ -6699,7 +6699,6 @@ dependencies = [
  "rullst-orm",
  "sqlx",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -6768,6 +6767,7 @@ dependencies = [
  "rullst-macros",
  "rullst-orm",
  "rullst-security",
+ "rustls",
  "serde",
  "serde_json",
  "sha2 0.11.1",
@@ -7632,7 +7632,6 @@ dependencies = [
  "sqlx-postgres",
  "sqlx-sqlite",
  "syn 2.0.119",
- "thiserror 2.0.21",
  "tokio",
  "url",
 ]

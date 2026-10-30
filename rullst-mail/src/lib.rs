@@ -24,6 +24,7 @@
 //!
 //! See the [book page](https://rullst.github.io/Rullst/book/crates/mail.html) and the
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-mail/README.md).
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod account;
 pub mod action;

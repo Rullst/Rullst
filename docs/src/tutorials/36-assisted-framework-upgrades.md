@@ -1,6 +1,6 @@
 # 36. Assisted framework upgrades
 
-Rullst v12 introduces a bounded upgrade transaction for existing applications.
+Rullst v12 introduced a bounded upgrade transaction for existing applications.
 The goal is to make the safe, repeatable part a single command while refusing
 to guess about application data or security policy.
 
@@ -86,12 +86,12 @@ ignore keys they do not know.
 Use an explicit target to make the selected published version visible:
 
 ```bash
-cargo rullst upgrade --to 12.1.0 --dry-run
+cargo rullst upgrade --to 13.0.0-alpha.4 --dry-run
 ```
 
 Other targets must exist in the registry and belong to the installed CLI's
-major train. This restriction prevents a v12 rules engine from pretending it
-understands an eventual v13 migration.
+major train, so a CLI never applies rules it does not carry: a v12 CLI cannot
+plan a v13 migration, and the v13 CLI cannot downgrade a project.
 
 ## 3. Apply the transaction
 
@@ -431,15 +431,15 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (11 rows);
+  application source (12 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (99 rows);
+  the affected API, feature or configuration, which the rules locate (100 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (98 rows).
+  of inputs that previously failed) (102 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 111 rules. A row can map to several rules and a rule to
+has 114 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -644,11 +644,17 @@ the rule together.
 | Account mail link lifetime | (c) none | — | Only reset lifetimes that previously failed change; the link wording is not located |
 | Generated reset link lifetime | (c) none | — | Generator output; existing projects keep their code |
 | CLI deploy targets removed | (b) review | `V13-DEPLOY-TARGETS-REMOVED` | `fly.toml`, `render.yaml`, `railway.json`, `railway.toml`, and `deploy --platform fly\|railway\|render` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
+| SQLite database in the deployed image | (c) none | — | Generator output for new Dockerfiles; an existing Dockerfile without `DATABASE_URL` is not located, and `cargo rullst deploy` warns when it keeps one; introduced in 13.0.0-alpha.4 |
 | CLI Foundry, Nix, Buildah and gRPC generators removed | (b) review | `V13-DEPLOY-GENERATORS-REMOVED` | `Foundry.toml`, a `nixify` `flake.nix`, `build_buildah.sh`, `src/grpc/mod.rs`, and the removed commands in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 | CLI self-update removed | (b) review | `V13-CLI-SELF-UPDATE-REMOVED` | `rullst update check\|verify\|stage\|install`, or `update guided` with `--scope`/`--root`, in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 | CLI `ai` removed, `footprint` renamed `green` | (b) review | `V13-CLI-AI-REMOVED` | `rullst ai` or `rullst footprint` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 | Core error console assistant panel | (c) none | — | Development-only page; `handle_autofix` response readers are not located; introduced in 13.0.0-alpha.4 |
 | CLI starters moved to the examples | (c) none | — | CLI behaviour; applications generated from the removed starters keep their code; introduced in 13.0.0-alpha.4 |
+| ORM derive dependencies | (c) none | — | Fix of code that previously failed to compile; a `tracing` or `tokio` dependency kept for the derive still works; introduced in 13.0.0-alpha.4 |
+| ORM `FromRow` and SQLx macros | (a) must-change | `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS` | Models deriving `FromRow` beside `Orm` (any path, separate derive attributes included) unless `#[orm(custom_from_row)]`; SQLx derives on other structs and enums and `sqlx::…::query!`-family macros when no manifest enables SQLx's `derive`/`macros` (or its default features); introduced in 13.0.0-alpha.4 |
+| Nexus AI assistant feature | (b) review | `V13-NEXUS-AI-FEATURE` | A `rullst` dependency with `nexus`/`nexus-tz` but not `nexus-ai`, or `rullst-nexus` without default features and without `ai`; introduced in 13.0.0-alpha.4 |
+| Generated starter dependencies | (c) none | — | Generator output for new projects; an unused `tracing-subscriber` in an existing project keeps working; introduced in 13.0.0-alpha.4 |
+| TLS crypto provider | (c) none | — | Dependency features and runtime provider defaults; the optional `sqlx` feature change is not located; introduced in 13.0.0-alpha.4 |
 | CLI `auth` on database starters | (c) none | — | CLI behaviour on new runs; earlier generated files are unchanged; introduced in 13.0.0-alpha.4 |
 | CLI `--no-database` files | (c) none | — | Generator output for new projects; an empty `rullst.db` is not located; introduced in 13.0.0-alpha.4 |
 | CLI `make:migration:auto` without a database to compare | (c) none | — | CLI exit status; scripts that run it are not located; introduced in 13.0.0-alpha.4 |

@@ -1,12 +1,12 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::task::JoinHandle;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "stress_users")]
 struct StressUser {
     pub id: i32,

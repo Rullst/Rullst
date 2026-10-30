@@ -2341,7 +2341,6 @@ dependencies = [
  "base64 0.23.1",
  "bytes",
  "futures-core",
- "futures-util",
  "http",
  "http-body",
  "http-body-util",
@@ -2361,14 +2360,12 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
- "tokio-util",
  "tower",
  "tower-http 0.6.11",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams",
  "web-sys",
 ]
 
@@ -2431,25 +2428,6 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
-]
-
-[[package]]
-name = "rullst-ai"
-version = "13.0.0-alpha.4"
-dependencies = [
- "async-trait",
- "base64 0.23.1",
- "futures-util",
- "hmac",
- "libc",
- "reqwest",
- "rullst-core",
- "serde",
- "serde_json",
- "sha2 0.11.1",
- "thiserror",
- "tokio",
- "zeroize",
 ]
 
 [[package]]
@@ -2517,6 +2495,7 @@ dependencies = [
  "ring",
  "rullst-macros",
  "rullst-orm",
+ "rustls",
  "serde",
  "serde_json",
  "serde_urlencoded",
@@ -2566,10 +2545,8 @@ dependencies = [
 name = "rullst-nexus"
 version = "13.0.0-alpha.4"
 dependencies = [
- "ammonia",
  "axum",
  "base64 0.23.1",
- "rullst-ai",
  "rullst-auth",
  "rullst-core",
  "rullst-orm",
@@ -2698,7 +2675,6 @@ checksum = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf"
 dependencies = [
  "aws-lc-rs",
  "once_cell",
- "ring",
  "rustls-pki-types",
  "rustls-webpki",
  "subtle",
@@ -3170,7 +3146,6 @@ dependencies = [
  "sqlx-postgres",
  "sqlx-sqlite",
  "syn 2.0.119",
- "thiserror",
  "tokio",
  "url",
 ]
@@ -3979,19 +3954,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ef64dbcc55df09c7e5a46182d181c2cfa3e925f3da937ea764728b4bbb9dcbf"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "wasm-streams"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d1ec4f6517c9e11ae630e200b2b65d193279042e28edd4a2cda233e46670bbb"
-dependencies = [
- "futures-util",
- "js-sys",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]

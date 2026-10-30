@@ -189,7 +189,7 @@ pub(super) fn execute_mutation() -> TokenStream {
     quote! {
         let timeout = rullst_orm::schema::get_query_timeout();
         let mutation_result = if let Some(t) = timeout {
-            tokio::time::timeout(t, exec.execute(&mut **tx))
+            rullst_orm::_tokio::time::timeout(t, exec.execute(&mut **tx))
                 .await
                 .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
         } else {

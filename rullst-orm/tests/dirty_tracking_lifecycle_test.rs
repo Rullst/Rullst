@@ -4,11 +4,11 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use rullst_orm::audit::{AuditContext, with_audit_context};
-use rullst_orm::{Error, FromRow, Orm, RowSnapshot, with_tenant};
+use rullst_orm::{Error, Orm, RowSnapshot, with_tenant};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "flaky_posts", after_save = "reject_boom")]
 struct FlakyPost {
     id: i32,
@@ -26,7 +26,7 @@ impl FlakyPost {
     }
 }
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "observed_posts")]
 struct ObservedPost {
     id: i32,
@@ -72,7 +72,7 @@ impl ObservedPostObserver for CountingObserver {
     }
 }
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "tenant_notes", tenant_column = "org")]
 struct TenantNote {
     id: i32,
@@ -83,7 +83,7 @@ struct TenantNote {
     snapshot: RowSnapshot,
 }
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "audited_posts", auditable)]
 struct AuditedPost {
     id: i32,

@@ -6,8 +6,9 @@
 > Every item below must be validated by qualified counsel in each jurisdiction
 > before it is described as satisfying a legal requirement.
 
-Status: **planned (recorded 2026-10-01)** for the v13 feature line. Nothing on
-this page is a shipped capability unless it links to existing documentation.
+Status: **planned (recorded 2026-10-01)**. Nothing on this page is a shipped
+capability unless it links to existing documentation. 13.0.0-alpha.4 is the 13.0
+feature freeze, so the planned work below comes after 13.0.
 
 ## Goal and honest boundary
 
@@ -33,12 +34,12 @@ Each row must later link to the official text and be reviewed by counsel.
 | Region | Main instruments | Areas where Rullst can help |
 | :--- | :--- | :--- |
 | European Union | GDPR; ePrivacy Directive (cookies); AI Act (transparency obligations); Cyber Resilience Act; European Accessibility Act; Digital Services Act (platforms); NIS2 | Lawful-basis and consent records, data-subject rights, records of processing, breach-response evidence, cookie defaults, AI content disclosure, SBOM and vulnerability handling, accessible starters |
-| United States | State privacy laws (e.g. CCPA/CPRA); COPPA; FERPA (education records); HIPAA and GLBA (sector-specific); ADA accessibility; CAN-SPAM; FTC Act; state breach-notification and biometric laws (e.g. Illinois BIPA) | Opt-out and deletion flows, children's data gates, education-record handling in the LMS starter, unsubscribe headers, accessibility, biometric-free supervision defaults |
-| Brazil | LGPD and ANPD regulations (incl. incident reporting); Marco Civil da Internet (application access-log retention); Código de Defesa do Consumidor and e-commerce rules; ECA Digital (children and adolescents online); Lei Brasileira de Inclusão (accessibility) | Consent and rights, incident timelines, configurable access-log retention, consumer information pages, age assurance and parental supervision, accessible starters, NFS-e fiscal preparation |
+| United States | State privacy laws (e.g. CCPA/CPRA); COPPA; FERPA (education records); HIPAA and GLBA (sector-specific); ADA accessibility; CAN-SPAM; FTC Act; state breach-notification and biometric laws (e.g. Illinois BIPA) | Opt-out and deletion flows, children's data gates, education-record handling in the LMS example, unsubscribe headers, accessibility, biometric-free supervision defaults |
+| Brazil | LGPD and ANPD regulations (incl. incident reporting); Marco Civil da Internet (application access-log retention); Código de Defesa do Consumidor and e-commerce rules; ECA Digital (children and adolescents online); Lei Brasileira de Inclusão (accessibility) | Consent and rights, incident timelines, configurable access-log retention, consumer information pages, age assurance and parental supervision, accessible starters |
 | Asia | China PIPL, Data Security Law and Cybersecurity Law (localization and cross-border transfer); Japan APPI; South Korea PIPA; India DPDP Act and Rules; Singapore PDPA; others (Indonesia, Vietnam, Thailand) | Data-residency configuration, cross-border transfer inventory, consent and rights flows, retention, breach-response evidence |
 | Global / industry | PCI DSS (payment cards); OWASP ASVS; open-source license obligations; export controls on cryptography | Hosted-checkout-only payment flows (no card data stored), security baseline mapping, SBOM and license audit |
 
-## What already exists (v13 working source)
+## What already exists (v13)
 
 These are building blocks, not compliance claims; see each page for limits:
 

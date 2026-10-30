@@ -1,8 +1,8 @@
 use rand::RngExt;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm, Seeder, async_trait};
+use rullst_orm::{Orm, Seeder, async_trait};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,

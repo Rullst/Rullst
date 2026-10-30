@@ -135,7 +135,7 @@ pub(crate) const FEATURES: [(Feature, &str, &str); 8] = [
     (
         Feature::Ai,
         "AI features",
-        "rullst-ai LLM client with offline mocks",
+        "LLM client, offline mocks, Nexus assistant",
     ),
     (
         Feature::Redis,

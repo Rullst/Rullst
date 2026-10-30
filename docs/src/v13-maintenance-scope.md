@@ -238,12 +238,12 @@ modules, features, packages or repositories provide a measurable benefit after
 checking dependencies, downstream consumers and release costs. Independent
 versioning is a future migration decision, not a property already implemented.
 
-The 12.x line keeps its published support obligations for the removed adapters.
-In v13 each removed name has a migration row and an assisted-upgrade finding,
+The removed adapters remain in the 12.x releases; that line reached end of life
+on 16 October 2026, with 12.3.0 as its last release. In v13 each removed name has a migration row and an assisted-upgrade finding,
 and the replacement is an application-owned adapter on the retained contracts.
 The [deprecation policy](compatibility-policy.md#deprecation-and-removal) also
 expects `#[deprecated]` markers in a released 12.x minor before a stable API is
-removed. By owner decision on 8 October 2026, the 12.3.0 minor release marks
+removed. By owner decision on 8 October 2026, the 12.3.0 minor release marked
 the Capital and Mail APIs removed here `#[deprecated]`, pointing to their
 migration rows, before 13.0.0 ships. The assisted-upgrade findings and the
 fail-closed configuration errors apply in addition. Tests with deterministic mocks establish local
@@ -374,9 +374,9 @@ deployed runner must implement, with a minimal non-executing example. The
 application operator now owns the runner's isolation, review, deployment and
 updates. Isolation evidence must match the deployed toolchain and image.
 
-`rullst-labs` still declares `13.0.0-alpha.1` with publication disabled and is
-not part of any published 12.x release. (Labs later joined the release inventory
-and was first published in 13.0.0-alpha.1 on 11 October 2026.) There is one wire protocol and no
+At this decision `rullst-labs` had publication disabled. It later joined the
+release inventory and was first published in 13.0.0-alpha.1 on 11 October 2026;
+it is not part of any 12.x release. There is one wire protocol and no
 adapter layer; interchangeable external executors are not implemented. The
 removed candidate's [first-profile record](labs-first-profile.md) remains a
 reference design, not a supported runner.
@@ -403,10 +403,9 @@ task fixtures and evaluation boundaries; this decision claims no model benchmark
 
 ## Transition sequence and acceptance
 
-1. **Preserve stable maintenance.** Keep the published v12.1.1 release immutable
-   and finish the active test-hardening follow-up without structural changes.
-   Keep `v12` for stable maintenance and
-   `main` for v13. Continue assessing applicable fixes in both directions.
+1. **Preserve published releases.** Keep published releases immutable. The
+   12.x line reached end of life on 16 October 2026 (12.3.0 is its last
+   release) and the `v12` branch is frozen; `main` develops v13.
 2. **Make support scope observable.** For each proposed expansion or extraction,
    record the product user, maintained operations/platforms, dependencies,
    evidence gaps, responsible reviewer and estimated recurring work. Start with
@@ -433,10 +432,10 @@ task fixtures and evaluation boundaries; this decision claims no model benchmark
    SST, manifests, release inventory, support documents and migration guide
    together when an actual boundary changes.
 
-The current synchronized release train remains authoritative. Labs is already
-excluded from normal publication and its runner candidate was removed; other
-crates in the
-inventory are not removed by calling them extensions. Their possible future
+The current synchronized release train remains authoritative. Labs is in the
+release inventory as a contracts-only Experimental package and its runner
+candidate was removed; other crates in the inventory are not removed by calling
+them extensions. Their possible future
 independent release lifecycles must be explicitly implemented and validated.
 Unfinished optional roadmap work need not block a bounded v13 release, but
 unresolved safety or admission requirements for what it ships still do.

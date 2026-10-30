@@ -2,12 +2,12 @@
 
 mod support;
 
-use rullst_orm::{FromRow, Orm, Vector};
+use rullst_orm::{Orm, Vector};
 use testcontainers::core::{IntoContainerPort, WaitFor};
 use testcontainers::runners::AsyncRunner;
 use testcontainers::{GenericImage, ImageExt};
 
-#[derive(Clone, Debug, FromRow, Orm)]
+#[derive(Clone, Debug, Orm)]
 #[orm(table = "vector_documents")]
 struct VectorDocument {
     id: i32,

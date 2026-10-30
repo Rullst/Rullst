@@ -23,9 +23,10 @@ impl Remote {
         {
             // Redis builds its TLS configuration from the process provider.
             // Feature unification can enable both ring and aws-lc-rs, making
-            // Rustls' implicit selection panic. Preserve an application choice;
-            // if another thread installs first, its provider remains in force.
-            let _ = rustls::crypto::ring::default_provider().install_default();
+            // Rustls' implicit selection panic. Install aws-lc-rs, the
+            // framework's provider, but preserve an application choice; if
+            // another thread installs first, its provider remains in force.
+            let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
         }
         let client = match &config.ca_certificate {
             Some(certificate) => Client::build_with_tls(

@@ -184,6 +184,22 @@ cargo add rullst-orm@=13.0.0-alpha.4 -F strict-sqlite
 cargo add tokio -F full
 ```
 
+The code that `#[derive(Orm)]` generates needs nothing else: since
+13.0.0-alpha.4 it reaches SQLx, `tracing` and `tokio` through `rullst_orm`,
+and it implements SQLx's `FromRow` for the model itself, so do not also
+derive `FromRow` (two implementations do not compile, E0119). The build
+therefore compiles no SQLx macro crate. `tokio` runs the example's
+`#[tokio::main]`.
+
+`rullst-orm` does not enable SQLx's `macros` or `derive` features. To use
+`sqlx::query!` or `#[derive(sqlx::FromRow)]` on your own structs, enable
+them in your manifest, for example
+`sqlx = { version = "0.9", default-features = false, features = ["derive"] }`
+(`macros` for `query!`). This builds `sqlx-macros` and, for the
+compile-time macros, a second copy of the SQLx driver for the build host. A
+model whose `FromRow` you write yourself, by hand or with that derive,
+declares `#[orm(custom_from_row)]` so `#[derive(Orm)]` does not generate one.
+
 Select the driver of your database: `strict-sqlite`, `strict-postgres` or
 `strict-mysql`, or `drivers-all` for all three on SQLx's dynamic `Any` pool.
 Since 13.0.0-alpha.3 the crate enables no driver by default; without one,
@@ -192,24 +208,34 @@ Since 13.0.0-alpha.3 the crate enables no driver by default; without one,
 ### Zero-to-Hero Example
 
 ```rust,no_run
-use rullst_orm::{Orm, FromRow};
+use rullst_orm::schema::Schema;
+use rullst_orm::Orm;
 
 // 1. Just add the Orm macro to your struct!
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 pub struct User {
     pub id: i32, // ID = 0 means it hasn't been saved yet
     pub name: String,
     pub email: String,
-    #[orm(hidden)] // Won't be exposed in JSON responses
+    #[orm(hidden)] // Excluded from generated to_json(), audit, event and search projections
     pub password: String,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), rullst_orm::Error> {
-    // 2. Initialize the connection pool (Supports SQLite, Postgres, MySQL)
+    // 2. Initialize the connection pool (SQLite, Postgres, MySQL/MariaDB)
     Orm::init("sqlite::memory:").await?;
 
-    // 3. Create a new user
+    // 3. Create the `users` table (a migration does this in an application)
+    Schema::create("users", |table| {
+        table.id();
+        table.string("name");
+        table.string("email");
+        table.string("password");
+    })
+    .await?;
+
+    // 4. Create a new user through the generated Active Record API
     let mut user = User {
         id: 0,
         name: "Alice".to_string(),
@@ -219,7 +245,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
     
     user.save().await?; // Runs INSERT and hydrates the generated ID.
 
-    // 4. Fluent Queries
+    // 5. Fluent Queries
     let active_users = User::query()
         .where_like("email", "%@example.com")
         .order_by_desc("id")
@@ -227,7 +253,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         .get()
         .await?;
 
-    println!("Found users: {:?}", active_users);
+    println!("Found {} user(s)", active_users.len());
 
     Ok(())
 }
@@ -246,9 +272,9 @@ fields marked `#[orm(db_default)]`.
 `RowSnapshot`, and `save()` writes only the columns that this handle changed:
 
 ```rust,no_run
-use rullst_orm::{FromRow, Orm, RowSnapshot};
+use rullst_orm::{Orm, RowSnapshot};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "profiles")]
 pub struct Profile {
     pub id: i32,
@@ -301,7 +327,7 @@ async fn rename(id: i32, name: String) -> Result<(), rullst_orm::Error> {
   looks at the columns only. Since 13.0.0-alpha.3 every SQLx model that the
   CLI writes declares the field: `make:model` (and `make:resource`),
   `generate:models` (with `#[serde(skip)]`; a table with its own `snapshot`
-  column keeps full-row saves), `make:auth`, `make:billing`,
+  column keeps full-row saves), `auth`, `make:billing`,
   `make:chat-session` and the models of every `cargo rullst new` starter
   (Blank, API and SaaS) and of the LMS, ERP and Portfolio examples. Their struct literals set
   `snapshot: RowSnapshot::default()`. Turso models have no dirty tracking.
@@ -325,9 +351,9 @@ column still race, and the last one wins:
   PostgreSQL and `?` on SQLite and MySQL/MariaDB.
 
 ```rust,no_run
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "students")]
 pub struct Student {
     pub id: i32,
@@ -367,9 +393,9 @@ names only the constraint, because the database's own text can quote the
 rejected value (MySQL reports `Duplicate entry 'alice@example.com'`).
 
 ```rust,no_run
-use rullst_orm::{Error, FromRow, Orm};
+use rullst_orm::{Error, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "members")]
 pub struct Member {
     pub id: i32,
@@ -399,16 +425,17 @@ Filters such as `where_eq` and `where_in`, `Orm::raw(..).bind(..)` and
 `with_tenant` take any value that converts into `RullstValue`: `String`/`&str`,
 `i32`, `i64`, `u32`, `f64`, `bool`, the `chrono` types `DateTime<Utc>`,
 `NaiveDateTime`, `NaiveDate` and `NaiveTime` (see
-[date and time columns](#date-and-time-columns)) and `Option` of those. `None` binds SQL
+[date and time columns](#date-and-time-columns)), a `#[derive(Enum)]` type
+(see [native database enums](#native-database-enums)) and `Option` of those. `None` binds SQL
 `NULL`, typed as text: on PostgreSQL write `CAST($1 AS BIGINT)` to store it in
 a column of another type. A comparison with `NULL` never matches, so filter
 missing values with `where_null`. `RullstValue` is `#[non_exhaustive]`; give a
 `match` on it a wildcard arm.
 
 ```rust,no_run
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "progress")]
 pub struct Progress {
     pub id: i32,
@@ -632,9 +659,9 @@ default:
 ```rust,ignore
 // Needs a strict driver feature (see below).
 use rullst_orm::chrono::{DateTime, NaiveDate, Utc};
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "events")]
 pub struct Event {
     pub id: i32,
@@ -663,7 +690,7 @@ ORM writes never touch it. `#[orm(skip)]` means something else: the field is
 not a database column for the ORM, so a filter, ordering, grouping or
 `select` on it fails with `Error::Validation`. A skipped field that the table
 does not have also needs `#[sqlx(skip)]` (or `#[sqlx(default)]`), because the
-application's SQLx `FromRow` still reads `#[orm(skip)]` fields.
+model's `FromRow` still reads `#[orm(skip)]` fields.
 
 | Option | The column | Filters, ordering, grouping, `select` | ORM writes |
 | --- | --- | --- | --- |

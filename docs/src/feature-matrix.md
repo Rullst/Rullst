@@ -111,7 +111,8 @@ the drivers.
 | `queue-sqlite` | no | Core's durable SQLite queue backend |
 | `storage-s3` | no | v13 candidate: Core's bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs; see [private object storage](private-object-storage.md) |
 | `storage-multipart` | no | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization; see [private multipart uploads](private-multipart-uploads.md) |
-| `nexus` | no | The generated Nexus administration interface |
+| `nexus` | no | The generated Nexus administration interface, without the AI assistant (since 13.0.0-alpha.4) |
+| `nexus-ai` | no | v13: `nexus` plus the AI assistant at `/nexus/chat` (`rullst-nexus/ai`), which adds `rullst-ai`; without it `/nexus/chat` answers 404 with a notice naming this feature |
 | `nexus-tz` | no | v13: `nexus` plus `NexusTimeZone::named`, so `DateTimeUtc` form values are shown and read in a named IANA time zone with its daylight-saving rules; adds `jiff` with the system zoneinfo database and a bundled fallback |
 | `studio` | no | Studio plus Core's Studio integration marker |
 | `auth` | no | Authentication, sessions, passkeys, and RBAC helpers from `rullst-auth` |
@@ -414,8 +415,9 @@ The umbrella crate exposes this as `ai-sql-memory`, which also enables `ai`.
 
 ## Dashboard crates
 
-`rullst-nexus` enables `drivers-all` by default, and `rullst-studio` enables
-`drivers-all` and `queue-sqlite`. Disable their defaults to select one backend:
+`rullst-nexus` enables `drivers-all` and `ai` by default, and `rullst-studio`
+enables `drivers-all` and `queue-sqlite`. Disable their defaults to select one
+backend (and, for Nexus, to leave out the AI assistant and `rullst-ai`):
 
 | Crate | Feature | Enables |
 | --- | --- | --- |
@@ -423,12 +425,14 @@ The umbrella crate exposes this as `ai-sql-memory`, which also enables `ai`.
 | `rullst-nexus` | `strict-postgres` | PostgreSQL selection in Core and ORM |
 | `rullst-nexus` | `strict-mysql` | MySQL selection in Core and ORM |
 | `rullst-nexus` | `strict-sqlite` | SQLite selection in Core and ORM |
+| `rullst-nexus` | `ai` | The AI assistant at `/nexus/chat` and `rullst-ai` (default); the `rullst` facade enables it only with `nexus-ai` |
 | `rullst-nexus` | `tz` | v13: `NexusTimeZone::named` for `DateTimeUtc` form values in a named IANA time zone (system zoneinfo, bundled `jiff` database as fallback) |
 | `rullst-studio` | `drivers-all` | All three SQLx drivers in Core and ORM (default) |
 | `rullst-studio` | `queue-sqlite` | Core's durable SQLite queue backend (default) |
 | `rullst-studio` | `strict-postgres` | PostgreSQL selection in Core and ORM |
 | `rullst-studio` | `strict-mysql` | MySQL selection in Core and ORM |
 | `rullst-studio` | `strict-sqlite` | SQLite selection in Core and ORM |
+| `rullst-studio` | `remote` | The standalone `rullst-studio` binary's remote-projects mode (see [production monitoring](production-monitoring.md#watch-your-projects-from-studio)); the binary requires it |
 
 Use the same single-selection rule described for `rullst-orm`.
 

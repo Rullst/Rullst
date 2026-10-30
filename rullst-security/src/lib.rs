@@ -31,6 +31,7 @@
 //! **Maturity: Core**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). Crate guide:
 //! <https://rullst.github.io/Rullst/book/crates/security.html>.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod error;
 pub use error::*;

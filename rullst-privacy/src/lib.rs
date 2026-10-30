@@ -13,6 +13,7 @@
 //! application authentication and authorization. The
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-privacy/README.md)
 //! describes both features.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 #![cfg_attr(feature = "age-assurance", doc = include_str!("../README.md"))]
 

@@ -3,7 +3,7 @@
 use rullst_orm::Orm;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Orm, sqlx::FromRow, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Orm, Serialize, Deserialize, PartialEq)]
 #[orm(table = "cte_categories")]
 pub struct Category {
     pub id: i32,

@@ -80,7 +80,11 @@ fn saved_effects_publish_the_operation_and_saved_topics() {
 #[test]
 fn mutations_execute_on_the_savepoint_under_the_query_timeout() {
     let execute = execute_mutation().to_string();
-    assert!(execute.contains("tokio :: time :: timeout (t , exec . execute (& mut * * tx))"));
+    assert!(
+        execute.contains(
+            "rullst_orm :: _tokio :: time :: timeout (t , exec . execute (& mut * * tx))"
+        )
+    );
     assert!(execute.contains("\"Query execution timed out\""));
     assert!(execute.contains("exec . execute (& mut * * tx) . await ?"));
     let invalidation = tenant_scoped_invalidation().to_string();

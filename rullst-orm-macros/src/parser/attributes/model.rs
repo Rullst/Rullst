@@ -18,6 +18,12 @@ pub(in crate::parser) struct ModelAttributes {
     pub after_delete: String,
     pub after_fetch: String,
     pub soft_delete: Option<SoftDeleteConfig>,
+    /// Struct-level `#[sqlx(default)]`: a column missing from the row takes
+    /// the field's value in `Self::default()`.
+    pub sqlx_default: bool,
+    /// `#[orm(custom_from_row)]`: the model implements `FromRow` itself
+    /// (by hand, or with SQLx's own derive), so the derive does not.
+    pub custom_from_row: bool,
 }
 
 impl ModelAttributes {
@@ -28,7 +34,11 @@ impl ModelAttributes {
             if attribute.path().is_ident("orm") {
                 attribute.parse_nested_meta(|meta| parsed.apply(meta, &mut seen))?;
             } else if attribute.path().is_ident("sqlx") {
-                attribute.parse_nested_meta(|meta| apply_sqlx(&meta, &mut seen))?;
+                attribute.parse_nested_meta(|meta| {
+                    apply_sqlx(&meta, &mut seen)?;
+                    parsed.sqlx_default = true;
+                    Ok(())
+                })?;
             }
         }
         // The derived `<struct>s` name must be portable only when no explicit
@@ -57,6 +67,8 @@ impl ModelAttributes {
             after_delete: String::new(),
             after_fetch: String::new(),
             soft_delete: None,
+            sqlx_default: false,
+            custom_from_row: false,
         }
     }
 
@@ -73,6 +85,11 @@ impl ModelAttributes {
         if meta.path.is_ident("searchable") {
             mark_once(seen, "searchable", &meta)?;
             self.searchable = true;
+            return Ok(());
+        }
+        if meta.path.is_ident("custom_from_row") {
+            mark_once(seen, "custom_from_row", &meta)?;
+            self.custom_from_row = true;
             return Ok(());
         }
         if meta.path.is_ident("soft_delete") {
@@ -133,9 +150,10 @@ impl ModelAttributes {
     }
 }
 
-/// The application's SQLx `FromRow` also reads struct-level `#[sqlx(...)]`
-/// options. Only `default`, which fills missing columns without renaming any,
-/// keeps the decoded shape aligned with the generated SQL.
+/// Struct-level `#[sqlx(...)]` options shape how the model's `FromRow` reads a
+/// row. Only `default`, which fills missing columns without renaming any,
+/// keeps the decoded shape aligned with the generated SQL; it is the only
+/// option, so a successful call means `default` was given.
 fn apply_sqlx(
     meta: &ParseNestedMeta<'_>,
     seen: &mut HashSet<&'static str>,

@@ -7,9 +7,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{Error, FromRow, Orm, after_commit};
+use rullst_orm::{Error, Orm, after_commit};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "contract_nested_rows")]
 struct ContractNestedRow {
     id: i32,

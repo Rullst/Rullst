@@ -63,7 +63,9 @@ fn test_render_sidebar_no_active() {
     };
     let sidebar = render_sidebar(&state, None);
     assert!(sidebar.contains("/nexus/table/users"));
-    assert!(sidebar.contains("AI Assistant"));
+    // The assistant link follows the `ai` feature.
+    assert_eq!(sidebar.contains("AI Assistant"), cfg!(feature = "ai"));
+    assert!(sidebar.contains("Threat Radar (SOC)"));
     assert!(!sidebar.contains("nexus-nav-active"));
 }
 

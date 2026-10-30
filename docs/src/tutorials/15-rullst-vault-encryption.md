@@ -33,9 +33,8 @@ environment in production.
 ## 2. Mark model fields
 
 ```rust
-use rullst_orm::FromRow;
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,

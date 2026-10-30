@@ -5,9 +5,9 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use rullst_orm::audit::{AuditContext, with_audit_context};
-use rullst_orm::{Error, FromRow, Orm};
+use rullst_orm::{Error, Orm};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(
     table = "hooked_lessons",
     auditable,

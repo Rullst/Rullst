@@ -157,10 +157,12 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             // The binary and image are named after `[package].name`, as in `deploy`.
             let proj_name = crate::generators::platform_name::package_name(Path::new("Cargo.toml"))
                 .unwrap_or_else(|| "app".to_string());
+            // A SQLite project keeps its database in the `/app/data` volume.
+            let root = std::path::Path::new(".");
             crate::generators::project::generate_docker_files(
-                std::path::Path::new("."),
+                root,
                 &proj_name,
-                None,
+                crate::generators::project::project_database_provider(root),
                 None,
             )?;
         }

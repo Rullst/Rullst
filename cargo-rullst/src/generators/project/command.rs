@@ -28,7 +28,7 @@ pub(crate) fn new_command(command: Command) -> Command {
         })
         .mut_arg("ai", |arg| {
             arg.requires(Resettable::Reset)
-                .help("Enables the Rullst AI facade; the wizard skips that question")
+                .help("Enables the Rullst AI facade and, in the SaaS starter, the Nexus AI assistant; the wizard skips that question")
         })
         .mut_arg("redis", |arg| {
             arg.requires(Resettable::Reset).help(

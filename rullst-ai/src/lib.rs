@@ -21,6 +21,7 @@
 //!
 //! See the [book page](https://rullst.github.io/Rullst/book/crates/ai.html) and the
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-ai/README.md).
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod ai;
 pub use ai::*;

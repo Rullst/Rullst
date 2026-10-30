@@ -1,6 +1,6 @@
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 pub struct User {
     pub id: i32,
     pub name: String,

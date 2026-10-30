@@ -10,6 +10,9 @@ use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{Attribute, Expr, Fields, Lit, Pat, Token};
 
+#[path = "rust/sqlx_macros.rs"]
+mod sqlx_macros;
+
 /// The file being scanned and the workspace facts some rules need.
 pub(super) struct FileContext<'a> {
     pub text: &'a str,
@@ -239,6 +242,13 @@ impl Visitor<'_, '_> {
         }
     }
 
+    fn sqlx_derives(&mut self, attributes: &[Attribute]) {
+        let sqlx_macros = self.context.facts.sqlx_macros;
+        for (rule, at) in sqlx_macros::derive_findings(attributes, sqlx_macros) {
+            self.hit(rule, at);
+        }
+    }
+
     fn nexus_model(&mut self, item: &syn::ItemStruct) {
         let declared = entries(&item.attrs, "nexus")
             .into_iter()
@@ -388,7 +398,20 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
                 self.serialized_secrets(item);
             }
         }
+        self.sqlx_derives(&item.attrs);
         visit::visit_item_struct(self, item);
+    }
+
+    fn visit_item_enum(&mut self, item: &'ast syn::ItemEnum) {
+        self.sqlx_derives(&item.attrs);
+        visit::visit_item_enum(self, item);
+    }
+
+    fn visit_macro(&mut self, mac: &'ast syn::Macro) {
+        if !self.context.facts.sqlx_macros && sqlx_macros::is_query_macro(&mac.path) {
+            self.hit(&SQLX_MACROS, line(mac.path.span()));
+        }
+        visit::visit_macro(self, mac);
     }
 
     fn visit_item_impl(&mut self, item: &'ast syn::ItemImpl) {

@@ -5,16 +5,16 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::{FromRow, Orm, with_tenant};
+use rullst_orm::{Orm, with_tenant};
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "bulk_items")]
 struct BulkItem {
     id: i32,
     score: i32,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "tenant_bulk_items", tenant_column = "tenant_id")]
 struct TenantBulkItem {
     id: i32,
@@ -22,7 +22,7 @@ struct TenantBulkItem {
     score: i32,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "bulk_posts")]
 struct BulkPost {
     id: i32,
@@ -43,7 +43,7 @@ struct BulkPost {
     deleted_at: Option<String>,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "bulk_comments")]
 struct BulkComment {
     id: i32,
@@ -52,7 +52,7 @@ struct BulkComment {
 }
 
 /// A child whose model-wide scope hides unapproved rows from `query()`.
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "bulk_notes", global_scope = "approved")]
 struct BulkNote {
     id: i32,

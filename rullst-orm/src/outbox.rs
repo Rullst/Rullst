@@ -3,8 +3,9 @@
 use serde_json::Value;
 use std::fmt;
 
-use crate::{Error, FromRow, Orm};
+use crate::{Error, Orm};
 
+mod row;
 mod sql;
 mod transition;
 use sql::*;
@@ -24,7 +25,7 @@ pub struct EnqueuedOutboxEvent {
 }
 
 /// Event exclusively claimed by one worker until its lease expires.
-#[derive(Clone, FromRow)]
+#[derive(Clone)]
 pub struct ClaimedOutboxEvent {
     /// Stable database identifier.
     pub id: i64,

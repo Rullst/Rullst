@@ -9,6 +9,7 @@ use super::mutation_parts::{
     tenant_scoped_invalidation,
 };
 use crate::parser::ParsedModel;
+use crate::query_span::instrument_query;
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -171,6 +172,19 @@ fn generate_force_delete(parsed: &ParsedModel) -> TokenStream {
         "force delete",
     );
 
+    let force_delete_traced = instrument_query(
+        name,
+        table_name,
+        "force_delete",
+        &[],
+        quote! {
+            rullst_orm::__transaction_access::ensure_allowed()?;
+            #tenant_guard
+            #policy
+            #entrypoint
+        },
+    );
+
     quote! {
         /// Permanently deletes this row, also for soft-delete models.
         ///
@@ -179,17 +193,8 @@ fn generate_force_delete(parsed: &ParsedModel) -> TokenStream {
         /// observers, an auditable `force_deleted` entry and the post-commit
         /// cache, Redis event, `committed` and Scout removal effects inside a
         /// savepoint. `cascade_soft_delete` relations are not touched.
-        #[rullst_orm::_tracing::instrument(
-            name = "rullst.orm.query",
-            target = "rullst_orm",
-            skip(self),
-            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "force_delete")
-        )]
         pub async fn force_delete(&self) -> Result<(), rullst_orm::Error> {
-            rullst_orm::__transaction_access::ensure_allowed()?;
-            #tenant_guard
-            #policy
-            #entrypoint
+            #force_delete_traced
         }
 
         async fn __rullst_force_delete_with_tx(
@@ -219,27 +224,27 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
         "can_restore",
         "Policy prevents restoring this record",
     );
-    let instrument = quote! {
-        #[rullst_orm::_tracing::instrument(
-            name = "rullst.orm.query",
-            target = "rullst_orm",
-            skip(self),
-            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "restore")
-        )]
-    };
     let Some(cfg) = parsed
         .soft_delete
         .as_ref()
         .filter(|_| parsed.has_soft_deletes)
     else {
         // Without soft deletes there is no trashed state to restore.
-        return quote! {
-            #instrument
-            pub async fn restore(&self) -> Result<(), rullst_orm::Error> {
+        let restore_traced = instrument_query(
+            name,
+            table_name,
+            "restore",
+            &[],
+            quote! {
                 rullst_orm::__transaction_access::ensure_allowed()?;
                 #tenant_guard
                 #policy
                 Ok(())
+            },
+        );
+        return quote! {
+            pub async fn restore(&self) -> Result<(), rullst_orm::Error> {
+                #restore_traced
             }
         };
     };
@@ -321,6 +326,19 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
         "restore",
     );
 
+    let restore_traced = instrument_query(
+        name,
+        table_name,
+        "restore",
+        &[],
+        quote! {
+            rullst_orm::__transaction_access::ensure_allowed()?;
+            #tenant_guard
+            #policy
+            #entrypoint
+        },
+    );
+
     quote! {
         /// Clears the soft-delete marker of this row.
         ///
@@ -331,12 +349,8 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
         /// Scout re-index effects. Save hooks and the `saving`/`updating`
         /// observers are not run: they receive a mutable model whose changes
         /// restore() would not persist. A missing or live row is a no-op.
-        #instrument
         pub async fn restore(&self) -> Result<(), rullst_orm::Error> {
-            rullst_orm::__transaction_access::ensure_allowed()?;
-            #tenant_guard
-            #policy
-            #entrypoint
+            #restore_traced
         }
 
         async fn __rullst_restore_with_tx(

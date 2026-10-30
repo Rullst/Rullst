@@ -172,7 +172,7 @@ try {
       "https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/",
     ], "Demo buttons must retain the independently hosted application URLs");
     assert(await evaluate("[...document.images].filter(i => i.loading !== 'lazy').every(i => i.complete && i.naturalWidth > 0)"), "Hero image failed");
-    assert(await evaluate("document.body.innerText.includes('Rullst v12 stable')"));
+    assert(await evaluate("document.body.innerText.includes('Rullst v13 prerelease')"));
     assert.equal(await evaluate("window.__oldSiteScript === true"), false, "A cached old script must not run with new HTML");
     assert.deepEqual(await evaluate(`Array.from(document.querySelectorAll('.engine-module'), element => {
       const style = getComputedStyle(element);
@@ -217,7 +217,9 @@ try {
   await evaluate("new Promise(resolve => { document.querySelector('#ecosystem').scrollIntoView({ behavior: 'instant', block: 'center' }); setTimeout(resolve, 120); })");
   assert(await evaluate("document.querySelector('#ecosystem').classList.contains('is-visible')"), "Scroll reveal must initialize");
   await send("Browser.grantPermissions", { origin, permissions: ["clipboardReadWrite", "clipboardSanitizedWrite"] });
-  await evaluate("document.querySelector('[data-copy-command]').click()");
+  await evaluate("document.querySelector('[data-copy-command=install-command]').click()");
+  assert.match(await evaluate("navigator.clipboard.readText()"), /^cargo install cargo-rullst --version =\S+ --locked$/);
+  await evaluate("document.querySelector('[data-copy-command=new-command]').click()");
   assert.equal(await evaluate("navigator.clipboard.readText()"), "cargo rullst new my_app");
   await evaluate("Object.defineProperty(navigator, 'clipboard', {configurable:true,value:{writeText:()=>Promise.reject(new Error('denied'))}}); document.querySelector('[data-copy-command]').click()");
   assert(await evaluate("document.querySelector('[data-copy-status]').textContent.includes('Clipboard unavailable')"), "Denied clipboard must have accessible fallback");

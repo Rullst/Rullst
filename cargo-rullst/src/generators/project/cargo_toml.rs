@@ -123,6 +123,11 @@ pub fn build_cargo_toml(
     rullst_features.push("studio");
     if blueprint_selection != BLANK_BLUEPRINT_ID {
         rullst_features.push("nexus");
+        // Since 13.0.0-alpha.4 `nexus` leaves out the AI assistant and its
+        // `rullst-ai` dependency; choosing AI in the wizard turns it on.
+        if wants_ai {
+            rullst_features.push("nexus-ai");
+        }
     }
     if blueprint_selection == SAAS_BLUEPRINT_ID {
         // `mail` sends the password reset links and password-changed notices.
@@ -174,7 +179,6 @@ rust-version = "1.96.0"
     cargo_toml.push_str("serde_json = \"1.0\"\n");
     cargo_toml.push_str("tokio = { version = \"1.0\", features = [\"full\"] }\n");
     cargo_toml.push_str("tracing = \"0.1\"\n");
-    cargo_toml.push_str("tracing-subscriber = \"0.3\"\n");
     cargo_toml.push_str(VALIDATOR_DEPENDENCY);
 
     if db_needed || wants_redis || !polyglot_integrations.is_empty() {
@@ -212,8 +216,10 @@ rust-version = "1.96.0"
             "MySQL" | "MariaDB" => "mysql",
             _ => "sqlite",
         };
+        // aws-lc-rs, like the framework's own SQLx dependencies: SQLx uses
+        // ring as soon as any crate enables one of its ring TLS features.
         let sqlx_features = format!(
-            "\"runtime-tokio\", \"tls-rustls\", \"{}\"",
+            "\"runtime-tokio\", \"tls-rustls-aws-lc-rs\", \"{}\"",
             sqlx_driver_feature
         );
 
@@ -297,3 +303,7 @@ fn relational_profile(db_provider: &str) -> Option<&'static str> {
 #[cfg(test)]
 #[path = "cargo_toml_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "cargo_toml_feature_tests.rs"]
+mod feature_tests;

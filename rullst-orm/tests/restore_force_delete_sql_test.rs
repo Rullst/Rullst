@@ -4,9 +4,7 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::FromRow;
-
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "archived_notes", tenant_column = "tenant_id")]
 struct ArchivedNote {
     id: i32,
@@ -14,7 +12,7 @@ struct ArchivedNote {
     deleted_at: Option<String>,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(
     table = "flagged_notes",
     soft_delete(column = "archived", value = "0", delval = "1")
@@ -24,7 +22,7 @@ struct FlaggedNote {
     archived: i32,
 }
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "plain_notes")]
 struct PlainNote {
     id: i32,

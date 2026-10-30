@@ -145,7 +145,7 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
                         rullst_orm::_sqlx::AssertSqlSafe(sql.as_str())
                     ).bind(self.__rullst_model.id) #tenant_bind;
                     let row = if let Some(timeout) = rullst_orm::schema::get_query_timeout() {
-                        tokio::time::timeout(timeout, query.fetch_optional(&mut *savepoint))
+                        rullst_orm::_tokio::time::timeout(timeout, query.fetch_optional(&mut *savepoint))
                             .await.map_err(|_| rullst_orm::Error::DatabaseError(
                                 "Partial update lookup timed out".to_string()
                             ))??

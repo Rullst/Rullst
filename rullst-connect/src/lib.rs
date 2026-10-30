@@ -26,6 +26,7 @@
 //! enable the `oauth` feature of `rullst`.
 //!
 //! Guide: <https://rullst.github.io/Rullst/book/crates/connect.html>.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod challenge;
 pub mod client;

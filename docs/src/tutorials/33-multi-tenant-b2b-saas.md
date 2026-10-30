@@ -52,7 +52,9 @@ work.
 ## 2. Bind every database query
 
 Tenant selection does not rewrite arbitrary SQL or automatically add a tenant
-predicate to every ORM query. Bind the authenticated tenant explicitly:
+predicate to every ORM query. Bind the authenticated tenant explicitly. This
+example uses SQLx directly; its `#[derive(FromRow)]` needs SQLx's `derive`
+feature in your manifest, which Rullst does not enable:
 
 ```rust,no_run
 use rullst_core::security::TenantContext;

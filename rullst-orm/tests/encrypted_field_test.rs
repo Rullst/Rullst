@@ -1,12 +1,12 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
 const PRIMARY_KEY: &str = "0123456789abcdef0123456789abcdef";
 const ROTATED_KEY: &str = "abcdef0123456789abcdef0123456789";
 
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "encrypted_records")]
 struct EncryptedRecord {
     id: i32,

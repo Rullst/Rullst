@@ -7,10 +7,13 @@ framework.
 
 Current sources:
 
-- [v12 stable release record](docs/src/v12.md);
-- [release audit and residual limitations](docs/src/v12-release-audit.md);
 - [capability ledger](docs/src/capability-ledger.md);
-- [quality scorecard and evidence policy](docs/src/quality-scorecard.md).
+- [quality scorecard and evidence policy](docs/src/quality-scorecard.md);
+- [v13 delivery plan and evidence](docs/src/v13-delivery-plan.md).
+
+Historical v12 records (the 12.x line reached end of life on 16 October 2026):
+the [v12 stable release record](docs/src/v12.md) and the
+[v12.0.0 release audit](docs/src/v12-release-audit.md).
 
 This pointer preserves the audit's original location while retiring its
 duplicated development checklist.

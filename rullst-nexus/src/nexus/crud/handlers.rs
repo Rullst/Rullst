@@ -82,7 +82,9 @@ pub async fn nexus_dashboard(
     content.push_str("<div class=\"nexus-welcome-icon\">&#9889;</div>");
     content.push_str("<h2>Registered-Model Admin</h2>");
     content.push_str("<p>Models explicitly registered by the application appear here with the CRUD, search, and pagination capabilities allowed by their metadata and panel policy.</p>");
-    content.push_str("<a href=\"/nexus/chat\" class=\"nexus-btn nexus-btn-ai\" hx-get=\"/nexus/chat\" hx-target=\"#nexus-content\" hx-push-url=\"true\">&#129302; Open AI Query Assistant</a>");
+    if crate::nexus::ai_chat::AI_ASSISTANT {
+        content.push_str("<a href=\"/nexus/chat\" class=\"nexus-btn nexus-btn-ai\" hx-get=\"/nexus/chat\" hx-target=\"#nexus-content\" hx-push-url=\"true\">&#129302; Open AI Query Assistant</a>");
+    }
     content.push_str("</div>");
 
     if wants_fragment(&headers) {

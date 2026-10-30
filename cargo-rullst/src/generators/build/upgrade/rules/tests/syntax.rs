@@ -29,7 +29,7 @@ fn tuple_and_or_catch_all_arms_cover_new_field_kinds() {
 fn optional_text_timestamps_count_and_other_containers_do_not() {
     let model = |field: &str| {
         format!(
-            "#[derive(Debug, FromRow, Orm)]\npub struct Post {{\n    pub id: i32,\n    pub {field},\n}}\n"
+            "#[derive(Debug, Orm)]\npub struct Post {{\n    pub id: i32,\n    pub {field},\n}}\n"
         )
     };
     assert_eq!(

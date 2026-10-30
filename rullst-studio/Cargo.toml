@@ -13,6 +13,13 @@ documentation = "https://docs.rs/rullst-studio"
 keywords = ["studio", "dashboard", "telemetry", "debugger", "devtools"]
 categories = ["development-tools", "web-programming"]
 
+# docs.rs documents the default features (`drivers-all`, `queue-sqlite`) plus
+# `remote`; the `strict-*` profiles select one ORM backend instead.
+[package.metadata.docs.rs]
+features = ["remote"]
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
@@ -26,7 +33,7 @@ strict-mysql = ["rullst-core/strict-mysql", "rullst-orm/strict-mysql"]
 # The standalone remote-projects Studio (`rullst-studio` binary): an HTTP
 # client, token encryption and the SQLite history. Off by default, so
 # applications that mount Studio in development do not build them.
-remote = ["sqlx/sqlite", "dep:reqwest", "dep:ring"]
+remote = ["sqlx/sqlite", "dep:reqwest", "dep:ring", "dep:rustls"]
 
 [dependencies]
 rullst-core = { workspace = true, features = ["orm"] }
@@ -41,7 +48,7 @@ tower = { workspace = true, features = ["util"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 utoipa = "6"
-sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls-aws-lc-rs"] }
 urlencoding = { workspace = true }
 chrono = { workspace = true }
 tokio-stream = { version = "0.1.19", features = ["sync"] }
@@ -52,6 +59,8 @@ rand = { workspace = true }
 sha2 = { workspace = true }
 reqwest = { workspace = true, features = ["rustls"], optional = true }
 ring = { workspace = true, features = ["std"], optional = true }
+# The binary installs aws-lc-rs as the rustls process default.
+rustls = { workspace = true, features = ["aws-lc-rs", "std"], optional = true }
 
 [[bin]]
 name = "rullst-studio"
@@ -63,8 +72,8 @@ rullst-orm = { workspace = true, features = ["drivers-all"] }
 # The paused clock (`test-util`) drives the remote poller's loop in tests.
 tokio = { workspace = true, features = ["full", "test-util"] }
 rullst-core = { workspace = true, features = ["queue-sqlite"] }
-testcontainers = "0.27.3"
-testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql", "mariadb"] }
+testcontainers = { version = "0.27.3", default-features = false, features = ["aws-lc-rs"] }
+testcontainers-modules = { version = "0.15.0", default-features = false, features = ["aws-lc-rs", "postgres", "mysql", "mariadb"] }
 
 [package.metadata.cargo-machete]
 ignored = []

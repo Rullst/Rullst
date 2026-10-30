@@ -6,13 +6,13 @@ mod support;
 // Driver-neutral contracts, also run on SQLite by `driver_contract_sqlite`.
 mod driver_contract;
 
+use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{FromRow, Orm};
 use testcontainers::ImageExt;
 use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::mysql::Mysql;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Orm)]
 #[orm(table = "mysql_users", auditable)]
 struct User {
     pub id: i32,

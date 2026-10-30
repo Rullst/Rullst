@@ -11,7 +11,9 @@ Experimental and state what each tier promises within 13.x.
 ## v12 stable snapshot — 15 September 2026
 
 Stable `12.0.0` was published from commit `eb11f892`. See the
-[release record](v12.md) for the immutable tag and publication receipt.
+[release record](v12.md) for the immutable tag and publication receipt. The
+v12 line reached end of life on 16 October 2026 (12.3.0 was its last release);
+this section keeps the record of its stable release.
 
 The [Rust CI scorecard](https://github.com/Rullst/Rullst/actions/runs/34895536764)
 for that commit awarded **94/100 (A)** to the repository, with all fifteen
@@ -49,8 +51,10 @@ future source changes.
 Stable v12 completed the documentation release gate: the mdBook and Rust
 snippets sourced from public tutorials built, local links and anchors were
 validated, commands/features/version examples were reconciled with the frozen
-manifests, and upgrade/provider boundaries were reviewed. Compatible v12
-maintenance must keep those checks green. A green documentation build proves
+manifests, and upgrade/provider boundaries were reviewed. v13 changes must
+keep those checks green: the Documentation workflow builds the book, checks
+`llms.txt` and validates local links and anchors, and the guides listed in
+`rullst/src/book_doctests.rs` compile as doctests. A green documentation build proves
 structural consistency, not that every external service or store workflow was
 homologated.
 
@@ -68,7 +72,7 @@ homologated.
 | M8 | Explain-and-approve index recommendations | ⏳ Still to implement — not started |
 | M9 | Local auth, OAuth/OIDC, TOTP, passkeys, and WebAuthn | 🟡 Still to implement — partial |
 | M10 | Mail, DTO validation, distributed rate limits, and Shield | 🟡 Still to implement — partial |
-| M11 | Nexus, Omni, billing, and entitlements | 🟡 Still to implement — partial |
+| M11 | Nexus, billing, and entitlements (Omni was retired in 13.0.0-alpha.3) | 🟡 Still to implement — partial |
 | M12 | Defence-in-depth security programme | 🟡 Still to implement — continuous/partial |
 | M13 | Audited PQC protocols and sandboxed Wasm extensions | ⏳ Still to implement — not started |
 | M14 | HTMX-first SSR and real Leptos/Dioxus interoperability | 🟡 Still to implement — partial |
@@ -78,12 +82,12 @@ homologated.
 | M18 | LiveView-style server-driven UI | 🟡 Still to implement — partial |
 | M19 | Radar, agent schemas, spans, and Prometheus | ✅ Implemented — bounded |
 | M20 | Persistent event stream and verifiable ledger semantics | ⏳ Still to implement — not started |
-| M21 | Omni frontend protocol and mobile bridge | 🟡 Still to implement — partial |
+| M21 | Omni frontend protocol and mobile bridge | 🟡 Still to implement — partial; 13.0.0-alpha.3 replaced the Tauri shells with installable PWAs (`make:pwa`) |
 | M22 | Human-reviewed agentic DevOps recommendations | 🟡 Still to implement — partial |
 | M23 | Diagnostic auto-healing recommendations | 🟡 Still to implement — partial |
 | M24 | `no_std` IoT frames/packet encoders, signed OTA gate, and durable-counter CAS boundary | 🟡 Still to implement — partial |
 | M25 | Embassy-based async embedded integration | ⏳ Still to implement — not started |
-| M26 | Guided PaaS/VPS deployment | 🟡 Still to implement — partial |
+| M26 | Guided deployment (`cargo rullst deploy` targets a Linux VM; the PaaS targets were removed in 13.0.0-alpha.4) | 🟡 Still to implement — partial |
 | M27 | Kubernetes scaffolding and health/readiness probes | ✅ Implemented — scaffolding scope |
 | M28 | Compile-time DI and `Inject<T>` | ✅ Implemented — foundation |
 | M29 | Scalar playground and complete OpenAPI generation | 🟡 Still to implement — partial |
@@ -100,19 +104,18 @@ homologated.
 | M40 | `rullst-labs` contracts with a bring-your-own runner | 🟡 v13 prerelease foundation — trusted job/lease/grading contracts and a documented runner contract; the `rullst-labs-runner` candidate was removed from 13.0, so execution is application-owned; full offensive CTF arenas require external isolated infrastructure |
 | M41 | Privacy controls and proportional age assurance | 🟡 v13 prerelease foundation — policy, signed evidence, asynchronous replay, SQLite and PostgreSQL adapters; combined hosted acceptance, consumer journeys and broader privacy work remain open |
 
-The labels match the root roadmap inventory: **5 implemented, 27 partial, and
-8 not started** inside the 40-milestone framework programme. M31 is excluded
+The labels match the milestone rows of the root roadmap: **5 implemented,
+27 partial, and 8 not started** inside the 40-milestone framework programme. M31 is excluded
 because it is a separately governed safety-critical programme. The 35 milestones
 without strict closure have different sizes and overlap existing published
 capabilities; their count does not measure remaining engineering effort or
 release blockers. Assigning every partial row half credit would not establish
 a completion percentage. The
-[v12 stable record](v12.md) preserves the completed release identity, while the
-root roadmap assigns compatible v12 fixes to maintenance and new capability
-work to v13 by default. The
+[v12 stable record](v12.md) preserves the completed release identity; new
+capability work goes to v13. The
 [safe update experience](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#safe-update-experience) is a top v13
-priority whose compatible opt-in 12.1.0 scope is already published. Version
-12.1 does not establish 12-to-13 migration acceptance. The
+priority; `cargo rullst upgrade` and the [v13 migration guide](migration-v13.md)
+are its current tools. The
 [26 September delivery plan](v13-delivery-plan.md) selects concrete increments
 from this wider programme and records their acceptance requirements.
 

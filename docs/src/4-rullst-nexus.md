@@ -17,9 +17,9 @@ rejected), floating-point numbers, dates (`chrono` `NaiveDate`; `DateTime<Utc>` 
 semantic widgets that Rust's type alone cannot reveal are selected explicitly:
 
 ```rust
-use rullst::db::{FromRow, Nexus, Orm};
+use rullst::db::{Nexus, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "users")]
 #[nexus(label = "Users", icon = "👥")]
 pub struct User {
@@ -129,7 +129,7 @@ A table keyed by several columns, such as `lesson_progress (user_id,
 lesson_id)`, lists them all, in key order:
 
 ```rust,ignore
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "lesson_progress")]
 #[nexus(primary_key = "user_id, lesson_id")]
 pub struct LessonProgress {
@@ -382,9 +382,9 @@ rows. The column must be a text, non-primary-key field. The derive makes it
 hidden and read-only so browser form data cannot choose the tenant:
 
 ```rust
-use rullst::db::{FromRow, Nexus, Orm};
+use rullst::db::{Nexus, Orm};
 
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "projects", tenant = "organization_id")]
 pub struct Project {
     pub id: i32,
@@ -448,9 +448,9 @@ single-row or multi-row site configuration settings (such as developer name,
 title, bio, email, personal website, avatar photo, and social links).
 
 ```rust
-use rullst::db::{Orm, FromRow, Nexus};
+use rullst::db::{Orm, Nexus};
 
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "profile")]
 pub struct Profile {
     pub id: i32,
@@ -484,6 +484,32 @@ Batch deletion is available for every registered model. Batch deactivation is
 shown only when the model declares a writable (neither `hidden` nor
 `readonly`) Boolean `is_active` or `active` field; Nexus never guesses which
 arbitrary status value means inactive.
+
+## AI assistant
+
+The AI query assistant at `/nexus/chat` (and its htmx endpoint
+`/nexus/chat/query`) answers questions about the registered models through
+the providers `rullst-ai` reads from the environment (`GEMINI_API_KEY`,
+`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OLLAMA_HOST`, …), and with a built-in
+offline schema helper when none is configured. Since 13.0.0-alpha.4 it is an
+optional feature:
+
+| Dependency | Feature that enables the assistant |
+| --- | --- |
+| `rullst` facade | `nexus-ai` (implies `nexus`); `nexus` alone leaves it out |
+| `rullst-nexus` directly | `ai`, a default feature |
+
+`cargo rullst new` enables `nexus-ai` when the SaaS starter is created with
+AI (`--ai` or the wizard's AI option). Without the feature Nexus does not
+depend on `rullst-ai` (a shorter first build), the panel shows no assistant
+link, and `/nexus/chat` and `/nexus/chat/query` answer `404 Not Found` with a
+notice naming the feature to enable; they stay behind the same access policy.
+The security and telemetry pages report the assistant as not enabled. With
+the feature, routes and behaviour are those of earlier releases:
+
+```toml
+rullst = { version = "=13.0.0-alpha.4", default-features = false, features = ["nexus-ai", "strict-sqlite"] }
+```
 
 ## Content Security Policy
 

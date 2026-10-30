@@ -188,7 +188,11 @@ async fn nexus_pages_run_under_the_default_production_csp() {
         rullst_core::security::headers_middleware,
     ));
 
-    let full_pages = ["/", "/table/users", "/security", "/telemetry", "/chat"];
+    // The assistant page exists with the `ai` feature (a 404 notice without).
+    let full_pages: Vec<&str> = ["/", "/table/users", "/security", "/telemetry"]
+        .into_iter()
+        .chain(cfg!(feature = "ai").then_some("/chat"))
+        .collect();
     let fragments = [
         "/table/complex_records",
         "/table/complex_records/new",
@@ -272,6 +276,9 @@ async fn nexus_pages_run_under_the_default_production_csp() {
         );
     }
 
+    if !cfg!(feature = "ai") {
+        return;
+    }
     let csrf = "nexus_csp_csrf_fixture";
     let answer = app
         .oneshot(

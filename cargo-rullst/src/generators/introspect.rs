@@ -419,11 +419,11 @@ fn generate_struct(
     // full-row saves instead of dirty tracking.
     let tracked = columns.iter().all(|column| column.name != SNAPSHOT_FIELD);
     let mut code = String::from(if tracked {
-        "use rullst_orm::{FromRow, Orm, RowSnapshot};\nuse serde::{Deserialize, Serialize};\n\n"
+        "use rullst_orm::{Orm, RowSnapshot};\nuse serde::{Deserialize, Serialize};\n\n"
     } else {
-        "use rullst_orm::{FromRow, Orm};\nuse serde::{Deserialize, Serialize};\n\n"
+        "use rullst_orm::Orm;\nuse serde::{Deserialize, Serialize};\n\n"
     });
-    code.push_str("#[derive(Clone, Debug, Serialize, Deserialize, Orm, FromRow)]\n");
+    code.push_str("#[derive(Clone, Debug, Serialize, Deserialize, Orm)]\n");
     code.push_str(&format!(
         "#[orm(table = {})]\n",
         rust_string_literal(&table.database_name)

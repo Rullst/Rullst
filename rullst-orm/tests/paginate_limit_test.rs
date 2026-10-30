@@ -4,9 +4,9 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use rullst_orm::{FromRow, Orm};
+use rullst_orm::Orm;
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "paginated_rows")]
 struct PaginatedRow {
     id: i32,
