@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793329710823,
+  "lastUpdate": 1793331315696,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -14468,6 +14468,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "db30ee8e63b4996aed35239ed8aac40e7c35c9e6",
+          "message": "Merge pull request #583 from Rullst/docs/v13-ai-evaluation\n\ndocs: add an AI assistant's evaluation of 13.0.0-alpha.4",
+          "timestamp": "2026-10-30T00:12:05-03:00",
+          "tree_id": "fdcbd728e795152f8c80a94494a5a0ca07ac5228",
+          "url": "https://github.com/Rullst/Rullst/commit/db30ee8e63b4996aed35239ed8aac40e7c35c9e6"
+        },
+        "date": 1793331314662,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
