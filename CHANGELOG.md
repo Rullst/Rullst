@@ -83,17 +83,18 @@ generated files and scripts it can locate; the checklist lists the rest.
   `tls-rustls-ring-native-roots`, whose aws-lc-rs replacement trusts different
   roots.
 - `cargo rullst auth` on a Blank or API starter adds a migration that extends
-  the starter's `users` table. Tests run it on SQLite with existing rows; on
-  PostgreSQL and MySQL/MariaDB it is checked as generated code only, not run
-  against a server or a real deployment's data. Back up the database and try
+  the starter's `users` table. Tests run it on SQLite with existing rows; on PostgreSQL 15,
+  MySQL 8.4 and MariaDB 11.4 CI now runs it against a server on a fresh Blank
+  starter that holds two rows and checks with SQL the added columns with their
+  types and defaults, the unique `users_email_unique` index, the placeholder
+  emails, a sign-up over HTTP and `db:rollback`; the API starter, other server
+  versions and a real deployment's data are not tested. Back up the database and try
   it on a copy first.
-- `cargo rullst green` is Experimental and outside the pull-request mutation
-  gate: no mutation campaign has measured its files yet, so they are not in
-  `.github/mutants-pr-cli.txt`; unit tests and a loopback integration test
-  cover it. It measures idle memory and CPU time only on Linux (other systems
-  report them as not measured) and an image size only through a local Docker
-  or Podman socket. Its carbon figure is an SCI estimate from the
-  `--cpu-watts` and `--grid-intensity` you give, not a measurement.
+- `cargo rullst green` is Experimental. It measures idle memory and CPU time
+  only on Linux (other systems report them as not measured) and an image size
+  only through a local Docker or Podman socket. Its carbon figure is an SCI
+  estimate from the `--cpu-watts` and `--grid-intensity` you give, not a
+  measurement.
 - `cargo rullst deploy`: CI builds the generated Dockerfile and starts the
   generated `compose.yaml` and `Caddyfile` for the Blank and SaaS starters with
   Docker and rootless Podman on a GitHub Ubuntu runner, checking HTTPS through
@@ -167,15 +168,20 @@ generated files and scripts it can locate; the checklist lists the rest.
   `update/project.rs`, `project/snapshot.rs`, `project/transaction.rs` and
   `project/verify.rs`; these six files are outside the pull-request mutation
   gate. The campaign's 7 other survivors were in the self-updater, removed in
-  this release. `generators/deploy.rs` and `update/guided.rs`, rewritten in
-  this release, are outside the gate until they are measured again. 27
+  this release. `generators/deploy.rs`,
+  `update/guided.rs` and the `green` files were measured for this release and
+  are in the gate. 27
   timeouts in the upgrade token scanner and `audit_source.rs` are documented
   in `WORKFLOWS.md`. `rullst-orm` keeps one unresolved mutant (the MySQL
   `FOR UPDATE SKIP LOCKED` claim in `outbox.rs`) and 17 timeouts; one core
   mutant needs a PostgreSQL pool, and 29 `rullst-capital` mutants are
   reachable only through a live Stripe response.
-- The Windows SQLite start-up retry is covered by unit tests; the hosted
-  validation run did not trigger it.
+- The Windows SQLite start-up retry is now exercised on hosted Windows
+  runners: a test per store keeps the file under SQLite's exclusive lock while
+  `open` connects and checks that the timed-out step is tried again and
+  succeeds. The disk stall that first made `initialize` fail is not
+  reproduced, and on Linux a lock held past the 5-second wait can end `open`
+  with SQLite's busy result instead of a retry.
 - Rullst has a sole maintainer, with a successor arrangement in `GOVERNANCE.md`.
 
 ### Added
