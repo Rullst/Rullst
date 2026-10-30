@@ -1,0 +1,13 @@
+# Signed-in SaaS starter scan (.github/workflows/dast-zap.yml). ZAP sends the session cookie
+# of a disposable account with every request, so the spider can submit the starter's forms.
+# The POST-only commands below are out of scope: signing out everywhere revokes the session
+# the scan runs with, and checkout/portal open a billing-provider session. GET has no
+# handler on these paths, so no page leaves the scan. Every other alert stays live.
+*	OUTOFSCOPE	^http://127\.0\.0\.1:3000/(logout(/everywhere)?|billing/(checkout|portal))(\?.*)?$
+10010	INFO	(Double-submit CSRF cookie is intentionally readable and remains Secure/SameSite)
+10031	INFO	(A re-rendered form's _token is the server-issued CSRF cookie value the middleware already matched, never attacker input)
+10049	INFO	(Dynamic responses intentionally default to explicit Cache-Control no-store)
+10094	INFO	(Cryptographically random CSRF and CSP nonce values are expected encoded tokens)
+10111	INFO	(The public sign-in POST is intentionally recognized as an authentication request)
+10112	INFO	(CSRF cookie correctly identifies a state-management response)
+90005	INFO	(ZAP is not a browser and does not send browser-authored Sec-Fetch request headers)

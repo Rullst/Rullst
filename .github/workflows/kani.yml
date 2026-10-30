@@ -1,10 +1,15 @@
-name: Kani Verifier (manual bounded evidence)
+name: Kani Verifier (bounded evidence)
 
 on:
-  workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
+  # Release admission requires a dispatched run on the exact candidate commit;
+  # the weekly run catches regressions between releases and is not evidence.
+  workflow_dispatch:
+  schedule:
+    - cron: '47 1 * * 4' # Thursdays 01:47 UTC
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # A weekly run must not cancel, or be cancelled by, a dispatched admission run.
+  group: ${{ github.workflow }}-${{ github.ref }}${{ github.event_name == 'schedule' && '-weekly' || '' }}
   cancel-in-progress: true
 
 permissions:

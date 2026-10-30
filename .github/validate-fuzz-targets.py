@@ -76,7 +76,6 @@ def discover_manifests() -> set[tuple[str, str]]:
 def validate_workflow_build_targets() -> None:
     required_commands = {
         ".github/workflows/fuzzing.yml": ("build", "run"),
-        ".github/workflows/corpus-sync.yml": ("run", "cmin"),
     }
     for relative_path, commands in required_commands.items():
         path = ROOT / relative_path

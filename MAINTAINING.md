@@ -132,7 +132,7 @@ and fails on any surviving mutant.
 
 ### Other gates that catch maintainers out
 
-- **IDOR audit** (`cargo rullst audit --idor`, run by `ai-sentinel-pr.yml` and
+- **IDOR audit** (`cargo rullst audit --idor`, run by `pr-security-evidence.yml` and
   the `scaffold_contracts` test): every route with a path parameter, test
   fixtures included, needs a `// rullst-access: public|owner|role|admin — reason`
   comment on the line above. `public` is accepted only when `get(` appears on
@@ -143,7 +143,10 @@ and fails on any surviving mutant.
   `default-features = false` on a `rullst` dependency that is not testing the
   default-features rule) instead of loosening assertions.
 - **Site validation** (`.github/validate-site.py`): the README workflow counts
-  must equal the files in `.github/workflows/`.
+  and the WORKFLOWS.md inventory must match the files in `.github/workflows/`,
+  and every badge or link to a workflow in the READMEs, WORKFLOWS.md,
+  MAINTAINING.md and the book must name an existing file. Renaming, merging or
+  removing a workflow means updating all of them.
 - **Public API snapshot** (`semver.yml`, job `Public API snapshot`). A pull
   request that changes the documented API of a library crate must commit the
   regenerated listing: install the pinned nightly once
@@ -157,7 +160,8 @@ and fails on any surviving mutant.
   `FORMAT_VERSION` when rustdoc's JSON format changed; the script refuses
   another format), regenerate every listing and check that the diff only
   changes how items are rendered.
-- **Public dependencies** (`cargo-deny.yml`): a release library may not move a
+- **Public dependencies** (`supply-chain.yml`, job "Check Dependencies
+  (Licenses, Vulnerabilities)"): a release library may not move a
   [public dependency](docs/src/compatibility-policy.md#public-dependencies)
   off its 13.x line in `.github/public-dependencies.json`
   (`.github/check-public-dependencies.py`). A crate newly exposed in the API
@@ -168,16 +172,21 @@ and fails on any surviving mutant.
   feature.
 - **Advisories.** Every exception must appear in `deny.toml`, the ledger
   [`docs/src/security-advisory-exceptions.md`](docs/src/security-advisory-exceptions.md)
-  and the `--ignore`/`--audit-ignore` flags of the audit, security-audit,
-  PQC-compliance, release and AI-sentinel workflows, with an expiry. Prefer an
-  upgrade; an exception is temporary and time-bounded.
+  and the `--ignore`/`--audit-ignore` flags of every workflow that scans
+  advisories (`supply-chain.yml`, `crypto-containment.yml`, `release.yml` and
+  `pr-security-evidence.yml`), with an expiry; the governance job in
+  `supply-chain.yml` compares the three. Prefer an upgrade; an exception is
+  temporary and time-bounded.
 - **CodeQL.** Rust results go through
   `.github/filter-codeql-test-fixtures.py` before upload, which drops the
   listed rules in test code only. Real findings in production code are fixed,
   not filtered.
-- **Windows and macOS** run in the nightly matrix, on manual dispatch and in
-  release admission, not on pull requests to `main`. Avoid path-separator assumptions and POSIX-only file behaviour in tests;
-  never `Box::leak` in tests (the AddressSanitizer job reports it).
+- **Windows and macOS** run nightly on `main`, on manual dispatch and release
+  admission, and on a pull request labeled `full-matrix` (add the label when a
+  change touches paths, processes or platform-specific code, so the matrix
+  runs before merge). Avoid path-separator assumptions and POSIX-only file
+  behaviour in tests; never `Box::leak` in tests (the AddressSanitizer job
+  reports it).
 
 ## 5. Fuzzing evidence
 

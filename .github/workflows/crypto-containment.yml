@@ -1,4 +1,8 @@
-name: IoT Cryptography Containment
+name: IoT and Vault Crypto Containment
+
+# Signed OTA and simulator-fixture tests for rullst-iot, the Vault encryption
+# tests, a RustSec audit and a no-unsafe check of those files. Nothing here is
+# post-quantum: until 13.0.0-alpha.4 this file was pqc-compliance.yml.
 
 on:
   push:
@@ -6,14 +10,14 @@ on:
     paths:
       - "rullst-iot/**"
       - "rullst-security/src/vault.rs"
-      - ".github/workflows/pqc-compliance.yml"
+      - ".github/workflows/crypto-containment.yml"
       - "Cargo.lock"
   pull_request:
     branches: [main]
     paths:
       - "rullst-iot/**"
       - "rullst-security/src/vault.rs"
-      - ".github/workflows/pqc-compliance.yml"
+      - ".github/workflows/crypto-containment.yml"
       - "Cargo.lock"
   schedule:
     # Weekly audit every Monday at 03:00 UTC

@@ -68,9 +68,9 @@ NON_INPUTS = frozenset({
     # Advisory-exception policy is enforced by the audit scanners, which never
     # build fuzz code.
     "deny.toml", "docs/src/security-advisory-exceptions.md",
-    ".github/workflows/audit.yml", ".github/workflows/security-audit.yml",
-    ".github/workflows/pqc-compliance.yml",
-    ".github/workflows/ai-sentinel-pr.yml",
+    ".github/workflows/supply-chain.yml",
+    ".github/workflows/crypto-containment.yml",
+    ".github/workflows/pr-security-evidence.yml",
 })
 
 
