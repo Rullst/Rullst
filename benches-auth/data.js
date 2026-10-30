@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793341583149,
+  "lastUpdate": 1793342509632,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -19371,6 +19371,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4198,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3627f9cc248301b10336702d4a73bbdbd3531250",
+          "message": "Merge pull request #586 from Rullst/fix/v13-alpha4-auth-starters\n\nfix(cli): make cargo rullst auth work on fresh starters and stop reporting empty generations as success",
+          "timestamp": "2026-10-30T03:26:31-03:00",
+          "tree_id": "8065d6f8f262ceb396b0644ccd33181596d3135d",
+          "url": "https://github.com/Rullst/Rullst/commit/3627f9cc248301b10336702d4a73bbdbd3531250"
+        },
+        "date": 1793342508978,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1060,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 821,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1870,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4554,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
