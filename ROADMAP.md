@@ -963,6 +963,13 @@ None is scheduled; v14 development starts only when they justify it.
 - Replace third-party types in public error variants and `From` conversions
   (`reqwest`, `jsonwebtoken`, `base64`, `redis`, `serde_json`) with Rullst
   error types, so fewer crates are [public dependencies](docs/src/compatibility-policy.md#public-dependencies).
+- Make the `dashmap` fields of `rullst_security::SecurityStore`
+  (`banned_ips`, `honeypot_route_hits`) private, behind methods.
+- Keep one path per item: remove `rullst::rullst_orm` (same as
+  `rullst::orm`), `rullst::security_runtime` (same as
+  `rullst::security::runtime`) and Mail's alias modules `rullst_mail::mail`
+  and `rullst_mail::drivers::mock` (same as the crate root and
+  `rullst_mail::mock`).
 
 ---
 
