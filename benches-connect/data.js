@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793339139481,
+  "lastUpdate": 1793341609733,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -11949,6 +11949,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 543,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89a336db4971e447905802852cb8e0f0efbd8f11",
+          "message": "Merge pull request #587 from Rullst/ci/v13-alpha4-workflow-cleanup\n\nci: consolidate the supply-chain workflows, rename misleading ones and prune corpus-sync (37 → 34)",
+          "timestamp": "2026-10-30T03:11:44-03:00",
+          "tree_id": "cba3fd6171d10f64d2afde80b1c163bd19ff367d",
+          "url": "https://github.com/Rullst/Rullst/commit/89a336db4971e447905802852cb8e0f0efbd8f11"
+        },
+        "date": 1793341609363,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 545,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
