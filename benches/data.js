@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793341847530,
+  "lastUpdate": 1793372218419,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -30433,6 +30433,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1727,
             "range": "± 50",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5405596a5463c62f93df94c662c28316a7a7a62a",
+          "message": "Merge pull request #588 from Rullst/feat/v13-alpha4-public-api\n\nfeat: freeze the 13.x public API: hide accidental internals, snapshot gate, public-dependency and support policies",
+          "timestamp": "2026-10-30T11:51:01-03:00",
+          "tree_id": "0ec5e02cfc1003938fa4b0f718de8b457a3cc426",
+          "url": "https://github.com/Rullst/Rullst/commit/5405596a5463c62f93df94c662c28316a7a7a62a"
+        },
+        "date": 1793372214757,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 672,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 870,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 418,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1724,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
