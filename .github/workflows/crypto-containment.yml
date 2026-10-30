@@ -6,7 +6,7 @@ name: IoT and Vault Crypto Containment
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci/v13-alpha4-workflow-cleanup] # TEMPORARY: branch trigger for the first hosted run
     paths:
       - "rullst-iot/**"
       - "rullst-security/src/vault.rs"
