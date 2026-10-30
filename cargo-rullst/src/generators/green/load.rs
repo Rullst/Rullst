@@ -81,3 +81,61 @@ pub(super) async fn run(
     outcome.elapsed = started.elapsed();
     outcome
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::generators::green::tests::support::TestServer;
+
+    fn block_on<T>(future: impl std::future::Future<Output = T>) -> T {
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(future)
+    }
+
+    #[test]
+    fn the_client_never_follows_a_redirect_off_the_measured_path() {
+        let server = TestServer::start();
+        let status = block_on(async {
+            client()
+                .unwrap()
+                .get(server.url("/redirect"))
+                .send()
+                .await
+                .unwrap()
+                .status()
+        });
+        assert_eq!(status.as_u16(), 302);
+        assert_eq!(server.paths(), ["/redirect"]);
+    }
+
+    #[test]
+    fn every_connection_keeps_sending_until_the_duration_ends() {
+        let server = TestServer::start();
+        let client = client().unwrap();
+        let duration = Duration::from_millis(300);
+        let outcome = block_on(run(&client, &server.url("/"), duration, 2));
+        assert!(outcome.responses >= 2, "{outcome:?}");
+        assert_eq!((outcome.http_errors, outcome.transport_errors), (0, 0));
+        assert!(outcome.elapsed >= duration, "{outcome:?}");
+        assert!(server.paths().iter().all(|path| path == "/"));
+    }
+
+    #[test]
+    fn error_statuses_and_failed_connections_are_counted_apart() {
+        let server = TestServer::start();
+        let client = client().unwrap();
+        let duration = Duration::from_millis(200);
+        let missing = block_on(run(&client, &server.url("/missing"), duration, 2));
+        assert!(missing.responses >= 2, "{missing:?}");
+        assert_eq!(missing.http_errors, missing.responses);
+        assert_eq!(missing.transport_errors, 0);
+
+        let hangup = block_on(run(&client, &server.url("/hangup"), duration, 2));
+        assert_eq!((hangup.responses, hangup.http_errors), (0, 0));
+        assert!(hangup.transport_errors >= 2, "{hangup:?}");
+    }
+}

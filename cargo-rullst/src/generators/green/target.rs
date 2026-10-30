@@ -152,7 +152,12 @@ pub(super) fn listening_process(port: u16) -> Listener {
             owners.push(pid);
         }
     }
-    match owners.as_slice() {
+    single_owner(&owners)
+}
+
+/// The listener when exactly one process owns the socket.
+fn single_owner(owners: &[u32]) -> Listener {
+    match owners {
         [pid] => Listener::Found(*pid),
         [] => Listener::Unknown("the listening process belongs to another user or is not visible"),
         _ => Listener::Unknown("several processes share the listening socket"),
@@ -289,80 +294,5 @@ impl Drop for OwnedApp {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn only_loopback_http_origins_are_accepted() {
-        for (raw, normalized) in [
-            ("http://127.0.0.1:3000", "http://127.0.0.1:3000/"),
-            ("http://127.10.0.1:8080/", "http://127.10.0.1:8080/"),
-            ("http://[::1]:3000", "http://[::1]:3000/"),
-            ("http://LOCALHOST:3000", "http://127.0.0.1:3000/"),
-            (
-                "http://[::ffff:127.0.0.1]:3000",
-                "http://[::ffff:7f00:1]:3000/",
-            ),
-        ] {
-            assert_eq!(validate_url(raw).unwrap().as_str(), normalized, "{raw}");
-        }
-        for (raw, error) in [
-            (
-                "http://example.com",
-                UrlError::NotLoopback("example.com".into()),
-            ),
-            (
-                "http://10.0.0.1:80",
-                UrlError::NotLoopback("10.0.0.1".into()),
-            ),
-            (
-                "http://0.0.0.0:3000",
-                UrlError::NotLoopback("0.0.0.0".into()),
-            ),
-            ("http://[::]:3000", UrlError::NotLoopback("[::]".into())),
-            (
-                "http://localhost.evil.example",
-                UrlError::NotLoopback("localhost.evil.example".into()),
-            ),
-            ("https://127.0.0.1:3000", UrlError::Scheme),
-            ("ftp://127.0.0.1", UrlError::Scheme),
-            ("http://user:secret@127.0.0.1:3000", UrlError::Extra),
-            ("http://127.0.0.1:3000/?q=1", UrlError::Extra),
-            ("http://127.0.0.1:3000/#x", UrlError::Extra),
-            ("http://127.0.0.1:3000/health", UrlError::Path),
-            ("localhost:3000", UrlError::Scheme),
-            ("127.0.0.1:3000", UrlError::Invalid("127.0.0.1:3000".into())),
-            ("not a url", UrlError::Invalid("not a url".into())),
-        ] {
-            assert_eq!(validate_url(raw), Err(error), "{raw}");
-        }
-    }
-
-    #[test]
-    fn request_paths_keep_the_loopback_host() {
-        let base = validate_url("http://127.0.0.1:3000").unwrap();
-        assert_eq!(
-            request_url(&base, "/search?q=rust").as_str(),
-            "http://127.0.0.1:3000/search?q=rust"
-        );
-        let odd = request_url(&base, "/@evil.example/x");
-        assert_eq!(odd.host_str(), Some("127.0.0.1"));
-    }
-
-    #[test]
-    fn listening_sockets_are_found_by_port_and_state() {
-        let table = include_str!("fixtures/proc_net_tcp");
-        assert_eq!(listening_inodes(table, 3000), [424242]);
-        // Port 8080 only has an established connection.
-        assert!(listening_inodes(table, 8080).is_empty());
-        assert!(listening_inodes(table, 9).is_empty());
-        let table6 = include_str!("fixtures/proc_net_tcp6");
-        assert_eq!(listening_inodes(table6, 3000), [515151]);
-    }
-
-    #[test]
-    fn a_free_port_is_a_bindable_loopback_port() {
-        let port = free_port().unwrap();
-        assert_ne!(port, 0);
-    }
-}
+#[path = "target_tests.rs"]
+mod tests;

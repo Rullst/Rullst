@@ -184,15 +184,10 @@ async fn spawned(
         } else {
             format!("\nLast stderr lines:\n{tail}")
         };
-        let fix = if environment == "production" {
-            "Production needs the app's production settings (the SaaS starter's real billing credentials, for example): set them, measure with --env staging, or start the app yourself and measure it with --url."
-        } else {
-            "Run the release binary with RULLST_ENV=staging to see why it does not serve requests, or measure a running app with --url."
-        };
         return Err(failure(
             "App could not be started",
             format!("{error}.{detail}"),
-            fix,
+            start_fix(environment),
         ));
     }
     let name = binary
@@ -206,16 +201,30 @@ async fn spawned(
             pid: Some(app.pid()),
             process_lookup: "started by green".to_string(),
             executable: name,
-            environment: Some(if environment == "staging" {
-                "RULLST_ENV=staging HOST=127.0.0.1"
-            } else {
-                "RULLST_ENV=production HOST=127.0.0.1"
-            }),
+            environment: Some(started_environment(environment)),
         },
         executable: Some(binary),
         executable_method: "file size of the release binary built by cargo",
         owned: Some(app),
     })
+}
+
+/// What to do when the started app never answered in `environment`.
+fn start_fix(environment: &str) -> &'static str {
+    if environment == "production" {
+        "Production needs the app's production settings (the SaaS starter's real billing credentials, for example): set them, measure with --env staging, or start the app yourself and measure it with --url."
+    } else {
+        "Run the release binary with RULLST_ENV=staging to see why it does not serve requests, or measure a running app with --url."
+    }
+}
+
+/// The variables green set for the app it started.
+fn started_environment(environment: &str) -> &'static str {
+    if environment == "staging" {
+        "RULLST_ENV=staging HOST=127.0.0.1"
+    } else {
+        "RULLST_ENV=production HOST=127.0.0.1"
+    }
 }
 
 async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {

@@ -48,7 +48,7 @@ pub(super) fn image_size(image: Option<&str>) -> Metric<u64> {
             ));
             continue;
         }
-        match inspect(engine, image) {
+        match inspect(engine, image, INSPECT_TIMEOUT) {
             Ok(size) => {
                 return Metric::measured(
                     size,
@@ -64,7 +64,7 @@ pub(super) fn image_size(image: Option<&str>) -> Metric<u64> {
     Metric::not_measured(BYTES, reasons.join("; "))
 }
 
-fn inspect(engine: &str, image: &str) -> Result<u64, String> {
+fn inspect(engine: &str, image: &str, timeout: Duration) -> Result<u64, String> {
     let mut command = Command::new(engine);
     if engine == "docker" {
         // Never follow a configured remote context.
@@ -79,7 +79,7 @@ fn inspect(engine: &str, image: &str) -> Result<u64, String> {
     let Ok(mut child) = child else {
         return Err(format!("the {engine} CLI is not available"));
     };
-    let deadline = Instant::now() + INSPECT_TIMEOUT;
+    let deadline = Instant::now() + timeout;
     let status = loop {
         match child.try_wait() {
             Ok(Some(status)) => break Some(status),
@@ -232,11 +232,148 @@ source = "git+https://example.com/forked#0123abcd"
         assert_eq!(counted.value, Some(2));
         assert_eq!(counted.status, "measured");
 
+        // Lock files of large workspaces are still counted.
+        let large = format!("{LOCK}{}", "# padding\n".repeat(110_000));
+        assert!(large.len() > 1_100_000);
+        std::fs::write(root.path().join("Cargo.lock"), large).unwrap();
+        assert_eq!(dependency_count(&nested).value, Some(2));
+
         std::fs::write(root.path().join("Cargo.lock"), "[[package]\n").unwrap();
         let unparsable = dependency_count(&nested);
         assert_eq!(
             unparsable.reason.as_deref(),
             Some("Cargo.lock could not be read or parsed")
         );
+    }
+
+    /// Runs one container-engine case when a parent test names a report
+    /// file; otherwise does nothing. `PATH` holds only the fake engines.
+    #[test]
+    fn engine_child_fixture() {
+        let Some(report) = std::env::var_os("RULLST_GREEN_ENGINE_REPORT") else {
+            return;
+        };
+        let outcome = if std::env::var_os("RULLST_GREEN_ENGINE_HANG").is_some() {
+            format!(
+                "{:?}",
+                inspect("docker", "app:1", Duration::from_millis(300))
+            )
+        } else {
+            serde_json::to_string(&image_size(Some("app:1"))).unwrap()
+        };
+        std::fs::write(report, outcome).unwrap();
+    }
+
+    #[cfg(unix)]
+    mod engines {
+        use super::*;
+        use crate::generators::green::tests::support::{output_within, script, sleep_program};
+
+        /// `docker` must be asked with `--context default`, `podman` without.
+        const DOCKER: &str = r#"[ "$1 $2" = "--context default" ] || exit 64
+shift 2
+[ "$*" = "image inspect --format {{.Size}} app:1" ] || exit 65
+"$FAKE_SLEEP" 0.2
+case "$FAKE_DOCKER" in
+  size) echo 4242 ;;
+  fail) echo 99; exit 1 ;;
+  hang) exec "$FAKE_SLEEP" 30 ;;
+esac"#;
+        const PODMAN: &str = r#"[ "$*" = "image inspect --format {{.Size}} app:1" ] || exit 65
+"$FAKE_SLEEP" 0.2
+echo 777"#;
+
+        /// The child's report for `docker` behaving as `docker` (no `docker`
+        /// when `None`), a `podman` that knows the image and the variables.
+        fn engines(docker: Option<&str>, podman: bool, variables: &[(&str, &str)]) -> String {
+            let directory = tempfile::tempdir().unwrap();
+            let bin = directory.path().join("bin");
+            std::fs::create_dir(&bin).unwrap();
+            if docker.is_some() {
+                script(&bin, "docker", DOCKER);
+            }
+            if podman {
+                script(&bin, "podman", PODMAN);
+            }
+            let report = directory.path().join("report");
+            let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+            command
+                .args([
+                    "--exact",
+                    "generators::green::artifacts::tests::engine_child_fixture",
+                ])
+                .env("PATH", &bin)
+                .env("FAKE_SLEEP", sleep_program())
+                .env("FAKE_DOCKER", docker.unwrap_or_default())
+                .env("RULLST_GREEN_ENGINE_REPORT", &report)
+                .env_remove("DOCKER_HOST")
+                .env_remove("CONTAINER_HOST");
+            for (name, value) in variables {
+                command.env(name, value);
+            }
+            let output = output_within(command, Duration::from_secs(30));
+            assert!(output.status.success(), "{output:?}");
+            std::fs::read_to_string(report).unwrap()
+        }
+
+        fn metric(report: &str) -> serde_json::Value {
+            serde_json::from_str(report).unwrap()
+        }
+
+        #[test]
+        fn the_local_docker_engine_reports_the_image_size() {
+            let measured = metric(&engines(Some("size"), false, &[]));
+            assert_eq!(measured["status"], "measured");
+            assert_eq!(measured["value"], 4242);
+            assert_eq!(
+                measured["method"],
+                "docker image inspect app:1 (uncompressed size reported by the local engine)"
+            );
+        }
+
+        #[test]
+        fn a_remote_docker_host_is_never_asked_and_podman_is_tried_next() {
+            let measured = metric(&engines(
+                Some("size"),
+                true,
+                &[("DOCKER_HOST", "tcp://10.0.0.5:2376")],
+            ));
+            assert_eq!(measured["value"], 777);
+            assert_eq!(
+                measured["method"],
+                "podman image inspect app:1 (uncompressed size reported by the local engine)"
+            );
+
+            let skipped = metric(&engines(
+                Some("size"),
+                true,
+                &[
+                    ("DOCKER_HOST", "tcp://10.0.0.5:2376"),
+                    ("CONTAINER_HOST", "ssh://user@host"),
+                ],
+            ));
+            assert_eq!(skipped["status"], "not_measured");
+            assert_eq!(
+                skipped["reason"],
+                "DOCKER_HOST is not a local socket, so docker was not asked; CONTAINER_HOST is not a local socket, so podman was not asked"
+            );
+        }
+
+        #[test]
+        fn a_failed_inspection_or_a_missing_cli_is_not_measured() {
+            let failed = metric(&engines(Some("fail"), false, &[]));
+            assert_eq!(failed["status"], "not_measured");
+            assert_eq!(failed["value"], serde_json::Value::Null);
+            assert_eq!(
+                failed["reason"],
+                "docker has no local image `app:1` or is not running; the podman CLI is not available"
+            );
+        }
+
+        #[test]
+        fn a_hanging_inspection_is_stopped_at_its_deadline() {
+            let report = engines(Some("hang"), false, &[("RULLST_GREEN_ENGINE_HANG", "1")]);
+            assert_eq!(report, r#"Err("docker image inspect timed out")"#);
+        }
     }
 }
