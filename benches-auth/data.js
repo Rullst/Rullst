@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793315922366,
+  "lastUpdate": 1793329404289,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -19131,6 +19131,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3793,
             "range": "± 26",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5b0a2d6d9d3200debfffa5d0cc67b4de85ac5274",
+          "message": "Merge pull request #576 from Rullst/docs/v13-audit-plans\n\ndocs: audit the plans, roadmaps and maintainer pages for 13.0",
+          "timestamp": "2026-10-29T23:47:26-03:00",
+          "tree_id": "301114361466ce3187f532a2c03bee83f9785c12",
+          "url": "https://github.com/Rullst/Rullst/commit/5b0a2d6d9d3200debfffa5d0cc67b4de85ac5274"
+        },
+        "date": 1793329403445,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 627,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 493,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1149,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2891,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
