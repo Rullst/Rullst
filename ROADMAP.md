@@ -952,6 +952,18 @@ the repository's formatting, strict lint, full-test, feature-matrix, security, a
 packaging gates. Performance numbers must cite a reproducible benchmark; security
 and compliance claims must state their threat model and evidence scope.
 
+### v14 candidates
+
+Breaking ideas raised during 13.x are collected here instead of shipping in a
+13.x release ([support window](docs/src/compatibility-policy.md#supported-release-window)).
+None is scheduled; v14 development starts only when they justify it.
+
+- Make the internals hidden from the documentation in 13.0.0-alpha.4
+  (`#[doc(hidden)]`) crate-private.
+- Replace third-party types in public error variants and `From` conversions
+  (`reqwest`, `jsonwebtoken`, `base64`, `redis`, `serde_json`) with Rullst
+  error types, so fewer crates are [public dependencies](docs/src/compatibility-policy.md#public-dependencies).
+
 ---
 
 <div align="center">

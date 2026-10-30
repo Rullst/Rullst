@@ -181,12 +181,26 @@ in the same pull request.
 
 ## Supported release window
 
-Rullst does not currently promise an LTS or multi-minor backport program.
-Routine fixes target the latest patch of the latest supported stable minor.
 Until 13.0.0 is published, only the most recent 13.0.0 prerelease is supported
-and fixes ship in a new prerelease. The exact versions receiving security
-triage are listed in `SECURITY.md`; older versions are end-of-life unless that
-table explicitly says otherwise.
+and fixes ship in a new prerelease. From 13.0.0:
+
+- **Patch releases** (13.0.x, later the patches of the newest 13.x minor) carry
+  bug and security fixes, at any time.
+- **Minor releases** (13.1, 13.2, …) carry backward-compatible features,
+  performance improvements, new opt-in features and compatible dependency
+  updates.
+- **14.0** carries only breaking changes.
+- 13.x stays the active line for at least 12 months after 13.0.0. Meanwhile
+  breaking ideas go to the [v14 candidates](../../ROADMAP.md#v14-candidates)
+  list, and a 13.x release may mark a future change with `#[deprecated]`.
+- v14 development starts only when breaking changes justify it, and never
+  before that minimum.
+- After 14.0.0 is published, 13.x receives security fixes for 12 more months.
+
+There is no LTS or multi-minor backport program: fixes ship in the newest
+minor. The exact versions receiving security triage are listed in
+`SECURITY.md`; older versions are end-of-life unless that table explicitly says
+otherwise.
 
 Release candidates receive fixes through a subsequent RC number rather than by
 overwriting a published artifact. Security reports follow the coordinated
