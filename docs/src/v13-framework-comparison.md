@@ -3,8 +3,8 @@
 **Planning direction adopted on 23 September 2026.** Study useful designs from
 other frameworks and measure comparable application journeys to guide Rullst
 investment. This document specifies future evaluation, not measured results or
-a claim that Rullst is superior. Finish the active v12.1.1 maintenance admission
-before beginning this work. The [SST](spec.md) still governs architecture.
+a claim that Rullst is superior. The work was scheduled to start after the
+v12.1.1 maintenance release. The [SST](spec.md) still governs architecture.
 
 ## Relationship to the priorities
 

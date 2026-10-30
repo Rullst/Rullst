@@ -216,8 +216,10 @@ rust-version = "1.96.0"
             "MySQL" | "MariaDB" => "mysql",
             _ => "sqlite",
         };
+        // aws-lc-rs, like the framework's own SQLx dependencies: SQLx uses
+        // ring as soon as any crate enables one of its ring TLS features.
         let sqlx_features = format!(
-            "\"runtime-tokio\", \"tls-rustls\", \"{}\"",
+            "\"runtime-tokio\", \"tls-rustls-aws-lc-rs\", \"{}\"",
             sqlx_driver_feature
         );
 

@@ -14,7 +14,7 @@ rullst-auth = { workspace = true }
 rullst-orm = { workspace = true, features = ["strict-sqlite"] }
 rullst-security = { workspace = true }
 serde = { workspace = true }
-sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls", "sqlite"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "sqlite"] }
 tokio = { workspace = true, features = ["full"] }
 
 # `#[derive(Orm)]` emits `cfg(feature = "redis")` blocks for Redis model events.

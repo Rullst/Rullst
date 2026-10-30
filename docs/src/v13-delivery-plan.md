@@ -91,9 +91,9 @@ release gate, paid resource, live-account test or claim of superiority.
 
 The owner asked about an alpha-first release on September 22. The
 `13.0.0-alpha.N` prerelease versions support that evaluation path: consumers opt in
-explicitly and APIs may change before stable v13. Alpha, beta and RC labels do
-not waive the applicable verification, ownership or protected-publication
-checks. Choosing a prerelease label does not authorize an upload; stable
+explicitly and APIs may change before stable v13. Alpha and release-candidate
+labels do not waive the applicable verification, ownership or
+protected-publication checks. Choosing a prerelease label does not authorize an upload; stable
 `13.0.0` still requires its own readiness decision.
 
 **Direction recorded on 2 October:** publish 12.2.0 from `v12` first, through
@@ -141,7 +141,10 @@ retention of the Pages branch. Stable source `184bc1f7` is preserved in the
 `v12` history. [PR #237](https://github.com/Rullst/Rullst/pull/237) prepared its
 maintenance workflows and versioned release rules; it merged at `0bb7406b`
 after all 43 required checks and 24 relevant workflows passed. `main` and `v12`
-have the same strict, admin-enforced 43-check protected profile.
+then had the same strict, admin-enforced 43-check protected profile. (On
+29 October 2026 `main` requires 19 status checks and no longer requires an
+up-to-date branch; the end-of-life `v12` keeps 46 strict checks. See the
+[governance policy](../../GOVERNANCE.md).)
 
 The six-feature source was admitted in PR #236 as recorded below.
 [PR #238](https://github.com/Rullst/Rullst/pull/238) combines that source with
@@ -321,8 +324,8 @@ maintenance line and `gh-pages` serves the site. The obsolete `v13` reference
 (`d246ea07`) was retired after proving it is an ancestor of `main` (`0ce3306d`).
 Fourteen additional remote feature references were removed only after confirming
 their complete history remains in `main` or the consolidated PR #239. Local
-worktrees and unique local commits were retained. Both maintained branches now
-require the existing 43 checks, CodeQL Rust and JavaScript analyses, and the
+worktrees and unique local commits were retained. Both maintained branches then
+required the existing 43 checks, CodeQL Rust and JavaScript analyses, and the
 separate `CodeQL` findings check from GitHub's security app (46 in total).
 
 Dependabot PRs #244 and #247 are superseded by the AWS and Wasm parser changes
@@ -350,8 +353,11 @@ check suites report success. Scorecard v5.5.0 reads only the first 30 check
 suites; #228's CodeQL suite is 32nd, demonstrating incomplete detection. The
 exact remaining discrepancy is not established. The alert is classified as a
 false positive for this reviewed snapshot; it does not imply that every
-intermediate commit was scanned independently. Required CodeQL jobs now enforce
-both language analyses for future PR admission. Scanner output remains enabled.
+intermediate commit was scanned independently. Required CodeQL jobs then
+enforced both language analyses for PR admission. (`main` now runs CodeQL after
+each push instead of on its pull requests, and `codeql.yml` is one of the
+release-required workflows; `v12` still requires both analyses.) Scanner output
+remains enabled.
 
 The first combined PR #239 campaign exposed a Redis TLS provider-selection
 panic and omitted public-guide doctest registrations. The corrected Redis
@@ -982,7 +988,7 @@ when its dependencies and verification capacity are ready.
 | M21 — Omni/Android | CLI verification of the exact signed APK and configured certificate was admitted with PR #220 after hosted Android SDK acceptance. | Retired in 13.0.0-alpha.3 with Omni: `make:pwa` replaces the shells, and its Google Play path (Bubblewrap and Digital Asset Links) has no framework-built APK to verify. Physical-device and store acceptance remain unvalidated. |
 | M9 — Auth/session consistency | PR #223 admitted optional PostgreSQL passkey ceremonies with tenant/account/session/RP binding, bounded single use, real database/process recovery and a Chromium virtual authenticator. | Preserve credential-owner/revocation/counter CAS at the host and repeat affected combined-release checks. See [the contract](shared-passkey-ceremonies.md). |
 | Transparent supervision | The baseline passed hosted and archive acceptance in PR #222. PR #226 merged the prioritized exam-platform extension after hosted checks; its missing archive gate subsequently passed in the exact-commit run recorded above. The generated LMS journey (`make:supervision`) was later removed with the complete Academy scaffold; the crate's contracts remain. | Preserve transparent permissions, typed uncertain observations, manual review and no raw media retention in the final campaign. See the [integration boundary](supervision-observations.md). |
-| M27 — deployment acceptance with an existing proxy | PR #224 admitted the response-body lifetime correction and the real two-process Caddy/Redis contract for readiness, draining, shared budgets/outage, forwarding, CSRF/body limits and WebSocket behavior. | Preserve combined-release coverage. This loopback fixture does not establish generated multi-replica Foundry, cross-host failover or zero downtime. See [deployment acceptance](deployment-acceptance.md). |
+| M27 — deployment acceptance with an existing proxy | PR #224 admitted the response-body lifetime correction and the real two-process Caddy/Redis contract for readiness, draining, shared budgets/outage, forwarding, CSRF/body limits and WebSocket behavior. | Preserve combined-release coverage. This loopback fixture does not establish a multi-replica deployment (the Foundry generator was removed in 13.0.0-alpha.4), cross-host failover or zero downtime. See [deployment acceptance](deployment-acceptance.md). |
 | M10/M27 — cloud and VPS application protection | PR #225 merged the offline `deploy:doctor` with explicit environment sources, bounded inputs, redacted reports and rejection of the public Auth key placeholder after hosted checks; its missing archive gate subsequently passed in the exact-commit run recorded above. | Preserve the installed-archive and diagnostic coverage in the final campaign and prepare the separate stable Auth backport. No automatic host/cloud changes or volumetric DDoS guarantee. See the [diagnostic](deployment-diagnostic.md) and [deployment boundary](security-architecture.md#cloud-and-vps-deployments). |
 | LMS/Academy — managed private video | PR #227 admitted the unpublished `rullst-media` candidate after hosted workspace/platform, browser and installed-archive acceptance. It implements Bunny lifecycle management, resumable upload, authoritative processing, private playback and deletion with SQLite recovery. | Preserve the supported journey in the final combined release campaign. Live-account interoperability stays unvalidated. The package has since joined the release inventory (`.github/release-order.json`) and was first published in the 13.0.0-alpha.1 prerelease; final release admission remains separate. See the [managed-video candidate](managed-video-roadmap.md). |
 | M40 — Labs | The `rullst-labs` candidate, first published in the 13.0.0-alpha.1 prerelease, provides encrypted durable exercises/jobs, exact grading and cancellation/recovery/retention. The former `rullst-labs-runner` candidate, a separate Linux Rust/Wasmi executor, passed 26 ordinary and 26 instrumented hosted journey checks at `977e40a3`. On 30 September 2026 the maintainer removed it from the 13.0 workspace; its source remains in git history. `rullst-labs` is now bring-your-own-runner, with a documented [controller contract](labs-runner-contract.md) and a non-executing example controller. | PR #228 passed workspace/platform and actual extracted-package source admission, plus both 90% coverage floors; that historical evidence covered the removed runner. Final release admission of `rullst-labs` remains outstanding, and each application-owned runner needs its own isolation review. See the [recorded profile evidence](labs-first-profile.md#recorded-linux-acceptance). |
@@ -1134,12 +1140,12 @@ nor cached compilation is a release result.
 
 Before tagging, check every package/internal requirement, lockfile, release
 order, architecture edge, feature forwarding, CLI version string, documentation
-link and supported-platform claim. Include the new `rullst-privacy`,
-`rullst-supervision` and `rullst-media` packages in publication only after their
-advertised package scopes meet their gates and their ownership/trusted
-publisher configuration is ready. Confirm 12.1→13 consumer behavior, authenticated
-native assets, attestations and the protected deployment approval. Published
-12.1.0 tags and archives remain immutable.
+link and supported-platform claim. `rullst-privacy`, `rullst-supervision`,
+`rullst-media` and `rullst-labs` were first published in the 13.0.0-alpha.1
+prerelease (see [v13 package registration](release-recovery.md#v13-package-registration));
+their final release admission remains outstanding. Confirm 12.x→13 consumer
+behavior, authenticated native assets, attestations and the protected
+deployment approval. Published tags and archives remain immutable.
 
 Execution proceeds within the active authorized session, while GitHub jobs can
 continue independently. Session availability and a running CI job are different

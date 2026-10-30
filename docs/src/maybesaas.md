@@ -168,8 +168,8 @@ Kafka, RabbitMQ, Redis Streams, S3, and R2 are integrations with mature
 services. Rullst now has a coherent bounded `rullst-messaging` contract for
 idempotency, groups, leases, retry and dead letters, with a deterministic
 process-local broker, canonical envelope/trace contracts and opt-in durable
-local SQLite state with explicit encrypted content. The 13.0.0-alpha.1
-prerelease candidates add a standalone Redis Streams profile (`messaging-redis`) and private
+local SQLite state with explicit encrypted content. Since 13.0.0-alpha.1,
+opt-in candidates add a standalone Redis Streams profile (`messaging-redis`) and private
 S3-compatible object storage with resumable multipart uploads (`storage-s3`,
 `storage-multipart`), tested against disposable local services. Other remote
 adapters still need provider-specific conformance, backpressure and

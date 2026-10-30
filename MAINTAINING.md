@@ -156,8 +156,8 @@ and fails on any surviving mutant.
   `.github/filter-codeql-test-fixtures.py` before upload, which drops the
   listed rules in test code only. Real findings in production code are fixed,
   not filtered.
-- **Windows and macOS** run only on manual dispatch and release admission.
-  Avoid path-separator assumptions and POSIX-only file behaviour in tests;
+- **Windows and macOS** run in the nightly matrix, on manual dispatch and in
+  release admission, not on pull requests to `main`. Avoid path-separator assumptions and POSIX-only file behaviour in tests;
   never `Box::leak` in tests (the AddressSanitizer job reports it).
 
 ## 5. Fuzzing evidence

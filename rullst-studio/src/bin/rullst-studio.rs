@@ -32,6 +32,9 @@ fn parse_port(arguments: &[String]) -> Result<Option<u16>, String> {
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    // aws-lc-rs is the rustls provider of every Rullst TLS connection; the
+    // project poller's HTTPS client reads the process default.
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
     let arguments: Vec<String> = std::env::args().skip(1).collect();
     if arguments
         .first()

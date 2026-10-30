@@ -126,6 +126,8 @@ pub mod query_cache;
 pub mod raw;
 #[cfg(feature = "redis")]
 pub mod redis_data;
+#[cfg(feature = "redis")]
+mod redis_tls;
 pub mod replica;
 pub mod repository;
 pub mod resource;

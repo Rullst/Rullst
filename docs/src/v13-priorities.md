@@ -1,5 +1,12 @@
 # Sustainable v12 maintenance and v13 priorities
 
+**Status on 29 October 2026:** v12 reached end of life on 16 October 2026;
+12.3.0 is its last release and the `v12` branch is frozen (see
+[SECURITY.md](../../SECURITY.md)). 13.0.0-alpha.4 is the 13.0 feature freeze,
+followed by 13.0.0-rc.1 (fixes and documentation only) and then 13.0.0. The
+September directions below record how the priorities were set; the v12
+maintenance instructions in them no longer apply.
+
 ## Direction revised on 22 September 2026
 
 The owner prioritizes a maintained, secure stable v12.1 line and useful v13
@@ -125,7 +132,7 @@ existing counts, not delivered APIs or additional top-level milestones.
 | M36 | Natural-language database copilot | Concrete operator demand and a read-only, bounded, explainable contract; production writes remain separate. |
 | M37 | AI autofix workflow | A confined local patch/review/test/rollback journey with demonstrated value over existing development tools. |
 | M38 | Generic local read replicas and background replication | A named database's supported semantics and recovery guarantees; no generic transparent-replication claim. |
-| M39 | Rullst's own gateway/load balancer | Abandoned on 8 October 2026: generated Caddy/nginx configuration for established proxies replaces it. Revisiting it would need a new maintainer decision. |
+| M39 | Rullst's own gateway/load balancer | Abandoned on 8 October 2026: generated configuration for established proxies (Caddy today, nginx planned) replaces it. Revisiting it would need a new maintainer decision. |
 
 “Deferred” means lower expected return under the current product, budget and
 validation constraints, not that the idea is intrinsically bad. An explicit
@@ -148,7 +155,7 @@ not merely writing the first implementation.
 
 | Theme | Existing surface requiring care | Recurring cost and how to contain it |
 | :--- | :--- | :--- |
-| M1 — CLI/scaffolds | Multiple blueprints, database selections and installed generators | Changes multiply into generated applications. Maintain a declared supported matrix and shared templates; add combinations only for a user need. |
+| M1 — CLI/scaffolds | Three starters (Blank, API and SaaS), database selections and installed generators | Changes multiply into generated applications. Maintain a declared supported matrix and shared templates; add combinations only for a user need. |
 | M2 — build/reload | Cross-platform process supervision, filesystem behavior and compiler/toolchain integration | OS-specific regressions and repeated native compilation. Preserve reproducible targeted tests and measure build versus queue time. |
 | M6 — persistence | Relational and heterogeneous database/native adapters | Different transactions, types, consistency and native libraries. Keep adapter boundaries explicit and avoid universal parity promises. |
 | M9 — authentication | Passwords, sessions, recovery, tokens and passkey state | Security-sensitive lifecycle, standards and negative/concurrent cases. Prefer maintained primitives and one coherent supported identity path. |
@@ -157,7 +164,7 @@ not merely writing the first implementation.
 | M12 — security/assurance | WAF/DLP, tenant policy, secrets, audits and verification tooling | Threat/advisory changes and tooling/fixture upkeep. Keep a risk-to-test map and prevent duplicated or unbounded campaigns. |
 | M15 — async delivery | Local/durable queues, retry/leases/outbox and Redis profile | Failure ordering, replay, shutdown and backend recovery. Finish one durable journey before broadening brokers. |
 | M17 — files/video | Private storage, multipart and Bunny browser/provider lifecycle | Upload interruption, signing/expiry, notifications, SDK and browser changes. Bound supported protocols and separate fixture evidence from live interoperability. |
-| M21 — native delivery | Desktop/mobile scaffolding and Android signing/artifact verification | SDK, OS, signing and device changes. Maintain current guarantees but defer broader device/offline promises without test resources. |
+| M21 — native delivery | Installable PWA scaffolding (`make:pwa`) and its store-packaging guidance; the Omni desktop/mobile shells and Android artifact verification were retired in 13.0.0-alpha.3 | Browser, service-worker and store-packaging tool changes. Maintain current guarantees but defer native device/offline promises without test resources. |
 | M40 — Labs | Trusted orchestration and the bring-your-own-runner contract | Contract stability, leases and grading. Execution, OS/toolchain changes and isolation review belong to the application-owned runner; keep one narrow profile and never trade containment for convenience. |
 | M41 — privacy/supervision | Age/consent/replay and transparent observation contracts | Sensitive state, retention, authorization and evolving product/legal requirements. Minimize data and keep application/jurisdiction obligations explicit; no automatic legal certification. |
 
@@ -215,7 +222,7 @@ effort, failures, performance and maintenance on equivalent application
 journeys. This refines existing A themes and S1-S3; it does not add milestones
 or change the 25/16 counts.
 
-The 25 A themes are not prerequisites for the first comparison. After the active
+The 25 A themes are not prerequisites for the first comparison. After the
 v12.1.1 maintenance work, start with a small usable SaaS journey, establish a
 baseline and use the findings to choose subsequent improvements. The first
 Rullst-side acceptance contract is the opt-in `cli-saas-journey` diagnostic
@@ -235,8 +242,10 @@ protected publication. Existing admitted work should be completed and hardened
 before unrelated expansion. Any deferred capability stays disabled or clearly
 scoped; a known security or data-loss defect is not an optional future feature.
 
-An optional `13.0.0-alpha.N` can collect explicit evaluation feedback while
-stable users remain on supported v12. It does not resolve registration,
+The `13.0.0-alpha.N` prereleases collect explicit evaluation feedback; with v12
+at end of life, the latest v13 prerelease is the supported line until 13.0.0.
+13.0.0-alpha.4 is the feature freeze, 13.0.0-rc.1 takes only fixes and
+documentation, and 13.0.0 follows. A prerelease label does not resolve
 independent-review or safety blockers. Further compatible capabilities can ship
 in 13.1 and later minors; unfinished roadmap ideas do not all require v14.
 

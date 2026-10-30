@@ -119,9 +119,15 @@ of features or profile.
 
 Rullst keeps `aws-lc-rs` as the TLS crypto provider, for rustls'
 post-quantum hybrid key exchange, so the `aws-lc-sys` build script stays in a
-project's first build. Later builds reuse it, and the dependency layer of the
-generated Dockerfile (the cargo-chef approach) caches it in images; moving to
-`ring` is not planned.
+project's first build. Since 13.0.0-alpha.4 SQLx shares it
+(`tls-rustls-aws-lc-rs`, also in generated projects) instead of compiling
+rustls' ring backend as a second provider. Later builds reuse it, and the
+dependency layer of the generated Dockerfile (the cargo-chef approach) caches
+it in images; moving TLS to `ring` is not planned. `ring` remains a small
+primitives library (HMAC, digests, randomness, signatures) that the crates
+using those primitives depend on directly, because it also builds for wasm and
+edge targets (see
+[cryptography providers](security-architecture.md#cryptography-providers)).
 
 ### SQLx macros and the Nexus assistant
 
