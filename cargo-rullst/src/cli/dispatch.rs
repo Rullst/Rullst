@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use super::{BlueprintChoice, Commands, DatabaseChoice};
 use crate::generators::{
-    auth::scaffold_auth_system,
+    auth::scaffold_auth,
     billing::scaffold_billing_system,
     build::{UpgradeOptions, run_build_client, run_production_build, run_upgrade},
     controller::create_new_controller,
@@ -102,7 +102,11 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                 .block_on(crate::generators::migration::create_auto_migration())?;
         }
         Commands::Auth => {
-            scaffold_auth_system()?;
+            // Nothing written (the scaffold already exists) refreshes nothing.
+            if scaffold_auth()? {
+                crate::generators::ai_context::refresh_after_scaffold();
+                crate::generators::diagram::refresh_after_scaffold();
+            }
         }
         Commands::MakeBilling { model } => {
             scaffold_billing_system(model)?;
@@ -322,7 +326,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         | Commands::MakeMiddleware { .. }
         | Commands::MakeWorker { .. }
         | Commands::MakeIsland { .. }
-        | Commands::Auth
         | Commands::MakeBilling { .. }
         | Commands::MakeCors
         | Commands::MakeJwt => {

@@ -184,7 +184,8 @@ plain line without escape sequences or carriage returns.
 After a generator succeeds, the CLI prints up to three concrete **Next steps**
 (for example `cargo rullst db:migrate` after `make:model -m`). Generators that
 already print their own instructions (`new`, `auth`, `deploy`,
-`make:k8s`) add none, and `--json` invocations never print them.
+`make:k8s`) add none, `make:migration:auto` adds one only when it wrote a
+migration, and `--json` invocations never print them.
 
 ### `cargo rullst completions <shell>`
 Prints a completion script for `bash`, `zsh`, `fish`, `powershell` or `elvish`
@@ -341,7 +342,7 @@ The choices that materially change the generated application:
   * `--default`: Skips every question and uses deterministic defaults for anything no flag sets (name `app`, Blank, SQLite, no features), intended for CI and reproducible scaffolding.
   * `--blueprint <blank|api|saas>`: Selects the starter; the wizard skips that question. `lms`, `blog`, `portfolio` and `erp` still parse but fail before anything is written, naming the example that replaced them (exit status 1).
   * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary database; the wizard skips that question. Network databases must be configured before migration bootstrap. The SQLx backends (`sqlite`, `postgres`, `mysql`, `mariadb`) work with every starter. `turso` is accepted only with the Blank starter (web page or `--api`) and has no Nexus, Studio database pages, `Schema` migrations or SQLx ORM; the wizard's choice, `--help` and the review/dry-run screen say so. See [Database Support](database-support.md).
-  * `--no-database`: Generates the Blank or API starter without a primary relational database; it conflicts with `--database` and `--blueprint saas` rejects it.
+  * `--no-database`: Generates the Blank or API starter without a primary relational database; it conflicts with `--database` and `--blueprint saas` rejects it. Such a project gets no `DATABASE_URL`, no empty `rullst.db` file (only SQLite projects get one) and, with `--docker`, no SQLite `DATABASE_URL` in its Dockerfile.
   * `--ai`: Enables the umbrella AI facade in the generated manifest and, with the SaaS starter, the Nexus AI assistant (`nexus-ai`, since 13.0.0-alpha.4); without it the SaaS starter's Nexus has no assistant and no `rullst-ai` dependency.
   * `--redis`: Enables the umbrella Redis queue and cache capabilities and the Redis-structures side store (the direct ORM Redis feature).
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. `cargo rullst dev` applies pending migrations when it starts; run `cargo rullst db:migrate` explicitly otherwise.
@@ -928,10 +929,15 @@ fallible typed migration registry. The name is lowercased with `-` mapped to
 the file, when an `m*.rs` file there is not a valid Rust module name.
 
 ### `cargo rullst make:migration:auto`
-Takes no arguments and needs a SQLite `DATABASE_URL` in `.env`; with another
-database, a Turso-primary project or no `.env`, it prints a notice and writes
-nothing. It compares the `#[derive(Orm)]` models under `src/` with the
-database. It ignores framework tables (`migrations` and `rullst_*`) and writes a migration only for
+Takes no arguments and compares the `#[derive(Orm)]` models under `src/`
+with the SQLite database named by `DATABASE_URL` in `.env`. Without a
+`.env`, without a `DATABASE_URL` (a `--no-database` project), with a
+non-SQLite URL or in a Turso-primary project there is nothing to compare: it
+prints a "No migration generated" report naming the reason and exits with
+status 1. When the database already matches the models it writes nothing and
+exits with status 0; only a written migration is followed by the
+`cargo rullst db:migrate` next step. It ignores framework tables
+(`migrations` and `rullst_*`) and writes a migration only for
 additive changes (new tables or columns), with drops of model-less tables or
 columns included as commented-out code for review. When only such destructive
 differences remain, it lists them and writes no migration. Column types follow
@@ -1282,13 +1288,35 @@ Creates an authentication starting point in your codebase, including:
 It targets the SQLx ORM: Turso-primary projects are rejected. The command
 enables the `orm`, `auth` and `mail` umbrella features, registers the generated
 `controllers`, `middlewares`, `models` and `pages` modules in `src/lib.rs` (or
-`src/main.rs`), and refreshes the migration registry. It fails before writing
-anything when `src/models/user.rs`, `src/models/password_reset.rs`,
+`src/main.rs`), and refreshes the migration registry.
+
+In a Blank or API database starter (SQLite, PostgreSQL, MySQL or MariaDB) the
+unchanged starter migration `m20260601000000_create_users_table.rs` already
+creates `users` with `id`, `name` and timestamps. The command keeps it and
+writes `m<timestamp>_add_account_columns_to_users_table.rs` instead of a
+second users table: in one migration transaction (MySQL/MariaDB commit each
+DDL statement on its own) it adds `email` (`VARCHAR(255) NOT NULL DEFAULT ''`,
+as SQLite adds a `NOT NULL` column only with a default), `password_hash`,
+`oauth_provider`, `oauth_id`, `is_admin` and `session_epoch`, gives every
+existing row the unique placeholder email `user-<id>@no-email.invalid` (a
+reserved domain that never receives mail) and no password, and creates the
+unique index `users_email_unique`. It therefore works before and after the
+starter's first `db:migrate`, and no row is lost; its rollback drops only
+those columns and the index. The starter's two-field `User` struct in
+`src/main.rs` (or `src/lib.rs`) is replaced, while unchanged, by
+`pub use crate::models::user::User;`.
+
+When `src/models/user.rs`, `src/models/password_reset.rs`,
 `src/controllers/auth_controller.rs`, `src/controllers/password_controller.rs`,
-`src/middlewares/auth_middleware.rs` or `src/pages/auth.rs` already exists,
-when a `*_create_password_reset_tokens_table.rs` migration exists, or
-when a `*_create_users.rs`/`*_create_users_table.rs` migration already creates
-the users table (the blank database starter and the SaaS starter ship one). It also refuses a project without a SQL migration runner (`pub mod
+`src/middlewares/auth_middleware.rs` and `src/pages/auth.rs` all exist, as in
+the SaaS starter or after an earlier run, the command reports that
+authentication is already scaffolded, writes nothing and exits with status 0.
+It fails before writing anything when only some of those files exist, when a
+`*_create_password_reset_tokens_table.rs` or
+`*_add_account_columns_to_users_table.rs` migration exists, or when a
+`*_create_users.rs`/`*_create_users_table.rs` migration other than the
+unchanged Blank/API starter one creates the users table (its columns are
+unknown: add them with `make:migration`). It also refuses a project without a SQL migration runner (`pub mod
 migrations;` in `src/main.rs` or `src/lib.rs` plus a
 `rullst::artisan!(crate::migrations::get_migrations())` call, which database
 starters include), such as a `--no-database` starter, because nothing would

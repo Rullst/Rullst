@@ -10,11 +10,20 @@ mod turso;
 const BLANK_STYLES: &str = include_str!("blank/styles.css");
 pub(super) const BLANK_FAVICON: &[u8] = include_bytes!("blank/rullst.png");
 
+/// The SQLx database profile's minimal `users` migration (id, name and
+/// timestamps), which `cargo rullst auth` recognizes and extends.
+pub(crate) const STARTER_USERS_MIGRATION: &str =
+    include_str!("blank/src/migrations/m20260601000000_create_users_table.rs.template");
+
+/// The SQLx database profile's `User` model in the crate root, which
+/// `cargo rullst auth` replaces with its account model while unchanged.
+pub(crate) const STARTER_USER_MODEL: &str = include_str!("blank/fragments/db_model.rs.template");
+
 /// Files the SQLx database profile adds, in manifest order.
 const MIGRATION_FILES: [(&str, &str); 2] = [
     (
         "src/migrations/m20260601000000_create_users_table.rs",
-        include_str!("blank/src/migrations/m20260601000000_create_users_table.rs.template"),
+        STARTER_USERS_MIGRATION,
     ),
     (
         "src/migrations/mod.rs",
@@ -38,7 +47,7 @@ pub fn file_manifest(
     let db_model_code = if turso_primary {
         include_str!("blank/fragments/db_model.turso.rs.template")
     } else if db_needed {
-        include_str!("blank/fragments/db_model.rs.template")
+        STARTER_USER_MODEL
     } else {
         ""
     };

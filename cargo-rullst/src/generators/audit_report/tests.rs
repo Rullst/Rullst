@@ -162,7 +162,20 @@ fn fake_cargo(directory: &Path, audit_exit: u8) -> PathBuf {
     )
     .expect("fake cargo");
     fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).expect("executable");
-    path
+    // Another test's fork may still hold the new file open for writing; run it
+    // once so the check never sees "text file busy" as a missing cargo-audit.
+    for _ in 0..100 {
+        match std::process::Command::new(&path)
+            .args(["audit", "--version"])
+            .output()
+        {
+            Err(error) if error.raw_os_error() == Some(26) => {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            _ => return path,
+        }
+    }
+    panic!("fake cargo stayed busy");
 }
 
 #[cfg(unix)]

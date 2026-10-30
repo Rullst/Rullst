@@ -1,0 +1,76 @@
+use rullst::db::Orm;
+use rullst::db::async_trait;
+use rullst::db::schema::{ColumnDefault, Migration, Schema};
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {
+    fn name(&self) -> &'static str {
+        "__MIGRATION_NAME__"
+    }
+
+    // The columns, the placeholder emails and the index commit together on
+    // PostgreSQL and SQLite; MySQL/MariaDB commit each DDL statement on its own.
+    fn within_transaction(&self) -> bool {
+        true
+    }
+
+    // `cargo rullst auth` adds the account columns to the starter's `users`
+    // table (id, name, created_at, updated_at) and keeps its rows.
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
+        Schema::table("users", |table| {
+            // SQLite adds a NOT NULL column only with a default. Registration
+            // always sets the email; existing rows get a placeholder below.
+            // MySQL/MariaDB cannot index a TEXT column without a prefix length,
+            // so indexed strings are bounded VARCHAR columns on every driver.
+            table
+                .string("email")
+                .not_null()
+                .default(ColumnDefault::Text(String::new()))
+                .col_type = "VARCHAR(255)".to_string();
+            table.string("password_hash").nullable();
+            table.string("oauth_provider").nullable();
+            table.string("oauth_id").nullable();
+            // Grants Nexus under the application's sign-in; see the User model.
+            table.boolean("is_admin").not_null().default(ColumnDefault::Integer(0));
+            // Bumped to revoke every login cookie of the account.
+            table.big_integer("session_epoch").not_null().default(ColumnDefault::Integer(0));
+        })
+        .await?;
+        // Rows created before authentication get a unique placeholder address
+        // in the reserved `.invalid` domain, which never receives mail, and no
+        // password, so they cannot sign in until you give them a real email.
+        let placeholder = if Orm::driver()? == "mysql" {
+            "UPDATE users SET email = CONCAT('user-', id, '@no-email.invalid') WHERE email = ''"
+        } else {
+            "UPDATE users SET email = 'user-' || id || '@no-email.invalid' WHERE email = ''"
+        };
+        Orm::raw(placeholder).execute().await?;
+        Schema::table("users", |table| {
+            table.unique_index(&["email"]);
+        })
+        .await
+    }
+
+    // Drops only what `up` added: the starter's table and rows stay.
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
+        let drop_index = if Orm::driver()? == "mysql" {
+            "DROP INDEX users_email_unique ON users"
+        } else {
+            "DROP INDEX users_email_unique"
+        };
+        Orm::raw(drop_index).execute().await?;
+        for statement in [
+            "ALTER TABLE users DROP COLUMN session_epoch",
+            "ALTER TABLE users DROP COLUMN is_admin",
+            "ALTER TABLE users DROP COLUMN oauth_id",
+            "ALTER TABLE users DROP COLUMN oauth_provider",
+            "ALTER TABLE users DROP COLUMN password_hash",
+            "ALTER TABLE users DROP COLUMN email",
+        ] {
+            Orm::raw(statement).execute().await?;
+        }
+        Ok(())
+    }
+}
