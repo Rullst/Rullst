@@ -225,7 +225,7 @@ These workflows are **periodic and manually runnable**:
 | Cadence | Workflows | Mode |
 | :--- | :--- | :--- |
 | Daily | `ci.yml`, `sanitizers.yml`, `supply-chain.yml` | Supply Chain (Cargo Audit of the production and fuzz locks, Cargo Deny and the advisory-exception check) is blocking; the nightly `ci.yml` run executes the complete Linux/macOS/Windows matrix on `main`; TSan/ASan are blocking when executed. |
-| Weekly | `bench.yml`, `codeql.yml`, `corpus-sync.yml`, `coverage.yml`, `documentation.yml`, `kani.yml`, `miri.yml`, `crypto-containment.yml`, `proptest.yml`, `scorecards.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. Corpus sync warms and minimizes the same 42 validated target corpora with bounded parallelism. Miri (Wednesday 01:17 UTC) and Kani (Thursday 01:47 UTC) run their full strict matrices so that a regression shows up within a week rather than at release admission. |
+| Weekly | `bench.yml`, `codeql.yml`, `coverage.yml`, `documentation.yml`, `kani.yml`, `miri.yml`, `crypto-containment.yml`, `proptest.yml`, `scorecards.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. Miri (Wednesday 01:17 UTC) and Kani (Thursday 01:47 UTC) run their full strict matrices so that a regression shows up within a week rather than at release admission. |
 
 All remaining test/build workflows run on the documented push, pull-request or
 path filters and also expose a manual rerun. For an RC or stable checkpoint,
@@ -287,9 +287,8 @@ cold build; evaluate acceleration using the reported cache hit ratio and a
 later compatible run, never by weakening or omitting assertions.
 
 The same content-addressed approach accelerates LLVM coverage, benchmark,
-mutation/fuzz compilation and the scheduled release-mode regression suite. The
-weekly corpus workflow warms the same fuzz compiler namespace used by the
-manual campaign. Benchmarks remain
+mutation/fuzz compilation and the scheduled release-mode regression suite.
+Benchmarks remain
 sequential on one runner so comparisons do not mix host variance. Coverage
 deliberately remains one report job because splitting it without a reviewed
 profile-data merge could change the repository percentage. Its second
@@ -437,7 +436,7 @@ checks already emitted by the integration candidate.
 | Trifecta with all features | **Implemented** | CI and tag release both run format, all-target/all-feature Clippy, and all-feature tests. |
 | Strict DB features in isolation | **Implemented in workflow** | `strict-postgres`, `strict-mysql`, and `strict-sqlite` compile independently and each runs a backend-specific CRUD test with only the selected strict feature enabled. |
 | Honest blocking/informational labels | **Implemented** | Unsafe and Wasm checks are blocking in continuous CI; the declared Kani, Miri and fuzzing scopes are strict release gates; mutation testing and udeps explicitly remain informational. |
-| Cover every fuzz target | **Implemented in workflow** | `.github/fuzz-targets.json` is the shared inventory for the manual campaign and corpus maintenance. A blocking validator compares it with all eleven fuzz manifests and their 42 source files. This records configuration, not a successful six-hour run. |
+| Cover every fuzz target | **Implemented in workflow** | `.github/fuzz-targets.json` is the inventory for the manual campaign and the workflow-lint and Rust CI lock checks. A blocking validator compares it with all eleven fuzz manifests and their 42 source files. This records configuration, not a successful six-hour run. |
 | Package all crates before publishing | **Implemented in workflow** | The tag-only release validates versions, packages all publishable workspace crates, hashes and attests the archives, then publishes in dependency order. |
 | Unified evidence bundle per tag | **Implemented in workflow** | The tag-scoped bundle contains `Cargo.lock`, Cargo metadata, CycloneDX 1.5 SBOM, Cargo Audit JSON, `deny.toml`, bounded compliance evidence, governed advisory exceptions, commit/tag context, and checksums. The bundle and `.crate` archives are included in build-provenance attestation. |
 | Align manifest, changelog, tag, registry, and notes | **Implemented in workflow** | Preflight validates manifests and tag, extracts the exact dated changelog section into the GitHub release, and verifies registry checksums after publication. |
@@ -566,7 +565,7 @@ higher component result for the repository total.
   The aggregate also fails closed when an artifact is absent, a shard is
   incomplete or the reviewed full inventory drifts; its conservative
   percentage never treats a timeout as caught.
-- Fuzzing and corpus maintenance pin `nightly-2026-08-21` instead of following
+- Fuzzing pins `nightly-2026-08-21` instead of following
   a moving nightly alias. This verifier-only toolchain does not change the
   framework's stable Rust 1.99.1 toolchain or its Rust 1.96 MSRV. Before a
   release campaign starts, eleven strict preflight jobs compile every target so a
@@ -575,7 +574,7 @@ higher component result for the repository total.
   feedback only; the evidence-boundary job refuses to call it release evidence.
   Each of the eleven fuzz packages has a checked-in dependency lock; inventory
   validation requires it, and locked metadata plus a post-command drift check
-  prevents preflight, campaign or corpus maintenance from silently resolving a
+  prevents preflight or campaign jobs from silently resolving a
   different dependency graph.
   The parser
   campaign restarts its ASan process every 30 minutes while retaining one
@@ -974,13 +973,18 @@ The v13 manual `fuzzing.yml` matrix covers all **42** declared libFuzzer targets
 (the immutable v12 line retains 40):
 Core 12, ORM 5, Security 7, Connect 3, Mail 4, AI 3, IoT 3, Capital 1, Nexus 1,
 Studio 1 and Privacy 2. The checked-in `.github/fuzz-targets.json` is validated against
-every `*/fuzz/Cargo.toml`, corresponding lockfile and source file before either
-the manual campaign or weekly corpus job can fan out. Release mode verifies
-input-equivalent historical results and compiles the remaining targets in
-package-level preflight jobs before starting any long campaign. Both jobs use
-versioned per-target corpora and one content-addressed compiler-cache namespace;
-campaign failures retain their exact reproducer, and the weekly job performs a
-bounded warm-up before minimizing and uploading each actual corpus. A clean
+every `*/fuzz/Cargo.toml`, corresponding lockfile and source file before the
+manual campaign can fan out. Release mode verifies input-equivalent historical
+results and compiles the remaining targets in package-level preflight jobs
+before starting any long campaign. Campaign jobs restore and save versioned
+per-target corpora in the Actions cache and share one content-addressed
+compiler-cache namespace; campaign failures retain their exact reproducer.
+The weekly `corpus-sync.yml` warm-up was removed in 13.0.0-alpha.4: the
+repository cache runs above its 10 GiB limit, so no saved corpus survived to
+the next weekly run or to a release campaign (the weekly runs of 11, 18 and 25
+October 2026 and the release campaign of 24 October all reported "Cache not
+found"), and its one-minute runs never produced a reproducer. The same
+eviction applies to the corpora the campaign saves. A clean
 run retains its original source SHA, target, corpus, toolchain and time budget;
 reuse adds a separately verified relationship to the candidate inputs and
 never claims a fresh execution. Diagnostic mode is limited to one exact inventory target for five
@@ -1055,7 +1059,7 @@ Dependabot updating the wrapper alone is insufficient. The scan's existing
 scope and verified-secret failure policy remain unchanged. These automation
 updates do not change published crate versions or constitute a v12.0.1 release.
 
-## Workflow inventory (35 definitions)
+## Workflow inventory (34 definitions)
 
 Durations are intentionally omitted because runner load, cache state, and the
 dependency graph make static estimates unreliable.
@@ -1067,7 +1071,6 @@ dependency graph make static estimates unreliable.
 | [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from full/CLI manual Rust CI or admitted tag release | Blocking caller job; required release evidence | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories before attestation. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
-| [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Validates the shared 42-target inventory and eleven package lockfiles, restores each real target corpus, performs a bounded warm-up, minimizes it, uploads the result and warms the campaign's content-addressed compiler cache; individual target failures are retained but tolerated, while dependency-lock drift remains a hard failure. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation with a pinned, zero-retry, bounded-concurrency nextest scheduler and retained JUnit inventory; a focused default-SQLite pass for ORM/Studio/Nexus/the facade; exact local 90% floors; and blocking OIDC-authenticated Codecov upload. Scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |
 | [`crypto-containment.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/crypto-containment.yml) | relevant main changes and PRs, weekly, manual | Blocking | Signed OTA and Vault tests, RustSec audit, and simulator-boundary checks; explicitly no PQC/HSM certification. Until 13.0.0-alpha.4 this was `pqc-compliance.yml`; the `pqc` and `hsm` modules it scans are deterministic simulator fixtures. |
 | [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml) | manual | Blocking generated targets plus informational showcase | Pins the ZAP image by digest, scans fresh release/migrated REST API, SaaS starter (public and signed-in) and LMS surfaces as blocking gates, scans the CDN-backed blog showcase informationally, and uploads separate reports plus application logs. |
@@ -1097,6 +1100,16 @@ dependency graph make static estimates unreliable.
 | [`wasm-matrix.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/wasm-matrix.yml) | main/v12/v13 push and PR, manual | Blocking | Compiles Core, the public `rullst` facade (without features, with its defaults and with the CLI-generated application feature set) and macros for `wasm32-unknown-unknown` and `wasm32-wasip1`. |
 | [`workflow-lint.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/workflow-lint.yml) | main/v12/v13 push and PR, manual | Blocking | Validates the shared fuzz inventory, then Actionlint checks workflow syntax, GitHub expressions and embedded shell using an immutable container digest. |
 | [`zero-panics.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/zero-panics.yml) | main/v12/v13 push and PR, manual | Blocking | Panic-family Clippy lints plus generated-code regression checks for published runtime targets. |
+
+### Informational workflows reviewed for 13.0.0-alpha.4
+
+Each informational workflow's run history was read for 13.0.0-alpha.4, asking
+whether a finding ever led to a commit and whether another workflow already
+covers it. `corpus-sync.yml` was removed (see
+[Fuzzing and OSS-Fuzz](#fuzzing-and-oss-fuzz)); these two stay:
+
+- `mutants.yml` stays: it measures the mutation campaigns (MAINTAINING.md section 6), admits CLI files to `.github/mutants-pr-cli.txt`, and its targeted runs are dispatched and acted on routinely.
+- `udeps.yml` stays: it is the only check of unused dev- and build-dependencies, because `cargo machete` reads only `[dependencies]`; its weekly report has listed the same findings since September 2026 (`insta` in `cargo-rullst`, `proptest` in `rullst` and `loom` in `rullst-connect` are unused; the `rullst-orm` and `rullst-studio` entries are test dependencies the all-feature build compiles out), so clear them to make a new finding visible.
 
 ## Verification efficiency — v12 maintenance and v13
 
