@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793331034867,
+  "lastUpdate": 1793333555985,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -11889,6 +11889,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 369,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c3596fb9bdf22dcc42d42955c0a15156a43c6e7e",
+          "message": "Merge pull request #585 from Rullst/ci/v13-alpha4-fuzz-inputs\n\nci(fuzz): derive release fuzz evidence inputs from each fuzz package's build graph",
+          "timestamp": "2026-10-30T00:53:30-03:00",
+          "tree_id": "756e3d40d6838aed708f997259893bb4c4694117",
+          "url": "https://github.com/Rullst/Rullst/commit/c3596fb9bdf22dcc42d42955c0a15156a43c6e7e"
+        },
+        "date": 1793333554956,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 381,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
