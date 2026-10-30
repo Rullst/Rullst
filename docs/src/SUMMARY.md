@@ -9,7 +9,7 @@
 - [Why Rullst?](why-Rullst.md)
 - [💡 The Rullst Philosophy](philosophy.md)
 - [Simple Capability Status](capability-status.md)
-- [Maturity Tiers: Core, Extensions, Experimental](maturity.md)
+- [Maturity Tiers: Core, Extension, Experimental](maturity.md)
 
 # 🍳 Rullst Cookbook & Tutorials
 
@@ -40,7 +40,7 @@
 - [20. Background Jobs & Task Queues](tutorials/20-background-jobs-queues.md)
 
 ## 🔴 Level 3: Advanced (Enterprise, AI, IoT & Cloud)
-- [21. Air-Gapped Local AI with Ollama](tutorials/21-local-ai-ollama.md)
+- [21. Explicit Local AI with Ollama](tutorials/21-local-ai-ollama.md)
 - [22. RAG Systems & Vector Search](tutorials/22-rag-vector-search.md)
 - [23. Process Telemetry & Prometheus](tutorials/23-rullst-radar-prometheus.md)
 - [24. Interactive Scalar API Docs](tutorials/24-scalar-api-docs.md)
@@ -53,7 +53,7 @@
 ## 💎 Level 4: Operational Guides & Advanced Boundaries
 - [31. SaaS Deployment Preparation](tutorials/31-end-to-end-saas-aws-gcp.md)
 - [32. Bounded Security Telemetry](tutorials/32-ai-sentinel-soc-dashboard.md)
-- [33. Multi-Tenant B2B Enterprise Architecture](tutorials/33-multi-tenant-b2b-saas.md)
+- [33. Auth-Bound Multi-Tenancy](tutorials/33-multi-tenant-b2b-saas.md)
 - [34. Live Analytics Dashboard & WebSockets](tutorials/34-realtime-dashboard-liveview-websockets.md)
 - [35. Performance Measurement & Resilient Operation](tutorials/35-high-performance-benchmarking.md)
 - [36. Assisted Framework Upgrades](tutorials/36-assisted-framework-upgrades.md)
