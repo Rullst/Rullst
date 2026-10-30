@@ -259,7 +259,7 @@ first.
 | ORM `FromRow` and SQLx macros | **Breaking**, from 13.0.0-alpha.4: `#[derive(Orm)]` implements SQLx's `FromRow` for the model itself, generic over the row type like SQLx's derive, with the same meaning for the options a model accepts (field `#[sqlx(skip)]`, `#[sqlx(default)]`, `#[sqlx(json)]`, `#[sqlx(json(nullable))]` and struct-level `#[sqlx(default)]`; relation fields are never read and start from `Default::default()`). `rullst-orm` and `rullst-core` no longer enable SQLx's `macros` feature, and no Rullst crate derives SQLx traits, so an application builds without `sqlx-macros` and without a second, build-host copy of SQLx and its SQLite driver; a generated starter needs no change to its `sqlx` dependency. A model that also derives `FromRow` no longer compiles: unless the application enables SQLx's macros itself, `rullst::db::FromRow` and `rullst_orm::FromRow` are now only the trait ("expected derive macro, found trait"), and with them enabled any `FromRow` derive is a second implementation (E0119). Remove `FromRow` from the model's derive list and from the `use` line that imports it. A model that keeps its own `FromRow` (hand-written, or SQLx's derive) declares the new `#[orm(custom_from_row)]`. Structs that are not models, `sqlx::Type`/`Encode`/`Decode` derives and `sqlx::query!` and the other SQLx macros need SQLx's `derive` or `macros` feature on the application's own `sqlx` dependency, for example `sqlx = { version = "0.9", default-features = false, features = ["derive"] }`, which builds `sqlx-macros` again. `cargo rullst upgrade` locates models deriving both (`V13-ORM-FROM-ROW`) and SQLx macros that no manifest enables (`V13-SQLX-MACROS`). |
 | Nexus AI assistant feature | From 13.0.0-alpha.4 the Nexus AI assistant (`/nexus/chat`, `/nexus/chat/query`) is the `ai` feature of `rullst-nexus`, on by default for the crate, and the new `nexus-ai` feature of the `rullst` facade, whose `nexus` feature no longer enables it, so Nexus builds without `rullst-ai`. Without it the panel shows no assistant link, both routes answer `404 Not Found` with a notice naming the feature (behind the same access policy), the security and telemetry pages report the assistant as not enabled, and `detect_ai_provider()` returns `(false, "AI assistant not enabled in this build")`; the public handlers keep their signatures and render that notice. With the feature, routes and behaviour are unchanged. An application that uses the assistant adds `nexus-ai` (`rullst-nexus` users without default features add `ai`); `cargo rullst new` enables it when the SaaS starter is created with AI. `cargo rullst upgrade` reviews Nexus dependencies without it (`V13-NEXUS-AI-FEATURE`). No API changes. |
 | Generated starter dependencies | From 13.0.0-alpha.4 `cargo rullst new` no longer lists `tracing-subscriber`, which no generated code used (Rullst sets up logging with its own copy), and the SaaS starter lists `nexus-ai` only when AI is chosen. An existing project whose code does not use `tracing_subscriber` can remove the dependency; nothing else changes. |
-| TLS crypto provider | From 13.0.0-alpha.4 every TLS connection Rullst makes uses aws-lc-rs as the rustls crypto provider; ring remains only the primitives library (HMAC, digests, randomness, signatures) of the crates that use it directly. The SQLx dependencies of the framework crates, the examples and newly generated projects use `tls-rustls-aws-lc-rs` instead of `tls-rustls` (ring) or `tls-rustls-ring`, `orm-mongodb` uses MongoDB's `rustls-tls-aws-lc`, `mail-smtp` uses lettre's `aws-lc-rs`, and the Redis Streams adapter installs aws-lc-rs instead of ring as the rustls process default when none is installed (ORM Redis connections now do the same over TLS). `Server` start-up (with Core's `orm`, `storage-s3` or `telemetry` feature), the OTLP exporter and the `rullst-studio` binary also install aws-lc-rs as the process default when none is installed, so reqwest, lettre and Redis no longer depend on which component initialised rustls first; a provider the application installs first is kept. No API changes. An application whose own `sqlx` dependency lists `tls-rustls` (as projects generated earlier do) or `tls-rustls-ring` keeps SQLx on ring, because SQLx prefers ring when any crate enables it: change the feature to `tls-rustls-aws-lc-rs`. See [cryptography providers](security-architecture.md#cryptography-providers). |
+| TLS crypto provider | From 13.0.0-alpha.4 every TLS connection Rullst makes uses aws-lc-rs as the rustls crypto provider; ring remains only the primitives library (HMAC, digests, randomness, signatures) of the crates that use it directly. The SQLx dependencies of the framework crates, the examples and newly generated projects use `tls-rustls-aws-lc-rs` instead of `tls-rustls` (ring) or `tls-rustls-ring`, `orm-mongodb` uses MongoDB's `rustls-tls-aws-lc`, `mail-smtp` uses lettre's `aws-lc-rs`, and the Redis Streams adapter installs aws-lc-rs instead of ring as the rustls process default when none is installed (ORM Redis connections now do the same over TLS). `Server` start-up (with Core's `orm`, `storage-s3` or `telemetry` feature), the OTLP exporter and the `rullst-studio` binary also install aws-lc-rs as the process default when none is installed, so reqwest, lettre and Redis no longer depend on which component initialised rustls first; a provider the application installs first is kept. No API changes. An application whose own `sqlx` dependency lists `tls-rustls` (as projects generated earlier do) or `tls-rustls-ring` keeps SQLx on ring, because SQLx prefers ring when any crate enables it: change the feature to `tls-rustls-aws-lc-rs`. `cargo rullst upgrade` reviews such a dependency (`V13-SQLX-TLS-RING`). See [cryptography providers](security-architecture.md#cryptography-providers). |
 | CLI `auth` on database starters | From 13.0.0-alpha.4, `cargo rullst auth` works in a fresh Blank or API starter with SQLite, PostgreSQL, MySQL or MariaDB, before or after its first `db:migrate`. alpha.3 refused with "refusing to add a second users table migration" because the starter's `m20260601000000_create_users_table.rs` already creates `users`. While that migration is unchanged, the command now keeps it and writes `m<timestamp>_add_account_columns_to_users_table.rs`, which adds `email`, `password_hash`, `oauth_provider`, `oauth_id`, `is_admin` and `session_epoch` and the unique index `users_email_unique`, and gives existing rows the placeholder email `user-<id>@no-email.invalid` and no password; it also replaces the starter's unchanged two-field `User` in `src/main.rs`/`src/lib.rs` with `pub use crate::models::user::User;`. A changed or unknown users migration is still refused, now with "refusing to change the users table". When every file it writes already exists (the SaaS starter, or a second run) it reports "Authentication is already scaffolded", writes nothing and exits with status 0 instead of failing. Projects that followed the alpha.3 workaround (deleting the starter migration and database) keep working. |
 | CLI `--no-database` files | From 13.0.0-alpha.4, `cargo rullst new --no-database` (Blank or API) no longer writes an empty `rullst.db`, and with `--docker` its Dockerfile no longer sets `DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc`; SQLite projects still get both. A database-free project created earlier can delete the empty `rullst.db` and that Dockerfile line. |
 | CLI `make:migration:auto` without a database to compare | From 13.0.0-alpha.4, `cargo rullst make:migration:auto` exits with status 1 and a "No migration generated" report when there is no `.env`, no `DATABASE_URL` (a `--no-database` project), a non-SQLite `DATABASE_URL` or a Turso primary. alpha.3 printed a warning, exited with status 0 and suggested `cargo rullst db:migrate` to "apply the generated migrations" although none was written. A database already in sync with the models still exits with status 0, now without that next step. Scripts that ran it in such projects and relied on status 0 must stop running it there. |
@@ -421,63 +421,142 @@ shows the expected result.
 ## Upgrading an alpha.3 application to alpha.4
 
 This checklist moves an application from 13.0.0-alpha.3 to 13.0.0-alpha.4.
-alpha.4 changes mostly the CLI and the files it generates. In the framework
-crates, `#[derive(Orm)]` now implements `FromRow` and Rullst no longer enables
-SQLx's macros, and the facade's `nexus` feature leaves out the AI assistant:
-the rows above that name alpha.4 are the changes in between.
+The rows above that name alpha.4 are the changes in between. Most of them
+change the CLI and the files it generates. In the framework crates,
+`#[derive(Orm)]` now implements `FromRow` and Rullst no longer enables SQLx's
+macros, the facade's `nexus` feature leaves out the AI assistant, every TLS
+connection uses aws-lc-rs, and some internals are hidden from the API
+documentation. Work through the steps in order.
 
-1. **Prepare** as for alpha.3: a branch with a clean tree and a committed
-   `Cargo.lock`, the current `cargo test` result and a database backup.
+1. **Prepare.** Work on a branch with a clean tree and a committed
+   `Cargo.lock`, record the current `cargo test` result, and back up every
+   database (check that the backup restores).
 2. **Install the alpha.4 CLI.**
    `cargo install cargo-rullst --version =13.0.0-alpha.4 --locked --force`,
    then `rullst --version` must print `13.0.0-alpha.4`. `cargo rullst green`
-   (the former `footprint`) is part of this package; nothing else to install.
-   `cargo rullst ai` was removed: use your editor's or terminal's AI
+   (the former `footprint`) is part of this package; there is nothing else to
+   install. `cargo rullst ai` was removed: use your editor's or terminal's AI
    assistant with the project's `AGENTS.md` (`cargo rullst generate:ai-context`)
    and the published [`llms.txt`](https://rullst.github.io/Rullst/llms.txt).
 3. **Inspect.** `cargo rullst upgrade --dry-run` applies only the rules
-   introduced after 13.0.0-alpha.3. Two are `MUST-CHANGE` findings in Rust
-   code:
-   - `V13-ORM-FROM-ROW`: a model deriving `FromRow` beside `Orm`. Remove
-     `FromRow` from the derive list and its import; generated models
-     (`#[derive(Debug, Clone, FromRow, Orm)]`) need exactly that edit.
-   - `V13-SQLX-MACROS`: a SQLx derive on a struct that is not a model, or a
-     `sqlx::query!`-style macro, while no manifest enables SQLx's `derive`
-     or `macros` feature. Enable it on your own `sqlx` dependency.
+   introduced after 13.0.0-alpha.3. These eight can appear:
+   - `V13-ORM-FROM-ROW` (`MUST-CHANGE`, step 5): a model that derives
+     `FromRow` beside `Orm`. Every model generated before alpha.4 does
+     (`#[derive(Debug, Clone, FromRow, Orm)]`).
+   - `V13-SQLX-MACROS` (`MUST-CHANGE`, step 5): a SQLx derive on a struct or
+     enum that is not a model, or a `sqlx::query!`-style macro, while no
+     manifest enables SQLx's `derive` or `macros` feature.
+   - `V13-SQLX-TLS-RING` (`REVIEW`, step 6): a `sqlx` dependency or a
+     `[features]` entry that enables `tls-rustls`, `tls-rustls-ring` or
+     `tls-rustls-ring-webpki`. Projects generated before alpha.4 list
+     `tls-rustls`.
+   - `V13-NEXUS-AI-FEATURE` (`REVIEW`, step 7): a `rullst` dependency with
+     `nexus` or `nexus-tz` but not `nexus-ai`, or a `rullst-nexus` dependency
+     without default features and without `ai`.
+   - `V13-CLI-AI-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`,
+     `V13-DEPLOY-TARGETS-REMOVED` and `V13-DEPLOY-GENERATORS-REMOVED`
+     (`REVIEW`, step 9): scripts that run removed commands, and the files of
+     the removed deploy targets and generators.
 
-   One is a `REVIEW` finding about manifests:
-   - `V13-NEXUS-AI-FEATURE`: a `rullst` dependency with `nexus` but not
-     `nexus-ai`. Add `nexus-ai` if the application uses `/nexus/chat`.
+   Steps 9 to 11 also list changes that no rule locates; read them even when
+   the plan has no finding.
+4. **Apply, keeping a failed state.** A model that still derives `FromRow`
+   does not compile against alpha.4, and one without it does not compile
+   against alpha.3, so the edits of step 5 come after the version change. Run
+   `cargo rullst upgrade --keep-on-failure`: it pins every Rullst dependency
+   to `=13.0.0-alpha.4`, runs `cargo fix` and `cargo check --locked`, and,
+   when they fail, keeps the edited files instead of restoring them and names
+   the must-change findings. When the plan has no `MUST-CHANGE` finding, a
+   plain `cargo rullst upgrade` is enough; go on with step 6.
+5. **Fix the models and SQLx macros.**
+   - Remove `FromRow` from each model's derive list and from the `use` line
+     that imports it: `#[derive(Debug, Clone, FromRow, Orm)]` becomes
+     `#[derive(Debug, Clone, Orm)]`, and `use rullst::db::{Orm, FromRow, RowSnapshot};`
+     becomes `use rullst::db::{Orm, RowSnapshot};`. A model that keeps its
+     own `FromRow` (hand-written, or SQLx's derive) declares
+     `#[orm(custom_from_row)]` instead.
+   - For SQLx derives on other types (`FromRow`, `Type`, `Encode`, `Decode`)
+     and `sqlx::query!`-style macros, add `derive` or `macros` to the features
+     of the application's own `sqlx` dependency. This compiles `sqlx-macros`
+     again ([Build times](build-times.md)).
+6. **Switch SQLx to aws-lc-rs.** In the application's `sqlx` dependency and
+   in any `[features]` entry, replace `tls-rustls` (or `tls-rustls-ring`,
+   `tls-rustls-ring-webpki`) with `tls-rustls-aws-lc-rs`. SQLx prefers ring
+   whenever any crate enables it, so one such feature keeps every database
+   connection on ring while Rullst's other TLS connections use aws-lc-rs. Keep
+   the `sqlx` dependency itself: the CLI reads it to recognise a SQLx project.
+   `tls-rustls-ring-native-roots` is not reported, because switching it changes
+   the trusted roots; review it yourself (TLS crypto provider row,
+   [cryptography providers](security-architecture.md#cryptography-providers)).
+7. **Decide on the Nexus AI assistant.** If the application uses
+   `/nexus/chat`, add `nexus-ai` to the `rullst` features (or `ai` to a
+   `rullst-nexus` dependency without default features). Otherwise nothing is
+   needed: both chat routes answer `404 Not Found` with a notice, the panel
+   shows no assistant link, and Nexus no longer brings `rullst-ai` into the
+   build.
+8. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
+   edits and checks the result with `cargo fix` and `cargo check --locked`.
+9. **Update scripts, CI and other tools.** Replace the commands the review
+   rules name:
+   - `rullst ai …` with your own assistant, and `rullst footprint` with
+     `rullst green` (`V13-CLI-AI-REMOVED`);
+   - `update check|verify|stage|install` and `update guided --scope|--root`
+     with `cargo install cargo-rullst --version =<version> --locked`, keeping
+     `update project …` (`V13-CLI-SELF-UPDATE-REMOVED`);
+   - `deploy --platform fly|railway|render`, `foundry:init`,
+     `foundry:deploy`, `nixify`, `generate:buildah` and `make:grpc`
+     (`V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`). The
+     files they generated (`fly.toml`, `render.yaml`, `railway.json`,
+     `Foundry.toml`, a `nixify` `flake.nix`, `build_buildah.sh`,
+     `src/grpc/mod.rs`) stay yours and keep working with their own tools; keep
+     or delete them.
 
-   The other four are `REVIEW` findings about files and scripts:
-   - `V13-DEPLOY-TARGETS-REMOVED`: `fly.toml`, `render.yaml`, `railway.json`
-     or `railway.toml`, or a script that runs `deploy --platform` with Fly.io,
-     Railway or Render.
-   - `V13-DEPLOY-GENERATORS-REMOVED`: `Foundry.toml`, a `nixify` `flake.nix`,
-     `build_buildah.sh`, `src/grpc/mod.rs`, or a script that runs a removed
-     generator.
-   - `V13-CLI-SELF-UPDATE-REMOVED`: a script that runs
-     `update check|verify|stage|install` or `update guided --scope|--root`.
-   - `V13-CLI-AI-REMOVED`: a script that runs the removed `rullst ai` or
-     `rullst footprint` (now `green`).
+   No rule locates these; check them yourself:
+   - `cargo rullst new --blueprint lms|blog|portfolio|erp` fails before
+     writing anything: copy the application from [`examples/`](examples.md)
+     instead;
+   - `cargo rullst make:migration:auto` exits with status 1 when there is no
+     SQLite database to compare (no `.env`, no `DATABASE_URL`, a non-SQLite
+     URL or a Turso primary);
+   - a client of the retired `POST /_rullst/autofix` reads `context_url`
+     instead of `command`.
+10. **Regenerate the deployment files.** An application deployed with the
+    files of `cargo rullst deploy --platform vps` or `cargo rullst dockerize`
+    runs `cargo rullst deploy` again. It keeps an existing `Dockerfile` and
+    `Caddyfile` and writes `compose.yaml`, which replaces
+    `docker-compose.prod.yml` (that file stays until you remove it). Then:
+    - for SQLite, `deploy` warns when the `Dockerfile` lacks
+      `ENV DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc`. Add it to the
+      last stage, or set `DATABASE_URL` in `.env.production`; otherwise the
+      database path points into the image's read-only `/app` and the app stops
+      at startup;
+    - the new `Caddyfile` checks `/health` every 5 seconds and holds requests
+      for up to 15 seconds (`lb_try_duration`) while the app restarts. To get
+      it, move the old file aside and run `cargo rullst deploy` again, or copy
+      its `reverse_proxy` block.
 
-   Generated files stay yours and keep working with their own tools; keep or
-   delete them. Scripts that run a removed command need the replacement the
-   finding names.
-4. **Apply.** `cargo rullst upgrade` pins every Rullst dependency to
-   `=13.0.0-alpha.4`, runs `cargo fix` and `cargo check --locked`, and
-   restores the files if a step fails.
-5. **Optionally** copy the `[profile.dev]` sections that new projects get
-   ([Build times](build-times.md)). A SaaS application whose code does not
-   import `rullst_connect` can remove that dependency, and a `tracing` or
-   `tokio` dependency declared only for `#[derive(Orm)]` can go too (see the
-   ORM derive dependencies row), as can `tracing-subscriber` when your code
-   does not use it. Keep the `sqlx` dependency (the CLI reads it to recognise
-   a SQLx project), but change its feature `tls-rustls` to
-   `tls-rustls-aws-lc-rs` so that SQLx uses aws-lc-rs, the rustls provider of
-   the framework (see the TLS crypto provider row).
-6. **Verify** with the production feature set: `cargo build`, `cargo test`
-   and `cargo clippy --all-targets -- -D warnings`.
+    `cargo rullst upgrade` reports neither file; start the stack as the
+    [Linux VM guide](vm-deployment.md) shows.
+11. **Optional clean-ups.** No rule reports these.
+    - A `tracing` or `tokio` dependency declared only for `#[derive(Orm)]` can
+      go (ORM derive dependencies row); keep it where your own code uses it.
+      `tracing-subscriber` can go when no code uses `tracing_subscriber`.
+    - A SaaS application whose code does not import `rullst_connect` can
+      remove that dependency.
+    - Copy the `[profile.dev]` sections that new projects get
+      ([Build times](build-times.md)).
+    - Code that names an item now hidden from the documentation keeps
+      compiling; move to the replacement that the "Internals hidden from the
+      API documentation" row names.
+    - A `--no-database` project can delete its empty `rullst.db` and, with
+      `--docker`, the Dockerfile's `DATABASE_URL` line.
+    - If `Cargo.lock` has `crypto-bigint` 0.7.6 to 0.7.8, which crates.io
+      yanked, run `cargo update -p crypto-bigint`.
+12. **Verify** with the production feature set: `cargo build`, `cargo test`
+    and `cargo clippy --all-targets -- -D warnings`; `db:migrate` against a
+    restored copy of the production database; then, on staging, sign-in,
+    Nexus (with or without the assistant), each configured provider and the
+    health probes before production.
 
 ## Why the candidate uses a new major
 

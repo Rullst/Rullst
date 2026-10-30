@@ -118,8 +118,10 @@ isolation acceptance was removed with the runner candidate; execution evidence
 now belongs to each application-owned runner.
 
 The four 85-point ceilings were set before these packages were first published
-in the 13.0.0-alpha.1 prerelease on 11 October 2026; the policy still withholds
-the same operations credit until it is reviewed again.
+in the 13.0.0-alpha.1 prerelease on 11 October 2026. Registry publication and
+ownership are no longer pending, but registration was not the only reason for
+the ceiling: until the policy is reviewed again it withholds the same operations
+credit for installed-archive acceptance and deployment recovery.
 
 For every relevant change, retain the commit and workflow result, identify
 which gates and evidence changed, and report capability progress separately.

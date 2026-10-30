@@ -90,7 +90,6 @@ rustix = { version = "1.1.4", features = ["fs", "param", "process"] }
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
 
 [dev-dependencies]
-insta = { version = "1.41", features = ["yaml"] }
 # Keeps the generated Tera blueprint dependency locked and cached for the
 # packaged-distribution compile gate without adding it to the CLI runtime graph.
 tera = "2.4.0"

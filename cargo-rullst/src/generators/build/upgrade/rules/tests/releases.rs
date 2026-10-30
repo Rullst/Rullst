@@ -77,7 +77,8 @@ fn rules_carry_the_release_of_their_change() {
             "V13-CLI-AI-REMOVED",
             "V13-ORM-FROM-ROW",
             "V13-SQLX-MACROS",
-            "V13-NEXUS-AI-FEATURE"
+            "V13-NEXUS-AI-FEATURE",
+            "V13-SQLX-TLS-RING"
         ]
     );
     assert_eq!(codes_introduced_in("13.0.0-alpha.1").len(), 95);

@@ -13,6 +13,7 @@ lists.
 Run this in the `shop` project of [Tutorial 02](02-cli-generators.md), which
 already has `products` and `categories` tables:
 
+<!-- first-hour: make-migration -->
 ```bash
 cargo rullst make:migration create_catalog_items_table
 ```
@@ -21,6 +22,7 @@ The command creates `src/migrations/m<timestamp>_create_catalog_items_table.rs`
 and regenerates `src/migrations/mod.rs`. Edit the generated `up` and `down`
 methods:
 
+<!-- first-hour: catalog-migration write=src/migrations/m*_create_catalog_items_table.rs keep=m[0-9]+_create_catalog_items_table -->
 ```rust,no_run
 use rullst_orm::{async_trait, schema::{ForeignKeyAction, Migration, Schema}};
 
@@ -125,6 +127,7 @@ escape character by default.
 
 ## Step 2: Run, inspect, and roll back migrations
 
+<!-- first-hour: migrate -->
 ```bash
 cargo rullst db:migrate
 cargo rullst db:status
@@ -211,6 +214,7 @@ Create `src/seeds.rs` with a seeder for the `Product` model of
 [Tutorial 03](03-active-record-crud.md), and declare `mod seeds;` in
 `src/main.rs`:
 
+<!-- first-hour: seeder write=src/seeds.rs -->
 ```rust,ignore
 use rullst::db::{async_trait, RowSnapshot, Seeder};
 use crate::models::product::Product;
@@ -247,6 +251,7 @@ Register migrations and seeders before starting the server: in `main()`,
 replace the starter's `rullst::artisan!(crate::migrations::get_migrations());`
 with
 
+<!-- first-hour: artisan replace=src/main.rs from='rullst::artisan!(crate::migrations::get_migrations());' -->
 ```rust,ignore
 rullst::artisan!(
     crate::migrations::get_migrations(),
@@ -261,6 +266,7 @@ reporting "Nothing to migrate." as a success.
 
 Then run:
 
+<!-- first-hour: seed -->
 ```bash
 cargo rullst db:migrate
 cargo rullst db:seed

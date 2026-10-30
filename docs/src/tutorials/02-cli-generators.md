@@ -19,6 +19,7 @@ yourself.
 
 Create a Blank starter with SQLite and enter it:
 
+<!-- first-hour: create -->
 ```bash
 cargo rullst new shop --default --blueprint blank --database sqlite \
   --skip-initial-migration
@@ -39,6 +40,7 @@ can take several minutes.
 Run the three commands in order: each one adds different files.
 
 ### 1. Generate a Controller
+<!-- first-hour: controller -->
 ```bash
 cargo rullst make:controller ProductsController
 ```
@@ -47,6 +49,7 @@ Creates `src/controllers/products_controller.rs` with placeholder `index`,
 (`pub mod controllers;` in `src/main.rs`). Mount its page by adding a line to
 the `routes![...]` list in `router()`:
 
+<!-- first-hour: mount insert=src/main.rs after='get("/" => home),' -->
 ```rust,ignore
 get("/products" => controllers::products_controller::index),
 ```
@@ -55,6 +58,7 @@ After `cargo rullst dev` rebuilds, `http://127.0.0.1:3000/products` shows the
 generated placeholder page.
 
 ### 2. Generate a Model & Migration
+<!-- first-hour: model -->
 ```bash
 cargo rullst make:model Product --migration
 ```
@@ -67,6 +71,7 @@ adds the columns. `cargo rullst dev` applies pending migrations when it starts;
 ([Tutorial 05](05-migrations-and-seeds.md)).
 
 ### 3. Generate a Full-Stack Resource Starting Point
+<!-- first-hour: resource -->
 ```bash
 cargo rullst make:resource Category
 ```
@@ -83,6 +88,7 @@ authorized CRUD implementation.
 
 Inspect recognizable source declarations without launching a server:
 
+<!-- first-hour: inspect -->
 ```bash
 # Inspect recognizable routes! declarations
 cargo rullst inspect routes

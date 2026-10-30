@@ -45,7 +45,9 @@ These staging and production defaults apply to every way of deploying:
   (every network interface)`); since 13.0.0-alpha.2, when that is every
   interface and a trusted reverse proxy is configured (`[security]
   trusted_proxies` or `Server::trusted_proxies`), the same line suggests
-  `HOST=127.0.0.1`.
+  `HOST=127.0.0.1` for a proxy on the same host outside a container network
+  and, since 13.0.0-alpha.4, keeping `HOST=0.0.0.0` when the proxy reaches the
+  application over a container network (as in the generated `compose.yaml`).
 - **Caching.** The security baseline adds `Cache-Control: no-store` to every
   response without a `Cache-Control` of its own; the standard `/static` mount
   sets its own. Downloads, feeds and other responses that browsers or a CDN

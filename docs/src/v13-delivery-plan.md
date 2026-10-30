@@ -1,27 +1,30 @@
 # v13 delivery plan and evidence
 
-**13.0.0-alpha.4 prepared on October 29, 2026 (not yet published).** The
-release commit sets the twenty packages of the release order to
-`13.0.0-alpha.4`; the coordinator records the tag, the exact-SHA admission and
-the release run here after publication. It makes the main CLI leaner: `green`
+**13.0.0-alpha.4 prepared on October 29 and 30, 2026, for a tag on October 31
+(not yet published).** The release commit sets the twenty packages of the
+release order to `13.0.0-alpha.4`; the coordinator records the tag, the
+exact-SHA admission and the release run here after publication. It is the
+13.0 feature and public API freeze. It makes the main CLI leaner: `green`
 (formerly `footprint`) stays in it as an Experimental command and the terminal
-AI assistant (`cargo rullst ai`) is removed; it removes Foundry, Nix, Buildah,
-gRPC, the Fly.io, Render and Railway deploy targets and the self-updater's
-binary replacement; gives `deploy` one path for any Linux VM with guides for
+AI assistant (`cargo rullst ai`) is removed, while the development error page
+offers a read-only prompt for the developer's own assistant. It removes
+Foundry, Nix, Buildah, gRPC, the Fly.io, Render and Railway deploy targets and
+the self-updater's binary replacement; gives `deploy` one path for any Linux
+VM, which CI builds and starts with Docker and rootless Podman, with guides for
 Hetzner Cloud, DigitalOcean, Oracle Cloud and Google Cloud; keeps three
-starters and moves LMS, ERP and Portfolio to the repository's examples; adds
-one `--json` contract and an optional section to `llms.txt`; and shortens the
-development builds of generated projects. The framework crates' APIs do not
-change. The first targeted `cargo-rullst` mutation campaign is merged, and the
-CLI's measured files are in the pull-request mutation gate.
-13.0.0-alpha.4 is the 13.0 feature freeze: next come 13.0.0-rc.1 (fixes and
-documentation only) and then 13.0.0. Rullst keeps `aws-lc-rs` as the TLS
-crypto provider (rustls' post-quantum hybrid key exchange), so the `aws-lc-sys`
-build script stays in a project's first build; moving to `ring` is not planned.
-SQLx's macros compiling some crates twice and Nexus pulling `rullst-ai` into
-the SaaS starter are planned for 13.0.0-rc.1 if they need no breaking change,
-otherwise for 13.1 ([Build times](build-times.md)).
-Work planned next is under
+starters and moves LMS, ERP and Portfolio to the repository's examples beside
+Blog; makes `cargo rullst auth` work on fresh starters; adds one `--json`
+contract and an optional section to `llms.txt`; and shortens the first builds
+of generated projects with a development profile and without SQLx's macros.
+In the framework crates, `#[derive(Orm)]` implements `FromRow`, aws-lc-rs is
+the single rustls crypto provider, the Nexus AI assistant is the opt-in
+`nexus-ai` feature, and internals documented by accident are hidden; each
+crate's documented API is recorded in `.github/public-api/` and checked in CI.
+A documentation audit checked the book, the crate pages and the README against
+the code, and a CI job runs the first-hour pages' commands as written. The
+first targeted `cargo-rullst` mutation campaign is merged, and the CLI's
+measured files are in the pull-request mutation gate. Next come 13.0.0-rc.1
+(fixes and documentation only) and then 13.0.0. Work planned next is under
 [Planned after 13.0.0-alpha.4](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha4).
 
 **13.0.0-alpha.3 published on October 24, 2026.** All twenty packages were
@@ -337,7 +340,7 @@ OpenTelemetry 0.32. No OpenTelemetry 0.33 adoption is claimed. Compatible v12
 maintenance updates are consolidated in PR #240, preserving #251's complete
 history. Its SES constraint check now expects the 1.6.4 pin while retaining the
 historical 12.0.0 SemVer baseline's separate 1.6.3 guard. The combined maintenance
-commit passed all 46 protected checks and complete CI/SemVer workflows. PR #240
+commit passed all 46 checks `v12` requires and complete CI/SemVer workflows. PR #240
 merged normally into `v12` at `6dde0cb1` on September 22; no package was published.
 
 Scorecard's binary finding points to the trusted `checked_sum.wasm` test vector,
@@ -396,7 +399,7 @@ candidate becomes implementation work.
 at `9f543ed5326029f8e4fbf0693dd7faab9288a526`. Its admitted head `7776ccda` and
 GitHub test merge `3a84b107` have identical tree `abbbade9`.
 
-- All 46 protected requirements and 24 PR workflows passed. Additional S3 and
+- All 46 checks `main` then required and 24 PR workflows passed. Additional S3 and
   isolated Labs jobs passed, both review threads were resolved and CodeQL had
   zero open PR alerts.
 - [Coverage](https://github.com/Rullst/Rullst/actions/runs/35680761156) passed both

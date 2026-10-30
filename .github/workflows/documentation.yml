@@ -59,6 +59,9 @@ jobs:
           RULLST_LLMS_REQUIRE_BOOK: "1"
         run: python3 .github/test-llms-txt.py
 
+      - name: Check the first-hour markers, commands and edits
+        run: python3 .github/test-first-hour.py
+
       - name: Setup Node for dependency-free browser checks
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:

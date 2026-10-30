@@ -375,6 +375,9 @@ rules! {
     NEXUS_AI_FEATURE: "V13-NEXUS-AI-FEATURE", Review, "13.0.0-alpha.4", "Nexus AI assistant feature",
         "this Nexus dependency no longer includes the AI assistant: `/nexus/chat` answers 404 and the panel shows no assistant link",
         "If the application uses the assistant, enable `nexus-ai` on `rullst` (or `ai` on a `rullst-nexus` dependency without default features); otherwise nothing is needed, and `rullst-ai` leaves the build.";
+    SQLX_TLS_RING: "V13-SQLX-TLS-RING", Review, "13.0.0-alpha.4", "TLS crypto provider",
+        "this `sqlx` dependency enables `tls-rustls` or `tls-rustls-ring`, so SQLx keeps ring for database TLS while Rullst's other TLS connections use aws-lc-rs",
+        "Change the feature to `tls-rustls-aws-lc-rs`; SQLx prefers ring whenever any crate enables it, so one ring feature keeps every SQLx connection on ring. See https://rullst.github.io/Rullst/book/security-architecture.html#cryptography-providers";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer
