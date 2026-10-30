@@ -340,7 +340,7 @@ of every application built with Rullst.
 
 | Continuous or change-aware gate | Development `main` status | Actual scope |
 | :--- | :---: | :--- |
-| **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain) | Format, all-target/all-feature Clippy, a Linux gate on pull requests (the complete matrix on pull requests labeled `full-matrix`), every Linux shard after merge and the complete Linux/macOS/Windows matrix nightly; Cargo-aware doctests sourced from every tutorial and the main guides, strict DB boundaries, feature boundaries, generated-code checks, and MSRV 1.96.0. |
+| **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain) | Format, all-target/all-feature Clippy, a Linux gate on pull requests (the complete matrix on pull requests labeled `full-matrix`), every Linux shard after merge and the complete Linux/macOS/Windows matrix nightly; Cargo-aware doctests sourced from every tutorial and the main guides, strict DB boundaries, feature boundaries, generated-code checks, the generated deployment started with Docker and rootless Podman, the first-hour documentation run as written, and MSRV 1.96.0. |
 | **Declared MSRV** | [![MSRV 1.96.0](https://img.shields.io/badge/MSRV-1.96.0-f74c00?style=flat-square&logo=rust)](https://rullst.github.io/Rullst/book/compatibility-policy.html) | Every publishable manifest declares Rust 1.96.0 and CI runs an explicit workspace all-feature check with that toolchain. |
 | **GitHub Actions lint** | [![Workflow Lint](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/workflow-lint.yml?branch=main&style=flat-square&label=Workflow%20Lint)](https://github.com/Rullst/Rullst/actions/workflows/workflow-lint.yml?query=branch%3Amain) | Validates workflow syntax, expressions, embedded shell, and full-SHA third-party Action pins. |
 | **Documentation** | [![Documentation](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/documentation.yml?branch=main&style=flat-square&label=Docs)](https://github.com/Rullst/Rullst/actions/workflows/documentation.yml?query=branch%3Amain) | Builds the mdBook and rejects broken local links and anchors; scheduled/manual runs also preserve an informational external-link report. |
@@ -467,8 +467,9 @@ list every change.
   `cargo rullst completions <shell>`, and `cargo rullst add <capability>` to
   enable mail, auth, AI, Nexus or Studio in an existing project.
 - **One deployment path:** `cargo rullst deploy` writes a Dockerfile,
-  `compose.yaml` and `Caddyfile` for any Linux VM with Docker or Podman, with
-  guides for Hetzner Cloud, DigitalOcean, Oracle Cloud and Google Cloud
+  `compose.yaml` and `Caddyfile` for any Linux VM with Docker or Podman, which
+  CI builds and starts with both engines, with guides for Hetzner Cloud,
+  DigitalOcean, Oracle Cloud and Google Cloud
   ([guide](https://rullst.github.io/Rullst/book/vm-deployment.html)).
 - **Security evidence report:** `cargo rullst audit --report` writes a
   Markdown, HTML or JSON report mapped to OWASP ASVS 5.0 Level 1, with a
@@ -479,11 +480,21 @@ list every change.
   request, each with its method, and a carbon figure only as a labelled SCI
   estimate from your own inputs ([guide](https://rullst.github.io/Rullst/book/green.html)).
 - **For AI assistants:** every `--json` output follows one contract with a
-  `schema` id, and the site publishes `llms.txt` and `llms-full.txt`.
+  `schema` id, the site publishes `llms.txt` and `llms-full.txt`, and the
+  development error page gives your own assistant a ready prompt.
 - **Faster development builds:** generated projects get a development profile
   that shortened their first build by 15 to 19 % and a rebuild after an edit by
-  about half on the measuring machine
+  about half on the measuring machine, and they no longer compile SQLx's
+  macros, which took another 15 % (Blank) and 10 % (SaaS) off the first build
   ([build times](https://rullst.github.io/Rullst/book/build-times.html)).
+- **A stable 13.x API:** each crate's documented API is recorded and checked
+  in CI, and the compatibility policy names the third-party crates the API
+  exposes and the 13.x support window
+  ([compatibility policy](https://rullst.github.io/Rullst/book/compatibility-policy.html)).
+- **One TLS provider:** aws-lc-rs is the rustls crypto provider for every TLS
+  connection Rullst makes, with post-quantum hybrid key exchange; ring remains
+  only for primitives such as HMAC and digests
+  ([cryptography providers](https://rullst.github.io/Rullst/book/security-architecture.html#cryptography-providers)).
 - **Progressive web apps:** `cargo rullst make:pwa` (manifest, service worker,
   offline page), a Google Play Trusted Web Activity configuration and a
   Microsoft Store guide ([guide](https://rullst.github.io/Rullst/book/tutorials/43-progressive-web-apps.html)).
@@ -498,8 +509,11 @@ list every change.
 - **Minimal default features:** `rullst` and `rullst-orm` compile no database
   code until you select a profile.
 - **Views and data:** `html!` returns `Markup` and has `@if`, `@for` and
-  `@match`; dirty-tracking `save()`; `Schema` constraints and date/time
-  columns; revocable sessions; multipart uploads.
+  `@match`; `#[derive(Orm)]` also implements `FromRow`; dirty-tracking
+  `save()`; `Schema` constraints and date/time columns; revocable sessions;
+  multipart uploads.
+- **Nexus AI is opt-in:** the admin's AI assistant is the `nexus-ai` feature,
+  so Nexus builds without `rullst-ai` unless you choose it.
 - **Assisted upgrades:** `cargo rullst upgrade` reports v12 → v13 source
   findings at `file:line` and applies per-release rules.
 - **Opt-in candidates:** email login, scoped API tokens, active-session
