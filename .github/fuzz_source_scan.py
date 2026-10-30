@@ -2,14 +2,16 @@
 
 This is not a Rust parser. It lexes comments, strings and delimiters exactly
 enough to find `include*!`, `#[path]`, macro definitions and calls, attributes,
-path-like string literals and filesystem calls. Callers fail closed on anything
-it reports as dynamic or cannot lex.
+`use` imports, path-like string literals and filesystem calls, plus the path
+and built-in helpers the build graph applies to them. Callers fail closed on
+anything it reports as dynamic or cannot lex.
 """
 
 from __future__ import annotations
 
 import posixpath
 import re
+import subprocess
 
 _TOKEN = re.compile(r"""
     (?P<space>\s+)
@@ -67,7 +69,9 @@ _IO_ANYWHERE = frozenset({
     "read_to_string", "read_link", "canonicalize", "current_dir", "WalkDir", "walkdir",
     "glob", "tracked_path", "tracked_env",
 })
-_IO_CALLS = frozenset({"exists", "is_file", "is_dir", "metadata", "try_exists", "symlink_metadata"})
+_IO_CALLS = frozenset({"exists", "is_file", "is_dir", "is_symlink", "metadata", "try_exists",
+                       "symlink_metadata"})
+_ENV_PLACEHOLDER = re.compile(r"\$\{?[A-Za-z_]|%[A-Za-z_][A-Za-z0-9_]*%")
 
 
 def climbs(value: str | None) -> bool:
@@ -75,7 +79,8 @@ def climbs(value: str | None) -> bool:
 
 
 def path_like(value: str | None) -> bool:
-    return climbs(value) or value.startswith("/")
+    """A climbing, absolute or environment-relative (`$VAR`, `%VAR%`) string."""
+    return climbs(value) or value.startswith("/") or _ENV_PLACEHOLDER.match(value) is not None
 
 
 def under(path: str, directory: str) -> bool:
@@ -108,6 +113,43 @@ def ancestors(path: str) -> list[str]:
     while path:
         path = posixpath.dirname(path)
         result.append(path)
+    return result
+
+
+def resolve_path(written: str, imports: dict) -> str:
+    """Full path of a written macro/attribute path, through this file's `use`s."""
+    head, separator, rest = written.partition("::")
+    if head in imports:
+        return imports[head] + separator + rest
+    return written
+
+
+def builtin(kind: str, full: str) -> bool:
+    """Built-ins count only unqualified or as `std::`/`core::`/`alloc::` (quote: `quote::`/`syn::`)."""
+    prefix, _, name = full.rpartition("::")
+    root = prefix.split("::", 1)[0]
+    if kind == "attr":
+        return not prefix and name in STD_ATTRIBUTES or root in {"rustfmt", "clippy", "diagnostic"}
+    if name in QUOTES:
+        return not prefix or root in {"quote", "syn"}
+    return name in STD_MACROS and (not prefix or root in {"std", "core", "alloc"})
+
+
+def cat_file(root, oids) -> dict[str, bytes]:
+    """Blob contents by object ID, read in one `git cat-file --batch`."""
+    oids = list(dict.fromkeys(oids))
+    if not oids:
+        return {}
+    output = subprocess.run(["git", "cat-file", "--batch"], cwd=root, check=True,
+                            capture_output=True, input="".join(f"{oid}\n" for oid in oids).encode()).stdout
+    result, position = {}, 0
+    for oid in oids:
+        end = output.index(b"\n", position)
+        name, kind, size = output[position:end].decode().split()
+        if name != oid or kind != "blob":
+            raise ValueError("unexpected Git object")
+        result[oid] = output[end + 1:end + 1 + int(size)]
+        position = end + 2 + int(size)
     return result
 
 
@@ -183,22 +225,25 @@ class Facts:
     """Content-derived facts; positions are token indexes of one blob."""
 
     __slots__ = ("error", "defs", "defines_macros", "quotes", "calls", "attrs", "aliases",
-                 "renames", "refs", "literals", "exports", "compile_io", "runtime_io", "mods")
+                 "renames", "imports", "refs", "literals", "exports", "compile_io", "runtime_io", "mods")
 
     def __init__(self) -> None:
         self.error: str | None = None
         self.defs: list[tuple[str, int, int]] = []        # macro_rules name, body range
         self.defines_macros = False                       # `macro_rules! $name`
         self.quotes: list[tuple[int, int]] = []           # quote!-family bodies
-        # name, open, close, string literals, has `$`, contains a macro call
-        self.calls: list[tuple[str, int, int, tuple, bool, bool]] = []
-        self.attrs: list[tuple[str, int, int, bool]] = []  # last path segment, range, has `$`
+        # name, open, close, string literals, has `$`, nested macro names, written path
+        self.calls: list[tuple[str, int, int, tuple, bool, tuple, str]] = []
+        # Written attribute path (`sqlx::test`), range, has `$`; each item of
+        # a `cfg_attr` is an attribute of its own.
+        self.attrs: list[tuple[str, int, int, bool]] = []
         self.aliases: set[str] = set()                    # identifiers renamed with `as`
         self.renames: list[tuple[str, str]] = []
+        self.imports: dict[str, str] = {}                 # `use` name -> full path
         self.refs: list[tuple[str, str, str | None, int]] = []  # kind, form, value, position
-        # Path-like literals: innermost (kind, name) of the enclosing call or
-        # attribute, value, position, and whether it is a `==`/`!=` operand.
-        self.literals: list[tuple[tuple[str, str] | None, str | None, int, bool]] = []
+        # Path-like literals: every enclosing (kind, written path) call or
+        # attribute from the outermost, value, position, `==`/`!=` operand.
+        self.literals: list[tuple[tuple[tuple[str, str], ...], str | None, int, bool]] = []
         self.exports: set[str] = set()                    # proc-macro and derive-helper names
         self.compile_io: list[str] = []
         self.runtime_io = False
@@ -275,14 +320,55 @@ def _attribute(toks, close, start, end, facts) -> None:
 
 
 def _attribute_name(toks: list, start: int, end: int) -> str:
-    """Last segment of an attribute's path (`crate::server_function` -> `server_function`)."""
-    name, index = "", start
+    """An attribute's written path (`crate::server_function`)."""
+    parts, index = [], start
     while index < end and toks[index][0] == "i":
-        name = toks[index][1]
+        parts.append(toks[index][1])
         if toks[index + 1:index + 3] != [("p", ":"), ("p", ":")]:
             break
         index += 3
-    return name
+    return "::".join(parts)
+
+
+def _call_path(toks: list, index: int) -> str:
+    """A macro call's written path (`sqlx::query`, `$crate::x`, `::core::env`)."""
+    parts = [toks[index][1]]
+    while index >= 3 and toks[index - 2:index] == [("p", ":"), ("p", ":")] and toks[index - 3][0] == "i":
+        index -= 3
+        parts.insert(0, ("$" if index and toks[index - 1] == ("p", "$") else "") + toks[index][1])
+    return "::".join(parts)
+
+
+def _use_tree(toks, close, start, end, prefix, imports) -> None:
+    path, index = list(prefix), start
+    while index < end:
+        token = toks[index]
+        if token == ("p", "{") and index in close:
+            for item_start, item_end in _split(toks, close, index + 1, close[index]):
+                _use_tree(toks, close, item_start, item_end, path, imports)
+            return
+        if token == ("i", "as") and index + 1 < end:
+            if path:
+                imports[toks[index + 1][1]] = "::".join(path)
+            return
+        if token[0] == "i" and token[1] != "self":
+            path.append(token[1])
+        elif token == ("p", "*"):
+            return
+        index += 1
+    if path:
+        imports[path[-1]] = "::".join(path)
+
+
+def _attributes(toks, close, start, end, facts, owners) -> None:
+    """Record one attribute; each `cfg_attr` item is an attribute of its own."""
+    name = _attribute_name(toks, start, end)
+    facts.attrs.append((name, start - 1, end, ("p", "$") in toks[start:end]))
+    owners[start - 1] = (end, ("attr", name))
+    if name == "cfg_attr" and start + 1 < end and toks[start + 1] == ("p", "(") and start + 1 in close:
+        for item_start, item_end in _split(toks, close, start + 2, close[start + 1])[1:]:
+            if item_start < item_end:
+                _attributes(toks, close, item_start, item_end, facts, owners)
 
 
 def source_facts(data: bytes) -> Facts:
@@ -301,6 +387,11 @@ def source_facts(data: bytes) -> Facts:
     owners: dict[int, tuple[int, tuple[str, str]]] = {}
     io_hits = []
     for index, (kind, value) in enumerate(toks):
+        if (kind, value) == ("i", "use"):
+            end = index + 1
+            while end < size and toks[end] != ("p", ";"):
+                end = close.get(end, end) + 1
+            _use_tree(toks, close, index + 1, min(end, size), [], facts.imports)
         if kind == "i" and at(index + 1) == ("i", "as"):
             facts.aliases.add(value)
             if at(index + 2)[0] == "i":
@@ -313,11 +404,12 @@ def source_facts(data: bytes) -> Facts:
         elif kind == "i" and at(index + 1) == ("p", "!") and index + 2 in close:
             start, end = index + 2, close[index + 2]
             inner = toks[start + 1:end]
-            nested = any(inner[j][0] == "i" and inner[j + 1] == ("p", "!") and inner[j + 2] in _OPENERS
-                         for j in range(len(inner) - 2))
+            nested = tuple(inner[j][1] for j in range(len(inner) - 2)
+                           if inner[j][0] == "i" and inner[j + 1] == ("p", "!") and inner[j + 2] in _OPENERS)
+            path = _call_path(toks, index)
             facts.calls.append((value, start, end, tuple(v for k, v in inner if k == "s"),
-                                ("p", "$") in inner, nested))
-            owners[start] = (end, ("call", value))
+                                ("p", "$") in inner, nested, path))
+            owners[start] = (end, ("call", path))
             if value in QUOTES:
                 facts.quotes.append((start, end))
             if value in INCLUDES:
@@ -328,8 +420,7 @@ def source_facts(data: bytes) -> Facts:
             if at(bracket) == ("p", "[") and bracket in close:
                 end = close[bracket]
                 name = _attribute_name(toks, bracket + 1, end)
-                facts.attrs.append((name, bracket, end, ("p", "$") in toks[bracket + 1:end]))
-                owners[bracket] = (end, ("attr", name))
+                _attributes(toks, close, bracket + 1, end, facts, owners)
                 _attribute(toks, close, bracket + 1, end, facts)
                 if name in {"proc_macro", "proc_macro_attribute"}:
                     following = toks[end + 1:end + 16]
@@ -354,7 +445,7 @@ def source_facts(data: bytes) -> Facts:
         if kind == "i" and at(index + 1) == ("p", ":") and at(index + 2) == ("p", ":") and \
                 value in {"fs", "env", "process", "File", "Command", "OpenOptions"}:
             facts.runtime_io = True
-    # The innermost call or attribute owning each path-like literal.
+    # Every call or attribute enclosing each path-like literal.
     stack: list[tuple[int, tuple[str, str]]] = []
     for index, (kind, value) in enumerate(toks):
         while stack and stack[-1][0] <= index:
@@ -362,7 +453,7 @@ def source_facts(data: bytes) -> Facts:
         if kind == "s" and path_like(value):
             compared = (toks[max(index - 2, 0):index] in _COMPARISONS
                         or toks[index + 1:index + 3] in _COMPARISONS)
-            facts.literals.append((stack[-1][1] if stack else None, value, index, compared))
+            facts.literals.append((tuple(owner for _, owner in stack), value, index, compared))
         if index in owners:
             stack.append(owners[index])
     # Tokens inside quote! are code generated for the caller's program. Only

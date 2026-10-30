@@ -289,7 +289,8 @@ class InputTests(Fixture):
                               ("dependencies", "helper = { workspace = true }"),
                               ("dev-dependencies", 'helper = { path = "../helper" }'),
                               ('target."cfg(unix)".dependencies', 'helper = { path = "../helper" }'),
-                              ("patch.crates-io", 'helper = { path = "../helper" }')):
+                              ("patch.crates-io", 'helper = { path = "../helper" }'),
+                              ("replace", '"helper:0.1.0" = { path = "../helper" }')):
             with self.subTest(section=section, spec=spec):
                 self.base = original
                 self.reset()
@@ -332,6 +333,31 @@ class InputTests(Fixture):
         self.assertEqual(self.base.fail_closed, {})
         self.write("shared/table.txt", "reached through included code\n")
         self.assertEqual(self.changed(), {"rullst-iot/fuzz"})
+
+    def test_files_around_reached_and_included_code_are_inputs(self):
+        lib = "rullst-iot/src/lib.rs"
+        self.write("libs/helper/Cargo.toml", '[package]\nname="lib-helper"\n')
+        self.write("libs/helper/src/lib.rs", "pub fn f() {}\n")
+        self.write("nested/Cargo.toml", '[workspace]\nmembers = ["member"]\n[workspace.package]\nversion = "1.0.0"\n')
+        self.write("nested/member/Cargo.toml", '[package]\nname="member"\nversion.workspace = true\n')
+        self.write("nested/member/src/lib.rs", "pub fn g() {}\n")
+        self.write("rullst-iot/Cargo.toml", '[package]\nname="rullst-iot"\n[dependencies]\n'
+                   'h = { path = "../libs/helper" }\nm = { path = "../nested/member" }\n')
+        # Module trees of included code outside every package, and every
+        # inline-module depth of a `#[path]` in it.
+        self.write(lib, 'include!("../../shared/tree/gen.rs");\ninclude!("../../shared/deep/x.rs");\n')
+        self.write("shared/tree/gen.rs", "mod inner;\n")
+        self.write("shared/tree/inner.rs", "pub fn i() {}\n")
+        self.write("shared/deep/x.rs", 'mod outer { #[path = "../../y.rs"] mod m; }\n')
+        self.write("shared/y.rs", "pub fn y() {}\n")
+        self.rebase()
+        self.assertEqual(self.base.fail_closed, {})
+        for path in ("libs/rust-toolchain.toml", "libs/.cargo/config.toml", "nested/Cargo.toml",
+                     "shared/tree/inner.rs", "shared/y.rs"):
+            with self.subTest(path=path):
+                self.reset()
+                self.touch(path)
+                self.assertEqual(self.changed(), {"rullst-iot/fuzz"})
 
     def test_macro_forwarded_book_includes_are_inputs_of_the_facade_only(self):
         self.write("rullst/src/book.rs", "macro_rules! tutorial {\n"

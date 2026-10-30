@@ -142,6 +142,56 @@ class FailClosedTests(_FIXTURE.Fixture):
             "forwarding call in renamed macro": ({lib: fwd + 'macro_rules! outer { () => { fwd!("data.txt") }; }\nuse outer as o;\nconst C: &str = o!();\n'},
                                                  iot, "argument of macro fwd! cannot be resolved"),
         }
+        macro_manifest = '[package]\nname="rullst-orm-macros"\n[lib]\nproc-macro = true\n[dependencies]\n'
+        cases.update({
+            "config in the fuzz directory": ({"rullst-iot/fuzz/.cargo/config.toml": '[env]\nX = "y"\n'},
+                                             iot, "rullst-iot/fuzz/.cargo/config.toml: unsupported Cargo configuration key 'env'"),
+            "config in a parent directory": ({"rullst-iot/.cargo/config.toml": '[patch.crates-io]\nx = { path = "x" }\n'},
+                                             iot, "rullst-iot/.cargo/config.toml: unsupported Cargo configuration key 'patch'"),
+            "harness environment": ({"rullst-iot/fuzz/fuzz_targets/fuzz_ota.rs": 'fn main() { std::env::var("X"); }\n'},
+                                    iot, "fuzz harness accesses"),
+            "harness process": ({"rullst-iot/fuzz/fuzz_targets/fuzz_ota.rs": 'fn main() { std::process::exit(0); }\n'},
+                                iot, "fuzz harness accesses"),
+            "harness command": ({"rullst-iot/fuzz/fuzz_targets/fuzz_ota.rs": 'fn main() { Command::new("x"); }\n'},
+                                iot, "fuzz harness accesses"),
+            "proc-macro climbing path in a call": ({macros: '+fn f() -> String { format!("{}", "../shared") }\n'},
+                                                   orm, "proc macro uses path '../shared'"),
+            "proc-macro path dependency": ({"rullst-orm-macros/Cargo.toml": macro_manifest + 'helper = { path = "../helper" }\n'},
+                                           orm, "proc macro has path dependency helper"),
+            "proc-macro unreviewed crate": ({"rullst-orm-macros/Cargo.toml": macro_manifest + 'fs-err = "3"\n'},
+                                            orm, "proc macro depends on unreviewed crate fs-err"),
+            "proc-macro renamed crate": ({"rullst-orm-macros/Cargo.toml": macro_manifest + 'syn = { package = "dotenvy", version = "1" }\n'},
+                                         orm, "proc macro depends on unreviewed crate dotenvy"),
+            "proc-macro target crate": ({"rullst-orm-macros/Cargo.toml": macro_manifest + '[target."cfg(unix)".dependencies]\ncargo_metadata = "1"\n'},
+                                        orm, "proc macro depends on unreviewed crate cargo_metadata"),
+            "cfg_attr file attribute": ({lib: '#[cfg_attr(all(), folder = "assets")]\nstruct A;\n'}, iot, "#[folder] reads files"),
+            "cfg_attr registry attribute": ({lib: '#[cfg_attr(all(), reg_attr(path = "../x"))]\nfn f() {}\n'},
+                                            iot, "path-like argument '../x' of reg_attr"),
+            "qualified std-named attribute": ({lib: '#[sqlx::test(migrations = "../m")]\nasync fn t() {}\n'},
+                                              iot, "path-like argument '../m' of sqlx::test"),
+            "imported std-named attribute": ({lib: 'use sqlx::test;\n#[test(migrations = "../m")]\nfn t() {}\n'},
+                                             iot, "path-like argument '../m' of test"),
+            "qualified std-named macro": ({lib: 'fn f() { other::concat!("../x"); }\n'}, iot, "of other::concat"),
+            "built-in under a registry macro": ({lib: 'reg!(concat!("../a", "b"));\n'}, iot, "path-like argument '../a' of reg"),
+            "path from a nested macro": ({lib: 'macro_rules! p { () => { "../x" }; }\nconst T: &str = reg!(p!());\n'},
+                                         iot, "reg! receives a path from a nested macro"),
+            "environment placeholder": ({lib: 'reg!("$GITHUB_WORKSPACE/shared");\n'}, iot, "'$GITHUB_WORKSPACE/shared' of reg"),
+            "windows placeholder": ({lib: 'reg!("%APPDATA%/shared");\n'}, iot, "'%APPDATA%/shared' of reg"),
+            "renamed file-reading macro": ({lib: "use sqlx::query as q;\n"}, iot, "file-reading query is renamed"),
+            "renamed file-reading attribute": ({lib: "use rust_embed::folder as f;\n"}, iot, "file-reading folder is renamed"),
+            "unimported registry macro": ({lib: 'fn f() { json!({"a": "/x"}); }\n'}, iot, "path-like argument '/x' of json"),
+            "registry path named like an export": ({macros: '+#[proc_macro]\npub fn page(i: TokenStream) -> TokenStream { i }\n',
+                                                    "rullst-orm/src/lib.rs": 'other::page!("/a");\n'},
+                                                   orm, "path-like argument '/a' of other::page"),
+            "registry path named like local macro_rules": ({lib: 'macro_rules! t { ($p:literal) => { stringify!($p) }; }\n'
+                                                                 'other::t!("../x");\n'},
+                                                           iot, "path-like argument '../x' of other::t"),
+            "opaque through an attribute": ({lib: 'macro_rules! m { ($p:literal) => { #[reg_attr($p)] fn f() {} }; }\nm!("../x");\n'},
+                                            iot, "path-like argument '../x' of m"),
+        })
+        for call in ("is_file", "is_dir", "is_symlink", "metadata", "try_exists", "symlink_metadata"):
+            cases[f"proc-macro {call} probe"] = ({macros: f'+fn f() {{ let _ = std::path::Path::new("x").{call}(); }}\n'},
+                                                orm, f"unreviewed compile-time access ({call})")
         for name, (files, expected, reason) in cases.items():
             with self.subTest(name):
                 self.closed_case(files, expected, reason)
@@ -155,8 +205,14 @@ class FailClosedTests(_FIXTURE.Fixture):
             "workspace proc macro with a route": {macros: '+#[proc_macro]\npub fn page(i: TokenStream) -> TokenStream { i }\n',
                                                   "rullst-orm/src/lib.rs": 'page!("/a");\n#[page(path = "/b")]\nfn f() {}\n'},
             "renamed workspace proc macro": {macros: '+#[proc_macro]\npub fn page(i: TokenStream) -> TokenStream { i }\n',
-                                             "rullst-orm/src/lib.rs": 'pub use macros::page as route;\nroute!("/a");\n'},
-            "reviewed registry macros": {"rullst-iot/src/lib.rs": 'fn f() { json!({"a": "/x"}); fuzz_target!(|d| { "/" }); }\n'},
+                                             "rullst-orm/src/lib.rs": 'pub use rullst_orm_macros::page as route;\nroute!("/a");\n'
+                                                                      'extern crate self as orm;\norm::route!("/b");\n'},
+            "reviewed proc-macro dependencies": {"rullst-orm-macros/Cargo.toml": '[package]\nname="rullst-orm-macros"\n[lib]\n'
+                                                 'proc-macro = true\n[dependencies]\nsyn = "2"\nquote = "1"\nproc-macro2 = "1"\n'
+                                                 'toml = "1"\n[dev-dependencies]\ntrybuild = "1"\n'},
+            "qualified built-ins": {"rullst-iot/src/lib.rs": 'fn f() { std::assert!(x("../a")); ::core::concat!("../b"); quote::quote!("../c"); }\n'},
+            "reviewed registry macros": {"rullst-iot/src/lib.rs": 'use serde_json::json;\n'
+                                         'fn f() { json!({"a": "/x"}); libfuzzer_sys::fuzz_target!(|d| { "/" }); }\n'},
             "segment comparison in a proc macro": {macros: '+fn ok(s: &str) -> bool { s != ".." && ".." != s }\n'},
             "generated runtime code": {macros: '+fn g() { quote! { std::fs::read("../x") }; }\n'},
             "out-dir include": {"rullst-iot/src/lib.rs": 'include!(concat!(env!("OUT_DIR"), "/gen.rs"));\n'},
@@ -183,15 +239,26 @@ class FailClosedTests(_FIXTURE.Fixture):
         check = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(check)
 
-        def metadata(*packages):
-            items = [{"id": path, "source": None, "manifest_path": str(self.root / path / "Cargo.toml"),
+        def metadata(*packages, links=()):
+            items = [{"id": path, "name": path, "source": None, "manifest_path": str(self.root / path / "Cargo.toml"),
                       "targets": [{"kind": list(kinds)}]} for path, kinds in packages]
-            items.append({"id": "serde", "source": "registry", "manifest_path": "/x", "targets": [{"kind": ["lib"]}]})
-            return {"packages": items, "resolve": {"nodes": [{"id": item["id"]} for item in items]}}
+            items += [{"id": name, "name": name, "source": "registry", "manifest_path": "/x",
+                       "targets": [{"kind": ["lib"]}]} for name in ("syn", "fs-err", "trybuild")]
+            nodes = [{"id": item["id"], "deps": []} for item in items]
+            for node in nodes:
+                if node["id"] == "rullst-orm-macros":
+                    node["deps"] = [{"pkg": name, "dep_kinds": [{"kind": kind}]} for name, kind in links]
+            return {"packages": items, "resolve": {"nodes": nodes}}
 
         fuzz = "rullst-orm/fuzz"
-        consistent = metadata((fuzz, ["bin"]), ("rullst-orm", ["lib"]), ("rullst-orm-macros", ["proc-macro"]))
+        reached = ((fuzz, ["bin"]), ("rullst-orm", ["lib"]), ("rullst-orm-macros", ["proc-macro"]))
+        consistent = metadata(*reached, links=(("syn", None), ("trybuild", "dev")))
         self.assertEqual(check.problems(self.base, fuzz, consistent, self.root), [])
+        for links, message in (((("rullst-orm", None),), "proc macro rullst-orm-macros links path package rullst-orm"),
+                               ((("fs-err", None),), "proc macro rullst-orm-macros links unreviewed crate fs-err")):
+            with self.subTest(message=message):
+                found = check.problems(self.base, fuzz, metadata(*reached, links=links), self.root)
+                self.assertTrue(any(message in item for item in found), found)
         for packages, message in (
                 ([("helper", ["lib"])], "Cargo builds helper, which the scope does not reach"),
                 ([("rullst-orm", ["custom-build", "lib"])], "rullst-orm has a build script"),
@@ -228,9 +295,9 @@ class SourceScanTests(unittest.TestCase):
     def test_path_like_literals_record_their_innermost_owner(self):
         facts = source_facts(b'catalog!(dir = "../l");\n#[crate::reg(path = "/a")] fn f() {}\n'
                              b'fn g() { assert!(x("../y")); let w = "../z"; s != ".."; }\n')
-        self.assertEqual([(owner, value, compared) for owner, value, _, compared in facts.literals],
-                         [(("call", "catalog"), "../l", False), (("attr", "reg"), "/a", False),
-                          (("call", "assert"), "../y", False), (None, "../z", False), (None, "..", True)])
+        self.assertEqual([(chain, value, compared) for chain, value, _, compared in facts.literals],
+                         [((("call", "catalog"),), "../l", False), ((("attr", "crate::reg"),), "/a", False),
+                          ((("call", "assert"),), "../y", False), ((), "../z", False), ((), "..", True)])
         self.assertTrue(source_facts(b"macro_rules! m { ($n:ident) => { macro_rules! $n {} } }").defines_macros)
         self.assertEqual(source_facts(b"#[proc_macro]\npub fn html(i: T) -> T { i }\n"
                                       b"#[proc_macro_derive(Model, attributes(orm))] pub fn d() {}").exports,
