@@ -216,6 +216,7 @@ class WorkflowGuardTests(unittest.TestCase):
         first_hour = jobs["first-hour"]
         self.assertIn("python3 .github/check-first-hour.py --pages", first_hour)
         self.assertIn('rustflags: ""', first_hour)
+        self.assertIn('build-warnings: ""', first_hour)
         self.assertIn("^(cargo-rullst/src/|", first_hour)
 
 

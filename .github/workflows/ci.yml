@@ -935,7 +935,7 @@ jobs:
           fi
           changed="$(git diff --name-only HEAD^1 HEAD)"
           pages="$(python3 .github/check-first-hour.py --pages)"
-          if grep -Eq '^(cargo-rullst/src/|\.github/(check-first-hour|first_hour_docs|first_hour_checks)\.py$)' <<< "$changed" ||
+          if grep -Eq '^(cargo-rullst/src/|\.github/(check-first-hour|first_hour_[a-z]+)\.py$)' <<< "$changed" ||
              grep -Fxq -f <(printf '%s\n' "$pages") <<< "$changed"; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
@@ -954,8 +954,10 @@ jobs:
         if: steps.selection.outputs.run == 'true'
         uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
-          # Newcomers build without `-D warnings`; so do the documented projects.
+          # Newcomers build without denied warnings; so do the documented
+          # projects (warnings still show as annotations).
           rustflags: ""
+          build-warnings: ""
           cache: false
 
       - name: Package the release archives without publication

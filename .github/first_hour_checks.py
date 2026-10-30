@@ -153,7 +153,7 @@ def api_starter(session, block) -> None:
     code, _, body = Browser().request("POST", "/api/messages", body=message,
                                       headers={**json_header, "Authorization": f"Bearer {token}"})
     expect(code == 201 and json.loads(body) == {"text": "first hour"},
-           f"POST /api/messages with `Authorization: Bearer <API_TOKEN>` answers 201 ({code})")
+           f"POST /api/messages with the API_TOKEN bearer token answers 201 ({code})")
 
 
 def dotenv(path: Path) -> dict[str, str]:
@@ -260,20 +260,28 @@ def auth_generator(session, block) -> None:
 
 
 def wire_routes(session, block) -> None:
-    """"Add each group to the starter's router in `router()` (`src/main.rs`) with
-    `.merge_axum(public_auth.into_axum())` and so on, before its
-    `.layer(rullst::server::from_fn(rullst::security::csrf_middleware))` line"."""
+    """"Put its `use` lines at the top of `src/main.rs` ... and the `let`
+    statements in `router()`", then "Add each group to the starter's router in
+    `router()` (`src/main.rs`) with `.merge_axum(public_auth.into_axum())` and
+    so on, before its `.layer(rullst::server::from_fn(rullst::security::csrf_middleware))` line"."""
     main = session.cwd / "src/main.rs"
     lines = main.read_text().splitlines()
+    code = block.code.splitlines()
+    imports = [line for line in code if line.startswith("use ")]
+    statements = [line for line in code if not line.startswith("use ")]
+    while statements and not statements[0].strip():
+        statements.pop(0)
+    first = next(i for i, line in enumerate(lines) if line.startswith("use "))
+    last = next(i for i in range(first, len(lines)) if not lines[i].startswith("use "))
+    lines[last:last] = imports
     start = next(i for i, line in enumerate(lines) if line.startswith("fn router() -> Router {"))
     body = next(i for i in range(start, len(lines)) if lines[i].strip() == "routes![")
-    snippet = ["    " + line if line.strip() else "" for line in block.code.splitlines()]
-    lines[body:body] = snippet
+    lines[body:body] = ["    " + line if line.strip() else "" for line in statements]
     groups = re.findall(r"^let (\w+) =", block.code, re.M)
     csrf = next(i for i in range(start, len(lines)) if "security::csrf_middleware" in lines[i])
     lines[csrf:csrf] = [f"    .merge_axum({group}.into_axum())" for group in groups]
     main.write_text("\n".join(lines) + "\n")
-    log(f"mounted {', '.join(groups)} in router() before the CSRF layer")
+    log(f"imported {len(imports)} paths and mounted {', '.join(groups)} in router() before the CSRF layer")
 
 
 def shop_with_accounts(session, block) -> None:
@@ -294,7 +302,7 @@ def shop_with_accounts(session, block) -> None:
     code, headers, _ = browser.request("POST", "/logout", form={})
     expect(code in (302, 303) and headers.get("location") == "/login", f"POST /logout signs out ({code})")
     code, headers, _ = browser.request("GET", "/dashboard")
-    expect(code in (302, 303, 401), f"the dashboard needs a session after logout ({code})")
+    expect(code in (302, 303, 307, 401), f"the dashboard needs a session after logout ({code})")
     browser.request("GET", "/login")
     code, headers, _ = browser.request("POST", "/login", form={"email": email, "password": password})
     expect(code in (302, 303) and headers.get("location") == "/dashboard",

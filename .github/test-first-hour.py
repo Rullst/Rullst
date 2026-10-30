@@ -69,7 +69,14 @@ class RepositoryTests(unittest.TestCase):
             for step in ("auth-routes", "password-routes"):
                 checks.wire_routes(session, block(checks.AUTHENTICATION, step))
             wired = (session.cwd / "src/main.rs").read_text()
-        router = wired.split("fn router() -> Router {", 1)[1]
+        header, router = wired.split("fn router() -> Router {", 1)
+        imports = [line for line in header.splitlines() if line.startswith("use ")]
+        self.assertIn("use crate::controllers::password_controller;", imports)
+        self.assertNotIn("use ", router.split("\n}\n", 1)[0])
+        # A name imported twice at the top of main.rs does not compile (E0252).
+        names = [name.strip() for line in imports if line.startswith("use rullst::{")
+                 for name in re.sub(r"\{[^{}]*\}", "", line[len("use rullst::{"):-2]).split(",")]
+        self.assertEqual(len(names), len(set(names)), names)
         self.assertLess(router.index("let public_auth"), router.index("let password_change"))
         self.assertLess(router.index("let password_change"), router.index("\n    routes![\n"))
         merges = re.findall(r"\.merge_axum\((\w+)\.into_axum\(\)\)", router.split("csrf_middleware")[0])
