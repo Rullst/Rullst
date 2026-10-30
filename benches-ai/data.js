@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793316207003,
+  "lastUpdate": 1793329635776,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -16683,6 +16683,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 279,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5b0a2d6d9d3200debfffa5d0cc67b4de85ac5274",
+          "message": "Merge pull request #576 from Rullst/docs/v13-audit-plans\n\ndocs: audit the plans, roadmaps and maintainer pages for 13.0",
+          "timestamp": "2026-10-29T23:47:26-03:00",
+          "tree_id": "301114361466ce3187f532a2c03bee83f9785c12",
+          "url": "https://github.com/Rullst/Rullst/commit/5b0a2d6d9d3200debfffa5d0cc67b4de85ac5274"
+        },
+        "date": 1793329634960,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 903,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 163,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 0,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 186,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
