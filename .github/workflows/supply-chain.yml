@@ -7,7 +7,7 @@ name: Supply Chain
 
 on:
   push:
-    branches: [main, v12, v13, ci/v13-alpha4-workflow-cleanup] # TEMPORARY: branch trigger for the first hosted run
+    branches: [main, v12, v13]
   pull_request:
     branches: [main, v12, v13]
   workflow_dispatch:
