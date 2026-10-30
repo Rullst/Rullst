@@ -13,6 +13,7 @@ install it).
 
 ## 1. Create the application
 
+<!-- first-hour: create -->
 ```bash
 cargo new first_rullst_api
 cd first_rullst_api
@@ -31,6 +32,7 @@ it does not pin an unrelated moving Git branch or automatically update the app.
 
 Replace `src/main.rs` with:
 
+<!-- first-hour: main write=src/main.rs -->
 ```rust,no_run
 use rullst::{Server, ServerError, routes, server::Json};
 use serde::Serialize;
@@ -70,18 +72,21 @@ a JSON response alone is not a production security boundary.
 
 Start the application:
 
+<!-- first-hour: run -->
 ```bash
 cargo run
 ```
 
 From another terminal, request the route:
 
+<!-- first-hour: request -->
 ```bash
 curl -i http://127.0.0.1:3000/api/health
 ```
 
 The body is:
 
+<!-- first-hour: body output -->
 ```json
 {"status":"ok","framework":"Rullst"}
 ```
@@ -94,6 +99,7 @@ After [installing the v13 CLI](../1-getting-started.md#1-installation), it can
 scaffold a headless API directly. Use a different directory from the
 hand-written example above:
 
+<!-- first-hour: generated new-terminal -->
 ```bash
 cargo rullst new generated_api --default --api --no-database \
   --skip-initial-migration

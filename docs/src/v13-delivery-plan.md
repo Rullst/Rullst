@@ -340,7 +340,7 @@ OpenTelemetry 0.32. No OpenTelemetry 0.33 adoption is claimed. Compatible v12
 maintenance updates are consolidated in PR #240, preserving #251's complete
 history. Its SES constraint check now expects the 1.6.4 pin while retaining the
 historical 12.0.0 SemVer baseline's separate 1.6.3 guard. The combined maintenance
-commit passed all 46 protected checks and complete CI/SemVer workflows. PR #240
+commit passed all 46 checks `v12` requires and complete CI/SemVer workflows. PR #240
 merged normally into `v12` at `6dde0cb1` on September 22; no package was published.
 
 Scorecard's binary finding points to the trusted `checked_sum.wasm` test vector,
@@ -399,7 +399,7 @@ candidate becomes implementation work.
 at `9f543ed5326029f8e4fbf0693dd7faab9288a526`. Its admitted head `7776ccda` and
 GitHub test merge `3a84b107` have identical tree `abbbade9`.
 
-- All 46 protected requirements and 24 PR workflows passed. Additional S3 and
+- All 46 checks `main` then required and 24 PR workflows passed. Additional S3 and
   isolated Labs jobs passed, both review threads were resolved and CodeQL had
   zero open PR alerts.
 - [Coverage](https://github.com/Rullst/Rullst/actions/runs/35680761156) passed both

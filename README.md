@@ -47,6 +47,7 @@
 
 With Rust installed ([rustup.rs](https://rustup.rs/)):
 
+<!-- first-hour: quickstart -->
 ```bash
 cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 cargo rullst new my_app    # choose the Blank, API or SaaS starter

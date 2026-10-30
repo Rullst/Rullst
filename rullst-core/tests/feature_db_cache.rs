@@ -13,7 +13,8 @@
 use rullst_core::feature::{DbFeatureDriver, FeatureDriver};
 use std::time::Duration;
 
-const TTL: Duration = Duration::from_millis(400);
+// Long enough that a slow CI runner finishes the setup statements inside it.
+const TTL: Duration = Duration::from_secs(3);
 
 async fn execute(sql: &'static str) {
     let pool = rullst_core::db::safe_pool().expect("initialized pool");

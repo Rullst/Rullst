@@ -251,10 +251,11 @@ docker compose logs -f caddy
 ```
 
 The app's first line says where it listens. Because `Rullst.toml` trusts a
-proxy, it adds "if it runs on this host, set HOST=127.0.0.1": ignore that hint
-here. Caddy runs in its own container and reaches the app over the compose
-network, so the app must keep listening on `0.0.0.0` (the `HOST` that
-`compose.yaml` sets); its port is not published on the VM.
+proxy, it also names the two proxy setups. This deployment is the second one:
+Caddy runs in its own container and reaches the app over the compose network,
+so the app keeps listening on `0.0.0.0` (the `HOST` that `compose.yaml` sets),
+and only Caddy publishes ports on the VM. Set `HOST=127.0.0.1` only when the
+proxy runs directly on the host, outside a container network.
 
 On the host, `journalctl` shows the engine's own messages
 (`sudo journalctl -u docker`). The default log driver can fill the disk on a

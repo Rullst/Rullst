@@ -1733,7 +1733,9 @@ the same server-authoritative controls.
   address that covers every interface (`0.0.0.0` or `::`, the staging and
   production default without `HOST`) and, when a trusted proxy policy is
   enabled, suggests `HOST=127.0.0.1` so a proxy on the same host cannot be
-  bypassed; the default bind address is unchanged.
+  bypassed; since 13.0.0-alpha.4 the same line says to keep `HOST=0.0.0.0`
+  when the proxy reaches the application over a container network, as in the
+  generated compose deployment. The default bind address is unchanged.
 * **Default Dynamic Cache Boundary:** `headers_middleware` supplies
   `Cache-Control: no-store` only when the handler has not already selected an
   explicit cache policy. Versioned public/static responses can therefore opt
