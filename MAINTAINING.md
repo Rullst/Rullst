@@ -165,15 +165,38 @@ and fails on any surviving mutant.
 Release mode of `fuzzing.yml` covers all 42 targets
 (`python3 .github/validate-fuzz-targets.py`) in three waves of about five and
 a half hours each, about 17 hours in total. Evidence from an earlier run is
-reused only for targets whose inputs did not change:
-[`.github/fuzz_evidence_inputs.py`](.github/fuzz_evidence_inputs.py) lists the
-files that are not inputs; every other changed file is a global input and
-reruns every target. A toolchain change always reruns everything.
+reused only for targets whose inputs did not change. A fuzz package's inputs
+are its build graph ([`docs/src/fuzz-evidence.md`](docs/src/fuzz-evidence.md)):
+every crate it reaches through path dependencies, files those crates
+`include_str!`/`#[path]` from elsewhere, and a few global files (root
+`Cargo.toml`, toolchain, `.cargo/**`, every `.gitattributes`, inventory and
+fuzz scripts). Docs, changelog, READMEs outside reached crates, `cargo-rullst`,
+examples and other CI files no longer rerun anything; a change to a shared
+crate reruns only the packages that reach it. A global or toolchain change
+always reruns everything.
+
+The rule guards against accidental drift (refactors, new dependencies, new
+includes), not deliberately obfuscated file access: a maintainer who wanted to
+skip fuzzing could simply not run it. It fails closed (that package's input
+becomes the whole repository, the old behaviour) on patterns it does not
+model: a build script or build-dependency, proc-macro I/O or a proc macro with
+a path dependency or a registry dependency outside `syn`, `quote`,
+`proc-macro2` and `toml`, known file-reading macros (`migrate!`,
+`include_dir!`, `#[folder]`, …), a `..`, absolute or `$VAR` path passed to a
+macro whose code is not scanned, and includes it cannot resolve. The receipt's
+`whole_repository_inputs` says which package fell back and why. The fuzz
+workflow also runs `.github/check-fuzz-build-graph.py`, which fails when
+`cargo metadata --locked` resolves a path package, build script or proc macro
+the scope misses.
 
 Plan releases around this: freeze the code first, then start the release-mode
-run on that exact commit. When a release-only fix touches a file that should
-not invalidate fuzz evidence (release scripts, advisory ledgers), add it to
-the non-input list in the same pull request, with a test.
+run on that exact commit. Adding a build script or build-dependency to a
+fuzzed crate makes every package that reaches it rerun on any change until
+the policy models it. If a reviewed proc-macro reader in `REVIEWED_COMPILE_IO`
+(`.github/fuzz_build_graph.py`) changes, review the new blob and add it with a
+test, or the packages that reach it keep falling back; do the same before
+adding a registry macro to `REVIEWED_PLAIN_MACROS` or a crate to
+`REVIEWED_PROC_MACRO_DEPENDENCIES`.
 
 ## 6. Mutation campaigns
 
