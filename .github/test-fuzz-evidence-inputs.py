@@ -172,9 +172,9 @@ class InputTests(Fixture):
                      ".github/audit-packages.sh", ".github/test-package-release.py",
                      ".github/test-packaged-distribution.sh",
                      "deny.toml", "docs/src/security-advisory-exceptions.md",
-                     ".github/workflows/audit.yml", ".github/workflows/security-audit.yml",
-                     ".github/workflows/pqc-compliance.yml",
-                     ".github/workflows/ai-sentinel-pr.yml"):
+                     ".github/workflows/supply-chain.yml",
+                     ".github/workflows/crypto-containment.yml",
+                     ".github/workflows/pr-security-evidence.yml"):
             self.write(path, "changed test or non-input")
         self.append("rullst-mail/Cargo.toml", '[dev-dependencies]\nrand={workspace=true}\n')
         self.assertEqual(self.changed(), set())

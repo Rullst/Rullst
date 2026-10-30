@@ -258,7 +258,7 @@ class ReleaseAdmissionTests(unittest.TestCase):
                     "required_branch": "main",
                     "workflows": [
                         valid_ci,
-                        {"workflow": "../audit.yml", "event": "push"},
+                        {"workflow": "../supply-chain.yml", "event": "push"},
                     ],
                 }
             )
@@ -301,7 +301,7 @@ class ReleaseAdmissionTests(unittest.TestCase):
                 "required_branch": "main",
                 "workflows": [
                     *manual_gates,
-                    {"workflow": "audit.yml", "event": "push"},
+                    {"workflow": "supply-chain.yml", "event": "push"},
                 ],
             }
         )
@@ -309,9 +309,32 @@ class ReleaseAdmissionTests(unittest.TestCase):
         self.assertEqual(
             [item.workflow for item in requirements],
             sorted(
-                ["audit.yml", *(item["workflow"] for item in manual_gates)]
+                ["supply-chain.yml", *(item["workflow"] for item in manual_gates)]
             ),
         )
+
+    def test_policy_workflows_exist_and_declare_their_event(self):
+        # Admission looks runs up by workflow file name and event, so a renamed
+        # or merged workflow must be renamed in the policy too, or no run can
+        # ever satisfy it.
+        policy = MODULE.load_object(SCRIPT.parent / "release-required-workflows.json")
+        branch, requirements = MODULE.validate_policy(policy)
+        workflows = SCRIPT.parent / "workflows"
+        for requirement in requirements:
+            path = workflows / requirement.workflow
+            with self.subTest(workflow=requirement.workflow):
+                self.assertTrue(path.is_file(), f"{path} does not exist")
+                text = path.read_text(encoding="utf-8")
+                triggers = text.split("\non:\n", 1)[1].split("\n\n", 1)[0]
+                self.assertRegex(triggers, rf"(?m)^  {requirement.event}:")
+                if requirement.event == "push":
+                    push = triggers.split("  push:\n", 1)[1]
+                    self.assertRegex(push.split("\n  pull_request:", 1)[0],
+                                     rf"branches: \[[^\]]*\b{branch}\b")
+        names = {requirement.workflow for requirement in requirements}
+        for retired in ("audit.yml", "cargo-deny.yml", "security-audit.yml"):
+            self.assertNotIn(retired, names)
+            self.assertFalse((workflows / retired).exists(), retired)
 
     def test_v13_policy_requires_both_additional_privacy_targets(self):
         policy = MODULE.load_object(SCRIPT.parent / "release-required-workflows.json")

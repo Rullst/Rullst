@@ -13,7 +13,8 @@ on:
     - cron: '0 0 * * 0' # Run weekly
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # A scheduled run must not cancel, or be cancelled by, the push run admission needs.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'schedule' && '-scheduled' || '' }}
   cancel-in-progress: true
 
 permissions:

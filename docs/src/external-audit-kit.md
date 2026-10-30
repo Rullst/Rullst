@@ -141,7 +141,7 @@ cargo audit
 The first command writes `sbom-cyclonedx.json` (CycloneDX 1.5, from
 `Cargo.lock`) and `SECURITY_COMPLIANCE.md`; `cargo audit` needs `cargo-audit`
 installed. Dependency policy is in `deny.toml`, which CI checks with
-cargo-deny (`.github/workflows/cargo-deny.yml`); locally, `cargo deny check`.
+cargo-deny (`.github/workflows/supply-chain.yml`); locally, `cargo deny check`.
 
 ## What to test first
 
