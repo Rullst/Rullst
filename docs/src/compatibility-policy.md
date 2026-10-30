@@ -72,6 +72,12 @@ The public API of each library crate, as docs.rs documents it, is recorded in
 [`.github/public-api/`](../../.github/public-api/); a pull request that changes
 it updates that listing, so the change is visible in review.
 
+The `cargo-rullst` package is the exception. Its library is the CLI's
+implementation, shared by its binaries and tests, and is not a public API: the
+stable contract is the CLI's commands, flags, exit codes and versioned `--json`
+schemas. It has no listing, and the SemVer workflow reports it as excluded
+instead of comparing it.
+
 ### Maturity tiers (v13)
 
 From `13.0.0`, each package has a [maturity tier](maturity.md). Core and

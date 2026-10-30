@@ -19,6 +19,11 @@ cargo metadata --no-deps --format-version 1 > "$metadata_path"
 # way cargo-semver-checks 0.51 builds it, with its default feature selection.
 rustdoc_target="${CARGO_TARGET_DIR:-$repository_root/target}/semver-rustdoc"
 
+# The cargo-rullst library is the CLI's implementation, not a public API; the
+# CLI's commands, flags, exit codes and --json schemas are its contract
+# (docs/src/compatibility-policy.md). It is reported as excluded, never compared.
+not_public_api_packages=(cargo-rullst)
+
 # Every feature (explicit, and implicit for optional dependencies without a
 # `dep:` reference) except cargo-semver-checks' heuristically private ones:
 # unstable, nightly, bench, no_std and the _, unstable- and unstable_ prefixes.
@@ -124,6 +129,10 @@ while IFS= read -r package; do
   if [[ ! "$package" =~ ^[a-zA-Z0-9_-]+$ ]]; then
     echo "Invalid package name in .github/release-order.json: $package" >&2
     exit 1
+  fi
+  if [[ " ${not_public_api_packages[*]} " == *" $package "* ]]; then
+    echo "::notice title=SemVer scope::$package is excluded: its library is the CLI's implementation, not a public API; its contract is the CLI's commands, flags, exit codes and --json schemas"
+    continue
   fi
 
   target_kind=$(
