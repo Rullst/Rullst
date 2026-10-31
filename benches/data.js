@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793488638183,
+  "lastUpdate": 1793489647779,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -31135,6 +31135,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1427,
             "range": "± 99",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c128b67b7f0b508771d28c4c6ab4d03953bbb18a",
+          "message": "Merge pull request #604 from Rullst/test/v13-rc1-differential-db\n\ntest(orm): differential database tests for SQLite, PostgreSQL, MySQL and MariaDB",
+          "timestamp": "2026-10-31T20:29:26-03:00",
+          "tree_id": "d31f36dea4ea1b6aa30b1663beca150b0c52330d",
+          "url": "https://github.com/Rullst/Rullst/commit/c128b67b7f0b508771d28c4c6ab4d03953bbb18a"
+        },
+        "date": 1793489644759,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 670,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 894,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 419,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1739,
+            "range": "± 48",
             "unit": "ns/iter"
           }
         ]
