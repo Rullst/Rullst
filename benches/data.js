@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793457330424,
+  "lastUpdate": 1793476812680,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -30865,6 +30865,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1748,
             "range": "± 18",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7c698d7a8b872667c917357bb80444d3a8809473",
+          "message": "Merge pull request #596 from Rullst/chore/v13-sonar-test-duplication\n\nchore(sonar): measure duplication on production code only",
+          "timestamp": "2026-10-31T16:51:25-03:00",
+          "tree_id": "ae9bb50fd8d947ca13726e3d3f863907226bdb50",
+          "url": "https://github.com/Rullst/Rullst/commit/7c698d7a8b872667c917357bb80444d3a8809473"
+        },
+        "date": 1793476809158,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 687,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 894,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 435,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1738,
+            "range": "± 22",
             "unit": "ns/iter"
           }
         ]
