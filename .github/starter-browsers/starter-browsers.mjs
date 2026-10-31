@@ -84,6 +84,7 @@ class Session {
     this.findings = [];
     this.steps = [];
     this.shots = 0;
+    this.captureReports = 0;
   }
 
   path() {
@@ -102,13 +103,15 @@ class Session {
     this.context.setDefaultTimeout(STEP_TIMEOUT);
     await this.context.tracing.start({ screenshots: true, snapshots: true });
     await this.context.exposeBinding("__rullstCspViolation", (_source, violation) => {
-      this.record("csp", `${violation.directive} ${violation.blocked}`, violation);
+      if (violation.duringCapture) this.captureReports += 1;
+      else this.record("csp", `${violation.directive} ${violation.blocked}`, violation);
     });
     await this.context.addInitScript(() => {
       document.addEventListener("securitypolicyviolation", event => {
         window.__rullstCspViolation({
           directive: event.effectiveDirective, blocked: event.blockedURI, disposition: event.disposition,
           source: event.sourceFile, line: event.lineNumber, sample: event.sample,
+          duringCapture: window.__rullstCapturing === true,
         });
       }, true);
     });
@@ -135,9 +138,12 @@ class Session {
   async screenshot(label) {
     this.shots += 1;
     const file = `${this.name}-${String(this.shots).padStart(2, "0")}-${label.replace(/[^a-z0-9]+/gi, "-")}.png`;
-    // caret "initial": hiding the caret makes WebKit inject an inline <style>,
-    // which the starter's CSP rightly reports as a violation.
-    await this.page.screenshot({ path: join(this.out, file), fullPage: true, caret: "initial" }).catch(() => {});
+    // Playwright's WebKit screenshot injects an inline <style> that the
+    // starter's CSP reports; reports raised while capturing are counted apart.
+    const capturing = value => this.page.evaluate(flag => { window.__rullstCapturing = flag; }, value).catch(() => {});
+    await capturing(true);
+    await this.page.screenshot({ path: join(this.out, file), fullPage: true }).catch(() => {});
+    await capturing(false);
   }
 
   async step(name, action) {
@@ -311,7 +317,10 @@ async function run(name) {
   } finally {
     await session.close();
   }
-  return { browser: name, version: session.version ?? null, steps: session.steps, findings: session.findings };
+  return {
+    browser: name, version: session.version ?? null, steps: session.steps, findings: session.findings,
+    capture_reports: session.captureReports,
+  };
 }
 
 await mkdir(OUT, { recursive: true });
