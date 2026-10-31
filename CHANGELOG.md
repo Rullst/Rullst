@@ -182,6 +182,13 @@ generated files and scripts it can locate; the checklist lists the rest.
   succeeds. The disk stall that first made `initialize` fail is not
   reproduced, and on Linux a lock held past the 5-second wait can end `open`
   with SQLite's busy result instead of a retry.
+- That start-up retry covers the Labs, Media, Supervision and Privacy stores
+  only. `rullst-messaging`'s encrypted SQLite stores, `WebhookOutbox::open`
+  among them, have no such retry: on a hosted Windows runner a disk stall made
+  `open` fail with `Timeout`. A retry is planned for 13.0.0-rc.1.
+- docs.rs builds `rullst-nexus` without its `ai` feature and the facade
+  without `nexus-ai`, so the Nexus assistant's items are missing from both
+  docs.rs pages until 13.0.0-rc.1.
 - Rullst has a sole maintainer, with a successor arrangement in `GOVERNANCE.md`.
 
 ### Added
