@@ -282,6 +282,9 @@ async fn lifecycle_helpers_are_monotonic_and_startup_failure_stops() {
 
     let failed = crate::lifecycle::ApplicationLifecycle::new();
     crate::lifecycle::tests::bounded_begin_draining(&failed).expect("pre-start drain");
+    // `run` reads HOST, PORT and the environment selectors before the
+    // lifecycle check; a sibling's invalid PORT would fail it first.
+    let _lock = crate::server::TEST_ENV_LOCK.lock().await;
     let result = Server::new(Router::new())
         .with_lifecycle(failed.clone())
         .run(0)

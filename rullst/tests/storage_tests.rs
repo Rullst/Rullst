@@ -1,13 +1,12 @@
 use rullst::storage::LocalDriver;
-use std::env;
 
 #[tokio::test]
 async fn test_local_driver() {
-    let temp_dir = env::temp_dir().join("rullst_storage_test");
+    // A private directory: a fixed name in the shared temp directory would be
+    // used by every concurrent run of this test.
+    let directory = tempfile::tempdir().unwrap();
+    let temp_dir = directory.path().join("storage");
     let driver = LocalDriver::new(temp_dir.clone());
-
-    // Clean up before test just in case
-    let _ = tokio::fs::remove_dir_all(&temp_dir).await;
 
     // Test put
     let payload = b"hello storage";
@@ -32,7 +31,4 @@ async fn test_local_driver() {
     // Test delete
     driver.delete("test_file.txt").await.unwrap();
     assert!(!driver.exists("test_file.txt").await.unwrap());
-
-    // Clean up
-    let _ = tokio::fs::remove_dir_all(&temp_dir).await;
 }

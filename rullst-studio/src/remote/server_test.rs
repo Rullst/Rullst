@@ -163,6 +163,29 @@ pub(super) async fn start(redirect_to: Option<String>) -> (String, Arc<Seen>) {
     (format!("http://{address}/"), seen)
 }
 
+/// A loopback port nothing listens on, reserved while this value lives.
+///
+/// It is the local end of a connection to a listener this test owned, so a
+/// connection to it is refused and no parallel test can bind it. A port read
+/// from a dropped listener can be handed to another test's server before it
+/// is used, which then answers in place of a refusal.
+pub(super) struct RefusedPort {
+    pub(super) port: u16,
+    _connection: (std::net::TcpStream, std::net::TcpStream),
+}
+
+impl RefusedPort {
+    pub(super) fn new() -> Self {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let client = std::net::TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (server, _) = listener.accept().unwrap();
+        Self {
+            port: client.local_addr().unwrap().port(),
+            _connection: (client, server),
+        }
+    }
+}
+
 /// A temporary directory removed on drop.
 pub(super) struct TempDir(PathBuf);
 

@@ -55,18 +55,24 @@ fn a_refused_connection_is_named() {
 #[test]
 fn the_primary_database_fails_and_redis_warns_when_unreachable() {
     let root = tempfile::tempdir().unwrap();
-    let port = closed_port();
-    let url = format!("postgres://user:secret@127.0.0.1:{port}/app");
-    let redis = format!("redis://127.0.0.1:{port}");
-    let context = project(
-        root.path(),
-        &[("DATABASE_URL", &url), ("REDIS_URL", &redis)],
-    );
-    assert_eq!(primary_check(&context, &no_vars()).status, Status::Fail);
-    assert_eq!(
-        redis_check(&context, &no_vars()).unwrap().status,
-        Status::Warn
-    );
+    // A parallel test may bind the freed port before a probe connects, which
+    // then passes; try a few fresh ports until neither probe was answered.
+    let statuses = (0..5)
+        .map(|_| {
+            let port = closed_port();
+            let url = format!("postgres://user:secret@127.0.0.1:{port}/app");
+            let redis = format!("redis://127.0.0.1:{port}");
+            let context = project(
+                root.path(),
+                &[("DATABASE_URL", &url), ("REDIS_URL", &redis)],
+            );
+            (
+                primary_check(&context, &no_vars()).status,
+                redis_check(&context, &no_vars()).unwrap().status,
+            )
+        })
+        .find(|&(primary, redis)| primary != Status::Pass && redis != Status::Pass);
+    assert_eq!(statuses, Some((Status::Fail, Status::Warn)));
 }
 
 #[test]

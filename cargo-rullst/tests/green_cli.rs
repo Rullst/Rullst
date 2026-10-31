@@ -120,10 +120,17 @@ fn non_loopback_and_unreachable_targets_fail() {
     assert!(String::from_utf8_lossy(&refused.stderr).contains("loopback"));
     assert!(refused.stdout.is_empty());
 
-    let closed = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let port = closed.local_addr().unwrap().port();
-    drop(closed);
-    let unreachable = green(&["--url", &format!("http://127.0.0.1:{port}"), "--json"]);
+    // A parallel test's server may bind the freed port before `green` runs,
+    // which then benchmarks it; try a few fresh ports until one is refused.
+    let unreachable = (0..5)
+        .map(|_| {
+            let closed = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            let port = closed.local_addr().unwrap().port();
+            drop(closed);
+            green(&["--url", &format!("http://127.0.0.1:{port}"), "--json"])
+        })
+        .find(|output| !output.status.success())
+        .expect("every freed port was answered");
     assert_eq!(unreachable.status.code(), Some(1));
     assert!(String::from_utf8_lossy(&unreachable.stderr).contains("App not reachable"));
     assert!(unreachable.stdout.is_empty());

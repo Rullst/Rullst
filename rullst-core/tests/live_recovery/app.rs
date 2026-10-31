@@ -234,7 +234,8 @@ impl RecoverableLiveView for View {
     }
     async fn apply(&self, scope: &LiveScope, command: &LiveCommand) -> LiveResult<LiveSnapshot> {
         if command.action() == "slow" {
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            // Far beyond the operation budget and the test's bound on the close.
+            tokio::time::sleep(Duration::from_secs(10)).await;
         }
         if command.action() == "slow-increment" {
             tokio::time::sleep(Duration::from_millis(700)).await;
