@@ -9,6 +9,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Fixed
+
+- `rullst-messaging`: `WebhookOutbox::open` tries again when its 10-second
+  storage deadline expires, three attempts in total (about 30 seconds). On a
+  hosted Windows runner a disk stall made `open` fail with `Timeout` while
+  the SQLite store beneath, which waits up to 30 seconds for a connection and
+  for SQLite's lock, would have succeeded. Each attempt opens its own pool
+  and every opening step is idempotent; every other outbox call keeps the
+  single deadline. `SqliteBroker::connect` and its variants have no outer
+  deadline and are unchanged. A test holds the file under SQLite's exclusive
+  lock while `open` connects and checks the retry (on Windows; `--ignored`
+  elsewhere).
+- docs.rs builds the Nexus AI assistant: the `rullst` facade's
+  `[package.metadata.docs.rs]` features include `nexus-ai`, and `rullst-nexus`
+  lists `ai`, which its default features already enabled. The assistant's
+  public items (`ai_chat`) are not feature-gated, so they were never missing,
+  as the alpha.4 known limitation said; the facade's page documented a build
+  without the assistant. Only the command lines at the top of
+  `.github/public-api/rullst.txt` and `rullst-nexus.txt` change; no listed
+  item does.
+
 ## [13.0.0-alpha.4] - 2026-10-31
 
 Fourth v13 prerelease, for evaluation, and the 13.0 feature freeze:

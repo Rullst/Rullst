@@ -13,10 +13,11 @@ documentation = "https://docs.rs/rullst-nexus"
 keywords = ["admin", "cms", "crud", "nexus", "dashboard"]
 categories = ["web-programming", "gui"]
 
-# docs.rs documents the default features (every ORM driver) plus `tz`; the
-# `strict-*` profiles select one ORM backend instead of `drivers-all`.
+# docs.rs documents the default features (every ORM driver and the `ai`
+# assistant, also listed so the page keeps it if the defaults change) plus
+# `tz`; the `strict-*` profiles select one ORM backend instead of `drivers-all`.
 [package.metadata.docs.rs]
-features = ["tz"]
+features = ["tz", "ai"]
 rustdoc-args = ["--cfg", "docsrs"]
 targets = ["x86_64-unknown-linux-gnu"]
 
