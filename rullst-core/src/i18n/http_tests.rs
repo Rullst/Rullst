@@ -191,6 +191,8 @@ fn secure_cookies_follow_the_environment() {
     assert!(!with(Environment::Development));
     assert!(with(Environment::Staging));
     assert!(with(Environment::Production));
+    // Both reads must see the same selectors, which sibling tests change.
+    let _lock = crate::server::TEST_ENV_LOCK.blocking_lock();
     let detected = Environment::detect(None).map_or(true, Environment::requires_secure_defaults);
     assert_eq!(secure_cookies(&Extensions::new()), detected);
 }
