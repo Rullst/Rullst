@@ -439,9 +439,11 @@ A difference passes only when `expected.rs` documents it with its reason and
 the exact value, and a documented difference that stops occurring fails too,
 so the list remains a description of real provider semantics: PostgreSQL's
 constraint names, NULL ordering, case-sensitive `LIKE`, NUL-free text and
-aborted transactions after a failed statement; MySQL/MariaDB's
-case- and accent-insensitive default collations; non-transactional sequences;
-microsecond timestamps; SQLite's unenforced `VARCHAR(n)`. The job sets
+transaction abort after a failed raw statement; MySQL/MariaDB's case- and
+accent-insensitive default collations (MariaDB's also ignores trailing
+spaces); MySQL 8's reserved `RANK`; non-transactional sequences; microsecond
+timestamps; SQLite's unenforced `VARCHAR(n)`. Open ORM defects are pinned the
+same way, marked `Defect`, until they are fixed. The job sets
 `RULLST_DIFF_REQUIRE_ALL=1`, so a missing server URL fails it instead of
 skipping, and it uploads the transcripts and comparison reports. It runs on
 pushes, nightly, in `all`/`workspace` manual runs and on pull requests that

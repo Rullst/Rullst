@@ -78,9 +78,11 @@ kinds and transaction outcomes with SQLite's. The differences it accepts are
 the backends' own semantics, each listed with its reason in
 `rullst-orm/tests/differential/expected.rs`: for example MySQL/MariaDB compare
 text case- and accent-insensitively by default, PostgreSQL sorts NULL last in
-ascending order and aborts a transaction after any failed statement (wrap a
-statement that may fail in a nested `Orm::transaction` to continue), and
-SQLite does not enforce a `VARCHAR(n)` length.
+ascending order, and SQLite does not enforce a `VARCHAR(n)` length. Inside
+`Orm::transaction`, a failed `save()` can be caught
+and the transaction continued on every backend; after a failed `Orm::raw`
+statement PostgreSQL aborts the transaction, so wrap such a statement in a
+nested `Orm::transaction` to continue.
 
 ## Choosing
 

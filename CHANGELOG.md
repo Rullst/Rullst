@@ -20,11 +20,15 @@ A prepared version section does not establish that its tag or crates exist.
   11.4.13, with each backend's strict driver feature, and compares every
   normalized transcript with SQLite's. Only the differences listed with a
   reason and an exact value in `expected.rs` pass, such as PostgreSQL's
-  constraint names, NULL ordering and aborted transactions after a failed
+  constraint names, NULL ordering and transaction abort after a failed raw
   statement, the case-insensitive MySQL/MariaDB collations and SQLite's
   unenforced `VARCHAR(n)`. It runs on pushes, nightly, in release runs and on
   pull requests that change the ORM, fails when a server URL is missing, and
-  is a release-admission job. Test-only; no runtime change.
+  is a release-admission job. Test-only; no runtime change. Its first runs
+  found two defects, pinned as open differences: on MariaDB a `DateTime<Utc>`
+  before 1970 or after 2038-01-19 is stored as NULL (a NOT NULL column rejects
+  the row), and on PostgreSQL `where_eq(column, None)` on a non-text column
+  fails instead of matching nothing.
 
 ## [13.0.0-alpha.4] - 2026-10-31
 
