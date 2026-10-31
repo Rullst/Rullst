@@ -1,5 +1,8 @@
 //! Fixtures shared by the green tests: a loopback HTTP server, executable
 //! scripts and child processes waited on with a deadline.
+// The end-to-end tests that use these helpers measure /proc and run on Linux
+// only; on macOS and Windows the helpers are compiled but unused.
+#![cfg_attr(not(target_os = "linux"), allow(dead_code, unused_imports))]
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};

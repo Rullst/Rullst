@@ -951,9 +951,15 @@ to the counts above.
   [maturity tiers](docs/src/maturity.md) state which packages the 13.x
   promise covers. After rc.1, changes are limited to defects found in the
   release candidate.
-- **Facade docs.rs features**: add `nexus-ai` to the `rullst` facade's
-  `[package.metadata.docs.rs]` list (and its public API listing), so its
-  docs.rs page documents the Nexus assistant.
+- **docs.rs features for the Nexus assistant**: add `ai` to `rullst-nexus`'s
+  and `nexus-ai` to the `rullst` facade's `[package.metadata.docs.rs]` lists
+  (and their public API listings), so both docs.rs pages document the Nexus
+  assistant.
+- **Start-up retry for the messaging SQLite stores**: `rullst-messaging`'s
+  encrypted SQLite stores (`WebhookOutbox::open` among them) have no start-up
+  retry, and a disk stall on a hosted Windows runner made `open` fail with
+  `Timeout`. Retry a timed-out connection step as the Labs, Media,
+  Supervision and Privacy stores do.
 - **Turso/libSQL beyond the blank and API starters**, only if users ask for it
   and the maintenance cost stays low. Turso can be the primary database only
   in those starters and does not work with `#[derive(Orm)]`, `Schema`,

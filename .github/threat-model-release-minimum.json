@@ -584,7 +584,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "generators::deploy::tests::deploy_refuses_a_package_name_that_could_inject_dockerfile_syntax",
-      "source": "cargo-rullst/src/generators/deploy.rs",
+      "source": "cargo-rullst/src/generators/deploy_tests.rs",
       "marker": "TM-DEPLOY-05"
     },
     {
