@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793410390366,
+  "lastUpdate": 1793412562238,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -30757,6 +30757,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1720,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4f0f6306056e213cfdfd669bf36148f058d038ff",
+          "message": "Merge pull request #597 from Rullst/fix/v13-alpha4-fuzz-graph-wrapper\n\nfix(ci): run the fuzz build-graph cross-check without the sccache wrapper",
+          "timestamp": "2026-10-30T23:05:52-03:00",
+          "tree_id": "b2e1471452c33542f1615da80af58842eb7b9eb4",
+          "url": "https://github.com/Rullst/Rullst/commit/4f0f6306056e213cfdfd669bf36148f058d038ff"
+        },
+        "date": 1793412559485,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 378,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 560,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 277,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 936,
+            "range": "± 71",
             "unit": "ns/iter"
           }
         ]
