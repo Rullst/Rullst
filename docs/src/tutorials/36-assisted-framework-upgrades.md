@@ -264,6 +264,7 @@ release:
 | 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
+| 13.0.0-rc.1 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them) |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -433,13 +434,13 @@ is classified for `rullst-upgrade-rules-v4`:
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
   application source (12 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (101 rows);
+  the affected API, feature or configuration, which the rules locate (104 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (102 rows).
+  of inputs that previously failed) (99 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 115 rules. A row can map to several rules and a rule to
+has 120 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -643,21 +644,21 @@ the rule together.
 | Connect GitHub email | (b) review | `V13-CONNECT-GITHUB-EMAIL` | `GithubProvider` and `Connect::driver("github", ...)` |
 | Account mail link lifetime | (c) none | — | Only reset lifetimes that previously failed change; the link wording is not located |
 | Generated reset link lifetime | (c) none | — | Generator output; existing projects keep their code |
-| CLI deploy targets removed | (b) review | `V13-DEPLOY-TARGETS-REMOVED` | `fly.toml`, `render.yaml`, `railway.json`, `railway.toml`, and `deploy --platform fly\|railway\|render` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
-| SQLite database in the deployed image | (c) none | — | Generator output for new Dockerfiles; an existing Dockerfile without `DATABASE_URL` is not located, and `cargo rullst deploy` warns when it keeps one; introduced in 13.0.0-alpha.4 |
+| CLI deploy targets removed | (b) review | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-CADDY-HEALTH` | `fly.toml`, `render.yaml`, `railway.json`, `railway.toml`, and `deploy --platform fly\|railway\|render` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4; a root `Caddyfile` with `reverse_proxy app:3000` but without a `health_uri` or `lb_try_duration` line (`V13-DEPLOY-CADDY-HEALTH`, 13.0.0-rc.1) |
+| SQLite database in the deployed image | (b) review | `V13-DEPLOY-SQLITE-URL` | A root `Dockerfile` without `DATABASE_URL` in a project whose `Rullst.toml` `[database] url` (or, without one, `.env.example` `DATABASE_URL`) is SQLite, the check `cargo rullst deploy` warns with, reported at the last `FROM`; introduced in 13.0.0-alpha.4, rule since 13.0.0-rc.1 |
 | CLI Foundry, Nix, Buildah and gRPC generators removed | (b) review | `V13-DEPLOY-GENERATORS-REMOVED` | `Foundry.toml`, a `nixify` `flake.nix`, `build_buildah.sh`, `src/grpc/mod.rs`, and the removed commands in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 | CLI self-update removed | (b) review | `V13-CLI-SELF-UPDATE-REMOVED` | `rullst update check\|verify\|stage\|install`, or `update guided` with `--scope`/`--root`, in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 | CLI `ai` removed, `footprint` renamed `green` | (b) review | `V13-CLI-AI-REMOVED` | `rullst ai` or `rullst footprint` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 | Core error console assistant panel | (c) none | — | Development-only page; `handle_autofix` response readers are not located; introduced in 13.0.0-alpha.4 |
-| CLI starters moved to the examples | (c) none | — | CLI behaviour; applications generated from the removed starters keep their code; introduced in 13.0.0-alpha.4 |
+| CLI starters moved to the examples | (b) review | `V13-CLI-BLUEPRINTS-REMOVED` | Workflows, root scripts, Makefile and justfile that pass `--blueprint lms\|blog\|portfolio\|erp` (also `=value`, quoted or on a continuation line); applications generated from the removed starters keep their code; introduced in 13.0.0-alpha.4, rule since 13.0.0-rc.1 |
 | ORM derive dependencies | (c) none | — | Fix of code that previously failed to compile; a `tracing` or `tokio` dependency kept for the derive still works; introduced in 13.0.0-alpha.4 |
 | ORM `FromRow` and SQLx macros | (a) must-change | `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS` | Models deriving `FromRow` beside `Orm` (any path, separate derive attributes included) unless `#[orm(custom_from_row)]`; SQLx derives on other structs and enums and `sqlx::…::query!`-family macros when no manifest enables SQLx's `derive`/`macros` (or its default features); introduced in 13.0.0-alpha.4 |
 | Nexus AI assistant feature | (b) review | `V13-NEXUS-AI-FEATURE` | A `rullst` dependency with `nexus`/`nexus-tz` but not `nexus-ai`, or `rullst-nexus` without default features and without `ai`; introduced in 13.0.0-alpha.4 |
 | Generated starter dependencies | (c) none | — | Generator output for new projects; an unused `tracing-subscriber` in an existing project keeps working; introduced in 13.0.0-alpha.4 |
-| TLS crypto provider | (b) review | `V13-SQLX-TLS-RING` | A `sqlx` dependency (any manifest of the workspace, `[workspace.dependencies]` included) or a `[features]` entry that enables `tls-rustls`, `tls-rustls-ring` or `tls-rustls-ring-webpki`, reported once per manifest; `tls-rustls-ring-native-roots` is not located, because its aws-lc-rs replacement trusts different roots; the runtime provider defaults need no change; introduced in 13.0.0-alpha.4 |
+| TLS crypto provider | (b) review | `V13-SQLX-TLS-RING`, `V13-SQLX-TLS-NATIVE-ROOTS` | A `sqlx` dependency (any manifest of the workspace, `[workspace.dependencies]` included) or a `[features]` entry that enables `tls-rustls`, `tls-rustls-ring` or `tls-rustls-ring-webpki`, reported once per manifest; `tls-rustls-ring-native-roots` is a separate review (`V13-SQLX-TLS-NATIVE-ROOTS`, 13.0.0-rc.1, also once per manifest), because SQLx 0.9 has no aws-lc-rs feature with native roots and `tls-rustls-aws-lc-rs` trusts the bundled WebPKI roots; the runtime provider defaults need no change; introduced in 13.0.0-alpha.4 |
 | CLI `auth` on database starters | (c) none | — | CLI behaviour on new runs; earlier generated files are unchanged; introduced in 13.0.0-alpha.4 |
 | CLI `--no-database` files | (c) none | — | Generator output for new projects; an empty `rullst.db` is not located; introduced in 13.0.0-alpha.4 |
-| CLI `make:migration:auto` without a database to compare | (c) none | — | CLI exit status; scripts that run it are not located; introduced in 13.0.0-alpha.4 |
+| CLI `make:migration:auto` without a database to compare | (b) review | `V13-CLI-MIGRATION-AUTO-STATUS` | Workflows, root scripts, Makefile and justfile that run `make:migration:auto`, which exits with status 1 when there is no SQLite database to compare; introduced in 13.0.0-alpha.4, rule since 13.0.0-rc.1 |
 | Internals hidden from the API documentation | (c) none | — | The items still compile; only their documentation and compatibility promise change; introduced in 13.0.0-alpha.4 |
 
 ## Planned simpler update experience

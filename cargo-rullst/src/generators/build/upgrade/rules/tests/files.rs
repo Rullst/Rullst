@@ -18,12 +18,12 @@ fn plan(path: PathBuf, original: &str) -> ManifestUpgradePlan {
     }
 }
 
-struct Project {
+pub(super) struct Project {
     root: PathBuf,
 }
 
 impl Project {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         let root =
             std::env::temp_dir().join(format!("rullst-rules-files-{}", rand::random::<u64>()));
         std::fs::create_dir_all(&root).unwrap();
@@ -32,14 +32,14 @@ impl Project {
         }
     }
 
-    fn write(&self, relative: &str, text: &str) -> &Self {
+    pub(super) fn write(&self, relative: &str, text: &str) -> &Self {
         let path = self.root.join(relative);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, text).unwrap();
         self
     }
 
-    fn findings(&self, manifest: &str) -> Vec<(String, &'static str, usize)> {
+    pub(super) fn findings(&self, manifest: &str) -> Vec<(String, &'static str, usize)> {
         let plans = vec![plan(self.root.join("Cargo.toml"), manifest)];
         project_findings(&self.root, &plans)
             .into_iter()

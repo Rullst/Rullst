@@ -9,6 +9,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Fixed
+
+- `cargo rullst upgrade` reports, for review, the alpha.4 changes that its
+  alpha.4 rules did not locate (five new rules dated 13.0.0-rc.1, so an
+  application already on alpha.4 gets them; the catalog has 120 rules):
+  `V13-DEPLOY-SQLITE-URL`, a root `Dockerfile` without `DATABASE_URL` in a
+  SQLite project (the check `deploy` warns with); `V13-DEPLOY-CADDY-HEALTH`, a
+  `Caddyfile` that proxies to `app:3000` without `health_uri` or
+  `lb_try_duration`; `V13-CLI-MIGRATION-AUTO-STATUS` and
+  `V13-CLI-BLUEPRINTS-REMOVED`, workflows, root scripts, Makefiles and
+  justfiles that run `make:migration:auto` or pass
+  `--blueprint lms|blog|portfolio|erp`; and `V13-SQLX-TLS-NATIVE-ROOTS`, a
+  `sqlx` dependency or `[features]` entry with
+  `tls-rustls-ring-native-roots`. SQLx 0.9 has no aws-lc-rs feature with the
+  operating system's roots, so its guidance offers `tls-rustls-aws-lc-rs`
+  (bundled WebPKI roots; a private CA goes in `sslrootcert` or `ssl-ca`) or
+  keeping native roots with a recorded reason.
+
 ## [13.0.0-alpha.4] - 2026-10-31
 
 Fourth v13 prerelease, for evaluation, and the 13.0 feature freeze:

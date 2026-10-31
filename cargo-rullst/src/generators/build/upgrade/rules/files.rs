@@ -8,11 +8,19 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+#[path = "files/deploy.rs"]
+mod deploy;
 #[path = "files/features.rs"]
 mod features;
+#[path = "files/scripts.rs"]
+mod scripts;
 use features::{
-    enables_sqlx_macros, enables_sqlx_ring_tls, feature_reference, is_sqlx_ring_tls,
-    nexus_without_assistant,
+    SQLX_RING_TLS, enables_sqlx_macros, feature_reference, has_feature, nexus_without_assistant,
+};
+#[cfg(test)]
+pub(super) use scripts::{
+    passes_removed_blueprint, runs_migration_auto, runs_removed_cli_command,
+    runs_removed_deploy_target, runs_removed_generator, runs_removed_update_command,
 };
 
 const MAX_FILE_BYTES: u64 = 1024 * 1024;
@@ -202,8 +210,8 @@ pub(super) fn manifest_findings(
             .iter()
             .map(|(key, package, _)| (key.clone(), package.clone()))
             .collect();
-        // `V13-SQLX-TLS-RING` once per manifest, like a review rule in Rust.
-        let mut ring_tls = None;
+        // The SQLx TLS rules once per manifest, like a review rule in Rust.
+        let mut sqlx_tls = [None; SQLX_RING_TLS.len()];
         for (key, package, declaration) in declared {
             if let Some(rule) = enabled_removed_feature(&package, &declaration) {
                 findings.push(finding(
@@ -226,8 +234,10 @@ pub(super) fn manifest_findings(
             match package.as_str() {
                 "sqlx" => {
                     facts.sqlx_macros |= enables_sqlx_macros(&declaration);
-                    if ring_tls.is_none() && enables_sqlx_ring_tls(&declaration) {
-                        ring_tls = Some(dependency_line(&plan.original, &key));
+                    for (line, (features, _)) in sqlx_tls.iter_mut().zip(SQLX_RING_TLS) {
+                        if line.is_none() && has_feature(&declaration, features) {
+                            *line = Some(dependency_line(&plan.original, &key));
+                        }
                     }
                 }
                 "rullst-labs-runner" => findings.push(finding(
@@ -262,13 +272,16 @@ pub(super) fn manifest_findings(
         {
             findings.push(finding(rule, plan.path.clone(), line));
         }
-        if let Some(line) = ring_tls.or_else(|| {
-            feature_reference(&document, &plan.original, &packages, |package, feature| {
-                is_sqlx_ring_tls(package, feature).then_some(())
-            })
-            .map(|(line, ())| line)
-        }) {
-            findings.push(finding(&SQLX_TLS_RING, plan.path.clone(), line));
+        for (line, (features, rule)) in sqlx_tls.into_iter().zip(SQLX_RING_TLS) {
+            let line = line.or_else(|| {
+                feature_reference(&document, &plan.original, &packages, |package, feature| {
+                    (package == "sqlx" && features.contains(&feature)).then_some(())
+                })
+                .map(|(line, ())| line)
+            });
+            if let Some(line) = line {
+                findings.push(finding(rule, plan.path.clone(), line));
+            }
         }
     }
     (findings, facts)
@@ -305,63 +318,6 @@ fn removed_mail_driver_line(text: &str) -> Option<usize> {
         }
     }
     None
-}
-
-/// A script line running a command that 13.0.0-alpha.4 removed (`rullst ai`)
-/// or renamed (`rullst footprint`, now `green`), as a whole word.
-pub(super) fn runs_removed_cli_command(line: &str) -> bool {
-    ["rullst footprint", "rullst ai"].iter().any(|command| {
-        line.match_indices(command).any(|(index, _)| {
-            line[index + command.len()..]
-                .chars()
-                .next()
-                .is_none_or(|next| {
-                    !(next.is_ascii_alphanumeric() || matches!(next, '-' | '_' | ':'))
-                })
-        })
-    })
-}
-
-/// A script line running the self-updater removed in 13.0.0-alpha.4:
-/// `rullst update check|verify|stage|install`, or `update guided` with its
-/// CLI-installation flags.
-pub(super) fn runs_removed_update_command(line: &str) -> bool {
-    ["check", "verify", "stage", "install"]
-        .iter()
-        .any(|command| line.contains(&format!("rullst update {command}")))
-        || (line.contains("rullst update guided")
-            && (line.contains("--scope") || line.contains("--root")))
-}
-
-/// Whether `line` passes `flag` as a whole word (`--nix`, not `--nixpkgs`).
-fn has_flag(line: &str, flag: &str) -> bool {
-    line.split(|character: char| character.is_whitespace() || character == '=')
-        .any(|word| word == flag)
-}
-
-/// A script line running `deploy` with a platform target removed in
-/// 13.0.0-alpha.4 (Fly.io, Railway or Render).
-pub(super) fn runs_removed_deploy_target(line: &str) -> bool {
-    line.contains("rullst deploy")
-        && ["fly", "railway", "render"].iter().any(|platform| {
-            ["--platform ", "--platform=", "-p "]
-                .iter()
-                .any(|option| line.contains(&format!("{option}{platform}")))
-        })
-}
-
-/// A script line running a generator removed in 13.0.0-alpha.4: Foundry,
-/// `nixify`, Buildah, `make:grpc`, or `new --nix|--buildah`.
-pub(super) fn runs_removed_generator(line: &str) -> bool {
-    [
-        "rullst foundry:",
-        "rullst nixify",
-        "generate:buildah",
-        "make:grpc",
-    ]
-    .iter()
-    .any(|command| line.contains(command))
-        || (line.contains("rullst new") && (has_flag(line, "--nix") || has_flag(line, "--buildah")))
 }
 
 /// A lowercase DNS label, as Kubernetes object names require.
@@ -423,6 +379,14 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
         })
     {
         push(&DOCKER_UNLOCKED_BUILD, "Dockerfile", line);
+    }
+    if let Some(line) = deploy::dockerfile_without_database_url(root) {
+        push(&DEPLOY_SQLITE_URL, "Dockerfile", line);
+    }
+    if let Some(line) = read_small(&root.join("Caddyfile"))
+        .and_then(|text| deploy::caddyfile_without_health_checks(&text))
+    {
+        push(&DEPLOY_CADDY_HEALTH, "Caddyfile", line);
     }
     if let Some(text) = read_small(&root.join(".dockerignore"))
         && !(text.contains(".env.*") && text.contains("*.sqlite"))
@@ -529,22 +493,8 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
         let Some(text) = read_small(&root.join(&script)) else {
             continue;
         };
-        if let Some(line) = line_of(&text, |line| {
-            line.contains("rullst omni") || line.contains("make:omni")
-        }) {
-            push(&OMNI_REMOVED, &script, line);
-        }
-        if let Some(line) = line_of(&text, runs_removed_cli_command) {
-            push(&CLI_AI_REMOVED, &script, line);
-        }
-        if let Some(line) = line_of(&text, runs_removed_update_command) {
-            push(&CLI_SELF_UPDATE, &script, line);
-        }
-        if let Some(line) = line_of(&text, runs_removed_deploy_target) {
-            push(&DEPLOY_TARGETS_REMOVED, &script, line);
-        }
-        if let Some(line) = line_of(&text, runs_removed_generator) {
-            push(&DEPLOY_GENERATORS_REMOVED, &script, line);
+        for (rule, line) in scripts::script_findings(&text) {
+            push(rule, &script, line);
         }
     }
     if kubernetes
