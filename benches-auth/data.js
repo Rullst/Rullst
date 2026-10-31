@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793458073675,
+  "lastUpdate": 1793477572446,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -19755,6 +19755,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4596,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7c698d7a8b872667c917357bb80444d3a8809473",
+          "message": "Merge pull request #596 from Rullst/chore/v13-sonar-test-duplication\n\nchore(sonar): measure duplication on production code only",
+          "timestamp": "2026-10-31T16:51:25-03:00",
+          "tree_id": "ae9bb50fd8d947ca13726e3d3f863907226bdb50",
+          "url": "https://github.com/Rullst/Rullst/commit/7c698d7a8b872667c917357bb80444d3a8809473"
+        },
+        "date": 1793477571565,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1042,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 829,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1819,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4579,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
