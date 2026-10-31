@@ -151,7 +151,9 @@ starts each with its generated `.env` (development, offline billing).
 Firefox and WebKit with the Playwright and axe-core versions pinned (with
 integrity hashes) by `.github/starter-browsers/package-lock.json`, installed
 with `npm ci --ignore-scripts`; Playwright downloads the browser builds that
-its version pins. The starter's own Content-Security-Policy stays in force.
+its version pins. The starter's own Content-Security-Policy stays in force
+(the reports raised by the inline style Playwright injects for a WebKit
+screenshot are counted apart in the summary).
 Blocking: a console error, an uncaught page error, a failed same-origin
 request or a CSP violation; an element that Tab does not reach, or whose
 appearance focus does not change; focus lost after the Blank starter's HTMX
