@@ -14,7 +14,8 @@ pub enum Kind {
     Provider,
     /// An ORM defect awaiting a decision. The comparison accepts the value so
     /// the defect stays visible and pinned, not hidden; the report prints
-    /// `DEFECT` for it.
+    /// `DEFECT` for it. No defect is open.
+    #[allow(dead_code)]
     Defect,
 }
 
@@ -242,17 +243,6 @@ pub const DIFFERENCES: &[Difference] = &[
         kind: Kind::Provider,
         reason: "Generated SQL leaves identifiers unquoted (docs/src/spec.md): MySQL 8 reserves \
                  RANK (a window function); MariaDB, PostgreSQL and SQLite do not.",
-    },
-    Difference {
-        backends: POSTGRES,
-        key: "filters.eq_none_matches_nothing",
-        value: r#"{"error":"DatabaseError"}"#,
-        kind: Kind::Defect,
-        reason: "Defect (code or documentation): `where_eq(column, None)` binds a NULL typed as \
-                 text, which PostgreSQL cannot compare with a BIGINT column (`operator does not \
-                 exist: bigint = text`); SQLite and MySQL/MariaDB match nothing, and so does \
-                 PostgreSQL on a text column (`values.note_eq_none_matches_nothing`). The docs \
-                 (crates/orm.md, Query values) say a comparison with NULL never matches.",
     },
 ];
 
