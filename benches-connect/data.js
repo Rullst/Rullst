@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793482413520,
+  "lastUpdate": 1793486802597,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -12279,6 +12279,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 546,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "01b19ba0f257880745c65f3ae107ba6ee52314da",
+          "message": "Merge pull request #601 from Rullst/fix/v13-rc1-messaging-retry-docsrs\n\nfix(messaging,nexus): retry WebhookOutbox::open on an expired deadline; Nexus assistant on docs.rs",
+          "timestamp": "2026-10-31T19:31:37-03:00",
+          "tree_id": "098876e5791d96cccb3c940654364d83e7649992",
+          "url": "https://github.com/Rullst/Rullst/commit/01b19ba0f257880745c65f3ae107ba6ee52314da"
+        },
+        "date": 1793486801735,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 305,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
