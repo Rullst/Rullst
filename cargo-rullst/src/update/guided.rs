@@ -58,6 +58,14 @@ struct Options {
 
 impl Options {
     fn parse(matches: &ArgMatches) -> Result<Self> {
+        Self::parse_with(matches, std::env::var_os("CARGO_NET_OFFLINE").as_deref())
+    }
+
+    /// [`Options::parse`] with the value of `CARGO_NET_OFFLINE`.
+    fn parse_with(
+        matches: &ArgMatches,
+        cargo_net_offline: Option<&std::ffi::OsStr>,
+    ) -> Result<Self> {
         let target = matches
             .get_one::<String>("to")
             .ok_or(GuidedError::Invalid("exact version required"))?
@@ -79,9 +87,7 @@ impl Options {
                 .into(),
         ]);
         let offline = matches.get_flag("offline")
-            || crate::ui::update_check::enabled_env_flag(
-                std::env::var_os("CARGO_NET_OFFLINE").as_deref(),
-            );
+            || crate::ui::update_check::enabled_env_flag(cargo_net_offline);
         Ok(Self {
             target,
             project: matches
@@ -95,11 +101,20 @@ impl Options {
 }
 
 pub(super) fn run(matches: &ArgMatches) -> Result<()> {
-    if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
-        return Err(GuidedError::Invalid("guided updates require an interactive terminal; use explicit update commands with --json and reviewed approval digests for automation").into());
-    }
+    require_terminal(
+        std::io::stdin().is_terminal(),
+        std::io::stdout().is_terminal(),
+    )?;
     let options = Options::parse(matches)?;
     flow(&options, &mut Terminal, execute)
+}
+
+/// Prompts need a terminal on both standard input and output.
+fn require_terminal(stdin: bool, stdout: bool) -> Result<()> {
+    if !stdin || !stdout {
+        return Err(GuidedError::Invalid("guided updates require an interactive terminal; use explicit update commands with --json and reviewed approval digests for automation").into());
+    }
+    Ok(())
 }
 
 fn execute(args: &[OsString]) -> Result<Value> {

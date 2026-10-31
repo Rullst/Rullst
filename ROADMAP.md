@@ -925,9 +925,17 @@ above.
   remote mode (20 files) was measured in the same campaign and has no
   survivor left. The self-updater's binary replacement was removed in
   13.0.0-alpha.4, with its 7 remaining installation mutants; its 13 measured
-  files left the gate list with it, and `generators/deploy.rs` and
-  `update/guided.rs`, rewritten in that release, left it until they are
-  measured again.
+  files left the gate list with it. `generators/deploy.rs` and
+  `update/guided.rs`, rewritten in that release, were measured again with the
+  `green` files (next item).
+- `[x]` **`green`, `deploy` and guided-update mutation measurement**: hosted
+  targeted runs with the CLI's library tests measured the nine `green` files,
+  `generators/deploy.rs` and `update/guided.rs` (337 mutants; 93 missed, no
+  timeout). New library tests (a loopback test server, fake app and container
+  engine scripts, child test processes for the commands that use the working
+  directory or the terminal) killed 86; the other 7 are documented
+  equivalents (an `Instant` deadline compared with `<=`, and the clock tick
+  rate). The 11 files are in `.github/mutants-pr-cli.txt`.
 
 ### Planned after 13.0.0-alpha.4
 
@@ -946,9 +954,6 @@ to the counts above.
 - **Facade docs.rs features**: add `nexus-ai` to the `rullst` facade's
   `[package.metadata.docs.rs]` list (and its public API listing), so its
   docs.rs page documents the Nexus assistant.
-- **Re-measure `generators/deploy.rs` and `update/guided.rs`** with targeted
-  `mutants.yml` runs and return them to `.github/mutants-pr-cli.txt` once only
-  accepted equivalents are left.
 - **Turso/libSQL beyond the blank and API starters**, if users ask for it.
   Turso can be the primary database only in those starters and does not work
   with `#[derive(Orm)]`, `Schema`, `artisan!`, `Server::with_db`, Nexus or
