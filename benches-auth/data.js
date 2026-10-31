@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793477572446,
+  "lastUpdate": 1793482346450,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -19803,6 +19803,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4579,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "384b790d98ea1152b4000f7b09389cdb485f76c8",
+          "message": "Merge pull request #603 from Rullst/fix/v13-rc1-upgrade-rule-gaps\n\nfix(cli): upgrade rules for the alpha.4 Dockerfile, Caddyfile, script and SQLx native-roots gaps",
+          "timestamp": "2026-10-31T18:14:51-03:00",
+          "tree_id": "1ce61791556ff05112ddb1377abcb706bac6a4d1",
+          "url": "https://github.com/Rullst/Rullst/commit/384b790d98ea1152b4000f7b09389cdb485f76c8"
+        },
+        "date": 1793482345496,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1045,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 754,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1809,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4250,
+            "range": "± 28",
             "unit": "ns/iter"
           }
         ]
