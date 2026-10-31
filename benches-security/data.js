@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793411263921,
+  "lastUpdate": 1793413220410,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -19418,6 +19418,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4f0f6306056e213cfdfd669bf36148f058d038ff",
+          "message": "Merge pull request #597 from Rullst/fix/v13-alpha4-fuzz-graph-wrapper\n\nfix(ci): run the fuzz build-graph cross-check without the sccache wrapper",
+          "timestamp": "2026-10-30T23:05:52-03:00",
+          "tree_id": "b2e1471452c33542f1615da80af58842eb7b9eb4",
+          "url": "https://github.com/Rullst/Rullst/commit/4f0f6306056e213cfdfd669bf36148f058d038ff"
+        },
+        "date": 1793413219474,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 2825,
+            "range": "± 135",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 278,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 9,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 7,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 8,
             "range": "± 0",
             "unit": "ns/iter"
           }
