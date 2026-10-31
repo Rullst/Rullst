@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793480909895,
+  "lastUpdate": 1793481606316,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -30973,6 +30973,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1712,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "384b790d98ea1152b4000f7b09389cdb485f76c8",
+          "message": "Merge pull request #603 from Rullst/fix/v13-rc1-upgrade-rule-gaps\n\nfix(cli): upgrade rules for the alpha.4 Dockerfile, Caddyfile, script and SQLx native-roots gaps",
+          "timestamp": "2026-10-31T18:14:51-03:00",
+          "tree_id": "1ce61791556ff05112ddb1377abcb706bac6a4d1",
+          "url": "https://github.com/Rullst/Rullst/commit/384b790d98ea1152b4000f7b09389cdb485f76c8"
+        },
+        "date": 1793481602811,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 673,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 878,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 385,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1740,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
