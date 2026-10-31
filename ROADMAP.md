@@ -166,7 +166,7 @@ evidence, not more badges or absolute claims.
 
 | Experiment | Status and plan |
 | :--- | :--- |
-| Differential database testing | **Planned for the 13.0.0-rc.1 window (test-only).** Run the same generated ORM operations on SQLite, PostgreSQL, MySQL and MariaDB and compare normalized results, errors and transaction behaviour; keep provider-specific semantics explicit instead of forcing false equivalence. |
+| Differential database testing | **In CI for 13.0.0-rc.1 (test-only).** The `ORM differential databases` job of `ci.yml` runs the same ORM scenarios on SQLite, PostgreSQL, MySQL and MariaDB and compares normalized results, errors and transaction behaviour; provider-specific semantics are an explicit, reasoned list (`rullst-orm/tests/differential/expected.rs`), and open ORM defects it found are pinned there until fixed. Described in [WORKFLOWS.md](WORKFLOWS.md#required-local-and-release-baseline). |
 | Cross-browser and accessibility testing | **Planned for the 13.0.0-rc.1 window (test-only).** Exercise the generated starters with Playwright on Chromium, Firefox and WebKit, add automated accessibility checks and keep traces and screenshots of failures. Complements ZAP and the server-level tests; it is not WCAG certification. |
 | `cargo-careful` | **Planned for the 13.0.0-rc.1 window (test-only)** as a weekly job. |
 | Loom and Shuttle | **13.x, after 13.0.0.** Only for specific shared-state primitives with explicit concurrency invariants: the rate limiter, the Login Jail and queue leases. Not applied to the whole workspace. |

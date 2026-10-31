@@ -455,6 +455,133 @@ jobs:
               ;;
           esac
 
+  differential-database:
+    needs: scope
+    # Runs the same ORM scenarios on SQLite, PostgreSQL 15.17, MySQL 8.4.13 and
+    # MariaDB 11.4.13 (the images of .github/auth_starter_servers.py) and
+    # compares each transcript with SQLite's; only the differences documented
+    # in rullst-orm/tests/differential/expected.rs pass. Pushes, the nightly
+    # run and `all`/`workspace` manual runs always run it; pull requests only
+    # when the ORM, its macros, the lockfile or this workflow change (a first
+    # step decides), so the job still reports a result on every pull request.
+    if: >-
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
+    name: ORM differential databases
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres@sha256:29342cb52157b098821961d2c14eec3c019071f56a5d559e990cf07cf541ea9b
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready --host=127.0.0.1 --username=postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 30
+      mysql:
+        image: mysql@sha256:76f0358884cb92d9a086d24e5671c38048d3fef40f2588703d73eb55392d6b69
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping --host=127.0.0.1 --protocol=tcp --silent"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 30
+      mariadb:
+        image: mariadb:11.4@sha256:d1891ede5a559f1086f55053bb8cc1569b0298338c4d72d71725a7f74f6ba620
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd "mariadb-admin ping --host=127.0.0.1 --protocol=tcp --silent"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      # A missing URL or SQLite transcript fails the job instead of skipping.
+      RULLST_DIFF_REQUIRE_ALL: "1"
+      RULLST_DIFF_DIR: ${{ github.workspace }}/target/rullst-differential
+      RULLST_DIFF_POSTGRES_URL: postgres://postgres@127.0.0.1:5432/postgres
+      RULLST_DIFF_MYSQL_URL: mysql://root@127.0.0.1:3306/mysql
+      RULLST_DIFF_MARIADB_URL: mysql://root@127.0.0.1:3307/mysql
+    steps:
+      - name: Checkout source without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The pull-request merge commit and its base parent.
+          fetch-depth: 2
+
+      - name: Select the pull requests that change the ORM
+        id: selection
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" != pull_request ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only HEAD^1 HEAD)"
+          if grep -Eq '^(rullst-orm/|rullst-orm-macros/|Cargo\.(toml|lock)$|rust-toolchain\.toml$|\.github/workflows/ci\.yml$)' <<< "$changed"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No ORM change; pushes, the nightly run and release runs cover this job."
+          fi
+
+      - name: Set up content-addressed compiler cache
+        if: steps.selection.outputs.run == 'true'
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up Rust toolchain
+        if: steps.selection.outputs.run == 'true'
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
+          cache: false
+
+      - name: Record the SQLite reference transcript (twice, identical)
+        id: reference
+        if: steps.selection.outputs.run == 'true'
+        run: >-
+          cargo test -p rullst-orm --no-default-features --features strict-sqlite
+          --test differential --locked
+
+      - name: Compare PostgreSQL with SQLite
+        if: >-
+          !cancelled() && steps.reference.outcome == 'success'
+        run: >-
+          cargo test -p rullst-orm --no-default-features --features strict-postgres
+          --test differential --locked
+
+      - name: Compare MySQL and MariaDB with SQLite
+        if: >-
+          !cancelled() && steps.reference.outcome == 'success'
+        run: >-
+          cargo test -p rullst-orm --no-default-features --features strict-mysql
+          --test differential --locked
+
+      - name: Retain the transcripts and comparison reports
+        if: >-
+          !cancelled() && steps.selection.outputs.run == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: orm-differential-transcripts
+          path: target/rullst-differential/
+          if-no-files-found: warn
+          retention-days: 14
+
   storage-s3:
     needs: scope
     if: >-

@@ -157,7 +157,7 @@ class WorkflowGuardTests(unittest.TestCase):
         text = (HERE / "workflows/ci.yml").read_text().split("\njobs:\n", 1)[1]
         entries = re.split(r"(?m)^  ([a-z][a-z0-9-]+):\n", text)
         jobs = dict(zip(entries[1::2], entries[2::2]))
-        runtime = {"check", "test", "strict-database-features", "redis-rate-limit",
+        runtime = {"check", "test", "strict-database-features", "differential-database", "redis-rate-limit",
                    "feature-boundaries", "threat-model-release-minimum", "versioned-ai-evals",
                    "generated-release-access", "facade-composition", "storage-s3", "msrv"}
         distribution = {"native-cli-artifacts", "packaged-distribution"}
