@@ -62,7 +62,7 @@ class GeneratedFilesTests(unittest.TestCase):
 
     def test_long_reference_pages_are_optional(self):
         _, _, optional = self.index.partition("\n## Optional\n")
-        self.assertIn(GENERATOR.page_url("workflows.md"), optional)
+        self.assertIn(GENERATOR.page_url("v13-delivery-plan.md"), optional)
         self.assertNotIn(GENERATOR.page_url("spec.md"), optional)
         self.assertNotIn(GENERATOR.page_url("cli_reference.md"), optional)
 
