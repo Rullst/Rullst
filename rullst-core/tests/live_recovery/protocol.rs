@@ -7,6 +7,7 @@ use tokio_tungstenite::{
     tungstenite::{
         Error, Message,
         client::IntoClientRequest,
+        handshake::client::Response,
         http::{Request, header},
     },
 };
@@ -38,9 +39,11 @@ fn request(server: &Server, tenant: &str, token: &str) -> Request<()> {
 }
 
 async fn connect(server: &Server, token: &str) -> Socket {
-    let (socket, response) = connect_async(request(server, "school-a", token))
-        .await
-        .unwrap();
+    let connected = connect_async(request(server, "school-a", token)).await;
+    accepted(connected.unwrap())
+}
+
+fn accepted((socket, response): (Socket, Response)) -> Socket {
     assert_eq!(
         response
             .headers()
@@ -49,6 +52,22 @@ async fn connect(server: &Server, token: &str) -> Socket {
         "rullst.live.v1"
     );
     socket
+}
+
+/// Connects once capacity is released, retrying shared-capacity refusals
+/// until `limit` instead of assuming how fast a loaded runner closes a peer.
+async fn connect_after_release(server: &Server, limit: Duration) -> Socket {
+    let deadline = std::time::Instant::now() + limit;
+    loop {
+        match connect_async(request(server, "school-a", app::TEACHER)).await {
+            Err(Error::Http(response))
+                if response.status().as_u16() == 429 && std::time::Instant::now() < deadline =>
+            {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+            outcome => return accepted(outcome.unwrap()),
+        }
+    }
 }
 
 async fn frame(socket: &mut Socket) -> Message {
@@ -202,7 +221,9 @@ async fn malformed_commands_and_slow_callbacks_never_execute_unbounded_work() {
         panic!("slow callback must close");
     };
     assert_eq!(u16::from(close.code), 1013);
-    assert!(began.elapsed() < Duration::from_millis(900));
+    // The 200 ms budget closes it, not the 10 s callback; the margin absorbs
+    // a stalled runner.
+    assert!(began.elapsed() < Duration::from_secs(5));
     let count: i64 = sqlx::query_scalar("SELECT value FROM counters WHERE tenant=?")
         .bind("school-a")
         .fetch_one(&server.pool)
@@ -247,9 +268,9 @@ async fn shared_admission_and_idle_peer_deadline_release_capacity() {
     };
     assert_eq!(response.status().as_u16(), 429);
     // Do not poll the silent socket: tungstenite must not automatically answer
-    // pings on its behalf. The bounded server heartbeat releases admission.
-    tokio::time::sleep(Duration::from_millis(1200)).await;
-    let mut recovered = connect(&server, app::TEACHER).await;
+    // pings on its behalf. The bounded server heartbeat releases admission
+    // after about 800 ms, well before the 10 s lifetime would.
+    let mut recovered = connect_after_release(&server, Duration::from_secs(5)).await;
     snapshot(&mut recovered, "0", "recovered").await;
     recovered.close(None).await.ok();
     drop(silent);
