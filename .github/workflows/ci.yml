@@ -559,19 +559,22 @@ jobs:
           --test differential --locked
 
       - name: Compare PostgreSQL with SQLite
-        if: ${{ !cancelled() && steps.reference.outcome == 'success' }}
+        if: >-
+          !cancelled() && steps.reference.outcome == 'success'
         run: >-
           cargo test -p rullst-orm --no-default-features --features strict-postgres
           --test differential --locked
 
       - name: Compare MySQL and MariaDB with SQLite
-        if: ${{ !cancelled() && steps.reference.outcome == 'success' }}
+        if: >-
+          !cancelled() && steps.reference.outcome == 'success'
         run: >-
           cargo test -p rullst-orm --no-default-features --features strict-mysql
           --test differential --locked
 
       - name: Retain the transcripts and comparison reports
-        if: ${{ !cancelled() && steps.selection.outputs.run == 'true' }}
+        if: >-
+          !cancelled() && steps.selection.outputs.run == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: orm-differential-transcripts
