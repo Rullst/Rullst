@@ -954,14 +954,13 @@ to the counts above.
 - **Facade docs.rs features**: add `nexus-ai` to the `rullst` facade's
   `[package.metadata.docs.rs]` list (and its public API listing), so its
   docs.rs page documents the Nexus assistant.
-- **Turso/libSQL beyond the blank and API starters**, if users ask for it.
-  Turso can be the primary database only in those starters and does not work
-  with `#[derive(Orm)]`, `Schema`, `artisan!`, `Server::with_db`, Nexus or
-  Studio. A partial bridge (`Schema` emitting Turso migrations,
-  `#[derive(Orm)]` also generating the Turso model) is a candidate for a 13.x
-  release. Full parity, which would let the ORM core run on a backend other
-  than SQLx, is deferred to a later major release because it would put the
-  SQLx drivers at risk.
+- **Turso/libSQL beyond the blank and API starters**, only if users ask for it
+  and the maintenance cost stays low. Turso can be the primary database only
+  in those starters and does not work with `#[derive(Orm)]`, `Schema`,
+  `artisan!`, `Server::with_db`, Nexus or Studio. A partial bridge (`Schema`
+  emitting Turso migrations, `#[derive(Orm)]` also generating the Turso model)
+  could be a 13.x candidate on that condition. Full ORM parity is a decided
+  non-goal (see "13.x minor candidates and decided non-goals").
 - **Feedback from the platforms upgraded to 13.0.0-alpha.3 and alpha.4.**
   Their reports choose the fixes and priorities of the next prerelease, as
   the alpha.1 and alpha.2 reports did before.
