@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793413159363,
+  "lastUpdate": 1793458119492,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -12189,6 +12189,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 267,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2bd3c2ad9a9543010dc01527fef6c98ec16e8c04",
+          "message": "Merge pull request #598 from Rullst/fix/v13-alpha4-admission-2\n\nfix(ci): TM-DEPLOY-05 source after the deploy test move; green helpers on macOS/Windows",
+          "timestamp": "2026-10-31T11:29:43-03:00",
+          "tree_id": "c79c766a94e83c778bed2e696e39d5f6b57f6e15",
+          "url": "https://github.com/Rullst/Rullst/commit/2bd3c2ad9a9543010dc01527fef6c98ec16e8c04"
+        },
+        "date": 1793458118706,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 467,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
