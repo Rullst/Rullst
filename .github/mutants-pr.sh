@@ -30,8 +30,9 @@ shared=(--workspace --all-features --in-diff "$diff_file")
 while IFS= read -r glob; do
   shared+=(--exclude "$glob")
 done < <(entries "$root/.github/mutants-pr-exclude.txt")
-# Accepted equivalents (WORKFLOWS.md) are listed by their exact cargo-mutants
-# name, `file:line:col: description`. A line that moves is mutated again.
+# Accepted equivalents (docs/src/mutation-testing.md) are listed by their exact
+# cargo-mutants name, `file:line:col: description`. A line that moves is mutated
+# again.
 while IFS= read -r name; do
   escaped=$(printf '%s' "$name" | sed -e 's/[][\.*+?(){}|^$]/\\&/g')
   shared+=(--exclude-re "^${escaped}\$")
