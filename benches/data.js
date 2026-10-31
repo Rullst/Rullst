@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793406366409,
+  "lastUpdate": 1793406789558,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -30649,6 +30649,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1007,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6519b6847a8900ca92b401348af403d493be6ec3",
+          "message": "Merge pull request #594 from Rullst/test/v13-alpha4-windows-sqlite-retry\n\ntest(labs,media,supervision,privacy): exercise the SQLite bootstrap retry on Windows runners",
+          "timestamp": "2026-10-30T21:26:18-03:00",
+          "tree_id": "f0cdff84accaf5fff9fa314715784ef6bb1c7792",
+          "url": "https://github.com/Rullst/Rullst/commit/6519b6847a8900ca92b401348af403d493be6ec3"
+        },
+        "date": 1793406785534,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 552,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 751,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 433,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1452,
+            "range": "± 25",
             "unit": "ns/iter"
           }
         ]
