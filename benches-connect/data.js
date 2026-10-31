@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793477637563,
+  "lastUpdate": 1793482413520,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -12249,6 +12249,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 471,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "384b790d98ea1152b4000f7b09389cdb485f76c8",
+          "message": "Merge pull request #603 from Rullst/fix/v13-rc1-upgrade-rule-gaps\n\nfix(cli): upgrade rules for the alpha.4 Dockerfile, Caddyfile, script and SQLx native-roots gaps",
+          "timestamp": "2026-10-31T18:14:51-03:00",
+          "tree_id": "1ce61791556ff05112ddb1377abcb706bac6a4d1",
+          "url": "https://github.com/Rullst/Rullst/commit/384b790d98ea1152b4000f7b09389cdb485f76c8"
+        },
+        "date": 1793482412573,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 546,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
