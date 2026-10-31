@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793411371510,
+  "lastUpdate": 1793413289197,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -17163,6 +17163,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 367,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4f0f6306056e213cfdfd669bf36148f058d038ff",
+          "message": "Merge pull request #597 from Rullst/fix/v13-alpha4-fuzz-graph-wrapper\n\nfix(ci): run the fuzz build-graph cross-check without the sccache wrapper",
+          "timestamp": "2026-10-30T23:05:52-03:00",
+          "tree_id": "b2e1471452c33542f1615da80af58842eb7b9eb4",
+          "url": "https://github.com/Rullst/Rullst/commit/4f0f6306056e213cfdfd669bf36148f058d038ff"
+        },
+        "date": 1793413288291,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 946,
+            "range": "± 50",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 171,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 0,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 197,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
