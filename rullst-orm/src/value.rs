@@ -16,13 +16,18 @@ pub enum RullstValue {
     Bool(bool),
     /// A 64-bit integer, bound as `i64` (`BIGINT`). Added in v13.
     I64(i64),
-    /// SQL `NULL`, from `None`. It is bound as a text parameter: SQLite and
-    /// MySQL/MariaDB store it in any column, while PostgreSQL needs a cast for
-    /// another column type (`CAST($1 AS BIGINT)`). A comparison with `NULL`
-    /// matches no row, so filter with `where_null` instead. Added in v13.
+    /// SQL `NULL`, from `None`. Query-builder filters write it as the SQL
+    /// `NULL` literal, so a comparison with it matches no row on every
+    /// backend; filter with `where_null` instead. `Orm::raw` binds it as a
+    /// text parameter: SQLite and MySQL/MariaDB store it in any column, while
+    /// PostgreSQL needs a cast for another column type (`CAST($1 AS BIGINT)`).
+    /// Added in v13.
     Null,
     /// A UTC instant, for `timestamp_tz()` columns. With a strict driver
-    /// feature it is bound as SQLx's `DateTime<Utc>`; the SQLx `Any` pool
+    /// feature it is bound as SQLx's `DateTime<Utc>`, except on MySQL/MariaDB,
+    /// which receive its UTC wall time as a `DATETIME` (`NaiveDateTime`)
+    /// parameter, because MariaDB turns a `TIMESTAMP` parameter outside
+    /// 1970–2038 into `NULL`; the SQLx `Any` pool
     /// binds RFC 3339 text (`2026-10-15T09:30:00.500+00:00`), the form a
     /// SQLite `timestamp_tz()` column stores. Added in v13.
     DateTime(chrono::DateTime<chrono::Utc>),
@@ -91,7 +96,10 @@ mod temporal {
     }
 }
 
-/// Date/time parameters with a strict driver: SQLx's own `chrono` codecs.
+/// Date/time parameters with a strict driver: SQLx's own `chrono` codecs. A
+/// UTC instant is bound as generated writes bind it (`__bind_field::wire`):
+/// the UTC wall time as a `DATETIME` parameter on MySQL/MariaDB, whose
+/// `TIMESTAMP` parameters MariaDB nulls outside 1970–2038.
 #[cfg(any(
     feature = "strict-postgres",
     feature = "strict-mysql",
@@ -100,8 +108,8 @@ mod temporal {
 mod temporal {
     use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 
-    pub(super) fn date_time(value: &DateTime<Utc>) -> DateTime<Utc> {
-        *value
+    pub(super) fn date_time(value: &DateTime<Utc>) -> crate::__bind_field::Wire {
+        crate::__bind_field::wire(*value)
     }
 
     pub(super) fn naive_date_time(value: &NaiveDateTime) -> NaiveDateTime {

@@ -47,13 +47,6 @@ const LINGUISTIC_ORDER: &str = "Text sorts by the database collation: SQLite's B
      bytes (uppercase before lowercase, accented letters last); PostgreSQL (glibc en_US.utf8) and \
      MySQL/MariaDB sort linguistically, each with its own rules for punctuation.";
 
-const MARIADB_TIMESTAMP_PARAMETER: &str = "Defect: SQLx binds `DateTime<Utc>` as a MySQL \
-     `TIMESTAMP` parameter, and MariaDB turns a TIMESTAMP value outside 1970-01-01..2038-01-19 \
-     into NULL even for the `DATETIME(6)` column that `timestamp_tz()` creates to escape that \
-     range: a NOT NULL column rejects the row (1048) and a nullable column stores NULL without \
-     an error. MySQL 8.4 stores the instant. docs/src/crates/orm.md promises DATETIME(6) \
-     instants beyond 2038 on MySQL/MariaDB.";
-
 pub const DIFFERENCES: &[Difference] = &[
     Difference {
         backends: POSTGRES,
@@ -243,6 +236,14 @@ pub const DIFFERENCES: &[Difference] = &[
         reason: LINGUISTIC_ORDER,
     },
     Difference {
+        backends: &["mysql"],
+        key: "errors.reserved_word_column",
+        value: r#"{"error":"DatabaseError"}"#,
+        kind: Kind::Provider,
+        reason: "Generated SQL leaves identifiers unquoted (docs/src/spec.md): MySQL 8 reserves \
+                 RANK (a window function); MariaDB, PostgreSQL and SQLite do not.",
+    },
+    Difference {
         backends: POSTGRES,
         key: "filters.eq_none_matches_nothing",
         value: r#"{"error":"DatabaseError"}"#,
@@ -252,42 +253,6 @@ pub const DIFFERENCES: &[Difference] = &[
                  exist: bigint = text`); SQLite and MySQL/MariaDB match nothing, and so does \
                  PostgreSQL on a text column (`values.note_eq_none_matches_nothing`). The docs \
                  (crates/orm.md, Query values) say a comparison with NULL never matches.",
-    },
-    Difference {
-        backends: &["mysql"],
-        key: "errors.reserved_word_column",
-        value: r#"{"error":"DatabaseError"}"#,
-        kind: Kind::Provider,
-        reason: "Generated SQL leaves identifiers unquoted (docs/src/spec.md): MySQL 8 reserves \
-                 RANK (a window function); MariaDB, PostgreSQL and SQLite do not.",
-    },
-    Difference {
-        backends: &["mariadb"],
-        key: "temporal.round_trip.before_epoch",
-        value: r#"{"error":"DatabaseError"}"#,
-        kind: Kind::Defect,
-        reason: MARIADB_TIMESTAMP_PARAMETER,
-    },
-    Difference {
-        backends: &["mariadb"],
-        key: "temporal.round_trip.after_2038",
-        value: r#"{"error":"DatabaseError"}"#,
-        kind: Kind::Defect,
-        reason: MARIADB_TIMESTAMP_PARAMETER,
-    },
-    Difference {
-        backends: &["mariadb"],
-        key: "temporal.nullable_round_trip.before_epoch",
-        value: "null",
-        kind: Kind::Defect,
-        reason: MARIADB_TIMESTAMP_PARAMETER,
-    },
-    Difference {
-        backends: &["mariadb"],
-        key: "temporal.nullable_round_trip.after_2038",
-        value: "null",
-        kind: Kind::Defect,
-        reason: MARIADB_TIMESTAMP_PARAMETER,
     },
 ];
 
