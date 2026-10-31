@@ -44,10 +44,12 @@ fn sqlite_paths_keep_their_spelling() {
 #[cfg(not(windows))]
 #[test]
 fn a_refused_connection_is_named() {
-    assert_eq!(
-        tcp_reachable("127.0.0.1", closed_port()),
-        Err("connection refused".to_string())
-    );
+    // A parallel test may bind the freed port before the probe connects, so
+    // try a few fresh ports; a refusal must be reported by name.
+    let refused = (0..5)
+        .map(|_| tcp_reachable("127.0.0.1", closed_port()))
+        .find(Result::is_err);
+    assert_eq!(refused, Some(Err("connection refused".to_string())));
 }
 
 #[test]
