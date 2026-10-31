@@ -55,7 +55,8 @@ async fn handler_panic_is_typed_and_does_not_escape() {
 async fn explicit_shutdown_terminates_sleeping_loops() {
     let scheduler = Scheduler::new().task("* * * * *", || async {}).unwrap();
     let handle = scheduler.start().unwrap();
-    let result = tokio::time::timeout(Duration::from_millis(100), handle.shutdown()).await;
+    // Far below the minute the loop sleeps, with room for a stalled runner.
+    let result = tokio::time::timeout(Duration::from_secs(2), handle.shutdown()).await;
 
     assert!(result.is_ok());
     assert!(result.unwrap().is_ok());
@@ -155,7 +156,8 @@ async fn aborting_execution_drops_the_handler_future() {
     }
     outer.abort();
     let _ = outer.await;
-    tokio::time::timeout(Duration::from_millis(100), async {
+    // Generous for a stalled runner; the drop follows the abort at once.
+    tokio::time::timeout(Duration::from_secs(5), async {
         while !dropped.load(Ordering::SeqCst) {
             tokio::task::yield_now().await;
         }

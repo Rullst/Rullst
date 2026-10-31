@@ -73,10 +73,17 @@ fn listening_sockets_are_found_by_port_and_state() {
 
 #[test]
 fn a_free_port_is_a_bindable_loopback_port() {
-    let port = free_port().unwrap();
-    // The kernel picks it from the unprivileged ephemeral range.
-    assert!(port >= 1024, "{port}");
-    let listener = std::net::TcpListener::bind(("127.0.0.1", port)).unwrap();
+    // A parallel test may bind the freed port first, so try a few fresh
+    // ports; one of them must bind.
+    let bound = (0..5).find_map(|_| {
+        let port = free_port().unwrap();
+        // The kernel picks it from the unprivileged ephemeral range.
+        assert!(port >= 1024, "{port}");
+        std::net::TcpListener::bind(("127.0.0.1", port))
+            .ok()
+            .map(|listener| (port, listener))
+    });
+    let (port, listener) = bound.expect("no free port could be bound");
     assert_eq!(listener.local_addr().unwrap().port(), port);
 }
 

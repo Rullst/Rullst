@@ -294,9 +294,8 @@ async fn bearer_proxy_rejects_attachments_beyond_ses_limits_before_network() {
 
 #[tokio::test]
 async fn bearer_proxy_rejects_transport_schedule_and_deprecated_invalid_configuration() {
-    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    let endpoint = format!("http://{}/send", listener.local_addr().unwrap());
-    drop(listener);
+    let refused = crate::test_support::RefusedPort::new();
+    let endpoint = format!("http://127.0.0.1:{}/send", refused.port);
     let driver = AwsSesDriver::try_new("us-east-1", "proxy-secret")
         .unwrap()
         .try_with_endpoint(endpoint)

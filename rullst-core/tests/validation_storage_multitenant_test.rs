@@ -8,7 +8,10 @@ use std::cell::RefCell;
 
 #[tokio::test]
 async fn test_local_storage_crud() {
-    let tmp_path = std::env::temp_dir().join("rullst_test_storage_123");
+    // A private directory: a fixed name in the shared temp directory would be
+    // used by every concurrent run of this test.
+    let directory = tempfile::tempdir().unwrap();
+    let tmp_path = directory.path().join("storage");
     let storage = Storage::local(tmp_path.to_str().unwrap());
 
     // 1. Put
@@ -18,9 +21,6 @@ async fn test_local_storage_crud() {
     // 2. Get
     let data = storage.get("uploads/avatar.png").await.unwrap();
     assert_eq!(data, b"fake_png_data");
-
-    // Clean up
-    let _ = std::fs::remove_dir_all(tmp_path);
 }
 
 #[test]
