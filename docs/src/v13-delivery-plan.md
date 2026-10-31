@@ -39,7 +39,7 @@ formatting, and the breaking changes listed in the changelog. The mutation
 campaign finished `rullst-orm`, `rullst-orm-macros`, `rullst-core` and
 `rullst-nexus`; `cargo-rullst` is not yet mutation-measured and its targeted
 campaign continues after this release. The work planned next was delivered in
-[13.0.0-alpha.4](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#delivered-in-1300-alpha4).
+[13.0.0-alpha.4](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha4---2026-10-31).
 
 **13.0.0-alpha.2 published on October 17, 2026.** Tag `v13.0.0-alpha.2` points
 at `0daf4941`. [Release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)
@@ -54,7 +54,7 @@ sanitizer, coverage and Miri failures, an exact-pin packaging check, and the
 `669befe6` failed release verification before publishing anything (the CLI
 evidence audit did not receive the exception) and was replaced after the
 maintainer's approval. The work planned next was delivered in
-[13.0.0-alpha.3](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#delivered-in-1300-alpha3).
+[13.0.0-alpha.3](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha3---2026-10-23).
 
 **13.0.0-alpha.1 published on October 11, 2026.** Tag `v13.0.0-alpha.1` points
 at `fc44bf76`. [Release run 38151068563](https://github.com/Rullst/Rullst/actions/runs/38151068563)
