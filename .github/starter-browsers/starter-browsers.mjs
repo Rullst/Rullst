@@ -5,12 +5,14 @@
 //
 // node starter-browsers.mjs --starter blank|saas --base-url http://127.0.0.1:3000 --out DIR
 //   [--browsers chromium,firefox,webkit]
-// Writes DIR/report.json, plus a Playwright trace and page screenshots per browser.
+// Writes DIR/report.json, plus a Playwright trace and page screenshots per browser;
+// DIR must be inside $RUNNER_TEMP (or the system temporary directory).
 import { chromium, firefox, webkit } from "playwright";
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { join, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 
 const ENGINES = { chromium, firefox, webkit };
@@ -37,6 +39,10 @@ if (base.protocol !== "http:" || !LOOPBACK.has(base.hostname)) {
 }
 const FLOWS = { blank: blankFlow, saas: saasFlow };
 if (!FLOWS[options.starter] || !options.out) throw new Error("--starter blank|saas and --out are required");
+// Evidence is written only below the job's temporary directory.
+const OUT_ROOT = resolve(process.env.RUNNER_TEMP || tmpdir());
+const OUT = resolve(options.out);
+if (!OUT.startsWith(OUT_ROOT + sep)) throw new Error(`--out must be inside ${OUT_ROOT}`);
 const browsers = options.browsers.split(",");
 if (browsers.some(name => !ENGINES[name])) throw new Error(`unknown browser in ${options.browsers}`);
 
@@ -129,7 +135,9 @@ class Session {
   async screenshot(label) {
     this.shots += 1;
     const file = `${this.name}-${String(this.shots).padStart(2, "0")}-${label.replace(/[^a-z0-9]+/gi, "-")}.png`;
-    await this.page.screenshot({ path: join(this.out, file), fullPage: true }).catch(() => {});
+    // caret "initial": hiding the caret makes WebKit inject an inline <style>,
+    // which the starter's CSP rightly reports as a violation.
+    await this.page.screenshot({ path: join(this.out, file), fullPage: true, caret: "initial" }).catch(() => {});
   }
 
   async step(name, action) {
@@ -293,7 +301,7 @@ async function saasFlow(session) {
 }
 
 async function run(name) {
-  const session = new Session(name, options.out);
+  const session = new Session(name, OUT);
   try {
     await session.open();
     await FLOWS[options.starter](session);
@@ -306,9 +314,10 @@ async function run(name) {
   return { browser: name, version: session.version ?? null, steps: session.steps, findings: session.findings };
 }
 
-await mkdir(options.out, { recursive: true });
+await mkdir(OUT, { recursive: true });
 const results = [];
 for (const name of browsers) results.push(await run(name));
 const report = { starter: options.starter, base_url: base.href, versions: VERSIONS, browsers: results };
-await writeFile(join(options.out, "report.json"), JSON.stringify(report, null, 2));
-console.log(`${options.starter}: ${results.map(r => `${r.browser} ${r.findings.length} finding(s)`).join(", ")}`);
+await writeFile(join(OUT, "report.json"), JSON.stringify(report, null, 2));
+const counts = results.map(result => result.browser + " " + result.findings.length + " finding(s)");
+console.log(`${options.starter}: ${counts.join(", ")}`);
