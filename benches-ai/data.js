@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793413289197,
+  "lastUpdate": 1793458336391,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -17211,6 +17211,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 197,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2bd3c2ad9a9543010dc01527fef6c98ec16e8c04",
+          "message": "Merge pull request #598 from Rullst/fix/v13-alpha4-admission-2\n\nfix(ci): TM-DEPLOY-05 source after the deploy test move; green helpers on macOS/Windows",
+          "timestamp": "2026-10-31T11:29:43-03:00",
+          "tree_id": "c79c766a94e83c778bed2e696e39d5f6b57f6e15",
+          "url": "https://github.com/Rullst/Rullst/commit/2bd3c2ad9a9543010dc01527fef6c98ec16e8c04"
+        },
+        "date": 1793458335618,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1862,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 323,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 362,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
