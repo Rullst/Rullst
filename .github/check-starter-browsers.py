@@ -142,7 +142,8 @@ def render(reports: list[dict], result: dict) -> str:
     for title, items in sections:
         if items:
             lines += ["", f"#### {title}", ""] + [describe(item) for item in dedupe(items)]
-    ignored = [f"{row['browser']} {row['capture_reports']}" for row in result["rows"] if row["capture_reports"]]
+    ignored = [f"{row['starter']}/{row['browser']} {row['capture_reports']}"
+               for row in result["rows"] if row["capture_reports"]]
     if ignored:
         lines += ["", "CSP reports raised by Playwright's own screenshot styles (not the starter) were ignored: "
                   + ", ".join(ignored) + "."]

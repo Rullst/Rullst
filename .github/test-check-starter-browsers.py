@@ -77,7 +77,7 @@ class PolicyTests(unittest.TestCase):
         captured["browsers"][0]["capture_reports"] = 5
         result = CHECK.evaluate([captured], [])
         self.assertEqual(result["blocking"], [])
-        self.assertIn("screenshot styles (not the starter) were ignored: webkit 5.", CHECK.render([captured], result))
+        self.assertIn("screenshot styles (not the starter) were ignored: saas/webkit 5.", CHECK.render([captured], result))
 
     def test_known_defects_file_is_valid_and_entries_need_owner_and_reason(self):
         self.assertTrue(all(entry["owner"] and entry["reason"] for entry in CHECK.load_known_defects()))

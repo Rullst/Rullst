@@ -85,6 +85,7 @@ class Session {
     this.steps = [];
     this.shots = 0;
     this.captureReports = 0;
+    this.capturing = false;
   }
 
   path() {
@@ -119,7 +120,10 @@ class Session {
     this.page.on("console", message => {
       if (message.type() !== "error") return;
       const text = message.text();
-      this.record("console", text.slice(0, 160), text, { csp: /content[- ]security[- ]policy/i.test(text) });
+      const csp = /content[- ]security[- ]policy/i.test(text);
+      // The console line of a report set aside while capturing (see screenshot).
+      if (csp && this.capturing) return;
+      this.record("console", text.slice(0, 160), text, { csp });
     });
     this.page.on("pageerror", error => this.record("pageerror", error.message.slice(0, 160), String(error.stack ?? error)));
     this.page.on("response", response => {
@@ -141,9 +145,13 @@ class Session {
     // Playwright's WebKit screenshot injects an inline <style> that the
     // starter's CSP reports; reports raised while capturing are counted apart.
     const capturing = value => this.page.evaluate(flag => { window.__rullstCapturing = flag; }, value).catch(() => {});
+    // Protocol events arrive in order, so console lines of the capture are
+    // delivered before the second evaluate resolves.
+    this.capturing = true;
     await capturing(true);
     await this.page.screenshot({ path: join(this.out, file), fullPage: true }).catch(() => {});
     await capturing(false);
+    this.capturing = false;
   }
 
   async step(name, action) {
