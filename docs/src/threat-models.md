@@ -155,7 +155,7 @@ and error console ↔ source filesystem.
 ## TM-STUDIO-2 — production monitoring endpoint
 
 Added for 13.0.0-alpha.3, before the endpoint shipped. Phase 1 of the
-[Studio production monitor plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#delivered-in-1300-alpha3)
+[Studio production monitor](production-monitoring.md)
 is a read-only JSON endpoint, `GET /_rullst/monitor/v1`, that an application
 mounts with `Server::with_monitor`. The standalone Studio that reads it for
 several projects from the developer's machine (phases 2 and 3) is modelled in
@@ -198,7 +198,7 @@ query string never appears in the payload.
 ## TM-STUDIO-3 — Studio remote projects on the developer's machine
 
 Phase 2 of the
-[Studio production monitor plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#delivered-in-1300-alpha3):
+[Studio production monitor](production-monitoring.md):
 the standalone `rullst-studio` binary runs on a developer's machine without an
 application process, keeps a list of projects (name, base URL, monitor token)
 and renders each project's `rullst.monitor.v1` document (`TM-STUDIO-2`). It
