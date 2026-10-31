@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793486911794,
+  "lastUpdate": 1793490497469,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -19689,6 +19689,60 @@ window.BENCHMARK_DATA = {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 8,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c128b67b7f0b508771d28c4c6ab4d03953bbb18a",
+          "message": "Merge pull request #604 from Rullst/test/v13-rc1-differential-db\n\ntest(orm): differential database tests for SQLite, PostgreSQL, MySQL and MariaDB",
+          "timestamp": "2026-10-31T20:29:26-03:00",
+          "tree_id": "d31f36dea4ea1b6aa30b1663beca150b0c52330d",
+          "url": "https://github.com/Rullst/Rullst/commit/c128b67b7f0b508771d28c4c6ab4d03953bbb18a"
+        },
+        "date": 1793490496865,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5360,
+            "range": "± 112",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 576,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 22,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
