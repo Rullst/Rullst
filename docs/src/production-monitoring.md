@@ -12,8 +12,9 @@ GET /_rullst/monitor/v1
 It answers a JSON document, versioned as `rullst.monitor.v1`, with request
 rates and latency per route pattern, status classes, queue depth and worker
 activity, possible N+1 queries and the process radar. It never contains
-database rows, request data or configuration. It is phase 1 of the
-[Studio production monitor plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#delivered-in-1300-alpha3);
+database rows, request data or configuration. It is phase 1 of the Studio
+production monitor delivered in
+[13.0.0-alpha.3](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha3---2026-10-23);
 phase 2 is the [standalone Studio](#watch-your-projects-from-studio) on your
 machine, which reads this endpoint for several projects. Any HTTPS client
 (curl, a script, an uptime tool) can read it too.

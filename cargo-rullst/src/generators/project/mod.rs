@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 pub(crate) use command::{new_command, run_new_command};
 pub use docker::generate_docker_files;
-pub(crate) use docker::project_database_provider;
+pub(crate) use docker::{database_provider, project_database_provider};
 pub use wizard::{PolyglotIntegration, ProjectWizardOptions, run_project_wizard};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

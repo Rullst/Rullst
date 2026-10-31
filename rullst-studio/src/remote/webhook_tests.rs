@@ -3,7 +3,7 @@
 
 use super::alerts::AlertRules;
 use super::projects::{ProjectError, ProjectStore, WebhookChange};
-use super::server_test::{TOKEN, TempDir};
+use super::server_test::{RefusedPort, TOKEN, TempDir};
 use super::webhook::{WebhookClient, WebhookPayload, validate_webhook_url};
 use axum::Router;
 use axum::http::{StatusCode, header};
@@ -161,9 +161,8 @@ async fn delivery_posts_the_alert_once_and_reports_a_fixed_status() {
     let (slow, _) = receiver(StatusCode::OK, Duration::from_secs(5)).await;
     assert_eq!(client.deliver(&slow, &payload()).await, "failed: timeout");
 
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let closed = format!("http://{}/hook", listener.local_addr().unwrap());
-    drop(listener);
+    let refused = RefusedPort::new();
+    let closed = format!("http://127.0.0.1:{}/hook", refused.port);
     // Windows retries a refused loopback connection for about two seconds.
     let patient = WebhookClient::with_timeout(Duration::from_secs(6)).unwrap();
     assert_eq!(

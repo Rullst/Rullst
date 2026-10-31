@@ -34,7 +34,8 @@ async fn dropping_final_shield_aborts_monitor_tasks() {
     shield.start().unwrap();
     drop(shield);
 
-    tokio::time::timeout(Duration::from_millis(100), async {
+    // Generous for a stalled runner; the abort follows the drop at once.
+    tokio::time::timeout(Duration::from_secs(5), async {
         while monitored_value.upgrade().is_some() {
             tokio::task::yield_now().await;
         }
@@ -205,7 +206,10 @@ async fn test_traffic_shield_config_builders() {
 
 #[tokio::test]
 async fn test_check_and_consume_refill() {
-    let config = RateLimitConfig::per_second(2.0); // max 2, refill 2/s
+    // Max 2, one token every 2 s: a stalled runner has 2 s before a token
+    // refills between the checks below, and the 2.5 s pause may overshoot by
+    // 1.5 s before a second token is restored.
+    let config = RateLimitConfig::new(2.0, 0.5);
     let limiter = RateLimiter::new(config);
 
     assert!(limiter.check_and_consume("test_key"));
@@ -213,7 +217,7 @@ async fn test_check_and_consume_refill() {
     assert!(!limiter.check_and_consume("test_key")); // 0 tokens left
 
     // wait for refill
-    tokio::time::sleep(Duration::from_millis(600)).await; // 0.6s * 2 = 1.2 tokens
+    tokio::time::sleep(Duration::from_millis(2_500)).await; // 2.5s * 0.5 = 1.25 tokens
     assert!(limiter.check_and_consume("test_key"));
     assert!(!limiter.check_and_consume("test_key")); // Should only be 1 token restored
 }

@@ -8,6 +8,7 @@ mod docs;
 mod files;
 mod limits;
 mod markup;
+mod rc1_gaps;
 mod releases;
 mod scanner;
 mod syntax;

@@ -8,6 +8,7 @@ const RELEASES: &[&str] = &[
     "13.0.0-alpha.2",
     "13.0.0-alpha.3",
     "13.0.0-alpha.4",
+    "13.0.0-rc.1",
 ];
 
 fn version(text: &str) -> Version {
@@ -79,6 +80,18 @@ fn rules_carry_the_release_of_their_change() {
             "V13-SQLX-MACROS",
             "V13-NEXUS-AI-FEATURE",
             "V13-SQLX-TLS-RING"
+        ]
+    );
+    // Rules added after alpha.4 for its changes take the next release, so
+    // an application already on alpha.4 still gets them.
+    assert_eq!(
+        codes_introduced_in("13.0.0-rc.1"),
+        [
+            "V13-SQLX-TLS-NATIVE-ROOTS",
+            "V13-DEPLOY-SQLITE-URL",
+            "V13-DEPLOY-CADDY-HEALTH",
+            "V13-CLI-MIGRATION-AUTO-STATUS",
+            "V13-CLI-BLUEPRINTS-REMOVED",
         ]
     );
     assert_eq!(codes_introduced_in("13.0.0-alpha.1").len(), 95);
