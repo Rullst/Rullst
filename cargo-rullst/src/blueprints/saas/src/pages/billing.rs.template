@@ -98,12 +98,12 @@ pub fn pricing_page(csrf_token: &str, _csp_nonce: &str) -> Html<String> {
             <body>
                 <div class="glow-bg"></div>
                 <div class="glow-bg-right"></div>
-                <div class="container">
+                <main class="container">
                     { pricing_navbar() }
                     { banner_code }
                     { pricing_header() }
                     { pricing_plans(csrf_token) }
-                </div>
+                </main>
             </body>
         </html>
     };

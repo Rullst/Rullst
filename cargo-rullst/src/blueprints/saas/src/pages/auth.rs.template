@@ -32,10 +32,10 @@ fn card_page(title: &str, heading: &str, content: Markup, csp_nonce: &str) -> Ma
                 <style nonce={csp_nonce}>{CARD_STYLES}</style>
             </head>
             <body>
-                <div class="card">
+                <main class="card">
                     <h1>{heading}</h1>
                     {content}
-                </div>
+                </main>
             </body>
         </html>
     }
@@ -168,12 +168,12 @@ pub fn dashboard_page(user_name: &str, csrf_token: &str, csp_nonce: &str) -> Htm
          .muted { color: #9ca3af; margin-top: 0.5rem; }
          .small { font-size: 0.85rem; }
          .metric { font-size: 1.5rem; font-weight: 700; }
-         .card h3 { margin-bottom: 0.5rem; }
+         .card h2 { margin-bottom: 0.5rem; font-size: 1.17rem; }
          .subscription { color: #10b981; }
          .performance { color: #38bdf8; }
          .security { color: #a855f7; }
          </style></head><body>
-         <div class="topbar">
+         <header class="topbar">
            <div class="logo">⚡ Rullst SaaS Dashboard</div>
            <div>
              <a href="/nexus" class="btn-nexus">⚙️ Nexus CMS</a>
@@ -182,28 +182,28 @@ pub fn dashboard_page(user_name: &str, csrf_token: &str, csp_nonce: &str) -> Htm
              <form method="post" action="/logout" class="logout-form"><input type="hidden" name="_token" value="__RULLST_CSRF_TOKEN__" /><button type="submit" class="btn-logout">Logout</button></form>
              <form method="post" action="/logout/everywhere" class="logout-form"><input type="hidden" name="_token" value="__RULLST_CSRF_TOKEN__" /><button type="submit" class="btn-logout">Sign out everywhere</button></form>
            </div>
-         </div>
-         <div class="container">
+         </header>
+         <main class="container">
            <h1>Welcome, __RULLST_USER_NAME__</h1>
            <p class="muted">This starter authenticates passwords with Argon2id and stores the user ID and session epoch in an encrypted session cookie; signing out everywhere revokes every copy.</p>
            <div class="grid">
              <div class="card">
-               <h3 class="subscription">💳 Subscription</h3>
+               <h2 class="subscription">💳 Subscription</h2>
                <p class="metric">Webhook-derived state</p>
                <p class="muted small">Persist entitlements only after a verified, replay-protected provider event.</p>
              </div>
              <div class="card">
-               <h3 class="performance">⚡ Performance</h3>
+               <h2 class="performance">⚡ Performance</h2>
                <p class="metric">Server-rendered UI</p>
                <p class="muted small">Measure latency in your own deployment; this starter makes no universal timing claim.</p>
              </div>
              <div class="card">
-               <h3 class="security">🛡️ Security Guard</h3>
+               <h2 class="security">🛡️ Security Guard</h2>
                <p class="metric">CSRF + secure headers</p>
                <p class="muted small">Production still requires TLS termination, secret management and provider sandbox validation.</p>
              </div>
            </div>
-          </div></body></html>"#
+          </main></body></html>"#
         .replace("__RULLST_CSP_NONCE__", &nonce)
         .replace("__RULLST_CSRF_TOKEN__", &csrf_token)
         .replace("__RULLST_USER_NAME__", &user_name))

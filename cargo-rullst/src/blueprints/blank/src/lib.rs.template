@@ -13,7 +13,7 @@ pub async fn home(
     let name = "Rullst";
 __DB_STATUS_CODE__
     let content = html! {
-        <div class="rullst-starter flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
+        <main class="rullst-starter flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
             <div class="rullst-starter__content max-w-xl text-center space-y-6">
                 <h1 class="rullst-starter__title text-5xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
                     "Welcome to " {name}
@@ -45,7 +45,7 @@ __DB_STATUS_CODE__
                     <div data-island="counter" data-props="{\"props\": {\"initial_value\": 0}}"></div>
                 </div>
             </div>
-        </div>
+        </main>
     };
 
     // The page is written in English; plain `render_page` declares Portuguese.
