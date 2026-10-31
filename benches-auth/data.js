@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793411084418,
+  "lastUpdate": 1793413134471,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -19659,6 +19659,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4612,
             "range": "± 70",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4f0f6306056e213cfdfd669bf36148f058d038ff",
+          "message": "Merge pull request #597 from Rullst/fix/v13-alpha4-fuzz-graph-wrapper\n\nfix(ci): run the fuzz build-graph cross-check without the sccache wrapper",
+          "timestamp": "2026-10-30T23:05:52-03:00",
+          "tree_id": "b2e1471452c33542f1615da80af58842eb7b9eb4",
+          "url": "https://github.com/Rullst/Rullst/commit/4f0f6306056e213cfdfd669bf36148f058d038ff"
+        },
+        "date": 1793413133636,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 657,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 523,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1195,
+            "range": "± 38",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3025,
+            "range": "± 43",
             "unit": "ns/iter"
           }
         ]
