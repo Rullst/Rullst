@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793407933088,
+  "lastUpdate": 1793411466952,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -14804,6 +14804,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7fd69f7adfc596563ee0c6450c2e89ee148f31bd",
+          "message": "Merge pull request #595 from Rullst/docs/v13-alpha4-final-limitations\n\ndocs(changelog): state what the alpha.4 validation now covers",
+          "timestamp": "2026-10-30T22:28:37-03:00",
+          "tree_id": "7979ef970461de580b446b55de2753bbd87e5fd1",
+          "url": "https://github.com/Rullst/Rullst/commit/7fd69f7adfc596563ee0c6450c2e89ee148f31bd"
+        },
+        "date": 1793411466165,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 7,
             "range": "± 0",
             "unit": "ns/iter"
           }
