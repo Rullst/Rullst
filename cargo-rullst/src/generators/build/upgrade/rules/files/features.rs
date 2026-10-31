@@ -2,13 +2,24 @@
 //! TLS features and the Nexus AI assistant, all changed in 13.0.0-alpha.4,
 //! and the `[features]` entries that enable a dependency's feature.
 
+use super::{Rule, SQLX_TLS_NATIVE_ROOTS, SQLX_TLS_RING};
 use std::collections::BTreeMap;
 
-/// SQLx 0.9 features that make ring its rustls provider: `tls-rustls` is an
-/// alias of `tls-rustls-ring`, which is `tls-rustls-ring-webpki`. Not
-/// `tls-rustls-ring-native-roots`: its aws-lc-rs replacement would trust the
-/// bundled WebPKI roots instead of the operating system's.
-const SQLX_RING_TLS: [&str; 3] = ["tls-rustls", "tls-rustls-ring", "tls-rustls-ring-webpki"];
+/// SQLx 0.9 features that make ring its rustls provider, with their rule;
+/// SQLx prefers ring whenever any crate enables one, and Rullst's own SQLx
+/// dependencies use `tls-rustls-aws-lc-rs` since 13.0.0-alpha.4.
+/// `tls-rustls` is an alias of `tls-rustls-ring`, which is
+/// `tls-rustls-ring-webpki`, so `tls-rustls-aws-lc-rs` keeps their bundled
+/// WebPKI roots. `tls-rustls-ring-native-roots` trusts the operating system's
+/// roots instead, which no aws-lc-rs feature of SQLx 0.9 does, so it has a
+/// rule of its own.
+pub(super) const SQLX_RING_TLS: [(&[&str], &Rule); 2] = [
+    (
+        &["tls-rustls", "tls-rustls-ring", "tls-rustls-ring-webpki"],
+        &SQLX_TLS_RING,
+    ),
+    (&["tls-rustls-ring-native-roots"], &SQLX_TLS_NATIVE_ROOTS),
+];
 
 /// Whether a `sqlx` declaration enables SQLx's derive or query macros:
 /// `derive` or `macros`, or the default features, which include `macros`.
@@ -20,19 +31,6 @@ pub(super) fn enables_sqlx_macros(declaration: &toml::Value) -> bool {
             .and_then(toml::Value::as_bool)
             .unwrap_or(true);
     defaults || has_feature(declaration, &["derive", "macros"])
-}
-
-/// Whether a `sqlx` declaration keeps SQLx's database TLS on ring, which
-/// SQLx prefers whenever any crate enables it; Rullst's own SQLx
-/// dependencies use `tls-rustls-aws-lc-rs` since 13.0.0-alpha.4.
-pub(super) fn enables_sqlx_ring_tls(declaration: &toml::Value) -> bool {
-    has_feature(declaration, &SQLX_RING_TLS)
-}
-
-/// Whether `feature` of `package`, enabled from `[features]`, is a SQLx ring
-/// TLS feature.
-pub(super) fn is_sqlx_ring_tls(package: &str, feature: &str) -> bool {
-    package == "sqlx" && SQLX_RING_TLS.contains(&feature)
 }
 
 /// The line of the first `[features]` entry that enables a dependency's
@@ -63,7 +61,8 @@ pub(super) fn feature_reference<T>(
     Some((line, selected))
 }
 
-fn has_feature(declaration: &toml::Value, names: &[&str]) -> bool {
+/// Whether a declaration enables one of `names`.
+pub(super) fn has_feature(declaration: &toml::Value, names: &[&str]) -> bool {
     declaration
         .get("features")
         .and_then(toml::Value::as_array)

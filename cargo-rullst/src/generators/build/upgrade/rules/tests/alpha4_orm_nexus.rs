@@ -13,7 +13,7 @@ fn scan(source: &str, sqlx_macros: bool) -> Vec<(&'static str, usize)> {
     scan_with(source, "models.rs", &facts)
 }
 
-fn manifest(text: &str) -> (Vec<(&'static str, usize)>, WorkspaceFacts) {
+pub(super) fn manifest(text: &str) -> (Vec<(&'static str, usize)>, WorkspaceFacts) {
     let plan = ManifestUpgradePlan {
         path: PathBuf::from("Cargo.toml"),
         original: text.to_string(),
@@ -218,8 +218,6 @@ fn sqlx_dependencies_that_keep_ring_for_tls_are_reviewed() {
     for text in [
         "[dependencies]\nsqlx = \"0.9\"\n",
         "[dependencies]\nsqlx = { version = \"0.9\", default-features = false, features = [\"runtime-tokio\", \"tls-rustls-aws-lc-rs\", \"sqlite\"] }\n",
-        // Its aws-lc-rs replacement would change the trusted roots.
-        "[dependencies]\nsqlx = { version = \"0.9\", features = [\"tls-rustls-ring-native-roots\"] }\n",
         "[dependencies]\nsqlx = { version = \"0.9\", features = [\"tls-native-tls\"] }\n",
         "[dependencies]\nother = { version = \"1\", features = [\"tls-rustls\"] }\n\n[features]\ntls = [\"other/tls-rustls\", \"tls-rustls\"]\n",
         "[dependencies]\nsqlx = { version = \"0.9\", features = [\"postgres\"] }\n\n[features]\ntls = [\"sqlx/tls-rustls-aws-lc-rs\"]\n",
