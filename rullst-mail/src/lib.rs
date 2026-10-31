@@ -84,6 +84,9 @@ pub mod mail {
 #[path = "lib_tests.rs"]
 mod tests;
 
+#[cfg(test)]
+mod test_support;
+
 #[cfg(kani)]
 #[cfg_attr(mutants, mutants::skip)]
 mod kani_proofs {
