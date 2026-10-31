@@ -74,7 +74,11 @@ def main() -> int:
                  FUZZ_BUILD_TARGET, "--manifest-path", str(ROOT / directory / "Cargo.toml")],
                 cwd=ROOT, check=True, capture_output=True).stdout
             found += problems(snapshot, directory, json.loads(output), ROOT)
-    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+    except subprocess.CalledProcessError as error:
+        detail = (error.stderr or b"").decode(errors="replace").strip()
+        print(f"fuzz build graph: {error}\n{detail}", file=sys.stderr)
+        return 1
+    except (ValueError, OSError) as error:
         print(f"fuzz build graph: {error}", file=sys.stderr)
         return 1
     for problem in found:
