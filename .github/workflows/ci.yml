@@ -292,6 +292,12 @@ jobs:
         if: runner.os == 'Linux' && matrix.shard == 'cli-standard'
         run: python3 .github/cli-create-pty-smoke.py target/debug/cargo-rullst
 
+      - name: Run cargo rullst auth on Blank starters against PostgreSQL, MySQL and MariaDB
+        # Reuses the CLI and the starter dependencies the relational profiles
+        # just built; the check starts and removes its own loopback servers.
+        if: runner.os == 'Linux' && matrix.shard == 'cli-profiles-relational'
+        run: python3 .github/check-auth-starter-sql.py --cli target/debug/cargo-rullst
+
       - name: Upload failed workspace test log
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

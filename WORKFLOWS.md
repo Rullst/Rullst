@@ -152,6 +152,28 @@ the release policy's required jobs, but a failure fails the full manual run
 that admission requires. Real DNS, Let's Encrypt, provider accounts, Arm
 images and reboots are not covered.
 
+On Linux, the `cli-profiles-relational` shard then runs
+`.github/check-auth-starter-sql.py` with the CLI it built. For PostgreSQL 15,
+MySQL 8.4 and MariaDB 11.4, each in a disposable container bound to loopback,
+it generates a Blank starter, points its `.env` at the server, runs
+`cargo rullst db:migrate`, inserts two rows (a name; default timestamps), runs
+`cargo rullst auth`, mounts the sign-up routes as Tutorial 11 describes and runs
+`db:migrate` again. SQL against the server then checks the six added columns
+(types, nullability and defaults), the unique `users_email_unique` index and
+that it rejects a duplicate, the `user-<id>@no-email.invalid` placeholders
+without a password, that the starter's columns, indexes and rows are otherwise
+unchanged, and the batch's migration records and `password_reset_tokens`
+table. The built application must sign up an account over HTTP (`/dashboard`
+opens, the row holds an Argon2id hash). `db:rollback` must restore the
+starter's columns, indexes, tables and migration records exactly and keep
+every row, and a second `db:migrate` must apply the batch again. The generated
+builds reuse the shard's target directory and the workspace `Cargo.lock`
+offline. The shard runs on `main` pushes, nightly, with the `full-matrix`
+label and in manual runs (the manual `cli-profiles-relational` selection with
+`ubuntu-latest` runs it alone); a pull request to `main` without the label does
+not. The API and SaaS starters, other server versions and existing deployments'
+data are not covered.
+
 `First-hour documentation` runs `.github/check-first-hour.py`: it follows the
 path the documentation gives a newcomer, running the shell blocks and applying
 the code blocks marked `<!-- first-hour: … -->` in the README quickstart, the
