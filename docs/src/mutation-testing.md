@@ -59,6 +59,16 @@ received a test or is listed under
 - **v12 baseline**: the complete v12 campaign classified 14,391 of 14,391
   mutants in run `34761010296`, with a conservative 70.57% caught.
 
+Contract-mode notes: the MySQL statement files
+`rullst-capital/src/quota/sql/mysql.rs` and `rullst-ai/src/ai/memory/sql/mysql.rs`
+hold only string constants, so cargo-mutants generates no mutant for them. The
+privacy URL policy in `postgres_connection.rs`, the capacity check, the mail
+adapter's clock, event-time, stored-time and URL checks, the privacy
+choice-code decoding and, in `passkey-postgres` and `auth-recovery-postgres`,
+most branches of `manager.rs` and the recovery files have unit tests: a
+contract run reports those mutants as missed, and a targeted run of the file
+catches them.
+
 ## Accepted equivalent mutants
 
 The v13 focused campaign (targeted runs of security and correctness files
