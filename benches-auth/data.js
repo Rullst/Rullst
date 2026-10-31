@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793407527951,
+  "lastUpdate": 1793411084418,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -19611,6 +19611,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2855,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7fd69f7adfc596563ee0c6450c2e89ee148f31bd",
+          "message": "Merge pull request #595 from Rullst/docs/v13-alpha4-final-limitations\n\ndocs(changelog): state what the alpha.4 validation now covers",
+          "timestamp": "2026-10-30T22:28:37-03:00",
+          "tree_id": "7979ef970461de580b446b55de2753bbd87e5fd1",
+          "url": "https://github.com/Rullst/Rullst/commit/7fd69f7adfc596563ee0c6450c2e89ee148f31bd"
+        },
+        "date": 1793411083646,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1021,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 811,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1850,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4612,
+            "range": "± 70",
             "unit": "ns/iter"
           }
         ]
