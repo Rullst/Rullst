@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793486997684,
+  "lastUpdate": 1793490604416,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -17403,6 +17403,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 196,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c128b67b7f0b508771d28c4c6ab4d03953bbb18a",
+          "message": "Merge pull request #604 from Rullst/test/v13-rc1-differential-db\n\ntest(orm): differential database tests for SQLite, PostgreSQL, MySQL and MariaDB",
+          "timestamp": "2026-10-31T20:29:26-03:00",
+          "tree_id": "d31f36dea4ea1b6aa30b1663beca150b0c52330d",
+          "url": "https://github.com/Rullst/Rullst/commit/c128b67b7f0b508771d28c4c6ab4d03953bbb18a"
+        },
+        "date": 1793490603856,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1643,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 325,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 388,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
