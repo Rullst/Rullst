@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793458119492,
+  "lastUpdate": 1793477637563,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -12219,6 +12219,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 467,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7c698d7a8b872667c917357bb80444d3a8809473",
+          "message": "Merge pull request #596 from Rullst/chore/v13-sonar-test-duplication\n\nchore(sonar): measure duplication on production code only",
+          "timestamp": "2026-10-31T16:51:25-03:00",
+          "tree_id": "ae9bb50fd8d947ca13726e3d3f863907226bdb50",
+          "url": "https://github.com/Rullst/Rullst/commit/7c698d7a8b872667c917357bb80444d3a8809473"
+        },
+        "date": 1793477636736,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 471,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
