@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793381346687,
+  "lastUpdate": 1793407527951,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -19563,6 +19563,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3714,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6519b6847a8900ca92b401348af403d493be6ec3",
+          "message": "Merge pull request #594 from Rullst/test/v13-alpha4-windows-sqlite-retry\n\ntest(labs,media,supervision,privacy): exercise the SQLite bootstrap retry on Windows runners",
+          "timestamp": "2026-10-30T21:26:18-03:00",
+          "tree_id": "f0cdff84accaf5fff9fa314715784ef6bb1c7792",
+          "url": "https://github.com/Rullst/Rullst/commit/6519b6847a8900ca92b401348af403d493be6ec3"
+        },
+        "date": 1793407527135,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1083,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 830,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1939,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2855,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
