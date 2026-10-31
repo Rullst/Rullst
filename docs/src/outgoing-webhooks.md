@@ -77,7 +77,10 @@ transactional outbox when atomic domain-change publication is required.
 Run `dispatch_next` from a supervised loop with bounded concurrency, backoff and
 shutdown. It claims one event at a time with a 30-second lease, resolves the
 endpoint, rechecks the authoritative SQL lease, sends and then acknowledges.
-Storage calls have a 10-second deadline. DNS/connect operations are bounded by
+Storage calls have a 10-second deadline. `open` tries again when its deadline
+expires, three attempts in total (about 30 seconds): a disk stall can outlast one
+deadline while the store is established, and every opening step is idempotent.
+DNS/connect operations are bounded by
 3 seconds, and HTTP by the remaining lease/window and at most 10 seconds.
 `close` closes that outbox pool and its clones, not independently opened workers.
 
