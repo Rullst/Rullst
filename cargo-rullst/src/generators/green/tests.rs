@@ -4,6 +4,9 @@ use super::report::*;
 use super::*;
 use std::time::Duration;
 
+mod run;
+pub(super) mod support;
+
 fn outcome() -> Outcome {
     Outcome {
         responses: 400,
@@ -237,4 +240,66 @@ fn numbers_and_sizes_are_readable() {
     assert_eq!(render::number(1234.56), "1234.6");
     assert_eq!(render::number(1.5), "1.500");
     assert_eq!(render::number(0.000_412), "4.120e-4");
+    assert_eq!(render::bytes(1024), "1.0 KiB");
+    assert_eq!(render::bytes(1024 * 1024), "1.0 MiB");
+}
+
+#[test]
+fn the_target_rows_say_how_the_app_was_started_and_found() {
+    let plain = Style { color: false };
+    let text = render::render(&sample(false, None), plain);
+    for expected in [
+        "Mode          release build `app` started by green",
+        "RULLST_ENV=production HOST=127.0.0.1",
+        "URL           http://127.0.0.1:41234/",
+        "Process       PID 4242",
+    ] {
+        assert!(text.contains(expected), "missing `{expected}` in:\n{text}");
+    }
+
+    let mut unnamed = sample(false, None);
+    unnamed.target.executable = None;
+    let text = render::render(&unnamed, plain);
+    assert!(
+        text.contains("Mode          release build started by green"),
+        "{text}"
+    );
+
+    let mut existing = sample(false, None);
+    existing.target.mode = "existing_url";
+    existing.target.pid = None;
+    existing.target.environment = None;
+    existing.target.process_lookup = "no listening socket found".to_string();
+    let text = render::render(&existing, plain);
+    assert!(
+        text.contains("Mode          existing app (--url)"),
+        "{text}"
+    );
+    assert!(text.contains("Process       NOT FOUND"), "{text}");
+    assert!(text.contains("no listening socket found"), "{text}");
+}
+
+#[test]
+fn start_up_help_and_the_recorded_environment_follow_the_requested_env() {
+    assert!(start_fix("production").starts_with("Production needs the app's production settings"));
+    assert!(start_fix("staging").starts_with("Run the release binary with RULLST_ENV=staging"));
+    assert_eq!(
+        started_environment("staging"),
+        "RULLST_ENV=staging HOST=127.0.0.1"
+    );
+    assert_eq!(
+        started_environment("production"),
+        "RULLST_ENV=production HOST=127.0.0.1"
+    );
+}
+
+#[test]
+fn unsampled_processes_are_explained() {
+    assert_eq!(process_reason(None), "the app process was not identified");
+    let sampled = if cfg!(target_os = "linux") {
+        "/proc/<pid> was not readable"
+    } else {
+        "process sampling uses /proc and is Linux-only"
+    };
+    assert_eq!(process_reason(Some(4242)), sampled);
 }

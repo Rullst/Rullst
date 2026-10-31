@@ -363,4 +363,20 @@ mod tests {
         assert!(validate_image(&"a".repeat(256)).is_err());
         assert!(validate_image(&"a".repeat(255)).is_ok());
     }
+
+    #[test]
+    fn paths_and_power_figures_are_bounded_inclusively() {
+        let longest = format!("/{}", "a".repeat(2047));
+        assert_eq!(validate_path(&longest), Ok(longest.clone()));
+        assert_eq!(
+            validate_path(&format!("{longest}a")),
+            Err("the path is longer than 2048 bytes".to_string())
+        );
+        assert_eq!(positive("10000", 10_000.0), Ok(10_000.0));
+        assert_eq!(
+            positive("10000.5", 10_000.0),
+            Err("the value must be greater than 0 and at most 10000".to_string())
+        );
+        assert_eq!(non_negative("10000", 10_000.0), Ok(10_000.0));
+    }
 }
