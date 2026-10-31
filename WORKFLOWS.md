@@ -58,7 +58,9 @@ to the candidate's release line, including the source policy of reused runs.
 Format and Clippy continue to give feedback on draft pull requests. A ready pull
 request to `main` runs the fast Linux gate: the `workspace` and `cli-standard`
 shards, MSRV, strict database features, Redis/S3 contracts, generated access,
-facade composition and AI evals. Line coverage, the SemVer registry comparison
+facade composition and AI evals; the ORM differential database job runs its
+comparison when the pull request changes the ORM (otherwise it reports a pass
+without building). Line coverage, the SemVer registry comparison
 and CodeQL skip pull requests to `main`; the SemVer workflow's public-API
 snapshot job runs on ready pull requests to `main`. The resulting `main` push runs every Linux
 shard, public feature boundaries, the threat-model minimum, coverage, SemVer and
@@ -423,6 +425,29 @@ runs Nexus's default Any/SQLite HTTP contract explicitly, because the global
 all-feature graph intentionally selects a strict database profile and excludes
 that materialized tenant/audit target. Coverage separately merges the default
 workspace pass, so those routes contribute real executed-line evidence.
+
+The **ORM differential databases** job runs the same ORM scenarios
+(`rullst-orm/tests/differential/`) on SQLite and on PostgreSQL 15.17, MySQL
+8.4.13 and MariaDB 11.4.13 service containers (the digest-pinned images of the
+auth-starter check), through the public `#[derive(Orm)]`, query-builder,
+`Schema`, `RowSnapshot` and `Orm::transaction` API with the strict driver
+feature of each backend, as generated applications use it. Each backend writes
+a normalized transcript (values, row counts, ordering where the query specifies
+one, error kinds, transaction outcomes); SQLite runs twice and must produce
+identical transcripts, and every server transcript is compared with SQLite's.
+A difference passes only when `expected.rs` documents it with its reason and
+the exact value, and a documented difference that stops occurring fails too,
+so the list remains a description of real provider semantics: PostgreSQL's
+constraint names, NULL ordering, case-sensitive `LIKE`, NUL-free text and
+aborted transactions after a failed statement; MySQL/MariaDB's
+case- and accent-insensitive default collations; non-transactional sequences;
+microsecond timestamps; SQLite's unenforced `VARCHAR(n)`. The job sets
+`RULLST_DIFF_REQUIRE_ALL=1`, so a missing server URL fails it instead of
+skipping, and it uploads the transcripts and comparison reports. It runs on
+pushes, nightly, in `all`/`workspace` manual runs and on pull requests that
+change `rullst-orm/`, `rullst-orm-macros/`, `Cargo.toml`, `Cargo.lock`,
+`rust-toolchain.toml` or `ci.yml`, and it is a release-admission job
+(`.github/release-required-workflows.json`).
 
 After a ready-PR or manual full-matrix Rust CI run finishes, an observational
 job emits a SHA-bound per-crate quality scorecard into the workflow summary and
@@ -1145,7 +1170,7 @@ dependency graph make static estimates unreliable.
 | :--- | :--- | :--- | :--- |
 | [`architecture.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/architecture.yml) | main/v12/v13 push and PR, manual | Blocking | Compares Cargo's publishable non-dev internal dependency graph with the reviewed `crate-architecture-policy.json`; unreviewed normal/build edges, removals, or optionality changes fail, while test-only dev-dependencies do not masquerade as production coupling. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), the first-hour documentation path run as written (manual, nightly and pull requests changing a marked page or the CLI), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, the ORM differential comparison of SQLite, PostgreSQL, MySQL and MariaDB, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), the first-hour documentation path run as written (manual, nightly and pull requests changing a marked page or the CLI), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from full/CLI manual Rust CI or admitted tag release | Blocking caller job; required release evidence | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories before attestation. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation with a pinned, zero-retry, bounded-concurrency nextest scheduler and retained JUnit inventory; a focused default-SQLite pass for ORM/Studio/Nexus/the facade; exact local 90% floors; and blocking OIDC-authenticated Codecov upload. Scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |
@@ -1395,7 +1420,7 @@ These ideas remain valuable, but are not current guarantees:
 | Chaos testing with `fail-rs` | **Not implemented — worth implementing** around queues, database retries, and provider timeouts after deterministic failure contracts exist. |
 | AFL.rs/honggfuzz differential fuzzing | **Not implemented — valuable after the 42 libFuzzer targets have healthy corpora and triage ownership.** |
 | Cross-platform CI acceleration | **Partial — first engineering priority, also applicable to compatible v12 maintenance.** The inherited v12 baseline has eight `cargo test` shards per OS and isolated fixture targets. Coverage separately uses nextest; the ordinary CI runner has not migrated to it. Preserve workspace, feature, generated-project, outbox, doctest and live-provider contracts while measuring further scheduling/cache improvements. Speed alone must never reduce assertions or supported-platform evidence. |
-| Differential database testing | **Not implemented — high-value v13 work.** Run equivalent generated ORM operations against the supported relational backends and compare normalized results, errors and transaction behavior; keep provider-specific semantics explicit instead of forcing false equivalence. |
+| Differential database testing | **Implemented for 13.0.0-rc.1 (test-only).** The `ORM differential databases` job of `ci.yml` runs the same ORM scenarios on SQLite, PostgreSQL, MySQL and MariaDB and compares normalized results, errors and transaction behaviour; provider-specific semantics are an explicit, reasoned list (`rullst-orm/tests/differential/expected.rs`). The job is described under [Required local and release baseline](#required-local-and-release-baseline). |
 | Cross-browser and accessibility testing | **Not implemented — high-value v13 work.** Exercise generated applications with Playwright across Chromium, Firefox and WebKit, add keyboard and automated accessibility checks, and retain traces/screenshots for failures. This would complement, not replace, ZAP and server-level integration tests. |
 | Mobile physical-device farms | **Not implemented — requires external infrastructure.** Add Android and iOS device-farm execution, lifecycle/network interruption scenarios and signed-package evidence when accounts and secrets are governed. Simulator and compile checks must not be presented as physical-device or store-acceptance proof. |
 | Desktop GUI, installer and signing matrix | **Not implemented — requires platform signing operations.** Exercise real WebView sessions and packaged installers on supported Linux, Windows and macOS versions, then validate signatures/notarization without exposing signing credentials to untrusted pull requests. |

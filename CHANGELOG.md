@@ -9,6 +9,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Added
+
+- CI compares the ORM across databases: the `ORM differential databases` job
+  of `ci.yml` runs the same scenarios (`rullst-orm/tests/differential/`:
+  `#[derive(Orm)]` CRUD, value round trips, query-builder filters, ordering
+  and paging, counts, collation, `RowSnapshot` partial saves, constraint and
+  missing-row errors, transactions and savepoints, `chrono` timestamps and
+  JSON fields) on SQLite and on PostgreSQL 15.17, MySQL 8.4.13 and MariaDB
+  11.4.13, with each backend's strict driver feature, and compares every
+  normalized transcript with SQLite's. Only the differences listed with a
+  reason and an exact value in `expected.rs` pass, such as PostgreSQL's
+  constraint names, NULL ordering and aborted transactions after a failed
+  statement, the case-insensitive MySQL/MariaDB collations and SQLite's
+  unenforced `VARCHAR(n)`. It runs on pushes, nightly, in release runs and on
+  pull requests that change the ORM, fails when a server URL is missing, and
+  is a release-admission job. Test-only; no runtime change.
+
 ## [13.0.0-alpha.4] - 2026-10-31
 
 Fourth v13 prerelease, for evaluation, and the 13.0 feature freeze:
