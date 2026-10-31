@@ -40,6 +40,7 @@ on:
           - cli-saas-journey
           - vm-deployment
           - first-hour
+          - starter-browsers
   # PRs to main run the Linux gate; the nightly run restores the full
   # cross-platform matrix on the default branch.
   schedule:
@@ -132,7 +133,7 @@ jobs:
     if: >-
       !cancelled() &&
       (github.event_name != 'workflow_dispatch' || inputs.shard != 'packaged-distribution' || inputs.platform == 'all') &&
-      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'vm-deployment' && inputs.shard != 'first-hour')) &&
+      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'vm-deployment' && inputs.shard != 'first-hour' && inputs.shard != 'starter-browsers')) &&
       (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     name: Code Quality & Format
     runs-on: ubuntu-latest
@@ -185,7 +186,7 @@ jobs:
     # expensive cross-platform suite starts when the PR is ready for review.
     if: >-
       !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
-      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'packaged-distribution' && inputs.shard != 'vm-deployment' && inputs.shard != 'first-hour')) &&
+      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'packaged-distribution' && inputs.shard != 'vm-deployment' && inputs.shard != 'first-hour' && inputs.shard != 'starter-browsers')) &&
       (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     runs-on: ${{ matrix.os }}
     # Generated CLI applications are real independent Cargo workspaces. Keep
@@ -984,6 +985,102 @@ jobs:
       - name: Follow the marked first-hour documentation
         if: steps.selection.outputs.run == 'true'
         run: python3 .github/check-first-hour.py --packages target/package
+
+  starter-browsers:
+    name: Generated starters in browsers
+    # Generates the Blank and SaaS starters with this checkout's CLI, starts
+    # them and drives them in Chromium, Firefox and WebKit (pinned Playwright):
+    # console errors, CSP violations, keyboard paths, the HTMX counter and
+    # sign-up/sign-in/sign-out through the real forms, and axe-core (serious
+    # and critical fail). Full manual runs, the nightly run and the
+    # `starter-browsers` diagnostic always run it; ready pull requests only
+    # when the starter templates, html!, Core's pages, headers or CSRF, or this
+    # check change (a first step decides). Branch pushes skip it, so their job
+    # inventory is unchanged. It is not a required release job.
+    if: >-
+      !cancelled() && github.event_name != 'push' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'starter-browsers')
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      RULLST_DISABLE_UPDATE_CHECK: "true"
+    steps:
+      - name: Checkout source without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The pull-request merge commit and its base parent.
+          fetch-depth: 2
+
+      - name: Select the pull requests that change what the starters render
+        id: selection
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" != pull_request ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only HEAD^1 HEAD)"
+          if grep -Eq '^(cargo-rullst/src/(blueprints/|generators/(project/|auth/|billing))|rullst-macros/src/|rullst-core/src/(security/|server/|config/|html[a-z_]*\.rs|htmx\.rs|config\.rs)|\.github/(check-starter-browsers\.py|starter-browsers/|dast-generated-app\.py|first_hour_(process|checks)\.py))' <<< "$changed"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No starter template, html!, Core page/header/CSRF or check change; the nightly and release runs cover this job."
+          fi
+
+      - name: Set up content-addressed compiler cache
+        if: steps.selection.outputs.run == 'true'
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up Rust toolchain
+        if: steps.selection.outputs.run == 'true'
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          # The starters build as a newcomer builds them; warnings in generated
+          # code are the CLI shards' concern.
+          rustflags: ""
+          build-warnings: ""
+          cache: false
+
+      - name: Set up Node for the pinned Playwright and axe-core
+        if: steps.selection.outputs.run == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Install Playwright, axe-core and the three browsers
+        if: steps.selection.outputs.run == 'true'
+        run: |
+          npm ci --prefix .github/starter-browsers --ignore-scripts --no-audit --no-fund
+          node .github/starter-browsers/node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+
+      - name: Build the CLI from this checkout
+        if: steps.selection.outputs.run == 'true'
+        run: |
+          cargo fetch --locked
+          cargo build --locked -p cargo-rullst --bin cargo-rullst
+
+      - name: Generate, start and drive the Blank and SaaS starters
+        if: steps.selection.outputs.run == 'true'
+        run: |
+          python3 .github/check-starter-browsers.py \
+            --cli target/debug/cargo-rullst \
+            --work "$RUNNER_TEMP/starter-browsers" \
+            --out "$RUNNER_TEMP/starter-browser-artifacts"
+
+      - name: Keep traces, screenshots and server logs of a failure
+        if: failure() && steps.selection.outputs.run == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: starter-browsers-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/starter-browser-artifacts
+          if-no-files-found: warn
+          retention-days: 14
 
   quality-scorecard:
     name: Evidence quality scorecard (observational)
