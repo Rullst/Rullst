@@ -22,9 +22,9 @@ across stores.
 
 | Backend | Primary database | `#[derive(Orm)]` and query builder | `Schema` migrations | `artisan!` and `db:*` | `Server::with_db` | Nexus | Studio | Transactions | `cargo rullst new` | Live CI test |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| SQLite | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Every starter; the default (`--database sqlite`) | No server (in-process): `matrix_sqlite`, Studio `data_browser_mutation_sqlite`, Nexus `tenant_audit` |
-| PostgreSQL | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Every starter (`--database postgres`) | `matrix_postgres`, Studio `data_browser_mutation_postgres`, Nexus `sql_matrix_postgres` |
-| MySQL / MariaDB | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes, but DDL commits implicitly (note 4) | Every starter (`--database mysql` or `--database mariadb`) | `matrix_mysql` (MySQL 8.0), `matrix_mariadb`, Studio `data_browser_mutation_mysql` and `_mariadb`, Nexus `sql_matrix_mysql` (MySQL only) |
+| SQLite | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Every starter; the default (`--database sqlite`) | No server (in-process): `matrix_sqlite`, `differential` (the reference), Studio `data_browser_mutation_sqlite`, Nexus `tenant_audit` |
+| PostgreSQL | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Every starter (`--database postgres`) | `matrix_postgres`, `differential`, Studio `data_browser_mutation_postgres`, Nexus `sql_matrix_postgres` |
+| MySQL / MariaDB | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes, but DDL commits implicitly (note 4) | Every starter (`--database mysql` or `--database mariadb`) | `matrix_mysql` (MySQL 8.0), `matrix_mariadb`, `differential` (MySQL 8.4, MariaDB 11.4), Studio `data_browser_mutation_mysql` and `_mariadb`, Nexus `sql_matrix_mysql` (MySQL only) |
 | Turso / libSQL | Blank starter only (note 1) | No: a separate model API (note 2) | No: SQL `TursoMigration`s (note 3) | No `artisan!`; the Blank starter answers `db:migrate`, `db:rollback` and `db:status` itself (note 3) | No | No | No (note 5) | Statement batches only (`TursoStore::transaction`) | Primary: Blank, web page or `--api` (`--database turso`). Side store: `--turso` with any starter | `matrix_turso` against `libsql-server` v0.24.32 |
 | MongoDB | No | No (`MongoDbStore`) | No | No | No | No | No | No | Side store: `--mongodb` with any starter | `matrix_mongodb` |
 | DuckDB | No | No (`DuckDbStore`) | No | No | No | No | No | No | Side store: `--duckdb` with any starter | None: an in-process engine, covered by unit tests |
@@ -70,6 +70,19 @@ The tests live in `rullst-orm/tests/`, `rullst-studio/tests/` and
 `rullst-nexus/tests/`, and each pins its container image. A live test proves
 the adapter's contract against that server version; it does not certify a
 hosted service, backups, replication or failover.
+
+The **ORM differential databases** job runs the same ORM scenarios
+(`rullst-orm/tests/differential/`) on SQLite, PostgreSQL 15.17, MySQL 8.4.13
+and MariaDB 11.4.13 and compares every server's normalized results, error
+kinds and transaction outcomes with SQLite's. The differences it accepts are
+the backends' own semantics, each listed with its reason in
+`rullst-orm/tests/differential/expected.rs`: for example MySQL/MariaDB compare
+text case- and accent-insensitively by default, PostgreSQL sorts NULL last in
+ascending order, and SQLite does not enforce a `VARCHAR(n)` length. Inside
+`Orm::transaction`, a failed `save()` can be caught
+and the transaction continued on every backend; after a failed `Orm::raw`
+statement PostgreSQL aborts the transaction, so wrap such a statement in a
+nested `Orm::transaction` to continue.
 
 ## Choosing
 
