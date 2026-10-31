@@ -26,6 +26,53 @@ A prepared version section does not establish that its tag or crates exist.
   operating system's roots, so its guidance offers `tls-rustls-aws-lc-rs`
   (bundled WebPKI roots; a private CA goes in `sslrootcert` or `ssl-ca`) or
   keeping native roots with a recorded reason.
+- The Blank starter's HTMX counter keeps keyboard focus: after Enter on
+  "Click here to increment", the swapped fragment replaced the button and
+  focus fell back to the page, so a keyboard user had to Tab to it again. The
+  button now has an id (`counter-button`), which htmx uses to return focus
+  after the swap. Existing applications can add the id to both copies of the
+  button in `src/main.rs` (or `src/lib.rs` with hot reload).
+- The SaaS starter's dashboard sign-out buttons ("Logout", "Sign out
+  everywhere") had white text on `#ef4444`, a 3.76:1 contrast below the 4.5:1
+  WCAG AA minimum; they now use `#dc2626` (4.83:1). Existing applications can
+  change `.btn-logout` in `src/pages/auth.rs`.
+
+### Added
+
+- CI drives the generated starters in real browsers: the
+  `Generated starters in browsers` job of `ci.yml`
+  (`.github/check-starter-browsers.py`) generates the Blank and SaaS starters
+  with the checkout's CLI, starts them and drives them in Chromium, Firefox
+  and WebKit with Playwright 1.64.1 and axe-core 4.14.0 (lockfile-pinned in
+  `.github/starter-browsers/`). Pages must load without console errors,
+  failed requests or Content-Security-Policy violations; Tab must reach every
+  interactive element with a visible focus change; the HTMX counter, and
+  sign-up, sign-in and sign-out through the real forms (CSRF double-submit
+  cookie), must work with Enter; axe-core `serious` and `critical` violations
+  fail and `moderate`/`minor` ones are listed in the job summary. Traces,
+  screenshots and server logs are kept when it fails. It runs on full manual
+  runs, nightly, a `starter-browsers` diagnostic shard and ready pull requests
+  that change the starter templates, `html!` or Core's pages, headers or CSRF;
+  it is not a required release job. It found the two starter defects above
+  and one in Core, versioned in `.github/starter-browsers/known-defects.json`
+  (see Known limitations).
+- `miri.yml` also runs `cargo careful test` (cargo-careful 0.4.10 on Miri's
+  pinned `nightly-2026-08-21`) over the library unit tests of `rullst-core`,
+  `rullst-security` and `rullst-orm`, weekly and on dispatch. It is
+  informational (`continue-on-error`), so it never changes the Miri admission
+  receipt.
+
+### Known limitations
+
+- Pages rendered with `rullst::htmx::render_page`, `render_page_with_lang` or
+  `render_page_with_head` (the Blank starter's home page) trigger a
+  Content-Security-Policy violation in every browser: htmx 1.9.12 inserts its
+  `.htmx-indicator` styles as an inline `<style>` without the request's nonce,
+  so the strict `style-src` blocks them and `hx-indicator` elements are never
+  hidden. Until Core is fixed, an application can add
+  `<meta name="htmx-config" content='{"includeIndicatorStyles":false}'>` with
+  `render_page_with_head` and style `.htmx-indicator` in its own stylesheet,
+  as `examples/blog` does.
 
 ## [13.0.0-alpha.4] - 2026-10-31
 
