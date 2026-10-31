@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793486136154,
+  "lastUpdate": 1793488638183,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -31081,6 +31081,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 951,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0c5087415957343d8c90a3ac6d1a76270c12f733",
+          "message": "Merge pull request #606 from Rullst/docs/v13-alpha4-docsrs-limitation\n\ndocs(changelog): correct the alpha.4 docs.rs limitation",
+          "timestamp": "2026-10-31T20:11:01-03:00",
+          "tree_id": "a3d88bc5968dc5c8675d25b358ac065226f70bdf",
+          "url": "https://github.com/Rullst/Rullst/commit/0c5087415957343d8c90a3ac6d1a76270c12f733"
+        },
+        "date": 1793488634605,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 546,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 776,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 388,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1427,
+            "range": "± 99",
             "unit": "ns/iter"
           }
         ]
