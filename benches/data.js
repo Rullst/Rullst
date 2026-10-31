@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793412562238,
+  "lastUpdate": 1793457330424,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -30811,6 +30811,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 936,
             "range": "± 71",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2bd3c2ad9a9543010dc01527fef6c98ec16e8c04",
+          "message": "Merge pull request #598 from Rullst/fix/v13-alpha4-admission-2\n\nfix(ci): TM-DEPLOY-05 source after the deploy test move; green helpers on macOS/Windows",
+          "timestamp": "2026-10-31T11:29:43-03:00",
+          "tree_id": "c79c766a94e83c778bed2e696e39d5f6b57f6e15",
+          "url": "https://github.com/Rullst/Rullst/commit/2bd3c2ad9a9543010dc01527fef6c98ec16e8c04"
+        },
+        "date": 1793457326742,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 691,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 887,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 400,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1748,
+            "range": "± 18",
             "unit": "ns/iter"
           }
         ]
