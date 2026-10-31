@@ -100,8 +100,8 @@ async fn test_server_run_static() {
         let _ = server.run(port).await;
     });
 
-    // Wait for server to boot
-    tokio::time::sleep(Duration::from_millis(200)).await;
+    // Wait for the server to boot; a slow runner may need more than a fixed pause.
+    wait_until_listening(port).await;
 
     // 2. Test standard endpoint
     let client = reqwest::Client::new();

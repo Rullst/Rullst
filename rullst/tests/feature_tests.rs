@@ -214,8 +214,10 @@ async fn test_database_feature_driver() {
     .await
     .unwrap();
 
-    // 4. Test DbFeatureDriver with a short TTL (100ms) to verify caching behavior
-    let db_driver = DbFeatureDriver::with_ttl(Duration::from_millis(100));
+    // 4. Test DbFeatureDriver with a short TTL to verify caching behavior. It
+    // must outlast the three lookups and the UPDATE below on a slow runner.
+    const TTL: Duration = Duration::from_secs(3);
+    let db_driver = DbFeatureDriver::with_ttl(TTL);
 
     assert_eq!(db_driver.enabled("db-dashboard").await, Some(true));
 
@@ -234,11 +236,11 @@ async fn test_database_feature_driver() {
         .await
         .unwrap();
 
-    // Cache should still return `true` due to 100ms cache TTL
+    // Cache should still return `true` within the TTL
     assert_eq!(db_driver.enabled("db-dashboard").await, Some(true));
 
     // Wait for the cache entry to expire
-    tokio::time::sleep(Duration::from_millis(150)).await;
+    tokio::time::sleep(TTL + Duration::from_millis(150)).await;
 
     // Cache has expired; should query the DB and fetch the new state (`false`)
     assert_eq!(db_driver.enabled("db-dashboard").await, Some(false));

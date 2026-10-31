@@ -3,6 +3,7 @@
 use super::*;
 use crate::attachment::Attachment;
 use crate::drivers::OfflineMailMock;
+use crate::test_support::RefusedPort;
 
 fn base_message() -> Message {
     Message::new()
@@ -105,9 +106,8 @@ async fn offline_send_records_sanitized_delivery_and_real_transport_fails_typed(
             && delivery.message.subject == "SMTP offline contract"
     }));
 
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let port = listener.local_addr().unwrap().port();
-    drop(listener);
+    let refused = RefusedPort::new();
+    let port = refused.port;
     let real = SmtpDriver::try_new(
         "127.0.0.1",
         port,
@@ -126,9 +126,8 @@ async fn offline_send_records_sanitized_delivery_and_real_transport_fails_typed(
 
 #[tokio::test]
 async fn unauthenticated_or_partial_real_hosts_never_report_offline_success() {
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let port = listener.local_addr().unwrap().port();
-    drop(listener);
+    let refused = RefusedPort::new();
+    let port = refused.port;
     let subject = "SMTP anonymous relay contract";
     let anonymous = SmtpDriver::try_new("127.0.0.1", port, None, None).unwrap();
     assert!(matches!(

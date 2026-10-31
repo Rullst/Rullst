@@ -9,7 +9,10 @@ async fn test_handler() -> impl IntoResponse {
 
 #[tokio::test]
 async fn test_rate_limiter_consumption() {
-    let limiter = RateLimiter::new(RateLimitConfig::new(2.0, 1.0)); // 2 tokens max, refills 1 token/sec
+    // 2 tokens max, one token every 2 s: a stalled runner has 2 s before a
+    // token refills between the checks below, and the pause may overshoot by
+    // 1.5 s before a second token is restored.
+    let limiter = RateLimiter::new(RateLimitConfig::new(2.0, 0.5));
     let key = "127.0.0.1";
 
     // Consume first token
@@ -19,8 +22,8 @@ async fn test_rate_limiter_consumption() {
     // Third token should fail immediately (bucket empty)
     assert!(!limiter.check_and_consume(key));
 
-    // Wait 1.1s for a token to refill
-    tokio::time::sleep(Duration::from_millis(1100)).await;
+    // Wait 2.5s for a token to refill
+    tokio::time::sleep(Duration::from_millis(2_500)).await;
     // Should be able to consume one token now
     assert!(limiter.check_and_consume(key));
     // Next one fails

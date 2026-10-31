@@ -142,7 +142,8 @@ async fn next_error_and_drop_abort_have_deterministic_lifecycles() {
     }
     let (_errors_tx, errors_rx) = errors();
     drop(handle_with(vec![("pending".to_string(), task)], errors_rx));
-    tokio::time::timeout(Duration::from_millis(100), async {
+    // Generous for a stalled runner; the abort follows the drop at once.
+    tokio::time::timeout(Duration::from_secs(5), async {
         while !dropped.load(Ordering::SeqCst) {
             tokio::task::yield_now().await;
         }

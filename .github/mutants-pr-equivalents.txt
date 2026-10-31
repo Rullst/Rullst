@@ -1,9 +1,10 @@
 # Accepted equivalent mutants the pull-request gate (mutants-pr.yml) skips.
 #
 # One exact cargo-mutants name per line: `file:line:col: description`, as the
-# gate prints it. Each entry needs a row with its justification in WORKFLOWS.md
-# "Accepted equivalent mutants". The match is exact, so an entry stops applying
-# when its line moves and the mutant is tested again; update or delete it then.
+# gate prints it. Each entry needs a row with its justification in
+# docs/src/mutation-testing.md "Accepted equivalent mutants". The match is
+# exact, so an entry stops applying when its line moves and the mutant is
+# tested again; update or delete it then.
 
 # rullst-capital money_to_minor: after the `rounded >= 1` check, only amounts
 # that round to zero can hit exactly 1e-7, and those are rejected either way.
@@ -48,8 +49,8 @@ rullst-orm/src/outbox.rs:117:38: replace > with >= in Outbox::install
 rullst-orm/src/schema/migration_lock.rs:72:9: replace MigrationLock::release with ()
 
 # rullst-core (alpha.3 campaign, hosted all-feature runs): each name below has a
-# row in WORKFLOWS.md "Accepted equivalent mutants"; radar.rs entries are
-# compiled only on Windows or other non-Linux targets.
+# row in docs/src/mutation-testing.md "Accepted equivalent mutants"; radar.rs
+# entries are compiled only on Windows or other non-Linux targets.
 rullst-core/src/cache/memory/exact_json.rs:23:9: replace <impl fmt::Display for Inexact>::fmt -> fmt::Result with Ok(Default::default())
 rullst-core/src/cache/memory.rs:144:27: replace < with <= in MemoStore::get
 rullst-core/src/cache/memory.rs:165:38: replace < with <= in MemoStore::set
@@ -123,12 +124,12 @@ rullst-core/src/testing/html_normalize.rs:340:18: replace < with <= in mask_csrf
 rullst-core/src/testing/snapshot.rs:240:89: replace + with * in line_diff
 
 # rullst-nexus (alpha.3 campaign, hosted all-feature runs with the PostgreSQL
-# SQL matrix): see WORKFLOWS.md "Accepted equivalent mutants".
+# SQL matrix): see docs/src/mutation-testing.md "Accepted equivalent mutants".
 rullst-nexus/src/nexus/crud/form.rs:194:32: replace match guard matches!(f.kind, FieldKind::Password) with false in form_html
 
 # cargo-rullst (alpha.3 campaign, targeted runs with the CLI's library unit
 # tests; mutants-pr.sh mutates only the files in mutants-pr-cli.txt): each name
-# below has a row in WORKFLOWS.md "Accepted equivalent mutants".
+# below has a row in docs/src/mutation-testing.md "Accepted equivalent mutants".
 cargo-rullst/src/generators/audit_report/a11y.rs:183:47: replace + with * in attributes
 cargo-rullst/src/generators/audit_report/a11y.rs:183:47: replace + with - in attributes
 cargo-rullst/src/generators/audit_source.rs:119:21: replace < with <= in mark_code_tokens
@@ -172,7 +173,7 @@ cargo-rullst/src/update/project/snapshot.rs:163:24: replace + with * in read
 
 # cargo-rullst (alpha.4 campaign: the green command, generators/deploy.rs and
 # update/guided.rs, targeted runs with the CLI's library unit tests): each name
-# below has a row in WORKFLOWS.md "Accepted equivalent mutants".
+# below has a row in docs/src/mutation-testing.md "Accepted equivalent mutants".
 cargo-rullst/src/generators/green/artifacts.rs:86:40: replace < with <= in inspect
 cargo-rullst/src/generators/green/load.rs:34:26: replace < with <= in worker
 cargo-rullst/src/generators/green/procfs.rs:31:73: replace > with >= in ticks_per_second
@@ -182,5 +183,5 @@ cargo-rullst/src/generators/green/target.rs:235:30: replace < with <= in OwnedAp
 cargo-rullst/src/generators/green/target.rs:279:79: replace < with <= in OwnedApp::stop
 
 # rullst-studio remote mode (alpha.3 campaign, targeted runs with the package's
-# tests): see WORKFLOWS.md "Accepted equivalent mutants".
+# tests): see docs/src/mutation-testing.md "Accepted equivalent mutants".
 rullst-studio/src/remote/history.rs:72:51: replace > with >= in Sample::from_outcome

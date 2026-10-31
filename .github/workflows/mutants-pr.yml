@@ -3,8 +3,8 @@ run-name: "Mutation diff gate: PR #${{ github.event.pull_request.number }}"
 
 # Mutates only the Rust lines a pull request changes, so the score of the
 # manual mutants.yml campaign does not decay with every merge. A missed mutant
-# needs a test, or an entry in WORKFLOWS.md "Accepted equivalent mutants" plus
-# its exact name in .github/mutants-pr-equivalents.txt.
+# needs a test, or an entry in docs/src/mutation-testing.md "Accepted equivalent
+# mutants" plus its exact name in .github/mutants-pr-equivalents.txt.
 on:
   pull_request:
     branches: [main]
@@ -157,7 +157,7 @@ jobs:
               while IFS= read -r mutant; do
                 echo "::error file=${mutant%%:*}::Missed mutant: $mutant"
               done < mutants.out/missed.txt
-              echo "Add a test that fails with each missed mutant, or document it in WORKFLOWS.md \"Accepted equivalent mutants\" and add its exact name to .github/mutants-pr-equivalents.txt." >&2
+              echo "Add a test that fails with each missed mutant, or document it in docs/src/mutation-testing.md \"Accepted equivalent mutants\" and add its exact name to .github/mutants-pr-equivalents.txt." >&2
               exit 1
               ;;
             *)

@@ -11,7 +11,8 @@ replace the documents it links to:
 | Framework behaviour and APIs | [`docs/src/spec.md`](docs/src/spec.md) |
 | Coding rules for agents | [`AGENTS.md`](AGENTS.md) |
 | Release phases and tags | [`RELEASE_GUIDE.md`](RELEASE_GUIDE.md) |
-| Workflow inventory, evidence boundaries, accepted mutants | [`WORKFLOWS.md`](WORKFLOWS.md) |
+| Workflow inventory and evidence boundaries | [`WORKFLOWS.md`](WORKFLOWS.md) |
+| Mutation campaign status and accepted equivalent mutants | [`docs/src/mutation-testing.md`](docs/src/mutation-testing.md) |
 | Plans and release lines | [`ROADMAP.md`](ROADMAP.md) |
 | User-facing changes | [`CHANGELOG.md`](CHANGELOG.md), [`docs/src/migration-v13.md`](docs/src/migration-v13.md) |
 | Governance and succession | [`GOVERNANCE.md`](GOVERNANCE.md) |
@@ -126,8 +127,9 @@ and fails on any surviving mutant.
   directory, global registries) go in their own integration-test binary.
 - Every wait in a test needs a deadline, or a mutant that freezes a clock
   becomes a timeout.
-- A truly equivalent mutant needs a row in WORKFLOWS.md "Accepted equivalent
-  mutants" **and** its exact cargo-mutants name in
+- A truly equivalent mutant needs a row in
+  [`docs/src/mutation-testing.md`](docs/src/mutation-testing.md#accepted-equivalent-mutants)
+  **and** its exact cargo-mutants name in
   [`.github/mutants-pr-equivalents.txt`](.github/mutants-pr-equivalents.txt).
 
 ### Other gates that catch maintainers out
@@ -236,8 +238,9 @@ the `MissedMutant` and `Timeout` entries, and kill them with tests as in
 section 4. Measure `cargo-rullst` files with `-f test_scope=lib`, the scope the
 pull-request gate uses for them; a file reaches the gate's
 `.github/mutants-pr-cli.txt` once that run leaves only accepted equivalents. Record campaign status (what is measured, what remains) in
-`ROADMAP.md`; mutants that only a live provider response reaches stay with
-provider sandbox testing.
+[`docs/src/mutation-testing.md`](docs/src/mutation-testing.md#campaign-status);
+mutants that only a live provider response reaches stay with provider sandbox
+testing.
 
 ## 7. Releasing a prerelease
 

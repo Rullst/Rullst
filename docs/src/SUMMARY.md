@@ -149,6 +149,7 @@
 - [⚠️ CORS Scaffold Security Advisory](cors-scaffold-security-advisory.md)
 - [🧾 Security Advisory Exceptions](security-advisory-exceptions.md)
 - [🛡️ CI/CD & Security Workflows](workflows.md)
+  - [Mutation Testing Record](mutation-testing.md)
 - [Reproducible Crate Archives](reproducible-builds.md)
 
 # 📦 Crates Ecosystem

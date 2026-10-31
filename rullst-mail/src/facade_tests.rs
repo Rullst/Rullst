@@ -97,9 +97,8 @@ async fn resolves_every_offline_provider_and_rejects_unknown_drivers() {
 
     // A real host without credentials is a real relay: an unreachable one
     // fails instead of reporting an offline success.
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let closed_port = listener.local_addr().unwrap().port().to_string();
-    drop(listener);
+    let refused = crate::test_support::RefusedPort::new();
+    let closed_port = refused.port.to_string();
     environment.set("MAIL_HOST", "127.0.0.1");
     environment.set("MAIL_PORT", &closed_port);
     let smtp = Mail::resolve_driver().await.unwrap();
