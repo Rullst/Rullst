@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793380708997,
+  "lastUpdate": 1793406366409,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -30595,6 +30595,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1362,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0cbeac1342dfde2b9e9acba972f0dd93d3b3a794",
+          "message": "Merge pull request #593 from Rullst/test/v13-alpha4-cli-mutation-gate\n\ntest(cli): measure green, deploy and guided update and add them to the mutation gate",
+          "timestamp": "2026-10-30T21:19:46-03:00",
+          "tree_id": "239e153118d1b7992275fcd18379ea4f6fddf4f9",
+          "url": "https://github.com/Rullst/Rullst/commit/0cbeac1342dfde2b9e9acba972f0dd93d3b3a794"
+        },
+        "date": 1793406363582,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 381,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 557,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 277,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1007,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
