@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793481606316,
+  "lastUpdate": 1793486136154,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -31027,6 +31027,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1740,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "01b19ba0f257880745c65f3ae107ba6ee52314da",
+          "message": "Merge pull request #601 from Rullst/fix/v13-rc1-messaging-retry-docsrs\n\nfix(messaging,nexus): retry WebhookOutbox::open on an expired deadline; Nexus assistant on docs.rs",
+          "timestamp": "2026-10-31T19:31:37-03:00",
+          "tree_id": "098876e5791d96cccb3c940654364d83e7649992",
+          "url": "https://github.com/Rullst/Rullst/commit/01b19ba0f257880745c65f3ae107ba6ee52314da"
+        },
+        "date": 1793486133615,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 381,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 549,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 267,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 951,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
