@@ -1,6 +1,9 @@
 //! `cargo rullst green --url` end to end in a child test process that serves
 //! the app itself, so the process that owns the listening socket, its CPU
 //! time and its output are known.
+// The end-to-end tests that use these helpers measure /proc and run on Linux
+// only; on macOS and Windows the helpers are compiled but unused.
+#![cfg_attr(not(target_os = "linux"), allow(dead_code, unused_imports))]
 use super::super::*;
 use super::support::{TestServer, between_markers, output_within};
 use std::time::Duration;
