@@ -322,3 +322,48 @@ fn head_markup_ends_the_document_head_and_stays_out_of_htmx_fragments() {
     assert_eq!(plain.0, empty_head.0);
     assert!(plain.0.contains("</script></head>"), "{}", plain.0);
 }
+
+#[test]
+fn nonce_pages_keep_htmx_indicator_rules_inside_the_csp() {
+    let nonce = crate::security::CspNonce::generate();
+    let request = HtmxRequest {
+        is_htmx: false,
+        trigger: None,
+        target: None,
+        prompt: None,
+        current_url: None,
+        csp_nonce: Some(nonce.clone()),
+    };
+    let page = render_page(&request, "Indicators", Markup::default()).0;
+    // htmx's own nonce-less <style> is turned off; its rules carry the nonce.
+    assert!(page.contains(
+        "<meta name=\"htmx-config\" content=\"{&quot;includeIndicatorStyles&quot;:false}\" />"
+    ));
+    let styled = format!(
+        "<style nonce=\"{}\">.htmx-indicator{{opacity:0}}",
+        nonce.as_str()
+    );
+    assert!(page.contains(&styled), "{page}");
+    assert!(
+        page.contains(".htmx-request .htmx-indicator{opacity:1;transition:opacity 200ms ease-in}")
+    );
+    assert!(
+        page.contains(".htmx-request.htmx-indicator{opacity:1;transition:opacity 200ms ease-in}")
+    );
+    assert_eq!(page.matches("<style").count(), 1);
+
+    // An application's own htmx-config in the head stays the only one.
+    let own = crate::html! { <meta name="htmx-config" content="{\"historyCacheSize\":0}" /> };
+    let page = render_page_with_head(&request, "en", "Own", own, Markup::default()).0;
+    assert_eq!(page.matches("htmx-config").count(), 1, "{page}");
+    assert!(page.contains(&styled));
+
+    // Without a nonce (no Rullst CSP) htmx keeps its default behaviour.
+    let plain = HtmxRequest {
+        csp_nonce: None,
+        ..request
+    };
+    let page = render_page(&plain, "Plain", Markup::default()).0;
+    assert!(!page.contains("htmx-config"));
+    assert!(!page.contains("<style"));
+}
