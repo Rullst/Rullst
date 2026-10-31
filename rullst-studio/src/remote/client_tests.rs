@@ -5,7 +5,7 @@
 use super::client::{FetchError, FetchLimits, MonitorClient};
 use super::document::Database;
 use super::projects::{Project, ProjectStore};
-use super::server_test::{TOKEN, TempDir, start};
+use super::server_test::{RefusedPort, TOKEN, TempDir, start};
 use std::time::{Duration, Instant};
 
 fn limits() -> FetchLimits {
@@ -119,10 +119,8 @@ async fn an_unreachable_project_or_an_unreadable_token_is_reported() {
         ..limits()
     })
     .unwrap();
-    // A port nothing listens on: bind, read the port, then close.
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base = format!("http://{}/", listener.local_addr().unwrap());
-    drop(listener);
+    let refused = RefusedPort::new();
+    let base = format!("http://127.0.0.1:{}/", refused.port);
     let mut unreachable = project(&directory, &base, "ok", TOKEN);
     assert_eq!(
         client.fetch(&unreachable).await.unwrap_err(),

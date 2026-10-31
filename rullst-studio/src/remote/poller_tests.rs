@@ -6,7 +6,7 @@ use super::client::FetchLimits;
 use super::poller::{clamp_interval, poll_round, run};
 use super::projects::WebhookChange;
 use super::router::RemoteState;
-use super::server_test::{TOKEN, TempDir, start};
+use super::server_test::{RefusedPort, TOKEN, TempDir, start};
 use super::{RemoteStudioOptions, state};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -73,9 +73,8 @@ async fn only_watched_projects_are_read_and_their_samples_kept() {
 async fn an_unreachable_watched_project_alerts_once_per_cool_down() {
     let directory = TempDir::new("poller-alerts");
     let state = remote_state(&directory).await;
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base = format!("http://{}/", listener.local_addr().unwrap());
-    drop(listener);
+    let refused = RefusedPort::new();
+    let base = format!("http://127.0.0.1:{}/", refused.port);
     state.store.add("down", &base, TOKEN).unwrap();
     let rules = AlertRules {
         unreachable: true,
