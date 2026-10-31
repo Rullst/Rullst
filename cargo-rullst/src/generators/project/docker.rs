@@ -46,9 +46,25 @@ Foundry.toml
 /// `/app/data` volume; the relative `sqlite://db.sqlite` of a new project
 /// would point into the read-only `/app` and stop the app at startup.
 pub(crate) fn project_database_provider(project_path: &Path) -> Option<&'static str> {
-    let configured = fs::read_to_string(project_path.join("Rullst.toml"))
-        .ok()
-        .and_then(|text| toml::from_str::<toml::Table>(&text).ok())
+    database_provider(
+        fs::read_to_string(project_path.join("Rullst.toml"))
+            .ok()
+            .as_deref(),
+        fs::read_to_string(project_path.join(".env.example"))
+            .ok()
+            .as_deref(),
+    )
+}
+
+/// [`project_database_provider`] from the contents of `Rullst.toml` and
+/// `.env.example`, for callers that read those files themselves (the upgrade
+/// rules read only regular files of bounded size).
+pub(crate) fn database_provider(
+    rullst_toml: Option<&str>,
+    env_example: Option<&str>,
+) -> Option<&'static str> {
+    let configured = rullst_toml
+        .and_then(|text| toml::from_str::<toml::Table>(text).ok())
         .and_then(|config| {
             config
                 .get("database")?
@@ -57,13 +73,10 @@ pub(crate) fn project_database_provider(project_path: &Path) -> Option<&'static 
                 .map(str::to_owned)
         });
     let url = configured.or_else(|| {
-        fs::read_to_string(project_path.join(".env.example"))
-            .ok()?
-            .lines()
-            .find_map(|line| {
-                let value = line.trim().strip_prefix("DATABASE_URL=")?;
-                Some(value.trim().trim_matches(['"', '\'']).to_owned())
-            })
+        env_example?.lines().find_map(|line| {
+            let value = line.trim().strip_prefix("DATABASE_URL=")?;
+            Some(value.trim().trim_matches(['"', '\'']).to_owned())
+        })
     })?;
     url.get(..7)
         .is_some_and(|scheme| scheme.eq_ignore_ascii_case("sqlite:"))

@@ -378,6 +378,21 @@ rules! {
     SQLX_TLS_RING: "V13-SQLX-TLS-RING", Review, "13.0.0-alpha.4", "TLS crypto provider",
         "this `sqlx` dependency enables `tls-rustls` or `tls-rustls-ring`, so SQLx keeps ring for database TLS while Rullst's other TLS connections use aws-lc-rs",
         "Change the feature to `tls-rustls-aws-lc-rs`; SQLx prefers ring whenever any crate enables it, so one ring feature keeps every SQLx connection on ring. See https://rullst.github.io/Rullst/book/security-architecture.html#cryptography-providers";
+    SQLX_TLS_NATIVE_ROOTS: "V13-SQLX-TLS-NATIVE-ROOTS", Review, "13.0.0-rc.1", "TLS crypto provider",
+        "this `sqlx` dependency enables `tls-rustls-ring-native-roots`, so SQLx keeps ring, with the operating system's roots, for database TLS while Rullst's other TLS connections use aws-lc-rs",
+        "SQLx 0.9 has no aws-lc-rs feature that trusts the operating system's roots. Either change the feature to `tls-rustls-aws-lc-rs`, which trusts the bundled WebPKI (Mozilla) roots (for a database certificate from a private CA, pass that CA with the connection's `sslrootcert` (PostgreSQL) or `ssl-ca` (MySQL) option), or keep native roots and record why: SQLx then keeps ring for every database connection. See https://rullst.github.io/Rullst/book/security-architecture.html#cryptography-providers";
+    DEPLOY_SQLITE_URL: "V13-DEPLOY-SQLITE-URL", Review, "13.0.0-rc.1", "SQLite database in the deployed image",
+        "this SQLite project's Dockerfile sets no `DATABASE_URL`, so in the deployed container the database path points into the read-only `/app` and the app stops at startup",
+        "Add `ENV DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc` to the runtime stage (the last `FROM`), which keeps the database in the `/app/data` volume, or set `DATABASE_URL` in `.env.production`; `cargo rullst deploy` and `dockerize` write that line since 13.0.0-alpha.4.";
+    DEPLOY_CADDY_HEALTH: "V13-DEPLOY-CADDY-HEALTH", Review, "13.0.0-rc.1", "CLI deploy targets removed",
+        "this `Caddyfile` proxies to `app:3000` without the health checks `cargo rullst deploy` now writes, so Caddy answers with an error while the app starts or restarts instead of holding requests",
+        "Move the file aside and run `cargo rullst deploy` again, or add `health_uri /health`, `health_interval 5s` and `lb_try_duration 15s` inside a `reverse_proxy app:3000 { ... }` block: Caddy then stops routing to the app while `/health` fails and holds each request for up to 15 seconds.";
+    MIGRATION_AUTO_STATUS: "V13-CLI-MIGRATION-AUTO-STATUS", Review, "13.0.0-rc.1", "CLI `make:migration:auto` without a database to compare",
+        "this script runs `make:migration:auto`, which exits with status 1 (\"No migration generated\") since 13.0.0-alpha.4 when there is no SQLite database to compare",
+        "Run it only where `.env` has a SQLite `DATABASE_URL` (no `.env`, no `DATABASE_URL`, a non-SQLite URL or a Turso primary has nothing to compare), or stop expecting status 0 there; a database already in sync with the models still exits with status 0.";
+    BLUEPRINTS_REMOVED: "V13-CLI-BLUEPRINTS-REMOVED", Review, "13.0.0-rc.1", "CLI starters moved to the examples",
+        "this script passes `--blueprint lms|blog|portfolio|erp`, which `cargo rullst new` refuses with status 1 since 13.0.0-alpha.4, before writing anything",
+        "Copy the application from the repository's `examples/lms`, `examples/erp`, `examples/portfolio` or `examples/blog` (https://github.com/Rullst/Rullst/tree/main/examples) instead, or start from `--blueprint api` or `--blueprint saas`.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer
