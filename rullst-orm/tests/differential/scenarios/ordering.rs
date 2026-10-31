@@ -19,10 +19,10 @@ pub async fn run(s: &mut Scenario<'_>) {
         ),
         (
             "filtered_desc",
-            query().where_not_null("rank").order_by_desc("rank"),
+            query().where_not_null("tier").order_by_desc("tier"),
         ),
-        ("nulls_ascending", query().order_by("rank")),
-        ("nulls_descending", query().order_by_desc("rank")),
+        ("nulls_ascending", query().order_by("tier")),
+        ("nulls_descending", query().order_by_desc("tier")),
     ];
     for (step, builder) in cases {
         s.outcome(step, in_order(builder.get().await, Score::name));

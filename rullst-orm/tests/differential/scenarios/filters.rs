@@ -29,7 +29,7 @@ pub async fn run(s: &mut Scenario<'_>) {
             "not_in_empty",
             query().where_not_in("score", Vec::<i32>::new()),
         ),
-        ("null", query().where_null("rank")),
+        ("null", query().where_null("tier")),
         ("not_null", query().where_not_null("tag")),
         (
             "or_where",
@@ -44,16 +44,16 @@ pub async fn run(s: &mut Scenario<'_>) {
         ("not_like", query().where_not_like("name", "%n")),
         (
             "eq_none_matches_nothing",
-            query().where_eq("rank", None::<i64>),
+            query().where_eq("tier", None::<i64>),
         ),
         (
             "combined",
             query()
                 .where_gt("score", 10)
-                .where_null("rank")
+                .where_null("tier")
                 .where_eq("tag", "blue"),
         ),
-        ("i64_filter", query().where_in("rank", vec![1_i64, 4])),
+        ("i64_filter", query().where_in("tier", vec![1_i64, 4])),
     ];
     for (step, builder) in cases {
         s.outcome(step, sorted(builder.get().await, Score::name));

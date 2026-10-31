@@ -2,6 +2,7 @@
 //! `rullst_orm::Error` kind on every backend.
 
 use rullst_orm::Orm;
+use rullst_orm::schema::Schema;
 
 use super::create_table;
 use crate::transcript::Scenario;
@@ -129,4 +130,13 @@ pub async fn run(s: &mut Scenario<'_>) {
             .save()
             .await,
     );
+
+    // Generated SQL leaves identifiers unquoted (docs/src/spec.md), so a
+    // column named after a reserved word works only where it is not reserved.
+    let reserved = Schema::create("diff_reserved_words", |table| {
+        table.id();
+        table.big_integer("rank");
+    })
+    .await;
+    s.outcome("reserved_word_column", reserved);
 }

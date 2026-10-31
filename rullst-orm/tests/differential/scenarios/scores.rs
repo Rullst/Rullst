@@ -1,5 +1,5 @@
 //! The table the `filters` and `ordering` scenarios query. Names, scores and
-//! ranks are distinct and only one rank is NULL, so an ordered query has
+//! tiers are distinct and only one tier is NULL, so an ordered query has
 //! exactly one correct order.
 
 use rullst_orm::Orm;
@@ -13,7 +13,7 @@ pub struct Score {
     pub id: i32,
     pub name: String,
     pub score: i32,
-    pub rank: Option<i64>,
+    pub tier: Option<i64>,
     pub tag: Option<String>,
 }
 
@@ -38,7 +38,7 @@ pub async fn seed(s: &mut Scenario<'_>) -> bool {
         table.id();
         table.string("name").not_null();
         table.integer("score").not_null();
-        table.big_integer("rank");
+        table.big_integer("tier");
         table.string("tag");
     })
     .await;
@@ -46,12 +46,12 @@ pub async fn seed(s: &mut Scenario<'_>) -> bool {
         return false;
     }
     let mut inserted = Ok(());
-    for (name, score, rank, tag) in ROWS {
+    for (name, score, tier, tag) in ROWS {
         let mut row = Score {
             id: 0,
             name: name.to_string(),
             score,
-            rank,
+            tier,
             tag: tag.map(str::to_string),
         };
         inserted = inserted.and(row.save().await);

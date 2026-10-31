@@ -1,6 +1,7 @@
 //! `Orm::transaction`: commit, rollback on an error or a violation, nested
-//! transactions (savepoints), work after a caught failure, and what a
-//! rolled-back insert does to the next generated id.
+//! transactions (savepoints), work after a caught failure of a model write or
+//! of a raw statement, and what a rolled-back insert does to the next
+//! generated id.
 
 use rullst_orm::{Error, Orm};
 
@@ -142,6 +143,29 @@ async fn run_after_caught_failures(s: &mut Scenario<'_>) {
     .await;
     s.outcome("continue_after_savepoint_violation", recovered);
     s.outcome("after_savepoint_violation", stored(&["l", "m"]).await);
+
+    // `Orm::raw` joins the transaction without a savepoint of its own.
+    let raw = Orm::transaction(|_| {
+        Box::pin(async {
+            insert("q").await?;
+            let duplicate = Orm::raw(raw_insert()?).bind("a").execute().await;
+            insert("r").await?;
+            Ok::<bool, Error>(duplicate.is_err())
+        })
+    })
+    .await;
+    s.outcome("continue_after_caught_raw_violation", raw);
+    s.outcome("after_caught_raw_violation", stored(&["q", "r"]).await);
+}
+
+/// An `INSERT` of one name with the driver's placeholder.
+fn raw_insert() -> Result<String, Error> {
+    let sql = "INSERT INTO diff_ledger (name) VALUES (?)";
+    Ok(if Orm::driver()? == "postgres" {
+        rullst_orm::replace_placeholders(sql)
+    } else {
+        sql.to_string()
+    })
 }
 
 /// How far the generated id moves past an insert that was rolled back.
