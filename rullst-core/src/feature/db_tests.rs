@@ -4,7 +4,9 @@
 use super::*;
 use std::sync::atomic::AtomicUsize;
 
-const TTL: Duration = Duration::from_millis(200);
+// Long enough that a stalled CI runner still makes the cached second lookup
+// inside it; the expiry checks sleep past it.
+const TTL: Duration = Duration::from_secs(2);
 
 /// Serializes the tests that depend on the process-wide cache epoch, which
 /// `invalidate_process_cache` advances.
