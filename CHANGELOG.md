@@ -26,6 +26,24 @@ A prepared version section does not establish that its tag or crates exist.
   operating system's roots, so its guidance offers `tls-rustls-aws-lc-rs`
   (bundled WebPKI roots; a private CA goes in `sslrootcert` or `ssl-ca`) or
   keeping native roots with a recorded reason.
+- `rullst-messaging`: `WebhookOutbox::open` tries again when its 10-second
+  storage deadline expires, three attempts in total (about 30 seconds). On a
+  hosted Windows runner a disk stall made `open` fail with `Timeout` while
+  the SQLite store beneath, which waits up to 30 seconds for a connection and
+  for SQLite's lock, would have succeeded. Each attempt opens its own pool
+  and every opening step is idempotent; every other outbox call keeps the
+  single deadline. `SqliteBroker::connect` and its variants have no outer
+  deadline and are unchanged. A test holds the file under SQLite's exclusive
+  lock while `open` connects and checks the retry (on Windows; `--ignored`
+  elsewhere).
+- docs.rs builds the Nexus AI assistant: the `rullst` facade's
+  `[package.metadata.docs.rs]` features include `nexus-ai`, and `rullst-nexus`
+  lists `ai`, which its default features already enabled. The assistant's
+  public items (`ai_chat`) are not feature-gated, so they were never missing,
+  as the alpha.4 known limitation said; the facade's page documented a build
+  without the assistant. Only the command lines at the top of
+  `.github/public-api/rullst.txt` and `rullst-nexus.txt` change; no listed
+  item does.
 - The Blank starter's HTMX counter keeps keyboard focus: after Enter on
   "Click here to increment", the swapped fragment replaced the button and
   focus fell back to the page, so a keyboard user had to Tab to it again. The

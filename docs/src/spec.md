@@ -1162,6 +1162,21 @@ bound and its `Busy` or `Storage` result. Labs keeps the SQLite result code,
 I/O error kind or pool condition behind the last `Storage` error of a thread
 for its test fixtures, never a message, SQL text or path.
 
+`rullst-messaging`'s SQLite constructors (`SqliteBroker::connect` and its
+variants) wait up to 30 seconds for a pooled connection (SQLx's default) and for
+SQLite's lock, with no outer bound, so such a stall only delays them; they are
+not retried. `WebhookOutbox::open`, however, runs inside the outbox's 10-second
+storage deadline, and on a hosted Windows runner a stall made it fail with
+`Timeout` (13.0.0-alpha.4 and earlier). Since 13.0.0-rc.1, `open` tries again
+when that deadline expires, three attempts in total (about 30 seconds): each
+attempt opens its own pool, which no other task uses yet, and every opening
+step is idempotent, so an expired attempt either rolled back or left committed
+state that the next attempt verifies. Every other outbox call keeps the single
+10-second deadline and its `Timeout` result. A test holds the file under
+SQLite's exclusive lock while `open` connects, releases it after the retry and
+checks that `open` succeeds; with 10 seconds against SQLite's 30 no race
+decides it, and it runs on Windows (`--ignored` runs it elsewhere).
+
 ### v12 audit correction invariants
 
 **12.1 account mail:** `rullst-mail::ActionLink` validates an exact

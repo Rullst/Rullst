@@ -22,6 +22,8 @@ pub struct WebhookOutbox<C = SystemClock> {
 impl<C: Clock> WebhookOutbox<C> {
     /// Opens/creates the durable outbox and binds its immutable destination/key.
     /// Signing credentials and encrypted-storage keys must be different secrets.
+    /// Each attempt has the 10-second storage deadline; an attempt whose
+    /// deadline expires is tried again, three attempts in total.
     pub async fn open(
         database_url: impl Into<String>,
         config: WebhookConfig,
@@ -33,52 +35,67 @@ impl<C: Clock> WebhookOutbox<C> {
             return Err(WebhookError::Configuration);
         }
         now(&clock)?;
-        bounded(async {
-            let limits = BrokerConfig::try_new(config.namespace())
-                .and_then(|c| c.with_limits(config.retained + 1, 1, 10, MAX_BODY))
-                .map_err(map)?;
-            let broker = SqliteBroker::connect_encrypted_with_clock(
-                database_url,
-                limits,
-                storage,
+        let database_url = database_url.into();
+        let storage = Arc::new(storage);
+        super::establish::retry(|| {
+            bounded(Self::establish(
+                database_url.clone(),
+                config.clone(),
+                key.clone(),
+                Arc::clone(&storage),
                 clock.clone(),
-            )
-            .await
-            .map_err(map_open)?;
-            let setup = async {
-                let control = PublishRequest::try_new(
-                    CONTROL,
-                    "webhook.configuration",
-                    "immutable-v1",
-                    config.binding(&key)?,
-                )
-                .map_err(map)?;
-                broker.publish(control).await.map_err(map_open)?;
-                // Keep the control record under the primary key so an earlier
-                // storage key can be retired once events are drained.
-                broker.reseal_webhook_control(CONTROL).await.map_err(map)?;
-                broker
-                    .subscribe(
-                        SubscriptionRequest::try_new(EVENTS, GROUP, StartPosition::Earliest)
-                            .map_err(map)?,
-                    )
-                    .await
-                    .map_err(map)?;
-                Ok(())
-            }
-            .await;
-            if let Err(error) = setup {
-                broker.close().await;
-                return Err(error);
-            }
-            Ok(Self {
-                broker,
-                config,
-                key,
-                clock,
-            })
+            ))
         })
         .await
+    }
+    /// One attempt of `open`: a new pool that no other task uses yet, and
+    /// idempotent steps, so an expired attempt can be dropped and tried again.
+    async fn establish(
+        database_url: String,
+        config: WebhookConfig,
+        key: WebhookSigningKey,
+        storage: Arc<MessagingKeyring>,
+        clock: C,
+    ) -> Result<Self> {
+        let limits = BrokerConfig::try_new(config.namespace())
+            .and_then(|c| c.with_limits(config.retained + 1, 1, 10, MAX_BODY))
+            .map_err(map)?;
+        let broker =
+            SqliteBroker::connect_webhook_store(database_url, limits, storage, clock.clone())
+                .await
+                .map_err(map_open)?;
+        let setup = async {
+            let control = PublishRequest::try_new(
+                CONTROL,
+                "webhook.configuration",
+                "immutable-v1",
+                config.binding(&key)?,
+            )
+            .map_err(map)?;
+            broker.publish(control).await.map_err(map_open)?;
+            // Keep the control record under the primary key so an earlier
+            // storage key can be retired once events are drained.
+            broker.reseal_webhook_control(CONTROL).await.map_err(map)?;
+            broker
+                .subscribe(
+                    SubscriptionRequest::try_new(EVENTS, GROUP, StartPosition::Earliest)
+                        .map_err(map)?,
+                )
+                .await
+                .map_err(map)?;
+            Ok(())
+        }
+        .await;
+        if let Err(error) = setup {
+            broker.close().await;
+            return Err(error);
+        }
+        Ok(Self {
+            broker,
+            config,
+            key,
+            clock,
+        })
     }
     /// Publishes exact JSON bytes under a caller-owned idempotency key.
     /// Reusing a retained key with different kind/body fails atomically.

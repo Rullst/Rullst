@@ -1,16 +1,29 @@
 //! Private composition boundaries for the outgoing webhook outbox.
 use super::{
     SqliteBroker,
-    storage::MessageBinding,
+    storage::{MessageBinding, StorageProfile},
     transaction::{finish, storage_error},
 };
-use crate::{Clock, Delivery, MessagingError, Result};
+use crate::{BrokerConfig, Clock, Delivery, MessagingError, MessagingKeyring, Result};
+use std::sync::Arc;
 use zeroize::Zeroizing;
 
 /// The control topic holds one record; this bounds the work of one re-seal.
 const MAX_RESEALED_CONTROL_ROWS: i64 = 8;
 
 impl<C: Clock> SqliteBroker<C> {
+    /// Opens the encrypted store of a webhook outbox. The keyring is shared,
+    /// so that `WebhookOutbox::open` can try opening again.
+    pub(crate) async fn connect_webhook_store(
+        database_url: String,
+        config: BrokerConfig,
+        keyring: Arc<MessagingKeyring>,
+        clock: C,
+    ) -> Result<Self> {
+        let storage = StorageProfile::Encrypted(keyring);
+        Self::connect_with_profile(database_url, config, clock, storage).await
+    }
+
     /// Re-encrypts the private control records of `topic` under the primary
     /// storage key, so the key that first sealed them can later be retired.
     /// Content, identity and fingerprint are unchanged.
