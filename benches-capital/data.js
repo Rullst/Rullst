@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793381677195,
+  "lastUpdate": 1793407933088,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -14756,6 +14756,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6519b6847a8900ca92b401348af403d493be6ec3",
+          "message": "Merge pull request #594 from Rullst/test/v13-alpha4-windows-sqlite-retry\n\ntest(labs,media,supervision,privacy): exercise the SQLite bootstrap retry on Windows runners",
+          "timestamp": "2026-10-30T21:26:18-03:00",
+          "tree_id": "f0cdff84accaf5fff9fa314715784ef6bb1c7792",
+          "url": "https://github.com/Rullst/Rullst/commit/6519b6847a8900ca92b401348af403d493be6ec3"
+        },
+        "date": 1793407932279,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
             "range": "± 0",
             "unit": "ns/iter"
           },
