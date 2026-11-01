@@ -4649,6 +4649,15 @@ store package of the same site, only installs it.
 * 🟢 **`[Implemented / Bounded]` `render_page_with_head`:** Core's
   `render_page_with_lang` with extra `Markup` at the end of `<head>`; an htmx
   request still receives only the content.
+* 🟢 **`[Implemented / Bounded]` htmx indicators under the strict CSP:** since
+  13.0.0-rc.1, `render_page`, `render_page_with_lang` and
+  `render_page_with_head` with a request CSP nonce (Rullst's security
+  headers) send `<meta name="htmx-config"
+  content='{"includeIndicatorStyles":false}'>` and htmx 1.9.12's
+  `.htmx-indicator`/`.htmx-request` rules in a `<style>` carrying the nonce,
+  instead of letting htmx insert a nonce-less inline `<style>` that
+  `style-src` blocks. Head markup containing its own `htmx-config` keeps
+  control of it; without a nonce the page is unchanged.
 * 🟠 **`[Application Boundary]`** icons, HTTPS, offline data and conflict
   handling belong to the application. Browser-side offline data follows the
   server-authoritative pattern of the PWA guide (an IndexedDB outbox replayed

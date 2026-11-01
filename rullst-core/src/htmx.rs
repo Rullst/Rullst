@@ -175,12 +175,30 @@ impl IntoResponse for HtmxResponse {
     }
 }
 
+/// The `htmx-config` that stops htmx 1.9.12 from inserting its indicator
+/// rules as an inline `<style>`, which has no CSP nonce.
+const HTMX_INDICATOR_CONFIG: &str = r#"{"includeIndicatorStyles":false}"#;
+
+/// The rules htmx 1.9.12 inserts with `includeIndicatorStyles` (its default
+/// `htmx-indicator` and `htmx-request` classes), sent with the request's nonce.
+const HTMX_INDICATOR_STYLES: &str = ".htmx-indicator{opacity:0}\
+.htmx-request .htmx-indicator{opacity:1;transition:opacity 200ms ease-in}\
+.htmx-request.htmx-indicator{opacity:1;transition:opacity 200ms ease-in}";
+
 /// Helper function to render a hybrid SSR layout page.
 /// - If it is triggered by HTMX, it returns just the inner `content` as a fragment.
 /// - Otherwise, it wraps `content` in an HTML5 skeleton that loads the generated
 ///   same-origin stylesheet and the version-pinned HTMX browser client.
 ///   CLI scaffolds supply `/static/htmx-1.9.12.min.js`; manually built
 ///   applications must serve that asset themselves.
+///
+/// Since 13.0.0-rc.1, under Rullst's security headers (a request CSP nonce),
+/// the page also sends `<meta name="htmx-config"
+/// content='{"includeIndicatorStyles":false}'>` and htmx's `.htmx-indicator`
+/// rules in a `<style>` carrying the nonce: htmx's own inline indicator
+/// `<style>` has none, and the strict `style-src` would block it. `hx-indicator` keeps working. Head markup passed to
+/// [`render_page_with_head`] that contains its own `htmx-config` is left in
+/// charge of htmx's configuration. Without a nonce the page is unchanged.
 ///
 /// `content` is [`Markup`], usually an `html!` result, which already escapes
 /// interpolated values. HTML from elsewhere must be passed explicitly as
@@ -231,8 +249,16 @@ pub fn render_page_with_head(
     }
     let head = head.into();
     let htmx_script = if let Some(nonce) = htmx.csp_nonce.as_ref() {
+        // htmx's own indicator `<style>` would carry no nonce: turn it off
+        // (unless `head` brings its own htmx-config) and send the same rules
+        // in a `<style>` with the request's nonce.
+        let config = (!head.as_str().contains("htmx-config")).then(|| {
+            crate::html! { <meta name="htmx-config" content={HTMX_INDICATOR_CONFIG} /> }
+        });
         crate::html! {
             <script nonce={nonce.as_str()} src="/static/htmx-1.9.12.min.js"></script>
+            {config}
+            <style nonce={nonce.as_str()}>{HTMX_INDICATOR_STYLES}</style>
         }
     } else {
         crate::html! {

@@ -7,6 +7,14 @@ a pinned copy to `static/htmx-1.9.12.min.js`, which `rullst::htmx::render_page`
 loads from the same origin; an application without those generated assets must
 serve that file itself. The application's CSP must permit it.
 
+Rullst's strict CSP has no `'unsafe-inline'` for styles, so htmx may not insert
+its own `<style>` for `hx-indicator`. Under Rullst's security headers,
+`render_page` turns that off with an `htmx-config` meta and sends the same
+`.htmx-indicator` rules with the request's CSP nonce, so `hx-indicator` works
+unchanged. A page with its own layout does the same: add
+`<meta name="htmx-config" content='{"includeIndicatorStyles":false}'>` and
+style `.htmx-indicator` in its stylesheet or in a `<style>` with the nonce.
+
 ---
 
 ## 🛠️ Step 1: Render HTMX Components
