@@ -101,7 +101,14 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                     Some(true) => quote! {
                         .bind(self.#field_name.clone().map(rullst_orm::_sqlx::types::Json))
                     },
-                    None => quote! { .bind(self.#field_name.clone()) },
+                    // `__bind_field` sends a UTC instant as a DATETIME on
+                    // MySQL/MariaDB and every other field as a clone.
+                    None => quote! {
+                        .bind({
+                            use rullst_orm::__bind_field::{Instant as _, Unchanged as _};
+                            (&rullst_orm::__bind_field::Field(&self.#field_name)).__rullst_encode()
+                        })
+                    },
                 },
             };
             bind_inserts.push(binding.clone());
@@ -338,7 +345,37 @@ mod tests {
         assert!(generated.contains(
             ". bind (self . extra . clone () . map (rullst_orm :: _sqlx :: types :: Json))"
         ));
-        assert!(generated.contains(". bind (self . name . clone ())"));
+        assert!(generated.contains(
+            "(& rullst_orm :: __bind_field :: Field (& self . name)) . __rullst_encode ()"
+        ));
+    }
+
+    /// Plain fields go through `__bind_field`, which sends a UTC instant as a
+    /// DATETIME on MySQL/MariaDB (the field type is only known after
+    /// expansion, so every plain field takes the same path).
+    #[test]
+    fn plain_fields_are_written_through_the_pool_encoding() {
+        let input: DeriveInput = parse_quote! {
+            struct Event {
+                id: i32,
+                starts_at: DateTime<Utc>,
+                ends_at: Option<DateTime<Utc>>,
+            }
+        };
+        let parsed = crate::parser::parse(&input).expect("parse model");
+        let generated = super::generate_save_method(&parsed).to_string();
+        for field in ["starts_at", "ends_at"] {
+            assert!(
+                generated.contains(&format!(
+                    "(& rullst_orm :: __bind_field :: Field (& self . {field})) . __rullst_encode ()"
+                )),
+                "{field}: {generated}"
+            );
+        }
+        assert!(
+            generated
+                .contains("use rullst_orm :: __bind_field :: { Instant as _ , Unchanged as _ } ;")
+        );
     }
 
     #[test]
