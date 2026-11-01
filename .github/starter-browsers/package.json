@@ -1,0 +1,7 @@
+{
+  "name": "rullst-starter-browser-checks",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pinned Playwright and axe-core for the generated-starter browser and accessibility checks",
+  "devDependencies": { "axe-core": "4.14.0", "playwright": "1.64.1" }
+}

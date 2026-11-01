@@ -36,6 +36,7 @@ jobs:
           python3 .github/test-ci-scope.py
           python3 .github/test-ci-matrix.py
           python3 .github/test-dast-generated-app.py
+          python3 .github/test-check-starter-browsers.py
           python3 .github/test-check-auth-starter-sql.py
           python3 examples/saas/test_http_client.py
 

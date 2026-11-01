@@ -144,6 +144,38 @@ triggers follow the deployment jobs (pull requests only when they change a
 marked page, `cargo-rullst/src/` or the check); it is not a required release
 job. `.github/test-first-hour.py` validates the markers offline on every push.
 
+`Generated starters in browsers` runs `.github/check-starter-browsers.py`:
+with the CLI built from the checkout, it generates the Blank and SaaS starters
+(framework crates resolved from the checkout by
+`.github/dast-generated-app.py`), builds them, applies their migrations and
+starts each with its generated `.env` (development, offline billing).
+`.github/starter-browsers/starter-browsers.mjs` then drives it in Chromium,
+Firefox and WebKit with the Playwright and axe-core versions pinned (with
+integrity hashes) by `.github/starter-browsers/package-lock.json`, installed
+with `npm ci --ignore-scripts`; Playwright downloads the browser builds that
+its version pins. The starter's own Content-Security-Policy stays in force
+(the reports raised by the inline style Playwright injects for a WebKit
+screenshot are counted apart in the summary).
+Blocking: a console error, an uncaught page error, a failed same-origin
+request or a CSP violation; an element that Tab does not reach, or whose
+appearance focus does not change; focus lost after the Blank starter's HTMX
+swap; a failed flow (the HTMX counter, and SaaS sign-up, sign-out and sign-in
+through the real forms, each submitted with Enter, with the form token
+matching the `rullst_csrf` cookie); an axe-core `serious` or `critical`
+violation; a server panic. axe-core `moderate` and `minor` findings are listed
+in the job summary. Pages: Blank `/`; SaaS `/pricing`, `/register`,
+`/dashboard`, `/login` and `/password/forgot`. A defect in framework code is
+versioned in `.github/starter-browsers/known-defects.json` with its owner and
+reason: it is reported, not failed, and an entry that no longer occurs fails
+the job until it is removed. Traces, screenshots and server logs are uploaded
+when it fails. Its triggers follow the deployment jobs (pull requests only
+when they change `cargo-rullst/src/blueprints/`, the project, auth or billing
+generators, `rullst-macros/src/`, Core's security, server, config, `html` or
+`htmx` sources, or the check); it is not a required release job. The API
+starter (no HTML) is covered by the ZAP baseline instead. This is automated
+evidence for the pages exercised, not WCAG conformance or screen-reader
+testing.
+
 ### Native CLI artifacts and browser checks
 
 Manual all-platform `all` and `cli-standard` selections call
@@ -190,7 +222,7 @@ counts only a dispatched run:
 | `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase, a fresh generated REST API, a fresh generated SaaS starter (public pages, then its signed-in pages with a disposable account's session) and the LMS example (`examples/lms`, release-built from the workspace) | REST/SaaS/LMS warnings and failures block unless an exact rule ID is versioned as `INFO` with a local explanation in `.zap/`; those configs are passed explicitly to the pinned scanner and unlisted warnings remain live. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
 | `fuzzing.yml` | All 42 declared libFuzzer targets from the validated shared inventory | **Required release evidence:** release mode validates all 42 targets and independently verifies reusable input-equivalent evidence; packages with remaining targets run locked compilation preflights and new 5.5-hour campaigns; target-specific corpora are restored and saved, while failure reproducers are retained. Dependency-lock drift fails preflight and campaign jobs. The proc-macro parser uses strict processes of at most 30 minutes sharing one corpus, which bounds sanitizer RSS without weakening the total budget. Original reused results must be at most seven days old, come from an ancestor on the same release line, and prove the complete budget. The final candidate still runs the evidence boundary and publication independently recomputes all 42 results. [Reuse policy](docs/src/fuzz-evidence.md). A strict five-minute single-target diagnostic accelerates correction feedback but is explicitly ineligible as release evidence. This is bounded evidence, not proof for every input. |
 | `kani.yml` | Twenty named bounded formal harnesses in ten supported runtime/library packages | **Required release evidence for the declared harnesses:** every proof has an isolated strict matrix job. Rullst itself stays on stable Rust 1.99.1 with a Rust 1.96 MSRV; only the separately built Kani verifier uses its pinned `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) because the latest stable Kani bundle's Rust 1.93 compiler cannot compile the framework. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
-| `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | **Required release evidence for the declared scopes:** every selected scope is strict. This nightly-only interpreter uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
+| `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | **Required release evidence for the declared scopes:** every selected scope is strict. This nightly-only interpreter uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. Its informational cargo-careful jobs are not part of this evidence. |
 | `mutants.yml` | A source-bound discovered inventory, eighty lossless shards with at most four running concurrently, their artifacts and a strict aggregate | Informational: a cheap all-feature `--list --json` preflight records the selected source's complete unique inventory before runners start; every shard then uses that release surface, and aggregation requires every reviewed candidate to receive exactly one classification before reporting the conservative caught percentage. A targeted mode retests one validated production Rust file after a correction, with explicit per-mutant test/build timeouts and an optional library-only test scope; it does not replace the complete campaign. Every shard has a pinned Redis service, so the `RULLST_TEST_REDIS_URL` contracts run for each mutant. A contract mode runs one owned-server wrapper's mutation mode, which mutates only that wrapper's PostgreSQL or Redis adapter files and runs only its contract tests against the server it owns; it checks its own outcome count instead of the workspace inventory and aggregate. Recovery modes accept only the repository-reviewed campaign policy, bind the source/run/branch/tool/inventory digest, bisect explicitly authorized failed fragments, reuse immutable successful artifacts and emit a content-addressed aggregate. Missed/time-out exit codes remain findings, while a broken baseline, incomplete artifact set, preflight/classification mismatch, invalid invocation or cargo-mutants internal failure fails the workflow. The v12 campaign completed 14,391/14,391 classifications in run `34761010296`; “pass” does not mean every mutant was killed. |
 
 The v13 candidate also provides `verus.yml` as a manual-only pilot. Its source
@@ -204,7 +236,7 @@ These workflows are **periodic and manually runnable**:
 | Cadence | Workflows | Mode |
 | :--- | :--- | :--- |
 | Daily | `ci.yml`, `sanitizers.yml`, `supply-chain.yml` | Supply Chain (Cargo Audit of the production and fuzz locks, Cargo Deny and the advisory-exception check) is blocking; the nightly `ci.yml` run executes the complete Linux/macOS/Windows matrix on `main`; TSan/ASan are blocking when executed. |
-| Weekly | `bench.yml`, `codeql.yml`, `coverage.yml`, `crypto-containment.yml`, `documentation.yml`, `kani.yml`, `miri.yml`, `proptest.yml`, `scorecards.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. Miri (Wednesday 01:17 UTC) and Kani (Thursday 01:47 UTC) run their full strict matrices so that a regression shows up within a week rather than at release admission. |
+| Weekly | `bench.yml`, `codeql.yml`, `coverage.yml`, `crypto-containment.yml`, `documentation.yml`, `kani.yml`, `miri.yml`, `proptest.yml`, `scorecards.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. Miri (Wednesday 01:17 UTC) and Kani (Thursday 01:47 UTC) run their full strict matrices so that a regression shows up within a week rather than at release admission. The Miri run also runs the informational `cargo careful test` jobs. |
 
 All remaining workflows run on their push, pull-request or path filters and
 expose a manual rerun. For an RC or stable checkpoint, use the automatic
@@ -423,6 +455,15 @@ badges.
   pure-Rust/default-feature scopes; native `ring`, AWS-LC, SQLite, syscall and
   network paths, the facade and the Blog example rely on native CI,
   integration tests and sanitizers instead.
+- **cargo-careful** (`miri.yml`, weekly and on dispatch, informational):
+  `cargo careful test` 0.4.10 on the same pinned `nightly-2026-08-21` runs the
+  library unit tests of `rullst-core`, `rullst-security` and `rullst-orm`
+  against a standard library built with debug assertions and cargo-careful's
+  extra UB checks, natively (so beyond Miri's interpreter boundary), with a
+  45-minute budget per crate. Integration tests that start servers or need
+  services are excluded; the proc-macro crates are host-only and cannot load
+  the careful sysroot. Job-level `continue-on-error` keeps its result out of
+  the workflow conclusion, so it never changes the Miri admission receipt.
 - **Mutation testing** (`mutants.yml`, manual, informational): a
   `--list --json` preflight fixes the selected source's exact inventory, then
   up to 80 lossless shards (four at a time) run with `--all-features`
@@ -613,7 +654,7 @@ dependency graph make static estimates unreliable.
 | :--- | :--- | :--- | :--- |
 | [`architecture.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/architecture.yml) | main/v12/v13 push and PR, manual | Blocking | Compares Cargo's publishable non-dev internal dependency graph with the reviewed `crate-architecture-policy.json`; unreviewed normal/build edges, removals, or optionality changes fail, while test-only dev-dependencies do not masquerade as production coupling. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, the ORM differential comparison of SQLite, PostgreSQL, MySQL and MariaDB, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), the first-hour documentation path run as written (manual, nightly and pull requests changing a marked page or the CLI), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, the ORM differential comparison of SQLite, PostgreSQL, MySQL and MariaDB, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), the first-hour documentation path run as written (manual, nightly and pull requests changing a marked page or the CLI), the generated Blank and SaaS starters driven in Chromium, Firefox and WebKit with keyboard, CSP and axe-core checks (manual, nightly and pull requests changing the starters, `html!` or Core's pages, headers or CSRF), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from full/CLI manual Rust CI or admitted tag release | Blocking caller job; required release evidence | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories before attestation. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation with a pinned, zero-retry, bounded-concurrency nextest scheduler and retained JUnit inventory; a focused default-SQLite pass for ORM/Studio/Nexus/the facade; exact local 90% floors; and blocking OIDC-authenticated Codecov upload. Scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |
@@ -625,7 +666,7 @@ dependency graph make static estimates unreliable.
 | [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/iot-integration.yml) | main/v12/v13 push and PR, manual | Blocking | Host IoT tests, signed OTA invariants, and one Cortex-M no-std build; no hardware claim. |
 | [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | weekly (Thursday 01:47 UTC), manual | Blocking release scope; bounded evidence | Builds an immutable reviewed Kani snapshot with the verifier-only `nightly-2026-08-01` compiler, while Rullst stays on stable Rust 1.99.1 with a Rust 1.96 MSRV. It verifies twenty named bounded harnesses in isolated jobs across ten supported packages. Proof failures fail their matrix jobs; the proc-macro-only crate remains outside Kani's supported targets. |
 | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main/v12/v13 push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
-| [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | weekly (Wednesday 01:17 UTC), manual | Blocking release scope; bounded evidence | Pinned nightly-only Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts without changing Rullst's stable toolchain or MSRV. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. |
+| [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | weekly (Wednesday 01:17 UTC), manual | Blocking release scope; bounded evidence | Pinned nightly-only Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts without changing Rullst's stable toolchain or MSRV. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. Informational `cargo careful test` jobs (Core, Security, ORM library unit tests) run alongside with `continue-on-error` and never change the conclusion. |
 | [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | A source-bound inventory preflight followed by eighty lossless pinned cargo-mutants 27.1.0 shards with four concurrent jobs over that source's all-feature workspace, each shard with a pinned Redis service for the `RULLST_TEST_REDIS_URL` contracts, one validated production-file diagnostic, one owned-server contract (`mode=contract`: a PostgreSQL or Redis wrapper's adapter mutants against the server it owns, or the ORM crates against the `rullst-orm` SQLite suite), or policy-bound exact-SHA recovery of reviewed failed fragments. Successful immutable artifacts may be reused, but the content-addressed aggregate still requires every reviewed candidate exactly once and carries source/run/branch/tool/inventory provenance. Findings stay informational, while baseline/tool/invocation failures, missing artifacts, incomplete classification and reviewed-inventory drift fail the run. The completed v12 receipt is run `34761010296`: 14,391/14,391 classified and a conservative 70.57% caught. |
 | [`mutants-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants-pr.yml) | pull requests to main that change Rust | Blocking by policy; not a required check | Lists the pinned cargo-mutants 27.1.0 all-feature mutants on the Rust lines the pull request changes, skipping the globs in `.github/mutants-pr-exclude.txt` and every CLI file not listed in `.github/mutants-pr-cli.txt` (listed CLI files run against the CLI's library tests), and tests them in at most eight shards with a Redis service and the targeted-run timeouts and memory cap. A missed mutant fails the run; unviable and timed-out mutants do not. See [Pull-request mutation gate](#pull-request-mutation-gate). |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main/v12/v13 push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
@@ -720,7 +761,7 @@ gh api --paginate --slurp \
 
 ## Verification roadmap
 
-Planned assurance experiments (cross-browser and accessibility checks,
-Loom/Shuttle, `cargo-vet` and others) are tracked in the
-[verification roadmap](ROADMAP.md#verification-roadmap). Differential database
-testing left that list: it runs in the ORM differential databases job above.
+Planned assurance experiments (Loom/Shuttle, `cargo-vet` and others) are
+tracked in the [verification roadmap](ROADMAP.md#verification-roadmap).
+Differential database testing, the cross-browser and accessibility checks
+and `cargo-careful` moved from it to the jobs described above.

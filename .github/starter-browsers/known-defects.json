@@ -1,0 +1,10 @@
+[
+  {
+    "starter": "blank",
+    "page": "/",
+    "kind": "csp",
+    "key": "style-src-elem inline",
+    "owner": "rullst-core",
+    "reason": "rullst::htmx::render_page_with_head loads htmx 1.9.12 with its default includeIndicatorStyles, so htmx inserts an inline <style> without the request's CSP nonce and the strict style-src blocks it (the .htmx-indicator rules never apply). The fix belongs in rullst-core, e.g. the htmx-config meta with includeIndicatorStyles false that examples/blog and Nexus already send; remove this entry with it."
+  }
+]

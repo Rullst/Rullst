@@ -31,7 +31,7 @@ __DB_STATUS_CODE__
                     <div id="counter-box" class="rullst-starter__counter-box flex flex-col items-center gap-3">
                         <form method="post" action="/clicked" hx-post="/clicked" hx-target="#counter-box" hx-swap="outerHTML">
                             <input type="hidden" name="_token" value={csrf_token.as_str()} />
-                            <button type="submit" class="rullst-starter__button px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                            <button type="submit" id="counter-button" class="rullst-starter__button px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
                             "Click here to increment"
                             </button>
                         </form>
@@ -50,7 +50,8 @@ __DB_STATUS_CODE__
 use std::sync::atomic::{AtomicUsize, Ordering};
 static CLICK_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-// Reactive HTMX endpoint
+// Reactive HTMX endpoint. The button keeps its id so that htmx returns
+// keyboard focus to it after swapping the fragment.
 async fn clicked(
     Extension(csrf_token): Extension<rullst::security::CsrfToken>,
 ) -> impl IntoResponse {
@@ -60,7 +61,7 @@ async fn clicked(
         <div id="counter-box" class="rullst-starter__counter-box flex flex-col items-center gap-3">
             <form method="post" action="/clicked" hx-post="/clicked" hx-target="#counter-box" hx-swap="outerHTML">
                 <input type="hidden" name="_token" value={csrf_token.as_str()} />
-                <button type="submit" class="rullst-starter__button px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                <button type="submit" id="counter-button" class="rullst-starter__button px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
                     "Click here to increment"
                 </button>
             </form>

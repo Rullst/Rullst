@@ -162,7 +162,8 @@ class WorkflowGuardTests(unittest.TestCase):
                    "generated-release-access", "facade-composition", "storage-s3", "msrv"}
         distribution = {"native-cli-artifacts", "packaged-distribution"}
         self.assertEqual(set(jobs), runtime | distribution | {"scope", "site-validation", "quality-scorecard",
-                                                              "vm-deployment", "first-hour"})
+                                                              "vm-deployment", "first-hour",
+                                                              "starter-browsers"})
         for name, body in jobs.items():
             self.assertEqual(len(re.findall(r"(?m)^    if:", body)), 1 if name != "scope" else 0, name)
         for name in distribution:
@@ -191,12 +192,14 @@ class WorkflowGuardTests(unittest.TestCase):
         # The deployment job never runs on branch pushes (site-only admission
         # reads their job inventory), always runs in full manual runs and its
         # own diagnostic, and filters pull requests by path in its first step.
-        # The first-hour documentation job follows the same rules; neither is
-        # a required release job (release-required-workflows.json).
+        # The first-hour documentation and starter browser jobs follow the same
+        # rules; none is a required release job (release-required-workflows.json).
         required = json.loads((HERE / "release-required-workflows.json").read_text())
         required_jobs = {name for workflow in required["workflows"] for name in workflow.get("required_jobs", [])}
         for shard, script, name in (("vm-deployment", "check-vm-deploy.py", "Generated VM deployment"),
-                                    ("first-hour", "check-first-hour.py", "First-hour documentation")):
+                                    ("first-hour", "check-first-hour.py", "First-hour documentation"),
+                                    ("starter-browsers", "check-starter-browsers.py",
+                                     "Generated starters in browsers")):
             with self.subTest(job=shard):
                 body = jobs[shard]
                 guard = body.split("    runs-on:", 1)[0]
@@ -213,11 +216,19 @@ class WorkflowGuardTests(unittest.TestCase):
                     self.assertIn(f"inputs.shard != '{shard}'", jobs[other].split("    runs-on:", 1)[0])
         options = (HERE / "workflows/ci.yml").read_text().split("    inputs:", 1)[1].split("  schedule:", 1)[0]
         self.assertIn("          - first-hour\n", options)
+        self.assertIn("          - starter-browsers\n", options)
         first_hour = jobs["first-hour"]
         self.assertIn("python3 .github/check-first-hour.py --pages", first_hour)
         self.assertIn('rustflags: ""', first_hour)
         self.assertIn('build-warnings: ""', first_hour)
         self.assertIn("^(cargo-rullst/src/|", first_hour)
+        # The browser job installs the lockfile-pinned Playwright and axe-core
+        # without lifecycle scripts and keeps failure evidence.
+        browsers = jobs["starter-browsers"]
+        self.assertIn("npm ci --prefix .github/starter-browsers --ignore-scripts", browsers)
+        self.assertIn("install --with-deps chromium firefox webkit", browsers)
+        self.assertIn("if: failure() && steps.selection.outputs.run == 'true'", browsers)
+        self.assertIn("cargo-rullst/src/(blueprints/|", browsers)
         # `cargo rullst auth` against PostgreSQL, MySQL and MariaDB runs after
         # the relational profiles on Linux, with the CLI that shard built.
         auth = jobs["test"].split("Run cargo rullst auth on Blank starters", 1)[1].split("      - name:", 1)[0]

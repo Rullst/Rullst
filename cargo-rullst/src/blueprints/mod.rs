@@ -382,6 +382,24 @@ mod tests {
     }
 
     #[test]
+    fn starter_pages_keep_their_browser_accessibility_fixes() {
+        // Found by .github/check-starter-browsers.py. htmx returns focus after
+        // an outerHTML swap only to an element with an id, so both counter
+        // buttons keep one; white on #ef4444 is 3.76:1, on #dc2626 4.83:1.
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            for (path, source) in manifest {
+                if blueprint == "blank" && source.contains("id=\"counter-box\"") {
+                    assert_eq!(source.matches("id=\"counter-button\"").count(), 2, "{path}");
+                }
+                if path == "src/pages/auth.rs" {
+                    assert!(source.contains(".btn-logout { background: #dc2626;"));
+                    assert!(!source.contains("#ef4444"));
+                }
+            }
+        }
+    }
+
+    #[test]
     fn html_blueprints_write_the_official_favicon() {
         for blueprint in [BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID] {
             let root = tempfile::tempdir().expect("temporary blueprint directory");
