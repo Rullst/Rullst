@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793490497469,
+  "lastUpdate": 1793493316767,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -19743,6 +19743,60 @@ window.BENCHMARK_DATA = {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 22,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27abf6b00679c2912cf71037e4b1bd08fc517f96",
+          "message": "Merge pull request #607 from Rullst/fix/v13-rc1-orm-null-and-mariadb-time\n\nfix(orm): keep MariaDB instants outside 1970-2038 and match None filters on PostgreSQL",
+          "timestamp": "2026-10-31T21:13:31-03:00",
+          "tree_id": "f172c9152a73be4da8618440d587a9ec17bd1688",
+          "url": "https://github.com/Rullst/Rullst/commit/27abf6b00679c2912cf71037e4b1bd08fc517f96"
+        },
+        "date": 1793493315901,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5295,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 583,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 23,
+            "range": "± 0",
             "unit": "ns/iter"
           }
         ]
