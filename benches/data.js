@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793489647779,
+  "lastUpdate": 1793492341711,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -31189,6 +31189,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1739,
             "range": "± 48",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27abf6b00679c2912cf71037e4b1bd08fc517f96",
+          "message": "Merge pull request #607 from Rullst/fix/v13-rc1-orm-null-and-mariadb-time\n\nfix(orm): keep MariaDB instants outside 1970-2038 and match None filters on PostgreSQL",
+          "timestamp": "2026-10-31T21:13:31-03:00",
+          "tree_id": "f172c9152a73be4da8618440d587a9ec17bd1688",
+          "url": "https://github.com/Rullst/Rullst/commit/27abf6b00679c2912cf71037e4b1bd08fc517f96"
+        },
+        "date": 1793492338068,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 676,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 869,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 404,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1736,
+            "range": "± 26",
             "unit": "ns/iter"
           }
         ]
