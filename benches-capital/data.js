@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793490700495,
+  "lastUpdate": 1793493524593,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -15086,6 +15086,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_active",
             "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27abf6b00679c2912cf71037e4b1bd08fc517f96",
+          "message": "Merge pull request #607 from Rullst/fix/v13-rc1-orm-null-and-mariadb-time\n\nfix(orm): keep MariaDB instants outside 1970-2038 and match None filters on PostgreSQL",
+          "timestamp": "2026-10-31T21:13:31-03:00",
+          "tree_id": "f172c9152a73be4da8618440d587a9ec17bd1688",
+          "url": "https://github.com/Rullst/Rullst/commit/27abf6b00679c2912cf71037e4b1bd08fc517f96"
+        },
+        "date": 1793493523803,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 18,
             "range": "± 0",
             "unit": "ns/iter"
           },
