@@ -1623,7 +1623,12 @@ pool `Schema::create`/`Schema::table` reject the native helpers on PostgreSQL
 and MySQL/MariaDB with `Error::Validation` before DDL, because a table holding
 such a column could not be read. `RullstValue` gains `DateTime`,
 `NaiveDateTime`, `Date` and `Time` variants, bound through SQLx's `chrono`
-codecs on strict pools and as that ISO-8601 text on the `Any` pool.
+codecs on strict pools and as that ISO-8601 text on the `Any` pool. On the
+MySQL/MariaDB pool a UTC instant, in a filter, an `Orm::raw` binding or a
+generated write of a `DateTime<Utc>` or `Option<DateTime<Utc>>` field, is sent
+as its UTC wall time in a `DATETIME` parameter (`NaiveDateTime`), because
+MariaDB turns SQLx's `TIMESTAMP` parameter into `NULL` outside 1970–2038
+(since 13.0.0-rc.1).
 `soft_deletes()` keeps a `TEXT` `deleted_at` column. The Turso adapter
 (`TursoMigration`, `TursoModel`) writes its own SQL, so none of these builders
 or date/time codecs apply to it; its timestamps stay text.
@@ -2637,8 +2642,13 @@ while portability and semantic review remain the model author's responsibility.
   Generated builders and `Orm::raw` bind every value through one hidden
   `BindRullstValue` helper: `I64` as `i64` and `Null` as a text-typed SQL
   `NULL`, which PostgreSQL accepts in a non-text column only through a cast.
-  A comparison with `Null` never matches (and PostgreSQL rejects it against a
-  non-text column), so `where_null` expresses that filter. Tenant IDs take the
+  The value-taking filters (`where_eq`, `where_not_eq`, `where_gt`,
+  `where_lt`, `where_like`, `where_not_like`, `where_in`, `where_not_in`,
+  `where_between`, `where_not_between`, `where_col`, their `or_where`
+  variants and the per-column helpers) write `Null` as the SQL `NULL` literal
+  instead, which takes the column's type, so a comparison with `Null` matches
+  no row on every backend (since 13.0.0-rc.1; PostgreSQL rejected it against a
+  non-text column before) and `where_null` expresses that filter. Tenant IDs take the
   same values: an `I64` tenant gets its own audit (`i64:`) and cache keys but
   does not convert to an `i32` tenant field (generated queries fail with
   `Validation`, §5.4), and a `Null` tenant fails the audit lookup with

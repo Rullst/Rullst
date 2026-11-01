@@ -215,6 +215,10 @@ pub mod __eager_limit;
 #[path = "relation_key.rs"]
 pub mod __relation_key;
 
+#[doc(hidden)]
+#[path = "bind_field.rs"]
+pub mod __bind_field;
+
 tokio::task_local! {
     // The transaction that `Orm::transaction` scopes; generated model code and
     // `execute_query!`/`dispatch_executor!` join it.

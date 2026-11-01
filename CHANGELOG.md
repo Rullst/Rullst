@@ -24,11 +24,8 @@ A prepared version section does not establish that its tag or crates exist.
   statement, the case-insensitive MySQL/MariaDB collations and SQLite's
   unenforced `VARCHAR(n)`. It runs on pushes, nightly, in release runs and on
   pull requests that change the ORM, fails when a server URL is missing, and
-  is a release-admission job. Test-only; no runtime change. Its first runs
-  found two defects, pinned as open differences: on MariaDB a `DateTime<Utc>`
-  before 1970 or after 2038-01-19 is stored as NULL (a NOT NULL column rejects
-  the row), and on PostgreSQL `where_eq(column, None)` on a non-text column
-  fails instead of matching nothing.
+  is a release-admission job. Its first runs found the two defects fixed
+  below (MariaDB instants outside 1970–2038, PostgreSQL `None` filters).
 - CI drives the generated starters in real browsers: the
   `Generated starters in browsers` job of `ci.yml`
   (`.github/check-starter-browsers.py`) generates the Blank and SaaS starters
@@ -54,6 +51,26 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Fixed
 
+- `rullst-orm` on MariaDB: a `DateTime<Utc>` before 1970-01-01 or after
+  2038-01-19 03:14:07 UTC is no longer lost. SQLx's MySQL driver binds it as a
+  `TIMESTAMP` parameter, and MariaDB turned such a value into `NULL` even for
+  the `DATETIME(6)` column that `timestamp_tz()` creates, so a NOT NULL column
+  rejected the row (1048) and a nullable column stored `NULL` without an
+  error. With `strict-mysql`, generated writes of `DateTime<Utc>` and
+  `Option<DateTime<Utc>>` fields (any spelling or type alias), filter values
+  and `Orm::raw` bindings now send the UTC wall time as a `DATETIME`
+  parameter; MySQL stores the same value as before and reads are unchanged.
+  Found by the differential database job.
+- `rullst-orm` on PostgreSQL: `where_eq(column, None)` and the other
+  value-taking filters (`where_not_eq`, `where_gt`, `where_lt`, `where_like`,
+  `where_not_like`, `where_in`, `where_not_in`, `where_between`,
+  `where_not_between`, `where_col`, the `or_where` variants and the
+  per-column helpers) no longer fail with `operator does not exist: bigint =
+  text` on a non-text column. `None` is now written as the SQL `NULL`
+  literal instead of a text-typed parameter, so the comparison matches no row
+  on every backend, as documented (`where_null` selects missing values).
+  `Orm::raw(..).bind(None)` still binds a text-typed NULL. Found by the
+  differential database job.
 - `cargo rullst upgrade` reports, for review, the alpha.4 changes that its
   alpha.4 rules did not locate (five new rules dated 13.0.0-rc.1, so an
   application already on alpha.4 gets them; the catalog has 120 rules):

@@ -46,6 +46,30 @@ pub async fn run(s: &mut Scenario<'_>) {
             "eq_none_matches_nothing",
             query().where_eq("tier", None::<i64>),
         ),
+        // `None` in any comparison is SQL NULL: it matches no row, and a NOT
+        // IN list containing it matches none either.
+        (
+            "not_eq_none_matches_nothing",
+            query().where_not_eq("tier", None::<i64>),
+        ),
+        (
+            "gt_none_matches_nothing",
+            query().where_gt("tier", None::<i64>),
+        ),
+        (
+            "in_with_none",
+            query().where_in("tier", vec![Some(1_i64), None]),
+        ),
+        (
+            "not_in_with_none",
+            query().where_not_in("tier", vec![Some(1_i64), None]),
+        ),
+        (
+            "or_where_none",
+            query()
+                .where_eq("name", "ann")
+                .or_where("tier", None::<i64>),
+        ),
         (
             "combined",
             query()
