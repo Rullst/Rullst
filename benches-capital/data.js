@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793495359848,
+  "lastUpdate": 1793496869739,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -15170,6 +15170,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_active",
             "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2c785c4b2267c34fdd630b7bcda1cd1d2335aa51",
+          "message": "Merge pull request #608 from Rullst/fix/v13-rc1-htmx-indicator-csp\n\nfix(core): keep htmx indicator styles inside the strict CSP; starter landmarks and contrast",
+          "timestamp": "2026-10-31T22:14:10-03:00",
+          "tree_id": "c718aea6144b7200b702a8af5f7ae5b81651d02a",
+          "url": "https://github.com/Rullst/Rullst/commit/2c785c4b2267c34fdd630b7bcda1cd1d2335aa51"
+        },
+        "date": 1793496868874,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
             "range": "± 0",
             "unit": "ns/iter"
           },
