@@ -136,6 +136,15 @@ async fn run_queries(s: &mut Scenario<'_>) {
         ("date_eq", query().where_eq("day", date(2026, 10, 15))),
         ("date_lt", query().where_lt("day", date(2001, 1, 1))),
         ("ends_at_null", query().where_null("ends_at")),
+        // Filter values outside the 1970–2038 TIMESTAMP range.
+        (
+            "instant_after_1969",
+            query().where_gt("starts_at", instant(BOUNDARY[0].1)),
+        ),
+        (
+            "instant_before_2040",
+            query().where_lt("starts_at", instant(BOUNDARY[1].1)),
+        ),
     ];
     for (step, builder) in cases {
         s.outcome(step, sorted(builder.get().await, Event::title));

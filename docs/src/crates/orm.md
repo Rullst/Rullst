@@ -425,10 +425,12 @@ Filters such as `where_eq` and `where_in`, `Orm::raw(..).bind(..)` and
 `i32`, `i64`, `u32`, `f64`, `bool`, the `chrono` types `DateTime<Utc>`,
 `NaiveDateTime`, `NaiveDate` and `NaiveTime` (see
 [date and time columns](#date-and-time-columns)), a `#[derive(Enum)]` type
-(see [native database enums](#native-database-enums)) and `Option` of those. `None` binds SQL
-`NULL`, typed as text: on PostgreSQL write `CAST($1 AS BIGINT)` to store it in
-a column of another type. A comparison with `NULL` never matches, so filter
-missing values with `where_null`. `RullstValue` is `#[non_exhaustive]`; give a
+(see [native database enums](#native-database-enums)) and `Option` of those. In a filter
+(`where_eq`, `where_in`, `where_between`, their `or_where` variants and the
+per-column helpers) `None` is the SQL `NULL` literal: a comparison with `NULL`
+never matches, on every backend, so filter missing values with `where_null`.
+`Orm::raw(..).bind(None)` binds SQL `NULL` typed as text: on PostgreSQL write
+`CAST($1 AS BIGINT)` to store it in a column of another type. `RullstValue` is `#[non_exhaustive]`; give a
 `match` on it a wildcard arm.
 
 ```rust,no_run
@@ -641,7 +643,11 @@ the earlier statements applied.
 MySQL/MariaDB store a UTC instant in `DATETIME(6)` because their `TIMESTAMP`
 ends in 2038; SQLx sets the session time zone to `+00:00`, so values and
 `CURRENT_TIMESTAMP` defaults are UTC (other clients see the same UTC wall
-time). A `ColumnDefault::CurrentTimestamp` default is the current UTC time in
+time). The ORM sends a `DateTime<Utc>` (a model field, a filter value or an
+`Orm::raw` binding) to them as its UTC wall time in a `DATETIME` parameter:
+MariaDB turns SQLx's own `TIMESTAMP` parameter into `NULL` outside
+1970–2038. When you bind a `DateTime<Utc>` with SQLx directly, bind
+`value.naive_utc()` for the same effect. A `ColumnDefault::CurrentTimestamp` default is the current UTC time in
 the column's own form: `CURRENT_TIMESTAMP` on a PostgreSQL `TIMESTAMPTZ`, the
 UTC wall time (`CURRENT_TIMESTAMP AT TIME ZONE 'UTC'`) on the zone-less types,
 `CURRENT_TIMESTAMP(6)`, `(CURRENT_DATE)` or `(CURRENT_TIME(6))` on

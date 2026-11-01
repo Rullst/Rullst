@@ -121,7 +121,8 @@ fn the_any_pool_binds_dates_as_iso_text() {
     assert_eq!(super::temporal::time(&at.time()), "09:30:00.500");
 }
 
-/// Strict pools bind SQLx's own `chrono` codecs.
+/// Strict pools bind SQLx's own `chrono` codecs; a UTC instant goes through
+/// `__bind_field::wire` (its UTC wall time on MySQL/MariaDB).
 #[cfg(any(
     feature = "strict-postgres",
     feature = "strict-mysql",
@@ -130,7 +131,10 @@ fn the_any_pool_binds_dates_as_iso_text() {
 #[test]
 fn strict_pools_bind_dates_natively() {
     let at = instant();
-    assert_eq!(super::temporal::date_time(&at), at);
+    assert_eq!(
+        super::temporal::date_time(&at),
+        crate::__bind_field::wire(at)
+    );
     assert_eq!(
         super::temporal::naive_date_time(&at.naive_utc()),
         at.naive_utc()
