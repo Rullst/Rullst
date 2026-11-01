@@ -36,7 +36,7 @@ branch policy, and they prevent force pushes and branch deletion. A public
 ruleset without bypass actors mirrors each branch's classic protection:
 
 - the [development-branch ruleset](https://github.com/Rullst/Rullst/rules/24175738)
-  requires 19 checks on `main` and does not require an up-to-date base;
+  requires 20 checks on `main` and does not require an up-to-date base;
 - the [maintained-branch ruleset](https://github.com/Rullst/Rullst/rules/24080901)
   requires 46 checks and an up-to-date base on `v12`.
 

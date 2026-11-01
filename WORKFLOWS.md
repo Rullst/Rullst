@@ -345,10 +345,10 @@ packaged-distribution gate compiles a crates-only consumer of the extracted
 
 ## Recommended branch-protection profiles
 
-**`main` (v13 development)** requires the fast gate of 19 checks that every
+**`main` (v13 development)** requires the fast gate of 20 checks that every
 ready pull request emits: Code Quality & Format; Run Tests (ubuntu-latest / workspace) and
 (ubuntu-latest / cli-standard); Check MSRV (Rust 1.96.0); ORM strict-sqlite,
-strict-postgres and strict-mysql; Redis live contracts; Generated release access
+strict-postgres and strict-mysql; ORM differential databases; Redis live contracts; Generated release access
 boundaries; Facade shared-local recovery composition; Versioned deterministic AI
 evals; Build book and validate local links; Validate workflow syntax and
 expressions; Enforce Zero Panics (published runtime targets); Enforce production
