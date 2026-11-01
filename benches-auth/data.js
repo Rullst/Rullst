@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793490295466,
+  "lastUpdate": 1793493111743,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -19947,6 +19947,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4218,
             "range": "± 66",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27abf6b00679c2912cf71037e4b1bd08fc517f96",
+          "message": "Merge pull request #607 from Rullst/fix/v13-rc1-orm-null-and-mariadb-time\n\nfix(orm): keep MariaDB instants outside 1970-2038 and match None filters on PostgreSQL",
+          "timestamp": "2026-10-31T21:13:31-03:00",
+          "tree_id": "f172c9152a73be4da8618440d587a9ec17bd1688",
+          "url": "https://github.com/Rullst/Rullst/commit/27abf6b00679c2912cf71037e4b1bd08fc517f96"
+        },
+        "date": 1793493110940,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1042,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 746,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1763,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4439,
+            "range": "± 62",
             "unit": "ns/iter"
           }
         ]
