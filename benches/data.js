@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793494327122,
+  "lastUpdate": 1793495863728,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -31297,6 +31297,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1715,
             "range": "± 24",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2c785c4b2267c34fdd630b7bcda1cd1d2335aa51",
+          "message": "Merge pull request #608 from Rullst/fix/v13-rc1-htmx-indicator-csp\n\nfix(core): keep htmx indicator styles inside the strict CSP; starter landmarks and contrast",
+          "timestamp": "2026-10-31T22:14:10-03:00",
+          "tree_id": "c718aea6144b7200b702a8af5f7ae5b81651d02a",
+          "url": "https://github.com/Rullst/Rullst/commit/2c785c4b2267c34fdd630b7bcda1cd1d2335aa51"
+        },
+        "date": 1793495860139,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 670,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 886,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 398,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1788,
+            "range": "± 25",
             "unit": "ns/iter"
           }
         ]
