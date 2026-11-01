@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793492341711,
+  "lastUpdate": 1793494327122,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -31243,6 +31243,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1736,
             "range": "± 26",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "84ecb2965d409da8d2035b3d02a2ed40fe059303",
+          "message": "Merge pull request #605 from Rullst/test/v13-rc1-browser-a11y\n\ntest(ci): cross-browser/a11y checks on generated starters and weekly cargo-careful",
+          "timestamp": "2026-10-31T21:48:02-03:00",
+          "tree_id": "781305bc315eb2ad7e26cce30b08c4540c07ca2a",
+          "url": "https://github.com/Rullst/Rullst/commit/84ecb2965d409da8d2035b3d02a2ed40fe059303"
+        },
+        "date": 1793494323974,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 686,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 883,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 409,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1715,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
