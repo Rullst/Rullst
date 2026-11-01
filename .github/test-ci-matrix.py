@@ -21,7 +21,7 @@ ALL_PLATFORMS = ["ubuntu-latest", "macos-latest", "windows-latest"]
 PR_GATE_SHARDS = ["workspace", "cli-standard"]
 ALL_SHARDS = ["workspace", "cli-standard", "cli-profiles-basic", "cli-profiles-relational",
               "cli-profiles-polyglot", "cli-saas-foundation", "cli-saas-product"]
-# The ci.yml contexts among the 19 required status checks of the main ruleset
+# The ci.yml contexts among the 20 required status checks of the main ruleset
 # (`gh api repos/Rullst/Rullst/rulesets/24175738`). Every PR run must report
 # each of them, or a newer run would leave a required check missing.
 REQUIRED_CI_CONTEXTS = {
@@ -32,6 +32,7 @@ REQUIRED_CI_CONTEXTS = {
     "ORM strict-sqlite",
     "ORM strict-postgres",
     "ORM strict-mysql",
+    "ORM differential databases",
     "Redis live contracts",
     "Generated release access boundaries",
     "Facade shared-local recovery composition",
