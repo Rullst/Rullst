@@ -71,7 +71,7 @@
 - [~] **DevSecOps Git Hook Engine (`cargo rullst hook:install`)**: Safely preserves/chains hooks and runs format, all-feature Clippy and bounded unsafe/IDOR checks. CI and review remain authoritative.
 - [x] **Framework Toolchain & Security Doctor (`cargo rullst doctor`)**: Diagnostics parse/enforce the declared Rust 1.96 MSRV and check linters, cargo-audit, cargo-geiger, cargo-deny, Kani and supporting tools; autofix reports success only after verification.
 - [~] **Rustls-first network stack (`tls-rustls`)**: First-party HTTP/SQLx paths prefer Rustls, but a universal zero-OpenSSL/zero-FFI guarantee across every optional transitive dependency is not promised.
-- [ ] **Supply-Chain Dependency Attestation (`cargo-vet` & `cargo-deny`)**: Cryptographic dependency verification and viral license prevention.
+- [~] **Supply-Chain Dependency Checks (`cargo-deny`)**: CI checks licenses, advisories, bans and sources with `cargo-deny` and `cargo audit`, and releases are attested. `cargo-vet` review is not planned while Rullst has a sole maintainer (see the [verification roadmap](../ROADMAP.md#verification-roadmap)).
 - [ ] **Zero-Downtime Secret Rotation & JWKS Server (`rullst-security::key_rotation`)**: Automated cryptographic key rotation with transition grace periods and dynamic `/oauth/jwks.json` serving, meeting SOC2/PCI-DSS compliance.
 - [ ] **Passkeys & WebAuthn FIDO2 Engine (`rullst-security::webauthn`)**: Native passwordless biometrics (Touch ID, Face ID, Windows Hello) and hardware token (YubiKey) authentication.
 - [ ] **Multi-Tenant SaaS Data Isolation Guard (`rullst-security::tenant_guard`)**: Zero-trust multi-tenancy middleware guaranteeing database query isolation and preventing cross-tenant data leakage in multi-tenant DB schemas.

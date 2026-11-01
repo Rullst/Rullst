@@ -761,7 +761,8 @@ gh api --paginate --slurp \
 
 ## Verification roadmap
 
-Planned assurance experiments (Loom/Shuttle, `cargo-vet` and others) are
-tracked in the [verification roadmap](ROADMAP.md#verification-roadmap).
+Assurance experiments that do not run today (an optional Shuttle pilot, and
+the decisions not to adopt `cargo-vet` or `fail-rs`) are recorded in the
+[verification roadmap](ROADMAP.md#verification-roadmap).
 Differential database testing, the cross-browser and accessibility checks
 and `cargo-careful` moved from it to the jobs described above.
