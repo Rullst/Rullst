@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793493176850,
+  "lastUpdate": 1793495096823,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -12369,6 +12369,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 550,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "84ecb2965d409da8d2035b3d02a2ed40fe059303",
+          "message": "Merge pull request #605 from Rullst/test/v13-rc1-browser-a11y\n\ntest(ci): cross-browser/a11y checks on generated starters and weekly cargo-careful",
+          "timestamp": "2026-10-31T21:48:02-03:00",
+          "tree_id": "781305bc315eb2ad7e26cce30b08c4540c07ca2a",
+          "url": "https://github.com/Rullst/Rullst/commit/84ecb2965d409da8d2035b3d02a2ed40fe059303"
+        },
+        "date": 1793495096147,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 534,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
