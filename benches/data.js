@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793570397878,
+  "lastUpdate": 1793621836327,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -31405,6 +31405,58 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1506,
             "range": "± 54",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "@venelouis",
+            "username": "venelouis",
+            "email": "37526748+venelouis@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "5a70b05d3147d0a483b0d467fd6c0b347c2741e7",
+          "message": "Merge pull request #609 from Rullst/ci/v13-require-orm-differential\n\nci: require the ORM differential databases check on main",
+          "timestamp": "2026-11-01T21:54:42Z",
+          "url": "https://github.com/Rullst/Rullst/commit/5a70b05d3147d0a483b0d467fd6c0b347c2741e7"
+        },
+        "date": 1793621832209,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 573,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 775,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 443,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1461,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
