@@ -76,10 +76,7 @@ pub(super) async fn success_response(
     if response.status().is_success() {
         Ok(response)
     } else {
-        Err(AiError::ApiError(format!(
-            "{provider} returned HTTP {}",
-            response.status()
-        )))
+        Err(super::http_error::status_error(response, provider).await)
     }
 }
 

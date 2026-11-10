@@ -187,11 +187,7 @@ impl OpenAiCompatibleProvider {
             .await
             .map_err(redacted_transport_error)?;
         if !response.status().is_success() {
-            return Err(AiError::ApiError(format!(
-                "{} returned HTTP {}",
-                self.provider_name(),
-                response.status()
-            )));
+            return Err(super::http_error::status_error(response, self.provider_name()).await);
         }
         if response
             .content_length()

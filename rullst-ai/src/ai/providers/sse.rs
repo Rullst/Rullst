@@ -189,10 +189,10 @@ pub(super) async fn read_stream(
         response = request.send() => response.map_err(transport_error)?,
     };
     if !response.status().is_success() {
-        return Err(AiError::ApiError(format!(
-            "{provider} returned HTTP {}",
-            response.status()
-        )));
+        return Err(tokio::select! {
+            () = cancellation.cancelled() => AiError::Cancelled,
+            error = super::http_error::status_error(response, provider) => error,
+        });
     }
     validate_headers(&response, max_response_bytes)?;
     let mut decoder = SseDecoder::new(max_response_bytes);

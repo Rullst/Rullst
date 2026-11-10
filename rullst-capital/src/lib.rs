@@ -3,10 +3,14 @@
 //!
 //! [`BillingProvider`] and [`MeteredBillingProvider`] are the provider
 //! contracts. [`StripeProvider`] is the supported adapter. [`InfinitePayProvider`]
-//! is experimental: it runs offline fixtures only, and its live checkout and
-//! callback verification return [`CapitalError::UnsupportedOperation`]. Other
-//! gateways implement the traits in application code. Empty or `mock_*`
-//! credentials select deterministic offline fixtures.
+//! is experimental and performs no real operation today: it runs offline
+//! fixtures only, and its live checkout and callback verification return
+//! [`CapitalError::UnsupportedOperation`] before any HTTP request. Its model
+//! does not match InfinitePay's public Checkout API, whose webhook is unsigned
+//! and must be confirmed with `payment_check`; to charge through InfinitePay,
+//! implement [`BillingProvider`] in the application. Other gateways implement
+//! the traits in application code too. Empty or `mock_*` credentials select
+//! deterministic offline fixtures.
 //!
 //! The crate also provides webhook signature, freshness and replay verification
 //! (the default `axum` feature adds the `verify_webhook` middleware), the

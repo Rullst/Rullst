@@ -131,6 +131,45 @@ A prepared version section does not establish that its tag or crates exist.
   `h1` as `h2` instead of `h3` (axe `landmark-one-main`, `region` and
   `heading-order`). `examples/lms`'s dashboard sign-out buttons use `#dc2626`
   (4.83:1) instead of white on `#ef4444` (3.76:1).
+- `rullst-ai`: `GeminiProvider` generates with `gemini-3.5-flash-lite`,
+  Google's current Flash-Lite model, when the application does not call
+  `with_model`. The previous default, `gemini-2.5-flash-lite`, is from the 2.5
+  line, which a new Google AI Studio key could not use (requests failed with
+  HTTP 404). The embedding default stays `gemini-embedding-001` (listed until
+  May 14, 2028), because another embedding model would make stored vectors
+  incomparable with new ones. Reported while upgrading an application.
+- `rullst-ai`: when a provider answers with an HTTP error, `AiError::ApiError`
+  now includes the provider's own error code and message after the status,
+  for example `Gemini returned HTTP 429 Too Many Requests:
+  RESOURCE_EXHAUSTED: You exceeded your current quota…`, instead of only the
+  status, which did not say which quota ran out or that a model was gone. The
+  `<Provider> returned HTTP <status>` prefix is unchanged, so matching on
+  `HTTP 429` keeps working. The message comes only from a JSON body (at most
+  16 KiB read), is one line of at most 300 characters, and has URL queries,
+  URL credentials, `key=`/`token=` values and key-shaped tokens redacted.
+  This applies to the OpenAI, Gemini, Anthropic, DeepSeek, Ollama and
+  OpenAI-compatible transports, streaming included. Reported while upgrading
+  an application.
+- `rullst-core`: the `Locales::iter` documentation said "in catalog order";
+  it now says the order is that of the tags given to `Locales::new` or, for a
+  `catalog!`, the tags sorted in byte order (`en`, `es`, `pt-BR`), with the
+  default locale not first, and shows how to start a language menu with it.
+- `rullst-capital` documentation: the InfinitePay adapter's README, book and
+  rustdoc entries now say plainly that it performs no real operation (real
+  credentials make checkout and webhook handling return
+  `UnsupportedOperation` before any request), that InfinitePay's public
+  Checkout API sends an unsigned webhook confirmed with `payment_check`, and
+  how to charge through InfinitePay with an application-owned
+  `BillingProvider`. The new one-time Stripe checkout section says that the
+  production CSRF baseline answers the webhook `POST` with 403 until its path
+  is in `[security] csrf_signed_webhook_paths`, and that redirect URLs must be
+  HTTPS even with a `mock_` key.
+- The remote Studio install commands in the documentation add
+  `--no-default-features`
+  (`cargo install rullst-studio --version =… --no-default-features --features remote --locked`),
+  which no longer builds the PostgreSQL and MySQL drivers and the SQLite queue
+  that only Studio's local pages use. Reported while upgrading an
+  application.
 
 ### Security
 

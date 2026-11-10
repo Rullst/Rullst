@@ -51,6 +51,13 @@ pub struct StripePaymentCheckoutRequest {
 }
 
 impl StripePaymentCheckoutRequest {
+    /// Creates a one-time purchase attempt for an existing Stripe customer.
+    ///
+    /// `success_url` and `cancel_url` must be bounded credential-free HTTPS
+    /// URLs without fragments. They are checked here, before the key that will
+    /// send the request is known, so `http://localhost` is rejected even for a
+    /// `mock_*` key that never opens it; pass the `https://` form in local
+    /// development.
     pub fn new(
         customer_id: impl Into<String>,
         price: StripeOneTimePrice,
