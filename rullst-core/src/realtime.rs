@@ -1,4 +1,5 @@
-//! Native Real-Time Engine (Channels, Broadcast, Presence).
+//! Native Real-Time Engine (Channels, Broadcast, Presence) and its
+//! Server-Sent Events delivery ([`RealtimeSse`]).
 
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
@@ -7,6 +8,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::broadcast;
 
 use crate::security::{TenantContext, tenant_namespaced_name};
+
+mod sse;
+pub use sse::{RealtimeSse, RealtimeSseConfig};
 
 const MAX_CHANNEL_BYTES: usize = 128;
 const MAX_EVENT_BYTES: usize = 128;

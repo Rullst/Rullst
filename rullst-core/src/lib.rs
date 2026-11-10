@@ -1,8 +1,8 @@
 //! The runtime of the Rullst framework: the HTTP [`Server`] and Axum-based
 //! [`Router`] (with the [`routes!`] and [`html!`] macros), the default
 //! security baseline, configuration, health and lifecycle probes, queues,
-//! scheduling, caching, storage, realtime and Live UI, i18n and process
-//! telemetry.
+//! scheduling, caching, storage, realtime channels with Server-Sent Events,
+//! i18n and process telemetry.
 //!
 //! **Maturity: Core**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). Most
@@ -40,7 +40,7 @@ pub mod artisan;
 pub mod cache;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cache_control;
-/// Edge client components rendering module.
+/// Browser (`wasm32`) caller of typed server functions.
 pub mod client;
 /// Portable, versioned wire contract shared by web and platform clients.
 pub mod client_contract;
@@ -75,9 +75,6 @@ pub mod i18n;
 #[cfg(not(target_arch = "wasm32"))]
 /// Process readiness and graceful request-drain coordination.
 pub mod lifecycle;
-#[cfg(not(target_arch = "wasm32"))]
-/// Live state synchronization and server-push connection handlers.
-pub mod live;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod monitor;
 #[cfg(not(target_arch = "wasm32"))]
@@ -157,9 +154,7 @@ macro_rules! artisan {
 }
 
 // Re-export procedural macros
-pub use rullst_macros::{
-    html, island, live_component, live_event, memoize, route, server_function,
-};
+pub use rullst_macros::{html, memoize, route, server_function};
 
 // Re-export core structs for public consumption
 #[cfg(not(target_arch = "wasm32"))]
@@ -209,7 +204,8 @@ pub use di::{Container, DiError, Inject, Injectable};
 pub use queue::{Queue, QueuedJobDetail, Worker, WorkerHandle};
 #[cfg(not(target_arch = "wasm32"))]
 pub use realtime::{
-    BroadcastManager, Channel, RealtimeError, RealtimeMessage, TenantPresence, TenantRealtime,
+    BroadcastManager, Channel, RealtimeError, RealtimeMessage, RealtimeSse, RealtimeSseConfig,
+    TenantPresence, TenantRealtime,
 };
 #[cfg(not(target_arch = "wasm32"))]
 pub use scheduler::{Scheduler, SchedulerError, SchedulerFailurePolicy, SchedulerHandle};

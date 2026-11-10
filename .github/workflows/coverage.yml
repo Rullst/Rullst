@@ -145,17 +145,6 @@ jobs:
       - name: Measure private S3 access and service restart contracts
         run: bash .github/test-storage-s3-live.sh --coverage
 
-      - name: Set up Node for the Live recovery browser contract
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-
-      - name: Measure Live recovery with Chromium and an application restart
-        run: >-
-          cargo llvm-cov --no-report -p rullst-core --no-default-features
-          --test live_recovery -- --ignored --exact
-          chromium_recovers_across_disconnects_and_process_restart --nocapture
-
       - name: Measure distributed propagation with a standard TLS collector
         run: python3 .github/check-distributed-tracing.py --coverage
 

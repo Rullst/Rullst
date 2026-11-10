@@ -84,7 +84,7 @@ pub fn render_pricing_page(
                                     <div class="tier-price">"$29" <span class="tier-period">"/mo"</span></div>
                                     <ul class="tier-features">
                                         <li>"Up to 50 Published Stories"</li>
-                                        <li>"LiveView Real-time Comments"</li>
+                                        <li>"Real-time Comment Updates"</li>
                                         <li>"AI Assistant & Semantic RAG"</li>
                                     </ul>
                                 </div>
