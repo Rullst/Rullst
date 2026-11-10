@@ -95,7 +95,8 @@ html, body { height: 100%; }
 .nexus-page-badge { font-size: 12px; color: var(--text-300); background: var(--bg-700); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; }
 
 /* == Table ============================================================= */
-.nexus-table-wrap { background: var(--bg-800); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+/* Wide tables scroll sideways; the rounded border still clips the rows. */
+.nexus-table-wrap { background: var(--bg-800); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; margin-bottom: 16px; }
 .nexus-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .nexus-thead-row { background: var(--bg-700); border-bottom: 1px solid var(--border); }
 .nexus-th { text-align: left; padding: 12px 16px; font-weight: 600; font-size: 12px; letter-spacing: 0.04em; color: var(--text-300); text-transform: uppercase; white-space: nowrap; }
@@ -139,12 +140,13 @@ html, body { height: 100%; }
 @keyframes nexus-toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
 /* == Modal ============================================================= */
+/* Centred without a transform: a transformed dialog would become the
+   containing block of the fixed toast that nexus.js moves into it. */
 .nexus-modal {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    margin: 0;
+    inset: 0;
+    margin: auto;
+    height: fit-content;
     background: var(--bg-800);
     border: 1px solid var(--border);
     border-radius: 12px;

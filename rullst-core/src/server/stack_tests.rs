@@ -322,3 +322,30 @@ async fn development_telemetry_counts_panics_and_responses_of_outer_layers() {
     );
     assert!(body["http"]["server_errors_total"].as_u64().unwrap() >= 1);
 }
+
+#[tokio::test]
+async fn html_pages_of_the_server_vary_on_hx_request() {
+    async fn page(htmx: crate::HtmxRequest) -> axum::response::Html<String> {
+        crate::render_page(&htmx, "T", crate::html! { <p>"x"</p> })
+    }
+    let app = Server::new(Router::new().route("/page", axum::routing::get(page)))
+        .into_static_app(SecurityConfig::default(), Environment::Production)
+        .unwrap();
+    for htmx in [false, true] {
+        let mut request = Request::builder().uri("/page");
+        if htmx {
+            request = request.header("HX-Request", "true");
+        }
+        let mut request = request.body(Body::empty()).unwrap();
+        request
+            .extensions_mut()
+            .insert(ConnectInfo(PROXY.parse::<SocketAddr>().unwrap()));
+        let response = app.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get(axum::http::header::VARY).unwrap(),
+            "HX-Request",
+            "htmx: {htmx}"
+        );
+    }
+}

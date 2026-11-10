@@ -26,7 +26,7 @@ use declarations::{
 
 #[path = "html_attributes.rs"]
 mod attributes;
-use attributes::{HtmlAttribute, allows_data_urls, url_guard_tokens};
+use attributes::{HtmlAttribute, allows_data_urls, option_value_probe_tokens, url_guard_tokens};
 
 #[path = "html_control.rs"]
 mod control;
@@ -228,11 +228,15 @@ impl HtmlElement {
             needs_url_guard |= uses_url_guard;
             attr_tokens.push(tokens);
         }
-        let url_guard = if needs_url_guard {
+        // Local helper items: the URL guard and the `Option` value probe.
+        let mut helpers = if needs_url_guard {
             url_guard_tokens()
         } else {
             TokenStream::new()
         };
+        if self.attributes.iter().any(HtmlAttribute::is_dynamic) {
+            helpers.extend(option_value_probe_tokens());
+        }
 
         let child_tokens = self.children.iter().map(|child| child.to_tokens());
 
@@ -245,7 +249,7 @@ impl HtmlElement {
         if self.children.is_empty() && is_void {
             quote! {
                 {
-                    #url_guard
+                    #helpers
                     let mut #buffer = String::with_capacity(#capacity);
                     #buffer.push_str("<");
                     #buffer.push_str(#tag);
@@ -257,7 +261,7 @@ impl HtmlElement {
         } else {
             quote! {
                 {
-                    #url_guard
+                    #helpers
                     let mut #buffer = String::with_capacity(#capacity);
                     #buffer.push_str("<");
                     #buffer.push_str(#tag);
