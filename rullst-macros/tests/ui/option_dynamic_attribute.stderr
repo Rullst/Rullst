@@ -1,0 +1,17 @@
+error: use of deprecated method `main::RullstOptionAttributeValue::rullst_attribute_value`: `name={value}` with an `Option` writes `name=""` for `None`, and an empty boolean attribute such as `disabled` or `selected` is still on: write `name?={value}` to leave the attribute out for `None`, or pass `value.unwrap_or_default()` to keep the empty value
+  --> tests/ui/option_dynamic_attribute.rs:31:27
+   |
+31 |         <button disabled={note} title={&owned} aria-busy={busy} name={label}>{note}</button>
+   |                           ^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui/option_dynamic_attribute.rs:1:9
+   |
+ 1 | #![deny(deprecated)]
+   |         ^^^^^^^^^^
+
+error: use of deprecated method `main::RullstOptionAttributeValue::rullst_attribute_value`: `name={value}` with an `Option` writes `name=""` for `None`, and an empty boolean attribute such as `disabled` or `selected` is still on: write `name?={value}` to leave the attribute out for `None`, or pass `value.unwrap_or_default()` to keep the empty value
+  --> tests/ui/option_dynamic_attribute.rs:31:40
+   |
+31 |         <button disabled={note} title={&owned} aria-busy={busy} name={label}>{note}</button>
+   |                                        ^

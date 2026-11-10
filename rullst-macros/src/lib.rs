@@ -69,9 +69,16 @@ mod server_function;
 ///
 /// # Attributes
 ///
-/// - `name="text"` is written as it is (author-owned source).
+/// - `name="text"` is written as it is (author-owned source), except that a
+///   `"` (a Rust `\"`) is written `&quot;` so it cannot end the attribute:
+///   `content="{\"a\":1}"` writes `content="{&quot;a&quot;:1}"`.
 /// - `name={value}` is always written, with the value escaped; a `bool` is
-///   written as `"true"`/`"false"`, as `aria-*` attributes expect.
+///   written as `"true"`/`"false"`, as `aria-*` attributes expect. An
+///   `Option` there is deprecated and warns at compile time: `None` writes
+///   `name=""`, and an empty boolean attribute such as `disabled` or
+///   `selected` is still on. Write `name?={value}` instead, or pass
+///   `value.unwrap_or_default()` to keep the empty value. Text interpolation
+///   (`{option}`) is unaffected.
 /// - A bare `name` is written without a value: `<input required disabled>`.
 /// - `name?={value}` is present or absent at runtime: a `bool` writes the bare
 ///   name or nothing, an `Option<T>` writes `name="value"` (escaped like

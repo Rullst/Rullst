@@ -198,6 +198,44 @@ try {
     await closed();
     await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
     assert.equal(await evaluate("getComputedStyle(document.querySelector('#nexus-sidebar')).transitionDuration"), "0s");
+    // A wide table scrolls sideways inside its rounded wrapper.
+    await resize(1200);
+    assert.deepEqual(await evaluate(`(() => {
+      const wrap = document.querySelector('.nexus-table-wrap');
+      const style = getComputedStyle(wrap);
+      return {overflowX: style.overflowX, wider: wrap.scrollWidth > wrap.clientWidth, rounded: style.borderTopLeftRadius !== '0px'};
+    })()`), { overflowX: "auto", wider: true, rounded: true }, "wide Nexus table");
+    // A failed save while the record dialog is open: the browser draws the
+    // modal dialog above the page, so the message must move into it.
+    await evaluate("document.getElementById('nexus-modal').showModal()");
+    await click("#nexus-modal [data-nexus-save]");
+    await evaluate(`new Promise((resolve, reject) => {
+      const deadline = Date.now() + 5000;
+      (function poll() {
+        if (document.querySelector('#nexus-toast .nexus-toast')) return resolve();
+        if (Date.now() > deadline) return reject(new Error('no toast after a failed save'));
+        setTimeout(poll, 50);
+      })();
+    })`);
+    assert.deepEqual(await evaluate(`(() => {
+      const dialog = document.getElementById('nexus-modal');
+      const toast = document.querySelector('#nexus-toast .nexus-toast');
+      const box = toast.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+      const frame = dialog.getBoundingClientRect();
+      return {
+        inDialog: toast.closest('dialog') === dialog,
+        onTop: toast.contains(hit),
+        inViewport: box.width > 0 && box.right <= innerWidth && box.bottom <= innerHeight,
+        centred: Math.abs(frame.left + frame.width / 2 - innerWidth / 2) < 2,
+        text: toast.textContent,
+      };
+    })()`), { inDialog: true, onTop: true, inViewport: true, centred: true, text: "❌ Save failed: not found" }, "save error above the dialog");
+    await click("#nexus-modal .nexus-modal-close");
+    assert.deepEqual(await evaluate(`(() => ({
+      open: document.getElementById('nexus-modal').open,
+      home: document.querySelector('.nexus-main').lastElementChild?.id,
+    }))()`), { open: false, home: "nexus-toast" }, "toast host back in the page");
     assert.deepEqual(await evaluate("window.__cspViolations"), [], "Content-Security-Policy violations");
     // Disabled JavaScript must leave ordinary navigation visible, not trapped.
     await send("Emulation.setScriptExecutionDisabled", { value: true });

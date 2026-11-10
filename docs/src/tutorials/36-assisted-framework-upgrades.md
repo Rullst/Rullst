@@ -438,7 +438,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (108 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (99 rows).
+  of inputs that previously failed) (100 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
 has 125 rules. A row can map to several rules and a rule to
@@ -660,6 +660,7 @@ the rule together.
 | CLI `auth` on database starters | (c) none | — | CLI behaviour on new runs; earlier generated files are unchanged; introduced in 13.0.0-alpha.4 |
 | CLI `--no-database` files | (c) none | — | Generator output for new projects; an empty `rullst.db` is not located; introduced in 13.0.0-alpha.4 |
 | CLI `make:migration:auto` without a database to compare | (b) review | `V13-CLI-MIGRATION-AUTO-STATUS` | Workflows, root scripts, Makefile and justfile that run `make:migration:auto`, which exits with status 1 when there is no SQLite database to compare; introduced in 13.0.0-alpha.4, rule since 13.0.0-rc.1 |
+| `html!` attribute values and `render_page` | (c) none | — | The compiler's `deprecated` warning locates each `Option` in `name={value}`; the quote escaping and the whole-page htmx answers need no change; introduced in 13.0.0-rc.1 |
 | Internals hidden from the API documentation | (c) none | — | The items still compile in alpha.4; only their documentation and compatibility promise change; introduced in 13.0.0-alpha.4 (alpha.5 makes most private: Hidden internals made private) |
 | Duplicate API paths removed | (a) must-change | `V13-API-ALIAS-PATHS` | `rullst::rullst_orm`, `rullst::security_runtime`, `rullst_mail::mail`, `rullst_mail::drivers::mock` and their `rullst::mail::` forms, in paths and in `use` trees (braced groups included); introduced in 13.0.0-alpha.5 |
 | Hidden internals made private | (b) review | `V13-HIDDEN-INTERNALS-PRIVATE` | Module paths (`artisan::runner`, `server::dylib_loader`, `tenant::CURRENT_TENANT`, the three `schema::` statics, `passkey::cbor`, `client::DEFAULT_HTTP_CLIENT`, `rullst_connect::macros`) and distinctive names (`encrypt_aes_gcm`, `impl_standard_redirect_url!`, `get_real_rss_memory_mb`, `field_kind_sql`, …); review because a bare name can be the application's own; a failed gate repeats the guidance; introduced in 13.0.0-alpha.5 |

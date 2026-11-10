@@ -1762,7 +1762,10 @@ the same server-authoritative controls.
   enabled, suggests `HOST=127.0.0.1` so a proxy on the same host cannot be
   bypassed; since 13.0.0-alpha.4 the same line says to keep `HOST=0.0.0.0`
   when the proxy reaches the application over a container network, as in the
-  generated compose deployment. The default bind address is unchanged.
+  generated compose deployment, and since 13.0.0-rc.1 it says that a
+  container sharing the host network (`--network host`, Quadlet
+  `Network=host`) behind a proxy on the host still needs `HOST=127.0.0.1`.
+  The default bind address is unchanged.
 * **Default Dynamic Cache Boundary:** `headers_middleware` supplies
   `Cache-Control: no-store` only when the handler has not already selected an
   explicit cache policy. Versioned public/static responses can therefore opt
@@ -1968,8 +1971,8 @@ the same server-authoritative controls.
   at runtime. A `javascript:` or `vbscript:` scheme, or `data:` outside `img`,
   `audio`, `video`, `source`, `track` and `image`, renders as `#`. Leading C0
   controls or spaces and embedded tab/LF/CR are ignored while reading the
-  scheme, as browsers do. Static attribute strings are author-owned and
-  unchanged; entity references inside an explicit `RawHtml` value are not
+  scheme, as browsers do. Static attribute strings are author-owned and not
+  checked; entity references inside an explicit `RawHtml` value are not
   decoded before the check.
 * **Event-handler attributes:** A dynamic value for an `on*` attribute or
   htmx's `hx-on`/`hx-on-*` (also `data-` prefixed) is a compile-time error,
@@ -1993,10 +1996,19 @@ the same server-authoritative controls.
   `Markup::from_trusted`) is the explicit escape hatch for trusted HTML
   produced outside `html!`, such as a sanitizer's or renderer's output. It
   is never needed for `html!` output and must never wrap request data.
-* **Attributes:** `name="text"` is author-owned source and written as it is.
+* **Attributes:** `name="text"` is author-owned source and written as it
+  is, except that since 13.0.0-rc.1 a `"` in it (a Rust `\"`) is written
+  `&quot;`, so `content="{\"a\":1}"` no longer ends the attribute at the
+  second quote; character references the author wrote (`&amp;`) are kept.
   `name={value}` is always written with the value escaped: a `bool` as
   `"true"`/`"false"` (what `aria-*` and `data-*` expect) and `None` as an
-  empty value. Since 13.0.0-alpha.2 a bare `name` (`<input required
+  empty value. Since 13.0.0-rc.1 an `Option` (or `&Option`) value in that
+  form is deprecated: the output is unchanged, but the expansion raises a
+  `deprecated` warning at the value, because `name=""` still turns a boolean
+  attribute such as `disabled` or `selected` on. `name?={value}` leaves the
+  attribute out for `None`; `value.unwrap_or_default()` keeps the empty
+  value. The check resolves by autoref on the value's type at compile time,
+  costs nothing at run time and does not apply to `{option}` text. Since 13.0.0-alpha.2 a bare `name` (`<input required
   disabled>`) is written without a value, and a conditional `name?={value}`
   is decided at runtime through `rullst::html::OptionalAttribute`: a `bool`
   writes the bare name or nothing, and an `Option<T>` writes `name="value"`,
@@ -4663,6 +4675,17 @@ store package of the same site, only installs it.
 * 🟢 **`[Implemented / Bounded]` `render_page_with_head`:** Core's
   `render_page_with_lang` with extra `Markup` at the end of `<head>`; an htmx
   request still receives only the content.
+* 🟢 **`[Implemented / Bounded]` htmx history restores and boosted requests:**
+  since 13.0.0-rc.1, `render_page`, `render_page_with_lang` and
+  `render_page_with_head` answer `HX-History-Restore-Request: true` (htmx
+  1.9.12 sends it with `HX-Request: true` after a history cache miss and
+  replaces the whole `<body>`) and `HX-Boosted: true` with the whole page;
+  any other `HX-Request: true` request still receives only the content.
+  `HtmxRequest` does not expose the two headers. Under `Server`, every
+  `text/html` response of the application's routes carries
+  `Vary: HX-Request` (added to an existing `Vary` unless it already names the
+  header or is `*`), so a cache keeps a page and the fragment of one URL
+  apart.
 * 🟢 **`[Implemented / Bounded]` htmx indicators under the strict CSP:** since
   13.0.0-rc.1, `render_page`, `render_page_with_lang` and
   `render_page_with_head` with a request CSP nonce (Rullst's security
