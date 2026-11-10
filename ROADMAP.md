@@ -268,6 +268,13 @@ to the counts above.
     segments in the access log; an application stylesheet for Nexus; the
     remote Studio without database drivers or Capital; no development key
     written to the project root by tests.
+  - **Removed to keep 13.0 lean** (decided 10 November 2026; no application
+    used them): WebAssembly islands (`#[island]`, `make:island`, the client
+    build), which the default CSP could not run without `'wasm-unsafe-eval'`;
+    both Live stacks (`#[live_component]`/`make:live` and
+    `rullst::live::recovery`), replaced for server push by Server-Sent Events
+    from the realtime channels with the htmx SSE extension; and the Turso
+    variants of the billing generator.
   - **Brought forward from the 13.x and v14 lists:** unquoted text in `html!`
     (quoted literals keep working); `OtaManager` fields private behind getters
     of the same names; and the four breaking clean-ups of the v14 list below,
