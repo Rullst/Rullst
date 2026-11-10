@@ -13,17 +13,19 @@ const LOCK: &str = "version = 4\n\n[[package]]\nname = \"app\"\nversion = \"0.1.
     source = \"registry+https://github.com/rust-lang/crates.io-index\"\n";
 
 /// Runs `green --url <its own server> <RULLST_GREEN_ARGS>` when a parent test
-/// names a report file; otherwise does nothing.
+/// names a report file (`RULLST_GREEN_URL` replaces the server's URL);
+/// otherwise does nothing.
 #[test]
 fn green_child_fixture() {
     let Some(report) = std::env::var_os("RULLST_GREEN_REPORT") else {
         return;
     };
     let server = TestServer::start();
+    let url = std::env::var("RULLST_GREEN_URL").unwrap_or_else(|_| server.base.to_string());
     let arguments = std::env::var("RULLST_GREEN_ARGS").unwrap();
     let matches = command()
         .try_get_matches_from(
-            ["green", "--url", server.base.as_str()]
+            ["green", "--url", url.as_str()]
                 .into_iter()
                 .chain(arguments.split('\u{1f}').filter(|word| !word.is_empty())),
         )
@@ -42,6 +44,11 @@ fn green_child_fixture() {
 
 /// The child's PID, the outcome of `run`, what it printed and its stderr.
 fn green(arguments: &[&str]) -> (u32, String, String, String) {
+    green_at(None, arguments)
+}
+
+/// [`green`] measuring `url` instead of the child's own server.
+fn green_at(url: Option<&str>, arguments: &[&str]) -> (u32, String, String, String) {
     let project = tempfile::tempdir().unwrap();
     std::fs::write(project.path().join("Cargo.lock"), LOCK).unwrap();
     let report = project.path().join("report");
@@ -56,6 +63,9 @@ fn green(arguments: &[&str]) -> (u32, String, String, String) {
         .env("RULLST_GREEN_REPORT", &report)
         .env("RULLST_GREEN_ARGS", arguments.join("\u{1f}"))
         .env("NO_COLOR", "1");
+    if let Some(url) = url {
+        command.env("RULLST_GREEN_URL", url);
+    }
     let output = output_within(command, Duration::from_secs(60));
     assert!(output.status.success(), "{output:?}");
     let report = std::fs::read_to_string(report).unwrap();
@@ -128,4 +138,44 @@ fn the_terminal_report_announces_the_benchmark_on_stderr() {
         );
     }
     assert!(!shown.trim_start().starts_with('{'), "{shown}");
+}
+
+/// Nothing answers on the port: the JSON report still carries the figures
+/// that need no running app, with the failure inside, and run fails.
+#[test]
+fn an_unreachable_app_still_reports_the_static_figures_and_the_failure() {
+    let port = super::super::target::free_port().unwrap();
+    let url = format!("http://127.0.0.1:{port}");
+    let (_, outcome, shown, stderr) = green_at(Some(&url), &["--bench", "--json"]);
+    assert_eq!(outcome, format!("Nothing answered on {url}/."));
+    let report: serde_json::Value = serde_json::from_str(&shown).unwrap();
+    assert_eq!(report["schema"], "rullst.green.v1");
+    assert_eq!(report["measured"]["dependency_count"]["value"], 1);
+    assert_eq!(report["failure"]["stage"], "reach");
+    assert_eq!(report["failure"]["title"], "App not reachable");
+    assert_eq!(report["target"]["url"], format!("{url}/"));
+    assert_eq!(report["target"]["pid"], serde_json::Value::Null);
+    for reason in [
+        &report["measured"]["binary_size_bytes"]["reason"],
+        &report["measured"]["idle_rss_bytes"]["reason"],
+        &report["benchmark"]["cpu_time_seconds"]["reason"],
+    ] {
+        assert_eq!(reason, "the app was not reachable", "{report}");
+    }
+    assert_eq!(report["benchmark"]["status"], "not_run");
+    assert!(stderr.contains("App not reachable"), "{stderr}");
+    assert!(!stderr.contains("Benchmarking"), "{stderr}");
+
+    let (_, outcome, shown, _) = green_at(Some(&url), &[]);
+    assert_eq!(outcome, format!("Nothing answered on {url}/."));
+    for expected in [
+        "Dependencies  1 ",
+        "Process       NOT RUNNING",
+        "Not measured\n  App not reachable: the app was not reachable",
+    ] {
+        assert!(
+            shown.contains(expected),
+            "missing `{expected}` in:\n{shown}"
+        );
+    }
 }

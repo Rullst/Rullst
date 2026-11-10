@@ -92,17 +92,26 @@ fn target_rows(report: &Report) -> Vec<Row> {
         ("release_build", None) => "release build started by green".to_string(),
         _ => "existing app (--url)".to_string(),
     };
+    let absent = if report.failure.is_some() {
+        "NOT RUNNING"
+    } else {
+        "NOT FOUND"
+    };
     let process = match target.pid {
         Some(pid) => row(
             "Process",
             format!("PID {pid}"),
             target.process_lookup.clone(),
         ),
-        None => missing("Process", "NOT FOUND", target.process_lookup.clone()),
+        None => missing("Process", absent, target.process_lookup.clone()),
+    };
+    let url = match &target.url {
+        Some(url) => row("URL", url.clone(), ""),
+        None => missing("URL", "NONE", target.process_lookup.clone()),
     };
     vec![
         row("Mode", mode, target.environment.unwrap_or_default()),
-        row("URL", target.url.clone(), ""),
+        url,
         process,
     ]
 }
@@ -127,11 +136,11 @@ fn benchmark_rows(report: &Report) -> Vec<Row> {
         benchmark.concurrency,
         benchmark.requests,
     ) else {
-        return vec![missing(
-            "Benchmark",
-            "NOT RUN",
+        let reason = report.failure.as_ref().map_or(
             "pass --bench to measure CPU time per request",
-        )];
+            super::failure::Failure::unmeasured,
+        );
+        return vec![missing("Benchmark", "NOT RUN", reason)];
     };
     vec![
         row(
@@ -271,6 +280,17 @@ pub(super) fn render(report: &Report, style: Style) -> String {
             out.push('\n');
         }
         out.push('\n');
+    }
+    if let Some(failure) = &report.failure {
+        out.push_str(&format!("{}\n", style.bold("Not measured")));
+        out.push_str(&format!(
+            "  {}\n",
+            style.yellow(&format!("{}: {}", failure.title, failure.unmeasured()))
+        ));
+        out.push_str(&format!(
+            "  {}\n\n",
+            style.dim("Figures that need the running app are NOT MEASURED; the error and its fix follow on stderr.")
+        ));
     }
     out.push_str(&format!("{}\n", style.bold("Notes")));
     for note in report.notes {
