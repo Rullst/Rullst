@@ -212,6 +212,11 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Fixed
 
+- The `APP_KEY` comment that `cargo rullst add auth` writes to `.env.example`
+  and the `cargo rullst doctor` fix for an unignored `.rullst_dev_key` still
+  said that development writes the key into the project; since this release it
+  lives in the user state directory (`rullst/dev-keys/`), and an existing
+  `.rullst_dev_key` is only read.
 - `cargo rullst upgrade` decided `V13-LMS-MEDIA-KINDS`,
   `V13-ORM-TRANSACTION-ERRORS` and `V13-PAGE-BOUNDS` from the raw file text,
   so a comment or a string could raise them (`captions_url`,
