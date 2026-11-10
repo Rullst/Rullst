@@ -108,7 +108,7 @@ fn security_store_fields_are_reviewed_only_beside_the_store() {
 use rullst_security::SecurityStore;
 fn f() {
     let store = SecurityStore::global();
-    let events = store.live_events.lock().unwrap();
+    let events = store.live_events.lock();
     let bans = store.active_bans();
 }
 "#;

@@ -10,11 +10,11 @@ use crate::{Error, Orm, RullstValue};
 
 mod model_hash;
 // Used by `#[derive(Orm)]`.
-#[doc(hidden)]
-pub use model_hash::{increment_model_hash, read_model_hash, write_model_hash};
 #[cfg(feature = "test-util")]
 #[doc(hidden)]
 pub use model_hash::model_hash_key;
+#[doc(hidden)]
+pub use model_hash::{increment_model_hash, read_model_hash, write_model_hash};
 
 /// Version 4 indexes entries in a sorted set; version 3 entries, indexed in a
 /// plain set, are never read again and expire through their TTL.
