@@ -149,3 +149,33 @@ fn the_tutorial_menu_renders_as_documented() {
          Write a note, then press <kbd>Enter</kbd>.</form></div>"
     );
 }
+
+#[test]
+fn spacing_follows_the_source_around_groups_blocks_and_comments() {
+    let (a, b, c) = (1, 2, 3);
+    let page = html! {
+        <p>{a}{b} {c}</p>
+        <p>[ draft ] (a, b) 12:30, 1.5% & 3rd; a-b/c?</p>
+        <p>one /* two */ three, one<!-- two -->three</p>
+        <p>"a" {b} "c" then "quoted" text</p>
+    };
+    assert_eq!(
+        page,
+        "<p>123</p>\
+         <p>[draft] (a, b) 12:30, 1.5% & 3rd; a-b/c?</p>\
+         <p>one three, onethree</p>\
+         <p>a2c then quoted text</p>"
+    );
+}
+
+#[test]
+fn a_colon_after_a_space_starts_the_next_attribute() {
+    let page = html! {
+        <input required :value="v" disabled:x="y" />
+        <p :type="t" @click.self="s"></p>
+    };
+    assert_eq!(
+        page,
+        "<input required :value=\"v\" disabled:x=\"y\" /><p :type=\"t\" @click.self=\"s\"></p>"
+    );
+}

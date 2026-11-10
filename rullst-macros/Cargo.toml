@@ -23,9 +23,7 @@ proc-macro = true
 [dependencies]
 syn = { version = "3.0.5", features = ["full", "extra-traits"] }
 quote = "1.0.45"
-# `span-locations`: unquoted `html!` text is rebuilt from where its tokens
-# start and end (`Span::start`/`end`, real positions since Rust 1.88).
-proc-macro2 = { version = "1.0.106", features = ["span-locations"] }
+proc-macro2 = "1.0.106"
 # Parses translation catalogs for `rullst::i18n::catalog!` at compile time.
 toml = { workspace = true }
 

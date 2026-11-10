@@ -1,6 +1,7 @@
 //! Unquoted text and the Alpine.js/htmx attribute names (13.0.0-alpha.5).
-//! `syn::parse_str` keeps source positions (`span-locations`), as a real
-//! expansion does.
+//! `syn::parse_str` has no compiler spans, so these tests see unknown source
+//! positions: every gap is a space and a `:` always continues a name. The
+//! spacing a real expansion keeps is tested in `rullst-core/tests/html_grammar.rs`.
 
 use super::{HtmlDocument, HtmlNode};
 
@@ -37,40 +38,33 @@ fn texts(source: &str) -> Vec<String> {
 }
 
 #[test]
-fn words_and_punctuation_keep_the_spacing_of_the_source() {
-    assert_eq!(texts("<p>Hello, world!</p>"), ["Hello, world!"]);
-    assert_eq!(
-        texts("<p>\n    Many   spaces\n    and lines  </p>"),
-        ["Many spaces and lines"]
-    );
-    assert_eq!(
-        texts("<p>12:30, 1.5% & 3rd; a-b/c?</p>"),
-        ["12:30, 1.5% & 3rd; a-b/c?"]
-    );
+fn without_source_positions_every_gap_is_one_space() {
+    // Outside a compiler expansion (here, and for tokens another macro
+    // generated with one span) spacing is unknown; the real expansion keeps
+    // the source's spacing (`rullst-core/tests/html_grammar.rs`).
+    assert_eq!(texts("<p>Hello, world!</p>"), ["Hello , world !"]);
     assert_eq!(
         texts("<p>Hi {name}, you have {count} new</p>"),
-        ["Hi ", "{…}", ", you have ", "{…}", " new"]
+        ["Hi ", "{…}", " , you have ", "{…}", " new"]
     );
-    assert_eq!(texts("<p>{a}{b} {c}</p>"), ["{…}", "{…}", "{…}"]);
-    assert_eq!(texts("<p>({count})</p>"), ["(", "{…}", ")"]);
-    assert_eq!(texts("<p>[ draft ] (a, b)</p>"), ["[draft] (a, b)"]);
-    assert_eq!(texts("<p>Read <a>more</a>.</p>"), ["Read ", "<a>", "."]);
-    assert_eq!(
-        texts("<p>\n  Read\n  <a>more</a>\n  now\n</p>"),
-        ["Read ", "<a>", " now"]
-    );
-    assert_eq!(texts(r#"<p>Say "hi" now</p>"#), ["Say hi now"]);
+    assert_eq!(texts("<p>( {count} )</p>"), ["(", "{…}", ")"]);
+    assert_eq!(texts("<p>[ draft ] (a, b)</p>"), ["[draft] (a , b)"]);
     assert_eq!(texts(r#"<p>"a" {b} "c"</p>"#), ["a", "{…}", "c"]);
-    assert_eq!(texts("<p>{name}'s</p>"), ["{…}", "'s"]);
-    assert_eq!(texts("<p>Tom &amp; Jerry</p>"), ["Tom &amp; Jerry"]);
+    assert_eq!(texts("<p>Tom &amp; Jerry</p>"), ["Tom & amp ; Jerry"]);
     assert_eq!(texts("<p>if else for match</p>"), ["if else for match"]);
     assert_eq!(
         texts("<p>Status: @if on { done } today</p>"),
-        ["Status: ", "@", " today"]
+        ["Status : ", "@", " today"]
     );
-    // A comment between words counts as whitespace.
-    assert_eq!(texts("<p>one /* two */ three</p>"), ["one three"]);
-    assert_eq!(texts("<p>one<!-- two -->three</p>"), ["onethree"]);
+    let tokens = quote::quote! { <p>Hello, world!</p> };
+    let document = syn::parse2::<HtmlDocument>(tokens).unwrap_or_else(|e| panic!("{e}"));
+    let [HtmlNode::Element(paragraph)] = &document.nodes[..] else {
+        panic!("expected <p>");
+    };
+    let [HtmlNode::Text(text)] = &paragraph.children[..] else {
+        panic!("expected one text child");
+    };
+    assert_eq!(text.value(), "Hello , world !");
 }
 
 #[test]
@@ -100,19 +94,6 @@ fn whitespace_at_the_edges_is_dropped_everywhere() {
 }
 
 #[test]
-fn generated_tokens_without_positions_are_separated_by_spaces() {
-    let tokens = quote::quote! { <p>Hello, world!</p> };
-    let document = syn::parse2::<HtmlDocument>(tokens).unwrap_or_else(|e| panic!("{e}"));
-    let [HtmlNode::Element(paragraph)] = &document.nodes[..] else {
-        panic!("expected <p>");
-    };
-    let [HtmlNode::Text(text)] = &paragraph.children[..] else {
-        panic!("expected one text child");
-    };
-    assert_eq!(text.value(), "Hello , world !");
-}
-
-#[test]
 fn text_that_rust_or_html_syntax_owns_is_rejected_with_its_fix() {
     for (source, message) in [
         ("<p>a > b</p>", "`>` is tag syntax in html!"),
@@ -139,6 +120,14 @@ fn text_that_rust_or_html_syntax_owns_is_rejected_with_its_fix() {
             "write `@for` for a control block in html!",
         ),
         ("<p>( </p> )</p>", "unexpected closing tag inside `(…)`"),
+        (
+            r#"<p>"quoted"text</p>"#,
+            "`text` directly after a string literal is a Rust literal suffix",
+        ),
+        (
+            r#"<a class="x"y></a>"#,
+            "`y` directly after a string literal is a Rust literal suffix",
+        ),
     ] {
         let found = error(source);
         assert!(found.starts_with(message), "{source}: {found}");
@@ -155,7 +144,10 @@ fn text_that_rust_or_html_syntax_owns_is_rejected_with_its_fix() {
         "write `@else` after an `@if` block in html!"
     );
     // Text that only looks like a scheme, or keeps going, is accepted.
-    assert_eq!(texts("<p>Note: http is plain</p>"), ["Note: http is plain"]);
+    assert_eq!(
+        texts("<p>Note: http is plain</p>"),
+        ["Note : http is plain"]
+    );
     assert_eq!(texts("<p>if {ok}</p>"), ["if ", "{…}"]);
 }
 
@@ -193,10 +185,11 @@ fn alpine_and_htmx_names_parse_with_colons_at_signs_and_dots() {
             "data-2x",
         ]
     );
-    // A `:` written after a space starts the next attribute.
+    // Without positions a `:` continues the name; the compiler's positions
+    // split `required :value` (`rullst-core/tests/html_grammar.rs`).
     assert_eq!(
-        names(r#"<input required :value="v" disabled:x="y" />"#),
-        ["required", ":value", "disabled:x"]
+        names(r#"<input required :value="v" />"#),
+        ["required:value"]
     );
     assert_eq!(
         names(r#"<a @click="go" type="button"></a>"#),

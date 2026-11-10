@@ -2057,8 +2057,8 @@ the same server-authoritative controls.
   text may also be unquoted (`<p>Welcome back, {name}!</p>`), written as it
   is too (not escaped, so `&amp;` stays a character reference). The macro
   receives tokens, so it rebuilds the text from their source positions
-  (`proc-macro2`'s `span-locations`, which uses the compiler's `Span::start`
-  and `Span::end` stabilized in Rust 1.88): tokens written together stay
+  (the compiler's `proc_macro::Span::start` and `Span::end`, stabilized in
+  Rust 1.88): tokens written together stay
   together and any whitespace or comment between them becomes one space;
   between unquoted text and a neighbouring element, `{…}`, string literal or
   `@` block, whitespace becomes one space and none stays none; whitespace at
@@ -2073,7 +2073,10 @@ the same server-authoritative controls.
   `>`, character and byte literals, a URL whose `//` the compiler dropped as
   a comment (`http:`/`https:`/`ftp:`/`ws:`/`wss:` followed by a gap), a
   `///` or `//!` doc comment and `if`/`for`/`match` followed by
-  `{ <tag> … }` without `@` are compile-time errors that name the fix; an
+  `{ <tag> … }` without `@` are compile-time errors that name the fix, as is
+  a string literal written directly before a word (`"quoted"text`, in text
+  or an attribute value), which Rust reads as a literal suffix that earlier
+  releases dropped silently; an
   `else` followed by `{` or `if` remains the `@else` error. Text that
   contains quotes or apostrophes (Rust reserves `it's`), `//` or `/*`, `#`
   right after a word (`C#`), characters that are not Rust tokens (emoji,

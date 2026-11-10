@@ -77,7 +77,7 @@ fn parse_child(input: ParseStream, spaced: bool) -> Result<Child> {
         syn::braced!(content in input);
         HtmlNode::Block(content.parse::<Expr>()?)
     } else if input.peek(LitStr) {
-        HtmlNode::Text(input.parse::<LitStr>()?)
+        HtmlNode::Text(text::unsuffixed(input.parse::<LitStr>()?)?)
     } else {
         let child = if input.peek(token::Paren) || input.peek(token::Bracket) {
             text::parse_group(input)?

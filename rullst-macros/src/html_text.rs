@@ -15,12 +15,14 @@
 //!   `({count})` writes the count in parentheses.
 //!
 //! Whitespace between two nodes that are not unquoted text is ignored, as it
-//! always was. `<`, `>`, `{`, `}` and `@` are `html!` syntax, quotes and
+//! always was. Without source positions (outside a compiler expansion, or
+//! for tokens another macro generated with one span) every gap counts as
+//! whitespace. `<`, `>`, `{`, `}` and `@` are `html!` syntax, quotes and
 //! character literals are Rust literals and `//` starts a comment, so text
 //! that contains them is written as a string literal, which keeps every
 //! character and space exactly.
 
-use proc_macro2::{LineColumn, Span};
+use proc_macro2::Span;
 use syn::buffer::Cursor;
 use syn::ext::IdentExt;
 use syn::parse::ParseStream;
@@ -40,17 +42,26 @@ pub(super) enum Gap {
     Unknown,
 }
 
-fn position(location: LineColumn) -> (usize, usize) {
-    (location.line, location.column)
+/// A line and column of the source.
+type Position = (usize, usize);
+
+/// Where `span` starts and ends, from the compiler (`Span::start`/`end`,
+/// stable since Rust 1.88). Outside a macro expansion, as in this crate's
+/// unit tests, there is no compiler span and the position is unknown.
+fn location(span: Span) -> Option<(Position, Position)> {
+    if !proc_macro::is_available() {
+        return None;
+    }
+    let span = span.unwrap();
+    let (start, end) = (span.start(), span.end());
+    Some(((start.line(), start.column()), (end.line(), end.column())))
 }
 
 /// How `next` follows `previous`, from their source positions.
 pub(super) fn gap(previous: Span, next: Span) -> Gap {
-    let (start, end, next_start) = (
-        position(previous.start()),
-        position(previous.end()),
-        position(next.start()),
-    );
+    let (Some((start, end)), Some((next_start, _))) = (location(previous), location(next)) else {
+        return Gap::Unknown;
+    };
     if next_start <= start {
         Gap::Unknown
     } else if next_start == end {
@@ -112,6 +123,23 @@ fn push_text(nodes: &mut Vec<HtmlNode>, text: &str, span: Span) {
         *last = LitStr::new(&format!("{}{text}", last.value()), last.span());
     } else {
         nodes.push(HtmlNode::Text(LitStr::new(text, span)));
+    }
+}
+
+/// `lit` without a suffix: Rust reads `"quoted"text` as one string literal
+/// with the suffix `text`, which would otherwise be dropped silently.
+pub(super) fn unsuffixed(lit: LitStr) -> Result<LitStr> {
+    if lit.suffix().is_empty() {
+        Ok(lit)
+    } else {
+        Err(syn::Error::new(
+            lit.span(),
+            format!(
+                "`{}` directly after a string literal is a Rust literal suffix, not text; \
+                 put a space before it or write it inside the string literal",
+                lit.suffix()
+            ),
+        ))
     }
 }
 
@@ -278,7 +306,7 @@ fn reject_url_end(last: &Word, text: &str, spaced: bool) -> Result<()> {
 }
 
 fn ends_with_scheme(text: &str) -> bool {
-    let before = text.strip_suffix(':').unwrap_or(text);
+    let before = text.strip_suffix(':').unwrap_or(text).trim_end();
     let scheme = before
         .rsplit(|c: char| !c.is_ascii_alphanumeric())
         .next()

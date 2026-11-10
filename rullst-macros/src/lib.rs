@@ -90,8 +90,9 @@ mod server_function;
 /// `//` or `/*` (comments, as in a URL), `#` right after a word (`C#`),
 /// characters that are not Rust tokens (emoji, `€`, `—`), or needs exact
 /// whitespace (`<pre>`, `<textarea>`). `>`, character literals, a URL cut by
-/// `//`, a `///` doc comment and `if cond { <tag> }` without `@` are compile
-/// errors that say so. Text, quoted or not, is author-owned source written as
+/// `//`, a `///` doc comment, `if cond { <tag> }` without `@` and a string
+/// literal written directly before a word (`"quoted"text`, a Rust literal
+/// suffix) are compile errors that say so. Text, quoted or not, is author-owned source written as
 /// it is: `&amp;` stays a character reference. Whitespace between two nodes
 /// that are not unquoted text is ignored, as before. When the tokens carry no
 /// source positions (an `html!` that another macro generated), words are

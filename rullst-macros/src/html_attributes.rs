@@ -260,7 +260,7 @@ impl Parse for HtmlAttribute {
             if input.peek(token::Brace) {
                 HtmlAttrValue::Dynamic(braced_expr(input)?)
             } else {
-                HtmlAttrValue::Static(input.parse::<LitStr>()?)
+                HtmlAttrValue::Static(super::text::unsuffixed(input.parse::<LitStr>()?)?)
             }
         } else {
             HtmlAttrValue::Bare

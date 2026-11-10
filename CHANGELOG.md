@@ -109,10 +109,14 @@ A prepared version section does not establish that its tag or crates exist.
   space, and whitespace at the start and end of an element or block is
   dropped; `(…)` and `[…]` are text and may hold `{…}`. `>`, character
   literals, a URL that `//` cut into a comment, a `///` doc comment and
-  `if cond { <tag> }` without `@` are compile errors that name the fix.
+  `if cond { <tag> }` without `@` are compile errors that name the fix, as
+  is a string literal written directly before a word (`"quoted"text`, in
+  text or an attribute value): Rust reads the word as a literal suffix, which
+  `html!` used to drop silently.
   Whitespace between nodes that are not unquoted text is still ignored, so
-  existing templates render the same. `rullst-macros` enables
-  `proc-macro2`'s `span-locations` feature for the positions.
+  existing templates render the same. The positions come from the
+  compiler's `Span::start`/`end` (stable since Rust 1.88), so no dependency
+  feature changes.
 - `html!` attribute names take the forms Alpine.js and htmx use:
   `@click.prevent`, `:class`, `x-on:click`, `x-bind:disabled`,
   `hx-on::after-request`, `x-transition:enter.duration.500ms` and SVG's
