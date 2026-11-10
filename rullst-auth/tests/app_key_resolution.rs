@@ -11,9 +11,12 @@ use std::{
 };
 
 const CHILD_CASE: &str = "RULLST_APP_KEY_TEST_CASE";
+const STATE_ROOT: &str = "RULLST_APP_KEY_TEST_STATE";
 const VALID_KEY: &str = "0123456789abcdefghijklmnopqrstuv";
 const DOTENV_CANARY: &str = "sk_live_dotenv_redaction_canary_7Qx2";
 
+/// `project/` is the child's current directory and `state/` its per-user
+/// state directory, so no case reads or writes the real user state.
 struct IsolatedDirectory(PathBuf);
 
 impl IsolatedDirectory {
@@ -26,12 +29,17 @@ impl IsolatedDirectory {
             "rullst-auth-app-key-{}-{case}-{nonce}",
             std::process::id()
         ));
-        fs::create_dir(&path).expect("isolated test directory should be created");
+        fs::create_dir_all(path.join("project"))
+            .expect("isolated test directory should be created");
         Self(path)
     }
 
-    fn path(&self) -> &Path {
-        &self.0
+    fn path(&self) -> PathBuf {
+        self.0.join("project")
+    }
+
+    fn state(&self) -> PathBuf {
+        self.0.join("state")
     }
 }
 
@@ -43,14 +51,35 @@ impl Drop for IsolatedDirectory {
 
 fn run_isolated_case(case: &str, setup: impl FnOnce(&Path)) {
     let directory = IsolatedDirectory::new(case);
-    setup(directory.path());
+    setup(&directory.path());
+    run_child(case, &directory, false);
+}
 
-    let mut command = Command::new(std::env::current_exe().expect("test executable should exist"));
+/// Runs `case` in a child process. With `application`, the child is a copy
+/// of this test binary outside Cargo's `deps` directory, which `rullst-auth`
+/// treats as an application rather than a test harness.
+fn run_child(case: &str, directory: &IsolatedDirectory, application: bool) {
+    let mut executable = std::env::current_exe().expect("test executable should exist");
+    if application {
+        let copy = directory
+            .0
+            .join("bin")
+            .join(executable.file_name().unwrap());
+        if !copy.exists() {
+            fs::create_dir_all(copy.parent().unwrap()).unwrap();
+            fs::copy(&executable, &copy).expect("test executable should be copied");
+        }
+        executable = copy;
+    }
+    let mut command = Command::new(executable);
     command
         .arg("--exact")
         .arg("app_key_resolution_child")
         .arg("--nocapture")
         .env(CHILD_CASE, case)
+        .env(STATE_ROOT, directory.state())
+        .env("XDG_STATE_HOME", directory.state())
+        .env("LOCALAPPDATA", directory.state())
         .env_remove("APP_KEY")
         .env_remove("APP_ENV")
         .env_remove("RULLST_ENV")
@@ -134,8 +163,17 @@ fn app_key_resolution_is_fail_closed_and_durable() {
         )
         .expect("development key fixture should be written");
     });
-    run_isolated_case("development_key_is_created_privately", |_| {});
-    run_isolated_case("concurrent_first_calls_agree_on_one_key", |_| {});
+    run_isolated_case("test_harness_keeps_the_key_in_memory", |_| {});
+}
+
+#[test]
+// The development key never enters the source tree (13.0.0-alpha.5).
+fn an_application_keeps_its_development_key_in_the_user_state_directory() {
+    let directory = IsolatedDirectory::new("state");
+    run_child("development_key_is_created_privately", &directory, true);
+    run_child("state_key_survives_restarts", &directory, true);
+    let concurrent = IsolatedDirectory::new("concurrent");
+    run_child("concurrent_first_calls_agree_on_one_key", &concurrent, true);
 }
 
 fn write_malformed_dotenv(directory: &Path) {
@@ -223,6 +261,26 @@ fn legacy_toml_values_keep_existing_sessions_readable() {
     }
 }
 
+fn state_root() -> PathBuf {
+    PathBuf::from(std::env::var_os(STATE_ROOT).expect("state root")).join("rullst")
+}
+
+/// The only key file in the state directory.
+fn state_key_file() -> PathBuf {
+    let files: Vec<PathBuf> = fs::read_dir(state_root().join("dev-keys"))
+        .expect("development key directory")
+        .map(|entry| entry.expect("directory entry").path())
+        .collect();
+    assert_eq!(files.len(), 1, "{files:?}");
+    files.into_iter().next().unwrap()
+}
+
+fn state_key(file: &Path) -> Vec<u8> {
+    general_purpose::STANDARD
+        .decode(fs::read_to_string(file).expect("development key file"))
+        .expect("development key should be base64")
+}
+
 #[test]
 fn app_key_resolution_child() {
     let Ok(case) = std::env::var(CHILD_CASE) else {
@@ -265,33 +323,47 @@ fn app_key_resolution_child() {
             assert!(make_logout_cookie().contains("; Secure"));
         }
         "persisted_development_key_is_reused" => {
+            // The key file of earlier versions is still read, never moved.
             assert_eq!(
                 get_app_key().expect("persisted development key should resolve"),
                 (0_u8..32).collect::<Vec<_>>()
             );
+            assert!(!state_root().exists());
+        }
+        "test_harness_keeps_the_key_in_memory" => {
+            let generated = get_app_key().expect("development key should be generated");
+            assert_eq!(generated.len(), 32);
+            assert!(get_app_key().expect("cached key") == generated);
+            assert!(!Path::new(".rullst_dev_key").exists());
+            assert!(!state_root().exists());
         }
         "development_key_is_created_privately" => {
             let generated = get_app_key().expect("development key should be generated");
             assert_eq!(generated.len(), 32);
-            let encoded = fs::read_to_string(".rullst_dev_key")
-                .expect("generated development key should be persisted");
-            assert_eq!(
-                general_purpose::STANDARD
-                    .decode(encoded)
-                    .expect("persisted development key should be base64"),
-                generated
-            );
+            assert!(!Path::new(".rullst_dev_key").exists());
+            let file = state_key_file();
+            let name = file.file_name().unwrap().to_str().unwrap();
+            assert!(name.ends_with(".key") && name.len() == 36, "{name}");
+            assert!(state_key(&file) == generated);
 
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
-                let mode = fs::metadata(".rullst_dev_key")
-                    .expect("generated development key metadata should exist")
-                    .permissions()
-                    .mode()
-                    & 0o777;
-                assert_eq!(mode, 0o600);
+                let mode = |path: &Path| {
+                    fs::metadata(path)
+                        .expect("development key metadata should exist")
+                        .permissions()
+                        .mode()
+                        & 0o777
+                };
+                assert_eq!(mode(&file), 0o600);
+                assert_eq!(mode(file.parent().unwrap()), 0o700);
             }
+        }
+        "state_key_survives_restarts" => {
+            let file = state_key_file();
+            assert!(get_app_key().expect("state key should resolve") == state_key(&file));
+            assert_eq!(state_key_file(), file);
         }
         "concurrent_first_calls_agree_on_one_key" => {
             let start = std::sync::Arc::new(std::sync::Barrier::new(16));
@@ -308,9 +380,7 @@ fn app_key_resolution_child() {
                 .into_iter()
                 .map(|caller| caller.join().expect("caller thread"))
                 .collect();
-            let persisted = general_purpose::STANDARD
-                .decode(fs::read_to_string(".rullst_dev_key").expect("persisted key"))
-                .expect("persisted development key should be base64");
+            let persisted = state_key(&state_key_file());
             // Compare without formatting key material into assertion output.
             assert!(keys.iter().all(|key| *key == persisted));
             assert!(get_app_key().expect("cached key") == persisted);

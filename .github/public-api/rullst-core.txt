@@ -3054,6 +3054,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_core::security::ForwardedPr
 pub rullst_core::security::MachineAuthentication::Bearer
 pub rullst_core::security::MachineAuthentication::SignedWebhook
 pub rullst_core::security::MachineAuthentication::MutualTls
+pub rullst_core::security::MachineAuthentication::AddressTokenWithSourceConfirmation
 impl core::clone::Clone for rullst_core::security::MachineAuthentication
 impl core::cmp::Eq for rullst_core::security::MachineAuthentication
 impl core::cmp::PartialEq for rullst_core::security::MachineAuthentication
@@ -3066,6 +3067,7 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::security::MachineA
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::security::MachineAuthentication
 pub struct rullst_core::security::MachineEndpoint
 impl rullst_core::security::MachineEndpoint
+pub fn rullst_core::security::MachineEndpoint::address_token(method: http::method::Method, path: impl core::convert::Into<alloc::string::String>, verifier: impl rullst_core::security::MachineRequestVerifier + 'static) -> core::result::Result<Self, rullst_core::security::MachineEndpointError>
 pub fn rullst_core::security::MachineEndpoint::authentication(&self) -> rullst_core::security::MachineAuthentication
 pub fn rullst_core::security::MachineEndpoint::bearer(method: http::method::Method, path: impl core::convert::Into<alloc::string::String>, token: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_core::security::MachineEndpointError>
 pub fn rullst_core::security::MachineEndpoint::mutual_tls(method: http::method::Method, path: impl core::convert::Into<alloc::string::String>, verifier: impl rullst_core::security::MachineRequestVerifier + 'static) -> core::result::Result<Self, rullst_core::security::MachineEndpointError>

@@ -137,8 +137,11 @@ failing report and a complete declared-evidence report.
 ### Parameterized-route access contract
 
 `cargo rullst audit --idor` requires every recognized parameterized route to
-carry an adjacent `// rullst-access: public|owner|role|admin — reason` marker.
-`public` is accepted only for a recognized GET route. `owner` requires
+carry an adjacent `// rullst-access: public|owner|role|admin|machine — reason` marker.
+`public` is accepted only for a recognized GET route. `machine` is accepted only
+for a write route that a `MachineEndpoint` of the same crate registers with the
+same method and path (13.0.0-alpha.5): such a route refuses cookies, so the
+machine credential, not a browser session, is its authority. `owner` requires
 `RbacGuard::authorize_owner_or_role`; `role` requires a recognized role guard;
 and `admin` requires `RequireRoleLayer` or
 `NexusAuthPolicy::protect_router`. The latter lets application operational

@@ -62,9 +62,21 @@ envelope with authenticated metadata and an operating-system nonce. `APP_KEY` mu
 must not be a documented placeholder, and must satisfy the entropy check.
 `get_app_key` reads it from the `APP_KEY` environment variable, then `.env`,
 then `Rullst.toml`. Without one, staging and production fail with
-`AuthError::MissingAppKey`; other environments generate a development key in
-`.rullst_dev_key` in the working directory (a `cargo test` run that reaches
-`get_app_key` included). Keep that file out of Git and container images: the
+`AuthError::MissingAppKey`; other environments use a development key kept
+outside the source tree (since 13.0.0-alpha.5). A `.rullst_dev_key` that an
+earlier version wrote into the current directory is still read, but none is
+written there any more: the key lives in the per-user state directory,
+`$XDG_STATE_HOME/rullst/dev-keys/` (else `~/.local/state/rullst/dev-keys/`)
+on Unix and macOS or `%LOCALAPPDATA%\rullst\dev-keys\` on Windows, in a file
+named after the SHA-256 of the canonical project directory (owner-only on
+Unix). A test harness, an executable in Cargo's `target/<profile>/deps`
+directory where `cargo test` and cargo-nextest run unit and integration
+tests, never writes a key: it keeps a new one in memory for the process.
+`cfg(test)` cannot make this choice, because it is set only for the crate
+under test, never for `rullst-auth` as its dependency. Tests that need one
+key in several processes (for example a test that starts the server binary
+and reads its cookies) set `APP_KEY`.
+An existing `.rullst_dev_key` should stay out of Git and container images: the
 `.gitignore` and `.dockerignore` that `cargo rullst new` writes list it, and
 `cargo rullst doctor` warns when it exists and Git does not ignore it.
 
