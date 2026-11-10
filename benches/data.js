@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794347106649,
+  "lastUpdate": 1794347944836,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -32103,6 +32103,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2093,
             "range": "± 37",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bc7c69da8e1ef75989a82b5255642cfbc0158512",
+          "message": "Merge pull request #628 from Rullst/feat/v13-alpha5-generator-features\n\nfeat(cli): complete make:mfa flow, make:pwa --router and an authentication contract",
+          "timestamp": "2026-11-10T18:52:23-03:00",
+          "tree_id": "65b0bb246d20cc0a655c1a59901aa1ed71c2acde",
+          "url": "https://github.com/Rullst/Rullst/commit/bc7c69da8e1ef75989a82b5255642cfbc0158512"
+        },
+        "date": 1794347941455,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 673,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 875,
+            "range": "± 52",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 419,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2017,
+            "range": "± 28",
             "unit": "ns/iter"
           }
         ]
