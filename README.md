@@ -504,6 +504,11 @@ list every change.
   alerts ([guide](https://rullst.github.io/Rullst/book/production-monitoring.html)).
 - **OAuth login:** a login challenge store and `cargo rullst make:oauth` for
   Google, GitHub, Microsoft and Apple.
+- **Two-step verification:** `cargo rullst make:mfa` adds authenticator-app
+  setup pages with a QR code, a second sign-in step after the password and
+  provider sign-ins, and a reset command; it and `make:oauth`/`make:privacy`
+  also work with an application's own sign-in through a small
+  [authentication contract](https://rullst.github.io/Rullst/book/cli_reference.html#authentication-contract).
 - **i18n:** translations, CLDR plural rules and number, currency and date
   formatting.
 - **Typed transactions:** `Orm::transaction` returns the error of its closure.
