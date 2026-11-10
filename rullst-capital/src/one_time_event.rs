@@ -68,6 +68,11 @@ impl std::fmt::Debug for StripeOneTimeEvent {
 impl StripeProvider {
     /// Verifies an exact raw payload with signature freshness and mode binding.
     /// Supports platform accounts only. Persist replay claims with domain writes.
+    ///
+    /// In a Rullst application, list the webhook route's exact path in
+    /// `[security] csrf_signed_webhook_paths` of `Rullst.toml`; otherwise the
+    /// production CSRF baseline answers Stripe's `POST` with 403 before this
+    /// verification runs.
     pub fn verify_one_time_event(
         &self,
         payload: &[u8],
