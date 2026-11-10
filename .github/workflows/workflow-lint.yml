@@ -92,6 +92,9 @@ jobs:
         run: |
           python3 .github/test-validate-action-pins.py
           python3 .github/validate-action-pins.py
+          # Workflows that `cargo rullst new` and `add browser-tests` write.
+          python3 .github/validate-action-pins.py cargo-rullst/src/generators/project/ci/ci.yml
+          python3 .github/validate-action-pins.py cargo-rullst/src/generators/browser_tests/assets/browser-tests.yml
 
       - name: Parse workflows and enforce immutable Action references
         uses: zgosalvez/github-actions-ensure-sha-pinned-actions@76ed8a4c86957c2d27d44bab47f172193149d926 # v5.0.11
@@ -128,3 +131,11 @@ jobs:
             --workdir /repo \
             rhysd/actionlint:1.7.7@sha256:1d74bfc9fd1963af8f89a7c22afaaafd42f49aad711a09951d02cb996398f61d \
             -color
+          # The generated application workflows, linted as they are written.
+          docker run --rm \
+            --volume "$PWD:/repo" \
+            --workdir /repo \
+            rhysd/actionlint:1.7.7@sha256:1d74bfc9fd1963af8f89a7c22afaaafd42f49aad711a09951d02cb996398f61d \
+            -color \
+            cargo-rullst/src/generators/project/ci/ci.yml \
+            cargo-rullst/src/generators/browser_tests/assets/browser-tests.yml

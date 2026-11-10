@@ -1,36 +1,48 @@
 //! `catalog!`: loads the catalogs and defines `LOCALES` and `t!`.
 
-use super::catalog::{self, Catalog, Message};
+use super::catalog::{self, Catalog};
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote};
+use quote::quote;
 use syn::parse::{Parse, ParseStream};
-use syn::{Ident, LitStr, Token};
+use syn::{Ident, LitStr, Token, bracketed};
 
-/// `catalog!(default = "en", dir = "locales")`.
+/// `catalog!(default = "en", dir = "locales", order = ["en", "pt-BR"])`.
 pub(crate) struct CatalogArgs {
     default: LitStr,
     dir: Option<LitStr>,
+    /// The explicit locale order and the span of `order`.
+    order: Option<(Vec<LitStr>, Span)>,
 }
+
+const ARGUMENTS: &str = "`catalog!` takes `default = \"tag\"`, an optional `dir = \"path\"` and an optional `order = [\"tag\", …]`";
 
 impl Parse for CatalogArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut default = None;
         let mut dir = None;
+        let mut order = None;
         while !input.is_empty() {
             let name: Ident = input.parse()?;
             input.parse::<Token![=]>()?;
-            let value: LitStr = input.parse()?;
-            let slot = match name.to_string().as_str() {
-                "default" => &mut default,
-                "dir" => &mut dir,
+            let repeated = match name.to_string().as_str() {
+                "default" => default.replace(input.parse::<LitStr>()?).is_some(),
+                "dir" => dir.replace(input.parse::<LitStr>()?).is_some(),
+                "order" => {
+                    let tags;
+                    bracketed!(tags in input);
+                    let tags = tags.parse_terminated(<LitStr as Parse>::parse, Token![,])?;
+                    order
+                        .replace((tags.into_iter().collect(), name.span()))
+                        .is_some()
+                }
                 _ => {
                     return Err(syn::Error::new(
                         name.span(),
-                        "unknown argument: `catalog!` takes `default = \"tag\"` and an optional `dir = \"path\"`",
+                        format!("unknown argument: {ARGUMENTS}"),
                     ));
                 }
             };
-            if slot.replace(value).is_some() {
+            if repeated {
                 return Err(syn::Error::new(
                     name.span(),
                     format!("`{name}` is given twice"),
@@ -46,7 +58,11 @@ impl Parse for CatalogArgs {
                 "missing `default = \"tag\"`, the locale used when negotiation finds no match",
             )
         })?;
-        Ok(Self { default, dir })
+        Ok(Self {
+            default,
+            dir,
+            order,
+        })
     }
 }
 
@@ -72,11 +88,21 @@ pub(crate) fn expand_in(manifest_dir: &std::path::Path, args: &CatalogArgs) -> T
         let error = syn::Error::new(span, "`dir` must be relative to the crate's Cargo.toml");
         return with_fallback(error.to_compile_error(), &default);
     }
-    let catalog =
-        catalog::read_dir(manifest_dir, &dir).and_then(|sources| catalog::build(sources, &default));
+    let order = args
+        .order
+        .as_ref()
+        .map(|(tags, _)| tags.iter().map(LitStr::value).collect::<Vec<_>>());
+    let catalog = catalog::read_dir(manifest_dir, &dir)
+        .and_then(|sources| catalog::build(sources, &default))
+        .map_err(|messages| (messages, span))
+        .and_then(|catalog| match &order {
+            Some(order) => catalog::ordered(catalog, order)
+                .map_err(|messages| (messages, args.order.as_ref().map_or(span, |o| o.1))),
+            None => Ok(catalog),
+        });
     match catalog {
-        Ok(catalog) => generate(&catalog),
-        Err(messages) => {
+        Ok(catalog) => generate(&catalog, &dir),
+        Err((messages, span)) => {
             let errors = messages
                 .iter()
                 .map(|message| syn::Error::new(span, message).to_compile_error());
@@ -85,14 +111,20 @@ pub(crate) fn expand_in(manifest_dir: &std::path::Path, args: &CatalogArgs) -> T
     }
 }
 
-fn generate(catalog: &Catalog) -> TokenStream {
-    let tags = catalog.locales.iter().map(|locale| &locale.tag);
+/// `LOCALES`, the file tracking and a `t!` that forwards where the catalog
+/// is, not what it holds: `__translate!` reads and prepares it once per
+/// compilation, so a call costs the same whatever the catalog's size.
+fn generate(catalog: &Catalog, dir: &str) -> TokenStream {
+    let tags: Vec<&String> = catalog.locales.iter().map(|locale| &locale.tag).collect();
     let default = catalog.default;
+    let default_tag = catalog
+        .locales
+        .get(default)
+        .map_or("", |locale| locale.tag.as_str());
     let paths = catalog
         .locales
         .iter()
         .map(|locale| locale.path.to_string_lossy().into_owned());
-    let encoded = encode(catalog);
     let items = quote! {
         /// The locales of this crate's translation catalog, generated by
         /// `rullst::i18n::catalog!`.
@@ -101,7 +133,8 @@ fn generate(catalog: &Catalog) -> TokenStream {
             rullst::i18n::Locales::__from_catalog(&[#(#tags),*], #default);
         #(const _: &[u8] = include_bytes!(#paths);)*
     };
-    let translate = quote! { rullst::i18n::__translate! { #encoded ; $($input)* } };
+    let translate =
+        quote! { rullst::i18n::__translate! { #dir [#(#tags),*] #default_tag ; $($input)* } };
     define_t(items, translate)
 }
 
@@ -136,55 +169,4 @@ pub(crate) fn with_fallback(errors: TokenStream, default: &str) -> TokenStream {
             rullst::i18n::Locales::__from_catalog(&[#default], 0);
     };
     define_t(items, quote! { loop {} })
-}
-
-/// Encodes the catalog for `__translate!`:
-/// `[tag Rule, …] default { "key" kind shape [(category "form" …) …] … }`,
-/// one parenthesized group per locale with `other` last.
-pub(crate) fn encode(catalog: &Catalog) -> TokenStream {
-    let locales = catalog.locales.iter().map(|locale| {
-        let tag = &locale.tag;
-        let rule = format_ident!(
-            "{}",
-            locale.rule.map_or("Other", super::tag::PluralRule::variant)
-        );
-        quote! { #tag #rule }
-    });
-    let default = catalog.default;
-    let mut entries = Vec::new();
-    if let Some(first) = catalog.locales.first() {
-        for (key, message) in &first.messages {
-            let kind = format_ident!(
-                "{}",
-                if key.ends_with("_html") {
-                    "html"
-                } else {
-                    "text"
-                }
-            );
-            let shape = format_ident!(
-                "{}",
-                match message {
-                    Message::Single(_) => "single",
-                    Message::Plural(_) => "plural",
-                }
-            );
-            let forms = catalog
-                .locales
-                .iter()
-                .map(|locale| match locale.messages.get(key) {
-                    Some(Message::Plural(forms)) => {
-                        let forms = forms.iter().map(|(category, text)| {
-                            let category = format_ident!("{category}");
-                            quote! { #category #text }
-                        });
-                        quote! { (#(#forms)*) }
-                    }
-                    Some(Message::Single(text)) => quote! { (other #text) },
-                    None => quote! { (other "") },
-                });
-            entries.push(quote! { #key #kind #shape [#(#forms)*] });
-        }
-    }
-    quote! { [#(#locales),*] #default { #(#entries)* } }
 }

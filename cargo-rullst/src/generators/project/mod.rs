@@ -1,6 +1,7 @@
 // cargo-rullst/src/generators/project/mod.rs — Root of project generator module (< 200 lines).
 
 pub mod cargo_toml;
+pub(crate) mod ci;
 mod command;
 pub(crate) mod create;
 mod docker;
@@ -200,6 +201,7 @@ pub(crate) fn create_new_project_with_cli_options(
         blueprint: blueprint_override,
         skip_initial_migration,
         dry_run: false,
+        skip_ci: false,
     })
 }
 

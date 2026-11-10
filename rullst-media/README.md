@@ -74,6 +74,49 @@ blueprint modification. Applications opt in explicitly with
    The full authenticated Core composition is exercised in
    [the browser integration test](https://github.com/Rullst/Rullst/blob/main/rullst-media/tests/browser.rs).
 
+### Upload-only configuration and direct adapter use (13.0.0-alpha.5)
+
+An application that signs its own player links, or delivers no video through
+this crate, can manage videos with the library API key alone:
+`BunnyCredentials::upload_only(api_key)` and
+`BunnyConfig::upload_only(library, environment, credentials)` need no webhook,
+embed or CDN key, no CDN host and no `PrivateDelivery` assertion.
+`BunnyStream` then creates, signs upload grants, reads, lists, renames and
+deletes videos; `playback` and `verify_notification` return
+`MediaError::Unsupported`. `BunnyConfig::new` refuses upload-only credentials.
+The provider binding of an upload-only configuration differs from a complete
+one's, so a `sqlite` store created with one refuses the other.
+
+Code that calls the `VideoProvider` directly, without `MediaService`, can use
+`create_with_metadata(marker, &metadata)`: one call that creates the video and
+applies its title and description. Bunny's create request takes only a title,
+so the adapter still creates it with the random marker title and then updates
+it (two requests): the marker stays the identity that `find_created` searches
+after an ambiguous creation. If the metadata step fails, the created video is
+returned with its marker title; retry `update` with its id.
+
+### Library listing (13.0.0-alpha.5)
+
+`VideoProvider::list(&ListQuery)` returns one `VideoPage` of the provider
+library, including videos uploaded through the Bunny dashboard or before the
+application existed. `ListQuery::new(page, per_page)` takes a page from 1 and
+10 to 100 videos per page; `with_search(term)` keeps titles containing the term
+(case-insensitive, at most 100 bytes, blank clears it) and
+`with_order(ListOrder::Title)` sorts by title instead of upload date. Each
+`ListedVideo` holds the id, title, duration, `Processing` state, upload time in
+UTC seconds and the provider's `https` thumbnail location; `VideoPage` holds the
+page, page size, total matches and `has_more()`. The adapter sends
+`GET /library/{id}/videos?page=&itemsPerPage=&orderBy=&search=` with the
+library key, the same timeouts, no redirects, one bounded GET retry and a 1 MiB
+response cap, and rejects a page whose library, page, size, status or dates
+violate the contract (`Protocol`). Offline (`mock_*`) mode lists a fixed sample
+library of three videos (ready, processing, failed) that `get` does not store.
+Listing does not grant ownership: the application decides who may see the
+library and which listed video becomes one of its assets. A thumbnail URL is a
+location, not a playback grant; under CDN token authentication it needs a
+signature. The `s3` adapter and other implementations return `Unsupported`
+unless they override `list`.
+
 `create` uses a local creation ID bound to the original actor and metadata. Retain
 that ID for retries. `get` and cursor-based `list` require management permission;
 listing is limited to the authorized course and 100 items. `Asset.pending`,
@@ -101,7 +144,13 @@ is put in localStorage. Reload/reselect fingerprint recovery is not implemented.
 
 The browser defaults to at most 1 GiB, accepted video MIME types, 1 MiB chunks,
 4096 HTTP requests, 30-second request/authorization waits and a 15-minute run.
-The host may lower the byte limit. It checks renewal identity/origin and omits
+The host may lower the byte limit or, since 13.0.0-alpha.5, raise it with
+`maxBytes` up to `BunnyUpload.MAX_BYTES` (64 GiB). Files above 2 GiB use larger
+whole-MiB chunks (at most 2048 of them, 32 MiB at 64 GiB) and files above
+900 MiB a longer run limit of one second per MiB; `pause()`/`start()` still
+resume from the server offset. `types` replaces the accepted media types
+(`BunnyUpload.DEFAULT_TYPES` is `video/mp4`, `video/webm`, `video/quicktime`)
+with 1 to 16 lower-case `video/*` types. It checks renewal identity/origin and omits
 cookies and library keys from provider requests. The server caps upload grants
 at 3600 seconds and current permission expiry; the module refuses a grant that
 expires more than 3600 seconds plus a 300-second clock-skew allowance after its

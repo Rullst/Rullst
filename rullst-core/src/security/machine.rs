@@ -18,6 +18,19 @@ pub enum MachineAuthentication {
     SignedWebhook,
     /// Identity established by the trusted TLS transport.
     MutualTls,
+    /// v13: a notification whose address carries a per-resource secret token,
+    /// such as an HMAC of a payment reference under an application key placed
+    /// in the callback URL given to one provider, and whose claim the handler
+    /// confirms with the source system before acting.
+    ///
+    /// The verifier proves only that the caller knows that resource's address:
+    /// the body is not signed, the token gives no freshness or replay
+    /// protection, and anyone who sees the URL (provider dashboards, proxy or
+    /// server logs) can repeat or alter the request. Treat the body as a hint,
+    /// read the authoritative state from the source (for example the provider
+    /// API, by reference) and apply it idempotently. Use a high-entropy token
+    /// per resource, compared in constant time, and keep it out of logs.
+    AddressTokenWithSourceConfirmation,
 }
 
 /// Redacted configuration/authentication failure.
@@ -42,8 +55,9 @@ pub enum MachineEndpointError {
     Unauthorized,
 }
 
-/// Host-owned verifier for authoritative bearer credentials, signed webhooks or
-/// transport-authenticated mTLS identities. Implementations must fail closed, bind the exact request,
+/// Host-owned verifier for authoritative bearer credentials, signed webhooks,
+/// per-resource address tokens or transport-authenticated mTLS identities.
+/// Implementations must fail closed, bind the exact request,
 /// and enforce provider freshness/replay policy where applicable. Never accept
 /// a browser-supplied header as proof of a client certificate.
 ///
@@ -141,6 +155,25 @@ impl MachineEndpoint {
             method,
             path.into(),
             MachineAuthentication::SignedWebhook,
+            Credential::Verified(Arc::new(verifier)),
+        )
+    }
+
+    /// Registers an exact route whose verifier checks a per-resource token in
+    /// the request address, for a provider that cannot sign its notifications
+    /// (v13). The handler must confirm the notified state with the source
+    /// before acting; see
+    /// [`MachineAuthentication::AddressTokenWithSourceConfirmation`]. Place
+    /// the token in a `{name}` path segment or the query string.
+    pub fn address_token(
+        method: Method,
+        path: impl Into<String>,
+        verifier: impl MachineRequestVerifier + 'static,
+    ) -> Result<Self, MachineEndpointError> {
+        Self::new(
+            method,
+            path.into(),
+            MachineAuthentication::AddressTokenWithSourceConfirmation,
             Credential::Verified(Arc::new(verifier)),
         )
     }
