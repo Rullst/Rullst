@@ -19,9 +19,9 @@ const DELETE: &str = "DELETE FROM rullst_connect_login_challenges WHERE id_key =
 const PURGE: &str =
     "DELETE FROM rullst_connect_login_challenges WHERE expires_at <= ? ORDER BY expires_at LIMIT ?";
 
-impl sealed::Sealed for MySql {}
+impl ChallengeDatabase for MySql {}
 
-impl ChallengeDatabase for MySql {
+impl sealed::Sealed for MySql {
     async fn prepare_challenges(pool: &MySqlPool) -> Result<(), ChallengeError> {
         // MySQL commits DDL implicitly; IF NOT EXISTS keeps it idempotent.
         sqlx::query(SCHEMA)

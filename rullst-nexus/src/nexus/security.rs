@@ -33,6 +33,17 @@ pub async fn nexus_security_page(
     State(state): State<Arc<NexusState>>,
     headers: axum::http::HeaderMap,
 ) -> Html<String> {
+    render_security_page(&state, &headers, rullst_security::SecurityStore::global())
+}
+
+/// The security page for `store`; tests pass their own store instead of the
+/// process-wide one.
+#[cfg_attr(mutants, mutants::skip)]
+fn render_security_page(
+    state: &NexusState,
+    headers: &axum::http::HeaderMap,
+    store: &rullst_security::SecurityStore,
+) -> Html<String> {
     let (ai_active, provider_name) = detect_ai_provider();
     let ai_status_badge = if ai_active {
         format!(
@@ -46,7 +57,6 @@ pub async fn nexus_security_page(
         format!("<span class=\"nexus-badge nexus-badge-ai-offline\">{provider_name}</span>")
     };
 
-    let store = rullst_security::SecurityStore::global();
     let honeypots_count = store.honeypot_traps_count.load(Ordering::Relaxed);
     let active_bans_count = store.active_banned_count();
     let prompt_injections_count = store
@@ -72,13 +82,13 @@ pub async fn nexus_security_page(
 
     // Build Banned IPs List
     let mut banned_ips_html = String::new();
-    if store.banned_ips.is_empty() {
+    let active_bans = store.active_bans();
+    if active_bans.is_empty() {
         banned_ips_html.push_str(
             "<div class=\"nexus-feed-empty\">No IP addresses currently banned by WAF.</div>",
         );
     } else {
-        for ref_multi in store.banned_ips.iter() {
-            let rec = ref_multi.value();
+        for rec in &active_bans {
             banned_ips_html.push_str(&format!(
                 "<div class=\"nexus-feed-row\">\
                  <span class=\"nexus-tone-rose nexus-event-type\">{}</span>\
@@ -93,7 +103,8 @@ pub async fn nexus_security_page(
 
     // Build Honeypot Routes List
     let mut honeypot_routes_html = String::new();
-    if store.honeypot_route_hits.is_empty() {
+    let route_hits = store.honeypot_route_hits();
+    if route_hits.is_empty() {
         let default_traps = vec![
             "/.env",
             "/.env.local",
@@ -128,9 +139,7 @@ pub async fn nexus_security_page(
             ));
         }
     } else {
-        for ref_multi in store.honeypot_route_hits.iter() {
-            let path = ref_multi.key();
-            let hits = ref_multi.value().load(Ordering::Relaxed);
+        for (path, hits) in &route_hits {
             honeypot_routes_html.push_str(&format!(
                 "<div class=\"nexus-feed-row\">\
                  <span class=\"nexus-tone-amber\">{}</span>\
@@ -144,34 +153,33 @@ pub async fn nexus_security_page(
 
     // Build Live Events Feed
     let mut events_feed_html = String::new();
-    if let Ok(events) = store.live_events.lock() {
-        if events.is_empty() {
-            events_feed_html.push_str(
-                "<div class=\"nexus-feed-empty\">No in-process security events recorded. This does not prove that every security middleware is mounted.</div>",
-            );
-        } else {
-            for ev in events.iter().take(15) {
-                let tone = event_tone(ev.event_type.as_str());
-                let (integrity_badge, integrity_class) = event_integrity_badge(ev.verified_hmac);
-                events_feed_html.push_str(&format!(
-                    "<div class=\"nexus-event {}\">\
-                     <div>\
-                         <span class=\"nexus-event-type\">{}</span>\
-                         <span class=\"nexus-event-detail\">{}</span>\
-                     </div>\
-                     <div class=\"nexus-event-meta\">\
-                         <span class=\"nexus-badge {}\">{}</span>\
-                         <span class=\"nexus-event-time\">{}</span>\
-                     </div>\
-                     </div>",
-                    tone,
-                    rullst_core::html::escape_str(&ev.event_type),
-                    rullst_core::html::escape_str(&ev.details),
-                    integrity_class,
-                    integrity_badge,
-                    rullst_core::html::escape_str(&ev.timestamp_str)
-                ));
-            }
+    let events = store.live_events();
+    if events.is_empty() {
+        events_feed_html.push_str(
+            "<div class=\"nexus-feed-empty\">No in-process security events recorded. This does not prove that every security middleware is mounted.</div>",
+        );
+    } else {
+        for ev in events.iter().take(15) {
+            let tone = event_tone(ev.event_type.as_str());
+            let (integrity_badge, integrity_class) = event_integrity_badge(ev.verified_hmac);
+            events_feed_html.push_str(&format!(
+                "<div class=\"nexus-event {}\">\
+                 <div>\
+                     <span class=\"nexus-event-type\">{}</span>\
+                     <span class=\"nexus-event-detail\">{}</span>\
+                 </div>\
+                 <div class=\"nexus-event-meta\">\
+                     <span class=\"nexus-badge {}\">{}</span>\
+                     <span class=\"nexus-event-time\">{}</span>\
+                 </div>\
+                 </div>",
+                tone,
+                rullst_core::html::escape_str(&ev.event_type),
+                rullst_core::html::escape_str(&ev.details),
+                integrity_class,
+                integrity_badge,
+                rullst_core::html::escape_str(&ev.timestamp_str)
+            ));
         }
     }
 
@@ -330,12 +338,12 @@ pub async fn nexus_security_page(
 "#
     );
 
-    if wants_fragment(&headers) {
+    if wants_fragment(headers) {
         Html(content)
     } else {
         Html(render_shell(
-            &state,
-            &render_sidebar(&state, Some("security")),
+            state,
+            &render_sidebar(state, Some("security")),
             &content,
         ))
     }

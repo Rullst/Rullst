@@ -73,6 +73,7 @@ impl ModelCommittedEvent {
 /// This type is public only so generated ORM code can share the same commit
 /// boundary. Applications should normally use [`crate::Orm::transaction`] and
 /// [`after_commit`]. Dropping a scope discards every pending callback.
+// Used by `#[derive(Orm)]` and `#[rullst_orm::test]`.
 #[doc(hidden)]
 pub struct PostCommitScope {
     callbacks: CallbackQueue,

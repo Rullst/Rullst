@@ -11,7 +11,7 @@ type-indexed lookup/downcast, and each injection clones an `Arc`.
 ```rust,no_run
 use std::sync::Arc;
 use rullst::di::Container;
-use rullst::security_runtime::VaultSecret;
+use rullst::security::runtime::VaultSecret;
 
 pub struct PaymentGateway {
     api_key: VaultSecret<String>,
@@ -40,7 +40,7 @@ pub fn configure_di() -> Result<Arc<Container>, std::env::VarError> {
 }
 ```
 
-`security_runtime` requires the umbrella `security` feature. The generated
+`rullst::security::runtime` requires the umbrella `security` feature. The generated
 starters depend on `rullst-security` directly, so they can use
 `rullst_security::VaultSecret` instead. `std::env::var` reads only the process
 environment (Rullst never loads `.env` into it); use

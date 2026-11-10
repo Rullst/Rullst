@@ -8,6 +8,7 @@ use futures::Stream;
 ///
 /// Keeping the span guard inside `poll_next` avoids holding a tracing guard
 /// across an asynchronous suspension point.
+// Returned by `instrument_query_stream`, which `#[derive(Orm)]` uses.
 #[doc(hidden)]
 #[non_exhaustive]
 pub struct QueryTelemetryStream<S> {
@@ -32,6 +33,7 @@ where
 }
 
 /// Attaches bounded model metadata to every poll of a generated query stream.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub fn instrument_query_stream<S>(
     stream: S,

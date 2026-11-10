@@ -10,6 +10,7 @@ mod durable_audit;
 mod egress;
 mod egress_fetch;
 mod egress_host;
+mod error;
 mod evaluation;
 /// Mandatory prompt-injection detection and outbound PII masking.
 pub mod guardrails;
@@ -41,6 +42,7 @@ pub use egress::{EgressPolicy, EgressPolicyError, ValidatedEgressUrl};
 pub use egress_fetch::{
     EgressFetchError, EgressFetcher, EgressResolver, FetchedResource, SystemEgressResolver,
 };
+pub use error::{AiError, AiHttpError, AiJsonError, AiRequestError};
 pub use evaluation::{
     AdaptiveAiEvaluator, AiEvaluationDecision, AiEvaluationError, AiEvaluationObservation,
     AiEvaluationOutcome, AiEvaluationPolicy, AiEvaluationReport, AiEvaluationStatus,
@@ -62,56 +64,6 @@ pub use tools::*;
 pub use usage::{ChatCompletion, TokenUsage};
 pub use vector::{VectorDocument, VectorIndex, cosine_similarity};
 pub use vision::{LocalImagePolicy, MAX_VISION_IMAGE_BYTES, VisionInputError};
-
-/// Errors returned by AI providers, guardrails, and response parsing.
-#[non_exhaustive]
-#[derive(Debug, thiserror::Error)]
-pub enum AiError {
-    /// A network request failed before a provider response was received.
-    #[error("Request error: {0}")]
-    RequestError(#[from] reqwest::Error),
-    /// JSON serialization or deserialization failed.
-    #[error("Serialization error: {0}")]
-    SerializationError(#[from] serde_json::Error),
-    /// The provider returned an unsuccessful or malformed response.
-    #[error("API error: {0}")]
-    ApiError(String),
-    /// Provider or client configuration is invalid.
-    #[error("Configuration error: {0}")]
-    ConfigError(String),
-    /// Mandatory prompt-injection guardrails rejected a request.
-    #[error("Blocked by AI Firewall: {0}")]
-    BlockedByFirewall(String),
-    /// A message used a role that the portable provider interface cannot represent safely.
-    #[error("Invalid AI message role: {0}")]
-    InvalidMessageRole(String),
-    /// A JSON Schema descriptor is invalid or unsupported by the deterministic mock.
-    #[error("Invalid structured output schema: {0}")]
-    InvalidSchema(String),
-    /// A provider does not implement a capability without unsafe emulation.
-    #[error("Provider '{provider}' does not support {capability}")]
-    UnsupportedCapability {
-        /// Stable provider name.
-        provider: &'static str,
-        /// Capability that was requested.
-        capability: &'static str,
-    },
-    /// A caller explicitly cancelled an in-flight AI operation.
-    #[error("AI operation was cancelled")]
-    Cancelled,
-    /// A streaming transport violated the bounded protocol contract.
-    #[error("AI stream rejected: {0}")]
-    StreamProtocol(&'static str),
-    /// The application-provided streaming sink rejected an output chunk.
-    #[error("AI stream sink rejected a chunk")]
-    StreamSink,
-    /// A local or remote vision source failed its explicit intake policy.
-    #[error("Vision input error: {0}")]
-    VisionInput(#[from] VisionInputError),
-    /// A legacy catch-all error.
-    #[error("Error: {0}")]
-    Other(String),
-}
 
 /// A message in a chat completion prompt context.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]

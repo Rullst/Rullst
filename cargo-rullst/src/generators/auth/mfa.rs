@@ -109,7 +109,7 @@ mod tests {
         assert!(controller.contains("const APPLICATION_NAME: &str = env!(\"CARGO_PKG_NAME\");"));
         assert!(controller.contains(".unwrap_or_else(|| APPLICATION_NAME.to_owned())"));
         assert!(!controller.contains("\"Rullst\""));
-        assert!(controller.contains("use rullst::security_runtime::"));
+        assert!(controller.contains("use rullst::security::runtime::"));
         // The verifying form never carries the secret.
         let form = controller
             .split("pub struct MfaCodeForm")

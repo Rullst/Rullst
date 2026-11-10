@@ -57,6 +57,7 @@ impl RowSnapshot {
         self.fingerprints.is_some()
     }
 
+    // Used by `#[derive(Orm)]`.
     #[doc(hidden)]
     pub fn __from_fingerprints(fingerprints: &[u64]) -> Self {
         Self {
@@ -66,6 +67,7 @@ impl RowSnapshot {
 
     /// Whether the column at `index` must be written: its stored fingerprint
     /// is unknown or differs from `fingerprint`.
+    // Used by `#[derive(Orm)]`.
     #[doc(hidden)]
     pub fn __is_changed(&self, index: usize, fingerprint: u64) -> bool {
         let stored = self
@@ -81,6 +83,7 @@ impl RowSnapshot {
     }
 
     /// Whether any column of `fingerprints` must be written.
+    // Used by `#[derive(Orm)]`.
     #[doc(hidden)]
     pub fn __any_changed(&self, fingerprints: &[u64]) -> bool {
         fingerprints
@@ -144,6 +147,7 @@ fn process_keys() -> &'static RandomState {
 /// Fingerprints one column value for dirty tracking. `SecretString` values
 /// contribute their plaintext; a value that cannot be serialized yields a
 /// fingerprint that never matches.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub fn fingerprint<T: Serialize + ?Sized>(value: &T) -> u64 {
     let mut hasher = process_keys().build_hasher();
@@ -159,6 +163,7 @@ pub fn fingerprint<T: Serialize + ?Sized>(value: &T) -> u64 {
 
 /// Fingerprints a JSON column by its canonical value: object keys are sorted
 /// at every level, so a reordered but equal document is unchanged.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub fn fingerprint_json<T: Serialize + ?Sized>(value: &T) -> u64 {
     let Ok(mut value) = crate::privacy::with_secret_fingerprints(|| serde_json::to_value(value))

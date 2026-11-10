@@ -12,6 +12,7 @@ use crate::html::Markup;
 /// Serde types are stored as JSON, unless reading them back would change
 /// them (see [`is_exact_json`]). [`Markup`] is stored as its HTML and read
 /// back as the same `Markup`, so memoized views can return `html!` output.
+// Used by `#[memoize]`.
 #[doc(hidden)]
 pub trait MemoValue: Sized {
     /// The cached form of `self`, or `None` when it must not be cached.

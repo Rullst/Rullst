@@ -7,6 +7,10 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
+
+#[path = "jwks/key_set.rs"]
+mod key_set;
+pub use key_set::JsonWebKeySet;
 use std::time::{Duration, Instant};
 
 use jsonwebtoken::jwk::JwkSet;
@@ -75,7 +79,7 @@ impl Default for JwksCachePolicy {
 
 #[derive(Clone)]
 struct CacheEntry {
-    keys: Arc<JwkSet>,
+    keys: JsonWebKeySet,
     fetched_at: Instant,
     /// Last refresh, successful or not, forced by an unknown `kid` while fresh.
     forced_refresh_at: Option<Instant>,
@@ -93,7 +97,7 @@ pub struct JwksCache {
 
 /// Result of consulting a fresh cached set for a `kid`.
 enum FreshLookup {
-    Found(Arc<JwkSet>),
+    Found(JsonWebKeySet),
     Throttled,
     Refresh,
 }
@@ -113,7 +117,7 @@ impl JwksCache {
         &self,
         url: &str,
         client: &dyn HttpClient,
-    ) -> Result<Arc<JwkSet>, ConnectError> {
+    ) -> Result<JsonWebKeySet, ConnectError> {
         if let Some(entry) = self.cached(url).await
             && self.is_fresh(&entry)
         {
@@ -160,7 +164,7 @@ impl JwksCache {
         url: &str,
         kid: &str,
         client: &dyn HttpClient,
-    ) -> Result<Arc<JwkSet>, ConnectError> {
+    ) -> Result<JsonWebKeySet, ConnectError> {
         validate_kid(kid)?;
 
         match self.lookup_fresh(url, kid).await {
@@ -257,7 +261,7 @@ impl JwksCache {
             .clone()
     }
 
-    async fn store(&self, url: &str, keys: Arc<JwkSet>, forced_refresh_at: Option<Instant>) {
+    async fn store(&self, url: &str, keys: JsonWebKeySet, forced_refresh_at: Option<Instant>) {
         self.entries.write().await.insert(
             url.to_string(),
             CacheEntry {
@@ -295,7 +299,7 @@ fn validate_kid(kid: &str) -> Result<(), ConnectError> {
     Ok(())
 }
 
-async fn fetch_remote(url: &str, client: &dyn HttpClient) -> Result<Arc<JwkSet>, ConnectError> {
+async fn fetch_remote(url: &str, client: &dyn HttpClient) -> Result<JsonWebKeySet, ConnectError> {
     let validated_url = crate::configuration::validate_jwks_url(url)?;
     let keys = client
         .get(validated_url.to_string())
@@ -304,17 +308,8 @@ async fn fetch_remote(url: &str, client: &dyn HttpClient) -> Result<Arc<JwkSet>,
         .error_for_status()?
         .json::<JwkSet>()
         .await?;
-    Ok(Arc::new(keys))
+    Ok(JsonWebKeySet::new(keys))
 }
-
-/// Legacy raw cache retained for source compatibility. Verification no longer
-/// consumes entries from this map because they do not carry freshness metadata.
-#[deprecated(
-    since = "12.0.0",
-    note = "use JwksCache; raw entries cannot satisfy TTL or rotation guarantees"
-)]
-pub static JWKS_CACHE: LazyLock<RwLock<HashMap<String, Arc<JwkSet>>>> =
-    LazyLock::new(|| RwLock::new(HashMap::new()));
 
 static PROCESS_JWKS_CACHE: LazyLock<JwksCache> = LazyLock::new(JwksCache::default);
 
@@ -322,7 +317,7 @@ static PROCESS_JWKS_CACHE: LazyLock<JwksCache> = LazyLock::new(JwksCache::defaul
 pub async fn fetch_and_cache_jwks(
     url: &str,
     client: &dyn HttpClient,
-) -> Result<Arc<JwkSet>, ConnectError> {
+) -> Result<JsonWebKeySet, ConnectError> {
     PROCESS_JWKS_CACHE.get(url, client).await
 }
 
@@ -332,7 +327,7 @@ pub async fn fetch_and_cache_jwks_for_kid(
     url: &str,
     kid: &str,
     client: &dyn HttpClient,
-) -> Result<Arc<JwkSet>, ConnectError> {
+) -> Result<JsonWebKeySet, ConnectError> {
     PROCESS_JWKS_CACHE.get_for_kid(url, kid, client).await
 }
 

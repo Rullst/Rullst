@@ -1,5 +1,11 @@
 use thiserror::Error;
 
+impl ClientContractError {
+    pub(crate) fn invalid_json(error: serde_json::Error) -> Self {
+        Self::InvalidJson(ContractJsonError::new(error))
+    }
+}
+
 /// Fail-closed client-contract validation or codec error.
 #[derive(Debug, Error)]
 #[non_exhaustive]
@@ -51,8 +57,35 @@ pub enum ClientContractError {
     },
     /// Incoming JSON did not satisfy the typed envelope.
     #[error("client contract JSON is invalid")]
-    InvalidJson(#[source] serde_json::Error),
+    InvalidJson(#[source] ContractJsonError),
     /// A typed response could not be serialized.
     #[error("client contract JSON encoding failed")]
-    EncodeJson(#[source] serde_json::Error),
+    EncodeJson(#[source] ContractJsonError),
+}
+
+/// The JSON decoder's or encoder's own error behind
+/// [`ClientContractError::InvalidJson`] and [`ClientContractError::EncodeJson`].
+///
+/// `Display` is that error's message, which names the line and column of a
+/// syntax error. The JSON library is an implementation detail, so its error
+/// type is not exposed.
+#[derive(Debug)]
+pub struct ContractJsonError(serde_json::Error);
+
+impl ContractJsonError {
+    pub(crate) fn new(error: serde_json::Error) -> Self {
+        Self(error)
+    }
+}
+
+impl std::fmt::Display for ContractJsonError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
+impl std::error::Error for ContractJsonError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.0.source()
+    }
 }

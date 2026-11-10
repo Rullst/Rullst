@@ -36,11 +36,7 @@ pub(super) async fn read_json(
         return Err(oversized());
     }
     let mut bytes = Vec::new();
-    while let Some(chunk) = response
-        .chunk()
-        .await
-        .map_err(|error| AiError::RequestError(error.without_url()))?
-    {
+    while let Some(chunk) = response.chunk().await.map_err(AiError::request)? {
         if bytes.len().saturating_add(chunk.len()) > MAX_RESPONSE_BYTES {
             return Err(oversized());
         }

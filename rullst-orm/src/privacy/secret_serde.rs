@@ -46,6 +46,7 @@ impl Drop for RedactionScope {
 ///
 /// Generated `to_json()` and search projections use this scope. It applies to
 /// the current thread for the duration of the synchronous closure only.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub fn with_redacted_secrets<R>(serialize: impl FnOnce() -> R) -> R {
     let _scope = RedactionScope::enter();

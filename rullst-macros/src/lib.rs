@@ -213,6 +213,7 @@ pub fn i18n_catalog(input: TokenStream) -> TokenStream {
 }
 
 /// Expands a `t!` call against the catalog that `catalog!` encoded into it.
+// Used by the `t!` that `catalog!` generates, as `rullst::i18n::__translate!`.
 #[doc(hidden)]
 #[proc_macro]
 pub fn __i18n_translate(input: TokenStream) -> TokenStream {

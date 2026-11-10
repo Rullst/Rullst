@@ -86,6 +86,13 @@ fn rules_carry_the_release_of_their_change() {
     assert_eq!(
         codes_introduced_in("13.0.0-alpha.5"),
         [
+            "V13-API-ALIAS-PATHS",
+            "V13-HIDDEN-INTERNALS-PRIVATE",
+            "V13-SECURITY-STORE-COLLECTIONS",
+            "V13-ERROR-PAYLOADS",
+            "V13-SECURITY-GLOBAL-COLLECTIONS",
+            "V13-CONNECT-JWKS-KEY-SET",
+            "V13-AI-HTTP-STATUS",
             "V13-ISLANDS-REMOVED",
             "V13-ISLAND-COMMANDS-REMOVED",
             "V13-LIVE-REMOVED",

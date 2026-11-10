@@ -41,7 +41,7 @@ async fn child_runs_a_database_command_on_its_open_pool() {
             Err(error) => panic!("PostgreSQL pool did not open: {error}"),
         }
     }
-    let _ = rullst_core::artisan::runner::check_and_run_artisan(Vec::new(), Vec::new()).await;
+    let _ = rullst_core::artisan::check_and_run_artisan(Vec::new(), Vec::new()).await;
     panic!("check_and_run_artisan returned instead of running `db:status`");
 }
 

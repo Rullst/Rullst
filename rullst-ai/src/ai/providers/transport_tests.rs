@@ -186,7 +186,7 @@ async fn native_provider_deadline_covers_stalled_response_body() {
         panic!("expected actual transport timeout");
     };
     assert!(error.is_timeout());
-    assert!(error.url().is_none());
+    assert!(!format!("{error} {error:?}").contains("http://"));
 }
 
 #[tokio::test]

@@ -260,6 +260,73 @@ A prepared version section does not establish that its tag or crates exist.
   memory; tests that need one key in several processes set `APP_KEY`.
   Reported while upgrading an application.
 
+### Changed
+
+- **Breaking:** one path per item: `rullst::rullst_orm` (the same module as
+  `rullst::orm`), `rullst::security_runtime` (the same as
+  `rullst::security::runtime`), Mail's `rullst_mail::mail` alias of the crate
+  root and `rullst_mail::drivers::mock` (the same as `rullst_mail::mock`) were
+  removed. Write `rullst::orm` (with `use rullst::orm as rullst_orm;` where code
+  names `rullst_orm`), `rullst::security::runtime`, `rullst_mail::…` and
+  `rullst_mail::mock`. `cargo rullst upgrade` reports each use
+  (`V13-API-ALIAS-PATHS`).
+- **Breaking:** the internals that 13.0.0-alpha.4 hid from the documentation
+  and that no Rullst macro expansion or other Rullst crate uses are now
+  crate-private: Core `server::dylib_loader` and `artisan::runner`
+  (`artisan::check_and_run_artisan` stays); ORM `tenant::CURRENT_TENANT`,
+  `schema::QUERY_LOGGING`, `QUERY_TIMEOUT_SECS`, `MAX_QUERY_LIMIT`,
+  `privacy::encrypt_aes_gcm`/`decrypt_aes_gcm` and
+  `Orm::redis_cache_namespace`; Auth `passkey::cbor`; Connect's
+  `impl_standard_redirect_url!`/`impl_standard_refresh_token!` macros, its
+  `macros` module, `client::DEFAULT_HTTP_CLIENT` and the `ChallengeDatabase`
+  methods (now on its sealed supertrait); Security `current_timestamp_str`;
+  Nexus `generate_smart_nexus_ai_response`. Security's
+  `get_real_rss_memory_mb` (use `rullst_core::radar::get_process_memory_mb`)
+  and Nexus's unused `field_kind_sql` were removed. `Outbox::claim_next_at` and
+  `query_cache::model_hash_key` moved behind the new non-default `test-util`
+  feature of `rullst-orm` (test suites only, outside the 13.x stability
+  promise), and `query_cache::query_key` and `query_cache::invalidate_table`
+  are now documented. The `#[doc(hidden)]` items that stay public name the
+  macro or crate that uses them in a comment.
+  `cargo rullst upgrade` reviews the names (`V13-HIDDEN-INTERNALS-PRIVATE`).
+- **Breaking:** the `banned_ips`, `honeypot_route_hits` and `live_events`
+  fields of `rullst_security::SecurityStore` are private, so `dashmap` is no
+  longer in its API; the new `active_bans`, `is_banned`,
+  `honeypot_route_hits` and `live_events` methods return sorted copies. Nexus
+  renders its security page from them (`V13-SECURITY-STORE-COLLECTIONS`).
+  `deception::global_deception_routes()` returns the new `DeceptionRoutes`
+  (`contains`, `len`, `is_empty`, `routes`), `default_deception_traps()` a
+  sorted `Vec<String>`, and `rate_limit::global_rate_limit_store()` is
+  private, so `dashmap` is no longer a public dependency
+  (`V13-SECURITY-GLOBAL-COLLECTIONS`).
+- **Breaking:** `JwksCache::get`/`get_for_kid` and
+  `fetch_and_cache_jwks`/`fetch_and_cache_jwks_for_kid` return the new
+  `JsonWebKeySet` (`key_ids`, `contains_key_id`, `len`, `is_empty`) instead of
+  `jsonwebtoken`'s `JwkSet`, and the deprecated `JWKS_CACHE` static was
+  removed, so `jsonwebtoken` is no longer a public dependency
+  (`V13-CONNECT-JWKS-KEY-SET`).
+- **Breaking:** no public error variant or `From` conversion names a
+  `reqwest`, `jsonwebtoken`, `base64`, `redis` or `serde_json` error any more,
+  so those crates are no longer public dependencies through errors.
+  `AiError::RequestError` carries the new `AiRequestError` (`is_timeout`,
+  `is_connect`), `AiError::SerializationError` the new `AiJsonError`,
+  `ClientContractError::InvalidJson`/`EncodeJson` the new `ContractJsonError`
+  and `TwinSyncError::Serialization` the new `TwinJsonError` (`TwinSyncError`
+  is now `#[non_exhaustive]` and implements `Error`); their texts and
+  `source()` chains are unchanged. `ConnectError` lost its `From` impls for
+  `reqwest`, `serde_json`, `base64` and `jsonwebtoken` errors and
+  `rullst_orm::Error` those for `serde_json` and `redis` errors: map them
+  where `?` relied on them; the variants the crates produce are unchanged
+  (`V13-ERROR-PAYLOADS`).
+- **Breaking:** an unsuccessful HTTP status from an AI provider returns the new
+  `AiError::HttpStatus(AiHttpError)` instead of `AiError::ApiError`, with the
+  status code as a number, the `Retry-After` delay (or Gemini's `RetryInfo`
+  delay) and the provider's error code and bounded message from the body, so
+  an application no longer searches the text for `429` or `404`. The text is
+  unchanged (`API error: Gemini returned HTTP 429 Too Many Requests: …`).
+  `AiHttpError::new` builds one in custom providers and tests. Reported while
+  upgrading an application (`V13-AI-HTTP-STATUS`).
+
 ### Removed
 
 - **Breaking:** WebAssembly islands. The `#[island]` attribute

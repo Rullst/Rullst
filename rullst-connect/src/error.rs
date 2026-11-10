@@ -182,27 +182,21 @@ pub(crate) fn provider_returned_error(error: &str, description: &str) -> Connect
     }
 }
 
-impl From<reqwest::Error> for ConnectError {
-    fn from(err: reqwest::Error) -> Self {
-        ConnectError::Reqwest(err.to_string())
+// No public `From` conversion names a dependency's error type, so `reqwest`,
+// `serde_json`, `base64` and `jsonwebtoken` stay out of the public API; the
+// crate converts them with these constructors, keeping the same variants and
+// messages.
+impl ConnectError {
+    pub(crate) fn http(err: reqwest::Error) -> Self {
+        Self::Reqwest(err.to_string())
     }
-}
 
-impl From<serde_json::Error> for ConnectError {
-    fn from(err: serde_json::Error) -> Self {
-        ConnectError::Json(err.to_string())
+    pub(crate) fn json(err: serde_json::Error) -> Self {
+        Self::Json(err.to_string())
     }
-}
 
-impl From<base64::DecodeError> for ConnectError {
-    fn from(err: base64::DecodeError) -> Self {
-        ConnectError::Base64(err.to_string())
-    }
-}
-
-impl From<jsonwebtoken::errors::Error> for ConnectError {
-    fn from(err: jsonwebtoken::errors::Error) -> Self {
-        ConnectError::Jwt(err.to_string())
+    pub(crate) fn jwt(err: jsonwebtoken::errors::Error) -> Self {
+        Self::Jwt(err.to_string())
     }
 }
 
@@ -218,50 +212,36 @@ mod tests {
 
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_reqwest_error_conversion() {
+    fn dependency_errors_keep_their_variants_and_messages() {
         let err = reqwest::Client::new()
             .get("htt p://invalid")
             .build()
             .unwrap_err();
-        let connect_err: ConnectError = err.into();
-        match connect_err {
-            ConnectError::Reqwest(_) => (),
-            _ => panic!("Expected ConnectError::Reqwest"),
-        }
-    }
+        let message = err.to_string();
+        let connect_err = ConnectError::http(err);
+        assert!(matches!(&connect_err, ConnectError::Reqwest(text) if *text == message));
+        assert_eq!(
+            connect_err.to_string(),
+            format!("HTTP request failed: {message}")
+        );
 
-    #[test]
-    fn test_serde_json_error_conversion() {
-        let err: serde_json::Error =
-            serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
-        let connect_err: ConnectError = err.into();
-        match connect_err {
-            ConnectError::Json(_) => (),
-            _ => panic!("Expected ConnectError::Json"),
-        }
-    }
+        let err = serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
+        let message = err.to_string();
+        let connect_err = ConnectError::json(err);
+        assert!(matches!(&connect_err, ConnectError::Json(text) if *text == message));
+        assert_eq!(
+            connect_err.to_string(),
+            format!("Failed to parse JSON: {message}")
+        );
 
-    #[test]
-    fn test_base64_error_conversion() {
-        use base64::Engine;
-        let err = base64::engine::general_purpose::STANDARD
-            .decode("invalid!base64")
-            .unwrap_err();
-        let connect_err: ConnectError = err.into();
-        match connect_err {
-            ConnectError::Base64(_) => (),
-            _ => panic!("Expected ConnectError::Base64"),
-        }
-    }
-
-    #[test]
-    fn test_jwt_error_conversion() {
         let err = jsonwebtoken::decode_header("invalid.jwt.header").unwrap_err();
-        let connect_err: ConnectError = err.into();
-        match connect_err {
-            ConnectError::Jwt(_) => (),
-            _ => panic!("Expected ConnectError::Jwt"),
-        }
+        let message = err.to_string();
+        let connect_err = ConnectError::jwt(err);
+        assert!(matches!(&connect_err, ConnectError::Jwt(text) if *text == message));
+        assert_eq!(
+            connect_err.to_string(),
+            format!("JWT processing failed: {message}")
+        );
     }
 
     #[test]

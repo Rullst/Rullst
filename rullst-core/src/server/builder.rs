@@ -7,6 +7,7 @@ mod listen;
 mod shutdown;
 mod startup;
 
+// Used by `rullst-studio`.
 #[doc(hidden)]
 pub use environment::read_optional_environment_variable;
 pub(super) use environment::{development_console_enabled, parse_dotenv, parse_switch};

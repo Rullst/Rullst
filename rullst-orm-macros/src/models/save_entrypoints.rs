@@ -331,12 +331,14 @@ fn revision_restore(
 
                     #lookup
                     let current_model = current_row.ok_or(rullst_orm::Error::RecordNotFound)?;
-                    let current_json = current_model.__rullst_cache_json_value()?;
+                    let current_json = current_model.__rullst_cache_json_value()
+                        .map_err(|error| rullst_orm::Error::SerializationError(error.to_string()))?;
                     let restored_json = rullst_orm::audit::apply_reverse_patch(
                         current_json,
                         revision.restore_patch(),
                     )?;
-                    let mut restored = Self::from_json_value(restored_json)?;
+                    let mut restored = Self::from_json_value(restored_json)
+                        .map_err(|error| rullst_orm::Error::SerializationError(error.to_string()))?;
                     if restored.id != self.id {
                         return Err(rullst_orm::Error::Validation(
                             "audit revision attempted to change the model identity".to_string(),

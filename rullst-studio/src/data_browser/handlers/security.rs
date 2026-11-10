@@ -70,11 +70,8 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
         .siem_dispatches_count
         .load(std::sync::atomic::Ordering::Relaxed);
 
-    let events = sec_store
-        .live_events
-        .lock()
-        .map(|e| e.iter().take(6).cloned().collect::<Vec<_>>())
-        .unwrap_or_default();
+    let mut events = sec_store.live_events();
+    events.truncate(6);
 
     let mut incidents_html = String::new();
     if events.is_empty() {
