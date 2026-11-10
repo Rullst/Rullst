@@ -22,7 +22,8 @@ pub(crate) struct Limits {
 impl Limits {
     pub(crate) const DEFAULT: Self = Self {
         files: 10_000,
-        file_bytes: 32 * 1024 * 1024,
+        // 32 MiB.
+        file_bytes: 33_554_432,
         depth: 16,
     };
 }
@@ -180,7 +181,7 @@ fn hash_file(path: &Path, max_bytes: u64) -> Option<Entry> {
         return None;
     }
     let mut context = ring::digest::Context::new(&ring::digest::SHA256);
-    let mut buffer = [0_u8; 64 * 1024];
+    let mut buffer = [0_u8; 65_536];
     loop {
         let read = file.read(&mut buffer).ok()?;
         if read == 0 {

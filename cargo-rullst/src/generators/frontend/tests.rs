@@ -498,7 +498,11 @@ fn generated_dockerfiles_build_the_stylesheet_only_for_managed_tailwind() {
     assert!(!plain.contains(docker::STAGES_MARKER));
 
     std::fs::create_dir_all(root.path().join("assets/css")).unwrap();
-    std::fs::write(root.path().join(TAILWIND_INPUT), "@import \"tailwindcss\";\n").unwrap();
+    std::fs::write(
+        root.path().join(TAILWIND_INPUT),
+        "@import \"tailwindcss\";\n",
+    )
+    .unwrap();
     crate::generators::project::generate_docker_files(root.path(), "shop", None, None).unwrap();
     let styled = std::fs::read_to_string(root.path().join("Dockerfile")).unwrap();
     assert_eq!(Some(styled.clone()), docker::add_to(&plain));

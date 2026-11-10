@@ -88,6 +88,7 @@ fn hashed_names_insert_the_hash_before_the_last_extension_and_split_back() {
         "app.0123456789ABCDEF.css",
         "app.0123456789abcdeg.css",
         ".0123456789abcdef.css",
+        "css/.0123456789abcdef.css",
         "app.0123456789abcdef.",
         "app.0123456789abcdef",
         "0123456789abcdef.css",
@@ -164,6 +165,7 @@ fn the_start_up_walk_stays_within_its_limits() {
     write(root.path(), "a.css", "a");
     write(root.path(), "b.css", "b");
     write(root.path(), "c.css", "c");
+    assert_eq!(Limits::DEFAULT.file_bytes, 32 * 1024 * 1024);
     let two = Limits {
         files: 2,
         ..Limits::DEFAULT
