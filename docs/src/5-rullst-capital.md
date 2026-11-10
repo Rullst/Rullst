@@ -6,9 +6,10 @@
 
 `rullst-capital` provides provider-neutral billing abstractions, revenue
 metrics, verified webhook plumbing and two payment-provider adapters: Stripe
-(supported) and InfinitePay (experimental until validated against a live
-account). Provider capabilities are not uniform: consult the adapter API and its
-tests before depending on a particular checkout, refund or webhook operation.
+(supported) and InfinitePay (experimental; it performs no real operation today,
+see [gateways with unsigned webhooks](capital-custom-provider.md#gateways-with-unsigned-webhooks)).
+Provider capabilities are not uniform: consult the adapter API and its tests
+before depending on a particular checkout, refund or webhook operation.
 Other gateways are integrated in application code by implementing the provider
 traits; see [Writing your own payment provider](capital-custom-provider.md).
 
@@ -86,6 +87,25 @@ mandate/SCA rules. Empty/`mock_*` credentials produce a deterministic receipt
 with the distinct non-success `ChargeStatus::Mock`; it must never grant access
 or be booked as revenue. This API has no raw-card field and never guesses
 currency.
+
+### One-time Stripe checkout
+
+For a single purchase, `StripeProvider::create_one_time_checkout` takes a
+`StripePaymentCheckoutRequest` built from an existing customer and a
+`StripeOneTimePrice` from a server-owned allowlist. It re-reads the active
+Stripe price and requires the amount and currency shown to the buyer before
+creating a `mode=payment` session with one card-funded item. The
+[crate README](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md#one-time-stripe-checkout)
+has an example. Three points are easy to miss:
+
+- `success_url` and `cancel_url` must be HTTPS even with a `mock_` key: the
+  request checks them before it knows which key will send it, so pass the
+  `https://` form in local development.
+- The production CSRF baseline answers Stripe's webhook `POST` with 403 until
+  the route's exact path is listed in `[security] csrf_signed_webhook_paths` of
+  `Rullst.toml`. List only a path whose handler verifies the signature.
+- Grant access only after `verify_one_time_event` and a fresh
+  `read_one_time_receipt`, never from the return URL or a mock receipt.
 
 ## Provider-specific metered usage
 

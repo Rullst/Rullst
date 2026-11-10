@@ -19,7 +19,7 @@ traits: see **[Writing your own payment provider](../capital-custom-provider.md)
 | Subsystem | Lifecycle Status | Description |
 | :--- | :---: | :--- |
 | **Stripe Adapter** | 🟢 `[Supported / Bounded]` | Owner-bound customer, subscription checkout, bound portal, reconciliation reads, direct charge, meter events, coupons and trials with deterministic mocks. Live account acceptance remains per deployment. |
-| **InfinitePay Adapter** | 🟡 `[Experimental]` | Deterministic offline checkout/portal/webhook fixtures. Live plan-only checkout and live callbacks fail closed until a reviewed contract is validated against a live account. |
+| **InfinitePay Adapter** | 🟡 `[Experimental]` | Performs no real operation today: deterministic offline checkout/portal/webhook fixtures only. With real credentials, checkout and webhook handling return `UnsupportedOperation` before any HTTP request. Its model does not match InfinitePay's public Checkout API, whose webhook is unsigned and is confirmed with `payment_check`; charge through InfinitePay with an [application-owned `BillingProvider`](../capital-custom-provider.md#gateways-with-unsigned-webhooks). |
 | **Custom Providers** | 🟢 `[Extension Point]` | Applications implement `BillingProvider` (and optionally `MeteredBillingProvider`) for another gateway and reuse the canonical webhook verifier. See [the guide](../capital-custom-provider.md). |
 | **Outbound Failure Boundary** | 🟢 `[Implemented / Bounded]` | Reviewed live methods share finite timeouts, disabled redirects/ambient proxies, one-MiB JSON parsing, HTTPS checkout-location validation, and redacted permanent/transient/rate-limited failures. Rullst performs no automatic mutation retry. |
 | **Subscription Lifecycle** | 🟠 `[Partial]` | Checkout, portal, cancellation, pause, usage, coupon, trial, status, and webhook APIs exist; Stripe implements the reviewed live paths, while InfinitePay returns `UnsupportedOperation` for operations it does not support. |
@@ -36,7 +36,7 @@ traits: see **[Writing your own payment provider](../capital-custom-provider.md)
 | Provider | Status | Scope |
 | :--- | :--- | :--- |
 | 💳 **Stripe** | Supported | Card checkout, Customer Portal, recurring subscriptions, Payment Intents charges and Meter Events within the reviewed operation boundaries. |
-| ⚡ **InfinitePay** | Experimental | Brazilian Pix/card provider; offline fixtures only until live checkout and callback authentication are validated. |
+| ⚡ **InfinitePay** | Experimental | Brazilian Pix/card provider. Performs no real operation today (offline fixtures only); use an [application-owned adapter](../capital-custom-provider.md#gateways-with-unsigned-webhooks) to charge through it. |
 
 Neither entry means every provider product, fee, payment method, tax promise or
 live API path has been homologated by Rullst. The
@@ -224,6 +224,12 @@ pub async fn handle_stripe_webhook(
     Ok(axum::http::StatusCode::OK)
 }
 ```
+
+In a Rullst application, list the webhook route's exact path in
+`[security] csrf_signed_webhook_paths` of `Rullst.toml`
+(`csrf_signed_webhook_paths = ["/webhooks/stripe"]`); until then the production
+CSRF baseline answers the provider's `POST` with 403 before the signature is
+checked. List only paths whose handler or middleware verifies the signature.
 
 SQL-backed middleware claims the payload before dispatch. Treat it as a
 fail-closed replay firewall, not an exactly-once delivery guarantee. For an
