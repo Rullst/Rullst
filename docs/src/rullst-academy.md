@@ -142,7 +142,7 @@ the Rullst repository and it is not a framework release gate.
 
 - **v12:** closed through its own gates without Academy; the line reached end
   of life on 16 October 2026.
-- **13.0:** 13.0.0-alpha.4 is the feature freeze, 13.0.0-rc.1 takes fixes and
+- **13.0:** 13.0.0-alpha.5 is the feature freeze, 13.0.0-rc.1 takes fixes and
   documentation only, and Academy does not need to exist or run against either.
 - **After 13.0:** reusable improvements discovered by the external Academy
   may be proposed with their own bounded contracts; research-heavy or

@@ -90,6 +90,7 @@ fn the_blank_starter_gets_the_core_layout_and_its_own_files() {
             "src/pwa.rs",
             "src/pwa/sw.js",
             "static/pwa.js",
+            "static/pwa.css",
             "static/manifest.webmanifest",
             "static/icons/icon-192.png",
             "static/icons/icon-512.png",
@@ -101,7 +102,8 @@ fn the_blank_starter_gets_the_core_layout_and_its_own_files() {
     assert_eq!(planned.changed, ["src/main.rs"]);
     let report = planned.report();
     assert!(report.starts_with("Progressive Web App added.\n  created  src/pwa.rs\n"));
-    assert!(report.contains("  updated  src/main.rs\n1 page layout(s) link the manifest"));
+    assert!(report.contains("  updated  src/main.rs\n1 page layout(s) now register /sw.js.\n"));
+    assert!(!report.contains("To do:"), "{report}");
     writes::apply(&planned.edits).unwrap();
 
     let main = read(&root, "src/main.rs");
@@ -114,7 +116,7 @@ fn the_blank_starter_gets_the_core_layout_and_its_own_files() {
     ));
     // The blank starter ships its stylesheet, htmx and logo, so the worker stores them.
     let worker = read(&root, "src/pwa/sw.js");
-    assert!(worker.contains("const PRECACHE = [\n  '/offline',\n  '/static/manifest.webmanifest',\n  '/static/pwa.js',\n  '/static/icons/icon-192.png',\n  '/static/icons/icon-512.png',\n  '/static/rullst.css',\n  '/static/htmx-1.9.12.min.js',\n  '/static/rullst.png',\n];"));
+    assert!(worker.contains("const PRECACHE = [\n  '/offline',\n  '/static/manifest.webmanifest',\n  '/static/pwa.js',\n  '/static/icons/icon-192.png', // placeholder icon (the Rullst logo): replace it\n  '/static/icons/icon-512.png', // placeholder icon (the Rullst logo): replace it\n  '/static/rullst.css',\n  '/static/htmx-1.9.12.min.js',\n  '/static/rullst.png', // the starter's Rullst logo, the icon of Core's page\n];"));
     assert_eq!(
         fs::read(root.join("static/icons/icon-512.png")).unwrap(),
         include_bytes!("icons/icon-512.png")
@@ -155,29 +157,50 @@ fn an_edited_generated_file_stops_the_run_before_any_write() {
 }
 
 #[test]
-fn projects_without_pages_or_a_known_router_are_refused() {
+fn projects_without_pages_or_a_known_router_get_the_files_and_manual_steps() {
     let temporary = tempfile::tempdir().unwrap();
     let api = starter(temporary.path(), BLANK_BLUEPRINT_ID, true, false);
-    let error = plan(&api, &PwaFlags::default()).err().unwrap().to_string();
+    let planned = plan(&api, &PwaFlags::default()).unwrap();
+    assert_eq!((planned.layouts, planned.present), (0, 0));
+    assert!(planned.created.contains(&"src/pwa.rs".to_owned()));
+    let report = planned.report();
     assert!(
-        error.contains("the JSON API starter serves no pages to install"),
-        "{error}"
+        report.contains("To do: No page layout was found in src/"),
+        "{report}"
     );
-    assert!(!api.join("src/pwa.rs").exists());
+    assert!(report.contains("put `{crate::pwa::head()}` inside the <head>"));
+    assert!(!report.contains("now register"), "{report}");
 
     let temporary = tempfile::tempdir().unwrap();
     let custom = starter(temporary.path(), SAAS_BLUEPRINT_ID, false, false);
     let main =
         read(&custom, "src/main.rs").replace(".merge_axum(rullst::health::health_router())", "");
     fs::write(custom.join("src/main.rs"), &main).unwrap();
-    let error = plan(&custom, &PwaFlags::default())
-        .err()
-        .unwrap()
-        .to_string();
-    assert!(
-        error.starts_with("make:pwa did not find exactly one"),
-        "{error}"
+    let planned = plan(&custom, &PwaFlags::default()).unwrap();
+    assert_eq!(
+        planned.unmounted,
+        Some("src/ has no `.merge_axum(rullst::health::health_router())`")
     );
+    assert!(planned.report().contains(
+        "To do: The PWA routes (/sw.js, /offline) are not mounted: src/ has no `.merge_axum(rullst::health::health_router())`. Add `.merge_axum(crate::pwa::router().into_axum())` to your router by hand"
+    ));
+    writes::apply(&planned.edits).unwrap();
+    // The files that do not depend on the router are written; the layouts
+    // are wired and the module declared, so the router line compiles.
+    assert!(custom.join("src/pwa/sw.js").is_file());
+    assert!(!read(&custom, "src/main.rs").contains("crate::pwa::router()"));
+    assert!(read(&custom, "src/main.rs").contains("mod pwa;"));
+    // A second run changes nothing and repeats the step still to do.
+    let again = plan(&custom, &PwaFlags::default()).unwrap();
+    assert!(again.edits.is_empty());
+    assert!(
+        again
+            .report()
+            .starts_with("The PWA files are in place; nothing changed.\n"),
+        "{}",
+        again.report()
+    );
+    assert!(again.report().contains("To do: The PWA routes"));
 
     fs::write(custom.join("Cargo.toml"), "[package]\nname = \"x\"\n").unwrap();
     let error = plan(&custom, &PwaFlags::default())
@@ -448,7 +471,13 @@ fn rendered_files_hold_the_validated_values() {
     );
     let module = files::module(&values);
     assert!(module.contains(r##"<meta name="theme-color" content="#112233" />"##));
-    assert!(module.contains(r#"render_page_with_lang(&htmx, "pt-BR", "Offline", content)"#));
+    assert!(module.contains(r#"render_page_with_lang(&htmx, "pt-BR", "Sem conexão", content)"#));
+    assert!(module.contains(r#"<h1>"Você está sem conexão"</h1>"#));
+    // Plain markup: the application's stylesheet, not Tailwind, styles it.
+    assert!(module.contains(r#"<main class="pwa-offline">"#));
+    for tailwind in ["bg-slate", "text-slate", "min-h-screen", "text-sky"] {
+        assert!(!module.contains(tailwind), "{tailwind}");
+    }
     assert!(!module.contains("__"));
     syn::parse_file(&module).unwrap();
     // The worker keeps the lines src/pwa.rs and make:pwa replace.
@@ -465,7 +494,7 @@ fn rendered_files_hold_the_validated_values() {
     );
     let temporary = tempfile::tempdir().unwrap();
     let worker = files::service_worker(temporary.path());
-    assert!(worker.contains("const PRECACHE = [\n  '/offline',\n  '/static/manifest.webmanifest',\n  '/static/pwa.js',\n  '/static/icons/icon-192.png',\n  '/static/icons/icon-512.png',\n];"));
+    assert!(worker.contains("const PRECACHE = [\n  '/offline',\n  '/static/manifest.webmanifest',\n  '/static/pwa.js',\n  '/static/icons/icon-192.png', // placeholder icon (the Rullst logo): replace it\n  '/static/icons/icon-512.png', // placeholder icon (the Rullst logo): replace it\n];"));
     assert!(!worker.contains(files::PRECACHE_LINE));
     let readme = files::readme();
     assert!(readme.starts_with("# Progressive Web App\n"));
@@ -519,10 +548,11 @@ fn android_files_can_be_added_after_the_web_files() {
     // The layouts were wired by the first run; the report says so.
     let report = android.report();
     assert!(
-        report.contains("page layout(s) already link the manifest"),
+        report.contains("1 page layout(s) already register /sw.js.\n"),
         "{report}"
     );
-    assert!(!report.contains("\n0 page layout(s)"), "{report}");
+    assert!(!report.contains("0 page layout(s)"), "{report}");
+    assert!(!report.contains("now register"), "{report}");
     writes::apply(&android.edits).unwrap();
     let notes = read(&root, "PWA-ANDROID.md");
     assert!(notes.starts_with("# Google Play (Trusted Web Activity)\n"));

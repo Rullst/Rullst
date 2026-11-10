@@ -39,6 +39,28 @@ loopback IP, `try_local_with_bearer` adds explicit local authentication, and
 disable redirects and environment proxies and bound response bodies. Different
 protocols use a custom public `AiProvider`, not an arbitrary-HTTP mode.
 
+### Default models and provider errors
+
+`GeminiProvider::new` generates with `gemini-3.5-flash-lite`, Google's current
+Flash-Lite model (13.0.0-alpha.4 and earlier used `gemini-2.5-flash-lite`, from
+the 2.5 line that new AI Studio keys could not use), and embeds with
+`gemini-embedding-001`, which Google lists until May 14, 2028. The embedding
+default is kept on purpose: another embedding model produces vectors in a
+different space, so changing it would make stored embeddings incomparable with
+new ones. Re-embed stored vectors before calling `with_embedding_model`.
+Defaults follow provider retirements, so pin the model your account supports
+with `with_model`.
+
+When a provider answers with an HTTP error, the `AiError::ApiError` text is
+`<Provider> returned HTTP <status>`, followed by `: ` and the provider's own
+error code and message when the body is JSON that carries one, for example
+`Gemini returned HTTP 429 Too Many Requests: RESOURCE_EXHAUSTED: You exceeded
+your current quota…`. At most 16 KiB of the body is read; the detail is one
+line of at most 300 characters, with URL queries, URL credentials,
+`key=`/`token=` values and key-shaped tokens redacted, and HTML or plain-text
+bodies add nothing. Match the status on the `HTTP <code>` prefix. The detail is
+the provider's wording for logs and operators, not a message for end users.
+
 ## Guarded client
 
 ```rust,no_run

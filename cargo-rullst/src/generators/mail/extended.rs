@@ -1,9 +1,7 @@
 //! Payment-receipt and payment-recovery mailable templates.
 
 pub(super) const PAYMENT_RECEIPT_TEMPLATE: &str = r##"//! Bounded commercial payment-receipt mailable.
-use rullst::mail::{
-    DeliveryPipeline, Mail, MailError, Message, escape_html, validate_action_url,
-};
+use rullst::mail::{DeliveryPipeline, Mail, MailError, Message, escape_html, validate_action_url};
 
 /// Payment receipt that never presents itself as a tax authorization.
 #[derive(Debug, Clone)]
@@ -69,7 +67,11 @@ impl __NAME__ {
     {}
   </main>
 </body></html>"#,
-            escape_html(&subject), customer_name, identifier, amount, document_link
+            escape_html(&subject),
+            customer_name,
+            identifier,
+            amount,
+            document_link
         );
         let message = Message::new()
             .to(&self.to)
@@ -101,9 +103,7 @@ fn bounded(
 "##;
 
 pub(super) const DUNNING_TEMPLATE: &str = r##"//! Explicit progressive payment-recovery mailable.
-use rullst::mail::{
-    DeliveryPipeline, Mail, MailError, Message, escape_html, validate_action_url,
-};
+use rullst::mail::{DeliveryPipeline, Mail, MailError, Message, escape_html, validate_action_url};
 
 /// Application-confirmed point in a D+1/D+3/D+7 payment-recovery sequence.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -207,9 +207,15 @@ impl __NAME__ {
     {}
   </main>
 </body></html>"#,
-            escape_html(&subject), color, self.stage.days_after_due(), heading,
-            escape_html(&self.customer_name), explanation, escape_html(&self.invoice_id),
-            escape_html(&self.amount_due), action
+            escape_html(&subject),
+            color,
+            self.stage.days_after_due(),
+            heading,
+            escape_html(&self.customer_name),
+            explanation,
+            escape_html(&self.invoice_id),
+            escape_html(&self.amount_due),
+            action
         );
         let message = Message::new()
             .to(&self.to)

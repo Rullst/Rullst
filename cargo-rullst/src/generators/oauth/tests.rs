@@ -228,19 +228,41 @@ fn projects_without_the_account_model_are_refused() {
     let error = plan(&root, "google", TIMESTAMP).err().unwrap().to_string();
     assert!(error.contains("account model"), "{error}");
 
+    // The refusal names what is missing, not parts the project has.
     let (_temporary, root) = starter(crate::blueprints::SAAS_BLUEPRINT_ID, false, "Sqlite");
-    let user =
-        read(&root, "src/models/user.rs").replace("pub session_epoch: i64,", "pub epoch: i64,");
+    let user = read(&root, "src/models/user.rs")
+        .replace("pub oauth_provider:", "pub provider:")
+        .replace("pub oauth_id:", "pub provider_id:");
     fs::write(root.join("src/models/user.rs"), user).unwrap();
     let error = plan(&root, "google", TIMESTAMP).err().unwrap().to_string();
-    assert!(error.contains("account model"), "{error}");
+    assert!(
+        error.ends_with(
+            "a custom authentication is not supported: the `User` of src/models/user.rs (fields and methods) lacks `oauth_provider`, `oauth_id`"
+        ),
+        "{error}"
+    );
+    assert!(!error.contains("session_epoch"), "{error}");
     assert!(!root.join("src/controllers/oauth").exists());
 
     let (_temporary, root) = starter(crate::blueprints::SAAS_BLUEPRINT_ID, false, "Sqlite");
     let controller = read(&root, "src/controllers/auth_controller.rs")
         .replace("pub(crate) fn get_csrf_token", "fn get_csrf_token");
     fs::write(root.join("src/controllers/auth_controller.rs"), controller).unwrap();
-    assert!(plan(&root, "google", TIMESTAMP).is_err());
+    let error = plan(&root, "google", TIMESTAMP).err().unwrap().to_string();
+    assert!(
+        error.ends_with(
+            "src/controllers/auth_controller.rs (public functions) lacks `get_csrf_token`"
+        ),
+        "{error}"
+    );
+
+    let (_temporary, root) = starter(crate::blueprints::SAAS_BLUEPRINT_ID, false, "Sqlite");
+    fs::remove_file(root.join("src/pages/auth.rs")).unwrap();
+    let error = plan(&root, "google", TIMESTAMP).err().unwrap().to_string();
+    assert!(
+        error.ends_with("this project has no src/pages/auth.rs"),
+        "{error}"
+    );
 }
 
 #[test]

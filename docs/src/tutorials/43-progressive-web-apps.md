@@ -29,16 +29,28 @@ lists them with their defaults. The command adds these files:
 | `static/manifest.webmanifest` | Name, colours, `start_url`, `scope`, `display: standalone`, icons. |
 | `static/icons/*.png` | Placeholder icons: 192 and 512 pixels, a maskable 512 and the 180-pixel apple-touch icon. |
 | `static/pwa.js` | Registers the service worker and shows the update prompt. |
+| `static/pwa.css` | The default look of the update prompt, loaded only when it appears. |
 | `src/pwa.rs` | Serves `/sw.js` and `/offline`; `head()` returns the tags a layout needs. |
 | `src/pwa/sw.js` | The service worker. |
 | `PWA.md` | The checklist for the generated project. |
 
 It also edits the application in three recognized places: the router mounts
-`crate::pwa::router()` next to the health probes, every page layout gains the
-PWA tags, and the crate root declares `mod pwa`. The whole plan is checked
-before the first write. Running the command again changes nothing, and a
-generated file you have edited stops the run instead of being overwritten.
-The JSON API starter has no pages to install and is refused.
+`crate::pwa::router()` next to the health probes, in whichever module holds
+them; every page layout gains the PWA tags (a layout with its own manifest
+link gains only the registration script; e-mail templates and test code are
+never edited); and the crate root declares `mod pwa`. The whole plan is
+checked before the first write. Running the command again changes nothing,
+and a generated file you have edited stops the run instead of being
+overwritten. When it recognizes no layout (the JSON API starter has no pages)
+or no single health merge, it still writes the files and the report lists
+what to add by hand, as the next section shows.
+
+The offline page and the update prompt use `--lang` when it is English,
+Portuguese or Spanish (English otherwise; translate them in `src/pwa.rs` and
+`static/pwa.js`). The prompt carries the classes `pwa-update`,
+`pwa-update-text` and `pwa-update-button`; `static/pwa.css` gives them a
+default look with `:where()` rules, so your stylesheet's rules for those
+classes win.
 
 Open `http://localhost:3000`: browsers allow service workers on `localhost`
 and on HTTPS origins only. Chrome's DevTools **Application** panel shows the
@@ -87,8 +99,8 @@ router.merge_axum(crate::pwa::router().into_axum())
 **Content-Security-Policy.** The default policy is
 `default-src 'self'; script-src 'self' 'nonce-…'; … worker-src 'self' blob:`.
 `static/pwa.js` is a same-origin file, so `script-src 'self'` loads it without
-a nonce, and it styles the update prompt through the DOM rather than a `style`
-attribute, which `style-src` refuses. `/sw.js` is allowed by `worker-src
+a nonce, and it styles the update prompt through classes and the same-origin
+`static/pwa.css` rather than a `style` attribute, which `style-src` refuses. `/sw.js` is allowed by `worker-src
 'self'`, and the manifest, which has no `manifest-src` directive, falls back to
 `default-src 'self'`. A policy with `'strict-dynamic'` ignores `'self'`; give
 the registration script the request's nonce in that case.

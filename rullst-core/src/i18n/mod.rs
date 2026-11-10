@@ -229,9 +229,29 @@ impl Locales {
             .map(|tag| Locale { tag })
     }
 
-    /// Every supported locale, for a language menu: in the `order` given to
-    /// [`catalog!`], or sorted by tag (`en`, `es`, `pt-BR`) without one; in
-    /// list order for [`Locales::new`].
+    /// Every supported locale, in a fixed order: the order of the tags given
+    /// to [`Locales::new`]; for a [`catalog!`], the `order` it was given
+    /// (since 13.0.0-alpha.5) or, without one, the tags sorted in byte order
+    /// (the catalog file names' order, such as `en`, `es`, `pt-BR`). The
+    /// default locale is not moved first. For a language menu that starts
+    /// with it, list it first in `catalog!(order = [...])`, or put
+    /// [`default_locale`](Self::default_locale) before the others:
+    ///
+    /// ```
+    /// # extern crate rullst_core as rullst;
+    /// use rullst::i18n::Locales;
+    ///
+    /// let locales = Locales::new(&["en", "es", "pt-BR"], "pt-BR")?;
+    /// assert_eq!(locales.iter().map(|l| l.tag()).collect::<Vec<_>>(), ["en", "es", "pt-BR"]);
+    ///
+    /// let default = locales.default_locale();
+    /// let menu: Vec<&str> = std::iter::once(default)
+    ///     .chain(locales.iter().filter(|locale| *locale != default))
+    ///     .map(|locale| locale.tag())
+    ///     .collect();
+    /// assert_eq!(menu, ["pt-BR", "en", "es"]);
+    /// # Ok::<(), rullst::i18n::LocaleError>(())
+    /// ```
     pub fn iter(&self) -> impl Iterator<Item = Locale> + use<> {
         self.tags.iter().copied().map(|tag| Locale { tag })
     }

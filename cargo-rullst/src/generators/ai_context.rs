@@ -91,10 +91,23 @@ pub(crate) fn write_project_context(base_path: &Path) -> Result<(), ContextError
     generate(base_path)
 }
 
+/// Refreshes the project map after a scaffold, only when the project has
+/// one (`cargo rullst new` and `generate:ai-context` write it): a scaffold
+/// never creates `.llms.txt`, `.rullst/context-map.json` or `AGENTS.md`.
 pub(crate) fn refresh_after_scaffold() {
+    if !has_project_context(Path::new(".")) {
+        return;
+    }
     if let Err(error) = generate_ai_context(None) {
         eprintln!("Scaffold completed, but project context was not refreshed: {error}");
     }
+}
+
+/// Whether `root` holds a generated project map (or a link where one goes).
+fn has_project_context(root: &Path) -> bool {
+    [".llms.txt", ".rullst/context-map.json"]
+        .iter()
+        .any(|name| fs::symlink_metadata(root.join(name)).is_ok())
 }
 
 /// Verifies current input identity and both output representations without writes.

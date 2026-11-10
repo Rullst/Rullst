@@ -33,7 +33,7 @@ impl Server {
     /// (development telemetry recorder) → (monitor recorder) → trusted proxy
     /// → security baseline → lifecycle → Traffic Shield → rate limit (both
     /// skipped for exact health probes) → development/static/access log
-    /// layers → application routes. The development reload and telemetry
+    /// layers → `Vary: HX-Request` on HTML responses → application routes. The development reload and telemetry
     /// routes and the telemetry recorder exist only in a supervised debug
     /// Development process; the monitor route and its recorder only with
     /// [`Server::with_monitor`] and a configured credential.
@@ -64,6 +64,8 @@ impl Server {
             self.log_health_probes,
             super::console::access_log_middleware,
         ));
+        // A page and the htmx fragment of the same URL are cached apart.
+        app = app.layer(axum::middleware::from_fn(crate::htmx::vary_on_htmx_request));
 
         let static_mounted = std::path::Path::new("static").exists();
         if static_mounted {

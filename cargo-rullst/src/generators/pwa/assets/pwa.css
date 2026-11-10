@@ -1,0 +1,32 @@
+/* The default look of the update notice that static/pwa.js shows, generated
+   by `cargo rullst make:pwa`; the application owns this file. pwa.js loads
+   it only when the notice appears. :where() gives these rules no
+   specificity, so the application's own rules for these classes win. */
+:where(.pwa-update) {
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 2147483647;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: #0f172a;
+  color: #f8fafc;
+  font: 15px system-ui, sans-serif;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+:where(.pwa-update-button) {
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #38bdf8;
+  color: #020617;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}

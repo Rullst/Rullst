@@ -34,7 +34,18 @@ impl Database {
     }
 }
 
-const ACCOUNT_MODEL: &str = "make:oauth needs the account model of `cargo rullst auth` or of the SaaS starter (src/models/user.rs with `session_epoch`, `current_session_epoch` and `find_by_email`), and its auth_controller; this project has none";
+/// What every refusal of a missing account part says first.
+const ACCOUNT_MODEL: &str = "make:oauth adds sign-in to the account model, auth controller and login page that `cargo rullst auth` (or the SaaS starter) generates; a custom authentication is not supported";
+
+/// The refusal for one missing part, named with what it lacks.
+fn missing(part: &str, lacks: &[&str]) -> Box<dyn std::error::Error> {
+    let names = lacks
+        .iter()
+        .map(|name| format!("`{name}`"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    invalid(&format!("{ACCOUNT_MODEL}: {part} lacks {names}")).into()
+}
 
 /// Checks the account model, the auth helpers, the login page, the migration
 /// runner and the database; returns the database.
@@ -51,24 +62,39 @@ pub(crate) fn check(root: &Path) -> Result<Database, Box<dyn std::error::Error>>
         "current_session_epoch",
         "find_by_email",
     ];
-    if !fields_and_methods.iter().all(|name| declares(&user, name)) {
-        return Err(invalid(ACCOUNT_MODEL).into());
+    let absent = fields_and_methods
+        .into_iter()
+        .filter(|name| !declares(&user, name))
+        .collect::<Vec<_>>();
+    if !absent.is_empty() {
+        return Err(missing(
+            "the `User` of src/models/user.rs (fields and methods)",
+            &absent,
+        ));
     }
     let controller = parsed(root, "src/controllers/auth_controller.rs")?;
-    for helper in [
+    let absent = [
         "get_csrf_token",
         "get_csp_nonce",
         "normalize_email",
         "valid_email",
         "utc_timestamp",
         "credential_rate_limit",
-    ] {
-        if !public_function(&controller, helper) {
-            return Err(invalid(ACCOUNT_MODEL).into());
-        }
+    ]
+    .into_iter()
+    .filter(|helper| !public_function(&controller, helper))
+    .collect::<Vec<_>>();
+    if !absent.is_empty() {
+        return Err(missing(
+            "src/controllers/auth_controller.rs (public functions)",
+            &absent,
+        ));
     }
     if !public_function(&parsed(root, "src/pages/auth.rs")?, "login_page") {
-        return Err(invalid(ACCOUNT_MODEL).into());
+        return Err(missing(
+            "src/pages/auth.rs (public function)",
+            &["login_page"],
+        ));
     }
     if !migration_runner(root)? {
         return Err(invalid("make:oauth adds a SQL migration, but this project has no migration runner: declare `pub mod migrations;` in src/main.rs or src/lib.rs and call `rullst::artisan!(crate::migrations::get_migrations());` at startup").into());
@@ -119,8 +145,10 @@ pub(crate) fn database(manifest: &str) -> Result<Database, Box<dyn std::error::E
 }
 
 fn parsed(root: &Path, relative: &str) -> Result<syn::File, Box<dyn std::error::Error>> {
-    let source = writes::read(&root.join(relative)).map_err(|_| invalid(ACCOUNT_MODEL))?;
-    Ok(syn::parse_file(&source).map_err(|_| invalid(ACCOUNT_MODEL))?)
+    let source = writes::read(&root.join(relative))
+        .map_err(|_| invalid(&format!("{ACCOUNT_MODEL}: this project has no {relative}")))?;
+    Ok(syn::parse_file(&source)
+        .map_err(|_| invalid(&format!("{ACCOUNT_MODEL}: {relative} is not valid Rust")))?)
 }
 
 /// Whether the `User` struct has the field `name` or an impl of it the method.
