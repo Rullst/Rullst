@@ -3,8 +3,10 @@
 **13.0.0-alpha.4 prepared on October 29 and 30, 2026, for a tag on October 31
 (not yet published).** The release commit sets the twenty packages of the
 release order to `13.0.0-alpha.4`; the coordinator records the tag, the
-exact-SHA admission and the release run here after publication. It is the
-13.0 feature and public API freeze. It makes the main CLI leaner: `green`
+exact-SHA admission and the release run here after publication. It was
+planned as the 13.0 feature and public API freeze; on 9 November 2026 the
+freeze moved to 13.0.0-alpha.5, which adds what the applications upgraded to
+alpha.4 asked for. It makes the main CLI leaner: `green`
 (formerly `footprint`) stays in it as an Experimental command and the terminal
 AI assistant (`cargo rullst ai`) is removed, while the development error page
 offers a read-only prompt for the developer's own assistant. It removes

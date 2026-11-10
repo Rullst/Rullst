@@ -418,8 +418,9 @@ production data. [Assisted upgrade tutorial](https://rullst.github.io/Rullst/boo
 
 ## 🚀 Versions: v13 is a prerelease
 
-`13.0.0-alpha.4` is the latest v13 prerelease and the 13.0 feature freeze;
-`13.0.0-rc.1` (fixes and documentation only) and then `13.0.0` follow. Cargo
+`13.0.0-alpha.4` is the latest v13 prerelease. `13.0.0-alpha.5`, the 13.0
+feature freeze, then `13.0.0-rc.1` (fixes and documentation only) and
+`13.0.0` follow. Cargo
 never selects a prerelease on its own, so `cargo install cargo-rullst` and
 `cargo add rullst` without a version still pick the end-of-life 12.x. Until
 13.0.0 is released, name the exact version:
