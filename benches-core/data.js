@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794342620177,
+  "lastUpdate": 1794345968652,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -32801,6 +32801,78 @@ window.BENCHMARK_DATA = {
             "name": "mask_pii/safe_field_no_pii",
             "value": 152,
             "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 110,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ceb93eec8c957e22d1d333264a269ee9a9cb7e85",
+          "message": "Merge pull request #631 from Rullst/fix/v13-alpha5-iot-hardware\n\nfeat(iot)!: streaming OTA verification, fallible encoders, micro:bit V2 evidence and CI firmware",
+          "timestamp": "2026-11-10T18:11:21-03:00",
+          "tree_id": "6a67b03d881bb125c0eec44c10c8710b3f6d7fd4",
+          "url": "https://github.com/Rullst/Rullst/commit/ceb93eec8c957e22d1d333264a269ee9a9cb7e85"
+        },
+        "date": 1794345967628,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 173,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 49,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 175,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 142,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 131,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 143,
+            "range": "± 1",
             "unit": "ns/iter"
           },
           {
