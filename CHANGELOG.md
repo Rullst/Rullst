@@ -229,6 +229,15 @@ A prepared version section does not establish that its tag or crates exist.
   `OtaManifest` and `OtaCommit` moved to their own file; their paths are
   unchanged. `cargo rullst upgrade` reports the three field accesses in files
   that name `OtaManager` (`V13-IOT-OTA-STATE`).
+- **Breaking:** `rullst-iot` (Experimental): `MqttCodecError` and
+  `CoapCodecError` are `#[non_exhaustive]` and gain `AllocationFailed`;
+  `OtaError` gains `AllocationFailed` too. A `match` on the two codec errors
+  outside the crate needs a wildcard arm, and `cargo rullst upgrade` reports
+  each one that has none (`V13-IOT-CODEC-ERROR-MATCH`). `verify_update` checks
+  the signature encoding and builds the signing bytes before it hashes the
+  image, so a malformed signature is `InvalidSignatureEncoding` even when the
+  image also differs, and it no longer costs a full hash (26 ms per 32 KiB on
+  a 64 MHz Cortex-M4).
 - `rullst-studio`: the local Studio (`Studio`, `run_studio` and its page
   modules) is the new `local` feature, which the default `drivers-all`, every
   `strict-*` profile and the facade's `studio` feature enable. `rullst-orm`,
@@ -296,6 +305,21 @@ describes each replacement.
 
 ### Fixed
 
+- `rullst-iot`: `MqttPublish::encode` aborted the program when the allocator
+  could not provide the packet buffer, which on a BBC micro:bit V2 with a
+  32 KiB heap happened for a 20 KiB payload; it and `CoapRequest::encode`,
+  `CoapRequest::path_segment` and `OtaManifest::signing_bytes` now reserve
+  their buffers fallibly and return `AllocationFailed`, and the board keeps
+  running. The CoAP encoder measures the datagram first and allocates exactly
+  its length, and neither encoder allocates for its length fields.
+- `rullst-iot` documentation said that nothing had run on physical hardware
+  and did not say what a `no_std` build needs. The crate guide now has the
+  results of a micro:bit V2 (nRF52833) run on 2026-11-10 (59 checks, timings,
+  flash, heap and stack use), states that `no_std` use needs `alloc` with a
+  `#[global_allocator]` and about 8 KiB of stack for `verify_update`, shows
+  how an application enables `ed25519-dalek`'s faster precomputed tables, and
+  lists what remains unvalidated. CI now links that firmware for
+  `thumbv7em-none-eabihf` (`.github/fixtures/iot-microbit-v2`).
 - `cargo rullst studio --remote` printed
   `cargo install rullst-studio --version =… --features remote --locked` when
   the `rullst-studio` binary was missing, and `cargo rullst studio --help`

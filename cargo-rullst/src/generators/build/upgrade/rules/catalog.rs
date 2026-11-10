@@ -411,6 +411,9 @@ rules! {
     IOT_OTA_STATE: "V13-IOT-OTA-STATE", Review, "13.0.0-alpha.5", "IoT OTA manager state",
         "`OtaManager`'s `current_partition`, `status` and `firmware_version` are private fields since 13.0.0-alpha.5; this file reads or assigns one",
         "Call the methods of the same names (`ota.current_partition()`, `ota.status()`, `ota.firmware_version()`). Replace an assignment `ota.current_partition = bank` with `ota = ota.with_running_partition(bank)` before verifying an update, or build the manager with `new_with_running_partition`.";
+    IOT_CODEC_ERROR_MATCH: "V13-IOT-CODEC-ERROR-MATCH", MustChange, "13.0.0-alpha.5", "IoT encoder errors",
+        "`MqttCodecError` and `CoapCodecError` are `#[non_exhaustive]` since 13.0.0-alpha.5 and gained `AllocationFailed`; a `match` on them without a wildcard arm no longer compiles",
+        "Add a wildcard arm (`_ => ...`). Treat `AllocationFailed` as running out of memory, not as invalid input: the same packet encodes once memory is free.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

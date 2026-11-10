@@ -7,9 +7,12 @@
 //!
 //! **Maturity: Experimental**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). The API may
-//! change between 13.x releases, and nothing here has been validated on
-//! physical hardware or against a live broker. The default `std` feature can be
-//! disabled for `no_std` targets. Start with [`OtaManager`] for the signed
+//! change between 13.x releases. A BBC micro:bit V2 (nRF52833) ran the
+//! encoders, the OTA gate and the counter-store contract on 2026-11-10; no
+//! other board or live broker has been tested. The default `std` feature can be
+//! disabled for `no_std` targets, which need `alloc` with a
+//! `#[global_allocator]` and about 8 KiB of stack for
+//! [`OtaManager::verify_update`]. Start with [`OtaManager`] for the signed
 //! firmware gate, or [`MqttPublish`] and [`CoapRequest`] for the packet
 //! encoders. The crate guide's [module
 //! status](https://rullst.github.io/Rullst/book/crates/iot.html#module-status)

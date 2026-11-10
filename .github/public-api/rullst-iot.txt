@@ -38,11 +38,12 @@ impl core::marker::Sync for rullst_iot::BootPartition
 impl core::marker::Unpin for rullst_iot::BootPartition
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::BootPartition
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::BootPartition
-pub enum rullst_iot::CoapCodecError
+#[non_exhaustive] pub enum rullst_iot::CoapCodecError
 pub rullst_iot::CoapCodecError::TokenTooLong
 pub rullst_iot::CoapCodecError::InvalidPathSegment
 pub rullst_iot::CoapCodecError::OptionTooLarge
 pub rullst_iot::CoapCodecError::DatagramTooLarge
+pub rullst_iot::CoapCodecError::AllocationFailed
 impl core::clone::Clone for rullst_iot::CoapCodecError
 impl core::cmp::Eq for rullst_iot::CoapCodecError
 impl core::cmp::PartialEq for rullst_iot::CoapCodecError
@@ -253,7 +254,7 @@ impl core::marker::Sync for rullst_iot::ModbusFunction
 impl core::marker::Unpin for rullst_iot::ModbusFunction
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::ModbusFunction
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::ModbusFunction
-pub enum rullst_iot::MqttCodecError
+#[non_exhaustive] pub enum rullst_iot::MqttCodecError
 pub rullst_iot::MqttCodecError::EmptyTopic
 pub rullst_iot::MqttCodecError::InvalidTopic
 pub rullst_iot::MqttCodecError::TopicTooLong
@@ -262,6 +263,7 @@ pub rullst_iot::MqttCodecError::PacketTooLarge
 pub rullst_iot::MqttCodecError::PacketIdentifierRequired
 pub rullst_iot::MqttCodecError::ReliableQosRequired
 pub rullst_iot::MqttCodecError::DuplicateRequiresReliableQos
+pub rullst_iot::MqttCodecError::AllocationFailed
 impl core::clone::Clone for rullst_iot::MqttCodecError
 impl core::cmp::Eq for rullst_iot::MqttCodecError
 impl core::cmp::PartialEq for rullst_iot::MqttCodecError
@@ -355,6 +357,7 @@ pub rullst_iot::OtaError::RollbackCounterStore(rullst_iot::RollbackCounterError)
 pub rullst_iot::OtaError::NoVerifiedUpdate
 pub rullst_iot::OtaError::LegacyApiUnsupported { .. }
 pub rullst_iot::OtaError::LegacyApiUnsupported::replacement: &'static str
+pub rullst_iot::OtaError::AllocationFailed
 impl core::clone::Clone for rullst_iot::OtaError
 impl core::cmp::Eq for rullst_iot::OtaError
 impl core::cmp::PartialEq for rullst_iot::OtaError

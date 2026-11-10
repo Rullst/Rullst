@@ -11,7 +11,9 @@ post-quantum implementations.
 
 > **Experimental.** `rullst-iot` and the `make:iot` generator are in the
 > Experimental [maturity tier](../maturity.md): the API may change between 13.x
-> releases and nothing has been validated on physical hardware. The
+> releases. One board, a BBC micro:bit V2, has run the encoders and the OTA gate
+> ([hardware validation](../crates/iot.md#hardware-validation-bbc-microbit-v2));
+> no other board, broker or network has. The
 > [module status](../crates/iot.md#module-status) lists which modules are working
 > implementations and which are only data models or contracts.
 

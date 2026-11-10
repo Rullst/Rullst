@@ -1,10 +1,12 @@
-//! 13.0.0-alpha.5: `OtaManager`'s state fields became private, and dynamic
-//! Alpine.js directive values in `html!` no longer compile.
+//! 13.0.0-alpha.5: `OtaManager`'s state fields became private, dynamic
+//! Alpine.js directive values in `html!` no longer compile, and the IoT codec
+//! errors became `#[non_exhaustive]`.
 
 use super::*;
 
 const OTA: &str = "V13-IOT-OTA-STATE";
 const ALPINE: &str = "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE";
+const CODEC: &str = "V13-IOT-CODEC-ERROR-MATCH";
 
 #[test]
 fn ota_manager_field_accesses_are_reviewed_once_per_file() {
@@ -76,5 +78,65 @@ fn view(state: &str, open: bool) -> Markup {
     assert_only(
         r#"fn view(x: &str) -> Markup { html! { <div x-data="{ open: false }" data-x={x} max-x={x} onclick={x}></div> } }"#,
         &["V13-HTML-DYNAMIC-EVENT-HANDLER"],
+    );
+}
+
+#[test]
+fn exhaustive_matches_on_iot_codec_errors_must_change_at_every_location() {
+    let source = r#"
+use rullst_iot::{CoapCodecError, MqttCodecError};
+
+fn mqtt(error: MqttCodecError) -> u8 {
+    match error {
+        MqttCodecError::EmptyTopic | MqttCodecError::InvalidTopic => 1,
+        MqttCodecError::PacketTooLarge => 2,
+        other => match other { MqttCodecError::TopicTooLong => 3, _ => 4 },
+    }
+}
+
+fn coap(error: rullst::iot::CoapCodecError) -> &'static str {
+    match error {
+        rullst::iot::CoapCodecError::TokenTooLong => "token",
+        CoapCodecError::DatagramTooLarge => "size",
+    }
+}
+"#;
+    // The outer MQTT `match` ends with a binding, which catches everything;
+    // the CoAP one (line 13) has no catch-all arm.
+    assert_eq!(
+        scan_with(source, "lib.rs", &WorkspaceFacts::default()),
+        [(CODEC, 13)]
+    );
+    let source = "fn f(e: MqttCodecError) -> bool { match e { MqttCodecError::EmptyTopic => true, MqttCodecError::InvalidTopic => false } }\nfn g(e: CoapCodecError) -> bool { match e { CoapCodecError::TokenTooLong => true, CoapCodecError::OptionTooLarge => false } }\n";
+    assert_eq!(
+        scan_with(source, "lib.rs", &WorkspaceFacts::default()),
+        [(CODEC, 1), (CODEC, 2)]
+    );
+}
+
+#[test]
+fn codec_error_matches_with_a_wildcard_or_other_enums_are_not_reported() {
+    assert_only(
+        r#"
+fn f(e: MqttCodecError) -> bool {
+    match e {
+        MqttCodecError::AllocationFailed => true,
+        _ => false,
+    }
+}
+fn g(e: CoapCodecError) -> bool {
+    match e {
+        CoapCodecError::AllocationFailed | _ => true,
+    }
+}
+fn h(e: MyCodecError) -> bool {
+    match e {
+        MyCodecError::A => true,
+        MyCodecError::B => false,
+    }
+}
+fn i(e: MqttCodecError) -> bool { matches!(e, MqttCodecError::EmptyTopic) }
+"#,
+        &[],
     );
 }

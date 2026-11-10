@@ -4,9 +4,12 @@
 builders, deterministic edge helpers, and a fail-closed signed firmware gate.
 
 **Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
-The API may change between 13.x releases, and nothing here has been validated
-on physical hardware or against a live broker. Experimental does not mean
-broken; the table below shows which modules are working implementations.
+The API may change between 13.x releases. On 2026-11-10 a BBC micro:bit V2
+(nRF52833) ran the encoders, the signed OTA gate and the counter-store
+contract with no failure ([hardware validation](#hardware-validation)); no
+other board, live broker or external flash has been tested. Experimental does
+not mean broken; the table below shows which modules are working
+implementations.
 
 ## Module status
 
@@ -104,7 +107,11 @@ let coap = CoapRequest::new(
 ```
 
 `MqttPublish` emits one MQTT 5 PUBLISH packet with an empty property section and
-a 1 MiB local ceiling. It does not implement CONNECT, broker negotiation,
+a 1 MiB local ceiling. Both encoders allocate their output fallibly and return
+`AllocationFailed` (`MqttCodecError`, `CoapCodecError`, both
+`#[non_exhaustive]` since 13.0.0-alpha.5) when the allocator refuses it, as on
+a device whose heap is smaller than the packet; an encoded packet is a second
+copy of its payload. It does not implement CONNECT, broker negotiation,
 PUBACK/PUBREC/PUBREL/PUBCOMP, or retries. `CoapRequest` emits base GET/POST/PUT/
 DELETE requests with ordered URI-Path (at most 255 bytes per segment and never
 `.` or `..`, as RFC 7252 requires) and Content-Format options under a
@@ -184,10 +191,44 @@ process targets the same inactive bank, never the running one.
 Since 13.0.0-alpha.5 the manager's state is read with `current_partition()`,
 `status()` and `firmware_version()`; the fields are private.
 
+`verify_update` runs the cheap checks first (target, rollback counter, length,
+signature encoding) and hashes the image only after them. The device rebuilds
+the manifest with `from_firmware`, which hashes the image too, so verification
+reads it twice and needs it as one `&[u8]`; a manifest built from received
+fields and streaming verification are planned for 13.1 ([roadmap](ROADMAP.md)).
+
 `OtaManager::new`, `verify_signature`, and `commit_update` are deprecated
 migration APIs. All three always return `OtaError` because keyless construction,
 payload-only verification, and unconditional commit cannot provide the required
 guarantees.
+
+## `no_std` use
+
+Depend on the crate with `default-features = false`. It uses `alloc`, so the
+firmware provides a `#[global_allocator]` (for example `embedded-alloc`) and a
+panic handler. Plan for about 8 KiB of stack in `verify_update` and 2.6 KiB
+while building an `OtaManager`, plus your own frames; the heap needs little
+beyond the packets you encode. `rullst-iot` uses `ed25519-dalek` without its
+precomputed tables; adding `ed25519-dalek = { version = "2.2",
+default-features = false, features = ["fast"] }` to the application turns them
+on (about 7% faster verification and 1.6 KiB less stack on a Cortex-M4, for
+7.5 KiB more flash).
+
+## Hardware validation
+
+A BBC micro:bit V2 (nRF52833, Cortex-M4F at 64 MHz, 128 KiB RAM) ran 59
+checks, twice per boot, on 2026-11-10: telemetry JSON, digital-twin, Modbus
+and I2C frames, MQTT 5 and CoAP encodings byte-identical to the host build,
+the anomaly detector, signed OTA verification (valid, tampered, wrong key,
+wrong target, rollback), the rollback-counter compare-and-set contract with an
+in-RAM store, and allocation failure. `verify_update` took 62.7 ms for a
+32 KiB image (36.9 ms of it Ed25519) with 7.7 KiB of stack; the heap peaked at
+1,153 bytes. Transports, other boards, external flash or streamed images, a
+persistent counter store and the bootloader remain unvalidated. The
+[crate guide](https://rullst.github.io/Rullst/book/crates/iot.html#hardware-validation-bbc-microbit-v2)
+has the full results; the firmware is
+[`.github/fixtures/iot-microbit-v2`](https://github.com/Rullst/Rullst/tree/main/.github/fixtures/iot-microbit-v2),
+which CI builds for `thumbv7em-none-eabihf`.
 
 ## Experimental simulators
 

@@ -26,11 +26,18 @@ cryptographic implementations.
   collision refusal, identifier validation, and a materialized compile test.
 - [x] Escaped local HTML snapshot cards and fail-closed anomaly handling for
   non-finite sensor/configuration values.
+- [x] One board: a BBC micro:bit V2 (nRF52833) ran the encoders, the OTA gate
+  and the counter-store contract on 2026-11-10; CI builds that firmware
+  (`.github/fixtures/iot-microbit-v2`). Encoders return `AllocationFailed`
+  instead of aborting.
 
 ## Required for an end-to-end OTA implementation
 
 - [ ] Authenticated manifest transport and a stable wire format.
-- [ ] Streaming firmware hashing with bounded memory.
+- [ ] Streaming firmware hashing with bounded memory, and a manifest built from
+  its received fields (13.1 candidate). Today the device hashes the image in
+  `OtaManifest::from_firmware` and again in `verify_update` (26 ms per 32 KiB
+  each on a 64 MHz Cortex-M4) and needs it as one contiguous slice.
 - [ ] Platform flash writer, read-back validation, and power-loss-safe A/B state.
 - [ ] A concrete hardware-backed durable counter implementation and atomic
   bootloader selection, with power-loss/fault-injection device tests.
