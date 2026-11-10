@@ -14,7 +14,7 @@ impl Plan {
         }
         if let Some(reason) = self.unmounted {
             steps.push(format!(
-                "The PWA routes (/sw.js, /offline) are not mounted: {reason}. Add `{MOUNT}` to your router by hand, next to `.merge_axum(rullst::health::health_router())` and outside the CSRF layer."
+                "The PWA routes (/sw.js, /offline) are not mounted: {reason}. Add `{MOUNT}` to your router by hand, next to `.merge_axum(rullst::health::health_router())` and outside the CSRF layer, or name the file that builds your router with `--router <file>`."
             ));
         }
         steps
