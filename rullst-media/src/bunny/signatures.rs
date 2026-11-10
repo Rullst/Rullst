@@ -70,8 +70,9 @@ impl BunnyStream {
         ttl: u32,
         kind: PlaybackKind,
     ) -> Result<PlaybackGrant, Error> {
-        if kind == PlaybackKind::Original {
-            // Bunny serves transcoded renditions, never the uploaded original.
+        if kind == PlaybackKind::Original || !self.config.delivery {
+            // Bunny serves transcoded renditions, never the uploaded original;
+            // an upload-only configuration holds no embed or CDN token key.
             return Err(Error::Unsupported);
         }
         let expires_at = expiration(now, ttl, 900)?;
@@ -140,11 +141,16 @@ impl BunnyStream {
 
     /// Verifies exact bytes and the distinct webhook protocol; does not mutate
     /// asset state or trust the notification status as current video readiness.
+    /// Returns `Unsupported` for an upload-only configuration, which holds no
+    /// webhook key.
     pub fn verify_notification(
         &self,
         headers: WebhookHeaders<'_>,
         body: &[u8],
     ) -> Result<VerifiedNotification, Error> {
+        if !self.config.delivery {
+            return Err(Error::Unsupported);
+        }
         if body.is_empty()
             || body.len() > 4096
             || headers.version != "v1"

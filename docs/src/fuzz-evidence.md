@@ -86,8 +86,8 @@ becomes a fuzz package's input when any of these is present in its graph:
   crate other than `syn`, `quote`, `proc-macro2` and `toml`
   (`REVIEWED_PROC_MACRO_DEPENDENCIES`, what `rullst-macros` and
   `rullst-orm-macros` use; dev-dependencies are not linked and not checked).
-  Only the `rullst-macros` i18n `catalog!` reader is reviewed: it reads
-  `<invoking package>/<dir>/*.toml`.
+  Only the `rullst-macros` i18n readers are reviewed: `catalog!` and the
+  `__translate!` behind its `t!` read `<invoking package>/<dir>/*.toml`.
 - **Known file-reading macros and attributes:** `migrate!`, `query*!`,
   `include_dir!`, `embed_migrations!`, `include_proto!`, `dotenv!`, `#[folder]`
   (rust-embed), `#[grammar]` (pest), `#[template]` and similar, also as an item

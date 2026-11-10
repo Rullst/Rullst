@@ -14,6 +14,17 @@ separate provider keys, required embed/CDN/direct-file
 protection, HTTP security composition, browser uploads, captions/transcripts,
 typed failure handling, SQLite retention and backup responsibilities.
 
+Since 13.0.0-alpha.5 an application that only creates and uploads videos can
+configure Bunny with the library API key alone
+(`BunnyCredentials::upload_only` and `BunnyConfig::upload_only`; playback and
+webhook verification then return `Unsupported`), list the provider library page
+by page with `VideoProvider::list` (search, title or date order, duration,
+processing state, upload time and thumbnail), create a video with its real title
+in one call with `create_with_metadata`, and raise the browser upload limit above
+1 GiB, up to 64 GiB, with configurable `video/*` types. The
+[crate guide](../../rullst-media/README.md)
+gives the details.
+
 Run `cargo run -p rullst-media --example private_course_video --all-features`
 to exercise the executable offline journey. Empty or `mock_*` credentials never
 become live playback authority; production store configuration rejects them.

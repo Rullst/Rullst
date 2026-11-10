@@ -2,6 +2,7 @@
 pub mod passkey;
 
 mod app_key;
+mod dev_key;
 mod password;
 mod reset_token;
 mod session;

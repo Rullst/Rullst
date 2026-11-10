@@ -5,7 +5,13 @@ Loads the application's translation catalogs at compile time and defines
 // src/i18n.rs
 rullst::i18n::catalog!(default = "en");
 // or: rullst::i18n::catalog!(default = "pt-BR", dir = "config/locales");
+// or, for a language menu: catalog!(default = "pt-BR", order = ["pt-BR", "en", "es"]);
 ```
+
+`order` (since 13.0.0-alpha.5) sets the order of `LOCALES.iter()`, for a
+language menu; it must list every catalog file's tag exactly once. Without it
+the locales are sorted by tag (`en`, `es`, `pt-BR`), so the default is not
+necessarily first.
 
 `dir` (default `"locales"`) is relative to the crate's `Cargo.toml` and holds
 one file per locale named by its tag: `locales/en.toml`,
@@ -41,6 +47,13 @@ The generated items are:
   escapes; a key ending in `_html` is trusted HTML and returns `Markup` with
   its arguments escaped. A plural message takes `count = n` (any integer or a
   `rullst::i18n::Decimal`) and selects the form with the locale's CLDR rule.
+
+`t!` stays cheap with a large catalog: it carries the catalog's directory and
+locale order, not its messages, and the first call of a compilation reads and
+prepares the catalog once for the calls after it (the files are read again on
+each call and a changed file is prepared again). Only the called key's forms
+are expanded. Before 13.0.0-alpha.5 each call carried and re-parsed the whole
+catalog.
 
 Edits to existing files rebuild the crate. To rebuild when a locale file is
 added or removed, add a `build.rs` next to `Cargo.toml` (stable Rust gives

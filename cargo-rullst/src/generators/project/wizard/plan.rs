@@ -27,6 +27,8 @@ pub(crate) struct ProjectPlan {
     /// Storage add-ons chosen in the wizard.
     pub(crate) add_ons: Vec<PolyglotIntegration>,
     pub(crate) skip_initial_migration: bool,
+    /// Writes the GitHub CI workflow and Dependabot configuration.
+    pub(crate) ci: bool,
 }
 
 impl ProjectPlan {

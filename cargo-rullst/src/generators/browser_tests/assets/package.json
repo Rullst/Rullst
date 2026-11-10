@@ -1,0 +1,7 @@
+{
+  "name": "browser-tests",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pinned Playwright and axe-core for the browser and accessibility checks of every page (cargo rullst add browser-tests)",
+  "devDependencies": { "axe-core": "4.14.0", "playwright": "1.64.1" }
+}

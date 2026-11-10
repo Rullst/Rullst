@@ -1,110 +1,89 @@
-//! `__translate!`: checks a `t!` call against the encoded catalog and
-//! expands it to a runtime lookup.
+//! `__translate!`: checks a `t!` call against the catalog that `catalog!`
+//! validated and expands it to a runtime lookup.
+//!
+//! `t!` forwards `"dir" ["tag", …] "default" ; <call>`: the catalog's
+//! directory, locale order and default, not its contents, so the cost of a
+//! call does not grow with the catalog (see [`super::prepared`]).
 
-use super::template::{self, Segment};
+use super::prepared::{self, Entry, Prepared};
+use super::template::Segment;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::BTreeSet;
 use syn::parse::{ParseStream, Parser};
-use syn::{Expr, Ident, LitInt, LitStr, Token, braced, bracketed, parenthesized};
+use syn::{Expr, Ident, LitStr, Token, bracketed};
 
-/// One key of the encoded catalog: its forms per locale, in locale order.
-struct Entry {
-    key: String,
-    html: bool,
-    plural: bool,
-    /// `(category, template)` pairs per locale, `other` last; single
-    /// messages only have `other`.
-    forms: Vec<Vec<(Ident, String)>>,
+/// Where `catalog!` found the catalog.
+pub(crate) struct Header {
+    dir: LitStr,
+    order: Vec<String>,
+    default: LitStr,
 }
 
-struct Encoded {
-    tags: Vec<LitStr>,
-    rules: Vec<Ident>,
-    default: LitInt,
-    entries: Vec<Entry>,
-}
-
-struct Call {
+pub(crate) struct Call {
     locale: Expr,
     key: LitStr,
     args: Vec<(Ident, Expr)>,
 }
 
 pub(crate) fn expand_translate(input: TokenStream) -> TokenStream {
-    try_expand(input).unwrap_or_else(|error| error.to_compile_error())
+    let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR").unwrap_or_default();
+    try_expand(std::path::Path::new(&manifest_dir), input)
+        .unwrap_or_else(|error| error.to_compile_error())
 }
 
-/// Parses `<encoded catalog> ; <t! arguments>` and expands the call.
-pub(crate) fn try_expand(input: TokenStream) -> syn::Result<TokenStream> {
-    let (encoded, call) = Parser::parse2(
+/// Parses `<header> ; <t! arguments>`, loads the catalog relative to
+/// `manifest_dir` and expands the call.
+pub(crate) fn try_expand(
+    manifest_dir: &std::path::Path,
+    input: TokenStream,
+) -> syn::Result<TokenStream> {
+    let (header, call) = Parser::parse2(
         |input: ParseStream| {
-            let encoded = parse_encoded(input)?;
+            let header = parse_header(input)?;
             input.parse::<Token![;]>()?;
-            let call = parse_call(input)?;
-            Ok((encoded, call))
+            Ok((header, parse_call(input)?))
         },
         input,
     )?;
-    expand(&encoded, call)
+    let prepared = prepared::load(
+        manifest_dir,
+        &header.dir.value(),
+        &header.order,
+        &header.default.value(),
+    )
+    .map_err(|_| {
+        syn::Error::new(
+            call.key.span(),
+            format!(
+                "the translation catalog in `{}` has errors; `catalog!` reports them",
+                header.dir.value()
+            ),
+        )
+    })?;
+    expand(&prepared, call)
 }
 
-fn parse_encoded(input: ParseStream) -> syn::Result<Encoded> {
-    let locales;
-    bracketed!(locales in input);
-    let mut tags = Vec::new();
-    let mut rules = Vec::new();
-    while !locales.is_empty() {
-        tags.push(locales.parse()?);
-        rules.push(locales.parse()?);
-        if !locales.is_empty() {
-            locales.parse::<Token![,]>()?;
+fn parse_header(input: ParseStream) -> syn::Result<Header> {
+    let dir = input.parse()?;
+    let tags;
+    bracketed!(tags in input);
+    let mut order = Vec::new();
+    while !tags.is_empty() {
+        order.push(tags.parse::<LitStr>()?.value());
+        if !tags.is_empty() {
+            tags.parse::<Token![,]>()?;
         }
     }
     let default = input.parse()?;
-    let body;
-    braced!(body in input);
-    let mut entries = Vec::new();
-    while !body.is_empty() {
-        let key: LitStr = body.parse()?;
-        let kind: Ident = body.parse()?;
-        let shape: Ident = body.parse()?;
-        let groups;
-        bracketed!(groups in body);
-        let mut forms = Vec::new();
-        while !groups.is_empty() {
-            let group;
-            parenthesized!(group in groups);
-            let mut locale_forms = Vec::new();
-            while !group.is_empty() {
-                let category: Ident = group.parse()?;
-                if category_variant(&category).is_none() {
-                    return Err(syn::Error::new(
-                        category.span(),
-                        format!("unknown plural category `{category}`"),
-                    ));
-                }
-                let text: LitStr = group.parse()?;
-                locale_forms.push((category, text.value()));
-            }
-            forms.push(locale_forms);
-        }
-        entries.push(Entry {
-            key: key.value(),
-            html: kind == "html",
-            plural: shape == "plural",
-            forms,
-        });
-    }
-    Ok(Encoded {
-        tags,
-        rules,
+    Ok(Header {
+        dir,
+        order,
         default,
-        entries,
     })
 }
 
-fn parse_call(input: ParseStream) -> syn::Result<Call> {
+pub(crate) fn parse_call(input: ParseStream) -> syn::Result<Call> {
     if input.is_empty() {
         return Err(syn::Error::new(
             Span::call_site(),
@@ -135,28 +114,21 @@ fn parse_call(input: ParseStream) -> syn::Result<Call> {
     Ok(Call { locale, key, args })
 }
 
-fn expand(encoded: &Encoded, call: Call) -> syn::Result<TokenStream> {
+/// Expands one call against a prepared catalog.
+pub(crate) fn expand(prepared: &Prepared, call: Call) -> syn::Result<TokenStream> {
     let key = call.key.value();
-    let Some(entry) = encoded.entries.iter().find(|entry| entry.key == key) else {
+    let Some(entry) = prepared.entries.get(&key) else {
         let mut message = format!("unknown translation key `{key}`");
-        if let Some(close) = suggest(&key, encoded.entries.iter().map(|e| e.key.as_str())) {
+        if let Some(close) = suggest(&key, prepared.entries.keys().map(String::as_str)) {
             message.push_str(&format!("; did you mean `{close}`?"));
         }
         return Err(syn::Error::new(call.key.span(), message));
     };
-    let parsed = parse_forms(entry, call.key.span())?;
-    let mut names: BTreeSet<String> = parsed
-        .iter()
-        .flatten()
-        .flat_map(|(_, segments)| template::placeholders(segments))
-        .collect();
-    if entry.plural {
-        names.insert("count".to_owned());
-    }
-    check_args(entry, &call, &names)?;
+    let names = &entry.names;
+    check_args(&key, entry, &call, names)?;
 
     let placeholder_index = |name: &str| names.iter().position(|n| n == name).unwrap_or_default();
-    let forms = parsed.iter().map(|locale_forms| {
+    let forms = entry.forms.iter().map(|locale_forms| {
         let mut other = Vec::new();
         let mut plural = Vec::new();
         for (category, form) in locale_forms {
@@ -195,9 +167,9 @@ fn expand(encoded: &Encoded, call: Call) -> syn::Result<TokenStream> {
     } else {
         quote! { ::core::option::Option::None }
     };
-    let tags = &encoded.tags;
-    let rules = &encoded.rules;
-    let default = &encoded.default;
+    let tags = &prepared.tags;
+    let rules = prepared.rules.iter().map(|rule| format_ident!("{rule}"));
+    let default = prepared.default;
     let render = if entry.html {
         quote! { rullst::i18n::__html }
     } else {
@@ -226,29 +198,9 @@ fn expand(encoded: &Encoded, call: Call) -> syn::Result<TokenStream> {
     })
 }
 
-/// The parsed templates of each locale, by category.
-type Forms<'a> = Vec<(&'a Ident, Vec<Segment>)>;
-
-fn parse_forms(entry: &Entry, span: Span) -> syn::Result<Vec<Forms<'_>>> {
-    let parse = |text: &str| {
-        template::parse(text)
-            .map_err(|problem| syn::Error::new(span, format!("`{}` {problem}", entry.key)))
-    };
-    entry
-        .forms
-        .iter()
-        .map(|locale_forms| {
-            locale_forms
-                .iter()
-                .map(|(category, text)| Ok((category, parse(text)?)))
-                .collect()
-        })
-        .collect()
-}
-
-/// The `rullst::i18n::PluralCategory` variant of an encoded category.
-fn category_variant(category: &Ident) -> Option<&'static str> {
-    Some(match category.to_string().as_str() {
+/// The `rullst::i18n::PluralCategory` variant of a CLDR category.
+fn category_variant(category: &str) -> Option<&'static str> {
+    Some(match category {
         "zero" => "Zero",
         "one" => "One",
         "two" => "Two",
@@ -259,8 +211,7 @@ fn category_variant(category: &Ident) -> Option<&'static str> {
     })
 }
 
-fn check_args(entry: &Entry, call: &Call, names: &BTreeSet<String>) -> syn::Result<()> {
-    let key = &entry.key;
+fn check_args(key: &str, entry: &Entry, call: &Call, names: &BTreeSet<String>) -> syn::Result<()> {
     let mut errors: Vec<syn::Error> = Vec::new();
     let expected = if names.is_empty() {
         "it takes no arguments".to_owned()

@@ -1112,7 +1112,8 @@ jobs:
     # them and drives them in Chromium, Firefox and WebKit (pinned Playwright):
     # console errors, CSP violations, keyboard paths, the HTMX counter and
     # sign-up/sign-in/sign-out through the real forms, and axe-core (serious
-    # and critical fail). Full manual runs, the nightly run and the
+    # and critical fail), then the tests `cargo rullst add browser-tests`
+    # generates for each starter. Full manual runs, the nightly run and the
     # `starter-browsers` diagnostic always run it; ready pull requests only
     # when the starter templates, html!, Core's pages, headers or CSRF, or this
     # check change (a first step decides). Branch pushes skip it, so their job
@@ -1143,7 +1144,7 @@ jobs:
             exit 0
           fi
           changed="$(git diff --name-only HEAD^1 HEAD)"
-          if grep -Eq '^(cargo-rullst/src/(blueprints/|generators/(project/|auth/|billing))|rullst-macros/src/|rullst-core/src/(security/|server/|config/|html[a-z_]*\.rs|htmx\.rs|config\.rs)|\.github/(check-starter-browsers\.py|starter-browsers/|dast-generated-app\.py|first_hour_(process|checks)\.py))' <<< "$changed"; then
+          if grep -Eq '^(cargo-rullst/src/(blueprints/|generators/(project/|auth/|billing|browser_tests/))|rullst-macros/src/|rullst-core/src/(security/|server/|config/|html[a-z_]*\.rs|htmx\.rs|config\.rs)|\.github/(check-starter-browsers\.py|starter-browsers/|dast-generated-app\.py|first_hour_(process|checks)\.py))' <<< "$changed"; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"

@@ -24,10 +24,12 @@
 
 mod contracts;
 mod error;
+mod library;
 mod provider;
 
 pub use contracts::*;
 pub use error::MediaError;
+pub use library::{ListOrder, ListQuery, ListedVideo, VideoPage};
 pub use provider::*;
 
 #[cfg(feature = "bunny")]
