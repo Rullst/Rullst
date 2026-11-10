@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794298218995,
+  "lastUpdate": 1794306740211,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -20375,6 +20375,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3768,
             "range": "± 163",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7ee54eac686ec94dedabbc1607a46e6698d3e80a",
+          "message": "Merge pull request #622 from Rullst/feat/v13-alpha5-frontend-toolkit\n\nfeat(frontend): content-hashed asset URLs, cargo rullst add tailwind and add alpine",
+          "timestamp": "2026-11-10T07:14:12-03:00",
+          "tree_id": "6f93afc8977b008ee1388c0919182471875e6734",
+          "url": "https://github.com/Rullst/Rullst/commit/7ee54eac686ec94dedabbc1607a46e6698d3e80a"
+        },
+        "date": 1794306739206,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 928,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 764,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1700,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3885,
+            "range": "± 69",
             "unit": "ns/iter"
           }
         ]
