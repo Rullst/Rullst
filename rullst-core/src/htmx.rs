@@ -1,6 +1,7 @@
 use axum::{
-    extract::FromRequestParts,
-    http::{HeaderValue, request::Parts},
+    extract::{FromRequestParts, Request},
+    http::{HeaderMap, HeaderValue, header, request::Parts},
+    middleware::Next,
     response::{Html, IntoResponse, Response},
 };
 
@@ -27,6 +28,19 @@ pub struct HtmxRequest {
     /// The browser's active URL when the request was initiated (`HX-Current-URL`).
     pub current_url: Option<String>,
     csp_nonce: Option<crate::security::CspNonce>,
+    /// `HX-History-Restore-Request: true`: htmx missed its history cache and
+    /// replaces the whole `<body>` with the response.
+    history_restore: bool,
+    /// `HX-Boosted: true`: a boosted link or form, which expects a page.
+    boosted: bool,
+}
+
+impl HtmxRequest {
+    /// Whether [`render_page`] answers with the content alone: an htmx
+    /// request that is neither a history restore nor boosted.
+    fn wants_fragment(&self) -> bool {
+        self.is_htmx && !self.history_restore && !self.boosted
+    }
 }
 
 impl<S> FromRequestParts<S> for HtmxRequest
@@ -36,12 +50,9 @@ where
     type Rejection = std::convert::Infallible;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let is_htmx = parts
-            .headers
-            .get("HX-Request")
-            .and_then(|v| v.to_str().ok())
-            .map(|v| v == "true")
-            .unwrap_or(false);
+        let is_htmx = header_is_true(&parts.headers, "HX-Request");
+        let history_restore = header_is_true(&parts.headers, "HX-History-Restore-Request");
+        let boosted = header_is_true(&parts.headers, "HX-Boosted");
 
         let trigger = htmx_header(&parts.headers, "HX-Trigger");
         let target = htmx_header(&parts.headers, "HX-Target");
@@ -57,8 +68,18 @@ where
             prompt,
             current_url,
             csp_nonce,
+            history_restore,
+            boosted,
         })
     }
+}
+
+/// Whether htmx sent the boolean header `name` as `true`.
+fn header_is_true(headers: &HeaderMap, name: &str) -> bool {
+    headers
+        .get(name)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| v == "true")
 }
 
 /// Reads a header as htmx's browser client sent it.
@@ -186,11 +207,21 @@ const HTMX_INDICATOR_STYLES: &str = ".htmx-indicator{opacity:0}\
 .htmx-request.htmx-indicator{opacity:1;transition:opacity 200ms ease-in}";
 
 /// Helper function to render a hybrid SSR layout page.
-/// - If it is triggered by HTMX, it returns just the inner `content` as a fragment.
-/// - Otherwise, it wraps `content` in an HTML5 skeleton that loads the generated
-///   same-origin stylesheet and the version-pinned HTMX browser client.
-///   CLI scaffolds supply `/static/htmx-1.9.12.min.js`; manually built
-///   applications must serve that asset themselves.
+/// - An htmx request (`HX-Request: true`) receives just the inner `content`
+///   as a fragment.
+/// - Every other request receives `content` wrapped in an HTML5 skeleton that
+///   loads the generated same-origin stylesheet and the version-pinned HTMX
+///   browser client. CLI scaffolds supply `/static/htmx-1.9.12.min.js`;
+///   manually built applications must serve that asset themselves. Since
+///   13.0.0-rc.1 that includes the two htmx requests that expect a page: a
+///   history restore after a cache miss (`HX-History-Restore-Request: true`,
+///   which replaces the whole `<body>`) and a boosted link or form
+///   (`HX-Boosted: true`); before, both received the fragment and the page
+///   lost its layout.
+///
+/// The page and the fragment share a URL, so under [`crate::Server`] HTML
+/// responses of the application's routes carry `Vary: HX-Request`, and a
+/// cache keeps the two apart.
 ///
 /// Since 13.0.0-rc.1, under Rullst's security headers (a request CSP nonce),
 /// the page also sends `<meta name="htmx-config"
@@ -229,7 +260,7 @@ pub fn render_page_with_lang(
 /// the document's `<head>`, after the stylesheet and the htmx script: for
 /// example the web app manifest link, `theme-color` and the service worker
 /// registration script that `cargo rullst make:pwa` adds. An htmx request
-/// still receives only `content`.
+/// still receives only `content`, as with [`render_page`].
 ///
 /// `head` is [`Markup`] like `content`, so `html!` output is escaped. A
 /// `<script>` placed there must load a same-origin file (`src="/static/…"`)
@@ -244,7 +275,7 @@ pub fn render_page_with_head(
     content: impl Into<Markup>,
 ) -> Html<String> {
     let content = content.into();
-    if htmx.is_htmx {
+    if htmx.wants_fragment() {
         return Html(content.into_string());
     }
     let head = head.into();
@@ -285,7 +316,43 @@ pub fn render_page_with_head(
     Html(page.into_string())
 }
 
+/// Adds `Vary: HX-Request` to the HTML responses of the application's
+/// routes, which [`crate::Server`] wraps in this middleware. [`render_page`]
+/// and handlers that read [`HtmxRequest`] answer one URL with a page or a
+/// fragment depending on that header, so a cache that stored one must not
+/// serve it for the other. A `Vary` that already names the header, or is
+/// `*`, is kept as it is.
+pub(crate) async fn vary_on_htmx_request(request: Request, next: Next) -> Response {
+    let mut response = next.run(request).await;
+    vary_html_on_htmx_request(response.headers_mut());
+    response
+}
+
+fn vary_html_on_htmx_request(headers: &mut HeaderMap) {
+    let is_html = headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(';').next())
+        .is_some_and(|media_type| media_type.trim().eq_ignore_ascii_case("text/html"));
+    let varies = headers.get_all(header::VARY).iter().any(|value| {
+        value.to_str().is_ok_and(|names| {
+            names
+                .split(',')
+                .map(str::trim)
+                .any(|name| name == "*" || name.eq_ignore_ascii_case("HX-Request"))
+        })
+    });
+    if is_html && !varies {
+        headers.append(header::VARY, HeaderValue::from_static("HX-Request"));
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[path = "htmx_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[path = "htmx_page_tests.rs"]
+mod page_tests;
