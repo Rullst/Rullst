@@ -279,7 +279,9 @@ mod tests {
         assert!(!generated.contains("unwrap_or_default"));
         assert!(!generated.contains("String :: from (\"null\")"));
         assert!(generated.contains("is missing field"));
-        assert!(generated.contains("from_str (serialized) ?"));
+        assert!(generated.contains(
+            "from_str (serialized) . map_err (| error | rullst_orm :: Error :: SerializationError (error . to_string ())) ?"
+        ));
     }
 
     #[test]

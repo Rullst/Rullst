@@ -71,6 +71,63 @@ fn request_errors_drop_the_url_and_report_their_kind() {
     assert!(!inner.is_connect());
     let rendered = format!("{error} {error:?}");
     assert!(!rendered.contains("secret"), "{rendered}");
-    assert!(error.to_string().starts_with("Request error: "));
-    assert_eq!(error.source().unwrap().to_string(), inner.to_string());
+    assert_eq!(inner.to_string(), "builder error");
+    assert_eq!(error.to_string(), "Request error: builder error");
+    assert_eq!(error.source().unwrap().to_string(), "builder error");
+}
+
+#[tokio::test]
+#[cfg_attr(miri, ignore)]
+async fn a_refused_connection_is_a_connect_error_with_its_cause() {
+    // A port that was just released refuses the connection.
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    drop(listener);
+    let source = reqwest::Client::new()
+        .get(format!("http://{address}/"))
+        .send()
+        .await
+        .unwrap_err();
+    let AiError::RequestError(inner) = AiError::request(source) else {
+        panic!("expected a request error");
+    };
+    assert!(inner.is_connect());
+    assert!(!inner.is_timeout());
+    assert!(inner.source().is_some(), "the transport cause is kept");
+}
+
+/// A reader failure whose cause has its own cause: `serde_json` reports the
+/// I/O error's source as its own.
+struct FailingReader;
+
+#[derive(Debug)]
+struct DeviceError(std::io::Error);
+
+impl std::fmt::Display for DeviceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("device error")
+    }
+}
+
+impl std::error::Error for DeviceError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.0)
+    }
+}
+
+impl std::io::Read for FailingReader {
+    fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+        Err(std::io::Error::other(DeviceError(std::io::Error::other(
+            "disk gone",
+        ))))
+    }
+}
+
+#[test]
+fn json_io_errors_keep_their_cause() {
+    let source = serde_json::from_reader::<_, serde_json::Value>(FailingReader).unwrap_err();
+    let AiError::SerializationError(inner) = AiError::json(source) else {
+        panic!("expected a serialization error");
+    };
+    assert_eq!(inner.source().unwrap().to_string(), "disk gone");
 }

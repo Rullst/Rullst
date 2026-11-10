@@ -291,6 +291,42 @@ fn body_limits_have_their_documented_sizes() {
     assert_eq!(MAX_CLIENT_CONTRACT_BODY_BYTES, 2_097_152);
 }
 
+/// A reader failure whose cause has its own cause: `serde_json` reports the
+/// I/O error's source as its own.
+struct FailingReader;
+
+#[derive(Debug)]
+struct DeviceError(std::io::Error);
+
+impl std::fmt::Display for DeviceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("device error")
+    }
+}
+
+impl std::error::Error for DeviceError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.0)
+    }
+}
+
+impl std::io::Read for FailingReader {
+    fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+        Err(std::io::Error::other(DeviceError(std::io::Error::other(
+            "disk gone",
+        ))))
+    }
+}
+
+#[test]
+fn json_io_errors_keep_their_cause() {
+    let source = serde_json::from_reader::<_, serde_json::Value>(FailingReader)
+        .expect_err("the reader fails");
+    let error = super::error::ContractJsonError::new(source);
+    let cause = std::error::Error::source(&error).expect("the I/O error is the source");
+    assert_eq!(cause.to_string(), "disk gone");
+}
+
 #[test]
 fn json_errors_keep_the_decoder_message_without_exposing_its_type() {
     let policy = ClientContractPolicy::new(version(1), version(1), 256).expect("valid policy");

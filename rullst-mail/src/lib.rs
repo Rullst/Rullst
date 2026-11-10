@@ -37,6 +37,9 @@ pub mod factory;
 pub mod feedback;
 pub mod inspection;
 pub mod message;
+// The file stays beside the transports that use it; the module is only
+// reachable here, at `rullst_mail::mock`.
+#[path = "drivers/mock.rs"]
 pub mod mock;
 pub mod observability;
 #[cfg(feature = "capital-invoice")]

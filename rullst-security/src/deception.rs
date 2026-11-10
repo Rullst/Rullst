@@ -176,6 +176,12 @@ mod tests {
         assert_eq!(fresh.routes(), defaults);
         assert_eq!(fresh.len(), DEFAULT_TRAPS.len());
         assert!(!fresh.is_empty());
+        let empty = DeceptionRoutes {
+            routes: DashSet::new(),
+        };
+        assert!(empty.is_empty());
+        assert_eq!(empty.len(), 0);
+        assert!(empty.routes().is_empty());
         assert!(fresh.contains("/.env"));
         assert!(!fresh.contains("/.env/"));
         try_register_deception_trap("/sorted-registry-trap").expect("valid trap");
