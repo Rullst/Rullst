@@ -141,7 +141,7 @@ fn regex(cell: &'static OnceLock<Option<Regex>>, pattern: &str) -> Option<&'stat
 }
 
 /// Tools whose absence is common enough to deserve an install hint.
-const TOOLS: [(&str, &str); 8] = [
+const TOOLS: [(&str, &str); 7] = [
     (
         "rustup",
         "Install Rust with rustup from https://rustup.rs, then open a new shell.",
@@ -159,7 +159,6 @@ const TOOLS: [(&str, &str); 8] = [
         "docker",
         "Install Docker from https://docs.docker.com/get-docker/ and start it.",
     ),
-    ("wasm-bindgen", "Run `cargo install wasm-bindgen-cli`."),
     (
         "kubectl",
         "Install kubectl from https://kubernetes.io/docs/tasks/tools/.",
@@ -171,7 +170,7 @@ const TOOLS: [(&str, &str); 8] = [
 fn missing_tool(text: &str) -> Option<(&'static str, &'static str)> {
     static AFTER: OnceLock<Option<Regex>> = OnceLock::new();
     static BEFORE: OnceLock<Option<Regex>> = OnceLock::new();
-    let names = "rustup|rustc|cargo|git|docker|wasm-bindgen|kubectl|npm";
+    let names = "rustup|rustc|cargo|git|docker|kubectl|npm";
     let after = regex(
         &AFTER,
         &format!(

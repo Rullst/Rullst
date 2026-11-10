@@ -9,7 +9,7 @@ widgets, bounded selected-record delete/deactivate actions, telemetry, a
 security view and an optional AI query page (the `ai` feature of
 `rullst-nexus`, `nexus-ai` on the `rullst` facade; see
 [AI assistant](../4-rullst-nexus.md#ai-assistant)). The current interface uses
-server-side HTML and HTMX; Wasm islands,
+server-side HTML and HTMX; client-side components,
 drag-and-drop media management and automatic relationship discovery described by
 older documentation were not implemented. They remain worthwhile separate
 features, but must not be presented as current behavior.

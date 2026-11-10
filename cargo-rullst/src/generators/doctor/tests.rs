@@ -7,7 +7,7 @@ use super::project::{requirement_major, version_check};
 use super::report::Status;
 use super::toolchain::{
     Detect, OPTIONAL, RULLST_MSRV, RustVersion, components_check, optional_check,
-    parse_rustc_version, rustc_check, wasm_check,
+    parse_rustc_version, rustc_check,
 };
 use super::*;
 use std::collections::{BTreeSet, HashMap};
@@ -39,7 +39,6 @@ fn healthy_probes() -> Probes {
         git: ok("git version 2.43.0"),
         cargo_audit: ok("cargo-audit 0.21.0"),
         optional: vec![Probe::default(); 6],
-        targets: None,
         linker: None,
     }
 }
@@ -77,24 +76,11 @@ fn rust_compiler_states_map_to_pass_warn_and_fail() {
 }
 
 #[test]
-fn components_wasm_and_optional_tools_are_classified() {
+fn components_and_optional_tools_are_classified() {
     let missing = components_check(&ok("rustfmt"), &failed());
     assert_eq!(missing.status, Status::Warn);
     assert_eq!(missing.detail, "missing: clippy");
     assert_eq!(components_check(&ok("a"), &ok("b")).status, Status::Pass);
-
-    let installed = ok("wasm32-unknown-unknown\nx86_64-unknown-linux-gnu");
-    let installed = Probe {
-        stdout: "x86_64-unknown-linux-gnu\nwasm32-unknown-unknown\n".to_string(),
-        ..installed
-    };
-    assert_eq!(wasm_check(&installed).status, Status::Pass);
-    let absent = wasm_check(&ok("x86_64-unknown-linux-gnu"));
-    assert_eq!(absent.status, Status::Warn);
-    assert_eq!(
-        absent.fix.as_deref(),
-        Some("rustup target add wasm32-unknown-unknown")
-    );
 
     let mut probes = vec![Probe::default(); 6];
     probes[5] = ok("Docker version 27");

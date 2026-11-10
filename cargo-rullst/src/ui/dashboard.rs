@@ -126,8 +126,6 @@ where
         "🚪  Middleware            (cargo rullst make:middleware)",
         "⚙️  Background Worker     (cargo rullst make:worker)",
         "📂  Blank Migration       (cargo rullst make:migration)",
-        "⚡  LiveView Reactive UI  (cargo rullst make:live)",
-        "🏝️  Wasm Island Component (cargo rullst make:island)",
         "📡  Scalar API Playground (cargo rullst make:scalar)",
         "☸️  Kubernetes Manifests  (cargo rullst make:k8s)",
         "🤖  Introspect DB Models  (cargo rullst generate:models)",
@@ -161,23 +159,13 @@ where
             "make:migration",
             vec![],
         ),
-        5 => (
-            "Enter LiveView component name (e.g. Counter):",
-            "make:live",
-            vec![],
-        ),
-        6 => (
-            "Enter Wasm island component name (e.g. Chart):",
-            "make:island",
-            vec![],
-        ),
-        7 => {
+        5 => {
             return run(vec![program.to_string(), "make:scalar".to_string()]);
         }
-        8 => {
+        6 => {
             return run(vec![program.to_string(), "make:k8s".to_string()]);
         }
-        9 => return introspect_models(ui, program, run),
+        7 => return introspect_models(ui, program, run),
         _ => return Ok(()),
     };
 
@@ -291,7 +279,7 @@ where
         ),
         format!(
             "🛠  Scaffold Code            {}",
-            "(Controllers, Models, LiveView, Islands)".dimmed()
+            "(Controllers, Models, Workers, Migrations)".dimmed()
         ),
         format!(
             "🗄  Database Operations      {}",

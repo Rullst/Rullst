@@ -12,11 +12,6 @@ pub fn render_showcase_nav(active_route: &str) -> html::Markup {
             "Typed server-rendered HTML with optional HTMX browser behavior",
         ),
         (
-            "/live-feed",
-            "🔴 LiveView WS (rullst::live)",
-            "Persistent WebSocket bidirectional state sync (Phoenix & Dioxus pattern)",
-        ),
-        (
             "/pico-demo",
             "🎨 Pico Semantic CSS",
             "Zero-build semantic CSS, auto dark mode, 0 Node.js/NPM (Pico.css v2)",

@@ -83,8 +83,6 @@ fn scaffold_menu_maps_every_choice_to_the_documented_command() {
         (2, "make:middleware", vec![]),
         (3, "make:worker", vec![]),
         (4, "make:migration", vec![]),
-        (5, "make:live", vec![]),
-        (6, "make:island", vec![]),
     ];
     for (selection, action, extra) in named_cases {
         let mut ui = FakeUi::with_input(selection, "Example");
@@ -105,7 +103,7 @@ fn scaffold_menu_maps_every_choice_to_the_documented_command() {
         assert_eq!(ui.prompts.len(), 2);
     }
 
-    for (selection, action) in [(7, "make:scalar"), (8, "make:k8s")] {
+    for (selection, action) in [(5, "make:scalar"), (6, "make:k8s")] {
         let mut ui = FakeUi::with_selections([selection]);
         let mut commands = Vec::new();
         handle_scaffold_code(&mut ui, "cargo-rullst", &mut |command| {
@@ -128,7 +126,7 @@ fn scaffold_menu_maps_every_choice_to_the_documented_command() {
 #[test]
 fn model_introspection_collects_the_required_driver_and_url() {
     let mut ui = FakeUi {
-        selections: [9, 1].into(),
+        selections: [7, 1].into(),
         inputs: ["postgres://localhost/app".to_string()].into(),
         ..FakeUi::default()
     };
@@ -161,7 +159,7 @@ fn model_introspection_collects_the_required_driver_and_url() {
         crate::cli::Commands::GenerateModels { .. }
     ));
 
-    let mut ui = FakeUi::with_selections([9, usize::MAX]);
+    let mut ui = FakeUi::with_selections([7, usize::MAX]);
     let mut run = |_| -> DashboardResult<()> { panic!("an unknown driver must not execute") };
     handle_scaffold_code(&mut ui, "cargo-rullst", &mut run).expect("unknown drivers are ignored");
 }
@@ -260,7 +258,7 @@ fn project_menu_reaches_direct_nested_and_back_paths() {
     }
 
     for (selections, action) in [
-        (vec![2, 7], "make:scalar"),
+        (vec![2, 5], "make:scalar"),
         (vec![3, 2], "db:status"),
         (vec![4, 1], "make:mfa"),
     ] {
@@ -365,7 +363,7 @@ fn project_home_offers_quick_actions_and_every_submenu() {
     for (selections, expected) in [
         (vec![0], "dev"),
         (vec![1], "dash"),
-        (vec![2, 7], "make:scalar"),
+        (vec![2, 5], "make:scalar"),
         (vec![3, 0], "db:migrate"),
         (vec![4], "doctor"),
         (vec![5], "deploy"),

@@ -250,10 +250,6 @@ rust-version = "1.96.0"
 
     cargo_toml.push_str(
         r#"
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = "0.2"
-web-sys = { version = "0.3", features = ["Document", "Element", "EventTarget", "Window"] }
-
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
 "#,

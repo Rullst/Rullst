@@ -20,9 +20,6 @@ The blog package demonstrates:
 
 - server-rendered HTML and Active Record persistence;
 - a parameterized repository query;
-- a LiveView/WebSocket presentation example (Wasm islands are covered by
-  `cargo rullst make:island` and the [islands tutorial](tutorials/18-wasm-islands-rust.md),
-  not by this showcase);
 - Pico CSS and a small embedded file-template fixture (`include_str!` plus
   fixed placeholder replacement; not Tera or another template engine);
 - `Billable` quota evaluation and offline Stripe/InfinitePay adapter fixtures;

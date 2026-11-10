@@ -230,12 +230,19 @@ async fn showcase_forms_render_and_enforce_the_double_submit_csrf_token() {
 }
 
 #[tokio::test]
-async fn the_unbuilt_wasm_island_demo_is_not_advertised() {
+async fn the_removed_island_and_live_demos_are_not_served_or_advertised() {
     if !database().await {
         return;
     }
     let app = test_router().into_axum();
-    for path in ["/editor", "/wasm-counter"] {
+    for path in [
+        "/editor",
+        "/wasm-counter",
+        "/live-feed",
+        "/live-counter",
+        "/_live",
+        "/assets/vendor/htmx-ext-ws-1.9.12.js",
+    ] {
         let response = app
             .clone()
             .oneshot(Request::get(path).body(Body::empty()).expect("GET request"))
@@ -253,6 +260,8 @@ async fn the_unbuilt_wasm_island_demo_is_not_advertised() {
     let html = std::str::from_utf8(&body).expect("UTF-8 HTML");
     assert!(!html.contains("/editor"));
     assert!(!html.contains("Wasm Island"));
+    assert!(!html.contains("/live-feed"));
+    assert!(!html.contains("rullst::live"));
 }
 
 #[tokio::test]

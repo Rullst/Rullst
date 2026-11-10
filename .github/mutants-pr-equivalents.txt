@@ -61,10 +61,6 @@ rullst-core/src/feature/db.rs:142:40: replace < with <= in DbFeatureDriver::reso
 rullst-core/src/feature/db.rs:165:40: replace < with <= in DbFeatureDriver::remember
 rullst-core/src/lifecycle.rs:242:54: replace == with != in ApplicationLifecycle::begin_draining
 rullst-core/src/lifecycle.rs:392:22: replace && with || in release_request
-rullst-core/src/live/recovery/session.rs:22:9: delete match arm Ok(Ok(())) in run
-rullst-core/src/live/recovery/session.rs:67:22: replace > with == in send_snapshot
-rullst-core/src/live/recovery/session.rs:67:22: replace > with >= in send_snapshot
-rullst-core/src/live/recovery/types.rs:209:13: replace fields_without_duplicates::<impl serde::de::Visitor<'de> for Fields>::expecting -> fmt::Result with Ok(Default::default())
 rullst-core/src/queue/deferral/planner.rs:74:64: replace < with <= in lowest_intensity
 rullst-core/src/radar.rs:140:5: replace get_windows_memory_mb -> Option<f64> with None
 rullst-core/src/radar.rs:140:5: replace get_windows_memory_mb -> Option<f64> with Some(0.0)

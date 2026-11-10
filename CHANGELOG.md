@@ -11,6 +11,35 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- Server-Sent Events for realtime channels: `rullst::realtime::RealtimeSse`
+  and `RealtimeSseConfig` (also re-exported at the `rullst` and `rullst-core`
+  crate roots). `RealtimeSse::channel(&manager, name)` or
+  `RealtimeSse::subscribe(receiver)` returns a `text/event-stream` response
+  in which each `RealtimeMessage` is an event named after its `event` with
+  the payload as data. Every connection is bounded: keep-alive comments
+  (default 15 s, clamped to 1 s–5 min), a maximum lifetime (30 min, 1 s–24 h),
+  a connection limit shared by every clone (1,024, 1–65,536; `503` with
+  `Retry-After` beyond it, and after `shutdown()`), a 64 KiB event payload,
+  and the channel's fixed broadcast queue as the only per-connection buffer:
+  a connection that falls behind it ends so the browser reconnects, instead
+  of buffering. Messages with an event name SSE cannot carry are skipped.
+  `shutdown()` ends every open stream, so they do not hold the graceful
+  drain. Responses send `Cache-Control: no-cache` and `X-Accel-Buffering: no`.
+- HTML scaffolds (`cargo rullst new`, Blank and SaaS) write the htmx 1.9.12
+  Server-Sent Events extension to `static/htmx-ext-sse-1.9.12.js`, beside
+  `htmx-1.9.12.min.js` and served the same way, so pages use `hx-ext="sse"`,
+  `sse-connect` and `sse-swap` under the strict CSP. The file is upstream
+  `dist/ext/sse.js` of htmx commit `f38e07d4be8145a39e2bb477ec9fcc56bdd2d16d`,
+  unchanged (SHA-256
+  `be05b2e2265279f035271adbea0b72a356f20ce4dfa5870481bfe9c51b822fc1`); a test
+  checks the digest and the written bytes. Tutorial 34 is now a realtime
+  dashboard with SSE and htmx (`tutorials/34-realtime-dashboard-sse.md`).
+- `cargo rullst upgrade` rules for 13.0.0-alpha.5: `V13-ISLANDS-REMOVED` and
+  `V13-LIVE-REMOVED` (must-change: `#[island]`, `#[live_component]`,
+  `#[live_event]` and `rullst::island`/`rullst::live` paths, also in `use`
+  groups and macro bodies) and `V13-ISLAND-COMMANDS-REMOVED` and
+  `V13-LIVE-COMMAND-REMOVED` (review: scripts running `make:island`,
+  `build:client` or `make:live`). The catalog has 124 rules.
 - Generated applications start with tests and CI
   ([Testing your application](docs/src/testing-your-app.md)). Every starter's
   `src/security_tests.rs` has a `PAGES` list of its parameterless pages and a
@@ -165,6 +194,40 @@ A prepared version section does not establish that its tag or crates exist.
   where `cargo test` runs tests) never writes a key and keeps a new one in
   memory; tests that need one key in several processes set `APP_KEY`.
   Reported while upgrading an application.
+
+### Removed
+
+- **Breaking:** WebAssembly islands. The `#[island]` attribute
+  (`rullst::island`, `rullst_core::island`, `rullst_macros::island`),
+  `cargo rullst make:island`, `cargo rullst build:client` (the wasm-bindgen
+  client build and its `static/rullst-islands.js` loader), the Blank
+  starter's `src/islands/` counter and the `wasm32` `wasm-bindgen`/`web-sys`
+  dependencies of generated manifests were removed, with the doctor's
+  `toolchain.wasm_target` check, `rullst_client_init` and Tutorial 18.
+  Rullst's default CSP has no `'wasm-unsafe-eval'`, which browsers require
+  to compile WebAssembly, so islands could not run under the default security
+  headers. The removed commands print their replacement and exit with status
+  1. `#[server_function]` keeps its `wasm32` caller, and the `wasm32` checks
+  of the crates are unchanged.
+- **Breaking:** Live components. `rullst::live` was removed: the
+  `LiveComponent` trait, `Live::mount`, `live_ws_handler` (the HTMX WebSocket
+  protocol, which had no origin check, connection cap or idle timeout), the
+  `#[live_component]` and `#[live_event]` attributes, `cargo rullst make:live`,
+  and the `live::recovery` candidate (`LiveRecovery`, `LiveRecoveryConfig`,
+  `RecoverableLiveView`, `LiveScope`, `LiveSnapshot`, `LiveCommand`,
+  `LiveResult`, `LiveRecoveryError`, `LIVE_RECOVERY_MODULE` and its browser
+  module), with its guide, Tutorial 16 and the CI browser job. Push server
+  updates with `RealtimeSse` (above); `BroadcastManager`, `PresenceTracker`,
+  the tenant facades and `rullst::ws` stay. The blog example drops its Live
+  counter page and the vendored htmx WebSocket extension.
+- **Breaking:** the Turso variant of `cargo rullst make:billing`. Billing is
+  generated for SQLx projects only; in a Turso-primary project the command
+  refuses before writing anything, because billing needs the SQLx database
+  layer and Turso is limited to the Blank and API starters' primary
+  database. The six `billing_*_turso.rs.template` files were removed.
+
+The [migration guide](docs/src/migration-v13.md#upgrading-an-alpha4-application-to-alpha5)
+describes each replacement.
 
 ### Fixed
 
@@ -4103,7 +4166,8 @@ with the other Capital adapters.
   state without replaying uncertain mutations. Actual protocol and Chromium
   tests include revocation, disconnect and process restart. Legacy components
   and scaffolds remain separate; hosted source/package admission is pending.
-  See [the adoption and limits guide](docs/src/live-recovery.md).
+  The adoption and limits guide (`docs/src/live-recovery.md`) was removed with
+  the API in 13.0.0-alpha.5.
 
 ### Distributed tracing candidate
 
