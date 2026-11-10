@@ -405,15 +405,15 @@ cp "$repository_root/.github/fixtures/messaging-redis-facade.rs" "$messaging_red
 append_package_patches "$messaging_redis_dir/Cargo.toml"
 "$cargo_bin" test --manifest-path "$messaging_redis_dir/Cargo.toml" --offline --test messaging_redis_facade
 
-live_dir="$work_dir/live-recovery-consumer"
-mkdir -p "$live_dir/tests"
+sse_dir="$work_dir/realtime-sse-consumer"
+mkdir -p "$sse_dir/tests"
 {
-  printf '[package]\nname = "rullst-packaged-live-recovery"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
+  printf '[package]\nname = "rullst-packaged-realtime-sse"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
   printf 'rullst = { version = "=%s", default-features = false }\n' "$version"
-} > "$live_dir/Cargo.toml"
-cp "$repository_root/.github/fixtures/live-recovery-facade.rs" "$live_dir/tests/live_recovery_facade.rs"
-append_package_patches "$live_dir/Cargo.toml"
-"$cargo_bin" test --manifest-path "$live_dir/Cargo.toml" --offline --test live_recovery_facade
+} > "$sse_dir/Cargo.toml"
+cp "$repository_root/.github/fixtures/realtime-sse-facade.rs" "$sse_dir/tests/realtime_sse_facade.rs"
+append_package_patches "$sse_dir/Cargo.toml"
+"$cargo_bin" test --manifest-path "$sse_dir/Cargo.toml" --offline --test realtime_sse_facade
 
 portal_dir="$work_dir/capital-portal-consumer"
 mkdir -p "$portal_dir/tests"

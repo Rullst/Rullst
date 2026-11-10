@@ -276,7 +276,7 @@ release:
 | 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
-| 13.0.0-alpha.5 | `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS` |
+| 13.0.0-alpha.5 | `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED` |
 | 13.0.0-rc.1 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them) |
 
 A rule is dated by the first release tag whose catalog contains its code
@@ -447,15 +447,15 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (13 rows);
+  application source (15 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (109 rows);
+  the affected API, feature or configuration, which the rules locate (111 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
   of inputs that previously failed) (100 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 127 rules. A row can map to several rules and a rule to
+has 131 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -466,7 +466,6 @@ the rule together.
 | Private object storage | (c) none | — | Opt-in `storage-s3` candidate |
 | R2 public URLs | (b) review | `V13-R2-PUBLIC-URL` |  |
 | Tenant local storage | (c) none | — | Only a tenant directory below a regular file changes the error; not located |
-| Recoverable Live UI | (c) none | — | Opt-in module |
 | Distributed tracing | (b) review | `V13-OTLP-ENVIRONMENT` |  |
 | Core queue | (b) review | `V13-QUEUE-SEMANTICS` | Unindexed 12.x Redis failures are not located |
 | Core scheduler, cache and realtime | (b) review | `V13-PRESENCE-COUNTING` | The `TenantCache` key encoding is not located |
@@ -682,6 +681,9 @@ the rule together.
 | Connect JWKS key sets | (b) review | `V13-CONNECT-JWKS-KEY-SET` | `JWKS_CACHE`, `JwksCache`, `fetch_and_cache_jwks` and `fetch_and_cache_jwks_for_kid`; uses of the returned set are not followed; introduced in 13.0.0-alpha.5 |
 | Rullst-owned error payloads | (b) review | `V13-ERROR-PAYLOADS` | `AiError::RequestError`, `AiError::SerializationError`, `ClientContractError::InvalidJson`/`EncodeJson` and `TwinSyncError::Serialization`; the removed `From` conversions (`?` on `reqwest`, `serde_json`, `base64`, `jsonwebtoken` or `redis` errors) are not located, the compiler names them; introduced in 13.0.0-alpha.5 |
 | AI provider HTTP errors | (b) review | `V13-AI-HTTP-STATUS` | `AiError::ApiError` paths (arms, `matches!`, constructions), which no longer see HTTP status failures; introduced in 13.0.0-alpha.5 |
+| Wasm islands removed | (a) must-change, (b) review | `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED` | `#[island]` however qualified and `rullst::island`/`rullst_core::island` paths, also in `use` groups and macro bodies, at every location; `make:island` or `build:client` in workflows, root scripts, Makefile and justfile (review); introduced in 13.0.0-alpha.5 |
+| Live components removed | (a) must-change, (b) review | `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED` | `#[live_component]`/`#[live_event]` however qualified and `rullst::live`/`rullst_core::live` paths (`LiveComponent`, `Live::mount`, `live_ws_handler`, `live::recovery`), also in `use` groups, `html!` and `routes!`, at every location; `make:live` in workflows, root scripts, Makefile and justfile (review); introduced in 13.0.0-alpha.5 |
+| Billing generator on Turso projects | (c) none | — | CLI behaviour on new runs; billing code generated earlier is unchanged; introduced in 13.0.0-alpha.5 |
 
 ## Planned simpler update experience
 

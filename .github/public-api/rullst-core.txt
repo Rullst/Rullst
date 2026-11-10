@@ -585,6 +585,44 @@ impl core::marker::Sync for rullst_core::RealtimeMessage
 impl core::marker::Unpin for rullst_core::RealtimeMessage
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::RealtimeMessage
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::RealtimeMessage
+pub struct rullst_core::RealtimeSse
+impl rullst_core::RealtimeSse
+pub fn rullst_core::RealtimeSse::channel(&self, manager: &rullst_core::BroadcastManager, channel: &str) -> axum_core::response::Response
+pub fn rullst_core::RealtimeSse::config(&self) -> rullst_core::RealtimeSseConfig
+pub fn rullst_core::RealtimeSse::is_shut_down(&self) -> bool
+pub fn rullst_core::RealtimeSse::new(config: rullst_core::RealtimeSseConfig) -> Self
+pub fn rullst_core::RealtimeSse::open_connections(&self) -> usize
+pub fn rullst_core::RealtimeSse::shutdown(&self)
+pub fn rullst_core::RealtimeSse::subscribe(&self, receiver: tokio::sync::broadcast::Receiver<rullst_core::RealtimeMessage>) -> axum_core::response::Response
+impl core::clone::Clone for rullst_core::RealtimeSse
+impl core::fmt::Debug for rullst_core::RealtimeSse
+impl !core::panic::unwind_safe::RefUnwindSafe for rullst_core::RealtimeSse
+impl !core::panic::unwind_safe::UnwindSafe for rullst_core::RealtimeSse
+impl core::marker::Send for rullst_core::RealtimeSse
+impl core::marker::Sync for rullst_core::RealtimeSse
+impl core::marker::Unpin for rullst_core::RealtimeSse
+pub struct rullst_core::RealtimeSseConfig
+impl rullst_core::RealtimeSseConfig
+pub fn rullst_core::RealtimeSseConfig::keep_alive(&self) -> core::time::Duration
+pub fn rullst_core::RealtimeSseConfig::max_connections(&self) -> usize
+pub fn rullst_core::RealtimeSseConfig::max_lifetime(&self) -> core::time::Duration
+pub fn rullst_core::RealtimeSseConfig::max_payload_bytes(&self) -> usize
+pub fn rullst_core::RealtimeSseConfig::new() -> Self
+pub fn rullst_core::RealtimeSseConfig::with_keep_alive(self, interval: core::time::Duration) -> Self
+pub fn rullst_core::RealtimeSseConfig::with_max_connections(self, connections: usize) -> Self
+pub fn rullst_core::RealtimeSseConfig::with_max_lifetime(self, lifetime: core::time::Duration) -> Self
+pub fn rullst_core::RealtimeSseConfig::with_max_payload_bytes(self, bytes: usize) -> Self
+impl core::clone::Clone for rullst_core::RealtimeSseConfig
+impl core::cmp::Eq for rullst_core::RealtimeSseConfig
+impl core::cmp::PartialEq for rullst_core::RealtimeSseConfig
+impl core::default::Default for rullst_core::RealtimeSseConfig
+impl core::fmt::Debug for rullst_core::RealtimeSseConfig
+impl core::marker::Copy for rullst_core::RealtimeSseConfig
+impl core::marker::Send for rullst_core::RealtimeSseConfig
+impl core::marker::Sync for rullst_core::RealtimeSseConfig
+impl core::marker::Unpin for rullst_core::RealtimeSseConfig
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::RealtimeSseConfig
+impl core::panic::unwind_safe::UnwindSafe for rullst_core::RealtimeSseConfig
 #[non_exhaustive] pub struct rullst_core::ReleasedUpload
 pub rullst_core::ReleasedUpload::object_key: alloc::string::String
 pub rullst_core::ReleasedUpload::display_name: alloc::string::String
@@ -2266,116 +2304,12 @@ impl core::marker::Unpin for rullst_core::i18n::TimeStyle
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::i18n::TimeStyle
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::i18n::TimeStyle
 pub use rullst_core::i18n::catalog = macro rullst_macros::i18n_catalog
-pub use rullst_core::island = proc_attribute rullst_macros::island
 pub mod rullst_core::lifecycle
 pub use rullst_core::lifecycle::ApplicationLifecycle = struct rullst_core::ApplicationLifecycle
 pub use rullst_core::lifecycle::ApplicationLifecycleError = enum rullst_core::ApplicationLifecycleError
 pub use rullst_core::lifecycle::ApplicationPhase = enum rullst_core::ApplicationPhase
 pub use rullst_core::lifecycle::ReadinessSnapshot = struct rullst_core::ReadinessSnapshot
 pub use rullst_core::lifecycle::apply_lifecycle = function rullst_core::apply_lifecycle
-pub mod rullst_core::live
-pub struct rullst_core::live::Live;
-impl rullst_core::live::Live
-pub async fn rullst_core::live::Live::mount<C: rullst_core::live::LiveComponent>(ws_path: &str) -> rullst_core::Markup
-impl core::marker::Send for rullst_core::live::Live
-impl core::marker::Sync for rullst_core::live::Live
-impl core::marker::Unpin for rullst_core::live::Live
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::live::Live
-impl core::panic::unwind_safe::UnwindSafe for rullst_core::live::Live
-pub trait rullst_core::live::LiveComponent: core::marker::Send + core::marker::Sync + core::default::Default + 'static
-pub fn rullst_core::live::LiveComponent::handle_event<'life0, 'async_trait>(&'life0 mut self, _payload: serde_json::value::Value) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = ()> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait
-pub fn rullst_core::live::LiveComponent::mount<'life0, 'async_trait>(&'life0 mut self) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = ()> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait
-pub fn rullst_core::live::LiveComponent::render(&self) -> alloc::string::String
-pub async fn rullst_core::live::live_ws_handler<C: rullst_core::live::LiveComponent>(ws: axum::extract::ws::WebSocketUpgrade) -> impl axum_core::response::into_response::IntoResponse
-pub mod rullst_core::live::recovery
-pub const rullst_core::live::recovery::LIVE_RECOVERY_MODULE: &str
-pub struct rullst_core::live::recovery::LiveCommand
-impl rullst_core::live::recovery::LiveCommand
-pub fn rullst_core::live::recovery::LiveCommand::action(&self) -> &str
-pub fn rullst_core::live::recovery::LiveCommand::expected_revision(&self) -> u64
-pub fn rullst_core::live::recovery::LiveCommand::fields(&self) -> &alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::string::String>
-pub fn rullst_core::live::recovery::LiveCommand::id(&self) -> &str
-impl core::clone::Clone for rullst_core::live::recovery::LiveCommand
-impl core::fmt::Debug for rullst_core::live::recovery::LiveCommand
-impl core::marker::Send for rullst_core::live::recovery::LiveCommand
-impl core::marker::Sync for rullst_core::live::recovery::LiveCommand
-impl core::marker::Unpin for rullst_core::live::recovery::LiveCommand
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::live::recovery::LiveCommand
-impl core::panic::unwind_safe::UnwindSafe for rullst_core::live::recovery::LiveCommand
-pub struct rullst_core::live::recovery::LiveRecovery
-impl rullst_core::live::recovery::LiveRecovery
-pub async fn rullst_core::live::recovery::LiveRecovery::upgrade<C: rullst_core::live::recovery::RecoverableLiveView>(&self, ws: axum::extract::ws::WebSocketUpgrade, headers: &http::header::map::HeaderMap, scope: rullst_core::live::recovery::LiveScope, component: C) -> axum_core::response::Response
-pub fn rullst_core::live::recovery::LiveRecovery::new(config: rullst_core::live::recovery::LiveRecoveryConfig) -> Self
-impl core::clone::Clone for rullst_core::live::recovery::LiveRecovery
-impl !core::panic::unwind_safe::RefUnwindSafe for rullst_core::live::recovery::LiveRecovery
-impl !core::panic::unwind_safe::UnwindSafe for rullst_core::live::recovery::LiveRecovery
-impl core::marker::Send for rullst_core::live::recovery::LiveRecovery
-impl core::marker::Sync for rullst_core::live::recovery::LiveRecovery
-impl core::marker::Unpin for rullst_core::live::recovery::LiveRecovery
-pub struct rullst_core::live::recovery::LiveRecoveryConfig
-impl rullst_core::live::recovery::LiveRecoveryConfig
-pub fn rullst_core::live::recovery::LiveRecoveryConfig::loopback_for_tests(origin: impl core::convert::Into<alloc::string::String>) -> rullst_core::live::recovery::LiveResult<Self>
-pub fn rullst_core::live::recovery::LiveRecoveryConfig::try_new(origin: impl core::convert::Into<alloc::string::String>) -> rullst_core::live::recovery::LiveResult<Self>
-pub fn rullst_core::live::recovery::LiveRecoveryConfig::with_capacity(self, connections: usize, actions: usize) -> rullst_core::live::recovery::LiveResult<Self>
-pub fn rullst_core::live::recovery::LiveRecoveryConfig::with_timing(self, operation_timeout: core::time::Duration, revalidate_every: core::time::Duration, lifetime: core::time::Duration) -> rullst_core::live::recovery::LiveResult<Self>
-impl core::clone::Clone for rullst_core::live::recovery::LiveRecoveryConfig
-impl core::fmt::Debug for rullst_core::live::recovery::LiveRecoveryConfig
-impl core::marker::Send for rullst_core::live::recovery::LiveRecoveryConfig
-impl core::marker::Sync for rullst_core::live::recovery::LiveRecoveryConfig
-impl core::marker::Unpin for rullst_core::live::recovery::LiveRecoveryConfig
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::live::recovery::LiveRecoveryConfig
-impl core::panic::unwind_safe::UnwindSafe for rullst_core::live::recovery::LiveRecoveryConfig
-pub enum rullst_core::live::recovery::LiveRecoveryError
-pub rullst_core::live::recovery::LiveRecoveryError::Unauthorized
-pub rullst_core::live::recovery::LiveRecoveryError::Conflict
-pub rullst_core::live::recovery::LiveRecoveryError::Invalid
-pub rullst_core::live::recovery::LiveRecoveryError::Unavailable
-impl core::clone::Clone for rullst_core::live::recovery::LiveRecoveryError
-impl core::cmp::Eq for rullst_core::live::recovery::LiveRecoveryError
-impl core::cmp::PartialEq for rullst_core::live::recovery::LiveRecoveryError
-impl core::error::Error for rullst_core::live::recovery::LiveRecoveryError
-impl core::fmt::Debug for rullst_core::live::recovery::LiveRecoveryError
-impl core::fmt::Display for rullst_core::live::recovery::LiveRecoveryError
-impl core::marker::Copy for rullst_core::live::recovery::LiveRecoveryError
-impl core::marker::Send for rullst_core::live::recovery::LiveRecoveryError
-impl core::marker::Sync for rullst_core::live::recovery::LiveRecoveryError
-impl core::marker::Unpin for rullst_core::live::recovery::LiveRecoveryError
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::live::recovery::LiveRecoveryError
-impl core::panic::unwind_safe::UnwindSafe for rullst_core::live::recovery::LiveRecoveryError
-pub type rullst_core::live::recovery::LiveResult<T> = core::result::Result<T, rullst_core::live::recovery::LiveRecoveryError>
-pub struct rullst_core::live::recovery::LiveScope
-impl rullst_core::live::recovery::LiveScope
-pub fn rullst_core::live::recovery::LiveScope::account(&self) -> &str
-pub fn rullst_core::live::recovery::LiveScope::component(&self) -> &str
-pub fn rullst_core::live::recovery::LiveScope::tenant(&self) -> &str
-pub fn rullst_core::live::recovery::LiveScope::try_new(context: &rullst_core::security::TenantContext, account: impl core::convert::Into<alloc::string::String>, component: impl core::convert::Into<alloc::string::String>) -> rullst_core::live::recovery::LiveResult<Self>
-impl core::clone::Clone for rullst_core::live::recovery::LiveScope
-impl core::cmp::Eq for rullst_core::live::recovery::LiveScope
-impl core::cmp::PartialEq for rullst_core::live::recovery::LiveScope
-impl core::fmt::Debug for rullst_core::live::recovery::LiveScope
-impl core::marker::Send for rullst_core::live::recovery::LiveScope
-impl core::marker::Sync for rullst_core::live::recovery::LiveScope
-impl core::marker::Unpin for rullst_core::live::recovery::LiveScope
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::live::recovery::LiveScope
-impl core::panic::unwind_safe::UnwindSafe for rullst_core::live::recovery::LiveScope
-pub struct rullst_core::live::recovery::LiveSnapshot
-impl rullst_core::live::recovery::LiveSnapshot
-pub fn rullst_core::live::recovery::LiveSnapshot::html(&self) -> &str
-pub fn rullst_core::live::recovery::LiveSnapshot::revision(&self) -> u64
-pub fn rullst_core::live::recovery::LiveSnapshot::try_new(revision: u64, html: impl core::convert::Into<alloc::string::String>) -> rullst_core::live::recovery::LiveResult<Self>
-impl core::clone::Clone for rullst_core::live::recovery::LiveSnapshot
-impl core::fmt::Debug for rullst_core::live::recovery::LiveSnapshot
-impl core::marker::Send for rullst_core::live::recovery::LiveSnapshot
-impl core::marker::Sync for rullst_core::live::recovery::LiveSnapshot
-impl core::marker::Unpin for rullst_core::live::recovery::LiveSnapshot
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::live::recovery::LiveSnapshot
-impl core::panic::unwind_safe::UnwindSafe for rullst_core::live::recovery::LiveSnapshot
-pub trait rullst_core::live::recovery::RecoverableLiveView: core::marker::Send + core::marker::Sync + 'static
-pub fn rullst_core::live::recovery::RecoverableLiveView::apply(&self, scope: &rullst_core::live::recovery::LiveScope, command: &rullst_core::live::recovery::LiveCommand) -> impl core::future::future::Future<Output = rullst_core::live::recovery::LiveResult<rullst_core::live::recovery::LiveSnapshot>> + core::marker::Send
-pub fn rullst_core::live::recovery::RecoverableLiveView::authorize(&self, scope: &rullst_core::live::recovery::LiveScope) -> impl core::future::future::Future<Output = rullst_core::live::recovery::LiveResult<()>> + core::marker::Send
-pub fn rullst_core::live::recovery::RecoverableLiveView::snapshot(&self, scope: &rullst_core::live::recovery::LiveScope) -> impl core::future::future::Future<Output = rullst_core::live::recovery::LiveResult<rullst_core::live::recovery::LiveSnapshot>> + core::marker::Send
-pub use rullst_core::live_component = proc_attribute rullst_macros::live_component
-pub use rullst_core::live_event = proc_attribute rullst_macros::live_event
 pub use rullst_core::memoize = proc_attribute rullst_macros::memoize
 pub mod rullst_core::monitor
 pub const rullst_core::monitor::MAX_MONITOR_QUEUES: usize
@@ -2911,6 +2845,8 @@ impl core::marker::Unpin for rullst_core::realtime::PresenceTracker
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::realtime::PresenceTracker
 pub use rullst_core::realtime::RealtimeError = enum rullst_core::RealtimeError
 pub use rullst_core::realtime::RealtimeMessage = struct rullst_core::RealtimeMessage
+pub use rullst_core::realtime::RealtimeSse = struct rullst_core::RealtimeSse
+pub use rullst_core::realtime::RealtimeSseConfig = struct rullst_core::RealtimeSseConfig
 pub use rullst_core::realtime::TenantPresence = struct rullst_core::TenantPresence
 pub use rullst_core::realtime::TenantRealtime = struct rullst_core::TenantRealtime
 pub fn rullst_core::render_page(htmx: &rullst_core::HtmxRequest, title: &str, content: impl core::convert::Into<rullst_core::Markup>) -> axum::response::Html<alloc::string::String>

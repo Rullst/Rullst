@@ -7,7 +7,7 @@ use super::{BlueprintChoice, Commands, DatabaseChoice};
 use crate::generators::{
     auth::scaffold_auth,
     billing::scaffold_billing_system,
-    build::{UpgradeOptions, run_build_client, run_production_build, run_upgrade},
+    build::{UpgradeOptions, run_production_build, run_upgrade},
     controller::create_new_controller,
     cors_jwt::{create_cors_middleware, create_jwt_middleware},
     db::run_project_db_command,
@@ -196,9 +196,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::MakeWorker { name } => {
             create_new_worker(name)?;
         }
-        Commands::MakeIsland { name } => {
-            crate::generators::island::create_new_island(name)?;
-        }
         Commands::Upgrade {
             to,
             dry_run,
@@ -249,9 +246,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::Studio { remote: false, .. } => {
             run_project_db_command("studio")?;
-        }
-        Commands::BuildClient { debug } => {
-            run_build_client(*debug)?;
         }
         Commands::Build { debug } => {
             run_production_build(!*debug)?;
@@ -310,9 +304,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::MakeScalar => {
             crate::generators::scalar::generate_scalar_docs()?;
         }
-        Commands::MakeLive { name } => {
-            crate::generators::live::create_new_live_component(name)?;
-        }
         Commands::Deploy { platform } => {
             crate::generators::deploy::run_deploy(platform.as_deref())?;
         }
@@ -325,7 +316,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         | Commands::MakeModel { .. }
         | Commands::MakeMiddleware { .. }
         | Commands::MakeWorker { .. }
-        | Commands::MakeIsland { .. }
         | Commands::MakeBilling { .. }
         | Commands::MakeCors
         | Commands::MakeJwt => {

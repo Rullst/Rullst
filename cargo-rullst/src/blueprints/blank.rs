@@ -81,11 +81,7 @@ pub fn file_manifest(
     } else {
         ""
     };
-    let client_modules = if !api {
-        "pub mod islands;\npub mod rpc;\n"
-    } else {
-        ""
-    };
+    let client_modules = if !api { "pub mod rpc;\n" } else { "" };
     let rpc_module = if !api { "mod rpc;\n" } else { "" };
     let fill = |template: &str| {
         template
@@ -110,17 +106,6 @@ pub fn file_manifest(
             )
         };
         manifest.push(("src/lib.rs", lib_rs));
-
-        if !api {
-            let island_counter = include_str!("../generators/island.rs.template")
-                .replace("__MODULE_NAME__", "counter")
-                .replace("__TYPE_NAME__", "Counter");
-            manifest.push((
-                "src/islands/mod.rs",
-                include_str!("blank/src/islands/mod.rs.template").to_string(),
-            ));
-            manifest.push(("src/islands/counter.rs", island_counter));
-        }
 
         manifest.push((
             "src/main.rs",

@@ -212,14 +212,6 @@ fn add_saas_generator_smoke(project_dir: &Path) {
         cargo_rullst::generators::controller::render_controller_source("ProductController", true),
     )
     .expect("generated API controller");
-    let live_dir = project_dir.join("src/live");
-    fs::create_dir_all(&live_dir).expect("generated live directory");
-    fs::write(live_dir.join("mod.rs"), "pub mod live_counter;\n").expect("generated live module");
-    fs::write(
-        live_dir.join("live_counter.rs"),
-        cargo_rullst::generators::live::render_live_component_source("LiveCounter", "live_counter"),
-    )
-    .expect("generated LiveComponent");
     let bin_dir = project_dir.join("src/bin");
     fs::create_dir_all(&bin_dir).expect("generated bin directory");
     fs::write(
@@ -239,17 +231,10 @@ fn start_generated_workers(
     let worker_handle = workers::start_workers(worker)?;
     Ok(worker_handle)
 }
-
-// Mount the generated component the way `make:live` tells users to, so the
-// strict build checks that wiring instead of rejecting an unused struct.
-#[allow(dead_code)]
-async fn mount_generated_live_component() -> rullst::html::Markup {
-    rullst::live::Live::mount::<live::live_counter::LiveCounter>("/ws/live_counter").await
-}
 "#;
     fs::write(
         main_path,
-        format!("mod live;\nmod workers;\n{worker_lifecycle_smoke}\n{main_source}"),
+        format!("mod workers;\n{worker_lifecycle_smoke}\n{main_source}"),
     )
     .expect("register generated worker lifecycle smoke");
 }

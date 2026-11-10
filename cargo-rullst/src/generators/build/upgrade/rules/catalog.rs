@@ -414,6 +414,18 @@ rules! {
     AI_HTTP_STATUS: "V13-AI-HTTP-STATUS", Review, "13.0.0-alpha.5", "AI provider HTTP errors",
         "an unsuccessful provider HTTP status is `AiError::HttpStatus` since 13.0.0-alpha.5, no longer `AiError::ApiError`",
         "Match `AiError::HttpStatus(error)` and read `error.status()`, `error.retry_after()`, `error.code()` and `error.message()` instead of searching the text for `429` or `404`; the text is unchanged, and `ApiError` still reports malformed or incomplete replies.";
+    ISLANDS_REMOVED: "V13-ISLANDS-REMOVED", MustChange, "13.0.0-alpha.5", "Wasm islands removed",
+        "`#[island]` (`rullst::island`) was removed in 13.0.0-alpha.5; this code no longer compiles",
+        "Render the component on the server with `html!` and drop the attribute; send interaction to the server with htmx (`hx-get`, `hx-post`) and use native HTML (`<dialog>`, `popover`, `<details>`) or a small same-origin script with the request's CSP nonce for client-only behaviour. Remove `src/islands/`, the `wasm32` dependencies `make:island` added and `static/rullst-islands.js`.";
+    ISLAND_COMMANDS_REMOVED: "V13-ISLAND-COMMANDS-REMOVED", Review, "13.0.0-alpha.5", "Wasm islands removed",
+        "this script runs `make:island` or `build:client`, which 13.0.0-alpha.5 removed; both now exit with status 1",
+        "Remove the step: there is no island client to build. Serve the page with `html!` and htmx, and delete the generated `static/rullst-islands.js` and wasm-bindgen output.";
+    LIVE_REMOVED: "V13-LIVE-REMOVED", MustChange, "13.0.0-alpha.5", "Live components removed",
+        "`rullst::live` (`LiveComponent`, `Live::mount`, `live_ws_handler`, `live::recovery`) and `#[live_component]`/`#[live_event]` were removed in 13.0.0-alpha.5; this code no longer compiles",
+        "Handle events as ordinary routes that return HTML fragments for htmx (`hx-post`, `hx-target`, `hx-swap`), and push server updates with Server-Sent Events: publish to a `BroadcastManager` channel and return `RealtimeSse::channel` from a `GET` route that the page opens with the htmx SSE extension (`hx-ext=\"sse\"`, `sse-connect`, `sse-swap`). Remove the WebSocket route and the `htmx-ext-ws` script.";
+    LIVE_COMMAND_REMOVED: "V13-LIVE-COMMAND-REMOVED", Review, "13.0.0-alpha.5", "Live components removed",
+        "this script runs `make:live`, which 13.0.0-alpha.5 removed; it now exits with status 1",
+        "Remove the step; write the route and its `html!` fragment by hand, with `cargo rullst make:controller` for the module.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

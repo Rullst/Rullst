@@ -13,7 +13,6 @@ const SHOWCASE_CSS: &str = include_str!("../assets/showcase.css");
 const PAGES_CSS: &str = include_str!("../assets/pages.css");
 const SHOWCASE_JS: &str = include_str!("../assets/showcase.js");
 const HTMX_JS: &str = include_str!("../assets/vendor/htmx-1.9.12.min.js");
-const HTMX_WS_JS: &str = include_str!("../assets/vendor/htmx-ext-ws-1.9.12.js");
 const PICO_CSS: &str = include_str!("../assets/vendor/pico-2.1.1.slate.min.css");
 const RULLST_LOGO_PNG: &[u8] = include_bytes!("../assets/rullst-logo.png");
 
@@ -46,10 +45,6 @@ pub async fn showcase_js() -> Response {
 
 pub async fn htmx_js() -> Response {
     asset(JAVASCRIPT, HTMX_JS.as_bytes())
-}
-
-pub async fn htmx_ws_js() -> Response {
-    asset(JAVASCRIPT, HTMX_WS_JS.as_bytes())
 }
 
 pub async fn pico_css() -> Response {

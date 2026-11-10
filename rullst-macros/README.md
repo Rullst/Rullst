@@ -7,9 +7,9 @@ call `rullst::…` paths, `#[require_role]` needs the facade's `auth` feature an
 `#[derive(Billable)]` its `capital` feature.
 
 **Maturity: Core** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
-The surfaces listed under
-[Experimental compatibility surfaces](#experimental-compatibility-surfaces)
-carry their own, weaker promise.
+The surface listed under
+[Experimental compatibility surface](#experimental-compatibility-surface)
+carries its own, weaker promise.
 
 ## Stable bounded contracts
 
@@ -22,19 +22,12 @@ carry their own, weaker promise.
 | `#[server_function]` | Takes a concrete async free function with at most 16 parameters and generates one `RpcResult<T>` function for native and Wasm targets and, on native targets, a matching `<name>_rpc_router()`. Arguments and results use the bounded, versioned `rullst.client` v1 JSON envelope. | Parameters and output must be owned Serde types. The generated router supplies transport, not identity: mount it inside the production security, authentication, tenant, authorization, rate-limit, and application idempotency policies. |
 | `#[route]` | Deprecated compatibility marker that preserves an argument-free annotation. | It never registers a route. Use `rullst::routes!`. |
 
-## Experimental compatibility surfaces
+## Experimental compatibility surface
 
-- `#[island]` emits the current native/Wasm island wrapper. It is not a
-  complete hydration/RPC protocol and should not be treated as a stable ABI.
-  Arguments that cannot be serialized to JSON leave `data-props` empty, so the
-  server HTML renders without hydration instead of panicking.
-- `#[live_component]` and `#[live_event]` generate the bounded process-local
-  Live component bridge. Authentication, reconnect, ordering, backpressure,
-  and browser interoperability belong to the host contract. Dispatch reads the
-  event name only from the first present `rullst_event`, `action` or `event`
-  string field (for example `<button name="rullst_event" value="save">`) and
-  runs at most one handler per message; other payload keys and values, such as
-  form inputs, never select a handler.
+`#[island]`, `#[live_component]` and `#[live_event]` were removed in
+13.0.0-alpha.5; see the
+[migration guide](https://rullst.github.io/Rullst/book/migration-v13.html#upgrading-an-alpha4-application-to-alpha5).
+
 - `#[memoize]` uses Rullst's process-local memory cache. Keys combine the
   function's `module_path!()`, name and attribute location (`file!()`,
   `line!()`, `column!()`) with the JSON-serialized arguments, so same-named

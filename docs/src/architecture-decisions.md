@@ -71,14 +71,15 @@ interchangeable renderers:
 | Earlier label | In 13.0 |
 | --- | --- |
 | HTMX + Tailwind SSR | The generated scaffold: server-rendered `html!` views with the starter's own stylesheet (`static/rullst.css`; no Tailwind build step). There is no project-local SPA bundle, but HTMX and styles are still browser assets that must be pinned and served. |
-| LiveView | Core supplies `LiveComponent`, `Live::mount` and `live_ws_handler`, and `make:live` scaffolds a component. The application registers routes and supplies the HTMX WebSocket extension, authentication and reconnect policy. |
-| Wasm Island | `#[island]`, `make:island` and `build:client` provide a dual-target hydration foundation. Asset delivery, CSP, state, routing and browser E2E remain application work. |
+| LiveView | Removed in 13.0.0-alpha.5 (`LiveComponent`, `Live::mount`, `live_ws_handler`, `make:live`, `live::recovery`). Server-driven updates use htmx with `rullst::realtime::RealtimeSse`: HTML scaffolds write the htmx SSE extension to `static/htmx-ext-sse-1.9.12.js`. The application owns routes, authentication and event design. See [the migration notes](migration-v13.md#upgrading-an-alpha4-application-to-alpha5). |
+| Wasm Island | Removed in 13.0.0-alpha.5 (`#[island]`, `make:island`, `build:client`). The default CSP has no `'wasm-unsafe-eval'`, so browsers could not compile islands under the default headers. `#[server_function]` and its `wasm32` caller remain. |
 | Pico.css | Not generated. The application adds, pins and serves Pico.css and validates the resulting pages. |
 | Tera | Not generated. The application adds the dependency and its own file-template renderer. |
 
 The intended direction is to model independent capabilities instead of one
-misleading global frontend selector: rendering (SSR or API), interaction (HTMX,
-LiveView or Wasm islands), styling (the bundled design or an explicitly
+misleading global frontend selector: rendering (SSR or API), interaction (HTMX
+with Server-Sent Events or WebSockets, and native HTML such as `<dialog>`,
+`popover` and `<details>`), styling (the bundled design or an explicitly
 materialized CSS system), and templating (`html!` or a fully generated
 file-template path). A combination should appear only after its assets, routes
 and browser behavior have equivalent tests; 13.0 generates none of them.
@@ -178,9 +179,10 @@ observability composition belongs to the application.
   transaction boundaries; 13.0 generates no Data Mapper / Repository profile.
 - Multi-process application: a configured shared cache/queue plus deployment
   tests; do not assume realtime is distributed.
-- Rich browser interaction: opt into LiveView or Wasm foundations only with
-  application-owned integration and browser tests; 13.0 generates neither as a
-  complete profile.
+- Rich browser interaction: start with htmx, native HTML elements and
+  `RealtimeSse` or WebSockets for server pushes. Any further client code is
+  application-owned and needs its own browser tests; 13.0 generates no client
+  component profile.
 
 Revisit these choices as evidence changes. Do not infer performance, security or
 availability from a wizard label.

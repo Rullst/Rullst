@@ -93,6 +93,10 @@ fn rules_carry_the_release_of_their_change() {
             "V13-SECURITY-GLOBAL-COLLECTIONS",
             "V13-CONNECT-JWKS-KEY-SET",
             "V13-AI-HTTP-STATUS",
+            "V13-ISLANDS-REMOVED",
+            "V13-ISLAND-COMMANDS-REMOVED",
+            "V13-LIVE-REMOVED",
+            "V13-LIVE-COMMAND-REMOVED",
         ]
     );
     // Rules added after alpha.4 for its changes take the next release, so
