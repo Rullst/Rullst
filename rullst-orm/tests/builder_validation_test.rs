@@ -132,6 +132,10 @@ struct CachedRecord {
     #[orm(skip)]
     #[sqlx(skip)]
     draft: String,
+    // Read from the row, but left out of writes and of the query builder.
+    #[allow(dead_code)]
+    #[orm(skip)]
+    member_status: String,
 }
 
 fn rejects_secret_string(query: &SecretCustomerQueryBuilder) -> bool {
@@ -161,20 +165,40 @@ fn secret_string_columns_cannot_be_filtered_ordered_or_grouped() {
         "{:?}",
         mixed_case.errors
     );
-    for (query, column) in [
+    for (query, column, unread) in [
         (
             CachedRecord::query().where_eq("SESSION_CACHE", "x"),
             "SESSION_CACHE",
+            true,
         ),
         (
             CachedRecord::query().select(&["cached_records.Session_Cache"]),
             "Session_Cache",
+            true,
         ),
-        (CachedRecord::query().order_by("draft"), "draft"),
+        (CachedRecord::query().order_by("draft"), "draft", true),
+        (
+            CachedRecord::query().where_eq("Member_Status", "active"),
+            "Member_Status",
+            false,
+        ),
+        (
+            CachedRecord::query().group_by("cached_records.member_status"),
+            "member_status",
+            false,
+        ),
     ] {
-        let expected = format!(
-            "Validation error: column `{column}` is declared `#[orm(skip)]` / `#[sqlx(skip)]`, so it is not a database column for the ORM and must not be used in WHERE / ORDER BY / GROUP BY / SELECT; declare a column that the database manages `#[orm(db_default)]` to read and filter it without writing it"
-        );
+        // `#[orm(skip)]` does not stop `FromRow` from reading the column, so
+        // its error does not claim the table lacks it.
+        let expected = if unread {
+            format!(
+                "Validation error: column `{column}` is declared `#[sqlx(skip)]`, so the model does not read it from the database and the query builder cannot use it in WHERE / ORDER BY / GROUP BY / SELECT; if the table has this column and it must be filterable, declare it `#[orm(db_default)]` instead: it is read and filtered, and ORM writes leave it to the database"
+            )
+        } else {
+            format!(
+                "Validation error: column `{column}` is declared `#[orm(skip)]`, which leaves it out of generated writes and of the query builder but not out of the model's reads, so it cannot be used in WHERE / ORDER BY / GROUP BY / SELECT; to filter a column that the table has, declare it `#[orm(db_default)]` instead: it is read and filtered, and ORM writes leave it to the database"
+            )
+        };
         assert_eq!(
             query
                 .errors

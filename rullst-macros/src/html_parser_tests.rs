@@ -164,6 +164,48 @@ fn bare_and_conditional_attributes_parse_beside_valued_ones() {
 }
 
 #[test]
+fn static_attribute_values_escape_double_quotes_only() {
+    let tokens = parse_ok(
+        r#"<meta name="htmx-config" content="{\"includeIndicatorStyles\":false}" title="a &amp; <b>" />"#,
+    )
+    .to_tokens()
+    .to_string();
+    assert!(
+        tokens.contains(r#"" content=\"{&quot;includeIndicatorStyles&quot;:false}\"""#),
+        "{tokens}"
+    );
+    assert!(tokens.contains(r#"" title=\"a &amp; <b>\"""#), "{tokens}");
+    // The capacity hint counts the written text.
+    let attribute = super::attributes::HtmlAttribute {
+        name: "content".to_string(),
+        value: super::attributes::HtmlAttrValue::Static(syn::parse_quote!("{\"a\"}")),
+    };
+    assert_eq!(
+        attribute.static_size(),
+        "content".len() + 4 + "{&quot;a&quot;}".len()
+    );
+}
+
+#[test]
+fn only_elements_with_dynamic_attributes_carry_the_option_probe() {
+    let probed = parse_ok("<p title={note} data-x?={flag}></p>")
+        .to_tokens()
+        .to_string();
+    assert!(probed.contains("RullstOptionAttributeValue"), "{probed}");
+    assert!(probed.contains("deprecated"), "{probed}");
+    for source in [
+        r#"<p title="x" hidden data-x?={flag}></p>"#,
+        "<p>{note}</p>",
+    ] {
+        let tokens = parse_ok(source).to_tokens().to_string();
+        assert!(
+            !tokens.contains("RullstAttributeValue"),
+            "{source}: {tokens}"
+        );
+    }
+}
+
+#[test]
 fn conditional_attributes_need_a_braced_expression() {
     for source in [r#"<input checked?="checked" />"#, "<input checked?=done />"] {
         assert!(

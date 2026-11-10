@@ -17,6 +17,8 @@ use std::{
 
 mod files;
 mod head;
+mod report;
+mod texts;
 mod values;
 mod wiring;
 
@@ -67,44 +69,23 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
 }
 
 /// The validated edits and what they do.
+#[derive(Default)]
 struct Plan {
     edits: Vec<Edit>,
     created: Vec<String>,
     changed: Vec<String>,
-    /// Layouts this run wires.
+    /// Layouts that register the worker since this run.
     layouts: usize,
-    /// Layouts that already linked the manifest.
+    /// Of those, layouts that keep their own manifest link.
+    own_manifest: usize,
+    /// Layouts that already registered the worker.
     present: usize,
-}
-
-impl Plan {
-    fn report(&self) -> String {
-        if self.edits.is_empty() {
-            return "The PWA files and wiring are already in place; nothing changed.\n".to_owned();
-        }
-        let mut report = String::from("Progressive Web App added.\n");
-        for path in &self.created {
-            report.push_str(&format!("  created  {path}\n"));
-        }
-        for path in &self.changed {
-            report.push_str(&format!("  updated  {path}\n"));
-        }
-        if self.layouts == 0 {
-            report.push_str(&format!(
-                "{} page layout(s) already link the manifest and register /sw.js.\n",
-                self.present
-            ));
-        } else {
-            report.push_str(&format!(
-                "{} page layout(s) link the manifest and register /sw.js.\n",
-                self.layouts
-            ));
-        }
-        report.push_str(
-            "Replace the placeholder icons in static/icons/ and read PWA.md before release.\n",
-        );
-        report
-    }
+    /// Files whose documents are e-mail messages, left alone.
+    skipped: Vec<String>,
+    /// Why the PWA routes are not mounted, when they are not.
+    unmounted: Option<&'static str>,
+    /// `--lang` when the generated texts are not in that language.
+    untranslated: Option<String>,
 }
 
 /// `path` relative to `root`, with `/` separators, for messages.
@@ -157,6 +138,110 @@ fn change(plan: &mut Plan, root: &Path, path: PathBuf, old: String, new: String)
     plan.edits.push(Edit::replace(path, old, new));
 }
 
+/// Test code, which holds no page layout.
+fn is_test_source(name: &str) -> bool {
+    let stem = name.trim_end_matches(".rs");
+    let file = stem.rsplit('/').next().unwrap_or(stem);
+    file == "tests"
+        || file.ends_with("_tests")
+        || file.ends_with("_test")
+        || stem.split('/').any(|part| part == "tests")
+}
+
+/// A module of e-mail messages, by its directory or file name
+/// (`src/mail/site_mail.rs`, `src/emails/welcome.rs`).
+fn is_mail_path(name: &str) -> bool {
+    const NAMES: [&str; 8] = [
+        "mail",
+        "mails",
+        "email",
+        "emails",
+        "mailer",
+        "mailers",
+        "mailable",
+        "mailables",
+    ];
+    name.trim_end_matches(".rs").split('/').any(|part| {
+        NAMES.contains(&part)
+            || NAMES.iter().any(|mail| {
+                part.ends_with(&format!("_{mail}")) || part.starts_with(&format!("{mail}_"))
+            })
+    })
+}
+
+/// A file that sends e-mail, whose string documents are messages.
+fn sends_mail(source: &str) -> bool {
+    ["rullst::mail", "rullst_mail", "lettre::"]
+        .iter()
+        .any(|marker| source.contains(marker))
+}
+
+/// A source of this crate: its path, its text and the text with the PWA.
+type Source = (PathBuf, String, String);
+
+/// Every source of this crate, with the head tags in its page layouts;
+/// generated, test and e-mail sources are skipped.
+fn wire_layouts(
+    root: &Path,
+    paths: Vec<PathBuf>,
+    is_library: bool,
+    values: &PwaValues,
+    plan: &mut Plan,
+) -> Result<Vec<Source>, Box<dyn Error>> {
+    let mut files = Vec::new();
+    for path in paths {
+        let name = relative(root, &path);
+        let generated = name == "src/pwa.rs" || name.starts_with("src/pwa/");
+        let other_crate = name.starts_with("src/bin/") || (is_library && name == "src/main.rs");
+        if generated || other_crate || is_test_source(&name) {
+            continue;
+        }
+        let source = writes::read(&path)?;
+        if is_mail_path(&name) {
+            if source.to_ascii_lowercase().contains("</head>") {
+                plan.skipped.push(name);
+            }
+            files.push((path, source.clone(), source));
+            continue;
+        }
+        let wiring = head::wire(&source, &values.theme_color, !sends_mail(&source))
+            .map_err(|error| invalid(format!("make:pwa could not read {name}: {error}")))?;
+        plan.layouts += wiring.wired;
+        plan.own_manifest += wiring.own_manifest;
+        plan.present += wiring.present;
+        if wiring.skipped > 0 {
+            plan.skipped.push(name);
+        }
+        files.push((path, source, wiring.source));
+    }
+    Ok(files)
+}
+
+/// Mounts the PWA routes after the one health merge of the crate, in any
+/// module; without exactly one, the report says what to mount.
+fn mount_routes(files: &mut [Source], plan: &mut Plan) -> Result<(), Box<dyn Error>> {
+    let mut merges = Vec::new();
+    for (index, (_, _, updated)) in files.iter().enumerate() {
+        let (count, mounted) = wiring::health_merges(updated).unwrap_or_default();
+        if mounted {
+            return Ok(());
+        }
+        merges.extend(std::iter::repeat_n(index, count));
+    }
+    match merges.as_slice() {
+        [index] => {
+            if let Some((_, _, updated)) = files.get_mut(*index)
+                && let Some(with_routes) = wiring::mount_router(updated)?
+            {
+                *updated = with_routes;
+            }
+        }
+        [] => plan.unmounted = Some("src/ has no `.merge_axum(rullst::health::health_router())`"),
+        _ => plan.unmounted = Some("src/ merges `rullst::health::health_router()` more than once"),
+    }
+    Ok(())
+}
+
 fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
     // Links above the project are the developer's; links beneath it are refused.
     let root = &writes::project_root(root)?;
@@ -169,12 +254,10 @@ fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
         root.join("src/main.rs")
     };
     let is_library = crate_root.ends_with("lib.rs");
+    let (texts, translated) = texts::for_lang(&values.lang);
     let mut plan = Plan {
-        edits: Vec::new(),
-        created: Vec::new(),
-        changed: Vec::new(),
-        layouts: 0,
-        present: 0,
+        untranslated: (!translated).then(|| values.lang.clone()),
+        ..Plan::default()
     };
 
     let sources = source_walk::rust_sources(&root.join("src"));
@@ -184,44 +267,20 @@ fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
         ))
         .into());
     }
-    let mut crate_root_source = None;
-    let mut present = 0;
-    for path in sources.files {
-        let name = relative(root, &path);
-        let generated = name == "src/pwa.rs" || name.starts_with("src/pwa/");
-        let other_crate = name.starts_with("src/bin/") || (is_library && name == "src/main.rs");
-        if generated || other_crate {
-            continue;
-        }
-        let source = writes::read(&path)?;
-        let wiring = head::wire(&source, &values.theme_color)
-            .map_err(|error| invalid(format!("make:pwa could not read {name}: {error}")))?;
-        plan.layouts += wiring.wired;
-        present += wiring.present;
-        plan.present += wiring.present;
-        if path == crate_root {
-            crate_root_source = Some((source, wiring.source));
-        } else if wiring.wired > 0 {
-            change(&mut plan, root, path, source, wiring.source);
-        }
-    }
-    let Some((original, mut updated)) = crate_root_source else {
+    let mut files = wire_layouts(root, sources.files, is_library, &values, &mut plan)?;
+    if !files.iter().any(|(path, _, _)| *path == crate_root) {
         return Err(invalid("make:pwa needs src/main.rs or src/lib.rs").into());
-    };
-    if plan.layouts + present == 0 {
-        return Err(invalid(
-            "make:pwa found no HTML page layout (an html! document, a <head> in a string or render_page_with_lang) in src/; the JSON API starter serves no pages to install",
-        )
-        .into());
     }
-    if let Some(mounted) = wiring::mount_router(&updated)? {
-        updated = mounted;
-    }
-    if let Some(declared) = wiring::declare_module(&updated, is_library)? {
-        updated = declared;
-    }
-    if updated != original {
-        change(&mut plan, root, crate_root, original, updated);
+    mount_routes(&mut files, &mut plan)?;
+    for (path, original, mut updated) in files {
+        if path == crate_root
+            && let Some(declared) = wiring::declare_module(&updated, is_library)?
+        {
+            updated = declared;
+        }
+        if updated != original {
+            change(&mut plan, root, path, original, updated);
+        }
     }
 
     create(
@@ -240,7 +299,13 @@ fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
         &mut plan,
         root,
         "static/pwa.js",
-        files::REGISTRATION.as_bytes().to_vec(),
+        files::registration(&texts).into_bytes(),
+    )?;
+    create(
+        &mut plan,
+        root,
+        "static/pwa.css",
+        files::STYLESHEET.as_bytes().to_vec(),
     )?;
     create(
         &mut plan,
@@ -271,3 +336,5 @@ fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod wiring_tests;

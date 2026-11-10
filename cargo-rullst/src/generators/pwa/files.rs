@@ -1,10 +1,13 @@
 //! The files `make:pwa` writes, rendered from validated values.
+use super::texts::{self, Texts};
 use super::values::{AndroidValues, PwaValues};
 use serde::Serialize;
 use std::path::Path;
 
 pub(super) const SERVICE_WORKER: &str = include_str!("assets/sw.js");
 pub(super) const REGISTRATION: &str = include_str!("assets/pwa.js");
+/// The default look of the update notice, loaded by `pwa.js`.
+pub(super) const STYLESHEET: &str = include_str!("assets/pwa.css");
 const MODULE: &str = include_str!("assets/pwa.rs.template");
 const README: &str = include_str!("assets/PWA.md.template");
 const ANDROID_README: &str = include_str!("assets/PWA.android.md.template");
@@ -40,6 +43,17 @@ const OPTIONAL_PRECACHE: [&str; 3] = [
     "static/htmx-1.9.12.min.js",
     "static/rullst.png",
 ];
+
+/// The comment the worker's list puts after a placeholder file.
+fn placeholder_note(url: &str) -> &'static str {
+    match url {
+        "/static/icons/icon-192.png" | "/static/icons/icon-512.png" => {
+            " // placeholder icon (the Rullst logo): replace it"
+        }
+        "/static/rullst.png" => " // the starter's Rullst logo, the icon of Core's page",
+        _ => "",
+    }
+}
 
 #[derive(Serialize)]
 struct Icon {
@@ -110,16 +124,38 @@ pub(super) fn service_worker(root: &Path) -> String {
     );
     let list = urls
         .iter()
-        .map(|url| format!("  '{url}',\n"))
+        .map(|url| format!("  '{url}',{}\n", placeholder_note(url)))
         .collect::<String>();
     SERVICE_WORKER.replacen(PRECACHE_LINE, &format!("const PRECACHE = [\n{list}];"), 1)
 }
 
-/// `src/pwa.rs`.
+/// `src/pwa.rs`, with the offline page in the language of `--lang`.
 pub(super) fn module(values: &PwaValues) -> String {
+    let (texts, _) = texts::for_lang(&values.lang);
     MODULE
         .replace("__THEME_COLOR__", &values.theme_color)
         .replace("__LANG__", &values.lang)
+        .replace("__OFFLINE_TITLE__", texts.offline_title)
+        .replace("__OFFLINE_HEADING__", texts.offline_heading)
+        .replace("__OFFLINE_MESSAGE__", texts.offline_message)
+        .replace("__OFFLINE_RETRY__", texts.offline_retry)
+}
+
+/// `static/pwa.js`, with the update notice in `texts`.
+pub(super) fn registration(texts: &Texts) -> String {
+    let english = texts::ENGLISH;
+    let line = |key: &str, text: &str| format!("    {key}: '{}',\n", texts::javascript(text));
+    REGISTRATION
+        .replacen(
+            &line("update", english.update_message),
+            &line("update", texts.update_message),
+            1,
+        )
+        .replacen(
+            &line("reload", english.update_reload),
+            &line("reload", texts.update_reload),
+            1,
+        )
 }
 
 /// `PWA.md`.

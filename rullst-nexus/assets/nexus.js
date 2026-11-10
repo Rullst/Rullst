@@ -15,9 +15,34 @@
         if (token) event.detail.headers["X-CSRF-Token"] = token;
     });
 
+    // An open modal <dialog> is drawn in the browser's top layer, above the
+    // page and #nexus-toast, behind a blurred backdrop. While one is open the
+    // toast host moves into it, so a message such as "Save failed: ..." is
+    // readable, and it returns to its place in the page once no dialog is
+    // open.
+    let toastHome = null;
+    function placeToastHost(host) {
+        const dialog = document.querySelector("dialog[open]");
+        if (dialog) {
+            if (host.parentNode === dialog) return;
+            if (!toastHome) toastHome = { parent: host.parentNode, next: host.nextSibling };
+            dialog.append(host);
+        } else if (toastHome) {
+            const { parent, next } = toastHome;
+            toastHome = null;
+            if (parent?.isConnected) parent.insertBefore(host, next?.parentNode === parent ? next : null);
+        }
+    }
+    // `close` does not bubble, so it is observed while capturing.
+    document.addEventListener("close", event => {
+        const host = document.getElementById("nexus-toast");
+        if (host && event.target instanceof HTMLDialogElement) placeToastHost(host);
+    }, true);
+
     function toast(message, kind) {
         const host = document.getElementById("nexus-toast");
         if (!host) return;
+        placeToastHost(host);
         const safeKind = ["success", "warning", "danger"].includes(kind) ? kind : "success";
         const icon = kind === "success" ? "✅" : kind === "warning" ? "⚠️" : "❌";
         const element = document.createElement("div");

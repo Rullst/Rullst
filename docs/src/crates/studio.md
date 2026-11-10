@@ -76,9 +76,10 @@ return `403` for them.
 
 ### Remote projects (added in 13.0.0-alpha.3)
 
-The `rullst-studio` binary (`cargo install rullst-studio --version =13.0.0-alpha.4 --features remote --locked`, then
+The `rullst-studio` binary (`cargo install rullst-studio --version =13.0.0-alpha.4 --no-default-features --features remote --locked`, then
 `rullst-studio [--port PORT]`, or `cargo rullst studio --remote`; library
-users enable the non-default `remote` feature) serves
+users enable the non-default `remote` feature; `--no-default-features` skips the
+PostgreSQL/MySQL drivers and SQLite queue that only the local pages use) serves
 Studio on `127.0.0.1:5556` without an application process and reads the
 read-only `/_rullst/monitor/v1` document of the projects you add: overview,
 routes, queues and N+1 pages with a project switcher. It keeps the loopback

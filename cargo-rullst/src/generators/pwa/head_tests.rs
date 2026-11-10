@@ -3,7 +3,7 @@ use super::*;
 const THEME: &str = "#0f172a";
 
 fn wired(source: &str) -> Wiring {
-    wire(source, THEME).unwrap()
+    wire(source, THEME, true).unwrap()
 }
 
 #[test]
@@ -37,11 +37,29 @@ fn only_html_macro_bodies_and_own_manifest_links_count() {
     // `<` `/` `head` `>` outside html! is not markup.
     let comparison = "fn f(a: u8, head: u8) -> bool { a < head && head > 2 }";
     assert_eq!(wired(comparison).wired, 0);
+    // An own manifest without a worker registration gets only the script.
     let own =
         r#"fn f() -> Markup { html! { <head><link rel="manifest" href="/m.json" /></head> } }"#;
     let result = wired(own);
-    assert_eq!((result.wired, result.present), (0, 1));
-    assert_eq!(result.source, own);
+    assert_eq!(
+        (result.wired, result.own_manifest, result.present),
+        (1, 1, 0)
+    );
+    assert_eq!(
+        result.source,
+        r#"fn f() -> Markup { html! { <head><link rel="manifest" href="/m.json" /><script src="/static/pwa.js" defer></script></head> } }"#
+    );
+    let again = wired(&result.source);
+    assert_eq!((again.wired, again.present), (0, 1));
+    // A head that registers the worker itself is complete.
+    for registered in [
+        r#"fn f() -> Markup { html! { <head><script src="/static/pwa.js" defer></script></head> } }"#,
+        r#"fn f() -> Markup { html! { <head><script src="/static/register-sw.js"></script>{crate::pwa::head()}</head> } }"#,
+    ] {
+        let result = wired(registered);
+        assert_eq!((result.wired, result.present), (0, 1), "{registered}");
+        assert_eq!(result.source, registered);
+    }
     let other_rel =
         r#"fn f() -> Markup { html! { <head><link rel="icon" href="/i.png" /></head> } }"#;
     assert_eq!(wired(other_rel).wired, 1);
@@ -225,6 +243,72 @@ fn other_uses_of_the_layout_name_are_left_alone() {
 }
 
 #[test]
+fn string_heads_count_only_a_worker_registration_as_done() {
+    // A hand-written head with its own manifest gains only the script.
+    let own = "fn page() -> String { \"<html><head><link rel='manifest' href='/site.webmanifest'></head></html>\".to_owned() }";
+    let result = wired(own);
+    assert_eq!(
+        (result.wired, result.own_manifest, result.present),
+        (1, 1, 0)
+    );
+    assert!(result.source.contains(
+        "<link rel='manifest' href='/site.webmanifest'><script src='/static/pwa.js' defer></script></head>"
+    ));
+    assert_eq!(
+        (wired(&result.source).wired, wired(&result.source).present),
+        (0, 1)
+    );
+    let registered = "fn page() -> &'static str { \"<head><script>navigator.serviceWorker.register('/sw.js')</script></head>\" }";
+    assert_eq!((wired(registered).wired, wired(registered).present), (0, 1));
+}
+
+#[test]
+fn search_patterns_and_test_code_are_not_layouts() {
+    let source = r#"
+fn inject(body: &str) -> String {
+    body.replacen("</head>", "<script src='/live.js'></script></head>", 1)
+}
+fn header() -> &'static str { "<header></header></head>" }
+
+#[test]
+fn layout_has_a_head() {
+    assert!(page().contains("<head><title>x</title></head>"));
+}
+
+#[cfg(test)]
+mod tests {
+    fn fixture() -> Markup { html! { <html><head></head></html> } }
+    const PAGE: &str = "<html><head></head></html>";
+}
+
+#[cfg(test)]
+const FIXTURE: &str = "<head></head>";
+
+fn page() -> &'static str { "<html><head><title>x</title></head></html>" }
+"#;
+    let result = wired(source);
+    assert_eq!((result.wired, result.present), (1, 0), "{}", result.source);
+    assert!(result.source.ends_with(&format!(
+        "\"<html><head><title>x</title>{}</head></html>\" }}\n",
+        literal_tags(THEME)
+    )));
+    assert_eq!(result.source.matches("pwa.js").count(), 1);
+    // A whole file compiled only for tests is left alone.
+    let test_file = "#![cfg(test)]\nfn page() -> &'static str { \"<head></head>\" }\n";
+    assert_eq!(wired(test_file).wired, 0);
+}
+
+#[test]
+fn string_documents_of_a_file_that_sends_mail_are_left_alone() {
+    let source = "fn message() -> String { \"<html><head><title>Receipt</title></head></html>\".to_owned() }\nfn page() -> Markup { html! { <html><head></head></html> } }\n";
+    let result = wire(source, THEME, false).unwrap();
+    assert_eq!((result.wired, result.skipped), (1, 1));
+    assert!(result.source.contains("<title>Receipt</title></head>"));
+    assert!(result.source.contains("{crate::pwa::head()}</head>"));
+    assert_eq!(wired(source).skipped, 0);
+}
+
+#[test]
 fn unparsable_sources_are_refused() {
-    assert!(wire("fn f( {", THEME).is_err());
+    assert!(wire("fn f( {", THEME, true).is_err());
 }

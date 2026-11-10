@@ -485,3 +485,15 @@ fn a_linked_gitattributes_is_refused_before_any_write() {
     assert!(!root.path().join(".llms.txt").exists());
     assert_eq!(read(outside.path(), "attributes"), "*.rs text\n");
 }
+
+#[test]
+fn scaffolds_refresh_only_a_project_map_the_project_has() {
+    let root = tempfile::tempdir().unwrap();
+    assert!(!has_project_context(root.path()));
+    fs::write(root.path().join(".llms.txt"), "map").unwrap();
+    assert!(has_project_context(root.path()));
+    let other = tempfile::tempdir().unwrap();
+    fs::create_dir_all(other.path().join(".rullst")).unwrap();
+    fs::write(other.path().join(".rullst/context-map.json"), "{}").unwrap();
+    assert!(has_project_context(other.path()));
+}

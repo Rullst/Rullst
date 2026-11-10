@@ -16,6 +16,8 @@ async fn test_htmx_request_extractor_empty() {
     assert!(htmx_req.target.is_none());
     assert!(htmx_req.prompt.is_none());
     assert!(htmx_req.current_url.is_none());
+    assert!(!htmx_req.history_restore);
+    assert!(!htmx_req.boosted);
 }
 
 #[tokio::test]
@@ -99,6 +101,8 @@ fn test_render_page_helper() {
         prompt: None,
         current_url: None,
         csp_nonce: None,
+        history_restore: false,
+        boosted: false,
     };
     let req_normal = HtmxRequest {
         is_htmx: false,
@@ -107,6 +111,8 @@ fn test_render_page_helper() {
         prompt: None,
         current_url: None,
         csp_nonce: None,
+        history_restore: false,
+        boosted: false,
     };
 
     // HTMX request -> only the inner content fragment
@@ -142,6 +148,8 @@ fn test_render_page_edge_cases() {
         prompt: None,
         current_url: None,
         csp_nonce: None,
+        history_restore: false,
+        boosted: false,
     };
 
     // Empty content
@@ -241,6 +249,8 @@ fn page_language_defaults_to_pt_br_and_can_be_declared() {
         prompt: None,
         current_url: None,
         csp_nonce: None,
+        history_restore: false,
+        boosted: false,
     };
     let page = render_page(&request, "Painel", Markup::default());
     assert!(page.0.contains("<html lang=\"pt-BR\""), "{}", page.0);
@@ -279,6 +289,8 @@ fn head_markup_ends_the_document_head_and_stays_out_of_htmx_fragments() {
         prompt: None,
         current_url: None,
         csp_nonce: None,
+        history_restore: false,
+        boosted: false,
     };
     let head = crate::html! { <link rel="manifest" href="/static/manifest.webmanifest" /> };
     let page = render_page_with_head(
@@ -333,6 +345,8 @@ fn nonce_pages_keep_htmx_indicator_rules_inside_the_csp() {
         prompt: None,
         current_url: None,
         csp_nonce: Some(nonce.clone()),
+        history_restore: false,
+        boosted: false,
     };
     let page = render_page(&request, "Indicators", Markup::default()).0;
     // htmx's own nonce-less <style> is turned off; its rules carry the nonce.
