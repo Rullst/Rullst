@@ -357,7 +357,8 @@ The report lists what it measured, each with its method: the binary size of
 the running executable, the idle resident memory, the number of third-party
 packages in `Cargo.lock` and, because of `--bench`, the app's CPU time during
 a 10-second loopback load and the CPU time per request. The container image
-size is `NOT MEASURED` until you name an image with `--image`. The figures
+size is `NOT MEASURED` until you name an image with `--image`; the idle memory
+and CPU time are measured on Linux only (they read `/proc`). The figures
 describe one run on one machine, with the load generator on the same machine;
 compare runs only on the same setup. green measures no energy: a carbon figure
 appears only as an SCI estimate from your own `--cpu-watts` and

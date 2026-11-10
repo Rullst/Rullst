@@ -241,11 +241,23 @@ Source findings (rullst-upgrade-rules-v4): 1 must-change, 2 review
   changed (for example `Model::all()`, `ValidatedJson`, the `Mail` facade,
   `render_page`, a generated `.gitignore` without the SQLite journal files).
 
-A review rule is reported once per file (its first location); a must-change
-rule at every location. The [rule classification](#v12--v13-rule-classification)
-lists which migration rows have rules. Findings never block `cargo rullst upgrade`, whose
-`cargo check` gate still restores the project when the code does not compile.
-The gate's error names the must-change findings and repeats the guidance of
+A review rule is reported once per file (its first location), except
+`V13-ORM-SKIP-MANAGED-COLUMNS`, which needs a decision per field; a
+must-change rule at every location. The
+[rule classification](#v12--v13-rule-classification) lists which migration
+rows have rules.
+
+Must-change findings stop `cargo rullst upgrade` before it changes anything:
+the code they name does not compile with the target, so changing the versions
+and running the Cargo gates (minutes on a cold cache) could only fail and
+restore the project. The plan, `--dry-run` included, says so; the error names
+each rule with its first locations and guidance. Fix them and run the command
+again, or pass `--keep-on-failure` to change the versions anyway and fix them
+in the kept files (as the
+[alpha.3 to alpha.4 checklist](../migration-v13.md#upgrading-an-alpha3-application-to-alpha4)
+does for `FromRow`, whose removal does not compile against alpha.3). Review
+findings never stop it; its `cargo check` gate still restores the project when
+the code does not compile, and the gate's error repeats the guidance of
 `V13-CAPITAL-REMOVED` and `V13-MAIL-REMOVED` findings, which name removed APIs
 but are review findings.
 `update project verify`, `review` and `apply` refuse a preparation that has
@@ -306,7 +318,9 @@ must-change findings gate execution.
 | `migration_url` | The published table of the v13 migration guide |
 
 The root object adds `finding_counts` (`must_change`, `review`),
-`unscanned_sources` (project-relative paths), `migration_guide` and
+`unscanned_sources` (project-relative paths), `migration_guide` (the
+checklist for the application's version: the alpha.2 one for alpha.2, the
+alpha.3 one for alpha.3 and later 13.0 prereleases, otherwise the table) and
 `rule_selection`: `current_version` (the application's Rullst version, or
 `null` when it cannot be read), `all_rules` (`--all-rules`, and always `true`
 in project preparations), `skipped_rules` (rules introduced in or before
@@ -490,7 +504,7 @@ the rule together.
 | Typed API generation | (c) none | — | Opt-in CLI profile |
 | CLI generator output | (b) review | `V13-TS-CLIENT-REGENERATE` | Other generator changes affect new output only |
 | CLI generator robustness | (b) review | `V13-TS-CLIENT-REGENERATE`, `V13-GITIGNORE-DATABASES` | Other generator changes affect new output only |
-| ORM database-managed columns | (b) review | `V13-ORM-SKIP-MANAGED-COLUMNS` | Reports `#[orm(skip)]` on `is_admin`/`session_epoch` without `#[sqlx(skip)]`, as alpha.2 starters declared them |
+| ORM database-managed columns | (b) review | `V13-ORM-SKIP-MANAGED-COLUMNS` | Reports each `#[orm(skip)]` field that the model's `FromRow` reads (no `#[sqlx(skip)]` or `#[sqlx(default)]`, no `custom_from_row` or struct-level `#[sqlx(default)]`), such as the alpha.2 starters' `is_admin`/`session_epoch` |
 | ORM dirty tracking | (c) none | — | Opt-in `RowSnapshot` field |
 | ORM partial updates | (b) review | `V13-ORM-PARTIAL-UPDATE` |  |
 | ORM derive checks | (a) must-change | `V13-ORM-BELONGS-TO-KEY`, `V13-ORM-IGNORED-RELATION-KEY`, `V13-ORM-SEARCHABLE-TABLE` |  |
@@ -593,10 +607,10 @@ the rule together.
 | Starter migrations | (b) review | `V13-SQLITE-ONLY-SEED-TIME` |  |
 | ERP starter access | (b) review | `V13-ERP-DASHBOARD-ACCESS` |  |
 | LMS lesson progress | (b) review | `V13-LMS-PROGRESS-KEY` |  |
-| LMS concurrent progress saves | (b) review | `V13-LMS-RECORD-PROGRESS` |  |
+| LMS concurrent progress saves | (b) review | `V13-LMS-RECORD-PROGRESS` | A `record_progress` function that uses `lesson_progress_events` and whose first SQL write is not the event insert; calls and routes that only name it are not reported |
 | LMS lesson media in Nexus | (b) review | `V13-LMS-MEDIA-KINDS` |  |
 | Blog robots and sitemap | (b) review | `V13-BLOG-ROBOTS-SITEMAP` |  |
-| Generated login and registration | (b) review | `V13-CREDENTIAL-RATE-LIMIT` |  |
+| Generated login and registration | (b) review | `V13-CREDENTIAL-RATE-LIMIT` | `hash_password`/`hash_password_async` calls outside `run_password_work` in a function without a semaphore permit, in a file whose code does not name `credential_rate_limit` (comments and strings do not count); migrations, seeds, `src/bin`, tests, benches, examples and test functions are not reported |
 | SaaS user JSON | (b) review | `V13-PASSWORD-HASH-HIDDEN` |  |
 | Registration timestamps | (b) review | `V13-EMPTY-TIMESTAMPS` |  |
 | Billing row timestamps | (b) review | `V13-EMPTY-TIMESTAMPS` |  |

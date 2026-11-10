@@ -477,7 +477,8 @@ list every change.
   not a certification ([guide](https://rullst.github.io/Rullst/book/security-report.html)).
 - **Efficiency figures (Experimental):** `cargo rullst green` reports measured
   binary and image size, idle memory, dependency count and CPU time per
-  request, each with its method, and a carbon figure only as a labelled SCI
+  request (idle memory and CPU time on Linux only, since they read `/proc`),
+  each with its method, and a carbon figure only as a labelled SCI
   estimate from your own inputs ([guide](https://rullst.github.io/Rullst/book/green.html)).
 - **For AI assistants:** every `--json` output follows one contract with a
   `schema` id, the site publishes `llms.txt` and `llms-full.txt`, and the
