@@ -21,8 +21,9 @@ for Humans and AI."**
 Intentions, not promises; dates follow the evidence gates described below.
 
 - **v13:** `13.0.0-alpha.1` to `alpha.3` were published from 11 to 24
-  October 2026. `13.0.0-alpha.4`, prepared for 31 October, is the 13.0 feature
-  and public API freeze. Then `13.0.0-rc.1` (fixes and documentation only,
+  October 2026 and `13.0.0-alpha.4` on 31 October. `13.0.0-alpha.5` adds what
+  the applications upgraded to alpha.4 asked for and is the 13.0 feature and
+  public API freeze. Then `13.0.0-rc.1` (fixes and documentation only,
   driven by user feedback) and `13.0.0` stable, from which the
   [maturity tiers](docs/src/maturity.md) apply; see the
   [path to 13.0.0](#path-to-1300).
@@ -202,10 +203,14 @@ every OS with a material gain, no new flakes or lost tests, and a rollback path.
 
 ### Path to 13.0.0
 
-13.0.0-alpha.4 froze the features and public API of 13.0
+13.0.0-alpha.4 was planned as the feature freeze
 ([changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha4---2026-10-31)).
-13.0.0-rc.1 carries fixes for defects found in alpha.4, documentation
-corrections and the test-only checks planned for its window in the
+On 9 November 2026 the maintainer moved the freeze to 13.0.0-alpha.5: the
+three applications upgraded to alpha.4 asked for API additions, one breaking
+change (invoice amounts in integer minor units) and a frontend toolkit, which
+are cheaper to settle before 13.0 than to add around a frozen API. 13.0.0-rc.1
+then carries fixes for defects found in alpha.5, documentation corrections and
+the test-only checks planned for its window in the
 [verification roadmap](#verification-roadmap); it adds no feature. 13.0.0 follows once rc.1 leaves no open defect in the
 stability scope, and the [maturity tiers](docs/src/maturity.md) and
 [13.x support window](docs/src/compatibility-policy.md#supported-release-window)
@@ -219,9 +224,69 @@ and the [priority revision](docs/src/v13-priorities.md).
 Work items for later prereleases, not shipped features. They add no milestone
 to the counts above.
 
-- **13.0.0-rc.1: fixes and documentation only.** 13.0.0-alpha.4 froze the
+- **13.0.0-alpha.5: the 13.0 feature and public API freeze.** It carries the
+  fixes for the defects the applications found in alpha.4 and these
+  additions, each with its tests and documentation:
+  - **Frontend toolkit:** content-hashed static asset names with a URL helper;
+    `cargo rullst add tailwind` (a pinned, checksum-verified standalone
+    Tailwind CLI, no Node.js, watched by `cargo rullst dev` and minified in
+    builds and the Dockerfile); `cargo rullst ui add`, accessible components
+    that respect the strict CSP, written with `html!`, copied into the
+    application and tested in the browser job; an opt-in Alpine.js CSP build;
+    generators whose markup follows the project's choice instead of assuming
+    Tailwind.
+  - **htmx:** `HtmxRequest` reports history-restore and boosted requests.
+  - **AI:** a typed HTTP error with the status, `Retry-After` and the
+    provider's message.
+  - **Capital:** a provider-neutral one-off checkout with a server-side amount
+    in minor units; a verification mode for unsigned notifications confirmed
+    at the source; the HTTP client rules available to application adapters;
+    an InfinitePay adapter on its public Checkout API; localized invoices and
+    receipts with a configurable subject; invoice amounts in integer minor
+    units instead of `f64` (breaking).
+  - **Mail:** `Reply-To`.
+  - **Machine endpoints:** a category for notifications authenticated by an
+    address token and confirmed at the source; `cargo rullst audit`
+    classifies machine routes.
+  - **Media:** upload-only Bunny credentials, browser uploads above 1 GiB and
+    library listing.
+  - **`green` becomes `footprint`:** the command, its module, report schema
+    (`rullst.footprint.v1`) and book page are renamed without an alias, and a
+    `cargo rullst upgrade` rule points at scripts and workflows that still call
+    `cargo rullst green`. "Green" reads as an environmental claim (the EU's
+    Directive 2024/825 restricts generic ones from 27 September 2026); the
+    command measures resources and estimates SCI from the operator's inputs,
+    which is neither a certification nor a claim. It adds page weight
+    (response bytes, first and repeat visits, third-party requests) with a
+    network term in the SCI estimate, and idle memory and CPU on macOS and
+    Windows.
+  - **CLI:** `make:mfa` enrolment pages and sign-in step with a QR code;
+    `make:pwa --router`; `make:oauth` and `make:privacy` for applications
+    with their own sign-in; a "reviewed" marker for upgrade review rules.
+  - **i18n, logs, Nexus, Studio, Auth:** an explicit locale order in
+    `catalog!` and a cheaper `t!` to compile; redaction of secret path
+    segments in the access log; an application stylesheet for Nexus; the
+    remote Studio without database drivers or Capital; no development key
+    written to the project root by tests.
+  - **Removed to keep 13.0 lean** (decided 10 November 2026; no application
+    used them): WebAssembly islands (`#[island]`, `make:island`, the client
+    build), which the default CSP could not run without `'wasm-unsafe-eval'`;
+    both Live stacks (`#[live_component]`/`make:live` and
+    `rullst::live::recovery`), replaced for server push by Server-Sent Events
+    from the realtime channels with the htmx SSE extension; and the Turso
+    variants of the billing generator.
+  - **Brought forward from the 13.x and v14 lists:** unquoted text in `html!`
+    (quoted literals keep working); `OtaManager` fields private behind getters
+    of the same names; and the four breaking clean-ups of the v14 list below,
+    which are cheaper before the 13.0 freeze than in 14.0: internals hidden
+    from the documentation become crate-private, Rullst error types replace
+    third-party types in public error variants and `From` conversions,
+    `SecurityStore`'s `dashmap` fields become private, and the duplicate
+    module paths are removed. Each breaking change gets a migration-guide
+    entry and, where it can be detected, an upgrade rule.
+- **13.0.0-rc.1: fixes and documentation only.** 13.0.0-alpha.5 freezes the
   features and the public API of 13.0. rc.1 adds no feature: it carries fixes
-  for defects found in alpha.4 (by its release admission, the first-hour and
+  for defects found in alpha.5 (by its release admission, the first-hour and
   deployment jobs and the platforms upgraded to it) and documentation
   corrections. A change to a `.github/public-api/` listing must be such a fix
   and is listed in the changelog and the migration guide. The
@@ -235,9 +300,9 @@ to the counts above.
   emitting Turso migrations, `#[derive(Orm)]` also generating the Turso model)
   could be a 13.x candidate on that condition. Full ORM parity is a decided
   non-goal (see "13.x minor candidates and decided non-goals").
-- **Feedback from the platforms upgraded to 13.0.0-alpha.3 and alpha.4.**
-  Their reports choose the fixes and priorities of the next prerelease, as
-  the alpha.1 and alpha.2 reports did before.
+- **Feedback from the platforms upgraded to 13.0.0-alpha.3, alpha.4 and
+  alpha.5.** Their reports choose the fixes and priorities of the next
+  prerelease, as the alpha.1 and alpha.2 reports did before.
 - **Then 13.0.0**, once rc.1 leaves no open defect in the stability scope.
 
 ### Published and planned release lines
@@ -254,8 +319,9 @@ to the counts above.
 | **v13.0.0-alpha.1** | `[x] Published prerelease` | Tag `v13.0.0-alpha.1` at `fc44bf76`; all twenty packages were published on 11 October 2026 for evaluation. See the [delivery plan](docs/src/v13-delivery-plan.md). |
 | **v13.0.0-alpha.2** | `[x] Published prerelease` | All twenty packages were published on 17 October 2026 from tag `v13.0.0-alpha.2` at `0daf4941` ([release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)): the fixes from the alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema` date/time and Nexus changes. A first tag at `669befe6` failed release verification before publishing anything and was replaced. |
 | **v13.0.0-alpha.3** | `[x] Published prerelease` | All twenty packages were published on 24 October 2026 from tag `v13.0.0-alpha.3` at `be336833` ([release run 40129821475](https://github.com/Rullst/Rullst/actions/runs/40129821475)) after all 25 required workflows passed on that commit. See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha3---2026-10-23). |
-| **v13.0.0-alpha.4** | `[ ] Release candidate` | Prepared on 29 and 30 October 2026 for a tag on 31 October and not yet published; the coordinator records the tag, release run and publication here. Twenty packages; the 13.0 feature and public API freeze. See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha4---2026-10-31). |
-| **v13.0.0-rc.1** | `[ ] Planned` | Fixes and documentation only after the alpha.4 feature and API freeze. See [Planned after 13.0.0-alpha.4](#planned-after-1300-alpha4). |
+| **v13.0.0-alpha.4** | `[x] Published prerelease` | All twenty packages were published on 31 October 2026 from tag `v13.0.0-alpha.4` at `2bd3c2ad` ([release run 41233925160](https://github.com/Rullst/Rullst/actions/runs/41233925160)). See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha4---2026-10-31). |
+| **v13.0.0-alpha.5** | `[ ] Planned` | The 13.0 feature and public API freeze: fixes and additions from the applications upgraded to alpha.4. See [Planned after 13.0.0-alpha.4](#planned-after-1300-alpha4). |
+| **v13.0.0-rc.1** | `[ ] Planned` | Fixes and documentation only after the alpha.5 feature and API freeze. See [Planned after 13.0.0-alpha.4](#planned-after-1300-alpha4). |
 | **v13.0.0** | `[ ] Planned stable` | Follows once rc.1 leaves no open defect in the stability scope; the [maturity tiers](docs/src/maturity.md) apply from this release. |
 | **v13.x** | `[ ] After 13.0.0` | Compatible capabilities continue in 13.1 and later minors: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
@@ -272,12 +338,6 @@ none is scheduled, and real user demand orders them.
 
 - **Production monitor** (13.1 candidate): desktop notifications in the
   standalone Studio, remote traces and security radar, and proxy support.
-- **`green` on macOS and Windows**: measure idle memory and CPU time there too
-  (for example through `sysinfo`), not only through Linux `/proc`.
-- **`OtaManager` getters** (Experimental tier): private fields with getters of
-  the same names, as announced in 13.0.0-alpha.4.
-- **Unquoted text in `html!`**: an ergonomic grammar addition, only if users
-  ask for it; quoted literals keep working.
 - **More i18n locales and currency formats**, added as CLDR data when requested.
 
 Decided non-goals (not planned, so they are documented as scope rather than as
@@ -351,20 +411,10 @@ Recorded on 8 October 2026; ideas, not commitments.
 
 Breaking ideas raised during 13.x are collected here instead of shipping in a
 13.x release ([support window](docs/src/compatibility-policy.md#supported-release-window)).
-None is scheduled; v14 development starts only when they justify it.
-
-- Make the internals hidden from the documentation in 13.0.0-alpha.4
-  (`#[doc(hidden)]`) crate-private.
-- Replace third-party types in public error variants and `From` conversions
-  (`reqwest`, `jsonwebtoken`, `base64`, `redis`, `serde_json`) with Rullst
-  error types, so fewer crates are [public dependencies](docs/src/compatibility-policy.md#public-dependencies).
-- Make the `dashmap` fields of `rullst_security::SecurityStore`
-  (`banned_ips`, `honeypot_route_hits`) private, behind methods.
-- Keep one path per item: remove `rullst::rullst_orm` (same as
-  `rullst::orm`), `rullst::security_runtime` (same as
-  `rullst::security::runtime`) and Mail's alias modules `rullst_mail::mail`
-  and `rullst_mail::drivers::mock` (same as the crate root and
-  `rullst_mail::mock`).
+None is scheduled; v14 development starts only when they justify it. The four
+clean-ups recorded here before 13.0 (crate-private internals, Rullst error
+types instead of third-party ones, private `SecurityStore` fields, one path per
+item) moved into 13.0.0-alpha.5.
 
 ---
 

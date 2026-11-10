@@ -3378,8 +3378,9 @@ remains external evidence.
 Billing adapters implement `BillingProvider`; metered usage adapters implement
 `MeteredBillingProvider` with a provider-specific request type. Rullst ships two
 adapters: Stripe, the supported provider used by the generated billing flow, and
-InfinitePay, which is experimental until it is validated against a live
-account (its live plan-only checkout and live callbacks fail closed). The trait
+InfinitePay, which is experimental and performs no real operation until it is
+reworked and validated against a live account (its live plan-only checkout and
+live callbacks return `UnsupportedOperation` before any request). The trait
 default for webhook verification mode fails closed, so a custom adapter must
 declare its verification mode before Rullst's webhook middleware accepts it.
 Individual billing operations may still return `Unsupported` when a provider
@@ -3609,13 +3610,17 @@ instances must persist/claim the key and reconcile payment state durably before
 sending.
 
 ### 6.3. Webhook Signature Verification
-* The experimental InfinitePay adapter has a body-only verifier but no reviewed
-  authentication and authoritative payment-lookup contract for the documented
-  checkout callback.
+* The experimental InfinitePay adapter performs no real operation. It has a
+  body-only verifier but no reviewed authentication and authoritative
+  payment-lookup contract for the documented checkout callback: InfinitePay's
+  public Checkout API sends an unsigned webhook and confirms a payment with
+  `POST /payment_check`.
   Real-secret verification and normalization return `UnsupportedOperation`;
   explicit mock-secret fixtures remain offline-only. A local HMAC fixture is
   not evidence that the provider signs that protocol. Enabling live processing
-  requires order/merchant/amount binding and provider reconciliation first.
+  requires order/merchant/amount binding and provider reconciliation first;
+  until then applications charge through InfinitePay with their own
+  `BillingProvider` that confirms each payment with `payment_check`.
 * The additive `StripeProvider::verify_subscription_event` returns an immutable
   `StripeSubscriptionEvent` after the existing signature/freshness check and
   bounded subscription normalization. It retains event ID/type/API version,

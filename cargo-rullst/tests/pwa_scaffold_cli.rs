@@ -90,7 +90,7 @@ fn snapshot(root: &Path) -> BTreeMap<String, Vec<u8>> {
 }
 
 #[test]
-fn make_pwa_is_idempotent_refuses_edits_and_the_api_starter() {
+fn make_pwa_is_idempotent_refuses_edits_and_guides_the_api_starter() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let temporary = tempfile::tempdir().unwrap();
     let project = temporary.path().join("app");
@@ -165,16 +165,18 @@ fn make_pwa_is_idempotent_refuses_edits_and_the_api_starter() {
     );
     assert_eq!(snapshot(&project), edited);
 
+    // The JSON API starter has no page layout: the files are written and the
+    // report says what to add by hand instead of counting a layout.
     let api = temporary.path().join("api");
     materialize(&api, workspace, true);
-    let before = snapshot(&api);
-    let refused = make_pwa(&api);
-    assert!(!refused.status.success());
+    let added = success(make_pwa(&api));
+    let stdout = String::from_utf8_lossy(&added.stdout);
     assert!(
-        String::from_utf8_lossy(&refused.stderr)
-            .contains("the JSON API starter serves no pages to install")
+        stdout.contains("To do: No page layout was found in src/"),
+        "{stdout}"
     );
-    assert_eq!(snapshot(&api), before);
+    assert!(!stdout.contains("register /sw.js."), "{stdout}");
+    assert!(api.join("static/manifest.webmanifest").is_file());
 }
 
 #[test]

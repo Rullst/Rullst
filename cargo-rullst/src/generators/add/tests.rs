@@ -385,6 +385,14 @@ fn implied_features_match_the_facade_manifest() {
 }
 
 #[test]
+fn generators_see_capabilities_enabled_by_implying_features() {
+    assert!(super::enabled_by("mail", ["orm", "mailer"].into_iter()));
+    assert!(super::enabled_by("mail", ["mail"].into_iter()));
+    assert!(!super::enabled_by("mail", ["orm", "auth"].into_iter()));
+    assert!(!super::enabled_by("unknown", ["mail"].into_iter()));
+}
+
+#[test]
 fn the_report_says_when_dotenv_needs_nothing() {
     let root = project(MANIFEST, &[(".env", "APP_KEY=local\n")]);
     let report = add(root.path(), "mail");

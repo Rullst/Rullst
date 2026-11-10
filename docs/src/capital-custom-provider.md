@@ -1,7 +1,8 @@
 # Writing your own payment provider
 
 Rullst Capital ships two built-in adapters: **Stripe** (supported) and
-**InfinitePay** (experimental until it is validated against a live account).
+**InfinitePay** (experimental; it performs no real operation today, see
+[gateways with unsigned webhooks](#gateways-with-unsigned-webhooks)).
 Every other gateway is integrated by the application through the same
 provider-neutral contracts the built-in adapters use. Version 13 removed the
 Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago, Alipay, Coinbase
@@ -106,6 +107,30 @@ The in-memory replay store is process-local. With several processes, use the
 ID inside your own database transaction. Body-hash replay protection
 does not stop a gateway from resending the same event with a different body;
 prefer the stable event ID when the gateway provides one.
+
+### Gateways with unsigned webhooks
+
+Some gateways notify the application without signing the request.
+InfinitePay's public [Checkout API](https://www.infinitepay.io/checkout-documentacao)
+is one: a payment link is created with
+`POST https://api.checkout.infinitepay.io/links` from the merchant `handle`
+and items priced in cents, the webhook carries no signature, and a payment is
+confirmed with `POST /payment_check` (`handle`, `order_nsu`,
+`transaction_nsu`, `slug`). The built-in `InfinitePayProvider` does not
+implement that API: with real credentials its checkout and webhook methods
+return `UnsupportedOperation` before any HTTP request.
+
+The canonical middleware above requires a provider that verifies a signature,
+so it cannot authenticate such a notification, and a `WebhookEvent` built from
+an unsigned body proves nothing. An application adapter for these gateways
+should:
+
+- take the amount from a charge stored on the server, never from the browser
+  or the notification;
+- treat the notification only as a hint of *which* stored charge to check;
+- mark the charge paid only after the gateway's own lookup
+  (`payment_check` for InfinitePay) confirms the payment and the stored amount,
+  and make that transition idempotent.
 
 ## 4. Test the adapter
 

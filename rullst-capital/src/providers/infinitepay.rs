@@ -7,7 +7,27 @@ use async_trait::async_trait;
 use serde_json::Value;
 use std::collections::HashMap;
 
-/// Billing provider adapter for InfinitePay (CloudWalk Brazil).
+/// Experimental billing provider adapter for InfinitePay (CloudWalk Brazil).
+///
+/// **It performs no real operation today.** With an empty or `mock_*` API key
+/// and a `mock_*` webhook secret, checkout, portal, cancellation and webhook
+/// handling return deterministic offline fixtures. With any other credentials, `create_checkout_session`,
+/// `create_customer_portal` and `cancel_subscription` (live API key) and
+/// `handle_webhook` and `verify_signature` (live webhook secret) return
+/// [`CapitalError::UnsupportedOperation`] before any HTTP request; pause,
+/// usage, coupon and trial operations are always unsupported.
+///
+/// The adapter's model (an API key plus an HMAC over the webhook body) does not
+/// match InfinitePay's public
+/// [Checkout API](https://www.infinitepay.io/checkout-documentacao): a payment
+/// link is created with `POST https://api.checkout.infinitepay.io/links` from
+/// the merchant `handle` and items priced in cents, the webhook carries **no
+/// signature**, and a payment is confirmed with `POST /payment_check`. To
+/// charge through InfinitePay, implement [`BillingProvider`] in the
+/// application ([custom providers](https://github.com/Rullst/Rullst/blob/main/docs/src/capital-custom-provider.md)):
+/// take the amount from a server-side price, treat the webhook only as a hint of
+/// which payment to check, and mark the payment paid only after
+/// `payment_check` confirms it and the stored amount.
 ///
 /// Fees, settlement schedules, installment terms, geography, and merchant
 /// eligibility belong to the current provider contract and account.

@@ -2,8 +2,9 @@
 
 Status: proposed scope, reviewed on 25 September 2026, with progress noted up
 to 13.0.0-alpha.4. Except for the parts this page says exist, these are planned
-improvements, not available APIs. 13.0.0-alpha.4 is the 13.0 feature freeze, so
-the remaining stages are not part of 13.0. The current contract remains in the
+improvements, not available APIs. Apart from an application
+stylesheet hook planned for 13.0.0-alpha.5, the 13.0 feature freeze, the
+remaining stages are not part of 13.0. The current contract remains in the
 [specification](spec.md#102-rullst-nexus-nexus) and
 [Nexus guide](4-rullst-nexus.md).
 

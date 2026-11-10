@@ -140,15 +140,110 @@ pub fn register_mod_ast(
         }
     }
 
-    let decl = format!("pub mod {};\n", module_name);
-    let mut new_content = content;
-    if !new_content.is_empty() && !new_content.ends_with('\n') {
-        new_content.push('\n');
-    }
-    new_content.push_str(&decl);
+    let new_content =
+        insert_module_declaration(&content, module_name, &format!("pub mod {module_name};"));
     fs::write(mod_path, new_content)?;
 
     Ok(())
+}
+
+/// `source` with `declaration`, the `mod name;` line of module `name`, among
+/// the other declarations: in the alphabetical place rustfmt keeps in the
+/// last group of consecutive `mod name;` lines that is not only
+/// `#[cfg(test)]`. A declaration with comment lines becomes its own group
+/// after that one. Without such a group (or valid Rust) it is appended.
+pub(crate) fn insert_module_declaration(source: &str, name: &str, declaration: &str) -> String {
+    let own_group = declaration.contains('\n');
+    let mut updated = source.to_owned();
+    match module_insertion(source, name, own_group) {
+        Some((at, before)) if updated.is_char_boundary(at) => {
+            updated.insert_str(at, &format!("{before}{declaration}\n"));
+        }
+        _ => {
+            if !updated.is_empty() && !updated.ends_with('\n') {
+                updated.push('\n');
+            }
+            if own_group && !updated.is_empty() {
+                updated.push('\n');
+            }
+            updated.push_str(&format!("{declaration}\n"));
+        }
+    }
+    updated
+}
+
+/// Where [`insert_module_declaration`] inserts, and what goes before the
+/// declaration there.
+fn module_insertion(source: &str, name: &str, own_group: bool) -> Option<(usize, &'static str)> {
+    use syn::spanned::Spanned;
+    let file = syn::parse_file(source).ok()?;
+    let line_start = |at: usize| {
+        source
+            .get(..at)
+            .map(|before| before.rfind('\n').map_or(0, |at| at + 1))
+    };
+    let line_end = |at: usize| {
+        source.get(at..).map(|after| {
+            after
+                .find('\n')
+                .map_or(source.len(), |at_newline| at + at_newline + 1)
+        })
+    };
+    // (name, span, test-only) of each `mod name;`, split into rustfmt's
+    // groups: a blank line, a comment line or another item ends a group; a
+    // comment after the `;` belongs to its line.
+    let mut groups: Vec<Vec<(String, std::ops::Range<usize>, bool)>> = Vec::new();
+    let mut previous_line_end = None;
+    for item in &file.items {
+        let syn::Item::Mod(module) = item else {
+            previous_line_end = None;
+            continue;
+        };
+        if module.content.is_some() {
+            previous_line_end = None;
+            continue;
+        }
+        let range = item.span().byte_range();
+        let joined = previous_line_end.is_some_and(|end| Some(end) >= line_start(range.start));
+        previous_line_end = line_end(range.end);
+        let entry = (module.ident.to_string(), range, is_test_only(&module.attrs));
+        match groups.last_mut() {
+            Some(group) if joined => group.push(entry),
+            _ => groups.push(vec![entry]),
+        }
+    }
+    let group = groups
+        .iter()
+        .rev()
+        .find(|group| group.iter().any(|(_, _, test)| !test))?;
+    let last = &group.last()?.1;
+    let end = line_end(last.end)?;
+    // A file ending right after the declaration gets a newline first.
+    let ends_line = source.get(..end)?.ends_with('\n');
+    if own_group {
+        return Some((end, if ends_line { "\n" } else { "\n\n" }));
+    }
+    // In a group rustfmt has not sorted, the declaration goes last.
+    let sorted = group
+        .windows(2)
+        .all(|pair| matches!(pair, [left, right] if left.0 <= right.0));
+    match group
+        .iter()
+        .find(|(other, _, _)| sorted && other.as_str() > name)
+    {
+        Some((_, range, _)) => Some((line_start(range.start)?, "")),
+        None => Some((end, if ends_line { "" } else { "\n" })),
+    }
+}
+
+/// Whether the attributes include `#[cfg(test)]`.
+fn is_test_only(attributes: &[syn::Attribute]) -> bool {
+    attributes.iter().any(|attribute| {
+        attribute.path().is_ident("cfg")
+            && attribute
+                .parse_args::<syn::Ident>()
+                .is_ok_and(|argument| argument == "test")
+    })
 }
 
 /// Normalizes the controller name to snake_case with the "_controller" suffix

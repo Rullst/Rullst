@@ -7,8 +7,8 @@
 > before it is described as satisfying a legal requirement.
 
 Status: **planned (recorded 2026-10-01)**. Nothing on this page is a shipped
-capability unless it links to existing documentation. 13.0.0-alpha.4 is the 13.0
-feature freeze, so the planned work below comes after 13.0.
+capability unless it links to existing documentation. The planned
+work below is not part of 13.0, whose feature freeze is 13.0.0-alpha.5.
 
 ## Goal and honest boundary
 

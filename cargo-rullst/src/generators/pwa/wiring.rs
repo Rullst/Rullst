@@ -3,8 +3,9 @@
 //!
 //! Every HTML starter merges `rullst::health::health_router()` into its
 //! router exactly once; the PWA routes are merged right after it, outside the
-//! CSRF layer (they answer GET only) and inside any later header layer. A
-//! router without that merge is not recognized and nothing is written.
+//! CSRF layer (they answer GET only) and inside any later header layer. The
+//! merge may be in any module of the crate; without exactly one, the routes
+//! are left for the developer to mount and the report says how.
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
 use std::{error::Error, io};
 
@@ -46,6 +47,19 @@ fn scan(trees: &[TokenTree], in_return: bool, ends: &mut Vec<usize>, mounted: &m
     }
 }
 
+/// How many `.merge_axum(rullst::health::health_router())` calls `source`
+/// has, and whether it mounts the PWA router.
+pub(super) fn health_merges(source: &str) -> Result<(usize, bool), Box<dyn Error>> {
+    let trees = source
+        .parse::<TokenStream>()?
+        .into_iter()
+        .collect::<Vec<_>>();
+    let mut ends = Vec::new();
+    let mut mounted = false;
+    scan(&trees, false, &mut ends, &mut mounted);
+    Ok((ends.len(), mounted))
+}
+
 /// `source` with the PWA router merged after the health probes, or `None`
 /// when it is already mounted.
 pub(super) fn mount_router(source: &str) -> Result<Option<String>, Box<dyn Error>> {
@@ -63,7 +77,7 @@ pub(super) fn mount_router(source: &str) -> Result<Option<String>, Box<dyn Error
     let [end] = ends.as_slice() else {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            "make:pwa did not find exactly one `.merge_axum(rullst::health::health_router())` in the crate root; add `.merge_axum(crate::pwa::router().into_axum())` to your router by hand (see PWA guide)",
+            "make:pwa did not find exactly one `.merge_axum(rullst::health::health_router())` in this file",
         )
         .into());
     };
@@ -102,13 +116,13 @@ pub(super) fn declare_module(
         return Ok(None);
     }
     let visibility = if library { "pub " } else { "" };
-    let mut updated = source.to_owned();
-    if !updated.is_empty() && !updated.ends_with('\n') {
-        updated.push('\n');
-    }
-    updated.push_str(&format!(
-        "\n// Web app manifest, service worker and offline page (cargo rullst make:pwa).\n{visibility}mod pwa;\n"
-    ));
+    let updated = super::super::insert_module_declaration(
+        source,
+        "pwa",
+        &format!(
+            "// Web app manifest, service worker and offline page (cargo rullst make:pwa).\n{visibility}mod pwa;"
+        ),
+    );
     syn::parse_file(&updated)?;
     Ok(Some(updated))
 }

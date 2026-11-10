@@ -95,10 +95,16 @@ fn every_mail_scaffold_compiles_escapes_html_and_fails_closed() {
     assert_eq!(
         features
             .iter()
-            .filter(|feature| feature.as_str() == Some("mailer"))
+            .filter(|feature| feature.as_str() == Some("mail"))
             .count(),
         1,
-        "mailer feature must be enabled exactly once"
+        "mail feature must be enabled exactly once"
+    );
+    assert!(
+        !features
+            .iter()
+            .any(|feature| feature.as_str() == Some("mailer")),
+        "the SMTP transport is the application's choice"
     );
     assert!(
         !features

@@ -2,8 +2,8 @@
 
 **Status on 29 October 2026:** v12 reached end of life on 16 October 2026;
 12.3.0 is its last release and the `v12` branch is frozen (see
-[SECURITY.md](../../SECURITY.md)). 13.0.0-alpha.4 is the 13.0 feature freeze,
-followed by 13.0.0-rc.1 (fixes and documentation only) and then 13.0.0. The
+[SECURITY.md](../../SECURITY.md)). 13.0.0-alpha.4 was published on 31 October;
+13.0.0-alpha.5 is the 13.0 feature freeze, followed by 13.0.0-rc.1 (fixes and documentation only) and then 13.0.0. The
 September directions below record how the priorities were set; the v12
 maintenance instructions in them no longer apply.
 
@@ -244,7 +244,7 @@ scoped; a known security or data-loss defect is not an optional future feature.
 
 The `13.0.0-alpha.N` prereleases collect explicit evaluation feedback; with v12
 at end of life, the latest v13 prerelease is the supported line until 13.0.0.
-13.0.0-alpha.4 is the feature freeze, 13.0.0-rc.1 takes only fixes and
+13.0.0-alpha.5 is the feature freeze, 13.0.0-rc.1 takes only fixes and
 documentation, and 13.0.0 follows. A prerelease label does not resolve
 independent-review or safety blockers. Further compatible capabilities can ship
 in 13.1 and later minors; unfinished roadmap ideas do not all require v14.
