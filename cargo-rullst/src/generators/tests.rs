@@ -61,6 +61,71 @@ fn test_register_mod_ast_flow() {
 }
 
 #[test]
+fn module_declarations_join_the_others_in_rustfmt_order() {
+    let main = "mod controllers;\nmod models; // starter\nmod routes;\n\n#[cfg(test)]\nmod security_tests;\n\nfn main() {}\n";
+    assert_eq!(
+        insert_module_declaration(main, "mail", "pub mod mail;"),
+        "mod controllers;\npub mod mail;\nmod models; // starter\nmod routes;\n\n#[cfg(test)]\nmod security_tests;\n\nfn main() {}\n"
+    );
+    assert_eq!(
+        insert_module_declaration(main, "workers", "pub mod workers;"),
+        "mod controllers;\nmod models; // starter\nmod routes;\npub mod workers;\n\n#[cfg(test)]\nmod security_tests;\n\nfn main() {}\n"
+    );
+    // A commented declaration is its own group after the declarations.
+    assert_eq!(
+        insert_module_declaration(main, "pwa", "// PWA.\nmod pwa;"),
+        "mod controllers;\nmod models; // starter\nmod routes;\n\n// PWA.\nmod pwa;\n\n#[cfg(test)]\nmod security_tests;\n\nfn main() {}\n"
+    );
+    // The last group with a module that is not only for tests is chosen;
+    // a comment, a blank line or another item ends a group.
+    let split = "mod b;\n// note\nmod d;\nuse x;\n#[cfg(test)]\nmod tests;\n";
+    assert_eq!(
+        insert_module_declaration(split, "c", "mod c;"),
+        "mod b;\n// note\nmod c;\nmod d;\nuse x;\n#[cfg(test)]\nmod tests;\n"
+    );
+    assert_eq!(
+        insert_module_declaration("mod a;\n\nmod c;\n", "b", "mod b;"),
+        "mod a;\n\nmod b;\nmod c;\n"
+    );
+    // Without a declaration (or valid Rust), the line is appended.
+    assert_eq!(
+        insert_module_declaration("fn main() {}", "pwa", "mod pwa;"),
+        "fn main() {}\nmod pwa;\n"
+    );
+    assert_eq!(
+        insert_module_declaration("", "a", "pub mod a;"),
+        "pub mod a;\n"
+    );
+    assert_eq!(
+        insert_module_declaration("#[cfg(test)]\nmod tests;\n", "a", "mod a;"),
+        "#[cfg(test)]\nmod tests;\nmod a;\n"
+    );
+    assert_eq!(
+        insert_module_declaration("mod a;\nfn broken(", "b", "mod b;"),
+        "mod a;\nfn broken(\nmod b;\n"
+    );
+    // A last declaration without a final newline is followed by a new line.
+    assert_eq!(
+        insert_module_declaration("mod a;", "b", "mod b;"),
+        "mod a;\nmod b;\n"
+    );
+    // An unsorted group keeps its order and gains the declaration last.
+    assert_eq!(
+        insert_module_declaration(
+            "pub mod user;\npub mod subscription;",
+            "accounts",
+            "pub mod accounts;"
+        ),
+        "pub mod user;\npub mod subscription;\npub mod accounts;\n"
+    );
+    // Inline modules are code, not declarations.
+    assert_eq!(
+        insert_module_declaration("mod a;\nmod inline {}\nmod z;\n", "b", "mod b;"),
+        "mod a;\nmod inline {}\nmod b;\nmod z;\n"
+    );
+}
+
+#[test]
 fn generated_identifiers_reject_keywords_and_syntax() {
     assert!(is_valid_rust_identifier("billing_customer"));
     assert!(is_valid_rust_identifier("BillingCustomer"));
