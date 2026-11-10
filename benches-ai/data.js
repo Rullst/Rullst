@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794342978042,
+  "lastUpdate": 1794346318307,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -18119,6 +18119,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 277,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ceb93eec8c957e22d1d333264a269ee9a9cb7e85",
+          "message": "Merge pull request #631 from Rullst/fix/v13-alpha5-iot-hardware\n\nfeat(iot)!: streaming OTA verification, fallible encoders, micro:bit V2 evidence and CI firmware",
+          "timestamp": "2026-11-10T18:11:21-03:00",
+          "tree_id": "6a67b03d881bb125c0eec44c10c8710b3f6d7fd4",
+          "url": "https://github.com/Rullst/Rullst/commit/ceb93eec8c957e22d1d333264a269ee9a9cb7e85"
+        },
+        "date": 1794346317256,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1412,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 305,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 277,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
