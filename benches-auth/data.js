@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794342703430,
+  "lastUpdate": 1794346051736,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -20615,6 +20615,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3740,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ceb93eec8c957e22d1d333264a269ee9a9cb7e85",
+          "message": "Merge pull request #631 from Rullst/fix/v13-alpha5-iot-hardware\n\nfeat(iot)!: streaming OTA verification, fallible encoders, micro:bit V2 evidence and CI firmware",
+          "timestamp": "2026-11-10T18:11:21-03:00",
+          "tree_id": "6a67b03d881bb125c0eec44c10c8710b3f6d7fd4",
+          "url": "https://github.com/Rullst/Rullst/commit/ceb93eec8c957e22d1d333264a269ee9a9cb7e85"
+        },
+        "date": 1794346050691,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 930,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 733,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1707,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3688,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
