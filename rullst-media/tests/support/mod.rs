@@ -124,6 +124,10 @@ pub struct Remote {
     pub queries: Vec<BTreeMap<String, String>>,
     /// Reports this page size instead of the requested one.
     pub list_page_size: Option<usize>,
+    /// Returns one item more than the requested page size.
+    pub list_extra_item: bool,
+    /// Reports this total instead of the number of matches.
+    pub list_total: Option<usize>,
     pub gate: Option<Arc<(tokio::sync::Notify, tokio::sync::Notify)>>,
 }
 pub struct Fixture {
@@ -229,11 +233,12 @@ async fn list(
     let size: usize = query
         .get("itemsPerPage")
         .map_or(100, |p| p.parse().unwrap());
-    let total = items.len();
+    let total = remote.list_total.unwrap_or(items.len());
+    let take = size + usize::from(remote.list_extra_item);
     let mut items: Vec<_> = items
         .into_iter()
         .skip((page - 1) * size)
-        .take(size)
+        .take(take)
         .collect();
     if remote.wrong_identity {
         for item in &mut items {

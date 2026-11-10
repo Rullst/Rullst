@@ -276,6 +276,24 @@ async fn listing_sends_bounded_encoded_queries_and_validates_items() {
     assert_eq!((full.items.len(), full.total), (10, 11));
     assert!(full.has_more());
 
+    // More items than the page size, with a total that covers them.
+    fixture.remote.lock().unwrap().list_extra_item = true;
+    assert!(matches!(
+        provider.list(&ListQuery::new(1, 10).unwrap()).await,
+        Err(MediaError::Protocol)
+    ));
+    // A total below the items on the page, with a page of the right size.
+    {
+        let mut remote = fixture.remote.lock().unwrap();
+        remote.list_extra_item = false;
+        remote.list_total = Some(5);
+    }
+    assert!(matches!(
+        provider.list(&ListQuery::new(1, 10).unwrap()).await,
+        Err(MediaError::Protocol)
+    ));
+    fixture.remote.lock().unwrap().list_total = None;
+
     fixture.remote.lock().unwrap().list_page_size = Some(100);
     assert!(matches!(
         provider.list(&by_title).await,
