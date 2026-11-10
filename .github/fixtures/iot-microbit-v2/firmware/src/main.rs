@@ -19,6 +19,12 @@
 //! `src/expected.rs` come from the `std` build of `rullst-iot`:
 //! `cargo run --locked --manifest-path ../vectors/Cargo.toml` rewrites them,
 //! and CI checks that they are current.
+//!
+//! To check an update signed by the CLI, put an `image.bin` in a folder, run
+//! `cargo rullst iot:keygen --out ota.key` and `cargo rullst iot:sign --key
+//! ota.key --image image.bin --target microbit-v2 --version 2.0.0 --counter 7`
+//! there, and build with `RULLST_IOT_SIGNED_DIR=<folder>`: the `cli_signed_*`
+//! checks then verify that update on the board and reject tampered copies.
 
 #![no_std]
 #![no_main]

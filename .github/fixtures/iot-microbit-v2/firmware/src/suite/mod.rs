@@ -1,6 +1,8 @@
 //! The rullst-iot test cases. Every case prints `PASS|FAIL <name> <detail>`.
 
 mod cas;
+#[cfg(cli_signed)]
+mod cli_signed;
 mod frames;
 mod ota;
 mod probes;
@@ -110,6 +112,8 @@ pub fn run(ctx: &mut Ctx) {
     heap_group("cas");
     cas::cas(ctx);
     heap_report("cas");
+    #[cfg(cli_signed)]
+    cli_signed::cli_signed(ctx);
 }
 
 fn key(bytes: &[u8]) -> [u8; 32] {

@@ -13,8 +13,9 @@ with an exact version:
 cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 ```
 
-`cargo-rullst` is a Core package. Two commands carry their own **Maturity**
-label below the command name, *Experimental*: `make:iot` and `green`. The
+`cargo-rullst` is a Core package. Four commands carry their own **Maturity**
+label below the command name, *Experimental*: `make:iot`, `iot:keygen`,
+`iot:sign` and `green`. The
 [maturity tiers](maturity.md#cli-generators) page explains what the label
 promises.
 
@@ -1276,6 +1277,62 @@ public `rullst::iot::SensorTelemetry` facade, and enables the `iot` feature in
 the application manifest. Unsafe identifiers/path traversal and existing target
 files are rejected. It does not install an MQTT/CoAP transport, HAL, firmware,
 or claim broker connectivity.
+
+### `cargo rullst iot:keygen`
+**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
+
+```bash
+cargo rullst iot:keygen --out <FILE> [--force] [--json]
+```
+
+Generates an Ed25519 key pair for a firmware publisher. The secret key is
+written to `FILE`, created with mode `0600` on Unix (on Windows it inherits
+the folder's permissions, so keep it in a folder only you can read), as a
+comment line and the 32-byte seed in 64 hexadecimal digits; it is never
+printed. The public key is written beside it in the forms a device embeds:
+`FILE.pub` (hexadecimal), `FILE.pub.bin` (32 raw bytes, for `include_bytes!`)
+and `FILE.pub.rs` (a `pub const OTA_PUBLIC_KEY: [u8; 32]`). The seed comes
+from the operating system's random number generator. Existing key files are
+never replaced without `--force`, which replaces them through a temporary file
+with the same private mode. `--json` prints a `rullst.iot-keygen.v1` summary
+(paths and the public key in hexadecimal, never the secret).
+
+Keep the secret key out of version control and out of the devices: a device
+holds only the public key, provisioned through a trusted manufacturing path.
+
+### `cargo rullst iot:sign`
+**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
+
+```bash
+cargo rullst iot:sign --key <FILE> --image <FILE> --target <TARGET> \
+  --version <VERSION> --counter <N> [--out <FILE>] [--force] [--json]
+```
+
+Signs a firmware image for `rullst-iot`'s OTA gate. It hashes the image
+(SHA-256, in chunks), builds the manifest with `rullst-iot`'s own
+`OtaManifest::new` and `signing_bytes()`, and signs those bytes with the key
+from `iot:keygen`. It writes the canonical manifest bytes to `--out` (default
+`IMAGE.manifest`) and the 64-byte Ed25519 signature to `OUT.sig`. A device
+parses the first with `OtaManifest::from_signing_bytes` and passes both to
+`OtaManager::begin_update`, then streams the image through the returned
+verifier. Before writing anything the command does exactly that itself, with
+the same `rullst-iot` code and a manager trusting the key's public half, and
+it writes nothing when that check fails.
+
+* `--target` is the device class the device's `OtaManager` was built with.
+* `--version` is the version text the device reports after the update
+  (non-empty, without surrounding spaces or control characters).
+* `--counter` is the anti-rollback counter, at least 1: a device accepts the
+  update only when it is greater than the counter it last committed.
+
+It refuses a key file that is not one line of 64 hexadecimal digits, a key
+whose bytes are all equal (a placeholder), a key whose public half a device
+would refuse as weak, an empty image and existing output files (unless
+`--force`). It warns when the key file can be read by other users. `--json`
+prints a `rullst.iot-sign.v1` summary: target, version, counter, image length
+and SHA-256, the public key, both output paths with their bytes in
+hexadecimal, and `verified: true`. See [signing firmware](crates/iot.md#signing-firmware-with-the-cli)
+for the device side.
 
 ### `cargo rullst make:k8s`
 Scaffolds cloud-native Kubernetes manifest files in the `k8s/` directory (`deployment.yaml`, `service.yaml`, `configmap.yaml`, `hpa.yaml`, `ingress.yaml`, and `all-in-one.yaml`) pre-configured with liveness (`/health`) and readiness (`/ready`) HTTP probes.

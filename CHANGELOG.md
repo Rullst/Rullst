@@ -11,6 +11,19 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- `cargo rullst iot:keygen` and `cargo rullst iot:sign` (Experimental): sign
+  firmware updates for `rullst-iot`'s OTA gate. `iot:keygen --out FILE`
+  writes an Ed25519 secret key (mode 0600 on Unix, never printed) and its
+  public key as `FILE.pub` (hexadecimal), `FILE.pub.bin` and `FILE.pub.rs` (a
+  Rust `const` for the device). `iot:sign --key FILE --image IMAGE --target T
+  --version V --counter N` writes the canonical manifest bytes that
+  `OtaManifest::from_signing_bytes` parses and the 64-byte signature for
+  `OtaManager::begin_update`, built with `rullst-iot`'s own encoding and
+  verified with its own verifier before anything is written. Both refuse to
+  replace existing files without `--force`; `iot:sign` refuses malformed,
+  placeholder or weak keys, an empty image, empty version text and a counter
+  of 0; `--json` prints `rullst.iot-keygen.v1` and `rullst.iot-sign.v1`
+  summaries.
 - `cargo rullst make:mfa` now generates the whole two-step verification flow
   instead of a JSON API that returned the secret: HTML pages at
   `/account/security` with the QR code of `rullst-security`'s

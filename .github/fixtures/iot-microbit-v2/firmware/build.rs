@@ -23,4 +23,28 @@ fn main() {
     println!("cargo:rustc-env=FW_PROFILE={profile}");
     println!("cargo:rerun-if-changed=memory.x");
     println!("cargo:rerun-if-changed=image.rs");
+    cli_signed(&out);
+}
+
+/// With `RULLST_IOT_SIGNED_DIR` set to a folder holding `image.bin` and what
+/// `cargo rullst iot:keygen --out ota.key` and `cargo rullst iot:sign --image
+/// image.bin --target microbit-v2` wrote there, the firmware also verifies
+/// that CLI-signed update (the `cli_signed` checks). CI builds without it.
+fn cli_signed(out: &std::path::Path) {
+    println!("cargo:rustc-check-cfg=cfg(cli_signed)");
+    println!("cargo:rerun-if-env-changed=RULLST_IOT_SIGNED_DIR");
+    let Some(dir) = env::var_os("RULLST_IOT_SIGNED_DIR").map(PathBuf::from) else {
+        return;
+    };
+    for (from, to) in [
+        ("image.bin", "cli-image.bin"),
+        ("image.bin.manifest", "cli.manifest"),
+        ("image.bin.manifest.sig", "cli.sig"),
+        ("ota.key.pub.bin", "cli.pub"),
+    ] {
+        let source = dir.join(from);
+        println!("cargo:rerun-if-changed={}", source.display());
+        fs::copy(&source, out.join(to)).expect("copy a CLI-signed update file");
+    }
+    println!("cargo:rustc-cfg=cli_signed");
 }

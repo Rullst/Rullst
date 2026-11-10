@@ -114,7 +114,7 @@ experimental `rullst-privacy`.
 
 | Generator | Commands | Tier | Why |
 | :--- | :--- | :--- | :--- |
-| IoT | `make:iot` | Experimental | Generates a telemetry module on top of the experimental `rullst-iot`. |
+| IoT | `make:iot`, `iot:keygen`, `iot:sign` | Experimental | Generates a telemetry module, and signs firmware updates, on top of the experimental `rullst-iot`. |
 | Green report | `green` | Experimental | Measured size, memory, dependency and benchmark CPU figures and a labelled SCI estimate; its files are in the pull-request mutation gate. See the [green guide](green.md). |
 
 For an experimental generator, the generated files, their layout, and the

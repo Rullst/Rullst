@@ -40,6 +40,7 @@ pub mod inspect;
 mod inspect_json;
 pub mod introspect;
 pub mod iot;
+pub(crate) mod iot_sign;
 pub mod k8s;
 pub mod mail;
 pub mod middleware;
