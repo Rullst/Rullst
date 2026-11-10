@@ -100,8 +100,8 @@ jobs:
           {
             echo '### rullst-iot micro:bit V2 firmware (release)'
             echo
-            echo 'Flash is `text` (vector table, code and read-only data, including a'
-            echo '32 KiB test image); RAM is `data` + `bss` (a 32 KiB heap and a 32 KiB'
+            echo 'Flash is text (vector table, code and read-only data, including a'
+            echo '32 KiB test image); RAM is data + bss (a 32 KiB heap and a 32 KiB'
             echo 'test buffer); the stack takes the rest of the 128 KiB.'
             echo
             echo '```'
