@@ -1718,7 +1718,18 @@ the same server-authoritative controls.
   checks/timeouts, component updates, replica consensus, load-balancer timing,
   authorization and the deployment termination deadline remain host contracts.
 * **Access log and default log filter:** `Server` prints one `[HTTP] METHOD
-  path -> status (ms)` line per request on stdout. Since 13.0.0-alpha.3, in
+  path -> status (ms)` line per request on stdout, never with the query
+  string. Since 13.0.0-alpha.5 the path is chosen by
+  `config::AccessLogPaths` (`[app] access_log_paths` in `Rullst.toml`,
+  replaced by `Server::access_log_paths`): `auto` (the default) writes the
+  route template that matched (axum's `MatchedPath`, such as
+  `/booking/{token}`) in Staging and Production and the request path in
+  Development and Test, `route` writes the template and `full` the request
+  path in every environment. Under `route`, a request that matched no route
+  (a `404`, or a path under a nested service) writes its path cut to 128
+  bytes, ending in `…` when cut, with bytes outside visible ASCII written as
+  `%XX`; the health-probe and development-poll rules below still look at the
+  request path. An unknown value fails `Rullst.toml` parsing. Since 13.0.0-alpha.3, in
   Staging and Production a `/health` or `/ready` request with a status below
   400 is not printed (a failing probe still is); `RULLST_LOG_HEALTH_PROBES`
   (`true`/`false`, also `1`/`0`, `yes`/`no`, `on`/`off`, from the process

@@ -61,6 +61,15 @@ A prepared version section does not establish that its tag or crates exist.
   unsafe path makes `try_build` fail with the new
   `NexusBuildError::InvalidStylesheet` (reported while upgrading an
   application).
+- The `[HTTP] METHOD path -> status` access log of `Server` no longer writes
+  a path that may carry a secret in staging and production: it writes the
+  route that matched (`GET /booking/{token} -> 200`), and a request that
+  matched no route its path cut to 128 bytes with bytes outside visible ASCII
+  escaped. Development and test keep the request path. The new
+  `config::AccessLogPaths` (`[app] access_log_paths = "auto" | "route" |
+  "full"` in `Rullst.toml`, or `Server::access_log_paths`, which takes
+  precedence) chooses one form in every environment. The query string is
+  never written (reported while upgrading an application).
 
 ### Changed
 

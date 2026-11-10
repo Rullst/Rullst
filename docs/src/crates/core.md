@@ -227,7 +227,11 @@ remains separate.
   the `/_rullst/dev-telemetry` poll of `cargo rullst dash` also bypass both and
   are not access-logged. In staging and production, successful `/health` and
   `/ready` probes are not access-logged either (failing ones are);
-  `RULLST_LOG_HEALTH_PROBES=true` prints them again. Without `RUST_LOG`, the
+  `RULLST_LOG_HEALTH_PROBES=true` prints them again. Since 13.0.0-alpha.5
+  staging and production lines show the route that matched
+  (`GET /booking/{token} -> 200`) instead of a path that may carry a secret;
+  `[app] access_log_paths` in `Rullst.toml` or `Server::access_log_paths`
+  selects `route` or `full` paths in every environment. Without `RUST_LOG`, the
   default tracing filter is `info,sqlx=warn`; see the
   [telemetry guide](../telemetry-guide.md#health-probes-in-the-access-log).
 - **Development dashboard telemetry (v13):** under the same conditions `Server`
