@@ -177,6 +177,12 @@ EXPOSE 3000
 CMD ["/app/{project_name}"]
 "#
     );
+    // `cargo rullst add tailwind`: the stages that build the stylesheet.
+    let dockerfile = if crate::generators::frontend::has_managed_tailwind(project_path) {
+        crate::generators::frontend::docker::add_to(&dockerfile).unwrap_or(dockerfile)
+    } else {
+        dockerfile
+    };
     fs::write(project_path.join("Dockerfile"), dockerfile)?;
     let dockerignore = project_path.join(".dockerignore");
     if !dockerignore.exists() {

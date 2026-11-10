@@ -3,8 +3,12 @@
 //! prints the wiring code to paste. It never rewrites application source:
 //! generated projects have no marked insertion points, so the snippet is
 //! printed with where it goes. Running it twice changes nothing.
+//!
+//! `tailwind` and `alpine` (13.0.0-alpha.5) are frontend tools, not facade
+//! features; [`frontend`] sets them up.
 
 mod capability;
+mod frontend;
 mod plan;
 #[cfg(test)]
 mod tests;
@@ -22,23 +26,34 @@ const DOCS: &str = "https://rullst.github.io/Rullst/book/cli_reference.html#carg
 pub(crate) fn command() -> Command {
     let capabilities = capability::CAPABILITIES
         .iter()
-        .map(|capability| format!("  {:<8}{}", capability.name, capability.summary))
+        .map(|capability| format!("  {:<9}{}", capability.name, capability.summary))
         .collect::<Vec<_>>()
         .join("\n");
+    let kits = frontend::KITS
+        .iter()
+        .map(|kit| format!("  {:<9}{}", kit.name, kit.summary))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let values = capability::NAMES
+        .iter()
+        .chain(frontend::NAMES.iter())
+        .copied();
     Command::new("add")
-        .about("Enables a Rullst capability (mail, auth, ai, nexus, studio) in this project")
+        .about("Enables a Rullst capability (mail, auth, ai, nexus, studio) or frontend tool (tailwind, alpine) in this project")
         .long_about(format!(
             "Enables a Rullst capability in this project: turns on its `rullst` feature in \
              Cargo.toml (comments and formatting are kept), appends its variables with \
              placeholder or mock values to .env.example and prints the code to wire it in. \
-             Running it again changes nothing.\n\nCapabilities:\n{capabilities}"
+             A frontend tool downloads its pinned, checksum-verified release, writes its files \
+             and links it in the layout when the layout is recognisable. \
+             Running it again changes nothing.\n\nCapabilities:\n{capabilities}\n\nFrontend tools:\n{kits}"
         ))
         .arg(
             Arg::new("capability")
                 .required(true)
                 .value_name("CAPABILITY")
-                .value_parser(capability::NAMES)
-                .help("The capability to enable"),
+                .value_parser(clap::builder::PossibleValuesParser::new(values))
+                .help("The capability or frontend tool to enable"),
         )
         .arg(
             Arg::new("dry_run")
@@ -50,7 +65,10 @@ pub(crate) fn command() -> Command {
 
 /// Next-step hints for `cargo rullst add <name>`.
 pub(crate) fn hints(name: &str) -> &'static [(&'static str, &'static str)] {
-    capability::find(name).map_or(&[], |capability| capability.hints)
+    match capability::find(name) {
+        Some(capability) => capability.hints,
+        None => frontend::find(name).map_or(&[], |kit| kit.hints),
+    }
 }
 
 /// Runs `cargo rullst add` in the current directory.
@@ -62,6 +80,9 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let dry_run = matches.get_flag("dry_run");
     let root = std::env::current_dir()?;
     let style = Style::stdout();
+    if let Some(kit) = frontend::find(name) {
+        return frontend::run(&root, kit, dry_run, style);
+    }
     match execute(&root, name, dry_run, style) {
         Ok(text) => {
             print!("{text}");

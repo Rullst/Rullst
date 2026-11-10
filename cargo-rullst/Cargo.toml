@@ -76,6 +76,10 @@ syn = { version = "3.0.5", features = ["full", "visit", "visit-mut"] }
 tokio = { workspace = true, features = ["full"] }
 brotli = "9.0.0"
 zstd = "0.14.0"
+# `cargo rullst add alpine`: reads one file from the verified npm tarball.
+flate2 = "1.1.10"
+tar = { version = "0.4.46", default-features = false }
+base64 = { workspace = true }
 reqwest = { workspace = true, features = ["json", "rustls"] }
 rand = { workspace = true }
 quote = "1.0.47"
