@@ -42,11 +42,21 @@ fn dialect(sql: &str) -> Result<String, MfaError> {
     })
 }
 
+/// The issuer authenticator apps show when `MFA_ISSUER` and `APP_NAME` are
+/// unset; change it to your product's name.
+const APPLICATION_NAME: &str = env!("CARGO_PKG_NAME");
+
+/// The issuer authenticator apps show next to the account: `MFA_ISSUER`,
+/// else `APP_NAME` (each from the process environment, then `.env`), else
+/// `APPLICATION_NAME`.
 fn issuer() -> String {
-    std::env::var("MFA_ISSUER")
-        .ok()
-        .filter(|issuer| !issuer.trim().is_empty())
-        .unwrap_or_else(|| "Rullst".to_owned())
+    ["MFA_ISSUER", "APP_NAME"]
+        .into_iter()
+        .find_map(|name| match rullst::config::project_setting(name) {
+            Ok(Some(value)) if !value.trim().is_empty() => Some(value.trim().to_owned()),
+            _ => None,
+        })
+        .unwrap_or_else(|| APPLICATION_NAME.to_owned())
 }
 
 /// Loads the stored secret and last accepted step for one factor state.
