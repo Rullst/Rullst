@@ -4,6 +4,7 @@ use super::builder::{Server, ServerError, development_console_enabled};
 use crate::config::{Environment, SecurityConfig};
 use crate::lifecycle::apply_lifecycle;
 use crate::security::{TrustedProxyConfig, TrustedProxyLayer};
+use std::path::{Path, PathBuf};
 
 impl Server {
     /// Selects the effective trusted-proxy policy. An explicit
@@ -70,9 +71,12 @@ impl Server {
         // A page and the htmx fragment of the same URL are cached apart.
         app = app.layer(axum::middleware::from_fn(crate::htmx::vary_on_htmx_request));
 
-        let static_mounted = std::path::Path::new("static").exists();
+        let static_mounted = Path::new("static").exists();
         if static_mounted {
             app = super::static_cache::mount_static_assets(app);
+        } else {
+            let warning = missing_static_warning(&working_static_directory());
+            super::console::stderr_line(format_args!("{warning}"));
         }
 
         if development_console_enabled(cfg!(debug_assertions), environment) {
@@ -133,6 +137,25 @@ impl Server {
         }
         Ok(app)
     }
+}
+
+/// The `static/` directory of the working directory, which the server
+/// serves under `/static`, as an absolute path when the working directory is
+/// known.
+fn working_static_directory() -> PathBuf {
+    std::env::current_dir().map_or_else(|_| PathBuf::from("static"), |dir| dir.join("static"))
+}
+
+/// The startup warning when `directory` (the working directory's `static/`)
+/// does not exist, so nothing is served under `/static`.
+fn missing_static_warning(directory: &Path) -> String {
+    format!(
+        "⚠️  Rullst: no static directory at {}, so nothing is served under /static/. \
+         Pages from rullst::htmx::render_page load /static/htmx-1.9.12.min.js and \
+         /static/rullst.css from it: start the server in the directory that contains \
+         static/ (an application without pages can ignore this).",
+        directory.display()
+    )
 }
 
 #[cfg(test)]
