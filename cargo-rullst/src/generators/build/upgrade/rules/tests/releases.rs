@@ -85,7 +85,14 @@ fn rules_carry_the_release_of_their_change() {
     );
     assert_eq!(
         codes_introduced_in("13.0.0-alpha.5"),
-        ["V13-HTML-DYNAMIC-ALPINE-DIRECTIVE", "V13-IOT-OTA-STATE"]
+        [
+            "V13-ISLANDS-REMOVED",
+            "V13-ISLAND-COMMANDS-REMOVED",
+            "V13-LIVE-REMOVED",
+            "V13-LIVE-COMMAND-REMOVED",
+            "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE",
+            "V13-IOT-OTA-STATE",
+        ]
     );
     // Rules added after alpha.4 for its changes take the next release, so
     // an application already on alpha.4 still gets them.

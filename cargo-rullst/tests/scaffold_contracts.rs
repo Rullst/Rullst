@@ -539,21 +539,6 @@ fn extracted_rust_templates_parse_after_substitution() {
                 .replace("__OWNER_ID_TYPE__", "i32"),
         ),
         (
-            "Turso billing controller",
-            include_str!("../src/generators/billing_controller.rs.template")
-                .replace(
-                    "__PERSIST_BILLING_UPDATE__",
-                    include_str!("../src/generators/billing_persist_turso.rs.template"),
-                )
-                .replace(
-                    "__UTC_TIMESTAMP_FN__",
-                    include_str!("../src/generators/billing_timestamp_turso.rs.template"),
-                )
-                .replace("__UPDATED_AT__", "updated_at: created_at.clone()")
-                .replace("__FOREIGN_KEY__", "team_id")
-                .replace("__OWNER_ID_TYPE__", "i64"),
-        ),
-        (
             "billing page",
             include_str!("../src/generators/billing_page.rs.template").to_string(),
         ),
@@ -590,12 +575,6 @@ fn extracted_rust_templates_parse_after_substitution() {
         (
             "JWT middleware",
             include_str!("../src/generators/jwt_middleware.rs.template").to_string(),
-        ),
-        (
-            "Wasm island",
-            include_str!("../src/generators/island.rs.template")
-                .replace("__MODULE_NAME__", "contract_island")
-                .replace("__TYPE_NAME__", "ContractIsland"),
         ),
         (
             "worker",
@@ -635,7 +614,6 @@ fn public_cli_command_inventory_is_explicit_and_complete() {
         "audit",
         "auth",
         "build",
-        "build:client",
         "dash",
         "db:migrate",
         "db:rollback",
@@ -658,10 +636,8 @@ fn public_cli_command_inventory_is_explicit_and_complete() {
         "make:controller",
         "make:cors",
         "make:iot",
-        "make:island",
         "make:jwt",
         "make:k8s",
-        "make:live",
         "make:mail",
         "make:mail-dunning",
         "make:mail-invoice",

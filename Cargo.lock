@@ -1754,16 +1754,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "console_error_panic_hook"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
-dependencies = [
- "cfg-if",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "const-oid"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6199,7 +6189,6 @@ dependencies = [
  "axum",
  "base64 0.23.1",
  "chrono",
- "console_error_panic_hook",
  "criterion",
  "futures-util",
  "getrandom 0.4.3",
@@ -6225,13 +6214,11 @@ dependencies = [
  "rullst-security",
  "rullst-studio",
  "serde",
- "serde-wasm-bindgen",
  "serde_json",
  "sqlx",
  "subtle",
  "tempfile",
  "tokio",
- "tokio-tungstenite 0.30.0",
  "toml",
  "tower",
  "tower-http 0.7.1",
@@ -6398,7 +6385,6 @@ dependencies = [
  "axum",
  "base64 0.23.1",
  "chrono",
- "console_error_panic_hook",
  "criterion",
  "cron",
  "dashmap",
@@ -7152,17 +7138,6 @@ checksum = "4148590afebada386688f18773da617792bf2ef03ffc1e4cbd2b1d45b023e0ba"
 dependencies = [
  "serde_core",
  "serde_derive",
-]
-
-[[package]]
-name = "serde-wasm-bindgen"
-version = "0.6.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8302e169f0eddcc139c70f139d19d6467353af16f9fce27e8c30158036a1e16b"
-dependencies = [
- "js-sys",
- "serde",
- "wasm-bindgen",
 ]
 
 [[package]]

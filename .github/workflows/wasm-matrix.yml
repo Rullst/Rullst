@@ -41,7 +41,7 @@ jobs:
           build-warnings: ""
           target: ${{ matrix.target }}
 
-      - name: Verify WebAssembly compilation for framework and client components
+      - name: Verify WebAssembly compilation of the framework crates
         # Verify Core, the public facade, and macros compile without native OS APIs.
         # The facade is also checked with its default features and with the
         # feature set of CLI-generated applications: native-only optional crates

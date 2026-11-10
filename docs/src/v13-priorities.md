@@ -84,7 +84,7 @@ does not select every research idea in its original wording.
 | M14 | Accessible HTMX/SSR and clear frontend interoperability | Improve the primary supported experience before full Leptos/Dioxus integration. |
 | M15 | Durable jobs, scheduling and one supported remote broker | Finish recovery, retries, quotas and operations before adding a broker catalogue. |
 | M17 | Private files, resumable upload and course video | Directly serves SaaS/Academy; retain access, expiry and recovery checks. A package marketplace is not part of this priority. |
-| M18 | Recoverable server-driven UI | Maintain the admitted authorization/reconnect journey before adding a new rendering ecosystem. |
+| M18 | Recoverable server-driven UI | Maintain the admitted authorization/reconnect journey before adding a new rendering ecosystem. Live components and `live::recovery` were removed in 13.0.0-alpha.5; server-driven updates use htmx with `RealtimeSse` or WebSockets. |
 | M19 | Honest runtime telemetry and standard exports | Preserve implemented diagnostics; unavailable sources must not become fabricated values. |
 | M26 | Safe deployment guidance and read-only diagnostics | Help operators find configuration mistakes and rehearse rollback without automatic infrastructure mutation. |
 | M27 | Readiness, draining and deployment scaffolds | Maintain the bounded implementation and actual proxy/application contracts. |
@@ -120,7 +120,7 @@ existing counts, not delivered APIs or additional top-level milestones.
 | M7 | Portable edge runtime and distributed-data expansion | A named deployment target and application need, with vendor-specific consistency and rollback evidence. |
 | M8 | Intent-based modelling and index recommendations | A measured database problem; begin with explainable, reviewed advice, never unattended production DDL. |
 | M13 | Post-quantum web architecture and plugin containment | A concrete protocol/threat model, maintained audited primitives and an interoperability programme. |
-| M16 | Wasm islands and broad hydration/component packaging | A user journey that SSR/HTMX cannot reasonably meet and a supported browser/toolchain matrix. |
+| M16 | Wasm islands and broad hydration/component packaging | A user journey that SSR/HTMX cannot reasonably meet and a supported browser/toolchain matrix. Islands were removed in 13.0.0-alpha.5 because the default CSP does not allow browsers to compile WebAssembly; `#[server_function]` remains. |
 | M20 | New immutable ledger/event-streaming engine | A consistency/recovery requirement unmet by established storage, plus a funded maintenance owner. |
 | M21 | Broader Omni/mobile/offline platform | Omni was retired in 13.0.0-alpha.3 in favour of installable PWAs (`make:pwa`, Google Play TWA, Microsoft Store via PWABuilder). Native capabilities need a real mobile product with physical-device, secure-key, networking and store acceptance resources. |
 | M22 | Agentic infrastructure provisioning | A named operator need and reviewed plans, scoped credentials, audit and rollback; advisory diagnostics already fit A. |

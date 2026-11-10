@@ -16,12 +16,34 @@ pub(crate) struct Removed {
     pub(crate) docs: &'static str,
 }
 
-pub(crate) const REMOVED: [Removed; 1] = [Removed {
-    name: "ai",
-    release: "13.0.0-alpha.4",
-    instead: "Use your editor's or terminal's AI assistant with the project's AGENTS.md (`cargo rullst generate:ai-context` writes it with a .llms.txt inventory) and the framework's published index, https://rullst.github.io/Rullst/llms.txt.",
-    docs: "https://rullst.github.io/Rullst/book/migration-v13.html#upgrading-an-alpha3-application-to-alpha4",
-}];
+const ALPHA5_DOCS: &str = "https://rullst.github.io/Rullst/book/migration-v13.html#upgrading-an-alpha4-application-to-alpha5";
+
+pub(crate) const REMOVED: [Removed; 4] = [
+    Removed {
+        name: "ai",
+        release: "13.0.0-alpha.4",
+        instead: "Use your editor's or terminal's AI assistant with the project's AGENTS.md (`cargo rullst generate:ai-context` writes it with a .llms.txt inventory) and the framework's published index, https://rullst.github.io/Rullst/llms.txt.",
+        docs: "https://rullst.github.io/Rullst/book/migration-v13.html#upgrading-an-alpha3-application-to-alpha4",
+    },
+    Removed {
+        name: "make:island",
+        release: "13.0.0-alpha.5",
+        instead: "WebAssembly islands were removed. Render the markup on the server with `html!`, use htmx for server interaction and native HTML (`<dialog>`, `popover`, `<details>`) or a small same-origin script for client-only behavior.",
+        docs: ALPHA5_DOCS,
+    },
+    Removed {
+        name: "build:client",
+        release: "13.0.0-alpha.5",
+        instead: "There is no Wasm island client to build any more: serve the page with `html!` and htmx, and remove `static/rullst-islands.js` and the wasm-bindgen output from `static/`.",
+        docs: ALPHA5_DOCS,
+    },
+    Removed {
+        name: "make:live",
+        release: "13.0.0-alpha.5",
+        instead: "Live components were removed. Send forms and clicks with htmx (`hx-post`), and push server updates with Server-Sent Events: `rullst::realtime::RealtimeSse` streams a `BroadcastManager` channel to the htmx SSE extension (`/static/htmx-ext-sse-1.9.12.js`).",
+        docs: ALPHA5_DOCS,
+    },
+];
 
 /// The removed command called `name`, if any.
 pub(crate) fn find(name: &str) -> Option<&'static Removed> {

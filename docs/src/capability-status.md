@@ -77,9 +77,9 @@ homologated.
 | M13 | Audited PQC protocols and sandboxed Wasm extensions | ⏳ Still to implement — not started |
 | M14 | HTMX-first SSR and real Leptos/Dioxus interoperability | 🟡 Still to implement — partial |
 | M15 | Runtime queues/cache/scheduler plus brokered messaging | 🟡 Still to implement — local foundation and admitted standalone Redis profile; other adapters open |
-| M16 | Wasm islands and `#[client_component]` protocol | 🟡 Still to implement — partial |
+| M16 | Wasm islands and `#[client_component]` protocol | ⏳ Not implemented — islands (`#[island]`, `make:island`, `build:client`) were removed in 13.0.0-alpha.5; `#[server_function]` and its `wasm32` caller remain |
 | M17 | Realtime, object storage, media, and packages | 🟡 Still to implement — partial |
-| M18 | LiveView-style server-driven UI | 🟡 Still to implement — partial |
+| M18 | LiveView-style server-driven UI | ⏳ Not implemented — Live components and `live::recovery` were removed in 13.0.0-alpha.5; use htmx with `RealtimeSse` or WebSockets |
 | M19 | Radar, agent schemas, spans, and Prometheus | ✅ Implemented — bounded |
 | M20 | Persistent event stream and verifiable ledger semantics | ⏳ Still to implement — not started |
 | M21 | Omni frontend protocol and mobile bridge | 🟡 Still to implement — partial; 13.0.0-alpha.3 replaced the Tauri shells with installable PWAs (`make:pwa`) |
@@ -105,7 +105,7 @@ homologated.
 | M41 | Privacy controls and proportional age assurance | 🟡 v13 prerelease foundation — policy, signed evidence, asynchronous replay, SQLite and PostgreSQL adapters; combined hosted acceptance, consumer journeys and broader privacy work remain open |
 
 The labels match the milestone rows of the root roadmap: **5 implemented,
-27 partial, and 8 not started** inside the 40-milestone framework programme. M31 is excluded
+25 partial, and 10 not started** inside the 40-milestone framework programme. M31 is excluded
 because it is a separately governed safety-critical programme. The 35 milestones
 without strict closure have different sizes and overlap existing published
 capabilities; their count does not measure remaining engineering effort or

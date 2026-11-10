@@ -393,6 +393,18 @@ rules! {
     BLUEPRINTS_REMOVED: "V13-CLI-BLUEPRINTS-REMOVED", Review, "13.0.0-rc.1", "CLI starters moved to the examples",
         "this script passes `--blueprint lms|blog|portfolio|erp`, which `cargo rullst new` refuses with status 1 since 13.0.0-alpha.4, before writing anything",
         "Copy the application from the repository's `examples/lms`, `examples/erp`, `examples/portfolio` or `examples/blog` (https://github.com/Rullst/Rullst/tree/main/examples) instead, or start from `--blueprint api` or `--blueprint saas`.";
+    ISLANDS_REMOVED: "V13-ISLANDS-REMOVED", MustChange, "13.0.0-alpha.5", "Wasm islands removed",
+        "`#[island]` (`rullst::island`) was removed in 13.0.0-alpha.5; this code no longer compiles",
+        "Render the component on the server with `html!` and drop the attribute; send interaction to the server with htmx (`hx-get`, `hx-post`) and use native HTML (`<dialog>`, `popover`, `<details>`) or a small same-origin script with the request's CSP nonce for client-only behaviour. Remove `src/islands/`, the `wasm32` dependencies `make:island` added and `static/rullst-islands.js`.";
+    ISLAND_COMMANDS_REMOVED: "V13-ISLAND-COMMANDS-REMOVED", Review, "13.0.0-alpha.5", "Wasm islands removed",
+        "this script runs `make:island` or `build:client`, which 13.0.0-alpha.5 removed; both now exit with status 1",
+        "Remove the step: there is no island client to build. Serve the page with `html!` and htmx, and delete the generated `static/rullst-islands.js` and wasm-bindgen output.";
+    LIVE_REMOVED: "V13-LIVE-REMOVED", MustChange, "13.0.0-alpha.5", "Live components removed",
+        "`rullst::live` (`LiveComponent`, `Live::mount`, `live_ws_handler`, `live::recovery`) and `#[live_component]`/`#[live_event]` were removed in 13.0.0-alpha.5; this code no longer compiles",
+        "Handle events as ordinary routes that return HTML fragments for htmx (`hx-post`, `hx-target`, `hx-swap`), and push server updates with Server-Sent Events: publish to a `BroadcastManager` channel and return `RealtimeSse::channel` from a `GET` route that the page opens with the htmx SSE extension (`hx-ext=\"sse\"`, `sse-connect`, `sse-swap`). Remove the WebSocket route and the `htmx-ext-ws` script.";
+    LIVE_COMMAND_REMOVED: "V13-LIVE-COMMAND-REMOVED", Review, "13.0.0-alpha.5", "Live components removed",
+        "this script runs `make:live`, which 13.0.0-alpha.5 removed; it now exits with status 1",
+        "Remove the step; write the route and its `html!` fragment by hand, with `cargo rullst make:controller` for the module.";
     HTML_ALPINE_DIRECTIVE: "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE", MustChange, "13.0.0-alpha.5", "`html!` event handlers",
         "a dynamic value in an Alpine.js `x-*` attribute of `html!` no longer compiles: Alpine runs it as JavaScript",
         "Write the directive as a static string and pass the server value through a `data-*` attribute (`data-count={count}` read as `$el.dataset.count`), or render the JSON into a `<script type=\"application/json\">` data block that the component reads.";

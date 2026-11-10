@@ -5,6 +5,7 @@ use std::fs;
 use std::path::Path;
 
 pub mod blank;
+mod browser_assets;
 pub mod common;
 pub mod deploy;
 pub mod k8s;
@@ -70,14 +71,7 @@ pub fn apply(
         let static_dir = path.join("static");
         fs::create_dir_all(&static_dir)?;
         fs::write(static_dir.join("rullst.png"), blank::BLANK_FAVICON)?;
-        fs::write(
-            static_dir.join("htmx-1.9.12.min.js"),
-            include_bytes!("assets/htmx-1.9.12.min.js"),
-        )?;
-        fs::write(
-            static_dir.join("HTMX-LICENSE"),
-            include_bytes!("assets/HTMX-LICENSE"),
-        )?;
+        browser_assets::write_static(&static_dir)?;
     }
 
     Ok(())
@@ -435,6 +429,9 @@ mod tests {
             let script = fs::read(root.path().join("static/htmx-1.9.12.min.js"))
                 .expect("offline HTMX client must be materialized");
             assert_eq!(script, include_bytes!("assets/htmx-1.9.12.min.js"));
+            let sse = fs::read(root.path().join("static/htmx-ext-sse-1.9.12.js"))
+                .expect("the htmx SSE extension must be materialized");
+            assert_eq!(sse, browser_assets::HTMX_SSE);
             assert!(root.path().join("static/HTMX-LICENSE").is_file());
         }
     }

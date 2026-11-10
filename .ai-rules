@@ -11,6 +11,6 @@
 - **Mock Fallback:** External service providers (Payments, OAuth2, Mail, LLMs) must support offline execution with empty or `mock_*` credentials.
 - **No Unsafe Code:** Avoid introducing new `unsafe` blocks unless strictly necessary for OS/C FFI with documented safety bounds.
 - **Studio Standards:** Use clean URLs (`/studio/*` without `/tools/`), dark glassmorphic `studio_layout` design, and 100% real non-mocked probes (`RadarSnapshot` & `SpanCollector`).
-- **Scaffolding:** Use CLI scaffolding commands (`cargo rullst make:*`) for structural consistency across models, controllers, migrations, LiveView, and gRPC.
+- **Scaffolding:** Use CLI scaffolding commands (`cargo rullst make:*`) for structural consistency across models, controllers, migrations, middleware, and gRPC.
 - **Verification Trifecta:** Always verify changes with `cargo test --workspace --all-features`, `cargo clippy --workspace --all-features -- -D warnings`, and `cargo fmt --all`.
 - **Official Contact:** Official framework email is `officialrullst@gmail.com`.
