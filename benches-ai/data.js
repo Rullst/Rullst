@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794348968056,
+  "lastUpdate": 1794352751067,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -18215,6 +18215,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 395,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "59294cb6a7e711f5ead8c333672718da9e5f3293",
+          "message": "Merge pull request #635 from Rullst/fix/v13-alpha5-main-ci\n\nfix(ci): no_std OTA test import; Dependabot covers the generated CI workflow",
+          "timestamp": "2026-11-10T19:58:41-03:00",
+          "tree_id": "d70bd92ab18078713fe07cbf5e5eccd58101ad1c",
+          "url": "https://github.com/Rullst/Rullst/commit/59294cb6a7e711f5ead8c333672718da9e5f3293"
+        },
+        "date": 1794352750142,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1394,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 306,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 284,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
