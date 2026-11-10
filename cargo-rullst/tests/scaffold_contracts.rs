@@ -559,11 +559,35 @@ fn extracted_rust_templates_parse_after_substitution() {
         ),
         (
             "MFA controller",
-            include_str!("../src/generators/auth/mfa_controller.rs.template").to_string(),
+            include_str!("../src/generators/auth/mfa/controller.rs.template").to_string(),
+        ),
+        (
+            "MFA factor store",
+            include_str!("../src/generators/auth/mfa/factor.rs.template").to_string(),
+        ),
+        (
+            "MFA sign-in challenge",
+            include_str!("../src/generators/auth/mfa/challenge.rs.template").to_string(),
+        ),
+        (
+            "MFA reset command",
+            include_str!("../src/generators/auth/mfa/admin.rs.template").to_string(),
+        ),
+        (
+            "MFA starter accounts",
+            include_str!("../src/generators/auth/mfa/account_starter.rs.template").to_string(),
+        ),
+        (
+            "MFA contract accounts",
+            include_str!("../src/generators/auth/mfa/account_contract.rs.template").to_string(),
+        ),
+        (
+            "MFA pages",
+            include_str!("../src/generators/auth/mfa/pages.rs.template").to_string(),
         ),
         (
             "MFA migration",
-            include_str!("../src/generators/auth/mfa_migration.rs.template").replace(
+            include_str!("../src/generators/auth/mfa/migration.rs.template").replace(
                 "__MIGRATION_NAME__",
                 "m20261001000000_create_user_mfa_factors_table",
             ),

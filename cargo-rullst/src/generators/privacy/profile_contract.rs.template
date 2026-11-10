@@ -1,0 +1,37 @@
+//! Explicit own-account projection through this application's authentication
+//! contract (`src/auth_contract.rs`). This never completes broader queued
+//! rights requests or claims to export enrollment, payments, messages or
+//! processor data.
+use serde::Serialize;
+
+pub(super) enum ExportError { Unavailable, NotFound, TooLarge }
+
+#[derive(Serialize)]
+pub(super) struct AccountProfile {
+    pub(super) id: i32,
+    pub(super) name: String,
+    pub(super) email: String,
+}
+
+pub(super) struct AccountProfileAdapter;
+impl AccountProfileAdapter {
+    /// The ID comes only from the contract's sign-in middleware, never a route/form field.
+    pub(super) async fn export(user_id: i32) -> Result<AccountProfile, ExportError> {
+        let (name, email) = Self::account(user_id).await?;
+        Ok(AccountProfile { id: user_id, name, email })
+    }
+
+    /// Only the optional greeting needs this field; callers must check consent
+    /// immediately before this lookup. Authentication remains a separate purpose.
+    pub(super) async fn greeting_name(user_id: i32) -> Result<String, ExportError> {
+        Self::account(user_id).await.map(|(name, _)| name)
+    }
+
+    async fn account(user_id: i32) -> Result<(String, String), ExportError> {
+        if user_id <= 0 { return Err(ExportError::NotFound); }
+        let account = crate::auth_contract::find_account(user_id).await.map_err(|_| ExportError::Unavailable)?;
+        let Some(account) = account.filter(|account| account.id == user_id) else { return Err(ExportError::NotFound); };
+        if account.name.len() > 512 || account.email.len() > 512 { return Err(ExportError::TooLarge); }
+        Ok((account.name, account.email))
+    }
+}

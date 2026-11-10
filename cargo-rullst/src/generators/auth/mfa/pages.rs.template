@@ -1,0 +1,179 @@
+//! The pages of two-step verification (`cargo rullst make:mfa`): the account
+//! security page (setup with a QR code and the key, confirmation, turning it
+//! off) and the second sign-in step. The style sheet carries the request's
+//! CSP nonce; nothing else is inline. Replace `card` with your own layout.
+use rullst::html;
+use rullst::html::Markup;
+
+const STYLES: &str = "
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+body { background: #0b0f19; color: #f3f4f6; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.card { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 1.5rem; padding: 2.5rem 2rem; width: 100%; max-width: 440px; text-align: center; }
+h1 { font-size: 1.75rem; margin-bottom: 1rem; font-weight: 700; }
+p { color: #cbd5e1; margin-bottom: 1rem; line-height: 1.5; }
+.form-group { margin: 1.25rem 0; text-align: left; }
+label { display: block; font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.4rem; }
+input { width: 100%; padding: 0.75rem 1rem; border-radius: 0.5rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 1.1rem; letter-spacing: 0.2em; }
+input:focus { outline: none; border-color: #10b981; }
+button { width: 100%; padding: 0.85rem; border-radius: 0.5rem; font-weight: 700; cursor: pointer; font-size: 1rem; }
+.btn-primary { background: #10b981; color: #000; border: none; }
+.btn-danger { background: transparent; color: #f87171; border: 1px solid rgba(239,68,68,.4); }
+.qr { background: #fff; border-radius: 0.75rem; padding: 0.75rem; width: 232px; max-width: 100%; margin: 0 auto 1rem; }
+.qr svg { display: block; width: 100%; height: auto; }
+.key { font-family: ui-monospace, monospace; letter-spacing: 0.1em; word-break: break-all; color: #f3f4f6; }
+.links { margin-top: 1.5rem; font-size: 0.85rem; color: #9ca3af; }
+.links a { color: #10b981; text-decoration: none; }
+.error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #f87171; padding: .75rem 1rem; border-radius: .5rem; margin-bottom: 1.5rem; font-size: .9rem; }
+.notice { background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.25); color: #6ee7b7; padding: .75rem 1rem; border-radius: .5rem; margin-bottom: 1.5rem; font-size: .9rem; }
+";
+
+fn card(title: &str, content: Markup, nonce: &str) -> Markup {
+    html! {
+        <!DOCTYPE html>
+        <html lang="en">
+            <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <title>{title}</title>
+                <style nonce={nonce}>{STYLES}</style>
+            </head>
+            <body>
+                <main class="card">
+                    <h1>{title}</h1>
+                    {content}
+                </main>
+            </body>
+        </html>
+    }
+}
+
+fn messages(error: Option<&str>, notice: Option<&str>) -> Markup {
+    html! {
+        @if let Some(notice) = notice { <div class="notice" role="status">{notice}</div> }
+        @if let Some(error) = error { <div class="error" role="alert">{error}</div> }
+    }
+}
+
+/// The field for a six-digit code from the authenticator app.
+fn code_field() -> Markup {
+    html! {
+        <div class="form-group">
+            <label for="code">"Six-digit code from your authenticator app"</label>
+            <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required autofocus />
+        </div>
+    }
+}
+
+/// The key in groups of four characters, easier to type by hand.
+fn grouped(secret: &str) -> String {
+    secret
+        .as_bytes()
+        .chunks(4)
+        .map(|group| String::from_utf8_lossy(group).into_owned())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// The `<svg>` element of `rullst::security_runtime::build_mfa_qr_svg`,
+/// without its XML declaration.
+fn qr_code(svg: &str) -> Markup {
+    // Trusted: Rullst renders it from the server's own secret, with
+    // presentation attributes only (no script, no inline style).
+    let element = svg.find("<svg").and_then(|start| svg.get(start..));
+    Markup::from_trusted(element.unwrap_or_default())
+}
+
+/// What the account security page shows.
+pub struct SecurityView<'a> {
+    /// Whether the account has a confirmed factor.
+    pub enrolled: bool,
+    /// A pending setup: the QR code (SVG) and the key.
+    pub setup: Option<(&'a str, &'a str)>,
+    pub error: Option<&'a str>,
+    pub notice: Option<&'a str>,
+}
+
+/// `GET /account/security` and the answers of its forms.
+pub fn security_page(view: &SecurityView<'_>, csrf: &str, nonce: &str) -> Markup {
+    let content = html! {
+        {messages(view.error, view.notice)}
+        @if view.enrolled {
+            <p>"Two-step verification is on: after your password, signing in asks for a code from your authenticator app."</p>
+            <form method="post" action="/account/security/mfa/disable">
+                <input type="hidden" name="_token" value={csrf} />
+                {code_field()}
+                <button type="submit" class="btn-danger">"Turn off two-step verification"</button>
+            </form>
+        } @else if let Some((svg, secret)) = view.setup {
+            <p>"Scan this QR code with an authenticator app, or type the key into it by hand. Then enter the code it shows."</p>
+            <div class="qr">{qr_code(svg)}</div>
+            <p class="key">{grouped(secret)}</p>
+            <form method="post" action="/account/security/mfa/confirm">
+                <input type="hidden" name="_token" value={csrf} />
+                {code_field()}
+                <button type="submit" class="btn-primary">"Turn on two-step verification"</button>
+            </form>
+            <p>"Turning it on signs out your other devices."</p>
+        } @else {
+            <p>"Protect your account with a second step: after your password, a six-digit code from an authenticator app on your phone."</p>
+            <form method="post" action="/account/security/mfa/setup">
+                <input type="hidden" name="_token" value={csrf} />
+                <button type="submit" class="btn-primary">"Set up two-step verification"</button>
+            </form>
+        }
+        <div class="links"><a href="/dashboard">"Back to the dashboard"</a></div>
+    };
+    card("Two-step verification", content, nonce)
+}
+
+/// `GET /login/mfa`: the second sign-in step.
+pub fn code_page(csrf: &str, nonce: &str, error: Option<&str>) -> Markup {
+    let content = html! {
+        {messages(error, None)}
+        <p>"Enter the code your authenticator app shows for this account."</p>
+        <form method="post" action="/login/mfa">
+            <input type="hidden" name="_token" value={csrf} />
+            {code_field()}
+            <button type="submit" class="btn-primary">"Verify and sign in"</button>
+        </form>
+        <div class="links"><a href="/login">"Start again"</a></div>
+    };
+    card("Enter your code", content, nonce)
+}
+
+/// A second step that cannot go on: expired, used up or unavailable.
+pub fn restart_page(message: &str, nonce: &str) -> Markup {
+    let content = html! {
+        <div class="error" role="alert">{message}</div>
+        <div class="links"><a href="/login">"Sign in again"</a></div>
+    };
+    card("Sign in again", content, nonce)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_key_is_grouped_and_the_qr_code_has_no_declaration() {
+        assert_eq!(grouped("ABCDEFGHIJ"), "ABCD EFGH IJ");
+        let svg = qr_code("<?xml version=\"1.0\"?><svg viewBox=\"0 0 1 1\"></svg>").into_string();
+        assert_eq!(svg, "<svg viewBox=\"0 0 1 1\"></svg>");
+        let page = security_page(
+            &SecurityView {
+                enrolled: false,
+                setup: Some(("<svg></svg>", "ABCDEFGH")),
+                error: None,
+                notice: None,
+            },
+            "csrf-token",
+            "nonce-value",
+        )
+        .into_string();
+        assert!(page.contains("<style nonce=\"nonce-value\">"));
+        assert!(page.contains("ABCD EFGH"));
+        assert!(page.contains("action=\"/account/security/mfa/confirm\""));
+        assert!(!page.contains("<script"));
+        assert!(!page.contains(" style=\""));
+    }
+}

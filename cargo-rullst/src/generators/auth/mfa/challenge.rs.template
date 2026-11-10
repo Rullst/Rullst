@@ -1,0 +1,281 @@
+//! The second sign-in step (`cargo rullst make:mfa`). After the password (or
+//! a provider sign-in) an account with a confirmed factor gets no session:
+//! the browser receives only a random challenge id in a short-lived cookie
+//! scoped to `/login/mfa`, and `mfa_challenges` keeps the SHA-256 of that
+//! id, the account, where the sign-in was going, the attempts and the
+//! expiry. Each account has at most one live challenge: a new sign-in
+//! replaces it but keeps its attempts and its expiry, so signing in again
+//! does not buy more guesses.
+use super::factor::{MfaError, dialect, is_enrolled};
+use rullst::db::{Orm, sqlx};
+use rullst::security_runtime::{sha256_hex, try_generate_mfa_secret};
+use rullst::server::{HeaderMap, HeaderValue, IntoResponse, Redirect, Response, header};
+
+/// The page of the second step; the challenge cookie is sent only there.
+pub const CHALLENGE_PATH: &str = "/login/mfa";
+/// How long the code may take after the first step.
+const CHALLENGE_SECONDS: i64 = 300;
+/// Codes each challenge accepts before the account must wait for it to expire.
+pub const MAX_ATTEMPTS: i32 = 5;
+const COOKIE: &str = "rullst_mfa_challenge";
+/// The random id: 32 Base32 characters (160 bits).
+const ID_LENGTH: usize = 32;
+
+/// A live challenge: the account, where it goes after the code, how many
+/// codes it has received and the digest of its id.
+pub struct Challenge {
+    pub account_id: i32,
+    pub target: String,
+    pub attempts: i32,
+    digest: String,
+}
+
+/// The current Unix time in seconds.
+fn unix_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |elapsed| {
+            i64::try_from(elapsed.as_secs()).unwrap_or(i64::MAX)
+        })
+}
+
+/// Whether the challenge cookie is `Secure`: in staging and production, and
+/// whenever the configuration cannot be read (Rullst Core also marks it on
+/// HTTPS requests).
+fn secure_cookies() -> bool {
+    match rullst::config::RullstConfig::global().environment() {
+        Ok(environment) => environment.requires_secure_defaults(),
+        Err(_) => true,
+    }
+}
+
+/// The `Set-Cookie` value of the challenge; an empty value with `max_age` 0
+/// clears it.
+pub(super) fn cookie(value: &str, max_age: i64, secure: bool) -> String {
+    let secure = if secure { "; Secure" } else { "" };
+    format!(
+        "{COOKIE}={value}; Path={CHALLENGE_PATH}; Max-Age={max_age}; HttpOnly; SameSite=Lax{secure}"
+    )
+}
+
+/// Clears the challenge cookie.
+pub(super) fn clear_cookie() -> String {
+    cookie("", 0, secure_cookies())
+}
+
+/// A same-site path to land on after the code: `target` when it is one,
+/// else `/`.
+pub(super) fn safe_target(target: &str) -> &str {
+    let same_site = target.starts_with('/')
+        && !target.starts_with("//")
+        && target.len() <= 255
+        && !target
+            .chars()
+            .any(|character| character == '\\' || character.is_control());
+    if same_site { target } else { "/" }
+}
+
+/// The challenge id of the request's cookie, when it is well formed.
+pub(super) fn cookie_id(headers: &HeaderMap) -> Option<String> {
+    headers
+        .get_all(header::COOKIE)
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .flat_map(|value| value.split(';'))
+        .find_map(|pair| {
+            let (name, value) = pair.trim().split_once('=')?;
+            (name == COOKIE).then(|| value.to_owned())
+        })
+        .filter(|id| {
+            id.len() == ID_LENGTH
+                && id
+                    .bytes()
+                    .all(|byte| matches!(byte, b'A'..=b'Z' | b'2'..=b'7'))
+        })
+}
+
+/// A `303 See Other` to `target` that also sets `cookies`.
+pub(super) fn redirect_with_cookies(target: &str, cookies: &[String]) -> Response {
+    let mut response = Redirect::to(target).into_response();
+    for cookie in cookies {
+        match HeaderValue::from_str(cookie) {
+            Ok(value) => {
+                response.headers_mut().append(header::SET_COOKIE, value);
+            }
+            Err(_) => return rullst::server::StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        }
+    }
+    response
+}
+
+/// The sign-in hook. Call it right after the first factor succeeded (the
+/// password, or a provider sign-in), before issuing a session:
+///
+/// - `Ok(None)`: the account has no second factor; sign it in as before.
+/// - `Ok(Some(response))`: return this response instead of a session. It
+///   sends the browser to `/login/mfa` with the challenge cookie; the
+///   session is issued there, for `target`, after a valid code.
+/// - `Err(error)`: show `error.message()` on the sign-in page.
+pub async fn second_step(account_id: i32, target: &str) -> Result<Option<Response>, MfaError> {
+    if !is_enrolled(account_id).await? {
+        return Ok(None);
+    }
+    let id = try_generate_mfa_secret().map_err(|_| MfaError::Unavailable)?;
+    let now = unix_now();
+    let owner = i64::from(account_id);
+    let expired = dialect("DELETE FROM mfa_challenges WHERE expires_at <= ?")?;
+    let live = dialect("SELECT attempts, expires_at FROM mfa_challenges WHERE user_id = ?")?;
+    let replace = dialect("DELETE FROM mfa_challenges WHERE user_id = ?")?;
+    let insert = dialect(
+        "INSERT INTO mfa_challenges (user_id, id_hash, target, attempts, expires_at) VALUES (?, ?, ?, ?, ?)",
+    )?;
+    let mut transaction = Orm::begin_transaction()
+        .await
+        .map_err(|_| MfaError::Unavailable)?;
+    let stored = async {
+        sqlx::query(sqlx::AssertSqlSafe(expired.as_str()))
+            .bind(now)
+            .execute(&mut *transaction)
+            .await?;
+        let previous: Option<(i32, i64)> = sqlx::query_as(sqlx::AssertSqlSafe(live.as_str()))
+            .bind(owner)
+            .fetch_optional(&mut *transaction)
+            .await?;
+        let (attempts, expires_at) = previous.unwrap_or((0, now.saturating_add(CHALLENGE_SECONDS)));
+        if attempts >= MAX_ATTEMPTS {
+            return Ok(false);
+        }
+        sqlx::query(sqlx::AssertSqlSafe(replace.as_str()))
+            .bind(owner)
+            .execute(&mut *transaction)
+            .await?;
+        sqlx::query(sqlx::AssertSqlSafe(insert.as_str()))
+            .bind(owner)
+            .bind(sha256_hex(&id))
+            .bind(safe_target(target))
+            .bind(attempts)
+            .bind(expires_at)
+            .execute(&mut *transaction)
+            .await?;
+        Ok::<bool, sqlx::Error>(true)
+    }
+    .await;
+    match stored {
+        Ok(true) => transaction
+            .commit()
+            .await
+            .map_err(|_| MfaError::Unavailable)?,
+        Ok(false) => {
+            let _ = transaction.rollback().await;
+            return Err(MfaError::TooManyAttempts);
+        }
+        Err(_) => {
+            let _ = transaction.rollback().await;
+            return Err(MfaError::Unavailable);
+        }
+    }
+    let cookie = cookie(&id, CHALLENGE_SECONDS, secure_cookies());
+    Ok(Some(redirect_with_cookies(CHALLENGE_PATH, &[cookie])))
+}
+
+/// The live challenge the request's cookie names, if any.
+pub(super) async fn open(headers: &HeaderMap) -> Result<Option<Challenge>, MfaError> {
+    let Some(id) = cookie_id(headers) else {
+        return Ok(None);
+    };
+    let digest = sha256_hex(&id);
+    let sql = dialect(
+        "SELECT user_id, target, attempts FROM mfa_challenges WHERE id_hash = ? AND expires_at > ?",
+    )?;
+    let row: Option<(i64, String, i32)> = sqlx::query_as(sqlx::AssertSqlSafe(sql.as_str()))
+        .bind(digest.as_str())
+        .bind(unix_now())
+        .fetch_optional(Orm::pool().map_err(|_| MfaError::Unavailable)?)
+        .await
+        .map_err(|_| MfaError::Unavailable)?;
+    let Some((owner, target, attempts)) = row else {
+        return Ok(None);
+    };
+    let account_id = i32::try_from(owner).map_err(|_| MfaError::Unavailable)?;
+    Ok(Some(Challenge {
+        account_id,
+        target,
+        attempts,
+        digest,
+    }))
+}
+
+/// Counts one code against the challenge before it is checked, so parallel
+/// requests cannot exceed `MAX_ATTEMPTS`. `false` when the challenge has no
+/// attempt left or expired meanwhile.
+pub(super) async fn count_attempt(challenge: &Challenge) -> Result<bool, MfaError> {
+    let sql = dialect(
+        "UPDATE mfa_challenges SET attempts = attempts + 1 WHERE id_hash = ? AND attempts < ? AND expires_at > ?",
+    )?;
+    let changed = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
+        .bind(challenge.digest.as_str())
+        .bind(MAX_ATTEMPTS)
+        .bind(unix_now())
+        .execute(Orm::pool().map_err(|_| MfaError::Unavailable)?)
+        .await
+        .map_err(|_| MfaError::Unavailable)?
+        .rows_affected();
+    Ok(changed == 1)
+}
+
+/// Consumes the challenge after a valid code: `true` for the one request
+/// that deleted it.
+pub(super) async fn take(challenge: &Challenge) -> Result<bool, MfaError> {
+    let sql = dialect("DELETE FROM mfa_challenges WHERE id_hash = ?")?;
+    let deleted = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
+        .bind(challenge.digest.as_str())
+        .execute(Orm::pool().map_err(|_| MfaError::Unavailable)?)
+        .await
+        .map_err(|_| MfaError::Unavailable)?
+        .rows_affected();
+    Ok(deleted == 1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_cookie_stays_on_the_second_step_page() {
+        let cookie = cookie("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567", 300, true);
+        assert_eq!(
+            cookie,
+            "rullst_mfa_challenge=ABCDEFGHIJKLMNOPQRSTUVWXYZ234567; Path=/login/mfa; Max-Age=300; HttpOnly; SameSite=Lax; Secure"
+        );
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::COOKIE,
+            HeaderValue::from_static(
+                "other=1; rullst_mfa_challenge=ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+            ),
+        );
+        assert_eq!(
+            cookie_id(&headers).as_deref(),
+            Some("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567")
+        );
+        headers.insert(
+            header::COOKIE,
+            HeaderValue::from_static("rullst_mfa_challenge=short"),
+        );
+        assert_eq!(cookie_id(&headers), None);
+    }
+
+    #[test]
+    fn only_same_site_paths_are_targets() {
+        assert_eq!(safe_target("/dashboard?tab=1"), "/dashboard?tab=1");
+        for target in [
+            "https://evil.example",
+            "//evil.example",
+            "/\\evil",
+            "dashboard",
+            "/a\nb",
+        ] {
+            assert_eq!(safe_target(target), "/", "{target}");
+        }
+    }
+}

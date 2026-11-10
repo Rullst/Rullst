@@ -46,9 +46,12 @@ pub(super) fn equivalent(left: &str, right: &str) -> Result<bool, Box<dyn std::e
     Ok(left == right || formatted(&left)? == formatted(&right)?)
 }
 
+/// Checks the unmodified SaaS authentication; a refusal ends with `remedy`,
+/// what the calling generator offers a project without it.
 pub(super) fn recognized_auth(
     root: &Path,
     consumer: &str,
+    remedy: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let baseline = match consumer {
         "saas" => crate::blueprints::saas::file_manifest(
@@ -74,7 +77,7 @@ pub(super) fn recognized_auth(
             Err(error) => return Err(error.into()),
         };
         return Err(invalid(&format!(
-            "this generator installs only into the recognized SaaS authentication: the unmodified auth_controller.rs and auth_middleware.rs of `cargo rullst new <name> --blueprint saas`, and {name} {state}. A custom authentication is not supported; review its integration separately"
+            "this generator installs only into the recognized SaaS authentication: the unmodified auth_controller.rs and auth_middleware.rs of `cargo rullst new <name> --blueprint saas`, and {name} {state}. {remedy}"
         ))
         .into());
     }
@@ -205,13 +208,15 @@ pub(super) fn privacy_dependency(
 mod tests {
     use super::*;
 
+    const REMEDY: &str = "Review a custom authentication separately.";
+
     #[test]
     fn only_the_recognized_saas_authentication_is_accepted() {
         let directory = tempfile::tempdir().unwrap();
         // Scaffolds refuse symlinked paths, and macOS keeps temporary
         // directories below the `/var` -> `/private/var` link.
         let root = directory.path().canonicalize().unwrap();
-        assert!(recognized_auth(root.as_path(), "lms").is_err());
+        assert!(recognized_auth(root.as_path(), "lms", REMEDY).is_err());
         let baseline = crate::blueprints::saas::file_manifest(
             "unused",
             false,
@@ -227,18 +232,20 @@ mod tests {
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             fs::write(path, content).unwrap();
         }
-        recognized_auth(root.as_path(), "saas").unwrap();
+        recognized_auth(root.as_path(), "saas", REMEDY).unwrap();
         let middleware = root.as_path().join("src/middlewares/auth_middleware.rs");
         let edited = format!(
             "{}\nfn custom() {{}}\n",
             fs::read_to_string(&middleware).unwrap()
         );
         fs::write(&middleware, edited).unwrap();
-        let error = recognized_auth(root.as_path(), "saas")
+        let error = recognized_auth(root.as_path(), "saas", REMEDY)
             .unwrap_err()
             .to_string();
         assert!(
-            error.contains("and src/middlewares/auth_middleware.rs differs from the starter's."),
+            error.ends_with(&format!(
+                "and src/middlewares/auth_middleware.rs differs from the starter's. {REMEDY}"
+            )),
             "{error}"
         );
         assert!(
@@ -256,17 +263,19 @@ mod tests {
                 .1,
         )
         .unwrap();
-        let error = recognized_auth(root.as_path(), "saas")
+        let error = recognized_auth(root.as_path(), "saas", REMEDY)
             .unwrap_err()
             .to_string();
         assert!(
-            error.contains("and src/controllers/auth_controller.rs is missing."),
+            error.ends_with(&format!(
+                "and src/controllers/auth_controller.rs is missing. {REMEDY}"
+            )),
             "{error}"
         );
         // A file that cannot be read for another reason (here a directory in
         // its place) is reported as that I/O error, not as a missing file.
         fs::create_dir(root.as_path().join("src/controllers/auth_controller.rs")).unwrap();
-        let error = recognized_auth(root.as_path(), "saas").unwrap_err();
+        let error = recognized_auth(root.as_path(), "saas", REMEDY).unwrap_err();
         assert!(error.downcast_ref::<io::Error>().is_some(), "{error}");
         assert!(!error.to_string().contains("is missing"), "{error}");
     }

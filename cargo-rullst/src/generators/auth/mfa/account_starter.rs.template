@@ -1,0 +1,62 @@
+//! The accounts of `cargo rullst auth` (or the SaaS starter), as the second
+//! factor uses them (`cargo rullst make:mfa`).
+use super::factor::MfaError;
+use crate::models::user::User;
+
+/// An account: its id and the e-mail authenticator apps show.
+pub struct Account {
+    pub id: i32,
+    pub email: String,
+}
+
+impl From<User> for Account {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id,
+            email: user.email,
+        }
+    }
+}
+
+/// Logs a failure of the account store; the pages show only `Unavailable`.
+fn unavailable(error: impl std::fmt::Display) -> MfaError {
+    eprintln!("Second factor account lookup failed: {error}");
+    MfaError::Unavailable
+}
+
+/// The account with this id.
+pub(super) async fn find(id: i32) -> Result<Option<Account>, MfaError> {
+    Ok(User::find(id)
+        .await
+        .map_err(unavailable)?
+        .map(Account::from))
+}
+
+/// The account with this (trimmed, lowercase) e-mail address.
+pub(super) async fn find_by_email(email: &str) -> Result<Option<Account>, MfaError> {
+    Ok(User::find_by_email(email)
+        .await
+        .map_err(unavailable)?
+        .map(Account::from))
+}
+
+/// The `rullst_session` cookie of the password login for the account, at
+/// its current session epoch.
+pub(super) async fn sign_in_cookie(id: i32) -> Result<String, MfaError> {
+    let user = User::find(id)
+        .await
+        .map_err(unavailable)?
+        .ok_or(MfaError::Unavailable)?;
+    let epoch = user.current_session_epoch().ok_or(MfaError::Unavailable)?;
+    rullst::auth::make_login_cookie_with_epoch(
+        user.id,
+        epoch,
+        rullst::auth::DEFAULT_SESSION_MAX_AGE,
+    )
+    .map_err(unavailable)
+}
+
+/// Signs out every device of the account (bumps its session epoch).
+pub(super) async fn end_sessions(id: i32) -> Result<(), MfaError> {
+    User::revoke_sessions(id).await.map_err(unavailable)
+}

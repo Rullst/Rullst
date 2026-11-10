@@ -1,0 +1,52 @@
+//! This application's own sign-in, through its authentication contract
+//! (`src/auth_contract.rs`), as the second factor uses it
+//! (`cargo rullst make:mfa`).
+use super::factor::MfaError;
+use crate::auth_contract::{self, ContractAccount};
+
+/// An account: its id and the e-mail authenticator apps show.
+pub struct Account {
+    pub id: i32,
+    pub email: String,
+}
+
+impl From<ContractAccount> for Account {
+    fn from(account: ContractAccount) -> Self {
+        Self {
+            id: account.id,
+            email: account.email,
+        }
+    }
+}
+
+/// Logs a failure of the account store; the pages show only `Unavailable`.
+fn unavailable(error: impl std::fmt::Display) -> MfaError {
+    eprintln!("Second factor account lookup failed: {error}");
+    MfaError::Unavailable
+}
+
+/// The account with this id.
+pub(super) async fn find(id: i32) -> Result<Option<Account>, MfaError> {
+    Ok(auth_contract::find_account(id)
+        .await
+        .map_err(unavailable)?
+        .map(Account::from))
+}
+
+/// The account with this (trimmed, lowercase) e-mail address.
+pub(super) async fn find_by_email(email: &str) -> Result<Option<Account>, MfaError> {
+    Ok(auth_contract::find_account_by_email(email)
+        .await
+        .map_err(unavailable)?
+        .map(Account::from))
+}
+
+/// The cookie of a full session for the account.
+pub(super) async fn sign_in_cookie(id: i32) -> Result<String, MfaError> {
+    auth_contract::sign_in_cookie(id).await.map_err(unavailable)
+}
+
+/// Ends every session of the account.
+pub(super) async fn end_sessions(id: i32) -> Result<(), MfaError> {
+    auth_contract::end_sessions(id).await.map_err(unavailable)
+}

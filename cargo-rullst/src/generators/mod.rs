@@ -17,6 +17,7 @@ pub(crate) mod audit_report;
 mod audit_scope;
 mod audit_source;
 pub mod auth;
+pub(crate) mod auth_contract;
 pub mod billing;
 pub mod build;
 pub mod chat;
