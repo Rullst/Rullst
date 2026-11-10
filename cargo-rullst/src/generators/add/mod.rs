@@ -9,6 +9,7 @@ mod plan;
 #[cfg(test)]
 mod tests;
 
+use crate::generators::browser_tests;
 use crate::ui::error_report::{self, AlreadyReported, Friendly, ProjectRequired};
 use crate::ui::style::{self, Style};
 use clap::{Arg, ArgAction, ArgMatches, Command};
@@ -23,6 +24,7 @@ pub(crate) fn command() -> Command {
     let capabilities = capability::CAPABILITIES
         .iter()
         .map(|capability| format!("  {:<8}{}", capability.name, capability.summary))
+        .chain([format!("  {}  {}", browser_tests::NAME, browser_tests::SUMMARY)])
         .collect::<Vec<_>>()
         .join("\n");
     Command::new("add")
@@ -37,7 +39,9 @@ pub(crate) fn command() -> Command {
             Arg::new("capability")
                 .required(true)
                 .value_name("CAPABILITY")
-                .value_parser(capability::NAMES)
+                .value_parser(clap::builder::PossibleValuesParser::new(
+                    capability::NAMES.iter().copied().chain([browser_tests::NAME]),
+                ))
                 .help("The capability to enable"),
         )
         .arg(
@@ -93,6 +97,18 @@ pub(crate) fn execute(
     dry_run: bool,
     style: Style,
 ) -> Result<String, Failure> {
+    if name == browser_tests::NAME {
+        return browser_tests::execute(root, dry_run, style).map_err(|error| match error {
+            browser_tests::Error::NotAProject => Failure::Project,
+            browser_tests::Error::InvalidManifest => {
+                Failure::Add(AddError::InvalidManifest { line: None })
+            }
+            browser_tests::Error::Read { file, kind } => Failure::Add(AddError::Read { file, kind }),
+            browser_tests::Error::Write { file, kind } => {
+                Failure::Add(AddError::Write { file, kind })
+            }
+        });
+    }
     let capability = capability::find(name)
         .ok_or_else(|| Failure::Add(AddError::UnknownCapability(name.to_string())))?;
     let plan = match plan::plan(root, capability).map_err(Failure::Add)? {

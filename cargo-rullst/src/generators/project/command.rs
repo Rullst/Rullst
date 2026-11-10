@@ -44,6 +44,14 @@ pub(crate) fn new_command(command: Command) -> Command {
                 ),
         )
         .arg(
+            Arg::new("no_ci")
+                .long("no-ci")
+                .action(ArgAction::SetTrue)
+                .help(
+                    "Skips the GitHub CI workflow (.github/workflows/ci.yml) and .github/dependabot.yml",
+                ),
+        )
+        .arg(
             Arg::new("vcs")
                 .long("vcs")
                 .value_name("VCS")
@@ -73,6 +81,12 @@ pub(crate) fn run_new_command(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let dry_run = matches
         .try_get_one::<bool>("dry_run")
+        .ok()
+        .flatten()
+        .copied()
+        .unwrap_or(false);
+    let skip_ci = matches
+        .try_get_one::<bool>("no_ci")
         .ok()
         .flatten()
         .copied()
@@ -126,6 +140,7 @@ pub(crate) fn run_new_command(
         blueprint: starter,
         skip_initial_migration: *skip_initial_migration,
         dry_run,
+        skip_ci,
     };
     create::run_new_with_vcs(&request, vcs)
 }
@@ -182,6 +197,13 @@ mod tests {
             Some("git")
         );
         assert!(parse(&["rullst", "new", "lean", "--vcs", "none"]).is_ok());
+        let no_ci = parse(&["rullst", "new", "lean", "--no-ci"]).expect("--no-ci");
+        assert!(
+            no_ci
+                .subcommand_matches("new")
+                .is_some_and(|new| new.get_flag("no_ci"))
+        );
+        assert!(!new.subcommand_matches("new").is_some_and(|new| new.get_flag("no_ci")));
         assert_eq!(
             parse(&["rullst", "new", "lean", "--vcs", "hg"])
                 .expect_err("unknown vcs")

@@ -1,0 +1,25 @@
+
+/// Every page a signed-out visitor can open without parameters, with the
+/// status it answers. Add each new page here: `cargo test` checks its status,
+/// security headers and HTML, and `cargo rullst add browser-tests` opens the
+/// same list in Chromium, Firefox and WebKit.
+const PAGES: &[(&str, u16)] = &[
+__PAGES__];
+
+#[tokio::test]
+async fn every_page_answers_with_safe_headers_and_sound_html() {
+    let app = rullst::testing::TestApp::new(app());
+    for (path, status) in PAGES {
+        // A failing page is the last one printed in the test output.
+        println!("GET {path}");
+        let response = app.get(path).await;
+        // A page that broke, moved or lost its sign-in redirect fails here.
+        response.assert_status(*status);
+        // CSP, nosniff and frame protection on every page, not only /health.
+        response.assert_security_headers();
+        // No markup escaped twice, broken attribute quotes, `disabled="false"`,
+        // inline script or style without the request's CSP nonce, or a style
+        // or on* attribute the CSP blocks.
+        response.assert_html_hygiene();
+    }
+}

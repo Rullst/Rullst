@@ -82,6 +82,22 @@ pub(crate) fn write_project_files(
             Report::Quiet => docker::write_docker_files(path, project_name, provider, redis)?,
         }
     }
+    if plan.ci {
+        super::ci::write(path)?;
+        if report == Report::Print {
+            println!(
+                "{}",
+                "  ✅ .github/workflows/ci.yml (format, Clippy, tests, daily cargo audit, secret scan) and .github/dependabot.yml"
+                    .green()
+            );
+            println!(
+                "{}",
+                "     Run `cargo fmt --all` before the first push: the workflow checks formatting."
+                    .white()
+                    .dimmed()
+            );
+        }
+    }
     match report {
         Report::Print => crate::generators::ai_context::generate_ai_context(Some(path))?,
         Report::Quiet => crate::generators::ai_context::write_project_context(path)?,
