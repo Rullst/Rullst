@@ -63,6 +63,8 @@ changes.
 ### 3.3. HTML Macro Rules (`html!`)
 - Boolean attributes inside `html!` are written bare (`<input required disabled>`) or, when they depend on state, as conditional attributes: `checked?={is_done}` writes `checked` or nothing, and `title?={maybe_title}` omits the attribute for `None`. Presence is the value, so never write `disabled="false"`; `name={flag}` writes the text `"true"`/`"false"` (right for `aria-*`). The older quoted forms (`required="true"`) still compile.
 - Use `@if`/`@else if`/`@else`, `@for` and `@match` (arms `pattern if guard => { nodes }`) inside `html!` for conditional, repeated and matched nodes; use a `{…}` expression returning `Markup` only for other control flow.
+- Text may be unquoted (`<p>Welcome back, {name}!</p>`): whitespace between words becomes one space, whitespace next to an element, `{…}` or `@` block becomes one space, and whitespace at the edges of an element or block is dropped. Use a string literal (`<p>"it's 9 > 8"</p>`) for text with `<`, `>`, `{`, `}`, `@`, quotes or apostrophes, `//` (URLs), `#` after a word, emoji or other non-token characters, or exact whitespace (`<pre>`). Quoted literals keep working and keep exact spacing.
+- Attribute names may use Alpine.js and htmx forms (`@click.prevent`, `:class`, `x-on:click`, `hx-on::after-request`); their values must be static strings, because a dynamic value of `x-*`, `@*`, `:*`, `on*` or `hx-on*` does not compile.
 - `html!` returns `rullst::html::Markup`: declare view helpers `-> Markup` and interpolate them directly (`{badge}`); `String` values are always escaped. Reserve `RawHtml`/`Markup::from_trusted` for trusted HTML produced outside `html!`.
 - Prefer zero-bundle HTMX + Tailwind CSS server-side rendering over heavy client-side JS bundles.
 

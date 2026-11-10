@@ -1,6 +1,7 @@
 //! `cargo rullst studio --remote`: starts the standalone Studio for remote
 //! projects, the `rullst-studio` binary of the `rullst-studio` crate (built
-//! with its `remote` feature).
+//! with its `remote` feature and without its default features, which only
+//! the local Studio needs).
 
 use std::io;
 use std::process::Command;
@@ -30,10 +31,11 @@ pub(super) fn launch_error(outcome: io::Result<std::process::ExitStatus>) -> Res
 }
 
 /// The install command for the `rullst-studio` of this CLI's release. The
-/// version is named because Cargo never selects a prerelease on its own.
+/// version is named because Cargo never selects a prerelease on its own, and
+/// `--no-default-features` leaves out the local Studio's database drivers.
 fn install_command() -> String {
     format!(
-        "cargo install {BINARY} --version ={} --features remote --locked",
+        "cargo install {BINARY} --version ={} --no-default-features --features remote --locked",
         env!("CARGO_PKG_VERSION")
     )
 }
@@ -57,7 +59,7 @@ mod tests {
         assert_eq!(
             missing.to_string(),
             format!(
-                "rullst-studio is not installed; install it with `cargo install rullst-studio --version ={} --features remote --locked`",
+                "rullst-studio is not installed; install it with `cargo install rullst-studio --version ={} --no-default-features --features remote --locked`",
                 env!("CARGO_PKG_VERSION")
             )
         );

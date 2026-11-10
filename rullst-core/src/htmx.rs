@@ -36,6 +36,30 @@ pub struct HtmxRequest {
 }
 
 impl HtmxRequest {
+    /// Whether htmx sent `HX-History-Restore-Request: true`: it found no
+    /// snapshot of this URL in its history cache (after Back, for example)
+    /// and replaces the whole `<body>` with the response, so the request
+    /// expects the full page, not a fragment. [`render_page`] already answers
+    /// it with the page; a handler that builds its own response checks this.
+    ///
+    /// Added in 13.0.0-alpha.5.
+    #[must_use]
+    pub fn is_history_restore(&self) -> bool {
+        self.history_restore
+    }
+
+    /// Whether htmx sent `HX-Boosted: true`: the request comes from a link or
+    /// form inside an `hx-boost` element, which swaps the page's `<body>`
+    /// with the response, so it expects the full page. [`render_page`]
+    /// already answers it with the page; a handler that builds its own
+    /// response checks this.
+    ///
+    /// Added in 13.0.0-alpha.5.
+    #[must_use]
+    pub fn is_boosted(&self) -> bool {
+        self.boosted
+    }
+
     /// Whether [`render_page`] answers with the content alone: an htmx
     /// request that is neither a history restore nor boosted.
     fn wants_fragment(&self) -> bool {

@@ -1,9 +1,12 @@
 use serde::Deserialize;
 use std::{fmt, str::FromStr};
 
+mod access_log;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod project_setting;
 mod security_validation;
+
+pub use access_log::AccessLogPaths;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use project_setting::parse_dotenv_entries;
@@ -154,6 +157,10 @@ pub struct AppConfig {
     pub env: Option<String>,
     /// The port number that the HTTP server will bind to.
     pub port: Option<u16>,
+    /// The request path the access log writes (`access_log_paths = "route"`,
+    /// `"full"` or `"auto"`, the default). Added in 13.0.0-alpha.5.
+    #[serde(default)]
+    pub access_log_paths: AccessLogPaths,
 }
 
 #[derive(Clone, Deserialize, Default)]

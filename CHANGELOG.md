@@ -165,6 +165,51 @@ A prepared version section does not establish that its tag or crates exist.
   `rullst-security` and `rullst-orm`, weekly and on dispatch. It is
   informational (`continue-on-error`), so it never changes the Miri admission
   receipt.
+- `HtmxRequest::is_history_restore()` and `HtmxRequest::is_boosted()` report
+  htmx's `HX-History-Restore-Request: true` and `HX-Boosted: true`, the two
+  htmx requests that expect the whole page. `render_page` already answers
+  them with it; a handler that builds its own response can now do the same
+  (reported while upgrading an application).
+- `Nexus::with_stylesheet(path)` links an application stylesheet on every
+  Nexus page, after Nexus's own `nexus.css`, so an application can adjust the
+  panel (for example `.nexus-table-wrap { overflow-x: auto; }` for a wide
+  table) without replacing Nexus's assets. Up to eight same-origin paths are
+  accepted, so the production CSP needs no change; another origin or an
+  unsafe path makes `try_build` fail with the new
+  `NexusBuildError::InvalidStylesheet` (reported while upgrading an
+  application).
+- The `[HTTP] METHOD path -> status` access log of `Server` no longer writes
+  a path that may carry a secret in staging and production: it writes the
+  route that matched (`GET /booking/{token} -> 200`), and a request that
+  matched no route its path cut to 128 bytes with bytes outside visible ASCII
+  escaped. Development and test keep the request path. The new
+  `config::AccessLogPaths` (`[app] access_log_paths = "auto" | "route" |
+  "full"` in `Rullst.toml`, or `Server::access_log_paths`, which takes
+  precedence) chooses one form in every environment. The query string is
+  never written (reported while upgrading an application).
+- `html!` text can be written without quotes (`<p>Welcome back, {name}!</p>`;
+  quoted literals keep working and keep exact spacing). The macro rebuilds the
+  text from where its tokens were written: whitespace between words, or
+  between text and a neighbouring element, `{…}` or `@` block, becomes one
+  space, and whitespace at the start and end of an element or block is
+  dropped; `(…)` and `[…]` are text and may hold `{…}`. `>`, character
+  literals, a URL that `//` cut into a comment, a `///` doc comment and
+  `if cond { <tag> }` without `@` are compile errors that name the fix, as
+  is a string literal written directly before a word (`"quoted"text`, in
+  text or an attribute value): Rust reads the word as a literal suffix, which
+  `html!` used to drop silently.
+  Whitespace between nodes that are not unquoted text is still ignored, so
+  existing templates render the same. The positions come from the
+  compiler's `Span::start`/`end` (stable since Rust 1.88), so no dependency
+  feature changes.
+- `html!` attribute names take the forms Alpine.js and htmx use:
+  `@click.prevent`, `:class`, `x-on:click`, `x-bind:disabled`,
+  `hx-on::after-request`, `x-transition:enter.duration.500ms` and SVG's
+  `xlink:href`, whose dynamic values get the URL scheme check. Dynamic and
+  conditional values of `x-*`, `@*`, `:*` and `hx-on:*` attributes do not
+  compile, like those of `on*` handlers, because the browser runs them as
+  JavaScript. **Breaking** for a dynamic `x-*` value, which compiled before;
+  `cargo rullst upgrade` reports it (`V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`).
 - `rullst-media` (Bunny Stream), requested while upgrading an application:
   `BunnyCredentials::upload_only(api_key)` with
   `BunnyConfig::upload_only(library, environment, credentials)` manages videos
@@ -205,6 +250,26 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Changed
 
+- **Breaking:** `rullst-iot` (Experimental): `OtaManager`'s fields
+  `current_partition`, `status` and `firmware_version` are private, as
+  13.0.0-alpha.4 announced; read them with the methods of the same names
+  (`current_partition()`, `status()`, `firmware_version()`), so only
+  verification and commit change the state. Code that assigned
+  `current_partition` after `new_with_trusted_key` or
+  `new_with_counter_store` calls the new `with_running_partition(bank)`,
+  which also discards an update verified for the other bank.
+  `OtaManifest` and `OtaCommit` moved to their own file; their paths are
+  unchanged. `cargo rullst upgrade` reports the three field accesses in files
+  that name `OtaManager` (`V13-IOT-OTA-STATE`).
+- `rullst-studio`: the local Studio (`Studio`, `run_studio` and its page
+  modules) is the new `local` feature, which the default `drivers-all`, every
+  `strict-*` profile and the facade's `studio` feature enable. `rullst-orm`,
+  `rullst-capital`, `rullst-security`, `rullst-macros` and `utoipa` are
+  optional dependencies that only `local` selects, so
+  `cargo install rullst-studio --no-default-features --features remote`
+  builds no ORM, database driver, Capital or Security crate. A direct
+  `rullst-studio` dependency with `default-features = false` and none of those
+  profiles adds `features = ["local"]`.
 - `t!` compiles in constant time per call: the generated macro now forwards
   only the catalog's directory, locale order and default, and the hidden
   `__translate!` reads and prepares the catalog once per compilation (for
@@ -263,6 +328,11 @@ describes each replacement.
 
 ### Fixed
 
+- `cargo rullst studio --remote` printed
+  `cargo install rullst-studio --version =… --features remote --locked` when
+  the `rullst-studio` binary was missing, and `cargo rullst studio --help`
+  showed the same command, which also builds the local Studio's database
+  drivers: both now add `--no-default-features`, as the documentation does.
 - `rullst-orm` on MariaDB: a `DateTime<Utc>` before 1970-01-01 or after
   2038-01-19 03:14:07 UTC is no longer lost. SQLx's MySQL driver binds it as a
   `TIMESTAMP` parameter, and MariaDB turned such a value into `NULL` even for

@@ -25,6 +25,7 @@ fn service(router: axum::Router) -> HotSwapService {
         lifecycle: None,
         trusted_proxy: None,
         machine_endpoints: None,
+        access_log_route_paths: false,
     }
 }
 
