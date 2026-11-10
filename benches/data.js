@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794228370849,
+  "lastUpdate": 1794282741965,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -31509,6 +31509,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1364,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0c58cd9f0c7b02f382bf96ef9556c2d7766c7df",
+          "message": "Merge pull request #615 from Rullst/fix/v13-rc1-advisories-2026-11\n\nci(security): time-bounded exceptions for RUSTSEC-2026-0459 and -0440; Dependabot safe updates",
+          "timestamp": "2026-11-10T00:44:01-03:00",
+          "tree_id": "94dc46b76477648b0fb5693f99061cb57204a7b6",
+          "url": "https://github.com/Rullst/Rullst/commit/e0c58cd9f0c7b02f382bf96ef9556c2d7766c7df"
+        },
+        "date": 1794282738842,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 693,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 898,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 423,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1749,
+            "range": "± 34",
             "unit": "ns/iter"
           }
         ]
