@@ -60,6 +60,9 @@ fn payload(message: &Message) -> Result<Value, MailError> {
     }
     let mut email = json!({"subject":message.subject,"from":rest::mailbox_json(rest::sender(message)?, "email", "name")?,
         "to":[{"email":message.to}],"auto_plain_text":false});
+    if let Some(reply_to) = &message.reply_to {
+        email["reply_to"] = rest::mailbox_json(reply_to, "email", "name")?;
+    }
     if let Some(html) = &message.body_html {
         email["html"] = json!(STANDARD.encode(html));
     }

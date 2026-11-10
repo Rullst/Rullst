@@ -180,6 +180,12 @@ fn build_smtp_message(message: &Message) -> Result<lettre::Message, MailError> {
             .parse()
             .map_err(|error| MailError::ValidationError(format!("invalid recipient: {error}")))?)
         .subject(&message.subject);
+    if let Some(reply_to) = message.reply_to.as_deref() {
+        builder =
+            builder.reply_to(reply_to.parse().map_err(|error| {
+                MailError::ValidationError(format!("invalid Reply-To: {error}"))
+            })?);
+    }
 
     if let Some(unsubscribe) = message.list_unsubscribe_header() {
         let header = lettre::message::header::HeaderName::new_from_ascii_str("List-Unsubscribe");

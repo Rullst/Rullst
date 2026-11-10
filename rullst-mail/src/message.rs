@@ -37,6 +37,10 @@ pub struct Message {
     pub body_text: Option<String>,
     /// Optional sender email address.
     pub from: Option<String>,
+    /// Optional `Reply-To` mailbox (`support@example.com` or
+    /// `Name <support@example.com>`), validated like `from`. Since 13.0.0-alpha.5.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reply_to: Option<String>,
     /// Optional List-Unsubscribe URL; RFC 8058 one-click is declared only for HTTPS.
     pub unsubscribe_url: Option<String>,
     /// Optional RFC 8058 List-Unsubscribe email address.
@@ -72,6 +76,7 @@ impl Message {
             body_html: None,
             body_text: None,
             from: None,
+            reply_to: None,
             unsubscribe_url: None,
             unsubscribe_email: None,
             send_at: None,
@@ -110,6 +115,15 @@ impl Message {
     /// Sets the sender email address.
     pub fn from(mut self, from: impl Into<String>) -> Self {
         self.from = Some(from.into());
+        self
+    }
+
+    /// Sets the `Reply-To` mailbox, where the recipient's replies go (for
+    /// example the visitor who filled in a contact form). Every built-in
+    /// driver sends it; the delivery pipeline rejects header-breaking or
+    /// malformed addresses. Since 13.0.0-alpha.5.
+    pub fn reply_to(mut self, reply_to: impl Into<String>) -> Self {
+        self.reply_to = Some(reply_to.into());
         self
     }
 
