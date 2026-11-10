@@ -27,6 +27,13 @@ function select(tab, focus) {
   if (focus) tab.focus();
 }
 
+// The keys that move to the next and the previous tab.
+function directions(list) {
+  if (list.getAttribute("aria-orientation") === "vertical") return ["ArrowDown", "ArrowUp"];
+  if (getComputedStyle(list).direction === "rtl") return ["ArrowLeft", "ArrowRight"];
+  return ["ArrowRight", "ArrowLeft"];
+}
+
 document.addEventListener("click", (event) => {
   const tab = event.target instanceof Element ? event.target.closest(TAB) : null;
   if (tab?.closest('[role="tablist"]')) select(tab, false);
@@ -39,15 +46,12 @@ document.addEventListener("keydown", (event) => {
   if (!list) return;
   const tabs = tabsOf(list);
   const index = tabs.indexOf(tab);
-  const vertical = list.getAttribute("aria-orientation") === "vertical";
-  const rtl = getComputedStyle(list).direction === "rtl";
-  const forward = vertical ? "ArrowDown" : rtl ? "ArrowLeft" : "ArrowRight";
-  const backward = vertical ? "ArrowUp" : rtl ? "ArrowRight" : "ArrowLeft";
+  const [forward, backward] = directions(list);
   let next = null;
   if (event.key === forward) next = tabs[(index + 1) % tabs.length];
   else if (event.key === backward) next = tabs[(index - 1 + tabs.length) % tabs.length];
   else if (event.key === "Home") next = tabs[0];
-  else if (event.key === "End") next = tabs[tabs.length - 1];
+  else if (event.key === "End") next = tabs.at(-1);
   if (!next) return;
   event.preventDefault();
   select(next, true);

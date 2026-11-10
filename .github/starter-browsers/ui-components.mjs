@@ -172,22 +172,32 @@ class Session {
     for (const rule of violations) this.record("axe", rule.id, rule.help, rule);
   }
 
-  async tabWalk() {
-    const expected = await this.page.evaluate(markFocusables);
+  // Presses Tab from the top until focus comes back or leaves the page;
+  // returns the marked indexes in visiting order and their focus signatures.
+  async pressTabs(count) {
     const visited = [];
     const focused = new Map();
-    for (let press = 0; press < expected.length + 3; press += 1) {
+    for (let press = 0; press < count; press += 1) {
       await this.page.keyboard.press("Tab");
       const state = await this.page.evaluate(focusSignature, null);
-      if (state.index === null) {
-        if (state.tag === "body" && visited.length > 0) break;
-        if (state.tag !== "body") this.record("keyboard", `unexpected stop on ${state.tag}`, "Tab focused an element that is not visible or not interactive");
-        continue;
+      if (state.index !== null && visited.includes(state.index)) break;
+      if (state.index !== null) {
+        visited.push(state.index);
+        focused.set(state.index, state.signature);
+      } else if (state.tag !== "body") {
+        this.record("keyboard", `unexpected stop on ${state.tag}`, "Tab focused an element that is not visible or not interactive");
+      } else if (visited.length > 0) {
+        break;
       }
-      if (visited.includes(state.index)) break;
-      visited.push(state.index);
-      focused.set(state.index, state.signature);
     }
+    return { visited, focused };
+  }
+
+  // Tab from the top of a fresh page: every marked element must be reached
+  // once, in order, and look different with focus than without.
+  async tabWalk() {
+    const expected = await this.page.evaluate(markFocusables);
+    const { visited, focused } = await this.pressTabs(expected.length + 3);
     await this.page.evaluate(() => document.activeElement?.blur());
     for (const [index, label] of expected.entries()) {
       if (!visited.includes(String(index))) {
@@ -413,4 +423,5 @@ const results = [];
 for (const name of browsers) results.push(await run(name));
 const report = { starter: "ui-components", base_url: base.href, versions: VERSIONS, browsers: results };
 await writeFile(join(OUT, "report.json"), JSON.stringify(report, null, 2));
-console.log(`ui-components: ${results.map((result) => `${result.browser} ${result.findings.length} finding(s)`).join(", ")}`);
+const counts = results.map((result) => result.browser + " " + result.findings.length + " finding(s)");
+console.log(`ui-components: ${counts.join(", ")}`);

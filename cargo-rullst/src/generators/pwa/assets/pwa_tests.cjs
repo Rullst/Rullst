@@ -104,7 +104,7 @@ async function offlinePageAssets() {
   });
   await worker.extendable('install');
   const stored = worker.stores.get('rullst-pwa-dev');
-  assert.deepEqual([...stored.keys()].sort(), [
+  assert.deepEqual([...stored.keys()].sort((a, b) => a.localeCompare(b)), [
     `${ORIGIN}/offline`,
     `${ORIGIN}/static/htmx-1.9.12.min.fedcba9876543210.js`,
     `${ORIGIN}/static/rullst.0123456789abcdef.css`,

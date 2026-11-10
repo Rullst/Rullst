@@ -1,9 +1,10 @@
 //! The offline page follows the project's choice: plain tags and its one
 //! `pwa-offline` class without Tailwind, utility classes with it.
 
-use super::*;
+use super::{PwaFlags, PwaValues, files, plan, writes};
 use crate::blueprints::{self, BLANK_BLUEPRINT_ID};
 use std::fs;
+use std::path::{Path, PathBuf};
 
 fn values() -> PwaValues {
     PwaValues {

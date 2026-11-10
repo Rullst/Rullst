@@ -60,7 +60,7 @@ document.addEventListener(
     openers.delete(dialog);
     const active = document.activeElement;
     const lost = !active || active === document.body || dialog.contains(active);
-    if (opener && opener.isConnected && lost) opener.focus();
+    if (opener?.isConnected && lost) opener.focus();
   },
   true,
 );

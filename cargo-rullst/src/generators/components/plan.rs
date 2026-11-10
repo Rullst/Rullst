@@ -14,7 +14,7 @@ pub(crate) const MODULE_HEADER: &str =
 //! changed file alone unless `--force` is given.
 //! Guide: https://rullst.github.io/Rullst/book/frontend.html#components
 
-// A component's helpers are kept even when the application uses some of them.
+// Each component keeps all its helpers, used or not.
 #![allow(dead_code)]
 ";
 

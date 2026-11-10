@@ -52,7 +52,7 @@ document.addEventListener(
       button?.setAttribute("aria-expanded", "true");
       if (button) place(menu, button);
       const list = items(menu);
-      const first = focusOnOpen.get(menu) === "last" ? list[list.length - 1] : list[0];
+      const first = focusOnOpen.get(menu) === "last" ? list.at(-1) : list[0];
       focusOnOpen.delete(menu);
       first?.focus();
     } else {
@@ -72,7 +72,7 @@ function moveFocus(menu, current, key) {
     ArrowDown: list[(index + 1) % list.length],
     ArrowUp: list[(index - 1 + list.length) % list.length],
     Home: list[0],
-    End: list[list.length - 1],
+    End: list.at(-1),
   }[key];
   if (!next) return false;
   next.focus();
@@ -94,7 +94,7 @@ document.addEventListener("keydown", (event) => {
   const button = event.target.closest("[popovertarget]");
   if (!button || (event.key !== "ArrowDown" && event.key !== "ArrowUp")) return;
   const controlled = document.getElementById(button.getAttribute("popovertarget") || "");
-  if (!controlled || !controlled.matches(MENU)) return;
+  if (!controlled?.matches(MENU)) return;
   event.preventDefault();
   if (controlled.matches(":popover-open")) {
     moveFocus(controlled, null, event.key === "ArrowUp" ? "End" : "Home");

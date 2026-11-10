@@ -312,8 +312,8 @@ The command, at the root of a Rullst project:
    (a browser runs a module once per page however many components load it, and
    the modules use event delegation, so content htmx swaps in works);
 3. creates or extends `src/ui/mod.rs` with a `pub mod <name>;` line per
-   component (the created file starts with `#![allow(dead_code)]`, as an
-   application rarely uses every helper);
+   component (a created file has `#![allow(dead_code)]`, as an application
+   rarely uses every helper);
 4. declares the module in the crate root: `pub mod ui;` in `src/lib.rs` when
    the project has one, else `mod ui;` in `src/main.rs`. Use the components as
    `crate::ui::button::button(…)` (or `<crate>::ui::…` from the binary of a

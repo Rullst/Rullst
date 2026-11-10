@@ -2,8 +2,9 @@
 //! `rullst::assets::url`: content-hashed while a server serves `static/`,
 //! with and without the request's CSP nonce, and plain outside a server.
 
-use super::*;
+use super::{HTMX_SCRIPT, HtmxRequest, render_page, render_page_with_lang};
 use crate::assets::{Limits, Manifest, TEST_MANIFEST_LOCK, activate, deactivate};
+use crate::html::Markup;
 use std::sync::Arc;
 
 fn request(nonce: Option<crate::security::CspNonce>) -> HtmxRequest {
