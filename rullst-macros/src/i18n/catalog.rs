@@ -50,7 +50,8 @@ pub(crate) struct LocaleCatalog {
 }
 
 /// A validated catalog: every locale has the same keys, shapes and
-/// placeholders. Locales are sorted by tag.
+/// placeholders. Locales are sorted by tag, or in the `order` given to
+/// [`ordered`].
 pub(crate) struct Catalog {
     pub(crate) locales: Vec<LocaleCatalog>,
     pub(crate) default: usize,
@@ -171,6 +172,40 @@ pub(crate) fn build(mut sources: Vec<Source>, default: &str) -> Result<Catalog, 
         locales,
         default: default_index.unwrap_or_default(),
     })
+}
+
+/// Puts the locales of `catalog` in `order`, which must list every catalog
+/// locale exactly once.
+pub(crate) fn ordered(mut catalog: Catalog, order: &[String]) -> Result<Catalog, Vec<String>> {
+    let mut errors = Errors::default();
+    for (index, tag) in order.iter().enumerate() {
+        if order[..index].contains(tag) {
+            errors.push(format!("`order` lists `{tag}` twice"));
+        } else if !catalog.locales.iter().any(|locale| &locale.tag == tag) {
+            errors.push(format!("`order` lists `{tag}`, which has no catalog file"));
+        }
+    }
+    for locale in &catalog.locales {
+        if !order.contains(&locale.tag) {
+            errors.push(format!(
+                "`order` leaves out `{}` ({}); list every catalog locale",
+                locale.tag, locale.file
+            ));
+        }
+    }
+    let default = catalog.locales.get(catalog.default).map(|l| l.tag.clone());
+    catalog.locales.sort_by_key(|locale| {
+        order
+            .iter()
+            .position(|tag| *tag == locale.tag)
+            .unwrap_or(usize::MAX)
+    });
+    catalog.default = catalog
+        .locales
+        .iter()
+        .position(|locale| Some(&locale.tag) == default.as_ref())
+        .unwrap_or_default();
+    errors.into_result(catalog)
 }
 
 fn flatten(

@@ -36,6 +36,58 @@ impl core::marker::Sync for rullst_media::LibraryId
 impl core::marker::Unpin for rullst_media::LibraryId
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::LibraryId
 impl core::panic::unwind_safe::UnwindSafe for rullst_media::LibraryId
+#[non_exhaustive] pub enum rullst_media::ListOrder
+pub rullst_media::ListOrder::Date
+pub rullst_media::ListOrder::Title
+impl core::clone::Clone for rullst_media::ListOrder
+impl core::cmp::Eq for rullst_media::ListOrder
+impl core::cmp::PartialEq for rullst_media::ListOrder
+impl core::default::Default for rullst_media::ListOrder
+impl core::fmt::Debug for rullst_media::ListOrder
+impl core::marker::Copy for rullst_media::ListOrder
+impl core::marker::Send for rullst_media::ListOrder
+impl core::marker::Sync for rullst_media::ListOrder
+impl core::marker::Unpin for rullst_media::ListOrder
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::ListOrder
+impl core::panic::unwind_safe::UnwindSafe for rullst_media::ListOrder
+#[non_exhaustive] pub struct rullst_media::ListQuery
+impl rullst_media::ListQuery
+pub const rullst_media::ListQuery::MAX_PAGE: u32
+pub const rullst_media::ListQuery::MAX_PER_PAGE: u32
+pub const rullst_media::ListQuery::MAX_SEARCH_BYTES: usize
+pub const rullst_media::ListQuery::MIN_PER_PAGE: u32
+pub fn rullst_media::ListQuery::new(page: u32, per_page: u32) -> core::result::Result<Self, rullst_media::MediaError>
+pub fn rullst_media::ListQuery::order(&self) -> rullst_media::ListOrder
+pub fn rullst_media::ListQuery::page(&self) -> u32
+pub fn rullst_media::ListQuery::per_page(&self) -> u32
+pub fn rullst_media::ListQuery::search(&self) -> core::option::Option<&str>
+pub fn rullst_media::ListQuery::with_order(self, order: rullst_media::ListOrder) -> Self
+pub fn rullst_media::ListQuery::with_search(self, term: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_media::MediaError>
+impl core::clone::Clone for rullst_media::ListQuery
+impl core::cmp::Eq for rullst_media::ListQuery
+impl core::cmp::PartialEq for rullst_media::ListQuery
+impl core::fmt::Debug for rullst_media::ListQuery
+impl core::marker::Send for rullst_media::ListQuery
+impl core::marker::Sync for rullst_media::ListQuery
+impl core::marker::Unpin for rullst_media::ListQuery
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::ListQuery
+impl core::panic::unwind_safe::UnwindSafe for rullst_media::ListQuery
+#[non_exhaustive] pub struct rullst_media::ListedVideo
+pub rullst_media::ListedVideo::id: rullst_media::VideoId
+pub rullst_media::ListedVideo::title: alloc::string::String
+pub rullst_media::ListedVideo::length_seconds: u32
+pub rullst_media::ListedVideo::processing: rullst_media::Processing
+pub rullst_media::ListedVideo::created_at: core::option::Option<i64>
+pub rullst_media::ListedVideo::thumbnail_url: core::option::Option<alloc::string::String>
+impl core::clone::Clone for rullst_media::ListedVideo
+impl core::cmp::Eq for rullst_media::ListedVideo
+impl core::cmp::PartialEq for rullst_media::ListedVideo
+impl core::fmt::Debug for rullst_media::ListedVideo
+impl core::marker::Send for rullst_media::ListedVideo
+impl core::marker::Sync for rullst_media::ListedVideo
+impl core::marker::Unpin for rullst_media::ListedVideo
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::ListedVideo
+impl core::panic::unwind_safe::UnwindSafe for rullst_media::ListedVideo
 #[non_exhaustive] pub enum rullst_media::MediaError
 pub rullst_media::MediaError::InvalidInput
 pub rullst_media::MediaError::Configuration
@@ -314,12 +366,30 @@ impl core::marker::Sync for rullst_media::VideoId
 impl core::marker::Unpin for rullst_media::VideoId
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::VideoId
 impl core::panic::unwind_safe::UnwindSafe for rullst_media::VideoId
+#[non_exhaustive] pub struct rullst_media::VideoPage
+pub rullst_media::VideoPage::items: alloc::vec::Vec<rullst_media::ListedVideo>
+pub rullst_media::VideoPage::page: u32
+pub rullst_media::VideoPage::per_page: u32
+pub rullst_media::VideoPage::total: u64
+impl rullst_media::VideoPage
+pub fn rullst_media::VideoPage::has_more(&self) -> bool
+impl core::clone::Clone for rullst_media::VideoPage
+impl core::cmp::Eq for rullst_media::VideoPage
+impl core::cmp::PartialEq for rullst_media::VideoPage
+impl core::fmt::Debug for rullst_media::VideoPage
+impl core::marker::Send for rullst_media::VideoPage
+impl core::marker::Sync for rullst_media::VideoPage
+impl core::marker::Unpin for rullst_media::VideoPage
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::VideoPage
+impl core::panic::unwind_safe::UnwindSafe for rullst_media::VideoPage
 pub trait rullst_media::VideoProvider: core::marker::Send + core::marker::Sync
 pub fn rullst_media::VideoProvider::binding(&self) -> rullst_media::ProviderBinding
 pub fn rullst_media::VideoProvider::create(&self, marker: &str) -> impl core::future::future::Future<Output = core::result::Result<rullst_media::RemoteVideo, rullst_media::MediaError>> + core::marker::Send
+pub fn rullst_media::VideoProvider::create_with_metadata(&self, marker: &str, metadata: &rullst_media::Metadata) -> impl core::future::future::Future<Output = core::result::Result<rullst_media::RemoteVideo, rullst_media::MediaError>> + core::marker::Send
 pub fn rullst_media::VideoProvider::delete(&self, video: &rullst_media::VideoId) -> impl core::future::future::Future<Output = core::result::Result<(), rullst_media::MediaError>> + core::marker::Send
 pub fn rullst_media::VideoProvider::find_created(&self, marker: &str) -> impl core::future::future::Future<Output = core::result::Result<core::option::Option<rullst_media::RemoteVideo>, rullst_media::MediaError>> + core::marker::Send
 pub fn rullst_media::VideoProvider::get(&self, video: &rullst_media::VideoId) -> impl core::future::future::Future<Output = core::result::Result<core::option::Option<rullst_media::RemoteVideo>, rullst_media::MediaError>> + core::marker::Send
+pub fn rullst_media::VideoProvider::list(&self, query: &rullst_media::ListQuery) -> impl core::future::future::Future<Output = core::result::Result<rullst_media::VideoPage, rullst_media::MediaError>> + core::marker::Send
 pub fn rullst_media::VideoProvider::playback(&self, video: &rullst_media::VideoId, now: i64, ttl_seconds: u32, kind: rullst_media::PlaybackKind) -> core::result::Result<rullst_media::PlaybackGrant, rullst_media::MediaError>
 pub fn rullst_media::VideoProvider::update(&self, video: &rullst_media::VideoId, metadata: &rullst_media::Metadata) -> impl core::future::future::Future<Output = core::result::Result<(), rullst_media::MediaError>> + core::marker::Send
 pub fn rullst_media::VideoProvider::upload(&self, video: &rullst_media::VideoId, now: i64, ttl_seconds: u32) -> core::result::Result<rullst_media::UploadGrant, rullst_media::MediaError>
@@ -337,6 +407,7 @@ pub mod rullst_media::bunny
 pub struct rullst_media::bunny::BunnyConfig
 impl rullst_media::bunny::BunnyConfig
 pub fn rullst_media::bunny::BunnyConfig::new(library: rullst_media::LibraryId, environment: rullst_media::Reference, cdn_host: impl core::convert::Into<alloc::string::String>, credentials: rullst_media::bunny::BunnyCredentials, _delivery: rullst_media::bunny::PrivateDelivery) -> core::result::Result<Self, rullst_media::MediaError>
+pub fn rullst_media::bunny::BunnyConfig::upload_only(library: rullst_media::LibraryId, environment: rullst_media::Reference, credentials: rullst_media::bunny::BunnyCredentials) -> core::result::Result<Self, rullst_media::MediaError>
 impl core::fmt::Debug for rullst_media::bunny::BunnyConfig
 impl core::marker::Send for rullst_media::bunny::BunnyConfig
 impl core::marker::Sync for rullst_media::bunny::BunnyConfig
@@ -346,6 +417,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_media::bunny::BunnyConfig
 pub struct rullst_media::bunny::BunnyCredentials
 impl rullst_media::bunny::BunnyCredentials
 pub fn rullst_media::bunny::BunnyCredentials::new(api: impl core::convert::Into<alloc::string::String>, webhook: impl core::convert::Into<alloc::string::String>, embed: impl core::convert::Into<alloc::string::String>, cdn: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_media::MediaError>
+pub fn rullst_media::bunny::BunnyCredentials::upload_only(api: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_media::MediaError>
 impl core::fmt::Debug for rullst_media::bunny::BunnyCredentials
 impl core::marker::Send for rullst_media::bunny::BunnyCredentials
 impl core::marker::Sync for rullst_media::bunny::BunnyCredentials

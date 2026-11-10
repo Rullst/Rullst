@@ -9,21 +9,28 @@ use crate::generators::audit::incomplete_walk_warning;
 use crate::generators::audit_source::audit_source;
 use crate::generators::source_walk::{RustSources, rust_sources};
 
+#[path = "audit_idor_machine.rs"]
+mod machine;
+use machine::{Constants, MachineRoutes, route_methods};
+
 const ACCESS_MARKER: &str = "rullst-access:";
 
 /// Recursively scans Rust source files for parameterized routes without an
-/// explicit public, owner, role, or administrator access classification.
+/// explicit public, owner, role, administrator or machine access
+/// classification.
 ///
 /// This is a bounded source heuristic. It deliberately reports a finding when
 /// it cannot recognize the route boundary; a clean scan is not a proof that a
 /// domain resource lookup enforces ownership correctly at runtime.
 ///
 /// Top-level `#[cfg(test)]` items are skipped individually. Guard evidence for
-/// an owner/role/admin classification is collected per crate (`src` tree)
-/// from code outside those items; comments and doc comments do not count.
+/// an owner/role/admin classification, and the `MachineEndpoint`
+/// registrations a machine classification needs, are collected per crate
+/// (`src` tree) from code outside those items; comments and doc comments do
+/// not count.
 pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
     let source_files = collect_rust_source_files(src_dir);
-    let mut crate_evidence = HashMap::<std::path::PathBuf, GuardEvidence>::new();
+    let mut crate_code = HashMap::<std::path::PathBuf, Vec<String>>::new();
     let mut sources = Vec::new();
     for path in source_files.files {
         let Ok(content) = fs::read_to_string(&path) else {
@@ -31,12 +38,16 @@ pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
         };
         let views = audit_source(&content);
         let source_root = source_root_for(&path).unwrap_or_else(|| src_dir.to_path_buf());
-        crate_evidence
+        crate_code
             .entry(source_root.clone())
             .or_default()
-            .include(&views.code);
+            .push(views.code);
         sources.push((path, source_root, views.production));
     }
+    let crate_evidence = crate_code
+        .into_iter()
+        .map(|(root, code)| (root, CrateEvidence::from_code(&code)))
+        .collect::<HashMap<_, _>>();
 
     let mut warnings = Vec::new();
     if let Some(reason) = source_files.incomplete {
@@ -46,11 +57,9 @@ pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
             "parameterized routes",
         ));
     }
+    let none = CrateEvidence::default();
     for (path, source_root, content) in sources {
-        let evidence = crate_evidence
-            .get(&source_root)
-            .copied()
-            .unwrap_or_default();
+        let evidence = crate_evidence.get(&source_root).unwrap_or(&none);
         warnings.extend(scan_idor_source_with_evidence(&path, &content, evidence));
     }
     (warnings.len(), warnings)
@@ -79,8 +88,31 @@ fn scan_idor_source(path: &Path, content: &str) -> Vec<String> {
     scan_idor_source_with_evidence(
         path,
         &views.production,
-        GuardEvidence::from_content(&views.code),
+        &CrateEvidence::from_code(&[views.code]),
     )
+}
+
+/// Guards and machine registrations of one crate.
+#[derive(Default)]
+struct CrateEvidence {
+    guards: GuardEvidence,
+    machine: MachineRoutes,
+}
+
+impl CrateEvidence {
+    fn from_code(code: &[String]) -> Self {
+        let mut guards = GuardEvidence::default();
+        let mut constants = Constants::default();
+        for file in code {
+            guards.include(file);
+            constants.include(file);
+        }
+        let mut machine = MachineRoutes::default();
+        for file in code {
+            machine.include(file, &constants);
+        }
+        Self { guards, machine }
+    }
 }
 
 #[derive(Clone, Copy, Default)]
@@ -91,13 +123,6 @@ struct GuardEvidence {
 }
 
 impl GuardEvidence {
-    #[cfg(test)]
-    fn from_content(content: &str) -> Self {
-        let mut evidence = Self::default();
-        evidence.include(content);
-        evidence
-    }
-
     fn include(&mut self, content: &str) {
         self.owner |= content.contains("authorize_owner_or_role");
         self.role |= self.owner
@@ -117,7 +142,7 @@ fn source_root_for(path: &Path) -> Option<std::path::PathBuf> {
 fn scan_idor_source_with_evidence(
     path: &Path,
     content: &str,
-    evidence: GuardEvidence,
+    evidence: &CrateEvidence,
 ) -> Vec<String> {
     let lines = content.lines().collect::<Vec<_>>();
     let mut findings = Vec::new();
@@ -142,37 +167,21 @@ fn scan_idor_source_with_evidence(
         }
         let marker_line = access_marker_line(&lines, index, trimmed);
         let classification = marker_line.and_then(access_classification);
-        let reason = if marker_line.is_some_and(|marker| !access_marker_has_reason(marker)) {
-            Some("classification must include a concrete reason after its access level")
-        } else {
-            match classification {
-                Some("public") if route_is_read_only(trimmed) => None,
-                Some("public") => Some(
-                    "public classification is accepted only for a recognized GET route; classify the mutation as owner, role, or admin",
-                ),
-                Some("owner") if evidence.owner => None,
-                Some("owner") => Some(
-                    "owner classification requires RbacGuard::authorize_owner_or_role in this crate's non-test code (comments do not count)",
-                ),
-                Some("role") if evidence.role => None,
-                Some("role") => Some(
-                    "role classification requires RbacGuard::authorize, RequireRoleLayer, or protect_router in this crate's non-test code (comments do not count)",
-                ),
-                Some("admin") if evidence.admin => None,
-                Some("admin") => Some(
-                    "admin classification requires RequireRoleLayer or NexusAuthPolicy::protect_router in this crate's non-test code (comments do not count)",
-                ),
-                Some(_) => Some("unknown rullst-access classification"),
-                None => Some(
-                    "missing an adjacent `// rullst-access: public|owner|role|admin — reason` classification",
-                ),
-            }
-        };
-
-        if let Some(reason) = reason {
-            for route in routes {
+        let methods = declared_methods(&lines, index, trimmed);
+        for route in routes {
+            let reason = if marker_line.is_some_and(|marker| !access_marker_has_reason(marker)) {
+                Some("classification must include a concrete reason after its access level")
+            } else {
+                classification_problem(classification, trimmed, route, &methods, evidence)
+            };
+            if let Some(reason) = reason {
+                let hint = if classification.is_none() && evidence.machine.declares(route) {
+                    "; a MachineEndpoint registers this path, so classify it as machine"
+                } else {
+                    ""
+                };
                 findings.push(format!(
-                    "File '{}:{}': parameterized route `{route}` {reason}",
+                    "File '{}:{}': parameterized route `{route}` {reason}{hint}",
                     super::slash_path(path),
                     index + 1
                 ));
@@ -181,6 +190,59 @@ fn scan_idor_source_with_evidence(
     }
 
     findings
+}
+
+/// The methods of the route declared on `line`, or on the next code line
+/// when a multi-line `.route(` call puts them after the path literal.
+fn declared_methods(lines: &[&str], index: usize, line: &str) -> Vec<&'static str> {
+    let methods = route_methods(line);
+    if !methods.is_empty() {
+        return methods;
+    }
+    lines
+        .iter()
+        .skip(index + 1)
+        .map(|next| next.trim())
+        .find(|next| !next.starts_with("//"))
+        .map(route_methods)
+        .unwrap_or_default()
+}
+
+/// Why `classification` does not cover `route`, or `None` when it does.
+fn classification_problem(
+    classification: Option<&str>,
+    line: &str,
+    route: &str,
+    methods: &[&str],
+    evidence: &CrateEvidence,
+) -> Option<&'static str> {
+    let guards = evidence.guards;
+    match classification {
+        Some("public") if route_is_read_only(line) => None,
+        Some("public") => Some(
+            "public classification is accepted only for a recognized GET route; classify the mutation as owner, role, admin or machine",
+        ),
+        Some("machine") if evidence.machine.covers(methods, route) => None,
+        Some("machine") => Some(
+            "machine classification requires a MachineEndpoint registration (bearer, verified_bearer, signed_webhook, address_token or mutual_tls) with each of this route's write methods and this path, given as a string literal or a `const` &str, in this crate's non-test code",
+        ),
+        Some("owner") if guards.owner => None,
+        Some("owner") => Some(
+            "owner classification requires RbacGuard::authorize_owner_or_role in this crate's non-test code (comments do not count)",
+        ),
+        Some("role") if guards.role => None,
+        Some("role") => Some(
+            "role classification requires RbacGuard::authorize, RequireRoleLayer, or protect_router in this crate's non-test code (comments do not count)",
+        ),
+        Some("admin") if guards.admin => None,
+        Some("admin") => Some(
+            "admin classification requires RequireRoleLayer or NexusAuthPolicy::protect_router in this crate's non-test code (comments do not count)",
+        ),
+        Some(_) => Some("unknown rullst-access classification"),
+        None => Some(
+            "missing an adjacent `// rullst-access: public|owner|role|admin|machine — reason` classification",
+        ),
+    }
 }
 
 fn contains_route_call(line: &str) -> bool {
@@ -269,216 +331,6 @@ fn route_is_read_only(line: &str) -> bool {
         && !["post(", "put(", "patch(", "delete("]
             .iter()
             .any(|method| line.contains(method))
-}
-
-#[cfg(test)]
-#[allow(clippy::expect_used, clippy::unwrap_used)]
-mod tests {
-    use super::*;
-    fn findings(source: &str) -> Vec<String> {
-        scan_idor_source(Path::new("src/routes.rs"), source)
-    }
-
-    #[test]
-    fn public_read_routes_require_an_explicit_adjacent_classification() {
-        let classified = r#"
-// rullst-access: public — published articles are intentionally public.
-get("/posts/{slug}" => show),
-"#;
-        assert!(findings(classified).is_empty());
-
-        let unclassified = r#"get("/posts/{slug}" => show),"#;
-        let result = findings(unclassified);
-        assert_eq!(result.len(), 1);
-        assert!(result[0].contains("missing an adjacent"));
-        assert!(result[0].contains("/posts/{slug}"));
-    }
-
-    #[test]
-    fn public_classification_never_suppresses_a_mutating_route() {
-        let source = r#"
-// rullst-access: public — this annotation is unsafe for a mutation.
-delete("/documents/{id}" => destroy),
-"#;
-        let result = findings(source);
-        assert_eq!(result.len(), 1);
-        assert!(result[0].contains("accepted only for a recognized GET"));
-    }
-
-    #[test]
-    fn classifications_require_a_concrete_adjacent_reason() {
-        let source = r#"
-// rullst-access: public
-get("/posts/{slug}" => show),
-"#;
-        let result = findings(source);
-        assert_eq!(result.len(), 1);
-        assert!(result[0].contains("must include a concrete reason"));
-    }
-
-    #[test]
-    fn owner_routes_require_the_owner_or_role_guard() {
-        let guarded = r#"
-// rullst-access: owner — the handler compares the authenticated subject.
-get("/accounts/:account_id" => show_account),
-
-fn authorize(ctx: &UserContext, owner: &str) {
-    let _ = RbacGuard::authorize_owner_or_role(ctx, owner, "admin");
-}
-"#;
-        assert!(findings(guarded).is_empty());
-
-        let missing_guard = r#"
-// rullst-access: owner — no ownership check actually exists.
-get("/accounts/:account_id" => show_account),
-"#;
-        assert_eq!(findings(missing_guard).len(), 1);
-    }
-
-    #[test]
-    fn admin_routes_require_a_recognized_server_boundary() {
-        let protected = r#"
-// rullst-access: admin — protected as a group below.
-post("/products/{{id}}/add-stock" => add_stock),
-let protected = admin_access.protect_router(admin_routes.into_axum())?;
-"#;
-        assert!(findings(protected).is_empty());
-
-        let annotation_only = r#"
-// rullst-access: admin — a comment alone must not suppress the finding.
-post("/products/{id}/add-stock" => add_stock),
-"#;
-        assert_eq!(findings(annotation_only).len(), 1);
-    }
-
-    #[test]
-    fn unrelated_user_context_no_longer_hides_an_unclassified_route() {
-        let source = r#"
-get("/orders/{order_id}" => show_order),
-fn unrelated(_context: UserContext) {}
-"#;
-        assert_eq!(findings(source).len(), 1);
-    }
-
-    #[test]
-    fn routes_after_an_early_test_declaration_are_still_scanned() {
-        // The old scan truncated the file at the first top-level
-        // `#[cfg(test)]` and reported this unclassified route as clean.
-        let source = r#"use rullst::prelude::*;
-#[cfg(test)]
-mod tests;
-
-fn routes() -> Router {
-    routes! {
-        get("/accounts/{id}" => show_account),
-    }
-}
-
-#[cfg(test)]
-mod inline {
-    fn fixture() { get("/fixtures/{id}" => show) }
-}
-"#;
-        let result = findings(source);
-        assert_eq!(result.len(), 1, "{result:?}");
-        assert!(result[0].contains("routes.rs:7"));
-        assert!(result[0].contains("/accounts/{id}"));
-    }
-
-    #[test]
-    fn every_route_on_a_single_line_list_is_checked() {
-        // The old scan read only the first literal, "/", and skipped the line.
-        let source = r#"routes! { get("/" => home), get("/users/{id}" => show_user) }"#;
-        let result = findings(source);
-        assert_eq!(result.len(), 1, "{result:?}");
-        assert!(result[0].contains("/users/{id}"));
-
-        let both = r#"routes! { get("/teams/{team}" => team), delete("/users/{id}" => drop) }"#;
-        assert_eq!(findings(both).len(), 2);
-        assert!(quoted_literals(r#"a("x\"y", "/z")"#).eq([r#"x\"y"#, "/z"]));
-    }
-
-    #[test]
-    fn guard_mentions_in_comments_are_not_evidence() {
-        // The old scan accepted any substring, so these comments satisfied
-        // the owner classification.
-        let commented = r#"
-// rullst-access: owner — the handler compares the authenticated subject.
-get("/accounts/{id}" => show_account),
-// TODO use RbacGuard::authorize_owner_or_role
-/// Calls `admin_access.protect_router(..)` later.
-fn show_account() {}
-"#;
-        let result = findings(commented);
-        assert_eq!(result.len(), 1, "{result:?}");
-        assert!(result[0].contains("this crate's non-test code"));
-    }
-
-    #[test]
-    fn guard_evidence_is_crate_wide_and_ignores_test_items() {
-        let project = tempfile::tempdir().expect("temporary project");
-        let src = project.path().join("src");
-        fs::create_dir_all(&src).expect("source directory");
-        fs::write(
-            src.join("routes.rs"),
-            "// rullst-access: owner — checked by the guard module.\nget(\"/orders/{id}\" => show),\n",
-        )
-        .expect("route fixture");
-        fs::write(
-            src.join("guard.rs"),
-            "#[cfg(test)]\nmod tests { fn t() { RbacGuard::authorize_owner_or_role(c, o, \"admin\"); } }\n",
-        )
-        .expect("test-only guard fixture");
-        let (count, warnings) = scan_idor_vulnerabilities(&src);
-        assert_eq!(count, 1, "{warnings:?}");
-
-        fs::write(
-            src.join("guard.rs"),
-            "fn guard() { RbacGuard::authorize_owner_or_role(c, o, \"admin\"); }\n",
-        )
-        .expect("guard fixture");
-        let (count, warnings) = scan_idor_vulnerabilities(&src);
-        assert_eq!(count, 0, "{warnings:?}");
-    }
-
-    #[test]
-    fn a_comment_inside_a_multiline_route_call_keeps_the_route_in_scope() {
-        // The old scan ended the `.route(` continuation at the comment line and
-        // never inspected the path literal below it.
-        let note_only = r#"
-Router::new().route(
-    // Removes one invoice.
-    "/invoices/{id}",
-    delete(remove_invoice),
-)
-"#;
-        let result = findings(note_only);
-        assert_eq!(result.len(), 1, "{result:?}");
-        assert!(result[0].contains("missing an adjacent"));
-
-        let classified = r#"
-let protected = admin_access.protect_router(router)?;
-Router::new().route(
-    // rullst-access: admin — composed behind the administrator boundary.
-    "/invoices/{id}",
-    delete(remove_invoice),
-)
-"#;
-        assert!(findings(classified).is_empty());
-    }
-
-    #[test]
-    fn multiline_axum_routes_and_generic_parameter_names_are_detected() {
-        let source = r#"
-Router::new().route(
-    "/invoices/{invoice_number}",
-    delete(remove_invoice),
-)
-"#;
-        let result = findings(source);
-        assert_eq!(result.len(), 1);
-        assert!(result[0].contains("/invoices/{invoice_number}"));
-    }
 }
 
 #[cfg(test)]

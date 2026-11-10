@@ -1119,11 +1119,12 @@ jobs:
     # them and drives them in Chromium, Firefox and WebKit (pinned Playwright):
     # console errors, CSP violations, keyboard paths, the HTMX counter and
     # sign-up/sign-in/sign-out through the real forms, and axe-core (serious
-    # and critical fail). A fixture application then gets every `cargo rullst
-    # ui add` component and Tailwind and is driven the same way, in both
-    # colour schemes, with the components' keyboard paths. Full manual runs,
-    # the nightly run and the `starter-browsers` diagnostic always run it;
-    # ready pull requests only when the starter templates, the components,
+    # and critical fail), then the tests `cargo rullst add browser-tests`
+    # generates for each starter. A fixture application then gets every
+    # `cargo rullst ui add` component and Tailwind and is driven the same way,
+    # in both colour schemes, with the components' keyboard paths. Full manual
+    # runs, the nightly run and the `starter-browsers` diagnostic always run
+    # it; ready pull requests only when the starter templates, the components,
     # the frontend tools, html!, Core's pages, assets, headers or CSRF, or
     # these checks change (a first step decides). Branch pushes skip it, so their job
     # inventory is unchanged. It is not a required release job.
@@ -1153,7 +1154,7 @@ jobs:
             exit 0
           fi
           changed="$(git diff --name-only HEAD^1 HEAD)"
-          if grep -Eq '^(cargo-rullst/src/(blueprints/|generators/(project/|auth/|billing|components/|add/frontend/|frontend/))|rullst-macros/src/|rullst-core/src/(security/|server/|config/|assets|html[a-z_]*\.rs|htmx\.rs|config\.rs)|\.github/(check-starter-browsers\.py|check-ui-components\.py|fixtures/ui-gallery/|starter-browsers/|dast-generated-app\.py|first_hour_(process|checks)\.py))' <<< "$changed"; then
+          if grep -Eq '^(cargo-rullst/src/(blueprints/|generators/(project/|auth/|billing|browser_tests/|components/|add/frontend/|frontend/))|rullst-macros/src/|rullst-core/src/(security/|server/|config/|assets|html[a-z_]*\.rs|htmx\.rs|config\.rs)|\.github/(check-starter-browsers\.py|check-ui-components\.py|fixtures/ui-gallery/|starter-browsers/|dast-generated-app\.py|first_hour_(process|checks)\.py))' <<< "$changed"; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"

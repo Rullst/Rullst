@@ -2,10 +2,12 @@
 
 use super::catalog::{self, Source};
 use super::emit::{self, CatalogArgs};
+use super::prepared::Prepared;
 use super::translate::{self, suggest};
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::path::{Path, PathBuf};
+use syn::parse::Parser;
 
 fn source(tag: &str, text: &str) -> Source {
     Source {
@@ -16,8 +18,13 @@ fn source(tag: &str, text: &str) -> Source {
     }
 }
 
-fn encoded(sources: Vec<Source>) -> TokenStream {
-    emit::encode(&catalog::build(sources, "en").unwrap())
+fn prepared(sources: Vec<Source>) -> Prepared {
+    Prepared::new(&catalog::build(sources, "en").unwrap()).unwrap()
+}
+
+fn expand_with(prepared: &Prepared, call: TokenStream) -> syn::Result<String> {
+    let call = Parser::parse2(translate::parse_call, call)?;
+    translate::expand(prepared, call).map(|tokens| tokens.to_string())
 }
 
 const EN: &str = r#"
@@ -44,8 +51,7 @@ other = "{name} visitou {count} vezes"
 "#;
 
 fn expand(call: TokenStream) -> syn::Result<String> {
-    let encoded = encoded(vec![source("en", EN), source("pt-BR", PT)]);
-    translate::try_expand(quote! { #encoded ; #call }).map(|tokens| tokens.to_string())
+    expand_with(&prepared(vec![source("en", EN), source("pt-BR", PT)]), call)
 }
 
 fn errors(call: TokenStream) -> Vec<String> {
@@ -61,25 +67,36 @@ fn contains(haystack: &str, needle: TokenStream) {
 }
 
 #[test]
-fn encode_lists_locales_rules_and_forms_per_key() {
-    let tokens = encoded(vec![
+fn prepare_lists_locales_rules_and_parsed_forms_per_key() {
+    let prepared = prepared(vec![
         source(
             "en",
-            "a = \"A\"\nb_html = \"<b>B</b>\"\n[n]\none = \"1\"\nother = \"N\"\n",
+            "a = \"A {x}\"\nb_html = \"<b>B</b>\"\n[n]\none = \"1\"\nother = \"N\"\n",
         ),
         source(
             "ja",
-            "a = \"エー\"\nb_html = \"<b>ビー</b>\"\n[n]\nother = \"件\"\n",
+            "a = \"エー {x}\"\nb_html = \"<b>ビー</b>\"\n[n]\nother = \"件\"\n",
         ),
     ]);
-    let expected = quote! {
-        ["en" One, "ja" Other] 0usize {
-            "a" text single [(other "A") (other "エー")]
-            "b_html" html single [(other "<b>B</b>") (other "<b>ビー</b>")]
-            "n" text plural [(one "1" other "N") (other "件")]
-        }
-    };
-    assert_eq!(tokens.to_string(), expected.to_string());
+    assert_eq!(prepared.tags, ["en", "ja"]);
+    assert_eq!(prepared.rules, ["One", "Other"]);
+    assert_eq!(prepared.default, 0);
+    let keys: Vec<&str> = prepared.entries.keys().map(String::as_str).collect();
+    assert_eq!(keys, ["a", "b_html", "n"]);
+    let a = &prepared.entries["a"];
+    assert!(!a.html && !a.plural);
+    assert_eq!(a.names.iter().collect::<Vec<_>>(), ["x"]);
+    assert_eq!(a.forms[1][0].0, "other");
+    assert!(prepared.entries["b_html"].html);
+    let n = &prepared.entries["n"];
+    assert!(n.plural && !n.html);
+    assert_eq!(n.names.iter().collect::<Vec<_>>(), ["count"]);
+    let categories: Vec<Vec<&str>> = n
+        .forms
+        .iter()
+        .map(|forms| forms.iter().map(|(category, _)| *category).collect())
+        .collect();
+    assert_eq!(categories, [vec!["one", "other"], vec!["other"]]);
 }
 
 #[test]
@@ -141,7 +158,7 @@ fn a_plural_message_passes_its_count() {
 
 #[test]
 fn every_category_of_a_plural_message_is_expanded() {
-    let encoded = encoded(vec![
+    let prepared = prepared(vec![
         source(
             "en",
             "[n]\none = \"{count} file\"\nother = \"{count} files\"\n",
@@ -151,9 +168,7 @@ fn every_category_of_a_plural_message_is_expanded() {
             "[n]\none = \"{count} файл\"\nfew = \"{count} файла\"\nmany = \"{count} файлов\"\nother = \"{count} файла\"\n",
         ),
     ]);
-    let out = translate::try_expand(quote! { #encoded ; locale, "n", count = 3 })
-        .unwrap()
-        .to_string();
+    let out = expand_with(&prepared, quote! { locale, "n", count = 3 }).unwrap();
     contains(
         &out,
         quote! { plurals: &[rullst::i18n::__Plural::One, rullst::i18n::__Plural::EastSlavic], },
@@ -174,12 +189,16 @@ fn every_category_of_a_plural_message_is_expanded() {
 }
 
 #[test]
-fn encoded_categories_must_be_cldr_names() {
-    let bad = quote! { ["en" One] 0usize { "n" text plural [(several "x" other "y")] } ; locale, "n", count = 1 };
-    let error = translate::try_expand(bad).unwrap_err().to_string();
-    assert_eq!(error, "unknown plural category `several`");
-    let zero = quote! { ["ar" Arabic] 0usize { "n" text plural [(zero "z" two "t" other "o")] } ; locale, "n", count = 1 };
-    let out = translate::try_expand(zero).unwrap().to_string();
+fn zero_and_two_forms_are_expanded() {
+    let prepared = prepared(vec![
+        source("en", "[n]\none = \"o\"\nother = \"x\"\n"),
+        source(
+            "ar",
+            "[n]\nzero = \"z\"\none = \"o\"\ntwo = \"t\"\nfew = \"f\"\nmany = \"m\"\nother = \"x\"\n",
+        ),
+    ]);
+    let out = expand_with(&prepared, quote! { locale, "n", count = 1 }).unwrap();
+    contains(&out, quote! { rullst::i18n::__Plural::Arabic });
     contains(
         &out,
         quote! { (rullst::i18n::PluralCategory::Zero, &[rullst::i18n::__Segment::Text("z")]) },
@@ -291,7 +310,7 @@ fn catalog_arguments_are_validated() {
     );
     assert_eq!(
         arg_error(quote! { default = "en", path = "x" }),
-        "unknown argument: `catalog!` takes `default = \"tag\"` and an optional `dir = \"path\"`"
+        "unknown argument: `catalog!` takes `default = \"tag\"`, an optional `dir = \"path\"` and an optional `order = [\"tag\", …]`"
     );
     assert_eq!(
         arg_error(quote! { default = "en", default = "es" }),
@@ -317,16 +336,9 @@ fn a_valid_catalog_defines_locales_tracking_and_t() {
     let en = manifest_dir().join("tests/i18n/valid").join("en.toml");
     let en = en.to_string_lossy();
     contains(&out, quote! { const _: &[u8] = include_bytes!(#en); });
-    let sources = catalog::read_dir(manifest_dir(), "tests/i18n/valid").unwrap();
-    let encoded = emit::encode(&catalog::build(sources, "pt-BR").unwrap());
-    assert!(
-        encoded
-            .to_string()
-            .starts_with("[\"en\" One , \"pt-BR\" ZeroOne] 1usize {")
-    );
     contains(
         &out,
-        quote! { macro_rules! t { ($($input:tt)*) => { rullst::i18n::__translate! { #encoded ; $($input)* } }; } },
+        quote! { macro_rules! t { ($($input:tt)*) => { rullst::i18n::__translate! { "tests/i18n/valid" ["en", "pt-BR"] "pt-BR" ; $($input)* } }; } },
     );
     contains(&out, quote! { #[allow(unused_imports)] pub(crate) use t; });
     assert!(!out.contains("compile_error"));

@@ -347,9 +347,36 @@ fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
                 output.contains(
                     "security_tests::production_responses_carry_the_security_headers ... ok"
                 ) && output
-                    .contains("security_tests::the_waf_refuses_injection_and_accepts_prose ... ok"),
-                "{}: generated security tests did not run\n{output}",
+                    .contains("security_tests::the_waf_refuses_injection_and_accepts_prose ... ok")
+                    && output.contains(
+                        "security_tests::every_page_answers_with_safe_headers_and_sound_html ... ok"
+                    ),
+                "{}: generated security and page smoke tests did not run\n{output}",
                 case.name
+            );
+        }
+        if case.run_tests && case.group == ProfileGroup::Basic {
+            // The generated .github/workflows/ci.yml runs strict Clippy; a
+            // fresh starter must pass it.
+            let clippy = Command::new(env!("CARGO"))
+                .current_dir(&project.path)
+                .args([
+                    "clippy",
+                    "--offline",
+                    "--all-targets",
+                    "--",
+                    "-D",
+                    "warnings",
+                ])
+                .env("CARGO_TARGET_DIR", &target_root)
+                .env("CARGO_BUILD_JOBS", generated_build_jobs())
+                .output()
+                .unwrap_or_else(|error| panic!("{}: run generated Clippy: {error}", case.name));
+            assert!(
+                clippy.status.success(),
+                "{}: generated profile fails `cargo clippy --all-targets -- -D warnings`\n{}",
+                case.name,
+                output_text(&clippy)
             );
         }
         clean_generated_package(&project.path, &target_root);

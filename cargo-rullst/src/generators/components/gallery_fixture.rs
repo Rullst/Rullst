@@ -40,7 +40,7 @@ fn buttons(csrf: &str) -> Markup {
             {button::link("Button link", "/?page=2", Variant::Outline, Size::Md)}
         </div>
         <div class="flex flex-wrap items-center gap-3">
-            <form id="slow-form" method="post" action="/slow" hx-post="/slow" hx-swap="none" hx-indicator="#slow-button" hx-disabled-elt="#slow-button">
+            <form id="slow-form" method="post" action="/slow" hx-post="/slow" hx-swap="none" hx-indicator="#slow-form" hx-disabled-elt="#slow-button">
                 <input type="hidden" name="_token" value={csrf} />
                 {button::button("Save slowly", &ButtonOptions { id: Some("slow-button".to_owned()), kind: Kind::Submit, loading: true, ..Default::default() })}
             </form>

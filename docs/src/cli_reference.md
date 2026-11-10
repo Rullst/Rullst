@@ -348,6 +348,7 @@ The choices that materially change the generated application:
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. `cargo rullst dev` applies pending migrations when it starts; run `cargo rullst db:migrate` explicitly otherwise.
   * `--dry-run` (v13): Prints the plan (the answers, a compact file tree with the exact number of files and the commands it would run) and exits without creating anything. With `--default` it never prompts; in a terminal without `--default` the wizard's review ends with *Finish the dry run*.
   * `--vcs <git|none>` (v13, default `git`): Like `cargo new`, initializes a Git repository in the new project when `git` is installed and the destination is not already inside a Git work tree; `none` skips it. The generated `.gitignore` keeps `.env`, `.env.*` (except `.env.example`) and `/target` out. Without Git, `new` prints a warning and keeps the project; `cargo rullst audit` checks committed secrets through Git.
+  * `--no-ci` (since 13.0.0-alpha.5): Skips `.github/workflows/ci.yml` (formatting, Clippy with `-D warnings`, tests, a daily `cargo audit` and a TruffleHog secret scan, every action pinned by commit SHA) and `.github/dependabot.yml` (Cargo and GitHub Actions, monthly, grouped), which `new` writes otherwise. See [Testing your application](testing-your-app.md).
 
 Since v13, `--blueprint`, `--database`, `--no-database`, `--ai` and `--redis`
 no longer require `--default`: in a terminal they answer their questions and
@@ -827,6 +828,13 @@ unknown capability is a usage error (exit status 2).
 cargo rullst add mail --dry-run
 cargo rullst add mail
 ```
+
+`cargo rullst add browser-tests` (since 13.0.0-alpha.5) enables no feature: it
+writes pinned Playwright and axe-core checks under `tests/browser/` and
+a `browser-tests.yml` workflow in the application's `.github/workflows/`, which open every page of the
+`PAGES` list in `src/security_tests.rs` in Chromium, Firefox and WebKit. A
+file that already exists with other content is kept and reported. See
+[Testing your application](testing-your-app.md#browser-tests).
 
 #### Frontend tools: `cargo rullst add tailwind` and `cargo rullst add alpine`
 
@@ -2035,7 +2043,7 @@ penetration test or compliance certification.
 * **Optional Flags:**
   * `--ai`: Prints fixed, rule-based remediation suggestions after the checks. It calls no AI model or network service; the flag keeps its legacy name.
   * `--compliance`: Writes `SECURITY_COMPLIANCE.md`, an evidence report. Each executed check is `NO FINDINGS`, `NO FINDINGS OUTSIDE EXCEPTIONS`, `FINDINGS`, `GENERATED`, `OBSERVED`, `NOT CHECKED`, or `ERROR`, and control families outside the command's scope are `NOT EVALUATED`. It never reports `PASS` and is not a SOC 2, ISO 27001, or transport certification.
-  * `--idor`: Fails on parameterized routes without an explicit adjacent `// rullst-access: public|owner|role|admin — reason` classification. `owner` requires `RbacGuard::authorize_owner_or_role`; `role` requires a recognized role guard; `admin` requires `RequireRoleLayer` or `NexusAuthPolicy::protect_router`; `public` is restricted to recognized GET routes. The marker goes on the route's line or the line above it; in a multi-line `.route(` call, on the line above the path literal. The guard may appear anywhere in the same crate's `src` tree outside comments and `#[cfg(test)]` items, so the check does not prove that the route is mounted behind it. Manual review and runtime negative tests remain required.
+  * `--idor`: Fails on parameterized routes without an explicit adjacent `// rullst-access: public|owner|role|admin|machine — reason` classification. `owner` requires `RbacGuard::authorize_owner_or_role`; `role` requires a recognized role guard; `admin` requires `RequireRoleLayer` or `NexusAuthPolicy::protect_router`; `public` is restricted to recognized GET routes; `machine` (since 13.0.0-alpha.5) requires a `MachineEndpoint` registration (`bearer`, `verified_bearer`, `signed_webhook`, `address_token` or `mutual_tls`) in the same crate with each of the route's write methods and the same path, given as a string literal or a `const` `&str`, so a provider callback such as `POST /payments/{reference}/{token}` keeps its parameters in the path. An unclassified route that a `MachineEndpoint` registers is pointed at `machine`. The marker goes on the route's line or the line above it; in a multi-line `.route(` call, on the line above the path literal. The guard may appear anywhere in the same crate's `src` tree outside comments and `#[cfg(test)]` items, so the check does not prove that the route is mounted behind it. Manual review and runtime negative tests remain required.
   * `--geiger`: Inventories `unsafe` in the dependency tree. Unsafe may be justified and requires review; the command does not prove a zero-unsafe invariant.
   * `--sbom`: Generates a standardized **CycloneDX 1.5 JSON** Software Bill of Materials (`sbom-cyclonedx.json`) from `Cargo.lock`, with the SHA-256 checksums the lockfile records. It contains no license metadata.
   * `--audit-ignore RUSTSEC-YYYY-NNNN`: Passes one explicit, repeatable advisory exception to `cargo audit`. A successful run is reported as **NO FINDINGS OUTSIDE EXCEPTIONS**, not “no findings”; the caller must separately version, own, review, and expire every exception.
@@ -2248,8 +2256,10 @@ For server databases run `cargo rullst db:status`.
 
 #### Doctor: security baseline
 `cargo-audit` installed, `.env` and `.rullst_dev_key` (the development
-`APP_KEY` that `rullst::auth::get_app_key()` writes when none is set, a
-`cargo test` run included) neither tracked nor unignored by Git when they
+`APP_KEY` file that `rullst::auth::get_app_key()` wrote into the project, a
+`cargo test` run included, before 13.0.0-alpha.5; it is still read, and newer
+versions keep the key in the user's state directory) neither tracked nor
+unignored by Git when they
 exist (✗ when tracked), `APP_KEY` set to at least 32 characters and not a
 template placeholder, and a `Cargo.lock` for reproducible builds. Projects
 generated by `cargo rullst new` ignore `.rullst_dev_key` in `.gitignore` and

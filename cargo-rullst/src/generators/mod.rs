@@ -18,6 +18,7 @@ mod audit_scope;
 mod audit_source;
 pub mod auth;
 pub mod billing;
+pub(crate) mod browser_tests;
 pub mod build;
 pub mod chat;
 pub(crate) mod components;

@@ -390,11 +390,14 @@ html! {
   `Destructive`, `Link`), `size` (`Sm`, `Md`, `Lg`, `Icon`), `kind`
   (`Button`, `Submit`, `Reset`), `id`, `disabled`, `loading`.
 - **Loading state:** `loading: true` adds a spinner shown while htmx gives
-  the button, or an element around it, its `htmx-request` class. Point the
-  form at the button:
-  `<form hx-post="/save" hx-indicator="#save" hx-disabled-elt="#save">` with
-  `id: Some("save".into())`; `hx-disabled-elt` also disables it, so a screen
-  reader announces it as unavailable and it cannot be pressed twice.
+  the button, or an element around it, its `htmx-request` class: the form
+  sending the request by default, or the element its `hx-indicator` names.
+  `hx-disabled-elt` disables the button meanwhile, so a screen reader
+  announces it as unavailable and it cannot be pressed twice:
+  `<form id="order" hx-post="/save" hx-indicator="#order" hx-disabled-elt="#save">`
+  with `id: Some("save".into())`. Name different elements in the two
+  attributes: htmx 1.9.12 counts requests per element for both, so an element
+  named in both keeps its `htmx-request` class after the response.
 - **Accessibility:** a real `<button>` (or `<a>` for navigation), so Enter and
   Space work; a visible focus outline on keyboard focus. An `Icon` button
   needs an `aria-label`. The spinner is `aria-hidden`.

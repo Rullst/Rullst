@@ -67,7 +67,7 @@ pub fn tabs(options: &TabsOptions<'_>, tabs: Vec<Tab<'_>>) -> Markup {
     let panel_id = |key: &str| format!("{}-panel-{key}", options.id);
     html! {
         <div class="space-y-4">
-            <div role="tablist" aria-label={options.label} class="flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+            <div role="tablist" aria-label={options.label} class="flex flex-wrap gap-1 border-b border-slate-200 dark:border-slate-800">
                 @for (index, tab) in tabs.iter().enumerate() {
                     <button type="button" role="tab" id={tab_id(tab.key)} aria-controls={panel_id(tab.key)} aria-selected={index == selected} tabindex={if index == selected { "0" } else { "-1" }} class={TAB}>{tab.label}</button>
                 }

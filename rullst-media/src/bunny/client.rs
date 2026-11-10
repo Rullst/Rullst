@@ -1,8 +1,8 @@
 use super::{BunnyConfig, signatures::sha, wire};
 use crate::{
-    MediaError as Error, Metadata, PlaybackGrant, PlaybackKind, Processing, ProviderBinding,
-    ProviderMode, Reference, RemoteVideo, UploadGrant, VideoId, VideoProvider,
-    provider::marker_valid,
+    ListQuery, MediaError as Error, Metadata, PlaybackGrant, PlaybackKind, Processing,
+    ProviderBinding, ProviderMode, Reference, RemoteVideo, UploadGrant, VideoId, VideoPage,
+    VideoProvider, provider::marker_valid,
 };
 use reqwest::{
     Client, Method, Url,
@@ -97,7 +97,7 @@ impl BunnyStream {
         })
     }
 
-    fn path(&self, video: Option<&VideoId>) -> String {
+    pub(super) fn path(&self, video: Option<&VideoId>) -> String {
         let mut path = format!("/library/{}/videos", self.config.library.value());
         if let Some(video) = video {
             path.push('/');
@@ -154,7 +154,7 @@ impl BunnyStream {
         serde_json::from_slice(&bytes).map_err(|_| Error::Protocol)
     }
 
-    async fn read<T: DeserializeOwned>(&self, path: &str) -> Result<T, Error> {
+    pub(super) async fn read<T: DeserializeOwned>(&self, path: &str) -> Result<T, Error> {
         // Only safe reads retry, once. Bound both attempts and their bodies together.
         tokio::time::timeout(Duration::from_secs(12), async {
             match self.request(Method::GET, path, None).await {
@@ -344,6 +344,10 @@ impl VideoProvider for BunnyStream {
             return Err(Error::Protocol);
         }
         Ok(())
+    }
+
+    async fn list(&self, query: &ListQuery) -> Result<VideoPage, Error> {
+        self.list_page(query).await
     }
 
     fn upload(&self, video: &VideoId, now: i64, ttl: u32) -> Result<UploadGrant, Error> {

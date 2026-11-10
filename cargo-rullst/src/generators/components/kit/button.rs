@@ -15,9 +15,13 @@
 //!
 //! Loading state: with `loading: true` the button holds a spinner that shows
 //! while htmx marks the button, or an element around it, with its
-//! `htmx-request` class. Point the form's `hx-indicator` at the button and
-//! disable it during the request with `hx-disabled-elt`:
-//! `<form hx-post="/save" hx-indicator="#save" hx-disabled-elt="#save">`.
+//! `htmx-request` class: the form that sends the request by default, or the
+//! element its `hx-indicator` names. Disable the button meanwhile with
+//! `hx-disabled-elt`:
+//! `<form id="order" hx-post="/save" hx-indicator="#order" hx-disabled-elt="#save">`
+//! with `id: Some("save".into())`. Name different elements in the two
+//! attributes: htmx 1.9.12 counts requests per element for both, so an
+//! element named in both keeps `htmx-request` after the response.
 
 use rullst::html;
 use rullst::html::Markup;

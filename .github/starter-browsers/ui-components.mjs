@@ -104,8 +104,12 @@ class Session {
       else this.record("csp", `${violation.directive} ${violation.blocked}`, violation);
     });
     await this.context.addInitScript(() => {
+      // The element of a blocked attribute (a shadow tree's host).
+      const describe = (target) => target instanceof Element
+        ? target.outerHTML.slice(0, 200) : String(target?.nodeName ?? target);
       document.addEventListener("securitypolicyviolation", (event) => {
         window.__rullstCspViolation({
+          element: describe(event.target),
           directive: event.effectiveDirective, blocked: event.blockedURI, disposition: event.disposition,
           source: event.sourceFile, line: event.lineNumber, sample: event.sample,
           duringCapture: window.__rullstCapturing === true,
@@ -367,14 +371,50 @@ async function loadingPaths(session) {
   await session.focusByKeyboard("#slow-button");
   const answered = page.waitForResponse((response) => new URL(response.url()).pathname === "/slow");
   await page.keyboard.press("Enter");
-  await page.waitForFunction(() => document.querySelector("#slow-button").classList.contains("htmx-request"));
-  if (!(await shown())) session.record("flow", "spinner during the request", "hx-indicator marked the button but the spinner is hidden");
+  await page.waitForFunction(() => document.querySelector("#slow-form").classList.contains("htmx-request"));
+  if (!(await shown())) session.record("flow", "spinner during the request", "hx-indicator marked the form but the spinner is hidden");
   if (!(await page.evaluate(() => document.querySelector("#slow-button").disabled))) {
     session.record("flow", "disabled during the request", "hx-disabled-elt did not disable the button");
   }
   await answered;
-  await page.waitForFunction(() => !document.querySelector("#slow-button").classList.contains("htmx-request"));
+  await page.waitForFunction(() => !document.querySelector("#slow-form").classList.contains("htmx-request"));
   if (await shown()) session.record("flow", "spinner after the request", "the spinner still shows after the response");
+  if (await page.evaluate(() => document.querySelector("#slow-button").disabled)) {
+    session.record("flow", "enabled after the request", "hx-disabled-elt left the button disabled");
+  }
+}
+
+// Diagnostics only: which element alone makes the engine report a blocked
+// style attribute under `style-src 'self'` (printed, never blocking).
+const PROBES = {
+  select: "<select><option>A</option><option selected>B</option></select>",
+  textarea: '<textarea rows="3" placeholder="x"></textarea>',
+  "input placeholder": '<input type="email" placeholder="x">',
+  checkbox: '<input type="checkbox">',
+  dialog: "<dialog><p>x</p></dialog>",
+  popover: "<div popover><p>x</p></div>",
+  template: "<template><p>x</p></template>",
+  svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 1h4"></path></svg>',
+  table: "<table><caption>x</caption><tr><td colspan=\"2\">x</td></tr></table>",
+  hidden: "<div hidden>x</div>",
+};
+
+async function probe(browser) {
+  const page = await browser.newPage();
+  const found = [];
+  try {
+    for (const [label, body] of Object.entries(PROBES)) {
+      // The listener runs before the element is parsed.
+      const listen = "<script>window.__reports=0;document.addEventListener('securitypolicyviolation',function(){window.__reports+=1;});</script>";
+      await page.setContent(`<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="style-src 'self'; script-src 'unsafe-inline'">${listen}</head><body>${body}</body></html>`);
+      await page.waitForTimeout(300);
+      const reports = await page.evaluate(() => window.__reports);
+      if (reports > 0) found.push(label);
+    }
+  } finally {
+    await page.close().catch(() => {});
+  }
+  return found;
 }
 
 async function run(name) {
@@ -408,8 +448,12 @@ async function run(name) {
         await session.close();
       }
     }
+    const attributeReports = sessions.some((session) =>
+      session.findings.some((finding) => finding.kind === "csp" && finding.key.startsWith("style-src-attr")));
+    const probes = attributeReports ? await probe(browser).catch((error) => [`probe failed: ${error.message}`]) : [];
+    if (probes.length) console.log(`${name}: style-src-attr reports from ${probes.join(", ")}`);
     return {
-      browser: name, version: browser.version(), steps: sessions.flatMap((session) => session.steps),
+      browser: name, version: browser.version(), steps: sessions.flatMap((session) => session.steps), probes,
       findings: sessions.flatMap((session) => session.findings),
       capture_reports: sessions.reduce((total, session) => total + session.captureReports, 0),
     };
