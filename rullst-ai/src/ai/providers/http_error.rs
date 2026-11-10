@@ -1,21 +1,22 @@
-//! Text of [`AiError::ApiError`] for an unsuccessful provider HTTP response.
+//! [`AiError::HttpStatus`] for an unsuccessful provider HTTP response.
 //!
-//! The text always starts with `"{provider} returned HTTP {status}"`. When the
+//! The error carries the status code, the `Retry-After` delay and, when the
 //! response body is JSON with a provider error message (`error.message`, an
-//! `error` string, `message` or `detail`), that message follows as one line
-//! after a colon, preceded by the provider's error code (`error.status`,
-//! `error.code` or `error.type`) when it has one. The body is read up to
-//! [`MAX_ERROR_BODY_BYTES`]; the detail is cut to [`MAX_ERROR_DETAIL_CHARS`]
-//! characters, and URL queries, URL credentials, `key=value` secrets and
-//! key-shaped tokens are redacted. Other bodies (HTML, plain text, oversized
-//! or unreadable) add nothing.
+//! `error` string, `message` or `detail`), that message and the provider's
+//! error code (`error.status`, `error.code` or `error.type`) when it has one.
+//! Its text always starts with `"{provider} returned HTTP {status}"`. The body
+//! is read up to [`MAX_ERROR_BODY_BYTES`]; the message becomes one line cut to
+//! [`MAX_ERROR_DETAIL_CHARS`] characters, and URL queries, URL credentials,
+//! `key=value` secrets and key-shaped tokens are redacted. Other bodies (HTML,
+//! plain text, oversized or unreadable) add nothing.
 
-use crate::ai::AiError;
+use crate::ai::{AiError, AiHttpError};
+use std::time::Duration;
 
 /// Largest error body read to look for a provider message.
 const MAX_ERROR_BODY_BYTES: usize = 16 * 1_024;
 
-/// Longest provider detail kept in the error text, in characters.
+/// Longest provider message kept in the error, in characters.
 const MAX_ERROR_DETAIL_CHARS: usize = 300;
 
 /// Shortest unbroken run of letters and digits (between `-` or `_`) redacted
@@ -29,21 +30,66 @@ const SECRET_PREFIXES: [&str; 6] = ["sk-", "sk_", "AIza", "xai-", "gsk_", "eyJ"]
 const SECRET_PARAMETER_NAMES: [&str; 6] =
     ["key", "token", "secret", "password", "signature", "auth"];
 
+/// The provider's error code and its one-line, bounded, redacted message.
+#[derive(Debug, PartialEq, Eq)]
+struct ProviderDetail {
+    code: Option<String>,
+    message: String,
+}
+
 /// Builds the error for an unsuccessful response, reading at most
 /// [`MAX_ERROR_BODY_BYTES`] of its body.
 pub(super) async fn status_error(response: reqwest::Response, provider: &str) -> AiError {
     let status = response.status();
-    let detail = read_bounded(response)
-        .await
-        .and_then(|body| provider_detail(&body));
-    status_error_text(provider, status, detail.as_deref())
+    let header_delay = response
+        .headers()
+        .get(reqwest::header::RETRY_AFTER)
+        .and_then(|value| value.to_str().ok())
+        .and_then(retry_after_seconds);
+    let body = read_bounded(response).await;
+    let detail = body.as_deref().and_then(provider_detail);
+    let retry_after = header_delay.or_else(|| body.as_deref().and_then(google_retry_delay));
+    status_error_from(provider, status, retry_after, detail)
 }
 
-fn status_error_text(provider: &str, status: reqwest::StatusCode, detail: Option<&str>) -> AiError {
-    AiError::ApiError(match detail {
-        Some(detail) => format!("{provider} returned HTTP {status}: {detail}"),
-        None => format!("{provider} returned HTTP {status}"),
-    })
+fn status_error_from(
+    provider: &str,
+    status: reqwest::StatusCode,
+    retry_after: Option<Duration>,
+    detail: Option<ProviderDetail>,
+) -> AiError {
+    let mut error = AiHttpError::new(provider, status.as_u16());
+    if let Some(delay) = retry_after {
+        error = error.with_retry_after(delay);
+    }
+    if let Some(detail) = detail {
+        error = error.with_provider_message(detail.code, detail.message);
+    }
+    AiError::HttpStatus(error)
+}
+
+/// A `Retry-After` header in delta-seconds. An HTTP-date is not read: the
+/// providers send seconds.
+fn retry_after_seconds(value: &str) -> Option<Duration> {
+    value.trim().parse::<u64>().ok().map(Duration::from_secs)
+}
+
+/// Gemini's `RetryInfo` detail (`"retryDelay": "52s"` or `"52.04s"`), which it
+/// sends with a 429 instead of a `Retry-After` header.
+fn google_retry_delay(body: &[u8]) -> Option<Duration> {
+    let json: serde_json::Value = serde_json::from_slice(body).ok()?;
+    json["error"]["details"]
+        .as_array()?
+        .iter()
+        .filter(|detail| {
+            detail["@type"]
+                .as_str()
+                .is_some_and(|kind| kind.ends_with("google.rpc.RetryInfo"))
+        })
+        .find_map(|detail| {
+            let seconds = detail["retryDelay"].as_str()?.strip_suffix('s')?;
+            Duration::try_from_secs_f64(seconds.parse::<f64>().ok()?).ok()
+        })
 }
 
 /// The whole body, or `None` once it exceeds [`MAX_ERROR_BODY_BYTES`] or a
@@ -64,8 +110,8 @@ async fn read_bounded(mut response: reqwest::Response) -> Option<Vec<u8>> {
     }
 }
 
-/// The provider's own error message, one line, bounded and redacted.
-fn provider_detail(body: &[u8]) -> Option<String> {
+/// The provider's own error code and message, one line, bounded and redacted.
+fn provider_detail(body: &[u8]) -> Option<ProviderDetail> {
     let json: serde_json::Value = serde_json::from_slice(body).ok()?;
     let error = &json["error"];
     let message = error["message"]
@@ -77,11 +123,11 @@ fn provider_detail(body: &[u8]) -> Option<String> {
         .into_iter()
         .filter_map(serde_json::Value::as_str)
         .find(|code| is_error_code(code));
-    let detail = match code {
-        Some(code) => one_line_redacted(&format!("{code}: {message}")),
-        None => one_line_redacted(message),
-    };
-    (!detail.is_empty()).then_some(detail)
+    let message = one_line_redacted(message);
+    (!message.is_empty()).then(|| ProviderDetail {
+        code: code.map(str::to_owned),
+        message,
+    })
 }
 
 fn is_error_code(code: &str) -> bool {
@@ -189,21 +235,63 @@ fn looks_like_secret(core: &str) -> bool {
 mod tests {
     use super::*;
 
+    /// The detail as the error text shows it: `code: message` or `message`.
     fn detail(body: &str) -> Option<String> {
-        provider_detail(body.as_bytes())
+        provider_detail(body.as_bytes()).map(|detail| match detail.code {
+            Some(code) => format!("{code}: {}", detail.message),
+            None => detail.message,
+        })
     }
 
     #[test]
     fn keeps_the_status_prefix_with_and_without_detail() {
         let status = reqwest::StatusCode::TOO_MANY_REQUESTS;
+        let plain = status_error_from("Gemini", status, None, None);
         assert_eq!(
-            status_error_text("Gemini", status, None).to_string(),
+            plain.to_string(),
             "API error: Gemini returned HTTP 429 Too Many Requests"
         );
+        let detailed = status_error_from(
+            "Gemini",
+            status,
+            Some(Duration::from_secs(52)),
+            provider_detail(br#"{"error":{"message":"quota","status":"RESOURCE_EXHAUSTED"}}"#),
+        );
         assert_eq!(
-            status_error_text("Gemini", status, Some("RESOURCE_EXHAUSTED: quota")).to_string(),
+            detailed.to_string(),
             "API error: Gemini returned HTTP 429 Too Many Requests: RESOURCE_EXHAUSTED: quota"
         );
+        let AiError::HttpStatus(http) = detailed else {
+            panic!("expected an HTTP status error");
+        };
+        assert_eq!(http.provider(), "Gemini");
+        assert_eq!(http.status(), 429);
+        assert_eq!(http.retry_after(), Some(Duration::from_secs(52)));
+        assert_eq!(http.code(), Some("RESOURCE_EXHAUSTED"));
+        assert_eq!(http.message(), Some("quota"));
+    }
+
+    #[test]
+    fn reads_retry_after_seconds_and_gemini_retry_info() {
+        assert_eq!(retry_after_seconds("30"), Some(Duration::from_secs(30)));
+        assert_eq!(retry_after_seconds(" 0 "), Some(Duration::ZERO));
+        assert_eq!(retry_after_seconds("Wed, 21 Oct 2015 07:28:00 GMT"), None);
+        assert_eq!(retry_after_seconds("-1"), None);
+        assert_eq!(retry_after_seconds(""), None);
+        let gemini = br#"{"error":{"code":429,"status":"RESOURCE_EXHAUSTED","message":"m","details":[{"@type":"type.googleapis.com/google.rpc.QuotaFailure"},{"@type":"type.googleapis.com/google.rpc.RetryInfo","retryDelay":"52.5s"}]}}"#;
+        assert_eq!(
+            google_retry_delay(gemini),
+            Some(Duration::from_millis(52_500))
+        );
+        for body in [
+            r#"{"error":{"details":[{"@type":"type.googleapis.com/google.rpc.RetryInfo","retryDelay":"-3s"}]}}"#,
+            r#"{"error":{"details":[{"@type":"type.googleapis.com/google.rpc.RetryInfo","retryDelay":"52"}]}}"#,
+            r#"{"error":{"details":[{"@type":"other","retryDelay":"5s"}]}}"#,
+            r#"{"error":{"message":"m"}}"#,
+            "not json",
+        ] {
+            assert_eq!(google_retry_delay(body.as_bytes()), None, "{body}");
+        }
     }
 
     #[test]
