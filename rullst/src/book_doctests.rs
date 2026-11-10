@@ -279,6 +279,7 @@ tutorial!(
 );
 tutorial!(framework_spec, "../../docs/src/spec.md");
 tutorial!(telemetry_guide, "../../docs/src/telemetry-guide.md");
+tutorial!(testing_your_app, "../../docs/src/testing-your-app.md");
 tutorial!(crate_ai, "../../docs/src/crates/ai.md");
 tutorial!(crate_auth, "../../docs/src/crates/auth.md");
 tutorial!(crate_capital, "../../docs/src/crates/capital.md");
