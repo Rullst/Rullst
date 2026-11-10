@@ -94,7 +94,9 @@ fn plain(file: &fs::File) -> Result<(), ProjectError> {
 fn xattr_names(file: &fs::File) -> Result<Vec<u8>, ProjectError> {
     // The list can grow between the size query and the read; retry briefly.
     for _ in 0..4 {
-        let size = match rustix::fs::flistxattr(file, &mut [0u8; 0][..]) {
+        // rustix 1.1.6 no longer treats an empty buffer as a size query (it
+        // returns 0, which would read as "no attributes"); ask explicitly.
+        let size = match rustix::fs::flistxattr_query(file) {
             Ok(size) => size,
             // A filesystem with no xattr support cannot carry POSIX ACL xattrs.
             Err(rustix::io::Errno::NOTSUP) => return Ok(Vec::new()),

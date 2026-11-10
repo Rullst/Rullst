@@ -70,7 +70,6 @@ const IDENT_RULES: &[(&str, &Rule)] = &[
     ("OpenEvent", &MAIL_TRACKING),
     ("ClickEvent", &MAIL_TRACKING),
     ("strip_html_to_plain_text", &MAIL_TEXT_FALLBACK),
-    ("record_progress", &LMS_RECORD_PROGRESS),
     ("store_order", &ERP_STORE_ORDER),
 ];
 
@@ -399,9 +398,6 @@ impl Scanner<'_, '_> {
                     .is_some_and(|key| key.starts_with("BILLING_")) =>
             {
                 self.hit(&BILLING_SETTINGS, at);
-            }
-            [.., "hash_password"] if !self.context.text.contains("credential_rate_limit") => {
-                self.hit(&CREDENTIAL_RATE_LIMIT, at);
             }
             [.., model, "all"]
                 if args.is_empty()

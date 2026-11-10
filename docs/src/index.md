@@ -3,7 +3,7 @@
 Because With Rullst, We Rule! Rullst is a modular Rust framework suite built on
 Tokio, Axum, Tower, and SQLx for full-stack applications and the product
 workflows around them. Version 13 is in prerelease: `13.0.0-alpha.4` is
-published and is the 13.0 feature freeze. The v12 line reached end of life on
+published, and `13.0.0-alpha.5` is the 13.0 feature freeze. The v12 line reached end of life on
 16 October 2026. Use the capability and release documents to distinguish
 implemented behavior from roadmap work and application-specific
 responsibilities. This book is built from the `main` branch, which can be

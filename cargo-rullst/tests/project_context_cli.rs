@@ -40,6 +40,16 @@ fn generated_projects_preserve_instructions_and_refresh_context_after_scaffoldin
         ));
         assert!(root.join("AGENTS.md").is_file());
         assert!(root.join(".rullst/context-map.json").is_file());
+        // Git for Windows would otherwise check the outputs out with CRLF.
+        let attributes = fs::read_to_string(root.join(".gitattributes")).unwrap();
+        assert!(
+            attributes.contains("\n.llms.txt text eol=lf\n"),
+            "{attributes}"
+        );
+        assert!(
+            attributes.contains("\n.rullst/context-map.json text eol=lf\n"),
+            "{attributes}"
+        );
         success(cli(&root, &["generate:ai-context", "--check"]));
         fs::write(
             root.join("AGENTS.md"),
@@ -49,6 +59,8 @@ fn generated_projects_preserve_instructions_and_refresh_context_after_scaffoldin
         let initial = fs::read(root.join(".llms.txt")).unwrap();
         success(cli(&root, &["make:controller", "InventoryProbe"]));
         assert_ne!(initial, fs::read(root.join(".llms.txt")).unwrap());
+        // The map the project has is refreshed; no diagram is created unasked.
+        assert!(!root.join("diagram.md").exists());
         assert_eq!(
             fs::read_to_string(root.join("AGENTS.md")).unwrap(),
             "maintainer instructions must survive"

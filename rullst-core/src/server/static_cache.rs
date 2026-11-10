@@ -8,25 +8,60 @@
 //! `If-Modified-Since` with `304 Not Modified`. Only `2xx` and `304` responses
 //! are labelled, so errors keep the security baseline's `no-store`, which it
 //! adds only when a response has no `Cache-Control` yet.
+//!
+//! [`crate::assets::url`] links `app.css` as `app.<hash>.css`; the mount
+//! resolves that name to the real file before any of the above (see
+//! `static_hashed.rs`).
 
+use crate::assets::{Limits, Manifest};
 use crate::server::server_middleware::zstd_static_from;
 use axum::http::{HeaderValue, StatusCode, header};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+#[path = "static_hashed.rs"]
+mod hashed;
 
 /// For fingerprinted files: one year, never revalidated.
 pub(crate) const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 /// For every other static file: store, but revalidate with the validators.
 pub(crate) const REVALIDATE: &str = "no-cache";
 
-/// Serves `<working directory>/static` under `/static`.
+/// Serves `<working directory>/static` under `/static` and makes its
+/// manifest the one [`crate::assets::url`] reads.
 pub(crate) fn mount_static_assets(app: axum::Router) -> axum::Router {
-    mount_static_assets_at(app, Path::new("."))
+    let root = Path::new(".");
+    let manifest = static_manifest(root);
+    crate::assets::activate(Arc::clone(&manifest));
+    mount_static_assets_with(app, root, manifest)
+}
+
+/// The manifest of `root/static`; debug builds follow edits.
+fn static_manifest(root: &Path) -> Arc<Manifest> {
+    Arc::new(Manifest::build(
+        root.join("static"),
+        cfg!(debug_assertions),
+        Limits::DEFAULT,
+    ))
+}
+
+/// Serves `root/static` under `/static` with its own manifest, without
+/// changing the one [`crate::assets::url`] reads.
+#[cfg(test)]
+pub(crate) fn mount_static_assets_at(app: axum::Router, root: &Path) -> axum::Router {
+    let manifest = static_manifest(root);
+    mount_static_assets_with(app, root, manifest)
 }
 
 /// Serves `root/static` under `/static`: Brotli siblings through `ServeDir`,
-/// Zstandard siblings through [`zstd_static_from`], and the cache policy of
-/// the original request path around both.
-pub(crate) fn mount_static_assets_at(app: axum::Router, root: &Path) -> axum::Router {
+/// Zstandard siblings through [`zstd_static_from`], the cache policy of the
+/// original request path around both, and outermost the content-hashed names
+/// of `manifest` (see [`hashed::hashed_static_middleware`]).
+fn mount_static_assets_with(
+    app: axum::Router,
+    root: &Path,
+    manifest: Arc<Manifest>,
+) -> axum::Router {
     let root: PathBuf = root.to_path_buf();
     let directory = root.join("static");
     app.nest_service(
@@ -40,6 +75,12 @@ pub(crate) fn mount_static_assets_at(app: axum::Router, root: &Path) -> axum::Ro
         },
     ))
     .layer(axum::middleware::from_fn(static_cache_middleware))
+    .layer(axum::middleware::from_fn(
+        move |req: axum::extract::Request, next: axum::middleware::Next| {
+            let manifest = Arc::clone(&manifest);
+            async move { hashed::hashed_static_middleware(manifest, req, next).await }
+        },
+    ))
 }
 
 /// Sets the policy of [`static_cache_policy`] on successful and `304`

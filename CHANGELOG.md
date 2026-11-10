@@ -15,7 +15,8 @@ A prepared version section does not establish that its tag or crates exist.
   ([Testing your application](docs/src/testing-your-app.md)). Every starter's
   `src/security_tests.rs` has a `PAGES` list of its parameterless pages and a
   smoke test that checks each page's status (sign-in pages redirect), its
-  security headers and its HTML; `cargo rullst new` writes
+  security headers, its HTML and that an htmx history-restore request still
+  receives the whole page; `cargo rullst new` writes
   `.github/workflows/ci.yml` (formatting, Clippy `-D warnings`, tests, a daily
   `cargo audit`, a TruffleHog secret scan; every action pinned by commit SHA,
   read-only token) and a monthly, grouped `.github/dependabot.yml`, unless
@@ -34,6 +35,38 @@ A prepared version section does not establish that its tag or crates exist.
   `TestResponse::assert_html_hygiene` applies it with the response's own
   policy, and `TestResponse::assert_security_headers` checks the CSP,
   `nosniff` and frame protection.
+- Content-hashed static asset URLs: `rullst::assets::url("app.css")` returns
+  `/static/app.<hash>.css` (the first 16 hex characters of the file's
+  SHA-256) while `Server` serves `static/`, and the plain `/static/app.css`
+  outside a server, for example in unit tests. The `/static` mount resolves
+  the hashed name to the real file, Brotli and Zstandard siblings included,
+  and serves it with `Cache-Control: public, max-age=31536000, immutable`;
+  an outdated hash gets a `307` redirect to the current URL with
+  `Cache-Control: no-store`, so a CDN or browser can no longer keep an old
+  stylesheet after a deploy (reported while upgrading an application that
+  hand-rolled `?v=` tokens). Debug builds follow edits and new files; symbolic
+  links, hidden paths and names that would need percent-encoding keep their
+  plain URL ([frontend guide](https://rullst.github.io/Rullst/book/frontend.html)).
+- `cargo rullst add tailwind`: sets up Tailwind CSS v4 with the official
+  standalone CLI, pinned to v4.3.3 (the newest release past a 14-day
+  cooldown) with the SHA-256 of every platform's asset embedded in the CLI. The binary is downloaded once into the user cache,
+  verified before every use and never run when it does not match. The
+  command writes `assets/css/app.css` (`@import "tailwindcss" source(none)`
+  and `@source "../../src/**/*.rs"`), builds `static/app.css`, links it in the
+  layout when one `html!` closes `<head>` (else prints the line), ignores the
+  output in `.gitignore` unless the project already tracks it, and adds
+  checksum-pinned BuildKit stages to a generated Dockerfile (and to the ones
+  `deploy` and `dockerize` write from then on). `cargo rullst dev` runs
+  `tailwindcss --watch` next to the server, and `cargo rullst build` minifies
+  the stylesheet before pre-compression. `--dry-run` downloads and writes
+  nothing.
+- `cargo rullst add alpine`: vendors Alpine.js's CSP build (`@alpinejs/csp`
+  3.17.5, checked against the npm registry's `dist.integrity`) into
+  `static/vendor/alpine-csp.min.js`, adds an example `Alpine.data` component in
+  `static/js/alpine-components.js` and loads both as deferred same-origin
+  scripts, so client-only state works under the default Content-Security-Policy
+  without `'unsafe-eval'`. The new book page lists what the CSP build cannot
+  parse.
 - CI compares the ORM across databases: the `ORM differential databases` job
   of `ci.yml` runs the same scenarios (`rullst-orm/tests/differential/`:
   `#[derive(Orm)]` CRUD, value round trips, query-builder filters, ordering
@@ -148,12 +181,242 @@ A prepared version section does not establish that its tag or crates exist.
   `hx-indicator` works; head markup with its own `htmx-config` keeps it, and a
   page rendered without a nonce is unchanged. Applications with their own
   layout can do the same, as `examples/blog` and Nexus do.
+- Generators that add a migration (`make:migration`, `make:model
+  --migration`, `make:migration:auto`, `auth`, `make:mfa`, `make:oauth`,
+  `make:billing`, `make:chat-session`) no longer rewrite `src/migrations/mod.rs`
+  as a whole: the project's own items there, such as `pub mod seeds;` and
+  `pub mod demo;`, were deleted and the application stopped compiling. Only
+  the migration declarations and `get_migrations()` are regenerated now;
+  every other item and comment is kept, and a file that is not valid Rust is
+  left unchanged with an error. Reported while upgrading an application.
+- `cargo rullst make:pwa` wires the layouts that really need it and says what
+  it did. A `<head>` that linked its own manifest was skipped although it
+  registered no service worker, and the report still counted it among the
+  layouts that "register /sw.js"; such a head now receives only the
+  registration script, and only layouts that register the worker are
+  counted. The `<head>` of e-mail templates (files under a `mail`/`email`
+  module or named after one, and documents in strings of a file that sends
+  mail), test code and a string with only `</head>` are no longer edited:
+  an e-mail template had received the manifest link and `pwa.js`. The
+  health-router merge is found in any module of `src/` (such as
+  `src/routes.rs`), not only the crate root; without a recognized layout or a
+  single merge the command no longer stops before writing anything: it
+  writes the files and prints the line to add by hand. Reported while
+  upgrading two applications.
+- `make:pwa` writes the offline page and the update prompt in the `--lang`
+  language when it is English, Portuguese or Spanish (English, with a note,
+  otherwise). The offline page uses plain markup instead of Tailwind classes
+  the application may not have, and the prompt is styled by the classes
+  `pwa-update`, `pwa-update-text` and `pwa-update-button` through the new
+  `static/pwa.css` (zero-specificity `:where()` rules, loaded only when the
+  prompt appears) instead of styles set from JavaScript, so the
+  application's stylesheet can restyle it. The service worker's precache
+  list marks the placeholder icons and the starter's logo.
+- `cargo rullst make:mail` enables the `mail` feature of `rullst`, as `cargo
+  rullst add mail` does, instead of `mailer` (Lettre's SMTP transport), which
+  no output mentioned; a project with a feature that already enables `mail`
+  is left unchanged. The generated mailables pass `cargo fmt --check`, and
+  `pub mod mail;` (like every module `register_mod_ast` adds, and `mod pwa;`)
+  goes among the crate root's module declarations in rustfmt's order instead
+  of the end of the file, after `#[cfg(test)] mod security_tests;`.
+- `cargo rullst make:worker` enables `queue-sqlite` when the `rullst`
+  dependency enables no queue backend; its printed `rullst::Queue::sqlite`
+  did not compile without it. The printed startup lines read the
+  application's `DATABASE_URL` with `rullst::config::project_setting` instead
+  of `sqlite://rullst.db` in the working directory, which fails in a
+  read-only container (`REDIS_URL` with `queue-redis`).
+- Scaffolds no longer create files nobody asked for: `diagram.md` is
+  refreshed only when the project has one (`cargo rullst generate:diagram`
+  creates it), and `.llms.txt` and `.rullst/context-map.json` only when the
+  project has them (`cargo rullst new` writes them). `make:worker`,
+  `make:island` and the other scaffolds had written `diagram.md` to the
+  project root.
+- The second factor of `cargo rullst make:mfa` names its issuer `MFA_ISSUER`,
+  else `APP_NAME`, read with `rullst::config::project_setting` (environment,
+  then `.env`), else the `APPLICATION_NAME` constant (the package name). It
+  read only the process environment and defaulted to "Rullst".
+- `cargo rullst make:oauth` names what the project lacks (the `User` fields
+  and methods, the public `auth_controller.rs` helpers or the `login_page`
+  that `cargo rullst auth` generates) instead of always listing
+  `session_epoch`, `current_session_epoch` and `find_by_email`, which a
+  project could already have. `make:privacy` and `make:age-gate` name the
+  authentication file that is missing or differs from the SaaS starter's.
+- The `frontend_engine_badge` and `frontend_adapter_comment` helpers of the
+  CLI's blueprints, which claimed a "Rullst HTMX + Tailwind SSR profile" and
+  LiveView, Wasm Island, Pico.css and Tera profiles that no generator
+  offers, are removed; they were never called.
 - The generated starters' pages have a `<main>` landmark (Blank home, SaaS
   sign-in, registration and password pages, pricing and dashboard, whose top
   bar becomes a `<header>`), and the SaaS dashboard's card headings follow its
   `h1` as `h2` instead of `h3` (axe `landmark-one-main`, `region` and
   `heading-order`). `examples/lms`'s dashboard sign-out buttons use `#dc2626`
   (4.83:1) instead of white on `#ef4444` (3.76:1).
+- `cargo rullst upgrade` stops before changing anything when the plan has
+  must-change findings. It used to change the versions, run `cargo fix` (more
+  than ten minutes on a cold cache) and fail on code the plan had already
+  located, such as `#[derive(FromRow, Orm)]`, then restore the project and
+  only then say to fix them first. The error now names each rule with its
+  first locations and guidance, and the plan (`--dry-run` included) says that
+  these findings stop the upgrade. `--keep-on-failure` still changes the
+  versions and keeps the edited files for repair, as the alpha.3 to alpha.4
+  checklist does for `FromRow`. Reported while upgrading an application.
+- `cargo rullst upgrade` links the migration guide's checklist for the
+  project's version at the end of the plan, in the Markdown report and in the
+  JSON `migration_guide`: an alpha.3 (or later 13.0 prerelease) project gets
+  "Upgrading an alpha.3 application to alpha.4" and an alpha.2 project the
+  alpha.2 checklist, instead of the table of changes since 12.1.0, which
+  findings still link for their rows.
+- On Windows, `cargo rullst upgrade` (the plan, `report.md` and its messages)
+  and `cargo rullst hook:install` print paths without the `\\?\` prefix that
+  canonical Windows paths carry, which many programs refuse when the path is
+  pasted.
+- Upgrade rule `V13-CREDENTIAL-RATE-LIMIT` no longer reports password hashing
+  that runs through the generated `run_password_work` helper or after a
+  semaphore permit, or in migrations, seeds, `src/bin`, tests, benches,
+  examples and test functions; only `credential_rate_limit` named in code
+  counts, so a comment or a string no longer silences it. It also reports
+  `hash_password_async`, which 12.x controllers called directly.
+- Upgrade rule `V13-LMS-RECORD-PROGRESS` reports a `record_progress` function
+  only when its first SQL write is not the `lesson_progress_events` insert
+  that claims the idempotency key. It reported every mention of the name: an
+  already fixed service, its controller and the route.
+- Upgrade rule `V13-ORM-SKIP-MANAGED-COLUMNS` reports every `#[orm(skip)]`
+  field that the model's `FromRow` reads, each at its own line, and says that
+  the query builder rejects every `skip` field; it named only `is_admin` and
+  `session_epoch` and marked one line per file.
+- `cargo rullst generate:ai-context` accepts its outputs when Git for Windows
+  checks them out with CRLF line endings (`core.autocrlf=true`): it refused
+  `.llms.txt` as "a link, special file or unrecognized generated output", and
+  `--check` called it stale. An output that differs only in line endings is
+  current and is left as it is. A refusal now names the file and the reason,
+  and when the command writes an output it appends `text eol=lf` entries for
+  both outputs to `.gitattributes`, creating it if needed and keeping every
+  existing line.
+- `cargo rullst new` lists `.rullst_dev_key` in the generated `.gitignore` and
+  `.dockerignore` (`dockerize` and `deploy` too), and `cargo rullst doctor`
+  warns when that file exists and Git does not ignore it (✗ when tracked).
+  `rullst::auth::get_app_key()` writes the development key there when no
+  `APP_KEY` is set outside staging and production, so a plain `cargo test`
+  left a secret that `git add .` picked up.
+- `cargo rullst green` reports the figures that need no running app (binary
+  size once built, image size, dependency count) when the release build
+  fails, the app does not start or nothing answers on `--url`, with the
+  failure in the report's new `failure` key (`null` otherwise); with `--json`
+  standard output used to be empty. The fix is chosen from the app's own
+  error (a database it cannot reach, `APP_KEY`, billing credentials) instead
+  of always naming the SaaS starter's billing credentials, and a failed
+  build shows at most 20 lines of its log, from the first error. The exit
+  status is still 1.
+- The README, the green guide and the CLI reference say that green measures
+  idle memory and CPU time only on Linux (they read `/proc`), and how to pass
+  `--path /` from Git Bash (`MSYS_NO_PATHCONV=1`).
+- `rullst::htmx::render_page`, `render_page_with_lang` and
+  `render_page_with_head` no longer break htmx's Back button. When its
+  history cache misses, htmx 1.9.12 requests the page with both
+  `HX-Request: true` and `HX-History-Restore-Request: true` and replaces the
+  whole `<body>` with the answer; it received only the fragment, so the
+  restored page lost its header, menu and footer. History restores and
+  boosted requests (`HX-Boosted: true`) now receive the whole page, and other
+  htmx requests still receive the fragment. HTML responses of the
+  application's routes under `Server` carry `Vary: HX-Request`, so a cache
+  that stores the page or the fragment of a URL does not serve one for the
+  other. Reported while upgrading an application.
+- `html!` escapes a `"` in a fixed attribute value: `content="{\"a\":1}"`
+  was written as `content="{"a":1}"`, which the browser cut at the second
+  quote (an `htmx-config` meta tag lost its JSON this way, without a compile
+  error). It is now written `content="{&quot;a&quot;:1}"`; other characters,
+  including references such as `&amp;`, are kept as written. Reported while
+  upgrading an application.
+- `html!` warns about an `Option` in `name={value}`: `None` writes `name=""`,
+  which still turns a boolean attribute such as `disabled` or `selected` on,
+  so a button stayed disabled and every `<option>` was selected. The output
+  is unchanged, but the expansion now raises a `deprecated` warning at the
+  value that points to `name?={value}`, which leaves the attribute out for
+  `None` (or `value.unwrap_or_default()` to keep the empty value); a build
+  with `-D warnings` fails until it is changed. `{option}` as text is not
+  affected. Reported while upgrading an application.
+- `rullst-orm`'s query-builder error for a skipped column names the option
+  the field has. An `#[orm(skip)]` field is still read from the row, and the
+  shared message for `#[orm(skip)]`/`#[sqlx(skip)]` said it was not a
+  database column; the `#[orm(skip)]` error now says it is left out of
+  generated writes and of the builder but not of reads, the `#[sqlx(skip)]`
+  error says the model does not read it, and both point to
+  `#[orm(db_default)]` for a column the table has and that must be
+  filterable. Reported while upgrading an application.
+- Nexus list tables wider than the screen scroll sideways: `.nexus-table-wrap`
+  had `overflow: hidden`, so the last columns of a wide model were cut off
+  with no scroll bar. It now has `overflow-x: auto` and keeps its rounded
+  border. Reported while upgrading an application.
+- Nexus shows a failed save above the record dialog. The form opens in a
+  modal `<dialog>`, which the browser draws above the page, so "Save failed:
+  …" appeared behind the blurred backdrop and could not be read. While a
+  dialog is open the message container now moves into it and returns to the
+  page when the dialog closes; the dialog is centred without a CSS
+  transform, so the message keeps its place at the bottom right of the
+  window. Reported while upgrading an application.
+- The start-up line for a server listening on every interface behind a
+  trusted proxy says that a container sharing the host network
+  (`--network host`, Quadlet `Network=host`) with the proxy on the host still
+  needs `HOST=127.0.0.1`. It suggested keeping `HOST=0.0.0.0` for any proxy
+  reaching the application "through a container network", which in that
+  setup left the port open without the proxy. Reported while upgrading an
+  application.
+- `rullst-ai`: `GeminiProvider` generates with `gemini-3.5-flash-lite`,
+  Google's current Flash-Lite model, when the application does not call
+  `with_model`. The previous default, `gemini-2.5-flash-lite`, is from the 2.5
+  line, which a new Google AI Studio key could not use (requests failed with
+  HTTP 404). The embedding default stays `gemini-embedding-001` (listed until
+  May 14, 2028), because another embedding model would make stored vectors
+  incomparable with new ones. Reported while upgrading an application.
+- `rullst-ai`: when a provider answers with an HTTP error, `AiError::ApiError`
+  now includes the provider's own error code and message after the status,
+  for example `Gemini returned HTTP 429 Too Many Requests:
+  RESOURCE_EXHAUSTED: You exceeded your current quota…`, instead of only the
+  status, which did not say which quota ran out or that a model was gone. The
+  `<Provider> returned HTTP <status>` prefix is unchanged, so matching on
+  `HTTP 429` keeps working. The message comes only from a JSON body (at most
+  16 KiB read), is one line of at most 300 characters, and has URL queries,
+  URL credentials, `key=`/`token=` values and key-shaped tokens redacted.
+  This applies to the OpenAI, Gemini, Anthropic, DeepSeek, Ollama and
+  OpenAI-compatible transports, streaming included. Reported while upgrading
+  an application.
+- `rullst-core`: the `Locales::iter` documentation said "in catalog order";
+  it now says the order is that of the tags given to `Locales::new` or, for a
+  `catalog!`, the tags sorted in byte order (`en`, `es`, `pt-BR`), with the
+  default locale not first, and shows how to start a language menu with it.
+- `rullst-capital` documentation: the InfinitePay adapter's README, book and
+  rustdoc entries now say plainly that it performs no real operation (real
+  credentials make checkout and webhook handling return
+  `UnsupportedOperation` before any request), that InfinitePay's public
+  Checkout API sends an unsigned webhook confirmed with `payment_check`, and
+  how to charge through InfinitePay with an application-owned
+  `BillingProvider`. The new one-time Stripe checkout section says that the
+  production CSRF baseline answers the webhook `POST` with 403 until its path
+  is in `[security] csrf_signed_webhook_paths`, and that redirect URLs must be
+  HTTPS even with a `mock_` key.
+- The remote Studio install commands in the documentation add
+  `--no-default-features`
+  (`cargo install rullst-studio --version =… --no-default-features --features remote --locked`),
+  which no longer builds the PostgreSQL and MySQL drivers and the SQLite queue
+  that only Studio's local pages use. Reported while upgrading an
+  application.
+
+### Security
+
+- `cargo rullst update project` again refuses project files that carry
+  extended attributes. rustix 1.1.6 (a security release) stopped treating an
+  empty buffer as a size query, so the check read every file as having no
+  attributes; it now asks for the size with `flistxattr_query`, and
+  cargo-rullst requires rustix 1.1.6.
+- Two advisories published after 13.0.0-alpha.4 have time-bounded exceptions
+  in `docs/src/security-advisory-exceptions.md` (until 2027-01-28), because no
+  fixed dependency graph exists yet. `RUSTSEC-2026-0459` (bundled SQLite before
+  3.54.0 can return stale memory when it opens a database with a crafted
+  `-wal` file) affects every SQLite feature: `sqlx-sqlite` 0.9.0 does not
+  accept the fixed `libsqlite3-sys` 0.39. Do not open SQLite files that a less
+  trusted party can write until an `sqlx` release lifts the cap.
+  `RUSTSEC-2026-0440` marks `astral-tokio-tar` unmaintained; it is reached only
+  through the `testcontainers` dev-dependency of the integration tests.
 
 ## [13.0.0-alpha.4] - 2026-10-31
 

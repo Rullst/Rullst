@@ -17,7 +17,7 @@ pub(super) fn reject_symlinked_sources(
             if is_rust && entry.file_type().is_symlink() {
                 return Err(format!(
                     "refusing to scan symlinked Rust source {}",
-                    entry.path().display()
+                    crate::term::display_path(entry.path())
                 )
                 .into());
             }

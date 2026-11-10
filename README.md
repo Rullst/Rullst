@@ -418,8 +418,9 @@ production data. [Assisted upgrade tutorial](https://rullst.github.io/Rullst/boo
 
 ## 🚀 Versions: v13 is a prerelease
 
-`13.0.0-alpha.4` is the latest v13 prerelease and the 13.0 feature freeze;
-`13.0.0-rc.1` (fixes and documentation only) and then `13.0.0` follow. Cargo
+`13.0.0-alpha.4` is the latest v13 prerelease. `13.0.0-alpha.5`, the 13.0
+feature freeze, then `13.0.0-rc.1` (fixes and documentation only) and
+`13.0.0` follow. Cargo
 never selects a prerelease on its own, so `cargo install cargo-rullst` and
 `cargo add rullst` without a version still pick the end-of-life 12.x. Until
 13.0.0 is released, name the exact version:
@@ -477,7 +478,8 @@ list every change.
   not a certification ([guide](https://rullst.github.io/Rullst/book/security-report.html)).
 - **Efficiency figures (Experimental):** `cargo rullst green` reports measured
   binary and image size, idle memory, dependency count and CPU time per
-  request, each with its method, and a carbon figure only as a labelled SCI
+  request (idle memory and CPU time on Linux only, since they read `/proc`),
+  each with its method, and a carbon figure only as a labelled SCI
   estimate from your own inputs ([guide](https://rullst.github.io/Rullst/book/green.html)).
 - **For AI assistants:** every `--json` output follows one contract with a
   `schema` id, the site publishes `llms.txt` and `llms-full.txt`, and the
@@ -498,6 +500,12 @@ list every change.
 - **Progressive web apps:** `cargo rullst make:pwa` (manifest, service worker,
   offline page), a Google Play Trusted Web Activity configuration and a
   Microsoft Store guide ([guide](https://rullst.github.io/Rullst/book/tutorials/43-progressive-web-apps.html)).
+- **Frontend tools, opt-in:** `rullst::assets::url("app.css")` links static
+  files under a content-hashed name served `immutable`; `cargo rullst add
+  tailwind` sets up Tailwind CSS v4 through its pinned, checksum-verified
+  standalone CLI (no Node.js) in `dev`, `build` and the Dockerfile; `cargo
+  rullst add alpine` vendors Alpine.js's CSP build for client-only state under
+  the strict CSP ([guide](https://rullst.github.io/Rullst/book/frontend.html)).
 - **Studio production monitoring:** a read-only monitoring endpoint, and a
   standalone Studio for remote projects with a project switcher, history and
   alerts ([guide](https://rullst.github.io/Rullst/book/production-monitoring.html)).

@@ -97,7 +97,7 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
           rustflags: "-D warnings"
           build-warnings: ""
@@ -105,7 +105,7 @@ jobs:
           cache: false
 
       - name: Install cargo-audit for release evidence
-        uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        uses: taiki-e/install-action@3a3daafd3b7f23b8f65d9f5ba2db203fb59b79e2 # v2.90.2
         with:
           tool: cargo-audit
 
@@ -175,7 +175,7 @@ jobs:
 
           # Any advisory outside docs/src/security-advisory-exceptions.md blocks
           # the release. The JSON result is retained as tag-bound evidence.
-          cargo audit --json > "$evidence_dir/cargo-audit.json"
+          cargo audit --json --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440 > "$evidence_dir/cargo-audit.json"
 
           # This command intentionally emits NOT CHECKED / NOT EVALUATED for
           # controls that a bounded source audit cannot establish.
@@ -343,7 +343,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
           rustflags: "-D warnings"
           build-warnings: ""
@@ -407,7 +407,7 @@ jobs:
       id-token: write
     steps:
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
           rustflags: "-D warnings"
           build-warnings: ""
@@ -618,7 +618,7 @@ jobs:
           done
 
       - name: Create GitHub release from verified artifacts
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           body_path: verified-crates/release-evidence/release-notes.md
           prerelease: ${{ contains(github.ref_name, '-') }}

@@ -15,9 +15,11 @@ pub struct HtmlAttribute {
 }
 
 pub enum HtmlAttrValue {
-    /// `name="text"`: author-owned source, written as it is.
+    /// `name="text"`: author-owned source, written as it is except for `"`,
+    /// which would end the attribute and is written `&quot;`.
     Static(LitStr),
-    /// `name={value}`: always written, with the value escaped.
+    /// `name={value}`: always written, with the value escaped. An `Option`
+    /// value raises a deprecation warning that points to `name?={value}`.
     Dynamic(Box<Expr>),
     /// `name`: a valueless (boolean) attribute, written as it is.
     Bare,
@@ -100,6 +102,44 @@ pub fn url_guard_tokens() -> TokenStream {
     }
 }
 
+/// The text a fixed `name="text"` value writes between the attribute's double
+/// quotes: the author's source, except `"` (a Rust `\"`), which would end the
+/// attribute and is written `&quot;`. Everything else is kept, including
+/// character references the author wrote, such as `&amp;`.
+fn static_attribute_value(lit: &LitStr) -> String {
+    lit.value().replace('"', "&quot;")
+}
+
+/// Items emitted once into an element with `name={value}` attributes. Each
+/// such value is passed to `rullst_attribute_value`, which resolves by
+/// autoref to the deprecated method for an `Option` (or `&Option`) and to the
+/// plain one for every other type, so `name={option}` raises a deprecation
+/// warning at the value while the attribute is written exactly as before. The
+/// calls do nothing at run time. Generated inline, like the URL guard, so the
+/// expansion needs nothing new from `rullst::html`.
+pub fn option_value_probe_tokens() -> TokenStream {
+    quote! {
+        struct RullstAttributeValue<'a, T: ?Sized>(&'a T);
+        trait RullstOptionAttributeValue {
+            #[deprecated(
+                note = "`name={value}` with an `Option` writes `name=\"\"` for `None`, and an empty \
+                        boolean attribute such as `disabled` or `selected` is still on: write \
+                        `name?={value}` to leave the attribute out for `None`, or pass \
+                        `value.unwrap_or_default()` to keep the empty value"
+            )]
+            #[inline(always)]
+            fn rullst_attribute_value(&self) {}
+        }
+        impl<T> RullstOptionAttributeValue for RullstAttributeValue<'_, ::core::option::Option<T>> {}
+        impl<T> RullstOptionAttributeValue for RullstAttributeValue<'_, &::core::option::Option<T>> {}
+        trait RullstPlainAttributeValue {
+            #[inline(always)]
+            fn rullst_attribute_value(&self) {}
+        }
+        impl<T: ?Sized> RullstPlainAttributeValue for &RullstAttributeValue<'_, T> {}
+    }
+}
+
 /// Attributes whose value is run as JavaScript: `on*` event handlers and
 /// htmx's `hx-on`/`hx-on-*` (also with a `data-` prefix).
 fn is_event_handler_attribute(name: &str) -> bool {
@@ -172,10 +212,16 @@ impl Parse for HtmlAttribute {
 }
 
 impl HtmlAttribute {
+    /// Whether the attribute is written `name={value}`, whose element needs
+    /// [`option_value_probe_tokens`].
+    pub fn is_dynamic(&self) -> bool {
+        matches!(self.value, HtmlAttrValue::Dynamic(_))
+    }
+
     /// Bytes this attribute writes at least, for the buffer capacity.
     pub fn static_size(&self) -> usize {
         match &self.value {
-            HtmlAttrValue::Static(lit) => self.name.len() + 4 + lit.value().len(), //  name=""
+            HtmlAttrValue::Static(lit) => self.name.len() + 4 + static_attribute_value(lit).len(), //  name=""
             HtmlAttrValue::Bare => self.name.len() + 1,
             HtmlAttrValue::Dynamic(_) | HtmlAttrValue::Optional(_) => self.name.len() + 4,
         }
@@ -197,7 +243,7 @@ impl HtmlAttribute {
         };
         match &self.value {
             HtmlAttrValue::Static(lit) => {
-                let attribute = format!(" {name}=\"{}\"", lit.value());
+                let attribute = format!(" {name}=\"{}\"", static_attribute_value(lit));
                 (quote! { #buffer.push_str(#attribute); }, false)
             }
             HtmlAttrValue::Bare => {
@@ -205,13 +251,23 @@ impl HtmlAttribute {
                 (quote! { #buffer.push_str(#attribute); }, false)
             }
             HtmlAttrValue::Dynamic(expr) => {
-                let value = write_value(quote! { rullst::html::escape_attr(&(#expr)) });
-                // One statement, so temporaries such as `format!(..)` live
+                let binding = Ident::new("value", Span::mixed_site());
+                let value = write_value(quote! { rullst::html::escape_attr(#binding) });
+                // Spanned at the value, so the `Option` warning points there.
+                let probe = quote_spanned! { expr.span()=>
+                    (&RullstAttributeValue(#binding)).rullst_attribute_value();
+                };
+                // The scrutinee's temporaries, such as `format!(..)`, live
                 // until the value has been written.
                 let tokens = quote! {
-                    #buffer.push_str(#prefix);
-                    #value
-                    #buffer.push_str("\"");
+                    match &(#expr) {
+                        #binding => {
+                            #probe
+                            #buffer.push_str(#prefix);
+                            #value
+                            #buffer.push_str("\"");
+                        }
+                    }
                 };
                 (tokens, is_url)
             }

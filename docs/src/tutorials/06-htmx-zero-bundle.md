@@ -113,6 +113,15 @@ For POST forms, including an AI chat, follow the
 HTMX does not automatically copy Rullst's CSRF cookie into a header or make
 HTTP error bodies visible in the target element.
 
+`render_page` and its variants answer an htmx request (`HX-Request: true`)
+with the content alone, for the swap. Since 13.0.0-rc.1 two htmx requests
+receive the whole page instead: the request htmx sends to restore a page that
+is not in its history cache (`HX-History-Restore-Request: true`, so a link with
+`hx-push-url` keeps its layout after Back) and a boosted link or form
+(`HX-Boosted: true`). The page and the fragment share a URL, so under
+`Server` HTML responses carry `Vary: HX-Request` and a cache keeps them
+apart.
+
 ---
 
 ## 🧪 Step 3: Snapshot-test rendered HTML

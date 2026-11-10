@@ -42,6 +42,8 @@ fn strings_stay_escaped_next_to_markup() {
     assert_eq!(html! { <p>{taken}</p> }, "<p>&lt;b&gt;x&lt;/b&gt;</p>");
 }
 
+// Also through the deprecated `name={option}` form, whose output is unchanged.
+#[allow(deprecated)]
 #[test]
 fn markup_in_an_attribute_value_is_escaped_like_text() {
     // Unescaped, the quotes of the inner markup would end `title` and turn

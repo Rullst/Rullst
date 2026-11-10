@@ -7,7 +7,7 @@
 is frozen and no further 12.x release is planned. Until 13.0.0 is stable, the
 latest published v13 prerelease is supported as described in
 [Security support for v13 prereleases](#security-support-for-v13-prereleases).
-After the 13.0.0-alpha.4 feature freeze, 13.0.0-rc.1 takes fixes and
+After the 13.0.0-alpha.5 feature freeze, 13.0.0-rc.1 takes fixes and
 documentation only, and 13.0.0 follows.
 
 Rullst adopts Semantic Versioning for each published crate; crates.io remains

@@ -298,7 +298,7 @@ switcher in the header. It only connects outwards to your projects; nothing
 new is collected or stored on the servers.
 
 ```bash
-cargo install rullst-studio --version =13.0.0-alpha.4 --features remote --locked
+cargo install rullst-studio --version =13.0.0-alpha.4 --no-default-features --features remote --locked
 rullst-studio                  # http://127.0.0.1:5556/studio
 # or, with the CLI installed:
 cargo rullst studio --remote   # --port 7000 for another port
@@ -308,7 +308,11 @@ Pin the version: a plain `cargo install rullst-studio` selects the
 end-of-life 12.3.0, which has no `remote` feature. The `remote` feature is not
 enabled by default: applications that mount
 Studio's local pages in development do not build its HTTP client, encryption
-or SQLite history.
+or SQLite history. `--no-default-features` leaves out the default
+features, which only the local pages use: the PostgreSQL and MySQL drivers and
+the SQLite queue. The remote mode needs neither, so the installation compiles
+less; `rullst-orm` and `rullst-capital` are still built, because Studio does not
+make them optional yet.
 
 It listens on `127.0.0.1` only, with the same protections as Studio's local
 pages: loopback peer and `Host`, same-origin forms, and a per-process form
