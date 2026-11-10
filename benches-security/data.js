@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794346220859,
+  "lastUpdate": 1794348862044,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -20548,6 +20548,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bc7c69da8e1ef75989a82b5255642cfbc0158512",
+          "message": "Merge pull request #628 from Rullst/feat/v13-alpha5-generator-features\n\nfeat(cli): complete make:mfa flow, make:pwa --router and an authentication contract",
+          "timestamp": "2026-11-10T18:52:23-03:00",
+          "tree_id": "65b0bb246d20cc0a655c1a59901aa1ed71c2acde",
+          "url": "https://github.com/Rullst/Rullst/commit/bc7c69da8e1ef75989a82b5255642cfbc0158512"
+        },
+        "date": 1794348861406,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5388,
+            "range": "± 266",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 556,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 14,
             "range": "± 0",
             "unit": "ns/iter"
           }
