@@ -379,8 +379,23 @@ fn hex_digest(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_key, entry_index_key, index_key};
-    use crate::RullstValue;
+    use super::{build_key, drain_indexes, entry_index_key, index_key, store_entry};
+    use crate::{Error, RullstValue};
+
+    /// Unit tests never configure Redis, so these reach the configuration
+    /// check instead of a server.
+    #[tokio::test]
+    async fn redis_operations_fail_closed_before_redis_is_configured() {
+        let entry = build_key("academy", None, "users", "SELECT *", &[]).expect("entry key");
+        assert!(matches!(
+            store_entry(&entry, "[]", 0).await,
+            Err(Error::Validation(_))
+        ));
+        assert!(store_entry(&entry, "[]", 30).await.is_err());
+        let index = index_key("academy", None, "users").expect("index key");
+        assert!(drain_indexes(&[index]).await.is_err());
+        assert!(drain_indexes(&[]).await.is_err());
+    }
 
     #[test]
     fn entry_keys_resolve_to_their_table_index() {
