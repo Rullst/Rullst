@@ -24,8 +24,12 @@ impl StripeCheckoutRequest {
     /// Creates a bounded subscription request with explicit customer and retry identity.
     ///
     /// The reference is an opaque non-PII application key, not an email or token.
-    /// HTTPS redirect URLs are application-owned and must contain no credentials,
-    /// whitespace, control characters or fragments. No customer is created implicitly.
+    /// Redirect URLs are application-owned and must contain no credentials,
+    /// whitespace, control characters or fragments. They must use HTTPS, except
+    /// `http://` on `localhost`, `127.0.0.1` or `[::1]`, which a `mock_*` key
+    /// accepts for local development; a live key requires HTTPS when the
+    /// request is dispatched (since 13.0.0-alpha.5). No customer is created
+    /// implicitly.
     pub fn new(
         customer_id: impl Into<String>,
         price_id: impl Into<String>,
@@ -52,9 +56,7 @@ impl StripeCheckoutRequest {
             ));
         }
         for url in [&request.success_url, &request.cancel_url] {
-            crate::providers::validate_checkout_url("checkout-redirect", url).map_err(|_| {
-                CapitalError::ConfigurationError("checkout redirects require bounded credential-free HTTPS URLs without fragments".into())
-            })?;
+            crate::providers::validate_redirect_url(url)?;
         }
         Ok(request)
     }

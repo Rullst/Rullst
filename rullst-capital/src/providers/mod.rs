@@ -8,9 +8,11 @@ mod fixture;
 mod global;
 mod http;
 pub mod infinitepay;
+mod request;
 pub mod stripe;
 mod stripe_charge;
 mod stripe_checkout;
+mod stripe_one_off;
 mod stripe_one_time;
 mod stripe_reconcile;
 pub use stripe_reconcile::StripeCheckoutSnapshot;
@@ -23,10 +25,11 @@ mod stripe_usage;
 mod stripe_webhook;
 
 pub use global::{init_provider, provider, try_init_provider};
-pub(crate) use http::validate_checkout_url;
 pub(crate) use http::{execute as execute_http, read_json as read_http_json};
+pub(crate) use http::{require_https_redirects, validate_checkout_url, validate_redirect_url};
 pub(crate) use http::{send as send_http, send_json as send_http_json};
 pub use infinitepay::InfinitePayProvider;
+pub use request::ProviderRequest;
 pub use stripe::StripeProvider;
 
 /// Maximum clock drift accepted by timestamped webhook protocols by default.
@@ -47,7 +50,7 @@ pub(crate) fn require_mock_operation(
     )))
 }
 
-/// Whether a provider verifies live signatures or an explicitly named local mock secret.
+/// How a provider authenticates its webhook notifications.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WebhookVerificationMode {
@@ -55,6 +58,17 @@ pub enum WebhookVerificationMode {
     Real,
     /// Deterministic local-only verification selected by a `mock_*` secret.
     Mock,
+    /// The notification is unauthenticated: it only names a payment, and the
+    /// payment is confirmed by querying the provider.
+    ///
+    /// The webhook middleware never calls [`BillingProvider::handle_webhook`]
+    /// for such a provider and never inserts a [`WebhookEvent`]: it reads the
+    /// body with [`BillingProvider::parse_payment_notification`] and inserts
+    /// the resulting [`PaymentNotification`], which carries no payment status.
+    /// Only [`BillingProvider::confirm_one_off_payment`], which queries the
+    /// provider and compares the paid amount with the server-side request,
+    /// can report a payment as paid. Since 13.0.0-alpha.5.
+    ConfirmedAtSource,
 }
 
 pub(crate) fn webhook_mode_from_secret(
@@ -189,7 +203,10 @@ pub struct WebhookEvent {
 }
 
 use crate::error::CapitalError;
-use crate::{ChargeReceipt, ChargeRequest};
+use crate::{
+    ChargeReceipt, ChargeRequest, OneOffCheckout, OneOffCheckoutRequest, OneOffPayment,
+    PaymentNotification,
+};
 
 /// Dynamic trait to handle billing provider interactions.
 #[async_trait]
@@ -224,6 +241,61 @@ pub trait BillingProvider: Send + Sync {
     async fn charge(&self, _request: &ChargeRequest) -> Result<ChargeReceipt, CapitalError> {
         Err(CapitalError::UnsupportedOperation(format!(
             "{} does not provide reviewed direct-charge support",
+            self.name()
+        )))
+    }
+
+    /// Creates a hosted checkout for one purchase priced on the server.
+    ///
+    /// The amount, currency, description and quantity come from the
+    /// [`OneOffCheckoutRequest`], never from the browser. Creating the
+    /// checkout proves nothing: confirm the payment with
+    /// [`Self::confirm_one_off_payment`] or the provider's signed events. The
+    /// default returns [`CapitalError::UnsupportedOperation`]. Since
+    /// 13.0.0-alpha.5.
+    async fn create_one_off_checkout(
+        &self,
+        _request: &OneOffCheckoutRequest,
+    ) -> Result<OneOffCheckout, CapitalError> {
+        Err(CapitalError::UnsupportedOperation(format!(
+            "{} does not provide reviewed one-off checkout support",
+            self.name()
+        )))
+    }
+
+    /// Reads which payment an unauthenticated notification names.
+    ///
+    /// Providers in [`WebhookVerificationMode::ConfirmedAtSource`] implement
+    /// it; the webhook middleware calls it instead of
+    /// [`Self::handle_webhook`]. The result carries no payment status. The
+    /// default returns [`CapitalError::UnsupportedOperation`]. Since
+    /// 13.0.0-alpha.5.
+    fn parse_payment_notification(
+        &self,
+        _payload: &[u8],
+        _headers: &HashMap<String, String>,
+    ) -> Result<PaymentNotification, CapitalError> {
+        Err(CapitalError::UnsupportedOperation(format!(
+            "{} does not read unauthenticated payment notifications",
+            self.name()
+        )))
+    }
+
+    /// Confirms a one-off payment by querying the provider.
+    ///
+    /// `request` is the server-side request the checkout was created from,
+    /// loaded by the application from its own storage with
+    /// `notification.reference()`. A paid result requires the provider to
+    /// confirm the payment and to report the request's total amount and
+    /// currency ([`OneOffPayment::paid`]). The default returns
+    /// [`CapitalError::UnsupportedOperation`]. Since 13.0.0-alpha.5.
+    async fn confirm_one_off_payment(
+        &self,
+        _request: &OneOffCheckoutRequest,
+        _notification: &PaymentNotification,
+    ) -> Result<OneOffPayment, CapitalError> {
+        Err(CapitalError::UnsupportedOperation(format!(
+            "{} does not confirm one-off payments at the source",
             self.name()
         )))
     }
@@ -288,155 +360,4 @@ pub fn url_encode(s: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_subscription_status_variants() {
-        assert_eq!(SubscriptionStatus::Active.as_str(), "active");
-        assert_eq!(SubscriptionStatus::Canceled.as_str(), "canceled");
-        assert_eq!(SubscriptionStatus::PastDue.as_str(), "past_due");
-        assert_eq!(SubscriptionStatus::Unpaid.as_str(), "unpaid");
-        assert_eq!(SubscriptionStatus::Trialing.as_str(), "trialing");
-        assert_eq!(SubscriptionStatus::Paused.as_str(), "paused");
-
-        assert_eq!(
-            SubscriptionStatus::parse_status("active"),
-            SubscriptionStatus::Active
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("paid"),
-            SubscriptionStatus::Active
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("completed"),
-            SubscriptionStatus::Active
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("approved"),
-            SubscriptionStatus::Active
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("resolved"),
-            SubscriptionStatus::Active
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("canceled"),
-            SubscriptionStatus::Canceled
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("cancelled"),
-            SubscriptionStatus::Canceled
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("past_due"),
-            SubscriptionStatus::PastDue
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("unpaid"),
-            SubscriptionStatus::Unpaid
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("failed"),
-            SubscriptionStatus::Unpaid
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("rejected"),
-            SubscriptionStatus::Unpaid
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("expired"),
-            SubscriptionStatus::Unpaid
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("trialing"),
-            SubscriptionStatus::Trialing
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("paused"),
-            SubscriptionStatus::Paused
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("unknown_xyz"),
-            SubscriptionStatus::Unpaid
-        );
-    }
-
-    #[test]
-    fn test_url_encoding_characters() {
-        assert_eq!(url_encode("hello world"), "hello%20world");
-        assert_eq!(url_encode("foo/bar?baz=1"), "foo%2Fbar%3Fbaz%3D1");
-        assert_eq!(url_encode("user@domain.com"), "user%40domain.com");
-        assert_eq!(url_encode("simple_word-123.test~"), "simple_word-123.test~");
-    }
-
-    #[test]
-    fn explicit_mock_webhook_mode_still_requires_its_secret() {
-        let provider = StripeProvider::new("mock_api_key", "mock_webhook_secret");
-        assert_eq!(
-            provider.webhook_verification_mode().unwrap(),
-            WebhookVerificationMode::Mock
-        );
-        assert!(
-            provider
-                .verify_signature(b"{}", "mock_webhook_secret")
-                .is_ok()
-        );
-        assert!(provider.verify_signature(b"{}", "wrong").is_err());
-
-        let empty = StripeProvider::new("mock_api_key", "");
-        assert!(matches!(
-            empty.webhook_verification_mode(),
-            Err(CapitalError::ConfigurationError(_))
-        ));
-        assert!(matches!(
-            empty.handle_webhook(b"{}", &HashMap::new()),
-            Err(CapitalError::ConfigurationError(_))
-        ));
-    }
-
-    #[test]
-    fn timestamp_window_is_five_minutes_and_milliseconds_are_opt_in() {
-        assert_eq!(DEFAULT_WEBHOOK_TOLERANCE, Duration::from_secs(300));
-        let now = 1_800_000_000;
-        let fresh = |timestamp: &str, milliseconds: bool| {
-            ensure_fresh_timestamp(
-                "fixture",
-                timestamp,
-                now,
-                DEFAULT_WEBHOOK_TOLERANCE,
-                milliseconds,
-            )
-        };
-        for timestamp in ["1799999700", "1800000300"] {
-            fresh(timestamp, false).unwrap();
-        }
-        assert!(matches!(
-            fresh("1799999699", false),
-            Err(CapitalError::StaleWebhook(_))
-        ));
-        // Milliseconds are scaled only when the protocol allows them.
-        fresh("1800000000000", true).unwrap();
-        fresh("1800000000", true).unwrap();
-        assert!(matches!(
-            fresh("1800000000000", false),
-            Err(CapitalError::StaleWebhook(_))
-        ));
-    }
-
-    #[test]
-    fn test_global_providers_initialization() {
-        let stripe = StripeProvider::new("mock_key", "sec_stripe");
-        init_provider(Box::new(stripe));
-        assert!(provider().is_some());
-        assert_eq!(provider().unwrap().name(), "stripe");
-
-        // A second initialization is reported and never replaces the first.
-        assert!(matches!(
-            try_init_provider(Box::new(InfinitePayProvider::new("live", "secret"))),
-            Err(CapitalError::ConfigurationError(_))
-        ));
-        init_provider(Box::new(InfinitePayProvider::new("live", "secret")));
-        assert_eq!(provider().unwrap().name(), "stripe");
-    }
-}
+mod tests;

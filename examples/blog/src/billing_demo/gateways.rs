@@ -6,7 +6,7 @@ use std::sync::OnceLock;
 /// The credential variable whose presence marks each gateway as configured.
 const CREDENTIAL_VARIABLES: [(&str, &str); 2] = [
     ("stripe", "STRIPE_SECRET_KEY"),
-    ("infinitepay", "INFINITEPAY_API_KEY"),
+    ("infinitepay", "INFINITEPAY_HANDLE"),
 ];
 
 /// Ids of the gateways whose credential variable `is_set` reports, asking
@@ -73,9 +73,9 @@ pub fn all_gateways() -> Vec<GatewayInfo> {
             archetype: "Experimental billing adapter",
             archetype_badge_class: "badge-emerald",
             flag: "🇧🇷",
-            current_boundary: "Experimental: deterministic offline checkout fixture. Live plan-only checkout and live callbacks fail closed until validated against a live account.",
-            env_example: "INFINITEPAY_API_KEY=\"inf_live_sec_...\"\nINFINITEPAY_WEBHOOK_SECRET=\"whsec_inf_...\"",
-            rust_init_code: "use rullst_capital::{init_provider, InfinitePayProvider};\n\ninit_provider(Box::new(InfinitePayProvider::new(\n    std::env::var(\"INFINITEPAY_API_KEY\")?,\n    std::env::var(\"INFINITEPAY_WEBHOOK_SECRET\")?,\n)));",
+            current_boundary: "Experimental: one-off payment links priced on the server (POST /links); the unsigned webhook is confirmed with payment_check. No subscriptions, portal or sandbox.",
+            env_example: "INFINITEPAY_HANDLE=\"your-infinitetag\"\nINFINITEPAY_API_KEY=\"inchk_...\"  # optional: single-payment links",
+            rust_init_code: "use rullst_capital::{init_provider, InfinitePayProvider};\n\ninit_provider(Box::new(\n    InfinitePayProvider::checkout(std::env::var(\"INFINITEPAY_HANDLE\")?)?\n        .with_webhook_url(\"https://app.example/webhooks/infinitepay\")?,\n));",
         },
         GatewayInfo {
             id: "stripe",
@@ -106,7 +106,7 @@ pub async fn simulate_provider_checkout(
                 .await
         }
         "infinitepay" => {
-            let p = InfinitePayProvider::new("mock_inf".to_string(), String::new());
+            let p = InfinitePayProvider::checkout("mock_store")?;
             p.create_checkout_session(customer_email, plan_id, redirect_url)
                 .await
         }

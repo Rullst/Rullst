@@ -38,6 +38,8 @@ pub mod dashboard;
 pub mod entitlements;
 pub mod error;
 pub mod invoice;
+pub mod one_off;
+pub use one_off::*;
 pub mod one_time_checkout;
 pub mod providers;
 pub mod quota;

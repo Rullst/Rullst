@@ -3,8 +3,8 @@
 #[cfg(test)]
 use super::InMemoryWebhookReplayStore;
 use super::{
-    DEFAULT_REPLAY_STORE, MAX_WEBHOOK_PAYLOAD_BYTES, WebhookMiddlewareState, WebhookReplayBackend,
-    capital_error_status_code, verify_payload,
+    DEFAULT_REPLAY_STORE, MAX_WEBHOOK_PAYLOAD_BYTES, VerifiedWebhook, WebhookMiddlewareState,
+    WebhookReplayBackend, capital_error_status_code, verify_delivery,
 };
 #[cfg(test)]
 use crate::capital::WebhookEvent;
@@ -112,13 +112,20 @@ where
         return Ok(reject(req, StatusCode::INTERNAL_SERVER_ERROR));
     };
     let headers = collect_headers(&req);
-    let event =
-        match verify_payload(active_provider, &body, &headers, replay_store, allow_mock).await {
-            Ok(event) => event,
+    let verified =
+        match verify_delivery(active_provider, &body, &headers, replay_store, allow_mock).await {
+            Ok(verified) => verified,
             Err(error) => return Ok(reject(req, status_from_error(&error))),
         };
 
-    req.extensions_mut().insert(event);
+    match verified {
+        VerifiedWebhook::Event(event) => {
+            req.extensions_mut().insert(event);
+        }
+        VerifiedWebhook::Notification(notification) => {
+            req.extensions_mut().insert(notification);
+        }
+    }
     req.set_payload(Payload::from(body));
     next.call(req)
         .await
