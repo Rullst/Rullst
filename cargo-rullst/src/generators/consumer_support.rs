@@ -67,9 +67,16 @@ pub(super) fn recognized_auth(
             .iter()
             .find(|(path, _)| *path == name)
             .ok_or_else(|| invalid("authentication template is missing"))?;
-        if !equivalent(&consumer_files::read(&root.join(name))?, &expected.1)? {
-            return Err(invalid("this generator requires the recognized SaaS authentication controller and middleware; review custom authentication separately").into());
-        }
+        let state = match consumer_files::read(&root.join(name)) {
+            Ok(source) if equivalent(&source, &expected.1)? => continue,
+            Ok(_) => "differs from the starter's",
+            Err(error) if error.kind() == io::ErrorKind::NotFound => "is missing",
+            Err(error) => return Err(error.into()),
+        };
+        return Err(invalid(&format!(
+            "this generator installs only into the recognized SaaS authentication: the unmodified auth_controller.rs and auth_middleware.rs of `cargo rullst new <name> --blueprint saas`, and {name} {state}. A custom authentication is not supported; review its integration separately"
+        ))
+        .into());
     }
     Ok(())
 }
@@ -227,7 +234,41 @@ mod tests {
             fs::read_to_string(&middleware).unwrap()
         );
         fs::write(&middleware, edited).unwrap();
-        assert!(recognized_auth(root.as_path(), "saas").is_err());
+        let error = recognized_auth(root.as_path(), "saas")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("and src/middlewares/auth_middleware.rs differs from the starter's."),
+            "{error}"
+        );
+        assert!(
+            error.starts_with(
+                "this generator installs only into the recognized SaaS authentication"
+            )
+        );
+        fs::remove_file(root.as_path().join("src/controllers/auth_controller.rs")).unwrap();
+        fs::write(
+            &middleware,
+            &baseline
+                .iter()
+                .find(|(path, _)| *path == "src/middlewares/auth_middleware.rs")
+                .unwrap()
+                .1,
+        )
+        .unwrap();
+        let error = recognized_auth(root.as_path(), "saas")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("and src/controllers/auth_controller.rs is missing."),
+            "{error}"
+        );
+        // A file that cannot be read for another reason (here a directory in
+        // its place) is reported as that I/O error, not as a missing file.
+        fs::create_dir(root.as_path().join("src/controllers/auth_controller.rs")).unwrap();
+        let error = recognized_auth(root.as_path(), "saas").unwrap_err();
+        assert!(error.downcast_ref::<io::Error>().is_some(), "{error}");
+        assert!(!error.to_string().contains("is missing"), "{error}");
     }
 
     #[test]

@@ -174,12 +174,17 @@ fn collect_models(content: &str, models: &mut Vec<ModelDef>, relations: &mut Vec
 
 /// Refreshes the diagram after a scaffold without ever failing the scaffold.
 ///
-/// A missing `diagram.md` is created; a hand-written one is kept with a notice.
+/// Only a `diagram.md` the project already has is refreshed: a scaffold
+/// never creates one (`cargo rullst generate:diagram` does), and a
+/// hand-written one is kept with a notice.
 pub(crate) fn refresh_after_scaffold() {
     refresh_after_scaffold_in(Path::new("."));
 }
 
 fn refresh_after_scaffold_in(base: &Path) {
+    if fs::symlink_metadata(base.join("diagram.md")).is_err() {
+        return;
+    }
     if let Err(error) = generate_mermaid_diagram(Some(base)) {
         eprintln!("Scaffold completed, but diagram.md was not refreshed: {error}");
     }
@@ -243,11 +248,14 @@ mod tests {
     }
 
     #[test]
-    fn generated_and_legacy_diagrams_are_refreshed_and_missing_ones_created() {
+    fn generated_and_legacy_diagrams_are_refreshed_and_missing_ones_left_missing() {
         let project = project();
         let diagram = project.path().join("diagram.md");
 
+        // A scaffold never writes a diagram the project did not ask for.
         refresh_after_scaffold_in(project.path());
+        assert!(!diagram.exists());
+        generate_mermaid_diagram(Some(project.path())).unwrap();
         let created = fs::read_to_string(&diagram).unwrap();
         assert!(created.starts_with(MARKER));
         assert!(created.contains("Course {"));

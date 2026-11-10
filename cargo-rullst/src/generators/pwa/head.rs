@@ -8,28 +8,46 @@
 //! - Core's `render_page_with_lang(htmx, lang, title, content)`: it becomes
 //!   `render_page_with_head(htmx, lang, title, crate::pwa::head(), content)`.
 //!
-//! A head that already links a manifest is left alone, so a second run
-//! changes nothing. Comments are not tokens and are never edited.
+//! A head that already registers the worker (`crate::pwa::head()`,
+//! `pwa.js` or `/sw.js`) is left alone, so a second run changes nothing. A
+//! head that links its own manifest but registers no worker receives only
+//! the registration script. A string holds a document only when it has both
+//! `<head>` and `</head>`; comments, `#[cfg(test)]` and `#[test]` items are
+//! never edited.
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
 use std::{error::Error, io, ops::Range};
 
 const HEAD_CALL: &str = "{crate::pwa::head()}";
+/// The registration alone, for an `html!` head with its own manifest link.
+const HTML_SCRIPT: &str = r#"<script src="/static/pwa.js" defer></script>"#;
+/// The registration alone, for a string head with its own manifest link.
+const LITERAL_SCRIPT: &str = "<script src='/static/pwa.js' defer></script>";
 
 /// The result of wiring one file.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(super) struct Wiring {
     pub source: String,
-    /// Layouts that received the tags now.
+    /// Layouts that register the worker since this run.
     pub wired: usize,
-    /// Layouts that already link a manifest.
+    /// Of those, layouts that keep their own manifest link and received
+    /// only the registration script.
+    pub own_manifest: usize,
+    /// Layouts that already registered the worker.
     pub present: usize,
+    /// String documents left alone because the file sends e-mail.
+    pub skipped: usize,
 }
 
 /// The tags for a string-literal document.
 pub(super) fn literal_tags(theme_color: &str) -> String {
     format!(
-        "<link rel='manifest' href='/static/manifest.webmanifest'><meta name='theme-color' content='{theme_color}'><link rel='apple-touch-icon' href='/static/icons/apple-touch-icon.png'><script src='/static/pwa.js' defer></script>"
+        "<link rel='manifest' href='/static/manifest.webmanifest'><meta name='theme-color' content='{theme_color}'><link rel='apple-touch-icon' href='/static/icons/apple-touch-icon.png'>{LITERAL_SCRIPT}"
     )
+}
+
+/// Whether head text (ASCII lower case) registers a service worker.
+fn registers_worker(head: &str) -> bool {
+    head.contains("pwa.js") || head.contains("/sw.js") || head.contains("serviceworker")
 }
 
 struct Scan<'a> {
@@ -37,7 +55,12 @@ struct Scan<'a> {
     tags: &'a str,
     edits: Vec<(Range<usize>, String)>,
     wired: usize,
+    own_manifest: usize,
     present: usize,
+    /// Whether string documents are layouts; `false` in a file that sends
+    /// e-mail, whose documents are messages.
+    strings: bool,
+    skipped: usize,
     /// Rewritten `render_page_with_lang` calls, other uses of the name and
     /// where top-level `use` items import it.
     rewritten_calls: usize,
@@ -46,8 +69,24 @@ struct Scan<'a> {
     imports_head_function: bool,
 }
 
-pub(super) fn wire(source: &str, theme_color: &str) -> Result<Wiring, Box<dyn Error>> {
-    syn::parse_file(source)?;
+pub(super) fn wire(
+    source: &str,
+    theme_color: &str,
+    strings: bool,
+) -> Result<Wiring, Box<dyn Error>> {
+    let file = syn::parse_file(source)?;
+    // A file compiled only for tests holds no page layout.
+    if file.attrs.iter().any(|attribute| {
+        attribute.path().is_ident("cfg")
+            && attribute
+                .parse_args::<syn::Ident>()
+                .is_ok_and(|argument| argument == "test")
+    }) {
+        return Ok(Wiring {
+            source: source.to_owned(),
+            ..Wiring::default()
+        });
+    }
     let tokens = source.parse::<TokenStream>()?;
     let tags = literal_tags(theme_color);
     let mut scan = Scan {
@@ -55,7 +94,10 @@ pub(super) fn wire(source: &str, theme_color: &str) -> Result<Wiring, Box<dyn Er
         tags: &tags,
         edits: Vec::new(),
         wired: 0,
+        own_manifest: 0,
         present: 0,
+        strings,
+        skipped: 0,
         rewritten_calls: 0,
         other_lang_uses: 0,
         use_idents: Vec::new(),
@@ -82,8 +124,24 @@ pub(super) fn wire(source: &str, theme_color: &str) -> Result<Wiring, Box<dyn Er
     Ok(Wiring {
         source: updated,
         wired: scan.wired,
+        own_manifest: scan.own_manifest,
         present: scan.present,
+        skipped: scan.skipped,
     })
+}
+
+/// Whether `tree` ends an item: its `{...}` body or its `;`.
+fn ends_item(tree: &TokenTree) -> bool {
+    matches!(tree, TokenTree::Group(group) if group.delimiter() == Delimiter::Brace)
+        || is_punct(Some(tree), ';')
+}
+
+/// Whether `trees[index]` starts a `#[test]` or `#[cfg(test)]` attribute.
+fn is_test_attribute(trees: &[TokenTree], index: usize) -> bool {
+    is_punct(trees.get(index), '#')
+        && matches!(trees.get(index + 1), Some(TokenTree::Group(attribute))
+            if attribute.delimiter() == Delimiter::Bracket
+                && matches!(compact(&attribute.stream()).as_str(), "test" | "cfg(test)"))
 }
 
 fn is_ident(tree: Option<&TokenTree>, name: &str) -> bool {
@@ -109,8 +167,14 @@ impl Scan<'_> {
     ) -> Result<(), Box<dyn Error>> {
         let mut in_use = false;
         let mut open_head = 0;
+        // A test item is skipped up to its body or its `;`.
+        let mut in_test_item = false;
         for (index, tree) in trees.iter().enumerate() {
             let before = |distance: usize| index.checked_sub(distance).and_then(|at| trees.get(at));
+            if in_test_item || (!in_html && is_test_attribute(trees, index)) {
+                in_test_item = !ends_item(tree);
+                continue;
+            }
             if top && is_ident(Some(tree), "use") {
                 in_use = true;
             }
@@ -147,19 +211,32 @@ impl Scan<'_> {
                         && is_punct(Some(close), '<')
                         && is_punct(trees.get(index + 1), '>')
                     {
-                        if links_manifest(trees.get(open_head..index).unwrap_or_default()) {
-                            self.present += 1;
-                        } else {
-                            let start = close.span().byte_range().start;
-                            self.edits.push((start..start, HEAD_CALL.to_owned()));
-                            self.wired += 1;
-                        }
+                        let head = trees.get(open_head..index).unwrap_or_default();
+                        self.html_head(head, close);
                     }
                 }
                 _ => {}
             }
         }
         Ok(())
+    }
+
+    /// Wires the `html!` head `head`, whose `</head>` starts at `close`,
+    /// unless it already registers the worker.
+    fn html_head(&mut self, head: &[TokenTree], close: &TokenTree) {
+        let start = close.span().byte_range().start;
+        if html_registers_worker(head) {
+            self.present += 1;
+            return;
+        }
+        let tags = if links_own_manifest(head) {
+            self.own_manifest += 1;
+            HTML_SCRIPT
+        } else {
+            HEAD_CALL
+        };
+        self.edits.push((start..start, tags.to_owned()));
+        self.wired += 1;
     }
 
     fn collect_use(&mut self, tree: &TokenTree) {
@@ -193,18 +270,25 @@ impl Scan<'_> {
         // ASCII lower-casing keeps every byte offset.
         let lower = repr.to_ascii_lowercase();
         for (close, _) in lower.match_indices("</head>") {
-            let open = lower
-                .get(..close)
-                .and_then(|before| before.rfind("<head"))
-                .unwrap_or(0);
-            if lower
-                .get(open..close)
-                .unwrap_or_default()
-                .contains("manifest")
-            {
+            // A `</head>` without its `<head>` (a search or a replacement
+            // pattern) is not a document.
+            let Some(open) = lower.get(..close).and_then(head_start) else {
+                continue;
+            };
+            let head = lower.get(open..close).unwrap_or_default();
+            let at = range.start + close;
+            if !self.strings {
+                self.skipped += 1;
+            } else if registers_worker(head) {
                 self.present += 1;
+            } else if ["rel='manifest'", "rel=\"manifest\"", "rel=manifest"]
+                .iter()
+                .any(|link| head.contains(link))
+            {
+                self.edits.push((at..at, LITERAL_SCRIPT.to_owned()));
+                self.wired += 1;
+                self.own_manifest += 1;
             } else {
-                let at = range.start + close;
                 self.edits.push((at..at, self.tags.to_owned()));
                 self.wired += 1;
             }
@@ -323,16 +407,34 @@ impl Scan<'_> {
     }
 }
 
-/// Whether the tokens of an `html!` head already link a manifest, through
-/// `crate::pwa::head()` or an own `<link rel="manifest">`.
-fn links_manifest(head: &[TokenTree]) -> bool {
-    head.iter().enumerate().any(|(index, tree)| match tree {
+/// Where the last `<head>` (or `<head ...>`, never `<header>`) of `before`
+/// starts.
+fn head_start(before: &str) -> Option<usize> {
+    before.rmatch_indices("<head").map(|(at, _)| at).find(|at| {
+        before
+            .get(at + "<head".len()..)
+            .and_then(|rest| rest.chars().next())
+            .is_some_and(|next| next == '>' || next.is_ascii_whitespace())
+    })
+}
+
+/// Whether the tokens of an `html!` head register the worker, through
+/// `crate::pwa::head()` or a script naming `pwa.js` or `/sw.js`.
+fn html_registers_worker(head: &[TokenTree]) -> bool {
+    head.iter().any(|tree| match tree {
         TokenTree::Group(group) => compact(&group.stream()).contains("pwa::head()"),
-        TokenTree::Ident(ident) if ident == "rel" => {
-            is_punct(head.get(index + 1), '=')
-                && matches!(head.get(index + 2), Some(TokenTree::Literal(value)) if value.to_string() == "\"manifest\"")
-        }
+        TokenTree::Literal(value) => registers_worker(&value.to_string().to_ascii_lowercase()),
         _ => false,
+    })
+}
+
+/// Whether the tokens of an `html!` head have their own
+/// `<link rel="manifest">`.
+fn links_own_manifest(head: &[TokenTree]) -> bool {
+    head.iter().enumerate().any(|(index, tree)| {
+        is_ident(Some(tree), "rel")
+            && is_punct(head.get(index + 1), '=')
+            && matches!(head.get(index + 2), Some(TokenTree::Literal(value)) if value.to_string() == "\"manifest\"")
     })
 }
 

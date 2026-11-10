@@ -10,6 +10,7 @@ yours to change; running the command again never overwrites them.
 | `src/pwa.rs` | Serves `/sw.js` and `/offline`; `head()` holds the tags each layout includes. |
 | `src/pwa/sw.js` | The service worker. |
 | `static/pwa.js` | Registers the worker and shows the update prompt. |
+| `static/pwa.css` | The default look of the update prompt, loaded only when it appears. |
 
 ## Before release
 
@@ -21,6 +22,21 @@ yours to change; running the command again never overwrites them.
 3. Bump `version` in `Cargo.toml` with each release. The worker names its
    cache after it, so users get a "new version" prompt and a fresh offline
    copy; without a version change they keep the files stored at install.
+4. Check the texts: `/offline` (in `src/pwa.rs`) and the update prompt (the
+   `TEXT` of `static/pwa.js`) are in the language `--lang` named when it is
+   English, Portuguese or Spanish, and in English otherwise. `/offline` uses
+   Core's page; render it with your own layout to match the site.
+5. A layout that already linked its own manifest received only the
+   registration script, so `static/manifest.webmanifest` is not linked
+   there: merge its icons and colours into your manifest, or link it instead.
+
+## Styling the update prompt
+
+The prompt is a `div.pwa-update` with a `span.pwa-update-text` and a
+`button.pwa-update-button`. `static/pwa.css` gives them a default look with
+`:where()` rules, which have no specificity, so any rule of your stylesheet
+for these classes wins. Nothing is styled through a `style` attribute, which
+the Content-Security-Policy refuses.
 
 ## What the worker stores
 

@@ -53,6 +53,12 @@ pub(crate) fn hints(name: &str) -> &'static [(&'static str, &'static str)] {
     capability::find(name).map_or(&[], |capability| capability.hints)
 }
 
+/// Whether `features` of the `rullst` dependency enable capability `name`,
+/// through its own feature or one that implies it (`mailer` for `mail`).
+pub(crate) fn enabled_by<'a>(name: &str, features: impl Iterator<Item = &'a str>) -> bool {
+    capability::find(name).is_some_and(|capability| capability.enabled_by(features))
+}
+
 /// Runs `cargo rullst add` in the current directory.
 pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let name = matches
