@@ -1,0 +1,128 @@
+//! `<application> admin:mfa-reset <email>` (`cargo rullst make:mfa`): for a
+//! lost phone, removes the account's second factor and signs out every
+//! device, so the next sign-in needs only the password. Run it on the
+//! server, from a shell, like `db:migrate`:
+//!
+//! ```text
+//! cargo run -- admin:mfa-reset member@example.com
+//! ./my-app admin:mfa-reset member@example.com
+//! ```
+//!
+//! No route reaches it; `main` calls [`run`] before the server starts.
+use super::{account, factor};
+use rullst::db::Orm;
+
+const COMMAND: &str = "admin:mfa-reset";
+const USAGE: &str = "Usage: <application> admin:mfa-reset <email>";
+
+/// Runs the command when the process arguments name it and returns the exit
+/// status (0 done, 1 failed, 2 wrong usage); `None` for any other arguments.
+pub async fn run() -> Option<i32> {
+    let arguments = std::env::args().skip(1).collect::<Vec<_>>();
+    let email = match parse(&arguments)? {
+        Ok(email) => email,
+        Err(usage) => {
+            eprintln!("{usage}");
+            return Some(2);
+        }
+    };
+    Some(match reset(&email).await {
+        Ok(done) => {
+            println!("{done}");
+            0
+        }
+        Err(failure) => {
+            eprintln!("{failure}");
+            1
+        }
+    })
+}
+
+/// The normalized e-mail of `admin:mfa-reset <email>`; `None` when the
+/// arguments are another command.
+fn parse(arguments: &[String]) -> Option<Result<String, &'static str>> {
+    let (command, rest) = arguments.split_first()?;
+    if command != COMMAND {
+        return None;
+    }
+    Some(match rest {
+        [email] => {
+            let email = email.trim().to_ascii_lowercase();
+            if email.contains('@') && email.len() <= 254 && !email.chars().any(char::is_control) {
+                Ok(email)
+            } else {
+                Err(USAGE)
+            }
+        }
+        _ => Err(USAGE),
+    })
+}
+
+/// Opens the database as the server does: `DATABASE_URL` (process
+/// environment, then `.env`), else `[database].url` of `Rullst.toml`.
+async fn connect() -> Result<(), String> {
+    if Orm::try_pool().is_ok() {
+        return Ok(());
+    }
+    let url = match rullst::config::project_setting("DATABASE_URL") {
+        Ok(Some(url)) if !url.trim().is_empty() => url,
+        Ok(_) => rullst::config::RullstConfig::global()
+            .database
+            .url
+            .clone()
+            .ok_or_else(|| {
+                "No database is configured: set DATABASE_URL or [database].url in Rullst.toml."
+                    .to_owned()
+            })?,
+        Err(error) => return Err(format!("The configuration could not be read: {error}")),
+    };
+    Orm::init(&url)
+        .await
+        .map_err(|error| format!("The database is unavailable: {error}"))
+}
+
+/// The work of the command for one normalized e-mail: what to print, or why
+/// it failed.
+pub async fn reset(email: &str) -> Result<String, String> {
+    connect().await?;
+    let unavailable = |error: factor::MfaError| error.message().to_owned();
+    let account = account::find_by_email(email)
+        .await
+        .map_err(unavailable)?
+        .ok_or_else(|| format!("No account uses {email}."))?;
+    factor::remove_factor(account.id)
+        .await
+        .map_err(unavailable)?;
+    account::end_sessions(account.id).await.map_err(|_| {
+        format!("The second factor of {email} was removed, but its sessions could not be signed out: run the command again.")
+    })?;
+    Ok(format!(
+        "Two-step verification was removed for {email} and every session was signed out."
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn arguments(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| (*value).to_owned()).collect()
+    }
+
+    #[test]
+    fn only_this_command_with_one_email_runs() {
+        assert_eq!(parse(&arguments(&[])), None);
+        assert_eq!(parse(&arguments(&["db:migrate"])), None);
+        assert_eq!(
+            parse(&arguments(&["admin:mfa-reset", " Member@Example.com "])),
+            Some(Ok("member@example.com".to_owned()))
+        );
+        for wrong in [
+            arguments(&["admin:mfa-reset"]),
+            arguments(&["admin:mfa-reset", "a@b.c", "extra"]),
+            arguments(&["admin:mfa-reset", "not-an-email"]),
+        ] {
+            assert_eq!(parse(&wrong), Some(Err(USAGE)));
+        }
+    }
+}

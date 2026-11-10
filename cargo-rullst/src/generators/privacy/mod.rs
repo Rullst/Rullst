@@ -1,5 +1,7 @@
-//! Explicit preview consumer: authenticated choices and an own-account export.
-use super::{consumer_files as files, consumer_support};
+//! Explicit preview consumer: authenticated choices and an own-account export,
+//! for the recognized SaaS authentication or an application's own sign-in
+//! through its authentication contract (`src/auth_contract.rs`).
+use super::{auth_contract, consumer_files as files, consumer_support};
 use clap::{Arg, ArgMatches, Command};
 use files::Edit;
 use std::{
@@ -8,6 +10,8 @@ use std::{
 };
 use toml_edit::DocumentMut;
 
+#[cfg(test)]
+mod contract_tests;
 mod routing;
 
 pub(crate) fn command() -> Command {
@@ -65,12 +69,48 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
     let tenant = matches
         .get_one::<String>("tenant-ref")
         .ok_or_else(|| invalid("tenant reference is required"))?;
-    let edits = plan(&root, source, consumer, version, lifetime, tenant)?;
-    files::apply(&edits)?;
+    let planned = plan(&root, source, consumer, version, lifetime, tenant)?;
+    files::apply(&planned.edits)?;
     println!(
         "Privacy choices installed at /privacy, with an own-account profile export. Read PRIVACY.md, initialize the private consent store once, and configure the independent form key before enabling choices."
     );
+    for note in planned.notes {
+        println!("{note}");
+    }
     Ok(())
+}
+
+/// Where the authenticated account comes from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Accounts {
+    /// The unmodified authentication of the SaaS starter.
+    Starter,
+    /// The application's own sign-in, through `src/auth_contract.rs`.
+    Contract,
+}
+
+/// The validated edits and what is left to the developer.
+struct Planned {
+    edits: Vec<Edit>,
+    notes: Vec<String>,
+}
+
+/// The recognized SaaS authentication, else the authentication contract.
+fn accounts(root: &Path, consumer: &str) -> Result<Accounts, Box<dyn std::error::Error>> {
+    let contract = auth_contract::present(root)?;
+    let remedy = format!(
+        "An application with its own sign-in can use the authentication contract in {} instead ({})",
+        auth_contract::PATH,
+        auth_contract::DOCS
+    );
+    match consumer_support::recognized_auth(root, consumer, &remedy) {
+        Ok(()) => Ok(Accounts::Starter),
+        Err(_) if contract => {
+            auth_contract::check(root, auth_contract::PRIVACY)?;
+            Ok(Accounts::Contract)
+        }
+        Err(error) => Err(error),
+    }
 }
 
 fn plan(
@@ -80,7 +120,7 @@ fn plan(
     version: &str,
     lifetime: u32,
     tenant: &str,
-) -> Result<Vec<Edit>, Box<dyn std::error::Error>> {
+) -> Result<Planned, Box<dyn std::error::Error>> {
     if consumer != "saas" {
         return Err(invalid("make:privacy supports only the SaaS consumer").into());
     }
@@ -103,7 +143,7 @@ fn plan(
     let source = consumer_support::privacy_source(source, "src/consent/mod.rs")?;
     // Links above the project are the developer's; links beneath it are refused.
     let root = &files::project_root(root)?;
-    consumer_support::recognized_auth(root, consumer)?;
+    let accounts = accounts(root, consumer)?;
     let manifest_path = root.join("Cargo.toml");
     let original = files::read(&manifest_path)?;
     let mut manifest: DocumentMut = original.parse()?;
@@ -138,38 +178,52 @@ fn plan(
         root.join("src/main.rs")
     };
     let router = files::read(&router_path)?;
-    let updated = routing::mount(&router)?;
+    let mounted = match accounts {
+        Accounts::Starter => Some(routing::mount(&router)?),
+        Accounts::Contract => routing::mount_if_bounded(&router)?,
+    };
     let registry = root.join("src/controllers/mod.rs");
     let old_registry = files::read(&registry)?;
     let new_registry = format!("{old_registry}\npub mod privacy_controller;\n");
     syn::parse_file(&new_registry)?;
-    let mut edits = vec![
-        Edit::replace(manifest_path, original, manifest.to_string()),
-        Edit::replace(router_path, router, updated),
-        Edit::replace(registry, old_registry, new_registry),
-    ];
+    let mut notes = Vec::new();
+    let mut edits = vec![Edit::replace(manifest_path, original, manifest.to_string())];
+    match mounted {
+        Some(updated) => edits.push(Edit::replace(router_path, router, updated)),
+        None => notes.push("Mount the routes inside your CSRF layer (rullst::security::csrf_middleware): add `.merge_axum(controllers::privacy_controller::routes().into_axum())` to your router; the routes require auth_contract::require_account themselves.".to_owned()),
+    }
+    edits.push(Edit::replace(registry, old_registry, new_registry));
+    let (controller, proof, profile) = match accounts {
+        Accounts::Starter => (
+            include_str!("controller.rs.template").to_owned(),
+            include_str!("proof.rs.template").to_owned(),
+            include_str!("profile.rs.template").to_owned(),
+        ),
+        Accounts::Contract => (
+            include_str!("controller.rs.template").replace(
+                "crate::middlewares::auth_middleware::auth_middleware",
+                "crate::auth_contract::require_account",
+            ),
+            include_str!("proof.rs.template").replace(
+                "rullst::auth::extract_session_cookie(headers)",
+                "crate::auth_contract::session_binding(headers)",
+            ),
+            include_str!("profile_contract.rs.template").to_owned(),
+        ),
+    };
     let config = include_str!("config.rs.template")
         .replace("__NOTICE_VERSION__", &format!("{version:?}"))
         .replace("__VALIDITY_SECONDS__", &lifetime.to_string())
         .replace("__TENANT_REF__", &format!("{tenant:?}"));
     for (path, source) in [
-        (
-            "src/controllers/privacy_controller.rs",
-            include_str!("controller.rs.template").to_owned(),
-        ),
+        ("src/controllers/privacy_controller.rs", controller),
         ("src/controllers/privacy/config.rs", config),
         (
             "src/controllers/privacy/page.rs",
             include_str!("page.rs.template").to_owned(),
         ),
-        (
-            "src/controllers/privacy/proof.rs",
-            include_str!("proof.rs.template").to_owned(),
-        ),
-        (
-            "src/controllers/privacy/profile.rs",
-            include_str!("profile.rs.template").to_owned(),
-        ),
+        ("src/controllers/privacy/proof.rs", proof),
+        ("src/controllers/privacy/profile.rs", profile),
         (
             "src/bin/privacy-init.rs",
             include_str!("init.rs.template").to_owned(),
@@ -185,7 +239,7 @@ fn plan(
         root.join("PRIVACY.md"),
         include_str!("README.md.template").to_owned(),
     )?);
-    Ok(edits)
+    Ok(Planned { edits, notes })
 }
 
 #[cfg(test)]
@@ -228,8 +282,12 @@ mod tests {
             std::fs::remove_file(&linked).unwrap();
             assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 0);
         }
-        files::apply(&plan(root, None, "saas", "greeting-v1", 3600, "tenant-alpha").unwrap())
-            .unwrap();
+        files::apply(
+            &plan(root, None, "saas", "greeting-v1", 3600, "tenant-alpha")
+                .unwrap()
+                .edits,
+        )
+        .unwrap();
         let privacy = root.join("src/controllers/privacy");
         let config = std::fs::read_to_string(privacy.join("config.rs")).unwrap();
         assert!(config.contains("const TENANT_REF: &str = \"tenant-alpha\";"));

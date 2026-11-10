@@ -464,7 +464,10 @@ consumer and hosted acceptance are required before completion is claimed.
 
 The opt-in `make:privacy` consumer mounts authenticated preferences,
 an explicitly optional personalized greeting and an own-account JSON export
-inside the starter's existing CSRF/header/security boundary. It composes
+inside the starter's existing CSRF/header/security boundary, or, since
+13.0.0-alpha.5, inside an application's own sign-in through its
+authentication contract (`require_account`, `find_account`,
+`session_binding`). It composes
 with the age consumer while preserving both consumers' dependency features.
 Choice forms bind the displayed notice/version and current revision, with a
 bounded expiring HMAC proof tied to the authenticated account, tenant and session;
@@ -860,6 +863,22 @@ account's current epoch, refusing an account the password login refuses.
 Unset credentials turn a provider off; an incomplete or mock configuration
 without the `oauth-mock` application feature, mock credentials in staging or
 production, and a missing callback origin there stop startup.
+
+Since 13.0.0-alpha.5 an application with its own sign-in can satisfy a small
+authentication contract instead of the starter's account files:
+`src/auth_contract.rs` declares `ContractAccount { id, email, name }`,
+`require_account` (route middleware inserting `Extension<i32>`),
+`find_account`, `find_account_by_email`, `sign_in_cookie`, `end_sessions`,
+`session_binding` and `create_account` (inside the caller's ORM transaction).
+`make:mfa`, `make:oauth` and `make:privacy` use the recognized starter
+accounts first and the contract otherwise, check the items each calls before
+writing, and never edit the application's router, sign-in handler or sign-in
+page in that mode. With the contract, `make:oauth` refuses every verified
+provider e-mail that already belongs to an account (the contract cannot remove
+a password) and stores `oauth_identities.user_id` without a foreign key.
+`make:age-gate` remains SaaS-only. When `make:mfa` is present (in either
+installation order) the shared OAuth flow calls its second step before issuing
+a session.
 
 ### v13 active-session management (source admitted, prerelease)
 
@@ -1416,15 +1435,25 @@ Server push uses Server-Sent Events over the in-process realtime channels.
 `text/event-stream` response per request: each `RealtimeMessage` becomes an
 event named after its `event` with its `payload` as data, which the htmx SSE
 extension swaps into the page (`hx-ext="sse"`, `sse-connect`, `sse-swap`).
-HTML scaffolds write the htmx 1.9.12 extension, byte for byte with a recorded
-SHA-256, to `static/htmx-ext-sse-1.9.12.js`, beside htmx, so pages need no CDN
-and no relaxed CSP.
+HTML scaffolds write the htmx 1.9.12 extension to
+`static/htmx-ext-sse-1.9.12.js`, beside htmx, so pages need no CDN and no
+relaxed CSP. It is a patched copy with recorded upstream and patched SHA-256
+digests: upstream's reconnect backoff used the bitwise XOR `2 ^ retryCount`
+and never grew, the copy doubles it up to 64 s and resets it when a
+connection opens.
 
 `RealtimeSseConfig` bounds every connection, clamping each setting: keep-alive
-comments (default 15 s, 1 s–5 min), a maximum lifetime after which the stream
-ends and the browser reconnects through the route's authentication again
-(30 min, 1 s–24 h), connections shared by every clone (1,024, 1–65,536;
-`503` with `Retry-After` beyond it) and the event payload (64 KiB). The
+comments (default 15 s, 1 s–5 min), the reconnect delay every stream sends
+first as its `retry:` field (1 s, 100 ms–5 min), a maximum lifetime after
+which the stream ends and the browser reconnects through the route's
+authentication again (30 min, 1 s–24 h), connections shared by every clone
+(1,024, 1–65,536) and the event payload (64 KiB). A request beyond the limit,
+or after `shutdown()`, opens no channel: it receives a `200` stream with a
+comment naming the reason and a `retry:` of a random 5–10 s (once to twice
+the reconnect delay when that is longer), which ends at once. Browsers honour
+that `retry:`, while `EventSource` ignores `Retry-After` and the htmx
+extension retries an error status on its own schedule (the first time within
+half a second), so an error status would give no backpressure. The
 channel's fixed broadcast queue is the only per-connection buffer: a connection
 that falls behind it ends instead of buffering without limit, and messages
 with an event name outside 1–128 bytes of `[A-Za-z0-9._:/-]` or a larger
@@ -3879,6 +3908,24 @@ provider](capital-custom-provider.md)); the
   section 5.2 by accepting only a step newer than the caller-supplied last
   accepted step; the application must persist the returned step per secret
   atomically before admitting the login.
+* **`cargo rullst make:mfa` (13.0.0-alpha.5):** generates server-side
+  enrollment pages (the `build_mfa_qr_svg` QR code labelled with the account
+  e-mail, the manual key, confirmation and removal with a current code) and a
+  second sign-in step. After the first factor (the password, or a
+  `make:oauth` provider) an enrolled account gets no session: the browser
+  holds a random 160-bit id in a `Path=/login/mfa`, five-minute, `HttpOnly`,
+  `SameSite=Lax` cookie, and `mfa_challenges` keeps its SHA-256 with the
+  account, a same-site target, an attempt counter and the expiry. One live
+  challenge per account keeps its attempts and expiry across new sign-ins; five
+  codes are counted atomically before verification, a valid code deletes the
+  challenge before the session is issued, and turning the factor on advances
+  the account's session epoch so every other session ends.
+  `admin:mfa-reset <email>`, run by the application binary before
+  `rullst::artisan!`, removes the factor and ends the sessions. The generated
+  code reaches accounts through the `cargo rullst auth`/SaaS model or the
+  application's authentication contract (`src/auth_contract.rs`). Recovery
+  codes, secret encryption at rest and durable per-account lockout beyond the
+  challenge window remain application work.
 * **Security CLI:** CycloneDX generation, MSRV/tool diagnostics, unsafe/IDOR
   source heuristics, network observations and compliance evidence are bounded
   checks. They do not certify a deployment, prove absence of vulnerabilities or
@@ -4718,7 +4765,9 @@ store package of the same site, only installs it.
   `PWA.md`. Values come from validated flags or the Cargo package name. It
   mounts `crate::pwa::router()` after the crate root's single
   `.merge_axum(rullst::health::health_router())` (merges inside a `return`
-  expression are fallback routers and are ignored), adds the head tags to
+  expression are fallback routers and are ignored), or, with `--router <file>`
+  (13.0.0-alpha.5), in that file after its single health merge or inside its
+  single `headers_middleware` layer, adds the head tags to
   every recognized layout in `src/` (an `html!` document, a document in a
   string literal, Core's `render_page_with_lang`, rewritten to
   `render_page_with_head`) and declares `mod pwa` in `src/lib.rs`, else

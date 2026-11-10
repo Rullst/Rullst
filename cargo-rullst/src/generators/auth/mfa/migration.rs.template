@@ -15,10 +15,17 @@ impl Migration for MigrationImpl {
         sqlx::query("CREATE TABLE user_mfa_factors (user_id BIGINT NOT NULL PRIMARY KEY, secret VARCHAR(64) NOT NULL, confirmed INTEGER NOT NULL DEFAULT 0, last_accepted_step BIGINT)")
             .execute(Orm::pool()?)
             .await?;
+        // At most one second sign-in step per account: the SHA-256 of the
+        // random id in the browser's cookie, where it goes after the code,
+        // the codes it received and its Unix expiry.
+        sqlx::query("CREATE TABLE mfa_challenges (user_id BIGINT NOT NULL PRIMARY KEY, id_hash VARCHAR(64) NOT NULL UNIQUE, target VARCHAR(255) NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, expires_at BIGINT NOT NULL)")
+            .execute(Orm::pool()?)
+            .await?;
         Ok(())
     }
 
     async fn down(&self) -> Result<(), rullst::orm::Error> {
+        Schema::drop_if_exists("mfa_challenges").await?;
         Schema::drop_if_exists("user_mfa_factors").await
     }
 }

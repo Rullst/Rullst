@@ -1143,7 +1143,11 @@ cargo rullst make:privacy \
 
 The version and lifetime are explicit application choices; the engineering cap
 of 365 days is not a legal retention rule. It targets the recognized SaaS
-starter and requires `--tenant-ref`; v13 removed the LMS target. The tenant is
+starter, or an application's own sign-in through the
+[authentication contract](#authentication-contract) (`require_account`,
+`find_account` and `session_binding`: the routes use the contract's middleware,
+the export its account and the forms its session binding), and requires
+`--tenant-ref`; v13 removed the LMS target. The tenant is
 compiled into the generated configuration. The privacy routes take no query
 string: a request carrying one, or an `x-school-id` header, is refused rather
 than allowed to select another tenant or account.
@@ -1202,6 +1206,7 @@ cargo rullst make:pwa --name "Field Notes" --short-name Notes \
 | `--android` | off | also write `android/twa-manifest.json` (Bubblewrap) and `PWA-ANDROID.md`; needs `--host` and `--package-id` |
 | `--host` | none | with `--android`: the site's HTTPS host, such as `notes.acme.dev` |
 | `--package-id` | none | with `--android`: the Android application ID you own (`com.example.*` is refused) |
+| `--router` | search `src/` | the source file that builds the router, such as `src/routes.rs`: the routes are mounted there, after its one health merge, else right inside its one `headers_middleware` layer |
 
 It writes `static/manifest.webmanifest` (`id` and `scope` `/`, `display`
 `standalone`, icons 192 and 512 plus a maskable 512), four placeholder PNG
@@ -1221,7 +1226,12 @@ recognized places:
   `.merge_axum(rullst::health::health_router())` of the crate, in whichever
   module of `src/` holds it (a merge in a `return` expression, such as the
   fallback router of an application generated from the former ERP starter,
-  does not count);
+  does not count). When `src/` merges the probes in several places or not at
+  all, `--router <file>` names the file instead: the routes follow its one
+  health merge or, without one, go right before its one
+  `.layer(...headers_middleware...)`, outside the CSRF layer. That file must
+  be a source of the crate (not `src/bin/`, nor `src/main.rs` beside a
+  `src/lib.rs`);
 - every page layout in `src/`: `{crate::pwa::head()}` before the `</head>` of
   an `html!` document, the same tags before the `</head>` of a document
   written in a string, and `render_page_with_lang(...)` calls become
@@ -1255,8 +1265,8 @@ nothing; a generated file that now differs (edited, or another `--name`) stops
 the run without writing. `--android` can follow a plain run with the same
 flags and adds only the Android files. The report counts only the layouts that
 register the worker. Without a recognized layout (the JSON API starter has
-none) or without exactly one health merge, the files are still written and the
-report prints each step left to do by hand, as the
+none) or without exactly one health merge (and no `--router`), the files are
+still written and the report prints each step left to do by hand, as the
 [PWA guide](tutorials/43-progressive-web-apps.md) shows.
 
 ### `cargo rullst make:iot <DeviceName>`
@@ -1455,31 +1465,127 @@ the security baseline and the mail settings (`MAIL_DRIVER`, `MAIL_FROM`,
 the LMS example (`examples/lms`) ship the same password flows already mounted.
 
 ### `cargo rullst make:mfa`
-Scaffolds a server-side RFC 6238 TOTP second factor: `src/controllers/mfa.rs`
-and a reversible `user_mfa_factors` migration (one factor per account). The
-secret is generated and stored on the server and bound to the signed-in
-account: `mfa_setup`, `mfa_confirm` and `mfa_verify` take the user id from the
-`Extension<i32>` that the `cargo rullst auth` middleware inserts, and a client
-never submits a secret. Verification uses `verify_totp_step_after` with an
-atomic conditional update of `last_accepted_step`, so each code is accepted at
-most once. Setup returns the secret and `otpauth://` URI once with
-`Cache-Control: no-store`; enrollment stays pending until `mfa_confirm`
-accepts a current code. Authenticator apps show the issuer `MFA_ISSUER`, else
-`APP_NAME` (each read with `rullst::config::project_setting`: the process
-environment, then `.env`), else the controller's `APPLICATION_NAME` constant,
-the package name.
+Adds two-step verification with an authenticator app (RFC 6238 TOTP): pages
+to set it up and turn it off, the second sign-in step, and a reset command for
+a lost phone. It writes `src/controllers/mfa.rs` (the handlers) with
+`src/controllers/mfa/{factor,challenge,account,admin}.rs`, the pages in
+`src/pages/mfa.rs`, and one reversible migration that creates
+`user_mfa_factors` (one factor per account) and `mfa_challenges` (the second
+step). It works with the accounts of `cargo rullst auth` and the SaaS starter
+(the `User` of `src/models/user.rs` with `email`, `session_epoch`,
+`current_session_epoch`, `find_by_email` and `revoke_sessions`, and
+`auth_middleware`), or, for an application with its own sign-in, through the
+[authentication contract](#authentication-contract).
+
+Routes, all inside the CSRF layer:
+
+| Route | Behind the sign-in middleware | What it does |
+| :--- | :--- | :--- |
+| `GET /account/security` | yes | status, and the setup or "turn off" form |
+| `POST /account/security/mfa/setup` | yes | a new pending factor: its QR code and the key to type by hand |
+| `POST /account/security/mfa/confirm` | yes (and the credential rate limit) | turns it on with a current code, signs out every other session and renews this one |
+| `POST /account/security/mfa/disable` | yes (and the credential rate limit) | turns it off with a current code |
+| `GET`, `POST /login/mfa` | no: the challenge cookie names the account (rate limit on the POST) | the second sign-in step |
+
+The secret is generated and kept on the server; a client never submits one.
+The QR code is `rullst::security::runtime::build_mfa_qr_svg` inline in the page
+(no `data:` URL, no script), labelled with the account's e-mail and the issuer
+`MFA_ISSUER`, else `APP_NAME` (each read with `rullst::config::project_setting`:
+the process environment, then `.env`), else the `APPLICATION_NAME` constant of
+`factor.rs`, the package name. The pages style themselves with one `<style>`
+that carries the request's CSP nonce; replace `card` in `src/pages/mfa.rs` with
+your layout. Every response of these pages is `Cache-Control: no-store`.
+Codes go through `verify_totp_step_after` and an atomic conditional update of
+`last_accepted_step`, so each code is accepted at most once.
+
+The second step: `controllers::mfa::second_step(account_id, target)` runs
+right after the password check (and after a provider sign-in). For an account
+with a confirmed factor it stores a challenge and answers a redirect to
+`/login/mfa` instead of a session. The browser holds only a random 160-bit id
+in the `rullst_mfa_challenge` cookie (`Path=/login/mfa`, five minutes,
+`HttpOnly`, `SameSite=Lax`, `Secure` in staging and production); the table
+keeps its SHA-256, the account, the same-site path to land on, the attempts
+and the expiry. Each account has one live challenge: signing in again replaces
+it but keeps its attempts and expiry. A challenge accepts five codes (each
+counted atomically before it is checked), and the sixth attempt, or a new
+sign-in after the fifth wrong code, is refused until it expires; a valid code
+deletes it (one use) and only then issues the session. Turning the factor on
+ends the account's other sessions through its session epoch
+(`User::revoke_sessions`, or `end_sessions` of the contract).
+
+Wiring: in a `cargo rullst auth` or SaaS project the command adds the second
+step to `login_submit` of `src/controllers/auth_controller.rs`; it adds it to
+the shared flow of [`make:oauth`](#cargo-rullst-makeoauth-v13-prerelease-preview)
+in either installation order. In the SaaS starter it also mounts the routes
+after the password login route and links the page from the dashboard. When
+`main` is async, declares `controllers` and calls `rullst::artisan!`, the
+reset command runs first:
+
+```bash
+cargo run -- admin:mfa-reset member@example.com   # or ./my-app admin:mfa-reset ...
+```
+
+It removes the account's factor, signs out every session and exits (0 done, 1
+failed, 2 wrong usage); no route reaches it. Whatever it could not wire (a
+router or sign-in handler it does not recognize, a custom `main`) is printed
+as a step to do. `verify_second_factor` stays public for step-up checks
+before sensitive actions.
 
 The command targets the SQLx ORM (Turso-primary projects and projects without
-a migration runner are rejected, as for `cargo rullst auth`), enables
-the `orm` and `security` umbrella features, registers the module, refreshes the
-migration registry and refuses to overwrite an existing `src/controllers/mfa.rs`
-or `*_create_user_mfa_factors_table.rs` migration. Mount the handlers as POST
-routes behind the authentication middleware, CSRF protection and rate limiting,
-and require a recent password check before enrollment. To gate login, keep the
-session pending until `verify_second_factor` succeeds; the generated auth
-controller issues a full session after the password. Secrets are stored
-unencrypted in the database, so protect that table and its backups like
-credentials. Recovery codes and factor reset remain application work.
+a migration runner are rejected, as for `cargo rullst auth`), enables the
+`orm` and `security` umbrella features (and `auth` for the starter's
+accounts), refreshes the migration registry and refuses to overwrite any of
+its files or an existing `*_create_user_mfa_factors_table.rs` migration.
+Secrets are stored unencrypted in the database, so protect that table and its
+backups like credentials. Recovery codes remain application work. A project
+that ran the alpha.4 `make:mfa` keeps its JSON handlers; to get the pages,
+move `src/controllers/mfa.rs` aside and add `mfa_challenges` with a new
+migration, or compare with a fresh run in a copy.
+
+<a id="authentication-contract"></a>
+
+### Authentication contract for an application's own sign-in
+
+`make:mfa`, `make:oauth` and `make:privacy` normally build on the account
+files of `cargo rullst auth` or the SaaS starter. An application with its own
+sign-in writes `src/auth_contract.rs` instead, declares `mod auth_contract;`
+in each crate root that declares `controllers` (both `src/lib.rs` and
+`src/main.rs` in a hot-reload layout), and the generators call it. They use
+the starter's accounts when those are recognized, and the contract otherwise;
+before writing anything each one checks, by name and `async`, the items it
+calls and names any that are missing. Every error type only needs
+`std::fmt::Display`.
+
+| Item | Used by | Contract |
+| :--- | :--- | :--- |
+| `pub struct ContractAccount { pub id: i32, pub email: String, pub name: String }` | all (`name`: privacy) | the account as generated code sees it |
+| `pub async fn require_account(request: Request, next: Next) -> Response` | mfa, privacy | route middleware: runs `next` with the signed-in account's id inserted as `Extension<i32>`, otherwise answers itself (a redirect to sign-in) |
+| `pub async fn find_account(id: i32) -> Result<Option<ContractAccount>, E>` | all | the account with this id |
+| `pub async fn find_account_by_email(email: &str) -> Result<Option<ContractAccount>, E>` | mfa, oauth | the account with this e-mail (passed trimmed and lowercase) |
+| `pub async fn sign_in_cookie(id: i32) -> Result<String, E>` | mfa, oauth | the `Set-Cookie` value of a full session for the account, at its current session epoch |
+| `pub async fn end_sessions(id: i32) -> Result<(), E>` | mfa | ends every session of the account (for example by bumping its session epoch) |
+| `pub fn session_binding(headers: &HeaderMap) -> Option<String>` | privacy | an opaque value naming this browser's sign-in (the session cookie), bound into the privacy forms |
+| `pub async fn create_account(transaction: &mut rullst::orm::db::Transaction<'static>, email: &str, name: &str) -> Result<i32, rullst::orm::Error>` | oauth | creates a passwordless account for a provider-verified e-mail inside the transaction that links the identity; returns its id |
+
+`Request`, `Next`, `Response` and `HeaderMap` are those of `rullst::server`.
+[Rullst Auth](crates/auth.md#authentication-contract-for-generators) shows a
+complete version over an ORM `User` with a `session_epoch` column and the
+`rullst_session` cookie.
+
+What changes with the contract: the generators do not edit the application's
+router, sign-in handler or sign-in page; they print the routes to mount, the
+`second_step` call to add after the password check and the provider links.
+`make:oauth` writes its own `controllers::oauth::credential_rate_limit`, a
+small refusal page (replace it with your sign-in page) and an
+`oauth_identities.user_id` column without a foreign key (delete an account's
+identities when you delete the account); a verified provider e-mail that
+already belongs to an account is always refused, because the contract cannot
+remove that account's password. `make:privacy` exports the contract's
+`find_account` and mounts its routes inside the router's single
+`rullst::server::from_fn(rullst::security::csrf_middleware)` layer, or prints
+the line to add. `make:age-gate` stays a SaaS consumer: it replaces the
+starter's `/dashboard` route and renders that handler after an allowed
+declaration, which an application's own pages do not have.
 
 <a id="cargo-rullst-makeoauth-v13-prerelease-preview"></a>
 
@@ -1494,10 +1600,12 @@ with `email`, `session_epoch`, `oauth_provider`, `oauth_id`,
 `current_session_epoch` and `find_by_email`; the public `get_csrf_token`,
 `get_csp_nonce`, `normalize_email`, `valid_email`, `utc_timestamp` and
 `credential_rate_limit` of `src/controllers/auth_controller.rs`; and the public
-`login_page` of `src/pages/auth.rs`. A refusal names the parts that are
-missing; a custom authentication is not supported (use `rullst-connect`
-directly, as [the OAuth tutorial](tutorials/42-server-bound-oauth-sessions.md)
-shows).
+`login_page` of `src/pages/auth.rs`. An application with its own sign-in
+uses the [authentication contract](#authentication-contract) instead
+(`find_account`, `find_account_by_email`, `create_account`,
+`sign_in_cookie`); without either, a refusal names the parts that are missing.
+With [`make:mfa`](#cargo-rullst-makemfa), in either order, an account with
+two-step verification finishes a provider sign-in at `/login/mfa`.
 
 ```bash
 cargo rullst make:oauth google      # or github, microsoft, apple

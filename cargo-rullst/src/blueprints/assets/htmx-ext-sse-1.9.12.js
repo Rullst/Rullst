@@ -3,6 +3,9 @@ Server Sent Events Extension
 ============================
 This extension adds support for Server Sent Events to htmx.  See /www/extensions/sse.md for usage instructions.
 
+Patched by Rullst: the reconnect delay grows as 2^n (upstream computes the
+bitwise XOR `2 ^ n`) and a successful connection resets it.
+
 */
 
 (function() {
@@ -252,7 +255,7 @@ This extension adds support for Server Sent Events to htmx.  See /www/extensions
 			// Otherwise, try to reconnect the EventSource
 			if (source.readyState === EventSource.CLOSED) {
 				retryCount = retryCount || 0;
-				var timeout = Math.random() * (2 ^ retryCount) * 500;
+				var timeout = Math.random() * Math.pow(2, retryCount) * 500;
 				window.setTimeout(function() {
 					ensureEventSourceOnElement(elt, Math.min(7, retryCount + 1));
 				}, timeout);
@@ -260,6 +263,7 @@ This extension adds support for Server Sent Events to htmx.  See /www/extensions
 		};
 
 		source.onopen = function(evt) {
+			retryCount = 0;
 			api.triggerEvent(elt, "htmx:sseOpen", { source: source });
 		}
 

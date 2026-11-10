@@ -1,7 +1,7 @@
 //! `make:oauth` on real generated projects: Google, GitHub, Microsoft and
 //! Apple sign-in in one project run end to end through the generated router
-//! with the offline providers, and the command refuses projects without the
-//! account model.
+//! with the offline providers, together with the two-step verification of
+//! `make:mfa`, and the command refuses projects without the account model.
 use cargo_rullst::{blueprints, generators::project::cargo_toml::build_cargo_toml};
 use std::{
     fs,
@@ -60,10 +60,22 @@ fn generated_sign_in_with_every_provider_runs_end_to_end_offline() {
         "Zero-Bundle HTMX",
     )
     .unwrap();
+    // Two-step verification first: the shared flow of the first provider
+    // then calls its second step.
+    let mfa = success(rullst(root, &["make:mfa"]));
+    let mfa = String::from_utf8_lossy(&mfa.stdout);
+    assert!(mfa.contains("Mounted GET /account/security"), "{mfa}");
+    assert!(mfa.contains("admin:mfa-reset <email>"), "{mfa}");
     for provider in ["google", "github", "microsoft", "apple"] {
         let installed = success(rullst(root, &["make:oauth", provider]));
         assert!(String::from_utf8_lossy(&installed.stdout).contains("--features oauth-mock"));
     }
+    let flow = fs::read_to_string(root.join("src/controllers/oauth/mod.rs")).unwrap();
+    assert_eq!(
+        flow.matches("crate::controllers::mfa::second_step(user.id, next)")
+            .count(),
+        1
+    );
     // A second run changes nothing.
     let before = fs::read(root.join("Cargo.toml")).unwrap();
     assert!(!rullst(root, &["make:oauth", "github"]).status.success());
@@ -79,6 +91,15 @@ fn generated_sign_in_with_every_provider_runs_end_to_end_offline() {
     source.push_str(
         "\n#[cfg(test)]\n#[path = \"oauth_flow_contract.rs\"]\nmod oauth_flow_contract;\n",
     );
+    fs::write(path, source).unwrap();
+    fs::write(
+        root.join("src/controllers/mfa/flow_contract.rs"),
+        include_str!("fixtures/mfa_flow_contract.rs"),
+    )
+    .unwrap();
+    let path = root.join("src/controllers/mfa.rs");
+    let mut source = fs::read_to_string(&path).unwrap();
+    source.push_str("\n#[cfg(test)]\nmod flow_contract;\n");
     fs::write(path, source).unwrap();
     // The hot-reload starter compiles controllers in the library and binary
     // test targets; both use the generated library router.
@@ -149,6 +170,29 @@ fn generated_sign_in_with_every_provider_runs_end_to_end_offline() {
             "{test} did not run:\n{stdout}"
         );
     }
+    // Two-step verification after the password and after a provider, in
+    // its own process (each contract opens its own in-memory database).
+    let second_step = success(
+        cargo(&[
+            "test",
+            "--lib",
+            "--features",
+            "oauth-mock",
+            "generated_mfa_",
+            "-j",
+            "1",
+            "--",
+            "--test-threads=1",
+        ])
+        .output()
+        .unwrap(),
+    );
+    assert!(
+        String::from_utf8_lossy(&second_step.stdout)
+            .contains("test controllers::mfa::flow_contract::generated_mfa_flow_contract ... ok"),
+        "{}",
+        String::from_utf8_lossy(&second_step.stdout)
+    );
     // Without it, mock credentials stop the application at startup.
     let refused = success(
         cargo(&[
