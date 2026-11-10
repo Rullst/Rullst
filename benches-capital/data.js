@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794307083004,
+  "lastUpdate": 1794325135804,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -15514,6 +15514,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a0c0fd7aed085aed8f3a4a12d25cce5add0052ba",
+          "message": "Merge pull request #624 from Rullst/feat/v13-alpha5-app-testing-kit\n\nfeat(cli): generated application testing kit: page smoke tests, CI workflow and add browser-tests",
+          "timestamp": "2026-11-10T12:13:08-03:00",
+          "tree_id": "34b428bf1a876371d6a79895f0a2ccebb7dc0ea8",
+          "url": "https://github.com/Rullst/Rullst/commit/a0c0fd7aed085aed8f3a4a12d25cce5add0052ba"
+        },
+        "date": 1794325135200,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
