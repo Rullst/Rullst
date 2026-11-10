@@ -3,6 +3,7 @@
 
 mod catalog;
 mod emit;
+mod prepared;
 mod tag;
 mod template;
 mod translate;
@@ -16,6 +17,9 @@ mod catalog_tests;
 #[cfg(test)]
 #[path = "plural_tests.rs"]
 mod plural_tests;
+#[cfg(test)]
+#[path = "prepared_tests.rs"]
+mod prepared_tests;
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

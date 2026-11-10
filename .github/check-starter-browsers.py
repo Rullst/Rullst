@@ -23,6 +23,10 @@ failing. A defect in framework code that a starter cannot fix is versioned in
 reported instead of failing, and an entry that nothing matches any more fails
 the run, so it is removed together with the fix.
 
+While each starter runs, `cargo rullst add browser-tests` is applied to it and
+the generated tests/browser/pages.mjs (its own pinned Playwright and axe-core)
+must pass against the same server: the checks every new application gets.
+
 Usage: check-starter-browsers.py --cli PATH --work DIR [--out DIR]
                                  [--starter blank|saas ...] [--browsers LIST]
 """
@@ -186,13 +190,23 @@ def prepare(cli: Path, work: Path, starter: str, env: dict[str, str]) -> tuple[P
     return project, binary
 
 
-def drive(project: Path, binary: Path, starter: str, out: Path, browsers: str, env: dict[str, str]) -> dict:
+def generated_browser_tests(cli: Path, project: Path, browsers: str, env: dict[str, str]) -> None:
+    """Adds the generated browser tests to the starter and runs them against its server."""
+    tests = project / "tests" / "browser"
+    stream([str(cli), "add", "browser-tests"], cwd=project, env=env)
+    stream(["npm", "ci", "--prefix", str(tests), "--ignore-scripts", "--no-audit", "--no-fund"], cwd=project, env=env)
+    stream(["node", str(tests / "pages.mjs"), "--base-url", checks.ORIGIN, "--browsers", browsers], cwd=project, env=env)
+
+
+def drive(cli: Path, project: Path, binary: Path, starter: str, out: Path, browsers: str,
+          env: dict[str, str]) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     server = Server([str(binary)], project, env, out / "server.log")
     try:
         server.wait_until_ready()
         stream(["node", str(DRIVER), "--starter", starter, "--base-url", checks.ORIGIN, "--out", str(out),
                 "--browsers", browsers], cwd=ROOT, env=env)
+        generated_browser_tests(cli, project, browsers, env)
     finally:
         server.stop()
     report = json.loads((out / "report.json").read_text(encoding="utf-8"))
@@ -222,7 +236,7 @@ def main(argv: list[str] | None = None) -> int:
             log(f"::group::{starter}: generate, build and migrate")
             project, binary = prepare(args.cli.resolve(), work, starter, env)
             log("::endgroup::")
-            reports.append(drive(project, binary, starter, out / starter, args.browsers, env))
+            reports.append(drive(args.cli.resolve(), project, binary, starter, out / starter, args.browsers, env))
     except (Failure, DAST.Failure) as error:
         log(f"::error title=Generated starters in browsers::{error}")
         return 1

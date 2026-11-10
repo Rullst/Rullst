@@ -49,13 +49,7 @@ impl Video {
             .find(|tag| tag.property == DESCRIPTION)
             .and_then(|tag| tag.value)
             .unwrap_or_default();
-        let processing = match self.status {
-            0 => Processing::AwaitingUpload,
-            1..=3 | 7..=8 => Processing::Processing,
-            4 => Processing::Ready,
-            5..=6 => Processing::Failed,
-            _ => return Err(Error::Protocol),
-        };
+        let processing = processing(self.status)?;
         let resolutions = self.available_resolutions.unwrap_or_default();
         if resolutions.len() > 128 {
             return Err(Error::Protocol);
@@ -72,6 +66,17 @@ impl Video {
         validate_remote(&video, library)?;
         Ok(video)
     }
+}
+
+/// The API status codes; only Finished (4) is `Ready`. Webhook codes differ.
+pub(super) fn processing(status: u8) -> Result<Processing, Error> {
+    Ok(match status {
+        0 => Processing::AwaitingUpload,
+        1..=3 | 7..=8 => Processing::Processing,
+        4 => Processing::Ready,
+        5..=6 => Processing::Failed,
+        _ => return Err(Error::Protocol),
+    })
 }
 
 #[derive(Deserialize, Serialize)]

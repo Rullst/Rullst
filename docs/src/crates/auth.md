@@ -34,6 +34,22 @@ unknown emails alike.
 `decrypt_session` and `decrypt_session_claims` use a versioned AES-256-GCM
 envelope with authenticated metadata and an operating-system nonce. `APP_KEY` must contain at least 32 bytes,
 must not be a documented placeholder, and must satisfy the entropy check.
+`get_app_key` reads it from the `APP_KEY` environment variable, then `.env`,
+then `Rullst.toml`. Without one, staging and production fail with
+`AuthError::MissingAppKey`; other environments use a development key kept
+outside the source tree (since 13.0.0-alpha.5). A `.rullst_dev_key` that an
+earlier version wrote into the current directory is still read, but none is
+written there any more: the key lives in the per-user state directory,
+`$XDG_STATE_HOME/rullst/dev-keys/` (else `~/.local/state/rullst/dev-keys/`)
+on Unix and macOS or `%LOCALAPPDATA%\rullst\dev-keys\` on Windows, in a file
+named after the SHA-256 of the canonical project directory (owner-only on
+Unix). A test harness, an executable in Cargo's `target/<profile>/deps`
+directory where `cargo test` and cargo-nextest run unit and integration
+tests, never writes a key: it keeps a new one in memory for the process.
+`cfg(test)` cannot make this choice, because it is set only for the crate
+under test, never for `rullst-auth` as its dependency. Tests that need one
+key in several processes (for example a test that starts the server binary
+and reads its cookies) set `APP_KEY`.
 
 The cookie helpers select `Secure` from `RULLST_ENV`, then `APP_ENV`, then `.env`, then
 `Rullst.toml`. When either process variable is set, `.env` is not read for that decision. A

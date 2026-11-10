@@ -10,10 +10,13 @@ use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 use tower::ServiceExt;
 
+mod csp_policy;
+mod html_check;
 mod html_normalize;
 mod snapshot;
 
 pub use crate::assert_html_snapshot;
+pub use html_check::{HtmlIssue, HtmlIssueKind, html_issues};
 pub use html_normalize::{CSRF_TOKEN_PLACEHOLDER, NONCE_PLACEHOLDER, normalize_html};
 // Used by `assert_html_snapshot!`.
 #[doc(hidden)]
@@ -307,6 +310,96 @@ impl TestResponse {
         self
     }
 
+    /// Asserts the security headers of Rullst's browser baseline: a
+    /// non-empty `Content-Security-Policy`, `X-Content-Type-Options: nosniff`
+    /// and frame protection, either `X-Frame-Options` `DENY` or `SAMEORIGIN`
+    /// or a CSP `frame-ancestors` directive.
+    ///
+    /// Added in 13.0.0-alpha.5.
+    pub fn assert_security_headers(&self) -> &Self {
+        let policy = self.content_security_policy();
+        assert!(
+            policy
+                .as_deref()
+                .is_some_and(|policy| !policy.trim().is_empty()),
+            "Expected a Content-Security-Policy header, but it was missing or empty"
+        );
+        let nosniff = self.header_text(header::X_CONTENT_TYPE_OPTIONS);
+        assert!(
+            nosniff.is_some_and(|value| value.trim().eq_ignore_ascii_case("nosniff")),
+            "Expected X-Content-Type-Options: nosniff, but got {nosniff:?}"
+        );
+        let frame = self.header_text(header::X_FRAME_OPTIONS);
+        let refused = frame.is_some_and(|value| {
+            ["DENY", "SAMEORIGIN"]
+                .iter()
+                .any(|option| value.trim().eq_ignore_ascii_case(option))
+        });
+        let ancestors = policy.as_deref().is_some_and(|policy| {
+            policy.split([';', ',']).any(|directive| {
+                directive
+                    .split_ascii_whitespace()
+                    .next()
+                    .is_some_and(|name| name.eq_ignore_ascii_case("frame-ancestors"))
+            })
+        });
+        assert!(
+            refused || ancestors,
+            "Expected frame protection (X-Frame-Options DENY or SAMEORIGIN, or a CSP frame-ancestors directive), but got X-Frame-Options {frame:?} and Content-Security-Policy {policy:?}"
+        );
+        self
+    }
+
+    /// Asserts that an HTML response (`text/html` or
+    /// `application/xhtml+xml`) has none of the problems [`html_issues`]
+    /// finds under the response's own `Content-Security-Policy`: markup
+    /// escaped twice, broken attribute quoting, boolean attributes set to
+    /// `"false"`, inline `<script>`/`<style>` without the CSP nonce, and
+    /// `style`/`on*` attributes the policy blocks. Other content types pass
+    /// unchecked.
+    ///
+    /// Added in 13.0.0-alpha.5.
+    pub fn assert_html_hygiene(&self) -> &Self {
+        let html = self.header_text(header::CONTENT_TYPE).is_some_and(|value| {
+            let value = value.trim_start().to_ascii_lowercase();
+            value.starts_with("text/html") || value.starts_with("application/xhtml+xml")
+        });
+        if !html {
+            return self;
+        }
+        let issues = html_issues(
+            &self.body_string(),
+            self.content_security_policy().as_deref(),
+        );
+        assert!(
+            issues.is_empty(),
+            "Expected HTML without escaping, quoting or CSP problems, but found {}:\n{}",
+            issues.len(),
+            issues
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
+        self
+    }
+
+    /// The first value of `name` as text.
+    fn header_text(&self, name: HeaderName) -> Option<&str> {
+        self.headers.get(name).and_then(|value| value.to_str().ok())
+    }
+
+    /// Every `Content-Security-Policy` value, joined as separate policies.
+    fn content_security_policy(&self) -> Option<String> {
+        let policies = self
+            .headers
+            .get_all(header::CONTENT_SECURITY_POLICY)
+            .iter()
+            .filter_map(|value| value.to_str().ok())
+            .collect::<Vec<_>>();
+        (!policies.is_empty()).then(|| policies.join(", "))
+    }
+
     /// Asserts that the response body matches the given JSON structure.
     pub fn assert_json<
         T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug + PartialEq,
@@ -368,3 +461,7 @@ mod contract_tests;
 #[cfg(test)]
 #[path = "testing/snapshot_tests.rs"]
 mod snapshot_tests;
+
+#[cfg(test)]
+#[path = "testing/response_check_tests.rs"]
+mod response_check_tests;

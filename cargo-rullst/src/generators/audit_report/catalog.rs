@@ -138,7 +138,7 @@ pub(crate) const IDOR: Spec = Spec {
     id: "idor",
     title: "IDOR / BOLA route classification",
     group: Group::Security,
-    fix: "Add `// rullst-access: public|owner|role|admin — reason` above each parameterized route and the matching guard.",
+    fix: "Add `// rullst-access: public|owner|role|admin|machine — reason` above each parameterized route and the matching guard or MachineEndpoint registration.",
     anchor: "idor",
     asvs: &[
         asvs("V8.2.1", "V8.2 General Authorization Design", 1),

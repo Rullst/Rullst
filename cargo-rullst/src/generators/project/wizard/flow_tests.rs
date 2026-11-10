@@ -462,6 +462,7 @@ fn a_dry_run_review_finishes_without_creating() {
                 database: Some("Sqlite"),
                 ..ProjectScaffoldOptions::default()
             },
+            ..NewProjectRequest::default()
         },
         &mut ui,
     ));

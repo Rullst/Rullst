@@ -1035,7 +1035,9 @@ pub fn rullst_core::TestResponse::assert_cookie(&self, name: &str, expected: &st
 pub fn rullst_core::TestResponse::assert_dont_see(&self, expected: &str) -> &Self
 pub fn rullst_core::TestResponse::assert_has_cookie(&self, name: &str) -> &Self
 pub fn rullst_core::TestResponse::assert_header(&self, name: &str, expected: &str) -> &Self
+pub fn rullst_core::TestResponse::assert_html_hygiene(&self) -> &Self
 pub fn rullst_core::TestResponse::assert_json<T: serde_core::ser::Serialize + serde_core::de::DeserializeOwned + core::fmt::Debug + core::cmp::PartialEq>(&self, expected: &T) -> &Self
+pub fn rullst_core::TestResponse::assert_security_headers(&self) -> &Self
 pub fn rullst_core::TestResponse::assert_see(&self, expected: &str) -> &Self
 pub fn rullst_core::TestResponse::assert_status(&self, expected: u16) -> &Self
 pub fn rullst_core::TestResponse::body_string(&self) -> alloc::string::String
@@ -3064,6 +3066,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_core::security::ForwardedPr
 pub rullst_core::security::MachineAuthentication::Bearer
 pub rullst_core::security::MachineAuthentication::SignedWebhook
 pub rullst_core::security::MachineAuthentication::MutualTls
+pub rullst_core::security::MachineAuthentication::AddressTokenWithSourceConfirmation
 impl core::clone::Clone for rullst_core::security::MachineAuthentication
 impl core::cmp::Eq for rullst_core::security::MachineAuthentication
 impl core::cmp::PartialEq for rullst_core::security::MachineAuthentication
@@ -3076,6 +3079,7 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::security::MachineA
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::security::MachineAuthentication
 pub struct rullst_core::security::MachineEndpoint
 impl rullst_core::security::MachineEndpoint
+pub fn rullst_core::security::MachineEndpoint::address_token(method: http::method::Method, path: impl core::convert::Into<alloc::string::String>, verifier: impl rullst_core::security::MachineRequestVerifier + 'static) -> core::result::Result<Self, rullst_core::security::MachineEndpointError>
 pub fn rullst_core::security::MachineEndpoint::authentication(&self) -> rullst_core::security::MachineAuthentication
 pub fn rullst_core::security::MachineEndpoint::bearer(method: http::method::Method, path: impl core::convert::Into<alloc::string::String>, token: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_core::security::MachineEndpointError>
 pub fn rullst_core::security::MachineEndpoint::mutual_tls(method: http::method::Method, path: impl core::convert::Into<alloc::string::String>, verifier: impl rullst_core::security::MachineRequestVerifier + 'static) -> core::result::Result<Self, rullst_core::security::MachineEndpointError>
@@ -3606,6 +3610,38 @@ pub fn rullst_core::telemetry_spans::global_span_collector() -> &'static rullst_
 pub fn rullst_core::tenant_layer(config: rullst_core::TenantConfig) -> rullst_core::TenantLayer
 pub mod rullst_core::testing
 pub const rullst_core::testing::CSRF_TOKEN_PLACEHOLDER: &str
+#[non_exhaustive] pub struct rullst_core::testing::HtmlIssue
+impl rullst_core::testing::HtmlIssue
+pub fn rullst_core::testing::HtmlIssue::excerpt(&self) -> &str
+pub fn rullst_core::testing::HtmlIssue::kind(&self) -> rullst_core::testing::HtmlIssueKind
+pub fn rullst_core::testing::HtmlIssue::line(&self) -> usize
+impl core::clone::Clone for rullst_core::testing::HtmlIssue
+impl core::cmp::Eq for rullst_core::testing::HtmlIssue
+impl core::cmp::PartialEq for rullst_core::testing::HtmlIssue
+impl core::fmt::Debug for rullst_core::testing::HtmlIssue
+impl core::fmt::Display for rullst_core::testing::HtmlIssue
+impl core::marker::Send for rullst_core::testing::HtmlIssue
+impl core::marker::Sync for rullst_core::testing::HtmlIssue
+impl core::marker::Unpin for rullst_core::testing::HtmlIssue
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::testing::HtmlIssue
+impl core::panic::unwind_safe::UnwindSafe for rullst_core::testing::HtmlIssue
+#[non_exhaustive] pub enum rullst_core::testing::HtmlIssueKind
+pub rullst_core::testing::HtmlIssueKind::DoubleEscaped
+pub rullst_core::testing::HtmlIssueKind::MalformedMarkup
+pub rullst_core::testing::HtmlIssueKind::FalseBooleanAttribute
+pub rullst_core::testing::HtmlIssueKind::MissingNonce
+pub rullst_core::testing::HtmlIssueKind::BlockedInlineAttribute
+impl core::clone::Clone for rullst_core::testing::HtmlIssueKind
+impl core::cmp::Eq for rullst_core::testing::HtmlIssueKind
+impl core::cmp::PartialEq for rullst_core::testing::HtmlIssueKind
+impl core::fmt::Debug for rullst_core::testing::HtmlIssueKind
+impl core::hash::Hash for rullst_core::testing::HtmlIssueKind
+impl core::marker::Copy for rullst_core::testing::HtmlIssueKind
+impl core::marker::Send for rullst_core::testing::HtmlIssueKind
+impl core::marker::Sync for rullst_core::testing::HtmlIssueKind
+impl core::marker::Unpin for rullst_core::testing::HtmlIssueKind
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::testing::HtmlIssueKind
+impl core::panic::unwind_safe::UnwindSafe for rullst_core::testing::HtmlIssueKind
 pub const rullst_core::testing::NONCE_PLACEHOLDER: &str
 pub struct rullst_core::testing::SnapshotOptions
 impl rullst_core::testing::SnapshotOptions
@@ -3630,6 +3666,7 @@ pub use rullst_core::testing::TestRequestBuilder = struct rullst_core::TestReque
 pub use rullst_core::testing::TestResponse = struct rullst_core::TestResponse
 pub const rullst_core::testing::UPDATE_SNAPSHOTS_ENV: &str
 pub use rullst_core::testing::assert_html_snapshot = macro rullst_core::assert_html_snapshot
+pub fn rullst_core::testing::html_issues(html: &str, content_security_policy: core::option::Option<&str>) -> alloc::vec::Vec<rullst_core::testing::HtmlIssue>
 pub fn rullst_core::testing::normalize_html(html: &str, options: rullst_core::testing::SnapshotOptions) -> alloc::string::String
 pub mod rullst_core::uploads
 pub struct rullst_core::uploads::Multipart
