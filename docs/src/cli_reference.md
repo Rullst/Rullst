@@ -517,9 +517,14 @@ manifests and generated project files, and reports each finding as
 behaviour of an API, feature or configuration in use) with a stable `V13-*`
 code, `file:line`, a one-line message and the title of its row in the
 [v13 migration guide](migration-v13.md#changes-from-the-published-1210-source).
-Findings do not stop the transaction; a failed Cargo gate names the
-must-change findings and repeats the guidance of `V13-CAPITAL-REMOVED` and
-`V13-MAIL-REMOVED` (removed APIs reported for review).
+Must-change findings stop the command before it changes anything (the plan
+and `--dry-run` say so, and the error names each rule's locations and
+guidance) unless `--keep-on-failure` asks it to change the versions anyway and
+keep the edited files for repair. Review findings do not stop the transaction;
+a failed Cargo gate repeats the guidance of `V13-CAPITAL-REMOVED` and
+`V13-MAIL-REMOVED` (removed APIs reported for review). The plan ends with a
+link to the migration guide's checklist for the project's version (alpha.2,
+or alpha.3 and later prereleases), or to the table of changes.
 Each rule records the release that introduced its change. The plan reads the
 project's Rullst version (the oldest version a Rullst requirement admits or
 `Cargo.lock` holds); for a project already on a 13.0 prerelease it applies only
@@ -784,7 +789,8 @@ status.
 ### `cargo rullst add`
 `cargo rullst add <capability> [--dry-run]` (v13) enables a facade capability
 in an existing project. Capabilities: `mail`, `auth`, `ai`, `nexus` and
-`studio`.
+`studio`; the frontend tools `tailwind` and `alpine` are described
+[below](#frontend-tools-cargo-rullst-add-tailwind-and-cargo-rullst-add-alpine).
 
 It runs only at the root of a Rullst project (a `Cargo.toml` whose
 `[dependencies]` declare `rullst`), asks nothing and:
@@ -820,6 +826,33 @@ unknown capability is a usage error (exit status 2).
 ```bash
 cargo rullst add mail --dry-run
 cargo rullst add mail
+```
+
+#### Frontend tools: `cargo rullst add tailwind` and `cargo rullst add alpine`
+
+Since 13.0.0-alpha.5 `add` also takes two opt-in frontend tools. They change
+no Cargo feature; each is a pinned download verified by checksum before
+anything is written, and `--dry-run` downloads and writes nothing:
+
+| Tool | Download (pinned) | Writes |
+| :--- | :--- | :--- |
+| `tailwind` | Tailwind CSS v4.3.3 standalone CLI for the host, SHA-256 checked, cached per user and re-checked before every use | `assets/css/app.css`; builds `static/app.css`; links it in the layout; `/static/app.css` in `.gitignore` unless tracked; BuildKit stages in a generated Dockerfile |
+| `alpine` | `@alpinejs/csp` 3.17.5 npm tarball, checked against its `dist.integrity` (SHA-512) | `static/vendor/alpine-csp.min.js`, `static/js/alpine-components.js`; two deferred scripts in the layout |
+
+The layout is edited only when exactly one `html!` in `src/` closes `<head>`
+on its own line; otherwise the exact `html!` line (using
+`rullst::assets::url`) and where it goes are printed. With `tailwind`,
+`cargo rullst dev` runs `tailwindcss --watch` beside the server and
+`cargo rullst build` writes the minified stylesheet before pre-compression.
+The command stops, writing nothing, when `assets/css/app.css` exists without
+importing `tailwindcss` or `static/app.css` exists and was not built by
+Tailwind. See the [frontend guide](frontend.md) for the CSP rules, what the
+Alpine CSP build cannot parse, and how to bump either pin.
+
+```bash
+cargo rullst add tailwind --dry-run
+cargo rullst add tailwind
+cargo rullst add alpine
 ```
 
 ---
@@ -1902,8 +1935,11 @@ binary size, a local container image's size (`--image`, through `docker` or
 `podman image inspect`), the idle resident memory of the started app (Linux
 `VmRSS`), the third-party dependency count from `Cargo.lock` and, with
 `--bench`, the app process's CPU time during a bounded closed-loop loopback
-load and the CPU time per request. Anything unavailable is `NOT MEASURED` with
-the reason. It measures no energy: a Software Carbon Intensity (SCI,
+load and the CPU time per request. Idle memory and CPU time read `/proc`, so
+they are measured on Linux only; on macOS and Windows they are `NOT MEASURED`.
+Anything unavailable is `NOT MEASURED` with the reason. In Git Bash (MSYS),
+`--path /` reaches the CLI as `C:/Program Files/Git/`; run it as
+`MSYS_NO_PATHCONV=1 cargo rullst green --path /`. It measures no energy: a Software Carbon Intensity (SCI,
 ISO/IEC 21031:2024) figure appears only as an estimate labelled `estimate`,
 computed from the measured CPU time, your `--cpu-watts` and your
 `--grid-intensity`, with every input shown.
@@ -1929,8 +1965,9 @@ cargo rullst green --bench --cpu-watts 15 --grid-intensity 120
   `--grid-intensity <gCO2e/kWh>` (needs `--cpu-watts`), `--embodied <gCO2e>`
   (needs `--grid-intensity`), `--json` (versioned `rullst.green.v1`).
 * **Exit status:** `0` when the measurement ran, even with `NOT MEASURED`
-  fields; `1` when the build failed or the app could not be started or reached;
-  `2` for invalid arguments.
+  fields; `1` when the build failed or the app could not be started or reached,
+  after the report (the JSON with `--json`) with the figures that need no
+  running app and the failure in `failure`; `2` for invalid arguments.
 
 See the [green guide](green.md) for what each figure means and how to choose a
 grid intensity.
@@ -2174,9 +2211,15 @@ the ORM `migrations` table has not applied yet (`cargo rullst db:migrate`).
 For server databases run `cargo rullst db:status`.
 
 #### Doctor: security baseline
-`cargo-audit` installed, `.env` neither tracked nor unignored by Git (✗ when
-tracked), `APP_KEY` set to at least 32 characters and not a template
-placeholder, and a `Cargo.lock` for reproducible builds.
+`cargo-audit` installed, `.env` and `.rullst_dev_key` (the development
+`APP_KEY` file that `rullst::auth::get_app_key()` wrote into the project, a
+`cargo test` run included, before 13.0.0-alpha.5; it is still read, and newer
+versions keep the key in the user's state directory) neither tracked nor
+unignored by Git when they
+exist (✗ when tracked), `APP_KEY` set to at least 32 characters and not a
+template placeholder, and a `Cargo.lock` for reproducible builds. Projects
+generated by `cargo rullst new` ignore `.rullst_dev_key` in `.gitignore` and
+`.dockerignore`.
 
 #### Doctor: disk space
 Free space on the filesystem of the project (or the working directory): ✗

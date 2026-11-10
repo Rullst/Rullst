@@ -13,9 +13,12 @@
 //! existing build), starts it in production mode (or `--env staging`) on a
 //! free loopback port, measures it and stops it. With `--url` it measures an
 //! app already running on loopback. The process exits 0 whenever the
-//! measurement ran.
+//! measurement ran. When the build fails or the app does not start or
+//! answer, the report still carries the figures that need no running app,
+//! with the failure inside, and the process exits 1.
 
 mod artifacts;
+mod failure;
 mod load;
 mod options;
 mod procfs;
@@ -29,8 +32,9 @@ mod tests;
 pub(crate) use options::command;
 
 use crate::term::{Style, TermEnv};
-use crate::ui::error_report::{self, AlreadyReported, Friendly, ProjectRequired};
+use crate::ui::error_report::ProjectRequired;
 use clap::ArgMatches;
+use failure::Failure;
 use options::Options;
 use report::{Benchmark, Machine, Measured, Metric, Report, Target};
 use std::error::Error;
@@ -38,27 +42,6 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 const DOCS: &str = "https://rullst.github.io/Rullst/book/green.html";
-
-/// Prints a friendly report on stderr; the exit status is 1.
-fn failure(title: &str, happened: String, fix: &str) -> Box<dyn Error> {
-    let friendly = Friendly {
-        title: title.to_string(),
-        happened: happened.clone(),
-        fix: Some(fix.to_string()),
-        docs: Some(DOCS),
-    };
-    eprint!(
-        "{}",
-        error_report::render(
-            &friendly,
-            &[],
-            None,
-            false,
-            crate::ui::style::Style::stderr()
-        )
-    );
-    AlreadyReported::new(1, happened).into()
-}
 
 pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let options = Options::from_matches(matches);
@@ -80,17 +63,52 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
         write!(stdout, "{}", render::render(&report, style))?;
     }
     stdout.flush()?;
-    Ok(())
+    match &report.failure {
+        Some(failure) => Err(failure.report()),
+        None => Ok(()),
+    }
 }
 
 /// The app being measured: its URL, PID and executable, plus the process
-/// started by green (stopped on drop).
+/// started by green (stopped on drop), or why it could not be measured.
 struct Subject {
-    base: reqwest::Url,
+    base: Option<reqwest::Url>,
     target: Target,
     executable: Option<PathBuf>,
     executable_method: &'static str,
     owned: Option<target::OwnedApp>,
+    failure: Option<Failure>,
+}
+
+impl Subject {
+    /// A started app (`release_build`) that green could not measure.
+    fn unstarted(
+        url: Option<&reqwest::Url>,
+        binary: Option<PathBuf>,
+        environment: &'static str,
+        failure: Failure,
+    ) -> Self {
+        Self {
+            base: None,
+            target: Target {
+                mode: "release_build",
+                url: url.map(ToString::to_string),
+                pid: None,
+                process_lookup: failure.unmeasured().to_string(),
+                executable: binary.as_deref().and_then(file_name),
+                environment: Some(started_environment(environment)),
+            },
+            executable: binary,
+            executable_method: "file size of the release binary built by cargo",
+            owned: None,
+            failure: Some(failure),
+        }
+    }
+}
+
+fn file_name(path: &Path) -> Option<String> {
+    path.file_name()
+        .map(|name| name.to_string_lossy().into_owned())
 }
 
 async fn existing(
@@ -105,11 +123,22 @@ async fn existing(
         .send()
         .await;
     if probe.is_err() {
-        return Err(failure(
-            "App not reachable",
-            format!("Nothing answered on {url}."),
-            "Start the app first (for example `cargo rullst dev` or the release binary), or omit --url to let green build and start it.",
-        ));
+        let failure = Failure::reach(url.as_str());
+        return Ok(Subject {
+            base: None,
+            target: Target {
+                mode: "existing_url",
+                url: Some(url.to_string()),
+                pid: None,
+                process_lookup: failure.unmeasured().to_string(),
+                executable: None,
+                environment: None,
+            },
+            executable: None,
+            executable_method: "file size of the running executable (/proc/<pid>/exe)",
+            owned: None,
+            failure: Some(failure),
+        });
     }
     let port = base.port_or_known_default().unwrap_or(80);
     let (pid, lookup) = match target::listening_process(port) {
@@ -125,15 +154,13 @@ async fn existing(
     let name = executable
         .as_deref()
         .and_then(|link| std::fs::read_link(link).ok())
-        .and_then(|path| {
-            path.file_name()
-                .map(|name| name.to_string_lossy().into_owned())
-        });
+        .as_deref()
+        .and_then(file_name);
     Ok(Subject {
-        base: base.clone(),
+        base: Some(base.clone()),
         target: Target {
             mode: "existing_url",
-            url: url.to_string(),
+            url: Some(url.to_string()),
             pid,
             process_lookup: lookup,
             executable: name,
@@ -142,6 +169,7 @@ async fn existing(
         executable,
         executable_method: "file size of the running executable (/proc/<pid>/exe)",
         owned: None,
+        failure: None,
     })
 }
 
@@ -159,45 +187,47 @@ async fn spawned(
     let binary = match crate::generators::dev::compile_release_in(Path::new(".")).await {
         Ok(binary) => binary,
         Err(error) => {
-            return Err(failure(
-                "Release build failed",
-                error_report::sanitize(&error.to_string()),
-                "Fix the build errors (`cargo build --release`), then run green again.",
-            ));
+            let failure = Failure::build(&error.to_string());
+            return Ok(Subject::unstarted(None, None, environment, failure));
         }
     };
     let port = target::free_port()?;
     let base = target::validate_url(&format!("http://127.0.0.1:{port}"))?;
     let url = target::request_url(&base, path);
     eprintln!("Starting the app with RULLST_ENV={environment} on {base} ...");
-    let mut app = target::OwnedApp::spawn(&binary, port, environment).map_err(|error| {
-        failure(
-            "App could not be started",
-            format!("Starting {} failed: {error}.", binary.display()),
-            "Check that the release binary runs: `cargo run --release`.",
-        )
-    })?;
+    let mut app = match target::OwnedApp::spawn(&binary, port, environment) {
+        Ok(app) => app,
+        Err(error) => {
+            let failure = Failure {
+                stage: "start",
+                title: "App could not be started",
+                message: format!("Starting {} failed: {error}.", binary.display()),
+                fix: "Check that the release binary runs: `cargo run --release`.".into(),
+            };
+            return Ok(Subject::unstarted(
+                Some(&url),
+                Some(binary),
+                environment,
+                failure,
+            ));
+        }
+    };
     if let Err(error) = app.wait_ready(client, &url).await {
-        let tail = app.stderr_tail();
-        let detail = if tail.is_empty() {
-            String::new()
-        } else {
-            format!("\nLast stderr lines:\n{tail}")
-        };
-        return Err(failure(
-            "App could not be started",
-            format!("{error}.{detail}"),
-            start_fix(environment),
+        let failure = Failure::start(format!("{error}."), &app.stderr_tail(), environment);
+        app.stop();
+        return Ok(Subject::unstarted(
+            Some(&url),
+            Some(binary),
+            environment,
+            failure,
         ));
     }
-    let name = binary
-        .file_name()
-        .map(|name| name.to_string_lossy().into_owned());
+    let name = file_name(&binary);
     Ok(Subject {
-        base,
+        base: Some(base),
         target: Target {
             mode: "release_build",
-            url: url.to_string(),
+            url: Some(url.to_string()),
             pid: Some(app.pid()),
             process_lookup: "started by green".to_string(),
             executable: name,
@@ -206,16 +236,8 @@ async fn spawned(
         executable: Some(binary),
         executable_method: "file size of the release binary built by cargo",
         owned: Some(app),
+        failure: None,
     })
-}
-
-/// What to do when the started app never answered in `environment`.
-fn start_fix(environment: &str) -> &'static str {
-    if environment == "production" {
-        "Production needs the app's production settings (the SaaS starter's real billing credentials, for example): set them, measure with --env staging, or start the app yourself and measure it with --url."
-    } else {
-        "Run the release binary with RULLST_ENV=staging to see why it does not serve requests, or measure a running app with --url."
-    }
 }
 
 /// The variables green set for the app it started.
@@ -235,8 +257,12 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
     };
     let pid = subject.target.pid;
     let idle_rss = pid.and_then(procfs::sample_rss);
-    let benchmark = if options.bench {
-        let url = target::request_url(&subject.base, &options.path);
+    let unmeasured = subject
+        .failure
+        .as_ref()
+        .map_or_else(|| process_reason(pid), Failure::unmeasured);
+    let benchmark = if let (true, Some(base)) = (options.bench, &subject.base) {
+        let url = target::request_url(base, &options.path);
         if !options.json {
             eprintln!(
                 "Benchmarking GET {} for {} s with {} connections...",
@@ -260,17 +286,19 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
             &outcome,
             cpu_seconds,
         )
+    } else if options.bench {
+        Benchmark::not_run(unmeasured)
     } else {
-        Benchmark::not_run()
+        Benchmark::not_run("no benchmark ran; pass --bench")
     };
     if let Some(app) = subject.owned.as_mut() {
         app.stop();
     }
     let measured = Measured {
-        binary_size_bytes: artifacts::binary_size(
-            subject.executable.as_deref(),
-            subject.executable_method,
-        ),
+        binary_size_bytes: match (&subject.failure, subject.executable.as_deref()) {
+            (Some(failure), None) => Metric::not_measured("bytes", failure.unmeasured()),
+            (_, executable) => artifacts::binary_size(executable, subject.executable_method),
+        },
         image_size_bytes: artifacts::image_size(options.image.as_deref()),
         idle_rss_bytes: match idle_rss {
             Some(bytes) => Metric::measured(
@@ -278,7 +306,7 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
                 "bytes",
                 "VmRSS after start-up, before any benchmark request (/proc/<pid>/status)",
             ),
-            None => Metric::not_measured("bytes", process_reason(pid)),
+            None => Metric::not_measured("bytes", unmeasured),
         },
         dependency_count: artifacts::dependency_count(&std::env::current_dir()?),
     };
@@ -300,6 +328,7 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
         benchmark,
         sci_estimate,
         notes: report::NOTES,
+        failure: subject.failure,
     })
 }
 

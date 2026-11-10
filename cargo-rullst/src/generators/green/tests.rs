@@ -4,6 +4,7 @@ use super::report::*;
 use super::*;
 use std::time::Duration;
 
+mod failures;
 mod run;
 pub(super) mod support;
 
@@ -20,7 +21,7 @@ fn sample(bench: bool, grid_intensity: Option<f64>) -> Report {
     let benchmark = if bench {
         Benchmark::run("/", 2.0, 4, &outcome(), Ok(1.5))
     } else {
-        Benchmark::not_run()
+        Benchmark::not_run("no benchmark ran; pass --bench")
     };
     let sci_estimate = sci::estimate(sci::Inputs {
         cpu_time_seconds: benchmark.cpu_time_seconds.value,
@@ -42,7 +43,7 @@ fn sample(bench: bool, grid_intensity: Option<f64>) -> Report {
         },
         target: Target {
             mode: "release_build",
-            url: "http://127.0.0.1:41234/".to_string(),
+            url: Some("http://127.0.0.1:41234/".to_string()),
             pid: Some(4242),
             process_lookup: "started by green".to_string(),
             executable: Some("app".to_string()),
@@ -57,6 +58,7 @@ fn sample(bench: bool, grid_intensity: Option<f64>) -> Report {
         benchmark,
         sci_estimate,
         notes: NOTES,
+        failure: None,
     }
 }
 
@@ -101,6 +103,7 @@ fn json_keys_are_stable_whatever_was_measured() {
         "benchmark.status",
         "benchmark.transport_errors",
         "cli_version",
+        "failure",
         "machine.arch",
         "machine.cpu_model",
         "machine.logical_cpus",
@@ -281,8 +284,16 @@ fn the_target_rows_say_how_the_app_was_started_and_found() {
 
 #[test]
 fn start_up_help_and_the_recorded_environment_follow_the_requested_env() {
-    assert!(start_fix("production").starts_with("Production needs the app's production settings"));
-    assert!(start_fix("staging").starts_with("Run the release binary with RULLST_ENV=staging"));
+    use super::failure::start_fix;
+    assert!(
+        start_fix("production", "the app exited during start-up").starts_with(
+            "Production needs the app's production settings: set the ones the error above names"
+        )
+    );
+    assert!(
+        start_fix("staging", "the app exited during start-up")
+            .starts_with("Run the release binary with RULLST_ENV=staging")
+    );
     assert_eq!(
         started_environment("staging"),
         "RULLST_ENV=staging HOST=127.0.0.1"

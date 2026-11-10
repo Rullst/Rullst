@@ -107,6 +107,39 @@ pub fn sanitize(text: &str) -> String {
     output
 }
 
+/// `path` as people copy and paste it. On Windows `canonicalize` returns the
+/// extended-length form (`\\?\C:\app`), which many programs refuse, so the
+/// `\\?\` prefix is removed for display; elsewhere the path is unchanged.
+pub fn display_path(path: &std::path::Path) -> String {
+    let text = path.display().to_string();
+    if cfg!(windows) {
+        simplify_verbatim(&text)
+    } else {
+        text
+    }
+}
+
+/// `\\?\C:\x` → `C:\x` and `\\?\UNC\server\share` → `\\server\share`;
+/// other verbatim forms (volume GUIDs, devices) and plain paths are unchanged.
+fn simplify_verbatim(text: &str) -> String {
+    if let Some(share) = text.strip_prefix(r"\\?\UNC\") {
+        return format!(r"\\{share}");
+    }
+    match text.strip_prefix(r"\\?\") {
+        Some(rest) if drive_path(rest) => rest.to_string(),
+        _ => text.to_string(),
+    }
+}
+
+/// `C:` alone or followed by a separator.
+fn drive_path(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    bytes.len() >= 2
+        && bytes[0].is_ascii_alphabetic()
+        && bytes[1] == b':'
+        && bytes.get(2).is_none_or(|separator| *separator == b'\\')
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -155,5 +188,36 @@ mod tests {
         let plain = Style { color: false };
         assert_eq!(plain.red("x"), "x");
         assert_eq!(Style { color: true }.green("x"), "\x1b[32mx\x1b[0m");
+    }
+
+    #[test]
+    fn windows_verbatim_prefixes_are_removed_for_display() {
+        assert_eq!(
+            simplify_verbatim(r"\\?\C:\Users\me\app"),
+            r"C:\Users\me\app"
+        );
+        assert_eq!(simplify_verbatim(r"\\?\d:"), "d:");
+        assert_eq!(
+            simplify_verbatim(r"\\?\UNC\server\share\app"),
+            r"\\server\share\app"
+        );
+        for kept in [
+            r"\\?\Volume{0b1c}\app",
+            r"\\?\C:relative",
+            r"\\?\1:\x",
+            r"C:\Users\me",
+            "/home/me/app",
+            r"\\?\",
+        ] {
+            assert_eq!(simplify_verbatim(kept), kept);
+        }
+        let path = std::path::Path::new(r"\\?\C:\app");
+        let expected = if cfg!(windows) {
+            r"C:\app"
+        } else {
+            r"\\?\C:\app"
+        };
+        assert_eq!(display_path(path), expected);
+        assert_eq!(display_path(std::path::Path::new("/srv/app")), "/srv/app");
     }
 }

@@ -150,7 +150,7 @@ fn rust_sources(project_root: &Path) -> Result<Vec<PathBuf>, Box<dyn std::error:
         if is_rust && entry.file_type().is_symlink() {
             return Err(format!(
                 "refusing to upgrade a workspace with symlinked Rust source {}",
-                entry.path().display()
+                crate::term::display_path(entry.path())
             )
             .into());
         }

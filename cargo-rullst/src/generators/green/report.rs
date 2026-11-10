@@ -2,6 +2,7 @@
 //! their method, or the reason they were not measured; the carbon figure is
 //! a separately labelled estimate with its inputs. Keys are always present
 //! (null when unknown) so scripts can rely on them.
+use super::failure::Failure;
 use super::sci::SciEstimate;
 use serde::Serialize;
 
@@ -59,6 +60,9 @@ pub(crate) struct Report {
     pub benchmark: Benchmark,
     pub sci_estimate: SciEstimate,
     pub notes: [&'static str; 4],
+    /// Why the app was not measured (`null` when it was): the figures that
+    /// need no running app are still reported.
+    pub failure: Option<Failure>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -86,7 +90,8 @@ impl Machine {
 pub(crate) struct Target {
     /// `release_build` (started by green) or `existing_url`.
     pub mode: &'static str,
-    pub url: String,
+    /// `null` when the release build failed before a port was chosen.
+    pub url: Option<String>,
     pub pid: Option<u32>,
     /// How the process was identified, or why it was not.
     pub process_lookup: String,
@@ -121,8 +126,8 @@ pub(crate) struct Benchmark {
 }
 
 impl Benchmark {
-    pub(super) fn not_run() -> Self {
-        const REASON: &str = "no benchmark ran; pass --bench";
+    /// No benchmark, because none was asked for or because of `reason`.
+    pub(super) fn not_run(reason: &'static str) -> Self {
         Self {
             status: "not_run",
             method: None,
@@ -133,8 +138,8 @@ impl Benchmark {
             requests: None,
             transport_errors: None,
             http_errors: None,
-            cpu_time_seconds: Metric::not_measured("seconds", REASON),
-            cpu_ms_per_request: Metric::not_measured("milliseconds", REASON),
+            cpu_time_seconds: Metric::not_measured("seconds", reason),
+            cpu_ms_per_request: Metric::not_measured("milliseconds", reason),
         }
     }
 

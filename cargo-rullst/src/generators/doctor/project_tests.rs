@@ -103,3 +103,55 @@ fn env_files_must_be_ignored_and_untracked() {
     git(root, &["add", "--force", ".env"]);
     assert_eq!(env_git_check(root, true).unwrap().status, Status::Fail);
 }
+
+/// `rullst::auth::get_app_key()` writes `.rullst_dev_key` in the working
+/// directory, so `cargo test` leaves a secret where `git add .` finds it.
+#[test]
+fn the_development_key_must_be_ignored_and_untracked() {
+    let project = tempfile::tempdir().unwrap();
+    let root = project.path();
+    assert!(dev_key_git_check(root, true).is_none());
+    std::fs::write(root.join(".rullst_dev_key"), "k".repeat(64)).unwrap();
+    assert!(dev_key_git_check(root, false).is_none());
+    assert_eq!(dev_key_git_check(root, true).unwrap().status, Status::Info);
+    git(root, &["init", "--quiet"]);
+    let check = dev_key_git_check(root, true).unwrap();
+    assert_eq!(
+        (check.id, check.title, check.status, check.detail.as_str()),
+        (
+            "security.dev_key_git",
+            ".rullst_dev_key in Git",
+            Status::Warn,
+            ".rullst_dev_key is not ignored by Git"
+        )
+    );
+    assert!(
+        check
+            .fix
+            .as_deref()
+            .unwrap()
+            .starts_with("Add .rullst_dev_key to .gitignore and .dockerignore"),
+        "{check:?}"
+    );
+    // An ignored `.env` says nothing about the key, and the other way round.
+    std::fs::write(root.join(".env"), "APP_KEY=x\n").unwrap();
+    std::fs::write(root.join(".gitignore"), ".env\n").unwrap();
+    assert_eq!(dev_key_git_check(root, true).unwrap().status, Status::Warn);
+    assert_eq!(env_git_check(root, true).unwrap().status, Status::Pass);
+    std::fs::write(root.join(".gitignore"), ".rullst_dev_key\n").unwrap();
+    let check = dev_key_git_check(root, true).unwrap();
+    assert_eq!(
+        (check.status, check.detail.as_str()),
+        (Status::Pass, "ignored and untracked")
+    );
+    assert_eq!(env_git_check(root, true).unwrap().status, Status::Warn);
+    git(root, &["add", "--force", ".rullst_dev_key"]);
+    let check = dev_key_git_check(root, true).unwrap();
+    assert_eq!(
+        (check.status, check.detail.as_str()),
+        (
+            Status::Fail,
+            ".rullst_dev_key is tracked by Git; the development key is in the history"
+        )
+    );
+}
