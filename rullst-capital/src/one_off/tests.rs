@@ -90,6 +90,17 @@ fn request_bounds_are_inclusive() {
             .with_quantity(10_000)
             .is_err()
     );
+    let largest = build("r", 99_999_999, "usd", "d")
+        .unwrap()
+        .with_quantity(1)
+        .unwrap();
+    assert_eq!(largest.total_amount_minor(), 99_999_999);
+    assert!(
+        build("r", 50_000_000, "usd", "d")
+            .unwrap()
+            .with_quantity(2)
+            .is_err()
+    );
     let longest = format!("{}@example.com", "a".repeat(320 - 12));
     assert_eq!(longest.len(), 320);
     assert!(request().with_customer_email(longest.as_str()).is_ok());

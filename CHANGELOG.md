@@ -48,6 +48,68 @@ A prepared version section does not establish that its tag or crates exist.
   `rullst-security` and `rullst-orm`, weekly and on dispatch. It is
   informational (`continue-on-error`), so it never changes the Miri admission
   receipt.
+- `rullst-capital` has a provider-neutral one-off checkout: an
+  `OneOffCheckoutRequest` holds a server-side reference, the unit amount in
+  integer minor units, currency, description, quantity (1 to 10,000),
+  success and cancel URLs and an optional e-mail, and
+  `BillingProvider::create_one_off_checkout` returns an `OneOffCheckout`.
+  Stripe creates a card-only `mode=payment` session with inline `price_data`,
+  so no pre-created price or customer is needed. `confirm_one_off_payment`
+  returns an `OneOffPayment` that is paid only when the provider confirms the
+  payment with the request's total and currency. The new trait methods
+  default to `UnsupportedOperation`, so custom providers keep compiling.
+  Reported while building applications on alpha.4.
+- `WebhookVerificationMode::ConfirmedAtSource` declares an unsigned
+  notification that only names a payment. For such a provider the webhook
+  middleware (Axum and Actix) never calls `handle_webhook` and never inserts a
+  `WebhookEvent`: it inserts the `PaymentNotification` read by the new
+  `parse_payment_notification`, which carries no status, so only
+  `confirm_one_off_payment` can mark an order paid.
+- `InfinitePayProvider::checkout(handle)` works against InfinitePay's public
+  Checkout API: it creates payment links with `POST /links` (BRL, priced from
+  the server-side request, optional `inchk_` key for single-payment links and
+  a configured `webhook_url`), reads the unsigned webhook, and confirms each
+  payment with `POST /payment_check`, comparing the charged amount with the
+  server-side total. alpha.4's adapter performed no real operation.
+  Subscriptions, portal, usage, coupons and trials return
+  `UnsupportedOperation` (also with `mock_*` credentials, which used to
+  return portal and cancellation fixtures); an empty or `mock_*` handle runs
+  deterministic offline fixtures. The adapter stays experimental until it is
+  validated against a live account.
+- `rullst_capital::providers::ProviderRequest` gives application-owned
+  payment adapters Capital's HTTP rules (no redirects, no ambient proxy,
+  finite timeouts, rustls, 1 MiB responses, HTTPS or loopback HTTP, redacted
+  `ProviderFailure` errors) without exposing an HTTP client type.
+- Capital invoices print localized labels: `Invoice::with_locale` with
+  `InvoiceLocale::En` (the default), `PtBr` or `Es`, whose "Recibo" wording
+  does not read as a tax invoice, or edited `InvoiceLabels`, in the HTML (with
+  `lang`) and the PDF. `PaidInvoiceDelivery` takes its subject and PDF name
+  from the title (`Recibo INV-1`, `recibo-<key>.pdf`) and gains `subject(...)`
+  and `filename(...)`. Reported while building applications on alpha.4.
+- `rullst_mail::Message` has `Reply-To`: the `reply_to` field and builder,
+  validated by the pipeline like `from` and sent by the Resend, SendPulse, AWS
+  SES (native and proxy) and SMTP drivers. Reported while building
+  applications on alpha.4.
+- Stripe checkout requests (`StripeCheckoutRequest`,
+  `StripePaymentCheckoutRequest`, `OneOffCheckoutRequest`) accept
+  `http://localhost`, `127.0.0.1` and `[::1]` success and cancel URLs, so a
+  `mock_*` key works with a local development server; a live key still
+  requires HTTPS and fails with `ConfigurationError` before any request.
+  alpha.4 refused `http://` when the request was built, even for a mock key.
+
+### Changed
+
+- **Breaking:** Capital's `Invoice` and `InvoiceItem` hold integer amounts in
+  the currency's smallest unit, like `ChargeReceipt`, instead of `f64`:
+  `InvoiceItem::amount` became `amount_minor: u64`, `Invoice::total` was
+  removed (`total_minor()` sums the items), and both structs are
+  `#[non_exhaustive]`, built with `Invoice::new(...).with_item(description,
+  amount_minor)`. The serialized form changes the same way. `cargo rullst
+  upgrade` reports the old literals (`V13-CAPITAL-INVOICE-MINOR-UNITS`).
+- **Breaking** for exhaustive struct literals only: Mail's `Message` gained the
+  `reply_to` field; add `reply_to: None` or build it with `Message::new()`.
+  Serialized messages without it still decode. `cargo rullst upgrade` reports
+  such literals (`V13-MAIL-MESSAGE-REPLY-TO`).
 
 ### Fixed
 

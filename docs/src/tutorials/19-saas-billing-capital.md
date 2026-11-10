@@ -143,25 +143,22 @@ then bind it to the returned receipt:
 
 ```rust,no_run
 use chrono::Utc;
-use rullst::capital::{ChargeReceipt, Invoice, InvoiceItem};
+use rullst::capital::{ChargeReceipt, Invoice, InvoiceLocale};
 use rullst::mail::PaidInvoiceDelivery;
 
 async fn deliver_invoice(receipt: &ChargeReceipt) -> Result<(), Box<dyn std::error::Error>> {
-    let invoice = Invoice {
-        invoice_id: "INV-2026-0001".to_string(),
-        customer_email: "customer@example.com".to_string(),
-        date: Utc::now(),
-        items: vec![InvoiceItem {
-            description: "Pro subscription".to_string(),
-            amount: 25.00,
-        }],
-        total: 25.00,
-        currency: "BRL".to_string(),
-    };
+    // Amounts are integers in the currency's smallest unit: 2_500 is R$ 25.00.
+    let invoice = Invoice::new("INV-2026-0001", "customer@example.com", Utc::now(), "BRL")
+        .with_item("Pro subscription", 2_500)
+        // "Recibo" labels; Capital issues no tax invoice (nota fiscal).
+        .with_locale(InvoiceLocale::PtBr);
 
     let paid = invoice.bind_succeeded_charge(receipt)?;
     // Real providers require a sender on a domain verified for the account.
-    let delivery = PaidInvoiceDelivery::prepare(&paid)?.from("billing@example.com")?;
+    // The subject is "Recibo INV-2026-0001"; `subject(...)` replaces it.
+    let delivery = PaidInvoiceDelivery::prepare(&paid)?
+        .from("billing@example.com")?
+        .subject("Seu recibo de novembro")?;
 
     // In production, atomically claim this stable key in a durable outbox.
     let _delivery_key = delivery.delivery_key();

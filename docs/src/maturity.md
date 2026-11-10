@@ -91,7 +91,7 @@ what your application needs.
 | `rullst-auth` | Extension | Passwords, sessions, passkeys and authorization helpers. |
 | `rullst-connect` | Extension | OAuth2/OIDC identity integrations. |
 | `rullst-mail` | Extension | Transactional email and delivery controls; see the [crate page](crates/mail.md) for the supported drivers. |
-| `rullst-capital` | Extension | Payments and billing: Stripe (supported) and InfinitePay (experimental; offline fixtures only, no real operation yet). |
+| `rullst-capital` | Extension | Payments and billing: Stripe (supported) and InfinitePay (experimental: one-off payment links and source-confirmed notifications on its public Checkout API since 13.0.0-alpha.5, not yet validated against a live account). |
 | `rullst-ai` | Extension | Guarded LLM clients and retrieval; provider coverage is in the [AI provider matrix](ai-provider-capabilities.md). |
 | `rullst-nexus` | Extension | Admin CMS for registered models. |
 | `rullst-studio` | Extension | Local developer control room. |

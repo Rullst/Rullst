@@ -64,6 +64,8 @@ fn redirects_accept_loopback_http_until_a_live_dispatch() {
         "http://10.0.0.1/paid",
         "https://app.example/paid#done",
         "https://user:pass@app.example/paid",
+        "https://user@app.example/paid",
+        "https://:pass@app.example/paid",
         "ftp://localhost/paid",
         "/paid",
     ] {

@@ -6,10 +6,6 @@
 # exact, so an entry stops applying when its line moves and the mutant is
 # tested again; update or delete it then.
 
-# rullst-capital money_to_minor: after the `rounded >= 1` check, only amounts
-# that round to zero can hit exactly 1e-7, and those are rejected either way.
-rullst-capital/src/invoice.rs:182:33: replace > with >= in money_to_minor
-
 # rullst-orm: compiled only without a strict driver feature (SQLx Any pool), so
 # absent from the gate's --all-features build; default-feature tests cover them.
 rullst-orm/src/schema/schema_builder.rs:78:8: delete ! in prepare_postgres_enums

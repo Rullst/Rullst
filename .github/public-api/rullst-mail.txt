@@ -534,6 +534,7 @@ pub rullst_mail::Message::subject: alloc::string::String
 pub rullst_mail::Message::body_html: core::option::Option<alloc::string::String>
 pub rullst_mail::Message::body_text: core::option::Option<alloc::string::String>
 pub rullst_mail::Message::from: core::option::Option<alloc::string::String>
+pub rullst_mail::Message::reply_to: core::option::Option<alloc::string::String>
 pub rullst_mail::Message::unsubscribe_url: core::option::Option<alloc::string::String>
 pub rullst_mail::Message::unsubscribe_email: core::option::Option<alloc::string::String>
 pub rullst_mail::Message::send_at: core::option::Option<chrono::datetime::DateTime<chrono::offset::utc::Utc>>
@@ -550,6 +551,7 @@ pub fn rullst_mail::Message::html(self, html: impl core::convert::Into<alloc::st
 pub fn rullst_mail::Message::is_disposable(&self) -> bool
 pub fn rullst_mail::Message::list_unsubscribe_header(&self) -> core::option::Option<alloc::string::String>
 pub fn rullst_mail::Message::new() -> Self
+pub fn rullst_mail::Message::reply_to(self, reply_to: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_mail::Message::sanitize_secrets(self) -> Self
 pub fn rullst_mail::Message::send_at(self, timestamp: chrono::datetime::DateTime<chrono::offset::utc::Utc>) -> Self
 pub fn rullst_mail::Message::send_in(self, duration: core::time::Duration) -> Self
@@ -644,9 +646,11 @@ pub async fn rullst_mail::PaidInvoiceDelivery::send(&self) -> core::result::Resu
 pub async fn rullst_mail::PaidInvoiceDelivery::send_for_tenant(&self, tenant_id: impl core::convert::Into<alloc::string::String>) -> core::result::Result<(), rullst_mail::MailError>
 pub async fn rullst_mail::PaidInvoiceDelivery::send_with<D: rullst_mail::MailDriver>(&self, driver: &D) -> core::result::Result<(), rullst_mail::MailError>
 pub fn rullst_mail::PaidInvoiceDelivery::delivery_key(&self) -> &str
+pub fn rullst_mail::PaidInvoiceDelivery::filename(self, filename: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_mail::MailError>
 pub fn rullst_mail::PaidInvoiceDelivery::from(self, sender: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_mail::MailError>
 pub fn rullst_mail::PaidInvoiceDelivery::message(&self) -> &rullst_mail::Message
 pub fn rullst_mail::PaidInvoiceDelivery::prepare(paid: &rullst_capital::invoice::paid::PaidInvoice) -> core::result::Result<Self, rullst_mail::MailError>
+pub fn rullst_mail::PaidInvoiceDelivery::subject(self, subject: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_mail::MailError>
 impl core::clone::Clone for rullst_mail::PaidInvoiceDelivery
 impl core::fmt::Debug for rullst_mail::PaidInvoiceDelivery
 impl core::marker::Send for rullst_mail::PaidInvoiceDelivery

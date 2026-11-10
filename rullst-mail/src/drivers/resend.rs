@@ -179,6 +179,38 @@ mod tests {
             "s@example.com",
         );
         assert!(without.get("reply_to").is_none());
+        assert!(without.get("attachments").is_none());
+        assert!(without.get("headers").is_none());
+        assert!(without.get("scheduled_at").is_none());
+        assert_eq!(without["text"], "b");
+        assert!(without.get("html").is_none());
+
+        let at = chrono::Utc::now() + chrono::TimeDelta::days(1);
+        let rich = payload(
+            &Message::new()
+                .to("user@example.com")
+                .html(r#"<img src="cid:logo">"#)
+                .attach_bytes("a.txt", b"hi".to_vec(), "text/plain")
+                .attach_cid("logo", "logo.png", b"png".to_vec(), "image/png")
+                .unsubscribe_url("http://example.com/unsubscribe")
+                .send_at(at),
+            "s@example.com",
+        );
+        assert_eq!(rich["attachments"][0]["filename"], "a.txt");
+        assert_eq!(rich["attachments"][0]["content"], "aGk=");
+        assert!(rich["attachments"][0].get("content_id").is_none());
+        assert_eq!(rich["attachments"][1]["content_id"], "logo");
+        assert_eq!(rich["scheduled_at"], at.to_rfc3339());
+        assert!(
+            rich["html"]
+                .as_str()
+                .is_some_and(|html| html.contains("cid:logo"))
+        );
+        assert!(rich["headers"].get("List-Unsubscribe-Post").is_none());
+        assert_eq!(
+            rich["headers"]["List-Unsubscribe"],
+            "<http://example.com/unsubscribe>"
+        );
     }
 
     #[tokio::test]

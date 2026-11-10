@@ -3,20 +3,23 @@
 //!
 //! [`BillingProvider`] and [`MeteredBillingProvider`] are the provider
 //! contracts. [`StripeProvider`] is the supported adapter. [`InfinitePayProvider`]
-//! is experimental and performs no real operation today: it runs offline
-//! fixtures only, and its live checkout and callback verification return
-//! [`CapitalError::UnsupportedOperation`] before any HTTP request. Its model
-//! does not match InfinitePay's public Checkout API, whose webhook is unsigned
-//! and must be confirmed with `payment_check`; to charge through InfinitePay,
-//! implement [`BillingProvider`] in the application. Other gateways implement
-//! the traits in application code too. Empty or `mock_*` credentials select
-//! deterministic offline fixtures.
+//! is experimental: built with [`InfinitePayProvider::checkout`], it creates
+//! payment links on InfinitePay's public Checkout API and confirms each
+//! unsigned notification with `payment_check` against the server-side amount;
+//! it has no subscriptions or portal. [`OneOffCheckoutRequest`] is the
+//! provider-neutral one-off checkout, and
+//! [`WebhookVerificationMode::ConfirmedAtSource`] marks unsigned notifications
+//! that only [`BillingProvider::confirm_one_off_payment`] can turn into a
+//! payment. Other gateways implement the traits in application code, with
+//! [`providers::ProviderRequest`] for Capital's HTTP rules. Empty or `mock_*`
+//! credentials select deterministic offline fixtures.
 //!
 //! The crate also provides webhook signature, freshness and replay verification
 //! (the default `axum` feature adds the `verify_webhook` middleware), the
 //! [`Billable`] facade, shared quotas ([`QuotaGate`]), plan
 //! [`entitlements`], immediate charges, coupons and trials, metered usage and
-//! payment-bound invoices ([`Invoice`], [`PaidInvoice`]).
+//! payment-bound invoices in integer minor units with localized labels
+//! ([`Invoice`], [`InvoiceLocale`], [`PaidInvoice`]).
 //!
 //! **Maturity: Extension**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)), with

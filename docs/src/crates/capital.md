@@ -19,14 +19,15 @@ traits: see **[Writing your own payment provider](../capital-custom-provider.md)
 | Subsystem | Lifecycle Status | Description |
 | :--- | :---: | :--- |
 | **Stripe Adapter** | 🟢 `[Supported / Bounded]` | Owner-bound customer, subscription checkout, bound portal, reconciliation reads, direct charge, meter events, coupons and trials with deterministic mocks. Live account acceptance remains per deployment. |
-| **InfinitePay Adapter** | 🟡 `[Experimental]` | Performs no real operation today: deterministic offline checkout/portal/webhook fixtures only. With real credentials, checkout and webhook handling return `UnsupportedOperation` before any HTTP request. Its model does not match InfinitePay's public Checkout API, whose webhook is unsigned and is confirmed with `payment_check`; charge through InfinitePay with an [application-owned `BillingProvider`](../capital-custom-provider.md#gateways-with-unsigned-webhooks). |
+| **InfinitePay Adapter** | 🟡 `[Experimental]` | Since 13.0.0-alpha.5, `InfinitePayProvider::checkout(handle)` creates one-off payment links on InfinitePay's public Checkout API (`POST /links`, BRL, priced on the server) and confirms each unsigned webhook with `POST /payment_check` against the server-side amount. No subscriptions, portal or sandbox; an empty or `mock_*` handle runs offline fixtures. Pinned by local fixtures, not yet validated against a live account. |
+| **One-off Checkout** | 🟢 `[Implemented / Bounded]` | Provider-neutral `OneOffCheckoutRequest` (server-side reference, minor-unit amount, currency, description, quantity, redirects, optional e-mail) with `create_one_off_checkout` and `confirm_one_off_payment`; Stripe uses inline `price_data`. Unsigned notifications (`WebhookVerificationMode::ConfirmedAtSource`) reach the handler as a status-free `PaymentNotification`; only the confirmation reports a payment. |
 | **Custom Providers** | 🟢 `[Extension Point]` | Applications implement `BillingProvider` (and optionally `MeteredBillingProvider`) for another gateway and reuse the canonical webhook verifier. See [the guide](../capital-custom-provider.md). |
 | **Outbound Failure Boundary** | 🟢 `[Implemented / Bounded]` | Reviewed live methods share finite timeouts, disabled redirects/ambient proxies, one-MiB JSON parsing, HTTPS checkout-location validation, and redacted permanent/transient/rate-limited failures. Rullst performs no automatic mutation retry. |
 | **Subscription Lifecycle** | 🟠 `[Partial]` | Checkout, portal, cancellation, pause, usage, coupon, trial, status, and webhook APIs exist; Stripe implements the reviewed live paths, while InfinitePay returns `UnsupportedOperation` for operations it does not support. |
 | **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Axum and opt-in Actix middleware call one canonical bounded verifier; adapters implement signature verification, with timestamp freshness checks for Stripe. The opt-in `webhook-sql` ledger shares bounded payload or semantic-event claims across SQLite, PostgreSQL, MySQL, and MariaDB processes. Relational handlers can claim a stable provider event ID with one domain mutation in a caller transaction. Cross-system exactly-once and reconciliation remain application work. |
 | **Metered Billing** | 🟢 `[Implemented / Bounded]` | Current Stripe Meter Events shape with provider-specific identity, bounded response binding and deterministic non-live mocks. Custom adapters can return receipts that require application-outbox deduplication. Provider-account evidence remains explicit. |
 | **v13 Plan Entitlements** | 🔵 `[Candidate]` | Typed per-action tenant/owner, exact feature/plan, mode, status, expiry and reconciliation-age checks. The generated SaaS report performs revision-fenced Stripe refreshes. Local and hosted acceptance remain tracked in the [delivery plan](../v13-delivery-plan.md); snapshots assert trusted adapter state and are not payment evidence. |
-| **Paid Invoice Rendering** | 🟢 `[Implemented / Feature-gated]` | Exact validated minor units, escaped HTML, bounded paginated A4 PDF and a final-success e-mail/amount/currency binding. The downstream Mail bridge sends the attachment but durable outbox claiming and exactly-once delivery remain application work. |
+| **Paid Invoice Rendering** | 🟢 `[Implemented / Feature-gated]` | Integer minor-unit amounts, labels in English, Brazilian Portuguese or Spanish ("Recibo") or custom, escaped HTML, bounded paginated A4 PDF and a final-success e-mail/amount/currency binding. The downstream Mail bridge sends the attachment but durable outbox claiming and exactly-once delivery remain application work. |
 | **SaaS MRR/ARR Analytics** | 🟢 `[Implemented / Bounded]` | In-memory revenue metrics and churn calculations for supplied records; this is not an accounting ledger or provider reconciliation engine. |
 
 ---
@@ -36,7 +37,7 @@ traits: see **[Writing your own payment provider](../capital-custom-provider.md)
 | Provider | Status | Scope |
 | :--- | :--- | :--- |
 | 💳 **Stripe** | Supported | Card checkout, Customer Portal, recurring subscriptions, Payment Intents charges and Meter Events within the reviewed operation boundaries. |
-| ⚡ **InfinitePay** | Experimental | Brazilian Pix/card provider. Performs no real operation today (offline fixtures only); use an [application-owned adapter](../capital-custom-provider.md#gateways-with-unsigned-webhooks) to charge through it. |
+| ⚡ **InfinitePay** | Experimental | Brazilian Pix/card provider. One-off payment links (`POST /links`) priced on the server, unsigned webhooks confirmed with `POST /payment_check` and the stored amount; no subscriptions, portal or sandbox. |
 
 Neither entry means every provider product, fee, payment method, tax promise or
 live API path has been homologated by Rullst. The
@@ -168,8 +169,14 @@ evidence.
 Enable `rullst/capital-mail` or the separate `rullst-capital/invoice-pdf` and
 `rullst-mail/capital-invoice` features. A `PaidInvoice` can be constructed only
 from final `Succeeded` evidence matching the invoice recipient, exact
-minor-unit total and currency. `PaidInvoiceDelivery::prepare` generates escaped
-HTML and a bounded PDF attachment and runs Mail's mandatory pre-flight.
+minor-unit total and currency. Amounts are integers in the currency's smallest
+unit (`Invoice::new(id, email, date, "BRL").with_item("Plan", 4_990)`), and the
+labels follow `with_locale(InvoiceLocale::PtBr)` or `InvoiceLocale::Es`
+("Recibo": Capital issues no tax invoice) or edited `InvoiceLabels`.
+`PaidInvoiceDelivery::prepare` generates escaped HTML and a bounded PDF
+attachment named after the title label, sets the subject to the title and
+invoice ID (`subject(...)` and `filename(...)` replace them) and runs Mail's
+mandatory pre-flight.
 
 The stable delivery key is an application outbox identity, not a distributed
 lock. The application must reconcile webhooks, claim that key atomically and
@@ -244,8 +251,9 @@ need an outbox, idempotent consumers, and reconciliation.
 ## 🔒 Security Invariants
 
 1. **Constant-Time Verification:** HMAC webhook signatures and explicit `mock_*` fixture secrets are compared with `subtle::ConstantTimeEq` or ring's constant-time `hmac::verify`.
-2. **Fail-Closed Live Modes:** Operations without a reviewed live contract, including InfinitePay live checkout and callbacks, return `UnsupportedOperation` before network I/O instead of a fabricated success.
-3. **Bounded Egress:** Reviewed live provider methods use a pooled client with
+2. **Fail-Closed Live Modes:** Operations without a reviewed live contract, including InfinitePay's plan checkout, portal and subscription calls, return `UnsupportedOperation` before network I/O instead of a fabricated success.
+3. **Unsigned Notifications Prove Nothing:** A `ConfirmedAtSource` notification never becomes a `WebhookEvent`; the payment counts only after `confirm_one_off_payment` queries the provider and matches the server-side amount and currency.
+4. **Bounded Egress:** Reviewed live provider methods use a pooled client with
    finite connect/request timeouts, disabled redirects and ambient proxy
    discovery, bounded JSON, and redacted typed failure evidence. Returned
    checkout URLs must be absolute credential-free HTTPS without fragments.

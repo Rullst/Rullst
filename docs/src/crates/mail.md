@@ -76,6 +76,7 @@ enabled automatically. See the
 - **📊 Secret-Minimized Delivery Observability:** `ObservedMailDriver` records only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing static observer.
 - **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend delivery uses provider scheduling and rejects a schedule beyond its documented limit (30 days ahead) with `ConfigError` before any request. Real SMTP, SendPulse, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters), checked per DNS label of the link host and user-info only, as the text reads and as a browser resolves the link (tabs and newlines removed, `\` read as `/` for HTTP(S), `https:host` and scheme-relative `\\host` forms, percent-encoded and A-label hosts), so single-script IDNs such as `παράδειγμα.gr` or `пример.com` and non-Latin query text are allowed while all-lookalike Cyrillic labels under a non-Cyrillic TLD are rejected, and dangerous URI schemes (`javascript:`, `data:text/html`).
+- **↩️ Reply-To (`.reply_to()`):** Replies go to another mailbox than the sender, for example the visitor who filled in a contact form. The pipeline validates it like `from`, and Resend, SendPulse, AWS SES (native and proxy) and SMTP send it (since 13.0.0-alpha.5).
 - **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe`, plus `List-Unsubscribe-Post: List-Unsubscribe=One-Click` only for an HTTPS unsubscribe URL, as RFC 8058 requires). The unsubscribe email must be one bare address and the URL may not contain whitespace, `<`, `>` or `"`, so neither value can add another header entry.
 - **🔤 Automatic Plain-Text Fallback:** Automatic HTML-to-plain-text conversion without manual duplication; an absolute HTTP(S) link keeps its target as `label <URL>` unless the label already is the URL.
 - **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (whole-token `AKIA`/`ASIA` AWS access key IDs, passwords, API tokens, bearer tokens and PEM private-key blocks of any `<label>PRIVATE KEY` type, including OpenSSH, EC and encrypted keys) before emails leave your server.
@@ -103,6 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let message = Message::new()
         .to("alice@example.com")
         .from("noreply@rullst.dev")
+        .reply_to("Support <support@rullst.dev>")
         .subject("Welcome to Rullst!")
         .html(r#"
             <h1>Welcome, Alice!</h1>
@@ -285,6 +287,10 @@ state, scheduling, and policy remain application-owned.
 For native payment-bound PDF delivery, enable `rullst-mail/capital-invoice` (or
 umbrella `rullst/capital-mail`) and use `PaidInvoiceDelivery::prepare`, then
 set the verified sender with `.from(sender)?` (13.0), which re-runs pre-flight.
+The subject and PDF name follow the invoice's title label (`Invoice INV-1` and
+`invoice-<key>.pdf`, or `Recibo …` and `recibo-<key>.pdf` with
+`InvoiceLocale::PtBr`/`Es`); `.subject(...)?` and `.filename(...)?` (a name
+ending in `.pdf`) replace them (13.0.0-alpha.5).
 It rejects non-final/mock evidence and recipient/amount/currency substitution.
 Applications still reconcile webhooks and atomically claim the stable delivery
 key; provider acceptance and exactly-once delivery are not promised.

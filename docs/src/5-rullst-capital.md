@@ -6,8 +6,9 @@
 
 `rullst-capital` provides provider-neutral billing abstractions, revenue
 metrics, verified webhook plumbing and two payment-provider adapters: Stripe
-(supported) and InfinitePay (experimental; it performs no real operation today,
-see [gateways with unsigned webhooks](capital-custom-provider.md#gateways-with-unsigned-webhooks)).
+(supported) and InfinitePay (experimental: one-off payment links on its public
+Checkout API, each unsigned notification confirmed with `payment_check`; see
+[gateways with unsigned webhooks](capital-custom-provider.md#gateways-with-unsigned-webhooks)).
 Provider capabilities are not uniform: consult the adapter API and its tests
 before depending on a particular checkout, refund or webhook operation.
 Other gateways are integrated in application code by implementing the provider
@@ -131,8 +132,8 @@ fields.
 statically dispatched `SubscriptionHandle` applies it. Stripe uses the current
 expanded `discounts[0][coupon]` update and binds the response to the requested
 subscription/coupon. Adapters without reviewed subscription-discount contracts,
-including InfinitePay, return `UnsupportedOperation` instead of silently
-succeeding.
+and InfinitePay, which has no subscriptions, return `UnsupportedOperation`
+instead of silently succeeding.
 
 `handle.extend_trial(15)` resolves a bounded 15-day expiration from the current
 UTC clock. Retryable workers should persist the command creation time and call
@@ -170,8 +171,14 @@ outside the explicit quota boundary.
 Enable the umbrella `capital-mail` feature (or Capital's `invoice-pdf` and
 Mail's `capital-invoice` features separately). `Invoice::bind_succeeded_charge`
 rejects non-final/mock receipts and any recipient, minor-unit total or currency
-mismatch. `PaidInvoiceDelivery::prepare` then creates escaped HTML, a bounded
-native PDF attachment and a message that has already passed Mail pre-flight.
+mismatch. Amounts are integers in the currency's smallest unit
+(`Invoice::new(id, email, date, "BRL").with_item("Plan", 4_990)`), and the
+labels are English unless the invoice uses `with_locale(InvoiceLocale::PtBr)`,
+`InvoiceLocale::Es` (both say "Recibo", since Capital issues no tax invoice) or
+edited `InvoiceLabels`. `PaidInvoiceDelivery::prepare` then creates escaped HTML,
+a bounded native PDF attachment and a message that has already passed Mail
+pre-flight, with the title label as subject and file name (`subject(...)` and
+`filename(...)` replace them).
 It can use the configured facade, a tenant route or an explicit static driver.
 
 The returned stable `delivery_key` is for a unique durable outbox record owned

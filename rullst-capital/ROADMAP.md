@@ -43,9 +43,18 @@ Rullst Capital simplifies the billing and subscription complexities of building 
   drift and fail-closed capacity are tested. A caller-owned transaction can bind a
   semantic event claim to one database mutation; external effects still need
   an outbox, idempotent consumers and reconciliation.
-- [ ] **InfinitePay live validation**: Implement reviewed checkout pricing, callback authentication and authoritative payment lookup, then validate against a live account before removing the experimental label.
-- [~] **Payment-Bound Invoicing**: Validates the legacy invoice model into exact
-  minor units, renders escaped HTML and opt-in bounded native PDF, and binds a
+- [x] **Provider-neutral one-off checkout (13.0.0-alpha.5)**: `OneOffCheckoutRequest`
+  priced on the server, `create_one_off_checkout`/`confirm_one_off_payment`
+  (Stripe inline `price_data`, InfinitePay `POST /links` and `payment_check`),
+  and `WebhookVerificationMode::ConfirmedAtSource` for unsigned notifications
+  that never mark a payment paid by themselves.
+- [ ] **InfinitePay live validation**: The adapter implements the public
+  Checkout API since 13.0.0-alpha.5 against local fixtures; validate link
+  creation, the webhook body and `payment_check` against a live account before
+  removing the experimental label.
+- [~] **Payment-Bound Invoicing**: Integer minor-unit invoices (13.0.0-alpha.5)
+  with English, Brazilian Portuguese and Spanish ("Recibo") or custom labels;
+  renders escaped HTML and opt-in bounded native PDF, and binds a
   delivery only to final `Succeeded` evidence matching recipient, amount and
   currency. The downstream opt-in Mail bridge attaches that PDF and sends via
   the mandatory pipeline while exposing a stable key for the application's
