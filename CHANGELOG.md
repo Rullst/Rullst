@@ -54,8 +54,25 @@ A prepared version section does not establish that its tag or crates exist.
   them with it; a handler that builds its own response can now do the same
   (reported while upgrading an application).
 
+### Changed
+
+- `rullst-studio`: the local Studio (`Studio`, `run_studio` and its page
+  modules) is the new `local` feature, which the default `drivers-all`, every
+  `strict-*` profile and the facade's `studio` feature enable. `rullst-orm`,
+  `rullst-capital`, `rullst-security`, `rullst-macros` and `utoipa` are
+  optional dependencies that only `local` selects, so
+  `cargo install rullst-studio --no-default-features --features remote`
+  builds no ORM, database driver, Capital or Security crate. A direct
+  `rullst-studio` dependency with `default-features = false` and none of those
+  profiles adds `features = ["local"]`.
+
 ### Fixed
 
+- `cargo rullst studio --remote` printed
+  `cargo install rullst-studio --version =… --features remote --locked` when
+  the `rullst-studio` binary was missing, and `cargo rullst studio --help`
+  showed the same command, which also builds the local Studio's database
+  drivers: both now add `--no-default-features`, as the documentation does.
 - `rullst-orm` on MariaDB: a `DateTime<Utc>` before 1970-01-01 or after
   2038-01-19 03:14:07 UTC is no longer lost. SQLx's MySQL driver binds it as a
   `TIMESTAMP` parameter, and MariaDB turned such a value into `NULL` even for

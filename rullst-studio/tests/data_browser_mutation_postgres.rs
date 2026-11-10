@@ -2,6 +2,7 @@
 // `QueryBuilder` writes `?` markers that Studio must renumber for PostgreSQL.
 #![cfg(all(
     debug_assertions,
+    feature = "local",
     not(feature = "strict-mysql"),
     not(feature = "strict-sqlite")
 ))]

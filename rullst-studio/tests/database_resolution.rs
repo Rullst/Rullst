@@ -1,5 +1,6 @@
 #![cfg(all(
     debug_assertions,
+    feature = "local",
     not(any(feature = "strict-postgres", feature = "strict-mysql"))
 ))]
 //! Studio database selection in an isolated process. This binary contains a

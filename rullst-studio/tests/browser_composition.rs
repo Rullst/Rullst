@@ -1,5 +1,6 @@
 //! Regressions for the v12 Portfolio report: raw browser CSS and Cache links.
 //! Authentication below is a layering fixture, not a production login policy.
+#![cfg(feature = "local")]
 
 use axum::{
     Router,
