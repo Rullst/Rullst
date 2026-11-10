@@ -204,6 +204,20 @@ mod fixture {
         seen: Arc<Mutex<Vec<(String, HeaderMap, String)>>>,
     }
 
+    async fn read_session(
+        State(stripe): State<Stripe>,
+        Path(id): Path<String>,
+        headers: HeaderMap,
+    ) -> Json<Value> {
+        stripe
+            .seen
+            .lock()
+            .unwrap()
+            .push((id, headers, String::new()));
+        let reply = stripe.read.lock().unwrap().clone();
+        Json(reply)
+    }
+
     async fn serve(created: Value, read: Value) -> (String, Stripe) {
         let stripe = Stripe::default();
         *stripe.created.lock().unwrap() = created;
@@ -211,21 +225,20 @@ mod fixture {
         let app = Router::new()
             .route(
                 "/v1/checkout/sessions",
-                post(|State(stripe): State<Stripe>, headers: HeaderMap, body: String| async move {
-                    stripe.seen.lock().unwrap().push(("create".into(), headers, body));
-                    let reply = stripe.created.lock().unwrap().clone();
-                    Json(reply)
-                }),
+                post(
+                    |State(stripe): State<Stripe>, headers: HeaderMap, body: String| async move {
+                        stripe
+                            .seen
+                            .lock()
+                            .unwrap()
+                            .push(("create".into(), headers, body));
+                        let reply = stripe.created.lock().unwrap().clone();
+                        Json(reply)
+                    },
+                ),
             )
             // rullst-access: public — local Stripe fixture without data.
-            .route(
-                "/v1/checkout/sessions/{id}",
-                get(|State(stripe): State<Stripe>, Path(id): Path<String>, headers: HeaderMap| async move {
-                    stripe.seen.lock().unwrap().push((id, headers, String::new()));
-                    let reply = stripe.read.lock().unwrap().clone();
-                    Json(reply)
-                }),
-            )
+            .route("/v1/checkout/sessions/{id}", get(read_session))
             .with_state(stripe.clone());
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
