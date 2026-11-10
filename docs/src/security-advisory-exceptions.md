@@ -4,10 +4,37 @@ Rullst does not treat an ignored scanner finding as remediated. Any temporary
 exception must have a narrow scope, a compensating control, an owner, and an
 expiry date. CI must fail for every advisory that is not actively governed here.
 
-Last reviewed: **2026-10-22**.
+Last reviewed: **2026-11-09**.
 
-There are **no active advisory exceptions** in the current audited dependency
-graph (`deny.toml` and the audit workflows ignore no advisory).
+## Active exceptions
+
+| Advisory | Dependency path | Compensating control | Owner | Expiry | Exit condition |
+| --- | --- | --- | --- | --- | --- |
+| `RUSTSEC-2026-0459` | `libsqlite3-sys` 0.37.0 (bundled SQLite 3.53) ← `sqlx-sqlite` 0.9.0 ← every Rullst SQLite feature | See below | Maintainer (Venelouis) | 2027-01-28 | An `sqlx` release that accepts `libsqlite3-sys` ≥ 0.39, then required by `rullst-orm` |
+| `RUSTSEC-2026-0440` | `astral-tokio-tar` 0.6.4 ← `testcontainers` 0.27.3 ← dev-dependency of the integration tests | See below | Maintainer (Venelouis) | 2027-01-28 | A `testcontainers` release without `astral-tokio-tar`, or the tests move to another container client |
+
+**`RUSTSEC-2026-0459`** (medium; CVE-2026-119375, published 2026-10-30): SQLite
+before 3.54.0 can return uninitialized page-cache memory when it opens a
+database together with a crafted sibling `-wal` file of a different page size.
+The fix is `libsqlite3-sys` 0.39, but `sqlx-sqlite` 0.9.0, the newest release
+and the one Rullst 13 uses, requires `>=0.30.1, <0.38.0`, so no Rullst 13
+application can resolve the patched version yet. The attack is local and needs
+a less trusted party to write both the database file and its `-wal`. Rullst
+opens SQLite files only at paths the application configures (`DATABASE_URL`
+and the opt-in local state stores of the queue, messaging, labs, media,
+supervision and privacy crates), creates them itself and never opens a
+database supplied by a request. An application that accepts uploaded or
+replaced SQLite files must not open them with the SQLite driver until the exit
+condition is met. The 13.0 release notes list the advisory under Known
+limitations.
+
+**`RUSTSEC-2026-0440`** (unmaintained, no known vulnerability; published
+2026-11-03): Astral ended maintenance of `astral-tokio-tar`. It is reached
+only through `testcontainers`, a dev-dependency of the database integration
+tests of `rullst-orm`, `rullst-core`, `rullst-capital`, `rullst-studio`,
+`rullst-nexus` and `rullst-ai`. No published Rullst crate depends on it, and the
+tests use it only to copy their own files into local containers. `testcontainers`
+0.28.0, the newest release, still depends on it.
 
 ## Remediation history
 
