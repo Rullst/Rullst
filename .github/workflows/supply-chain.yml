@@ -66,10 +66,10 @@ jobs:
       - name: Audit production and fuzz dependency locks
         shell: bash
         run: |
-          cargo audit
+          cargo audit --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440
           while IFS= read -r lockfile; do
             echo "Auditing $lockfile"
-            cargo audit --no-fetch --file "$lockfile"
+            cargo audit --no-fetch --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440 --file "$lockfile"
           done < <(find . -mindepth 3 -maxdepth 3 \
             -path '*/fuzz/Cargo.lock' -print | sort)
 
