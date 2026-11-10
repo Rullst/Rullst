@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794352531465,
+  "lastUpdate": 1794353948819,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -12845,6 +12845,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 388,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "508e309ce44da190eab87539c239c0d1b40f3193",
+          "message": "Merge pull request #634 from Rullst/feat/v13-alpha5-iot-sign\n\nfeat(cli): sign rullst-iot firmware updates with iot:keygen and iot:sign",
+          "timestamp": "2026-11-10T20:23:28-03:00",
+          "tree_id": "207be7613b3edd7ac0163af3be695309d2d333d1",
+          "url": "https://github.com/Rullst/Rullst/commit/508e309ce44da190eab87539c239c0d1b40f3193"
+        },
+        "date": 1794353948069,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 389,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
