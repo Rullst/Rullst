@@ -61,3 +61,50 @@ jobs:
 
       - name: Report no_std build status
         run: echo "rullst-iot no_std Cortex-M build complete."
+
+  iot-microbit-firmware:
+    # Links and sizes a real no_std firmware (global allocator, panic handler,
+    # cortex-m-rt) that runs the rullst-iot suite on a BBC micro:bit V2; the
+    # library build above does not link. Running it needs the board (see the
+    # fixture's src/main.rs); CI only builds it.
+    name: rullst-iot micro:bit V2 Firmware Fixture
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust toolchain (with target)
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
+          target: thumbv7em-none-eabihf
+          components: llvm-tools-preview
+
+      - name: Check the host-generated vectors are current
+        run: |
+          cargo run --locked --release \
+            --manifest-path .github/fixtures/iot-microbit-v2/vectors/Cargo.toml
+          git diff --exit-code -- .github/fixtures/iot-microbit-v2/firmware/src/expected.rs
+
+      - name: Build the firmware for thumbv7em-none-eabihf
+        working-directory: .github/fixtures/iot-microbit-v2/firmware
+        run: cargo build --release --locked
+
+      - name: Report flash and RAM use
+        working-directory: .github/fixtures/iot-microbit-v2/firmware
+        run: |
+          size="$(rustc --print sysroot)/lib/rustlib/x86_64-unknown-linux-gnu/bin/llvm-size"
+          elf=target/thumbv7em-none-eabihf/release/rullst-iot-microbit-v2
+          "$size" -A "$elf" | grep -E '^(section|\.vector_table|\.text|\.rodata|\.data|\.bss|\.uninit) '
+          {
+            echo '### rullst-iot micro:bit V2 firmware (release)'
+            echo
+            echo 'Flash is `text` (vector table, code and read-only data, including a'
+            echo '32 KiB test image); RAM is `data` + `bss` (a 32 KiB heap and a 32 KiB'
+            echo 'test buffer); the stack takes the rest of the 128 KiB.'
+            echo
+            echo '```'
+            "$size" "$elf"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
