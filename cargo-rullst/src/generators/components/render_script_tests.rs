@@ -255,13 +255,14 @@ fn the_modules_never_evaluate_strings_or_write_html() {
 #[test]
 fn the_sources_have_no_panicking_calls() {
     for component in super::super::catalog::COMPONENTS.iter() {
+        // The needles of generators::tests' runtime-literal audit, exactly.
         for forbidden in [
-            ".unwrap()",
+            ".unwrap(",
             ".expect(",
-            "panic!",
-            "unreachable!",
-            "todo!",
-            "unimplemented!",
+            "panic!(",
+            "unreachable!(",
+            "todo!(",
+            "unimplemented!(",
             "unsafe",
         ] {
             assert!(
