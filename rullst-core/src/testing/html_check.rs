@@ -440,12 +440,14 @@ fn opens_tag(text: &str) -> bool {
 
 /// The offset of the next tag, comment or declaration after the first byte.
 fn next_markup(text: &str) -> Option<usize> {
+    let first = text.chars().next()?.len_utf8();
     // `<` is ASCII, so each match is a character boundary.
-    text.match_indices('<')
-        .map(|(index, _)| index)
+    text[first..]
+        .match_indices('<')
+        .map(|(index, _)| first + index)
         .find(|index| {
             let rest = &text[*index..];
-            *index > 0 && (opens_tag(rest) || rest.starts_with("<!") || rest.starts_with("<?"))
+            opens_tag(rest) || rest.starts_with("<!") || rest.starts_with("<?")
         })
 }
 

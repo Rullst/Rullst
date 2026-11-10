@@ -93,6 +93,21 @@ fn the_first_escaped_form_in_a_text_run_is_the_excerpt() {
 }
 
 #[test]
+fn comments_and_cdata_end_exactly_at_their_closer() {
+    // Resuming even a few bytes early would read `<p --> "x>` as a tag.
+    for page in [
+        "<!--<p --> \"x>",
+        "<p>x</p><!--<p --> \"x>",
+        "<b>x</b><![CDATA[<p ]]> \"x>",
+        "<!DOCTYPE html><p>ok</p>",
+    ] {
+        clean(page);
+    }
+    assert_eq!(next_markup("\u{e9}<p"), Some(2));
+    assert_eq!(next_markup(""), None);
+}
+
+#[test]
 fn verbatim_elements_nest_and_end() {
     clean("<pre><code>&lt;b&gt;</code> &lt;i&gt;</pre>");
     only("<code>x</code>&lt;b&gt;", HtmlIssueKind::DoubleEscaped);
