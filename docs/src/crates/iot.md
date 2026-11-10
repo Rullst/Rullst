@@ -96,11 +96,13 @@ started.
 
 The `OtaManager` enforces a **fail-closed eligibility gate**: its state machine does not produce an `OtaCommit` receipt before strict Ed25519 verification of the signed manifest. The `RollbackCounterStore` path also requires an exact, strictly increasing compare-and-set. The receipt selects the intended inactive partition; platform code must still flash, verify, implement durable storage, configure the bootloader, and recover safely from power loss.
 
-> **Planned change.** `OtaManager`'s fields `current_partition`, `status` and
-> `firmware_version` are public and writable. A 13.x minor release will make
-> them private and add getters of the same names, so read them but do not
-> assign them. `rullst-iot` is [Experimental](../maturity.md), which allows
-> this break; the changelog and the migration guide will list it.
+> **Changed in 13.0.0-alpha.5.** `OtaManager`'s state is read with the
+> methods `current_partition()`, `status()` and `firmware_version()`; the
+> fields of those names are private, so only verification and commit change
+> them. Code that assigned `current_partition` calls
+> `with_running_partition(bank)` instead. `rullst-iot` is
+> [Experimental](../maturity.md), which allows this break; the migration
+> guide lists it.
 
 ### The Cryptographic Invariant
 
@@ -168,11 +170,12 @@ fn process_incoming_ota<S: RollbackCounterStore>(
 ```
 
 `verified_target_partition` and the receipt always name the bank opposite
-`current_partition`. The v13 `new_with_running_partition` constructor takes the
-bank the bootloader started; `new_with_counter_store` and
-`new_with_trusted_key` assume `PartitionA`, so with them platform code must set
-`current_partition` before verifying an update. Committing
-does not change `current_partition`; until the platform reboots, a further
+`current_partition()`. The v13 `new_with_running_partition` constructor takes
+the bank the bootloader started; `new_with_counter_store` and
+`new_with_trusted_key` assume `PartitionA`, so with them platform code calls
+`with_running_partition(bank)` (13.0.0-alpha.5) before verifying an update,
+which also discards an update verified for the other bank. Committing does
+not change `current_partition()`; until the platform reboots, a further
 update verified in the same process targets the same inactive bank.
 
 The store contract requires power-loss-safe persistence before returning

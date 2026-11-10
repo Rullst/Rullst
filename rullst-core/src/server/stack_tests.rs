@@ -176,6 +176,7 @@ async fn hot_reload_service_resolves_clients_behind_trusted_proxies() {
             TrustedProxyConfig::new(["10.0.0.0/8"]).unwrap(),
         )),
         machine_endpoints: None,
+        access_log_route_paths: false,
     };
     let mut connection = ConnectedHotSwap {
         inner,

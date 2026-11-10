@@ -61,7 +61,10 @@ impl Server {
         app = super::dev_telemetry::mount(app, is_dev, generation, self.dev_queue);
 
         app = app.layer(axum::middleware::from_fn_with_state(
-            self.log_health_probes,
+            super::console::AccessLog {
+                log_health_probes: self.log_health_probes,
+                route_paths: self.access_log_route_paths,
+            },
             super::console::access_log_middleware,
         ));
         // A page and the htmx fragment of the same URL are cached apart.

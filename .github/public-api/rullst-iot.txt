@@ -368,22 +368,23 @@ impl core::marker::Unpin for rullst_iot::OtaError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::OtaError
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::OtaError
 #[non_exhaustive] pub struct rullst_iot::OtaManager
-pub rullst_iot::OtaManager::current_partition: rullst_iot::BootPartition
-pub rullst_iot::OtaManager::status: rullst_iot::OtaStatus
-pub rullst_iot::OtaManager::firmware_version: alloc::string::String
 impl rullst_iot::OtaManager
 #[deprecated] pub fn rullst_iot::OtaManager::commit_update(&mut self, _new_version: impl core::convert::Into<alloc::string::String>) -> core::result::Result<rullst_iot::OtaCommit, rullst_iot::OtaError>
 #[deprecated] pub fn rullst_iot::OtaManager::new(_version: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_iot::OtaError>
 #[deprecated] pub fn rullst_iot::OtaManager::verify_signature(&self, _payload: &[u8], _signature: &[u8]) -> core::result::Result<(), rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::commit_verified_update(&mut self) -> core::result::Result<rullst_iot::OtaCommit, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::commit_verified_update_with_store<S: rullst_iot::RollbackCounterStore>(&mut self, counter_store: &mut S) -> core::result::Result<rullst_iot::OtaCommit, rullst_iot::OtaError>
+pub fn rullst_iot::OtaManager::current_partition(&self) -> rullst_iot::BootPartition
+pub fn rullst_iot::OtaManager::firmware_version(&self) -> &str
 pub fn rullst_iot::OtaManager::new_with_counter_store<S: rullst_iot::RollbackCounterStore>(target: impl core::convert::Into<alloc::string::String>, current_version: impl core::convert::Into<alloc::string::String>, trusted_public_key: [u8; 32], counter_store: &mut S) -> core::result::Result<Self, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::new_with_running_partition<S: rullst_iot::RollbackCounterStore>(target: impl core::convert::Into<alloc::string::String>, current_version: impl core::convert::Into<alloc::string::String>, running_partition: rullst_iot::BootPartition, trusted_public_key: [u8; 32], counter_store: &mut S) -> core::result::Result<Self, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::new_with_trusted_key(target: impl core::convert::Into<alloc::string::String>, current_version: impl core::convert::Into<alloc::string::String>, rollback_counter: u64, trusted_public_key: [u8; 32]) -> core::result::Result<Self, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::pending_manifest(&self) -> core::option::Option<&rullst_iot::OtaManifest>
 pub fn rullst_iot::OtaManager::rollback_counter(&self) -> u64
+pub fn rullst_iot::OtaManager::status(&self) -> rullst_iot::OtaStatus
 pub fn rullst_iot::OtaManager::verified_target_partition(&self) -> core::result::Result<rullst_iot::BootPartition, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::verify_update(&mut self, manifest: &rullst_iot::OtaManifest, firmware: &[u8], signature: &[u8]) -> core::result::Result<(), rullst_iot::OtaError>
+pub fn rullst_iot::OtaManager::with_running_partition(self, running_partition: rullst_iot::BootPartition) -> Self
 impl core::marker::Send for rullst_iot::OtaManager
 impl core::marker::Sync for rullst_iot::OtaManager
 impl core::marker::Unpin for rullst_iot::OtaManager

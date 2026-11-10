@@ -33,10 +33,10 @@
     { "from": "rullst-nexus", "to": "rullst-security", "optional": false },
     { "from": "rullst-orm", "to": "rullst-orm-macros", "optional": false },
     { "from": "rullst-security", "to": "rullst-core", "optional": false },
-    { "from": "rullst-studio", "to": "rullst-capital", "optional": false },
+    { "from": "rullst-studio", "to": "rullst-capital", "optional": true },
     { "from": "rullst-studio", "to": "rullst-core", "optional": false },
-    { "from": "rullst-studio", "to": "rullst-macros", "optional": false },
-    { "from": "rullst-studio", "to": "rullst-orm", "optional": false },
-    { "from": "rullst-studio", "to": "rullst-security", "optional": false }
+    { "from": "rullst-studio", "to": "rullst-macros", "optional": true },
+    { "from": "rullst-studio", "to": "rullst-orm", "optional": true },
+    { "from": "rullst-studio", "to": "rullst-security", "optional": true }
   ]
 }

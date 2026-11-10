@@ -92,6 +92,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_core::AcademyProductionRequ
 #[non_exhaustive] pub struct rullst_core::AppConfig
 pub rullst_core::AppConfig::env: core::option::Option<alloc::string::String>
 pub rullst_core::AppConfig::port: core::option::Option<u16>
+pub rullst_core::AppConfig::access_log_paths: rullst_core::config::AccessLogPaths
 impl core::clone::Clone for rullst_core::AppConfig
 impl core::default::Default for rullst_core::AppConfig
 impl core::fmt::Debug for rullst_core::AppConfig
@@ -290,6 +291,9 @@ pub rullst_core::HtmxRequest::trigger: core::option::Option<alloc::string::Strin
 pub rullst_core::HtmxRequest::target: core::option::Option<alloc::string::String>
 pub rullst_core::HtmxRequest::prompt: core::option::Option<alloc::string::String>
 pub rullst_core::HtmxRequest::current_url: core::option::Option<alloc::string::String>
+impl rullst_core::HtmxRequest
+pub fn rullst_core::HtmxRequest::is_boosted(&self) -> bool
+pub fn rullst_core::HtmxRequest::is_history_restore(&self) -> bool
 impl core::clone::Clone for rullst_core::HtmxRequest
 impl core::fmt::Debug for rullst_core::HtmxRequest
 impl<S> axum_core::extract::FromRequestParts<S> for rullst_core::HtmxRequest where S: core::marker::Send + core::marker::Sync { type Rejection = core::convert::Infallible }
@@ -823,6 +827,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_core::SecurityConfig
 impl rullst_core::Server
 pub async fn rullst_core::Server::run(self, port: u16) -> core::result::Result<(), rullst_core::ServerError>
 pub async fn rullst_core::Server::run_with_shutdown<F>(self, port: u16, shutdown: F) -> core::result::Result<(), rullst_core::ServerError> where F: core::future::future::Future<Output = ()> + core::marker::Send + 'static
+pub fn rullst_core::Server::access_log_paths(self, paths: rullst_core::config::AccessLogPaths) -> Self
 pub fn rullst_core::Server::auto_migrate(self, enabled: bool) -> Self
 pub fn rullst_core::Server::new(router: rullst_core::Router) -> Self
 pub fn rullst_core::Server::new_hot<S: core::convert::Into<alloc::string::String>>(lib_path: S) -> Self
@@ -1638,6 +1643,23 @@ impl<T> core::marker::Unpin for rullst_core::client_contract::ServerResponse<T> 
 impl<T> core::panic::unwind_safe::RefUnwindSafe for rullst_core::client_contract::ServerResponse<T> where T: core::panic::unwind_safe::RefUnwindSafe
 impl<T> core::panic::unwind_safe::UnwindSafe for rullst_core::client_contract::ServerResponse<T> where T: core::panic::unwind_safe::UnwindSafe
 pub mod rullst_core::config
+#[non_exhaustive] pub enum rullst_core::config::AccessLogPaths
+pub rullst_core::config::AccessLogPaths::Auto
+pub rullst_core::config::AccessLogPaths::Route
+pub rullst_core::config::AccessLogPaths::Full
+impl core::clone::Clone for rullst_core::config::AccessLogPaths
+impl core::cmp::Eq for rullst_core::config::AccessLogPaths
+impl core::cmp::PartialEq for rullst_core::config::AccessLogPaths
+impl core::default::Default for rullst_core::config::AccessLogPaths
+impl core::fmt::Debug for rullst_core::config::AccessLogPaths
+impl core::hash::Hash for rullst_core::config::AccessLogPaths
+impl core::marker::Copy for rullst_core::config::AccessLogPaths
+impl<'de> serde_core::de::Deserialize<'de> for rullst_core::config::AccessLogPaths
+impl core::marker::Send for rullst_core::config::AccessLogPaths
+impl core::marker::Sync for rullst_core::config::AccessLogPaths
+impl core::marker::Unpin for rullst_core::config::AccessLogPaths
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::config::AccessLogPaths
+impl core::panic::unwind_safe::UnwindSafe for rullst_core::config::AccessLogPaths
 pub use rullst_core::config::AppConfig = struct rullst_core::AppConfig
 #[non_exhaustive] pub enum rullst_core::config::ConfigError
 pub rullst_core::config::ConfigError::InvalidEnvironment(alloc::string::String)

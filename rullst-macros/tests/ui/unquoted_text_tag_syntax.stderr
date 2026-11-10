@@ -1,0 +1,5 @@
+error: `>` is tag syntax in html!; write text that contains it as a string literal (`"a > b"`) or as `&gt;`
+ --> tests/ui/unquoted_text_tag_syntax.rs:5:18
+  |
+5 |         <p>Use a > b only in a string literal</p>
+  |                  ^

@@ -234,6 +234,11 @@ impl Scanner<'_, '_> {
                             if let Some(rule) = api_cleanups::field_rule(&name, self.context.text) {
                                 self.hit(rule, line(tree));
                             }
+                            if let Some(rule) =
+                                super::alpha5_runtime::field_rule(&name, self.context.text)
+                            {
+                                self.hit(rule, line(tree));
+                            }
                             chain.push(name);
                             index += 1;
                         }
@@ -497,8 +502,11 @@ impl Scanner<'_, '_> {
                 parts.insert(0, part.to_string());
                 first -= 2;
             }
-            if is_event_handler_attribute(&parts.join("-")) {
+            let name = parts.join("-");
+            if is_event_handler_attribute(&name) {
                 self.hit(&HTML_EVENT_HANDLER, line(&tokens[first]));
+            } else if let Some(rule) = super::alpha5_runtime::html_attribute_rule(&name) {
+                self.hit(rule, line(&tokens[first]));
             }
         }
     }
