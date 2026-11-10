@@ -133,7 +133,7 @@ fn changes_to_code_manifest_keys_and_output_are_detected_without_writes() {
     ));
     assert!(matches!(
         generate(root.path()),
-        Err(ContextError::UnsafePath)
+        Err(ContextError::Refused { path, .. }) if path == ".llms.txt"
     ));
     assert_eq!(read(root.path(), ".llms.txt"), "manually replaced output");
 }
@@ -175,7 +175,7 @@ fn all_output_conflicts_are_found_before_replacing_any_file() {
     .unwrap();
     assert!(matches!(
         generate(root.path()),
-        Err(ContextError::UnsafePath)
+        Err(ContextError::Refused { path, .. }) if path == ".rullst/context-map.json"
     ));
     assert_eq!(initial, read(root.path(), ".llms.txt"));
     assert_eq!(
@@ -277,7 +277,8 @@ fn linked_sources_are_excluded_and_linked_outputs_or_config_are_rejected() {
     .unwrap();
     assert!(matches!(
         generate(root.path()),
-        Err(ContextError::UnsafePath)
+        Err(ContextError::Refused { path, reason: "it is a link or lies below one" })
+            if path == ".llms.txt"
     ));
     assert_eq!(read(outside.path(), "private.rs"), "outside secret marker");
     fs::remove_file(root.path().join(".llms.txt")).unwrap();
@@ -342,6 +343,147 @@ fn dotenv_values_are_not_reinterpreted_as_keys_or_interpolated() {
         ));
     }
     assert_eq!(metadata::env_keys(b"KEY=\"quoted = value # text\" # comment\nOTHER='single = value'\nREF=${PRIVATE_ENV}\n").unwrap(), ["KEY", "OTHER", "REF"]);
+}
+
+fn crlf(root: &Path, file: &str) {
+    let text = read(root, file).replace('\n', "\r\n");
+    fs::write(root.join(file), text).unwrap();
+}
+
+/// Git for Windows checks the outputs out with CRLF (`core.autocrlf=true`):
+/// they are still recognized, current and left as they are.
+#[test]
+fn outputs_checked_out_with_crlf_are_recognized_and_current() {
+    let root = fixture();
+    generate(root.path()).unwrap();
+    for file in [".llms.txt", ".rullst/context-map.json"] {
+        crlf(root.path(), file);
+    }
+    let checked_out = read(root.path(), ".llms.txt");
+    assert!(checked_out.starts_with(&TEXT_MARKER.replace('\n', "\r\n")));
+    check_ai_context(Some(root.path())).unwrap();
+    assert!(!generate(root.path()).unwrap());
+    assert_eq!(read(root.path(), ".llms.txt"), checked_out);
+
+    // A stale CRLF output is replaced with the current LF inventory.
+    fs::write(
+        root.path().join("src/main.rs"),
+        "fn main() { changed(); }\n",
+    )
+    .unwrap();
+    assert!(matches!(
+        check_ai_context(Some(root.path())),
+        Err(ContextError::Stale)
+    ));
+    generate(root.path()).unwrap();
+    assert!(!read(root.path(), ".llms.txt").contains('\r'));
+    check_ai_context(Some(root.path())).unwrap();
+
+    // The legacy header is recognized with CRLF too.
+    fs::write(
+        root.path().join(".llms.txt"),
+        format!("{LEGACY_MARKER} legacy body").replace('\n', "\r\n"),
+    )
+    .unwrap();
+    generate(root.path()).unwrap();
+    assert!(read(root.path(), ".llms.txt").starts_with(TEXT_MARKER));
+}
+
+#[test]
+fn a_refusal_names_the_file_and_the_reason() {
+    let root = fixture();
+    fs::write(root.path().join(".llms.txt"), "my own notes\n").unwrap();
+    let error = generate(root.path()).unwrap_err().to_string();
+    assert_eq!(
+        error,
+        "project context refuses `.llms.txt`: it does not start with the generated-inventory marker, so it may be your own file; review it, move it aside and run the command again"
+    );
+    fs::remove_file(root.path().join(".llms.txt")).unwrap();
+    fs::create_dir_all(root.path().join(".rullst")).unwrap();
+    fs::write(root.path().join(".rullst/context-map.json"), "{}").unwrap();
+    assert!(
+        generate(root.path())
+            .unwrap_err()
+            .to_string()
+            .starts_with("project context refuses `.rullst/context-map.json`: it is not a `rullst.project-context.v1` map")
+    );
+    fs::remove_file(root.path().join(".rullst/context-map.json")).unwrap();
+    fs::write(root.path().join(".llms.txt"), [0xff, 0xfe]).unwrap();
+    assert_eq!(
+        generate(root.path()).unwrap_err().to_string(),
+        "project context refuses `.llms.txt`: it is not UTF-8 text"
+    );
+    fs::remove_file(root.path().join(".llms.txt")).unwrap();
+    fs::create_dir(root.path().join(".llms.txt")).unwrap();
+    assert_eq!(
+        generate(root.path()).unwrap_err().to_string(),
+        "project context refuses `.llms.txt`: it is not a regular file"
+    );
+}
+
+const ATTRIBUTES: &str = "# cargo rullst generate:ai-context output: LF on every checkout, so --check matches\n.llms.txt text eol=lf\n.rullst/context-map.json text eol=lf\n";
+
+/// The outputs' LF entries are added once, after any existing content;
+/// nothing is written when the outputs are already current.
+#[test]
+fn gitattributes_keeps_the_outputs_lf_without_replacing_user_lines() {
+    let root = fixture();
+    assert!(generate(root.path()).unwrap());
+    assert_eq!(read(root.path(), ".gitattributes"), ATTRIBUTES);
+    fs::write(root.path().join("src/main.rs"), "fn main() { a(); }\n").unwrap();
+    assert!(!generate(root.path()).unwrap());
+    assert_eq!(read(root.path(), ".gitattributes"), ATTRIBUTES);
+
+    // Current outputs write nothing, so no entry comes back.
+    fs::remove_file(root.path().join(".gitattributes")).unwrap();
+    assert!(!generate(root.path()).unwrap());
+    assert!(!root.path().join(".gitattributes").exists());
+
+    // Existing lines stay; a file without a final newline gets one.
+    fs::write(root.path().join(".gitattributes"), "*.png binary").unwrap();
+    fs::write(root.path().join("src/main.rs"), "fn main() { b(); }\n").unwrap();
+    assert!(generate(root.path()).unwrap());
+    assert_eq!(
+        read(root.path(), ".gitattributes"),
+        format!("*.png binary\n\n{ATTRIBUTES}")
+    );
+
+    // A file the user already names keeps that choice; CRLF files get CRLF.
+    fs::write(
+        root.path().join(".gitattributes"),
+        "*.png binary\r\n/.llms.txt -text\r\n",
+    )
+    .unwrap();
+    fs::write(root.path().join("src/main.rs"), "fn main() { c(); }\n").unwrap();
+    assert!(generate(root.path()).unwrap());
+    assert_eq!(
+        read(root.path(), ".gitattributes"),
+        "*.png binary\r\n/.llms.txt -text\r\n\r\n# cargo rullst generate:ai-context output: LF on every checkout, so --check matches\r\n.rullst/context-map.json text eol=lf\r\n"
+    );
+    assert_eq!(
+        attributes_note(true),
+        "\n.gitattributes now keeps both files LF on every checkout."
+    );
+    assert_eq!(attributes_note(false), "");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_linked_gitattributes_is_refused_before_any_write() {
+    let root = fixture();
+    let outside = tempfile::tempdir().unwrap();
+    fs::write(outside.path().join("attributes"), "*.rs text\n").unwrap();
+    std::os::unix::fs::symlink(
+        outside.path().join("attributes"),
+        root.path().join(".gitattributes"),
+    )
+    .unwrap();
+    assert!(matches!(
+        generate(root.path()),
+        Err(ContextError::Refused { path, .. }) if path == ".gitattributes"
+    ));
+    assert!(!root.path().join(".llms.txt").exists());
+    assert_eq!(read(outside.path(), "attributes"), "*.rs text\n");
 }
 
 #[test]

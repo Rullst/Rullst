@@ -244,9 +244,10 @@ fn boot() {
     );
 }
 
-/// The alpha.2 `User` models skipped two existing columns, which the query
-/// builder then refused to filter; `db_default` and fields without a column
-/// are not reported.
+/// The alpha.2 `User` models skipped existing columns, which the query
+/// builder then refused to filter. Every skipped field that `FromRow` reads
+/// is reported, each at its own line; `db_default`, fields `FromRow` skips
+/// or defaults and models with their own `FromRow` are not.
 #[test]
 fn skipped_managed_user_columns_are_reviewed() {
     let source = r#"
@@ -258,14 +259,21 @@ pub struct User {
     pub is_admin: bool,
     #[orm(skip)]
     pub session_epoch: i64,
+    #[orm(skip, hidden)]
+    pub member_status: String,
 }
 "#;
-    // One finding per file, at the first field.
     assert_eq!(
         scan_with(source, "user.rs", &WorkspaceFacts::default()),
-        [("V13-ORM-SKIP-MANAGED-COLUMNS", 7)]
+        [
+            ("V13-ORM-SKIP-MANAGED-COLUMNS", 7),
+            ("V13-ORM-SKIP-MANAGED-COLUMNS", 9),
+            ("V13-ORM-SKIP-MANAGED-COLUMNS", 11)
+        ]
     );
-    let epoch_only = source.replace("    #[orm(skip)]\n    pub is_admin", "    pub is_admin");
+    let epoch_only = source
+        .replace("    #[orm(skip)]\n    pub is_admin", "    pub is_admin")
+        .replace("    #[orm(skip, hidden)]\n", "");
     assert_eq!(
         scan_with(&epoch_only, "user.rs", &WorkspaceFacts::default()),
         [("V13-ORM-SKIP-MANAGED-COLUMNS", 8)]
@@ -282,7 +290,20 @@ pub struct User {
     #[sqlx(skip)]
     pub session_epoch: i64,
     #[orm(skip)]
+    #[sqlx(default)]
     pub nickname: String,
+}
+#[derive(Orm)]
+#[orm(table = "own_rows", custom_from_row)]
+pub struct OwnRows {
+    #[orm(skip)]
+    pub computed: i64,
+}
+#[derive(Orm)]
+#[sqlx(default)]
+pub struct Defaults {
+    #[orm(skip)]
+    pub computed: i64,
 }
 pub struct Plain {
     #[orm(skip)]

@@ -7,6 +7,7 @@ mod alpha5_capital_mail;
 mod data;
 mod docs;
 mod files;
+mod functions;
 mod limits;
 mod markup;
 mod rc1_gaps;
@@ -19,6 +20,7 @@ fn scan_with(source: &str, file_name: &str, facts: &WorkspaceFacts) -> Vec<(&'st
     let context = rust::FileContext {
         text: source,
         file_name,
+        path: Path::new(file_name),
         facts,
     };
     let mut collector = Collector::default();

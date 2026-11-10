@@ -10,12 +10,28 @@ use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{Expr, Token};
 
+impl super::Visitor<'_, '_> {
+    /// Reports a [`legacy_literal`].
+    pub(super) fn capital_mail_literal(&mut self, expr: &syn::ExprStruct) {
+        if let Some((rule, at)) = legacy_literal(expr, self.context.text) {
+            self.hit(rule, at);
+        }
+    }
+
+    /// Reports the legacy literals of a `vec![...]` body.
+    pub(super) fn capital_mail_vec(&mut self, mac: &syn::Macro) {
+        for (rule, at) in in_vec_macro(mac, self.context.text) {
+            self.hit(rule, at);
+        }
+    }
+}
+
 /// The rule and line of a struct literal that 13.0.0-alpha.5 breaks: Capital's
 /// `Invoice { .. total .. }` or `InvoiceItem { .. amount .. }`, in a file that
 /// names Capital, and an exhaustive Mail `Message { .. }` (no `..rest`, no
 /// `reply_to`) in a file that names Mail. The field checks keep an
 /// application's own `Invoice` or `Message` types out.
-pub(super) fn legacy_literal(expr: &syn::ExprStruct, text: &str) -> Option<(&'static Rule, usize)> {
+fn legacy_literal(expr: &syn::ExprStruct, text: &str) -> Option<(&'static Rule, usize)> {
     let name = expr.path.segments.last()?.ident.to_string();
     let names = |field: &str| {
         expr.fields
@@ -50,7 +66,7 @@ fn names_crate(text: &str, name: &str) -> bool {
 
 /// The same literals inside `vec![a, b]`, whose body the syntax visitor
 /// does not enter (an invoice's `items` are usually built this way).
-pub(super) fn in_vec_macro(mac: &syn::Macro, text: &str) -> Vec<(&'static Rule, usize)> {
+fn in_vec_macro(mac: &syn::Macro, text: &str) -> Vec<(&'static Rule, usize)> {
     let mut finder = Finder {
         text,
         found: Vec::new(),

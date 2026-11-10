@@ -12,6 +12,7 @@ pub(crate) use isolated::{
     prepare_manifests, validate_prepared_manifests, validate_prepared_resolution,
 };
 
+use crate::term::display_path;
 use crate::ui::spinner::with_spinner;
 use colored::Colorize;
 use manifest::ManifestUpgradePlan;
@@ -74,6 +75,10 @@ enum UpgradeError {
         current: String,
         target: Version,
     },
+    #[error(
+        "the plan lists {count} must-change finding(s), so nothing was changed: {details}. Fix them and run `cargo rullst upgrade` again, or run `cargo rullst upgrade --keep-on-failure` to change the versions anyway and fix them in the kept files"
+    )]
+    MustChange { count: usize, details: String },
 }
 
 /// A validated plan: dependency edits and source findings, nothing written.
@@ -132,14 +137,72 @@ fn plan_project(
     })
 }
 
-/// Recovery advice when a Cargo gate fails while must-change findings, or
-/// review findings for APIs that v13 removed in Rust sources, remain. The
-/// plan prints no guidance, so the removed-API rules repeat theirs here.
+/// Locations shown per rule when must-change findings stop an upgrade.
+const MUST_CHANGE_LOCATIONS: usize = 3;
+
+/// Why an upgrade must not start: the plan's must-change findings do not
+/// compile with the target, so changing the versions and running the Cargo
+/// gates (minutes on a cold cache) could only fail and restore the project.
+/// Each rule is named once, with its first locations and its guidance.
+/// `--keep-on-failure` asks for the versions to change anyway, as the
+/// migration guide's alpha.3 to alpha.4 checklist does for `FromRow`, whose
+/// removal does not compile against alpha.3.
+fn must_change_refusal(root: &Path, scan: &SourceScan) -> Option<UpgradeError> {
+    let mut by_rule: Vec<(&'static rules::Rule, Vec<String>)> = Vec::new();
+    for finding in &scan.findings {
+        if finding.rule.kind != FindingKind::MustChange {
+            continue;
+        }
+        let location = format!(
+            "{}:{}",
+            relative_report_path(root, &finding.path),
+            finding.line
+        );
+        match by_rule
+            .iter_mut()
+            .find(|(rule, _)| rule.code == finding.rule.code)
+        {
+            Some((_, locations)) => locations.push(location),
+            None => by_rule.push((finding.rule, vec![location])),
+        }
+    }
+    if by_rule.is_empty() {
+        return None;
+    }
+    let details = by_rule
+        .iter()
+        .map(|(rule, locations)| {
+            let mut shown = locations
+                .iter()
+                .take(MUST_CHANGE_LOCATIONS)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(", ");
+            if locations.len() > MUST_CHANGE_LOCATIONS {
+                shown.push_str(&format!(
+                    " and {} more",
+                    locations.len() - MUST_CHANGE_LOCATIONS
+                ));
+            }
+            format!("{} at {shown}: {}", rule.code, rule.guidance)
+        })
+        .collect::<Vec<_>>()
+        .join("; ");
+    Some(UpgradeError::MustChange {
+        count: scan.count(FindingKind::MustChange),
+        details,
+    })
+}
+
+/// Recovery advice when a Cargo gate fails while must-change findings (only
+/// with `--keep-on-failure`), or review findings for APIs that v13 removed in
+/// Rust sources, remain. The plan prints no guidance, so the removed-API
+/// rules repeat theirs here.
 fn findings_hint(root: &Path, scan: &SourceScan) -> String {
     let mut hint = match scan.count(FindingKind::MustChange) {
         0 => String::new(),
         count => format!(
-            "; the plan lists {count} must-change finding(s): fix them first, or rerun with --keep-on-failure to repair the kept state"
+            "; the plan lists {count} must-change finding(s): fix them in the kept files, then run `cargo check`"
         ),
     };
     let mut named = std::collections::BTreeSet::new();
@@ -172,7 +235,7 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
             "{}",
             format!(
                 "Restored the Rullst upgrade backup from {}. Review the working tree before continuing.",
-                restored.display()
+                display_path(&restored)
             )
             .green()
             .bold()
@@ -202,6 +265,11 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
             );
         }
         return Ok(());
+    }
+    if !options.keep_on_failure
+        && let Some(refusal) = must_change_refusal(&root, &scan)
+    {
+        return Err(refusal.into());
     }
 
     if changed == 0 {
@@ -276,7 +344,7 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
         "{}",
         format!(
             "\nUpgrade transaction completed and cargo check passed.\nBackup and review report: {}{remaining}\nRun the full application tests, database restore/migration rehearsal, and deployment smoke tests before merging.",
-            report_path.display()
+            display_path(&report_path)
         )
         .green()
         .bold()
@@ -365,14 +433,14 @@ fn recover_after_failure(
     if keep_on_failure {
         Ok(format!(
             "edited files were kept by request; recover with `cargo rullst upgrade --restore {}`",
-            backup.root().display()
+            display_path(backup.root())
         ))
     } else {
         backup.restore()?;
         Ok(format!(
             "the original manifests, lockfile, and Rust sources were restored; diagnostic report: {}; the persisted snapshot can be restored again with `cargo rullst upgrade --restore {}`",
-            backup.report_path().display(),
-            backup.root().display()
+            display_path(backup.report_path()),
+            display_path(backup.root())
         ))
     }
 }

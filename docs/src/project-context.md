@@ -50,7 +50,8 @@ fingerprint is an aid to detecting source changes, not a signed attestation.
 | Rust sources | Regular `.rs` files below `src`; at most 512 files, 1 MiB each and 8 MiB combined. |
 | Traversal | At most 4,096 observed entries and 16 nested directories; linked/special files, hidden descendants, `target`, `vendor` and `node_modules` are excluded. A linked source root or configuration file fails. |
 | Names | Bounded ASCII names and relative paths; unsupported names fail rather than being silently renamed. |
-| Outputs | At most 256 KiB each; linked or unrecognized output is rejected before replacement. |
+| Outputs | At most 256 KiB each; linked or unrecognized output is rejected before replacement, and the error names the file and the reason. CRLF line endings (Git for Windows with `core.autocrlf=true`) are accepted: an output that differs only in line endings is current for `--check` and is not rewritten. |
+| `.gitattributes` | When the command writes an output, it appends `.llms.txt text eol=lf` and `.rullst/context-map.json text eol=lf` (with a comment line) for each output the file does not name yet, creating the file if needed; existing lines, including another choice for these files, are kept. |
 | Project instructions | Existing `AGENTS.md` is neither read into the map nor replaced. Edit it to add application-specific requirements. |
 
 Source bodies, configuration values, credentials, live `.env` files, database
