@@ -333,3 +333,20 @@ fn a_streamed_update_is_downloading_until_it_finishes() {
     assert_eq!(ota.pending_manifest(), Some(&manifest));
     assert_eq!(OtaManifest::empty().firmware_len(), 0);
 }
+
+#[test]
+fn a_slice_of_the_wrong_length_fails_without_a_pending_update() {
+    let firmware = b"exact length image";
+    let (manifest, signature) = signed_update(2, firmware);
+    let mut ota = manager(1);
+    ota.verify_update(&manifest, firmware, &signature).unwrap();
+    assert_eq!(
+        ota.verify_update(&manifest, &firmware[..4], &signature),
+        Err(OtaError::FirmwareLengthMismatch {
+            expected: firmware.len() as u64,
+            actual: 4
+        })
+    );
+    assert_eq!(ota.status(), OtaStatus::Failed);
+    assert!(ota.pending_manifest().is_none());
+}

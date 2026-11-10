@@ -258,8 +258,8 @@ impl OtaManager {
     /// Verifies an image held as one slice: [`Self::begin_update`], one
     /// [`OtaImageVerifier::update`] and [`OtaImageVerifier::finish`].
     ///
-    /// The target, rollback counter and signature are checked before the
-    /// image is hashed, then its length and SHA-256 digest. Since
+    /// The target, rollback counter, signature and the slice's length are
+    /// checked before the image is hashed, then its SHA-256 digest. Since
     /// 13.0.0-alpha.5 an invalid signature is reported before a length or
     /// hash mismatch.
     pub fn verify_update(
@@ -269,6 +269,14 @@ impl OtaManager {
         signature: &[u8],
     ) -> Result<(), OtaError> {
         let mut verifier = self.begin_update(manifest, signature)?;
+        let actual = u64::try_from(firmware.len()).map_err(|_| OtaError::FirmwareTooLarge)?;
+        if actual != manifest.firmware_len {
+            // Dropping the unfinished verifier marks the update failed.
+            return Err(OtaError::FirmwareLengthMismatch {
+                expected: manifest.firmware_len,
+                actual,
+            });
+        }
         verifier.update(firmware)?;
         verifier.finish()
     }

@@ -5,6 +5,7 @@ mod frames;
 mod ota;
 mod probes;
 mod protocols;
+mod stream;
 
 pub use probes::{allocation_failure_checks, stack_probes};
 
@@ -103,6 +104,9 @@ pub fn run(ctx: &mut Ctx) {
     heap_group("ota");
     ota::ota(ctx);
     heap_report("ota");
+    heap_group("stream");
+    stream::stream(ctx);
+    heap_report("stream");
     heap_group("cas");
     cas::cas(ctx);
     heap_report("cas");

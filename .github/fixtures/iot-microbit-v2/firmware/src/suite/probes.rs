@@ -60,6 +60,24 @@ pub fn stack_probes() {
         let (r, d) = stack_depth(|| ota.commit_verified_update_with_store(&mut store).is_ok());
         report("OtaManager::commit_verified_update_with_store", r, d);
     }
+    // Streaming: begin_update + eight 4 KiB update calls + finish.
+    let mut store = RamCounterStore::new(41);
+    if let (Ok(received), Ok(mut ota)) = (
+        super::stream::received_manifest(),
+        manager(&mut store, x::OTA_PUBLIC_KEY, BootPartition::PartitionA),
+    ) {
+        let (r, d) = stack_depth(|| {
+            let mut verifier = match ota.begin_update(&received, x::OTA_SIG_42) {
+                Ok(verifier) => verifier,
+                Err(_) => return false,
+            };
+            FIRMWARE
+                .chunks(super::stream::CHUNK)
+                .all(|chunk| verifier.update(chunk).is_ok())
+                && verifier.finish().is_ok()
+        });
+        report("OtaManager::begin_update+8x4KiB+finish", r, d);
+    }
 }
 
 /// A 20 KiB payload fits the 32 KiB heap; its encoded copy does not. Since
