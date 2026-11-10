@@ -41,6 +41,9 @@ impl MqttQos {
 }
 
 /// Fail-closed MQTT packet construction errors.
+///
+/// `#[non_exhaustive]` since 13.0.0-alpha.5: match it with a `_` arm.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MqttCodecError {
     /// PUBLISH topic names cannot be empty in this no-alias encoder.
@@ -59,6 +62,11 @@ pub enum MqttCodecError {
     ReliableQosRequired,
     /// DUP is rejected for the QoS 0 helper because no acknowledgement state exists.
     DuplicateRequiresReliableQos,
+    /// The allocator could not provide the encoded packet's buffer. The input
+    /// is valid; the encoding can succeed once memory is available, for
+    /// example on a device whose heap is smaller than the packet. Added in
+    /// 13.0.0-alpha.5; earlier releases aborted instead.
+    AllocationFailed,
 }
 
 impl fmt::Display for MqttCodecError {
@@ -76,6 +84,7 @@ impl fmt::Display for MqttCodecError {
             Self::DuplicateRequiresReliableQos => {
                 "MQTT DUP requires QoS 1 or QoS 2 in this bounded encoder"
             }
+            Self::AllocationFailed => "MQTT PUBLISH packet buffer could not be allocated",
         })
     }
 }
@@ -173,6 +182,11 @@ impl MqttPublish {
     }
 
     /// Encodes one MQTT 5 PUBLISH control packet with zero properties.
+    ///
+    /// The packet is a new buffer of exactly its length, allocated fallibly:
+    /// when the allocator refuses it, this returns
+    /// [`MqttCodecError::AllocationFailed`] instead of aborting. The builder
+    /// keeps its payload, so encoding needs room for a second copy of it.
     pub fn encode(&self) -> Result<Vec<u8>, MqttCodecError> {
         let identifier_bytes = usize::from(self.packet_identifier.is_some()) * 2;
         let remaining_length = 2usize
@@ -185,7 +199,8 @@ impl MqttPublish {
         if remaining_length > MQTT_MAX_VARIABLE_BYTE_INTEGER {
             return Err(MqttCodecError::PacketTooLarge);
         }
-        let remaining_bytes = variable_byte_integer(remaining_length)?;
+        let (remaining_bytes, remaining_bytes_len) = variable_byte_integer(remaining_length)?;
+        let remaining_bytes = &remaining_bytes[..remaining_bytes_len];
         let packet_length = 1usize
             .checked_add(remaining_bytes.len())
             .and_then(|length| length.checked_add(remaining_length))
@@ -194,7 +209,10 @@ impl MqttPublish {
             return Err(MqttCodecError::PacketTooLarge);
         }
 
-        let mut packet = Vec::with_capacity(packet_length);
+        let mut packet = Vec::new();
+        packet
+            .try_reserve_exact(packet_length)
+            .map_err(|_| MqttCodecError::AllocationFailed)?;
         let mut fixed_header = 0x30 | (self.qos.bits() << 1);
         if self.duplicate {
             fixed_header |= 0x08;
@@ -203,7 +221,7 @@ impl MqttPublish {
             fixed_header |= 0x01;
         }
         packet.push(fixed_header);
-        packet.extend_from_slice(&remaining_bytes);
+        packet.extend_from_slice(remaining_bytes);
         packet.extend_from_slice(&(self.topic.len() as u16).to_be_bytes());
         packet.extend_from_slice(self.topic.as_bytes());
         if let Some(identifier) = self.packet_identifier {
@@ -240,22 +258,26 @@ fn is_disallowed_topic_character(character: char) -> bool {
         || code & 0xffff == 0xffff
 }
 
-fn variable_byte_integer(mut value: usize) -> Result<Vec<u8>, MqttCodecError> {
+/// Encodes an MQTT Variable Byte Integer into at most four bytes, returned
+/// with the number of bytes used, without allocating.
+fn variable_byte_integer(mut value: usize) -> Result<([u8; 4], usize), MqttCodecError> {
     if value > MQTT_MAX_VARIABLE_BYTE_INTEGER {
         return Err(MqttCodecError::PacketTooLarge);
     }
-    let mut encoded = Vec::with_capacity(4);
-    loop {
+    let mut encoded = [0u8; 4];
+    for (index, slot) in encoded.iter_mut().enumerate() {
         let mut byte = (value % 128) as u8;
         value /= 128;
         if value > 0 {
             byte |= 0x80;
         }
-        encoded.push(byte);
+        *slot = byte;
         if value == 0 {
-            return Ok(encoded);
+            return Ok((encoded, index + 1));
         }
     }
+    // Unreachable: the range check above admits at most four bytes.
+    Err(MqttCodecError::PacketTooLarge)
 }
 
 /// Explicitly simulated telemetry value formatter; not an MQTT client.
@@ -272,200 +294,5 @@ impl SimulatedMqttPayloadFormatter {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use alloc::vec;
-
-    #[test]
-    fn encodes_qos_zero_and_variable_remaining_length() {
-        let packet = MqttPublish::new("sensors/1", [0x18])
-            .and_then(|publish| publish.encode())
-            .expect("bounded packet should encode");
-        assert_eq!(
-            packet,
-            [
-                0x30, 0x0d, 0x00, 0x09, b's', b'e', b'n', b's', b'o', b'r', b's', b'/', b'1', 0x00,
-                0x18,
-            ]
-        );
-
-        let packet = MqttPublish::new("a", vec![7; 128])
-            .and_then(|publish| publish.encode())
-            .expect("two-byte remaining length should encode");
-        assert_eq!(&packet[..3], &[0x30, 0x84, 0x01]);
-    }
-
-    #[test]
-    fn reliable_packet_requires_identifier_and_controls_flags() {
-        assert_eq!(
-            MqttPublish::reliable("a", b"x".to_vec(), MqttQos::AtLeastOnce, 0),
-            Err(MqttCodecError::PacketIdentifierRequired)
-        );
-        let packet = MqttPublish::reliable("a", b"x".to_vec(), MqttQos::ExactlyOnce, 0x1234)
-            .and_then(|publish| publish.retained(true).duplicate(true))
-            .and_then(|publish| publish.encode())
-            .expect("QoS 2 retry should encode");
-        assert_eq!(packet, [0x3d, 0x07, 0, 1, b'a', 0x12, 0x34, 0, b'x']);
-    }
-
-    #[test]
-    fn rejects_wildcards_controls_and_unbounded_packets() {
-        assert_eq!(
-            MqttPublish::new("sensors/+", Vec::<u8>::new()),
-            Err(MqttCodecError::InvalidTopic)
-        );
-        assert_eq!(
-            MqttPublish::new("sensors\0temperature", Vec::<u8>::new()),
-            Err(MqttCodecError::InvalidTopic)
-        );
-        assert_eq!(
-            MqttPublish::new("a", vec![0; MAX_MQTT_PACKET_BYTES])
-                .and_then(|publish| publish.encode()),
-            Err(MqttCodecError::PacketTooLarge)
-        );
-        assert_eq!(
-            MqttPublish::new("a", Vec::<u8>::new()).and_then(|publish| publish.duplicate(true)),
-            Err(MqttCodecError::DuplicateRequiresReliableQos)
-        );
-    }
-
-    #[test]
-    fn codec_errors_have_stable_messages() {
-        use alloc::string::ToString;
-
-        for (error, message) in [
-            (
-                MqttCodecError::EmptyTopic,
-                "MQTT PUBLISH topic cannot be empty",
-            ),
-            (
-                MqttCodecError::InvalidTopic,
-                "MQTT PUBLISH topic contains a disallowed character",
-            ),
-            (
-                MqttCodecError::TopicTooLong,
-                "MQTT PUBLISH topic exceeds 65535 UTF-8 bytes",
-            ),
-            (
-                MqttCodecError::PayloadTooLarge,
-                "MQTT PUBLISH payload exceeds the local packet ceiling",
-            ),
-            (
-                MqttCodecError::PacketTooLarge,
-                "MQTT PUBLISH packet exceeds an encoding limit",
-            ),
-            (
-                MqttCodecError::PacketIdentifierRequired,
-                "MQTT QoS 1 or QoS 2 requires a non-zero packet identifier",
-            ),
-            (
-                MqttCodecError::ReliableQosRequired,
-                "MQTT reliable publishing requires QoS 1 or QoS 2",
-            ),
-            (
-                MqttCodecError::DuplicateRequiresReliableQos,
-                "MQTT DUP requires QoS 1 or QoS 2 in this bounded encoder",
-            ),
-        ] {
-            assert_eq!(error.to_string(), message);
-        }
-    }
-
-    #[test]
-    fn accessors_return_the_validated_topic_and_payload() {
-        let publish = MqttPublish::new("sensors/1", b"21.5".to_vec()).expect("valid topic");
-        assert_eq!(publish.topic(), "sensors/1");
-        assert_eq!(publish.payload(), b"21.5");
-    }
-
-    #[test]
-    fn packet_ceiling_admits_exactly_one_mebibyte() {
-        // 1 fixed-header byte + 3 remaining-length bytes + 2 topic-length
-        // bytes + "a" + 1 property-length byte = 8 bytes around the payload.
-        let packet = MqttPublish::new("a", vec![0; MAX_MQTT_PACKET_BYTES - 8])
-            .and_then(|publish| publish.encode())
-            .expect("a packet at the ceiling should encode");
-        assert_eq!(packet.len(), 1_048_576);
-        assert_eq!(
-            MqttPublish::new("a", vec![0; MAX_MQTT_PACKET_BYTES - 7])
-                .and_then(|publish| publish.encode()),
-            Err(MqttCodecError::PacketTooLarge)
-        );
-    }
-
-    #[test]
-    fn topic_length_follows_the_two_byte_utf8_prefix() {
-        assert!(MqttPublish::new("a".repeat(65_535), Vec::<u8>::new()).is_ok());
-        assert_eq!(
-            MqttPublish::new("a".repeat(65_536), Vec::<u8>::new()),
-            Err(MqttCodecError::TopicTooLong)
-        );
-    }
-
-    #[test]
-    fn rejects_every_disallowed_topic_character_class() {
-        for rejected in [
-            '+',
-            '#',
-            '\u{0}',
-            '\u{1}',
-            '\u{1f}',
-            '\u{7f}',
-            '\u{85}',
-            '\u{9f}',
-            '\u{fdd0}',
-            '\u{fdef}',
-            '\u{fffe}',
-            '\u{ffff}',
-            '\u{1fffe}',
-            '\u{10ffff}',
-        ] {
-            assert!(
-                is_disallowed_topic_character(rejected),
-                "U+{:04X} should be rejected",
-                rejected as u32
-            );
-        }
-        for accepted in [
-            ' ',
-            '~',
-            '\u{a0}',
-            '\u{fdcf}',
-            '\u{fdf0}',
-            '\u{fffd}',
-            '\u{10000}',
-            '\u{1fffd}',
-        ] {
-            assert!(
-                !is_disallowed_topic_character(accepted),
-                "U+{:04X} should be accepted",
-                accepted as u32
-            );
-        }
-    }
-
-    #[test]
-    fn variable_byte_integer_covers_the_mqtt_range() {
-        assert_eq!(variable_byte_integer(0), Ok(vec![0x00]));
-        assert_eq!(variable_byte_integer(127), Ok(vec![0x7f]));
-        assert_eq!(variable_byte_integer(128), Ok(vec![0x80, 0x01]));
-        assert_eq!(
-            variable_byte_integer(MQTT_MAX_VARIABLE_BYTE_INTEGER),
-            Ok(vec![0xff, 0xff, 0xff, 0x7f])
-        );
-        assert_eq!(
-            variable_byte_integer(MQTT_MAX_VARIABLE_BYTE_INTEGER + 1),
-            Err(MqttCodecError::PacketTooLarge)
-        );
-    }
-
-    #[cfg(feature = "experimental-simulators")]
-    #[test]
-    fn simulated_formatter_only_formats_a_value() {
-        let telemetry = SensorTelemetry::new("fixture", "temperature", 24.5, 1);
-        assert_eq!(
-            SimulatedMqttPayloadFormatter::format_value(&telemetry),
-            "24.5"
-        );
-    }
-}
+#[path = "mqtt_tests.rs"]
+mod tests;

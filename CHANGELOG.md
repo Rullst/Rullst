@@ -11,6 +11,24 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- `rullst-iot` (Experimental): `AnomalyDetector` derives `Clone`, `Copy`,
+  `Debug` and `PartialEq`; `AnomalyState` documents its variants, implements
+  `Display` (`normal`, `warning`, `critical anomaly`) and `as_str`, and
+  serializes with serde as `"normal"`, `"warning"` and `"critical_anomaly"`.
+  Requested after an Arduino Uno and Rullst gateway run of the `std` path.
+- `rullst-iot` (Experimental) streaming OTA verification. A device builds the
+  manifest from the fields it receives with `OtaManifest::new(target,
+  version, rollback_counter, firmware_len, firmware_sha256)` or parses the
+  canonical bytes the publisher signed with `OtaManifest::from_signing_bytes`
+  (`OtaError::MalformedManifest` for anything else), without hashing the
+  image. `OtaManager::begin_update(&manifest, signature)` checks the target,
+  the rollback counter and the Ed25519 signature before any image byte and
+  returns an `OtaImageVerifier`: `update(chunk)` hashes the image in chunks of
+  any size and refuses one past the signed length, and `finish()` checks the
+  length and the SHA-256 digest and makes the update eligible for commit. The
+  image is hashed once and never has to be one slice in memory, so it can
+  stream from the network or external flash; on a micro:bit V2 a 32 KiB image
+  in 4 KiB chunks verified in 62.8 ms with 7.6 KiB of stack.
 - Server-Sent Events for realtime channels: `rullst::realtime::RealtimeSse`
   and `RealtimeSseConfig` (also re-exported at the `rullst` and `rullst-core`
   crate roots). `RealtimeSse::channel(&manager, name)` or
@@ -229,6 +247,27 @@ A prepared version section does not establish that its tag or crates exist.
   `OtaManifest` and `OtaCommit` moved to their own file; their paths are
   unchanged. `cargo rullst upgrade` reports the three field accesses in files
   that name `OtaManager` (`V13-IOT-OTA-STATE`).
+- **Breaking:** `rullst-iot` (Experimental): `IotDashboard::render_sensor_card`
+  returns the new `IotHtml`, the crate's escaped-HTML type that reads like a
+  `&str`, instead of a `String`, and shows the reading with at most two
+  decimals (scientific notation outside 0.01 to 10^9, `n/a` when not finite)
+  instead of the full `f64` text. Call `.into_string()` for a `String`, or
+  insert it into a view with `Markup::from_trusted(card.into_string())`.
+  `cargo rullst upgrade` reports each file that calls it
+  (`V13-IOT-SENSOR-CARD-HTML`). `SensorTelemetry::timestamp` stays whole UNIX
+  seconds, now documented: a new field would break every struct literal and
+  the JSON shape, and changing the unit would silently misread stored data.
+- **Breaking:** `rullst-iot` (Experimental): `MqttCodecError` and
+  `CoapCodecError` are `#[non_exhaustive]` and gain `AllocationFailed`;
+  `OtaError` gains `AllocationFailed` too. A `match` on the two codec errors
+  outside the crate needs a wildcard arm, and `cargo rullst upgrade` reports
+  each one that has none (`V13-IOT-CODEC-ERROR-MATCH`). `verify_update` now
+  runs the streaming path below, which checks the target, the rollback counter
+  and the signature before the image's length and digest: a malformed or
+  invalid signature is reported before `FirmwareLengthMismatch` or
+  `FirmwareHashMismatch`, a manifest changed after signing is
+  `SignatureInvalid`, and neither costs a hash of the image (26 ms per 32 KiB
+  on a 64 MHz Cortex-M4).
 - `rullst-studio`: the local Studio (`Studio`, `run_studio` and its page
   modules) is the new `local` feature, which the default `drivers-all`, every
   `strict-*` profile and the facade's `studio` feature enable. `rullst-orm`,
@@ -363,6 +402,21 @@ describes each replacement.
 
 ### Fixed
 
+- `rullst-iot`: `MqttPublish::encode` aborted the program when the allocator
+  could not provide the packet buffer, which on a BBC micro:bit V2 with a
+  32 KiB heap happened for a 20 KiB payload; it and `CoapRequest::encode`,
+  `CoapRequest::path_segment` and `OtaManifest::signing_bytes` now reserve
+  their buffers fallibly and return `AllocationFailed`, and the board keeps
+  running. The CoAP encoder measures the datagram first and allocates exactly
+  its length, and neither encoder allocates for its length fields.
+- `rullst-iot` documentation said that nothing had run on physical hardware
+  and did not say what a `no_std` build needs. The crate guide now has the
+  results of a micro:bit V2 (nRF52833) run on 2026-11-10 (59 checks, timings,
+  flash, heap and stack use), states that `no_std` use needs `alloc` with a
+  `#[global_allocator]` and about 8 KiB of stack for `verify_update`, shows
+  how an application enables `ed25519-dalek`'s faster precomputed tables, and
+  lists what remains unvalidated. CI now links that firmware for
+  `thumbv7em-none-eabihf` (`.github/fixtures/iot-microbit-v2`).
 - `cargo rullst studio --remote` printed
   `cargo install rullst-studio --version =… --features remote --locked` when
   the `rullst-studio` binary was missing, and `cargo rullst studio --help`

@@ -99,6 +99,8 @@ fn rules_carry_the_release_of_their_change() {
             "V13-LIVE-COMMAND-REMOVED",
             "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE",
             "V13-IOT-OTA-STATE",
+            "V13-IOT-CODEC-ERROR-MATCH",
+            "V13-IOT-SENSOR-CARD-HTML",
         ]
     );
     // Rules added after alpha.4 for its changes take the next release, so

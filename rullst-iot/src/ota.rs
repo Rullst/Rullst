@@ -10,15 +10,16 @@ extern crate alloc;
 
 use alloc::string::String;
 use ed25519_dalek::{Signature, VerifyingKey};
-use sha2::{Digest, Sha256};
 
 mod counter;
 mod error;
 mod manifest;
+mod stream;
 pub use counter::{RollbackCounterError, RollbackCounterStore};
 pub use error::OtaError;
 use manifest::validate_text_fields;
 pub use manifest::{OtaCommit, OtaManifest};
+pub use stream::OtaImageVerifier;
 
 /// Active firmware boot partition.
 #[non_exhaustive]
@@ -227,35 +228,63 @@ impl OtaManager {
         Ok(self.current_partition.opposite())
     }
 
-    /// Verifies the target, rollback counter, firmware hash/length, and strict
-    /// Ed25519 signature before making an update eligible for commit.
+    /// Starts verifying an update whose image arrives in chunks.
+    ///
+    /// It checks, cheapest first, the target, the rollback counter, the
+    /// signature encoding and the strict Ed25519 signature over the
+    /// manifest's signing bytes, before any byte of the image is hashed. Then
+    /// it returns an [`OtaImageVerifier`]: pass the image to
+    /// [`OtaImageVerifier::update`] in chunks of any size and call
+    /// [`OtaImageVerifier::finish`], which checks the length and SHA-256
+    /// digest and makes the update eligible for commit. Build the manifest
+    /// from the fields the device receives with [`OtaManifest::new`] or
+    /// [`OtaManifest::from_signing_bytes`], so the image is hashed once and
+    /// never has to be one slice in memory. Any pending update is discarded
+    /// first. Added in 13.0.0-alpha.5.
+    pub fn begin_update(
+        &mut self,
+        manifest: &OtaManifest,
+        signature: &[u8],
+    ) -> Result<OtaImageVerifier<'_>, OtaError> {
+        self.status = OtaStatus::Verifying;
+        self.pending_manifest = None;
+        if let Err(error) = self.check_signed_manifest(manifest, signature) {
+            self.status = OtaStatus::Failed;
+            return Err(error);
+        }
+        Ok(OtaImageVerifier::new(self, manifest.clone()))
+    }
+
+    /// Verifies an image held as one slice: [`Self::begin_update`], one
+    /// [`OtaImageVerifier::update`] and [`OtaImageVerifier::finish`].
+    ///
+    /// The target, rollback counter, signature and the slice's length are
+    /// checked before the image is hashed, then its SHA-256 digest. Since
+    /// 13.0.0-alpha.5 an invalid signature is reported before a length or
+    /// hash mismatch.
     pub fn verify_update(
         &mut self,
         manifest: &OtaManifest,
         firmware: &[u8],
         signature: &[u8],
     ) -> Result<(), OtaError> {
-        self.status = OtaStatus::Verifying;
-        self.pending_manifest = None;
-
-        let result = self.verify_update_inner(manifest, firmware, signature);
-        match result {
-            Ok(()) => {
-                self.pending_manifest = Some(manifest.clone());
-                self.status = OtaStatus::Verified;
-                Ok(())
-            }
-            Err(error) => {
-                self.status = OtaStatus::Failed;
-                Err(error)
-            }
+        let mut verifier = self.begin_update(manifest, signature)?;
+        let actual = u64::try_from(firmware.len()).map_err(|_| OtaError::FirmwareTooLarge)?;
+        if actual != manifest.firmware_len {
+            // Dropping the unfinished verifier marks the update failed.
+            return Err(OtaError::FirmwareLengthMismatch {
+                expected: manifest.firmware_len,
+                actual,
+            });
         }
+        verifier.update(firmware)?;
+        verifier.finish()
     }
 
-    fn verify_update_inner(
+    /// The checks that need no image byte, cheapest first.
+    fn check_signed_manifest(
         &self,
         manifest: &OtaManifest,
-        firmware: &[u8],
         signature: &[u8],
     ) -> Result<(), OtaError> {
         if manifest.target != self.target {
@@ -266,17 +295,6 @@ impl OtaManager {
                 current: self.rollback_counter,
                 proposed: manifest.rollback_counter,
             });
-        }
-        let actual_len = u64::try_from(firmware.len()).map_err(|_| OtaError::FirmwareTooLarge)?;
-        if manifest.firmware_len != actual_len {
-            return Err(OtaError::FirmwareLengthMismatch {
-                expected: manifest.firmware_len,
-                actual: actual_len,
-            });
-        }
-        let actual_hash: [u8; 32] = Sha256::digest(firmware).into();
-        if manifest.firmware_sha256 != actual_hash {
-            return Err(OtaError::FirmwareHashMismatch);
         }
         let signature =
             Signature::from_slice(signature).map_err(|_| OtaError::InvalidSignatureEncoding)?;

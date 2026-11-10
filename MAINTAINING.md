@@ -248,8 +248,10 @@ testing.
 
 1. Prepare the release commit: version of every package in
    `release-order.json`, exact internal pins, the CLI's generated pins,
-   `Cargo.lock` and every fuzz lockfile; fold `[Unreleased]` into the version
-   section with a short summary and a `### Known limitations` subsection.
+   `Cargo.lock`, every fuzz lockfile and the two lockfiles of
+   `.github/fixtures/iot-microbit-v2` (they record the `rullst-iot` version);
+   fold `[Unreleased]` into the version section with a short summary and a
+   `### Known limitations` subsection.
 2. Show the maintainer the known limitations and get an explicit approval for
    this publication. An approval for an earlier release does not carry over.
 3. On the exact candidate commit on `main`, every workflow in

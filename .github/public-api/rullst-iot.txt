@@ -4,6 +4,10 @@ pub struct rullst_iot::AnomalyDetector
 impl rullst_iot::AnomalyDetector
 pub fn rullst_iot::AnomalyDetector::evaluate(&self, value: f64) -> rullst_iot::AnomalyState
 pub fn rullst_iot::AnomalyDetector::new(expected_mean: f64, allowed_tolerance: f64) -> Self
+impl core::clone::Clone for rullst_iot::AnomalyDetector
+impl core::cmp::PartialEq for rullst_iot::AnomalyDetector
+impl core::fmt::Debug for rullst_iot::AnomalyDetector
+impl core::marker::Copy for rullst_iot::AnomalyDetector
 impl core::marker::Send for rullst_iot::AnomalyDetector
 impl core::marker::Sync for rullst_iot::AnomalyDetector
 impl core::marker::Unpin for rullst_iot::AnomalyDetector
@@ -13,11 +17,17 @@ pub enum rullst_iot::AnomalyState
 pub rullst_iot::AnomalyState::Normal
 pub rullst_iot::AnomalyState::Warning
 pub rullst_iot::AnomalyState::CriticalAnomaly
+impl rullst_iot::AnomalyState
+pub const fn rullst_iot::AnomalyState::as_str(self) -> &'static str
 impl core::clone::Clone for rullst_iot::AnomalyState
 impl core::cmp::Eq for rullst_iot::AnomalyState
 impl core::cmp::PartialEq for rullst_iot::AnomalyState
 impl core::fmt::Debug for rullst_iot::AnomalyState
+impl core::fmt::Display for rullst_iot::AnomalyState
+impl core::hash::Hash for rullst_iot::AnomalyState
 impl core::marker::Copy for rullst_iot::AnomalyState
+impl serde_core::ser::Serialize for rullst_iot::AnomalyState
+impl<'de> serde_core::de::Deserialize<'de> for rullst_iot::AnomalyState
 impl core::marker::Send for rullst_iot::AnomalyState
 impl core::marker::Sync for rullst_iot::AnomalyState
 impl core::marker::Unpin for rullst_iot::AnomalyState
@@ -38,11 +48,12 @@ impl core::marker::Sync for rullst_iot::BootPartition
 impl core::marker::Unpin for rullst_iot::BootPartition
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::BootPartition
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::BootPartition
-pub enum rullst_iot::CoapCodecError
+#[non_exhaustive] pub enum rullst_iot::CoapCodecError
 pub rullst_iot::CoapCodecError::TokenTooLong
 pub rullst_iot::CoapCodecError::InvalidPathSegment
 pub rullst_iot::CoapCodecError::OptionTooLarge
 pub rullst_iot::CoapCodecError::DatagramTooLarge
+pub rullst_iot::CoapCodecError::AllocationFailed
 impl core::clone::Clone for rullst_iot::CoapCodecError
 impl core::cmp::Eq for rullst_iot::CoapCodecError
 impl core::cmp::PartialEq for rullst_iot::CoapCodecError
@@ -197,12 +208,32 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::I2cHelper
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::I2cHelper
 pub struct rullst_iot::IotDashboard;
 impl rullst_iot::IotDashboard
-pub fn rullst_iot::IotDashboard::render_sensor_card(telemetry: &rullst_iot::SensorTelemetry) -> alloc::string::String
+pub fn rullst_iot::IotDashboard::render_sensor_card(telemetry: &rullst_iot::SensorTelemetry) -> rullst_iot::IotHtml
 impl core::marker::Send for rullst_iot::IotDashboard
 impl core::marker::Sync for rullst_iot::IotDashboard
 impl core::marker::Unpin for rullst_iot::IotDashboard
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::IotDashboard
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::IotDashboard
+#[non_exhaustive] pub struct rullst_iot::IotHtml(_)
+impl rullst_iot::IotHtml
+pub fn rullst_iot::IotHtml::as_str(&self) -> &str
+pub fn rullst_iot::IotHtml::into_string(self) -> alloc::string::String
+impl core::clone::Clone for rullst_iot::IotHtml
+impl core::cmp::Eq for rullst_iot::IotHtml
+impl core::cmp::PartialEq for rullst_iot::IotHtml
+impl core::cmp::PartialEq<&str> for rullst_iot::IotHtml
+impl core::cmp::PartialEq<str> for rullst_iot::IotHtml
+impl core::convert::AsRef<str> for rullst_iot::IotHtml
+impl core::convert::From<rullst_iot::IotHtml> for alloc::string::String
+impl core::fmt::Debug for rullst_iot::IotHtml
+impl core::fmt::Display for rullst_iot::IotHtml
+impl core::hash::Hash for rullst_iot::IotHtml
+impl core::ops::deref::Deref for rullst_iot::IotHtml { type Target = str }
+impl core::marker::Send for rullst_iot::IotHtml
+impl core::marker::Sync for rullst_iot::IotHtml
+impl core::marker::Unpin for rullst_iot::IotHtml
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::IotHtml
+impl core::panic::unwind_safe::UnwindSafe for rullst_iot::IotHtml
 pub const rullst_iot::MAX_COAP_DATAGRAM_BYTES: usize
 pub const rullst_iot::MAX_I2C_READ_BYTES: usize
 pub const rullst_iot::MAX_MQTT_PACKET_BYTES: usize
@@ -253,7 +284,7 @@ impl core::marker::Sync for rullst_iot::ModbusFunction
 impl core::marker::Unpin for rullst_iot::ModbusFunction
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::ModbusFunction
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::ModbusFunction
-pub enum rullst_iot::MqttCodecError
+#[non_exhaustive] pub enum rullst_iot::MqttCodecError
 pub rullst_iot::MqttCodecError::EmptyTopic
 pub rullst_iot::MqttCodecError::InvalidTopic
 pub rullst_iot::MqttCodecError::TopicTooLong
@@ -262,6 +293,7 @@ pub rullst_iot::MqttCodecError::PacketTooLarge
 pub rullst_iot::MqttCodecError::PacketIdentifierRequired
 pub rullst_iot::MqttCodecError::ReliableQosRequired
 pub rullst_iot::MqttCodecError::DuplicateRequiresReliableQos
+pub rullst_iot::MqttCodecError::AllocationFailed
 impl core::clone::Clone for rullst_iot::MqttCodecError
 impl core::cmp::Eq for rullst_iot::MqttCodecError
 impl core::cmp::PartialEq for rullst_iot::MqttCodecError
@@ -355,6 +387,8 @@ pub rullst_iot::OtaError::RollbackCounterStore(rullst_iot::RollbackCounterError)
 pub rullst_iot::OtaError::NoVerifiedUpdate
 pub rullst_iot::OtaError::LegacyApiUnsupported { .. }
 pub rullst_iot::OtaError::LegacyApiUnsupported::replacement: &'static str
+pub rullst_iot::OtaError::AllocationFailed
+pub rullst_iot::OtaError::MalformedManifest
 impl core::clone::Clone for rullst_iot::OtaError
 impl core::cmp::Eq for rullst_iot::OtaError
 impl core::cmp::PartialEq for rullst_iot::OtaError
@@ -367,11 +401,25 @@ impl core::marker::Sync for rullst_iot::OtaError
 impl core::marker::Unpin for rullst_iot::OtaError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::OtaError
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::OtaError
+#[non_exhaustive] pub struct rullst_iot::OtaImageVerifier<'a>
+impl<'a> rullst_iot::OtaImageVerifier<'a>
+pub fn rullst_iot::OtaImageVerifier::finish(self) -> core::result::Result<(), rullst_iot::OtaError>
+pub fn rullst_iot::OtaImageVerifier::manifest(&self) -> &rullst_iot::OtaManifest
+pub fn rullst_iot::OtaImageVerifier::received(&self) -> u64
+pub fn rullst_iot::OtaImageVerifier::remaining(&self) -> u64
+pub fn rullst_iot::OtaImageVerifier::update(&mut self, chunk: &[u8]) -> core::result::Result<(), rullst_iot::OtaError>
+impl core::ops::drop::Drop for rullst_iot::OtaImageVerifier<'_>
+impl<'a> !core::panic::unwind_safe::UnwindSafe for rullst_iot::OtaImageVerifier<'a>
+impl<'a> core::marker::Send for rullst_iot::OtaImageVerifier<'a>
+impl<'a> core::marker::Sync for rullst_iot::OtaImageVerifier<'a>
+impl<'a> core::marker::Unpin for rullst_iot::OtaImageVerifier<'a>
+impl<'a> core::panic::unwind_safe::RefUnwindSafe for rullst_iot::OtaImageVerifier<'a>
 #[non_exhaustive] pub struct rullst_iot::OtaManager
 impl rullst_iot::OtaManager
 #[deprecated] pub fn rullst_iot::OtaManager::commit_update(&mut self, _new_version: impl core::convert::Into<alloc::string::String>) -> core::result::Result<rullst_iot::OtaCommit, rullst_iot::OtaError>
 #[deprecated] pub fn rullst_iot::OtaManager::new(_version: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_iot::OtaError>
 #[deprecated] pub fn rullst_iot::OtaManager::verify_signature(&self, _payload: &[u8], _signature: &[u8]) -> core::result::Result<(), rullst_iot::OtaError>
+pub fn rullst_iot::OtaManager::begin_update(&mut self, manifest: &rullst_iot::OtaManifest, signature: &[u8]) -> core::result::Result<rullst_iot::OtaImageVerifier<'_>, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::commit_verified_update(&mut self) -> core::result::Result<rullst_iot::OtaCommit, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::commit_verified_update_with_store<S: rullst_iot::RollbackCounterStore>(&mut self, counter_store: &mut S) -> core::result::Result<rullst_iot::OtaCommit, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::current_partition(&self) -> rullst_iot::BootPartition
@@ -395,6 +443,8 @@ impl rullst_iot::OtaManifest
 pub fn rullst_iot::OtaManifest::firmware_len(&self) -> u64
 pub fn rullst_iot::OtaManifest::firmware_sha256(&self) -> [u8; 32]
 pub fn rullst_iot::OtaManifest::from_firmware(target: impl core::convert::Into<alloc::string::String>, version: impl core::convert::Into<alloc::string::String>, rollback_counter: u64, firmware: &[u8]) -> core::result::Result<Self, rullst_iot::OtaError>
+pub fn rullst_iot::OtaManifest::from_signing_bytes(bytes: &[u8]) -> core::result::Result<Self, rullst_iot::OtaError>
+pub fn rullst_iot::OtaManifest::new(target: impl core::convert::Into<alloc::string::String>, version: impl core::convert::Into<alloc::string::String>, rollback_counter: u64, firmware_len: u64, firmware_sha256: [u8; 32]) -> core::result::Result<Self, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManifest::rollback_counter(&self) -> u64
 pub fn rullst_iot::OtaManifest::signing_bytes(&self) -> core::result::Result<alloc::vec::Vec<u8>, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManifest::target(&self) -> &str
@@ -626,6 +676,7 @@ pub mod rullst_iot::ota
 pub use rullst_iot::ota::BootPartition = enum rullst_iot::BootPartition
 pub use rullst_iot::ota::OtaCommit = struct rullst_iot::OtaCommit
 pub use rullst_iot::ota::OtaError = enum rullst_iot::OtaError
+pub use rullst_iot::ota::OtaImageVerifier = struct rullst_iot::OtaImageVerifier
 pub use rullst_iot::ota::OtaManager = struct rullst_iot::OtaManager
 pub use rullst_iot::ota::OtaManifest = struct rullst_iot::OtaManifest
 pub use rullst_iot::ota::OtaStatus = enum rullst_iot::OtaStatus
@@ -643,3 +694,4 @@ pub use rullst_iot::twin::TwinJsonError = struct rullst_iot::TwinJsonError
 pub use rullst_iot::twin::TwinSyncError = enum rullst_iot::TwinSyncError
 pub mod rullst_iot::ui
 pub use rullst_iot::ui::IotDashboard = struct rullst_iot::IotDashboard
+pub use rullst_iot::ui::IotHtml = struct rullst_iot::IotHtml
