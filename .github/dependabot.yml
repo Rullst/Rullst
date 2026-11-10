@@ -56,7 +56,12 @@ updates:
           - "minor"
           - "patch"
   - package-ecosystem: "github-actions"
-    directory: "/"
+    # The second directory holds the CI workflow that `cargo rullst new`
+    # writes; it pins the same action SHAs as Rullst's own workflows (a
+    # cargo-rullst test checks it), so both move in the same grouped PR.
+    directories:
+      - "/"
+      - "/cargo-rullst/src/generators/project/ci"
     target-branch: "main"
     schedule:
       interval: "weekly"
