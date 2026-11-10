@@ -24,8 +24,8 @@ A prepared version section does not establish that its tag or crates exist.
   links, hidden paths and names that would need percent-encoding keep their
   plain URL ([frontend guide](https://rullst.github.io/Rullst/book/frontend.html)).
 - `cargo rullst add tailwind`: sets up Tailwind CSS v4 with the official
-  standalone CLI, pinned to v4.3.5 with the SHA-256 of every platform's asset
-  embedded in the CLI. The binary is downloaded once into the user cache,
+  standalone CLI, pinned to v4.3.3 (the newest release past a 14-day
+  cooldown) with the SHA-256 of every platform's asset embedded in the CLI. The binary is downloaded once into the user cache,
   verified before every use and never run when it does not match. The
   command writes `assets/css/app.css` (`@import "tailwindcss" source(none)`
   and `@source "../../src/**/*.rs"`), builds `static/app.css`, links it in the

@@ -831,7 +831,7 @@ anything is written, and `--dry-run` downloads and writes nothing:
 
 | Tool | Download (pinned) | Writes |
 | :--- | :--- | :--- |
-| `tailwind` | Tailwind CSS v4.3.5 standalone CLI for the host, SHA-256 checked, cached per user and re-checked before every use | `assets/css/app.css`; builds `static/app.css`; links it in the layout; `/static/app.css` in `.gitignore` unless tracked; BuildKit stages in a generated Dockerfile |
+| `tailwind` | Tailwind CSS v4.3.3 standalone CLI for the host, SHA-256 checked, cached per user and re-checked before every use | `assets/css/app.css`; builds `static/app.css`; links it in the layout; `/static/app.css` in `.gitignore` unless tracked; BuildKit stages in a generated Dockerfile |
 | `alpine` | `@alpinejs/csp` 3.17.5 npm tarball, checked against its `dist.integrity` (SHA-512) | `static/vendor/alpine-csp.min.js`, `static/js/alpine-components.js`; two deferred scripts in the layout |
 
 The layout is edited only when exactly one `html!` in `src/` closes `<head>`

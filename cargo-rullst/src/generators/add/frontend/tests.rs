@@ -318,7 +318,7 @@ fn conflicting_files_stop_before_any_download_or_write() {
     assert!(!root.path().join(TAILWIND_INPUT).exists());
     assert_eq!(harness.fetcher.calls.get(), 0);
     // A stylesheet Tailwind built earlier is fine.
-    let root = project(&[(TAILWIND_OUTPUT, "/*! tailwindcss v4.3.5 */\n")]);
+    let root = project(&[(TAILWIND_OUTPUT, "/*! tailwindcss v4.3.3 */\n")]);
     assert!(harness.tailwind(root.path(), true).is_ok());
 }
 

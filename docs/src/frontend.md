@@ -99,14 +99,14 @@ cargo rullst add tailwind
 
 The command, at the root of a Rullst project:
 
-1. **Downloads the pinned CLI** — Tailwind CSS **v4.3.5**, the
+1. **Downloads the pinned CLI** — Tailwind CSS **v4.3.3**, the
    `tailwindcss-<platform>` asset of the
-   [official release](https://github.com/tailwindlabs/tailwindcss/releases/tag/v4.3.5)
+   [official release](https://github.com/tailwindlabs/tailwindcss/releases/tag/v4.3.3)
    (Linux x64/arm64 with glibc or musl, macOS x64/arm64, Windows x64; Windows
    on Arm runs the x64 build) — into the per-user cache:
-   `$XDG_CACHE_HOME/rullst/tailwindcss/v4.3.5/` or
-   `~/.cache/rullst/tailwindcss/v4.3.5/` on Linux and macOS,
-   `%LOCALAPPDATA%\rullst\tailwindcss\v4.3.5\` on Windows. The download is
+   `$XDG_CACHE_HOME/rullst/tailwindcss/v4.3.3/` or
+   `~/.cache/rullst/tailwindcss/v4.3.3/` on Linux and macOS,
+   `%LOCALAPPDATA%\rullst\tailwindcss\v4.3.3\` on Windows. The download is
    written to a temporary file, checked against the SHA-256 embedded in the
    CLI, and only then made executable and moved into place. The cached file
    is checked again **before every use** (`add`, `dev`, `build`); a file that
@@ -168,10 +168,14 @@ file.
 
 **Updating Tailwind** is a change to one file of the CLI,
 `cargo-rullst/src/generators/frontend/tailwind_release.rs`: the version and
-the SHA-256 of each asset. The v4.3.5 checksums come from the release's
+the SHA-256 of each asset. The v4.3.3 checksums come from the release's
 `sha256sums.txt` asset, are identical to the asset digests the GitHub API
 reports, and were confirmed by downloading `tailwindcss-linux-x64` and hashing
 it. A unit test checks that every platform the CLI runs on has one entry.
+Pins follow a **14-day cooldown**: the newest release published at least 14
+days before the pin is made, so a compromised or broken release has time to
+be noticed. On 2026-11-10 that was v4.3.3 (published 2026-07-16); v4.3.4 and
+v4.3.5 were younger. The Alpine pin follows the same rule.
 
 ## `cargo rullst add alpine`
 
@@ -185,7 +189,8 @@ needs `'unsafe-eval'` in `script-src`; Rullst's policy never allows it.
 Alpine's [CSP build](https://alpinejs.dev/advanced/csp) (`@alpinejs/csp`)
 parses expressions itself instead. The command:
 
-1. **Vendors `@alpinejs/csp` 3.17.5** into
+1. **Vendors `@alpinejs/csp` 3.17.5** (published 2026-10-20, past the 14-day
+   cooldown) into
    `static/vendor/alpine-csp.min.js`: it downloads the npm registry tarball
    (`https://registry.npmjs.org/@alpinejs/csp/-/csp-3.17.5.tgz`), checks it
    against the registry's `dist.integrity` (SHA-512) embedded in the CLI, and

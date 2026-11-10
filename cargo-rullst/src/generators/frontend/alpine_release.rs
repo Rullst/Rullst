@@ -1,6 +1,10 @@
 //! The pinned Alpine.js CSP build (`@alpinejs/csp`) that `cargo rullst add
 //! alpine` vendors. Bumping it changes this file only.
 //!
+//! It follows the cooldown rule of `tailwind_release.rs`: the newest release
+//! published at least 14 days before the pin (3.17.5, published 2026-10-20,
+//! pinned 2026-11-10).
+//!
 //! Source (3.17.5, published 2026-10-20): the npm registry document
 //! `https://registry.npmjs.org/@alpinejs%2fcsp`, `versions["3.17.5"].dist`
 //! (`tarball` and `integrity`, the Subresource Integrity form of the
