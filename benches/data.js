@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794297549211,
+  "lastUpdate": 1794306060882,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -31725,6 +31725,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1535,
             "range": "± 21",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7ee54eac686ec94dedabbc1607a46e6698d3e80a",
+          "message": "Merge pull request #622 from Rullst/feat/v13-alpha5-frontend-toolkit\n\nfeat(frontend): content-hashed asset URLs, cargo rullst add tailwind and add alpine",
+          "timestamp": "2026-11-10T07:14:12-03:00",
+          "tree_id": "6f93afc8977b008ee1388c0919182471875e6734",
+          "url": "https://github.com/Rullst/Rullst/commit/7ee54eac686ec94dedabbc1607a46e6698d3e80a"
+        },
+        "date": 1794306057416,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 528,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 710,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 331,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1548,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
