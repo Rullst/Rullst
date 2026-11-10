@@ -53,6 +53,14 @@ A prepared version section does not establish that its tag or crates exist.
   htmx requests that expect the whole page. `render_page` already answers
   them with it; a handler that builds its own response can now do the same
   (reported while upgrading an application).
+- `Nexus::with_stylesheet(path)` links an application stylesheet on every
+  Nexus page, after Nexus's own `nexus.css`, so an application can adjust the
+  panel (for example `.nexus-table-wrap { overflow-x: auto; }` for a wide
+  table) without replacing Nexus's assets. Up to eight same-origin paths are
+  accepted, so the production CSP needs no change; another origin or an
+  unsafe path makes `try_build` fail with the new
+  `NexusBuildError::InvalidStylesheet` (reported while upgrading an
+  application).
 
 ### Changed
 
