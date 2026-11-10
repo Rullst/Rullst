@@ -1,4 +1,5 @@
 //! What `make:oauth` requires of the project before it writes anything.
+use super::super::auth_contract;
 use super::super::consumer_files as writes;
 use super::invalid;
 use std::fs;
@@ -34,8 +35,18 @@ impl Database {
     }
 }
 
+/// Where the accounts come from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Accounts {
+    /// The `User` model, auth controller and login page of `cargo rullst
+    /// auth` or the SaaS starter.
+    Starter,
+    /// The application's own sign-in, through `src/auth_contract.rs`.
+    Contract,
+}
+
 /// What every refusal of a missing account part says first.
-const ACCOUNT_MODEL: &str = "make:oauth adds sign-in to the account model, auth controller and login page that `cargo rullst auth` (or the SaaS starter) generates; a custom authentication is not supported";
+const ACCOUNT_MODEL: &str = "make:oauth adds sign-in to the account model, auth controller and login page that `cargo rullst auth` (or the SaaS starter) generates, or to an application's own sign-in through the authentication contract in src/auth_contract.rs (https://rullst.github.io/Rullst/book/cli_reference.html#authentication-contract)";
 
 /// The refusal for one missing part, named with what it lacks.
 fn missing(part: &str, lacks: &[&str]) -> Box<dyn std::error::Error> {
@@ -47,12 +58,30 @@ fn missing(part: &str, lacks: &[&str]) -> Box<dyn std::error::Error> {
     invalid(&format!("{ACCOUNT_MODEL}: {part} lacks {names}")).into()
 }
 
-/// Checks the account model, the auth helpers, the login page, the migration
-/// runner and the database; returns the database.
-pub(crate) fn check(root: &Path) -> Result<Database, Box<dyn std::error::Error>> {
+/// Checks the accounts (the starter's, else the authentication contract),
+/// the migration runner and the database; returns the database and where
+/// the accounts come from.
+pub(crate) fn check(root: &Path) -> Result<(Database, Accounts), Box<dyn std::error::Error>> {
     let manifest = writes::read(&root.join("Cargo.toml"))
         .map_err(|_| invalid("run make:oauth in a Rullst project directory"))?;
     let database = database(&manifest)?;
+    let accounts = match starter(root) {
+        Ok(()) => Accounts::Starter,
+        Err(_) if auth_contract::present(root)? => {
+            auth_contract::check(root, auth_contract::OAUTH)?;
+            Accounts::Contract
+        }
+        Err(error) => return Err(error),
+    };
+    if !migration_runner(root)? {
+        return Err(invalid("make:oauth adds a SQL migration, but this project has no migration runner: declare `pub mod migrations;` in src/main.rs or src/lib.rs and call `rullst::artisan!(crate::migrations::get_migrations());` at startup").into());
+    }
+    Ok((database, accounts))
+}
+
+/// Checks the account model, the auth helpers and the login page of the
+/// starter.
+fn starter(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let user = parsed(root, "src/models/user.rs")?;
     let fields_and_methods = [
         "session_epoch",
@@ -96,10 +125,7 @@ pub(crate) fn check(root: &Path) -> Result<Database, Box<dyn std::error::Error>>
             &["login_page"],
         ));
     }
-    if !migration_runner(root)? {
-        return Err(invalid("make:oauth adds a SQL migration, but this project has no migration runner: declare `pub mod migrations;` in src/main.rs or src/lib.rs and call `rullst::artisan!(crate::migrations::get_migrations());` at startup").into());
-    }
-    Ok(database)
+    Ok(())
 }
 
 /// The strict profile of the `rullst` (or `rullst-orm`) dependency.

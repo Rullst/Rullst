@@ -11,6 +11,38 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- `cargo rullst make:mfa` now generates the whole two-step verification flow
+  instead of a JSON API that returned the secret: HTML pages at
+  `/account/security` with the QR code of `rullst-security`'s
+  `build_mfa_qr_svg` (labelled with the account's e-mail instead of
+  `user-<id>`) and the key to type by hand, confirmation and turning it off
+  with a current code; a second sign-in step at `/login/mfa` (only a random
+  id in a five-minute cookie scoped to that page, its SHA-256 in a new
+  `mfa_challenges` table, five codes per challenge, one live challenge per
+  account, single use), called from the password sign-in of
+  `cargo rullst auth` and the SaaS starter and from the `make:oauth` flow in
+  either installation order; turning it on signs out the account's other
+  sessions through the session epoch; and `admin:mfa-reset <email>`, which
+  the application binary runs before `rullst::artisan!` to remove a lost
+  phone's factor and sign the account out everywhere. The pages carry the
+  request's CSP nonce and no inline script. In the SaaS starter it also mounts
+  the routes and links the page from the dashboard; elsewhere it prints what
+  to mount (reported while upgrading an application).
+- `cargo rullst make:pwa --router <file>` names the file that builds the
+  router when `src/` merges `rullst::health::health_router()` several times or
+  not at all: the PWA routes are mounted there, after its health merge or
+  inside its `headers_middleware` layer.
+- An authentication contract for applications with their own sign-in:
+  `make:mfa`, `make:oauth` and `make:privacy` generate against
+  `src/auth_contract.rs` (`ContractAccount`, `require_account`,
+  `find_account`, `find_account_by_email`, `sign_in_cookie`, `end_sessions`,
+  `session_binding`, `create_account`) when the project does not have the
+  account files of `cargo rullst auth` or the SaaS starter, which they still
+  use unchanged when present. Each checks the functions it calls before
+  writing and names any that are missing; the CLI reference documents the
+  contract with a complete example. `make:age-gate` stays SaaS-only, because
+  it replaces the starter's dashboard route (reported while upgrading an
+  application).
 - `rullst-iot` (Experimental): `AnomalyDetector` derives `Clone`, `Copy`,
   `Debug` and `PartialEq`; `AnomalyState` documents its variants, implements
   `Display` (`normal`, `warning`, `critical anomaly`) and `as_str`, and

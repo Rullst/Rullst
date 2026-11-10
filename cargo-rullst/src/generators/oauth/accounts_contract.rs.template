@@ -1,0 +1,184 @@
+// ── Accounts: this application's own sign-in (src/auth_contract.rs) ──
+
+/// What a verified provider email that already belongs to an account does.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExistingAccountPolicy {
+    /// Refuse and ask for the password: registration does not prove that an
+    /// address belongs to whoever registered it, and the authentication
+    /// contract cannot remove that account's password. Linking a provider to
+    /// an existing account is application work (after the password, for
+    /// example from the account settings).
+    Refuse,
+}
+
+/// Provider e-mails of existing accounts are refused.
+pub const EXISTING_ACCOUNT_POLICY: ExistingAccountPolicy = ExistingAccountPolicy::Refuse;
+
+/// The session of a provider sign-in: `auth_contract::sign_in_cookie`.
+pub(crate) async fn session_cookie(user: &ContractAccount) -> Result<String, String> {
+    auth_contract::sign_in_cookie(user.id)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+/// Why a provider identity found no account to sign in.
+#[derive(Debug)]
+pub enum AccountError {
+    /// The provider returned no usable subject.
+    InvalidProfile,
+    /// The identity is not linked and the provider did not verify the email.
+    UnverifiedEmail,
+    /// The verified email belongs to an account and the policy refuses linking.
+    ExistingAccount,
+    /// A linked identity points at a missing account.
+    MissingAccount,
+    /// The database or the authentication contract failed.
+    Storage(String),
+}
+
+fn storage(error: impl std::fmt::Display) -> AccountError {
+    AccountError::Storage(error.to_string())
+}
+
+/// The account for a provider identity, creating it as the module
+/// documentation describes.
+pub async fn resolve_account(
+    provider: &str,
+    profile: &ConnectUser,
+    policy: ExistingAccountPolicy,
+) -> Result<ContractAccount, AccountError> {
+    let subject = profile.id.as_str();
+    if subject.is_empty() || subject.len() > 255 || subject.chars().any(char::is_control) {
+        return Err(AccountError::InvalidProfile);
+    }
+    if let Some(user_id) = OAuthIdentity::user_id(provider, subject).await.map_err(storage)? {
+        return auth_contract::find_account(user_id)
+            .await
+            .map_err(storage)?
+            .ok_or(AccountError::MissingAccount);
+    }
+    let email = profile.email.as_deref().map(normalize_email).unwrap_or_default();
+    // Never trust an address the provider did not verify.
+    if profile.email_verified != Some(true) || !valid_email(&email) {
+        return Err(AccountError::UnverifiedEmail);
+    }
+    if auth_contract::find_account_by_email(&email)
+        .await
+        .map_err(storage)?
+        .is_some()
+    {
+        return match policy {
+            ExistingAccountPolicy::Refuse => Err(AccountError::ExistingAccount),
+        };
+    }
+    let user_id = create_account(provider, profile, &email).await?;
+    auth_contract::find_account(user_id)
+        .await
+        .map_err(storage)?
+        .ok_or(AccountError::MissingAccount)
+}
+
+/// Creates the account and links the identity in one transaction.
+async fn create_account(provider: &str, profile: &ConnectUser, email: &str) -> Result<i32, AccountError> {
+    let name = display_name(profile, email);
+    let mut transaction = rullst::db::Orm::begin_transaction().await.map_err(storage)?;
+    let created = async {
+        let user_id = auth_contract::create_account(&mut transaction, email, &name).await?;
+        OAuthIdentity::link_with_tx(&mut transaction, user_id, provider, &profile.id, utc_timestamp()).await?;
+        Ok::<i32, rullst::orm::Error>(user_id)
+    }
+    .await;
+    match created {
+        Ok(user_id) => {
+            transaction.commit().await.map_err(storage)?;
+            Ok(user_id)
+        }
+        Err(error) => {
+            if let Err(rollback) = transaction.rollback().await {
+                eprintln!("Account transaction rollback failed: {rollback}");
+            }
+            Err(storage(error))
+        }
+    }
+}
+
+// ── Helpers the starter's auth controller provides; here for this flow ──
+
+/// The CSRF token of the `rullst_csrf` cookie, when the request has none in
+/// its extensions.
+pub(crate) fn get_csrf_token(headers: &HeaderMap) -> String {
+    headers
+        .get(header::COOKIE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|cookies| {
+            cookies.split(';').find_map(|cookie| {
+                cookie.trim().strip_prefix("rullst_csrf=").map(ToOwned::to_owned)
+            })
+        })
+        .unwrap_or_default()
+}
+
+pub(crate) fn get_csp_nonce(nonce: &Option<Extension<rullst::security::CspNonce>>) -> &str {
+    nonce
+        .as_ref()
+        .map(|Extension(nonce)| nonce.as_str())
+        .unwrap_or_default()
+}
+
+pub(crate) fn normalize_email(email: &str) -> String {
+    email.trim().to_ascii_lowercase()
+}
+
+pub(crate) fn valid_email(email: &str) -> bool {
+    !email.is_empty()
+        && email.len() <= 254
+        && !email.contains(['\r', '\n'])
+        && email.split_once('@').is_some_and(|(local, domain)| {
+            !local.is_empty() && domain.contains('.') && !domain.ends_with('.')
+        })
+}
+
+pub(crate) fn utc_timestamp() -> rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc> {
+    rullst::orm::chrono::Utc::now()
+}
+
+/// Provider sign-in attempts each client may start per minute.
+const SIGN_IN_ATTEMPTS_PER_MINUTE: f64 = 10.0;
+
+static SIGN_IN_LIMITER: std::sync::LazyLock<rullst::RateLimiter> = std::sync::LazyLock::new(|| {
+    rullst::RateLimiter::new(rullst::RateLimitConfig::per_minute(SIGN_IN_ATTEMPTS_PER_MINUTE))
+});
+
+/// Route middleware for `/auth/<provider>` and its callback, budgeted per
+/// client. Behind a reverse proxy, configure `[security] trusted_proxies`.
+pub async fn credential_rate_limit(request: rullst::server::Request, next: rullst::server::Next) -> Response {
+    rullst::rate_limit_middleware(rullst::RateLimiter::clone(&SIGN_IN_LIMITER), request, next).await
+}
+
+/// The page a refused provider sign-in shows; replace `login_page` with
+/// your own sign-in page, keeping the message.
+mod auth {
+    use rullst::html;
+    use rullst::html::Markup;
+
+    pub(super) fn login_page(_csrf: &str, error: Option<&str>, _notice: Option<&str>, nonce: &str) -> Markup {
+        html! {
+            <!DOCTYPE html>
+            <html lang="en">
+                <head>
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                    <title>"Sign-in"</title>
+                    <style nonce={nonce}>"body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 4rem auto; padding: 0 1rem; }"</style>
+                </head>
+                <body>
+                    <main>
+                        <h1>"Sign-in"</h1>
+                        @if let Some(error) = error { <p role="alert">{error}</p> }
+                        <p><a href="/login">"Back to sign-in"</a></p>
+                    </main>
+                </body>
+            </html>
+        }
+    }
+}

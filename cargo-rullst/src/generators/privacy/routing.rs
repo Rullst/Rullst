@@ -85,18 +85,27 @@ fn path_is(path: &syn::Path, names: &[&str]) -> bool {
         .eq(names.iter().map(|name| (*name).to_owned()))
 }
 
+const AMBIGUOUS: &str = "privacy routes already exist or the starter CSRF boundary is ambiguous";
+
 pub(super) fn mount(source: &str) -> Result<String, Box<dyn std::error::Error>> {
+    mount_if_bounded(source)?
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, AMBIGUOUS).into())
+}
+
+/// [`mount`] for an application's own router: `None` when it has no single
+/// `rullst::server::from_fn(rullst::security::csrf_middleware)` layer, so
+/// the developer mounts the routes; existing privacy routes still refuse.
+pub(super) fn mount_if_bounded(source: &str) -> Result<Option<String>, Box<dyn std::error::Error>> {
     let parsed = syn::parse_file(source)?;
     let mut boundary = Boundary::default();
     boundary.visit_file(&parsed);
-    if boundary.ends.len() != 1 || boundary.collision {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "privacy routes already exist or the starter CSRF boundary is ambiguous",
-        )
-        .into());
+    if boundary.collision {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, AMBIGUOUS).into());
     }
-    let offset = boundary.ends[0];
+    let [offset] = boundary.ends.as_slice() else {
+        return Ok(None);
+    };
+    let offset = *offset;
     if !source.is_char_boundary(offset) {
         return Err(io::Error::other("invalid privacy route source boundary").into());
     }
@@ -106,7 +115,7 @@ pub(super) fn mount(source: &str) -> Result<String, Box<dyn std::error::Error>> 
         ".merge_axum(controllers::privacy_controller::routes().into_axum())",
     );
     syn::parse_file(&result)?;
-    Ok(result)
+    Ok(Some(result))
 }
 
 #[cfg(test)]
@@ -124,6 +133,17 @@ mod tests {
         );
         assert!(mount(&updated).is_err());
         assert!(mount(&source.replace("csrf_middleware", "other")).is_err());
+        // An application's own router without the boundary is left alone,
+        // but existing privacy routes still refuse.
+        assert_eq!(
+            mount_if_bounded(&source.replace("csrf_middleware", "other")).unwrap(),
+            None
+        );
+        assert!(mount_if_bounded(&updated).is_err());
+        assert_eq!(
+            mount_if_bounded(source).unwrap().as_deref(),
+            Some(updated.as_str())
+        );
         assert!(mount(&source.replace("/dashboard", "/privacy/export")).is_err());
         for route in [r#""\x2fprivacy/export""#, r##"r#"/privacy"#"##] {
             let existing =

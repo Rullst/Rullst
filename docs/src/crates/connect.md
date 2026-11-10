@@ -386,7 +386,10 @@ async fn start_google(
 SQLite, PostgreSQL or MySQL database instead (features `sqlite`, `postgres`,
 `mysql`), consuming each row with one atomic statement or transaction.
 `cargo rullst make:oauth google|github|microsoft|apple` generates the
-handlers, account linking and sign-in for a Rullst application. A provider
+handlers, account linking and sign-in for a Rullst application: the accounts
+of `cargo rullst auth` or the SaaS starter, or an application's own sign-in
+through its
+[authentication contract](../cli_reference.md#authentication-contract). A provider
 that POSTs the callback from its own site, such as Sign in with Apple, needs
 `ChallengeCookie::for_cross_site_post` (`SameSite=None; Secure`): browsers
 attach no `SameSite=Lax` cookie to that POST. See
