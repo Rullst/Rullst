@@ -43,6 +43,40 @@ A prepared version section does not establish that its tag or crates exist.
   scripts, so client-only state works under the default Content-Security-Policy
   without `'unsafe-eval'`. The new book page lists what the CSP build cannot
   parse.
+- `cargo rullst ui add <component>...` and `cargo rullst ui list`: a component
+  library copied into the application as Rust source it owns, like shadcn/ui
+  or Topcoat. Each of `button` (variants, sizes, an htmx loading spinner),
+  `badge`, `alert`, `card`, `form` (a CSRF-aware form and labelled fields with
+  `aria-describedby` help and errors and `aria-invalid`), `table` (a focusable
+  scroll region and an empty state), `pagination`, `dialog` (a native modal
+  `<dialog>` opened with `commandfor`/`command`), `menu` (a `popover` with the
+  ARIA menu-button keyboard), `tabs` (the ARIA tabs pattern) and `toast` (an
+  `aria-live` region fed by htmx `HX-Trigger` events) is a function returning
+  `Markup` with a small options struct, styled with Tailwind classes in light
+  and dark, written to `src/ui/<name>.rs` and registered in `src/ui/mod.rs`
+  and the crate root. The last four load a small same-origin module from
+  `static/ui/` with `rullst::assets::url`: no inline script or style, no
+  `eval`, no Alpine. Running it again changes nothing; a copy that differs
+  from the CLI's is kept unless `--force` (`--dry-run` shows the diff;
+  `--all` copies every component). Without Tailwind an interactive run offers
+  `cargo rullst add tailwind` first, and other runs print it. The "Generated
+  starters in browsers" CI job now also copies every component into a
+  fixture application with Tailwind and drives it in Chromium, Firefox and
+  WebKit, light and dark: no console error or CSP violation, no axe-core
+  `serious`/`critical` finding, and the dialog, menu, tabs, toast and
+  loading-state keyboard paths ([frontend guide](https://rullst.github.io/Rullst/book/frontend.html#components)).
+- Generators follow the project's styling choice: `make:pwa`'s offline page
+  and `make:resource`'s views get Tailwind utility classes when the project
+  uses Tailwind, and plain markup otherwise (the resource views always had
+  Tailwind classes; their form's input now has the `id` its label names).
+- Core's `render_page`, `render_page_with_lang` and `render_page_with_head`
+  link `rullst.css` and the htmx client with `rullst::assets::url`, so while
+  the server runs they are `/static/rullst.<hash>.css` and
+  `/static/htmx-1.9.12.min.<hash>.js`, cached as immutable, and an edited
+  stylesheet reaches browsers and CDNs on the next deploy. The service worker
+  of `make:pwa` now also stores, when it installs, the `/static/` files its
+  offline page links, which have such hashed names; a worker generated before
+  stores them the first time a page it controls loads them.
 - CI compares the ORM across databases: the `ORM differential databases` job
   of `ci.yml` runs the same scenarios (`rullst-orm/tests/differential/`:
   `#[derive(Orm)]` CRUD, value round trips, query-builder filters, ordering

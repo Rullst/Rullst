@@ -118,8 +118,10 @@ visits.
 ## What the worker does
 
 - **Install:** stores `/offline`, the manifest, `pwa.js`, the 192 and 512
-  icons and the starter's `rullst.css`, htmx and logo when they exist. The
-  install fails if `/offline` cannot be stored.
+  icons and the starter's `rullst.css`, htmx and logo when they exist, and
+  (since 13.0.0-alpha.5) every `/static/` file the offline page links, such
+  as the content-hashed `rullst.<hash>.css` and htmx URLs Core's page writes.
+  The install fails if `/offline` cannot be stored.
 - **Navigations:** network first. A storable page is kept; without network
   the worker answers with the stored copy or the offline page.
 - **Static files:** a name that carries a content hash

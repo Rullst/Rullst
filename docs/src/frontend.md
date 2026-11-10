@@ -3,13 +3,14 @@
 Rullst pages are rendered on the server with `html!` and sent as HTML. The
 framework ships no JavaScript bundle, CSS compiler or bundler, and every page
 runs under a strict Content-Security-Policy with a per-request nonce. Since
-13.0.0-alpha.5 three opt-in pieces cover what most applications add on top:
+13.0.0-alpha.5 four opt-in pieces cover what most applications add on top:
 
 | Piece | What it is | Maintenance |
 | :--- | :--- | :--- |
 | `rullst::assets::url` | Content-hashed URLs for files in `static/`, served `immutable` | Part of `rullst-core` |
 | `cargo rullst add tailwind` | Tailwind CSS v4 through its official standalone CLI (one binary, no Node.js) | A pinned version and one SHA-256 per platform |
 | `cargo rullst add alpine` | Alpine.js's CSP build vendored into `static/vendor/` | A pinned version and its npm integrity |
+| `cargo rullst ui add` | Accessible `html!` components styled with Tailwind, copied into `src/ui/` | Yours once copied |
 
 ## Which tool for which job
 
@@ -89,6 +90,16 @@ longer keep an old stylesheet after a deploy.
 The helper reads the manifest of the last `static/` directory mounted in the
 process. An application that serves static files itself (its own `ServeDir`)
 gets plain URLs.
+
+Core's own page (`rullst::htmx::render_page`, `render_page_with_lang` and
+`render_page_with_head`) links its stylesheet and the htmx client this way
+since 13.0.0-alpha.5: `/static/rullst.<hash>.css` and
+`/static/htmx-1.9.12.min.<hash>.js` while the server runs, so an edited
+`static/rullst.css` reaches every visitor on the next deploy. The favicon
+keeps its plain `/static/rullst.png`. The service worker `cargo rullst make:pwa`
+writes stores the static files its offline page links when it installs, so
+the hashed names work offline; a worker generated before 13.0.0-alpha.5
+stores the hashed files the first time a page it controls loads them.
 
 ## `cargo rullst add tailwind`
 
@@ -270,6 +281,441 @@ without the nonce is blocked.
 **With htmx.** Alpine initialises components in content htmx swaps in, so a
 fragment can carry `x-data`. Keep server state on the server: a component
 should not duplicate what an htmx request returns.
+
+## Components
+
+```bash
+cargo rullst ui list
+cargo rullst ui add button dialog --dry-run   # the planned files and diff
+cargo rullst ui add button dialog
+cargo rullst ui add --all
+```
+
+`ui add` copies components into the application as Rust source, the way
+shadcn/ui and Topcoat copy theirs: after the copy the code is yours to change.
+Each component is a function returning `rullst::html::Markup`, with a small
+options struct whose variants and sizes are enums, styled with Tailwind
+utility classes written in full (so the Tailwind CLI finds them in
+`src/ui/*.rs`). They follow the order of [which tool for which
+job](#which-tool-for-which-job): native HTML first (`<dialog>`, `popover`,
+`<table>`), htmx for anything that talks to the server, and a small
+same-origin ES module only for keyboard behaviour HTML does not have yet. No
+component needs Alpine.js, an inline script, a `style` attribute or `eval`.
+
+The command, at the root of a Rullst project:
+
+1. writes `src/ui/<name>.rs` for each component, plus the ones it uses
+   (`dialog` and `menu` call `ui::button`);
+2. for `dialog`, `menu`, `tabs` and `toast`, writes `static/ui/<name>.js`, which
+   the component's markup loads with
+   `<script type="module" src={rullst::assets::url("ui/<name>.js")}>`
+   (a browser runs a module once per page however many components load it, and
+   the modules use event delegation, so content htmx swaps in works);
+3. creates or extends `src/ui/mod.rs` with a `pub mod <name>;` line per
+   component (the created file starts with `#![allow(dead_code)]`, as an
+   application rarely uses every helper);
+4. declares the module in the crate root: `pub mod ui;` in `src/lib.rs` when
+   the project has one, else `mod ui;` in `src/main.rs`. Use the components as
+   `crate::ui::button::button(…)` (or `<crate>::ui::…` from the binary of a
+   library project).
+
+Running it again changes nothing. A copied file that differs from the copy
+this CLI ships (you changed it, or another CLI version copied it) stops the
+command before anything is written; `--dry-run` shows the difference and
+`--force` replaces it. `--all` copies every component.
+
+**Tailwind.** The classes need the project's Tailwind build. When
+`uses_tailwind` finds none (no `assets/css/app.css` importing `tailwindcss`,
+`tailwind.config.*` or Tailwind in `package.json`), an interactive run asks
+whether to run [`cargo rullst add tailwind`](#cargo-rullst-add-tailwind)
+first, answering Yes by default; scripts, CI and `--dry-run` never ask (and never download): they copy the
+components and print the command. Without Tailwind the components still work
+and stay accessible, unstyled. `add tailwind`'s `@source "../../src/**/*.rs"`
+already covers `src/ui/`; a project that builds Tailwind itself must include
+`src/ui/*.rs` in its sources.
+
+**Colours.** Each component has light and dark styles (Tailwind's `dark:`
+variant, which follows `prefers-color-scheme`), with text contrast of at least
+4.5:1 in both. Surfaces (cards, tables, dialogs, menus, alerts, toasts) set
+their own background; labels, help text, tabs and pagination links sit on the
+page, so the page background must follow the colour scheme too. Core's
+`render_page*` gives `<html>` a dark background (`bg-slate-950`), so put the
+content on a surface:
+
+```rust,ignore
+let content = html! {
+    <div class="min-h-full bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        {page_body}
+    </div>
+};
+render_page_with_head(&htmx, "en", "Orders", html! {
+    <link rel="stylesheet" href={rullst::assets::url("app.css")} />
+}, content)
+```
+
+**Your own layout.** `render_page*` already handles htmx's indicator styles
+under the CSP. A layout of your own that loads htmx must do the same: add
+`<meta name="htmx-config" content="{&quot;includeIndicatorStyles&quot;:false}" />`
+(in `html!`: `content="{\"includeIndicatorStyles\":false}"`) and, if you use
+the `htmx-indicator` class, its rules in your stylesheet. The button's spinner
+needs neither: Tailwind classes show it.
+
+Every component passes the checks of the "Generated starters in browsers" CI
+job: a gallery page that renders all of them (copied by `ui add --all` into a
+fixture application with Tailwind) is driven in Chromium, Firefox and WebKit,
+in both colour schemes, with no console error or CSP violation, no axe-core
+`serious` or `critical` finding, every control reachable with Tab and visibly
+focused, and the keyboard paths described below.
+
+### Button (`button`)
+
+```rust,ignore
+use crate::ui::button::{self, ButtonOptions, Kind, Size, Variant};
+
+button::button("Save", &ButtonOptions { kind: Kind::Submit, ..Default::default() })
+button::link("Docs", "/docs", Variant::Outline, Size::Sm)
+// Other attributes (hx-post, name, value, form): write the element with the classes.
+html! {
+    <button type="button" hx-post="/archive" class={button::classes(Variant::Ghost, Size::Sm)}>
+        {button::spinner()} "Archive"
+    </button>
+}
+```
+
+```html
+<button type="submit" class="inline-flex … bg-sky-700 text-white … h-10 px-4 text-sm"><span>Save</span></button>
+```
+
+- **Options:** `variant` (`Primary`, `Secondary`, `Outline`, `Ghost`,
+  `Destructive`, `Link`), `size` (`Sm`, `Md`, `Lg`, `Icon`), `kind`
+  (`Button`, `Submit`, `Reset`), `id`, `disabled`, `loading`.
+- **Loading state:** `loading: true` adds a spinner shown while htmx gives
+  the button, or an element around it, its `htmx-request` class. Point the
+  form at the button:
+  `<form hx-post="/save" hx-indicator="#save" hx-disabled-elt="#save">` with
+  `id: Some("save".into())`; `hx-disabled-elt` also disables it, so a screen
+  reader announces it as unavailable and it cannot be pressed twice.
+- **Accessibility:** a real `<button>` (or `<a>` for navigation), so Enter and
+  Space work; a visible focus outline on keyboard focus. An `Icon` button
+  needs an `aria-label`. The spinner is `aria-hidden`.
+- **CSP:** classes only. The spinner keeps htmx's `htmx-indicator` class, so
+  on `render_page*` pages htmx's own (nonce'd) indicator rules apply as well.
+
+### Badge (`badge`)
+
+```rust,ignore
+use crate::ui::badge::{badge, Tone};
+badge("Paid", Tone::Success)
+```
+
+```html
+<span class="inline-flex items-center rounded-full border … text-emerald-800 …">Paid</span>
+```
+
+- **Options:** `Tone::{Neutral, Info, Success, Warning, Danger}`;
+  `badge::classes(tone)` for other elements.
+- **Accessibility:** the text carries the meaning; the colour only repeats it.
+
+### Alert (`alert`)
+
+```rust,ignore
+use crate::ui::alert::{alert, AlertOptions, Tone};
+alert(&AlertOptions { tone: Tone::Danger, title: Some("Not saved") },
+      html! { <p>"Fix the highlighted fields."</p> })
+```
+
+```html
+<div role="alert" class="flex gap-3 rounded-lg border p-4 …"><svg aria-hidden="true">…</svg><div><p class="font-semibold">Not saved</p>…</div></div>
+```
+
+- **Options:** `tone` (`Info`, `Success`, `Warning`, `Danger`), `title`.
+- **Accessibility:** `Warning` and `Danger` are `role="alert"` (announced
+  when they appear, also when htmx swaps them in); `Info` and `Success` are
+  `role="status"`. The icon is decorative.
+
+### Card (`card`)
+
+```rust,ignore
+use crate::ui::card::{card, CardOptions, Heading};
+card(&CardOptions { title: Some("Pro plan"), description: Some("Billed monthly"),
+                    id: Some("plan"), heading: Heading::H2 },
+     html! { <p>"20 seats"</p> },
+     Some(html! { <a href="/billing">"Change plan"</a> }))
+```
+
+```html
+<section id="plan" aria-labelledby="plan-title" class="rounded-xl border …"><div …><h2 id="plan-title" …>Pro plan</h2><p …>Billed monthly</p></div><div …>…</div><div class="… border-t …">…</div></section>
+```
+
+- **Options:** `title`, `description`, `heading` (`H2`, `H3`, `H4`), `id`;
+  the footer is the third argument.
+- **Accessibility:** a titled card is a `<section>` named by its heading;
+  choose the level that continues the page's outline, and give each card an
+  `id` when a page has several (the heading's id is `<id>-title`).
+
+### Form and fields (`form`)
+
+```rust,ignore
+use crate::ui::form::{self, Control, Field, FormOptions, InputType};
+
+async fn page(Extension(csrf): Extension<rullst::security::CsrfToken>) -> Markup {
+    form::form("/contacts", csrf.as_str(), &FormOptions::default(), html! {
+        {form::field(&Field { id: "email", label: "Email",
+            control: Control::Input(InputType::Email), autocomplete: Some("email"),
+            required: true, error: Some("Enter an address."), ..Default::default() })}
+        {form::checkbox(&Field { id: "terms", label: "I accept the terms", ..Default::default() }, false)}
+        <button type="submit">"Send"</button>
+    })
+}
+```
+
+```html
+<form method="post" action="/contacts" class="space-y-6">
+  <input type="hidden" name="_token" value="…" />
+  <div class="space-y-2">
+    <label for="email" …>Email<span aria-hidden="true"> *</span></label>
+    <input type="email" id="email" name="email" autocomplete="email" required aria-describedby="email-error" aria-invalid="true" class="… border-red-600 …" />
+    <p id="email-error" …>Enter an address.</p>
+  </div>
+  …
+</form>
+```
+
+- **`form(action, csrf_token, options, body)`:** `method` (`Post`, `Get`),
+  `boost` (`hx-boost="true"`: htmx submits and swaps the body, a plain submit
+  without JavaScript), `multipart` (`enctype="multipart/form-data"`), `id`.
+  A `POST` form starts with the `_token` field of Rullst's double-submit CSRF
+  check (first, as a multipart body must send it before any file); pass
+  `CsrfToken::as_str()` from `Extension<CsrfToken>`. `GET` forms carry none.
+- **`field(&Field)`:** `id`, `name` (the `id` when empty), `label`, `control`
+  (`Input(InputType::{Text, Email, Password, Number, Tel, Url, Search, Date})`,
+  `Textarea { rows }`, `Select(&[(value, label)])`), `value`, `placeholder`,
+  `autocomplete`, `help`, `error`, `required`, `disabled`.
+  `checkbox(&Field, checked)` puts the label on the right.
+- **Accessibility:** every control has a `<label for>`; help text
+  (`<id>-help`) and the error (`<id>-error`) are linked with
+  `aria-describedby`, and an error sets `aria-invalid="true"` and a red
+  border, so the message is announced with the field and not shown by colour
+  alone. Required fields carry `required` and a visible `*` hidden from
+  screen readers (which announce `required` themselves).
+
+### Table (`table`)
+
+```rust,ignore
+use crate::ui::table::{table, Align, Column, TableOptions};
+let rows = invoices.iter().map(|invoice| vec![
+    html! { {invoice.number.as_str()} },
+    html! { {invoice.total.to_string()} },
+]).collect();
+table(&TableOptions { id: "invoices", caption: "Invoices", ..Default::default() },
+      &[Column::new("Number"), Column { label: "Total", align: Align::End }], rows)
+```
+
+```html
+<div role="region" aria-labelledby="invoices-caption" tabindex="0" class="w-full overflow-x-auto …">
+  <table …><caption id="invoices-caption" …>Invoices</caption>
+    <thead …><tr><th scope="col" …>Number</th><th scope="col" class="… text-right tabular-nums">Total</th></tr></thead>
+    <tbody>…</tbody></table></div>
+```
+
+- **Options:** `id` (prefix of the ids), `caption`, `show_caption` (false keeps
+  it for screen readers only), `empty` (the text of the single row shown
+  without rows, spanning every column); `Column { label, align }`.
+- **Accessibility:** a real table with a caption and `scope="col"` headers.
+  The scroll container is a named region with `tabindex="0"`, so a table wider
+  than the screen can be scrolled with the arrow keys.
+
+### Pagination (`pagination`)
+
+```rust,ignore
+use crate::ui::pagination::{pagination, PaginationOptions};
+pagination(&PaginationOptions { page: 3, pages: 12, ..Default::default() },
+           |page| format!("/invoices?page={page}"))
+```
+
+```html
+<nav aria-label="Pagination"><ul class="flex …">
+  <li><a href="/invoices?page=2" rel="prev" …>←Previous</a></li>
+  <li><a href="/invoices?page=1" aria-label="Page 1" …>1</a></li> …
+  <li><a href="/invoices?page=3" aria-current="page" aria-label="Page 3" …>3</a></li> …
+  <li><span aria-hidden="true" …>…</span></li> …
+</ul></nav>
+```
+
+- **Options:** `page` (from 1), `pages`, and the texts `label`, `previous`,
+  `next`, `page_label`; nothing is rendered for one page. `window(page,
+  pages)` is the pure function choosing the numbers (all up to 7, else the
+  first, the last and the current page with its neighbours).
+- **htmx:** plain links, so paging works without JavaScript; put
+  `hx-boost="true"` on an element around it to swap the page instead.
+- **Accessibility:** `aria-current="page"` on the current page; Previous and
+  Next are left out on the first and last page rather than shown disabled.
+
+### Dialog (`dialog`)
+
+```rust,ignore
+use crate::ui::button::Variant;
+use crate::ui::dialog::{self, DialogOptions};
+html! {
+    {dialog::trigger("delete", "Delete project", Variant::Destructive)}
+    {dialog::dialog(
+        &DialogOptions { id: "delete", title: "Delete the project?",
+                         description: Some("Its invoices are kept."), ..Default::default() },
+        html! { <p>"This cannot be undone."</p> },
+        Some(html! {
+            {dialog::close("delete", "Cancel", Variant::Outline)}
+            <form method="post" action="/projects/7/delete">
+                <input type="hidden" name="_token" value={csrf.as_str()} />
+                <button type="submit" class={crate::ui::button::classes(Variant::Destructive, crate::ui::button::Size::Md)}>"Delete"</button>
+            </form>
+        }),
+    )}
+}
+```
+
+```html
+<button type="button" commandfor="delete" command="show-modal" aria-haspopup="dialog" …>Delete project</button>
+<dialog id="delete" aria-labelledby="delete-title" aria-describedby="delete-description" class="m-auto … backdrop:bg-slate-950/60 …">
+  <div …><h2 id="delete-title" …>Delete the project?</h2>
+    <button type="button" commandfor="delete" command="close" aria-label="Close" …><svg aria-hidden="true">…</svg></button></div>
+  <p id="delete-description" …>Its invoices are kept.</p>
+  <div …>…</div><div class="… border-t …">…</div>
+</dialog>
+<script type="module" src="/static/ui/dialog.<hash>.js"></script>
+```
+
+- **Options:** `id`, `title`, `description`, `width` (`Sm`, `Md`, `Lg`),
+  `close_label`; `trigger(id, label, variant)` and `close(id, label,
+  variant)` make the buttons.
+- **How it opens:** the HTML invoker commands, `commandfor` with
+  `command="show-modal"` or `"close"`, built into Chrome 135, Firefox 144 and
+  Safari 26.2 (Baseline since December 2025) and working without JavaScript
+  there. `static/ui/dialog.js` runs the same commands in older browsers (and
+  the popover commands), so the dialog does not depend on the newest engines.
+- **Accessibility:** a native modal `<dialog>`: the browser makes the rest of
+  the page inert, keeps focus inside, closes it on Escape and returns focus to
+  the button that opened it; `dialog.js` returns focus where a browser loses
+  it. It is named by its title and described by `description`. Focus starts on
+  the first control (the close button in the corner) or on an element marked
+  `autofocus`. A `<form method="dialog">` button also closes it.
+- **CSP:** same-origin module; the backdrop and position are classes.
+
+### Dropdown menu (`menu`)
+
+```rust,ignore
+use crate::ui::menu::{menu, Item, MenuOptions};
+html! {
+    {menu(&MenuOptions { id: "account", label: "Account", ..Default::default() }, &[
+        Item::Link { label: "Profile", href: "/profile" },
+        Item::Separator,
+        Item::Submit { label: "Sign out", form: "logout" },
+    ])}
+    <form id="logout" method="post" action="/logout">
+        <input type="hidden" name="_token" value={csrf.as_str()} />
+    </form>
+}
+```
+
+```html
+<button type="button" id="account-button" popovertarget="account" aria-haspopup="menu" aria-controls="account" aria-expanded="false" …>Account<svg aria-hidden="true">…</svg></button>
+<div id="account" popover role="menu" aria-labelledby="account-button" class="m-0 min-w-48 …">
+  <a role="menuitem" tabindex="-1" href="/profile" …>Profile</a>
+  <div role="separator" …></div>
+  <button role="menuitem" tabindex="-1" type="submit" form="logout" …>Sign out</button>
+</div>
+<script type="module" src="/static/ui/menu.<hash>.js"></script>
+```
+
+- **Options:** `id` (the button is `<id>-button`), `label`, `variant`;
+  items are `Link { label, href }`, `Submit { label, form }` (submits the
+  form with that `id`, which carries the CSRF token; an htmx form works too)
+  and `Separator`.
+- **How it opens:** the `popover` attribute with `popovertarget`, in every
+  current browser: the button toggles it without script, and the browser
+  closes it on Escape or a click elsewhere. `static/ui/menu.js` places it
+  under the button (above when there is no room), keeps `aria-expanded` in
+  step and adds the keyboard of the ARIA menu button pattern.
+- **Keyboard:** Enter or Space on the button opens the menu on its first
+  item, ArrowDown on the first and ArrowUp on the last; ArrowDown and ArrowUp
+  move (wrapping), Home and End jump; Enter chooses; Escape closes and
+  returns focus to the button; Tab closes it and moves on.
+- **CSP:** the module positions the menu through the CSSOM
+  (`element.style.top`), which the policy allows; no `style` attribute.
+
+### Tabs (`tabs`)
+
+```rust,ignore
+use crate::ui::tabs::{tabs, Tab, TabsOptions};
+tabs(&TabsOptions { id: "settings", label: "Settings", selected: 0 }, vec![
+    Tab { key: "profile", label: "Profile", panel: html! { <p>"…"</p> } },
+    Tab { key: "billing", label: "Billing",
+          panel: html! { <div hx-get="/settings/billing" hx-trigger="load"></div> } },
+])
+```
+
+```html
+<div class="space-y-4">
+  <div role="tablist" aria-label="Settings" …>
+    <button type="button" role="tab" id="settings-tab-profile" aria-controls="settings-panel-profile" aria-selected="true" tabindex="0" …>Profile</button>
+    <button type="button" role="tab" id="settings-tab-billing" aria-controls="settings-panel-billing" aria-selected="false" tabindex="-1" …>Billing</button>
+  </div>
+  <div role="tabpanel" id="settings-panel-profile" aria-labelledby="settings-tab-profile" tabindex="0" …>…</div>
+  <div role="tabpanel" id="settings-panel-billing" aria-labelledby="settings-tab-billing" tabindex="0" hidden …>…</div>
+</div>
+<script type="module" src="/static/ui/tabs.<hash>.js"></script>
+```
+
+- **Options:** `id` (prefix of the ids), `label` (names the tab list),
+  `selected` (index rendered selected); each `Tab { key, label, panel }`.
+- **Accessibility:** the ARIA tabs pattern with automatic activation:
+  ArrowRight and ArrowLeft move and select (wrapping; reversed for
+  right-to-left, ArrowDown/ArrowUp with `aria-orientation="vertical"`), Home
+  and End jump; only the selected tab is in the Tab order, and Tab then moves
+  into its panel. The server renders the selected state, so the first paint is
+  right. Without JavaScript only the selected panel shows: when content must
+  work without it, make each tab a link (`?tab=billing`) and render the
+  selected one on the server.
+
+### Toasts (`toast`)
+
+```rust,ignore
+use crate::ui::toast::{self, RegionOptions, Tone};
+use rullst::htmx::HtmxResponse;
+
+// Once per page, in the layout:
+html! { {page_body} {toast::region(&RegionOptions::default(), &[])} }
+
+// A handler:
+async fn save() -> HtmxResponse {
+    HtmxResponse::new(fragment.into_string())
+        .trigger(toast::trigger("Saved", Tone::Success))
+}
+```
+
+```html
+<section aria-label="Notifications" class="pointer-events-none fixed … bottom-4 z-50 …">
+  <div data-ui-toasts aria-live="polite" aria-relevant="additions" class="flex flex-col gap-2"></div>
+  <template data-ui-toast-template="info">…</template> … (one per tone)
+</section>
+<script type="module" src="/static/ui/toast.<hash>.js"></script>
+```
+
+- **Server side:** `trigger(message, tone)` is the `HX-Trigger` header value
+  `{"ui:toast":{"message":"Saved","tone":"success"}}`, with characters outside
+  ASCII written as `\u` escapes so the header stays valid. htmx fires the
+  `ui:toast` event when the response arrives; `{"ui:toast":"Saved"}` works too.
+  A toast for the next full page (after a redirect) goes in `region`'s second
+  argument. Any script can show one with
+  `document.dispatchEvent(new CustomEvent("ui:toast", { detail: { message, tone } }))`.
+- **Options:** `RegionOptions { label, dismiss }` (the texts), `Tone::{Info,
+  Success, Warning, Error}`.
+- **Accessibility:** toasts are added to an `aria-live="polite"` list, so
+  screen readers announce them without moving focus; each has a close button.
+  Info and success toasts leave after six seconds unless the pointer or the
+  focus is on them; warnings and errors stay until dismissed.
+- **CSP:** `toast.js` clones the region's `<template>` for the tone (so its
+  Tailwind classes live in Rust source) and sets the message with
+  `textContent`, never as HTML.
 
 ## The CSP rules these tools follow
 
