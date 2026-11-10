@@ -7,14 +7,21 @@
 //! `sse-connect="/events"`, `sse-swap="<event>"`). A stream is one-way and
 //! carries no commands; the route that returns it authenticates and
 //! authorizes the request like any other `GET`.
+//!
+//! Every response starts with an SSE `retry:` field. It sets how long the
+//! browser's `EventSource` waits before reconnecting when the stream ends,
+//! and a refused request uses it to send the browser away for a while, which
+//! `EventSource` honours (it ignores `Retry-After` and gives up on an error
+//! status).
 
 use super::{
     BroadcastManager, MAX_EVENT_BYTES, MAX_PAYLOAD_BYTES, RealtimeError, RealtimeMessage,
     validate_name,
 };
-use axum::http::{HeaderName, HeaderValue, StatusCode, header};
+use axum::http::{HeaderName, HeaderValue};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
+use futures_util::StreamExt;
 use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
@@ -24,9 +31,11 @@ use tokio::time::Instant;
 const KEEP_ALIVE_RANGE: (Duration, Duration) = (Duration::from_secs(1), Duration::from_secs(300));
 const LIFETIME_RANGE: (Duration, Duration) =
     (Duration::from_secs(1), Duration::from_secs(24 * 60 * 60));
+const RECONNECT_RANGE: (Duration, Duration) =
+    (Duration::from_millis(100), Duration::from_secs(300));
 const MAX_CONNECTIONS: usize = 65_536;
-/// Seconds a refused browser is asked to wait before reconnecting.
-const RETRY_AFTER_SECONDS: &str = "5";
+/// Shortest delay a refused browser is asked to wait before reconnecting.
+const MIN_REFUSED_RETRY: Duration = Duration::from_secs(5);
 
 /// Bounds of the Server-Sent Events connections one [`RealtimeSse`] serves.
 ///
@@ -37,6 +46,7 @@ const RETRY_AFTER_SECONDS: &str = "5";
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RealtimeSseConfig {
     keep_alive: Duration,
+    reconnect_delay: Duration,
     max_lifetime: Duration,
     max_connections: usize,
     max_payload_bytes: usize,
@@ -46,6 +56,7 @@ impl Default for RealtimeSseConfig {
     fn default() -> Self {
         Self {
             keep_alive: Duration::from_secs(15),
+            reconnect_delay: Duration::from_secs(1),
             max_lifetime: Duration::from_secs(30 * 60),
             max_connections: 1_024,
             max_payload_bytes: MAX_PAYLOAD_BYTES,
@@ -54,8 +65,9 @@ impl Default for RealtimeSseConfig {
 }
 
 impl RealtimeSseConfig {
-    /// The defaults: a keep-alive comment every 15 seconds, connections that
-    /// last at most 30 minutes, 1,024 open connections and 64 KiB payloads.
+    /// The defaults: a keep-alive comment every 15 seconds, a 1-second
+    /// reconnect delay, connections that last at most 30 minutes, 1,024 open
+    /// connections and 64 KiB payloads.
     pub fn new() -> Self {
         Self::default()
     }
@@ -68,17 +80,28 @@ impl RealtimeSseConfig {
         self
     }
 
+    /// How long the browser waits before reconnecting after a stream ends
+    /// (its lifetime ran out, it fell behind its channel, or [`RealtimeSse::shutdown`]),
+    /// clamped to 100 milliseconds–5 minutes. Every stream starts with it as
+    /// the SSE `retry:` field; without one, browsers wait about 3 seconds.
+    pub fn with_reconnect_delay(mut self, delay: Duration) -> Self {
+        self.reconnect_delay = delay.clamp(RECONNECT_RANGE.0, RECONNECT_RANGE.1);
+        self
+    }
+
     /// Longest time one connection stays open, clamped to 1 second–24 hours.
-    /// The stream then ends and the browser reconnects, so the route checks
-    /// the session and authorization again.
+    /// The stream then ends and the browser reconnects after
+    /// [`Self::with_reconnect_delay`], so the route checks the session and
+    /// authorization again.
     pub fn with_max_lifetime(mut self, lifetime: Duration) -> Self {
         self.max_lifetime = lifetime.clamp(LIFETIME_RANGE.0, LIFETIME_RANGE.1);
         self
     }
 
     /// Connections open at once across every clone of the [`RealtimeSse`],
-    /// clamped to 1–65,536. A request beyond it is refused with
-    /// `503 Service Unavailable` and `Retry-After`.
+    /// clamped to 1–65,536. A request beyond it is refused: it receives a
+    /// stream that only sets a `retry:` of 5–10 seconds and ends, so the
+    /// browser comes back later (see [`RealtimeSse::channel`]).
     pub fn with_max_connections(mut self, connections: usize) -> Self {
         self.max_connections = connections.clamp(1, MAX_CONNECTIONS);
         self
@@ -95,6 +118,11 @@ impl RealtimeSseConfig {
     /// Interval between keep-alive comments.
     pub fn keep_alive(&self) -> Duration {
         self.keep_alive
+    }
+
+    /// Delay the browser waits before reconnecting after a stream ends.
+    pub fn reconnect_delay(&self) -> Duration {
+        self.reconnect_delay
     }
 
     /// Longest lifetime of one connection.
@@ -116,6 +144,7 @@ impl RealtimeSseConfig {
 /// Bounded Server-Sent Events responses for realtime channels.
 ///
 /// Clones share the connection limit and the shutdown signal. Each stream
+/// starts with a `retry:` field ([`RealtimeSseConfig::reconnect_delay`]) and
 /// holds one broadcast receiver: the channel's fixed queue is the only
 /// per-connection buffer, and a connection that falls further behind than
 /// the queue holds is ended instead of skipping messages silently, so the
@@ -184,13 +213,22 @@ impl RealtimeSse {
 
     /// Streams the messages published to `channel` of `manager` from now on.
     ///
-    /// Answers `503 Service Unavailable` with `Retry-After` when the
-    /// connection limit is reached or after [`Self::shutdown`]; no channel is
-    /// opened then. The caller authorizes the channel for the request.
+    /// When the connection limit is reached, or after [`Self::shutdown`], the
+    /// request is refused without opening the channel: it still receives
+    /// `200 OK` with `text/event-stream`, but the stream holds only a comment
+    /// naming the reason and a `retry:` of a random 5–10 seconds (or between
+    /// once and twice [`RealtimeSseConfig::reconnect_delay`], when that is
+    /// longer), and then ends. `EventSource` and the htmx SSE extension
+    /// honour that delay; on an error status such as
+    /// `503 Service Unavailable` they would ignore `Retry-After` and retry on
+    /// their own schedule (the htmx extension first within half a second).
+    /// The random part keeps browsers refused together from returning
+    /// together.
+    /// The caller authorizes the channel for the request.
     pub fn channel(&self, manager: &BroadcastManager, channel: &str) -> Response {
         match self.admit() {
-            Some(permit) => self.respond(permit, manager.get_or_create(channel).subscribe()),
-            None => unavailable(),
+            Ok(permit) => self.respond(permit, manager.get_or_create(channel).subscribe()),
+            Err(reason) => self.refuse(reason),
         }
     }
 
@@ -199,15 +237,16 @@ impl RealtimeSse {
     /// [`Self::channel`].
     pub fn subscribe(&self, receiver: broadcast::Receiver<RealtimeMessage>) -> Response {
         match self.admit() {
-            Some(permit) => self.respond(permit, receiver),
-            None => unavailable(),
+            Ok(permit) => self.respond(permit, receiver),
+            Err(reason) => self.refuse(reason),
         }
     }
 
-    /// Ends every open stream and refuses new ones. Call it when the server
-    /// starts draining (for example in the future passed to
-    /// `Server::run_with_shutdown`), so that open streams do not hold the
-    /// graceful shutdown until its timeout. It cannot be undone.
+    /// Ends every open stream and refuses new ones (see [`Self::channel`]).
+    /// Call it when the server starts draining (for example in the future
+    /// passed to `Server::run_with_shutdown`), so that open streams do not
+    /// hold the graceful shutdown until its timeout; their browsers reconnect
+    /// after [`RealtimeSseConfig::reconnect_delay`]. It cannot be undone.
     pub fn shutdown(&self) {
         self.shutdown.send_replace(true);
     }
@@ -224,11 +263,29 @@ impl RealtimeSse {
             .saturating_sub(self.admission.available_permits())
     }
 
-    fn admit(&self) -> Option<OwnedSemaphorePermit> {
+    fn admit(&self) -> Result<OwnedSemaphorePermit, Refusal> {
         if self.is_shut_down() {
-            return None;
+            return Err(Refusal::ShuttingDown);
         }
-        Arc::clone(&self.admission).try_acquire_owned().ok()
+        Arc::clone(&self.admission)
+            .try_acquire_owned()
+            .map_err(|_| Refusal::ConnectionLimit)
+    }
+
+    /// A stream that only sends the browser away for a while and ends.
+    fn refuse(&self, reason: Refusal) -> Response {
+        let base = refused_retry_base(self.config.reconnect_delay);
+        let extra = rand::random_range(0..=whole_millis(base));
+        tracing::debug!(
+            target: "rullst::realtime",
+            reason = reason.comment(),
+            "refused a server-sent event stream"
+        );
+        let event = Event::default()
+            .comment(reason.comment())
+            .retry(base + Duration::from_millis(extra));
+        let stream = futures_util::stream::iter([Ok::<Event, Infallible>(event)]);
+        with_unbuffered_proxy(Sse::new(stream).into_response())
     }
 
     fn respond(
@@ -244,18 +301,52 @@ impl RealtimeSse {
             max_payload_bytes: self.config.max_payload_bytes,
             _permit: permit,
         };
-        let stream = futures_util::stream::unfold(connection, next_event);
+        // The first event sets how long the browser waits before reconnecting.
+        let retry = Event::default().retry(self.config.reconnect_delay);
+        let stream = futures_util::stream::once(std::future::ready(Ok(retry)))
+            .chain(futures_util::stream::unfold(connection, next_event));
         let keep_alive = KeepAlive::new()
             .interval(self.config.keep_alive)
             .text("keep-alive");
-        let mut response = Sse::new(stream).keep_alive(keep_alive).into_response();
-        // Ask buffering reverse proxies (nginx) to forward each event at once.
-        response.headers_mut().insert(
-            HeaderName::from_static("x-accel-buffering"),
-            HeaderValue::from_static("no"),
-        );
-        response
+        with_unbuffered_proxy(Sse::new(stream).keep_alive(keep_alive).into_response())
     }
+}
+
+/// Why a stream was refused.
+#[derive(Clone, Copy)]
+enum Refusal {
+    ConnectionLimit,
+    ShuttingDown,
+}
+
+impl Refusal {
+    /// The SSE comment a refused stream carries.
+    fn comment(self) -> &'static str {
+        match self {
+            Self::ConnectionLimit => "connection limit reached",
+            Self::ShuttingDown => "shutting down",
+        }
+    }
+}
+
+/// The fixed part of a refused request's `retry:`: 5 seconds, or the
+/// reconnect delay when that is longer. A random extra of up to the same
+/// amount is added.
+fn refused_retry_base(reconnect_delay: Duration) -> Duration {
+    reconnect_delay.max(MIN_REFUSED_RETRY)
+}
+
+fn whole_millis(duration: Duration) -> u64 {
+    u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
+}
+
+/// Asks buffering reverse proxies (nginx) to forward each event at once.
+fn with_unbuffered_proxy(mut response: Response) -> Response {
+    response.headers_mut().insert(
+        HeaderName::from_static("x-accel-buffering"),
+        HeaderValue::from_static("no"),
+    );
+    response
 }
 
 /// The state of one open stream; dropping it releases the connection slot.
@@ -317,14 +408,6 @@ fn event_for(message: &RealtimeMessage, max_payload_bytes: usize) -> Option<Even
             .event(&message.event)
             .data(&message.payload),
     )
-}
-
-fn unavailable() -> Response {
-    (
-        StatusCode::SERVICE_UNAVAILABLE,
-        [(header::RETRY_AFTER, RETRY_AFTER_SECONDS)],
-    )
-        .into_response()
 }
 
 #[cfg(test)]

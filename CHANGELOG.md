@@ -16,23 +16,38 @@ A prepared version section does not establish that its tag or crates exist.
   crate roots). `RealtimeSse::channel(&manager, name)` or
   `RealtimeSse::subscribe(receiver)` returns a `text/event-stream` response
   in which each `RealtimeMessage` is an event named after its `event` with
-  the payload as data. Every connection is bounded: keep-alive comments
-  (default 15 s, clamped to 1 s–5 min), a maximum lifetime (30 min, 1 s–24 h),
-  a connection limit shared by every clone (1,024, 1–65,536; `503` with
-  `Retry-After` beyond it, and after `shutdown()`), a 64 KiB event payload,
-  and the channel's fixed broadcast queue as the only per-connection buffer:
-  a connection that falls behind it ends so the browser reconnects, instead
-  of buffering. Messages with an event name SSE cannot carry are skipped.
-  `shutdown()` ends every open stream, so they do not hold the graceful
-  drain. Responses send `Cache-Control: no-cache` and `X-Accel-Buffering: no`.
+  the payload as data. Every stream starts with an SSE `retry:` field, the
+  delay before the browser reconnects when it ends
+  (`RealtimeSseConfig::with_reconnect_delay`, default 1 s, clamped to
+  100 ms–5 min; browsers otherwise wait about 3 s). Every connection is
+  bounded: keep-alive comments (default 15 s, clamped to 1 s–5 min), a
+  maximum lifetime (30 min, 1 s–24 h), a connection limit shared by every
+  clone (1,024, 1–65,536), a 64 KiB event payload, and the channel's fixed
+  broadcast queue as the only per-connection buffer: a connection that falls
+  behind it ends so the browser reconnects, instead of buffering. A request
+  beyond the limit, or after `shutdown()`, opens no channel and receives a
+  `200` stream holding only a comment with the reason and a `retry:` of a
+  random 5–10 s, then ending: `EventSource` and the htmx extension honour
+  that delay, while they ignore `Retry-After` and retry an error status such
+  as `503` on their own schedule (the htmx extension first within half a
+  second). Messages with an event name SSE cannot
+  carry are skipped. `shutdown()` ends every open stream, so they do not hold
+  the graceful drain. Responses send `Cache-Control: no-cache` and
+  `X-Accel-Buffering: no`.
 - HTML scaffolds (`cargo rullst new`, Blank and SaaS) write the htmx 1.9.12
   Server-Sent Events extension to `static/htmx-ext-sse-1.9.12.js`, beside
   `htmx-1.9.12.min.js` and served the same way, so pages use `hx-ext="sse"`,
-  `sse-connect` and `sse-swap` under the strict CSP. The file is upstream
-  `dist/ext/sse.js` of htmx commit `f38e07d4be8145a39e2bb477ec9fcc56bdd2d16d`,
-  unchanged (SHA-256
-  `be05b2e2265279f035271adbea0b72a356f20ce4dfa5870481bfe9c51b822fc1`); a test
-  checks the digest and the written bytes. Tutorial 34 is now a realtime
+  `sse-connect` and `sse-swap` under the strict CSP. The file is a patched
+  copy of upstream `dist/ext/sse.js` of htmx commit
+  `f38e07d4be8145a39e2bb477ec9fcc56bdd2d16d` (SHA-256
+  `be05b2e2265279f035271adbea0b72a356f20ce4dfa5870481bfe9c51b822fc1`):
+  upstream computes its reconnect delay with the bitwise XOR `2 ^ retryCount`,
+  so it never backs off past about 2.5 s and sometimes retries at once; the
+  copy doubles the delay up to 64 s and resets it when a connection opens, as
+  the htmx 2 extension does (SHA-256
+  `afb588b88863ec49fe7d9f958b788ab1e1df1f45016466d2ea573f374c89e5d4`). The
+  diff is in `cargo-rullst/src/blueprints/assets/README.md`; a test checks
+  both digests, the patched lines and the written bytes. Tutorial 34 is now a realtime
   dashboard with SSE and htmx (`tutorials/34-realtime-dashboard-sse.md`).
 - `cargo rullst upgrade` rules for 13.0.0-alpha.5: `V13-ISLANDS-REMOVED` and
   `V13-LIVE-REMOVED` (must-change: `#[island]`, `#[live_component]`,
@@ -215,6 +230,12 @@ A prepared version section does not establish that its tag or crates exist.
   that sets the order of `LOCALES.iter()` for a language menu; it must list
   every catalog file once. Without it the locales stay sorted by tag.
   Requested while upgrading an application.
+- `Server` prints a warning at startup when the working directory has no
+  `static/` directory, naming the path it looked for: nothing is served
+  under `/static/` then, so pages from `render_page` load without htmx, its
+  SSE extension and their stylesheet and stop updating, while the page
+  itself still answers `200`. Nothing else changes. Found while running a
+  dashboard binary from another directory.
 
 ### Changed
 

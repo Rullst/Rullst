@@ -1416,15 +1416,25 @@ Server push uses Server-Sent Events over the in-process realtime channels.
 `text/event-stream` response per request: each `RealtimeMessage` becomes an
 event named after its `event` with its `payload` as data, which the htmx SSE
 extension swaps into the page (`hx-ext="sse"`, `sse-connect`, `sse-swap`).
-HTML scaffolds write the htmx 1.9.12 extension, byte for byte with a recorded
-SHA-256, to `static/htmx-ext-sse-1.9.12.js`, beside htmx, so pages need no CDN
-and no relaxed CSP.
+HTML scaffolds write the htmx 1.9.12 extension to
+`static/htmx-ext-sse-1.9.12.js`, beside htmx, so pages need no CDN and no
+relaxed CSP. It is a patched copy with recorded upstream and patched SHA-256
+digests: upstream's reconnect backoff used the bitwise XOR `2 ^ retryCount`
+and never grew, the copy doubles it up to 64 s and resets it when a
+connection opens.
 
 `RealtimeSseConfig` bounds every connection, clamping each setting: keep-alive
-comments (default 15 s, 1 s–5 min), a maximum lifetime after which the stream
-ends and the browser reconnects through the route's authentication again
-(30 min, 1 s–24 h), connections shared by every clone (1,024, 1–65,536;
-`503` with `Retry-After` beyond it) and the event payload (64 KiB). The
+comments (default 15 s, 1 s–5 min), the reconnect delay every stream sends
+first as its `retry:` field (1 s, 100 ms–5 min), a maximum lifetime after
+which the stream ends and the browser reconnects through the route's
+authentication again (30 min, 1 s–24 h), connections shared by every clone
+(1,024, 1–65,536) and the event payload (64 KiB). A request beyond the limit,
+or after `shutdown()`, opens no channel: it receives a `200` stream with a
+comment naming the reason and a `retry:` of a random 5–10 s (once to twice
+the reconnect delay when that is longer), which ends at once. Browsers honour
+that `retry:`, while `EventSource` ignores `Retry-After` and the htmx
+extension retries an error status on its own schedule (the first time within
+half a second), so an error status would give no backpressure. The
 channel's fixed broadcast queue is the only per-connection buffer: a connection
 that falls behind it ends instead of buffering without limit, and messages
 with an event name outside 1–128 bytes of `[A-Za-z0-9._:/-]` or a larger

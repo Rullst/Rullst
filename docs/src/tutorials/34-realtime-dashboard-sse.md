@@ -19,7 +19,7 @@ that 13.0.0-alpha.5 removed (see the
 | :--- | :--- |
 | `BroadcastManager` | One shared, process-local registry of named channels (`rullst::realtime`). |
 | `RealtimeSse` | Turns a channel subscription into a bounded `text/event-stream` response. |
-| `static/htmx-ext-sse-1.9.12.js` | The htmx 1.9.12 SSE extension, written by `cargo rullst new` next to htmx. |
+| `static/htmx-ext-sse-1.9.12.js` | The htmx 1.9.12 SSE extension, written by `cargo rullst new` next to htmx. Rullst ships it patched so that its reconnect delay grows after failures (upstream's never did); use this copy rather than the upstream file. |
 | `hx-ext="sse"`, `sse-connect`, `sse-swap` | Attributes that open the stream and say which element each event replaces. |
 
 Each message published to the channel becomes one SSE event: its name is the
@@ -32,7 +32,7 @@ HTML.
 ## Step 1: The state, the fragment and the routes
 
 ```rust,no_run
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 
 use rullst::html;
 use rullst::html::Markup;
@@ -51,6 +51,8 @@ const STATS_EVENT: &str = "stats";
 pub struct Dashboard {
     channels: Arc<BroadcastManager>,
     sse: RealtimeSse,
+    /// The figures last published, for pages rendered before the next update.
+    figures: Arc<Mutex<(u64, u64)>>,
 }
 
 impl Dashboard {
@@ -58,14 +60,22 @@ impl Dashboard {
         Self {
             channels: Arc::new(BroadcastManager::new()),
             sse: RealtimeSse::new(RealtimeSseConfig::new()),
+            figures: Arc::new(Mutex::new((0, 0))),
         }
     }
 
-    /// Sends new figures to every open dashboard. `publish` fails when no
-    /// browser is connected; nothing is retained then.
+    /// Keeps new figures and sends them to every open dashboard. The channel
+    /// itself retains nothing: `publish` fails when no browser is connected.
     pub fn publish(&self, active_users: u64, queued_jobs: u64) {
+        *self.figures.lock().unwrap_or_else(PoisonError::into_inner) =
+            (active_users, queued_jobs);
         let fragment = stats(active_users, queued_jobs).into_string();
         let _ = self.channels.publish(CHANNEL, STATS_EVENT, &fragment);
+    }
+
+    /// The figures last published.
+    fn figures(&self) -> (u64, u64) {
+        *self.figures.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 
@@ -80,13 +90,13 @@ fn stats(active_users: u64, queued_jobs: u64) -> Markup {
     }
 }
 
-/// The page: the initial figures, and a container that opens the stream.
+/// The page: the current figures, and a container that opens the stream.
 async fn page(
     State(dashboard): State<Dashboard>,
     htmx: HtmxRequest,
     nonce: Option<Extension<CspNonce>>,
 ) -> Html<String> {
-    let _ = dashboard;
+    let (active_users, queued_jobs) = dashboard.figures();
     let nonce = nonce.map(|Extension(nonce)| nonce.as_str().to_owned());
     let head = html! {
         <script nonce?={nonce} src="/static/htmx-ext-sse-1.9.12.js"></script>
@@ -94,7 +104,7 @@ async fn page(
     let content = html! {
         <main hx-ext="sse" sse-connect="/dashboard/events">
             <h1>"Operations"</h1>
-            <section sse-swap="stats" aria-live="polite">{stats(0, 0)}</section>
+            <section sse-swap="stats" aria-live="polite">{stats(active_users, queued_jobs)}</section>
         </main>
     };
     render_page_with_head(&htmx, "en", "Operations", head, content)
@@ -116,8 +126,9 @@ pub fn dashboard_routes(dashboard: Dashboard) -> rullst::Router {
 
 `render_page_with_head` loads htmx; the extension script comes after it, from
 the same origin and with the request's CSP nonce when the security headers
-set one. The initial figures render with the page, so it is complete before
-the stream opens and without JavaScript.
+set one. The page renders the figures last published, so it is complete
+before the stream opens and without JavaScript; each `stats` event then
+replaces them.
 
 Mount `dashboard_routes(dashboard.clone())` inside the application's
 security baseline (CSRF, security headers, authentication) like any other
@@ -175,8 +186,16 @@ async fn serve(app: rullst::Router, sse: RealtimeSse) -> Result<(), rullst::Serv
 }
 ```
 
-After `shutdown()` the stream route answers `503 Service Unavailable` with
-`Retry-After`, and the browser's `EventSource` tries again later.
+After `shutdown()` open streams end and their browsers reconnect after the
+reconnect delay (below). A request that arrives while the server drains, or
+beyond the connection limit, opens no channel: it receives a stream that
+holds only a comment naming the reason and a `retry:` of a random 5–10
+seconds, and ends. `EventSource` waits that long before it tries again, and
+the random part keeps browsers refused together from returning together. An
+error status such as `503 Service Unavailable` would not slow them down:
+`EventSource` ignores `Retry-After` and gives up on an error status, and the
+htmx extension then retries on its own schedule, the first time within half a
+second.
 
 ---
 
@@ -187,13 +206,20 @@ After `shutdown()` the stream route answers `503 Service Unavailable` with
 | Setting | Default | Range | Effect |
 | :--- | :--- | :--- | :--- |
 | `with_keep_alive` | 15 s | 1 s – 5 min | A `: keep-alive` comment on an idle stream, so proxies keep it open. |
-| `with_max_lifetime` | 30 min | 1 s – 24 h | The stream then ends and the browser reconnects, so the route checks the session again. |
-| `with_max_connections` | 1,024 | 1 – 65,536 | Open streams across every clone; beyond it the route answers `503` with `Retry-After`. |
+| `with_reconnect_delay` | 1 s | 100 ms – 5 min | Sent first on every stream as its `retry:` field: how long the browser waits before reconnecting once the stream ends (about 3 s without it). |
+| `with_max_lifetime` | 30 min | 1 s – 24 h | The stream then ends and the browser reconnects after the reconnect delay, so the route checks the session again. |
+| `with_max_connections` | 1,024 | 1 – 65,536 | Open streams across every clone; a request beyond it receives only a `retry:` of 5–10 s (once to twice the reconnect delay, if longer) and ends. |
 | `with_max_payload_bytes` | 64 KiB | 1 B – 64 KiB | A larger message is not sent to the connection. |
+
+When a stream reaches its lifetime it ends cleanly and the browser
+reconnects after the reconnect delay, so with the defaults a dashboard misses
+about one second of updates every 30 minutes and the next fragment corrects
+it. htmx reports each such reconnect with an `htmx:sseError` event, which it
+also logs to the browser console, followed by `htmx:sseOpen`.
 
 A connection that falls behind its channel's queue (100 messages for a
 `BroadcastManager` channel) is ended rather than buffered without limit; the
-browser reconnects and receives the next fragment. Event names must be 1–128
+browser reconnects after the reconnect delay and receives the next fragment. Event names must be 1–128
 bytes of ASCII letters, digits, `-`, `_`, `.`, `:` or `/`; other messages are
 skipped. Responses carry `Cache-Control: no-cache` and
 `X-Accel-Buffering: no`, so nginx forwards each event at once.
