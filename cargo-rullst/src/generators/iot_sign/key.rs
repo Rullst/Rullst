@@ -113,7 +113,9 @@ pub(super) fn read_signing_key(path: &Path) -> Result<SigningKey, IotSignError> 
     if metadata.len() > MAX_KEY_FILE_BYTES {
         return Err(invalid("it is larger than a key file"));
     }
-    warn_if_shared(path, &metadata);
+    if let Some(warning) = shared_warning(path, &metadata) {
+        eprintln!("{warning}");
+    }
     let mut text = Zeroizing::new(String::new());
     fs::File::open(path)
         .and_then(|file| file.take(MAX_KEY_FILE_BYTES).read_to_string(&mut text))
@@ -127,20 +129,23 @@ pub(super) fn is_shared(mode: u32) -> bool {
     mode & 0o077 != 0
 }
 
+/// The warning for a key file that other users can read, if any.
 #[cfg(unix)]
-fn warn_if_shared(path: &Path, metadata: &fs::Metadata) {
+pub(super) fn shared_warning(path: &Path, metadata: &fs::Metadata) -> Option<String> {
     use std::os::unix::fs::PermissionsExt;
     let mode = metadata.permissions().mode() & 0o777;
-    if is_shared(mode) {
-        eprintln!(
+    is_shared(mode).then(|| {
+        format!(
             "warning: {} can be read by other users (mode {mode:o}); run `chmod 600` on it",
             path.display()
-        );
-    }
+        )
+    })
 }
 
 #[cfg(not(unix))]
-fn warn_if_shared(_path: &Path, _metadata: &fs::Metadata) {}
+pub(super) fn shared_warning(_path: &Path, _metadata: &fs::Metadata) -> Option<String> {
+    None
+}
 
 /// 32 bytes from the operating system's random number generator.
 pub(super) fn generate_seed() -> Result<Zeroizing<[u8; 32]>, IotSignError> {

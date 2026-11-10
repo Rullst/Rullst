@@ -10,7 +10,7 @@ use std::io::Read;
 use std::path::Path;
 
 /// Read size for hashing and verifying the image.
-const CHUNK: usize = 64 * 1024;
+const CHUNK: usize = 65_536;
 
 /// What `iot:sign` signs.
 pub(super) struct SignRequest<'a> {
@@ -121,7 +121,7 @@ fn hash_image(path: &Path) -> Result<(u64, [u8; 32]), IotSignError> {
 
 /// Verifies `signed` exactly as a device does: it parses the written manifest
 /// bytes and streams the image through `OtaManager::begin_update`.
-fn self_check(signed: &SignedUpdate, image: &Path) -> Result<(), IotSignError> {
+pub(super) fn self_check(signed: &SignedUpdate, image: &Path) -> Result<(), IotSignError> {
     let check = |error| IotSignError::SelfCheck(error);
     let parsed = OtaManifest::from_signing_bytes(&signed.manifest_bytes).map_err(check)?;
     if parsed != signed.manifest {

@@ -493,3 +493,54 @@ fn group_or_other_permission_bits_count_as_shared() {
         assert!(key::is_shared(mode), "{mode:o}");
     }
 }
+
+#[test]
+fn the_self_check_refuses_what_a_device_would_refuse() {
+    let dir = tempfile::tempdir().unwrap();
+    let image = image(dir.path(), 1_000);
+    let key = SigningKey::from_bytes(&SEED);
+    let mut signed = sign::sign_image(&key, &request(&image, "1.0.0", 2)).unwrap();
+    assert!(sign::self_check(&signed, &image).is_ok());
+
+    // A signature that does not match the manifest.
+    signed.signature[5] ^= 0x01;
+    assert!(matches!(
+        sign::self_check(&signed, &image),
+        Err(IotSignError::SelfCheck(OtaError::SignatureInvalid))
+    ));
+    signed.signature[5] ^= 0x01;
+    // Manifest bytes that are not the manifest's own encoding.
+    let original = signed.manifest.clone();
+    signed.manifest = OtaManifest::new("microbit-v2", "9.9.9", 2, 1_000, [0; 32]).unwrap();
+    assert!(matches!(
+        sign::self_check(&signed, &image),
+        Err(IotSignError::SelfCheck(OtaError::MalformedManifest))
+    ));
+    signed.manifest = original;
+    // An image that changed after it was hashed.
+    fs::write(&image, vec![1u8; 1_000]).unwrap();
+    assert!(matches!(
+        sign::self_check(&signed, &image),
+        Err(IotSignError::SelfCheck(OtaError::FirmwareHashMismatch))
+    ));
+}
+
+#[cfg(unix)]
+#[test]
+fn shared_key_files_get_a_warning() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("ota.key");
+    fs::write(&path, key::key_file_text(&SEED).as_bytes()).unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+    assert_eq!(
+        key::shared_warning(&path, &fs::metadata(&path).unwrap()),
+        None
+    );
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o644)).unwrap();
+    let warning = key::shared_warning(&path, &fs::metadata(&path).unwrap()).unwrap();
+    assert!(warning.contains("(mode 644)"), "{warning}");
+    assert!(warning.contains("chmod 600"), "{warning}");
+    // The key is still read; the warning only goes to standard error.
+    assert_eq!(key::read_signing_key(&path).unwrap().to_bytes(), SEED);
+}
