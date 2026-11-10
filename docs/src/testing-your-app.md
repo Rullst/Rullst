@@ -24,7 +24,7 @@ this page says which is which.
 | Every page: status, security headers, HTML hygiene | Yes | `PAGES` in `src/security_tests.rs` |
 | Daily `cargo audit` and a secret scan (TruffleHog) | Yes | `.github/workflows/ci.yml` |
 | Monthly grouped dependency updates | Yes | `.github/dependabot.yml` |
-| Every page in Chromium, Firefox and WebKit with axe-core, both colour schemes | With `cargo rullst add browser-tests` | `tests/browser/`, `.github/workflows/browser-tests.yml` |
+| Every page in Chromium, Firefox and WebKit with axe-core, both colour schemes | With `cargo rullst add browser-tests` | `tests/browser/` and the `browser-tests.yml` workflow |
 | Routes with `{id}` classified with `// rullst-access:` | Checked by `cargo rullst audit --idor` | your CI, see below |
 | A route × role permission table | No | see below |
 | Restore a backup, test migrations on a copy, monitor the site, OWASP ZAP, published-figure freshness | No | see below |
@@ -136,7 +136,7 @@ writes:
 | `tests/browser/package.json`, `package-lock.json` | Playwright 1.64.1 and axe-core 4.14.0, pinned with `sha512` integrity |
 | `tests/browser/pages.mjs` | Opens each HTML page of `PAGES` in Chromium, Firefox and WebKit |
 | `tests/browser/.gitignore` | Keeps `node_modules/` and `results/` out of Git |
-| `.github/workflows/browser-tests.yml` | Builds and starts the application, then runs `pages.mjs` |
+| `browser-tests.yml` (in `.github/workflows/`) | Builds and starts the application, then runs `pages.mjs` |
 
 `pages.mjs` reads the `PAGES` list from `src/security_tests.rs`, so one list
 drives both layers. It fails on a console error, an uncaught page error, a

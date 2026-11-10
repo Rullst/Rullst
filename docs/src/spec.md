@@ -51,7 +51,7 @@ parameterless page and the status a signed-out visitor receives) checked with
 `assert_html_hygiene` (`rullst::testing::html_issues`), and `new` writes
 `.github/workflows/ci.yml` and `.github/dependabot.yml` unless `--no-ci` is
 given; every action is pinned by commit SHA. `cargo rullst add
-browser-tests` adds `tests/browser/` and `.github/workflows/browser-tests.yml`
+browser-tests` adds `tests/browser/` and a `browser-tests.yml` workflow
 and never overwrites an existing file. See
 [Testing your application](testing-your-app.md).
 

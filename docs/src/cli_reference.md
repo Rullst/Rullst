@@ -825,7 +825,7 @@ cargo rullst add mail
 
 `cargo rullst add browser-tests` (since 13.0.0-alpha.5) enables no feature: it
 writes pinned Playwright and axe-core checks under `tests/browser/` and
-`.github/workflows/browser-tests.yml`, which open every page of the
+a `browser-tests.yml` workflow in the application's `.github/workflows/`, which open every page of the
 `PAGES` list in `src/security_tests.rs` in Chromium, Firefox and WebKit. A
 file that already exists with other content is kept and reported. See
 [Testing your application](testing-your-app.md#browser-tests).
