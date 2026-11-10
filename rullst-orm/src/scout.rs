@@ -54,6 +54,7 @@ pub(crate) fn validate_query(value: &str) -> Result<(), crate::Error> {
 ///
 /// The query has the same bounds as provider queries, and `%`, `_` and the
 /// escape character itself match literally instead of acting as wildcards.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub fn sql_contains_pattern(query: &str) -> Result<String, crate::Error> {
     validate_query(query)?;
@@ -86,7 +87,7 @@ pub(crate) fn document_with_id(id: i32, mut payload: Value) -> Result<Value, cra
         ));
     }
     object.insert("id".to_string(), Value::from(id));
-    let encoded = serde_json::to_vec(&payload)?;
+    let encoded = serde_json::to_vec(&payload).map_err(crate::Error::json)?;
     if encoded.len() > MAX_SEARCH_DOCUMENT_BYTES {
         return Err(crate::Error::Validation(format!(
             "Scout document exceeds {MAX_SEARCH_DOCUMENT_BYTES} bytes"

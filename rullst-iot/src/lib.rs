@@ -75,7 +75,7 @@ pub use ota::{
 pub use power::{HarvesterState, PowerGovernor, PowerMode};
 #[cfg(feature = "experimental-simulators")]
 pub use pqc::SimulatedPqcFixture;
-pub use twin::{DigitalTwin, TwinSyncError};
+pub use twin::{DigitalTwin, TwinJsonError, TwinSyncError};
 pub use ui::IotDashboard;
 
 /// Sensor payload telemetry model for IoT nodes.

@@ -287,7 +287,7 @@ mod tests {
             assert!(rasp_html.contains("Detected by bounded RASP inspector: true"));
         }
         {
-            let events = store.live_events.lock().expect("security event lock");
+            let events = store.live_events();
             assert!(
                 events
                     .iter()

@@ -88,7 +88,7 @@ async fn oauth_feature_exposes_the_axum_callback_extractor() {
 fn security_feature_exposes_extended_suite_without_hiding_core_security() {
     let _ = core::any::TypeId::of::<rullst::security::TenantContext>();
     let _ = core::any::TypeId::of::<rullst::security::runtime::AuditRecord>();
-    let _ = core::any::TypeId::of::<rullst::security_runtime::VaultError>();
+    let _ = core::any::TypeId::of::<rullst::security::runtime::VaultError>();
 }
 
 #[cfg(feature = "iot")]

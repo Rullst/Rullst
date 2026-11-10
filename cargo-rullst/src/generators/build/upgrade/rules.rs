@@ -11,6 +11,7 @@
 //! row in `docs/src/migration-v13.md`.
 
 mod alpha5_runtime;
+mod api_cleanups;
 mod catalog;
 mod files;
 mod markup;

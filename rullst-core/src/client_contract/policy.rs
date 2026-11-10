@@ -1,7 +1,7 @@
 use super::{
     CURRENT_CLIENT_CONTRACT_VERSION, ClientContractError, ClientRequest, ClientVersionOffer,
-    ContractVersion, DEFAULT_CLIENT_CONTRACT_BODY_BYTES, MAX_CLIENT_CONTRACT_BODY_BYTES,
-    ServerFailure, ServerResponse,
+    ContractJsonError, ContractVersion, DEFAULT_CLIENT_CONTRACT_BODY_BYTES,
+    MAX_CLIENT_CONTRACT_BODY_BYTES, ServerFailure, ServerResponse,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -54,7 +54,7 @@ impl ClientContractPolicy {
     /// Decodes a bounded client version offer.
     pub fn decode_offer(self, body: &[u8]) -> Result<ClientVersionOffer, ClientContractError> {
         self.validate_body_size(body.len())?;
-        serde_json::from_slice(body).map_err(ClientContractError::InvalidJson)
+        serde_json::from_slice(body).map_err(ClientContractError::invalid_json)
     }
 
     /// Encodes a client version offer within the configured ceiling.
@@ -100,7 +100,7 @@ impl ClientContractPolicy {
     {
         self.validate_body_size(body.len())?;
         let request = serde_json::from_slice::<ClientRequest<T>>(body)
-            .map_err(ClientContractError::InvalidJson)?;
+            .map_err(ClientContractError::invalid_json)?;
         self.validate_version(request.version())?;
         Ok(request)
     }
@@ -124,7 +124,7 @@ impl ClientContractPolicy {
     {
         self.validate_body_size(body.len())?;
         let response = serde_json::from_slice::<ServerResponse<T>>(body)
-            .map_err(ClientContractError::InvalidJson)?;
+            .map_err(ClientContractError::invalid_json)?;
         self.validate_version(response.version())?;
         Ok(response)
     }
@@ -145,7 +145,7 @@ impl ClientContractPolicy {
     pub fn decode_failure(self, body: &[u8]) -> Result<ServerFailure, ClientContractError> {
         self.validate_body_size(body.len())?;
         let response = serde_json::from_slice::<ServerFailure>(body)
-            .map_err(ClientContractError::InvalidJson)?;
+            .map_err(ClientContractError::invalid_json)?;
         self.validate_version(response.version())?;
         Ok(response)
     }
@@ -166,7 +166,9 @@ impl ClientContractPolicy {
             Err(_) if writer.exceeded() => Err(ClientContractError::BodyTooLarge {
                 maximum: self.max_body_bytes,
             }),
-            Err(error) => Err(ClientContractError::EncodeJson(error)),
+            Err(error) => Err(ClientContractError::EncodeJson(ContractJsonError::new(
+                error,
+            ))),
         }
     }
 

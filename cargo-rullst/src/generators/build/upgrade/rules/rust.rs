@@ -414,6 +414,15 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
         visit::visit_item_struct(self, item);
     }
 
+    fn visit_item_use(&mut self, item: &'ast syn::ItemUse) {
+        for (path, at) in super::api_cleanups::use_paths(&item.tree) {
+            if let Some(rule) = super::api_cleanups::path_rule(&path) {
+                self.hit(rule, at);
+            }
+        }
+        visit::visit_item_use(self, item);
+    }
+
     fn visit_item_enum(&mut self, item: &'ast syn::ItemEnum) {
         self.sqlx_derives(&item.attrs);
         visit::visit_item_enum(self, item);

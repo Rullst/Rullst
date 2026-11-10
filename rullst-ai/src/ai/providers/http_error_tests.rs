@@ -14,6 +14,15 @@ use tokio::{
 
 /// Answers one request with `status` and a JSON `body`; returns the request head.
 async fn serve_error(status: &'static str, body: String) -> (String, JoinHandle<String>) {
+    serve_error_with(status, "", body).await
+}
+
+/// As [`serve_error`], with `headers` (each ending in CRLF) in the response.
+async fn serve_error_with(
+    status: &'static str,
+    headers: &'static str,
+    body: String,
+) -> (String, JoinHandle<String>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
     let task = tokio::spawn(async move {
@@ -49,7 +58,7 @@ async fn serve_error(status: &'static str, body: String) -> (String, JoinHandle<
         .await
         .unwrap();
         let response = format!(
-            "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            "HTTP/1.1 {status}\r\nContent-Type: application/json\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
             body.len()
         );
         let _ = stream.write_all(response.as_bytes()).await;
@@ -60,8 +69,8 @@ async fn serve_error(status: &'static str, body: String) -> (String, JoinHandle<
 
 fn api_error(result: Result<String, AiError>) -> String {
     match result {
-        Err(AiError::ApiError(message)) => message,
-        other => panic!("expected an API error, got {other:?}"),
+        Err(AiError::HttpStatus(error)) => error.to_string(),
+        other => panic!("expected an HTTP status error, got {other:?}"),
     }
 }
 
@@ -152,12 +161,56 @@ async fn gemini_stream_adds_the_provider_message() {
         .await;
     server.await.unwrap();
     match result {
-        Err(AiError::ApiError(message)) => assert_eq!(
-            message,
-            "Gemini returned HTTP 503 Service Unavailable: UNAVAILABLE: The model is overloaded."
-        ),
-        other => panic!("expected an API error, got {other:?}"),
+        Err(AiError::HttpStatus(error)) => {
+            assert_eq!(error.status(), 503);
+            assert_eq!(error.code(), Some("UNAVAILABLE"));
+            assert_eq!(error.message(), Some("The model is overloaded."));
+            assert_eq!(
+                error.to_string(),
+                "Gemini returned HTTP 503 Service Unavailable: UNAVAILABLE: The model is overloaded."
+            );
+        }
+        other => panic!("expected an HTTP status error, got {other:?}"),
     }
+}
+
+#[tokio::test]
+async fn the_status_and_retry_after_are_typed() {
+    let body = r#"{"error":{"message":"Rate limit reached","type":"requests","code":"rate_limit_exceeded"}}"#;
+    let (url, server) = serve_error_with(
+        "429 Too Many Requests",
+        "Retry-After: 7\r\n",
+        body.to_string(),
+    )
+    .await;
+    let result = OpenAiProvider::new("fixture-key")
+        .with_base_url(url)
+        .with_request_timeout(Duration::from_secs(3))
+        .prompt("hello")
+        .await;
+    server.await.unwrap();
+    let Err(AiError::HttpStatus(error)) = result else {
+        panic!("expected an HTTP status error, got {result:?}");
+    };
+    assert_eq!(error.provider(), "OpenAI");
+    assert_eq!(error.status(), 429);
+    assert_eq!(error.retry_after(), Some(Duration::from_secs(7)));
+    assert_eq!(error.code(), Some("rate_limit_exceeded"));
+    assert_eq!(error.message(), Some("Rate limit reached"));
+
+    let gemini = r#"{"error":{"code":429,"message":"Quota exceeded","status":"RESOURCE_EXHAUSTED","details":[{"@type":"type.googleapis.com/google.rpc.RetryInfo","retryDelay":"52s"}]}}"#;
+    let (url, server) = serve_error("429 Too Many Requests", gemini.to_string()).await;
+    let result = GeminiProvider::new("fixture-key")
+        .with_base_url(url)
+        .with_request_timeout(Duration::from_secs(3))
+        .prompt("hello")
+        .await;
+    server.await.unwrap();
+    let Err(AiError::HttpStatus(error)) = result else {
+        panic!("expected an HTTP status error, got {result:?}");
+    };
+    assert_eq!(error.retry_after(), Some(Duration::from_secs(52)));
+    assert_eq!(error.code(), Some("RESOURCE_EXHAUSTED"));
 }
 
 #[tokio::test]

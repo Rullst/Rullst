@@ -6,6 +6,7 @@ use std::collections::BTreeSet;
 ///
 /// Generated model projections emit it for `#[orm(encrypted)]` and
 /// `#[orm(masked)]` fields. Revision restore treats it as non-restorable.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub const REDACTED_VALUE: &str = "***";
 
@@ -13,6 +14,7 @@ pub const REDACTED_VALUE: &str = "***";
 ///
 /// A value that cannot be serialized is reported as changed so the audit
 /// trail records a redacted change instead of silently omitting it.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub fn redacted_value_changed<T: Serialize + ?Sized>(current: &T, previous: &T) -> bool {
     match (

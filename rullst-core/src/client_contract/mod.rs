@@ -8,7 +8,7 @@ mod error;
 mod policy;
 mod types;
 
-pub use error::ClientContractError;
+pub use error::{ClientContractError, ContractJsonError};
 pub use policy::ClientContractPolicy;
 pub use types::{
     ClientRequest, ClientVersionOffer, ContractVersion, FailureCode, FailureDetail, IdempotencyKey,

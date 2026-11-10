@@ -1,5 +1,5 @@
 use rullst::security::TenantMembership;
-use rullst::security_runtime::rbac::{RbacGuard, UserContext};
+use rullst::security::runtime::rbac::{RbacGuard, UserContext};
 use rullst::storage::cloud::{CloudCredentials, CloudStorageConfig};
 use rullst::{Storage, StorageError, TenantStorage};
 

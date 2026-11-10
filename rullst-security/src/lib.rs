@@ -70,7 +70,7 @@ pub use ai_firewall::{
 pub use audit::{AuditChain, AuditLogger, AuditRecord, MIN_AUDIT_KEY_BYTES, StdoutAuditLogger};
 pub use cswsh::{CswsPolicy, CswsPolicyError, cswsh_guard_middleware};
 pub use deception::{
-    MAX_DECEPTION_TRAPS, deception_trap_middleware, register_deception_trap,
+    DeceptionRoutes, MAX_DECEPTION_TRAPS, deception_trap_middleware, register_deception_trap,
     try_register_deception_trap,
 };
 pub use digest::sha256_hex;
@@ -120,8 +120,7 @@ pub use sri::{
 };
 pub use telemetry::{
     LIVE_SECURITY_EVENT_V1_JSON_SCHEMA, LiveSecurityEvent, SECURITY_EVENT_SCHEMA_VERSION,
-    SecurityStore, SecurityTelemetry, TelemetrySnapshot, current_timestamp_str,
-    get_real_rss_memory_mb, normalize_ip,
+    SecurityStore, SecurityTelemetry, TelemetrySnapshot, normalize_ip,
 };
 pub use timing_guard::{
     TimingGuardConfig, TimingScope, equalize_response_time, synthetic_argon2_cpu_work,

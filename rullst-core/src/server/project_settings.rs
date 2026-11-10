@@ -16,6 +16,7 @@ use std::path::Path;
 
 /// The `.env` values of one project directory, read without changing the
 /// process environment. `Debug` never shows them.
+// Used by `rullst-mail`.
 #[doc(hidden)]
 #[derive(Clone, Default)]
 pub struct ProjectSettings {
@@ -55,6 +56,7 @@ impl ProjectSettings {
 
 /// Reads one setting for the project in the working directory: the process
 /// environment first, then `./.env`, which is read only when needed.
+// Used by `rullst-mail`.
 #[doc(hidden)]
 pub async fn read_project_setting(name: &str) -> Result<Option<String>, ServerError> {
     if let Some(value) = read_optional_environment_variable(name)? {

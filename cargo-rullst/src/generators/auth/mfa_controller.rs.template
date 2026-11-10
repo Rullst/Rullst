@@ -6,7 +6,7 @@
 // and require a recent password check before enrollment. TOTP secrets live in
 // `user_mfa_factors`: protect that table and its backups like credentials.
 use rullst::db::{Orm, sqlx};
-use rullst::security_runtime::{build_otpauth_uri, try_generate_mfa_secret, verify_totp_step_after};
+use rullst::security::runtime::{build_otpauth_uri, try_generate_mfa_secret, verify_totp_step_after};
 use rullst::server::{Extension, Form, IntoResponse, Json, Response, StatusCode, header};
 use serde::{Deserialize, Serialize};
 
