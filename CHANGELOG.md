@@ -134,6 +134,11 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Security
 
+- `cargo rullst update` again refuses project files that carry extended
+  attributes. rustix 1.1.6 (a security release) stopped treating an empty
+  buffer as a size query, so the check read every file as having no
+  attributes; it now asks for the size with `flistxattr_query`, and
+  cargo-rullst requires rustix 1.1.6.
 - Two advisories published after 13.0.0-alpha.4 have time-bounded exceptions
   in `docs/src/security-advisory-exceptions.md` (until 2027-01-28), because no
   fixed dependency graph exists yet. `RUSTSEC-2026-0459` (bundled SQLite before
