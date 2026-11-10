@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794352751067,
+  "lastUpdate": 1794354163557,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -18263,6 +18263,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 284,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "508e309ce44da190eab87539c239c0d1b40f3193",
+          "message": "Merge pull request #634 from Rullst/feat/v13-alpha5-iot-sign\n\nfeat(cli): sign rullst-iot firmware updates with iot:keygen and iot:sign",
+          "timestamp": "2026-11-10T20:23:28-03:00",
+          "tree_id": "207be7613b3edd7ac0163af3be695309d2d333d1",
+          "url": "https://github.com/Rullst/Rullst/commit/508e309ce44da190eab87539c239c0d1b40f3193"
+        },
+        "date": 1794354162767,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1391,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 300,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 288,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
