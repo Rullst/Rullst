@@ -5,7 +5,8 @@
 use super::layout::{Layout, Search, head_closings, insert_before_head};
 use super::project::{has_assets, locked_rullst};
 use super::tests::{Harness, LAYOUT, frontend_error, project, read};
-use super::*;
+use super::{FrontendError, alpine, find, friendly};
+use crate::generators::frontend::tailwind::ToolError;
 use crate::generators::frontend::{
     ALPINE_COMPONENTS, ALPINE_VENDORED, TAILWIND_INPUT, alpine::integrity, alpine_release::BANNER,
 };
@@ -18,7 +19,7 @@ fn alpine_tarball(code: &[u8]) -> Vec<u8> {
     let mut header = tar::Header::new_gnu();
     header.set_size(code.len() as u64);
     header.set_entry_type(tar::EntryType::Regular);
-    header.set_mode(0o644);
+    header.set_mode(0o600);
     header.set_cksum();
     builder
         .append_data(

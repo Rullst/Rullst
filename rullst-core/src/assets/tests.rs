@@ -347,7 +347,7 @@ fn unchanged_metadata_reuses_the_recorded_hash() {
     let hashed = format!("/static/app.{}.css", hash_of(b"body{}"));
     let url = manifest.url("app.css");
     let resolved = manifest.resolve(&format!("app.{}.css", hash_of(b"body{}")));
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o644)).unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
     assert_eq!(url, hashed);
     assert_eq!(resolved, Resolution::Current("app.css".to_owned()));
 }

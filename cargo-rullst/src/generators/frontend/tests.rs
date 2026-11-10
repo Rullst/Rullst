@@ -363,14 +363,14 @@ fn tarball(entries: &[(&str, Option<&[u8]>)]) -> Vec<u8> {
             Some(body) => {
                 header.set_size(body.len() as u64);
                 header.set_entry_type(tar::EntryType::Regular);
-                header.set_mode(0o644);
+                header.set_mode(0o600);
                 header.set_cksum();
                 builder.append_data(&mut header, path, *body).unwrap();
             }
             None => {
                 header.set_size(0);
                 header.set_entry_type(tar::EntryType::Directory);
-                header.set_mode(0o755);
+                header.set_mode(0o700);
                 header.set_cksum();
                 builder
                     .append_data(&mut header, path, std::io::empty())
