@@ -79,6 +79,10 @@ pub(super) fn route_label(route: &str) -> String {
 type RouteKey = (&'static str, Arc<str>);
 type Stats = Arc<Mutex<RouteStats>>;
 
+/// The statistics a recorded response belongs to, for bytes counted later.
+#[derive(Debug, Clone)]
+pub(super) struct RouteHandle(Stats);
+
 /// The statistics of one matched route, per method.
 #[derive(Debug)]
 struct RouteEntry {
@@ -151,7 +155,8 @@ impl Collector {
         self.started.elapsed()
     }
 
-    /// Records one response.
+    /// Records one response (tests; the recorder uses [`Self::observe`]).
+    #[cfg(test)]
     pub(super) fn record(
         &self,
         method: &Method,
@@ -163,6 +168,7 @@ impl Collector {
         self.record_at(self.elapsed(), method, route, status, latency, queries);
     }
 
+    #[cfg(test)]
     pub(super) fn record_at(
         &self,
         now: Duration,
@@ -172,11 +178,51 @@ impl Collector {
         latency: Duration,
         queries: &RequestQueries,
     ) {
+        self.observe_at(now, method, route, status, latency, queries, None);
+    }
+
+    /// Records one response with the body bytes it sends, when known now,
+    /// and returns its route's statistics, to which [`Self::add_bytes`]
+    /// adds the bytes of a body whose length is known only when it ends.
+    pub(super) fn observe(
+        &self,
+        method: &Method,
+        route: Option<&str>,
+        status: u16,
+        latency: Duration,
+        queries: &RequestQueries,
+        bytes: Option<u64>,
+    ) -> RouteHandle {
+        self.observe_at(
+            self.elapsed(),
+            method,
+            route,
+            status,
+            latency,
+            queries,
+            bytes,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn observe_at(
+        &self,
+        now: Duration,
+        method: &Method,
+        route: Option<&str>,
+        status: u16,
+        latency: Duration,
+        queries: &RequestQueries,
+        bytes: Option<u64>,
+    ) -> RouteHandle {
         let (key, stats) = self.route_entry(method_index(method), route.unwrap_or(UNMATCHED_ROUTE));
-        stats
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .record(now, status, latency);
+        {
+            let mut locked = stats.lock().unwrap_or_else(PoisonError::into_inner);
+            locked.record(now, status, latency);
+            if let Some(bytes) = bytes {
+                locked.add_bytes(now, bytes);
+            }
+        }
         self.queries
             .fetch_add(queries.operations, Ordering::Relaxed);
         let repeated = repeated_operations(&queries.fingerprints, N_PLUS_ONE_THRESHOLD);
@@ -191,6 +237,17 @@ impl Collector {
                 );
             }
         }
+        RouteHandle(stats)
+    }
+
+    /// Adds the `bytes` a streamed response sent, when it ended, to the
+    /// route `handle` names.
+    pub(super) fn add_bytes(&self, handle: &RouteHandle, bytes: u64) {
+        handle
+            .0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .add_bytes(self.elapsed(), bytes);
     }
 
     /// The key and statistics of `route` (as matched) and `method`. A pair
