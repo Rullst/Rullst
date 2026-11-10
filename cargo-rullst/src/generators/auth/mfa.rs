@@ -78,6 +78,9 @@ pub fn scaffold_mfa_system() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "👉 Call verify_second_factor before granting a full session; secrets never leave the server after enrollment."
     );
+    println!(
+        "👉 Authenticator apps name the account's issuer MFA_ISSUER, else APP_NAME (environment or .env), else APPLICATION_NAME in {CONTROLLER_PATH}."
+    );
     Ok(())
 }
 
@@ -98,6 +101,14 @@ mod tests {
         assert!(controller.contains("last_accepted_step < ?"));
         assert!(controller.contains("rows_affected()"));
         assert!(controller.contains("use rullst::server::"));
+        // The issuer is a project setting (environment, then .env) and
+        // defaults to the application, never to the framework.
+        assert!(controller.contains(
+            "[\"MFA_ISSUER\", \"APP_NAME\"]\n        .into_iter()\n        .find_map(|name| match rullst::config::project_setting(name) {"
+        ));
+        assert!(controller.contains("const APPLICATION_NAME: &str = env!(\"CARGO_PKG_NAME\");"));
+        assert!(controller.contains(".unwrap_or_else(|| APPLICATION_NAME.to_owned())"));
+        assert!(!controller.contains("\"Rullst\""));
         assert!(controller.contains("use rullst::security::runtime::"));
         // The verifying form never carries the secret.
         let form = controller
@@ -107,6 +118,7 @@ mod tests {
             .expect("code form");
         assert!(!form.contains("secret"));
         for forbidden in [
+            "std::env::var",
             "use axum",
             "rullst_security::",
             "verify_totp_code",

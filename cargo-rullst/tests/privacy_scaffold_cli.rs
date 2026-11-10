@@ -122,6 +122,15 @@ fn privacy_commands_refresh_context_with_both_dependency_sources() {
             "Keep these application instructions.\n",
         )
         .unwrap();
+        // Scaffolds refresh the project map a project has (`cargo rullst new`
+        // writes it) and never create one.
+        success(
+            Command::new(env!("CARGO_BIN_EXE_rullst"))
+                .current_dir(&project)
+                .arg("generate:ai-context")
+                .output()
+                .unwrap(),
+        );
         for command in ["make:age-gate", "make:privacy"] {
             success(install(&project, workspace, registry, command));
             success(

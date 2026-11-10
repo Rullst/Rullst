@@ -343,3 +343,15 @@ fn dotenv_values_are_not_reinterpreted_as_keys_or_interpolated() {
     }
     assert_eq!(metadata::env_keys(b"KEY=\"quoted = value # text\" # comment\nOTHER='single = value'\nREF=${PRIVATE_ENV}\n").unwrap(), ["KEY", "OTHER", "REF"]);
 }
+
+#[test]
+fn scaffolds_refresh_only_a_project_map_the_project_has() {
+    let root = tempfile::tempdir().unwrap();
+    assert!(!has_project_context(root.path()));
+    fs::write(root.path().join(".llms.txt"), "map").unwrap();
+    assert!(has_project_context(root.path()));
+    let other = tempfile::tempdir().unwrap();
+    fs::create_dir_all(other.path().join(".rullst")).unwrap();
+    fs::write(other.path().join(".rullst/context-map.json"), "{}").unwrap();
+    assert!(has_project_context(other.path()));
+}

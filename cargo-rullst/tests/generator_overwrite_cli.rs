@@ -384,7 +384,19 @@ fn auth_scaffold_enables_auth_registers_modules_and_rejects_turso() {
 fn mfa_scaffold_is_server_side_registered_and_never_overwrites() {
     let project = Project::with_migration_runner();
     project.succeeds(&["auth"]);
+    // The project's own modules in the migrations index survive the scaffold.
+    let index = project.read("src/migrations/mod.rs");
+    fs::write(
+        project.path("src/migrations/mod.rs"),
+        format!("{index}\npub mod seeds;\n"),
+    )
+    .expect("project module in the migrations index");
+    fs::write(project.path("src/migrations/seeds.rs"), "").expect("seeds module");
     project.succeeds(&["make:mfa"]);
+    let index = project.read("src/migrations/mod.rs");
+    assert!(index.contains("\npub mod seeds;\n"), "{index}");
+    assert!(!index.contains("seeds::MigrationImpl"), "{index}");
+    assert!(!index.contains("Do not edit manually"), "{index}");
     let controller = project.read("src/controllers/mfa.rs");
     assert!(controller.contains("verify_totp_step_after"));
     assert!(!controller.contains("pub secret: String,\n    pub code"));

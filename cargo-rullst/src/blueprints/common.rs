@@ -94,27 +94,6 @@ pub fn generate_repositories_mod(models: &[&str]) -> String {
     format!("{}\n", mods)
 }
 
-/// Returns a comment/badge indicating the active frontend engine.
-/// Used in generated page files as a header comment.
-pub fn frontend_engine_badge(frontend_engine: &str) -> &'static str {
-    if frontend_engine.contains("LiveView") {
-        "Rullst LiveView compatibility profile selected"
-    } else if frontend_engine.contains("Wasm") || frontend_engine.contains("Island") {
-        "Rullst Wasm Island compatibility profile selected"
-    } else if frontend_engine.contains("Pico") || frontend_engine.contains("Topcoat") {
-        "Rullst Pico.css compatibility profile selected"
-    } else if frontend_engine.contains("Tera") || frontend_engine.contains("Template") {
-        "Rullst Tera compatibility profile selected"
-    } else {
-        "Rullst HTMX + Tailwind SSR profile selected"
-    }
-}
-
-/// Returns the frontend adapter import comment to inject at top of page files.
-pub fn frontend_adapter_comment(frontend_engine: &str) -> String {
-    format!("// Frontend Engine: {}", frontend_engine)
-}
-
 /// Returns the cargo dependency line for the chosen frontend engine.
 pub fn frontend_cargo_dependency(frontend_engine: &str) -> String {
     if frontend_engine.contains("Tera") || frontend_engine.contains("Template") {
@@ -199,5 +178,41 @@ mod tests {
         ));
         assert!(layout.contains("<div>{body}</div>"));
         syn::parse_file(&layout).expect("the layout parses");
+    }
+
+    #[test]
+    fn starters_name_only_the_frontend_the_wizard_offers() {
+        // `cargo rullst new` has no frontend choice; no starter file may claim
+        // a Tailwind, LiveView, Pico.css or Tera profile.
+        let frontend = "Zero-Bundle HTMX";
+        let mut files = crate::blueprints::blank::file_manifest(
+            "demo",
+            "demo",
+            false,
+            false,
+            true,
+            "Active Record",
+            frontend,
+        );
+        files.extend(crate::blueprints::saas::file_manifest(
+            "demo",
+            false,
+            "Active Record",
+            frontend,
+        ));
+        for (path, content) in files {
+            for claim in [
+                "profile selected",
+                "Frontend Engine: Tailwind",
+                "Frontend Engine: Tera",
+            ] {
+                assert!(!content.contains(claim), "{path} claims `{claim}`");
+            }
+        }
+        assert!(
+            super::frontend_page_imports(frontend)
+                .starts_with("// Frontend Engine: Zero-Bundle HTMX\n")
+        );
+        assert_eq!(super::frontend_cargo_dependency(frontend), "");
     }
 }

@@ -52,6 +52,80 @@ pub fn register(worker: &mut Worker) {{
     )
 }
 
+/// The queue backend the project's `rullst` features select.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum QueueBackend {
+    Sqlite,
+    Redis,
+}
+
+/// What the project's `rullst` features do for the queue the startup lines
+/// create.
+#[derive(Debug, PartialEq, Eq)]
+enum QueueSetup {
+    /// `queue-sqlite`, `queue-redis` or `redis` is enabled.
+    Enabled(QueueBackend),
+    /// No backend was enabled: this manifest enables `queue-sqlite`.
+    Added(String),
+    /// No backend is enabled and the `rullst` dependency cannot be edited.
+    Missing,
+}
+
+fn queue_setup(manifest: &str) -> QueueSetup {
+    let features = toml::from_str::<toml::Value>(manifest)
+        .ok()
+        .and_then(|manifest| {
+            manifest
+                .get("dependencies")?
+                .get("rullst")?
+                .get("features")?
+                .as_array()
+                .cloned()
+        })
+        .unwrap_or_default();
+    let enabled = |name: &str| {
+        features
+            .iter()
+            .any(|feature| feature.as_str() == Some(name))
+    };
+    if enabled("queue-sqlite") {
+        QueueSetup::Enabled(QueueBackend::Sqlite)
+    } else if enabled("queue-redis") || enabled("redis") {
+        QueueSetup::Enabled(QueueBackend::Redis)
+    } else {
+        crate::generators::chat::ensure_rullst_features(manifest, &["queue-sqlite"])
+            .map_or(QueueSetup::Missing, QueueSetup::Added)
+    }
+}
+
+/// The startup lines `make:worker` prints for `backend`.
+fn startup_guidance(backend: QueueBackend) -> Vec<&'static str> {
+    let queue: &[&str] = match backend {
+        QueueBackend::Sqlite => &[
+            "  1. Create the queue in the application's database, and the worker:",
+            "     let database_url = rullst::config::project_setting(\"DATABASE_URL\")?",
+            "         .ok_or(\"DATABASE_URL is not set\")?;",
+            "     let queue = rullst::Queue::sqlite(database_url).await?;",
+            "     (Jobs live in its rullst_jobs table. A PostgreSQL or MySQL application gives",
+            "     the queue a SQLite URL of its own, on a writable volume.)",
+        ],
+        QueueBackend::Redis => &[
+            "  1. Create the queue on the application's Redis, and the worker:",
+            "     let redis_url = rullst::config::project_setting(\"REDIS_URL\")?",
+            "         .ok_or(\"REDIS_URL is not set\")?;",
+            "     let queue = rullst::Queue::redis(redis_url)?;",
+        ],
+    };
+    let mut lines = vec!["How to start the background worker in src/main.rs:"];
+    lines.extend_from_slice(queue);
+    lines.extend([
+        "     let worker = rullst::queue::Worker::new(&queue);",
+        "  2. Register the processors and start the processing loop:",
+        "     let _worker_handle = workers::start_workers(worker)?; // Keep this handle alive for the application lifetime",
+    ]);
+    lines
+}
+
 fn ensure_worker_dependencies(manifest: &str) -> Result<String, IoError> {
     let has_serde_json = manifest.lines().any(|line| {
         let declaration = line.split_once('#').map_or(line, |(value, _)| value).trim();
@@ -137,7 +211,13 @@ pub fn create_new_worker(name: &str) -> Result<(), Box<dyn std::error::Error>> {
 
     let cargo_toml_path = Path::new("Cargo.toml");
     let cargo_toml = fs::read_to_string(cargo_toml_path)?;
-    let updated_cargo_toml = ensure_worker_dependencies(&cargo_toml)?;
+    let setup = queue_setup(&cargo_toml);
+    let (backend, with_queue) = match &setup {
+        QueueSetup::Enabled(backend) => (*backend, cargo_toml.clone()),
+        QueueSetup::Added(updated) => (QueueBackend::Sqlite, updated.clone()),
+        QueueSetup::Missing => (QueueBackend::Sqlite, cargo_toml.clone()),
+    };
+    let updated_cargo_toml = ensure_worker_dependencies(&with_queue)?;
     if updated_cargo_toml != cargo_toml {
         fs::write(cargo_toml_path, updated_cargo_toml)?;
     }
@@ -240,39 +320,67 @@ pub fn create_new_worker(name: &str) -> Result<(), Box<dyn std::error::Error>> {
         .green()
         .bold()
     );
-    println!(
-        "{}",
-        "How to initialize the background Worker in your 'src/main.rs':".cyan()
-    );
-    println!(
-        "{}",
-        "  1. Create the queue and initialize the worker:".cyan()
-    );
-    println!(
-        "{}",
-        "     let queue = rullst::Queue::sqlite(\"sqlite://rullst.db\").await?;".cyan()
-    );
-    println!(
-        "{}",
-        "     let worker = rullst::queue::Worker::new(&queue);".cyan()
-    );
-    println!("{}", "  2. Register and start the processing loop:".cyan());
-    println!(
-        "{}",
-        "     let _worker_handle = workers::start_workers(worker)?; // Keep this handle alive for the application lifetime"
-            .cyan()
-    );
+    match setup {
+        QueueSetup::Added(_) => println!(
+            "{}",
+            "ℹ️ Enabled the `queue-sqlite` feature of rullst in Cargo.toml (rullst::Queue::sqlite).".cyan()
+        ),
+        QueueSetup::Missing => println!(
+            "{}",
+            "⚠️ Enable the `queue-sqlite` feature of the rullst dependency in Cargo.toml: rullst::Queue::sqlite needs it.".yellow()
+        ),
+        QueueSetup::Enabled(_) => {}
+    }
+    for line in startup_guidance(backend) {
+        println!("{}", line.cyan());
+    }
 
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{WORKER_START_HELPER, ensure_worker_dependencies, render_worker_source};
+    use super::{
+        QueueBackend, QueueSetup, WORKER_START_HELPER, ensure_worker_dependencies, queue_setup,
+        render_worker_source, startup_guidance,
+    };
+
+    #[test]
+    fn the_queue_feature_is_enabled_and_the_guidance_uses_the_app_database() {
+        let plain = "[package]\nname = \"demo\"\n\n[dependencies]\nrullst = { version = \"13\", features = [\"orm\"] }\n";
+        let QueueSetup::Added(updated) = queue_setup(plain) else {
+            panic!("queue-sqlite is added");
+        };
+        assert!(
+            updated.contains("features = [\"orm\", \"queue-sqlite\"]"),
+            "{updated}"
+        );
+        assert_eq!(
+            queue_setup(&updated),
+            QueueSetup::Enabled(QueueBackend::Sqlite)
+        );
+        let redis = plain.replace("[\"orm\"]", "[\"orm\", \"queue-redis\"]");
+        assert_eq!(
+            queue_setup(&redis),
+            QueueSetup::Enabled(QueueBackend::Redis)
+        );
+        assert_eq!(
+            queue_setup("[package]\nname = \"x\"\n"),
+            QueueSetup::Missing
+        );
+
+        let sqlite = startup_guidance(QueueBackend::Sqlite).join("\n");
+        assert!(sqlite.contains("rullst::config::project_setting(\"DATABASE_URL\")?"));
+        assert!(sqlite.contains("rullst::Queue::sqlite(database_url).await?"));
+        assert!(!sqlite.contains("sqlite://rullst.db"), "{sqlite}");
+        let redis = startup_guidance(QueueBackend::Redis).join("\n");
+        assert!(redis.contains("rullst::Queue::redis(redis_url)?"));
+        assert!(!redis.contains("Queue::sqlite"));
+    }
 
     #[test]
     fn generated_startup_guidance_uses_the_fallible_worker_api() {
-        let guidance = "let _worker_handle = workers::start_workers(worker)?; // Keep this handle alive for the application lifetime";
+        let guidance = startup_guidance(QueueBackend::Sqlite).join("\n");
         assert!(guidance.contains("start_workers(worker)?"));
         assert!(guidance.contains("_worker_handle"));
         assert!(!guidance.contains("worker.run();"));
