@@ -11,6 +11,30 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- Generated applications start with tests and CI
+  ([Testing your application](docs/src/testing-your-app.md)). Every starter's
+  `src/security_tests.rs` has a `PAGES` list of its parameterless pages and a
+  smoke test that checks each page's status (sign-in pages redirect), its
+  security headers, its HTML and that an htmx history-restore request still
+  receives the whole page; `cargo rullst new` writes
+  `.github/workflows/ci.yml` (formatting, Clippy `-D warnings`, tests, a daily
+  `cargo audit`, a TruffleHog secret scan; every action pinned by commit SHA,
+  read-only token) and a monthly, grouped `.github/dependabot.yml`, unless
+  `--no-ci` is given. CI lints both generated workflows with actionlint and
+  checks their pins against Rullst's own.
+- `cargo rullst add browser-tests` writes Playwright 1.64.1 and axe-core
+  4.14.0 checks (`tests/browser/`, lockfile-pinned) and
+  `.github/workflows/browser-tests.yml`: every HTML page of `PAGES` in
+  Chromium, Firefox and WebKit fails on console errors, failed requests, CSP
+  violations and `serious`/`critical` axe findings, in both colour schemes
+  when the stylesheets have a dark one. Existing files are never overwritten.
+- Core test helpers: `rullst::testing::html_issues` (with `HtmlIssue` and
+  `HtmlIssueKind`) reports markup escaped twice, broken attribute quoting,
+  boolean attributes set to `"false"`, inline `<script>`/`<style>` without
+  the CSP nonce and `style`/`on*` attributes the policy blocks;
+  `TestResponse::assert_html_hygiene` applies it with the response's own
+  policy, and `TestResponse::assert_security_headers` checks the CSP,
+  `nosniff` and frame protection.
 - Content-hashed static asset URLs: `rullst::assets::url("app.css")` returns
   `/static/app.<hash>.css` (the first 16 hex characters of the file's
   SHA-256) while `Server` serves `static/`, and the plain `/static/app.css`

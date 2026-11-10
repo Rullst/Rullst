@@ -15,6 +15,7 @@ fn plan(name: &str, blueprint: usize) -> ProjectPlan {
         requested: Vec::new(),
         add_ons: Vec::new(),
         skip_initial_migration: false,
+        ci: true,
     }
 }
 
@@ -94,6 +95,16 @@ fn previews_follow_profile_and_packaging_choices() {
     }
 
     assert_eq!(rendered_files(&plan("bad name", BLANK_BLUEPRINT_ID)), None);
+
+    // The CI files are listed unless `--no-ci` turned them off.
+    for path in [".github/workflows/ci.yml", ".github/dependabot.yml"] {
+        assert!(html.iter().any(|file| file == path), "{path}");
+        assert!(api.iter().any(|file| file == path), "{path}");
+    }
+    let mut without_ci = plan("probe", BLANK_BLUEPRINT_ID);
+    without_ci.ci = false;
+    let without_ci = rendered_files(&without_ci).expect("preview without CI");
+    assert!(!without_ci.iter().any(|file| file.starts_with(".github/")));
 }
 
 #[test]
