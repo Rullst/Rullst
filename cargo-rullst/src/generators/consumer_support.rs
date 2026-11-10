@@ -263,6 +263,12 @@ mod tests {
             error.contains("and src/controllers/auth_controller.rs is missing."),
             "{error}"
         );
+        // A file that cannot be read for another reason (here a directory in
+        // its place) is reported as that I/O error, not as a missing file.
+        fs::create_dir(root.as_path().join("src/controllers/auth_controller.rs")).unwrap();
+        let error = recognized_auth(root.as_path(), "saas").unwrap_err();
+        assert!(error.downcast_ref::<io::Error>().is_some(), "{error}");
+        assert!(!error.to_string().contains("is missing"), "{error}");
     }
 
     #[test]
