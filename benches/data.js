@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794351811426,
+  "lastUpdate": 1794353256053,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -32211,6 +32211,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1544,
             "range": "± 23",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "508e309ce44da190eab87539c239c0d1b40f3193",
+          "message": "Merge pull request #634 from Rullst/feat/v13-alpha5-iot-sign\n\nfeat(cli): sign rullst-iot firmware updates with iot:keygen and iot:sign",
+          "timestamp": "2026-11-10T20:23:28-03:00",
+          "tree_id": "207be7613b3edd7ac0163af3be695309d2d333d1",
+          "url": "https://github.com/Rullst/Rullst/commit/508e309ce44da190eab87539c239c0d1b40f3193"
+        },
+        "date": 1794353252911,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 543,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 714,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 315,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1508,
+            "range": "± 21",
             "unit": "ns/iter"
           }
         ]
