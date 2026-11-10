@@ -85,8 +85,8 @@ fn run_command(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     {
         // Reached only when a global flag precedes the subcommand.
         return Err(cli::removed::report(name));
-    } else if let Some(green) = matches.subcommand_matches("green") {
-        generators::green::run(green)?;
+    } else if let Some(footprint) = matches.subcommand_matches("footprint") {
+        generators::footprint::run(footprint)?;
     } else if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
         generators::deploy_doctor::run(doctor)?;
     } else if let Some(api) = matches.subcommand_matches("generate:api") {
@@ -133,7 +133,7 @@ pub(crate) fn command() -> clap::Command {
         .subcommand(generators::oauth::command())
         .subcommand(generators::api_contract::command())
         .subcommand(generators::deploy_doctor::command())
-        .subcommand(generators::green::command())
+        .subcommand(generators::footprint::command())
         .subcommands(cli::removed::commands())
         .subcommand(tour::command())
         // Extend executable syntax without changing the published v12 enum.

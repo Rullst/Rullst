@@ -364,8 +364,8 @@ rules! {
         "the CLI no longer installs itself: `update check|verify|stage|install` and `update guided --scope|--root` were removed; these scripts run them",
         "Install the CLI with `cargo install cargo-rullst --version =<version> --locked` (verify downloaded release binaries by hand as SECURITY.md shows), and keep only `update project …` or `update guided --to <version> --project <path>`.";
     CLI_AI_REMOVED: "V13-CLI-AI-REMOVED", Review, "13.0.0-alpha.4", "CLI `ai` removed, `footprint` renamed `green`",
-        "`cargo rullst ai` was removed and `cargo rullst footprint` is now `cargo rullst green`; these scripts run them",
-        "Replace `cargo rullst footprint` with `cargo rullst green`, part of cargo-rullst (`--bench` for CPU time, JSON `rullst.green.v1`). Remove the `cargo rullst ai` steps: use your editor's or terminal's AI assistant with the project's AGENTS.md (`cargo rullst generate:ai-context`) and https://rullst.github.io/Rullst/llms.txt.";
+        "`cargo rullst ai` was removed, and `cargo rullst footprint` changed its flags and report (it was `green` in 13.0.0-alpha.4 and is `footprint` again since alpha.5); these scripts run them",
+        "Check the `cargo rullst footprint` steps: it reports only measured figures (`--bench` for CPU time and bytes per request, `--page-weight` for a page's bytes; no requests per second, latency, peak memory or RAPL energy) and its JSON is `rullst.footprint.v1` instead of `rullst.cli-footprint.v1`. Remove the `cargo rullst ai` steps: use your editor's or terminal's AI assistant with the project's AGENTS.md (`cargo rullst generate:ai-context`) and https://rullst.github.io/Rullst/llms.txt.";
     ORM_FROM_ROW: "V13-ORM-FROM-ROW", MustChange, "13.0.0-alpha.4", "ORM `FromRow` and SQLx macros",
         "`#[derive(Orm)]` now implements `FromRow`, so deriving `FromRow` too no longer compiles (E0119, or \"expected derive macro, found trait\")",
         "Remove `FromRow` from this derive list and from the `use` line that imports it. A model that keeps its own `FromRow` (hand-written, or SQLx's derive with SQLx's `derive` feature in Cargo.toml) declares `#[orm(custom_from_row)]`.";
@@ -378,21 +378,24 @@ rules! {
     SQLX_TLS_RING: "V13-SQLX-TLS-RING", Review, "13.0.0-alpha.4", "TLS crypto provider",
         "this `sqlx` dependency enables `tls-rustls` or `tls-rustls-ring`, so SQLx keeps ring for database TLS while Rullst's other TLS connections use aws-lc-rs",
         "Change the feature to `tls-rustls-aws-lc-rs`; SQLx prefers ring whenever any crate enables it, so one ring feature keeps every SQLx connection on ring. See https://rullst.github.io/Rullst/book/security-architecture.html#cryptography-providers";
-    SQLX_TLS_NATIVE_ROOTS: "V13-SQLX-TLS-NATIVE-ROOTS", Review, "13.0.0-rc.1", "TLS crypto provider",
+    SQLX_TLS_NATIVE_ROOTS: "V13-SQLX-TLS-NATIVE-ROOTS", Review, "13.0.0-alpha.5", "TLS crypto provider",
         "this `sqlx` dependency enables `tls-rustls-ring-native-roots`, so SQLx keeps ring, with the operating system's roots, for database TLS while Rullst's other TLS connections use aws-lc-rs",
         "SQLx 0.9 has no aws-lc-rs feature that trusts the operating system's roots. Either change the feature to `tls-rustls-aws-lc-rs`, which trusts the bundled WebPKI (Mozilla) roots (for a database certificate from a private CA, pass that CA with the connection's `sslrootcert` (PostgreSQL) or `ssl-ca` (MySQL) option), or keep native roots and record why: SQLx then keeps ring for every database connection. See https://rullst.github.io/Rullst/book/security-architecture.html#cryptography-providers";
-    DEPLOY_SQLITE_URL: "V13-DEPLOY-SQLITE-URL", Review, "13.0.0-rc.1", "SQLite database in the deployed image",
+    DEPLOY_SQLITE_URL: "V13-DEPLOY-SQLITE-URL", Review, "13.0.0-alpha.5", "SQLite database in the deployed image",
         "this SQLite project's Dockerfile sets no `DATABASE_URL`, so in the deployed container the database path points into the read-only `/app` and the app stops at startup",
         "Add `ENV DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc` to the runtime stage (the last `FROM`), which keeps the database in the `/app/data` volume, or set `DATABASE_URL` in `.env.production`; `cargo rullst deploy` and `dockerize` write that line since 13.0.0-alpha.4.";
-    DEPLOY_CADDY_HEALTH: "V13-DEPLOY-CADDY-HEALTH", Review, "13.0.0-rc.1", "CLI deploy targets removed",
+    DEPLOY_CADDY_HEALTH: "V13-DEPLOY-CADDY-HEALTH", Review, "13.0.0-alpha.5", "CLI deploy targets removed",
         "this `Caddyfile` proxies to `app:3000` without the health checks `cargo rullst deploy` now writes, so Caddy answers with an error while the app starts or restarts instead of holding requests",
         "Move the file aside and run `cargo rullst deploy` again, or add `health_uri /health`, `health_interval 5s` and `lb_try_duration 15s` inside a `reverse_proxy app:3000 { ... }` block: Caddy then stops routing to the app while `/health` fails and holds each request for up to 15 seconds.";
-    MIGRATION_AUTO_STATUS: "V13-CLI-MIGRATION-AUTO-STATUS", Review, "13.0.0-rc.1", "CLI `make:migration:auto` without a database to compare",
+    MIGRATION_AUTO_STATUS: "V13-CLI-MIGRATION-AUTO-STATUS", Review, "13.0.0-alpha.5", "CLI `make:migration:auto` without a database to compare",
         "this script runs `make:migration:auto`, which exits with status 1 (\"No migration generated\") since 13.0.0-alpha.4 when there is no SQLite database to compare",
         "Run it only where `.env` has a SQLite `DATABASE_URL` (no `.env`, no `DATABASE_URL`, a non-SQLite URL or a Turso primary has nothing to compare), or stop expecting status 0 there; a database already in sync with the models still exits with status 0.";
-    BLUEPRINTS_REMOVED: "V13-CLI-BLUEPRINTS-REMOVED", Review, "13.0.0-rc.1", "CLI starters moved to the examples",
+    BLUEPRINTS_REMOVED: "V13-CLI-BLUEPRINTS-REMOVED", Review, "13.0.0-alpha.5", "CLI starters moved to the examples",
         "this script passes `--blueprint lms|blog|portfolio|erp`, which `cargo rullst new` refuses with status 1 since 13.0.0-alpha.4, before writing anything",
         "Copy the application from the repository's `examples/lms`, `examples/erp`, `examples/portfolio` or `examples/blog` (https://github.com/Rullst/Rullst/tree/main/examples) instead, or start from `--blueprint api` or `--blueprint saas`.";
+    CLI_GREEN_RENAMED: "V13-CLI-GREEN-RENAMED", Review, "13.0.0-alpha.5", "CLI `green` renamed `footprint`",
+        "`cargo rullst green` is `cargo rullst footprint` since 13.0.0-alpha.5, without an alias, and its JSON report is `rullst.footprint.v1` instead of `rullst.green.v1`; this file runs or reads the old one",
+        "Replace `cargo rullst green` with `cargo rullst footprint` (the same flags, plus `--page-weight` and `--network-kwh-per-gb`) and `rullst.green.v1` with `rullst.footprint.v1`; the report adds `page_weight` and the benchmark's bytes. A line kept on purpose, such as a changelog entry, can carry `rullst-upgrade: reviewed V13-CLI-GREEN-RENAMED`.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

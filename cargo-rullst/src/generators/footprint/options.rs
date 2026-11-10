@@ -1,4 +1,4 @@
-//! The `green` command line: flags, bounds and their validation.
+//! The `footprint` command line: flags, bounds and their validation.
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::time::Duration;
 
@@ -14,7 +14,7 @@ const MAX_IMAGE_BYTES: usize = 255;
 pub(super) struct Options {
     pub url: Option<reqwest::Url>,
     pub path: String,
-    /// `RULLST_ENV` of the app green starts: `production` or `staging`.
+    /// `RULLST_ENV` of the app footprint starts: `production` or `staging`.
     pub environment: &'static str,
     /// A local container image whose size is measured.
     pub image: Option<String>,
@@ -25,12 +25,19 @@ pub(super) struct Options {
     pub cpu_watts: Option<f64>,
     pub grid_intensity: Option<f64>,
     pub embodied: Option<f64>,
+    /// Whether the page at `path` and its resources are weighed.
+    pub page_weight: bool,
+    pub network_kwh_per_gb: Option<f64>,
     pub json: bool,
 }
 
+/// What the report is and is not, in `--help` and in the book.
+pub(super) const DISCLAIMER: &str = "The report is a measurement and an estimate from the figures you supply, not a certification or an environmental claim. If your application publishes these numbers, you are responsible for how you word them.";
+
 pub(crate) fn command() -> Command {
-    Command::new("green")
-        .about("(experimental) Measure binary and image size, idle memory, dependencies and benchmark CPU time; an SCI carbon estimate only from inputs you supply")
+    Command::new("footprint")
+        .about("(experimental) Measure binary and image size, idle memory, dependencies, benchmark CPU time and page weight; an SCI carbon estimate only from inputs you supply")
+        .after_help(DISCLAIMER)
         .arg(
             Arg::new("url")
                 .long("url")
@@ -113,10 +120,24 @@ pub(crate) fn command() -> Command {
                 .help("Embodied emissions (M) you allocate to this run; otherwise not included"),
         )
         .arg(
+            Arg::new("network-kwh-per-gb")
+                .long("network-kwh-per-gb")
+                .value_name("kWh/GB")
+                .value_parser(|value: &str| positive(value, 100.0))
+                .requires("cpu-watts")
+                .help("Your energy figure per gigabyte transferred, to add the served bytes to the SCI estimate's energy term"),
+        )
+        .arg(
+            Arg::new("page-weight")
+                .long("page-weight")
+                .action(ArgAction::SetTrue)
+                .help("Fetch the --path page and the same-origin resources it references: first-visit and repeat-visit bytes and requests, and third-party origins (listed, not fetched)"),
+        )
+        .arg(
             Arg::new("json")
                 .long("json")
                 .action(ArgAction::SetTrue)
-                .help("Print the versioned JSON report (rullst.green.v1)"),
+                .help("Print the versioned JSON report (rullst.footprint.v1)"),
         )
 }
 
@@ -139,6 +160,8 @@ impl Options {
             cpu_watts: get(matches, "cpu-watts"),
             grid_intensity: get(matches, "grid-intensity"),
             embodied: get(matches, "embodied"),
+            page_weight: get(matches, "page-weight").unwrap_or(false),
+            network_kwh_per_gb: get(matches, "network-kwh-per-gb"),
             json: get(matches, "json").unwrap_or(false),
         }
     }
@@ -238,7 +261,7 @@ mod tests {
 
     fn parse(arguments: &[&str]) -> Result<Options, clap::Error> {
         command()
-            .try_get_matches_from(std::iter::once("green").chain(arguments.iter().copied()))
+            .try_get_matches_from(std::iter::once("footprint").chain(arguments.iter().copied()))
             .map(|matches| Options::from_matches(&matches))
     }
 
@@ -260,6 +283,8 @@ mod tests {
             ),
             (None, None, None)
         );
+        assert!(!defaults.page_weight);
+        assert_eq!(defaults.network_kwh_per_gb, None);
         assert!(!defaults.json);
 
         let full = parse(&[
@@ -280,6 +305,9 @@ mod tests {
             "120.5",
             "--embodied",
             "0",
+            "--network-kwh-per-gb",
+            "0.059",
+            "--page-weight",
             "--json",
         ])
         .unwrap();
@@ -295,7 +323,10 @@ mod tests {
         assert_eq!(full.cpu_watts, Some(15.0));
         assert_eq!(full.grid_intensity, Some(120.5));
         assert_eq!(full.embodied, Some(0.0));
+        assert_eq!(full.network_kwh_per_gb, Some(0.059));
+        assert!(full.page_weight);
         assert!(full.json);
+        assert!(parse(&["--page-weight"]).unwrap().page_weight);
         assert_eq!(parse(&["--env", "staging"]).unwrap().environment, "staging");
     }
 
@@ -307,6 +338,8 @@ mod tests {
             &["--cpu-watts", "15"],
             &["--bench", "--grid-intensity", "100"],
             &["--bench", "--cpu-watts", "15", "--embodied", "1"],
+            &["--bench", "--network-kwh-per-gb", "0.06"],
+            &["--network-kwh-per-gb", "0.06"],
         ] {
             let error = parse(arguments).unwrap_err();
             assert_eq!(
@@ -331,6 +364,8 @@ mod tests {
             &["--bench", "--cpu-watts", "15", "--grid-intensity", "-1"],
             &["--bench", "--cpu-watts", "15", "--grid-intensity", "NaN"],
             &["--bench", "--cpu-watts", "0"],
+            &["--bench", "--cpu-watts", "1", "--network-kwh-per-gb", "0"],
+            &["--bench", "--cpu-watts", "1", "--network-kwh-per-gb", "101"],
             &[
                 "--bench",
                 "--cpu-watts",
@@ -362,6 +397,16 @@ mod tests {
         );
         assert!(validate_image(&"a".repeat(256)).is_err());
         assert!(validate_image(&"a".repeat(255)).is_ok());
+    }
+
+    #[test]
+    fn the_help_says_what_the_report_is_not() {
+        let help = command().render_long_help().to_string();
+        assert!(help.contains("page weight"), "{help}");
+        assert!(help.contains(DISCLAIMER), "{help}");
+        assert!(help.contains("not a certification or an environmental claim"));
+        assert!(help.contains("--network-kwh-per-gb <kWh/GB>"), "{help}");
+        assert!(parse(&["--bench", "--cpu-watts", "1", "--network-kwh-per-gb", "100"]).is_ok());
     }
 
     #[test]

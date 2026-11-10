@@ -11,6 +11,31 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- `cargo rullst footprint --page-weight` weighs a page as a browser would:
+  the `--path` page and the same-origin stylesheets (with their `url()` and
+  `@import`), scripts, fonts, images, icon and manifest it references, on a
+  first visit and on a repeat visit that honours `Cache-Control` freshness and
+  `ETag`/`Last-Modified` revalidation. It reports bytes as served (compressed
+  when the app compresses), requests, responses from the cache and `304`s,
+  every resource, and the third-party origins the page references, which are
+  listed and never fetched. With `--bench`, every request now sends
+  `Accept-Encoding: zstd, br, gzip` and the report adds the response bytes,
+  bytes per request and the encodings served. `--network-kwh-per-gb` adds a
+  network term (the measured bytes × your energy figure per gigabyte) to the
+  SCI estimate, documented with the sources of typical figures and their
+  limits. Requested by the applications upgraded to 13.0.0-alpha.4.
+- `cargo rullst footprint` measures idle memory and CPU time on macOS
+  (`proc_pidinfo`) and Windows (`GetProcessMemoryInfo`, `GetProcessTimes`),
+  not only on Linux, and finds the app listening on a `--url` port there too
+  (`lsof`, `GetExtendedTcpTable`), with its executable for the binary size.
+- `cargo rullst upgrade` honours a `rullst-upgrade: reviewed V13-…` comment
+  after the code on a review finding's line, or alone on the line above it:
+  the plan leaves that location out, reports the rule's next unmarked
+  location in the file, and counts the marked ones (`Reviewed:` in the plan,
+  `finding_counts.reviewed` in JSON). Must-change findings ignore it.
+  Requested while upgrading an application. The plan of an alpha.4
+  application links the new "Upgrading an alpha.4 application to alpha.5"
+  checklist.
 - CI compares the ORM across databases: the `ORM differential databases` job
   of `ci.yml` runs the same scenarios (`rullst-orm/tests/differential/`:
   `#[derive(Orm)]` CRUD, value round trips, query-builder filters, ordering
@@ -49,8 +74,39 @@ A prepared version section does not establish that its tag or crates exist.
   informational (`continue-on-error`), so it never changes the Miri admission
   receipt.
 
+### Changed
+
+- **Breaking:** `cargo rullst green` is `cargo rullst footprint`, without an
+  alias, and its JSON report is `rullst.footprint.v1` instead of
+  `rullst.green.v1`; `cargo rullst green` now fails as an unknown command.
+  "Green" read as an environmental claim; the command measures resources and
+  estimates SCI from the operator's figures, and its help, notes and book page
+  now say that the report is a measurement and an estimate, not a
+  certification or an environmental claim, and that an application publishing
+  the numbers is responsible for how it words them. The flags are unchanged;
+  the report keeps its keys and adds `page_weight`, the benchmark's bytes and
+  the SCI's network term. The book page is now `footprint.html` and the green
+  software roadmap the resource efficiency roadmap (the old addresses
+  redirect), and the home screen offers a Footprint Report. `cargo rullst
+  upgrade` reports scripts, CI configuration, Dockerfiles, Makefiles,
+  justfiles and documentation that still run `cargo rullst green` or read
+  `rullst.green.v1` (`V13-CLI-GREEN-RENAMED`), and `V13-CLI-AI-REMOVED` no
+  longer tells alpha.3 applications to use `green`.
+
 ### Fixed
 
+- `cargo rullst upgrade` decided `V13-LMS-MEDIA-KINDS`,
+  `V13-ORM-TRANSACTION-ERRORS` and `V13-PAGE-BOUNDS` from the raw file text,
+  so a comment or a string could raise them (`captions_url`,
+  `DatabaseError`) or silence one (`MAX_PAGE`). They now read only the code,
+  as `V13-CREDENTIAL-RATE-LIMIT` does; a Nexus field named `"captions_url"`
+  still counts. Reported while upgrading an application.
+- The five upgrade rules for alpha.4 changes added after alpha.4
+  (`V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`,
+  `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS` and
+  `V13-CLI-BLUEPRINTS-REMOVED`) were dated 13.0.0-rc.1 and now ship in
+  13.0.0-alpha.5, the release they are dated with, so an application already
+  on alpha.5 no longer gets them again.
 - `rullst-orm` on MariaDB: a `DateTime<Utc>` before 1970-01-01 or after
   2038-01-19 03:14:07 UTC is no longer lost. SQLx's MySQL driver binds it as a
   `TIMESTAMP` parameter, and MariaDB turned such a value into `NULL` even for

@@ -1,18 +1,20 @@
-//! The versioned green report (`rullst.green.v1`). Measured figures carry
-//! their method, or the reason they were not measured; the carbon figure is
-//! a separately labelled estimate with its inputs. Keys are always present
-//! (null when unknown) so scripts can rely on them.
+//! The versioned footprint report (`rullst.footprint.v1`). Measured figures
+//! carry their method, or the reason they were not measured; the carbon
+//! figure is a separately labelled estimate with its inputs. Keys are always
+//! present (null when unknown) so scripts can rely on them.
 use super::failure::Failure;
+use super::page::PageWeight;
 use super::sci::SciEstimate;
 use serde::Serialize;
 
-pub(super) const SCHEMA_VERSION: &str = "rullst.green.v1";
+pub(super) const SCHEMA_VERSION: &str = "rullst.footprint.v1";
 
-pub(super) const NOTES: [&str; 4] = [
+pub(super) const NOTES: &[&str] = &[
     "Measured figures depend on the hardware, operating system, build profile, data and other running processes; compare runs only on the same machine and setup.",
     "The benchmark load generator runs on the same machine; its CPU use is not part of the app's CPU time.",
-    "The SCI figure is an estimate computed only from the power figure and grid intensity you supply; green never fetches carbon data and measures no energy.",
-    "This is a measurement report, not a certification or a comparison with other software.",
+    "Response and page bytes are bodies as served over loopback, without headers; a CDN, proxy or another network changes what users receive.",
+    "The SCI figure is an estimate computed only from the power, network and grid figures you supply; footprint never fetches carbon data and measures no energy.",
+    "This report is a measurement and an estimate, not a certification, an environmental claim or a comparison with other software; if you publish these figures, you are responsible for how you word them.",
 ];
 
 /// A measured value with how it was obtained, or why it was not.
@@ -58,8 +60,9 @@ pub(crate) struct Report {
     pub target: Target,
     pub measured: Measured,
     pub benchmark: Benchmark,
+    pub page_weight: PageWeight,
     pub sci_estimate: SciEstimate,
-    pub notes: [&'static str; 4],
+    pub notes: &'static [&'static str],
     /// Why the app was not measured (`null` when it was): the figures that
     /// need no running app are still reported.
     pub failure: Option<Failure>,
@@ -81,14 +84,14 @@ impl Machine {
             logical_cpus: std::thread::available_parallelism()
                 .ok()
                 .map(std::num::NonZeroUsize::get),
-            cpu_model: super::procfs::cpu_model(),
+            cpu_model: super::process::cpu_model(),
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct Target {
-    /// `release_build` (started by green) or `existing_url`.
+    /// `release_build` (started by footprint) or `existing_url`.
     pub mode: &'static str,
     /// `null` when the release build failed before a port was chosen.
     pub url: Option<String>,
@@ -99,7 +102,7 @@ pub(crate) struct Target {
     pub environment: Option<&'static str>,
 }
 
-/// Figures read from files, the container engine or `/proc`.
+/// Figures read from files, the container engine or the operating system.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct Measured {
     pub binary_size_bytes: Metric<u64>,
@@ -123,6 +126,13 @@ pub(crate) struct Benchmark {
     pub http_errors: Option<u64>,
     pub cpu_time_seconds: Metric<f64>,
     pub cpu_ms_per_request: Metric<f64>,
+    /// The `Accept-Encoding` every request sent.
+    pub accept_encoding: Option<&'static str>,
+    /// Body bytes of the completed responses, as served.
+    pub response_bytes: Metric<u64>,
+    pub bytes_per_request: Metric<f64>,
+    /// The `Content-Encoding` values of the responses (`identity` for none).
+    pub content_encodings: Vec<String>,
 }
 
 impl Benchmark {
@@ -140,6 +150,10 @@ impl Benchmark {
             http_errors: None,
             cpu_time_seconds: Metric::not_measured("seconds", reason),
             cpu_ms_per_request: Metric::not_measured("milliseconds", reason),
+            accept_encoding: None,
+            response_bytes: Metric::not_measured("bytes", reason),
+            bytes_per_request: Metric::not_measured("bytes", reason),
+            content_encodings: Vec::new(),
         }
     }
 
@@ -153,12 +167,17 @@ impl Benchmark {
         cpu_seconds: Result<f64, &'static str>,
     ) -> Self {
         let cpu_time_seconds = match cpu_seconds {
-            Ok(seconds) => Metric::measured(
-                seconds,
-                "seconds",
-                "utime + stime of the app process during the load (/proc/<pid>/stat)",
-            ),
+            Ok(seconds) => Metric::measured(seconds, "seconds", super::process::METHODS.cpu),
             Err(reason) => Metric::not_measured("seconds", reason),
+        };
+        let bytes_per_request = if outcome.responses > 0 {
+            Metric::measured(
+                outcome.body_bytes as f64 / outcome.responses as f64,
+                "bytes",
+                "response body bytes / completed requests",
+            )
+        } else {
+            Metric::not_measured("bytes", "no request completed")
         };
         let cpu_ms_per_request = match (cpu_seconds, outcome.responses) {
             (Ok(seconds), requests) if requests > 0 => Metric::measured(
@@ -181,6 +200,14 @@ impl Benchmark {
             http_errors: Some(outcome.http_errors),
             cpu_time_seconds,
             cpu_ms_per_request,
+            accept_encoding: Some(super::load::ACCEPT_ENCODING),
+            response_bytes: Metric::measured(
+                outcome.body_bytes,
+                "bytes",
+                "body bytes of the completed responses as served (Content-Encoding kept), without headers",
+            ),
+            bytes_per_request,
+            content_encodings: outcome.encodings.iter().cloned().collect(),
         }
     }
 }

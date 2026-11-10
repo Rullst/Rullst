@@ -12,14 +12,16 @@ use std::path::Path;
 pub(super) const GUIDE: &str = "https://rullst.github.io/Rullst/book/migration-v13.html";
 /// Its checklist for 13.0.0-alpha.2 applications.
 pub(super) const ALPHA2_CHECKLIST: &str = "upgrading-an-alpha2-application-to-alpha3";
-/// Its checklist for 13.0.0-alpha.3 applications, which also explains the
-/// rules a later 13.0 prerelease adds for alpha.4 changes.
+/// Its checklist for 13.0.0-alpha.3 applications.
 pub(super) const ALPHA3_CHECKLIST: &str = "upgrading-an-alpha3-application-to-alpha4";
+/// Its checklist for 13.0.0-alpha.4 applications, which also explains the
+/// rules a later 13.0 prerelease adds for alpha.5 changes.
+pub(super) const ALPHA4_CHECKLIST: &str = "upgrading-an-alpha4-application-to-alpha5";
 
 /// The checklist for an application on the 13.0 prerelease `current`, if
-/// the guide has one: alpha.2 and alpha.3 have their own; a later alpha,
-/// beta or release candidate gets only rules for alpha.4 changes, which the
-/// alpha.3 checklist describes. alpha.1 has none.
+/// the guide has one: alpha.2, alpha.3 and alpha.4 have their own; a later
+/// alpha, beta or release candidate gets only rules for alpha.5 changes,
+/// which the alpha.4 checklist describes. alpha.1 has none.
 fn checklist(current: &Version) -> Option<&'static str> {
     if (current.major, current.minor, current.patch) != (13, 0, 0) || current.pre.is_empty() {
         return None;
@@ -27,11 +29,23 @@ fn checklist(current: &Version) -> Option<&'static str> {
     let pre = current.pre.as_str();
     match pre.strip_prefix("alpha.").map(str::parse::<u64>) {
         Some(Ok(2)) => Some(ALPHA2_CHECKLIST),
-        Some(Ok(number)) if number >= 3 => Some(ALPHA3_CHECKLIST),
+        Some(Ok(3)) => Some(ALPHA3_CHECKLIST),
+        Some(Ok(number)) if number >= 4 => Some(ALPHA4_CHECKLIST),
         Some(_) => None,
         None if pre.starts_with("alpha") => None,
-        None => Some(ALPHA3_CHECKLIST),
+        None => Some(ALPHA4_CHECKLIST),
     }
+}
+
+/// What the plan says about the review locations a marker left out.
+fn reviewed_note(scan: &SourceScan) -> Option<String> {
+    let count = scan.reviewed.len();
+    (count > 0).then(|| {
+        format!(
+            "{count} review location(s) marked `{}` left out",
+            rules::REVIEWED_MARKER
+        )
+    })
 }
 
 /// The part of the guide the plan links: the checklist for the project's
@@ -92,6 +106,9 @@ pub(super) fn plan_text(
     ));
     if let Some(note) = selection_note(&scan.selection) {
         lines.push(format!("  Rules: {note}"));
+    }
+    if let Some(note) = reviewed_note(scan) {
+        lines.push(format!("  Reviewed: {note}"));
     }
     for finding in &scan.findings {
         lines.push(format!(
@@ -170,6 +187,9 @@ pub(super) fn render_report(
     if let Some(note) = selection_note(&scan.selection) {
         report.push_str(&format!("Rules: {note}.\n\n"));
     }
+    if let Some(note) = reviewed_note(scan) {
+        report.push_str(&format!("Reviewed: {note}.\n\n"));
+    }
     let guide = guide_url(&scan.selection);
     if guide != rules::MIGRATION_GUIDE_URL {
         report.push_str(&format!(
@@ -207,7 +227,8 @@ pub(super) fn render_report(
 /// The `rullst.upgrade-plan.v1` document. v13 extends it additively: each
 /// finding keeps `path`, `line`, `code`, `severity` and `message` and adds
 /// `kind`, `introduced_in`, `migration_row` and `migration_url`; the root adds
-/// `rule_selection`.
+/// `rule_selection`, and `finding_counts.reviewed` counts the review locations
+/// a `rullst-upgrade: reviewed` marker left out.
 pub(super) fn render_json_report(
     root: &Path,
     target: &Version,
@@ -258,6 +279,7 @@ pub(super) fn render_json_report(
         "finding_counts": {
             "must_change": scan.count(FindingKind::MustChange),
             "review": scan.count(FindingKind::Review),
+            "reviewed": scan.reviewed.len(),
         },
         "rule_selection": {
             "current_version": scan.selection.current.as_ref().map(Version::to_string),

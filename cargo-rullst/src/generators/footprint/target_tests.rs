@@ -1,4 +1,4 @@
-//! URL validation, socket lookup and the lifecycle of a started app.
+//! URL validation, the listener's owner and the lifecycle of a started app.
 use super::*;
 
 #[test]
@@ -61,17 +61,6 @@ fn request_paths_keep_the_loopback_host() {
 }
 
 #[test]
-fn listening_sockets_are_found_by_port_and_state() {
-    let table = include_str!("fixtures/proc_net_tcp");
-    assert_eq!(listening_inodes(table, 3000), [424242]);
-    // Port 8080 only has an established connection.
-    assert!(listening_inodes(table, 8080).is_empty());
-    assert!(listening_inodes(table, 9).is_empty());
-    let table6 = include_str!("fixtures/proc_net_tcp6");
-    assert_eq!(listening_inodes(table6, 3000), [515151]);
-}
-
-#[test]
 fn a_free_port_is_a_bindable_loopback_port() {
     // A parallel test may bind the freed port first, so try a few fresh
     // ports; one of them must bind.
@@ -103,7 +92,7 @@ fn only_a_single_owner_identifies_the_app() {
 #[cfg(unix)]
 mod owned {
     use super::*;
-    use crate::generators::green::tests::support::{TestServer, script};
+    use crate::generators::footprint::tests::support::{TestServer, script};
 
     /// Starts `binary`, retrying while another test's fork still holds the
     /// freshly written script open (ETXTBSY).

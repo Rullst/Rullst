@@ -1,4 +1,4 @@
-//! Terminal tables for the green report: label, value and method on each
+//! Terminal tables for the footprint report: label, value and method on each
 //! row; `NOT MEASURED` values keep their reason, and the SCI section says it
 //! is an estimate. Plain under `NO_COLOR`, `CI` or when stdout is not a
 //! terminal.
@@ -88,8 +88,8 @@ fn metric<T: Copy>(label: &'static str, metric: &Metric<T>, show: impl Fn(T) -> 
 fn target_rows(report: &Report) -> Vec<Row> {
     let target = &report.target;
     let mode = match (target.mode, &target.executable) {
-        ("release_build", Some(name)) => format!("release build `{name}` started by green"),
-        ("release_build", None) => "release build started by green".to_string(),
+        ("release_build", Some(name)) => format!("release build `{name}` started by footprint"),
+        ("release_build", None) => "release build started by footprint".to_string(),
         _ => "existing app (--url)".to_string(),
     };
     let absent = if report.failure.is_some() {
@@ -166,7 +166,106 @@ fn benchmark_rows(report: &Report) -> Vec<Row> {
         metric("CPU/request", &benchmark.cpu_ms_per_request, |value| {
             format!("{} ms", number(value))
         }),
+        match (
+            benchmark.response_bytes.value,
+            benchmark.bytes_per_request.value,
+        ) {
+            (Some(total), Some(each)) => row(
+                "Bytes/request",
+                bytes(each.round() as u64),
+                format!(
+                    "{} in all, as served ({})",
+                    bytes(total),
+                    benchmark.content_encodings.join(", ")
+                ),
+            ),
+            _ => missing(
+                "Bytes/request",
+                "NOT MEASURED",
+                benchmark
+                    .bytes_per_request
+                    .reason
+                    .clone()
+                    .unwrap_or_default(),
+            ),
+        },
     ]
+}
+
+fn page_rows(report: &Report) -> Vec<Row> {
+    let page = &report.page_weight;
+    let (Some(first), Some(first_requests), Some(repeat), Some(repeat_requests)) = (
+        page.first_visit.bytes,
+        page.first_visit.requests,
+        page.repeat_visit.bytes,
+        page.repeat_visit.requests,
+    ) else {
+        let value = if page.status == "not_run" {
+            "NOT RUN"
+        } else {
+            "NOT MEASURED"
+        };
+        return vec![missing(
+            "Page weight",
+            value,
+            page.reason.clone().unwrap_or_default(),
+        )];
+    };
+    let mut encodings: Vec<&str> = page
+        .resources
+        .iter()
+        .filter_map(|resource| resource.content_encoding.as_deref())
+        .collect();
+    encodings.sort_unstable();
+    encodings.dedup();
+    let served = if encodings.is_empty() {
+        "uncompressed".to_string()
+    } else {
+        format!("compressed: {}", encodings.join(", "))
+    };
+    let mut rows = vec![
+        row(
+            "First visit",
+            bytes(first),
+            format!(
+                "{first_requests} requests, GET {} and its resources, as served ({served})",
+                page.path.as_deref().unwrap_or("/")
+            ),
+        ),
+        row(
+            "Repeat visit",
+            bytes(repeat),
+            format!(
+                "{repeat_requests} requests; {} from the cache, {} not modified (304)",
+                page.repeat_visit.from_cache.unwrap_or(0),
+                page.repeat_visit.not_modified.unwrap_or(0)
+            ),
+        ),
+    ];
+    rows.push(if page.third_party_origins.is_empty() {
+        row("Third party", "none", "no other origin referenced")
+    } else {
+        row(
+            "Third party",
+            format!("{} origins", page.third_party_origins.len()),
+            format!(
+                "{} (listed, not fetched; {} resources)",
+                page.third_party_origins.join(", "),
+                page.third_party_references
+            ),
+        )
+    });
+    if page.unfetched > 0 {
+        rows.push(missing(
+            "Not fetched",
+            &page.unfetched.to_string(),
+            format!(
+                "same-origin references beyond the first {} responses",
+                super::page::MAX_RESOURCES
+            ),
+        ));
+    }
+    rows
 }
 
 fn estimate_rows(report: &Report) -> Vec<Row> {
@@ -187,6 +286,22 @@ fn estimate_rows(report: &Report) -> Vec<Row> {
         number(inputs.cpu_time_seconds.unwrap_or_default()),
         number(inputs.cpu_watts.unwrap_or_default())
     );
+    let network = match (sci.network_energy_kwh, inputs.network_kwh_per_gb) {
+        (Some(energy), Some(per_gb)) => row(
+            "E (network)",
+            format!("{} kWh", number(energy)),
+            format!(
+                "estimate: {} served × {} kWh/GB, included in E",
+                bytes(inputs.response_bytes.unwrap_or_default()),
+                number(per_gb)
+            ),
+        ),
+        _ => row(
+            "E (network)",
+            "not included",
+            "pass --network-kwh-per-gb to include it",
+        ),
+    };
     let embodied = match inputs.embodied_g {
         Some(grams) => row(
             "M (embodied)",
@@ -206,6 +321,7 @@ fn estimate_rows(report: &Report) -> Vec<Row> {
             format!("{} kWh", number(sci.energy_kwh.unwrap_or_default())),
             energy,
         ),
+        network,
         row(
             "I (grid)",
             format!(
@@ -232,7 +348,7 @@ pub(super) fn render(report: &Report, style: Style) -> String {
     let machine = &report.machine;
     let mut out = format!(
         "{} {}\n",
-        style.bold("Rullst green"),
+        style.bold("Rullst footprint"),
         style.dim(&format!("· v{}", report.cli_version))
     );
     let cpus = machine
@@ -250,6 +366,7 @@ pub(super) fn render(report: &Report, style: Style) -> String {
         ("Target", target_rows(report)),
         ("Measured", measured_rows(report)),
         ("Benchmark", benchmark_rows(report)),
+        ("Page weight", page_rows(report)),
         ("SCI estimate (not a measurement)", estimate_rows(report)),
     ];
     let value_width = sections

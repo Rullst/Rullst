@@ -14,7 +14,7 @@ cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 ```
 
 `cargo-rullst` is a Core package. Two commands carry their own **Maturity**
-label below the command name, *Experimental*: `make:iot` and `green`. The
+label below the command name, *Experimental*: `make:iot` and `footprint`. The
 [maturity tiers](maturity.md#cli-generators) page explains what the label
 promises.
 
@@ -55,7 +55,7 @@ all of them:
 | `cargo rullst update project verify --dry-run` or `--json` | `rullst.project-verification-plan.v1` (dry run), `rullst.project-verification.v1` |
 | `cargo rullst update project review --json` | `rullst.project-review-report.v1` |
 | `cargo rullst update project apply --json` and `recover --json` | `rullst.project-application.v1` |
-| `cargo rullst green --json` (experimental) | `rullst.green.v1` |
+| `cargo rullst footprint --json` (experimental) | `rullst.footprint.v1` |
 
 `pkg list --json` prints `{"schema": "rullst.cli-pkg.v1", "table":
 "dependencies", "packages": ["rullst-auth"]}`; `table` is
@@ -83,8 +83,8 @@ and a summary of where you are.
   Turso-primary project), the number of `src/migrations` files and the latest
   one, and the Git branch. Connection URLs are never displayed. The menu leads
   with dev, dash, scaffolding, database, `doctor` and deploy, keeps every
-  project operation of earlier releases, and offers **Green Report**
-  ([`cargo rullst green`](#cargo-rullst-green), Experimental). Started from a
+  project operation of earlier releases, and offers **Footprint Report**
+  ([`cargo rullst footprint`](#cargo-rullst-footprint), Experimental). Started from a
   subdirectory, menu
   commands run at the project root (except `new`). The migration count is the
   files on disk; run `cargo rullst db:status` for the applied state.
@@ -364,7 +364,7 @@ neither linker) build with the toolchain default.
 Since v13 the generated `Cargo.toml` also has a `[profile.release]` with
 `lto = "thin"`, `codegen-units = 1` and `strip = "symbols"`; `panic` stays
 `unwind` so one panicking handler cannot stop the server. Release builds take
-longer and their backtraces lose symbol names; the [measured release defaults](green-software-roadmap.md#measured-release-defaults)
+longer and their backtraces lose symbol names; the [measured release defaults](resource-efficiency-roadmap.md#measured-release-defaults)
 state the size and build-time effect on one starter. Since 13.0.0-alpha.4 it
 has a `[profile.dev]` as well: the application keeps line tables (file:line in
 panics and backtraces) and dependencies are built without debug information,
@@ -510,7 +510,7 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
-The v13 CLI's `rullst-upgrade-rules-v4` catalog (120 rules) parses Rust sources
+The v13 CLI's `rullst-upgrade-rules-v4` catalog (121 rules) parses Rust sources
 (with `syn`; comments, doc comments and strings never match an API rule), Cargo
 manifests and generated project files, and reports each finding as
 `MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed
@@ -522,9 +522,14 @@ and `--dry-run` say so, and the error names each rule's locations and
 guidance) unless `--keep-on-failure` asks it to change the versions anyway and
 keep the edited files for repair. Review findings do not stop the transaction;
 a failed Cargo gate repeats the guidance of `V13-CAPITAL-REMOVED` and
-`V13-MAIL-REMOVED` (removed APIs reported for review). The plan ends with a
-link to the migration guide's checklist for the project's version (alpha.2,
-or alpha.3 and later prereleases), or to the table of changes.
+`V13-MAIL-REMOVED` (removed APIs reported for review). A comment
+`rullst-upgrade: reviewed V13-…` after the code on a review finding's line, or
+alone on the line above it, records that the location was reviewed: the plan
+leaves it out, reports the rule's next unmarked location in that file, and
+counts the marked locations (`finding_counts.reviewed` in JSON). Must-change
+findings ignore the marker. The plan ends with a link to the migration guide's
+checklist for the project's version (alpha.2, alpha.3, or alpha.4 and later
+prereleases), or to the table of changes.
 Each rule records the release that introduced its change. The plan reads the
 project's Rullst version (the oldest version a Rullst requirement admits or
 `Cargo.lock` holds); for a project already on a 13.0 prerelease it applies only
@@ -1898,23 +1903,35 @@ their source at startup and on every change (siblings without a source file are
 kept).
 * **Flags:** `--debug` (builds with Cargo's debug profile instead of `--release`).
 
-### `cargo rullst green`
-**Maturity:** Experimental. It replaces `cargo rullst footprint` (13.0.0-alpha.1
-to alpha.3) and is part of the main CLI, so it needs no separate install.
+### `cargo rullst footprint`
+**Maturity:** Experimental. Part of the main CLI, so it needs no separate
+install. It was `cargo rullst green` in 13.0.0-alpha.4 and was renamed in
+13.0.0-alpha.5 without an alias (`cargo rullst upgrade` flags scripts that
+still run `green`); the `footprint` of 13.0.0-alpha.1 to alpha.3 was a
+different report.
 
 Reports figures it measured for the app, each with its method: the release
 binary size, a local container image's size (`--image`, through `docker` or
-`podman image inspect`), the idle resident memory of the started app (Linux
-`VmRSS`), the third-party dependency count from `Cargo.lock` and, with
-`--bench`, the app process's CPU time during a bounded closed-loop loopback
-load and the CPU time per request. Idle memory and CPU time read `/proc`, so
-they are measured on Linux only; on macOS and Windows they are `NOT MEASURED`.
-Anything unavailable is `NOT MEASURED` with the reason. In Git Bash (MSYS),
-`--path /` reaches the CLI as `C:/Program Files/Git/`; run it as
-`MSYS_NO_PATHCONV=1 cargo rullst green --path /`. It measures no energy: a Software Carbon Intensity (SCI,
-ISO/IEC 21031:2024) figure appears only as an estimate labelled `estimate`,
-computed from the measured CPU time, your `--cpu-watts` and your
-`--grid-intensity`, with every input shown.
+`podman image inspect`), the app's idle resident memory, the third-party
+dependency count from `Cargo.lock`; with `--bench`, the app process's CPU time
+and the response bytes it served during a bounded closed-loop loopback load,
+and both per request; with `--page-weight`, the bytes and requests of the
+`--path` page and its same-origin resources on a first and a repeat visit
+(honouring `Cache-Control`, `ETag` and `Last-Modified`) and the third-party
+origins it references, listed and never fetched. Requests send
+`Accept-Encoding: zstd, br, gzip` and bodies are counted as served. Idle
+memory and CPU time are read on Linux (`/proc`), macOS (`proc_pidinfo`) and
+Windows (`GetProcessMemoryInfo`, `GetProcessTimes`). Anything unavailable is
+`NOT MEASURED` with the reason. In Git Bash (MSYS), `--path /` reaches the CLI
+as `C:/Program Files/Git/`; run it as
+`MSYS_NO_PATHCONV=1 cargo rullst footprint --path /`. It measures no energy: a
+Software Carbon Intensity (SCI, ISO/IEC 21031:2024) figure appears only as an
+estimate labelled `estimate`, computed from the measured CPU time, your
+`--cpu-watts`, optionally the measured bytes and your `--network-kwh-per-gb`,
+and your `--grid-intensity`, with every input shown. The report is a
+measurement and an estimate, not a certification or an environmental claim;
+an application that publishes its numbers is responsible for how it words
+them.
 
 Without `--url` it builds the release binary (reusing an existing build),
 starts it with `RULLST_ENV=production` (or `--env staging`, which accepts the
@@ -1924,9 +1941,10 @@ refuses any other host; it makes no network calls beyond loopback and the
 local container engine, and never fetches grid intensity.
 
 ```bash
-cargo rullst green --image my-app:latest
-cargo rullst green --url http://127.0.0.1:3000 --path /health --bench --json
-cargo rullst green --bench --cpu-watts 15 --grid-intensity 120
+cargo rullst footprint --image my-app:latest
+cargo rullst footprint --url http://127.0.0.1:3000 --path /health --bench --json
+cargo rullst footprint --page-weight
+cargo rullst footprint --bench --cpu-watts 15 --network-kwh-per-gb 0.059 --grid-intensity 120
 ```
 
 * **Flags:** `--url <http://127.0.0.1:PORT>`, `--env <production|staging>`
@@ -1934,15 +1952,17 @@ cargo rullst green --bench --cpu-watts 15 --grid-intensity 120
   `--image <NAME>`, `--bench`, `--duration <10s|1m|1500ms>` (default `10s`,
   1 s to 10 min; needs `--bench`), `--concurrency <N>` (default 4, at most
   256; needs `--bench`), `--cpu-watts <W>` (needs `--bench`),
-  `--grid-intensity <gCO2e/kWh>` (needs `--cpu-watts`), `--embodied <gCO2e>`
-  (needs `--grid-intensity`), `--json` (versioned `rullst.green.v1`).
+  `--network-kwh-per-gb <kWh/GB>` (more than 0, at most 100; needs
+  `--cpu-watts`), `--grid-intensity <gCO2e/kWh>` (needs `--cpu-watts`),
+  `--embodied <gCO2e>` (needs `--grid-intensity`), `--page-weight`, `--json`
+  (versioned `rullst.footprint.v1`).
 * **Exit status:** `0` when the measurement ran, even with `NOT MEASURED`
   fields; `1` when the build failed or the app could not be started or reached,
   after the report (the JSON with `--json`) with the figures that need no
   running app and the failure in `failure`; `2` for invalid arguments.
 
-See the [green guide](green.md) for what each figure means and how to choose a
-grid intensity.
+See [resource figures for an app](footprint.md) for what each figure means,
+how page weight is loaded and how to choose the network and grid figures.
 
 ### `cargo rullst dockerize`
 

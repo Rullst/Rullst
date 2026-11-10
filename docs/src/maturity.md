@@ -115,7 +115,7 @@ experimental `rullst-privacy`.
 | Generator | Commands | Tier | Why |
 | :--- | :--- | :--- | :--- |
 | IoT | `make:iot` | Experimental | Generates a telemetry module on top of the experimental `rullst-iot`. |
-| Green report | `green` | Experimental | Measured size, memory, dependency and benchmark CPU figures and a labelled SCI estimate; its files are in the pull-request mutation gate. See the [green guide](green.md). |
+| Footprint report | `footprint` | Experimental | Measured size, memory, dependency, benchmark CPU and byte figures, page weight and a labelled SCI estimate; its files are in the pull-request mutation gate. See [resource figures for an app](footprint.md). |
 
 For an experimental generator, the generated files, their layout, and the
 command's flags may change between 13.x releases. Review the diff when you
@@ -127,7 +127,8 @@ generators and the Fly.io, Railway and Render targets of `deploy`; see
 the terminal AI assistant (`cargo rullst ai`; use your own assistant with the
 project's `AGENTS.md` and the site's
 [`llms.txt`](https://rullst.github.io/Rullst/llms.txt)) and renamed
-`footprint` to `green`.
+`footprint` to `green`; 13.0.0-alpha.5 renamed it `footprint` again, without
+an alias.
 
 `cargo rullst new` offers three starters with the CLI's Core tier: Blank, API
 and SaaS. 13.0.0-alpha.4 moved the LMS, Blog, Portfolio and ERP starters out of

@@ -31,7 +31,7 @@ pub mod dev;
 pub mod diagram;
 pub mod doctor;
 pub mod eject;
-pub(crate) mod green;
+pub(crate) mod footprint;
 pub mod hook;
 pub mod inspect;
 mod inspect_json;
