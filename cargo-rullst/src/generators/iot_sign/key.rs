@@ -129,22 +129,25 @@ pub(super) fn is_shared(mode: u32) -> bool {
     mode & 0o077 != 0
 }
 
-/// The warning for a key file that other users can read, if any.
-#[cfg(unix)]
+/// The warning for a key file that other users can read, if any (Unix only;
+/// elsewhere the file inherits its folder's access control).
 pub(super) fn shared_warning(path: &Path, metadata: &fs::Metadata) -> Option<String> {
-    use std::os::unix::fs::PermissionsExt;
-    let mode = metadata.permissions().mode() & 0o777;
-    is_shared(mode).then(|| {
-        format!(
-            "warning: {} can be read by other users (mode {mode:o}); run `chmod 600` on it",
-            path.display()
-        )
-    })
-}
-
-#[cfg(not(unix))]
-pub(super) fn shared_warning(_path: &Path, _metadata: &fs::Metadata) -> Option<String> {
-    None
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = metadata.permissions().mode() & 0o777;
+        is_shared(mode).then(|| {
+            format!(
+                "warning: {} can be read by other users (mode {mode:o}); run `chmod 600` on it",
+                path.display()
+            )
+        })
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (path, metadata);
+        None
+    }
 }
 
 /// 32 bytes from the operating system's random number generator.
