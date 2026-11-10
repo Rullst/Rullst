@@ -11,6 +11,38 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- Content-hashed static asset URLs: `rullst::assets::url("app.css")` returns
+  `/static/app.<hash>.css` (the first 16 hex characters of the file's
+  SHA-256) while `Server` serves `static/`, and the plain `/static/app.css`
+  outside a server, for example in unit tests. The `/static` mount resolves
+  the hashed name to the real file, Brotli and Zstandard siblings included,
+  and serves it with `Cache-Control: public, max-age=31536000, immutable`;
+  an outdated hash gets a `307` redirect to the current URL with
+  `Cache-Control: no-store`, so a CDN or browser can no longer keep an old
+  stylesheet after a deploy (reported while upgrading an application that
+  hand-rolled `?v=` tokens). Debug builds follow edits and new files; symbolic
+  links, hidden paths and names that would need percent-encoding keep their
+  plain URL ([frontend guide](https://rullst.github.io/Rullst/book/frontend.html)).
+- `cargo rullst add tailwind`: sets up Tailwind CSS v4 with the official
+  standalone CLI, pinned to v4.3.3 (the newest release past a 14-day
+  cooldown) with the SHA-256 of every platform's asset embedded in the CLI. The binary is downloaded once into the user cache,
+  verified before every use and never run when it does not match. The
+  command writes `assets/css/app.css` (`@import "tailwindcss" source(none)`
+  and `@source "../../src/**/*.rs"`), builds `static/app.css`, links it in the
+  layout when one `html!` closes `<head>` (else prints the line), ignores the
+  output in `.gitignore` unless the project already tracks it, and adds
+  checksum-pinned BuildKit stages to a generated Dockerfile (and to the ones
+  `deploy` and `dockerize` write from then on). `cargo rullst dev` runs
+  `tailwindcss --watch` next to the server, and `cargo rullst build` minifies
+  the stylesheet before pre-compression. `--dry-run` downloads and writes
+  nothing.
+- `cargo rullst add alpine`: vendors Alpine.js's CSP build (`@alpinejs/csp`
+  3.17.5, checked against the npm registry's `dist.integrity`) into
+  `static/vendor/alpine-csp.min.js`, adds an example `Alpine.data` component in
+  `static/js/alpine-components.js` and loads both as deferred same-origin
+  scripts, so client-only state works under the default Content-Security-Policy
+  without `'unsafe-eval'`. The new book page lists what the CSP build cannot
+  parse.
 - `cargo rullst footprint --page-weight` weighs a page as a browser would:
   the `--path` page and the same-origin stylesheets (with their `url()` and
   `@import`), scripts, fonts, images, icon and manifest it references, on a

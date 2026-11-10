@@ -794,7 +794,8 @@ status.
 ### `cargo rullst add`
 `cargo rullst add <capability> [--dry-run]` (v13) enables a facade capability
 in an existing project. Capabilities: `mail`, `auth`, `ai`, `nexus` and
-`studio`.
+`studio`; the frontend tools `tailwind` and `alpine` are described
+[below](#frontend-tools-cargo-rullst-add-tailwind-and-cargo-rullst-add-alpine).
 
 It runs only at the root of a Rullst project (a `Cargo.toml` whose
 `[dependencies]` declare `rullst`), asks nothing and:
@@ -830,6 +831,33 @@ unknown capability is a usage error (exit status 2).
 ```bash
 cargo rullst add mail --dry-run
 cargo rullst add mail
+```
+
+#### Frontend tools: `cargo rullst add tailwind` and `cargo rullst add alpine`
+
+Since 13.0.0-alpha.5 `add` also takes two opt-in frontend tools. They change
+no Cargo feature; each is a pinned download verified by checksum before
+anything is written, and `--dry-run` downloads and writes nothing:
+
+| Tool | Download (pinned) | Writes |
+| :--- | :--- | :--- |
+| `tailwind` | Tailwind CSS v4.3.3 standalone CLI for the host, SHA-256 checked, cached per user and re-checked before every use | `assets/css/app.css`; builds `static/app.css`; links it in the layout; `/static/app.css` in `.gitignore` unless tracked; BuildKit stages in a generated Dockerfile |
+| `alpine` | `@alpinejs/csp` 3.17.5 npm tarball, checked against its `dist.integrity` (SHA-512) | `static/vendor/alpine-csp.min.js`, `static/js/alpine-components.js`; two deferred scripts in the layout |
+
+The layout is edited only when exactly one `html!` in `src/` closes `<head>`
+on its own line; otherwise the exact `html!` line (using
+`rullst::assets::url`) and where it goes are printed. With `tailwind`,
+`cargo rullst dev` runs `tailwindcss --watch` beside the server and
+`cargo rullst build` writes the minified stylesheet before pre-compression.
+The command stops, writing nothing, when `assets/css/app.css` exists without
+importing `tailwindcss` or `static/app.css` exists and was not built by
+Tailwind. See the [frontend guide](frontend.md) for the CSP rules, what the
+Alpine CSP build cannot parse, and how to bump either pin.
+
+```bash
+cargo rullst add tailwind --dry-run
+cargo rullst add tailwind
+cargo rullst add alpine
 ```
 
 ---

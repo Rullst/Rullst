@@ -27,6 +27,7 @@
 - [08. Controllers & Middlewares](tutorials/08-routing-and-middlewares.md)
 - [09. Environment Config](tutorials/09-environment-config.md)
 - [10. Static Assets & Compression](tutorials/10-static-assets-and-compression.md)
+  - [Frontend: htmx, Tailwind and Alpine](frontend.md)
 
 ## 🟡 Level 2: Intermediate (Security, Auth & Real-Time)
 - [11. Authentication Scaffolding](tutorials/11-authentication-system.md)
