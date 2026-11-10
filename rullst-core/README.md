@@ -139,6 +139,11 @@ i18n and process telemetry. The `rullst` facade re-exports it.
   sorted snapshot of at most 200 logical keys, UTF-8 value lengths and TTLs
   without returning values. Custom drivers fail explicitly unless they opt in;
   authorization and safe rendering of logical keys remain caller policy.
+- **Content-hashed static URLs (v13, 13.0.0-alpha.5):** `assets::url("app.css")`
+  returns `/static/app.<hash>.css` while `Server` serves `static/`, and the
+  plain URL outside a server; the mount serves the hashed name `immutable`
+  and redirects an outdated hash (`307`, `no-store`). Debug builds follow
+  edits ([frontend guide](https://rullst.github.io/Rullst/book/frontend.html)).
 - **Digital Asset Links (v13):** `pwa::AssetLinks` serves
   `/.well-known/assetlinks.json` for the Google Play package (Trusted Web
   Activity) of a Progressive Web App, validating Android package names and

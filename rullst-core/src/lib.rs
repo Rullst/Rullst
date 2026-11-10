@@ -37,6 +37,8 @@ pub mod edge;
 /// Artisan command-line migrations and seed execution helpers.
 pub mod artisan;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod assets;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod cache;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cache_control;

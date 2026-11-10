@@ -2,6 +2,8 @@
 
 use super::*;
 
+mod must_change;
+
 #[test]
 fn target_must_match_the_installed_cli_major() {
     let cli = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
@@ -169,8 +171,8 @@ fn the_plan_says_which_earlier_rules_it_skipped() {
 }
 
 /// Only a plan with findings links the guide; nothing points at the removed
-/// `cargo rullst ai upgrade`, and a failed gate with must-change findings
-/// points at --keep-on-failure.
+/// `cargo rullst ai upgrade`, and a gate that fails after --keep-on-failure
+/// with must-change findings says to fix them in the kept files.
 #[test]
 fn findings_reach_the_plan_text_with_the_guide_link() {
     let root = Path::new("/project");
@@ -195,7 +197,7 @@ fn findings_reach_the_plan_text_with_the_guide_link() {
     });
     assert_eq!(
         findings_hint(root, &mixed),
-        "; the plan lists 1 must-change finding(s): fix them first, or rerun with --keep-on-failure to repair the kept state"
+        "; the plan lists 1 must-change finding(s): fix them in the kept files, then run `cargo check`"
     );
 }
 

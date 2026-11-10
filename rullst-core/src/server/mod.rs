@@ -22,6 +22,8 @@ mod startup_migrations;
 mod static_cache;
 mod traffic;
 
+pub(crate) use static_cache::is_fingerprinted;
+
 #[cfg(test)]
 pub(crate) static TEST_ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 

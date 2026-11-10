@@ -184,6 +184,13 @@ remains separate.
   is scaled by its host CPU count, not by the cgroup-limited
   `available_parallelism`, so a container saturating a 2-CPU quota reports
   about 200%.
+- **Content-hashed static URLs (`rullst::assets`, 13.0.0-alpha.5):**
+  `assets::url("app.css")` links `/static/app.<hash>.css` (16 hex characters
+  of the file's SHA-256) while `Server` serves `static/`, and the plain
+  `/static/app.css` outside a server. The mount serves the hashed name from
+  the real file with `immutable` caching and answers an outdated hash with a
+  `307` redirect (`no-store`) to the current one; debug builds follow edits
+  ([frontend guide](../frontend.md#content-hashed-asset-urls)).
 - **Prometheus `/metrics` Exporter:** Text-format metrics served at `GET /metrics`; formatting and collection have bounded runtime cost.
 - **Kubernetes probe routes (`rullst::health`):** the simple `health_router`
   reports process availability and uptime. `Server` records the health and

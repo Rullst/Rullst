@@ -63,7 +63,10 @@ must not be a documented placeholder, and must satisfy the entropy check.
 `get_app_key` reads it from the `APP_KEY` environment variable, then `.env`,
 then `Rullst.toml`. Without one, staging and production fail with
 `AuthError::MissingAppKey`; other environments generate a development key in
-`.rullst_dev_key`.
+`.rullst_dev_key` in the working directory (a `cargo test` run that reaches
+`get_app_key` included). Keep that file out of Git and container images: the
+`.gitignore` and `.dockerignore` that `cargo rullst new` writes list it, and
+`cargo rullst doctor` warns when it exists and Git does not ignore it.
 
 The cookie helpers select `Secure` from `RULLST_ENV`, then `APP_ENV`, then `.env`, then
 `Rullst.toml`. When either process variable is set, `.env` is not read for that decision. A
