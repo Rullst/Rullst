@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794283470161,
+  "lastUpdate": 1794291548193,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -20279,6 +20279,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4164,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9388e28f724b0440969e4c7e29bbd4c03be150e2",
+          "message": "Merge pull request #616 from Rullst/docs/v13-alpha5-release-plan\n\ndocs(release): move the 13.0 feature freeze to 13.0.0-alpha.5",
+          "timestamp": "2026-11-10T02:41:43-03:00",
+          "tree_id": "ecee84f88ed75750972eea6c1ea5705484266169",
+          "url": "https://github.com/Rullst/Rullst/commit/9388e28f724b0440969e4c7e29bbd4c03be150e2"
+        },
+        "date": 1794291547223,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1000,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 758,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1792,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4197,
+            "range": "± 63",
             "unit": "ns/iter"
           }
         ]
