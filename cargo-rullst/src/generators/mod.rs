@@ -19,6 +19,7 @@ mod audit_source;
 pub mod auth;
 pub(crate) mod auth_contract;
 pub mod billing;
+pub(crate) mod browser_tests;
 pub mod build;
 pub mod chat;
 mod consumer_files;

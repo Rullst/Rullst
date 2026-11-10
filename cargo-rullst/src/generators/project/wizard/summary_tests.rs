@@ -103,6 +103,7 @@ fn plan() -> ProjectPlan {
         requested: Vec::new(),
         add_ons: Vec::new(),
         skip_initial_migration: false,
+        ci: true,
     }
 }
 

@@ -28,16 +28,21 @@ CARGO_CONFIGS = (".cargo/config", ".cargo/config.toml")
 CARGO_CONFIG_KEYS = {"alias": None, "term": None, "net": None, "cargo-new": None, "profile": None,
                      "build": {"jobs", "rustflags", "rustdocflags", "incremental"}}
 # Proc macros run inside the compiler. Filesystem, process or environment
-# access is accepted only in these reviewed blobs. `rullst-macros`' i18n
-# `catalog!` reads `<invoking package>/<dir>/*.toml` (default `locales`); the
-# package is part of the scope, and a `dir` that climbs with `..` fails closed
-# (path-like argument rule). The test modules are `#[cfg(test)]`. Any other
-# blob fails closed until reviewed; keep earlier blobs while history uses them.
+# access is accepted only in these reviewed blobs; keep earlier blobs while
+# history uses them. The i18n `catalog!` and, since 13.0.0-alpha.5, the
+# `__translate!` behind its `t!` read `<invoking package>/<dir>/*.toml`; the
+# package is in the scope and a climbing `dir` fails closed. Tests: cfg(test).
 REVIEWED_COMPILE_IO = {
-    "rullst-macros/src/i18n/catalog.rs": frozenset({"fbbfbb76f1e80bfc9938675c6b172dee7ee97d18"}),
+    "rullst-macros/src/i18n/catalog.rs": frozenset({"fbbfbb76f1e80bfc9938675c6b172dee7ee97d18",
+                                                    "a0a7eca37634ef629f00efdbce36dd174666d8c9"}),
     "rullst-macros/src/i18n/catalog_tests.rs": frozenset({"9129f8024076e3a971c430fd70babe7779932f80"}),
-    "rullst-macros/src/i18n/emit.rs": frozenset({"19fbff453d52faa3263078214dd7d2cf1eae2224"}),
-    "rullst-macros/src/i18n/tests.rs": frozenset({"6327b1f10dd2daf52ee3a9834e773a182dbc47ca"}),
+    "rullst-macros/src/i18n/emit.rs": frozenset({"19fbff453d52faa3263078214dd7d2cf1eae2224",
+                                                 "b12b1e66c476b0968011615dddbb8238468c6f9b"}),
+    "rullst-macros/src/i18n/prepared.rs": frozenset({"f7492cf1eff765edd071884570b22d7bb773b091"}),
+    "rullst-macros/src/i18n/prepared_tests.rs": frozenset({"5eb2f69cb658e36725914b4915ecb5979ea32133"}),
+    "rullst-macros/src/i18n/tests.rs": frozenset({"6327b1f10dd2daf52ee3a9834e773a182dbc47ca",
+                                                  "0b6a6bff23744c8ec0bbe23257debdbdf6375ce4"}),
+    "rullst-macros/src/i18n/translate.rs": frozenset({"e91c7db1184827d92595fc43a35570da18de9c28"}),
 }
 # Registry macros reviewed never to read files, by full path.
 REVIEWED_PLAIN_MACROS = frozenset({"serde_json::json", "libfuzzer_sys::fuzz_target"})

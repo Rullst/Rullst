@@ -44,7 +44,16 @@ with `src/main.rs` and, for a database profile, `src/migrations/`; the `make:*`
 generators create the other folders and their `mod.rs` on first use. A
 `--no-database` Blank project has no `Rullst.toml`. Every starter also writes
 `.env.example`, `AGENTS.md`, `.llms.txt` and `.rullst/context-map.json`
-(section 11.1).
+(section 11.1). Since 13.0.0-alpha.5 every starter except the hot-reload
+layouts writes `src/security_tests.rs` with a `PAGES` list (each
+parameterless page and the status a signed-out visitor receives) checked with
+`TestResponse::assert_status`, `assert_security_headers` and
+`assert_html_hygiene` (`rullst::testing::html_issues`), and `new` writes
+`.github/workflows/ci.yml` and `.github/dependabot.yml` unless `--no-ci` is
+given; every action is pinned by commit SHA. `cargo rullst add
+browser-tests` adds `tests/browser/` and a `browser-tests.yml` workflow
+and never overwrites an existing file. See
+[Testing your application](testing-your-app.md).
 
 ---
 
@@ -235,6 +244,14 @@ CDN advanced HMAC-SHA256 directory tokens have independent documented formats.
 Redirects/ambient proxies/arbitrary remote endpoints are disabled; request,
 response, retry and total-operation budgets are finite. Secret-bearing errors,
 credentials, grants and debug output must not leak keys or bearer URLs.
+
+An upload-only Bunny configuration (13.0.0-alpha.5) holds only the library API
+key: it signs upload grants and manages library videos, while playback grants and
+webhook verification return `Unsupported` and no delivery-protection assertion
+is made. `VideoProvider::list` reads one bounded, validated page of the provider
+library (at most 100 videos, 1 MiB) and grants no ownership; adapters without a
+listing return `Unsupported`. `create_with_metadata` keeps the random marker as
+the creation identity and applies metadata in a second request.
 
 Empty or `mock_*` credentials select deterministic offline behavior; mixed modes
 fail configuration. Production rejects mock or loopback-fixture capabilities.
@@ -1271,7 +1288,13 @@ new sandbox evidence and merchant refund/dispute operations are still required.
 **12.1 authenticated machine endpoints:** an immutable `MachineEndpointPolicy`
 on `Server` exempts only registered write-method/path pairs from browser CSRF after
 proving a strong bearer secret or an explicit host-supplied signed-webhook/mTLS
-verifier. Cookie/Origin/Sec-Fetch-Site inputs are rejected on these routes; body
+verifier. Since 13.0.0-alpha.5 `MachineEndpoint::address_token` registers the
+`AddressTokenWithSourceConfirmation` category for a provider that cannot sign
+its notifications: the verifier checks a high-entropy per-resource token in the
+request address, which authenticates only knowledge of that address (no body
+signature, freshness or replay protection), so the handler must confirm the
+notified state with the source before acting.
+Cookie/Origin/Sec-Fetch-Site inputs are rejected on these routes; body
 size is bounded and WAF/secure headers remain composed. The development
 hot-reload server (`Server::new_hot`) authenticates the same routes in front of
 each reloaded router. A path segment after the first may be a `{name}` placeholder
@@ -1320,7 +1343,13 @@ after trimming and case normalization. Legacy `Rullst.toml` discovery accepts
 only exact `app_key` or `key` field names, not fields sharing a prefix. It keeps
 the historical value before the next `=` so valid existing sessions remain
 readable; it does not rewrite configuration or silently rotate secrets.
-Prefer `APP_KEY` for new values containing `=`. Moving an existing TOML value
+Prefer `APP_KEY` for new values containing `=`. Since 13.0.0-alpha.5 the
+development fallback never writes a secret into the source tree: it reads an
+existing `.rullst_dev_key` in the current directory, otherwise uses or creates
+a per-project key in the per-user state directory (`rullst/dev-keys/` under
+`$XDG_STATE_HOME`, `~/.local/state` or `%LOCALAPPDATA%`), and a test harness
+(an executable in a Cargo `deps` directory) keeps a new key in memory only.
+Moving an existing TOML value
 must preserve its effective bytes or explicitly rotate the secret and invalidate
 sessions. Session operations and optional JWT signing-key construction reject
 the documented placeholders before accepting session/token processing.
@@ -2129,7 +2158,8 @@ the same server-authoritative controls.
   feature, not built for `wasm32`); the catalog macro is
   `rullst_macros::i18n_catalog`, re-exported as `rullst::i18n::catalog!`.
   Guide: [Translations and Locales](i18n.md).
-* **Catalogs:** `catalog!(default = "tag", dir = "path")` (`dir` defaults to
+* **Catalogs:** `catalog!(default = "tag", dir = "path", order = ["tag", …])`
+  (`order` since 13.0.0-alpha.5, optional; `dir` defaults to
   `locales`, relative to `CARGO_MANIFEST_DIR`; absolute paths are rejected)
   reads every `*.toml` file of the directory at compile time, at most 64
   files of at most 1 MiB. The file stem is the locale tag,
@@ -2151,8 +2181,14 @@ the same server-authoritative controls.
   (`rullst-macros/tests/locale_rebuild.rs` builds a probe crate with and
   without it).
 * **Generated items:** in the invoking module, `pub static LOCALES:
-  rullst::i18n::Locales` (tags sorted, default index) and `macro_rules! t`
-  re-exported with `pub(crate) use t;`. `t!(locale, "key", name = expr, …)`
+  rullst::i18n::Locales` (tags sorted, or in the given `order`, which must
+  list every catalog tag exactly once; default index) and `macro_rules! t`
+  re-exported with `pub(crate) use t;`. Since 13.0.0-alpha.5 `t!` forwards
+  the catalog's directory, tag order and default, not its messages, to the
+  hidden `__translate!`, which reads the same files, prepares the catalog
+  once per compilation process for identical file contents and expands only
+  the called key: a call's compile cost no longer grows with the catalog
+  (`.github/i18n-compile-bench.py` measures it). `t!(locale, "key", name = expr, …)`
   takes a `Locale` or `&Locale` and a string-literal key; an unknown key (with
   a near-miss suggestion), a missing, unexpected or repeated argument, and a
   plural message without `count` are compile errors at the caller's tokens.
