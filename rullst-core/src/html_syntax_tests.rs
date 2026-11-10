@@ -69,6 +69,24 @@ fn conditional_bool_attributes_are_present_or_absent() {
 }
 
 #[test]
+fn static_attribute_values_escape_double_quotes_only() {
+    // A `"` (a Rust `\"`) would end the attribute: the browser read
+    // `content` as `{` before 13.0.0-rc.1.
+    assert_eq!(
+        crate::html! { <meta name="htmx-config" content="{\"includeIndicatorStyles\":false}" /> },
+        "<meta name=\"htmx-config\" content=\"{&quot;includeIndicatorStyles&quot;:false}\" />"
+    );
+    // Character references and other characters the author wrote are kept.
+    assert_eq!(
+        crate::html! { <a title="Tom &amp; Jerry's <b>" href="/?a=1&amp;b=2">"x"</a> },
+        "<a title=\"Tom &amp; Jerry's <b>\" href=\"/?a=1&amp;b=2\">x</a>"
+    );
+}
+
+// `name={option}` is deprecated (it warns at compile time) but writes what
+// it wrote before: `None` as an empty value.
+#[allow(deprecated)]
+#[test]
 fn conditional_option_attributes_escape_like_dynamic_values() {
     let hostile = Some("\"><script>alert('x')</script>");
     let expected = "<p title=\"&quot;&gt;&lt;script&gt;alert(&#x27;x&#x27;)&lt;/script&gt;\">x</p>";
