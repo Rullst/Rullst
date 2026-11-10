@@ -612,10 +612,12 @@ pub fn rullst_core::RealtimeSseConfig::max_connections(&self) -> usize
 pub fn rullst_core::RealtimeSseConfig::max_lifetime(&self) -> core::time::Duration
 pub fn rullst_core::RealtimeSseConfig::max_payload_bytes(&self) -> usize
 pub fn rullst_core::RealtimeSseConfig::new() -> Self
+pub fn rullst_core::RealtimeSseConfig::reconnect_delay(&self) -> core::time::Duration
 pub fn rullst_core::RealtimeSseConfig::with_keep_alive(self, interval: core::time::Duration) -> Self
 pub fn rullst_core::RealtimeSseConfig::with_max_connections(self, connections: usize) -> Self
 pub fn rullst_core::RealtimeSseConfig::with_max_lifetime(self, lifetime: core::time::Duration) -> Self
 pub fn rullst_core::RealtimeSseConfig::with_max_payload_bytes(self, bytes: usize) -> Self
+pub fn rullst_core::RealtimeSseConfig::with_reconnect_delay(self, delay: core::time::Duration) -> Self
 impl core::clone::Clone for rullst_core::RealtimeSseConfig
 impl core::cmp::Eq for rullst_core::RealtimeSseConfig
 impl core::cmp::PartialEq for rullst_core::RealtimeSseConfig
