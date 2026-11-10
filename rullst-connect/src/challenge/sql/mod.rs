@@ -3,7 +3,6 @@
 use super::{ChallengeError, ChallengeId, ChallengeStore, LoginChallenge, ReturnPath};
 use sqlx::{Database, Pool, Transaction};
 use std::fmt;
-use std::future::Future;
 
 #[cfg(feature = "mysql")]
 mod mysql;
@@ -26,46 +25,45 @@ pub type PostgresChallengeStore = SqlChallengeStore<sqlx::Postgres>;
 pub type MySqlChallengeStore = SqlChallengeStore<sqlx::MySql>;
 
 mod sealed {
-    pub trait Sealed {}
+    use super::{ChallengeError, LoginChallenge};
+    use sqlx::{Database, Pool};
+    use std::future::Future;
+
+    /// The per-database SQL behind [`super::SqlChallengeStore`].
+    pub trait Sealed: Database {
+        fn prepare_challenges(
+            pool: &Pool<Self>,
+        ) -> impl Future<Output = Result<(), ChallengeError>> + Send;
+
+        fn insert_challenge(
+            pool: &Pool<Self>,
+            key: &str,
+            challenge: &LoginChallenge,
+            max_entries: u32,
+        ) -> impl Future<Output = Result<(), ChallengeError>> + Send;
+
+        fn remove_challenge(
+            pool: &Pool<Self>,
+            key: &str,
+        ) -> impl Future<Output = Result<Option<LoginChallenge>, ChallengeError>> + Send;
+
+        fn purge_challenges(
+            pool: &Pool<Self>,
+            now: u64,
+            limit: u32,
+        ) -> impl Future<Output = Result<u64, ChallengeError>> + Send;
+
+        fn count_challenges(
+            pool: &Pool<Self>,
+        ) -> impl Future<Output = Result<u64, ChallengeError>> + Send;
+    }
 }
 
 /// An SQLx database this crate stores challenges in: SQLite (`sqlite`
 /// feature), PostgreSQL (`postgres`) or MySQL/MariaDB (`mysql`).
 ///
-/// Sealed. Its methods are the per-database SQL behind [`SqlChallengeStore`]
-/// and are not meant to be called directly.
-pub trait ChallengeDatabase: Database + sealed::Sealed {
-    #[doc(hidden)]
-    fn prepare_challenges(
-        pool: &Pool<Self>,
-    ) -> impl Future<Output = Result<(), ChallengeError>> + Send;
-
-    #[doc(hidden)]
-    fn insert_challenge(
-        pool: &Pool<Self>,
-        key: &str,
-        challenge: &LoginChallenge,
-        max_entries: u32,
-    ) -> impl Future<Output = Result<(), ChallengeError>> + Send;
-
-    #[doc(hidden)]
-    fn remove_challenge(
-        pool: &Pool<Self>,
-        key: &str,
-    ) -> impl Future<Output = Result<Option<LoginChallenge>, ChallengeError>> + Send;
-
-    #[doc(hidden)]
-    fn purge_challenges(
-        pool: &Pool<Self>,
-        now: u64,
-        limit: u32,
-    ) -> impl Future<Output = Result<u64, ChallengeError>> + Send;
-
-    #[doc(hidden)]
-    fn count_challenges(
-        pool: &Pool<Self>,
-    ) -> impl Future<Output = Result<u64, ChallengeError>> + Send;
-}
+/// Sealed: the per-database SQL behind [`SqlChallengeStore`] is crate-private.
+pub trait ChallengeDatabase: Database + sealed::Sealed {}
 
 /// Challenges in the table `rullst_connect_login_challenges` of the
 /// application's database, reached through the application's own pool (for

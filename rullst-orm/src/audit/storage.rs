@@ -113,7 +113,9 @@ fn sanitize_payload(payload: Option<String>) -> Result<Option<String>, crate::Er
             "bytes": payload.len(),
         }),
     };
-    Ok(Some(serde_json::to_string(&value)?))
+    Ok(Some(
+        serde_json::to_string(&value).map_err(crate::Error::json)?,
+    ))
 }
 
 fn insert_sql() -> Result<String, crate::Error> {

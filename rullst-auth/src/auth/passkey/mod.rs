@@ -1,6 +1,5 @@
 // The WebAuthn payload parser behind `PasskeyAuth`.
-#[doc(hidden)]
-pub mod cbor;
+pub(crate) mod cbor;
 mod ceremony;
 pub mod config;
 pub mod service;

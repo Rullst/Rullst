@@ -89,8 +89,8 @@ pub(crate) fn build_reverse_patch_with_redacted(
     new_json: &str,
     redacted_changes: &[&str],
 ) -> Result<Option<String>, crate::Error> {
-    let old: Value = serde_json::from_str(old_json)?;
-    let new: Value = serde_json::from_str(new_json)?;
+    let old: Value = serde_json::from_str(old_json).map_err(crate::Error::json)?;
+    let new: Value = serde_json::from_str(new_json).map_err(crate::Error::json)?;
     if !old.is_object() || !new.is_object() {
         return Err(crate::Error::Validation(
             "restorable audit values must be JSON objects".to_string(),
@@ -117,7 +117,8 @@ pub(crate) fn build_reverse_patch_with_redacted(
     let encoded = serde_json::to_string(&ReversePatch {
         version: PATCH_VERSION,
         operations,
-    })?;
+    })
+    .map_err(crate::Error::json)?;
     if encoded.len() > MAX_PATCH_BYTES {
         return Err(crate::Error::Validation(
             "audit restore patch exceeds the bounded size".to_string(),
@@ -202,7 +203,7 @@ pub fn apply_reverse_patch(mut current: Value, encoded: &str) -> Result<Value, c
             "audit restore patch is empty or oversized".to_string(),
         ));
     }
-    let patch: ReversePatch = serde_json::from_str(encoded)?;
+    let patch: ReversePatch = serde_json::from_str(encoded).map_err(crate::Error::json)?;
     if patch.version != PATCH_VERSION
         || patch.operations.is_empty()
         || patch.operations.len() > MAX_PATCH_OPERATIONS

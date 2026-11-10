@@ -76,7 +76,8 @@ impl TrashCustomerObserver for RecordingObserver {
         Ok(())
     }
     async fn committed(&self, event: &ModelCommittedEvent) -> Result<(), Error> {
-        let payload: Value = serde_json::from_str(&event.payload)?;
+        let payload: Value = serde_json::from_str(&event.payload)
+            .map_err(|error| Error::SerializationError(error.to_string()))?;
         let state = if payload["deleted_at"].is_null() {
             "active"
         } else {

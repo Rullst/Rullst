@@ -86,7 +86,7 @@ pub(crate) fn document_with_id(id: i32, mut payload: Value) -> Result<Value, cra
         ));
     }
     object.insert("id".to_string(), Value::from(id));
-    let encoded = serde_json::to_vec(&payload)?;
+    let encoded = serde_json::to_vec(&payload).map_err(crate::Error::json)?;
     if encoded.len() > MAX_SEARCH_DOCUMENT_BYTES {
         return Err(crate::Error::Validation(format!(
             "Scout document exceeds {MAX_SEARCH_DOCUMENT_BYTES} bytes"

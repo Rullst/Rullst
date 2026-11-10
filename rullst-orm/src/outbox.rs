@@ -64,7 +64,7 @@ impl fmt::Debug for ClaimedOutboxEvent {
 impl ClaimedOutboxEvent {
     /// Parses the bounded payload as JSON.
     pub fn payload(&self) -> Result<Value, Error> {
-        serde_json::from_str(&self.payload_json).map_err(Into::into)
+        serde_json::from_str(&self.payload_json).map_err(crate::Error::json)
     }
 }
 
@@ -177,7 +177,7 @@ impl Outbox {
         validate_key("stream", stream)?;
         validate_key("event_key", event_key)?;
         validate_key("event_kind", event_kind)?;
-        let payload_json = serde_json::to_string(payload)?;
+        let payload_json = serde_json::to_string(payload).map_err(crate::Error::json)?;
         if payload_json.len() > MAX_PAYLOAD_BYTES {
             return Err(Error::Validation(format!(
                 "outbox payload exceeds {MAX_PAYLOAD_BYTES} bytes"

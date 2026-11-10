@@ -100,9 +100,15 @@ pub async fn read_model_hash(
 
     let key = model_hash_key(table, tenant, id)?;
     let mut connection = Orm::redis_manager()?;
-    let hash: HashMap<String, String> = connection.hgetall(&key).await?;
+    let hash: HashMap<String, String> = connection
+        .hgetall(&key)
+        .await
+        .map_err(crate::Error::redis)?;
     match legacy_model_hash_key(tenant, table, id) {
-        Some(legacy) if hash.is_empty() => Ok(connection.hgetall(&legacy).await?),
+        Some(legacy) if hash.is_empty() => Ok(connection
+            .hgetall(&legacy)
+            .await
+            .map_err(crate::Error::redis)?),
         _ => Ok(hash),
     }
 }
@@ -121,7 +127,10 @@ pub async fn write_model_hash(
     let key = model_hash_key(table, tenant, id)?;
     let mut connection = Orm::redis_manager()?;
     let Some(legacy) = legacy_model_hash_key(tenant, table, id) else {
-        let _: () = connection.hset_multiple(&key, fields).await?;
+        let _: () = connection
+            .hset_multiple(&key, fields)
+            .await
+            .map_err(crate::Error::redis)?;
         return Ok(());
     };
     let mut script = crate::_redis::cmd("EVAL");
@@ -133,7 +142,10 @@ pub async fn write_model_hash(
     for (field, value) in fields {
         script.arg(*field).arg(value);
     }
-    let _: i64 = script.query_async(&mut connection).await?;
+    let _: i64 = script
+        .query_async(&mut connection)
+        .await
+        .map_err(crate::Error::redis)?;
     Ok(())
 }
 
@@ -150,25 +162,23 @@ pub async fn increment_model_hash(
     let key = model_hash_key(table, tenant, id)?;
     let mut connection = Orm::redis_manager()?;
     let incremented = match legacy_model_hash_key(tenant, table, id) {
-        None => {
-            crate::_redis::cmd("HINCRBY")
-                .arg(&key)
-                .arg(field)
-                .arg(amount)
-                .query_async(&mut connection)
-                .await?
-        }
-        Some(legacy) => {
-            crate::_redis::cmd("EVAL")
-                .arg(format!("{MIGRATE_PRELUDE}{INCREMENT_BODY}"))
-                .arg(2)
-                .arg(&key)
-                .arg(&legacy)
-                .arg(field)
-                .arg(amount)
-                .query_async(&mut connection)
-                .await?
-        }
+        None => crate::_redis::cmd("HINCRBY")
+            .arg(&key)
+            .arg(field)
+            .arg(amount)
+            .query_async(&mut connection)
+            .await
+            .map_err(crate::Error::redis)?,
+        Some(legacy) => crate::_redis::cmd("EVAL")
+            .arg(format!("{MIGRATE_PRELUDE}{INCREMENT_BODY}"))
+            .arg(2)
+            .arg(&key)
+            .arg(&legacy)
+            .arg(field)
+            .arg(amount)
+            .query_async(&mut connection)
+            .await
+            .map_err(crate::Error::redis)?,
     };
     Ok(incremented)
 }

@@ -83,8 +83,10 @@ impl MockSigner {
             iat: issued_at,
             exp: expires_at,
         };
-        let header = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&header)?);
-        let claims = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&claims)?);
+        let header = URL_SAFE_NO_PAD
+            .encode(serde_json::to_vec(&header).map_err(crate::error::ConnectError::json)?);
+        let claims = URL_SAFE_NO_PAD
+            .encode(serde_json::to_vec(&claims).map_err(crate::error::ConnectError::json)?);
         let signing_input = format!("{header}.{claims}");
         let signature = self.key.sign(signing_input.as_bytes());
         Ok(format!(

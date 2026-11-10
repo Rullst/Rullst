@@ -232,8 +232,10 @@ impl AppleProvider {
         let mut header = Header::new(Algorithm::ES256);
         header.kid = Some(self.key_id.clone());
 
-        let encoding_key = EncodingKey::from_ec_pem(self.private_key_pem.as_bytes())?;
-        let token = encode(&header, &claims, &encoding_key)?;
+        let encoding_key = EncodingKey::from_ec_pem(self.private_key_pem.as_bytes())
+            .map_err(crate::error::ConnectError::jwt)?;
+        let token =
+            encode(&header, &claims, &encoding_key).map_err(crate::error::ConnectError::jwt)?;
 
         Ok(token)
     }
@@ -318,7 +320,8 @@ impl AppleProvider {
         let jwk = jwks
             .find(kid)
             .ok_or_else(|| crate::error::ConnectError::JwkNotFound(kid.to_string()))?;
-        let decoding_key = jsonwebtoken::DecodingKey::from_jwk(jwk)?;
+        let decoding_key =
+            jsonwebtoken::DecodingKey::from_jwk(jwk).map_err(crate::error::ConnectError::jwt)?;
         let validation = crate::provider::id_token::validation(
             jsonwebtoken::Algorithm::RS256,
             &self.client_id,

@@ -179,7 +179,8 @@ pub async fn store_entry(cache_key: &str, payload: &str, ttl_seconds: u64) -> Re
         .arg(payload)
         .arg(ttl_seconds)
         .query_async(&mut connection)
-        .await?;
+        .await
+        .map_err(crate::Error::redis)?;
     Ok(())
 }
 
@@ -236,7 +237,8 @@ async fn drain_indexes(indexes: &[String]) -> Result<usize, Error> {
                 .arg(index)
                 .arg(batch)
                 .query_async(&mut connection)
-                .await?;
+                .await
+                .map_err(crate::Error::redis)?;
             deleted = deleted.saturating_add(removed);
             if remaining == 0 {
                 break;

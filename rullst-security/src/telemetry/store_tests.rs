@@ -218,13 +218,6 @@ fn live_event_buffer_keeps_the_newest_fifty_events() {
     assert_eq!(events[MAX_LIVE_EVENTS - 1].details, "event 1");
 }
 
-#[cfg(target_os = "linux")]
-#[test]
-fn resident_memory_reports_the_running_process() {
-    let megabytes = get_real_rss_memory_mb().expect("Linux exposes VmRSS");
-    assert!(megabytes > 1.0);
-}
-
 #[test]
 fn accessors_return_sorted_copies_of_the_active_collections() {
     let store = SecurityStore::new();

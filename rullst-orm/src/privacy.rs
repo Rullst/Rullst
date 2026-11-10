@@ -402,13 +402,15 @@ pub fn decrypt_model_field(
     decrypt_envelope(&envelope, &key, &model_context(table, column))
 }
 
-#[doc(hidden)]
-pub fn encrypt_aes_gcm(plaintext: &str, key: &str) -> Result<String, PrivacyError> {
+// Unbound-envelope helpers for the format tests; no ORM path encrypts without
+// a model context.
+#[cfg(test)]
+pub(crate) fn encrypt_aes_gcm(plaintext: &str, key: &str) -> Result<String, PrivacyError> {
     encrypt_with_context(plaintext, key.as_bytes(), DEFAULT_KEY_ID, b"")
 }
 
-#[doc(hidden)]
-pub fn decrypt_aes_gcm(encrypted: &str, key: &str) -> Result<String, PrivacyError> {
+#[cfg(test)]
+pub(crate) fn decrypt_aes_gcm(encrypted: &str, key: &str) -> Result<String, PrivacyError> {
     let key_bytes = key.as_bytes();
     validate_key(key_bytes)?;
     if encrypted.starts_with(&format!("{ENVELOPE_PREFIX}:")) {

@@ -72,8 +72,7 @@ pub fn detect_ai_provider() -> (bool, String) {
 }
 
 // The assistant's reply builder behind `nexus_chat_query`.
-#[doc(hidden)]
-pub fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> String {
+pub(crate) fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> String {
     let msg_lower = message.to_lowercase();
 
     // Check if user is asking for LLM setup instructions

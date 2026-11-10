@@ -384,9 +384,11 @@ impl Orm {
         }
         let cache_namespace = cache_namespace.into();
         crate::query_cache::validate_namespace(&cache_namespace)?;
-        let client = crate::_redis::Client::open(redis_url)?;
+        let client = crate::_redis::Client::open(redis_url).map_err(crate::Error::redis)?;
         crate::redis_tls::install_provider_for(client.get_connection_info());
-        let manager = crate::_redis::aio::ConnectionManager::new(client.clone()).await?;
+        let manager = crate::_redis::aio::ConnectionManager::new(client.clone())
+            .await
+            .map_err(crate::Error::redis)?;
         REDIS_STATE
             .set(RedisState {
                 client,
@@ -421,8 +423,7 @@ impl Orm {
 
     /// Returns the application namespace used by generated query caches.
     #[cfg(feature = "redis")]
-    #[doc(hidden)]
-    pub fn redis_cache_namespace() -> Result<&'static str, crate::Error> {
+    pub(crate) fn redis_cache_namespace() -> Result<&'static str, crate::Error> {
         Ok(Self::redis_state()?.cache_namespace.as_str())
     }
 }

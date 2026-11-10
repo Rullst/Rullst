@@ -290,3 +290,18 @@ fn body_limits_have_their_documented_sizes() {
     assert_eq!(DEFAULT_CLIENT_CONTRACT_BODY_BYTES, 262_144);
     assert_eq!(MAX_CLIENT_CONTRACT_BODY_BYTES, 2_097_152);
 }
+
+#[test]
+fn json_errors_keep_the_decoder_message_without_exposing_its_type() {
+    let policy = ClientContractPolicy::new(version(1), version(1), 256).expect("valid policy");
+    let Err(ClientContractError::InvalidJson(error)) = policy.decode_offer(b"{\"versions\":")
+    else {
+        panic!("truncated JSON must be invalid");
+    };
+    let expected = error.to_string();
+    assert!(error.to_string().contains("line 1"));
+    let outer = ClientContractError::InvalidJson(error);
+    assert_eq!(outer.to_string(), "client contract JSON is invalid");
+    let source = std::error::Error::source(&outer).expect("decoder error is the source");
+    assert_eq!(source.to_string(), expected);
+}
