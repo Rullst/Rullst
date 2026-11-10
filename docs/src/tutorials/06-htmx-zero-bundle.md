@@ -120,7 +120,9 @@ is not in its history cache (`HX-History-Restore-Request: true`, so a link with
 `hx-push-url` keeps its layout after Back) and a boosted link or form
 (`HX-Boosted: true`). The page and the fragment share a URL, so under
 `Server` HTML responses carry `Vary: HX-Request` and a cache keeps them
-apart.
+apart. A handler that builds its own response checks the same two cases with
+`HtmxRequest::is_history_restore()` and `HtmxRequest::is_boosted()` (since
+13.0.0-alpha.5) and answers them with the whole page.
 
 ---
 

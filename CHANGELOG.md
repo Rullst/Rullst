@@ -48,6 +48,11 @@ A prepared version section does not establish that its tag or crates exist.
   `rullst-security` and `rullst-orm`, weekly and on dispatch. It is
   informational (`continue-on-error`), so it never changes the Miri admission
   receipt.
+- `HtmxRequest::is_history_restore()` and `HtmxRequest::is_boosted()` report
+  htmx's `HX-History-Restore-Request: true` and `HX-Boosted: true`, the two
+  htmx requests that expect the whole page. `render_page` already answers
+  them with it; a handler that builds its own response can now do the same
+  (reported while upgrading an application).
 
 ### Fixed
 

@@ -4672,7 +4672,10 @@ store package of the same site, only installs it.
   1.9.12 sends it with `HX-Request: true` after a history cache miss and
   replaces the whole `<body>`) and `HX-Boosted: true` with the whole page;
   any other `HX-Request: true` request still receives only the content.
-  `HtmxRequest` does not expose the two headers. Under `Server`, every
+  Since 13.0.0-alpha.5 `HtmxRequest::is_history_restore()` and
+  `HtmxRequest::is_boosted()` report the two headers (each `true` only for
+  the exact value `true`), so a handler that builds its own response can
+  answer them with the page too. Under `Server`, every
   `text/html` response of the application's routes carries
   `Vary: HX-Request` (added to an existing `Vary` unless it already names the
   header or is `*`), so a cache keeps a page and the fragment of one URL
