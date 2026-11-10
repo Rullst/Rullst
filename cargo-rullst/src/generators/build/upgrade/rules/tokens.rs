@@ -7,7 +7,7 @@
 
 use super::catalog::*;
 use super::rust::FileContext;
-use super::{Collector, Rule};
+use super::{Collector, Rule, api_cleanups};
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
 
 /// Identifiers whose presence (in a path, type, call or method) is enough.
@@ -232,6 +232,9 @@ impl Scanner<'_, '_> {
                             self.level(args.stream(), None);
                             index += 2;
                         } else {
+                            if let Some(rule) = api_cleanups::field_rule(&name, self.context.text) {
+                                self.hit(rule, line(tree));
+                            }
                             chain.push(name);
                             index += 1;
                         }
@@ -312,6 +315,9 @@ impl Scanner<'_, '_> {
         if REMOVED_MAIL_IDENTS.contains(&name) {
             self.hit(&MAIL_REMOVED, at);
         }
+        if let Some(rule) = api_cleanups::ident_rule(name) {
+            self.hit(rule, at);
+        }
         match name {
             "health_router"
             | "health_router_with_lifecycle"
@@ -331,6 +337,9 @@ impl Scanner<'_, '_> {
         comparison_macro: bool,
         at: usize,
     ) {
+        if let Some(rule) = api_cleanups::path_rule(segments) {
+            self.hit(rule, at);
+        }
         for pair in segments.windows(2) {
             match (pair[0].as_str(), pair[1].as_str()) {
                 ("FieldKind", "Number") if comparison_macro || compared(tokens, start, end) => {

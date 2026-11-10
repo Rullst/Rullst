@@ -3,6 +3,7 @@
 use super::*;
 
 mod alpha4_orm_nexus;
+mod alpha5_api;
 mod data;
 mod docs;
 mod files;

@@ -40,11 +40,13 @@ Rows without rules still need a reading. An application already on a 13.0
 prerelease gets only the rules introduced after its version, and the plan says
 how many earlier rules it skipped; `--all-rules` applies every rule
 ([rules by release](tutorials/36-assisted-framework-upgrades.md#rules-by-release)).
-An application that already runs 13.0.0-alpha.3 follows the shorter
-[alpha.3 to alpha.4 checklist](#upgrading-an-alpha3-application-to-alpha4);
-one on 13.0.0-alpha.2 follows the
+An application that already runs 13.0.0-alpha.4 follows the shorter
+[alpha.4 to alpha.5 checklist](#upgrading-an-alpha4-application-to-alpha5);
+one on 13.0.0-alpha.3 follows the
+[alpha.3 to alpha.4 checklist](#upgrading-an-alpha3-application-to-alpha4)
+first, and one on 13.0.0-alpha.2 the
 [alpha.2 to alpha.3 checklist](#upgrading-an-alpha2-application-to-alpha3)
-first.
+before that.
 
 ## Changes from the published 12.1.0 source
 
@@ -263,7 +265,12 @@ first.
 | CLI `auth` on database starters | From 13.0.0-alpha.4, `cargo rullst auth` works in a fresh Blank or API starter with SQLite, PostgreSQL, MySQL or MariaDB, before or after its first `db:migrate`. alpha.3 refused with "refusing to add a second users table migration" because the starter's `m20260601000000_create_users_table.rs` already creates `users`. While that migration is unchanged, the command now keeps it and writes `m<timestamp>_add_account_columns_to_users_table.rs`, which adds `email`, `password_hash`, `oauth_provider`, `oauth_id`, `is_admin` and `session_epoch` and the unique index `users_email_unique`, and gives existing rows the placeholder email `user-<id>@no-email.invalid` and no password; it also replaces the starter's unchanged two-field `User` in `src/main.rs`/`src/lib.rs` with `pub use crate::models::user::User;`. A changed or unknown users migration is still refused, now with "refusing to change the users table". When every file it writes already exists (the SaaS starter, or a second run) it reports "Authentication is already scaffolded", writes nothing and exits with status 0 instead of failing. Projects that followed the alpha.3 workaround (deleting the starter migration and database) keep working. |
 | CLI `--no-database` files | From 13.0.0-alpha.4, `cargo rullst new --no-database` (Blank or API) no longer writes an empty `rullst.db`, and with `--docker` its Dockerfile no longer sets `DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc`; SQLite projects still get both. A database-free project created earlier can delete the empty `rullst.db` and that Dockerfile line. |
 | CLI `make:migration:auto` without a database to compare | From 13.0.0-alpha.4, `cargo rullst make:migration:auto` exits with status 1 and a "No migration generated" report when there is no `.env`, no `DATABASE_URL` (a `--no-database` project), a non-SQLite `DATABASE_URL` or a Turso primary. alpha.3 printed a warning, exited with status 0 and suggested `cargo rullst db:migrate` to "apply the generated migrations" although none was written. A database already in sync with the models still exits with status 0, now without that next step. Scripts that ran it in such projects and relied on status 0 must stop running it there. From 13.0.0-rc.1, `cargo rullst upgrade` reports scripts that run it (`V13-CLI-MIGRATION-AUTO-STATUS`). |
-| Internals hidden from the API documentation | From 13.0.0-alpha.4 these items are `#[doc(hidden)]`: they still compile, but they are no longer documented and are not part of the 13.x compatibility promise. Core: `html::optional_attr` (called by `html!`), `rpc::route` and `rpc::handle_request` (called by `#[server_function]`), the `server::dylib_loader` module (the hot-reload loader of `Server`) and the `artisan::runner` module, whose `check_and_run_artisan` stays documented as `artisan::check_and_run_artisan`. ORM: `CURRENT_TX` (use `Orm::transaction`), `tenant::CURRENT_TENANT` (use `with_tenant` and `get_tenant_id`), `schema::QUERY_LOGGING`, `schema::QUERY_TIMEOUT_SECS` and `schema::MAX_QUERY_LIMIT` (use `enable_query_log`, `disable_query_log`, `set_query_timeout`, `set_max_query_limit` and their getters) and `privacy::encrypt_aes_gcm`/`decrypt_aes_gcm`. Auth: the `passkey::cbor` module. Connect: the `impl_standard_redirect_url!` and `impl_standard_refresh_token!` macros, the empty `macros` module and `client::DEFAULT_HTTP_CLIENT`. Security: `current_timestamp_str` and `get_real_rss_memory_mb` (use `rullst_core::radar::get_process_memory_mb`). Nexus: `field_kind_sql` and `generate_smart_nexus_ai_response`. Code that names them keeps compiling; move to the documented replacement, because a later major release may make them private. No other API changes. |
+| Internals hidden from the API documentation | From 13.0.0-alpha.4 these items are `#[doc(hidden)]`: they still compile, but they are no longer documented and are not part of the 13.x compatibility promise. Core: `html::optional_attr` (called by `html!`), `rpc::route` and `rpc::handle_request` (called by `#[server_function]`), the `server::dylib_loader` module (the hot-reload loader of `Server`) and the `artisan::runner` module, whose `check_and_run_artisan` stays documented as `artisan::check_and_run_artisan`. ORM: `CURRENT_TX` (use `Orm::transaction`), `tenant::CURRENT_TENANT` (use `with_tenant` and `get_tenant_id`), `schema::QUERY_LOGGING`, `schema::QUERY_TIMEOUT_SECS` and `schema::MAX_QUERY_LIMIT` (use `enable_query_log`, `disable_query_log`, `set_query_timeout`, `set_max_query_limit` and their getters) and `privacy::encrypt_aes_gcm`/`decrypt_aes_gcm`. Auth: the `passkey::cbor` module. Connect: the `impl_standard_redirect_url!` and `impl_standard_refresh_token!` macros, the empty `macros` module and `client::DEFAULT_HTTP_CLIENT`. Security: `current_timestamp_str` and `get_real_rss_memory_mb` (use `rullst_core::radar::get_process_memory_mb`). Nexus: `field_kind_sql` and `generate_smart_nexus_ai_response`. Code that names them keeps compiling in alpha.4; move to the documented replacement. 13.0.0-alpha.5 makes most of them crate-private (see Hidden internals made private). No other API changes. |
+| Duplicate API paths removed | **Breaking**, from 13.0.0-alpha.5: each item keeps one path. `rullst::rullst_orm` (the same module as `rullst::orm`), `rullst::security_runtime` (the same as `rullst::security::runtime`), Mail's `rullst_mail::mail` module (a second name for the crate root) and `rullst_mail::drivers::mock` (the same as `rullst_mail::mock`) were removed. Write `rullst::orm`, adding `use rullst::orm as rullst_orm;` where the code names `rullst_orm` (as code generated by `#[derive(Orm)]` does), `rullst::security::runtime`, `rullst_mail::…` and `rullst_mail::mock::…`. `cargo rullst upgrade` reports each use (`V13-API-ALIAS-PATHS`). |
+| Hidden internals made private | **Breaking**, from 13.0.0-alpha.5: the internals hidden from the documentation in 13.0.0-alpha.4 that no Rullst macro expansion or other Rullst crate uses are crate-private or removed. Core: the `server::dylib_loader` and `artisan::runner` modules (`artisan::check_and_run_artisan` stays). ORM: `tenant::CURRENT_TENANT`, `schema::QUERY_LOGGING`, `schema::QUERY_TIMEOUT_SECS`, `schema::MAX_QUERY_LIMIT`, `privacy::encrypt_aes_gcm`, `privacy::decrypt_aes_gcm` and `Orm::redis_cache_namespace`. Auth: the `passkey::cbor` module. Connect: the `impl_standard_redirect_url!` and `impl_standard_refresh_token!` macros, the `macros` module (`define_provider!` stays at the crate root), `client::DEFAULT_HTTP_CLIENT`, and the methods of `ChallengeDatabase`, now on its sealed supertrait. Security: `current_timestamp_str`; `get_real_rss_memory_mb` was removed (use `rullst_core::radar::get_process_memory_mb`). Nexus: `generate_smart_nexus_ai_response`; `field_kind_sql` was removed. The other `#[doc(hidden)]` items stay public because macro expansions (`html!`, `#[server_function]`, `catalog!`/`t!`, `#[memoize]`, `assert_html_snapshot!`, `#[derive(Orm)]`, `#[derive(Enum)]`, `#[derive(TursoModel)]`, `#[rullst_orm::test]`) or other Rullst crates call them; they are not part of the 13.x compatibility promise. `cargo rullst upgrade` reports the names (`V13-HIDDEN-INTERNALS-PRIVATE`). |
+| Security store collections | **Breaking**, from 13.0.0-alpha.5: the `banned_ips`, `honeypot_route_hits` and `live_events` fields of `rullst_security::SecurityStore` are private, so `dashmap` and the event `Mutex` are no longer part of its API. Read them with `active_bans()` (active bans sorted by IP, expired ones pruned first), `is_banned(ip)`, `honeypot_route_hits()` (`(route, hits)` sorted by route) and `live_events()` (newest first, at most 50), which return copies. The counter fields stay public. Nexus renders its security page from these methods. `cargo rullst upgrade` reports field accesses in files that name `SecurityStore` (`V13-SECURITY-STORE-COLLECTIONS`). |
+| Rullst-owned error payloads | **Breaking**, from 13.0.0-alpha.5: no public error variant or `From` conversion names a `reqwest`, `jsonwebtoken`, `base64`, `redis` or `serde_json` error. `AiError::RequestError` carries `AiRequestError` (`is_timeout()`, `is_connect()`) and `AiError::SerializationError` carries `AiJsonError`; `ClientContractError::InvalidJson` and `EncodeJson` carry `ContractJsonError`; `TwinSyncError::Serialization` carries `TwinJsonError`, and `TwinSyncError` is now `#[non_exhaustive]` and implements `Error`. Each keeps the library error's message as `Display` and its causes as `source()`, so the texts are unchanged. `ConnectError` no longer implements `From` for `reqwest::Error`, `serde_json::Error`, `base64::DecodeError` or `jsonwebtoken::errors::Error`, and `rullst_orm::Error` no longer implements `From` for `serde_json::Error` or `redis::RedisError`: code that used `?` on those errors maps them, for example `.map_err(\|error\| Error::SerializationError(error.to_string()))` or `Error::CacheError(...)`; the variants and messages the crates produce are unchanged. `cargo rullst upgrade` reports the changed variants (`V13-ERROR-PAYLOADS`); the `?` conversions surface as compile errors. |
+| AI provider HTTP errors | **Breaking**, from 13.0.0-alpha.5: an unsuccessful HTTP status from a provider returns the new `AiError::HttpStatus(AiHttpError)` instead of `AiError::ApiError`, from every built-in provider and streaming transport. `AiHttpError` has `status()` (the code as a number), `retry_after()` (the `Retry-After` header in seconds or Gemini's `RetryInfo` delay), `code()` and `message()` (the provider's error code and its one-line message from the body, at most 300 characters, with URL queries and key-shaped tokens redacted) and `provider()`; `AiHttpError::new` and its `with_*` methods build one in a custom provider or a test. The text is unchanged: `API error: <Provider> returned HTTP <code> <reason>`, then `: <code>: <message>` when the body has one. `ApiError` still reports malformed or incomplete replies. `cargo rullst upgrade` reports `AiError::ApiError` matches (`V13-AI-HTTP-STATUS`). |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
@@ -569,6 +576,83 @@ documentation. Work through the steps in order.
     restored copy of the production database; then, on staging, sign-in,
     Nexus (with or without the assistant), each configured provider and the
     health probes before production.
+
+## Upgrading an alpha.4 application to alpha.5
+
+This checklist moves an application from 13.0.0-alpha.4 to 13.0.0-alpha.5,
+the 13.0 feature and API freeze. Its breaking changes clean up the public API
+before it is frozen for 13.x: one path per item, internals made crate-private,
+private `SecurityStore` collections, error types that name no third-party
+error type, and a typed HTTP status error in `rullst-ai`. Work through the
+steps in order.
+
+1. **Prepare.** Work on a branch with a clean tree and a committed
+   `Cargo.lock`, and record the current `cargo test` result.
+2. **Install the alpha.5 CLI.**
+   `cargo install cargo-rullst --version =13.0.0-alpha.5 --locked --force`,
+   then `rullst --version` must print `13.0.0-alpha.5`.
+3. **Inspect.** `cargo rullst upgrade --dry-run` applies only the rules
+   introduced after 13.0.0-alpha.4. These five are new in alpha.5:
+   - `V13-API-ALIAS-PATHS` (`MUST-CHANGE`, step 5): `rullst::rullst_orm`,
+     `rullst::security_runtime`, `rullst_mail::mail` or
+     `rullst_mail::drivers::mock`, in a path or a `use` tree.
+   - `V13-HIDDEN-INTERNALS-PRIVATE` (`REVIEW`, step 6): a name of an
+     internal that alpha.5 made crate-private or removed.
+   - `V13-SECURITY-STORE-COLLECTIONS` (`REVIEW`, step 6): `.banned_ips`,
+     `.honeypot_route_hits` or `.live_events` in a file that names
+     `SecurityStore`.
+   - `V13-ERROR-PAYLOADS` (`REVIEW`, step 7): `AiError::RequestError`,
+     `AiError::SerializationError`, `ClientContractError::InvalidJson`,
+     `ClientContractError::EncodeJson` or `TwinSyncError::Serialization`.
+   - `V13-AI-HTTP-STATUS` (`REVIEW`, step 8): `AiError::ApiError`.
+
+   The five rules the rc.1 CLI adds for alpha.4 changes also appear (see the
+   [alpha.3 to alpha.4 checklist](#upgrading-an-alpha3-application-to-alpha4)).
+   The review rules name APIs that no longer compile, so a failed check
+   repeats their guidance.
+4. **Apply, keeping a failed state.** Run
+   `cargo rullst upgrade --keep-on-failure`: it pins every Rullst dependency
+   to `=13.0.0-alpha.5`, runs `cargo fix` and `cargo check --locked`, and
+   keeps the edited files when they fail. Fix what steps 5 to 8 name, then
+   run `cargo rullst upgrade` again (step 9).
+5. **Use the one path of each item** (Duplicate API paths removed row):
+   `rullst::rullst_orm::…` becomes `rullst::orm::…` (with
+   `use rullst::orm as rullst_orm;` where code names `rullst_orm`),
+   `rullst::security_runtime::…` becomes `rullst::security::runtime::…`,
+   `rullst_mail::mail::…` becomes `rullst_mail::…` and
+   `rullst_mail::drivers::mock::…` becomes `rullst_mail::mock::…`.
+6. **Replace the private internals and store fields** (Hidden internals made
+   private and Security store collections rows): use `Orm::transaction`,
+   `with_tenant`/`get_tenant_id`, the `schema` query-log, timeout and limit
+   setters and getters, `artisan::check_and_run_artisan` and
+   `rullst_core::radar::get_process_memory_mb`. For the security store,
+   `store.live_events.lock()` becomes `store.live_events()`,
+   `store.banned_ips.iter()` becomes `store.active_bans()`,
+   `store.banned_ips.contains_key(ip)` becomes `store.is_banned(ip)` and
+   `store.honeypot_route_hits.iter()` becomes `store.honeypot_route_hits()`.
+   The Connect provider macros, `DEFAULT_HTTP_CLIENT`, `passkey::cbor`,
+   `encrypt_aes_gcm`/`decrypt_aes_gcm` and the Nexus helpers have no public
+   replacement: copy what you need.
+7. **Adapt to the Rullst error payloads** (Rullst-owned error payloads row).
+   Code that read the `reqwest::Error` of `AiError::RequestError` calls
+   `is_timeout()` or `is_connect()` on the `AiRequestError`, and other
+   payloads are read through `Display` and `source()`. Add a `_` arm to an
+   exhaustive `match` on `TwinSyncError`. Where `?` turned a `serde_json` or
+   `redis` error into `rullst_orm::Error` (in an observer, a hook or your
+   own query code), or a `reqwest`, `serde_json`, `base64` or `jsonwebtoken`
+   error into `ConnectError`, map it explicitly:
+   `.map_err(|error| rullst_orm::Error::SerializationError(error.to_string()))?`
+   or `Error::CacheError(...)`. No rule locates these `?` conversions; the
+   compiler names them.
+8. **Use the typed AI HTTP errors** (AI provider HTTP errors row). Replace
+   text searches such as `message.contains("429")` with
+   `AiError::HttpStatus(error)` and `error.status()`; wait
+   `error.retry_after()` before retrying, and show `error.message()` (the
+   provider's own reason, for example why a model is unavailable). Arms that
+   matched `AiError::ApiError` for HTTP failures no longer see them.
+9. **Validate.** Run `cargo rullst upgrade` again, then verify with the
+   production feature set: `cargo build`, `cargo test` and
+   `cargo clippy --all-targets -- -D warnings`.
 
 ## Why the candidate uses a new major
 
