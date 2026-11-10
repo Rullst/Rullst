@@ -46,13 +46,9 @@ fn status_error_text(provider: &str, status: reqwest::StatusCode, detail: Option
     })
 }
 
+/// The whole body, or `None` once it exceeds [`MAX_ERROR_BODY_BYTES`] or a
+/// read fails. A declared `Content-Length` is not trusted either way.
 async fn read_bounded(mut response: reqwest::Response) -> Option<Vec<u8>> {
-    if response
-        .content_length()
-        .is_some_and(|length| length > MAX_ERROR_BODY_BYTES as u64)
-    {
-        return None;
-    }
     let mut body = Vec::new();
     loop {
         match response.chunk().await {

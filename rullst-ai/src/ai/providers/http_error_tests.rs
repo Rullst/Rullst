@@ -184,6 +184,34 @@ async fn compatible_provider_adds_a_bounded_single_line_message() {
     );
 }
 
+/// A JSON error body of exactly `len` bytes whose message is `padded`.
+fn padded_error_body(len: usize) -> String {
+    let head = r#"{"error":{"message":"padded"},"pad":""#;
+    let tail = r#""}"#;
+    let pad = len - head.len() - tail.len();
+    format!("{head}{}{tail}", "x".repeat(pad))
+}
+
+#[tokio::test]
+async fn reads_an_error_body_of_at_most_sixteen_kib() {
+    for (len, detail) in [(16 * 1024, ": padded"), (16 * 1024 + 1, ""), (20_000, "")] {
+        let (url, server) = serve_error("400 Bad Request", padded_error_body(len)).await;
+        let message = api_error(
+            OpenAiProvider::new("fixture-key")
+                .with_base_url(url)
+                .with_request_timeout(Duration::from_secs(3))
+                .prompt("hello")
+                .await,
+        );
+        server.await.unwrap();
+        assert_eq!(
+            message,
+            format!("OpenAI returned HTTP 400 Bad Request{detail}"),
+            "{len}-byte body"
+        );
+    }
+}
+
 #[tokio::test]
 async fn bodies_without_a_provider_message_keep_the_plain_status() {
     let (url, server) = serve_error(
