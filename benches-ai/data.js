@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794307002795,
+  "lastUpdate": 1794325033859,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -17927,6 +17927,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 276,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a0c0fd7aed085aed8f3a4a12d25cce5add0052ba",
+          "message": "Merge pull request #624 from Rullst/feat/v13-alpha5-app-testing-kit\n\nfeat(cli): generated application testing kit: page smoke tests, CI workflow and add browser-tests",
+          "timestamp": "2026-11-10T12:13:08-03:00",
+          "tree_id": "34b428bf1a876371d6a79895f0a2ccebb7dc0ea8",
+          "url": "https://github.com/Rullst/Rullst/commit/a0c0fd7aed085aed8f3a4a12d25cce5add0052ba"
+        },
+        "date": 1794325033249,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1666,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 324,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 405,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
