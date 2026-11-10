@@ -81,6 +81,24 @@ A prepared version section does not establish that its tag or crates exist.
   the query string to pass the audit; a `machine` marker without a matching
   registration, on a GET route or on a route that also serves GET is still a
   finding.
+- `rullst::i18n::catalog!` takes an optional `order = ["pt-BR", "en", "es"]`
+  that sets the order of `LOCALES.iter()` for a language menu; it must list
+  every catalog file once. Without it the locales stay sorted by tag, and the
+  `Locales::iter` documentation now says so instead of "catalog order".
+  Requested while upgrading an application.
+
+### Changed
+
+- `t!` compiles in constant time per call: the generated macro now forwards
+  only the catalog's directory, locale order and default, and the hidden
+  `__translate!` reads and prepares the catalog once per compilation (for
+  unchanged file contents) and expands only the called key, instead of every
+  call carrying and re-parsing the whole encoded catalog. On a synthetic
+  application with 400 calls, 250 keys and 3 locales
+  (`.github/i18n-compile-bench.py`), an incremental `cargo check` went from
+  3.75 s to 0.39 s (0.18 s without any call); with 1000 keys, from 14.4 s to
+  0.47 s. Compile-time checks, error messages and the expanded code are
+  unchanged. Reported while upgrading an application.
 
 ### Fixed
 

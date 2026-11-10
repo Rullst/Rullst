@@ -2101,7 +2101,8 @@ the same server-authoritative controls.
   feature, not built for `wasm32`); the catalog macro is
   `rullst_macros::i18n_catalog`, re-exported as `rullst::i18n::catalog!`.
   Guide: [Translations and Locales](i18n.md).
-* **Catalogs:** `catalog!(default = "tag", dir = "path")` (`dir` defaults to
+* **Catalogs:** `catalog!(default = "tag", dir = "path", order = ["tag", …])`
+  (`order` since 13.0.0-alpha.5, optional; `dir` defaults to
   `locales`, relative to `CARGO_MANIFEST_DIR`; absolute paths are rejected)
   reads every `*.toml` file of the directory at compile time, at most 64
   files of at most 1 MiB. The file stem is the locale tag,
@@ -2123,8 +2124,14 @@ the same server-authoritative controls.
   (`rullst-macros/tests/locale_rebuild.rs` builds a probe crate with and
   without it).
 * **Generated items:** in the invoking module, `pub static LOCALES:
-  rullst::i18n::Locales` (tags sorted, default index) and `macro_rules! t`
-  re-exported with `pub(crate) use t;`. `t!(locale, "key", name = expr, …)`
+  rullst::i18n::Locales` (tags sorted, or in the given `order`, which must
+  list every catalog tag exactly once; default index) and `macro_rules! t`
+  re-exported with `pub(crate) use t;`. Since 13.0.0-alpha.5 `t!` forwards
+  the catalog's directory, tag order and default, not its messages, to the
+  hidden `__translate!`, which reads the same files, prepares the catalog
+  once per compilation process for identical file contents and expands only
+  the called key: a call's compile cost no longer grows with the catalog
+  (`.github/i18n-compile-bench.py` measures it). `t!(locale, "key", name = expr, …)`
   takes a `Locale` or `&Locale` and a string-literal key; an unknown key (with
   a near-miss suggestion), a missing, unexpected or repeated argument, and a
   plural message without `count` are compile errors at the caller's tokens.

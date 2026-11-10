@@ -229,7 +229,9 @@ impl Locales {
             .map(|tag| Locale { tag })
     }
 
-    /// Every supported locale, in catalog order (for a language menu).
+    /// Every supported locale, for a language menu: in the `order` given to
+    /// [`catalog!`], or sorted by tag (`en`, `es`, `pt-BR`) without one; in
+    /// list order for [`Locales::new`].
     pub fn iter(&self) -> impl Iterator<Item = Locale> + use<> {
         self.tags.iter().copied().map(|tag| Locale { tag })
     }
