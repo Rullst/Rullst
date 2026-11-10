@@ -86,6 +86,10 @@ fn rules_carry_the_release_of_their_change() {
     assert_eq!(
         codes_introduced_in("13.0.0-alpha.5"),
         [
+            "V13-ISLANDS-REMOVED",
+            "V13-ISLAND-COMMANDS-REMOVED",
+            "V13-LIVE-REMOVED",
+            "V13-LIVE-COMMAND-REMOVED",
             "V13-CAPITAL-INVOICE-MINOR-UNITS",
             "V13-MAIL-MESSAGE-REPLY-TO",
         ]

@@ -29,7 +29,6 @@ tutorial!(
     transactional_partial_updates,
     "../../docs/src/transactional-partial-updates.md"
 );
-tutorial!(live_recovery, "../../docs/src/live-recovery.md");
 tutorial!(frontend, "../../docs/src/frontend.md");
 tutorial!(migration_v13, "../../docs/src/migration-v13.md");
 tutorial!(distributed_tracing, "../../docs/src/distributed-tracing.md");
@@ -103,16 +102,8 @@ tutorial!(
     "../../docs/src/tutorials/15-rullst-vault-encryption.md"
 );
 tutorial!(
-    tutorial_16_liveview_server_driven_ui,
-    "../../docs/src/tutorials/16-liveview-server-driven-ui.md"
-);
-tutorial!(
     tutorial_17_websockets_realtime_chat,
     "../../docs/src/tutorials/17-websockets-realtime-chat.md"
-);
-tutorial!(
-    tutorial_18_wasm_islands_rust,
-    "../../docs/src/tutorials/18-wasm-islands-rust.md"
 );
 tutorial!(
     tutorial_19_saas_billing_capital,
@@ -171,8 +162,8 @@ tutorial!(
     "../../docs/src/tutorials/33-multi-tenant-b2b-saas.md"
 );
 tutorial!(
-    tutorial_34_realtime_dashboard_liveview_websockets,
-    "../../docs/src/tutorials/34-realtime-dashboard-liveview-websockets.md"
+    tutorial_34_realtime_dashboard_sse,
+    "../../docs/src/tutorials/34-realtime-dashboard-sse.md"
 );
 tutorial!(
     tutorial_35_high_performance_benchmarking,

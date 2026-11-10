@@ -186,10 +186,7 @@ pub(crate) fn run(options: DoctorOptions) -> Result<(), Box<dyn std::error::Erro
     }
     let cwd = std::env::current_dir()?;
     let project = ProjectContext::detect(&cwd);
-    let needs_wasm = project
-        .as_ref()
-        .is_some_and(|project| project.root.join("src").join("islands").is_dir());
-    let mut probes = Probes::collect(needs_wasm, &cwd);
+    let mut probes = Probes::collect(&cwd);
     let mut outcome = FixOutcome::NotAttempted;
     if options.fix && !(probes.rustfmt.ok() && probes.clippy.ok()) {
         if !options.json {

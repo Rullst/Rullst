@@ -95,7 +95,7 @@ async fn checkout() -> Result<(), CapitalError> {
 
 The account's recurring price allowlist is server-owned. A local user may never
 supply another customer's ID or choose a raw provider URL. For the complete
-SQLx/Turso application flow, use the SaaS starter or `cargo rullst make:billing`
+SQLx application flow, use the SaaS starter or `cargo rullst make:billing`
 and follow the generated `BILLING.md`; see the
 [SaaS billing tutorial](tutorials/19-saas-billing-capital.md).
 

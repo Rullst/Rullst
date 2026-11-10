@@ -68,7 +68,7 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 
 ## Phase 4: Customer Portal & UI Scaffold
 - [x] **Customer Portal Link**: `StripeProvider::create_bound_customer_portal` creates a Stripe Customer Portal session for an already persisted customer ID; the email-based `billing_portal_url` remains an offline fixture with live credentials unsupported.
-- [x] **Local Billing Scaffold**: `cargo rullst make:billing --model Workspace` generates registered SQLx or Turso-primary models/migrations, demo pricing and guarded billing routes. Materialized contracts compile, migrate, persist offline fixtures, deny cross-owner reuse and refuse collisions. Real or mixed credentials return HTTP 503 until durable scoped ownership, attempts and atomic webhook processing replace the legacy demo flow; provider sandbox acceptance remains separate.
+- [x] **Local Billing Scaffold**: `cargo rullst make:billing --model Workspace` generates registered SQLx models/migrations, demo pricing and guarded billing routes; since 13.0.0-alpha.5 it refuses a Turso-primary project before writing anything. Materialized contracts compile, migrate, persist offline fixtures, deny cross-owner reuse and refuse collisions. Real or mixed credentials return HTTP 503 until durable scoped ownership, attempts and atomic webhook processing replace the legacy demo flow; provider sandbox acceptance remains separate.
 
 ## Phase 5: Entitlements & Tax Management
 - [x] **Tier-based Features**: Check if a user can access a feature based on their subscription tier (`user.can_access("pro_dashboard")`).

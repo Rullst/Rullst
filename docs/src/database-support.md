@@ -90,8 +90,8 @@ nested `Orm::transaction` to continue.
   Every starter and every framework feature works with these.
 - Choose Turso as the primary database only for a Blank starter (a web page or
   a JSON API) where you are ready to write SQL migrations and use the
-  `TursoModel` API without Nexus, Studio's database pages, `Schema` or the
-  SQLx query builder.
+  `TursoModel` API without Nexus, Studio's database pages, `Schema`,
+  `make:billing` or the SQLx query builder.
 - Add a side store when the application needs documents, analytics, graph
   reads, vectors or Redis structures next to its primary database. Enable only
   the adapters you use: each one is its own Cargo feature (`orm-turso`,

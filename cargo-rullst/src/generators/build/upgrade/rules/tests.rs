@@ -4,6 +4,7 @@ use super::*;
 
 mod alpha4_orm_nexus;
 mod alpha5_capital_mail;
+mod alpha5_removed_ui;
 mod data;
 mod docs;
 mod files;

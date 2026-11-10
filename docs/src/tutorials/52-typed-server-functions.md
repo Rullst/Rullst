@@ -34,9 +34,9 @@ When this function is compiled for the native server, its written body runs.
 When compiled for `wasm32`, calling `add(20, 22).await` serializes `(20, 22)`
 and returns the decoded `RpcResult<SumResponse>`. Transport failures are
 machine-readable `RpcFailure` values; they never become a fabricated default
-application value. The caller exists only in a `wasm32-unknown-unknown` build
-of the crate, such as the island build in
-[Tutorial 18](18-wasm-islands-rust.md).
+application value. The caller exists only when the application builds the
+crate for `wasm32-unknown-unknown` with its own toolchain; Rullst's CLI does
+not run that build.
 
 ## Mount the generated route inside server policy
 

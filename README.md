@@ -184,8 +184,8 @@ Real applications running today, every one of them built with Rullst. Click to e
 <table>
   <tr>
     <td width="50%" align="center" valign="top">
-      <a href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/demo-showcase.webp" alt="Showcase built with Rullst: SSR, LiveView, Wasm, ORM, billing, security and AI demos" width="100%"></a>
-      <br><b>🌐 Showcase</b> — SSR, LiveView, Wasm, ORM, billing, security and AI demos · <a href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/">Open ↗</a>
+      <a href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/demo-showcase.webp" alt="Showcase built with Rullst: SSR, HTMX, ORM, billing, security and AI demos" width="100%"></a>
+      <br><b>🌐 Showcase</b> — SSR, HTMX, ORM, billing, security and AI demos · <a href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/">Open ↗</a>
     </td>
     <td width="50%" align="center" valign="top">
       <a href="https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/demo-lms.webp" alt="LMS built with Rullst: course catalog and learning platform" width="100%"></a>
@@ -527,7 +527,7 @@ list every change.
 - **Opt-in candidates:** email login, scoped API tokens, active-session
   management with remote logout, private S3/R2 storage with resumable uploads,
   durable outgoing webhooks and recurring publications, Redis Streams
-  messaging, distributed tracing and a recoverable Live UI are in the 13.0
+  messaging and distributed tracing are in the 13.0
   prereleases behind their own features; each guide states what has been
   validated and what is still open.
 
@@ -556,6 +556,14 @@ list every change.
   notice prints.
 - The LMS, Blog, Portfolio and ERP starters of `cargo rullst new`: they are
   applications in [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples).
+- WebAssembly islands (`#[island]`, `make:island`, `build:client`): the
+  default CSP does not allow browsers to compile WebAssembly. Use htmx and
+  native HTML; `#[server_function]` and its `wasm32` caller remain.
+- Live components (`LiveComponent`, `#[live_component]`, `make:live`,
+  `rullst::live::recovery`): use htmx with `rullst::realtime::RealtimeSse`
+  (Server-Sent Events) or `rullst::ws` WebSockets.
+- The Turso variant of `make:billing`: billing is generated for SQLx projects
+  only.
 
 The [v13 adoption guide](https://rullst.github.io/Rullst/book/migration-v13.html)
 gives each change its replacement, and `cargo rullst upgrade --dry-run`

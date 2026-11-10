@@ -1,4 +1,6 @@
-//! Fail-closed billing scaffold for relational and Turso-primary projects.
+//! Fail-closed billing scaffold for projects on the SQLx database layer
+//! (SQLite, PostgreSQL, MySQL or MariaDB). Turso-primary projects are refused
+//! before anything is written.
 
 use crate::generators::chat::ensure_rullst_features;
 use crate::generators::migration::regenerate_migrations_mod;
@@ -12,16 +14,18 @@ use std::io::{Error as IoError, ErrorKind};
 use std::path::{Path, PathBuf};
 
 const BILLING_CONTROLLER_TEMPLATE: &str = include_str!("billing_controller.rs.template");
-const SQLX_SUBSCRIPTION_MODEL: &str = include_str!("billing_subscription_sqlx.rs.template");
-const TURSO_SUBSCRIPTION_MODEL: &str = include_str!("billing_subscription_turso.rs.template");
-const SQLX_CUSTOMER_MODEL: &str = include_str!("billing_customer_sqlx.rs.template");
-const TURSO_CUSTOMER_MODEL: &str = include_str!("billing_customer_turso.rs.template");
-const SQLX_MIGRATION: &str = include_str!("billing_migration_sqlx.rs.template");
-const TURSO_MIGRATION: &str = include_str!("billing_migration_turso.rs.template");
-const SQLX_PERSIST: &str = include_str!("billing_persist_sqlx.rs.template");
-const SQLX_TIMESTAMP: &str = include_str!("billing_timestamp_sqlx.rs.template");
-const TURSO_TIMESTAMP: &str = include_str!("billing_timestamp_turso.rs.template");
-const TURSO_PERSIST: &str = include_str!("billing_persist_turso.rs.template");
+const SUBSCRIPTION_MODEL: &str = include_str!("billing_subscription_sqlx.rs.template");
+const CUSTOMER_MODEL: &str = include_str!("billing_customer_sqlx.rs.template");
+const MIGRATION: &str = include_str!("billing_migration_sqlx.rs.template");
+const PERSIST: &str = include_str!("billing_persist_sqlx.rs.template");
+const TIMESTAMP: &str = include_str!("billing_timestamp_sqlx.rs.template");
+const STORE: &str = include_str!("billing_store_sqlx.rs.template");
+/// SQLx billing tables key their owner with a 32-bit integer.
+const OWNER_ID_TYPE: &str = "i32";
+const OWNER_TO_I64: &str = "i64::from(identity.owner_id)";
+
+/// Why `make:billing` refuses a Turso-primary project (since 13.0.0-alpha.5).
+pub(crate) const TURSO_REFUSAL: &str = "make:billing needs the SQLx database layer (SQLite, PostgreSQL, MySQL or MariaDB): its store uses SQLx transactions and query builders. Turso is supported only as the primary database of the Blank and API starters, so billing cannot be generated in this Turso-primary project; nothing was written";
 
 const FIXED_OUTPUTS: [&str; 10] = [
     "src/models/subscription.rs",
@@ -36,58 +40,24 @@ const FIXED_OUTPUTS: [&str; 10] = [
     "src/controllers/billing_report.rs",
 ];
 
-pub(crate) fn render_billing_controller(foreign_key: &str, backend: ProjectOrmBackend) -> String {
-    let owner_id_type = match backend {
-        ProjectOrmBackend::Sqlx => "i32",
-        ProjectOrmBackend::Turso => "i64",
-    };
+pub(crate) fn render_billing_controller(foreign_key: &str) -> String {
     BILLING_CONTROLLER_TEMPLATE
-        .replace(
-            "__PERSIST_BILLING_UPDATE__",
-            match backend {
-                ProjectOrmBackend::Sqlx => SQLX_PERSIST,
-                ProjectOrmBackend::Turso => TURSO_PERSIST,
-            },
-        )
-        // SQLx `timestamps()` columns hold `chrono` instants; Turso keeps the
-        // `CURRENT_TIMESTAMP` text.
-        .replace(
-            "__UTC_TIMESTAMP_FN__",
-            match backend {
-                ProjectOrmBackend::Sqlx => SQLX_TIMESTAMP,
-                ProjectOrmBackend::Turso => TURSO_TIMESTAMP,
-            },
-        )
-        // New SQLx records also start an empty dirty-tracking snapshot.
+        .replace("__PERSIST_BILLING_UPDATE__", PERSIST)
+        // `timestamps()` columns hold `chrono` instants on SQLx pools.
+        .replace("__UTC_TIMESTAMP_FN__", TIMESTAMP)
+        // New records also start an empty dirty-tracking snapshot.
         .replace(
             "__UPDATED_AT__",
-            match backend {
-                ProjectOrmBackend::Sqlx => {
-                    "updated_at: created_at,\n                snapshot: rullst::db::RowSnapshot::default()"
-                }
-                ProjectOrmBackend::Turso => "updated_at: created_at.clone()",
-            },
+            "updated_at: created_at,\n                snapshot: rullst::db::RowSnapshot::default()",
         )
         .replace("__FOREIGN_KEY__", foreign_key)
-        .replace("__OWNER_ID_TYPE__", owner_id_type)
+        .replace("__OWNER_ID_TYPE__", OWNER_ID_TYPE)
 }
 
-pub(crate) fn live_billing_files(
-    foreign_key: &str,
-    backend: ProjectOrmBackend,
-) -> Vec<(&'static str, String)> {
-    let store = match backend {
-        ProjectOrmBackend::Sqlx => include_str!("billing_store_sqlx.rs.template"),
-        ProjectOrmBackend::Turso => include_str!("billing_store_turso.rs.template"),
-    };
-    let owner_type = if backend == ProjectOrmBackend::Sqlx {
-        "i32"
-    } else {
-        "i64"
-    };
-    let store = store
+pub(crate) fn live_billing_files(foreign_key: &str) -> Vec<(&'static str, String)> {
+    let store = STORE
         .replace("__FOREIGN_KEY__", foreign_key)
-        .replace("__OWNER_ID_TYPE__", owner_type)
+        .replace("__OWNER_ID_TYPE__", OWNER_ID_TYPE)
         .replace(
             "__OWNER_CAST__",
             "i32::try_from(next.owner).map_err(|_| UNAVAILABLE)?",
@@ -100,14 +70,7 @@ pub(crate) fn live_billing_files(
                     "__SUBJECT_KIND__",
                     foreign_key.strip_suffix("_id").unwrap_or(foreign_key),
                 )
-                .replace(
-                    "__OWNER_TO_I64__",
-                    if backend == ProjectOrmBackend::Sqlx {
-                        "i64::from(identity.owner_id)"
-                    } else {
-                        "identity.owner_id"
-                    },
-                ),
+                .replace("__OWNER_TO_I64__", OWNER_TO_I64),
         ),
         (
             "src/controllers/billing_gateway.rs",
@@ -115,14 +78,7 @@ pub(crate) fn live_billing_files(
         ),
         (
             "src/controllers/billing_live.rs",
-            include_str!("billing_live.rs.template").replace(
-                "__OWNER_TO_I64__",
-                if backend == ProjectOrmBackend::Sqlx {
-                    "i64::from(identity.owner_id)"
-                } else {
-                    "identity.owner_id"
-                },
-            ),
+            include_str!("billing_live.rs.template").replace("__OWNER_TO_I64__", OWNER_TO_I64),
         ),
         (
             "src/controllers/billing_events.rs",
@@ -136,32 +92,25 @@ pub(crate) fn live_billing_files(
     ]
 }
 
-pub(crate) fn render_billing_models(
-    foreign_key: &str,
-    backend: ProjectOrmBackend,
-) -> (String, String) {
-    let (subscription, customer) = match backend {
-        ProjectOrmBackend::Sqlx => (SQLX_SUBSCRIPTION_MODEL, SQLX_CUSTOMER_MODEL),
-        ProjectOrmBackend::Turso => (TURSO_SUBSCRIPTION_MODEL, TURSO_CUSTOMER_MODEL),
-    };
+pub(crate) fn render_billing_models(foreign_key: &str) -> (String, String) {
     (
-        subscription.replace("__FOREIGN_KEY__", foreign_key),
-        customer.replace("__FOREIGN_KEY__", foreign_key),
+        SUBSCRIPTION_MODEL.replace("__FOREIGN_KEY__", foreign_key),
+        CUSTOMER_MODEL.replace("__FOREIGN_KEY__", foreign_key),
     )
 }
 
-pub(crate) fn render_billing_migration(
-    migration_name: &str,
-    foreign_key: &str,
-    backend: ProjectOrmBackend,
-) -> String {
-    let template = match backend {
-        ProjectOrmBackend::Sqlx => SQLX_MIGRATION,
-        ProjectOrmBackend::Turso => TURSO_MIGRATION,
-    };
-    template
+pub(crate) fn render_billing_migration(migration_name: &str, foreign_key: &str) -> String {
+    MIGRATION
         .replace("__MIGRATION_NAME__", migration_name)
         .replace("__FOREIGN_KEY__", foreign_key)
+}
+
+/// Refuses a Turso-primary project with [`TURSO_REFUSAL`].
+fn require_sqlx(backend: ProjectOrmBackend) -> Result<(), IoError> {
+    match backend {
+        ProjectOrmBackend::Sqlx => Ok(()),
+        ProjectOrmBackend::Turso => Err(IoError::new(ErrorKind::Unsupported, TURSO_REFUSAL)),
+    }
 }
 
 /// Generates billing persistence, pricing, checkout, portal and signed-webhook code.
@@ -184,9 +133,9 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
         .into());
     }
 
+    require_sqlx(project_orm_backend())?;
     reject_existing_outputs()?;
     let root_module = project_root_module()?;
-    let backend = project_orm_backend();
     let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S");
     let migration_name = format!("m{timestamp}_create_subscriptions_table");
     let migration_path = Path::new("src/migrations").join(format!("{migration_name}.rs"));
@@ -197,9 +146,9 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
     let manifest_path = Path::new("Cargo.toml");
     let manifest = fs::read_to_string(manifest_path)?;
     let updated_manifest = ensure_rullst_features(&manifest, &["orm", "capital"])?;
-    let (subscription_model, customer_model) = render_billing_models(&foreign_key, backend);
-    let controller = render_billing_controller(&foreign_key, backend);
-    let migration = render_billing_migration(&migration_name, &foreign_key, backend);
+    let (subscription_model, customer_model) = render_billing_models(&foreign_key);
+    let controller = render_billing_controller(&foreign_key);
+    let migration = render_billing_migration(&migration_name, &foreign_key);
 
     fs::create_dir_all("src/models")?;
     fs::create_dir_all("src/pages")?;
@@ -209,7 +158,7 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
     fs::write(FIXED_OUTPUTS[1], customer_model)?;
     fs::write(FIXED_OUTPUTS[2], include_str!("billing_page.rs.template"))?;
     fs::write(FIXED_OUTPUTS[3], controller)?;
-    for (path, contents) in live_billing_files(&foreign_key, backend) {
+    for (path, contents) in live_billing_files(&foreign_key) {
         fs::write(path, contents)?;
     }
     fs::write(&migration_path, migration)?;
@@ -226,12 +175,9 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
 
     println!(
         "{}",
-        format!(
-            "💳 Billing scaffold created for {model} with the {} persistence profile.",
-            backend_label(backend)
-        )
-        .green()
-        .bold()
+        format!("💳 Billing scaffold created for {model} with the SQLx persistence profile.")
+            .green()
+            .bold()
     );
     println!("👉 Mount authenticated checkout/portal routes and the exact signed webhook route.");
     println!(
@@ -303,13 +249,6 @@ fn existing_output_error(path: &Path) -> IoError {
         ErrorKind::AlreadyExists,
         format!("refusing to overwrite {}", path.display()),
     )
-}
-
-fn backend_label(backend: ProjectOrmBackend) -> &'static str {
-    match backend {
-        ProjectOrmBackend::Sqlx => "SQLx",
-        ProjectOrmBackend::Turso => "Turso-primary",
-    }
 }
 
 #[cfg(test)]

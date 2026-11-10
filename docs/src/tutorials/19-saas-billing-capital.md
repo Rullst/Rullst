@@ -9,8 +9,9 @@ optional local Studio view without treating it as an accounting system.
 cargo rullst make:billing --model Workspace
 ```
 
-The command detects a relational SQLx or Turso-primary project, adds the exact
-`orm` and `capital` facade features once, generates a reversible matching
+The command needs a relational SQLx project (SQLite, PostgreSQL, MySQL or
+MariaDB); since 13.0.0-alpha.5 it refuses a Turso-primary project before
+writing anything. It adds the exact `orm` and `capital` facade features once, generates a reversible matching
 migration, registers the models/controller/page modules, and refuses to
 overwrite an earlier billing scaffold. The generated runtime supports the
 Stripe live integration or explicit offline fixtures; `BILLING_PROVIDER`

@@ -1,14 +1,19 @@
 use super::*;
 
 #[test]
-fn only_ai_is_removed() {
-    assert!(is_removed("ai"));
+fn only_the_listed_commands_are_removed() {
+    for name in ["ai", "make:island", "build:client", "make:live"] {
+        assert!(is_removed(name), "{name}");
+    }
     for name in [
         "green",
         "footprint",
         "Ai",
         "ai:x",
         "generate:ai-context",
+        "make:island:x",
+        "build",
+        "make:billing",
         "",
     ] {
         assert!(!is_removed(name), "{name}");
@@ -16,7 +21,38 @@ fn only_ai_is_removed() {
     let names: Vec<String> = commands()
         .map(|command| command.get_name().to_string())
         .collect();
-    assert_eq!(names, ["ai"]);
+    assert_eq!(names, ["ai", "make:island", "build:client", "make:live"]);
+}
+
+#[test]
+fn the_alpha5_removals_point_to_their_replacement() {
+    for (name, replacement) in [
+        ("make:island", "htmx"),
+        ("build:client", "html!"),
+        ("make:live", "RealtimeSse"),
+    ] {
+        let report = friendly(find(name).expect("listed"));
+        assert_eq!(report.title, format!("`cargo rullst {name}` was removed"));
+        assert_eq!(
+            report.happened,
+            format!("`cargo rullst {name}` was removed in 13.0.0-alpha.5.")
+        );
+        assert!(
+            report.fix.unwrap_or_default().contains(replacement),
+            "{name}"
+        );
+        assert_eq!(
+            report.docs,
+            Some(
+                "https://rullst.github.io/Rullst/book/migration-v13.html#upgrading-an-alpha4-application-to-alpha5"
+            )
+        );
+    }
+    let command = crate::command();
+    let matches = command
+        .try_get_matches_from(["rullst", "make:live", "Counter", "--force"])
+        .expect("anything after a removed command parses");
+    assert_eq!(matches.subcommand_name(), Some("make:live"));
 }
 
 #[test]
