@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794324780672,
+  "lastUpdate": 1794333298109,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -12665,6 +12665,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 548,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "172e066de6d90964ef99967d9383167cc7b66b30",
+          "message": "Merge pull request #625 from Rullst/feat/v13-alpha5-remove-islands-live\n\nfeat!: remove Wasm islands, Live and Turso billing; add realtime SSE (alpha.5)",
+          "timestamp": "2026-11-10T14:05:40-03:00",
+          "tree_id": "6e22e876a53a38024ce346eda5c041b2fc80a8f9",
+          "url": "https://github.com/Rullst/Rullst/commit/172e066de6d90964ef99967d9383167cc7b66b30"
+        },
+        "date": 1794333297121,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 410,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
