@@ -133,7 +133,16 @@ fn non_loopback_and_unreachable_targets_fail() {
         .expect("every freed port was answered");
     assert_eq!(unreachable.status.code(), Some(1));
     assert!(String::from_utf8_lossy(&unreachable.stderr).contains("App not reachable"));
-    assert!(unreachable.stdout.is_empty());
+    // The JSON report still carries the figures that need no running app,
+    // with the failure inside.
+    let report: Value =
+        serde_json::from_slice(&unreachable.stdout).expect("stdout holds only the JSON report");
+    assert_eq!(report["schema"], "rullst.green.v1");
+    assert_eq!(report["failure"]["stage"], "reach");
+    assert_eq!(
+        report["measured"]["idle_rss_bytes"]["reason"],
+        "the app was not reachable"
+    );
 
     let estimate_without_bench = green(&["--cpu-watts", "10"]);
     assert_eq!(estimate_without_bench.status.code(), Some(2));
