@@ -32,22 +32,29 @@ use attributes::{HtmlAttribute, allows_data_urls, option_value_probe_tokens, url
 mod control;
 use control::{HtmlFor, HtmlIf, HtmlMatch};
 
+#[path = "html_text.rs"]
+mod text;
+use text::Child;
+
 impl Parse for HtmlDocument {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut nodes = Vec::new();
+        let mut children = Vec::new();
         while !input.is_empty() {
             if starts_doctype(input) {
-                if !nodes.is_empty() {
+                if !children.is_empty() {
                     return Err(misplaced_doctype(input));
                 }
-                nodes.push(parse_doctype(input)?);
+                children.push(Child::node(parse_doctype(input)?, false));
             } else if starts_comment(input) {
                 parse_comment(input)?;
             } else {
-                nodes.push(input.parse::<HtmlNode>()?);
+                let spaced = text::spaced_before(input);
+                children.push(parse_child(input, spaced)?);
             }
         }
-        Ok(Self { nodes })
+        Ok(Self {
+            nodes: text::join(children),
+        })
     }
 }
 
@@ -57,25 +64,29 @@ pub struct HtmlElement {
     pub children: Vec<HtmlNode>,
 }
 
-impl Parse for HtmlNode {
-    fn parse(input: ParseStream) -> Result<Self> {
-        if input.peek(Token![<]) {
-            let element = input.parse::<HtmlElement>()?;
-            Ok(HtmlNode::Element(element))
-        } else if input.peek(Token![@]) {
-            control::parse_control(input)
-        } else if input.peek(Token![else]) {
-            Err(control::else_without_at(input))
-        } else if input.peek(token::Brace) {
-            let content;
-            syn::braced!(content in input);
-            let expr = content.parse::<Expr>()?;
-            Ok(HtmlNode::Block(expr))
+/// Parses one child node; `spaced` says whether whitespace precedes it.
+fn parse_child(input: ParseStream, spaced: bool) -> Result<Child> {
+    let node = if input.peek(Token![<]) {
+        HtmlNode::Element(input.parse::<HtmlElement>()?)
+    } else if input.peek(Token![@]) {
+        control::parse_control(input)?
+    } else if input.peek(Token![else]) && (input.peek2(token::Brace) || input.peek2(Token![if])) {
+        return Err(control::else_without_at(input));
+    } else if input.peek(token::Brace) {
+        let content;
+        syn::braced!(content in input);
+        HtmlNode::Block(content.parse::<Expr>()?)
+    } else if input.peek(LitStr) {
+        HtmlNode::Text(input.parse::<LitStr>()?)
+    } else {
+        let child = if input.peek(token::Paren) || input.peek(token::Bracket) {
+            text::parse_group(input)?
         } else {
-            let lit = input.parse::<LitStr>()?;
-            Ok(HtmlNode::Text(lit))
-        }
-    }
+            text::parse_run(input)?
+        };
+        return Ok(Child { spaced, ..child });
+    };
+    Ok(Child::node(node, spaced))
 }
 
 impl Parse for HtmlElement {
@@ -138,10 +149,11 @@ fn parse_children(input: ParseStream) -> Result<Vec<HtmlNode>> {
         if starts_comment(input) {
             parse_comment(input)?;
         } else {
-            children.push(input.parse::<HtmlNode>()?);
+            let spaced = text::spaced_before(input);
+            children.push(parse_child(input, spaced)?);
         }
     }
-    Ok(children)
+    Ok(text::join(children))
 }
 
 impl HtmlDocument {
@@ -281,6 +293,10 @@ impl HtmlElement {
 #[cfg(test)]
 #[path = "html_parser_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "html_text_tests.rs"]
+mod text_tests;
 
 #[allow(unexpected_cfgs)]
 #[cfg(kani)]

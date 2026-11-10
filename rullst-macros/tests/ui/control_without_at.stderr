@@ -1,0 +1,5 @@
+error: write `@if` for a control block in html!; unquoted `if` followed by `{ <tag> … }` would be text
+ --> tests/ui/control_without_at.rs:6:14
+  |
+6 |         <div>if ok { <p>"yes"</p> }</div>
+  |              ^^

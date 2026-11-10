@@ -70,6 +70,24 @@ A prepared version section does not establish that its tag or crates exist.
   "full"` in `Rullst.toml`, or `Server::access_log_paths`, which takes
   precedence) chooses one form in every environment. The query string is
   never written (reported while upgrading an application).
+- `html!` text can be written without quotes (`<p>Welcome back, {name}!</p>`;
+  quoted literals keep working and keep exact spacing). The macro rebuilds the
+  text from where its tokens were written: whitespace between words, or
+  between text and a neighbouring element, `{…}` or `@` block, becomes one
+  space, and whitespace at the start and end of an element or block is
+  dropped; `(…)` and `[…]` are text and may hold `{…}`. `>`, character
+  literals, a URL that `//` cut into a comment, a `///` doc comment and
+  `if cond { <tag> }` without `@` are compile errors that name the fix.
+  Whitespace between nodes that are not unquoted text is still ignored, so
+  existing templates render the same. `rullst-macros` enables
+  `proc-macro2`'s `span-locations` feature for the positions.
+- `html!` attribute names take the forms Alpine.js and htmx use:
+  `@click.prevent`, `:class`, `x-on:click`, `x-bind:disabled`,
+  `hx-on::after-request`, `x-transition:enter.duration.500ms` and SVG's
+  `xlink:href`, whose dynamic values get the URL scheme check. Dynamic and
+  conditional values of `x-*`, `@*`, `:*` and `hx-on:*` attributes do not
+  compile, like those of `on*` handlers, because the browser runs them as
+  JavaScript.
 
 ### Changed
 

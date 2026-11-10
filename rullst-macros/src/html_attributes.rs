@@ -1,6 +1,9 @@
 #![cfg_attr(mutants, mutants::skip)]
 //! Element attributes inside `html!`: `name="text"`, `name={value}`, bare
-//! `name` and conditional `name?={value}`.
+//! `name` and conditional `name?={value}`. Names are identifiers joined by
+//! `-`, `:`, `::` or `.`, optionally after a leading `@` or `:`, as Alpine.js
+//! and htmx write them (`@click.prevent`, `:class`, `x-on:click`,
+//! `hx-on::after-request`).
 
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
@@ -31,7 +34,7 @@ pub enum HtmlAttrValue {
 /// Attributes whose value a browser follows as a URL. A dynamic value with a
 /// `javascript:`, `vbscript:` or (outside media elements) `data:` scheme is
 /// replaced by `#` at runtime.
-const URL_ATTRIBUTES: [&str; 13] = [
+const URL_ATTRIBUTES: [&str; 14] = [
     "action",
     "background",
     "cite",
@@ -45,6 +48,8 @@ const URL_ATTRIBUTES: [&str; 13] = [
     "poster",
     "src",
     "usemap",
+    // SVG's legacy link attribute, now that names may contain `:`.
+    "xlink:href",
 ];
 
 /// Media elements whose URL attributes may keep inline `data:` resources.
@@ -140,14 +145,91 @@ pub fn option_value_probe_tokens() -> TokenStream {
     }
 }
 
-/// Attributes whose value is run as JavaScript: `on*` event handlers and
-/// htmx's `hx-on`/`hx-on-*` (also with a `data-` prefix).
+/// Attributes whose value is run as JavaScript: `on*` event handlers,
+/// htmx's `hx-on`, `hx-on-*` and `hx-on:*` (also with a `data-` prefix), and
+/// Alpine.js directives: `x-*` and the `@*` and `:*` shorthands.
 fn is_event_handler_attribute(name: &str) -> bool {
     let name = name.to_ascii_lowercase();
-    let htmx = name.strip_prefix("data-").unwrap_or(&name);
+    let unprefixed = name.strip_prefix("data-").unwrap_or(&name);
     (name.len() > 2 && name.starts_with("on") && !name.contains('-'))
-        || htmx == "hx-on"
-        || htmx.starts_with("hx-on-")
+        || unprefixed == "hx-on"
+        || unprefixed.starts_with("hx-on-")
+        || unprefixed.starts_with("hx-on:")
+        || unprefixed.starts_with("x-")
+        || name.starts_with('@')
+        || name.starts_with(':')
+}
+
+/// A name segment after a separator: an identifier (Rust keywords
+/// included) or digits with letters, as in Alpine's `.500ms` modifier.
+fn name_segment(input: ParseStream, after: &str) -> Result<String> {
+    if input.peek(syn::LitInt) {
+        let number = input.parse::<syn::LitInt>()?;
+        let text = number.to_string();
+        if text
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+        {
+            return Ok(text);
+        }
+        return Err(syn::Error::new(
+            number.span(),
+            "an attribute name segment is letters, digits, `_` and `-`",
+        ));
+    }
+    Ident::parse_any(input)
+        .map(|ident| ident.to_string())
+        .map_err(|error| {
+            syn::Error::new(
+                error.span(),
+                format!("expected the rest of the attribute name after `{after}`"),
+            )
+        })
+}
+
+/// Whether the `:` that follows continues the name (`x-on:click`) rather
+/// than starting the next attribute (`required :value="v"`): it does when
+/// written directly after the name, or when the tokens carry no positions.
+fn colon_continues(input: ParseStream) -> bool {
+    super::text::gap(input.cursor().prev_span(), input.span()) != super::text::Gap::Space
+}
+
+/// Parses an attribute name.
+fn parse_name(input: ParseStream) -> Result<(String, Span)> {
+    let name_span = input.span();
+    let mut name = String::new();
+    if input.peek(Token![@]) {
+        input.parse::<Token![@]>()?;
+        name.push('@');
+    } else if input.peek(Token![:]) && !input.peek(Token![::]) {
+        input.parse::<Token![:]>()?;
+        name.push(':');
+    }
+    name.push_str(&if name.is_empty() {
+        Ident::parse_any(input)?.to_string()
+    } else {
+        name_segment(input, &name)?
+    });
+    loop {
+        let separator = if input.peek(Token![-]) {
+            input.parse::<Token![-]>()?;
+            "-"
+        } else if input.peek(Token![.]) && !input.peek(Token![..]) {
+            input.parse::<Token![.]>()?;
+            "."
+        } else if input.peek(Token![::]) && colon_continues(input) {
+            input.parse::<Token![::]>()?;
+            "::"
+        } else if input.peek(Token![:]) && colon_continues(input) {
+            input.parse::<Token![:]>()?;
+            ":"
+        } else {
+            break;
+        };
+        name.push_str(separator);
+        name.push_str(&name_segment(input, separator)?);
+    }
+    Ok((name, name_span))
 }
 
 fn braced_expr(input: ParseStream) -> Result<Box<Expr>> {
@@ -158,19 +240,10 @@ fn braced_expr(input: ParseStream) -> Result<Box<Expr>> {
 
 impl Parse for HtmlAttribute {
     fn parse(input: ParseStream) -> Result<Self> {
-        // Names are identifiers (Rust keywords included) joined by `-`, so
-        // no quote, `=`, `>` or space can reach the output through a name.
-        let mut name_parts = Vec::new();
-        let first = Ident::parse_any(input)?;
-        let name_span = first.span();
-        name_parts.push(first.to_string());
-
-        while input.peek(Token![-]) {
-            input.parse::<Token![-]>()?;
-            name_parts.push(Ident::parse_any(input)?.to_string());
-        }
-
-        let name = name_parts.join("-");
+        // Names are identifiers (Rust keywords included) and digits joined by
+        // `-`, `:` or `.` after an optional `@` or `:`, so no quote, `=`, `>`
+        // or space can reach the output through a name.
+        let (name, name_span) = parse_name(input)?;
         let value = if input.peek(Token![?]) {
             input.parse::<Token![?]>()?;
             input.parse::<Token![=]>()?;
@@ -201,9 +274,9 @@ impl Parse for HtmlAttribute {
                 name_span,
                 format!(
                     "dynamic `{name}` values are not allowed in html!: event-handler attributes \
-                     run their value as JavaScript, which HTML escaping cannot make safe; use a \
-                     static handler string, or attach the listener from a nonce'd script and \
-                     pass data through a `data-*` attribute"
+                     and Alpine.js directives run their value as JavaScript, which HTML escaping \
+                     cannot make safe; use a static handler string, or attach the listener from a \
+                     nonce'd script and pass data through a `data-*` attribute"
                 ),
             ));
         }

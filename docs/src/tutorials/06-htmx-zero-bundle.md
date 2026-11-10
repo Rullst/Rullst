@@ -113,6 +113,40 @@ For POST forms, including an AI chat, follow the
 HTMX does not automatically copy Rullst's CSRF cookie into a header or make
 HTTP error bodies visible in the target element.
 
+### Text and attribute names
+
+Since 13.0.0-alpha.5 text inside `html!` can be written without quotes, and
+attribute names can take the forms Alpine.js and htmx use:
+
+```rust
+use rullst::html;
+
+let count = 2;
+let menu = html! {
+    <div x-data="{ open: false }" @click.outside="open = false">
+        <button @click="open = !open" :aria-expanded="open">Menu ({count})</button>
+        <form hx-post="/notes" hx-on::after-request="this.reset()">
+            Write a note, then press <kbd>Enter</kbd>.
+        </form>
+    </div>
+};
+assert_eq!(
+    menu,
+    "<div x-data=\"{ open: false }\" @click.outside=\"open = false\">\
+     <button @click=\"open = !open\" :aria-expanded=\"open\">Menu (2)</button>\
+     <form hx-post=\"/notes\" hx-on::after-request=\"this.reset()\">\
+     Write a note, then press <kbd>Enter</kbd>.</form></div>"
+);
+```
+
+Words written together stay together; whitespace between words, or between
+text and an element or `{…}` next to it, becomes one space; whitespace at the
+start and end of an element is dropped. Keep a string literal for text that
+has `<`, `>`, `{`, `}`, `@`, quotes or apostrophes, a URL (`//` starts a Rust
+comment), emoji or exact spacing: `<p>"Don't miss https://example.com"</p>`.
+Values of `x-*`, `@*`, `:*` and `hx-on*` attributes run as JavaScript, so
+they must be static strings; pass server data through a `data-*` attribute.
+
 `render_page` and its variants answer an htmx request (`HX-Request: true`)
 with the content alone, for the swap. Since 13.0.0-rc.1 two htmx requests
 receive the whole page instead: the request htmx sends to restore a page that

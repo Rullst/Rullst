@@ -1978,7 +1978,8 @@ the same server-authoritative controls.
   are HTML-escaped by the generated code.
 * **URL attributes:** Dynamic values of `href`, `src`, `action`, `formaction`,
   `poster`, `data`, `cite`, `background`, `codebase`, `icon`, `longdesc`,
-  `manifest` and `usemap` (names matched case-insensitively) are also checked
+  `manifest`, `usemap` and (since 13.0.0-alpha.5) SVG's `xlink:href` (names
+  matched case-insensitively) are also checked
   at runtime. A `javascript:` or `vbscript:` scheme, or `data:` outside `img`,
   `audio`, `video`, `source`, `track` and `image`, renders as `#`. Leading C0
   controls or spaces and embedded tab/LF/CR are ignored while reading the
@@ -1988,7 +1989,9 @@ the same server-authoritative controls.
 * **Event-handler attributes:** A dynamic value for an `on*` attribute or
   htmx's `hx-on`/`hx-on-*` (also `data-` prefixed) is a compile-time error,
   because the browser runs it as JavaScript and escaping cannot make
-  interpolated data safe there. Static handler strings remain allowed; attach
+  interpolated data safe there. Since 13.0.0-alpha.5 the same holds for
+  htmx's `hx-on:*` and for Alpine.js directives, which Alpine evaluates as
+  JavaScript: `x-*` and the `@*` and `:*` shorthands. Static handler strings remain allowed; attach
   data-driven listeners from a nonce'd script and pass values in `data-*`.
 * **Trusted-only `style`:** Dynamic `style` values are only HTML-escaped.
   They cannot leave the attribute and supported browsers do not run script
@@ -2029,9 +2032,43 @@ the same server-authoritative controls.
   `disabled="false"` still disables a control: use `disabled?={flag}`. The
   quoted forms keep compiling. Attribute names are Rust identifiers (keywords
   included) joined by `-`, so no quote, `=`, `>` or whitespace can reach the
-  output through a name; `:` and `@` name forms are not supported. A
-  conditional value on an event-handler attribute is rejected like a dynamic
-  one, while a bare handler name is static.
+  output through a name. Since 13.0.0-alpha.5 a name may also start with `@`
+  or `:`, join its segments with `:`, `::` or `.`, and have segments that
+  start with a digit (`500ms`), as Alpine.js and htmx write them:
+  `@click.prevent`, `:class`, `x-on:click`, `x-bind:disabled`,
+  `hx-on::after-request`, `x-transition:enter.duration.500ms`, `xlink:href`.
+  A `:` continues a name only when it is written directly after it (or when
+  the tokens carry no source positions), so `required :value="v"` is two
+  attributes. A conditional value on an event-handler attribute is rejected
+  like a dynamic one, while a bare handler name is static.
+* **Text:** A string literal (`<p>"Hello"</p>`) is author-owned source,
+  written as it is, with every character and space. Since 13.0.0-alpha.5
+  text may also be unquoted (`<p>Welcome back, {name}!</p>`), written as it
+  is too (not escaped, so `&amp;` stays a character reference). The macro
+  receives tokens, so it rebuilds the text from their source positions
+  (`proc-macro2`'s `span-locations`, which uses the compiler's `Span::start`
+  and `Span::end` stabilized in Rust 1.88): tokens written together stay
+  together and any whitespace or comment between them becomes one space;
+  between unquoted text and a neighbouring element, `{…}`, string literal or
+  `@` block, whitespace becomes one space and none stays none; whitespace at
+  the start and end of an element's content, an `@` block body, parentheses
+  and the whole input is dropped. `(…)` and `[…]` are text whose content
+  follows the same rules and may hold `{…}` and elements (`Inbox ({count})`).
+  Whitespace between two nodes that are not unquoted text is ignored, as
+  before, so no earlier template changes output. Unquoted text consists of
+  identifiers (keywords and non-ASCII words included), integer and float
+  literals and punctuation other than `<`, `>` and `@`; it stops at `<`
+  (a tag), `{` (interpolation), `@` (control flow) and a string literal.
+  `>`, character and byte literals, a URL whose `//` the compiler dropped as
+  a comment (`http:`/`https:`/`ftp:`/`ws:`/`wss:` followed by a gap), a
+  `///` or `//!` doc comment and `if`/`for`/`match` followed by
+  `{ <tag> … }` without `@` are compile-time errors that name the fix; an
+  `else` followed by `{` or `if` remains the `@else` error. Text that
+  contains quotes or apostrophes (Rust reserves `it's`), `//` or `/*`, `#`
+  right after a word (`C#`), characters that are not Rust tokens (emoji,
+  `€`, `—`) or needs exact whitespace (`<pre>`, `<textarea>`) is written as a
+  string literal. Tokens without distinct source positions (an `html!` that
+  another macro generated with one span) are separated by single spaces.
 * **Control flow:** Since 13.0.0-alpha.2, `@if condition { … }` (also
   `@if let PATTERN = value`), `@else if …`, `@else { … }` and
   `@for PATTERN in iterable { … }` take `html!` nodes in their braces; the
