@@ -115,7 +115,7 @@ impl AnthropicProvider {
             .json(&body)
             .send()
             .await
-            .map_err(|error| AiError::RequestError(error.without_url()))?;
+            .map_err(AiError::request)?;
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
         reject_incomplete(&json, self.max_tokens)?;

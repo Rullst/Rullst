@@ -103,6 +103,7 @@ impl AuditContext {
     }
 
     /// Associates a later audit entry with an explicitly restored revision.
+    // Used by `#[derive(Orm)]`.
     #[doc(hidden)]
     pub fn for_revision_restore(
         mut self,

@@ -54,6 +54,7 @@ pub(crate) fn validate_query(value: &str) -> Result<(), crate::Error> {
 ///
 /// The query has the same bounds as provider queries, and `%`, `_` and the
 /// escape character itself match literally instead of acting as wildcards.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub fn sql_contains_pattern(query: &str) -> Result<String, crate::Error> {
     validate_query(query)?;

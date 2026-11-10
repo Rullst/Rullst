@@ -86,7 +86,7 @@ pub(crate) fn embedding(text: &str) -> Vec<f32> {
 pub(crate) fn structured_response(schema: &StructuredOutputSchema) -> Result<String, AiError> {
     let mut remaining_values = MAX_MOCK_SCHEMA_VALUES;
     let value = canonicalize_json(value_for_schema(schema.schema(), 0, &mut remaining_values)?);
-    serde_json::to_string(&value).map_err(AiError::from)
+    serde_json::to_string(&value).map_err(AiError::json)
 }
 
 fn canonicalize_json(value: serde_json::Value) -> serde_json::Value {

@@ -21,7 +21,7 @@ pub use markup::Markup;
 #[path = "html_attribute.rs"]
 mod attribute;
 pub use attribute::{AttributePresence, OptionalAttribute};
-// Called by the code that `html!` generates for `name?={value}`.
+// Used by `html!` for `name?={value}` attributes.
 #[doc(hidden)]
 pub use attribute::optional_attr;
 

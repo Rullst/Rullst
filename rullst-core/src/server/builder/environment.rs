@@ -26,6 +26,7 @@ pub(super) fn listen_address(host: &str, port: u16) -> Option<SocketAddr> {
 /// An absent variable is `None`; a non-Unicode value is a configuration error
 /// that names the variable but never contains its value. Hidden support API for
 /// first-party tools such as Rullst Studio, not a stable extension point.
+// Used by `rullst-studio`.
 #[doc(hidden)]
 pub fn read_optional_environment_variable(name: &str) -> Result<Option<String>, ServerError> {
     match std::env::var(name) {

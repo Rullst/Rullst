@@ -82,6 +82,7 @@ impl PolyglotError {
     }
 
     /// Converts a redacted model-codec failure into the public error contract.
+    // Used by `#[derive(TursoModel)]`.
     #[doc(hidden)]
     pub fn serialization_public(error: impl fmt::Display) -> Self {
         Self::serialization(error)

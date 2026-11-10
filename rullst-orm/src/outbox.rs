@@ -257,6 +257,8 @@ impl Outbox {
         .await
     }
 
+    // Used by the rullst-orm and rullst-messaging integration tests, which claim
+    // at a fixed time; not called by generated code.
     #[doc(hidden)]
     pub async fn claim_next_at(
         stream: impl Into<String>,

@@ -255,6 +255,7 @@ pub async fn log_audit_diff_with_tx(
 /// Generated models pass the `#[orm(encrypted)]`/`#[orm(masked)]` fields whose
 /// in-memory values differ. Their payload values are already redacted, so the
 /// change is recorded without the value and the revision is not restorable.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 #[cfg_attr(test, mutants::skip)]
 pub async fn log_audit_diff_redacted_with_tx(

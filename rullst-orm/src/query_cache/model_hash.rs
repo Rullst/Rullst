@@ -47,6 +47,7 @@ return redis.call('HINCRBY', KEYS[1], ARGV[1], ARGV[2])
 /// record ID, so applications and tenants sharing a Redis database never
 /// read or overwrite each other's hashes. IDs are 1-64 ASCII letters, digits,
 /// '-' or '_'.
+// Used by rullst-orm's live Redis tests, which inspect the stored hash.
 #[doc(hidden)]
 pub fn model_hash_key(
     table: &str,
@@ -90,6 +91,7 @@ fn legacy_model_hash_key(tenant: Option<&RullstValue>, table: &str, id: &str) ->
 
 /// Reads a generated model hash. A global model whose namespaced hash is
 /// missing falls back to its 12.1 key; the hash is empty when neither exists.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub async fn read_model_hash(
     table: &str,
@@ -115,6 +117,7 @@ pub async fn read_model_hash(
 
 /// Writes a generated model hash, first moving a global model's 12.1 hash to
 /// the namespaced key so the data migrates on its next write.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub async fn write_model_hash(
     table: &str,
@@ -151,6 +154,7 @@ pub async fn write_model_hash(
 
 /// Increments one field of a generated model hash, first moving a global
 /// model's 12.1 hash to the namespaced key.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub async fn increment_model_hash(
     table: &str,

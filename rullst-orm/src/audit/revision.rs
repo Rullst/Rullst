@@ -196,6 +196,7 @@ fn collect_operations(
 
 /// Applies one bounded reverse patch after verifying the current value still
 /// matches the revision's recorded post-state.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub fn apply_reverse_patch(mut current: Value, encoded: &str) -> Result<Value, crate::Error> {
     if encoded.is_empty() || encoded.len() > MAX_PATCH_BYTES {
@@ -297,6 +298,7 @@ impl RestorableRevision {
 }
 
 /// Loads one exact update revision and enforces the active tenant boundary.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub async fn load_restorable_revision_with_tx(
     tx: &mut crate::db::Transaction<'_>,

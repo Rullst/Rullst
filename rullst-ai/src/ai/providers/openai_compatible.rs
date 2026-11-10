@@ -150,7 +150,8 @@ impl OpenAiCompatibleProvider {
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .no_proxy()
-            .build()?;
+            .build()
+            .map_err(AiError::request)?;
         Ok(Self {
             base_url,
             embedding_model: model.clone(),
@@ -208,7 +209,7 @@ impl OpenAiCompatibleProvider {
             }
             bytes.extend_from_slice(&chunk);
         }
-        serde_json::from_slice(&bytes).map_err(AiError::from)
+        serde_json::from_slice(&bytes).map_err(AiError::json)
     }
 
     async fn send_chat_body(&self, body: serde_json::Value) -> Result<String, AiError> {
@@ -406,7 +407,7 @@ fn response_size_error() -> AiError {
 /// Drops the configured endpoint from a transport error, matching the native
 /// providers and the redacted `Debug` output of this adapter.
 fn redacted_transport_error(error: reqwest::Error) -> AiError {
-    AiError::RequestError(error.without_url())
+    AiError::request(error)
 }
 
 #[cfg(test)]

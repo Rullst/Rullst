@@ -8,6 +8,7 @@ use std::borrow::{Borrow, Cow};
 use std::fmt::{self, Write as _};
 
 /// The locales of the catalog a `t!` call was checked against.
+// Used by `catalog!` and the `t!` it generates.
 #[doc(hidden)]
 #[derive(Debug)]
 pub struct __Catalog {
@@ -17,6 +18,7 @@ pub struct __Catalog {
 }
 
 /// A piece of a parsed message.
+// Used by `catalog!` and the `t!` it generates.
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug)]
 pub enum __Segment {
@@ -26,6 +28,7 @@ pub enum __Segment {
 }
 
 /// One locale's forms of a message; single messages only use `other`.
+// Used by `catalog!` and the `t!` it generates.
 #[doc(hidden)]
 #[derive(Debug)]
 pub struct __Forms {
@@ -35,6 +38,7 @@ pub struct __Forms {
 }
 
 /// Accepts a `Locale` or a reference to one.
+// Used by `t!`.
 #[doc(hidden)]
 pub fn __locale<L: Borrow<Locale>>(locale: &L) -> Locale {
     *locale.borrow()
@@ -70,6 +74,7 @@ impl __Catalog {
 }
 
 /// Renders a plain-text message; static messages are borrowed.
+// Used by `t!`.
 #[doc(hidden)]
 pub fn __text(
     catalog: &__Catalog,
@@ -100,6 +105,7 @@ pub fn __text(
 
 /// Renders a `*_html` message: the template is trusted, arguments are
 /// HTML-escaped.
+// Used by `t!`.
 #[doc(hidden)]
 pub fn __html(
     catalog: &__Catalog,

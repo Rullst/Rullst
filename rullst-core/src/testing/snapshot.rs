@@ -98,6 +98,7 @@ macro_rules! assert_html_snapshot {
 }
 
 /// The implementation behind [`assert_html_snapshot!`](crate::assert_html_snapshot).
+// Used by `assert_html_snapshot!`.
 #[doc(hidden)]
 #[track_caller]
 pub fn __assert_html_snapshot(

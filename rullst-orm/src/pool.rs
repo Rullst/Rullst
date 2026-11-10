@@ -15,6 +15,7 @@ mod dsn;
 mod placeholders;
 mod savepoint;
 mod telemetry;
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub use placeholders::portable_subquery;
 pub use placeholders::raw_fragment;
@@ -77,6 +78,7 @@ pub fn prevent_lazy_loading(prevent: bool) {
     PREVENT_LAZY_LOADING.store(prevent, std::sync::atomic::Ordering::Relaxed);
 }
 
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub fn is_lazy_loading_prevented() -> bool {
     PREVENT_LAZY_LOADING.load(std::sync::atomic::Ordering::Relaxed)

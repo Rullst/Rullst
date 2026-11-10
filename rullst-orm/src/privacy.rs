@@ -20,6 +20,7 @@ const KEY_ID_ENV: &str = "RULLST_ENCRYPTION_KEY_ID";
 const KEYRING_ENV: &str = "RULLST_ENCRYPTION_KEYRING";
 
 mod secret_serde;
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub use secret_serde::with_redacted_secrets;
 pub(crate) use secret_serde::with_secret_fingerprints;

@@ -67,11 +67,14 @@ mod render;
 pub use decimal::{Decimal, ParseDecimalError};
 pub use format::{Currency, CurrencyError, DateStyle, TimeStyle};
 pub use http::{LocaleLayer, LocaleService, MissingLocale};
+// Used by `catalog!` and the `t!` it generates.
 #[doc(hidden)]
 pub use plural::__Plural;
 pub use plural::PluralCategory;
+// Used by `catalog!` and the `t!` it generates.
 #[doc(hidden)]
 pub use render::{__Catalog, __Forms, __Segment, __html, __locale, __text};
+// Used by the `t!` that `catalog!` generates.
 #[doc(hidden)]
 pub use rullst_macros::__i18n_translate as __translate;
 #[doc(inline)]

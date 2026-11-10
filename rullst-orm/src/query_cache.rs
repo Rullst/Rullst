@@ -3,6 +3,7 @@ use sha2::{Digest, Sha256};
 use crate::{Error, Orm, RullstValue};
 
 mod model_hash;
+// Used by `#[derive(Orm)]`; `model_hash_key` only by the live Redis tests.
 #[doc(hidden)]
 pub use model_hash::{increment_model_hash, model_hash_key, read_model_hash, write_model_hash};
 
@@ -88,6 +89,7 @@ pub fn query_key(table: &str, query: &str, bindings: &[RullstValue]) -> Result<S
 /// tenant column partitions its entries by the active tenant; any other model
 /// keeps one `global` copy whatever `with_tenant` scope is active, so a write
 /// from any scope invalidates it.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub fn query_key_for_model(
     table: &str,
@@ -162,6 +164,7 @@ fn entry_index_key(cache_key: &str) -> Result<String, Error> {
 
 /// Stores one generated query result and indexes its key under its table,
 /// so a committed write can invalidate the table without scanning Redis.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub async fn store_entry(cache_key: &str, payload: &str, ttl_seconds: u64) -> Result<(), Error> {
     if ttl_seconds == 0 {
@@ -205,6 +208,7 @@ pub async fn invalidate_table(table: &str) -> Result<usize, Error> {
 /// reads outside `with_tenant`) and, when `tenant` is the writing tenant of a
 /// tenant-scoped model, that tenant's partition. The per-write key cap of
 /// [`invalidate_table`] covers both partitions.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub async fn invalidate_model_table(
     table: &str,
