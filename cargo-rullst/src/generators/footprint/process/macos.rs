@@ -59,8 +59,8 @@ const _: () = assert!(std::mem::size_of::<ProcTaskInfo>() == 96);
 #[repr(C)]
 #[derive(Default)]
 struct MachTimebaseInfo {
-    numer: u32,
-    denom: u32,
+    numerator: u32,
+    denominator: u32,
 }
 
 unsafe extern "C" {
@@ -100,8 +100,8 @@ fn nanoseconds_per_tick() -> Option<f64> {
     // SAFETY: `timebase` is a live, writable `struct mach_timebase_info`;
     // the call only fills its two fields.
     let status = unsafe { mach_timebase_info(&raw mut timebase) };
-    (status == 0 && timebase.denom > 0)
-        .then(|| f64::from(timebase.numer) / f64::from(timebase.denom))
+    (status == 0 && timebase.denominator > 0)
+        .then(|| f64::from(timebase.numerator) / f64::from(timebase.denominator))
 }
 
 pub(in super::super) fn rss_bytes(pid: u32) -> Option<u64> {
