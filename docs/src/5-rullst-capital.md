@@ -99,9 +99,10 @@ creating a `mode=payment` session with one card-funded item. The
 [crate README](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md#one-time-stripe-checkout)
 has an example. Three points are easy to miss:
 
-- `success_url` and `cancel_url` must be HTTPS even with a `mock_` key: the
-  request checks them before it knows which key will send it, so pass the
-  `https://` form in local development.
+- `success_url` and `cancel_url` must be HTTPS, except `http://localhost`,
+  `127.0.0.1` or `[::1]`, which a `mock_` key accepts for local development
+  (since 13.0.0-alpha.5); a live key refuses them with `ConfigurationError`
+  before any request.
 - The production CSRF baseline answers Stripe's webhook `POST` with 403 until
   the route's exact path is listed in `[security] csrf_signed_webhook_paths` of
   `Rullst.toml`. List only a path whose handler verifies the signature.
