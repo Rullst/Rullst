@@ -31,6 +31,9 @@ pub enum OtaError {
     /// The allocator could not provide the manifest's signing buffer. Added
     /// in 13.0.0-alpha.5; earlier releases aborted instead.
     AllocationFailed,
+    /// Bytes given to `OtaManifest::from_signing_bytes` are not one canonical
+    /// manifest. Added in 13.0.0-alpha.5.
+    MalformedManifest,
 }
 
 impl fmt::Display for OtaError {
@@ -73,6 +76,7 @@ impl fmt::Display for OtaError {
             Self::AllocationFailed => {
                 formatter.write_str("OTA manifest signing buffer could not be allocated")
             }
+            Self::MalformedManifest => formatter.write_str("OTA manifest bytes are malformed"),
         }
     }
 }

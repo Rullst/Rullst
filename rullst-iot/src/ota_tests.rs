@@ -3,6 +3,14 @@
 use super::*;
 use alloc::string::ToString;
 use ed25519_dalek::{Signer, SigningKey};
+use sha2::{Digest, Sha256};
+
+fn sign(manifest: &OtaManifest) -> Vec<u8> {
+    signing_key()
+        .sign(&manifest.signing_bytes().unwrap())
+        .to_bytes()
+        .to_vec()
+}
 
 fn signing_key() -> SigningKey {
     SigningKey::from_bytes(&[7_u8; 32])
@@ -164,18 +172,28 @@ fn manifests_keys_signatures_hashes_targets_and_counters_fail_closed() {
         })
     ));
 
+    // A publisher-signed manifest whose length or digest differs from the
+    // image fails on the image; changed after signing, it fails the signature.
     let mut wrong_length = manifest.clone();
     wrong_length.firmware_len += 1;
     assert!(matches!(
-        manager(1).verify_update(&wrong_length, firmware, &signature),
+        manager(1).verify_update(&wrong_length, firmware, &sign(&wrong_length)),
         Err(OtaError::FirmwareLengthMismatch { .. })
+    ));
+    assert!(matches!(
+        manager(1).verify_update(&wrong_length, firmware, &signature),
+        Err(OtaError::SignatureInvalid)
     ));
 
     let mut wrong_hash = manifest.clone();
     wrong_hash.firmware_sha256 = [0_u8; 32];
     assert!(matches!(
-        manager(1).verify_update(&wrong_hash, firmware, &signature),
+        manager(1).verify_update(&wrong_hash, firmware, &sign(&wrong_hash)),
         Err(OtaError::FirmwareHashMismatch)
+    ));
+    assert!(matches!(
+        manager(1).verify_update(&wrong_hash, firmware, &signature),
+        Err(OtaError::SignatureInvalid)
     ));
 
     assert!(matches!(
@@ -187,15 +205,14 @@ fn manifests_keys_signatures_hashes_targets_and_counters_fail_closed() {
         Err(OtaError::SignatureInvalid)
     ));
 
-    // The signature encoding is checked before the image is hashed, and
-    // after the constant-time length check.
+    // The signature is checked before the image's length and digest.
     assert!(matches!(
         manager(1).verify_update(&wrong_hash, firmware, &[0_u8; 63]),
         Err(OtaError::InvalidSignatureEncoding)
     ));
     assert!(matches!(
-        manager(1).verify_update(&wrong_length, firmware, &[0_u8; 63]),
-        Err(OtaError::FirmwareLengthMismatch { .. })
+        manager(1).verify_update(&wrong_length, firmware, &[0_u8; 64]),
+        Err(OtaError::SignatureInvalid)
     ));
 }
 
@@ -241,6 +258,7 @@ fn legacy_apis_and_every_typed_error_remain_explicit() {
             replacement: "replacement",
         },
         OtaError::AllocationFailed,
+        OtaError::MalformedManifest,
     ];
     for error in errors {
         assert!(!error.to_string().is_empty());
@@ -296,4 +314,22 @@ fn signing_bytes_are_allocated_at_their_exact_length() {
     assert_eq!(bytes.capacity(), bytes.len());
     assert_eq!(&bytes[..23], b"RULLST-OTA-MANIFEST-V1\0");
     assert_eq!(&bytes[23..27], &8_u32.to_be_bytes());
+}
+
+#[test]
+fn a_streamed_update_is_downloading_until_it_finishes() {
+    let firmware = b"chunked firmware image";
+    let (manifest, signature) = signed_update(2, firmware);
+    let mut ota = manager(1);
+    let mut verifier = ota.begin_update(&manifest, &signature).unwrap();
+    assert_eq!(verifier.manager.status, OtaStatus::Downloading);
+    verifier.update(&firmware[..5]).unwrap();
+    verifier.update(&firmware[5..]).unwrap();
+    assert_eq!(verifier.manager.status, OtaStatus::Downloading);
+    verifier.finish().unwrap();
+    assert_eq!(ota.status(), OtaStatus::Verified);
+
+    // The manifest a finished verifier leaves behind is the verified one.
+    assert_eq!(ota.pending_manifest(), Some(&manifest));
+    assert_eq!(OtaManifest::empty().firmware_len(), 0);
 }

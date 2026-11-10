@@ -67,8 +67,8 @@ pub use modbus::{ModbusFrame, ModbusFunction};
 pub use mqtt::SimulatedMqttPayloadFormatter;
 pub use mqtt::{MAX_MQTT_PACKET_BYTES, MqttCodecError, MqttPublish, MqttQos};
 pub use ota::{
-    BootPartition, OtaCommit, OtaError, OtaManager, OtaManifest, OtaStatus, RollbackCounterError,
-    RollbackCounterStore,
+    BootPartition, OtaCommit, OtaError, OtaImageVerifier, OtaManager, OtaManifest, OtaStatus,
+    RollbackCounterError, RollbackCounterStore,
 };
 pub use power::{HarvesterState, PowerGovernor, PowerMode};
 #[cfg(feature = "experimental-simulators")]

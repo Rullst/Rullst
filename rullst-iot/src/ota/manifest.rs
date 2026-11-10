@@ -21,7 +21,66 @@ pub struct OtaManifest {
 }
 
 impl OtaManifest {
+    /// Builds a manifest from the fields a device receives with an update,
+    /// without the image: its length and SHA-256 digest come from the
+    /// publisher, and [`OtaManager::begin_update`](super::OtaManager::begin_update)
+    /// checks them against the image as it streams in. The signature, verified
+    /// there too, is what makes the fields trustworthy. Added in 13.0.0-alpha.5.
+    pub fn new(
+        target: impl Into<String>,
+        version: impl Into<String>,
+        rollback_counter: u64,
+        firmware_len: u64,
+        firmware_sha256: [u8; 32],
+    ) -> Result<Self, OtaError> {
+        let target = target.into();
+        let version = version.into();
+        validate_text_fields(&target, &version)?;
+        if firmware_len == 0 {
+            return Err(OtaError::EmptyFirmware);
+        }
+        Ok(Self {
+            target,
+            version,
+            rollback_counter,
+            firmware_len,
+            firmware_sha256,
+        })
+    }
+
+    /// Parses the canonical bytes that [`Self::signing_bytes`] produces, so a
+    /// publisher can send exactly the bytes it signed and the device verifies
+    /// the signature over the same bytes. Missing or trailing bytes, another
+    /// domain prefix and non-UTF-8 text are [`OtaError::MalformedManifest`];
+    /// empty fields get the errors of [`Self::new`]. Added in 13.0.0-alpha.5.
+    pub fn from_signing_bytes(bytes: &[u8]) -> Result<Self, OtaError> {
+        let mut reader = ManifestReader(bytes);
+        if reader.take(MANIFEST_DOMAIN.len())? != MANIFEST_DOMAIN {
+            return Err(OtaError::MalformedManifest);
+        }
+        let target = reader.text()?;
+        let version = reader.text()?;
+        let rollback_counter = u64::from_be_bytes(reader.array()?);
+        let firmware_len = u64::from_be_bytes(reader.array()?);
+        let firmware_sha256 = reader.array()?;
+        if !reader.0.is_empty() {
+            return Err(OtaError::MalformedManifest);
+        }
+        Self::new(
+            target,
+            version,
+            rollback_counter,
+            firmware_len,
+            firmware_sha256,
+        )
+    }
+
     /// Builds a manifest and binds it to the supplied firmware bytes.
+    ///
+    /// This hashes `firmware`, which suits the publisher. A device that
+    /// receives the manifest fields uses [`Self::new`] or
+    /// [`Self::from_signing_bytes`] instead, so that it hashes the image only
+    /// once, while verifying it.
     pub fn from_firmware(
         target: impl Into<String>,
         version: impl Into<String>,
@@ -139,6 +198,53 @@ impl OtaCommit {
     #[must_use]
     pub fn rollback_counter(&self) -> u64 {
         self.rollback_counter
+    }
+}
+
+impl OtaManifest {
+    /// A placeholder with empty fields, which allocates nothing.
+    pub(super) const fn empty() -> Self {
+        Self {
+            target: String::new(),
+            version: String::new(),
+            rollback_counter: 0,
+            firmware_len: 0,
+            firmware_sha256: [0; 32],
+        }
+    }
+}
+
+/// Reads the length-prefixed fields of [`OtaManifest::signing_bytes`].
+struct ManifestReader<'a>(&'a [u8]);
+
+impl<'a> ManifestReader<'a> {
+    fn take(&mut self, len: usize) -> Result<&'a [u8], OtaError> {
+        if self.0.len() < len {
+            return Err(OtaError::MalformedManifest);
+        }
+        let (head, rest) = self.0.split_at(len);
+        self.0 = rest;
+        Ok(head)
+    }
+
+    fn array<const N: usize>(&mut self) -> Result<[u8; N], OtaError> {
+        let mut out = [0u8; N];
+        out.copy_from_slice(self.take(N)?);
+        Ok(out)
+    }
+
+    /// A `u32` big-endian length and that many UTF-8 bytes, copied fallibly.
+    fn text(&mut self) -> Result<String, OtaError> {
+        let len = u32::from_be_bytes(self.array()?);
+        let len = usize::try_from(len).map_err(|_| OtaError::MalformedManifest)?;
+        let text =
+            core::str::from_utf8(self.take(len)?).map_err(|_| OtaError::MalformedManifest)?;
+        let mut owned = String::new();
+        owned
+            .try_reserve_exact(text.len())
+            .map_err(|_| OtaError::AllocationFailed)?;
+        owned.push_str(text);
+        Ok(owned)
     }
 }
 
