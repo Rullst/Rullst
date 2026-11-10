@@ -381,6 +381,7 @@ impl Server {
     /// use rullst_core::{Server, routes, routing::get};
     ///
     /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    /// // rullst-access: public — the token in the path is the booking link's capability.
     /// Server::new(routes![get("/booking/{token}" => || async { "OK" })])
     ///     .access_log_paths(AccessLogPaths::Route)
     ///     .run(3000)

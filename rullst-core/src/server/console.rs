@@ -399,10 +399,8 @@ mod tests {
         }
         use tower::ServiceExt;
         let router = axum::Router::new()
-            .route(
-                "/booking/{token}",
-                axum::routing::get(|| async { "booking" }),
-            )
+            // rullst-access: public — test fixture; the token is the link's capability.
+            .route("/booking/{token}", axum::routing::get(|| async { "ok" }))
             .layer(axum::middleware::from_fn_with_state(
                 AccessLog {
                     log_health_probes: true,

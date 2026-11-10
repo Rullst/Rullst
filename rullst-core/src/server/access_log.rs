@@ -94,9 +94,11 @@ mod tests {
         let seen = Arc::new(Mutex::new(Vec::new()));
         let record = seen.clone();
         let router = axum::Router::new()
+            // rullst-access: public — test fixture; the token is the link's capability.
             .route("/booking/{token}", axum::routing::get(|| async { "ok" }))
             .nest(
                 "/api",
+                // rullst-access: public — test fixture that only checks the logged route.
                 axum::Router::new().route("/users/{id}", axum::routing::get(|| async { "ok" })),
             )
             .layer(axum::middleware::from_fn(
