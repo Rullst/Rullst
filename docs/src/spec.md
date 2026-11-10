@@ -1771,6 +1771,17 @@ the same server-authoritative controls.
   content-hashed file name get `public, max-age=31536000, immutable`, other
   static files `no-cache` with `ServeDir`'s `ETag`/`Last-Modified` validators;
   see [static assets](tutorials/10-static-assets-and-compression.md#step-3-cache-headers).
+  Since 13.0.0-alpha.5 `rullst::assets::url(path)` returns
+  `/static/<stem>.<hash16>.<ext>` (the first 16 hex characters of the file's
+  SHA-256) for a file the mount hashed at start (at most 10,000 files of
+  32 MiB, 16 levels; symbolic links, hidden paths and names needing
+  percent-encoding excluded), and the plain `/static/<path>` otherwise or
+  outside a server. The mount resolves a current hashed name to the real file
+  (siblings, validators and traversal checks unchanged) as `immutable`, and
+  answers an outdated hash with `307` to the current URL and `no-store`;
+  each hashed request rechecks the file's size and modification time. Debug
+  builds also refresh the links after edits
+  ([frontend guide](frontend.md#content-hashed-asset-urls)).
   Since 13.0.0-alpha.2 `rullst::cache_control` offers explicit policies for
   dynamic routes: `cache_control::public(max_age)` and `private(max_age)`
   are layers that set `public, max-age=<seconds>` or `private,
