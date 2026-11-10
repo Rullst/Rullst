@@ -11,6 +11,30 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- Generated applications start with tests and CI
+  ([Testing your application](docs/src/testing-your-app.md)). Every starter's
+  `src/security_tests.rs` has a `PAGES` list of its parameterless pages and a
+  smoke test that checks each page's status (sign-in pages redirect), its
+  security headers, its HTML and that an htmx history-restore request still
+  receives the whole page; `cargo rullst new` writes
+  `.github/workflows/ci.yml` (formatting, Clippy `-D warnings`, tests, a daily
+  `cargo audit`, a TruffleHog secret scan; every action pinned by commit SHA,
+  read-only token) and a monthly, grouped `.github/dependabot.yml`, unless
+  `--no-ci` is given. CI lints both generated workflows with actionlint and
+  checks their pins against Rullst's own.
+- `cargo rullst add browser-tests` writes Playwright 1.64.1 and axe-core
+  4.14.0 checks (`tests/browser/`, lockfile-pinned) and
+  `.github/workflows/browser-tests.yml`: every HTML page of `PAGES` in
+  Chromium, Firefox and WebKit fails on console errors, failed requests, CSP
+  violations and `serious`/`critical` axe findings, in both colour schemes
+  when the stylesheets have a dark one. Existing files are never overwritten.
+- Core test helpers: `rullst::testing::html_issues` (with `HtmlIssue` and
+  `HtmlIssueKind`) reports markup escaped twice, broken attribute quoting,
+  boolean attributes set to `"false"`, inline `<script>`/`<style>` without
+  the CSP nonce and `style`/`on*` attributes the policy blocks;
+  `TestResponse::assert_html_hygiene` applies it with the response's own
+  policy, and `TestResponse::assert_security_headers` checks the CSP,
+  `nosniff` and frame protection.
 - Content-hashed static asset URLs: `rullst::assets::url("app.css")` returns
   `/static/app.<hash>.css` (the first 16 hex characters of the file's
   SHA-256) while `Server` serves `static/`, and the plain `/static/app.css`
@@ -125,6 +149,43 @@ A prepared version section does not establish that its tag or crates exist.
   compile, like those of `on*` handlers, because the browser runs them as
   JavaScript. **Breaking** for a dynamic `x-*` value, which compiled before;
   `cargo rullst upgrade` reports it (`V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`).
+- `rullst-media` (Bunny Stream), requested while upgrading an application:
+  `BunnyCredentials::upload_only(api_key)` with
+  `BunnyConfig::upload_only(library, environment, credentials)` manages videos
+  with the library API key alone, without the webhook, embed and CDN keys, a
+  CDN host or the `PrivateDelivery` assertion; `playback` and
+  `verify_notification` then return `MediaError::Unsupported`.
+  `VideoProvider::list(&ListQuery)` returns one `VideoPage` of the provider
+  library (page, 10–100 per page, title search, date or title order) with each
+  video's id, title, duration, processing state, upload time and thumbnail
+  location; offline (`mock_*`) mode lists a fixed sample library and adapters
+  without a listing return `Unsupported`. `VideoProvider::create_with_metadata`
+  creates a video and applies its real title in one call, keeping the marker
+  for reconciliation. The browser module accepts `maxBytes` up to 64 GiB
+  (`BunnyUpload.MAX_BYTES`; the default stays 1 GiB), scales its chunk size and
+  run limit for large files, and takes a `types` list of accepted `video/*`
+  media types.
+- Core machine endpoints, requested while upgrading an application:
+  `MachineEndpoint::address_token(method, path, verifier)` registers the new
+  `MachineAuthentication::AddressTokenWithSourceConfirmation` category for a
+  provider that cannot sign its notifications. The verifier checks a
+  per-resource token in the request address; the documentation states that
+  this authenticates only knowledge of the address (no body signature,
+  freshness or replay protection), so the handler confirms the notified state
+  with the source before acting. Previously such routes had to be registered
+  as `signed_webhook`.
+- `cargo rullst audit --idor` accepts `// rullst-access: machine — reason` on a
+  write route that a `MachineEndpoint` of the same crate registers with the
+  same method and path (a string literal or a `const` `&str`), and points an
+  unclassified registered route at `machine`. A provider callback such as
+  `POST /payments/{reference}/{token}` no longer has to move its parameters to
+  the query string to pass the audit; a `machine` marker without a matching
+  registration, on a GET route or on a route that also serves GET is still a
+  finding.
+- `rullst::i18n::catalog!` takes an optional `order = ["pt-BR", "en", "es"]`
+  that sets the order of `LOCALES.iter()` for a language menu; it must list
+  every catalog file once. Without it the locales stay sorted by tag.
+  Requested while upgrading an application.
 
 ### Changed
 
@@ -148,6 +209,27 @@ A prepared version section does not establish that its tag or crates exist.
   builds no ORM, database driver, Capital or Security crate. A direct
   `rullst-studio` dependency with `default-features = false` and none of those
   profiles adds `features = ["local"]`.
+- `t!` compiles in constant time per call: the generated macro now forwards
+  only the catalog's directory, locale order and default, and the hidden
+  `__translate!` reads and prepares the catalog once per compilation (for
+  unchanged file contents) and expands only the called key, instead of every
+  call carrying and re-parsing the whole encoded catalog. On a synthetic
+  application with 400 calls, 250 keys and 3 locales
+  (`.github/i18n-compile-bench.py`), an incremental `cargo check` went from
+  3.75 s to 0.39 s (0.18 s without any call); with 1000 keys, from 14.4 s to
+  0.47 s. Compile-time checks, error messages and the expanded code are
+  unchanged. Reported while upgrading an application.
+- `rullst::auth::get_app_key()` no longer writes the development key into the
+  current directory, where `cargo test` created a secret `.rullst_dev_key` at
+  the repository root that `git add .` could commit. Without a configured
+  `APP_KEY`, outside staging and production, it still reads an existing
+  `.rullst_dev_key`, and otherwise uses or creates a per-project key in the
+  user's state directory (`$XDG_STATE_HOME`, `~/.local/state` or
+  `%LOCALAPPDATA%`, under `rullst/dev-keys/`), printing its path when it
+  creates one. A test harness (an executable in Cargo's `deps` directory,
+  where `cargo test` runs tests) never writes a key and keeps a new one in
+  memory; tests that need one key in several processes set `APP_KEY`.
+  Reported while upgrading an application.
 
 ### Fixed
 

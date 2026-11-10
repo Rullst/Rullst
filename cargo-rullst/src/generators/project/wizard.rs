@@ -80,6 +80,8 @@ pub(crate) struct NewProjectRequest<'a> {
     pub(crate) blueprint: Option<usize>,
     pub(crate) skip_initial_migration: bool,
     pub(crate) dry_run: bool,
+    /// `--no-ci`: no `.github/workflows/ci.yml` or `.github/dependabot.yml`.
+    pub(crate) skip_ci: bool,
 }
 
 /// The decided plan, or a cancelled wizard.
@@ -173,6 +175,7 @@ fn initial_plan(request: &NewProjectRequest<'_>, requested: &[PolyglotIntegratio
         requested: requested.to_vec(),
         add_ons: Vec::new(),
         skip_initial_migration: request.skip_initial_migration,
+        ci: !request.skip_ci,
     }
 }
 

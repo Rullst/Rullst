@@ -2,7 +2,6 @@
 //! `.env`, `Rullst.toml` or the development key file.
 
 use crate::error::AuthError;
-use base64::{Engine as _, engine::general_purpose};
 use std::collections::HashMap;
 use std::fs;
 
@@ -165,8 +164,19 @@ fn cache_validated_app_key(key: Vec<u8>) -> Result<Vec<u8>, AuthError> {
 }
 
 /// Resolves the application's unique secret key for encryption.
-/// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`, falling back to an ephemeral key.
-/// Caches the resolved key in memory using `OnceLock` to prevent repeated disk I/O.
+///
+/// Reads `APP_KEY` from the process environment, then `.env`, then
+/// `Rullst.toml`. Without one, staging and production fail with
+/// [`AuthError::MissingAppKey`]. Other environments use a development key
+/// kept outside the source tree (since 13.0.0-alpha.5): an existing
+/// `.rullst_dev_key` in the current directory is still read, but none is
+/// written there. Otherwise the project's key in the per-user state
+/// directory (`$XDG_STATE_HOME`, else `~/.local/state`, or `%LOCALAPPDATA%`,
+/// under `rullst/dev-keys/`) is used or created. A test harness (an
+/// executable in Cargo's `target/<profile>/deps`, where `cargo test` and
+/// cargo-nextest run unit and integration tests) never writes a key and
+/// keeps a new one in memory, so set `APP_KEY` where tests in several
+/// processes must share one. The resolved key is cached for the process.
 #[cfg_attr(mutants, mutants::skip)]
 pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
     if let Some(cached) = CACHED_APP_KEY.get() {
@@ -195,7 +205,6 @@ pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
         ));
     }
 
-    let dev_key_path = ".rullst_dev_key";
     // Only one caller in this process generates the key; later ones reuse it.
     let _generation = DEVELOPMENT_KEY_LOCK
         .lock()
@@ -203,59 +212,18 @@ pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
     if let Some(cached) = CACHED_APP_KEY.get() {
         return Ok(cached.clone());
     }
-    if let Some(key_bytes) = read_development_key(dev_key_path) {
-        return cache_validated_app_key(key_bytes);
+    let (key, origin) =
+        super::dev_key::resolve().map_err(|error| AuthError::MissingAppKey(error.to_string()))?;
+    match origin {
+        super::dev_key::Origin::Existing => {}
+        super::dev_key::Origin::Persisted(path) => eprintln!(
+            "⚠️  Rullst Security Warning: generated a development APP_KEY in {} (outside the project). Set APP_KEY in staging and production.",
+            path.display()
+        ),
+        super::dev_key::Origin::NoStateDirectory => eprintln!(
+            "⚠️  Rullst Security Warning: no user state directory is configured, so this process uses a development APP_KEY of its own; sessions end when it stops. Set APP_KEY to keep them."
+        ),
+        super::dev_key::Origin::TestHarness => {}
     }
-
-    eprintln!(
-        "⚠️  Rullst Security Warning: Generating a random APP_KEY in .rullst_dev_key. Set APP_KEY environment variable for production."
-    );
-
-    use rand::Rng;
-    let mut key = [0u8; 32];
-    rand::rng().fill_bytes(&mut key);
-    let key_vec = key.to_vec();
-    let encoded_key = general_purpose::STANDARD.encode(&key_vec);
-
-    match persist_development_key(dev_key_path, &encoded_key, false) {
-        Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-            // Another process published its key first: adopt it when complete,
-            // otherwise replace the unusable file as before.
-            if let Some(winner) = read_development_key(dev_key_path) {
-                return cache_validated_app_key(winner);
-            }
-            persist_development_key(dev_key_path, &encoded_key, true)
-                .map_err(|error| AuthError::MissingAppKey(error.to_string()))?;
-        }
-        Err(error) => return Err(AuthError::MissingAppKey(error.to_string())),
-    }
-
-    cache_validated_app_key(key_vec)
-}
-
-fn read_development_key(path: &str) -> Option<Vec<u8>> {
-    let encoded = fs::read_to_string(path).ok()?;
-    let key = general_purpose::STANDARD.decode(encoded.trim()).ok()?;
-    (key.len() == 32).then_some(key)
-}
-
-/// Creates the key file, or with `replace` overwrites an unusable one.
-fn persist_development_key(path: &str, encoded_key: &str, replace: bool) -> std::io::Result<()> {
-    let mut options = fs::OpenOptions::new();
-    options.write(true);
-    if replace {
-        options.create(true).truncate(true);
-    } else {
-        options.create_new(true);
-    }
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
-    }
-
-    use std::io::Write;
-    options.open(path)?.write_all(encoded_key.as_bytes())
+    cache_validated_app_key(key)
 }

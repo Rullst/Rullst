@@ -1,6 +1,6 @@
 use crate::{
-    MediaError, Metadata, PlaybackGrant, PlaybackKind, ProviderBinding, RemoteVideo,
-    UploadDeclaration, UploadGrant, VideoId,
+    ListQuery, MediaError, Metadata, PlaybackGrant, PlaybackKind, ProviderBinding, RemoteVideo,
+    UploadDeclaration, UploadGrant, VideoId, VideoPage,
 };
 use std::future::Future;
 
@@ -52,6 +52,36 @@ pub trait VideoProvider: Send + Sync {
     ) -> Result<UploadGrant, MediaError> {
         let _ = (video, now, ttl_seconds, declaration);
         Err(MediaError::Unsupported)
+    }
+    /// v13: [`create`](Self::create) followed by [`update`](Self::update), so
+    /// the provider shows the real title. The marker stays the identity of
+    /// the creation: after `Unavailable`, `Protocol` or `Uncertain`, call
+    /// [`find_created`](Self::find_created) with it, never `create` again.
+    /// When applying `metadata` fails after the video was created, the video
+    /// is still returned, with its marker title; retry `update` with its id.
+    fn create_with_metadata(
+        &self,
+        marker: &str,
+        metadata: &Metadata,
+    ) -> impl Future<Output = Result<RemoteVideo, MediaError>> + Send {
+        async move {
+            let mut video = self.create(marker).await?;
+            if self.update(&video.id, metadata).await.is_ok() {
+                video.title = metadata.title().to_owned();
+                video.description = metadata.description().to_owned();
+            }
+            Ok(video)
+        }
+    }
+    /// v13: one page of the provider library, including videos created
+    /// outside this application. Adapters without a listing keep this
+    /// default and return `Unsupported`.
+    fn list(
+        &self,
+        query: &ListQuery,
+    ) -> impl Future<Output = Result<VideoPage, MediaError>> + Send {
+        let _ = query;
+        std::future::ready(Err(MediaError::Unsupported))
     }
 }
 

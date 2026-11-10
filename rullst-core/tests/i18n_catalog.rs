@@ -6,6 +6,15 @@ mod i18n {
     rullst::i18n::catalog!(default = "en", dir = "tests/i18n/locales");
 }
 
+/// The same catalog in an explicit language-menu order.
+mod menu {
+    rullst::i18n::catalog!(
+        default = "pt-BR",
+        dir = "tests/i18n/locales",
+        order = ["pt-BR", "en", "es", "ru"],
+    );
+}
+
 use axum::body::{Body, to_bytes};
 use axum::http::{HeaderMap, Request, StatusCode, header};
 use i18n::{LOCALES, t};
@@ -25,6 +34,21 @@ fn the_catalog_lists_its_locales_and_default() {
     let tags: Vec<&str> = LOCALES.iter().map(|l| l.tag()).collect();
     assert_eq!(tags, ["en", "es", "pt-BR", "ru"]);
     assert_eq!(LOCALES.default_locale().tag(), "en");
+}
+
+#[test]
+fn an_explicit_order_serves_a_language_menu() {
+    let tags: Vec<&str> = menu::LOCALES.iter().map(|l| l.tag()).collect();
+    assert_eq!(tags, ["pt-BR", "en", "es", "ru"]);
+    assert_eq!(menu::LOCALES.default_locale().tag(), "pt-BR");
+    let es = menu::LOCALES.get("es").expect("a catalog locale");
+    assert_eq!(menu::t!(es, "dashboard.title"), "Panel");
+    // A locale from the other list selects the same message.
+    assert_eq!(menu::t!(locale("pt-BR"), "dashboard.title"), "Painel");
+    assert_eq!(
+        menu::t!(menu::LOCALES.default_locale(), "inbox.unread", count = 2),
+        t!(locale("pt-BR"), "inbox.unread", count = 2)
+    );
 }
 
 #[test]

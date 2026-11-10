@@ -86,4 +86,43 @@ for (const options of [{ badPatch: true }, { offset: blob.size + 1 }, { offset: 
   await assert.rejects(run.upload.start(), /interrupted/); assert.deepEqual(run.calls, []);
 }
 assert.throws(() => new BunnyUpload({ file: blob, title: 'Rust', getGrant: async () => makeGrant(), maxBytes: 1 }), /invalid_upload_input/);
-console.log('Bunny upload client: offset recovery, cancellation, identity, uncertain creation, grant lifetime and URL boundaries passed.');
+// A sized stand-in for a large local file; slices allocate only one chunk.
+class Sized extends Blob {
+  #size;
+  constructor(size, type = 'video/mp4') { super([], { type }); this.#size = size; }
+  get size() { return this.#size; }
+  slice(start, end) { return new Blob([new Uint8Array(Math.min(end, this.#size) - start)]); }
+}
+const GiB = 1073741824;
+const accepts = options => new BunnyUpload({ title: 'Aula longa', getGrant: async () => makeGrant(), ...options });
+assert.equal(BunnyUpload.DEFAULT_MAX_BYTES, GiB); assert.equal(BunnyUpload.MAX_BYTES, 64 * GiB);
+assert.throws(() => accepts({ file: new Sized(GiB + 1) }), /invalid_upload_input/);
+accepts({ file: new Sized(GiB) });
+accepts({ file: new Sized(64 * GiB), maxBytes: 64 * GiB });
+for (const maxBytes of [64 * GiB + 1, 0, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+  assert.throws(() => accepts({ file: new Sized(1), maxBytes }), /invalid_upload_input/);
+}
+assert.throws(() => accepts({ file: new Sized(4 * GiB), maxBytes: 3 * GiB }), /invalid_upload_input/);
+// The media type list is replaceable, bounded and video-only.
+assert.throws(() => accepts({ file: new Sized(10, 'video/x-matroska') }), /invalid_upload_input/);
+accepts({ file: new Sized(10, 'video/x-matroska'), types: ['video/x-matroska', 'video/mp4'] });
+for (const types of [[], ['text/html'], ['video/'], ['Video/MP4'], 'video/mp4', [7], Array(17).fill('video/mp4')]) {
+  assert.throws(() => accepts({ file: new Sized(10), types }), /invalid_upload_input/);
+}
+assert.throws(() => accepts({ file: new Sized(10), types: ['video/webm'] }), /invalid_upload_input/);
+{
+  // 5 GiB uploads in 3 MiB chunks: 1707 PATCH requests, within the budget.
+  const size = 5 * GiB; let offset = 0; const bodies = new Set(); let patches = 0;
+  const fetchImpl = async (url, init) => {
+    if (init.method === 'POST') { assert.equal(init.headers['Upload-Length'], String(size)); return reply(201, { Location: '/tusupload/owned-upload' }); }
+    if (init.method === 'HEAD') return reply(200, { 'Upload-Offset': String(offset), 'Upload-Length': String(size) });
+    offset += init.body.size; bodies.add(init.body.size); patches++;
+    return reply(204, { 'Upload-Offset': String(offset) });
+  };
+  const upload = new BunnyUpload({ file: new Sized(size), title: 'Aula longa', maxBytes: 8 * GiB, allowProtocolFixture: true,
+    getGrant: async () => makeGrant(), fetchImpl });
+  assert.equal((await upload.start()).status, 'complete');
+  assert.equal(offset, size); assert.equal(patches, Math.ceil(size / (3 * 1048576)));
+  assert.deepEqual([...bodies].sort((a, b) => b - a)[0], 3 * 1048576);
+}
+console.log('Bunny upload client: offset recovery, cancellation, identity, uncertain creation, grant lifetime, URL boundaries, size limit and media types passed.');

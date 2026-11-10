@@ -18,7 +18,9 @@ i18n and process telemetry. The `rullst` facade re-exports it.
 - **Translations and Locales (v13):** `rullst::i18n::catalog!` loads one
   TOML catalog per locale at compile time and fails the build on missing keys
   or mismatched placeholders; the generated `t!` returns text that `html!`
-  escapes, with CLDR plural forms for 19 languages. `Locale` also formats
+  escapes, with CLDR plural forms for 19 languages; its compile cost does not
+  grow with the catalog, and `order = [...]` sets the language-menu order of
+  `LOCALES.iter()` (13.0.0-alpha.5). `Locale` also formats
   numbers, percentages, money (integer minor units) and dates with CLDR 48
   data for 20 locales. `Locales` negotiates the locale from a
   cookie or a bounded `Accept-Language` parse and offers a CSRF-protected
