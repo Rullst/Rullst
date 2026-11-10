@@ -94,6 +94,10 @@ async fn test_htmx_response_refresh_into_response() {
 
 #[test]
 fn test_render_page_helper() {
+    // The plain asset URLs: no test may mount a `static/` meanwhile.
+    let _manifest = crate::assets::TEST_MANIFEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let req_htmx = HtmxRequest {
         is_htmx: true,
         trigger: None,
@@ -282,6 +286,10 @@ async fn rendered_htmx_script_uses_the_request_csp_nonce() {
 
 #[test]
 fn head_markup_ends_the_document_head_and_stays_out_of_htmx_fragments() {
+    // The plain asset URLs: no test may mount a `static/` meanwhile.
+    let _manifest = crate::assets::TEST_MANIFEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let page_request = HtmxRequest {
         is_htmx: false,
         trigger: None,

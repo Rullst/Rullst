@@ -206,6 +206,9 @@ const HTMX_INDICATOR_STYLES: &str = ".htmx-indicator{opacity:0}\
 .htmx-request .htmx-indicator{opacity:1;transition:opacity 200ms ease-in}\
 .htmx-request.htmx-indicator{opacity:1;transition:opacity 200ms ease-in}";
 
+/// The version-pinned htmx client below `static/` that the page loads.
+const HTMX_SCRIPT: &str = "htmx-1.9.12.min.js";
+
 /// Helper function to render a hybrid SSR layout page.
 /// - An htmx request (`HX-Request: true`) receives just the inner `content`
 ///   as a fragment.
@@ -213,6 +216,11 @@ const HTMX_INDICATOR_STYLES: &str = ".htmx-indicator{opacity:0}\
 ///   loads the generated same-origin stylesheet and the version-pinned HTMX
 ///   browser client. CLI scaffolds supply `/static/htmx-1.9.12.min.js`;
 ///   manually built applications must serve that asset themselves. Since
+///   13.0.0-alpha.5 both are linked with [`crate::assets::url`]: while the
+///   server serves `static/`, `/static/rullst.<hash>.css` and
+///   `/static/htmx-1.9.12.min.<hash>.js`, cached as immutable, so a deploy
+///   that changes `static/rullst.css` reaches every browser and CDN at once;
+///   outside a server (unit tests), the plain URLs. Since
 ///   13.0.0-rc.1 that includes the two htmx requests that expect a page: a
 ///   history restore after a cache miss (`HX-History-Restore-Request: true`,
 ///   which replaces the whole `<body>`) and a boosted link or form
@@ -279,6 +287,7 @@ pub fn render_page_with_head(
         return Html(content.into_string());
     }
     let head = head.into();
+    let htmx_source = crate::assets::url(HTMX_SCRIPT);
     let htmx_script = if let Some(nonce) = htmx.csp_nonce.as_ref() {
         // htmx's own indicator `<style>` would carry no nonce: turn it off
         // (unless `head` brings its own htmx-config) and send the same rules
@@ -287,13 +296,13 @@ pub fn render_page_with_head(
             crate::html! { <meta name="htmx-config" content={HTMX_INDICATOR_CONFIG} /> }
         });
         crate::html! {
-            <script nonce={nonce.as_str()} src="/static/htmx-1.9.12.min.js"></script>
+            <script nonce={nonce.as_str()} src={htmx_source.as_str()}></script>
             {config}
             <style nonce={nonce.as_str()}>{HTMX_INDICATOR_STYLES}</style>
         }
     } else {
         crate::html! {
-            <script src="/static/htmx-1.9.12.min.js"></script>
+            <script src={htmx_source.as_str()}></script>
         }
     };
     let page = crate::html! {
@@ -304,7 +313,7 @@ pub fn render_page_with_head(
                 <title>{title}</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <link rel="icon" type="image/png" href="/static/rullst.png" />
-                <link rel="stylesheet" href="/static/rullst.css" />
+                <link rel="stylesheet" href={crate::assets::url("rullst.css")} />
                 {htmx_script}
                 {head}
             </head>
@@ -356,3 +365,8 @@ mod tests;
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[path = "htmx_page_tests.rs"]
 mod page_tests;
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[path = "htmx_assets_tests.rs"]
+mod assets_tests;

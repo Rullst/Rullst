@@ -129,10 +129,39 @@ pub(super) fn service_worker(root: &Path) -> String {
     SERVICE_WORKER.replacen(PRECACHE_LINE, &format!("const PRECACHE = [\n{list}];"), 1)
 }
 
-/// `src/pwa.rs`, with the offline page in the language of `--lang`.
-pub(super) fn module(values: &PwaValues) -> String {
+/// The offline page's tags with Tailwind utility classes, for a project that
+/// uses Tailwind (`uses_tailwind`); otherwise the page keeps the plain tags
+/// and its one `pwa-offline` class. The colours suit Core's dark page.
+const TAILWIND_OFFLINE: [(&str, &str); 4] = [
+    (
+        r#"<main class="pwa-offline">"#,
+        r#"<main class="pwa-offline mx-auto flex min-h-full max-w-xl flex-col justify-center gap-4 px-6 py-16 text-center">"#,
+    ),
+    (
+        r#"<h1>"__OFFLINE_HEADING__"</h1>"#,
+        r#"<h1 class="text-2xl font-semibold text-slate-100">"__OFFLINE_HEADING__"</h1>"#,
+    ),
+    (
+        r#"<p>"__OFFLINE_MESSAGE__"</p>"#,
+        r#"<p class="text-slate-300">"__OFFLINE_MESSAGE__"</p>"#,
+    ),
+    (
+        r#"<p><a href="">"#,
+        r#"<p><a href="" class="font-medium text-sky-400 underline underline-offset-4 hover:text-sky-300">"#,
+    ),
+];
+
+/// `src/pwa.rs`, with the offline page in the language of `--lang`, styled
+/// with Tailwind classes when the project uses Tailwind.
+pub(super) fn module(values: &PwaValues, tailwind: bool) -> String {
     let (texts, _) = texts::for_lang(&values.lang);
-    MODULE
+    let mut module = MODULE.to_owned();
+    if tailwind {
+        for (plain, styled) in TAILWIND_OFFLINE {
+            module = module.replacen(plain, styled, 1);
+        }
+    }
+    module
         .replace("__THEME_COLOR__", &values.theme_color)
         .replace("__LANG__", &values.lang)
         .replace("__OFFLINE_TITLE__", texts.offline_title)

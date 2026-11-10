@@ -20,6 +20,9 @@ function response({ status = 200, type = 'basic', headers = {}, body = '' } = {}
     clone() {
       return response({ status, type, headers, body });
     },
+    async text() {
+      return body;
+    },
   };
 }
 
@@ -83,6 +86,34 @@ function loadWorker({ version = 'dev', precache = ['/offline'], network }) {
 }
 
 const offline = response({ headers: { 'Cache-Control': 'no-cache' }, body: 'offline' });
+
+async function offlinePageAssets() {
+  // The offline page's hashed stylesheet and script are stored with it; a
+  // listed file is fetched once, and a refused one is skipped.
+  const page = response({
+    headers: { 'Cache-Control': 'no-cache' },
+    body: '<link rel="stylesheet" href="/static/rullst.0123456789abcdef.css" /><script nonce="n" src="/static/htmx-1.9.12.min.fedcba9876543210.js"></script><link rel="icon" href="/static/rullst.png" /><img src="/static/private.png" /><a href="https://cdn.example/static/x.css">x</a>',
+  });
+  const worker = loadWorker({
+    precache: ['/offline', '/static/rullst.png'],
+    network: async (url) => {
+      if (url.endsWith('/offline')) return page;
+      if (url.endsWith('/private.png')) return response({ headers: { 'Cache-Control': 'private' } });
+      return response({ headers: { 'Cache-Control': 'public, max-age=31536000, immutable' }, body: url });
+    },
+  });
+  await worker.extendable('install');
+  const stored = worker.stores.get('rullst-pwa-dev');
+  assert.deepEqual([...stored.keys()].sort(), [
+    `${ORIGIN}/offline`,
+    `${ORIGIN}/static/htmx-1.9.12.min.fedcba9876543210.js`,
+    `${ORIGIN}/static/rullst.0123456789abcdef.css`,
+    `${ORIGIN}/static/rullst.png`,
+  ]);
+  const fetched = worker.state.fetches.map((fetch) => fetch.url);
+  assert.equal(fetched.filter((url) => url.endsWith('/static/rullst.png')).length, 1);
+  assert.ok(!fetched.some((url) => url.startsWith('https://cdn.example')));
+}
 
 async function installAndActivation() {
   const worker = loadWorker({
@@ -375,6 +406,7 @@ async function registration() {
 
 (async () => {
   await installAndActivation();
+  await offlinePageAssets();
   await requestRouting();
   await versionedNames();
   await registration();

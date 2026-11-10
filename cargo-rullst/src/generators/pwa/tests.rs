@@ -469,7 +469,7 @@ fn rendered_files_hold_the_validated_values() {
 }
 "##
     );
-    let module = files::module(&values);
+    let module = files::module(&values, false);
     assert!(module.contains(r##"<meta name="theme-color" content="#112233" />"##));
     assert!(module.contains(r#"render_page_with_lang(&htmx, "pt-BR", "Sem conexão", content)"#));
     assert!(module.contains(r#"<h1>"Você está sem conexão"</h1>"#));
