@@ -332,6 +332,17 @@ fn pagination_windows_mark_gaps_and_the_current_page() {
     assert!(pagination::pagination(&single, |page| page.to_string()).is_empty());
 }
 
+/// The kit as the browser fixture's page reaches it (`super::ui`).
+mod ui {
+    pub(super) use super::{
+        alert, badge, button, card, dialog, form, menu, pagination, table, tabs, toast,
+    };
+}
+/// The browser fixture's page, compiled against the kit.
+#[allow(dead_code)]
+#[path = "gallery_fixture.rs"]
+mod gallery;
+
 // Components with a module, the full page and the sources.
 #[path = "render_script_tests.rs"]
 mod scripted;

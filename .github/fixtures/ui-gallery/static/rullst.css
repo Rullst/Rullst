@@ -1,0 +1,2 @@
+/* Core's render_page* links /static/rullst.css; the gallery's styles come
+   from Tailwind (static/app.css, built by `cargo rullst add tailwind`). */

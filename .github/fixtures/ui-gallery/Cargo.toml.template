@@ -1,0 +1,14 @@
+# The UI component gallery of the "Generated starters in browsers" job
+# (.github/check-ui-components.py copies it out of the repository, points
+# __RULLST_PATH__ at this checkout and patches it like a generated project).
+[package]
+name = "ui-gallery"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+rullst = { path = "__RULLST_PATH__" }
+tokio = { version = "1.0", features = ["full"] }
+
+[workspace]

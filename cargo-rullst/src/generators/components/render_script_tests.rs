@@ -2,9 +2,7 @@
 //! page with every component under the strict Content-Security-Policy, and
 //! checks of the sources and modules themselves.
 
-use super::{
-    alert, attribute, badge, button, card, dialog, form, ids, menu, pagination, table, tabs, toast,
-};
+use super::{attribute, button, dialog, ids, menu, tabs, toast};
 use rullst::html;
 use rullst::html::Markup;
 
@@ -161,33 +159,10 @@ fn toasts_have_a_live_region_templates_and_an_ascii_trigger() {
     assert!(region.ends_with("src=\"/static/ui/toast.js\"></script>"));
 }
 
-/// A page with every component, as the browser fixture renders it.
-fn gallery() -> Markup {
-    let columns = [table::Column::new("Name")];
-    let choices = [("a", "A")];
-    html! {
-        {button::button("Save", &button::ButtonOptions { loading: true, ..Default::default() })}
-        {badge::badge("New", badge::Tone::Info)}
-        {alert::alert(&alert::AlertOptions::default(), html! { "Saved" })}
-        {card::card(&card::CardOptions { title: Some("Card"), id: Some("card"), ..Default::default() }, Markup::default(), None)}
-        {form::form("/f", "t", &form::FormOptions::default(), html! {
-            {form::field(&form::Field { id: "name", label: "Name", error: Some("!"), ..Default::default() })}
-            {form::field(&form::Field { id: "pick", label: "Pick", control: form::Control::Select(&choices), ..Default::default() })}
-            {form::checkbox(&form::Field { id: "ok", label: "OK", ..Default::default() }, false)}
-        })}
-        {table::table(&table::TableOptions { id: "people", caption: "People", ..Default::default() }, &columns, Vec::new())}
-        {pagination::pagination(&pagination::PaginationOptions { page: 2, pages: 9, ..Default::default() }, |page| format!("?page={page}"))}
-        {dialog::trigger("dlg", "Open", button::Variant::Primary)}
-        {dialog::dialog(&dialog::DialogOptions { id: "dlg", title: "Dialog", ..Default::default() }, Markup::default(), None)}
-        {menu::menu(&menu::MenuOptions::default(), &[menu::Item::Link { label: "Home", href: "/" }])}
-        {tabs::tabs(&tabs::TabsOptions::default(), vec![tabs::Tab { key: "a", label: "A", panel: Markup::default() }])}
-        {toast::region(&toast::RegionOptions::default(), &[])}
-    }
-}
-
 #[test]
 fn every_component_stays_inside_the_strict_content_security_policy() {
-    let page = gallery().into_string();
+    // The browser fixture's page (it renders every component).
+    let page = super::gallery::content("token").into_string();
     // No inline style or handler attributes, no inline script.
     assert!(!page.contains(" style="), "{page}");
     let handler = regex::Regex::new(r#"\son[a-z]+=""#).unwrap();
@@ -226,6 +201,27 @@ fn every_component_stays_inside_the_strict_content_security_policy() {
                 assert!(ids.contains(&id), "{name}={id} names no element");
             }
         }
+    }
+    for selector in ["hx-indicator", "hx-disabled-elt"] {
+        for (at, _) in page.match_indices(&format!(" {selector}=\"#")) {
+            let start = at + selector.len() + 4;
+            let id = &page[start..start + page[start..].find('"').unwrap()];
+            assert!(ids.contains(&id), "{selector}=#{id} names no element");
+        }
+    }
+    // Every component is on the page.
+    for marker in [
+        "role=\"tablist\"",
+        "<dialog",
+        "role=\"menu\"",
+        "data-ui-toasts",
+        "<table",
+        "<nav",
+        "role=\"alert\"",
+        "rounded-full",
+        "<form method=\"post\" action=\"/contacts\"",
+    ] {
+        assert!(page.contains(marker), "{marker}");
     }
 }
 
