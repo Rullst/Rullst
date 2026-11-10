@@ -22,15 +22,32 @@ pub struct GeminiProvider {
     request_timeout: Duration,
 }
 
+/// Generation model used when [`GeminiProvider::with_model`] is not called:
+/// the current Flash-Lite model in Google's Gemini API model list.
+const DEFAULT_MODEL: &str = "gemini-3.5-flash-lite";
+
+/// Embedding model used when [`GeminiProvider::with_embedding_model`] is not
+/// called (Google lists it until May 14, 2028). It is kept on purpose: another
+/// embedding model produces vectors in a different space, so changing this
+/// default would make stored embeddings incomparable with new ones.
+const DEFAULT_EMBEDDING_MODEL: &str = "gemini-embedding-001";
+
 impl GeminiProvider {
     /// Creates a Gemini provider. Empty and `mock_*` keys select offline mode.
+    ///
+    /// Generation uses `gemini-3.5-flash-lite` and embeddings use
+    /// `gemini-embedding-001` unless [`with_model`](Self::with_model) or
+    /// [`with_embedding_model`](Self::with_embedding_model) choose another
+    /// model. The embedding default does not follow new generation models,
+    /// because vectors from different embedding models are not comparable;
+    /// re-embed stored vectors before changing it.
     pub fn new(api_key: impl Into<String>) -> Self {
         let api_key = api_key.into();
         let mode = ProviderMode::from_credential(&api_key);
         Self {
             api_key,
-            model: "gemini-2.5-flash-lite".to_string(),
-            embedding_model: "gemini-embedding-001".to_string(),
+            model: DEFAULT_MODEL.to_string(),
+            embedding_model: DEFAULT_EMBEDDING_MODEL.to_string(),
             base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
             mode,
             request_timeout: DEFAULT_REQUEST_TIMEOUT,
@@ -283,6 +300,13 @@ mod stream;
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn defaults_to_a_served_flash_lite_model_and_keeps_the_embedding_space() {
+        let provider = GeminiProvider::new("mock_key");
+        assert_eq!(provider.model, "gemini-3.5-flash-lite");
+        assert_eq!(provider.embedding_model, "gemini-embedding-001");
+    }
 
     #[test]
     fn maps_portable_roles_to_gemini_roles() {
