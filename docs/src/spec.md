@@ -1315,7 +1315,13 @@ after trimming and case normalization. Legacy `Rullst.toml` discovery accepts
 only exact `app_key` or `key` field names, not fields sharing a prefix. It keeps
 the historical value before the next `=` so valid existing sessions remain
 readable; it does not rewrite configuration or silently rotate secrets.
-Prefer `APP_KEY` for new values containing `=`. Moving an existing TOML value
+Prefer `APP_KEY` for new values containing `=`. Since 13.0.0-alpha.5 the
+development fallback never writes a secret into the source tree: it reads an
+existing `.rullst_dev_key` in the current directory, otherwise uses or creates
+a per-project key in the per-user state directory (`rullst/dev-keys/` under
+`$XDG_STATE_HOME`, `~/.local/state` or `%LOCALAPPDATA%`), and a test harness
+(an executable in a Cargo `deps` directory) keeps a new key in memory only.
+Moving an existing TOML value
 must preserve its effective bytes or explicitly rotate the secret and invalidate
 sessions. Session operations and optional JWT signing-key construction reject
 the documented placeholders before accepting session/token processing.

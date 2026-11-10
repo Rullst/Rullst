@@ -99,6 +99,17 @@ A prepared version section does not establish that its tag or crates exist.
   3.75 s to 0.39 s (0.18 s without any call); with 1000 keys, from 14.4 s to
   0.47 s. Compile-time checks, error messages and the expanded code are
   unchanged. Reported while upgrading an application.
+- `rullst::auth::get_app_key()` no longer writes the development key into the
+  current directory, where `cargo test` created a secret `.rullst_dev_key` at
+  the repository root that `git add .` could commit. Without a configured
+  `APP_KEY`, outside staging and production, it still reads an existing
+  `.rullst_dev_key`, and otherwise uses or creates a per-project key in the
+  user's state directory (`$XDG_STATE_HOME`, `~/.local/state` or
+  `%LOCALAPPDATA%`, under `rullst/dev-keys/`), printing its path when it
+  creates one. A test harness (an executable in Cargo's `deps` directory,
+  where `cargo test` runs tests) never writes a key and keeps a new one in
+  memory; tests that need one key in several processes set `APP_KEY`.
+  Reported while upgrading an application.
 
 ### Fixed
 
