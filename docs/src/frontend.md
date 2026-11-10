@@ -501,6 +501,12 @@ async fn page(Extension(csrf): Extension<rullst::security::CsrfToken>) -> Markup
   border, so the message is announced with the field and not shown by colour
   alone. Required fields carry `required` and a visible `*` hidden from
   screen readers (which announce `required` themselves).
+- **CSP:** classes only. WebKit 27.2, as Playwright 1.64.1 ships it, reports
+  a blocked style attribute for every `<select>` under the strict
+  `style-src`: it comes from the engine's own select internals (a page with
+  only a `<select>` gets the same report; Chromium and Firefox report
+  nothing), the select still renders and works, and the CI check records it
+  as a known WebKit defect.
 
 ### Table (`table`)
 
