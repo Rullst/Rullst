@@ -4395,8 +4395,11 @@ assistant, not a claim that compilation proves production compatibility.
   `rullst.upgrade-plan.v1` is extended additively (`kind`, `introduced_in`,
   `migration_row`, `migration_url`, `finding_counts`, `unscanned_sources`,
   `migration_guide`, `rule_selection`).
-  Findings never block `cargo rullst upgrade`; project preparations with
-  must-change findings are refused at verification, review and application.
+  Must-change findings stop `cargo rullst upgrade` before its first write
+  unless `--keep-on-failure` asks it to apply the versions and keep the
+  edited files for repair; review findings never stop it. Project
+  preparations with must-change findings are refused at verification, review
+  and application.
 * 🟢 **`[Implemented / Bounded]` Transaction:** the default target is the exact
   installed `cargo-rullst` version; `--to` accepts only the same major train as
   that CLI. Before writes, the command snapshots workspace manifests, the root
