@@ -10,6 +10,8 @@ use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{Attribute, Expr, Fields, Lit, Pat, Token};
 
+#[path = "rust/functions.rs"]
+mod functions;
 #[path = "rust/sqlx_macros.rs"]
 mod sqlx_macros;
 
@@ -17,6 +19,8 @@ mod sqlx_macros;
 pub(super) struct FileContext<'a> {
     pub text: &'a str,
     pub file_name: &'a str,
+    /// The file's path relative to its package root.
+    pub path: &'a std::path::Path,
     pub facts: &'a WorkspaceFacts,
 }
 
@@ -38,6 +42,7 @@ pub(super) fn scan_source(
     let file = syn::parse_file(context.text)?;
     let mut visitor = Visitor { context, out };
     visitor.visit_file(&file);
+    functions::scan(&file, context, visitor.out);
     markup::scan(&file, visitor.out);
     let facts = tokens::scan(file.to_token_stream(), context, visitor.out);
     if facts.protects_router
@@ -140,12 +145,17 @@ impl Visitor<'_, '_> {
     }
 
     fn orm_model(&mut self, item: &syn::ItemStruct, turso_model: bool) {
-        for (key, _, at) in entries(&item.attrs, "sqlx") {
+        let struct_sqlx = entries(&item.attrs, "sqlx");
+        for (key, _, at) in &struct_sqlx {
             if key != "default" {
-                self.hit(&ORM_SQLX_STRUCT_OPTION, at);
+                self.hit(&ORM_SQLX_STRUCT_OPTION, *at);
             }
         }
         let model = entries(&item.attrs, "orm");
+        // `FromRow` reads every field it does not skip or default, so such a
+        // field names a column of the table.
+        let reads_columns =
+            !has_key(&model, &["custom_from_row"]) && !has_key(&struct_sqlx, &["default"]);
         for (key, _, at) in &model {
             if key == "auditable" {
                 self.hit(&AUDIT_PAYLOADS, *at);
@@ -229,13 +239,12 @@ impl Visitor<'_, '_> {
                 self.hit(&PASSWORD_HASH_HIDDEN, at);
             }
             // The 13.0.0-alpha.2 SaaS, LMS and auth `User` models skipped
-            // these existing columns; a field `FromRow` also skips has none.
-            if field
-                .ident
-                .as_ref()
-                .is_some_and(|name| name == "is_admin" || name == "session_epoch")
+            // existing columns (`is_admin`, `session_epoch`), as applications
+            // then did for others; a field `FromRow` skips or defaults may
+            // have no column.
+            if reads_columns
                 && has_key(&options, &["skip"])
-                && !has_key(&entries(&field.attrs, "sqlx"), &["skip"])
+                && !has_key(&entries(&field.attrs, "sqlx"), &["skip", "default"])
             {
                 self.hit(&ORM_SKIP_MANAGED_COLUMNS, at);
             }

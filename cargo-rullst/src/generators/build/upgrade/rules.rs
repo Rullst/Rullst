@@ -155,8 +155,13 @@ impl SourceScan {
     }
 }
 
+/// Review rules reported at every location, because each one needs its own
+/// decision: a `#[orm(skip)]` field may or may not be a column.
+const EVERY_LOCATION: &[&str] = &["V13-ORM-SKIP-MANAGED-COLUMNS"];
+
 /// Collects findings for one file: every must-change location, but only the
-/// first location of a review rule, which keeps the plan readable.
+/// first location of a review rule (except [`EVERY_LOCATION`]), which keeps
+/// the plan readable.
 #[derive(Default)]
 struct Collector {
     lines: BTreeMap<(&'static str, usize), &'static Rule>,
@@ -172,7 +177,10 @@ impl Collector {
         let mut hits: Vec<_> = self.lines.into_iter().collect();
         hits.sort_by_key(|((code, line), _)| (*line, *code));
         for ((_, line), rule) in hits {
-            if rule.kind == FindingKind::Review && !reviewed.insert(rule.code) {
+            if rule.kind == FindingKind::Review
+                && !EVERY_LOCATION.contains(&rule.code)
+                && !reviewed.insert(rule.code)
+            {
                 continue;
             }
             findings.push(SourceFinding {
@@ -272,6 +280,7 @@ fn scan_package(
         let context = rust::FileContext {
             text: &text,
             file_name,
+            path: path.strip_prefix(package_root).unwrap_or(path),
             facts,
         };
         let mut collector = Collector::default();

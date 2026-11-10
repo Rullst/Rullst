@@ -84,8 +84,13 @@ does not eliminate file I/O or network latency.
 
 ## Step 3: Cache headers
 
-Since v13 the standard static mount sets `Cache-Control` itself (Rullst does
-not rename files; your asset tool does):
+Since v13 the standard static mount sets `Cache-Control` itself. Since
+13.0.0-alpha.5 Rullst also names files by their content: link them with
+`rullst::assets::url("css/app.css")`, which returns `/static/css/app.<hash>.css`
+while the server runs; the mount serves that name from `static/css/app.css`
+as `immutable` and redirects an outdated hash to the current one
+([frontend guide](../frontend.md#content-hashed-asset-urls)). Names your own
+asset tool fingerprints keep working:
 
 | Request path below `/static/` | `Cache-Control` |
 | :--- | :--- |

@@ -52,6 +52,19 @@ A value that could not be measured reads `NOT MEASURED` and keeps the reason.
 Nothing else is reported: there is no throughput score, energy reading or
 rating.
 
+Idle RSS and CPU time come from `/proc`, so they are measured on Linux only.
+On macOS and Windows the report keeps them as `NOT MEASURED` ("process
+sampling uses /proc and is Linux-only") and measures the other figures; run
+green on Linux (a CI job, for example) for the complete report.
+
+In Git Bash (MSYS) on Windows, an argument that starts with `/` is converted
+to a Windows path, so `--path /` reaches green as `C:/Program Files/Git/` and
+is refused. Turn the conversion off for the command:
+
+```bash
+MSYS_NO_PATHCONV=1 cargo rullst green --path /
+```
+
 ## What happens during a run
 
 1. **Target.** Without `--url`, green runs `cargo build --release` (Cargo
@@ -77,6 +90,15 @@ rating.
 3. **Report.** Terminal tables (plain text under `NO_COLOR`, `CI` or when
    stdout is not a terminal) or, with `--json`, the versioned
    `rullst.green.v1` document.
+
+When the release build fails, or the app exits or does not answer within 60
+seconds (a database it cannot reach, missing production settings), or nothing
+answers on `--url`, green still prints the report, JSON included, with the
+figures that need no running app: the dependency count, the image size and,
+once a binary was built, its size. The others are `NOT MEASURED` with the
+reason, the report's `failure` says what failed, and the error follows on
+stderr with a fix chosen from the app's own error (its last stderr lines) and
+the first lines of a failed build's log.
 
 The command makes no network calls beyond loopback and the local container
 engine, and never fetches carbon intensity data. The release build itself may
@@ -131,8 +153,8 @@ architecture, logical CPU count and CPU model.
 section. Every key is always present (null when unknown) so scripts can rely
 on the shape:
 
-- `target`: `mode` (`release_build` or `existing_url`), the URL, PID and how it
-  was found.
+- `target`: `mode` (`release_build` or `existing_url`), the URL (`null` when
+  the build failed before a port was chosen), PID and how it was found.
 - `measured`: `binary_size_bytes`, `image_size_bytes`, `idle_rss_bytes` and
   `dependency_count`, each `{status, value, unit, method, reason}` with
   `status` `measured` or `not_measured`.
@@ -142,13 +164,16 @@ on the shape:
   `estimate`), the standard, formula and energy method, every input in
   `inputs`, `energy_kwh`, `sci_g_per_request` and `missing_inputs`.
 - `notes`: the fixed caveats printed under the tables.
+- `failure`: `null` after a measurement; otherwise `stage` (`build`, `start`
+  or `reach`), `title`, `message` (at most 20 lines of a failed build's log,
+  from its first error) and `fix`.
 
 ## Exit status
 
 `0` when the measurement ran, even with `NOT MEASURED` fields; `1` when the
-release build failed or the app could not be started or reached; `2` for
-invalid arguments, including a non-loopback `--url` or an estimate input
-without `--bench`.
+release build failed or the app could not be started or reached (after
+printing the report with `failure`); `2` for invalid arguments, including a
+non-loopback `--url` or an estimate input without `--bench`.
 
 ## Changes from `footprint`
 

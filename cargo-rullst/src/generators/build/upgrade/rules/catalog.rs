@@ -268,8 +268,8 @@ rules! {
         "a fixed LMS progress idempotency key makes later saves return 409",
         "Copy the new `new_progress_key`/`progress_event_key` helpers and scope keys per learner.";
     LMS_RECORD_PROGRESS: "V13-LMS-RECORD-PROGRESS", Review, "13.0.0-alpha.1", "LMS concurrent progress saves",
-        "`record_progress` should claim the idempotency key with its first write",
-        "Copy the service's `replay` helper and `record_progress` from a new LMS project.";
+        "`record_progress` writes before its `lesson_progress_events` insert, so its first write does not claim the idempotency key",
+        "Copy the service's `replay` helper and `record_progress` from the repository's `examples/lms` (`src/services/learning_service.rs`).";
     LMS_MEDIA_KINDS: "V13-LMS-MEDIA-KINDS", Review, "13.0.0-alpha.1", "LMS lesson media in Nexus",
         "lesson `media_url`/`captions_url` are text fields in v13 so same-origin captions stay editable",
         "Make those Nexus fields `FieldKind::Text` and `media_kind` an `Enum` of `video`/`audio`.";
@@ -277,14 +277,14 @@ rules! {
         "`robots.txt`/`sitemap.xml` advertise relative URLs that crawlers reject",
         "Copy `public_origin`, `path_segment`, `robots_txt` and `sitemap_xml` from a new Blog project and set `RULLST_PUBLIC_ORIGIN`.";
     CREDENTIAL_RATE_LIMIT: "V13-CREDENTIAL-RATE-LIMIT", Review, "13.0.0-alpha.1", "Generated login and registration",
-        "password hashing in this handler has no `credential_rate_limit` or bounded Argon2 permits",
-        "Copy the bounded hashing and `credential_rate_limit` changes and apply them to `POST /login` and `/register`.";
+        "password hashing in this request code runs outside `run_password_work` or another bounded Argon2 permit, and this file applies no `credential_rate_limit`",
+        "Copy the bounded hashing (`run_password_work`) and `credential_rate_limit` changes and apply them to `POST /login` and `/register`.";
     PASSWORD_HASH_HIDDEN: "V13-PASSWORD-HASH-HIDDEN", Review, "13.0.0-alpha.1", "SaaS user JSON",
         "`password_hash` is not `#[orm(hidden)]`, so `to_json()`, audit rows and model events carry the hash",
         "Add `#[orm(hidden)]` to the field.";
     ORM_SKIP_MANAGED_COLUMNS: "V13-ORM-SKIP-MANAGED-COLUMNS", Review, "13.0.0-alpha.3", "ORM database-managed columns",
-        "`is_admin`/`session_epoch` is declared `#[orm(skip)]`, which the query builder treats as not a database column, so a filter or ordering on it fails at run time",
-        "Declare the field `#[orm(db_default)]` instead: ORM writes still never touch it, and queries can filter, order and select it.";
+        "this field is `#[orm(skip)]` but `FromRow` reads it, so it names a column; the query builder treats every `skip` field as not a database column, so a filter, ordering or selection on it fails at run time",
+        "If the table has this column (as `is_admin` and `session_epoch` in the alpha.2 starters), declare it `#[orm(db_default)]` instead: ORM writes still never touch it, and queries can filter, order and select it. A field without a column also needs `#[sqlx(skip)]` (or `#[sqlx(default)]`), or the model's `FromRow` fails to read it.";
     EMPTY_TIMESTAMPS: "V13-EMPTY-TIMESTAMPS", Review, "13.0.0-alpha.1", "Registration timestamps",
         "an empty `created_at`/`updated_at` replaces the column default because the ORM inserts every field",
         "Store the current UTC time instead, as the new `utc_timestamp` helper does (`Utc::now()`; see also Billing row timestamps and ORM date/time columns).";
