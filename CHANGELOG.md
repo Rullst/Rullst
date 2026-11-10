@@ -3888,7 +3888,8 @@ with the other Capital adapters.
   state without replaying uncertain mutations. Actual protocol and Chromium
   tests include revocation, disconnect and process restart. Legacy components
   and scaffolds remain separate; hosted source/package admission is pending.
-  See [the adoption and limits guide](docs/src/live-recovery.md).
+  The adoption and limits guide (`docs/src/live-recovery.md`) was removed with
+  the API in 13.0.0-alpha.5.
 
 ### Distributed tracing candidate
 
