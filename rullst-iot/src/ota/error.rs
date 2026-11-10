@@ -13,13 +13,24 @@ pub enum OtaError {
     InvalidTrustedKey,
     InvalidSignatureEncoding,
     SignatureInvalid,
-    FirmwareLengthMismatch { expected: u64, actual: u64 },
+    FirmwareLengthMismatch {
+        expected: u64,
+        actual: u64,
+    },
     FirmwareHashMismatch,
     TargetMismatch,
-    RollbackDetected { current: u64, proposed: u64 },
+    RollbackDetected {
+        current: u64,
+        proposed: u64,
+    },
     RollbackCounterStore(RollbackCounterError),
     NoVerifiedUpdate,
-    LegacyApiUnsupported { replacement: &'static str },
+    LegacyApiUnsupported {
+        replacement: &'static str,
+    },
+    /// The allocator could not provide the manifest's signing buffer. Added
+    /// in 13.0.0-alpha.5; earlier releases aborted instead.
+    AllocationFailed,
 }
 
 impl fmt::Display for OtaError {
@@ -59,6 +70,9 @@ impl fmt::Display for OtaError {
                 formatter,
                 "legacy OTA API is fail-closed; use {replacement}"
             ),
+            Self::AllocationFailed => {
+                formatter.write_str("OTA manifest signing buffer could not be allocated")
+            }
         }
     }
 }

@@ -186,6 +186,17 @@ fn manifests_keys_signatures_hashes_targets_and_counters_fail_closed() {
         manager(1).verify_update(&manifest, firmware, &[0_u8; 64]),
         Err(OtaError::SignatureInvalid)
     ));
+
+    // The signature encoding is checked before the image is hashed, and
+    // after the constant-time length check.
+    assert!(matches!(
+        manager(1).verify_update(&wrong_hash, firmware, &[0_u8; 63]),
+        Err(OtaError::InvalidSignatureEncoding)
+    ));
+    assert!(matches!(
+        manager(1).verify_update(&wrong_length, firmware, &[0_u8; 63]),
+        Err(OtaError::FirmwareLengthMismatch { .. })
+    ));
 }
 
 #[test]
@@ -229,6 +240,7 @@ fn legacy_apis_and_every_typed_error_remain_explicit() {
         OtaError::LegacyApiUnsupported {
             replacement: "replacement",
         },
+        OtaError::AllocationFailed,
     ];
     for error in errors {
         assert!(!error.to_string().is_empty());
@@ -273,4 +285,15 @@ fn only_a_conflict_naming_the_manifest_counter_confirms_an_uncertain_commit() {
         RollbackCounterError::CorruptState,
         3
     ));
+}
+
+#[test]
+fn signing_bytes_are_allocated_at_their_exact_length() {
+    let (manifest, _) = signed_update(7, b"firmware");
+    let bytes = manifest.signing_bytes().unwrap();
+    // Domain (23) + 4 + "esp32-s3" (8) + 4 + "12.0.0" (6) + 8 + 8 + 32.
+    assert_eq!(bytes.len(), 93);
+    assert_eq!(bytes.capacity(), bytes.len());
+    assert_eq!(&bytes[..23], b"RULLST-OTA-MANIFEST-V1\0");
+    assert_eq!(&bytes[23..27], &8_u32.to_be_bytes());
 }

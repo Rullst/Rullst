@@ -76,21 +76,32 @@ impl OtaManifest {
     }
 
     /// Encodes the exact domain-separated bytes that publishers must sign.
+    ///
+    /// The buffer is allocated fallibly: when the allocator refuses it, this
+    /// returns [`OtaError::AllocationFailed`] instead of aborting.
     pub fn signing_bytes(&self) -> Result<Vec<u8>, OtaError> {
         let target_len =
             u32::try_from(self.target.len()).map_err(|_| OtaError::ManifestFieldTooLong)?;
         let version_len =
             u32::try_from(self.version.len()).map_err(|_| OtaError::ManifestFieldTooLong)?;
-        let mut encoded = Vec::with_capacity(
-            MANIFEST_DOMAIN.len()
-                + 4
-                + self.target.len()
-                + 4
-                + self.version.len()
-                + 8
-                + 8
-                + self.firmware_sha256.len(),
-        );
+        // Domain, two u32 lengths, the two fields, two u64s and the digest.
+        let length = [
+            MANIFEST_DOMAIN.len(),
+            4,
+            self.target.len(),
+            4,
+            self.version.len(),
+            8,
+            8,
+            self.firmware_sha256.len(),
+        ]
+        .into_iter()
+        .try_fold(0usize, usize::checked_add)
+        .ok_or(OtaError::ManifestFieldTooLong)?;
+        let mut encoded = Vec::new();
+        encoded
+            .try_reserve_exact(length)
+            .map_err(|_| OtaError::AllocationFailed)?;
         encoded.extend_from_slice(MANIFEST_DOMAIN);
         encoded.extend_from_slice(&target_len.to_be_bytes());
         encoded.extend_from_slice(self.target.as_bytes());

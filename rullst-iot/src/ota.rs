@@ -229,6 +229,13 @@ impl OtaManager {
 
     /// Verifies the target, rollback counter, firmware hash/length, and strict
     /// Ed25519 signature before making an update eligible for commit.
+    ///
+    /// The checks run cheapest first: target, rollback counter, firmware
+    /// length, signature encoding and the manifest's signing bytes, then the
+    /// SHA-256 of `firmware` and the signature. Since 13.0.0-alpha.5 a
+    /// malformed signature is reported as
+    /// [`OtaError::InvalidSignatureEncoding`] before the image is hashed, so
+    /// it no longer reports [`OtaError::FirmwareHashMismatch`] first.
     pub fn verify_update(
         &mut self,
         manifest: &OtaManifest,
@@ -274,13 +281,15 @@ impl OtaManager {
                 actual: actual_len,
             });
         }
+        // Structural checks before the image hash, which is the expensive
+        // step on a device (about 26 ms per 32 KiB on a 64 MHz Cortex-M4).
+        let signature =
+            Signature::from_slice(signature).map_err(|_| OtaError::InvalidSignatureEncoding)?;
+        let signing_bytes = manifest.signing_bytes()?;
         let actual_hash: [u8; 32] = Sha256::digest(firmware).into();
         if manifest.firmware_sha256 != actual_hash {
             return Err(OtaError::FirmwareHashMismatch);
         }
-        let signature =
-            Signature::from_slice(signature).map_err(|_| OtaError::InvalidSignatureEncoding)?;
-        let signing_bytes = manifest.signing_bytes()?;
         self.trusted_key
             .verify_strict(&signing_bytes, &signature)
             .map_err(|_| OtaError::SignatureInvalid)
