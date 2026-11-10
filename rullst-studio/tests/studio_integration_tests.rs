@@ -1,4 +1,4 @@
-#![cfg(debug_assertions)]
+#![cfg(all(debug_assertions, feature = "local"))]
 
 use axum::{
     body::Body,

@@ -64,7 +64,7 @@ first.
 | Studio local access and table view | `LocalStudioAccess::loopback_only()` now accepts an IPv4-mapped loopback peer (`::ffff:127.0.0.1`, reported by a dual-stack `HOST=::` listener) instead of returning 403; other mapped addresses stay rejected. The table view, and the public `get_any_value_as_string`, now report a present value that no text, integer, float or Boolean codec decodes (for example a non-UTF-8 BLOB) as `unreadable` instead of `NULL`, and a stored text `NULL` is no longer styled as SQL NULL. |
 | LMS blueprint | `--blueprint lms` now generates a small starter: catalog, modules, lessons, an accessible player, enrollment, owner-bound progress, login and a Nexus admin. The complete Academy scaffold (schools, roles, quizzes, activities, scores, automation, notifications, publication, privacy lifecycle) and `--lms-modules` were removed; existing generated applications keep their code. Registration no longer generates the school-membership hook, and the learner dashboard no longer claims a default demo school: it points to the course catalog. Since 13.0.0-alpha.4 this starter is the `examples/lms` application instead (see "CLI starters moved to the examples"). |
 | Consumer generators | `make:supervision` was removed with the complete Academy LMS it targeted; integrate `rullst-supervision` directly. `make:privacy` and `make:age-gate` now target only the SaaS starter (`--blueprint saas`, which requires `--tenant-ref`). |
-| `html!` event handlers | A dynamic value in an `on*`, `hx-on` or `hx-on-*` attribute (for example `onclick={handler}`) no longer compiles, because escaping cannot make data safe inside JavaScript. Static handler strings still compile; move data-driven handlers into a nonce'd script with `addEventListener` and pass values through `data-*` attributes. The default CSP already blocked such inline handlers. |
+| `html!` event handlers | A dynamic value in an `on*`, `hx-on` or `hx-on-*` attribute (for example `onclick={handler}`) no longer compiles, because escaping cannot make data safe inside JavaScript. Static handler strings still compile; move data-driven handlers into a nonce'd script with `addEventListener` and pass values through `data-*` attributes. The default CSP already blocked such inline handlers. **Breaking**, from 13.0.0-alpha.5: the same holds for Alpine.js directives (`x-data={state}`, `x-show?={open}`, also `data-x-*`), which Alpine runs as JavaScript, and for the `@*`, `:*` and `hx-on:*` names that alpha.5 accepts; write them as static strings and pass server values through `data-*` attributes (`$el.dataset` in Alpine) or a `<script type="application/json">` data block. `cargo rullst upgrade` reports dynamic `x-*` values (`V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`). |
 | `html!` returns `Markup` | Since 13.0.0-alpha.2, `html!` returns `rullst::html::Markup` (escaped HTML) instead of `String`. Interpolating a `Markup` inserts it as HTML, so a fragment built by another `html!` call is no longer shown as escaped text and needs no `RawHtml`; `String`, `&str` and numbers are still escaped. A function declared `-> String` that returns `html!` no longer compiles: declare it `-> Markup`. `RawHtml(html! { .. })` no longer compiles: interpolate the `Markup` directly. Collect lists with `.collect::<Markup>()` (collecting `Markup` into a `String` does not compile) and use `Option<Markup>` for optional parts. `render_page`/`render_page_with_lang` take `impl Into<Markup>` (wrap a `String` of trusted HTML with `Markup::from_trusted`). A handler can return `Markup` (`text/html; charset=utf-8`), `Html(html! { .. })` still compiles, `Markup` compares with and reads like a `&str`, and `.into_string()` returns the `String`. See [`html!` returns `Markup`](#html-returns-markup). |
 | Core request validation | `ValidatedForm`/`ValidatedJson` return 413 for oversized bodies and 415 for a wrong content type (HTMX requests receive the same code in `X-Rullst-Validation-Status`); other read failures stay 400. Nested errors are keyed `address.zip` and `items[0].name`, and `ValidationError` formatting no longer includes submitted values. Update clients or tests that expected 400 for these cases. |
 | Core feature flags and scheduler | A user outside a declared A/B split now resolves to `"disabled"` instead of falling through to the next driver, and a negative database `rollout_percentage` means 0%. `Scheduler::task` uses POSIX weekday numbering (0 and 7 are Sunday) with the day-of-month OR day-of-week rule in UTC; review numeric weekdays in existing schedules. `RullstConfig::environment()` now reports the environment the Server enforces, including a value read from `.env`. Percentage rollouts and A/B variants of the Env, TOML, Memory and DB drivers use a versioned SHA-256 bucket hash instead of `std`'s `DefaultHasher`, so upgrading reassigns users to buckets once (percentages and variant weights are kept). End experiments whose assignment must not change before upgrading, and keep the period in which 12.x and 13 replicas both serve short, because they assign the same user differently. |
@@ -267,6 +267,9 @@ first.
 | Wasm islands removed | **Breaking**, from 13.0.0-alpha.5: the `#[island]` attribute (`rullst::island`), `cargo rullst make:island`, `cargo rullst build:client` (the wasm-bindgen client build that wrote `static/rullst-islands.js`), the Blank starter's `src/islands/` and the `wasm32` `wasm-bindgen`/`web-sys` dependencies new projects declared were removed, with the doctor's Wasm-target check. Besides non-use, the default Content Security Policy has no `'wasm-unsafe-eval'`, which browsers require to compile WebAssembly, so islands could not run under Rullst's default headers. Code with `#[island]` no longer compiles: render the markup on the server with `html!`, send interaction to the server with htmx and use native HTML (`<dialog>`, `popover`, `<details>`) or a small same-origin script with the request's CSP nonce for client-only behaviour. `make:island` and `build:client` print this and exit with status 1. `#[server_function]` and its `wasm32` caller, `rullst::edge` and the `wasm32` builds of the crates are unchanged. |
 | Live components removed | **Breaking**, from 13.0.0-alpha.5: `rullst::live` was removed: the `LiveComponent` trait, `Live::mount`, `live_ws_handler`, the `#[live_component]` and `#[live_event]` attributes, `cargo rullst make:live` and the `live::recovery` API (`LiveRecovery`, `LiveRecoveryConfig`, `RecoverableLiveView`, `LiveScope`, `LiveSnapshot`, `LiveCommand`, `LiveResult`, `LiveRecoveryError`, `LIVE_RECOVERY_MODULE`) with its browser module. The legacy WebSocket protocol had no origin check, connection cap or idle timeout. Handle events as ordinary routes that return HTML fragments for htmx, and push server updates with Server-Sent Events: the new `rullst::realtime::RealtimeSse` (with `RealtimeSseConfig`) turns a `BroadcastManager` channel or a `TenantRealtime` subscription into a bounded `text/event-stream` response (keep-alive comments, a shared connection limit answered with `503` and `Retry-After`, a maximum connection lifetime, a 64 KiB event bound and `shutdown()` for the graceful drain), and HTML scaffolds ship the htmx 1.9.12 SSE extension as `static/htmx-ext-sse-1.9.12.js` (`hx-ext="sse"`, `sse-connect`, `sse-swap`). `make:live` prints this and exits with status 1. `BroadcastManager`, `PresenceTracker`, the tenant facades and `rullst::ws` are unchanged. See [Tutorial 34](tutorials/34-realtime-dashboard-sse.md). |
 | Billing generator on Turso projects | **Breaking**, from 13.0.0-alpha.5: `cargo rullst make:billing` generates the SQLx billing scaffold only. In a Turso-primary project it now refuses before writing anything, because billing needs the SQLx database layer (SQLite, PostgreSQL, MySQL or MariaDB); Turso remains the primary database of the Blank and API starters only. Billing code generated by earlier releases in a Turso project is the application's and keeps compiling against the Turso adapter. |
+| IoT OTA manager state | **Breaking**, from 13.0.0-alpha.5 (Experimental `rullst-iot`, announced in 13.0.0-alpha.4): `OtaManager`'s fields `current_partition`, `status` and `firmware_version` are private. Read them with the methods of the same names, `ota.current_partition()`, `ota.status()` and `ota.firmware_version()`. Code that assigned `current_partition` after `new_with_trusted_key` or `new_with_counter_store` writes `ota = ota.with_running_partition(bank)` before verifying an update (or builds the manager with `new_with_running_partition`); the new method also discards an update verified for the other bank. `cargo rullst upgrade` reports the three field accesses in files that name `OtaManager` (`V13-IOT-OTA-STATE`). |
+| Studio `local` feature | **Breaking**, from 13.0.0-alpha.5, only for a direct `rullst-studio` dependency with `default-features = false` and none of `drivers-all`, `strict-sqlite`, `strict-postgres` or `strict-mysql`: the local Studio (`Studio`, `run_studio` and its page modules) is the new `local` feature, which each of those and the facade's `studio` feature enable, so add `features = ["local"]`. `cargo install rullst-studio --no-default-features --features remote` builds the remote Studio without the ORM, Capital and Security crates. |
+| Access-log paths | From 13.0.0-alpha.5, in staging and production the `[HTTP] METHOD path -> status` line of `Server` shows the route that matched (`GET /booking/{token} -> 200`) instead of the request path, and a request that matched no route its path cut to 128 bytes with bytes outside visible ASCII written `%XX`; development and test are unchanged. Log parsers or alerts that match concrete production paths set `[app] access_log_paths = "full"` in `Rullst.toml` or call `Server::access_log_paths(AccessLogPaths::Full)`; `"route"` uses templates everywhere. |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
@@ -583,8 +586,11 @@ The rows above that name alpha.5 are the changes in between. alpha.5 makes
 13.0 smaller before the feature and public API freeze: it removes the Wasm
 islands, the Live components (including `live::recovery`) and the Turso
 variant of `make:billing`, and adds Server-Sent Events for server push
-(`RealtimeSse`). Applications that use none of them only change versions.
-Work through the steps in order.
+(`RealtimeSse`). It also makes `OtaManager`'s state fields private, rejects
+dynamic Alpine.js directive values in `html!`, moves the local Studio behind
+`rullst-studio`'s `local` feature and writes route templates instead of
+request paths in the staging and production access log. Applications that use
+none of them only change versions. Work through the steps in order.
 
 1. **Prepare.** Work on a branch with a clean tree and a committed
    `Cargo.lock`, record the current `cargo test` result, and back up every
@@ -601,8 +607,12 @@ Work through the steps in order.
      `Live::mount`, `live_ws_handler`, `live::recovery`), also inside `html!`
      and `routes!`.
    - `V13-ISLAND-COMMANDS-REMOVED` and `V13-LIVE-COMMAND-REMOVED` (`REVIEW`,
-     step 8): workflows, root scripts, Makefile and justfile that run
+     step 9): workflows, root scripts, Makefile and justfile that run
      `make:island`, `build:client` or `make:live`.
+   - `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE` (`MUST-CHANGE`, step 8): a dynamic
+     value in an `x-*` attribute of `html!` (`x-data={state}`).
+   - `V13-IOT-OTA-STATE` (`REVIEW`, step 8): `.current_partition`, `.status`
+     or `.firmware_version` in a file that names `OtaManager`.
 
    The rules added in 13.0.0-rc.1 for alpha.4 changes (see the
    [alpha.3 to alpha.4 checklist](#upgrading-an-alpha3-application-to-alpha4))
@@ -654,12 +664,26 @@ Work through the steps in order.
    project. Billing code an earlier CLI generated there stays and keeps
    working; to generate it again, move the application to a SQLx database
    (SQLite, PostgreSQL, MySQL or MariaDB) first.
-8. **Update scripts, CI and other tools.** Remove the `make:island`,
+8. **Alpine.js values, OTA state, Studio and access-log paths.**
+   - Write `x-*` directives as static strings and pass server values through
+     a `data-*` attribute (`data-count={count}`, read as
+     `$el.dataset.count`) or a `<script type="application/json">` data block
+     (`html!` event handlers row).
+   - Read `ota.current_partition()`, `ota.status()` and
+     `ota.firmware_version()`; replace `ota.current_partition = bank` with
+     `ota = ota.with_running_partition(bank)` (IoT OTA manager state row).
+   - A direct `rullst-studio` dependency with `default-features = false` and
+     no driver profile adds `features = ["local"]` (Studio `local` feature
+     row).
+   - Log parsers that match concrete production request paths set
+     `[app] access_log_paths = "full"` in `Rullst.toml` (Access-log paths
+     row).
+9. **Update scripts, CI and other tools.** Remove the `make:island`,
    `build:client` and `make:live` steps the review rules name; the commands
    exit with status 1 and print what replaces them.
-9. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
-   edits and checks the result with `cargo fix` and `cargo check --locked`.
-10. **Verify** with the production feature set: `cargo build`, `cargo test`
+10. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
+    edits and checks the result with `cargo fix` and `cargo check --locked`.
+11. **Verify** with the production feature set: `cargo build`, `cargo test`
     and `cargo clippy --all-targets -- -D warnings`; then, on staging, every
     page that used an island or a Live component, with the browser's
     developer console open to catch CSP violations, before production.

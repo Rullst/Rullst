@@ -1,5 +1,6 @@
 #![cfg(all(
     debug_assertions,
+    feature = "local",
     feature = "strict-mysql",
     not(feature = "strict-postgres"),
     not(feature = "strict-sqlite")

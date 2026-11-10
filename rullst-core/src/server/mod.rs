@@ -1,5 +1,6 @@
 //! Application server bootstrap, hot-reloader, and Tower middleware integration.
 
+mod access_log;
 /// Fluent server builder and HTTP runner.
 pub mod builder;
 pub(crate) mod console;

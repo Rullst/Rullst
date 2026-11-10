@@ -41,7 +41,7 @@ fn signed_update_moves_only_to_the_inactive_partition_after_full_verification() 
     manager
         .verify_update(&manifest, firmware, &signature)
         .unwrap();
-    assert_eq!(manager.status, OtaStatus::Verified);
+    assert_eq!(manager.status(), OtaStatus::Verified);
     assert_eq!(manager.pending_manifest(), Some(&manifest));
 
     let commit = manager.commit_verified_update().unwrap();
@@ -49,10 +49,10 @@ fn signed_update_moves_only_to_the_inactive_partition_after_full_verification() 
     assert_eq!(commit.version(), "12.0.0");
     assert_eq!(commit.rollback_counter(), 2);
     // The receipt selects B for the next boot; the device still runs A.
-    assert_eq!(manager.current_partition, BootPartition::PartitionA);
-    assert_eq!(manager.firmware_version, "12.0.0");
+    assert_eq!(manager.current_partition(), BootPartition::PartitionA);
+    assert_eq!(manager.firmware_version(), "12.0.0");
     assert_eq!(manager.rollback_counter(), 2);
-    assert_eq!(manager.status, OtaStatus::Idle);
+    assert_eq!(manager.status(), OtaStatus::Idle);
     assert!(matches!(
         manager.commit_verified_update(),
         Err(OtaError::NoVerifiedUpdate)
@@ -79,11 +79,11 @@ fn a_second_update_before_reboot_never_targets_the_running_bank() {
         );
         let commit = manager.commit_verified_update().unwrap();
         assert_eq!(commit.target_partition(), BootPartition::PartitionB);
-        assert_eq!(manager.current_partition, BootPartition::PartitionA);
+        assert_eq!(manager.current_partition(), BootPartition::PartitionA);
     }
 
     // After the platform reboots into B and reports it, A is the target.
-    manager.current_partition = BootPartition::PartitionB;
+    manager = manager.with_running_partition(BootPartition::PartitionB);
     let (manifest, signature) = signed_update(4, b"third image");
     manager
         .verify_update(&manifest, b"third image", &signature)
@@ -92,6 +92,39 @@ fn a_second_update_before_reboot_never_targets_the_running_bank() {
         manager.verified_target_partition().unwrap(),
         BootPartition::PartitionA
     );
+}
+
+#[test]
+fn reporting_the_running_bank_discards_an_update_verified_for_the_other_one() {
+    let (manifest, signature) = signed_update(2, b"image");
+    let mut manager = manager(1);
+    assert_eq!(manager.status(), OtaStatus::Idle);
+    assert_eq!(manager.firmware_version(), "11.0.0");
+    manager
+        .verify_update(&manifest, b"image", &signature)
+        .unwrap();
+    assert_eq!(manager.status(), OtaStatus::Verified);
+    assert_eq!(
+        manager.verified_target_partition().unwrap(),
+        BootPartition::PartitionB
+    );
+
+    let mut manager = manager.with_running_partition(BootPartition::PartitionB);
+    assert_eq!(manager.current_partition(), BootPartition::PartitionB);
+    assert_eq!(manager.status(), OtaStatus::Idle);
+    assert!(manager.pending_manifest().is_none());
+    assert!(matches!(
+        manager.commit_verified_update(),
+        Err(OtaError::NoVerifiedUpdate)
+    ));
+    manager
+        .verify_update(&manifest, b"image", &signature)
+        .unwrap();
+    let commit = manager.commit_verified_update().unwrap();
+    assert_eq!(commit.target_partition(), BootPartition::PartitionA);
+    assert_eq!(manager.current_partition(), BootPartition::PartitionB);
+    assert_eq!(manager.firmware_version(), "12.0.0");
+    assert_eq!(manager.rollback_counter(), 2);
 }
 
 #[test]
@@ -171,7 +204,7 @@ fn legacy_apis_and_every_typed_error_remain_explicit() {
         manager.commit_update("2.0.0"),
         Err(OtaError::LegacyApiUnsupported { .. })
     ));
-    assert_eq!(manager.status, OtaStatus::Failed);
+    assert_eq!(manager.status(), OtaStatus::Failed);
 
     let errors = [
         OtaError::EmptyTarget,

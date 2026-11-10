@@ -405,6 +405,12 @@ rules! {
     LIVE_COMMAND_REMOVED: "V13-LIVE-COMMAND-REMOVED", Review, "13.0.0-alpha.5", "Live components removed",
         "this script runs `make:live`, which 13.0.0-alpha.5 removed; it now exits with status 1",
         "Remove the step; write the route and its `html!` fragment by hand, with `cargo rullst make:controller` for the module.";
+    HTML_ALPINE_DIRECTIVE: "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE", MustChange, "13.0.0-alpha.5", "`html!` event handlers",
+        "a dynamic value in an Alpine.js `x-*` attribute of `html!` no longer compiles: Alpine runs it as JavaScript",
+        "Write the directive as a static string and pass the server value through a `data-*` attribute (`data-count={count}` read as `$el.dataset.count`), or render the JSON into a `<script type=\"application/json\">` data block that the component reads.";
+    IOT_OTA_STATE: "V13-IOT-OTA-STATE", Review, "13.0.0-alpha.5", "IoT OTA manager state",
+        "`OtaManager`'s `current_partition`, `status` and `firmware_version` are private fields since 13.0.0-alpha.5; this file reads or assigns one",
+        "Call the methods of the same names (`ota.current_partition()`, `ota.status()`, `ota.firmware_version()`). Replace an assignment `ota.current_partition = bank` with `ota = ota.with_running_partition(bank)` before verifying an update, or build the manager with `new_with_running_partition`.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

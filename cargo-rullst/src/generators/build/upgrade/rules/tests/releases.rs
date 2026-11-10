@@ -90,6 +90,8 @@ fn rules_carry_the_release_of_their_change() {
             "V13-ISLAND-COMMANDS-REMOVED",
             "V13-LIVE-REMOVED",
             "V13-LIVE-COMMAND-REMOVED",
+            "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE",
+            "V13-IOT-OTA-STATE",
         ]
     );
     // Rules added after alpha.4 for its changes take the next release, so

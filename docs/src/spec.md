@@ -1745,7 +1745,18 @@ the same server-authoritative controls.
   checks/timeouts, component updates, replica consensus, load-balancer timing,
   authorization and the deployment termination deadline remain host contracts.
 * **Access log and default log filter:** `Server` prints one `[HTTP] METHOD
-  path -> status (ms)` line per request on stdout. Since 13.0.0-alpha.3, in
+  path -> status (ms)` line per request on stdout, never with the query
+  string. Since 13.0.0-alpha.5 the path is chosen by
+  `config::AccessLogPaths` (`[app] access_log_paths` in `Rullst.toml`,
+  replaced by `Server::access_log_paths`): `auto` (the default) writes the
+  route template that matched (axum's `MatchedPath`, such as
+  `/booking/{token}`) in Staging and Production and the request path in
+  Development and Test, `route` writes the template and `full` the request
+  path in every environment. Under `route`, a request that matched no route
+  (a `404`, or a path under a nested service) writes its path cut to 128
+  bytes, ending in `…` when cut, with bytes outside visible ASCII written as
+  `%XX`; the health-probe and development-poll rules below still look at the
+  request path. An unknown value fails `Rullst.toml` parsing. Since 13.0.0-alpha.3, in
   Staging and Production a `/health` or `/ready` request with a status below
   400 is not printed (a failing probe still is); `RULLST_LOG_HEALTH_PROBES`
   (`true`/`false`, also `1`/`0`, `yes`/`no`, `on`/`off`, from the process
@@ -2003,7 +2014,8 @@ the same server-authoritative controls.
   are HTML-escaped by the generated code.
 * **URL attributes:** Dynamic values of `href`, `src`, `action`, `formaction`,
   `poster`, `data`, `cite`, `background`, `codebase`, `icon`, `longdesc`,
-  `manifest` and `usemap` (names matched case-insensitively) are also checked
+  `manifest`, `usemap` and (since 13.0.0-alpha.5) SVG's `xlink:href` (names
+  matched case-insensitively) are also checked
   at runtime. A `javascript:` or `vbscript:` scheme, or `data:` outside `img`,
   `audio`, `video`, `source`, `track` and `image`, renders as `#`. Leading C0
   controls or spaces and embedded tab/LF/CR are ignored while reading the
@@ -2013,7 +2025,9 @@ the same server-authoritative controls.
 * **Event-handler attributes:** A dynamic value for an `on*` attribute or
   htmx's `hx-on`/`hx-on-*` (also `data-` prefixed) is a compile-time error,
   because the browser runs it as JavaScript and escaping cannot make
-  interpolated data safe there. Static handler strings remain allowed; attach
+  interpolated data safe there. Since 13.0.0-alpha.5 the same holds for
+  htmx's `hx-on:*` and for Alpine.js directives, which Alpine evaluates as
+  JavaScript: `x-*` and the `@*` and `:*` shorthands. Static handler strings remain allowed; attach
   data-driven listeners from a nonce'd script and pass values in `data-*`.
 * **Trusted-only `style`:** Dynamic `style` values are only HTML-escaped.
   They cannot leave the attribute and supported browsers do not run script
@@ -2054,9 +2068,46 @@ the same server-authoritative controls.
   `disabled="false"` still disables a control: use `disabled?={flag}`. The
   quoted forms keep compiling. Attribute names are Rust identifiers (keywords
   included) joined by `-`, so no quote, `=`, `>` or whitespace can reach the
-  output through a name; `:` and `@` name forms are not supported. A
-  conditional value on an event-handler attribute is rejected like a dynamic
-  one, while a bare handler name is static.
+  output through a name. Since 13.0.0-alpha.5 a name may also start with `@`
+  or `:`, join its segments with `:`, `::` or `.`, and have segments that
+  start with a digit (`500ms`), as Alpine.js and htmx write them:
+  `@click.prevent`, `:class`, `x-on:click`, `x-bind:disabled`,
+  `hx-on::after-request`, `x-transition:enter.duration.500ms`, `xlink:href`.
+  A `:` continues a name only when it is written directly after it (or when
+  the tokens carry no source positions), so `required :value="v"` is two
+  attributes. A conditional value on an event-handler attribute is rejected
+  like a dynamic one, while a bare handler name is static.
+* **Text:** A string literal (`<p>"Hello"</p>`) is author-owned source,
+  written as it is, with every character and space. Since 13.0.0-alpha.5
+  text may also be unquoted (`<p>Welcome back, {name}!</p>`), written as it
+  is too (not escaped, so `&amp;` stays a character reference). The macro
+  receives tokens, so it rebuilds the text from their source positions
+  (the compiler's `proc_macro::Span::start` and `Span::end`, stabilized in
+  Rust 1.88): tokens written together stay
+  together and any whitespace or comment between them becomes one space;
+  between unquoted text and a neighbouring element, `{…}`, string literal or
+  `@` block, whitespace becomes one space and none stays none; whitespace at
+  the start and end of an element's content, an `@` block body, parentheses
+  and the whole input is dropped. `(…)` and `[…]` are text whose content
+  follows the same rules and may hold `{…}` and elements (`Inbox ({count})`).
+  Whitespace between two nodes that are not unquoted text is ignored, as
+  before, so no earlier template changes output. Unquoted text consists of
+  identifiers (keywords and non-ASCII words included), integer and float
+  literals and punctuation other than `<`, `>` and `@`; it stops at `<`
+  (a tag), `{` (interpolation), `@` (control flow) and a string literal.
+  `>`, character and byte literals, a URL whose `//` the compiler dropped as
+  a comment (`http:`/`https:`/`ftp:`/`ws:`/`wss:` followed by a gap), a
+  `///` or `//!` doc comment and `if`/`for`/`match` followed by
+  `{ <tag> … }` without `@` are compile-time errors that name the fix, as is
+  a string literal written directly before a word (`"quoted"text`, in text
+  or an attribute value), which Rust reads as a literal suffix that earlier
+  releases dropped silently; an
+  `else` followed by `{` or `if` remains the `@else` error. Text that
+  contains quotes or apostrophes (Rust reserves `it's`), `//` or `/*`, `#`
+  right after a word (`C#`), characters that are not Rust tokens (emoji,
+  `€`, `—`) or needs exact whitespace (`<pre>`, `<textarea>`) is written as a
+  string literal. Tokens without distinct source positions (an `html!` that
+  another macro generated with one span) are separated by single spaces.
 * **Control flow:** Since 13.0.0-alpha.2, `@if condition { … }` (also
   `@if let PATTERN = value`), `@else if …`, `@else { … }` and
   `@for PATTERN in iterable { … }` take `html!` nodes in their braces; the
@@ -3903,7 +3954,7 @@ provider](capital-custom-provider.md)); the
 ### 8.1. Ed25519 OTA Firmware Gate
 * **Firmware Verification:** Strict Ed25519 signature validation over a cryptographic manifest `[target, version, rollback_counter, firmware_len, firmware_sha256]`.
 * **Anti-Rollback Protection:** Verification rejects any counter lower than or equal to the state loaded into the manager. The recommended `RollbackCounterStore` path additionally performs an exact compare-and-set and may report success only after a strictly increasing value is durably committed across reset. A retry of the same verified manifest after an ambiguous store failure completes only when the store reports, and a fresh load confirms, exactly that manifest's counter; an equal stored counter without such an earlier attempt remains a conflict. Atomicity, integrity, wear-leveling and power-loss behavior are obligations of the caller's platform adapter and require hardware-specific evidence.
-* **Commit Invariant:** In-memory partition selection and store-backed counter commit are blocked until full cryptographic verification succeeds. `verified_target_partition` exposes the inactive bank (opposite `current_partition`) for platform flash/read-back before commit. The v13 `new_with_running_partition` constructor takes the bank the bootloader started, while the older constructors assume `PartitionA` and require platform code to set `current_partition`; a commit selects the other bank for the next boot but does not change `current_partition`, so an update verified again before reboot never targets the running bank. The compatibility `commit_verified_update` path is process-local and does not claim persistence, flash or bootloader control.
+* **Commit Invariant:** In-memory partition selection and store-backed counter commit are blocked until full cryptographic verification succeeds. `verified_target_partition` exposes the inactive bank (opposite `current_partition`) for platform flash/read-back before commit. The v13 `new_with_running_partition` constructor takes the bank the bootloader started, while the older constructors assume `PartitionA` and require platform code to call `with_running_partition` (13.0.0-alpha.5), which also discards an update verified for the other bank; since 13.0.0-alpha.5 `current_partition()`, `status()` and `firmware_version()` read the manager's state, whose fields are private. A commit selects the other bank for the next boot but does not change `current_partition()`, so an update verified again before reboot never targets the running bank. The compatibility `commit_verified_update` path is process-local and does not claim persistence, flash or bootloader control.
 
 ### 8.2. Embedded Sensor Frames (`#![no_std]`)
 * `rullst-iot` core models compile under bare-metal `#![no_std]` targets (STM32, ESP32-C3, Cortex-M).
@@ -4300,7 +4351,7 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
 * Record keys follow the registered primary-key kind: a `number`, `integer` or relation key must be a canonical integer (`+1`, `01` and `1e3` name no record, so the audit key is the changed key); other kinds are compared as text. A model may declare a composite key (`NexusModel::nexus_pk_columns`, v13; at most 8 distinct registered columns, none of them the tenant column): a record is then addressed by its values in key order, each percent-encoded (`urlencoding::encode`) and joined by `,`; only that canonical spelling with the right number of values names a record, each value typed by its column, and every key column is bound in list, edit, update, delete, batch and create predicates, read-only on edit and a sort tie-breaker. The UI addresses records under `/table/{table}/record/{key}` so keys such as `new`, `search` or `batch` never meet an action route. Other form values are bound as text; on PostgreSQL, numbers and integers are written through `NUMERIC`, canonical-integer relations through `BIGINT`, Booleans as untyped `'0'`/`'1'` literals and dates and times (including NULL) through `DATE`, `TIME`, `TIMESTAMP` or `TIMESTAMPTZ` casts, so native columns accept them, while other kinds need text columns. MySQL/MariaDB receive a UTC instant as its UTC wall time. Search matches the typed text literally and case-insensitively (`ILIKE` on PostgreSQL) in visible text, textarea, e-mail and URL fields; a model without one shows no search box and a search query lists no rows. The tenant predicate compares binary strings on MySQL/MariaDB.
 * `Password` fields are never rendered: list cells show a fixed mask (the column is not selected or sortable; neither is a hidden field, so a `sort_by` naming either orders by the key) and edit forms an empty input; an empty submission keeps the stored value. Non-empty values are written verbatim; Nexus neither hashes them nor runs ORM hooks, so credential-hash columns must be read-only in Nexus and changed by an application flow that hashes.
 * `#[derive(Nexus)]` follows ORM field semantics: `#[orm(skip)]`/`#[sqlx(skip)]` fields are not columns; `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields become hidden, read-only `Password` fields that are never listed, searched, sorted, rendered or written (only `#[nexus(kind = "password")]` turns an `#[orm(hidden)]` field into a write-only field, and any other widget override on these fields fails compilation); `#[orm(masked)]` fields default to `Password` unless an explicit `#[nexus(kind)]` shows them. The record key is the struct-level `primary_key` (one column, or up to 8 distinct columns separated by commas), else every `#[nexus(primary_key)]` field in declaration order, else `id`; annotations must match a struct-level list. A single integer key is hidden and read-only as database-generated, while another key, and every column of a composite key, is entered on create and read-only on edit. `chrono::NaiveDate`, `NaiveTime`, `NaiveDateTime` and `DateTime<Utc>` fields become `Date`, `Time`, `DateTime` and `DateTimeUtc`. Rust integer fields (also under `Option`, and under an explicit `kind = "number"`) become `FieldKind::Integer` bounded by their type (`isize`/`usize` as 64-bit, `u64`/`usize` capped at `i64::MAX`); `f32`/`f64` stay `Number`.
-* The panel loads only same-origin assets under `/nexus/assets/` (stylesheet, behaviour script and a vendored, unmodified htmx 2.0.4 with eval, script tags, injected indicator styles and its `localStorage` history cache disabled). Nexus markup contains no inline script/style blocks, event-handler, `hx-on` or `style` attributes, so the default production nonce CSP applies unchanged; the application-wide `security.csp` must not be relaxed for Nexus. AI assistant replies are sanitized to an explicit text-formatting allowlist without any element that loads a resource by itself (no `img`), and links get `rel="noopener noreferrer"`.
+* The panel loads only same-origin assets under `/nexus/assets/` (stylesheet, behaviour script and a vendored, unmodified htmx 2.0.4 with eval, script tags, injected indicator styles and its `localStorage` history cache disabled). Nexus markup contains no inline script/style blocks, event-handler, `hx-on` or `style` attributes, so the default production nonce CSP applies unchanged; the application-wide `security.csp` must not be relaxed for Nexus. Since 13.0.0-alpha.5 `Nexus::with_stylesheet(path)` links up to eight application stylesheets after `nexus.css` on every page; `try_build` accepts only same-origin paths (a single leading `/`, at most 512 visible ASCII characters without quotes, `<`, `>`, `` ` `` or `\`) and otherwise fails with `NexusBuildError::InvalidStylesheet`, so `style-src 'self'` still covers the panel. The links reach the shell through a task-local value set by a layer of the Nexus router, so `render_shell` called outside a Nexus request links none. AI assistant replies are sanitized to an explicit text-formatting allowlist without any element that loads a resource by itself (no `img`), and links get `rel="noopener noreferrer"`.
 * `with_required_audit` requires the fixed `rullst_nexus_audits` schema and appends one minimized committed-mutation row in the same transaction. Audit unavailability rolls the data change back. This is not append-only, tamper-evident, denied-attempt, retention, backup, replication or external-SIEM evidence; those properties remain host responsibilities.
 
 ---
@@ -4717,7 +4768,10 @@ store package of the same site, only installs it.
   1.9.12 sends it with `HX-Request: true` after a history cache miss and
   replaces the whole `<body>`) and `HX-Boosted: true` with the whole page;
   any other `HX-Request: true` request still receives only the content.
-  `HtmxRequest` does not expose the two headers. Under `Server`, every
+  Since 13.0.0-alpha.5 `HtmxRequest::is_history_restore()` and
+  `HtmxRequest::is_boosted()` report the two headers (each `true` only for
+  the exact value `true`), so a handler that builds its own response can
+  answer them with the page too. Under `Server`, every
   `text/html` response of the application's routes carries
   `Vary: HX-Request` (added to an existing `Vary` unless it already names the
   header or is `*`), so a cache keeps a page and the fragment of one URL

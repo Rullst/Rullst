@@ -265,8 +265,9 @@ pub enum Commands {
     Studio {
         /// Starts the standalone Studio for remote projects instead (the
         /// `rullst-studio` binary of the same release, installed with `cargo
-        /// install rullst-studio --version =<this version> --features remote
-        /// --locked`); no project needed
+        /// install rullst-studio --version =<this version>
+        /// --no-default-features --features remote --locked`); no project
+        /// needed
         #[arg(long)]
         remote: bool,
         /// Loopback port of the remote Studio (default 5556)
