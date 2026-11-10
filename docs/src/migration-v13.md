@@ -40,11 +40,13 @@ Rows without rules still need a reading. An application already on a 13.0
 prerelease gets only the rules introduced after its version, and the plan says
 how many earlier rules it skipped; `--all-rules` applies every rule
 ([rules by release](tutorials/36-assisted-framework-upgrades.md#rules-by-release)).
-An application that already runs 13.0.0-alpha.3 follows the shorter
-[alpha.3 to alpha.4 checklist](#upgrading-an-alpha3-application-to-alpha4);
-one on 13.0.0-alpha.2 follows the
+An application that already runs 13.0.0-alpha.4 follows the shorter
+[alpha.4 to alpha.5 checklist](#upgrading-an-alpha4-application-to-alpha5);
+one on 13.0.0-alpha.3 follows the
+[alpha.3 to alpha.4 checklist](#upgrading-an-alpha3-application-to-alpha4)
+first, and one on 13.0.0-alpha.2 the
 [alpha.2 to alpha.3 checklist](#upgrading-an-alpha2-application-to-alpha3)
-first.
+before that.
 
 ## Changes from the published 12.1.0 source
 
@@ -265,6 +267,10 @@ first.
 | CLI `make:migration:auto` without a database to compare | From 13.0.0-alpha.4, `cargo rullst make:migration:auto` exits with status 1 and a "No migration generated" report when there is no `.env`, no `DATABASE_URL` (a `--no-database` project), a non-SQLite `DATABASE_URL` or a Turso primary. alpha.3 printed a warning, exited with status 0 and suggested `cargo rullst db:migrate` to "apply the generated migrations" although none was written. A database already in sync with the models still exits with status 0, now without that next step. Scripts that ran it in such projects and relied on status 0 must stop running it there. From 13.0.0-rc.1, `cargo rullst upgrade` reports scripts that run it (`V13-CLI-MIGRATION-AUTO-STATUS`). |
 | `html!` attribute values and `render_page` | From 13.0.0-rc.1, a `"` written in a fixed attribute value (`content="{\"a\":1}"`) comes out as `&quot;` instead of ending the attribute, and an `Option` in `name={value}` raises a `deprecated` warning at the value: `None` writes `name=""`, which still turns `disabled`, `selected` and other boolean attributes on. The output of `name={value}` is unchanged; write `name?={value}` to leave the attribute out for `None`, or `value.unwrap_or_default()` to keep the empty value. A build with `-D warnings` fails until each one is changed. `render_page`, `render_page_with_lang` and `render_page_with_head` answer htmx history restores (`HX-History-Restore-Request: true`) and boosted requests (`HX-Boosted: true`) with the whole page instead of the fragment, and `Server` adds `Vary: HX-Request` to HTML responses. |
 | Internals hidden from the API documentation | From 13.0.0-alpha.4 these items are `#[doc(hidden)]`: they still compile, but they are no longer documented and are not part of the 13.x compatibility promise. Core: `html::optional_attr` (called by `html!`), `rpc::route` and `rpc::handle_request` (called by `#[server_function]`), the `server::dylib_loader` module (the hot-reload loader of `Server`) and the `artisan::runner` module, whose `check_and_run_artisan` stays documented as `artisan::check_and_run_artisan`. ORM: `CURRENT_TX` (use `Orm::transaction`), `tenant::CURRENT_TENANT` (use `with_tenant` and `get_tenant_id`), `schema::QUERY_LOGGING`, `schema::QUERY_TIMEOUT_SECS` and `schema::MAX_QUERY_LIMIT` (use `enable_query_log`, `disable_query_log`, `set_query_timeout`, `set_max_query_limit` and their getters) and `privacy::encrypt_aes_gcm`/`decrypt_aes_gcm`. Auth: the `passkey::cbor` module. Connect: the `impl_standard_redirect_url!` and `impl_standard_refresh_token!` macros, the empty `macros` module and `client::DEFAULT_HTTP_CLIENT`. Security: `current_timestamp_str` and `get_real_rss_memory_mb` (use `rullst_core::radar::get_process_memory_mb`). Nexus: `field_kind_sql` and `generate_smart_nexus_ai_response`. Code that names them keeps compiling; move to the documented replacement, because a later major release may make them private. No other API changes. |
+| Capital invoice minor units | **Breaking**, from 13.0.0-alpha.5: Capital's `Invoice` and `InvoiceItem` hold integer amounts in the currency's smallest unit, like `ChargeReceipt`, instead of `f64`. `InvoiceItem::amount: f64` became `amount_minor: u64` and `Invoice::total: f64` was removed: the total is the checked sum of the items (`total_minor()`, at most 99,999,999). Both structs are `#[non_exhaustive]`: build them with `Invoice::new(invoice_id, customer_email, date, currency)` and `.with_item(description, amount_minor)` (or `InvoiceItem::new`), so 49.90 BRL is `4_990`. The serialized form changes the same way (`amount_minor`, no `total`, an optional `labels` object), so invoice JSON stored by alpha.4 no longer decodes. The HTML and PDF print the new `labels` field: English by default (the same words, now with `<html lang="en">`, the currency code in capitals and a "Description \| Amount" line in the PDF), `with_locale(InvoiceLocale::PtBr)` or `InvoiceLocale::Es` for "Recibo" wording (Capital issues no tax invoice), or edited `InvoiceLabels`. `PaidInvoiceDelivery` takes its subject and PDF name from the title label (`Recibo INV-1`, `recibo-<key>.pdf`) and accepts `subject(...)` and `filename(...)`. `cargo rullst upgrade` reports each struct literal with the old fields (`V13-CAPITAL-INVOICE-MINOR-UNITS`). |
+| Mail Reply-To | From 13.0.0-alpha.5, `rullst_mail::Message` has a `reply_to: Option<String>` field and a `reply_to(...)` builder. The delivery pipeline validates it like `from` (no CR/LF, one mailbox, display names allowed), and the Resend, SendPulse, AWS SES (native and proxy) and SMTP drivers send it; the offline mock and memory drivers keep it. **Breaking** only for a struct literal that lists every field without `..`: add `reply_to: None`, or build the message with `Message::new()` and its builders. Messages serialized without it (queued jobs) still decode, and the field is left out of the serialized form when empty. `cargo rullst upgrade` reports such literals (`V13-MAIL-MESSAGE-REPLY-TO`). |
+| Capital InfinitePay adapter | From 13.0.0-alpha.5, `InfinitePayProvider::checkout(handle)` (with `with_api_key("inchk_…")` and `with_webhook_url(...)`) works against InfinitePay's public Checkout API: `create_one_off_checkout` creates a link with `POST /links`, the unsigned webhook is read with `parse_payment_notification`, and `confirm_one_off_payment` calls `POST /payment_check` and reports a payment only when InfinitePay confirms it with the server-side amount. The alpha.4 constructor `new(api_key, webhook_secret)` still compiles: it has no handle, keeps its offline fixtures with `mock_*` credentials and refuses live operations, and its `webhook_verification_mode()` returns the new `ConfirmedAtSource` instead of `Real` for a non-mock secret. `create_customer_portal` and `cancel_subscription` return `UnsupportedOperation` even with `mock_*` credentials, because InfinitePay has no portal or subscriptions. |
+| Capital one-off checkout and unsigned notifications | Opt-in from 13.0.0-alpha.5: `OneOffCheckoutRequest` (server-side reference, unit amount in minor units, currency, description, quantity, success and cancel URLs, optional e-mail), `BillingProvider::create_one_off_checkout`, `parse_payment_notification` and `confirm_one_off_payment` (each defaults to `UnsupportedOperation`, so custom providers keep compiling), `OneOffCheckout`, `PaymentNotification`, `OneOffPayment`, `WebhookVerificationMode::ConfirmedAtSource` (the webhook middleware inserts a `PaymentNotification` instead of a `WebhookEvent` for such a provider) and `providers::ProviderRequest`. Stripe implements the one-off checkout with inline `price_data`; `create_one_time_checkout` with a fixed price is unchanged. `StripeCheckoutRequest` and `StripePaymentCheckoutRequest` now accept `http://localhost`, `127.0.0.1` and `[::1]` redirects for `mock_*` keys; a live key still requires HTTPS and fails with `ConfigurationError` before any request. |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
@@ -570,6 +576,76 @@ documentation. Work through the steps in order.
     restored copy of the production database; then, on staging, sign-in,
     Nexus (with or without the assistant), each configured provider and the
     health probes before production.
+
+## Upgrading an alpha.4 application to alpha.5
+
+This checklist moves an application from 13.0.0-alpha.4 to 13.0.0-alpha.5,
+the 13.0 feature and API freeze. The rows above that name alpha.5 are the
+changes in between. In Capital, invoices hold integer minor units and print
+localized labels, a provider-neutral one-off checkout confirms payments at the
+source, and the InfinitePay adapter works against InfinitePay's Checkout API;
+Mail messages gain `Reply-To`. Work through the steps in order.
+
+1. **Prepare.** Work on a branch with a clean tree and a committed
+   `Cargo.lock`, and record the current `cargo test` result.
+2. **Install the alpha.5 CLI.**
+   `cargo install cargo-rullst --version =13.0.0-alpha.5 --locked --force`,
+   then `rullst --version` must print `13.0.0-alpha.5`.
+3. **Inspect.** `cargo rullst upgrade --dry-run` applies only the rules
+   introduced after 13.0.0-alpha.4. These can appear for Capital and Mail:
+   - `V13-CAPITAL-INVOICE-MINOR-UNITS` (`MUST-CHANGE`, step 5): an
+     `Invoice { .. total .. }` or `InvoiceItem { .. amount .. }` literal in a
+     file that names Capital.
+   - `V13-MAIL-MESSAGE-REPLY-TO` (`MUST-CHANGE`, step 6): a `Message { .. }`
+     literal that lists every field without `..`.
+4. **Apply, keeping a failed state.** Run
+   `cargo rullst upgrade --keep-on-failure`: it pins every Rullst dependency
+   to `=13.0.0-alpha.5`, runs `cargo fix` and `cargo check --locked`, and
+   keeps the edited files when they fail. Fix what steps 5 and 6 name, then
+   run `cargo rullst upgrade` again (step 8).
+5. **Move invoices to minor units** (Capital invoice minor units row).
+   Replace each literal with the constructors, converting every amount to the
+   currency's smallest unit:
+
+   ```rust,ignore
+   // alpha.4
+   let invoice = Invoice {
+       invoice_id: "INV-42".into(),
+       customer_email: "owner@example.com".into(),
+       date: Utc::now(),
+       items: vec![InvoiceItem { description: "Plan".into(), amount: 49.90 }],
+       total: 49.90,
+       currency: "BRL".into(),
+   };
+   // alpha.5
+   let invoice = Invoice::new("INV-42", "owner@example.com", Utc::now(), "BRL")
+       .with_item("Plan", 4_990)
+       .with_locale(InvoiceLocale::PtBr); // optional: "Recibo" labels
+   ```
+
+   Read `item.amount_minor` instead of `item.amount` and `total_minor()`
+   instead of `total`. Invoices stored as alpha.4 JSON need a one-off
+   conversion (multiply each amount by the currency's minor-unit factor and
+   drop `total`). A `PaidInvoiceDelivery` for a Portuguese or Spanish invoice
+   is now titled `Recibo …`; set `subject(...)` or `filename(...)` to keep
+   another wording.
+6. **Add `reply_to` to exhaustive `Message` literals** (Mail Reply-To row):
+   write `reply_to: None`, or build the message with `Message::new()` and its
+   builders. Use `.reply_to(visitor_email)` where replies should reach someone
+   other than the sender.
+7. **Review Capital's new one-off checkout and InfinitePay** (Capital
+   InfinitePay adapter and Capital one-off checkout rows). An application that
+   implemented InfinitePay itself can move to
+   `InfinitePayProvider::checkout(handle)` with `create_one_off_checkout`,
+   `parse_payment_notification` and `confirm_one_off_payment`; mark a charge
+   paid only when `OneOffPayment::is_paid()` is true. Tests that expected an
+   InfinitePay mock portal URL or a successful mock cancellation now get
+   `UnsupportedOperation`. A Stripe development setup that passed the
+   `https://` form of a local URL to a `mock_*` key can pass
+   `http://localhost:…` again.
+8. **Validate.** Run `cargo rullst upgrade` again, then verify with the
+   production feature set: `cargo build`, `cargo test` and
+   `cargo clippy --all-targets -- -D warnings`.
 
 ## Why the candidate uses a new major
 

@@ -8,6 +8,7 @@ const RELEASES: &[&str] = &[
     "13.0.0-alpha.2",
     "13.0.0-alpha.3",
     "13.0.0-alpha.4",
+    "13.0.0-alpha.5",
     "13.0.0-rc.1",
 ];
 
@@ -80,6 +81,13 @@ fn rules_carry_the_release_of_their_change() {
             "V13-SQLX-MACROS",
             "V13-NEXUS-AI-FEATURE",
             "V13-SQLX-TLS-RING"
+        ]
+    );
+    assert_eq!(
+        codes_introduced_in("13.0.0-alpha.5"),
+        [
+            "V13-CAPITAL-INVOICE-MINOR-UNITS",
+            "V13-MAIL-MESSAGE-REPLY-TO",
         ]
     );
     // Rules added after alpha.4 for its changes take the next release, so

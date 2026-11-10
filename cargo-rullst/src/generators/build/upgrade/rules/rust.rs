@@ -10,6 +10,8 @@ use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{Attribute, Expr, Fields, Lit, Pat, Token};
 
+#[path = "rust/capital_mail.rs"]
+mod capital_mail;
 #[path = "rust/sqlx_macros.rs"]
 mod sqlx_macros;
 
@@ -411,6 +413,9 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
         if !self.context.facts.sqlx_macros && sqlx_macros::is_query_macro(&mac.path) {
             self.hit(&SQLX_MACROS, line(mac.path.span()));
         }
+        for (rule, at) in capital_mail::in_vec_macro(mac, self.context.text) {
+            self.hit(rule, at);
+        }
         visit::visit_macro(self, mac);
     }
 
@@ -448,6 +453,9 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
     }
 
     fn visit_expr_struct(&mut self, expr: &'ast syn::ExprStruct) {
+        if let Some((rule, at)) = capital_mail::legacy_literal(expr, self.context.text) {
+            self.hit(rule, at);
+        }
         for field in &expr.fields {
             if let syn::Member::Named(name) = &field.member
                 && (name == "created_at" || name == "updated_at")

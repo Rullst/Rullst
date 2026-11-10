@@ -264,6 +264,7 @@ release:
 | 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
+| 13.0.0-alpha.5 | `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-MAIL-MESSAGE-REPLY-TO` |
 | 13.0.0-rc.1 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them) |
 
 A rule is dated by the first release tag whose catalog contains its code
@@ -276,10 +277,10 @@ The plan takes the application's Rullst version to be the oldest version that
 a Rullst requirement in the workspace manifests admits (`=13.0.0-alpha.3`,
 or `13.0.0-alpha.1`, a caret requirement) or that `Cargo.lock` holds. When that
 version is a 13.0 prerelease, only the rules introduced after it apply: an
-alpha.3 application gets the alpha.4 rules, an alpha.2 application the seven
-alpha.3 rules and the alpha.4 rules, and an alpha.1 application the alpha.2,
-alpha.3 and alpha.4 rules, because the earlier changes are already in the
-version it runs. The plan says what it skipped:
+alpha.4 application gets the alpha.5 and rc.1 rules, an alpha.3 application
+also the alpha.4 rules, an alpha.2 application also the seven alpha.3 rules,
+and an alpha.1 application also the alpha.2 rules, because the earlier
+changes are already in the version it runs. The plan says what it skipped:
 
 ```text
 Source findings (rullst-upgrade-rules-v4): 0 must-change, 1 review
@@ -432,15 +433,15 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (12 rows);
+  application source (14 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
   the affected API, feature or configuration, which the rules locate (104 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (100 rows).
+  of inputs that previously failed) (102 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 120 rules. A row can map to several rules and a rule to
+has 122 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -661,6 +662,10 @@ the rule together.
 | CLI `make:migration:auto` without a database to compare | (b) review | `V13-CLI-MIGRATION-AUTO-STATUS` | Workflows, root scripts, Makefile and justfile that run `make:migration:auto`, which exits with status 1 when there is no SQLite database to compare; introduced in 13.0.0-alpha.4, rule since 13.0.0-rc.1 |
 | `html!` attribute values and `render_page` | (c) none | — | The compiler's `deprecated` warning locates each `Option` in `name={value}`; the quote escaping and the whole-page htmx answers need no change; introduced in 13.0.0-rc.1 |
 | Internals hidden from the API documentation | (c) none | — | The items still compile; only their documentation and compatibility promise change; introduced in 13.0.0-alpha.4 |
+| Capital invoice minor units | (a) must-change | `V13-CAPITAL-INVOICE-MINOR-UNITS` | `Invoice { .. }` literals naming `total` and `InvoiceItem { .. }` literals naming `amount`, in files that name Capital (`rullst_capital` or `capital::`), so an application's own `Invoice` type is left alone; reads of `.total` and `.amount` are not located, the compiler names them; introduced in 13.0.0-alpha.5 |
+| Mail Reply-To | (a) must-change | `V13-MAIL-MESSAGE-REPLY-TO` | `Message { .. }` literals with `subject` and `body_html`, without `reply_to` and without `..rest`, in files that name Mail (`rullst_mail` or `mail::`); introduced in 13.0.0-alpha.5 |
+| Capital InfinitePay adapter | (c) none | — | Experimental adapter: `new` keeps compiling, and the mock answers that changed (portal, cancellation) surface in the application's own tests; introduced in 13.0.0-alpha.5 |
+| Capital one-off checkout and unsigned notifications | (c) none | — | Opt-in additions; the new trait methods have defaults and the redirect check only accepts more URLs with mock keys; introduced in 13.0.0-alpha.5 |
 
 ## Planned simpler update experience
 

@@ -393,6 +393,12 @@ rules! {
     BLUEPRINTS_REMOVED: "V13-CLI-BLUEPRINTS-REMOVED", Review, "13.0.0-rc.1", "CLI starters moved to the examples",
         "this script passes `--blueprint lms|blog|portfolio|erp`, which `cargo rullst new` refuses with status 1 since 13.0.0-alpha.4, before writing anything",
         "Copy the application from the repository's `examples/lms`, `examples/erp`, `examples/portfolio` or `examples/blog` (https://github.com/Rullst/Rullst/tree/main/examples) instead, or start from `--blueprint api` or `--blueprint saas`.";
+    CAPITAL_INVOICE_MINOR_UNITS: "V13-CAPITAL-INVOICE-MINOR-UNITS", MustChange, "13.0.0-alpha.5", "Capital invoice minor units",
+        "Capital's `Invoice` and `InvoiceItem` hold integer minor units since 13.0.0-alpha.5: the `f64` fields `amount` and `total` are gone and both structs are built with constructors",
+        "Build `Invoice::new(id, email, date, currency).with_item(description, amount_minor)` with each amount in the currency's smallest unit (49.90 BRL is `4_990`); the total is the sum of the items (`total_minor()`). Read `item.amount_minor` instead of `item.amount`, and use `with_locale(InvoiceLocale::PtBr)` or `InvoiceLocale::Es` for receipt labels.";
+    MAIL_MESSAGE_REPLY_TO: "V13-MAIL-MESSAGE-REPLY-TO", MustChange, "13.0.0-alpha.5", "Mail Reply-To",
+        "Mail's `Message` has a `reply_to` field since 13.0.0-alpha.5, so a struct literal that lists every field without `..` no longer compiles",
+        "Build the message with `Message::new()` and its builders (`.to(..)`, `.subject(..)`, `.reply_to(..)`), or add `reply_to: None` or `..Message::new()` to the literal.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer
