@@ -57,10 +57,6 @@ pub rullst_connect::ConnectError::Session(alloc::string::String)
 pub rullst_connect::ConnectError::RefreshIncomplete { .. }
 pub rullst_connect::ConnectError::RefreshIncomplete::tokens: alloc::boxed::Box<rullst_connect::IssuedTokens>
 pub rullst_connect::ConnectError::RefreshIncomplete::source: alloc::boxed::Box<rullst_connect::ConnectError>
-impl core::convert::From<base64::decode::DecodeError> for rullst_connect::ConnectError
-impl core::convert::From<jsonwebtoken::errors::Error> for rullst_connect::ConnectError
-impl core::convert::From<reqwest::error::Error> for rullst_connect::ConnectError
-impl core::convert::From<serde_json::error::Error> for rullst_connect::ConnectError
 impl core::convert::From<std::time::SystemTimeError> for rullst_connect::ConnectError
 impl core::error::Error for rullst_connect::ConnectError
 impl core::fmt::Debug for rullst_connect::ConnectError

@@ -45,8 +45,9 @@ impl core::marker::Send for rullst_ai::AiClient
 impl core::marker::Sync for rullst_ai::AiClient
 impl core::marker::Unpin for rullst_ai::AiClient
 #[non_exhaustive] pub enum rullst_ai::AiError
-pub rullst_ai::AiError::RequestError(reqwest::error::Error)
-pub rullst_ai::AiError::SerializationError(serde_json::error::Error)
+pub rullst_ai::AiError::RequestError(rullst_ai::AiRequestError)
+pub rullst_ai::AiError::SerializationError(rullst_ai::AiJsonError)
+pub rullst_ai::AiError::HttpStatus(rullst_ai::AiHttpError)
 pub rullst_ai::AiError::ApiError(alloc::string::String)
 pub rullst_ai::AiError::ConfigError(alloc::string::String)
 pub rullst_ai::AiError::BlockedByFirewall(alloc::string::String)
@@ -60,9 +61,7 @@ pub rullst_ai::AiError::StreamProtocol(&'static str)
 pub rullst_ai::AiError::StreamSink
 pub rullst_ai::AiError::VisionInput(rullst_ai::VisionInputError)
 pub rullst_ai::AiError::Other(alloc::string::String)
-impl core::convert::From<reqwest::error::Error> for rullst_ai::AiError
 impl core::convert::From<rullst_ai::VisionInputError> for rullst_ai::AiError
-impl core::convert::From<serde_json::error::Error> for rullst_ai::AiError
 impl core::error::Error for rullst_ai::AiError
 impl core::fmt::Debug for rullst_ai::AiError
 impl core::fmt::Display for rullst_ai::AiError
@@ -207,6 +206,36 @@ impl core::marker::Sync for rullst_ai::AiGuardrails
 impl core::marker::Unpin for rullst_ai::AiGuardrails
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::AiGuardrails
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::AiGuardrails
+#[non_exhaustive] pub struct rullst_ai::AiHttpError
+impl rullst_ai::AiHttpError
+pub fn rullst_ai::AiHttpError::code(&self) -> core::option::Option<&str>
+pub fn rullst_ai::AiHttpError::message(&self) -> core::option::Option<&str>
+pub fn rullst_ai::AiHttpError::new(provider: impl core::convert::Into<alloc::string::String>, status: u16) -> Self
+pub fn rullst_ai::AiHttpError::provider(&self) -> &str
+pub fn rullst_ai::AiHttpError::retry_after(&self) -> core::option::Option<core::time::Duration>
+pub fn rullst_ai::AiHttpError::status(&self) -> u16
+pub fn rullst_ai::AiHttpError::with_provider_message(self, code: core::option::Option<impl core::convert::Into<alloc::string::String>>, message: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn rullst_ai::AiHttpError::with_retry_after(self, delay: core::time::Duration) -> Self
+impl core::clone::Clone for rullst_ai::AiHttpError
+impl core::cmp::Eq for rullst_ai::AiHttpError
+impl core::cmp::PartialEq for rullst_ai::AiHttpError
+impl core::error::Error for rullst_ai::AiHttpError
+impl core::fmt::Debug for rullst_ai::AiHttpError
+impl core::fmt::Display for rullst_ai::AiHttpError
+impl core::marker::Send for rullst_ai::AiHttpError
+impl core::marker::Sync for rullst_ai::AiHttpError
+impl core::marker::Unpin for rullst_ai::AiHttpError
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::AiHttpError
+impl core::panic::unwind_safe::UnwindSafe for rullst_ai::AiHttpError
+pub struct rullst_ai::AiJsonError(_)
+impl core::error::Error for rullst_ai::AiJsonError
+impl core::fmt::Debug for rullst_ai::AiJsonError
+impl core::fmt::Display for rullst_ai::AiJsonError
+impl !core::panic::unwind_safe::RefUnwindSafe for rullst_ai::AiJsonError
+impl !core::panic::unwind_safe::UnwindSafe for rullst_ai::AiJsonError
+impl core::marker::Send for rullst_ai::AiJsonError
+impl core::marker::Sync for rullst_ai::AiJsonError
+impl core::marker::Unpin for rullst_ai::AiJsonError
 pub trait rullst_ai::AiProvider: core::marker::Send + core::marker::Sync
 pub fn rullst_ai::AiProvider::capabilities(&self) -> rullst_ai::ProviderCapabilities
 pub fn rullst_ai::AiProvider::chat<'life0, 'life1, 'async_trait>(&'life0 self, messages: &'life1 [rullst_ai::Message]) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<alloc::string::String, rullst_ai::AiError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait
@@ -217,6 +246,18 @@ pub fn rullst_ai::AiProvider::prompt_json<'life0, 'life1, 'async_trait>(&'life0 
 pub fn rullst_ai::AiProvider::prompt_with_image<'life0, 'life1, 'life2, 'async_trait>(&'life0 self, text: &'life1 str, _image_bytes: &'life2 [u8]) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<alloc::string::String, rullst_ai::AiError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait, 'life2: 'async_trait
 pub fn rullst_ai::AiProvider::provider_name(&self) -> &'static str
 pub fn rullst_ai::AiProvider::structured_output<'life0, 'life1, 'life2, 'async_trait>(&'life0 self, text: &'life1 str, _schema: &'life2 rullst_ai::StructuredOutputSchema) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<alloc::string::String, rullst_ai::AiError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait, 'life2: 'async_trait
+pub struct rullst_ai::AiRequestError(_)
+impl rullst_ai::AiRequestError
+pub fn rullst_ai::AiRequestError::is_connect(&self) -> bool
+pub fn rullst_ai::AiRequestError::is_timeout(&self) -> bool
+impl core::error::Error for rullst_ai::AiRequestError
+impl core::fmt::Debug for rullst_ai::AiRequestError
+impl core::fmt::Display for rullst_ai::AiRequestError
+impl !core::panic::unwind_safe::RefUnwindSafe for rullst_ai::AiRequestError
+impl !core::panic::unwind_safe::UnwindSafe for rullst_ai::AiRequestError
+impl core::marker::Send for rullst_ai::AiRequestError
+impl core::marker::Sync for rullst_ai::AiRequestError
+impl core::marker::Unpin for rullst_ai::AiRequestError
 pub trait rullst_ai::AiStreamSink: core::marker::Send
 pub fn rullst_ai::AiStreamSink::send(&mut self, chunk: &str) -> core::result::Result<(), rullst_ai::AiError>
 pub fn rullst_ai::AiStreamSink::usage(&mut self, _usage: rullst_ai::TokenUsage)
@@ -1123,7 +1164,10 @@ pub use rullst_ai::ai::AiEvaluationStatus = enum rullst_ai::AiEvaluationStatus
 pub use rullst_ai::ai::AiEvaluationStrategy = trait rullst_ai::AiEvaluationStrategy
 pub use rullst_ai::ai::AiEvaluationTurn = struct rullst_ai::AiEvaluationTurn
 pub use rullst_ai::ai::AiGuardrails = struct rullst_ai::AiGuardrails
+pub use rullst_ai::ai::AiHttpError = struct rullst_ai::AiHttpError
+pub use rullst_ai::ai::AiJsonError = struct rullst_ai::AiJsonError
 pub use rullst_ai::ai::AiProvider = trait rullst_ai::AiProvider
+pub use rullst_ai::ai::AiRequestError = struct rullst_ai::AiRequestError
 pub use rullst_ai::ai::AiStreamSink = trait rullst_ai::AiStreamSink
 pub use rullst_ai::ai::AiTool = trait rullst_ai::AiTool
 pub use rullst_ai::ai::AuditDeliveryClient = struct rullst_ai::AuditDeliveryClient

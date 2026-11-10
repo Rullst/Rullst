@@ -1253,6 +1253,7 @@ pub fn rullst_core::apply_lifecycle(router: axum::routing::Router, lifecycle: ru
 pub fn rullst_core::apply_security_baseline(app: axum::routing::Router, security: rullst_core::SecurityConfig, environment: rullst_core::config::Environment) -> core::result::Result<axum::routing::Router, rullst_core::SecurityBaselineError>
 pub macro rullst_core::artisan!
 pub mod rullst_core::artisan
+pub async fn rullst_core::artisan::check_and_run_artisan(migrations: alloc::vec::Vec<alloc::boxed::Box<dyn rullst_orm::schema::migration::Migration>>, seeders: alloc::vec::Vec<alloc::boxed::Box<dyn rullst_orm::pool::Seeder>>) -> core::result::Result<(), alloc::boxed::Box<dyn core::error::Error>>
 pub macro rullst_core::assert_html_snapshot!
 pub mod rullst_core::async_runtime
 pub use rullst_core::async_runtime::tokio = module tokio
@@ -1390,8 +1391,8 @@ pub rullst_core::client_contract::ClientContractError::UnsupportedVersion::curre
 pub rullst_core::client_contract::ClientContractError::MissingIdempotencyKey
 pub rullst_core::client_contract::ClientContractError::BodyTooLarge { .. }
 pub rullst_core::client_contract::ClientContractError::BodyTooLarge::maximum: usize
-pub rullst_core::client_contract::ClientContractError::InvalidJson(serde_json::error::Error)
-pub rullst_core::client_contract::ClientContractError::EncodeJson(serde_json::error::Error)
+pub rullst_core::client_contract::ClientContractError::InvalidJson(rullst_core::client_contract::ContractJsonError)
+pub rullst_core::client_contract::ClientContractError::EncodeJson(rullst_core::client_contract::ContractJsonError)
 impl core::error::Error for rullst_core::client_contract::ClientContractError
 impl core::fmt::Debug for rullst_core::client_contract::ClientContractError
 impl core::fmt::Display for rullst_core::client_contract::ClientContractError
@@ -1463,6 +1464,15 @@ impl core::marker::Sync for rullst_core::client_contract::ClientVersionOffer
 impl core::marker::Unpin for rullst_core::client_contract::ClientVersionOffer
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::client_contract::ClientVersionOffer
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::client_contract::ClientVersionOffer
+pub struct rullst_core::client_contract::ContractJsonError(_)
+impl core::error::Error for rullst_core::client_contract::ContractJsonError
+impl core::fmt::Debug for rullst_core::client_contract::ContractJsonError
+impl core::fmt::Display for rullst_core::client_contract::ContractJsonError
+impl !core::panic::unwind_safe::RefUnwindSafe for rullst_core::client_contract::ContractJsonError
+impl !core::panic::unwind_safe::UnwindSafe for rullst_core::client_contract::ContractJsonError
+impl core::marker::Send for rullst_core::client_contract::ContractJsonError
+impl core::marker::Sync for rullst_core::client_contract::ContractJsonError
+impl core::marker::Unpin for rullst_core::client_contract::ContractJsonError
 #[non_exhaustive] pub struct rullst_core::client_contract::ContractVersion(_)
 impl rullst_core::client_contract::ContractVersion
 pub const fn rullst_core::client_contract::ContractVersion::get(self) -> u16

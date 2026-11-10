@@ -665,12 +665,11 @@ pub rullst_security::SecurityStore::dlp_secrets_masked_count: core::sync::atomic
 pub rullst_security::SecurityStore::secure_headers_applied_count: core::sync::atomic::AtomicU64
 pub rullst_security::SecurityStore::idor_warnings_count: core::sync::atomic::AtomicU64
 pub rullst_security::SecurityStore::timing_guard_protected_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::banned_ips: dashmap::DashMap<alloc::string::String, rullst_security::telemetry::BannedIpRecord>
-pub rullst_security::SecurityStore::honeypot_route_hits: dashmap::DashMap<alloc::string::String, core::sync::atomic::AtomicU64>
-pub rullst_security::SecurityStore::live_events: std::sync::poison::mutex::Mutex<alloc::vec::Vec<rullst_security::LiveSecurityEvent>>
 impl rullst_security::SecurityStore
 pub fn rullst_security::SecurityStore::active_banned_count(&self) -> usize
+pub fn rullst_security::SecurityStore::active_bans(&self) -> alloc::vec::Vec<rullst_security::telemetry::BannedIpRecord>
 pub fn rullst_security::SecurityStore::global() -> &'static rullst_security::SecurityStore
+pub fn rullst_security::SecurityStore::honeypot_route_hits(&self) -> alloc::vec::Vec<(alloc::string::String, u64)>
 pub fn rullst_security::SecurityStore::inc_cswsh_blocks(&self)
 pub fn rullst_security::SecurityStore::inc_deception_hits(&self)
 pub fn rullst_security::SecurityStore::inc_dlp_masked(&self)
@@ -688,6 +687,8 @@ pub fn rullst_security::SecurityStore::inc_siem_dispatches(&self)
 pub fn rullst_security::SecurityStore::inc_sri_signed_assets(&self)
 pub fn rullst_security::SecurityStore::inc_timing_guard_protected(&self)
 pub fn rullst_security::SecurityStore::inc_zero_trust_mismatches(&self)
+pub fn rullst_security::SecurityStore::is_banned(&self, ip: &str) -> bool
+pub fn rullst_security::SecurityStore::live_events(&self) -> alloc::vec::Vec<rullst_security::LiveSecurityEvent>
 pub fn rullst_security::SecurityStore::new() -> Self
 pub fn rullst_security::SecurityStore::prune_expired_bans(&self)
 pub fn rullst_security::SecurityStore::push_local_event(&self, event: rullst_security::LiveSecurityEvent)

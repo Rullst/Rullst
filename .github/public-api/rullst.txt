@@ -41,9 +41,7 @@ pub use rullst::nexus = module rullst_nexus
 pub use rullst::orm = module rullst_orm
 pub use rullst::privacy = module rullst_privacy
 pub use rullst::require_role = proc_attribute rullst_macros::require_role
-pub use rullst::rullst_orm = module rullst_orm
 pub mod rullst::security
 pub use rullst::security::* = module rullst_core::security
 pub use rullst::security::runtime = module rullst_security
-pub use rullst::security_runtime = module rullst_security
 pub use rullst::studio = module rullst_studio

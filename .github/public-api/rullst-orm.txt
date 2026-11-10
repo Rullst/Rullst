@@ -302,9 +302,7 @@ pub rullst_orm::Error::PostCommit(alloc::string::String)
 pub rullst_orm::Error::Validation(alloc::string::String)
 pub rullst_orm::Error::Internal(alloc::string::String)
 impl core::clone::Clone for rullst_orm::Error
-impl core::convert::From<redis::errors::redis_error::RedisError> for rullst_orm::Error
 impl core::convert::From<rullst_orm::privacy::PrivacyError> for rullst_orm::Error
-impl core::convert::From<serde_json::error::Error> for rullst_orm::Error
 impl core::convert::From<sqlx_core::error::Error> for rullst_orm::Error
 impl core::error::Error for rullst_orm::Error
 impl core::fmt::Debug for rullst_orm::Error

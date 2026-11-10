@@ -565,10 +565,19 @@ impl core::marker::Sync for rullst_iot::SimulatedPqcFixture
 impl core::marker::Unpin for rullst_iot::SimulatedPqcFixture
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::SimulatedPqcFixture
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::SimulatedPqcFixture
-pub enum rullst_iot::TwinSyncError
+pub struct rullst_iot::TwinJsonError(_)
+impl core::error::Error for rullst_iot::TwinJsonError
+impl core::fmt::Debug for rullst_iot::TwinJsonError
+impl core::fmt::Display for rullst_iot::TwinJsonError
+impl !core::panic::unwind_safe::RefUnwindSafe for rullst_iot::TwinJsonError
+impl !core::panic::unwind_safe::UnwindSafe for rullst_iot::TwinJsonError
+impl core::marker::Send for rullst_iot::TwinJsonError
+impl core::marker::Sync for rullst_iot::TwinJsonError
+impl core::marker::Unpin for rullst_iot::TwinJsonError
+#[non_exhaustive] pub enum rullst_iot::TwinSyncError
 pub rullst_iot::TwinSyncError::NonFiniteReading
-pub rullst_iot::TwinSyncError::Serialization(serde_json::error::Error)
-impl core::convert::From<serde_json::error::Error> for rullst_iot::TwinSyncError
+pub rullst_iot::TwinSyncError::Serialization(rullst_iot::TwinJsonError)
+impl core::error::Error for rullst_iot::TwinSyncError
 impl core::fmt::Debug for rullst_iot::TwinSyncError
 impl core::fmt::Display for rullst_iot::TwinSyncError
 impl !core::panic::unwind_safe::RefUnwindSafe for rullst_iot::TwinSyncError
@@ -629,6 +638,7 @@ pub mod rullst_iot::pqc
 pub use rullst_iot::pqc::SimulatedPqcFixture = struct rullst_iot::SimulatedPqcFixture
 pub mod rullst_iot::twin
 pub use rullst_iot::twin::DigitalTwin = struct rullst_iot::DigitalTwin
+pub use rullst_iot::twin::TwinJsonError = struct rullst_iot::TwinJsonError
 pub use rullst_iot::twin::TwinSyncError = enum rullst_iot::TwinSyncError
 pub mod rullst_iot::ui
 pub use rullst_iot::ui::IotDashboard = struct rullst_iot::IotDashboard
