@@ -1,24 +1,36 @@
 // TUS 1.0 creation/HEAD/PATCH for Bunny Stream. No credentials or file contents
 // enter persistent browser storage. Retain this object to resume the SAME File.
 // The application owns authentication/CSRF for getGrant and remote cancellation.
+const MIB = 1048576;
 export class BunnyUpload {
-  #file; #getGrant; #progress; #fetch; #fixture; #title; #mime;
+  // v13: `maxBytes` (default 1 GiB) may be raised up to MAX_BYTES; `types`
+  // replaces the accepted `video/*` media types (at most 16).
+  static DEFAULT_MAX_BYTES = 1024 * MIB;
+  static MAX_BYTES = 64 * 1024 * MIB;
+  static DEFAULT_TYPES = Object.freeze(['video/mp4', 'video/webm', 'video/quicktime']);
+  #file; #getGrant; #progress; #fetch; #fixture; #title; #mime; #chunk;
   #grant; #url; #binding; #offset = 0; #status = 'idle'; #running = false;
   #controller; #creationAttempted = false; #requests = 0;
 
-  constructor({ file, title, getGrant, onProgress = () => {}, maxBytes = 1073741824,
-    allowProtocolFixture = false, fetchImpl = globalThis.fetch.bind(globalThis) }) {
+  constructor({ file, title, getGrant, onProgress = () => {}, maxBytes = BunnyUpload.DEFAULT_MAX_BYTES,
+    types = BunnyUpload.DEFAULT_TYPES, allowProtocolFixture = false,
+    fetchImpl = globalThis.fetch.bind(globalThis) }) {
+    const validTypes = Array.isArray(types) && types.length >= 1 && types.length <= 16
+      && types.every(type => typeof type === 'string' && /^video\/[a-z0-9][a-z0-9.+-]{0,62}$/.test(type));
     if (!(file instanceof Blob) || file.size < 1 || !Number.isSafeInteger(maxBytes)
-      || maxBytes < 1 || maxBytes > 1073741824 || file.size > maxBytes
+      || maxBytes < 1 || maxBytes > BunnyUpload.MAX_BYTES || file.size > maxBytes
       || typeof title !== 'string' || !title.trim() || new TextEncoder().encode(title).length > 200
       || /[\x00-\x1f<>]/.test(title) || typeof getGrant !== 'function'
       || typeof onProgress !== 'function' || typeof fetchImpl !== 'function'
-      || !['video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) {
+      || !validTypes || !types.includes(file.type)) {
       throw new Error('invalid_upload_input');
     }
     this.#file = file; this.#title = title; this.#mime = file.type;
     this.#getGrant = getGrant; this.#progress = onProgress; this.#fixture = allowProtocolFixture === true;
     this.#fetch = fetchImpl;
+    // 1 MiB PATCH bodies up to 2 GiB; larger files use at most 2048 whole-MiB
+    // chunks (32 MiB at MAX_BYTES), within the 4096-request budget.
+    this.#chunk = Math.max(1, Math.ceil(file.size / (2048 * MIB))) * MIB;
   }
 
   get state() { return Object.freeze({ status: this.#status, uploaded: this.#offset, total: this.#file?.size ?? 0 }); }
@@ -36,7 +48,9 @@ export class BunnyUpload {
     if (this.#status === 'cancelled') throw new Error('upload_cancelled');
     if (this.#creationAttempted && !this.#url) throw new Error('upload_creation_uncertain');
     this.#running = true; this.#status = 'uploading'; this.#controller = new AbortController();
-    const totalTimer = setTimeout(() => this.#controller?.abort(), 900000);
+    // 15 minutes, or longer for files above 900 MiB (1 s per MiB), per start().
+    const totalTimer = setTimeout(() => this.#controller?.abort(),
+      Math.max(900000, Math.ceil(this.#file.size / MIB) * 1000));
     try {
       await this.#authorize();
       if (!this.#url) await this.#create();
@@ -47,7 +61,7 @@ export class BunnyUpload {
         for (let attempt = 0; attempt < 3 && !delivered; attempt++) {
           await this.#authorize();
           const start = this.#offset;
-          const end = Math.min(start + 1048576, this.#file.size);
+          const end = Math.min(start + this.#chunk, this.#file.size);
           try {
             const response = await this.#request(this.#url, 'PATCH', {
               'Content-Type': 'application/offset+octet-stream', 'Upload-Offset': String(start),

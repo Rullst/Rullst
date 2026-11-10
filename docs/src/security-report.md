@@ -104,8 +104,9 @@ a run that reports advisories or fails is `ERROR`. Maps to V15.2.1 (L1).
 ### IDOR
 
 Reuses `cargo rullst audit --idor`: every parameterized route needs an
-adjacent `// rullst-access: public|owner|role|admin — reason` classification
-and the matching guard in the crate. Maps to V8.2.1 and V8.2.2 (L1).
+adjacent `// rullst-access: public|owner|role|admin|machine — reason`
+classification and the matching guard (or, for `machine`, the matching
+`MachineEndpoint` registration) in the crate. Maps to V8.2.1 and V8.2.2 (L1).
 
 ## Personal-data inventory
 
