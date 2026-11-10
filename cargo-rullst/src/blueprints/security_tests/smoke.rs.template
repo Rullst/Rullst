@@ -21,5 +21,15 @@ async fn every_page_answers_with_safe_headers_and_sound_html() {
         // inline script or style without the request's CSP nonce, or a style
         // or on* attribute the CSP blocks.
         response.assert_html_hygiene();
+        if response.body_string().contains("<html") {
+            let restored = app
+                .get(path)
+                .header("hx-request", "true")
+                .header("hx-history-restore-request", "true")
+                .await;
+            // After a history-cache miss htmx swaps in the whole response, so
+            // it must still be the full page, not a fragment.
+            restored.assert_status(*status).assert_see("<html");
+        }
     }
 }

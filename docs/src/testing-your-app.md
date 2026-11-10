@@ -71,7 +71,10 @@ GET with [`TestApp`](crates/core.md) and checks:
   - an inline `<script>` (without `src`) or `<style>` without the response's
     CSP nonce;
   - a `style` or `on*` attribute the response's policy blocks (nonces do not
-    apply to attributes).
+    apply to attributes);
+- for a page that answers a whole document, the same GET as htmx sends it
+  after a history-cache miss (`HX-Request` and `HX-History-Restore-Request`)
+  must answer the whole document too, not a fragment.
 
 **Add each new page to `PAGES`.** Use the path a signed-out visitor opens and
 the status they receive; pages that need a signed-in user can be checked in
@@ -191,8 +194,3 @@ machine-readable route list a generated test could read.
   stale.
 - **Hygiene:** coverage and badges, `actionlint` for the workflows and
   `cargo machete` for unused dependencies.
-
-The htmx history-restore defect in the list above is not checked by the
-generated smoke test yet: it needs the Core fix that renders the whole page
-for `HX-History-Restore-Request`, after which a check can be added to `PAGES`
-testing.

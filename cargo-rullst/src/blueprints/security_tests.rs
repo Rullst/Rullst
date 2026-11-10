@@ -133,6 +133,7 @@ mod tests {
             assert!(source.contains("rullst::testing::TestApp::new(app())"));
             assert!(source.contains(".assert_security_headers();"));
             assert!(source.contains(".assert_html_hygiene();"));
+            assert!(source.contains(".header(\"hx-history-restore-request\", \"true\")"));
             // Every assertion carries a comment saying what it protects.
             let lines = source.lines().collect::<Vec<_>>();
             for (index, line) in lines.iter().enumerate() {
