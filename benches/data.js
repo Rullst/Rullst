@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794345383372,
+  "lastUpdate": 1794347106649,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -32049,6 +32049,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1362,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "49a0dd4efa68b9a9d84dc917bfdd6b2bab5ce9f7",
+          "message": "Merge pull request #632 from Rullst/fix/v13-alpha5-sse-realtime\n\nfix(realtime): SSE refusals the browser honours, retry field, patched htmx SSE backoff",
+          "timestamp": "2026-11-10T18:36:04-03:00",
+          "tree_id": "dbd63b71ffe3ec3155a2e338d935c2d84477347b",
+          "url": "https://github.com/Rullst/Rullst/commit/49a0dd4efa68b9a9d84dc917bfdd6b2bab5ce9f7"
+        },
+        "date": 1794347102825,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 656,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 891,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 425,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2093,
+            "range": "± 37",
             "unit": "ns/iter"
           }
         ]
