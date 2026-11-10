@@ -2,6 +2,7 @@
 
 use super::*;
 use alloc::string::ToString;
+use alloc::vec::Vec;
 use ed25519_dalek::{Signer, SigningKey};
 use sha2::{Digest, Sha256};
 
