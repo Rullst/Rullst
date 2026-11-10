@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794323933538,
+  "lastUpdate": 1794332510233,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -31833,6 +31833,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2041,
             "range": "± 39",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "172e066de6d90964ef99967d9383167cc7b66b30",
+          "message": "Merge pull request #625 from Rullst/feat/v13-alpha5-remove-islands-live\n\nfeat!: remove Wasm islands, Live and Turso billing; add realtime SSE (alpha.5)",
+          "timestamp": "2026-11-10T14:05:40-03:00",
+          "tree_id": "6e22e876a53a38024ce346eda5c041b2fc80a8f9",
+          "url": "https://github.com/Rullst/Rullst/commit/172e066de6d90964ef99967d9383167cc7b66b30"
+        },
+        "date": 1794332506280,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 505,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 715,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 358,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1483,
+            "range": "± 60",
             "unit": "ns/iter"
           }
         ]
