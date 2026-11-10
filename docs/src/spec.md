@@ -3895,6 +3895,14 @@ provider](capital-custom-provider.md)); the
   report it through `AiStreamSink::usage` and `StreamSummary::usage()`;
   compatible configurations request it only with `with_stream_usage()`.
   Missing counts are `None`, never estimated.
+* **Provider HTTP errors (13.0.0-alpha.5):** an unsuccessful status from any
+  provider or stream is `AiError::HttpStatus(AiHttpError)`: the status code as
+  a number, the `Retry-After` delta in seconds (or Gemini's `RetryInfo`
+  delay), and the provider's error code and message from at most 16 KiB of
+  JSON body, one redacted line of at most 300 characters. Its text keeps the
+  `<Provider> returned HTTP <code> <reason>` prefix. Transport and JSON
+  failures carry `AiRequestError` and `AiJsonError`, which keep the library
+  error private and in the `source()` chain.
 
 ### 9.2. Bounded Streaming and Cancellation
 * `StreamingAiClient<P>` preserves static dispatch, reapplies the mandatory
@@ -4257,6 +4265,7 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
 2. **Deprecation Policy (`#[deprecated]`):** Public APIs will never be removed without at least one minor release cycle marked with `#[deprecated]`.
 3. **Ergonomic String Constructors:** Public constructors accept `impl Into<String>` to support both `&str` literals and owned `String` parameters without boilerplate.
 4. **Zero-Panic Invariant:** Production paths must never call `panic!()`, `unwrap()`, or `expect()`; domain errors must return typed `Result<T, AppError>`.
+5. **Rullst-Owned Errors and One Path per Item (13.0.0-alpha.5):** public error variants and `From` conversions name no third-party error type (a private library error stays reachable through `source()`), every public item has one path, and `#[doc(hidden)]` items stay `pub` only when a Rullst macro expansion or another Rullst crate needs them, with a `// Used by …` comment naming it; other internals are crate-private.
 
 ---
 

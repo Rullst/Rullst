@@ -36,6 +36,13 @@ fn f() {
         lines_of(source, "V13-API-ALIAS-PATHS"),
         vec![2, 4, 7, 8, 10, 11, 12]
     );
+    assert_eq!(
+        lines_of(
+            "use rullst::{\n    rullst_orm as orm_alias,\n};",
+            "V13-API-ALIAS-PATHS"
+        ),
+        vec![2]
+    );
     let rule = CATALOG
         .iter()
         .find(|rule| rule.code == "V13-API-ALIAS-PATHS")

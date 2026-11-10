@@ -132,16 +132,14 @@ stays on the version line below.
 | `async-trait` | `0.1` | `rullst::async_trait` |
 | `aws-sdk-sesv2` | `1` | Mail: `rullst::mail::aws_ses_sdk` and the native `AwsSesDriver` constructors |
 | `axum` | `0.8` | `rullst::web::axum`, `Router`, handlers and extractors of Core, Auth, Security, Capital, Connect, Nexus and Studio |
-| `base64` | `0.23` | Connect: `From<DecodeError>` for `ConnectError` |
 | `chrono` | `0.4` | Core date formatting, `rullst::orm::chrono`, Mail and Capital |
-| `dashmap` | `6` | Security: `SecurityStore` fields |
+| `dashmap` | `6` | Security: `deception::default_deception_traps`, `deception::global_deception_routes` and `rate_limit::global_rate_limit_store` |
 | `http` | `1` | `rullst::http` and the header, method and status types of the web crates |
-| `jsonwebtoken` | `11` | Connect: `From<jsonwebtoken::errors::Error>` for `ConnectError` |
+| `jsonwebtoken` | `11` | Connect: the `JwkSet` of `JwksCache` and `fetch_and_cache_jwks` |
 | `mongodb` | `3` | ORM `MongoDbStore` (`orm-mongodb`) |
 | `opentelemetry_sdk` | `0.33` | Core `DistributedTelemetry::layer` (`telemetry`) |
 | `pgvector` | `0.4` | `rullst::orm::Vector` (`orm-pgvector`) |
-| `redis` | `1` | ORM: `From<RedisError>` for `Error` |
-| `reqwest` | `0.13` | AI and Connect error variants and conversions |
+| `redis` | `1` | ORM: `Orm::redis_client` and `Orm::redis_manager` (`redis` feature) |
 | `secrecy` | `0.10` | Connect tokens (`SecretString`, `prelude::ExposeSecret`) |
 | `serde` | `1` | `Serialize`/`Deserialize` implementations in every crate |
 | `serde_json` | `1` | `serde_json::Value` arguments and results (Core queue, AI, ORM, Connect, Security, IoT) |
@@ -160,6 +158,13 @@ stays on the version line below.
 | `url` | `2` | AI `ValidatedEgressUrl::into_url` and Connect |
 | `utoipa` | `6` | Studio: `Studio::with_openapi` |
 | `validator` | `0.21` | `rullst::Validate`, `ValidatedForm` and `ValidatedJson` |
+
+Since 13.0.0-alpha.5 no public error variant or `From` conversion names a
+third-party error type: the AI, Connect, Core, IoT and ORM errors carry
+Rullst types or plain text, with the library error kept in their `source()`
+chain. `reqwest` and `base64` are therefore no longer public dependencies,
+and `jsonwebtoken`, `redis` and `serde_json` stay public only through the
+items above.
 | `zeroize` | `1` | `Zeroizing` values returned by Auth, Labs and Security |
 
 Types that one of these crates takes from its own dependencies (for example

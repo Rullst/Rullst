@@ -205,7 +205,7 @@ HSTS has no effect until the first HTTPS response reaches the browser.
 | Where it looks | Decoded path (traversal only), query, `Referer`, each cookie pair, `User-Agent` against a configurable blocklist (AI and SEO crawlers by default) | Full request target, every header except `Cookie` and `Authorization`, body; JSON keys and strings after decoding |
 | Bodies | `text/*`, JSON, XML, URL-encoded forms; identity encoding only (others get `415`); at most 1 MiB (`413`); invalid UTF-8 gets `400` | Same media types and limits |
 | Decoding | One percent-decoding pass, then lowercase with whitespace runs collapsed, checked with and without `/* … */` comments; JSON bodies are checked key by key and string by string | Raw text plus one percent-decoding pass |
-| Telemetry | None | `SecurityStore` interception counters and events |
+| Telemetry | None | `SecurityStore` interception counters, plus copies of its bans, honeypot route hits and events (`active_bans`, `honeypot_route_hits`, `live_events`) |
 
 The Core WAF is a coarse baseline. Ordinary text that names SQL or shell
 words ("please select an option", "delete my account", "curl the API with your
