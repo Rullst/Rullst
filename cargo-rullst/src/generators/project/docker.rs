@@ -31,6 +31,7 @@ coverage
 .env
 .env.*
 !.env.example
+.rullst_dev_key
 Foundry.toml
 .cargo/config.toml
 # Local databases
@@ -177,6 +178,12 @@ EXPOSE 3000
 CMD ["/app/{project_name}"]
 "#
     );
+    // `cargo rullst add tailwind`: the stages that build the stylesheet.
+    let dockerfile = if crate::generators::frontend::has_managed_tailwind(project_path) {
+        crate::generators::frontend::docker::add_to(&dockerfile).unwrap_or(dockerfile)
+    } else {
+        dockerfile
+    };
     fs::write(project_path.join("Dockerfile"), dockerfile)?;
     let dockerignore = project_path.join(".dockerignore");
     if !dockerignore.exists() {
@@ -293,6 +300,14 @@ mod tests {
             assert!(
                 dockerignore.lines().any(|line| line == database),
                 "{database}"
+            );
+        }
+        // `rullst::auth::get_app_key()` writes this development secret in
+        // the working directory when no APP_KEY is set (`cargo test` too).
+        for ignore in [&gitignore, &dockerignore] {
+            assert!(
+                ignore.lines().any(|line| line == ".rullst_dev_key"),
+                "{ignore}"
             );
         }
     }

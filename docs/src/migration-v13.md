@@ -474,7 +474,10 @@ documentation. Work through the steps in order.
    to `=13.0.0-alpha.4`, runs `cargo fix` and `cargo check --locked`, and,
    when they fail, keeps the edited files instead of restoring them and names
    the must-change findings. When the plan has no `MUST-CHANGE` finding, a
-   plain `cargo rullst upgrade` is enough; go on with step 6.
+   plain `cargo rullst upgrade` is enough; go on with step 6. From the
+   13.0.0-rc.1 CLI, a plain `cargo rullst upgrade` stops before changing
+   anything while the plan has must-change findings, so `--keep-on-failure`
+   is how it applies the versions first.
 5. **Fix the models and SQLx macros.**
    - Remove `FromRow` from each model's derive list and from the `use` line
      that imports it: `#[derive(Debug, Clone, FromRow, Orm)]` becomes

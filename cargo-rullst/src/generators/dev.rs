@@ -1,6 +1,7 @@
 //! Development uses a directly linked executable and supervised process restart.
 mod build;
 mod process;
+mod tailwind;
 mod watcher;
 
 pub(crate) use build::compile_release_in;
@@ -145,6 +146,8 @@ async fn supervise(
     status: watch::Sender<DevState>,
     mut commands: mpsc::Receiver<DevCommand>,
 ) -> io::Result<()> {
+    // Before the watcher, so the first stylesheet write is not a change.
+    let tailwind = tailwind::prepare(dashboard, &logs).await;
     let (mut watcher, mut changes) = watcher::watch_project(Path::new("."))?;
     remove_stale_precompressed_assets(dashboard, &logs);
     report(&logs, dashboard, "Building the application...".into());
@@ -156,6 +159,8 @@ async fn supervise(
         running.migrate(dashboard, &logs).await?;
     }
     running.start(dashboard, &logs)?;
+    // Stopped when the session ends (this future is dropped).
+    let _tailwind = tailwind.and_then(|prepared| prepared.watch(dashboard, &logs));
     set_status(&status, DevStatus::Starting);
     report(&logs, dashboard, "Auto-reload: watching source, assets and configuration; successful builds restart the application.".into());
     report_ready(&mut running, port, dashboard, &logs, &status).await;

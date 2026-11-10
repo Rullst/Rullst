@@ -1772,6 +1772,17 @@ the same server-authoritative controls.
   content-hashed file name get `public, max-age=31536000, immutable`, other
   static files `no-cache` with `ServeDir`'s `ETag`/`Last-Modified` validators;
   see [static assets](tutorials/10-static-assets-and-compression.md#step-3-cache-headers).
+  Since 13.0.0-alpha.5 `rullst::assets::url(path)` returns
+  `/static/<stem>.<hash16>.<ext>` (the first 16 hex characters of the file's
+  SHA-256) for a file the mount hashed at start (at most 10,000 files of
+  32 MiB, 16 levels; symbolic links, hidden paths and names needing
+  percent-encoding excluded), and the plain `/static/<path>` otherwise or
+  outside a server. The mount resolves a current hashed name to the real file
+  (siblings, validators and traversal checks unchanged) as `immutable`, and
+  answers an outdated hash with `307` to the current URL and `no-store`;
+  each hashed request rechecks the file's size and modification time. Debug
+  builds also refresh the links after edits
+  ([frontend guide](frontend.md#content-hashed-asset-urls)).
   Since 13.0.0-alpha.2 `rullst::cache_control` offers explicit policies for
   dynamic routes: `cache_control::public(max_age)` and `private(max_age)`
   are layers that set `public, max-age=<seconds>` or `private,
@@ -4390,8 +4401,11 @@ assistant, not a claim that compilation proves production compatibility.
   `rullst.upgrade-plan.v1` is extended additively (`kind`, `introduced_in`,
   `migration_row`, `migration_url`, `finding_counts`, `unscanned_sources`,
   `migration_guide`, `rule_selection`).
-  Findings never block `cargo rullst upgrade`; project preparations with
-  must-change findings are refused at verification, review and application.
+  Must-change findings stop `cargo rullst upgrade` before its first write
+  unless `--keep-on-failure` asks it to apply the versions and keep the
+  edited files for repair; review findings never stop it. Project
+  preparations with must-change findings are refused at verification, review
+  and application.
 * 🟢 **`[Implemented / Bounded]` Transaction:** the default target is the exact
   installed `cargo-rullst` version; `--to` accepts only the same major train as
   that CLI. Before writes, the command snapshots workspace manifests, the root

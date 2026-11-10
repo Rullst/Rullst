@@ -1,3 +1,4 @@
+use crate::term::display_path;
 use colored::Colorize;
 use std::fs;
 use std::io::{self, Write};
@@ -67,15 +68,23 @@ fi
 
 #[derive(Debug, thiserror::Error)]
 pub enum HookInstallError {
-    #[error("`{0}` is not inside a Git worktree; initialize or enter a repository first")]
+    #[error(
+        "`{}` is not inside a Git worktree; initialize or enter a repository first",
+        display_path(.0)
+    )]
     NotGitWorktree(PathBuf),
-    #[error("Git metadata file `{0}` does not contain a valid `gitdir:` target")]
+    #[error(
+        "Git metadata file `{}` does not contain a valid `gitdir:` target",
+        display_path(.0)
+    )]
     InvalidGitMetadata(PathBuf),
     #[error(
-        "cannot preserve existing hook `{hook}` because backup `{backup}` already exists; reconcile them manually"
+        "cannot preserve existing hook `{}` because backup `{}` already exists; reconcile them manually",
+        display_path(.hook),
+        display_path(.backup)
     )]
     BackupConflict { hook: PathBuf, backup: PathBuf },
-    #[error("failed to {operation} `{path}`: {source}")]
+    #[error("failed to {operation} `{}`: {source}", display_path(.path))]
     Io {
         operation: &'static str,
         path: PathBuf,
@@ -329,7 +338,7 @@ fn install_git_hooks_with(
                 io::ErrorKind::Unsupported,
                 format!(
                     "Git runs only the hooks in that directory, so wrappers in `{}` would never execute; unset core.hooksPath or invoke cargo fmt, Clippy and `cargo rullst audit --idor` from that hook manager",
-                    hooks_dir.display()
+                    display_path(&hooks_dir)
                 ),
             ),
             path: configured,
@@ -359,7 +368,7 @@ pub fn install_git_pre_commit_hook() -> Result<(), HookInstallError> {
     println!(
         "  {} Managed hooks installed safely in '{}'; active hooks that existed were preserved and chained.",
         "[SUCCESS]".green().bold(),
-        hooks_dir.display()
+        display_path(&hooks_dir)
     );
     println!(
         "  {} The hooks enforce Conventional Commits, cargo fmt, strict Clippy, and the bounded IDOR scan. CI remains authoritative.",

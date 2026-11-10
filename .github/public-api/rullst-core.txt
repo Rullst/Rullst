@@ -1292,6 +1292,8 @@ pub fn rullst_core::apply_security_baseline(app: axum::routing::Router, security
 pub macro rullst_core::artisan!
 pub mod rullst_core::artisan
 pub macro rullst_core::assert_html_snapshot!
+pub mod rullst_core::assets
+pub fn rullst_core::assets::url(path: impl core::convert::AsRef<str>) -> alloc::string::String
 pub mod rullst_core::async_runtime
 pub use rullst_core::async_runtime::tokio = module tokio
 pub use rullst_core::async_trait = proc_attribute async_trait::async_trait

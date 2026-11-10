@@ -44,6 +44,10 @@ pub fn run_production_build(release: bool) -> Result<(), Box<dyn std::error::Err
         std::process::exit(1);
     }
 
+    // Tailwind CSS (`cargo rullst add tailwind`): the minified stylesheet,
+    // built before it is pre-compressed.
+    crate::generators::frontend::build_release_stylesheet(Path::new("."))?;
+
     // 2. Pre-compress static files in static/ directory
     let static_dir = Path::new("static");
     if static_dir.exists() {
