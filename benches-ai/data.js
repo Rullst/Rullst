@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794229220189,
+  "lastUpdate": 1794283772589,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -17735,6 +17735,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 285,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0c58cd9f0c7b02f382bf96ef9556c2d7766c7df",
+          "message": "Merge pull request #615 from Rullst/fix/v13-rc1-advisories-2026-11\n\nci(security): time-bounded exceptions for RUSTSEC-2026-0459 and -0440; Dependabot safe updates",
+          "timestamp": "2026-11-10T00:44:01-03:00",
+          "tree_id": "94dc46b76477648b0fb5693f99061cb57204a7b6",
+          "url": "https://github.com/Rullst/Rullst/commit/e0c58cd9f0c7b02f382bf96ef9556c2d7766c7df"
+        },
+        "date": 1794283771977,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1635,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 320,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 391,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
