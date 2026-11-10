@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794333432105,
+  "lastUpdate": 1794337796091,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -20386,6 +20386,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a95fd28b82d2aaf0d3584353596c9c15e949992d",
+          "message": "Merge pull request #626 from Rullst/feat/v13-alpha5-runtime-batch-c\n\nfeat: 13.0.0-alpha.5 runtime batch C (htmx accessors, access-log paths, Nexus stylesheet, html! grammar, OtaManager getters, Studio remote)",
+          "timestamp": "2026-11-10T15:44:10-03:00",
+          "tree_id": "2ec6858a0827deacb160bba2b20d408e82437a21",
+          "url": "https://github.com/Rullst/Rullst/commit/a95fd28b82d2aaf0d3584353596c9c15e949992d"
+        },
+        "date": 1794337795180,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5443,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 583,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 14,
             "range": "± 0",
             "unit": "ns/iter"
           }
