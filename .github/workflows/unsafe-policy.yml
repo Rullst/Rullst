@@ -48,6 +48,8 @@ jobs:
               sort -u
           )"
           expected="$(printf '%s\n' \
+            'cargo-rullst/src/generators/footprint/process/macos.rs' \
+            'cargo-rullst/src/generators/footprint/process/windows.rs' \
             'cargo-rullst/src/update/cache/windows_acl.rs' \
             'cargo-rullst/src/update/project/permissions_unix.rs' \
             'cargo-rullst/src/update/project/permissions_windows.rs' \
@@ -63,6 +65,8 @@ jobs:
       - name: Publish the audited unsafe inventory
         run: |
           grep -En -n 'unsafe\s*(\{|fn|impl|trait|extern)' \
+            cargo-rullst/src/generators/footprint/process/macos.rs \
+            cargo-rullst/src/generators/footprint/process/windows.rs \
             cargo-rullst/src/update/cache/windows_acl.rs \
             cargo-rullst/src/update/project/permissions_unix.rs \
             cargo-rullst/src/update/project/permissions_windows.rs \
