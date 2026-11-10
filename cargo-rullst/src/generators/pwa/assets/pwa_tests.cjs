@@ -206,9 +206,7 @@ function loadRegistration({ supported = true, controller = null, waiting = null,
   const windowListeners = {};
   const registrationListeners = {};
   const appended = [];
-  const stylesheets = [];
-  const selectors = [];
-  const state = { reloads: 0, registered: [], warnings: [] };
+  const state = { reloads: 0, registered: [], warnings: [], stylesheets: [], selectors: [] };
   const registration = {
     waiting,
     installing: null,
@@ -238,8 +236,8 @@ function loadRegistration({ supported = true, controller = null, waiting = null,
   const document = {
     readyState,
     body: { appendChild(child) { appended.push(child); } },
-    head: { appendChild(child) { stylesheets.push(child); } },
-    querySelector(selector) { selectors.push(selector); return linked ? {} : null; },
+    head: { appendChild(child) { state.stylesheets.push(child); } },
+    querySelector(selector) { state.selectors.push(selector); return linked ? {} : null; },
     createElement: element,
   };
   const window = {
@@ -249,7 +247,7 @@ function loadRegistration({ supported = true, controller = null, waiting = null,
   };
   const navigator = supported ? { serviceWorker: container } : {};
   const context = vm.createContext({ navigator, document, window });
-  return { context, state, appended, stylesheets, selectors, registration, container, containerListeners, windowListeners, registrationListeners, posted, run: () => vm.runInContext(registrationSource, context) };
+  return { context, state, appended, registration, container, containerListeners, windowListeners, registrationListeners, posted, run: () => vm.runInContext(registrationSource, context) };
 }
 
 function worker() {
@@ -305,9 +303,9 @@ async function registration() {
   const update = loadRegistration({ controller: {}, waiting });
   update.run();
   await tick();
-  assert.deepEqual(plain(update.selectors), ['link[href="/static/pwa.css"]']);
-  assert.equal(update.stylesheets.length, 1);
-  const [sheet] = update.stylesheets;
+  assert.deepEqual(plain(update.state.selectors), ['link[href="/static/pwa.css"]']);
+  assert.equal(update.state.stylesheets.length, 1);
+  const [sheet] = update.state.stylesheets;
   assert.equal(sheet.tag, 'link');
   assert.equal(sheet.rel, 'stylesheet');
   assert.equal(sheet.href, '/static/pwa.css');
@@ -333,7 +331,7 @@ async function registration() {
   update.registrationListeners.updatefound();
   next.become('installed');
   assert.equal(update.appended.length, 1, 'one prompt at a time');
-  assert.equal(update.stylesheets.length, 1);
+  assert.equal(update.state.stylesheets.length, 1);
 
   update.containerListeners.controllerchange();
   assert.equal(update.state.reloads, 0, 'no reload before the user asks');
@@ -349,12 +347,12 @@ async function registration() {
   const linked = loadRegistration({ controller: {}, waiting: worker(), linked: true });
   linked.run();
   await tick();
-  assert.equal(linked.stylesheets.length, 0);
+  assert.equal(linked.state.stylesheets.length, 0);
   assert.equal(linked.appended.length, 1);
   const unstyled = loadRegistration({ controller: {}, waiting: worker() });
   unstyled.run();
   await tick();
-  unstyled.stylesheets[0].onerror();
+  unstyled.state.stylesheets[0].onerror();
   assert.equal(unstyled.appended.length, 1);
 
   // A worker that is not yet installed shows nothing.

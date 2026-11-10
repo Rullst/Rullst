@@ -130,6 +130,12 @@ pub(super) fn wire(
     })
 }
 
+/// Whether `tree` ends an item: its `{...}` body or its `;`.
+fn ends_item(tree: &TokenTree) -> bool {
+    matches!(tree, TokenTree::Group(group) if group.delimiter() == Delimiter::Brace)
+        || is_punct(Some(tree), ';')
+}
+
 /// Whether `trees[index]` starts a `#[test]` or `#[cfg(test)]` attribute.
 fn is_test_attribute(trees: &[TokenTree], index: usize) -> bool {
     is_punct(trees.get(index), '#')
@@ -165,13 +171,8 @@ impl Scan<'_> {
         let mut in_test_item = false;
         for (index, tree) in trees.iter().enumerate() {
             let before = |distance: usize| index.checked_sub(distance).and_then(|at| trees.get(at));
-            if in_test_item {
-                let body = matches!(tree, TokenTree::Group(group) if group.delimiter() == Delimiter::Brace);
-                in_test_item = !body && !is_punct(Some(tree), ';');
-                continue;
-            }
-            if !in_html && is_test_attribute(trees, index) {
-                in_test_item = true;
+            if in_test_item || (!in_html && is_test_attribute(trees, index)) {
+                in_test_item = !ends_item(tree);
                 continue;
             }
             if top && is_ident(Some(tree), "use") {
@@ -211,23 +212,31 @@ impl Scan<'_> {
                         && is_punct(trees.get(index + 1), '>')
                     {
                         let head = trees.get(open_head..index).unwrap_or_default();
-                        let start = close.span().byte_range().start;
-                        if html_registers_worker(head) {
-                            self.present += 1;
-                        } else if links_own_manifest(head) {
-                            self.edits.push((start..start, HTML_SCRIPT.to_owned()));
-                            self.wired += 1;
-                            self.own_manifest += 1;
-                        } else {
-                            self.edits.push((start..start, HEAD_CALL.to_owned()));
-                            self.wired += 1;
-                        }
+                        self.html_head(head, close);
                     }
                 }
                 _ => {}
             }
         }
         Ok(())
+    }
+
+    /// Wires the `html!` head `head`, whose `</head>` starts at `close`,
+    /// unless it already registers the worker.
+    fn html_head(&mut self, head: &[TokenTree], close: &TokenTree) {
+        let start = close.span().byte_range().start;
+        if html_registers_worker(head) {
+            self.present += 1;
+            return;
+        }
+        let tags = if links_own_manifest(head) {
+            self.own_manifest += 1;
+            HTML_SCRIPT
+        } else {
+            HEAD_CALL
+        };
+        self.edits.push((start..start, tags.to_owned()));
+        self.wired += 1;
     }
 
     fn collect_use(&mut self, tree: &TokenTree) {

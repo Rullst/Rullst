@@ -1,7 +1,8 @@
 //! `make:pwa` in applications laid out unlike the starters: the router in its
 //! own module, a layout with its own manifest and e-mail templates.
-use super::*;
+use super::{PwaFlags, files, is_mail_path, is_test_source, plan, sends_mail, texts, writes};
 use std::fs;
+use std::path::{Path, PathBuf};
 
 const MANIFEST: &str = "[package]\nname = \"capoeira-site\"\nversion = \"1.0.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = \"13\"\n";
 

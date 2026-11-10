@@ -176,6 +176,72 @@ fn sends_mail(source: &str) -> bool {
         .any(|marker| source.contains(marker))
 }
 
+/// A source of this crate: its path, its text and the text with the PWA.
+type Source = (PathBuf, String, String);
+
+/// Every source of this crate, with the head tags in its page layouts;
+/// generated, test and e-mail sources are skipped.
+fn wire_layouts(
+    root: &Path,
+    paths: Vec<PathBuf>,
+    is_library: bool,
+    values: &PwaValues,
+    plan: &mut Plan,
+) -> Result<Vec<Source>, Box<dyn Error>> {
+    let mut files = Vec::new();
+    for path in paths {
+        let name = relative(root, &path);
+        let generated = name == "src/pwa.rs" || name.starts_with("src/pwa/");
+        let other_crate = name.starts_with("src/bin/") || (is_library && name == "src/main.rs");
+        if generated || other_crate || is_test_source(&name) {
+            continue;
+        }
+        let source = writes::read(&path)?;
+        if is_mail_path(&name) {
+            if source.to_ascii_lowercase().contains("</head>") {
+                plan.skipped.push(name);
+            }
+            files.push((path, source.clone(), source));
+            continue;
+        }
+        let wiring = head::wire(&source, &values.theme_color, !sends_mail(&source))
+            .map_err(|error| invalid(format!("make:pwa could not read {name}: {error}")))?;
+        plan.layouts += wiring.wired;
+        plan.own_manifest += wiring.own_manifest;
+        plan.present += wiring.present;
+        if wiring.skipped > 0 {
+            plan.skipped.push(name);
+        }
+        files.push((path, source, wiring.source));
+    }
+    Ok(files)
+}
+
+/// Mounts the PWA routes after the one health merge of the crate, in any
+/// module; without exactly one, the report says what to mount.
+fn mount_routes(files: &mut [Source], plan: &mut Plan) -> Result<(), Box<dyn Error>> {
+    let mut merges = Vec::new();
+    for (index, (_, _, updated)) in files.iter().enumerate() {
+        let (count, mounted) = wiring::health_merges(updated).unwrap_or_default();
+        if mounted {
+            return Ok(());
+        }
+        merges.extend(std::iter::repeat_n(index, count));
+    }
+    match merges.as_slice() {
+        [index] => {
+            if let Some((_, _, updated)) = files.get_mut(*index)
+                && let Some(with_routes) = wiring::mount_router(updated)?
+            {
+                *updated = with_routes;
+            }
+        }
+        [] => plan.unmounted = Some("src/ has no `.merge_axum(rullst::health::health_router())`"),
+        _ => plan.unmounted = Some("src/ merges `rullst::health::health_router()` more than once"),
+    }
+    Ok(())
+}
+
 fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
     // Links above the project are the developer's; links beneath it are refused.
     let root = &writes::project_root(root)?;
@@ -201,63 +267,11 @@ fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
         ))
         .into());
     }
-    // (path, original, updated) of every source of this crate.
-    let mut files = Vec::new();
-    for path in sources.files {
-        let name = relative(root, &path);
-        let generated = name == "src/pwa.rs" || name.starts_with("src/pwa/");
-        let other_crate = name.starts_with("src/bin/") || (is_library && name == "src/main.rs");
-        if generated || other_crate || is_test_source(&name) {
-            continue;
-        }
-        let source = writes::read(&path)?;
-        let updated = if is_mail_path(&name) {
-            if source.to_ascii_lowercase().contains("</head>") {
-                plan.skipped.push(name);
-            }
-            source.clone()
-        } else {
-            let wiring = head::wire(&source, &values.theme_color, !sends_mail(&source))
-                .map_err(|error| invalid(format!("make:pwa could not read {name}: {error}")))?;
-            plan.layouts += wiring.wired;
-            plan.own_manifest += wiring.own_manifest;
-            plan.present += wiring.present;
-            if wiring.skipped > 0 {
-                plan.skipped.push(name);
-            }
-            wiring.source
-        };
-        files.push((path, source, updated));
-    }
+    let mut files = wire_layouts(root, sources.files, is_library, &values, &mut plan)?;
     if !files.iter().any(|(path, _, _)| *path == crate_root) {
         return Err(invalid("make:pwa needs src/main.rs or src/lib.rs").into());
     }
-    // The routes go next to the one health merge of the crate, in any module.
-    let mut merges = Vec::new();
-    let mut mounted = false;
-    for (index, (_, _, updated)) in files.iter().enumerate() {
-        let (count, mounts) = wiring::health_merges(updated).unwrap_or_default();
-        mounted |= mounts;
-        merges.extend(std::iter::repeat_n(index, count));
-    }
-    if !mounted {
-        match merges.as_slice() {
-            [index] => {
-                if let Some((_, _, updated)) = files.get_mut(*index)
-                    && let Some(with_routes) = wiring::mount_router(updated)?
-                {
-                    *updated = with_routes;
-                }
-            }
-            [] => {
-                plan.unmounted = Some("src/ has no `.merge_axum(rullst::health::health_router())`")
-            }
-            _ => {
-                plan.unmounted =
-                    Some("src/ merges `rullst::health::health_router()` more than once")
-            }
-        }
-    }
+    mount_routes(&mut files, &mut plan)?;
     for (path, original, mut updated) in files {
         if path == crate_root
             && let Some(declared) = wiring::declare_module(&updated, is_library)?
