@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794348722454,
+  "lastUpdate": 1794352531465,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -12815,6 +12815,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 536,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "59294cb6a7e711f5ead8c333672718da9e5f3293",
+          "message": "Merge pull request #635 from Rullst/fix/v13-alpha5-main-ci\n\nfix(ci): no_std OTA test import; Dependabot covers the generated CI workflow",
+          "timestamp": "2026-11-10T19:58:41-03:00",
+          "tree_id": "d70bd92ab18078713fe07cbf5e5eccd58101ad1c",
+          "url": "https://github.com/Rullst/Rullst/commit/59294cb6a7e711f5ead8c333672718da9e5f3293"
+        },
+        "date": 1794352530513,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 388,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
