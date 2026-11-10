@@ -8,7 +8,7 @@ alike:
   response PII masking, trusted-proxy client resolution, exact machine
   endpoints and tenant context. `Server` mounts the baseline for you in staging
   and production.
-- **`rullst-security`** (`rullst::security_runtime`, or the `rullst_security`
+- **`rullst-security`** (`rullst::security::runtime`, or the `rullst_security`
   crate that generated applications already depend on) is a toolbox of
   **opt-in** layers and helpers: RASP, response DLP, configurable headers,
   honeypots, CSWSH, JSON schema guards, rate limiters, the login jail, MFA,

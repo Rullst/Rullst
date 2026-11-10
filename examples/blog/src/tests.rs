@@ -106,7 +106,7 @@ async fn honeypot_button_hits_the_real_deception_middleware() {
     let response = app.oneshot(request).await.expect("honeypot response");
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
     assert!(store.honeypot_traps_count.load(Ordering::Relaxed) > before);
-    let events = store.live_events.lock().expect("security event lock");
+    let events = store.live_events();
     assert!(events.iter().any(|event| {
         event.event_type == "HONEYPOT_TRAP_TRIGGERED"
             && event.client_ip == "192.0.2.45"

@@ -48,9 +48,10 @@ pub struct SecurityStore {
     pub secure_headers_applied_count: AtomicU64,
     pub idor_warnings_count: AtomicU64,
     pub timing_guard_protected_count: AtomicU64,
-    pub banned_ips: DashMap<String, BannedIpRecord>,
-    pub honeypot_route_hits: DashMap<String, AtomicU64>,
-    pub live_events: Mutex<Vec<LiveSecurityEvent>>,
+    // Read through `active_bans`, `honeypot_route_hits` and `live_events`.
+    banned_ips: DashMap<String, BannedIpRecord>,
+    honeypot_route_hits: DashMap<String, AtomicU64>,
+    live_events: Mutex<Vec<LiveSecurityEvent>>,
 }
 
 impl Default for SecurityStore {
@@ -206,6 +207,48 @@ impl SecurityStore {
     pub fn active_banned_count(&self) -> usize {
         self.prune_expired_bans();
         self.banned_ips.len()
+    }
+
+    /// The active honeypot bans, sorted by IP address. Expired bans are
+    /// removed first, as [`active_banned_count`](Self::active_banned_count)
+    /// does; the store keeps at most 10,000.
+    pub fn active_bans(&self) -> Vec<BannedIpRecord> {
+        self.prune_expired_bans();
+        let mut bans: Vec<BannedIpRecord> = self
+            .banned_ips
+            .iter()
+            .map(|entry| entry.value().clone())
+            .collect();
+        bans.sort_by(|left, right| left.ip.cmp(&right.ip));
+        bans
+    }
+
+    /// Whether `ip` has an active honeypot ban in this store.
+    pub fn is_banned(&self, ip: &str) -> bool {
+        let now = unix_timestamp_secs();
+        self.banned_ips
+            .get(&normalize_ip(ip))
+            .is_some_and(|record| record.expires_at_unix_secs > now)
+    }
+
+    /// Hits per honeypot route, sorted by route. The store counts at most
+    /// 1,024 routes.
+    pub fn honeypot_route_hits(&self) -> Vec<(String, u64)> {
+        let mut hits: Vec<(String, u64)> = self
+            .honeypot_route_hits
+            .iter()
+            .map(|entry| (entry.key().clone(), entry.value().load(Ordering::Relaxed)))
+            .collect();
+        hits.sort_by(|left, right| left.0.cmp(&right.0));
+        hits
+    }
+
+    /// The most recent live security events, newest first (at most 50).
+    pub fn live_events(&self) -> Vec<LiveSecurityEvent> {
+        match self.live_events.lock() {
+            Ok(events) => events.clone(),
+            Err(poisoned) => poisoned.into_inner().clone(),
+        }
     }
 
     /// Removes expired honeypot ban records from telemetry dashboards.

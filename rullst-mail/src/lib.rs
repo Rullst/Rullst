@@ -37,6 +37,7 @@ pub mod factory;
 pub mod feedback;
 pub mod inspection;
 pub mod message;
+pub mod mock;
 pub mod observability;
 #[cfg(feature = "capital-invoice")]
 pub mod paid_invoice;
@@ -74,11 +75,6 @@ pub use suppression::*;
 pub use tracking::*;
 pub use validator::*;
 pub use worker::*;
-
-/// Backwards compatibility alias for `rullst_mail::mail::*`
-pub mod mail {
-    pub use crate::*;
-}
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]

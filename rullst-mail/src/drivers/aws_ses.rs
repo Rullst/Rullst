@@ -2,9 +2,9 @@
 
 use super::traits::MailDriver;
 use super::{DeliveryMode, credential_mode};
-use crate::drivers::mock::{record_offline_delivery, validate_credential};
 use crate::error::MailError;
 use crate::message::Message;
+use crate::mock::{record_offline_delivery, validate_credential};
 use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
 use secrecy::{ExposeSecret, SecretString};

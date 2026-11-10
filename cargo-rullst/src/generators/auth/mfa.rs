@@ -98,7 +98,7 @@ mod tests {
         assert!(controller.contains("last_accepted_step < ?"));
         assert!(controller.contains("rows_affected()"));
         assert!(controller.contains("use rullst::server::"));
-        assert!(controller.contains("use rullst::security_runtime::"));
+        assert!(controller.contains("use rullst::security::runtime::"));
         // The verifying form never carries the secret.
         let form = controller
             .split("pub struct MfaCodeForm")
