@@ -24,7 +24,11 @@ pub(crate) fn command() -> Command {
     let capabilities = capability::CAPABILITIES
         .iter()
         .map(|capability| format!("  {:<8}{}", capability.name, capability.summary))
-        .chain([format!("  {}  {}", browser_tests::NAME, browser_tests::SUMMARY)])
+        .chain([format!(
+            "  {}  {}",
+            browser_tests::NAME,
+            browser_tests::SUMMARY
+        )])
         .collect::<Vec<_>>()
         .join("\n");
     Command::new("add")
@@ -40,7 +44,10 @@ pub(crate) fn command() -> Command {
                 .required(true)
                 .value_name("CAPABILITY")
                 .value_parser(clap::builder::PossibleValuesParser::new(
-                    capability::NAMES.iter().copied().chain([browser_tests::NAME]),
+                    capability::NAMES
+                        .iter()
+                        .copied()
+                        .chain([browser_tests::NAME]),
                 ))
                 .help("The capability to enable"),
         )
@@ -103,7 +110,9 @@ pub(crate) fn execute(
             browser_tests::Error::InvalidManifest => {
                 Failure::Add(AddError::InvalidManifest { line: None })
             }
-            browser_tests::Error::Read { file, kind } => Failure::Add(AddError::Read { file, kind }),
+            browser_tests::Error::Read { file, kind } => {
+                Failure::Add(AddError::Read { file, kind })
+            }
             browser_tests::Error::Write { file, kind } => {
                 Failure::Add(AddError::Write { file, kind })
             }

@@ -66,7 +66,8 @@ fn the_pins_are_rullsts_own_playwright_and_axe_core() {
         );
     }
     // Same bytes as Rullst's own starter-browser lock, apart from the name.
-    let own = Path::new(env!("CARGO_MANIFEST_DIR")).join("../.github/starter-browsers/package-lock.json");
+    let own =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../.github/starter-browsers/package-lock.json");
     if let Ok(own) = fs::read_to_string(own) {
         assert_eq!(
             own.replace("rullst-starter-browser-checks", "browser-tests"),
@@ -110,7 +111,12 @@ fn the_script_reads_the_generated_page_list() {
     let captured = list.captures(&source).expect("PAGES list")[1].to_owned();
     let pages = entry
         .captures_iter(&captured)
-        .map(|entry| (entry[1].to_owned(), entry[2].parse::<u16>().expect("status")))
+        .map(|entry| {
+            (
+                entry[1].to_owned(),
+                entry[2].parse::<u16>().expect("status"),
+            )
+        })
         .collect::<Vec<_>>();
     assert_eq!(pages, [("/".to_owned(), 200), ("/health".to_owned(), 200)]);
     for check in [
@@ -136,19 +142,29 @@ fn files_are_created_once_and_never_overwritten() {
     let root = project(&[("Cargo.toml", MANIFEST), ("src/security_tests.rs", &source)]);
     let first = execute(root.path(), false, Style::PLAIN).expect("first run");
     for (path, content) in FILES {
-        assert_eq!(fs::read_to_string(root.path().join(path)).expect(path), content);
+        assert_eq!(
+            fs::read_to_string(root.path().join(path)).expect(path),
+            content
+        );
         assert!(first.contains(&format!("✓ {path:<36} created")), "{first}");
     }
     assert!(!first.contains("declares no"), "{first}");
     assert!(first.contains("node tests/browser/pages.mjs"), "{first}");
 
     let second = execute(root.path(), false, Style::PLAIN).expect("second run");
-    assert_eq!(second.matches(" unchanged").count(), FILES.len(), "{second}");
+    assert_eq!(
+        second.matches(" unchanged").count(),
+        FILES.len(),
+        "{second}"
+    );
 
     let script = root.path().join("tests/browser/pages.mjs");
     fs::write(&script, "// my version\n").expect("edit");
     let third = execute(root.path(), false, Style::PLAIN).expect("third run");
-    assert_eq!(fs::read_to_string(&script).expect("kept"), "// my version\n");
+    assert_eq!(
+        fs::read_to_string(&script).expect("kept"),
+        "// my version\n"
+    );
     assert!(
         third.contains("! tests/browser/pages.mjs") && third.contains("kept: it differs"),
         "{third}"
@@ -161,7 +177,11 @@ fn a_dry_run_writes_nothing() {
     let report = execute(root.path(), true, Style::PLAIN).expect("dry run");
     assert!(!root.path().join("tests").exists());
     assert!(!root.path().join(".github").exists());
-    assert_eq!(report.matches("would create").count(), FILES.len(), "{report}");
+    assert_eq!(
+        report.matches("would create").count(),
+        FILES.len(),
+        "{report}"
+    );
     assert!(report.contains("Dry run: nothing was written."), "{report}");
     // Without a page list the report says what the checks fall back to.
     assert!(report.contains("only `/` is visited"), "{report}");
@@ -171,7 +191,10 @@ fn a_dry_run_writes_nothing() {
 fn only_rullst_projects_are_changed() {
     let empty = project(&[]);
     assert_eq!(plan(empty.path()), Err(Error::NotAProject));
-    let other = project(&[("Cargo.toml", "[package]\nname = \"x\"\n\n[dependencies]\nserde = \"1\"\n")]);
+    let other = project(&[(
+        "Cargo.toml",
+        "[package]\nname = \"x\"\n\n[dependencies]\nserde = \"1\"\n",
+    )]);
     assert_eq!(plan(other.path()), Err(Error::NotAProject));
     let broken = project(&[("Cargo.toml", "[package\n")]);
     assert_eq!(plan(broken.path()), Err(Error::InvalidManifest));
@@ -182,7 +205,10 @@ fn only_rullst_projects_are_changed() {
 fn add_dispatches_the_capability_and_lists_it() {
     let root = project(&[("Cargo.toml", MANIFEST)]);
     let report = add::execute(root.path(), NAME, false, Style::PLAIN).expect("add browser-tests");
-    assert!(report.contains("cargo rullst add browser-tests"), "{report}");
+    assert!(
+        report.contains("cargo rullst add browser-tests"),
+        "{report}"
+    );
     assert!(root.path().join("tests/browser/pages.mjs").is_file());
     let empty = project(&[]);
     assert_eq!(

@@ -348,6 +348,7 @@ The choices that materially change the generated application:
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. `cargo rullst dev` applies pending migrations when it starts; run `cargo rullst db:migrate` explicitly otherwise.
   * `--dry-run` (v13): Prints the plan (the answers, a compact file tree with the exact number of files and the commands it would run) and exits without creating anything. With `--default` it never prompts; in a terminal without `--default` the wizard's review ends with *Finish the dry run*.
   * `--vcs <git|none>` (v13, default `git`): Like `cargo new`, initializes a Git repository in the new project when `git` is installed and the destination is not already inside a Git work tree; `none` skips it. The generated `.gitignore` keeps `.env`, `.env.*` (except `.env.example`) and `/target` out. Without Git, `new` prints a warning and keeps the project; `cargo rullst audit` checks committed secrets through Git.
+  * `--no-ci` (since 13.0.0-alpha.5): Skips `.github/workflows/ci.yml` (formatting, Clippy with `-D warnings`, tests, a daily `cargo audit` and a TruffleHog secret scan, every action pinned by commit SHA) and `.github/dependabot.yml` (Cargo and GitHub Actions, monthly, grouped), which `new` writes otherwise. See [Testing your application](testing-your-app.md).
 
 Since v13, `--blueprint`, `--database`, `--no-database`, `--ai` and `--redis`
 no longer require `--default`: in a terminal they answer their questions and
@@ -821,6 +822,13 @@ unknown capability is a usage error (exit status 2).
 cargo rullst add mail --dry-run
 cargo rullst add mail
 ```
+
+`cargo rullst add browser-tests` (since 13.0.0-alpha.5) enables no feature: it
+writes pinned Playwright and axe-core checks under `tests/browser/` and
+`.github/workflows/browser-tests.yml`, which open every page of the
+`PAGES` list in `src/security_tests.rs` in Chromium, Firefox and WebKit. A
+file that already exists with other content is kept and reported. See
+[Testing your application](testing-your-app.md#browser-tests).
 
 ---
 

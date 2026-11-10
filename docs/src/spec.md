@@ -44,7 +44,16 @@ with `src/main.rs` and, for a database profile, `src/migrations/`; the `make:*`
 generators create the other folders and their `mod.rs` on first use. A
 `--no-database` Blank project has no `Rullst.toml`. Every starter also writes
 `.env.example`, `AGENTS.md`, `.llms.txt` and `.rullst/context-map.json`
-(section 11.1).
+(section 11.1). Since 13.0.0-alpha.5 every starter except the hot-reload
+layouts writes `src/security_tests.rs` with a `PAGES` list (each
+parameterless page and the status a signed-out visitor receives) checked with
+`TestResponse::assert_status`, `assert_security_headers` and
+`assert_html_hygiene` (`rullst::testing::html_issues`), and `new` writes
+`.github/workflows/ci.yml` and `.github/dependabot.yml` unless `--no-ci` is
+given; every action is pinned by commit SHA. `cargo rullst add
+browser-tests` adds `tests/browser/` and `.github/workflows/browser-tests.yml`
+and never overwrites an existing file. See
+[Testing your application](testing-your-app.md).
 
 ---
 

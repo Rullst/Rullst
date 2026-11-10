@@ -360,7 +360,14 @@ fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
             // fresh starter must pass it.
             let clippy = Command::new(env!("CARGO"))
                 .current_dir(&project.path)
-                .args(["clippy", "--offline", "--all-targets", "--", "-D", "warnings"])
+                .args([
+                    "clippy",
+                    "--offline",
+                    "--all-targets",
+                    "--",
+                    "-D",
+                    "warnings",
+                ])
                 .env("CARGO_TARGET_DIR", &target_root)
                 .env("CARGO_BUILD_JOBS", generated_build_jobs())
                 .output()

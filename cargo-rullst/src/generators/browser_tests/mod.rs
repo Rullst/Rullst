@@ -103,8 +103,8 @@ pub(crate) fn plan(root: &Path) -> Result<Plan, Error> {
         };
         files.push((path, content, state));
     }
-    let page_list = read(root, "src/security_tests.rs")?
-        .is_some_and(|source| source.contains(PAGE_LIST));
+    let page_list =
+        read(root, "src/security_tests.rs")?.is_some_and(|source| source.contains(PAGE_LIST));
     Ok(Plan { files, page_list })
 }
 

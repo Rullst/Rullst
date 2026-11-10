@@ -73,7 +73,10 @@ pub(crate) fn assert_pinned_like_rullst(name: &str, workflow: &str) {
             sha.len() == 40 && sha.bytes().all(|byte| byte.is_ascii_hexdigit()),
             "{name}: `{value}` is not pinned to a full commit SHA"
         );
-        assert!(!comment.is_empty(), "{name}: `{value}` has no version comment");
+        assert!(
+            !comment.is_empty(),
+            "{name}: `{value}` has no version comment"
+        );
         if let Some(own) = &own {
             // When a Rullst workflow bumps a pin, update the generated one too.
             assert!(
@@ -139,7 +142,9 @@ mod tests {
         assert_eq!(path, ".github/dependabot.yml");
         assert!(config.contains("\nversion: 2\n"));
         for ecosystem in ["cargo", "github-actions"] {
-            let entry = format!("  - package-ecosystem: \"{ecosystem}\"\n    directory: \"/\"\n    schedule:\n      interval: \"monthly\"\n    open-pull-requests-limit: 5\n    groups:\n      {ecosystem}:\n        patterns:\n          - \"*\"\n");
+            let entry = format!(
+                "  - package-ecosystem: \"{ecosystem}\"\n    directory: \"/\"\n    schedule:\n      interval: \"monthly\"\n    open-pull-requests-limit: 5\n    groups:\n      {ecosystem}:\n        patterns:\n          - \"*\"\n"
+            );
             assert!(config.contains(&entry), "{ecosystem}");
         }
         assert_eq!(config.matches("package-ecosystem").count(), 2);
@@ -161,7 +166,8 @@ mod tests {
 
     #[test]
     fn references_are_read_from_plain_and_list_lines() {
-        let workflow = "steps:\n  - uses: a/b@c # v1\n    uses: d/e@f\n  - name: x\n    run: echo uses\n";
+        let workflow =
+            "steps:\n  - uses: a/b@c # v1\n    uses: d/e@f\n  - name: x\n    run: echo uses\n";
         assert_eq!(
             action_references(workflow),
             [

@@ -203,7 +203,10 @@ mod tests {
                 .subcommand_matches("new")
                 .is_some_and(|new| new.get_flag("no_ci"))
         );
-        assert!(!new.subcommand_matches("new").is_some_and(|new| new.get_flag("no_ci")));
+        assert!(
+            !new.subcommand_matches("new")
+                .is_some_and(|new| new.get_flag("no_ci"))
+        );
         assert_eq!(
             parse(&["rullst", "new", "lean", "--vcs", "hg"])
                 .expect_err("unknown vcs")

@@ -161,7 +161,11 @@ mod tests {
                 .map(|(path, status)| format!("    (\"{path}\", {status}),\n"))
                 .collect::<String>();
             assert_eq!(list, expected, "{starter:?}");
-            let paths = starter.pages().iter().map(|(path, _)| *path).collect::<Vec<_>>();
+            let paths = starter
+                .pages()
+                .iter()
+                .map(|(path, _)| *path)
+                .collect::<Vec<_>>();
             let mut unique = paths.clone();
             unique.sort_unstable();
             unique.dedup();
@@ -185,7 +189,12 @@ mod tests {
             ));
             assert_eq!(*status == 303, protected, "{path}");
         }
-        assert!(!Starter::Saas.pages().iter().any(|(path, _)| *path == "/password/reset"));
+        assert!(
+            !Starter::Saas
+                .pages()
+                .iter()
+                .any(|(path, _)| *path == "/password/reset")
+        );
     }
 
     #[test]
