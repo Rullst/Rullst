@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794298584768,
+  "lastUpdate": 1794307083004,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -15455,6 +15455,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/03876ead242f308f29836e8d2b8c9c3a0a08d4fc"
         },
         "date": 1794298583859,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7ee54eac686ec94dedabbc1607a46e6698d3e80a",
+          "message": "Merge pull request #622 from Rullst/feat/v13-alpha5-frontend-toolkit\n\nfeat(frontend): content-hashed asset URLs, cargo rullst add tailwind and add alpine",
+          "timestamp": "2026-11-10T07:14:12-03:00",
+          "tree_id": "6f93afc8977b008ee1388c0919182471875e6734",
+          "url": "https://github.com/Rullst/Rullst/commit/7ee54eac686ec94dedabbc1607a46e6698d3e80a"
+        },
+        "date": 1794307082033,
         "tool": "cargo",
         "benches": [
           {
