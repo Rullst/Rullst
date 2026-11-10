@@ -73,6 +73,16 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Changed
 
+- **Breaking:** `rullst-iot` (Experimental): `OtaManager`'s fields
+  `current_partition`, `status` and `firmware_version` are private, as
+  13.0.0-alpha.4 announced; read them with the methods of the same names
+  (`current_partition()`, `status()`, `firmware_version()`), so only
+  verification and commit change the state. Code that assigned
+  `current_partition` after `new_with_trusted_key` or
+  `new_with_counter_store` calls the new `with_running_partition(bank)`,
+  which also discards an update verified for the other bank.
+  `OtaManifest` and `OtaCommit` moved to their own file; their paths are
+  unchanged.
 - `rullst-studio`: the local Studio (`Studio`, `run_studio` and its page
   modules) is the new `local` feature, which the default `drivers-all`, every
   `strict-*` profile and the facade's `studio` feature enable. `rullst-orm`,

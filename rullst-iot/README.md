@@ -172,14 +172,17 @@ make counter storage and boot selection one hardware-atomic operation.
 not provide persistent anti-rollback protection.
 
 `verified_target_partition` and the receipt always name the bank opposite
-`current_partition`. The v13 constructor `new_with_running_partition` takes
+`current_partition()`. The v13 constructor `new_with_running_partition` takes
 the bank the bootloader started. `new_with_counter_store` and
-`new_with_trusted_key` assume `PartitionA`, so with them the platform must set
-`current_partition` from its bootloader before verifying an update once the
-device has rebooted into `PartitionB`.
-Committing does not change `current_partition`: the device keeps running the
+`new_with_trusted_key` assume `PartitionA`, so with them the platform calls
+`with_running_partition(bank)` with the bank its bootloader reports before
+verifying an update once the device has rebooted into `PartitionB`; that
+also discards an update verified for the other bank.
+Committing does not change `current_partition()`: the device keeps running the
 old bank until the platform reboots, so a further update verified in the same
 process targets the same inactive bank, never the running one.
+Since 13.0.0-alpha.5 the manager's state is read with `current_partition()`,
+`status()` and `firmware_version()`; the fields are private.
 
 `OtaManager::new`, `verify_signature`, and `commit_update` are deprecated
 migration APIs. All three always return `OtaError` because keyless construction,
