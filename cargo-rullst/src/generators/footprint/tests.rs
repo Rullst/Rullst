@@ -4,8 +4,10 @@ use super::report::*;
 use super::*;
 use std::time::Duration;
 
+mod budget;
 mod failures;
 mod page_weight;
+mod production;
 mod run;
 pub(super) mod support;
 
@@ -66,7 +68,12 @@ fn sample(bench: bool, grid_intensity: Option<f64>) -> Report {
         } else {
             PageWeight::unmeasured("not_run", "no page was weighed; pass --page-weight")
         },
+        production: super::production::Production::unmeasured(
+            "not_run",
+            "pass --monitor-url to read what the app served in production",
+        ),
         sci_estimate,
+        budgets: super::budget::Budgets::not_checked(),
         notes: NOTES,
         failure: None,
     }
@@ -114,6 +121,12 @@ fn json_keys_are_stable_whatever_was_measured() {
         "benchmark.requests",
         "benchmark.status",
         "benchmark.transport_errors",
+        "budgets.exceeded",
+        "budgets.limits",
+        "budgets.passed",
+        "budgets.skipped",
+        "budgets.source",
+        "budgets.status",
         "cli_version",
         "failure",
         "machine.arch",
@@ -139,6 +152,17 @@ fn json_keys_are_stable_whatever_was_measured() {
         "page_weight.third_party_origins",
         "page_weight.third_party_references",
         "page_weight.unfetched",
+        "production.application",
+        "production.bytes_reported",
+        "production.bytes_total",
+        "production.path_route",
+        "production.reason",
+        "production.requests_total",
+        "production.routes",
+        "production.source",
+        "production.status",
+        "production.uptime_seconds",
+        "production.window_seconds",
         "schema",
         "schema_version",
         "sci_estimate.cpu_energy_kwh",

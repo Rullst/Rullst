@@ -1969,14 +1969,25 @@ measurement and an estimate, not a certification or an environmental claim;
 an application that publishes its numbers is responsible for how it words
 them.
 
+With `--check-budget` it checks the figures against the limits of
+`[footprint.budgets]` in `Rullst.toml` (`--budget FILE` reads that table from
+another file): an exceeded limit exits with status 1 after the report, and a
+limit whose figure was not measured is reported as skipped, never as passed.
+With `--monitor-url` it also reads the response bytes the application served
+in production per route from its monitor (`Server::with_monitor`), over HTTPS
+with the token from `RULLST_MONITOR_TOKEN`, and shows the `--path` route
+beside the lab's bytes per request.
+
 Without `--url` it builds the release binary (reusing an existing build),
 starts it with `RULLST_ENV=production` (or `--env staging`, which accepts the
 starters' mock billing credentials) on a free `127.0.0.1` port, measures it
 and stops it. With `--url` it measures an app already running on loopback and
-refuses any other host; it makes no network calls beyond loopback and the
-local container engine, and never fetches grid intensity.
+refuses any other host; it makes no network calls beyond loopback, the local
+container engine and the `--monitor-url` you pass, and never fetches grid
+intensity.
 
 ```bash
+cargo rullst footprint --env staging --bench --page-weight --check-budget
 cargo rullst footprint --image my-app:latest
 cargo rullst footprint --url http://127.0.0.1:3000 --path /health --bench --json
 cargo rullst footprint --page-weight
@@ -1990,12 +2001,16 @@ cargo rullst footprint --bench --cpu-watts 15 --network-kwh-per-gb 0.059 --grid-
   256; needs `--bench`), `--cpu-watts <W>` (needs `--bench`),
   `--network-kwh-per-gb <kWh/GB>` (more than 0, at most 100; needs
   `--cpu-watts`), `--grid-intensity <gCO2e/kWh>` (needs `--cpu-watts`),
-  `--embodied <gCO2e>` (needs `--grid-intensity`), `--page-weight`, `--json`
-  (versioned `rullst.footprint.v1`).
+  `--embodied <gCO2e>` (needs `--grid-intensity`), `--page-weight`,
+  `--check-budget`, `--budget <FILE>`, `--monitor-url <https://ORIGIN>`
+  (token from `RULLST_MONITOR_TOKEN`), `--json` (versioned
+  `rullst.footprint.v1`).
 * **Exit status:** `0` when the measurement ran, even with `NOT MEASURED`
-  fields; `1` when the build failed or the app could not be started or reached,
-  after the report (the JSON with `--json`) with the figures that need no
-  running app and the failure in `failure`; `2` for invalid arguments.
+  fields or skipped limits; `1` when the build failed or the app could not be
+  started or reached, after the report (the JSON with `--json`) with the
+  figures that need no running app and the failure in `failure`, when a budget
+  limit was exceeded (after the report) or when the budget cannot be read;
+  `2` for invalid arguments.
 
 See [resource figures for an app](footprint.md) for what each figure means,
 how page weight is loaded and how to choose the network and grid figures.

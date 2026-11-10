@@ -11,6 +11,26 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- `cargo rullst footprint --check-budget` checks the measured figures
+  against limits in `Rullst.toml` `[footprint.budgets]` (`--budget FILE` reads
+  the table from another file): binary and image size, idle memory,
+  dependency count, CPU and bytes per request, page weight on the first and
+  repeat visit, page requests and third-party origins. An exceeded limit
+  exits with status 1 after the report and is named on stderr with the
+  measured and allowed values; a limit whose figure was not measured is
+  reported as skipped, never as passed; an unknown key or a negative value
+  stops the run before anything is built. The JSON report gains a `budgets`
+  section, and the book shows a CI job.
+- The production monitor (`Server::with_monitor`, `rullst.monitor.v1`)
+  reports the response bytes it sent per route, in the totals and the
+  five-minute window (`bytes_total`, `window.bytes`): the body as sent, after
+  any compression the application applies, counted when a fixed body is
+  recorded or when a streamed one ends, none for `HEAD`, in the same fixed
+  slots as the request counters. `cargo rullst footprint --monitor-url
+  https://app.example` reads them, with the token from `RULLST_MONITOR_TOKEN`
+  (never a command-line argument, sent only over HTTPS or to loopback and
+  never after a redirect), and shows the `--path` route's production bytes
+  per request beside the lab's, in a new `production` section.
 - Generated applications start with tests and CI
   ([Testing your application](docs/src/testing-your-app.md)). Every starter's
   `src/security_tests.rs` has a `PAGES` list of its parameterless pages and a

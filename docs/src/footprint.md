@@ -8,7 +8,9 @@ Part of the [resource efficiency roadmap](resource-efficiency-roadmap.md).
 application, says how it measured each one, and says which ones it could not
 measure: binary and image size, idle memory, dependencies, CPU time and bytes
 per request under a bounded load, and the weight of a page on a first and a
-repeat visit. It measures no energy. A carbon figure appears only as a
+repeat visit. It can check those figures against budgets in CI and set them
+beside the bytes the application served in production, read from its
+monitor. It measures no energy. A carbon figure appears only as a
 Software Carbon Intensity (SCI) **estimate**, computed from figures that you
 supply, and it is labelled `estimate` in the text and the JSON together with
 every input. The report describes one run on one machine.
@@ -44,6 +46,12 @@ cargo rullst footprint --url http://127.0.0.1:3000 --page-weight --bench
 
 # Add an SCI estimate from your own power, network and grid figures
 cargo rullst footprint --bench --cpu-watts 15 --network-kwh-per-gb 0.059 --grid-intensity 120 --json
+
+# Fail when a figure exceeds its limit in Rullst.toml [footprint.budgets]
+cargo rullst footprint --env staging --bench --page-weight --check-budget
+
+# Show the bytes production served per route (token from the environment)
+RULLST_MONITOR_TOKEN=... cargo rullst footprint --page-weight --bench --monitor-url https://app.example
 ```
 
 ## What is measured
@@ -114,9 +122,10 @@ reason, the report's `failure` says what failed, and the error follows on
 stderr with a fix chosen from the app's own error (its last stderr lines) and
 the first lines of a failed build's log.
 
-The command makes no network calls beyond loopback and the local container
-engine, and never fetches carbon intensity data. The release build itself may
-download crates as any `cargo build` does.
+The command makes no network calls beyond loopback, the local container
+engine and, only with `--monitor-url`, the application's monitor, and never
+fetches carbon intensity data. The release build itself may download crates as
+any `cargo build` does.
 
 ## Page weight
 
@@ -225,6 +234,104 @@ energy agency's published average, or a dataset your organisation already
 uses. Record the value, the source, the year or hour it describes and whether
 it is an average or a marginal figure next to the report.
 
+## Budgets in CI
+
+Limits on the measured figures live in `Rullst.toml`, next to the rest of the
+project's configuration (the application ignores the table):
+
+```toml
+[footprint.budgets]
+binary_size_bytes = 25_000_000
+idle_rss_bytes = 64_000_000
+dependency_count = 450
+cpu_ms_per_request = 2.0
+bytes_per_request = 60_000
+page_first_visit_bytes = 500_000
+page_repeat_visit_bytes = 40_000
+page_requests = 25
+page_third_party_origins = 0
+```
+
+Every key is optional; `image_size_bytes` is the tenth. Values are numbers of
+0 or more, in bytes, a count or milliseconds as the name says; an unknown key,
+a negative value or a string stops the run before anything is built, so a
+misspelt limit cannot pass unnoticed. `--check-budget` reads this table;
+`--budget FILE` reads the same `[footprint.budgets]` table from another TOML
+file instead, for example a stricter budget for the main branch.
+
+After the report, each limit is **passed** (measured at or under the limit),
+**exceeded** (above it) or **skipped**: its figure was not measured (no
+`--bench` for `cpu_ms_per_request`, no `--page-weight` for the page limits,
+no `--image`, or a platform that cannot read the process), so it is never
+counted as passed. The command exits with status 1 when a limit is exceeded,
+after printing the report, and names each one with the measured and allowed
+values on stderr. The JSON report's `budgets` section lists every limit with
+its `allowed`, `measured`, `status` and, when skipped, `reason`.
+
+A CI job that builds the release binary, starts it with the starters' mock
+credentials and checks the budget:
+
+```yaml
+  footprint:
+    name: Footprint budget
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Rust with a dependency cache
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+      - name: Install the Rullst CLI
+        run: cargo install cargo-rullst --version =13.0.0-alpha.5 --locked
+      - name: Measure and check the budget
+        run: cargo rullst footprint --env staging --bench --duration 5s --page-weight --check-budget --json > footprint.json
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: footprint
+          path: footprint.json
+```
+
+Compare figures only on the same runner type: hosted runners vary, so leave
+some headroom in time-based limits such as `cpu_ms_per_request`. The
+generated CI workflow of [the testing kit](testing-your-app.md) does not
+include this job, because it needs the CLI installed and an application that
+starts in CI; add it when your application does.
+
+## Production bytes from the monitor
+
+With `--monitor-url`, footprint also reads the application's monitor
+(`GET /_rullst/monitor/v1`, mounted by
+[`Server::with_monitor`](production-monitoring.md)) and reports, per route,
+the requests and the response bytes it served in production: the bodies as
+sent, after compression, since the process started and in the last five
+minutes. The route that the `--path` page matches is shown beside the lab's
+bytes per request from `--bench`, so a page that is light in the lab but heavy
+in production (or the reverse) stands out.
+
+- **The token** comes from `RULLST_MONITOR_TOKEN` (one of the application's
+  `RULLST_MONITOR_TOKENS`), never from the command line, so it does not end up
+  in shell history or CI logs. It is sent only over HTTPS, or in plain HTTP to
+  a loopback address such as an SSH tunnel, and never after a redirect.
+- **The URL** is the application's origin (`https://app.example`, the monitor
+  path is added) or the full monitor URL; credentials, a query or a fragment
+  are refused. It is the only address outside loopback the command contacts.
+- **What is read** is what the monitor publishes: route patterns and counters,
+  never request data. An application whose Rullst is older than
+  13.0.0-alpha.5 reports no bytes; the section then says so.
+- A `401`, `403`, `404` or `429`, an answer that is not a `rullst.monitor.v1`
+  document or one larger than 4 MiB leaves the section `NOT MEASURED` with the
+  reason; the rest of the report is unaffected.
+
+The JSON report's `production` section has the `source` URL, the
+application's name and version, its uptime and window, `bytes_reported`,
+`requests_total`, `bytes_total`, `path_route` and every route with
+`requests_total`, `bytes_total`, `bytes_per_request`, `window_requests` and
+`window_bytes`.
+
 ## Why results vary
 
 Numbers depend on the CPU model and its frequency scaling, power profile,
@@ -265,6 +372,12 @@ on the shape:
   in `inputs` (`network_kwh_per_gb` and `response_bytes` included),
   `energy_kwh`, `cpu_energy_kwh`, `network_energy_kwh`, `sci_g_per_request`
   and `missing_inputs`.
+- `production`: `status` (`measured`, `not_run` or `not_measured`),
+  `reason` and the monitor's figures, as in
+  [Production bytes from the monitor](#production-bytes-from-the-monitor).
+- `budgets`: `status` (`not_checked`, `passed`, `exceeded` or `skipped`),
+  `source`, the `passed`, `exceeded` and `skipped` counts and every limit, as
+  in [Budgets in CI](#budgets-in-ci).
 - `notes`: the fixed caveats printed under the tables.
 - `failure`: `null` after a measurement; otherwise `stage` (`build`, `start`
   or `reach`), `title`, `message` (at most 20 lines of a failed build's log,
@@ -272,10 +385,12 @@ on the shape:
 
 ## Exit status
 
-`0` when the measurement ran, even with `NOT MEASURED` fields; `1` when the
-release build failed or the app could not be started or reached (after
-printing the report with `failure`); `2` for invalid arguments, including a
-non-loopback `--url` or an estimate input without `--bench`.
+`0` when the measurement ran, even with `NOT MEASURED` fields or skipped
+limits; `1` when the release build failed or the app could not be started or
+reached (after printing the report with `failure`), when a budget limit was
+exceeded (after printing the report), or when the budget file cannot be used
+(before measuring); `2` for invalid arguments, including a non-loopback
+`--url`, a plain-HTTP `--monitor-url` or an estimate input without `--bench`.
 
 ## Changes from `green` and the earlier `footprint`
 

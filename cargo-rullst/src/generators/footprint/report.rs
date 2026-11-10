@@ -2,8 +2,10 @@
 //! carry their method, or the reason they were not measured; the carbon
 //! figure is a separately labelled estimate with its inputs. Keys are always
 //! present (null when unknown) so scripts can rely on them.
+use super::budget::Budgets;
 use super::failure::Failure;
 use super::page::PageWeight;
+use super::production::Production;
 use super::sci::SciEstimate;
 use serde::Serialize;
 
@@ -61,7 +63,11 @@ pub(crate) struct Report {
     pub measured: Measured,
     pub benchmark: Benchmark,
     pub page_weight: PageWeight,
+    /// What the application served in production (`--monitor-url`).
+    pub production: Production,
     pub sci_estimate: SciEstimate,
+    /// The limits checked with `--check-budget` or `--budget`.
+    pub budgets: Budgets,
     pub notes: &'static [&'static str],
     /// Why the app was not measured (`null` when it was): the figures that
     /// need no running app are still reported.

@@ -49,8 +49,22 @@ fn footprint(arguments: &[&str]) -> (u32, String, String, String) {
 
 /// [`footprint`] measuring `url` instead of the child's own server.
 fn footprint_at(url: Option<&str>, arguments: &[&str]) -> (u32, String, String, String) {
+    footprint_with(&[], &[], url, arguments)
+}
+
+/// [`footprint_at`] in a project that also holds `files`, with `variables`
+/// in the child's environment.
+pub(super) fn footprint_with(
+    files: &[(&str, &str)],
+    variables: &[(&str, &str)],
+    url: Option<&str>,
+    arguments: &[&str],
+) -> (u32, String, String, String) {
     let project = tempfile::tempdir().unwrap();
     std::fs::write(project.path().join("Cargo.lock"), LOCK).unwrap();
+    for (name, text) in files {
+        std::fs::write(project.path().join(name), text).unwrap();
+    }
     let report = project.path().join("report");
     let mut command = std::process::Command::new(std::env::current_exe().unwrap());
     command
@@ -65,6 +79,10 @@ fn footprint_at(url: Option<&str>, arguments: &[&str]) -> (u32, String, String, 
         .env("NO_COLOR", "1");
     if let Some(url) = url {
         command.env("RULLST_FOOTPRINT_URL", url);
+    }
+    command.env_remove("RULLST_MONITOR_TOKEN");
+    for (name, value) in variables {
+        command.env(name, value);
     }
     let output = output_within(command, Duration::from_secs(60));
     assert!(output.status.success(), "{output:?}");

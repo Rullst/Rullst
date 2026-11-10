@@ -26,6 +26,7 @@ this page says which is which.
 | Monthly grouped dependency updates | Yes | `.github/dependabot.yml` |
 | Every page in Chromium, Firefox and WebKit with axe-core, both colour schemes | With `cargo rullst add browser-tests` | `tests/browser/` and the `browser-tests.yml` workflow |
 | Routes with `{id}` classified with `// rullst-access:` | Checked by `cargo rullst audit --idor` | your CI, see below |
+| Binary size, memory, CPU and page-weight limits | Checked by `cargo rullst footprint --check-budget` | your CI, see [Budgets in CI](footprint.md#budgets-in-ci) |
 | A route × role permission table | No | see below |
 | Restore a backup, test migrations on a copy, monitor the site, OWASP ZAP, published-figure freshness | No | see below |
 
@@ -125,6 +126,12 @@ in the repository settings to receive advisory fixes at once.
 The workflow sits at the root of the new project. When the project lives in a
 subdirectory of a larger repository, move the file to that repository's
 `.github/workflows/` and set `working-directory`.
+
+The workflow does not measure resources. To keep the binary size, idle memory,
+CPU per request and page weight under limits, set them in `Rullst.toml`
+`[footprint.budgets]` and add the job that
+[Budgets in CI](footprint.md#budgets-in-ci) shows: it installs the CLI, starts
+the application with `--env staging` and fails when a limit is exceeded.
 
 ## Browser tests
 

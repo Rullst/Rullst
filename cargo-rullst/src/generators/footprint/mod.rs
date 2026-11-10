@@ -13,6 +13,9 @@
 //! the `--cpu-watts` figure, plus the served bytes × `--network-kwh-per-gb`
 //! when given, and I (`--grid-intensity`) and M (`--embodied`) are the
 //! user's. Footprint measures no energy and fetches no carbon data.
+//! `--check-budget` checks the figures against `[footprint.budgets]`
+//! ([`budget`]), and `--monitor-url` adds the bytes the application served
+//! in production per route ([`production`]).
 //!
 //! Without `--url` it builds the project's release binary (reusing an
 //! existing build), starts it in production mode (or `--env staging`) on a
@@ -23,6 +26,7 @@
 //! with the failure inside, and the process exits 1.
 
 mod artifacts;
+mod budget;
 mod failure;
 mod load;
 mod options;
@@ -30,6 +34,7 @@ mod page;
 mod process;
 #[cfg(target_os = "linux")]
 mod procfs;
+mod production;
 mod render;
 mod report;
 mod sci;
@@ -45,16 +50,25 @@ use clap::ArgMatches;
 use failure::Failure;
 use options::Options;
 use page::PageWeight;
+use production::Production;
 use report::{Benchmark, Machine, Measured, Metric, Report};
 use std::error::Error;
 use std::io::Write;
+use std::path::Path;
 #[cfg(test)]
 use subject::{file_name, started_environment};
 
 const DOCS: &str = "https://rullst.github.io/Rullst/book/footprint.html";
+const BUDGET_DOCS: &str = "https://rullst.github.io/Rullst/book/footprint.html#budgets-in-ci";
 
 pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let options = Options::from_matches(matches);
+    // A budget that cannot be used stops the run before anything is built.
+    let budget = options
+        .budget
+        .as_ref()
+        .map(|source| budget::load(source, Path::new(".")))
+        .transpose()?;
     let workers = std::thread::available_parallelism()
         .map_or(2, std::num::NonZeroUsize::get)
         .clamp(1, 4);
@@ -62,7 +76,10 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
         .worker_threads(workers)
         .enable_all()
         .build()?;
-    let report = runtime.block_on(measure(&options))?;
+    let mut report = runtime.block_on(measure(&options))?;
+    if let Some(budget) = &budget {
+        report.budgets = budget::check(budget, &report);
+    }
     let mut stdout = std::io::stdout().lock();
     if options.json {
         writeln!(stdout, "{}", serde_json::to_string_pretty(&report)?)?;
@@ -75,6 +92,7 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
     stdout.flush()?;
     match &report.failure {
         Some(failure) => Err(failure.report()),
+        None if report.budgets.exceeded > 0 => Err(budget::exceeded_report(&report.budgets)),
         None => Ok(()),
     }
 }
@@ -144,6 +162,19 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
         },
         dependency_count: artifacts::dependency_count(&std::env::current_dir()?),
     };
+    let production = match &options.monitor_url {
+        Some(url) => {
+            if !options.json {
+                eprintln!("Reading the production monitor at {url} ...");
+            }
+            let token = std::env::var(production::TOKEN_ENV).ok();
+            production::read(url, token.as_deref(), &options.path).await
+        }
+        None => Production::unmeasured(
+            "not_run",
+            "pass --monitor-url to read what the app served in production",
+        ),
+    };
     let sci_estimate = sci::estimate(sci::Inputs {
         cpu_time_seconds: benchmark.cpu_time_seconds.value,
         cpu_watts: options.cpu_watts,
@@ -163,7 +194,9 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
         measured,
         benchmark,
         page_weight,
+        production,
         sci_estimate,
+        budgets: budget::Budgets::not_checked(),
         notes: report::NOTES,
         failure: subject.failure,
     })

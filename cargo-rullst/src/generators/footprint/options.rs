@@ -1,5 +1,7 @@
 //! The `footprint` command line: flags, bounds and their validation.
+use super::budget::Source;
 use clap::{Arg, ArgAction, ArgMatches, Command};
+use std::path::PathBuf;
 use std::time::Duration;
 
 /// Bounds keep a run's memory, time and load predictable.
@@ -28,6 +30,10 @@ pub(super) struct Options {
     /// Whether the page at `path` and its resources are weighed.
     pub page_weight: bool,
     pub network_kwh_per_gb: Option<f64>,
+    /// The budget to check, if any.
+    pub budget: Option<Source>,
+    /// The production monitor to read, if any.
+    pub monitor_url: Option<reqwest::Url>,
     pub json: bool,
 }
 
@@ -134,6 +140,26 @@ pub(crate) fn command() -> Command {
                 .help("Fetch the --path page and the same-origin resources it references: first-visit and repeat-visit bytes and requests, and third-party origins (listed, not fetched)"),
         )
         .arg(
+            Arg::new("check-budget")
+                .long("check-budget")
+                .action(ArgAction::SetTrue)
+                .help("Check the limits of [footprint.budgets] in Rullst.toml: an exceeded limit exits with status 1, an unmeasured one is skipped, never passed"),
+        )
+        .arg(
+            Arg::new("budget")
+                .long("budget")
+                .value_name("FILE")
+                .value_parser(clap::value_parser!(PathBuf))
+                .help("Check the [footprint.budgets] of this TOML file instead of Rullst.toml"),
+        )
+        .arg(
+            Arg::new("monitor-url")
+                .long("monitor-url")
+                .value_name("URL")
+                .value_parser(|value: &str| super::production::validate_monitor_url(value))
+                .help("Also read the bytes the app served in production, per route, from its monitor (Server::with_monitor) over HTTPS; the token comes from RULLST_MONITOR_TOKEN"),
+        )
+        .arg(
             Arg::new("json")
                 .long("json")
                 .action(ArgAction::SetTrue)
@@ -162,6 +188,15 @@ impl Options {
             embodied: get(matches, "embodied"),
             page_weight: get(matches, "page-weight").unwrap_or(false),
             network_kwh_per_gb: get(matches, "network-kwh-per-gb"),
+            budget: match (
+                get::<PathBuf>(matches, "budget"),
+                get::<bool>(matches, "check-budget").unwrap_or(false),
+            ) {
+                (Some(file), _) => Some(Source::File(file)),
+                (None, true) => Some(Source::RullstToml),
+                (None, false) => None,
+            },
+            monitor_url: get(matches, "monitor-url"),
             json: get(matches, "json").unwrap_or(false),
         }
     }

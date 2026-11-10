@@ -398,6 +398,12 @@ pub(super) fn render(report: &Report, style: Style) -> String {
         }
         out.push('\n');
     }
+    out.push_str(&super::production::render(
+        &report.production,
+        report.benchmark.bytes_per_request.value,
+        style,
+    ));
+    out.push_str(&super::budget::render(&report.budgets, style));
     if let Some(failure) = &report.failure {
         out.push_str(&format!("{}\n", style.bold("Not measured")));
         out.push_str(&format!(
