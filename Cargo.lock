@@ -798,9 +798,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-sesv2"
-version = "1.143.0"
+version = "1.145.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae0f19d5f30fd75714a7dd8bef185d03bb9c62faa5459785674297a775c18663"
+checksum = "69519c9ded94b5779ad42a3745ee8a0ffb6b095da51b90c612914490f90126da"
 dependencies = [
  "arc-swap",
  "aws-credential-types",
@@ -875,9 +875,9 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-http-client"
-version = "1.5.1"
+version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aeca69f65362f7375891008ea525fd440ad6db1836458ac188c87b126804114e"
+checksum = "859a81364f8185349c584fb41cd8765a400cf982f447adada590cf008a9f3b85"
 dependencies = [
  "aws-smithy-async",
  "aws-smithy-runtime-api",
@@ -899,9 +899,9 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-json"
-version = "0.65.0"
+version = "0.65.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f6835fb38bc6fc8c91e584b0366eb4ff595e5c485134dbf4f0bdeaa18856666"
+checksum = "b45f9fc77ffe92c92c341165a01a565bd30c39ecf5aa8c0719b41719009604f9"
 dependencies = [
  "aws-smithy-runtime-api",
  "aws-smithy-schema",
@@ -919,9 +919,9 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-runtime"
-version = "1.16.1"
+version = "1.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79cef0c41e8ca40f74f68ed8ee4d1ddbde12bb847b95ef9b3c025681ddfae58a"
+checksum = "4cb80fb19c084da5fca9d797845735e184445e5b958599440d67529bf6ef1b64"
 dependencies = [
  "aws-smithy-async",
  "aws-smithy-http",
@@ -970,9 +970,9 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-schema"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bec8dae1015a6d959a5faf86fbdf77486cfe19e4ccb6ee009d8a46efc45028a4"
+checksum = "f7ef30d39e131651359b60a1c560de9a9502a4c3754172ab2d6e8734fe21bcba"
 dependencies = [
  "aws-smithy-runtime-api",
  "aws-smithy-types",
@@ -2883,9 +2883,9 @@ checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
 
 [[package]]
 name = "flate2"
-version = "1.1.10"
+version = "1.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e634e2e0ebac1ee034020da1ca582e17ffe4e0f5e985823721e168928136dcb"
+checksum = "626d4928326b646e70f65ed36fc7cf9f206bdb68a0019ee7c6b4709da4e084c4"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
@@ -8863,9 +8863,9 @@ dependencies = [
 
 [[package]]
 name = "uuid"
-version = "1.29.0"
+version = "1.29.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a0e2d11620c50695fe12bbbfde96b3477fe606e7284c22d505c12ce51214514"
+checksum = "bed99139f7dac9b5cfe5f17be4d66dc7079a34dee1d74bcc77217119240e267c"
 dependencies = [
  "atomic",
  "getrandom 0.4.3",
@@ -8877,9 +8877,9 @@ dependencies = [
 
 [[package]]
 name = "uuid-rng-internal"
-version = "1.29.0"
+version = "1.29.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdf60f3d36825d0911af7e102da39cc817280560cad48e81df1eb5c4d7400f76"
+checksum = "4af36ce0aa6ec3337634e98de25504b6ce3cf9478468c21748a6a6cea37d7276"
 dependencies = [
  "getrandom 0.4.3",
 ]
