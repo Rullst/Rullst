@@ -1204,7 +1204,8 @@ jobs:
             --out "$RUNNER_TEMP/starter-browser-artifacts"
 
       - name: Copy every ui add component into a fixture and drive it
-        if: ${{ !cancelled() && steps.selection.outputs.run == 'true' }}
+        if: >-
+          !cancelled() && steps.selection.outputs.run == 'true'
         run: |
           python3 .github/check-ui-components.py \
             --cli target/debug/cargo-rullst \
