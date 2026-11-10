@@ -1,7 +1,7 @@
 use super::*;
 
 const STRICT: &str =
-    "default-src 'self'; script-src 'self' 'nonce-n0nce'; style-src 'self' 'nonce-n0nce'";
+    "default-src 'self'; script-src 'self' 'nonce-nonce1'; style-src 'self' 'nonce-nonce1'";
 
 fn kinds(html: &str, policy: Option<&str>) -> Vec<HtmlIssueKind> {
     html_issues(html, policy)
@@ -23,9 +23,9 @@ fn a_well_formed_rullst_page_has_no_issues() {
     clean(
         "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\" />\
          <title>Caf\u{e9} &amp; co &lt; 3</title>\
-         <script nonce=\"n0nce\" src=\"/static/htmx-1.9.12.min.js\"></script>\
+         <script nonce=\"nonce1\" src=\"/static/htmx-1.9.12.min.js\"></script>\
          <meta name=\"htmx-config\" content=\"{&quot;includeIndicatorStyles&quot;:false}\" />\
-         <style nonce=\"n0nce\">.a>.b{opacity:0}</style>\
+         <style nonce=\"nonce1\">.a>.b{opacity:0}</style>\
          <script type=\"application/json\">{\"a\": \"<b>\"}</script>\
          <!-- a comment with <b> and \"quotes --></head>\
          <body><main class=\"x\"><input type=\"checkbox\" disabled checked aria-checked=\"false\" />\
@@ -33,7 +33,7 @@ fn a_well_formed_rullst_page_has_no_issues() {
          <p>2 &lt; 3 and a < b, &amp;copy; &amp;#; \u{1f980}</p>\
          <pre>&lt;div&gt;</pre><code>&lt;span&gt;</code><kbd>&lt;b&gt;</kbd>\
          <samp>&lt;i&gt;</samp><textarea name=\"t\">&lt;div&gt;</textarea>\
-         <script nonce=\"n0nce\">if (a < b) { x = \"&lt;div\"; }</script>\
+         <script nonce=\"nonce1\">if (a < b) { x = \"&lt;div\"; }</script>\
          <script src=\"/app.js\"></script><script></script><style></style>\
          <![CDATA[ <svg> ]]></main></body></html>",
     );
@@ -122,12 +122,12 @@ fn verbatim_elements_nest_and_end() {
 
 #[test]
 fn raw_text_content_is_not_markup() {
-    clean("<script nonce=\"n0nce\">document.write(\"<p title='>\")</script>");
-    clean("<style nonce=\"n0nce\"><p>&lt;b</style>");
+    clean("<script nonce=\"nonce1\">document.write(\"<p title='>\")</script>");
+    clean("<style nonce=\"nonce1\"><p>&lt;b</style>");
     clean("<textarea><p title=\"&lt;b\"></textarea>");
-    clean("<SCRIPT nonce=\"n0nce\">a</Script >");
-    clean("<script nonce=\"n0nce\">a</scripts></script>");
-    only("<script nonce=\"n0nce\">a", HtmlIssueKind::MalformedMarkup);
+    clean("<SCRIPT nonce=\"nonce1\">a</Script >");
+    clean("<script nonce=\"nonce1\">a</scripts></script>");
+    only("<script nonce=\"nonce1\">a", HtmlIssueKind::MalformedMarkup);
     only("<title>open", HtmlIssueKind::MalformedMarkup);
 }
 
@@ -227,13 +227,13 @@ fn inline_scripts_and_styles_need_the_policy_nonce() {
         "<script type=\"importmap\">{}</script>",
         "<script type=\"speculationrules\">{}</script>",
         "<style>p{}</style>",
-        "<style nonce=\"N0NCE\">p{}</style>",
+        "<style nonce=\"NONCE1\">p{}</style>",
     ] {
         only(page, HtmlIssueKind::MissingNonce);
     }
     for page in [
-        "<script nonce=\"n0nce\">run()</script>",
-        "<style nonce=\"n0nce\">p{}</style>",
+        "<script nonce=\"nonce1\">run()</script>",
+        "<style nonce=\"nonce1\">p{}</style>",
         "<script src=\"/a.js\"></script>",
         "<script src>run()</script>",
         "<script></script>",

@@ -13,15 +13,15 @@ fn allows(policy: &str, inline: Inline, nonce: Option<&str>) -> bool {
 
 #[test]
 fn rullst_default_policy_needs_the_nonce_and_refuses_attributes() {
-    let policy = crate::config::DEFAULT_CSP_TEMPLATE.replace("{NONCE}", "n0nce");
+    let policy = crate::config::DEFAULT_CSP_TEMPLATE.replace("{NONCE}", "nonce1");
     for element in [Inline::ScriptElement, Inline::StyleElement] {
-        assert!(allows(&policy, element, Some("n0nce")), "{element:?}");
+        assert!(allows(&policy, element, Some("nonce1")), "{element:?}");
         assert!(!allows(&policy, element, Some("other")), "{element:?}");
         assert!(!allows(&policy, element, None), "{element:?}");
         assert!(!allows(&policy, element, Some("")), "{element:?}");
     }
     for attribute in [Inline::ScriptAttribute, Inline::StyleAttribute] {
-        assert!(!allows(&policy, attribute, Some("n0nce")), "{attribute:?}");
+        assert!(!allows(&policy, attribute, Some("nonce1")), "{attribute:?}");
     }
 }
 
