@@ -8,8 +8,7 @@ pub mod routes;
 
 use super::common;
 use crate::generators::{
-    ProjectOrmBackend, auth::controllers::render_auth_controller,
-    billing::render_billing_controller,
+    auth::controllers::render_auth_controller, billing::render_billing_controller,
 };
 
 pub fn file_manifest(
@@ -29,10 +28,7 @@ pub fn file_manifest(
     ));
     manifest.extend(models::get_models_and_migrations());
     manifest.extend(billing::get_billing_pages());
-    manifest.extend(crate::generators::billing::live_billing_files(
-        "user_id",
-        ProjectOrmBackend::Sqlx,
-    ));
+    manifest.extend(crate::generators::billing::live_billing_files("user_id"));
 
     // 1. Controllers
     manifest.push((
@@ -45,7 +41,7 @@ pub fn file_manifest(
     ));
     manifest.push((
         "src/controllers/billing_controller.rs",
-        render_billing_controller("user_id", ProjectOrmBackend::Sqlx),
+        render_billing_controller("user_id"),
     ));
     manifest.push((
         "src/controllers/mod.rs",

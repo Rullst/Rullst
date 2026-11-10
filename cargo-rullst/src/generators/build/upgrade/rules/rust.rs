@@ -10,6 +10,8 @@ use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{Attribute, Expr, Fields, Lit, Pat, Token};
 
+#[path = "rust/removed_ui.rs"]
+mod removed_ui;
 #[path = "rust/sqlx_macros.rs"]
 mod sqlx_macros;
 
@@ -39,6 +41,7 @@ pub(super) fn scan_source(
     let mut visitor = Visitor { context, out };
     visitor.visit_file(&file);
     markup::scan(&file, visitor.out);
+    removed_ui::scan(file.to_token_stream(), visitor.out);
     let facts = tokens::scan(file.to_token_stream(), context, visitor.out);
     if facts.protects_router
         && let Some(line) = facts.root_route

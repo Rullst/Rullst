@@ -90,13 +90,9 @@ pub(crate) fn hints(name: &str, matches: &ArgMatches) -> Vec<Hint> {
         "make:billing" | "make:mfa" | "make:chat-session" => {
             vec![hint(MIGRATE, "apply the generated migrations")]
         }
-        "make:middleware" | "make:cors" | "make:jwt" | "make:live" | "make:worker" => {
+        "make:middleware" | "make:cors" | "make:jwt" | "make:worker" => {
             vec![hint(DEV, "run the app with the new code wired in")]
         }
-        "make:island" => vec![hint(
-            "cargo rullst build:client",
-            "compile the island to WebAssembly",
-        )],
         "make:scalar" => vec![hint(
             DEV,
             "mount docs_controller::router(), then open /docs for the API playground",
@@ -205,7 +201,7 @@ mod tests {
     fn every_generator_has_at_most_three_hints_and_others_none() {
         for args in [
             &["rullst", "make:resource", "Product"][..],
-            &["rullst", "make:island", "Chart"],
+            &["rullst", "make:worker", "Email"],
             &["rullst", "generate:ts"],
             &["rullst", "make:billing"],
             &["rullst", "make:pwa"],
