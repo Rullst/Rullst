@@ -55,7 +55,7 @@ aws-sigv4 = { version = "1.5.1", optional = true, default-features = false, feat
 reqwest = { workspace = true, optional = true, features = ["rustls"] }
 # Installs aws-lc-rs as the rustls process default (`Server` start-up, OTLP).
 rustls = { workspace = true, optional = true, features = ["aws-lc-rs", "std"] }
-roxmltree = { version = "=0.21.1", optional = true }
+roxmltree = { version = "=0.21.2", optional = true }
 redis = { workspace = true, features = ["tokio-comp", "aio"], optional = true }
 tracing-opentelemetry = { workspace = true, optional = true }
 opentelemetry = { workspace = true, optional = true }
