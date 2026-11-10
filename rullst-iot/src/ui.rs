@@ -156,6 +156,9 @@ mod tests {
         assert_eq!(html.as_str(), html.to_string());
         assert_eq!(html.clone().into_string(), String::from(html.clone()));
         assert_eq!(html, html.as_str());
+        assert_ne!(html, "<div>other</div>");
+        assert!(PartialEq::<str>::eq(&html, html.as_str()));
+        assert!(!PartialEq::<str>::eq(&html, "<div>other</div>"));
         assert_eq!(&*html, html.as_ref());
     }
 
