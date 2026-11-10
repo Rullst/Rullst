@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794306060882,
+  "lastUpdate": 1794323933538,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -31779,6 +31779,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1548,
             "range": "± 24",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a0c0fd7aed085aed8f3a4a12d25cce5add0052ba",
+          "message": "Merge pull request #624 from Rullst/feat/v13-alpha5-app-testing-kit\n\nfeat(cli): generated application testing kit: page smoke tests, CI workflow and add browser-tests",
+          "timestamp": "2026-11-10T12:13:08-03:00",
+          "tree_id": "34b428bf1a876371d6a79895f0a2ccebb7dc0ea8",
+          "url": "https://github.com/Rullst/Rullst/commit/a0c0fd7aed085aed8f3a4a12d25cce5add0052ba"
+        },
+        "date": 1794323928806,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 701,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 917,
+            "range": "± 52",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 427,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2041,
+            "range": "± 39",
             "unit": "ns/iter"
           }
         ]
