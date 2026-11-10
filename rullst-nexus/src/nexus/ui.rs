@@ -118,8 +118,15 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
         &mut out,
         format_args!(
             "<link rel=\"icon\" type=\"image/png\" href=\"{LOGO_PATH}\" />\n\
-             <link rel=\"stylesheet\" href=\"{STYLESHEET_PATH}\" />\n\
-             <script src=\"{HTMX_PATH}\" defer></script>\n\
+             <link rel=\"stylesheet\" href=\"{STYLESHEET_PATH}\" />\n"
+        ),
+    );
+    // `Nexus::with_stylesheet`, after Nexus's own rules so that they win.
+    out.push_str(&crate::nexus::stylesheet::links());
+    let _ = std::fmt::Write::write_fmt(
+        &mut out,
+        format_args!(
+            "<script src=\"{HTMX_PATH}\" defer></script>\n\
              <script src=\"{SCRIPT_PATH}\" defer></script>\n"
         ),
     );

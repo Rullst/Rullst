@@ -19,6 +19,9 @@ updates:
       - "/rullst-security/fuzz"
       - "/rullst-studio/fuzz"
       - "/rullst/fuzz"
+      # The IoT firmware fixture builds with --locked on its own locks too.
+      - "/.github/fixtures/iot-microbit-v2/firmware"
+      - "/.github/fixtures/iot-microbit-v2/vectors"
     target-branch: "main"
     schedule:
       interval: "weekly"

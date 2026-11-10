@@ -3,7 +3,7 @@
 //! table and its backups like credentials. A client never submits a secret.
 use super::account::Account;
 use rullst::db::{Orm, sqlx};
-use rullst::security_runtime::{build_mfa_qr_svg, try_generate_mfa_secret, verify_totp_step_after};
+use rullst::security::runtime::{build_mfa_qr_svg, try_generate_mfa_secret, verify_totp_step_after};
 
 /// Second-factor failures; none of them carries secret material.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -229,8 +229,8 @@ mod tests {
 
     #[test]
     fn codes_are_accepted_once_with_or_without_spaces() {
-        let secret = rullst::security_runtime::generate_mfa_secret();
-        let Some(code) = rullst::security_runtime::generate_totp_code(&secret) else {
+        let secret = rullst::security::runtime::generate_mfa_secret();
+        let Some(code) = rullst::security::runtime::generate_totp_code(&secret) else {
             panic!("a fresh secret yields a code");
         };
         let spaced = format!("{} {}", &code[..3], &code[3..]);

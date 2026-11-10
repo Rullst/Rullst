@@ -120,7 +120,7 @@ async fn rewind(account: i32) {
 }
 
 fn code(secret: &str) -> String {
-    rullst::security_runtime::generate_totp_code(secret).unwrap()
+    rullst::security::runtime::generate_totp_code(secret).unwrap()
 }
 
 fn wrong(secret: &str) -> String {

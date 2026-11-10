@@ -8,7 +8,7 @@
 //! does not buy more guesses.
 use super::factor::{MfaError, dialect, is_enrolled};
 use rullst::db::{Orm, sqlx};
-use rullst::security_runtime::{sha256_hex, try_generate_mfa_secret};
+use rullst::security::runtime::{sha256_hex, try_generate_mfa_secret};
 use rullst::server::{HeaderMap, HeaderValue, IntoResponse, Redirect, Response, header};
 
 /// The page of the second step; the challenge cookie is sent only there.

@@ -12,7 +12,7 @@ impl OidcProvider {
     pub(crate) async fn get_jwks_for_kid(
         &self,
         kid: &str,
-    ) -> Result<std::sync::Arc<jsonwebtoken::jwk::JwkSet>, ConnectError> {
+    ) -> Result<crate::provider::JsonWebKeySet, ConnectError> {
         self.jwks_cache
             .get_for_kid(&self.jwks_uri, kid, self.http_client.as_ref())
             .await
@@ -145,7 +145,7 @@ impl OidcProvider {
                     .jwks_cache
                     .get(&self.jwks_uri, self.http_client.as_ref())
                     .await?;
-                super::kidless::sole_verification_key(&jwks, alg)?
+                super::kidless::sole_verification_key(jwks.jwk_set(), alg)?
             }
         };
         let decoding_key = jsonwebtoken::DecodingKey::from_jwk(jwk).map_err(|e| {

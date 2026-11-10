@@ -40,7 +40,8 @@ mod server_function;
 /// inserts as it is.
 ///
 /// Dynamic URL attributes (`href`, `src`, `action`, …) render `#` for script or
-/// non-media `data:` URLs; dynamic `on*`/`hx-on*` values do not compile.
+/// non-media `data:` URLs; dynamic `on*`/`hx-on*` values and Alpine.js
+/// directives (`x-*`, `@*`, `:*`) do not compile.
 ///
 /// # Example
 ///
@@ -64,6 +65,46 @@ mod server_function;
 /// Element names may be Rust keywords, such as SVG's `<use href="#icon" />`.
 /// A document may start with `<!DOCTYPE html>`, which is emitted as written.
 ///
+/// # Text
+///
+/// Since 13.0.0-alpha.5 text can be written without quotes:
+/// `<p>Welcome back, {name}!</p>`. Rust passes the macro tokens, so the text
+/// is rebuilt from where they were written:
+///
+/// - words, numbers and punctuation written together stay together, and any
+///   whitespace between them (a line break or a comment too) becomes one
+///   space;
+/// - between text and an element, `{…}` or `@` block next to it, whitespace
+///   becomes one space and none stays none;
+/// - whitespace at the start and end of an element's content, of an `@` block
+///   body and of the whole input is dropped;
+/// - `(…)` and `[…]` are text and may contain `{…}` and elements:
+///   `Inbox ({count})`.
+///
+/// Write the text as a string literal (`<p>"it's 100%"</p>`), which keeps
+/// every character and space, when it contains `<`, `>`, `{`, `}` or `@`
+/// (`html!` syntax), quotes or apostrophes (`it's` is reserved Rust syntax),
+/// `//` or `/*` (comments, as in a URL), `#` right after a word (`C#`),
+/// characters that are not Rust tokens (emoji, `€`, `—`), or needs exact
+/// whitespace (`<pre>`, `<textarea>`). `>`, character literals, a URL cut by
+/// `//`, a `///` doc comment, `if cond { <tag> }` without `@` and a string
+/// literal written directly before a word (`"quoted"text`, a Rust literal
+/// suffix) are compile errors that say so. Text, quoted or not, is author-owned source written as
+/// it is: `&amp;` stays a character reference. Whitespace between two nodes
+/// that are not unquoted text is ignored, as before. When the tokens carry no
+/// source positions (an `html!` that another macro generated), words are
+/// separated by single spaces.
+///
+/// ```rust,ignore
+/// let page = html! {
+///     <p>
+///         Welcome back, {name}. You have {count} new messages.
+///         Read <a href="/terms">the terms</a> first.
+///     </p>
+/// };
+/// // <p>Welcome back, Ana. You have 3 new messages. Read <a href="/terms">the terms</a> first.</p>
+/// ```
+///
 /// # Attributes
 ///
 /// - `name="text"` is written as it is (author-owned source), except that a
@@ -81,6 +122,16 @@ mod server_function;
 ///   name or nothing, an `Option<T>` writes `name="value"` (escaped like
 ///   `name={value}`) or nothing. HTML boolean attributes mean presence, so
 ///   `disabled="false"` would still disable: write `disabled?={locked}`.
+///
+/// Names are identifiers (Rust keywords included) and segments that start
+/// with a digit (`500ms`), joined by `-`, `:`, `::` or `.`, optionally after
+/// a leading `@` or `:`, as Alpine.js and htmx write them (since
+/// 13.0.0-alpha.5): `@click.prevent`, `:class`, `x-on:click`,
+/// `x-bind:disabled`, `hx-on::after-request`, `xlink:href`. A `:` continues
+/// a name only when written directly after it, so `required :value="v"` is
+/// two attributes. A dynamic or conditional value is rejected for every name
+/// a browser or Alpine.js runs as JavaScript: `on*`, `hx-on`, `hx-on-*`,
+/// `hx-on:*` (also `data-` prefixed), `x-*`, `@*` and `:*`.
 ///
 /// # Control flow
 ///
@@ -162,6 +213,7 @@ pub fn i18n_catalog(input: TokenStream) -> TokenStream {
 }
 
 /// Expands a `t!` call against the catalog that `catalog!` encoded into it.
+// Used by the `t!` that `catalog!` generates, as `rullst::i18n::__translate!`.
 #[doc(hidden)]
 #[proc_macro]
 pub fn __i18n_translate(input: TokenStream) -> TokenStream {

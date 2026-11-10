@@ -122,9 +122,7 @@ mod tests {
     fn both_xss_event_names_export_the_xss_severity() {
         crate::sanitizer::HtmlSanitizer::sanitize("<script>alert(1)</script><p>x</p>");
         let sanitized = crate::telemetry::SecurityStore::global()
-            .live_events
-            .lock()
-            .unwrap()
+            .live_events()
             .iter()
             .find(|event| event.event_type == "XSS_SANITIZED")
             .cloned()

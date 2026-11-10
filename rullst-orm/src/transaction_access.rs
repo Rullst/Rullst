@@ -66,6 +66,7 @@ pub fn ensure_allowed() -> Result<(), crate::Error> {
 /// the returned guard is dropped. Other ORM calls on that transaction then fail
 /// with `Validation` instead of waiting for its lock, which the stream keeps
 /// between rows, forever.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub fn hold_for_stream(transaction: &SharedTransaction) -> StreamHold {
     let key = transaction_key(transaction);
@@ -75,6 +76,7 @@ pub fn hold_for_stream(transaction: &SharedTransaction) -> StreamHold {
 }
 
 /// Releases a transaction marked by [`hold_for_stream`] when dropped.
+// Returned by `hold_for_stream`, which `#[derive(Orm)]` uses.
 #[doc(hidden)]
 #[must_use = "the stream hold is released when the guard is dropped"]
 pub struct StreamHold {

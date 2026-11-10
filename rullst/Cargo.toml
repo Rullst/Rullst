@@ -59,7 +59,7 @@ nexus = ["dep:rullst-nexus"]
 # alone no longer enables; it adds `rullst-ai`.
 nexus-ai = ["nexus", "rullst-nexus/ai"]
 nexus-tz = ["nexus", "rullst-nexus/tz"]
-studio = ["dep:rullst-studio", "rullst-core/studio"]
+studio = ["dep:rullst-studio", "rullst-studio/local", "rullst-core/studio"]
 auth = ["dep:rullst-auth"]
 auth-jwt = ["auth", "rullst-auth/jwt"]
 auth-sqlite = ["auth-jwt", "rullst-auth/sqlite"]

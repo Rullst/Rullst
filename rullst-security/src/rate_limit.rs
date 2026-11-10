@@ -36,11 +36,12 @@ impl Default for AdmissionState {
     }
 }
 
-/// Process-global store used by [`is_rate_limited`].
+/// Process-global store used by [`is_rate_limited`]; private, so its entries
+/// change only through it.
 ///
 /// Entries are keyed by client key and policy (see [`is_rate_limited`]), not
 /// by the client key alone.
-pub fn global_rate_limit_store() -> &'static DashMap<String, (Instant, AtomicU64)> {
+fn global_rate_limit_store() -> &'static DashMap<String, (Instant, AtomicU64)> {
     RATE_LIMIT_STORE.get_or_init(DashMap::new)
 }
 
@@ -192,8 +193,7 @@ impl StoreKey {
     ///
     /// A shared store holds entries of several policies, so each one expires
     /// after the window encoded in its own key. Keys that do not carry a
-    /// policy (a single-policy store, or an entry inserted directly into the
-    /// public global store) fall back to the longest window seen.
+    /// policy (a single-policy store) fall back to the longest window seen.
     fn entry_window(self, entry_key: &str, longest_window: Duration) -> Duration {
         match self {
             Self::Client => longest_window,

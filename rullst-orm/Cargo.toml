@@ -70,6 +70,9 @@ walkdir = "2.5.0"
 # or `drivers-all`. Without one, `Orm::init` reports the missing feature.
 default = []
 drivers-all = ["sqlx/sqlite", "sqlx/postgres", "sqlx/mysql"]
+# Test helpers for Rullst's own test suites, outside the 13.x stability
+# promise: `Outbox::claim_next_at` and `query_cache::model_hash_key`.
+test-util = []
 redis = ["dep:redis", "dep:rustls", "dep:sha2", "dep:url", "rullst-orm-macros/redis"]
 mongodb = ["dep:mongodb"]
 duckdb = ["dep:duckdb"]
@@ -87,6 +90,8 @@ strict-mysql = ["sqlx/mysql"]
 strict-sqlite = ["sqlx/sqlite"]
 
 [dev-dependencies]
+# Enables the `test-util` helpers for this crate's own integration tests.
+rullst-orm = { path = ".", features = ["test-util"] }
 mutants = "0.0.4"
 rand = { workspace = true }
 axum = { workspace = true }

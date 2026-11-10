@@ -81,7 +81,7 @@ impl OpenAiProvider {
             .json(&body)
             .send()
             .await
-            .map_err(|error| AiError::RequestError(error.without_url()))?;
+            .map_err(AiError::request)?;
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
         reject_incomplete_choice(&json, self.provider_name())?;
@@ -186,7 +186,7 @@ impl AiProvider for OpenAiProvider {
             }))
             .send()
             .await
-            .map_err(|error| AiError::RequestError(error.without_url()))?;
+            .map_err(AiError::request)?;
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
         embedding_values(

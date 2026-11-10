@@ -388,7 +388,8 @@ fn restored_effects(parsed: &ParsedModel) -> TokenStream {
             rullst_orm::after_commit(move || async move {
                 if let Some(engine) = rullst_orm::scout::get_search_engine() {
                     let payload: rullst_orm::_serde_json::Value =
-                        rullst_orm::_serde_json::from_str(&event.payload)?;
+                        rullst_orm::_serde_json::from_str(&event.payload)
+                            .map_err(|error| rullst_orm::Error::SerializationError(error.to_string()))?;
                     engine.update(event.table, event.id, payload).await?;
                 }
                 Ok(())
@@ -413,9 +414,9 @@ fn restored_effects(parsed: &ParsedModel) -> TokenStream {
                 #invalidate
                 if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
                     let topic = format!("orm:events:{}:updated", event.table);
-                    let _: usize = connection.publish(&topic, &event.payload).await?;
+                    let _: usize = connection.publish(&topic, &event.payload).await.map_err(|error| rullst_orm::Error::CacheError(error.to_string()))?;
                     let topic = format!("orm:events:{}:saved", event.table);
-                    let _: usize = connection.publish(&topic, &event.payload).await?;
+                    let _: usize = connection.publish(&topic, &event.payload).await.map_err(|error| rullst_orm::Error::CacheError(error.to_string()))?;
                 }
                 invalidated?;
                 Ok(())

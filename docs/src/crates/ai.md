@@ -51,15 +51,41 @@ new ones. Re-embed stored vectors before calling `with_embedding_model`.
 Defaults follow provider retirements, so pin the model your account supports
 with `with_model`.
 
-When a provider answers with an HTTP error, the `AiError::ApiError` text is
-`<Provider> returned HTTP <status>`, followed by `: ` and the provider's own
-error code and message when the body is JSON that carries one, for example
-`Gemini returned HTTP 429 Too Many Requests: RESOURCE_EXHAUSTED: You exceeded
-your current quota…`. At most 16 KiB of the body is read; the detail is one
-line of at most 300 characters, with URL queries, URL credentials,
-`key=`/`token=` values and key-shaped tokens redacted, and HTML or plain-text
-bodies add nothing. Match the status on the `HTTP <code>` prefix. The detail is
-the provider's wording for logs and operators, not a message for end users.
+When a provider answers with an HTTP error, every provider and streaming
+transport returns `AiError::HttpStatus(AiHttpError)` (since 13.0.0-alpha.5;
+earlier releases returned `AiError::ApiError`). `status()` is the code as a
+number, `retry_after()` the `Retry-After` header in seconds (or the
+`retryDelay` of Gemini's `RetryInfo`), and `code()` and `message()` the
+provider's own error code and message when the body is JSON that carries one.
+At most 16 KiB of the body is read; the message is one line of at most 300
+characters, with URL queries, URL credentials, `key=`/`token=` values and
+key-shaped tokens redacted, and HTML or plain-text bodies add nothing. The
+text is `<Provider> returned HTTP <status>`, followed by `: ` and the code and
+message, for example `Gemini returned HTTP 429 Too Many Requests:
+RESOURCE_EXHAUSTED: You exceeded your current quota…`. The message is the
+provider's wording for logs and operators, not a message for end users.
+
+```rust,no_run
+use rullst_ai::{AiError, AiProvider, providers::gemini::GeminiProvider};
+
+async fn draft(provider: &GeminiProvider) -> Result<String, String> {
+    match provider.prompt("Draft a lesson outline").await {
+        Ok(text) => Ok(text),
+        Err(AiError::HttpStatus(error)) if error.status() == 429 => Err(match error.retry_after() {
+            Some(delay) => format!("The AI quota is used up; try again in {} s.", delay.as_secs()),
+            None => "The AI quota is used up; try again later.".to_string(),
+        }),
+        Err(AiError::HttpStatus(error)) if error.status() == 404 => {
+            Err("The configured AI model is not available.".to_string())
+        }
+        Err(other) => Err(other.to_string()),
+    }
+}
+```
+
+Transport failures are `AiError::RequestError(AiRequestError)` (`is_timeout()`,
+`is_connect()`), and JSON failures `AiError::SerializationError(AiJsonError)`;
+neither exposes the HTTP or JSON library's own type.
 
 ## Guarded client
 

@@ -3,6 +3,14 @@
 use super::*;
 use alloc::string::ToString;
 use ed25519_dalek::{Signer, SigningKey};
+use sha2::{Digest, Sha256};
+
+fn sign(manifest: &OtaManifest) -> Vec<u8> {
+    signing_key()
+        .sign(&manifest.signing_bytes().unwrap())
+        .to_bytes()
+        .to_vec()
+}
 
 fn signing_key() -> SigningKey {
     SigningKey::from_bytes(&[7_u8; 32])
@@ -41,7 +49,7 @@ fn signed_update_moves_only_to_the_inactive_partition_after_full_verification() 
     manager
         .verify_update(&manifest, firmware, &signature)
         .unwrap();
-    assert_eq!(manager.status, OtaStatus::Verified);
+    assert_eq!(manager.status(), OtaStatus::Verified);
     assert_eq!(manager.pending_manifest(), Some(&manifest));
 
     let commit = manager.commit_verified_update().unwrap();
@@ -49,10 +57,10 @@ fn signed_update_moves_only_to_the_inactive_partition_after_full_verification() 
     assert_eq!(commit.version(), "12.0.0");
     assert_eq!(commit.rollback_counter(), 2);
     // The receipt selects B for the next boot; the device still runs A.
-    assert_eq!(manager.current_partition, BootPartition::PartitionA);
-    assert_eq!(manager.firmware_version, "12.0.0");
+    assert_eq!(manager.current_partition(), BootPartition::PartitionA);
+    assert_eq!(manager.firmware_version(), "12.0.0");
     assert_eq!(manager.rollback_counter(), 2);
-    assert_eq!(manager.status, OtaStatus::Idle);
+    assert_eq!(manager.status(), OtaStatus::Idle);
     assert!(matches!(
         manager.commit_verified_update(),
         Err(OtaError::NoVerifiedUpdate)
@@ -79,11 +87,11 @@ fn a_second_update_before_reboot_never_targets_the_running_bank() {
         );
         let commit = manager.commit_verified_update().unwrap();
         assert_eq!(commit.target_partition(), BootPartition::PartitionB);
-        assert_eq!(manager.current_partition, BootPartition::PartitionA);
+        assert_eq!(manager.current_partition(), BootPartition::PartitionA);
     }
 
     // After the platform reboots into B and reports it, A is the target.
-    manager.current_partition = BootPartition::PartitionB;
+    manager = manager.with_running_partition(BootPartition::PartitionB);
     let (manifest, signature) = signed_update(4, b"third image");
     manager
         .verify_update(&manifest, b"third image", &signature)
@@ -92,6 +100,39 @@ fn a_second_update_before_reboot_never_targets_the_running_bank() {
         manager.verified_target_partition().unwrap(),
         BootPartition::PartitionA
     );
+}
+
+#[test]
+fn reporting_the_running_bank_discards_an_update_verified_for_the_other_one() {
+    let (manifest, signature) = signed_update(2, b"image");
+    let mut manager = manager(1);
+    assert_eq!(manager.status(), OtaStatus::Idle);
+    assert_eq!(manager.firmware_version(), "11.0.0");
+    manager
+        .verify_update(&manifest, b"image", &signature)
+        .unwrap();
+    assert_eq!(manager.status(), OtaStatus::Verified);
+    assert_eq!(
+        manager.verified_target_partition().unwrap(),
+        BootPartition::PartitionB
+    );
+
+    let mut manager = manager.with_running_partition(BootPartition::PartitionB);
+    assert_eq!(manager.current_partition(), BootPartition::PartitionB);
+    assert_eq!(manager.status(), OtaStatus::Idle);
+    assert!(manager.pending_manifest().is_none());
+    assert!(matches!(
+        manager.commit_verified_update(),
+        Err(OtaError::NoVerifiedUpdate)
+    ));
+    manager
+        .verify_update(&manifest, b"image", &signature)
+        .unwrap();
+    let commit = manager.commit_verified_update().unwrap();
+    assert_eq!(commit.target_partition(), BootPartition::PartitionA);
+    assert_eq!(manager.current_partition(), BootPartition::PartitionB);
+    assert_eq!(manager.firmware_version(), "12.0.0");
+    assert_eq!(manager.rollback_counter(), 2);
 }
 
 #[test]
@@ -131,18 +172,28 @@ fn manifests_keys_signatures_hashes_targets_and_counters_fail_closed() {
         })
     ));
 
+    // A publisher-signed manifest whose length or digest differs from the
+    // image fails on the image; changed after signing, it fails the signature.
     let mut wrong_length = manifest.clone();
     wrong_length.firmware_len += 1;
     assert!(matches!(
-        manager(1).verify_update(&wrong_length, firmware, &signature),
+        manager(1).verify_update(&wrong_length, firmware, &sign(&wrong_length)),
         Err(OtaError::FirmwareLengthMismatch { .. })
+    ));
+    assert!(matches!(
+        manager(1).verify_update(&wrong_length, firmware, &signature),
+        Err(OtaError::SignatureInvalid)
     ));
 
     let mut wrong_hash = manifest.clone();
     wrong_hash.firmware_sha256 = [0_u8; 32];
     assert!(matches!(
-        manager(1).verify_update(&wrong_hash, firmware, &signature),
+        manager(1).verify_update(&wrong_hash, firmware, &sign(&wrong_hash)),
         Err(OtaError::FirmwareHashMismatch)
+    ));
+    assert!(matches!(
+        manager(1).verify_update(&wrong_hash, firmware, &signature),
+        Err(OtaError::SignatureInvalid)
     ));
 
     assert!(matches!(
@@ -151,6 +202,16 @@ fn manifests_keys_signatures_hashes_targets_and_counters_fail_closed() {
     ));
     assert!(matches!(
         manager(1).verify_update(&manifest, firmware, &[0_u8; 64]),
+        Err(OtaError::SignatureInvalid)
+    ));
+
+    // The signature is checked before the image's length and digest.
+    assert!(matches!(
+        manager(1).verify_update(&wrong_hash, firmware, &[0_u8; 63]),
+        Err(OtaError::InvalidSignatureEncoding)
+    ));
+    assert!(matches!(
+        manager(1).verify_update(&wrong_length, firmware, &[0_u8; 64]),
         Err(OtaError::SignatureInvalid)
     ));
 }
@@ -171,7 +232,7 @@ fn legacy_apis_and_every_typed_error_remain_explicit() {
         manager.commit_update("2.0.0"),
         Err(OtaError::LegacyApiUnsupported { .. })
     ));
-    assert_eq!(manager.status, OtaStatus::Failed);
+    assert_eq!(manager.status(), OtaStatus::Failed);
 
     let errors = [
         OtaError::EmptyTarget,
@@ -196,6 +257,8 @@ fn legacy_apis_and_every_typed_error_remain_explicit() {
         OtaError::LegacyApiUnsupported {
             replacement: "replacement",
         },
+        OtaError::AllocationFailed,
+        OtaError::MalformedManifest,
     ];
     for error in errors {
         assert!(!error.to_string().is_empty());
@@ -240,4 +303,50 @@ fn only_a_conflict_naming_the_manifest_counter_confirms_an_uncertain_commit() {
         RollbackCounterError::CorruptState,
         3
     ));
+}
+
+#[test]
+fn signing_bytes_are_allocated_at_their_exact_length() {
+    let (manifest, _) = signed_update(7, b"firmware");
+    let bytes = manifest.signing_bytes().unwrap();
+    // Domain (23) + 4 + "esp32-s3" (8) + 4 + "12.0.0" (6) + 8 + 8 + 32.
+    assert_eq!(bytes.len(), 93);
+    assert_eq!(bytes.capacity(), bytes.len());
+    assert_eq!(&bytes[..23], b"RULLST-OTA-MANIFEST-V1\0");
+    assert_eq!(&bytes[23..27], &8_u32.to_be_bytes());
+}
+
+#[test]
+fn a_streamed_update_is_downloading_until_it_finishes() {
+    let firmware = b"chunked firmware image";
+    let (manifest, signature) = signed_update(2, firmware);
+    let mut ota = manager(1);
+    let mut verifier = ota.begin_update(&manifest, &signature).unwrap();
+    assert_eq!(verifier.manager.status, OtaStatus::Downloading);
+    verifier.update(&firmware[..5]).unwrap();
+    verifier.update(&firmware[5..]).unwrap();
+    assert_eq!(verifier.manager.status, OtaStatus::Downloading);
+    verifier.finish().unwrap();
+    assert_eq!(ota.status(), OtaStatus::Verified);
+
+    // The manifest a finished verifier leaves behind is the verified one.
+    assert_eq!(ota.pending_manifest(), Some(&manifest));
+    assert_eq!(OtaManifest::empty().firmware_len(), 0);
+}
+
+#[test]
+fn a_slice_of_the_wrong_length_fails_without_a_pending_update() {
+    let firmware = b"exact length image";
+    let (manifest, signature) = signed_update(2, firmware);
+    let mut ota = manager(1);
+    ota.verify_update(&manifest, firmware, &signature).unwrap();
+    assert_eq!(
+        ota.verify_update(&manifest, &firmware[..4], &signature),
+        Err(OtaError::FirmwareLengthMismatch {
+            expected: firmware.len() as u64,
+            actual: 4
+        })
+    );
+    assert_eq!(ota.status(), OtaStatus::Failed);
+    assert!(ota.pending_manifest().is_none());
 }

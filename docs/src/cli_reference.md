@@ -512,7 +512,7 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
-The v13 CLI's `rullst-upgrade-rules-v4` catalog (120 rules) parses Rust sources
+The v13 CLI's `rullst-upgrade-rules-v4` catalog (135 rules) parses Rust sources
 (with `syn`; comments, doc comments and strings never match an API rule), Cargo
 manifests and generated project files, and reports each finding as
 `MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed
@@ -1431,7 +1431,7 @@ Routes, all inside the CSRF layer:
 | `GET`, `POST /login/mfa` | no: the challenge cookie names the account (rate limit on the POST) | the second sign-in step |
 
 The secret is generated and kept on the server; a client never submits one.
-The QR code is `rullst::security_runtime::build_mfa_qr_svg` inline in the page
+The QR code is `rullst::security::runtime::build_mfa_qr_svg` inline in the page
 (no `data:` URL, no script), labelled with the account's e-mail and the issuer
 `MFA_ISSUER`, else `APP_NAME` (each read with `rullst::config::project_setting`:
 the process environment, then `.env`), else the `APPLICATION_NAME` constant of

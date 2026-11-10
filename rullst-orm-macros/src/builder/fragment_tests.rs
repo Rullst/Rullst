@@ -43,7 +43,10 @@ fn cached_reads_decrypt_only_models_with_encrypted_fields() {
     assert!(
         read.contains("query_key_for_model (\"people\" , true , & query_str , & query_bindings")
     );
-    assert!(read.contains("let mut model = Person :: from_json_value (item) ?"));
+    // The ORM has no public `From<serde_json::Error>`; the read maps it.
+    assert!(read.contains(
+        "let mut model = Person :: from_json_value (item) . map_err (| error | rullst_orm :: Error :: SerializationError (error . to_string ())) ?"
+    ));
 
     let plain = parse(parse_quote! { #[orm(table = "notes")] struct Note { id: i32 } });
     let read = super::query_cache::generate_cache_read(&plain).to_string();

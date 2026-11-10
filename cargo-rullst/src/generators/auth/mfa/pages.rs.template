@@ -74,7 +74,7 @@ fn grouped(secret: &str) -> String {
         .join(" ")
 }
 
-/// The `<svg>` element of `rullst::security_runtime::build_mfa_qr_svg`,
+/// The `<svg>` element of `rullst::security::runtime::build_mfa_qr_svg`,
 /// without its XML declaration.
 fn qr_code(svg: &str) -> Markup {
     // Trusted: Rullst renders it from the server's own secret, with

@@ -95,7 +95,7 @@ pub async fn json_response(
     if body.is_empty() {
         return Ok(Value::Null);
     }
-    serde_json::from_slice(&body).map_err(Into::into)
+    serde_json::from_slice(&body).map_err(crate::Error::json)
 }
 
 pub fn request_error(provider: &str) -> Error {

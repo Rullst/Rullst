@@ -7,6 +7,7 @@ mod listen;
 mod shutdown;
 mod startup;
 
+// Used by `rullst-studio`.
 #[doc(hidden)]
 pub use environment::read_optional_environment_variable;
 pub(super) use environment::{development_console_enabled, parse_dotenv, parse_switch};
@@ -101,6 +102,11 @@ pub struct Server {
     /// Whether successful `/health` and `/ready` requests are access-logged;
     /// resolved from the environment when the server starts.
     pub(crate) log_health_probes: bool,
+    /// [`Server::access_log_paths`], which replaces `[app] access_log_paths`.
+    pub(crate) access_log_paths: Option<crate::config::AccessLogPaths>,
+    /// Whether access-log lines show the matched route; resolved from
+    /// `access_log_paths` and the environment when the server starts.
+    pub(crate) access_log_route_paths: bool,
     pub(crate) monitor: Option<crate::monitor::Monitor>,
     #[cfg(feature = "orm")]
     pub(crate) migrations: Option<Vec<Box<dyn rullst_orm::schema::Migration>>>,
@@ -123,6 +129,8 @@ impl Server {
             dev_queue: None,
             auto_migrate: None,
             log_health_probes: true,
+            access_log_paths: None,
+            access_log_route_paths: false,
             monitor: None,
             #[cfg(feature = "orm")]
             migrations: None,
@@ -146,6 +154,8 @@ impl Server {
             dev_queue: None,
             auto_migrate: None,
             log_health_probes: true,
+            access_log_paths: None,
+            access_log_route_paths: false,
             monitor: None,
             #[cfg(feature = "orm")]
             migrations: None,
@@ -352,6 +362,42 @@ impl Server {
     /// ```
     pub fn with_monitor(mut self, monitor: crate::monitor::Monitor) -> Self {
         self.monitor = Some(monitor);
+        self
+    }
+
+    /// Chooses the request path of each `[HTTP] METHOD path -> status`
+    /// access-log line, replacing `[app] access_log_paths` of `Rullst.toml`.
+    ///
+    /// A path can carry a secret, such as the token of a booking or sign-in
+    /// link, and the access log goes wherever stdout goes. By default
+    /// ([`AccessLogPaths::Auto`]) Staging and Production write the route that
+    /// matched (`GET /booking/{token} -> 200`) and Development and Test the
+    /// path as sent; [`AccessLogPaths::Route`] and [`AccessLogPaths::Full`]
+    /// choose one in every environment. A request that matched no route
+    /// writes its path cut to 128 bytes with bytes outside visible ASCII
+    /// escaped. The query string is never written.
+    ///
+    /// ```rust,no_run
+    /// use rullst_core::config::AccessLogPaths;
+    /// use rullst_core::{Server, routes, routing::get};
+    ///
+    /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    /// // rullst-access: public — the token in the path is the booking link's capability.
+    /// Server::new(routes![get("/booking/{token}" => || async { "OK" })])
+    ///     .access_log_paths(AccessLogPaths::Route)
+    ///     .run(3000)
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Added in 13.0.0-alpha.5.
+    ///
+    /// [`AccessLogPaths::Auto`]: crate::config::AccessLogPaths::Auto
+    /// [`AccessLogPaths::Route`]: crate::config::AccessLogPaths::Route
+    /// [`AccessLogPaths::Full`]: crate::config::AccessLogPaths::Full
+    pub fn access_log_paths(mut self, paths: crate::config::AccessLogPaths) -> Self {
+        self.access_log_paths = Some(paths);
         self
     }
 

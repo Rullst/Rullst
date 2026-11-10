@@ -83,8 +83,11 @@ fn test_ota_partition_manager() {
         signing_key.verifying_key().to_bytes(),
     )
     .unwrap();
-    assert_eq!(ota.current_partition, BootPartition::PartitionA);
-    assert_eq!(ota.current_partition.opposite(), BootPartition::PartitionB);
+    assert_eq!(ota.current_partition(), BootPartition::PartitionA);
+    assert_eq!(
+        ota.current_partition().opposite(),
+        BootPartition::PartitionB
+    );
 
     assert_eq!(
         ota.commit_verified_update(),
@@ -95,7 +98,7 @@ fn test_ota_partition_manager() {
     let commit = ota.commit_verified_update().unwrap();
     assert_eq!(commit.target_partition(), BootPartition::PartitionB);
     // The device keeps running A until the platform reboots into B.
-    assert_eq!(ota.current_partition, BootPartition::PartitionA);
+    assert_eq!(ota.current_partition(), BootPartition::PartitionA);
     assert_eq!(commit.version(), "12.1.0");
     assert_eq!(ota.rollback_counter(), 121);
     assert_eq!(
@@ -199,8 +202,8 @@ fn test_legacy_ota_apis_are_typed_and_fail_closed() {
             replacement: "OtaManager::commit_verified_update",
         })
     );
-    assert_eq!(manager.current_partition, BootPartition::PartitionA);
-    assert_eq!(manager.firmware_version, "1.0.0");
+    assert_eq!(manager.current_partition(), BootPartition::PartitionA);
+    assert_eq!(manager.firmware_version(), "1.0.0");
 }
 
 #[test]

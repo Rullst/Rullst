@@ -46,6 +46,7 @@ type QueryArguments = <crate::RullstDatabase as sqlx::Database>::Arguments;
 
 /// Binds one [`RullstValue`] to a SQLx query. Generated query builders and
 /// `Orm::raw` call it, so each variant is bound in this one place.
+// Used by `#[derive(Orm)]` and `rullst-nexus`.
 #[doc(hidden)]
 pub trait BindRullstValue: Sized {
     fn bind_rullst_value(self, value: &RullstValue) -> Self;

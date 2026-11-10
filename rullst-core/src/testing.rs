@@ -18,6 +18,7 @@ mod snapshot;
 pub use crate::assert_html_snapshot;
 pub use html_check::{HtmlIssue, HtmlIssueKind, html_issues};
 pub use html_normalize::{CSRF_TOKEN_PLACEHOLDER, NONCE_PLACEHOLDER, normalize_html};
+// Used by `assert_html_snapshot!`.
 #[doc(hidden)]
 pub use snapshot::__assert_html_snapshot;
 pub use snapshot::{SnapshotOptions, UPDATE_SNAPSHOTS_ENV};

@@ -25,9 +25,9 @@ async fn history_restores_and_boosted_requests_receive_the_whole_page() {
         ("HX-History-Restore-Request", "true"),
     ])
     .await;
-    assert!(restore.is_htmx && restore.history_restore && !restore.boosted);
+    assert!(restore.is_htmx && restore.is_history_restore() && !restore.is_boosted());
     let boosted = htmx_request(&[("HX-Request", "true"), ("HX-Boosted", "true")]).await;
-    assert!(boosted.is_htmx && boosted.boosted && !boosted.history_restore);
+    assert!(boosted.is_htmx && boosted.is_boosted() && !boosted.is_history_restore());
     for request in [&restore, &boosted] {
         for page in [
             render_page(request, "T", content()).0,
@@ -53,6 +53,7 @@ async fn history_restores_and_boosted_requests_receive_the_whole_page() {
         &[("HX-Request", "true"), ("HX-Boosted", "1")],
     ] {
         let request = htmx_request(headers).await;
+        assert!(!request.is_history_restore() && !request.is_boosted());
         assert_eq!(render_page(&request, "T", content()).0, "<p>fragment</p>");
     }
     // Without `HX-Request` the page is the one a browser navigation receives.

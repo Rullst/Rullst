@@ -7,16 +7,12 @@
     "async-trait": "0.1",
     "aws-sdk-sesv2": "1",
     "axum": "0.8",
-    "base64": "0.23",
     "chrono": "0.4",
-    "dashmap": "6",
     "http": "1",
-    "jsonwebtoken": "11",
     "mongodb": "3",
     "opentelemetry_sdk": "0.33",
     "pgvector": "0.4",
     "redis": "1",
-    "reqwest": "0.13",
     "secrecy": "0.10",
     "serde": "1",
     "serde_json": "1",
@@ -36,5 +32,8 @@
     "utoipa": "6",
     "validator": "0.21",
     "zeroize": "1"
+  },
+  "notes": {
+    "redis": "Deliberate public dependency: Orm::redis_client and Orm::redis_manager (redis feature) hand the application the ORM's own Redis client and connection manager."
   }
 }

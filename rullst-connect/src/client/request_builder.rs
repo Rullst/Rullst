@@ -140,7 +140,7 @@ impl ResponseWrapper {
     where
         T: serde::de::DeserializeOwned,
     {
-        let t = serde_json::from_value(self.res.body)?;
+        let t = serde_json::from_value(self.res.body).map_err(crate::error::ConnectError::json)?;
         Ok(t)
     }
 }

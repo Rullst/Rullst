@@ -190,7 +190,7 @@ impl HttpClient for ReqwestClient {
                 builder
                     .send()
                     .await
-                    .map_err(crate::error::ConnectError::from)?
+                    .map_err(crate::error::ConnectError::http)?
             };
 
             #[cfg(feature = "retry")]
@@ -248,7 +248,7 @@ impl HttpClient for ReqwestClient {
             while let Some(chunk) = res
                 .chunk()
                 .await
-                .map_err(crate::error::ConnectError::from)?
+                .map_err(crate::error::ConnectError::http)?
             {
                 if body_bytes.len() + chunk.len() > MAX_BODY_SIZE {
                     return Err(crate::error::ConnectError::Provider(

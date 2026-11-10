@@ -152,7 +152,7 @@ impl AiClient {
     {
         let text = AiGuardrails::prepare(text)?;
         let response = self.provider.prompt_json(&text).await?;
-        serde_json::from_str(clean_json_markdown(&response)).map_err(AiError::from)
+        serde_json::from_str(clean_json_markdown(&response)).map_err(AiError::json)
     }
 
     /// Requests provider-enforced JSON Schema output and deserializes it into `T`.
@@ -169,7 +169,7 @@ impl AiClient {
     {
         let text = AiGuardrails::prepare(text)?;
         let response = self.provider.structured_output(&text, schema).await?;
-        serde_json::from_str(clean_json_markdown(&response)).map_err(AiError::from)
+        serde_json::from_str(clean_json_markdown(&response)).map_err(AiError::json)
     }
 
     /// The old method did not accept a schema and therefore could not provide structured output.

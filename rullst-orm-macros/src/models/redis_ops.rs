@@ -73,16 +73,16 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
             None => quote! { &self.#field },
         };
         to_hash_fields.push(quote! {
-            (#field_str, rullst_orm::_serde_json::to_string(&#stored_value)?)
+            (#field_str, rullst_orm::_serde_json::to_string(&#stored_value).map_err(|error| rullst_orm::Error::SerializationError(error.to_string()))?)
         });
 
         let decoded_value = match encrypted_kind {
             Some(EncryptedFieldKind::String) => quote! {
-                let stored: String = rullst_orm::_serde_json::from_str(serialized)?;
+                let stored: String = rullst_orm::_serde_json::from_str(serialized).map_err(|error| rullst_orm::Error::SerializationError(error.to_string()))?;
                 rullst_orm::privacy::decrypt_model_field(&stored, #table_name, #field_str)?
             },
             Some(EncryptedFieldKind::OptionalString) => quote! {
-                let stored: Option<String> = rullst_orm::_serde_json::from_str(serialized)?;
+                let stored: Option<String> = rullst_orm::_serde_json::from_str(serialized).map_err(|error| rullst_orm::Error::SerializationError(error.to_string()))?;
                 match stored {
                     Some(value) => Some(rullst_orm::privacy::decrypt_model_field(
                         &value,
@@ -92,7 +92,9 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
                     None => None,
                 }
             },
-            None => quote! { rullst_orm::_serde_json::from_str(serialized)? },
+            None => {
+                quote! { rullst_orm::_serde_json::from_str(serialized).map_err(|error| rullst_orm::Error::SerializationError(error.to_string()))? }
+            }
         };
         // A missing or malformed cache field means the cached model is corrupt;
         // do not invent a Default value that the model never promised to have.
@@ -277,7 +279,9 @@ mod tests {
         assert!(!generated.contains("unwrap_or_default"));
         assert!(!generated.contains("String :: from (\"null\")"));
         assert!(generated.contains("is missing field"));
-        assert!(generated.contains("from_str (serialized) ?"));
+        assert!(generated.contains(
+            "from_str (serialized) . map_err (| error | rullst_orm :: Error :: SerializationError (error . to_string ())) ?"
+        ));
     }
 
     #[test]
