@@ -1,4 +1,4 @@
-use super::{Invoice, ValidatedInvoiceMoney, invalid_invoice};
+use super::{Invoice, format_money, invalid_invoice};
 use crate::error::CapitalError;
 use printpdf::{
     BuiltinFont, Mm, Op, ParsedFont, PdfDocument, PdfFontHandle, PdfPage, PdfSaveOptions, Point,
@@ -16,8 +16,8 @@ impl Invoice {
     /// Portuguese/Western-European characters supported by WinAnsi are
     /// preserved. Use [`Self::generate_pdf_with_font`] for other scripts.
     pub fn generate_pdf(&self) -> Result<Vec<u8>, CapitalError> {
-        let money = self.validated_money()?;
-        let lines = self.render_lines(&money);
+        let total_minor = self.validated_total()?;
+        let lines = self.render_lines(total_minor);
         for line in &lines {
             if !line.chars().all(is_win_ansi) {
                 return Err(invalid_invoice(
@@ -33,8 +33,8 @@ impl Invoice {
         if font_bytes.is_empty() || font_bytes.len() > MAX_FONT_BYTES {
             return Err(invalid_invoice("PDF font must contain 1 byte to 8 MiB"));
         }
-        let money = self.validated_money()?;
-        let lines = self.render_lines(&money);
+        let total_minor = self.validated_total()?;
+        let lines = self.render_lines(total_minor);
         let mut warnings = Vec::new();
         let font = ParsedFont::from_bytes(font_bytes, 0, &mut warnings)
             .ok_or_else(|| invalid_invoice("PDF font could not be parsed"))?;
@@ -53,22 +53,24 @@ impl Invoice {
         render_pdf(self, lines, Some(font))
     }
 
-    fn render_lines(&self, money: &ValidatedInvoiceMoney) -> Vec<String> {
+    fn render_lines(&self, total_minor: u64) -> Vec<String> {
+        let labels = &self.labels;
         let mut lines = vec![
-            format!("Invoice {}", self.invoice_id),
-            format!("Billed To: {}", self.customer_email),
-            format!("Date: {}", self.date.format("%Y-%m-%d")),
+            format!("{} {}", labels.title, self.invoice_id),
+            format!("{}: {}", labels.billed_to, self.customer_email),
+            format!("{}: {}", labels.date, self.date.format("%Y-%m-%d")),
             String::new(),
+            format!("{} | {}", labels.description, labels.amount),
         ];
         let currency = self.currency.to_ascii_uppercase();
-        for (item, amount_minor) in self.items.iter().zip(&money.item_amounts_minor) {
+        for item in &self.items {
             let chunks = wrap_chars(&item.description, DESCRIPTION_CHARS_PER_LINE);
             for (index, chunk) in chunks.into_iter().enumerate() {
                 if index == 0 {
                     lines.push(format!(
                         "{} | {}",
                         chunk,
-                        format_money(*amount_minor, &currency)
+                        format_money(item.amount_minor, &currency)
                     ));
                 } else {
                     lines.push(format!("  {chunk}"));
@@ -77,8 +79,9 @@ impl Invoice {
         }
         lines.push(String::new());
         lines.push(format!(
-            "Total: {}",
-            format_money(money.total_minor, &currency)
+            "{}: {}",
+            labels.total,
+            format_money(total_minor, &currency)
         ));
         lines
     }
@@ -89,7 +92,8 @@ fn render_pdf(
     lines: Vec<String>,
     external_font: Option<ParsedFont>,
 ) -> Result<Vec<u8>, CapitalError> {
-    let mut document = PdfDocument::new(&format!("Invoice {}", invoice.invoice_id));
+    let mut document =
+        PdfDocument::new(&format!("{} {}", invoice.labels.title, invoice.invoice_id));
     document.metadata.info.creator = "Rullst Capital".to_string();
     document.metadata.info.producer = "Rullst Capital".to_string();
     document.metadata.info.subject = "Bounded invoice document".to_string();
@@ -156,20 +160,6 @@ fn wrap_chars(value: &str, width: usize) -> Vec<String> {
     result
 }
 
-fn format_money(amount_minor: u64, currency: &str) -> String {
-    let exponent = crate::currency::minor_unit_exponent(currency);
-    if exponent == 0 {
-        return format!("{amount_minor} {currency}");
-    }
-    let scale = 10_u64.pow(exponent);
-    format!(
-        "{}.{:0width$} {currency}",
-        amount_minor / scale,
-        amount_minor % scale,
-        width = exponent as usize
-    )
-}
-
 fn is_win_ansi(character: char) -> bool {
     matches!(character as u32, 0x20..=0x7e | 0xa0..=0xff)
         || matches!(
@@ -212,17 +202,8 @@ mod tests {
     use printpdf::PdfParseOptions;
 
     fn invoice(description: &str) -> Invoice {
-        Invoice {
-            invoice_id: "INV-2026-1".to_string(),
-            customer_email: "cliente@example.com".to_string(),
-            date: Utc::now(),
-            items: vec![InvoiceItem {
-                description: description.to_string(),
-                amount: 49.90,
-            }],
-            total: 49.90,
-            currency: "brl".to_string(),
-        }
+        Invoice::new("INV-2026-1", "cliente@example.com", Utc::now(), "brl")
+            .with_item(description, 4_990)
     }
 
     #[test]
@@ -231,6 +212,58 @@ mod tests {
         assert_eq!(format_money(2_500, "JPY"), "2500 JPY");
         assert_eq!(format_money(12_340, "KWD"), "12.340 KWD");
         assert_eq!(format_money(7, "KWD"), "0.007 KWD");
+    }
+
+    fn pdf_text(bytes: &[u8]) -> String {
+        PdfDocument::parse(bytes, &PdfParseOptions::default(), &mut Vec::new())
+            .expect("parse generated PDF")
+            .extract_text()
+            .into_iter()
+            .flatten()
+            .collect()
+    }
+
+    #[test]
+    fn localized_labels_reach_the_pdf_and_its_title() {
+        let english = pdf_text(&invoice("Plan").generate_pdf().expect("English PDF"));
+        for label in [
+            "Invoice INV-2026-1",
+            "Billed To: ",
+            "Date: ",
+            "Description | Amount",
+            "Total: 49.90 BRL",
+        ] {
+            assert!(english.contains(label), "{label}: {english:?}");
+        }
+        let receipt = invoice("Mensalidade")
+            .with_locale(crate::InvoiceLocale::PtBr)
+            .generate_pdf()
+            .expect("WinAnsi covers Portuguese labels");
+        let text = pdf_text(&receipt);
+        for label in [
+            "Recibo INV-2026-1",
+            "Recebido de: ",
+            "Data: ",
+            "Descrição | Valor",
+            "Total: 49.90 BRL",
+        ] {
+            assert!(text.contains(label), "{label}: {text:?}");
+        }
+        assert!(!text.contains("Invoice"), "{text:?}");
+        let spanish = pdf_text(
+            &invoice("Clase")
+                .with_locale(crate::InvoiceLocale::Es)
+                .generate_pdf()
+                .expect("WinAnsi covers Spanish labels"),
+        );
+        assert!(spanish.contains("Recibido de: ") && spanish.contains("Descripción | Importe"));
+        // A label outside WinAnsi needs a font, like any other text.
+        let mut labels = crate::InvoiceLocale::En.labels();
+        labels.title = "Квитанция".to_string();
+        assert!(matches!(
+            invoice("Plan").with_labels(labels).generate_pdf(),
+            Err(CapitalError::InvalidInvoice(_))
+        ));
     }
 
     #[test]
@@ -353,20 +386,16 @@ mod tests {
             .iter()
             .filter(|operation| matches!(operation, Op::ShowText { .. }))
             .count();
-        assert_eq!(shown, 8);
-        assert_eq!(breaks, 7);
+        assert_eq!(shown, 9);
+        assert_eq!(breaks, 8);
     }
 
     #[test]
     fn renderer_paginates_bounded_long_invoices() {
         let mut invoice = invoice("Subscription");
         invoice.items = (0..100)
-            .map(|index| InvoiceItem {
-                description: format!("Line item {index}"),
-                amount: 1.0,
-            })
+            .map(|index| InvoiceItem::new(format!("Line item {index}"), 100))
             .collect();
-        invoice.total = 100.0;
         let bytes = invoice.generate_pdf().expect("multipage PDF");
         let parsed = PdfDocument::parse(&bytes, &PdfParseOptions::default(), &mut Vec::new())
             .expect("parse multipage PDF");
