@@ -358,6 +358,7 @@ pub rullst_iot::OtaError::NoVerifiedUpdate
 pub rullst_iot::OtaError::LegacyApiUnsupported { .. }
 pub rullst_iot::OtaError::LegacyApiUnsupported::replacement: &'static str
 pub rullst_iot::OtaError::AllocationFailed
+pub rullst_iot::OtaError::MalformedManifest
 impl core::clone::Clone for rullst_iot::OtaError
 impl core::cmp::Eq for rullst_iot::OtaError
 impl core::cmp::PartialEq for rullst_iot::OtaError
@@ -370,11 +371,25 @@ impl core::marker::Sync for rullst_iot::OtaError
 impl core::marker::Unpin for rullst_iot::OtaError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::OtaError
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::OtaError
+#[non_exhaustive] pub struct rullst_iot::OtaImageVerifier<'a>
+impl<'a> rullst_iot::OtaImageVerifier<'a>
+pub fn rullst_iot::OtaImageVerifier::finish(self) -> core::result::Result<(), rullst_iot::OtaError>
+pub fn rullst_iot::OtaImageVerifier::manifest(&self) -> &rullst_iot::OtaManifest
+pub fn rullst_iot::OtaImageVerifier::received(&self) -> u64
+pub fn rullst_iot::OtaImageVerifier::remaining(&self) -> u64
+pub fn rullst_iot::OtaImageVerifier::update(&mut self, chunk: &[u8]) -> core::result::Result<(), rullst_iot::OtaError>
+impl core::ops::drop::Drop for rullst_iot::OtaImageVerifier<'_>
+impl<'a> !core::panic::unwind_safe::UnwindSafe for rullst_iot::OtaImageVerifier<'a>
+impl<'a> core::marker::Send for rullst_iot::OtaImageVerifier<'a>
+impl<'a> core::marker::Sync for rullst_iot::OtaImageVerifier<'a>
+impl<'a> core::marker::Unpin for rullst_iot::OtaImageVerifier<'a>
+impl<'a> core::panic::unwind_safe::RefUnwindSafe for rullst_iot::OtaImageVerifier<'a>
 #[non_exhaustive] pub struct rullst_iot::OtaManager
 impl rullst_iot::OtaManager
 #[deprecated] pub fn rullst_iot::OtaManager::commit_update(&mut self, _new_version: impl core::convert::Into<alloc::string::String>) -> core::result::Result<rullst_iot::OtaCommit, rullst_iot::OtaError>
 #[deprecated] pub fn rullst_iot::OtaManager::new(_version: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_iot::OtaError>
 #[deprecated] pub fn rullst_iot::OtaManager::verify_signature(&self, _payload: &[u8], _signature: &[u8]) -> core::result::Result<(), rullst_iot::OtaError>
+pub fn rullst_iot::OtaManager::begin_update(&mut self, manifest: &rullst_iot::OtaManifest, signature: &[u8]) -> core::result::Result<rullst_iot::OtaImageVerifier<'_>, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::commit_verified_update(&mut self) -> core::result::Result<rullst_iot::OtaCommit, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::commit_verified_update_with_store<S: rullst_iot::RollbackCounterStore>(&mut self, counter_store: &mut S) -> core::result::Result<rullst_iot::OtaCommit, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::current_partition(&self) -> rullst_iot::BootPartition
@@ -398,6 +413,8 @@ impl rullst_iot::OtaManifest
 pub fn rullst_iot::OtaManifest::firmware_len(&self) -> u64
 pub fn rullst_iot::OtaManifest::firmware_sha256(&self) -> [u8; 32]
 pub fn rullst_iot::OtaManifest::from_firmware(target: impl core::convert::Into<alloc::string::String>, version: impl core::convert::Into<alloc::string::String>, rollback_counter: u64, firmware: &[u8]) -> core::result::Result<Self, rullst_iot::OtaError>
+pub fn rullst_iot::OtaManifest::from_signing_bytes(bytes: &[u8]) -> core::result::Result<Self, rullst_iot::OtaError>
+pub fn rullst_iot::OtaManifest::new(target: impl core::convert::Into<alloc::string::String>, version: impl core::convert::Into<alloc::string::String>, rollback_counter: u64, firmware_len: u64, firmware_sha256: [u8; 32]) -> core::result::Result<Self, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManifest::rollback_counter(&self) -> u64
 pub fn rullst_iot::OtaManifest::signing_bytes(&self) -> core::result::Result<alloc::vec::Vec<u8>, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManifest::target(&self) -> &str
@@ -620,6 +637,7 @@ pub mod rullst_iot::ota
 pub use rullst_iot::ota::BootPartition = enum rullst_iot::BootPartition
 pub use rullst_iot::ota::OtaCommit = struct rullst_iot::OtaCommit
 pub use rullst_iot::ota::OtaError = enum rullst_iot::OtaError
+pub use rullst_iot::ota::OtaImageVerifier = struct rullst_iot::OtaImageVerifier
 pub use rullst_iot::ota::OtaManager = struct rullst_iot::OtaManager
 pub use rullst_iot::ota::OtaManifest = struct rullst_iot::OtaManifest
 pub use rullst_iot::ota::OtaStatus = enum rullst_iot::OtaStatus

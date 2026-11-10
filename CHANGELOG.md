@@ -11,6 +11,19 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- `rullst-iot` (Experimental) streaming OTA verification. A device builds the
+  manifest from the fields it receives with `OtaManifest::new(target,
+  version, rollback_counter, firmware_len, firmware_sha256)` or parses the
+  canonical bytes the publisher signed with `OtaManifest::from_signing_bytes`
+  (`OtaError::MalformedManifest` for anything else), without hashing the
+  image. `OtaManager::begin_update(&manifest, signature)` checks the target,
+  the rollback counter and the Ed25519 signature before any image byte and
+  returns an `OtaImageVerifier`: `update(chunk)` hashes the image in chunks of
+  any size and refuses one past the signed length, and `finish()` checks the
+  length and the SHA-256 digest and makes the update eligible for commit. The
+  image is hashed once and never has to be one slice in memory, so it can
+  stream from the network or external flash; on a micro:bit V2 a 32 KiB image
+  in 4 KiB chunks verified in 62.8 ms with 7.6 KiB of stack.
 - Server-Sent Events for realtime channels: `rullst::realtime::RealtimeSse`
   and `RealtimeSseConfig` (also re-exported at the `rullst` and `rullst-core`
   crate roots). `RealtimeSse::channel(&manager, name)` or
@@ -233,11 +246,13 @@ A prepared version section does not establish that its tag or crates exist.
   `CoapCodecError` are `#[non_exhaustive]` and gain `AllocationFailed`;
   `OtaError` gains `AllocationFailed` too. A `match` on the two codec errors
   outside the crate needs a wildcard arm, and `cargo rullst upgrade` reports
-  each one that has none (`V13-IOT-CODEC-ERROR-MATCH`). `verify_update` checks
-  the signature encoding and builds the signing bytes before it hashes the
-  image, so a malformed signature is `InvalidSignatureEncoding` even when the
-  image also differs, and it no longer costs a full hash (26 ms per 32 KiB on
-  a 64 MHz Cortex-M4).
+  each one that has none (`V13-IOT-CODEC-ERROR-MATCH`). `verify_update` now
+  runs the streaming path below, which checks the target, the rollback counter
+  and the signature before the image's length and digest: a malformed or
+  invalid signature is reported before `FirmwareLengthMismatch` or
+  `FirmwareHashMismatch`, a manifest changed after signing is
+  `SignatureInvalid`, and neither costs a hash of the image (26 ms per 32 KiB
+  on a 64 MHz Cortex-M4).
 - `rullst-studio`: the local Studio (`Studio`, `run_studio` and its page
   modules) is the new `local` feature, which the default `drivers-all`, every
   `strict-*` profile and the facade's `studio` feature enable. `rullst-orm`,

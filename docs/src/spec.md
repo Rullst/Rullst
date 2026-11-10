@@ -3952,7 +3952,7 @@ provider](capital-custom-provider.md)); the
 ## 📡 8. IoT, Firmware Security & Protocol Frames (`rullst-iot`)
 
 ### 8.1. Ed25519 OTA Firmware Gate
-* **Firmware Verification:** Strict Ed25519 signature validation over a cryptographic manifest `[target, version, rollback_counter, firmware_len, firmware_sha256]`. The target, counter, length and signature-encoding checks run before the image is hashed (13.0.0-alpha.5).
+* **Firmware Verification:** Strict Ed25519 signature validation over a cryptographic manifest `[target, version, rollback_counter, firmware_len, firmware_sha256]`. Since 13.0.0-alpha.5 `OtaManager::begin_update` checks the target, the counter and the signature before any image byte and returns an `OtaImageVerifier` that hashes the image chunk by chunk and checks its length and digest in `finish`; `verify_update` runs the same checks on one slice. A device builds the manifest from received fields (`OtaManifest::new`) or parses the canonical signing bytes (`OtaManifest::from_signing_bytes`), so it hashes the image once and never needs it as one slice.
 * **Anti-Rollback Protection:** Verification rejects any counter lower than or equal to the state loaded into the manager. The recommended `RollbackCounterStore` path additionally performs an exact compare-and-set and may report success only after a strictly increasing value is durably committed across reset. A retry of the same verified manifest after an ambiguous store failure completes only when the store reports, and a fresh load confirms, exactly that manifest's counter; an equal stored counter without such an earlier attempt remains a conflict. Atomicity, integrity, wear-leveling and power-loss behavior are obligations of the caller's platform adapter and require hardware-specific evidence.
 * **Commit Invariant:** In-memory partition selection and store-backed counter commit are blocked until full cryptographic verification succeeds. `verified_target_partition` exposes the inactive bank (opposite `current_partition`) for platform flash/read-back before commit. The v13 `new_with_running_partition` constructor takes the bank the bootloader started, while the older constructors assume `PartitionA` and require platform code to call `with_running_partition` (13.0.0-alpha.5), which also discards an update verified for the other bank; since 13.0.0-alpha.5 `current_partition()`, `status()` and `firmware_version()` read the manager's state, whose fields are private. A commit selects the other bank for the next boot but does not change `current_partition()`, so an update verified again before reboot never targets the running bank. The compatibility `commit_verified_update` path is process-local and does not claim persistence, flash or bootloader control.
 
@@ -3960,8 +3960,8 @@ provider](capital-custom-provider.md)); the
 * `rullst-iot` core models compile under bare-metal `#![no_std]` targets with
   `alloc` and an application `#[global_allocator]`. CI links a Cortex-M4
   (`thumbv7em-none-eabihf`) firmware that ran the suite on a micro:bit V2;
-  other targets are not built in CI. `OtaManager::verify_update` needs
-  about 8 KiB of stack.
+  other targets are not built in CI. The Ed25519 check in
+  `OtaManager::begin_update` and `verify_update` needs about 8 KiB of stack.
 * `cargo rullst make:iot <DeviceName>` generates and registers a local telemetry
   module, enables the umbrella `iot` feature and refuses unsafe names or
   collisions. It does not install firmware, a HAL, MQTT or CoAP.

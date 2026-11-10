@@ -130,19 +130,18 @@ use rullst_iot::{
     BootPartition, OtaCommit, OtaError, OtaManager, OtaManifest, RollbackCounterStore,
 };
 
-fn verify_download<S: RollbackCounterStore>(
-    firmware: &[u8],
+/// The manifest bytes and the signature arrive first; the image follows in
+/// chunks, from the network or read back from the inactive bank.
+fn install<'c, S: RollbackCounterStore>(
+    manifest_bytes: &[u8],
     signature: &[u8],
+    image_chunks: impl IntoIterator<Item = &'c [u8]>,
     trusted_public_key: [u8; 32],
     counter_store: &mut S,
     running_partition: BootPartition,
 ) -> Result<OtaCommit, OtaError> {
-    let manifest = OtaManifest::from_firmware(
-        "board-revision-a",
-        "1.1.0",
-        121,
-        firmware,
-    )?;
+    // The exact bytes the publisher signed (`OtaManifest::signing_bytes`).
+    let manifest = OtaManifest::from_signing_bytes(manifest_bytes)?;
     // `running_partition` is the bank the platform bootloader started.
     let mut ota = OtaManager::new_with_running_partition(
         "board-revision-a",
@@ -152,11 +151,15 @@ fn verify_download<S: RollbackCounterStore>(
         counter_store,
     )?;
 
-    ota.verify_update(&manifest, firmware, signature)?;
+    // Target, rollback counter and signature are checked before any image byte.
+    let mut verifier = ota.begin_update(&manifest, signature)?;
+    for chunk in image_chunks {
+        verifier.update(chunk)?;
+    }
+    verifier.finish()?; // the length and the SHA-256 digest
     let target = ota.verified_target_partition()?;
 
-    // The platform must flash and read back `target` before this call.
-    // It must coordinate the returned receipt with its bootloader afterward.
+    // The platform coordinates the returned receipt with its bootloader.
     let receipt = ota.commit_verified_update_with_store(counter_store)?;
     debug_assert_eq!(receipt.target_partition(), target);
 
@@ -191,11 +194,21 @@ process targets the same inactive bank, never the running one.
 Since 13.0.0-alpha.5 the manager's state is read with `current_partition()`,
 `status()` and `firmware_version()`; the fields are private.
 
-`verify_update` runs the cheap checks first (target, rollback counter, length,
-signature encoding) and hashes the image only after them. The device rebuilds
-the manifest with `from_firmware`, which hashes the image too, so verification
-reads it twice and needs it as one `&[u8]`; a manifest built from received
-fields and streaming verification are planned for 13.1 ([roadmap](ROADMAP.md)).
+A device builds the manifest from what it receives, without the image:
+`OtaManifest::from_signing_bytes` parses the canonical bytes the publisher
+signed (`signing_bytes()`), and `OtaManifest::new` takes the fields one by one.
+`begin_update` checks the target, the rollback counter and the Ed25519
+signature before any image byte, then returns an `OtaImageVerifier`, which
+hashes the image chunk by chunk, refuses a chunk past the signed length and,
+in `finish`, checks the length and the SHA-256 digest. The image is hashed
+once and never has to be one slice in memory, so it can stream from the
+network or from external flash. Feed it the bytes as they are in the inactive
+bank (read back after writing), so the digest covers what will boot. While the
+verifier exists the manager is `Downloading`; dropping it unfinished leaves the
+manager `Failed`. `verify_update(&manifest, firmware, signature)` does the
+same for an image held as one slice (for example memory-mapped internal
+flash). `OtaManifest::from_firmware` hashes the image; it is for the
+publisher.
 
 `OtaManager::new`, `verify_signature`, and `commit_update` are deprecated
 migration APIs. All three always return `OtaError` because keyless construction,
@@ -206,8 +219,9 @@ guarantees.
 
 Depend on the crate with `default-features = false`. It uses `alloc`, so the
 firmware provides a `#[global_allocator]` (for example `embedded-alloc`) and a
-panic handler. Plan for about 8 KiB of stack in `verify_update` and 2.6 KiB
-while building an `OtaManager`, plus your own frames; the heap needs little
+panic handler. Plan for about 8 KiB of stack in `begin_update` or
+`verify_update` and 2.6 KiB while building an `OtaManager`, plus your own
+frames; the heap needs little
 beyond the packets you encode. `rullst-iot` uses `ed25519-dalek` without its
 precomputed tables; adding `ed25519-dalek = { version = "2.2",
 default-features = false, features = ["fast"] }` to the application turns them
@@ -216,15 +230,17 @@ on (about 7% faster verification and 1.6 KiB less stack on a Cortex-M4, for
 
 ## Hardware validation
 
-A BBC micro:bit V2 (nRF52833, Cortex-M4F at 64 MHz, 128 KiB RAM) ran 59
+A BBC micro:bit V2 (nRF52833, Cortex-M4F at 64 MHz, 128 KiB RAM) ran 66
 checks, twice per boot, on 2026-11-10: telemetry JSON, digital-twin, Modbus
 and I2C frames, MQTT 5 and CoAP encodings byte-identical to the host build,
 the anomaly detector, signed OTA verification (valid, tampered, wrong key,
-wrong target, rollback), the rollback-counter compare-and-set contract with an
-in-RAM store, and allocation failure. `verify_update` took 62.7 ms for a
-32 KiB image (36.9 ms of it Ed25519) with 7.7 KiB of stack; the heap peaked at
-1,153 bytes. Transports, other boards, external flash or streamed images, a
-persistent counter store and the bootloader remain unvalidated. The
+wrong target, rollback), streaming verification of a 32 KiB image in 4 KiB
+chunks from a manifest built from received fields, the rollback-counter
+compare-and-set contract with an in-RAM store, and allocation failure. The
+streamed verification took 62.8 ms (36.6 ms for the signature before the first
+chunk, 3.3 ms per chunk) with 7.6 KiB of stack; the heap peaked at 1,153 bytes.
+Transports, other boards, external flash, a persistent counter store and the
+bootloader remain unvalidated. The
 [crate guide](https://rullst.github.io/Rullst/book/crates/iot.html#hardware-validation-bbc-microbit-v2)
 has the full results; the firmware is
 [`.github/fixtures/iot-microbit-v2`](https://github.com/Rullst/Rullst/tree/main/.github/fixtures/iot-microbit-v2),

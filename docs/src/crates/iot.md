@@ -128,25 +128,26 @@ The `OtaManager` enforces a **fail-closed eligibility gate**: its state machine 
 
 ### Usage Example
 
+A device receives the manifest and its signature first, then the image in
+chunks. It builds the manifest from those fields, so it hashes the image only
+once, while verifying it, and never needs it as one slice in memory:
+
 ```rust
 use rullst_iot::{
     BootPartition, OtaCommit, OtaError, OtaManager, OtaManifest, RollbackCounterStore,
 };
 
-fn process_incoming_ota<S: RollbackCounterStore>(
-    firmware_bytes: &[u8],
+fn process_incoming_ota<'c, S: RollbackCounterStore>(
+    manifest_bytes: &[u8],
     signature_bytes: &[u8],
+    image_chunks: impl IntoIterator<Item = &'c [u8]>,
     provisioned_public_key: [u8; 32],
     counter_store: &mut S,
     running_partition: BootPartition,
 ) -> Result<OtaCommit, OtaError> {
-    // 1. Construct the expected manifest from the payload
-    let manifest = OtaManifest::from_firmware(
-        "esp32-sensor-node", 
-        "2.0.0", 
-        15, // Proposed monotonic counter
-        firmware_bytes
-    )?;
+    // 1. Parse the exact bytes the publisher signed (`signing_bytes()`), or
+    //    build the manifest from its fields with `OtaManifest::new`.
+    let manifest = OtaManifest::from_signing_bytes(manifest_bytes)?;
 
     // 2. Load the last committed counter from the platform adapter
     //    and the bank the platform bootloader started
@@ -158,10 +159,16 @@ fn process_incoming_ota<S: RollbackCounterStore>(
         counter_store,
     )?;
 
-    // 3. Cryptographically verify signature, target, and anti-rollback state
-    manager.verify_update(&manifest, firmware_bytes, signature_bytes)?;
+    // 3. Target, anti-rollback state and the Ed25519 signature are checked
+    //    before any image byte.
+    let mut verifier = manager.begin_update(&manifest, signature_bytes)?;
 
-    // 4. Flash and read back this bank using platform code before commit.
+    // 4. Hash the image as it is in the inactive bank, chunk by chunk (read
+    //    it back after writing), so the digest covers what will boot.
+    for chunk in image_chunks {
+        verifier.update(chunk)?;
+    }
+    verifier.finish()?; // length and SHA-256 digest
     let target_partition = manager.verified_target_partition()?;
 
     // 5. Durable CAS succeeds before local state changes. Coordinate the
@@ -171,6 +178,17 @@ fn process_incoming_ota<S: RollbackCounterStore>(
     Ok(receipt)
 }
 ```
+
+`begin_update` checks, cheapest first, the target, the rollback counter, the
+signature encoding and the signature, so an unauthenticated manifest is
+refused before the download starts. The returned `OtaImageVerifier` refuses a
+chunk that would pass the signed length before hashing it, and stays failed
+after any error. While it exists the manager is `Downloading`; dropping it
+unfinished leaves the manager `Failed` with no pending update. An image held
+as one slice, for example in memory-mapped internal flash, can use
+`manager.verify_update(&manifest, image, signature)`, which runs the same
+checks. `OtaManifest::from_firmware` hashes the image and is meant for the
+publisher. All of this is new in 13.0.0-alpha.5.
 
 `verified_target_partition` and the receipt always name the bank opposite
 `current_partition()`. The v13 `new_with_running_partition` constructor takes
@@ -207,9 +225,9 @@ manifest's signing bytes; the micro:bit run peaked at 1,153 bytes. When the
 allocator refuses a buffer, `MqttPublish::encode`, `CoapRequest::encode` and
 `path_segment` return `AllocationFailed`, and `OtaManifest::signing_bytes` and
 `OtaManager::verify_update` return `OtaError::AllocationFailed`, instead of
-aborting. Reserve about 8 KiB of stack for `verify_update` (the Ed25519
-verification) and about 2.6 KiB for building an `OtaManager` (decompressing
-the public key), plus your own frames:
+aborting. Reserve about 8 KiB of stack for `begin_update` or `verify_update`
+(the Ed25519 verification) and about 2.6 KiB for building an `OtaManager`
+(decompressing the public key), plus your own frames:
 
 ```rust
 use rullst_iot::SensorTelemetry;
@@ -275,6 +293,7 @@ with no failure:
 | CoAP | 8 | CON/NON GET, POST, PUT and DELETE with extended option lengths and a two-byte Content-Format; oversized tokens, segments and payloads, and `..`, rejected |
 | Anomaly detector | 2 | A 12-sample series, including NaN and infinity, and invalid configurations |
 | Signed OTA | 21 | Valid update verified and committed through a store; tampered image, signature or version, truncated image, short signature, wrong key, wrong target, lower or equal rollback counter and a weak key rejected; partition selection from bank A and B |
+| Streaming OTA | 7 | Manifest built from received fields and parsed from the host's signing bytes; the 32 KiB image verified in eight 4 KiB chunks and committed; a bad signature refused before the first chunk, a tampered chunk and a ninth chunk rejected |
 | Rollback-counter store | 9 | Compare-and-set success, stale expected value, non-increasing value, two managers committing from one store, replay after restart, a lost acknowledgement completed on retry, an unavailable store |
 | Allocation failure | 2 | A packet larger than the free heap returns `AllocationFailed`, and the next one encodes |
 
@@ -284,20 +303,25 @@ counter (cross-checked against a 1 MHz timer):
 
 | Operation | Time |
 | :--- | ---: |
-| SHA-256 of a 32 KiB image (`OtaManifest::from_firmware`) | 26.0 ms |
-| `verify_update`, 32 KiB image | 62.7 ms |
-| `verify_update`, 16-byte image (mostly Ed25519) | 36.9 ms |
+| SHA-256 of a 32 KiB image (`OtaManifest::from_firmware`) | 26.1 ms |
+| `OtaManifest::new` / `from_signing_bytes` (no hashing) | under 0.03 ms |
+| `begin_update` (target, counter, Ed25519 signature) | 36.6 ms |
+| `OtaImageVerifier::update`, one 4 KiB chunk | 3.3 ms |
+| Streamed 32 KiB image: `begin_update`, 8 chunks, `finish` | 62.8 ms |
+| `verify_update`, 32 KiB slice | 62.7 ms |
 | `MqttPublish` / `CoapRequest` encode, about 40 bytes | under 0.1 ms |
-| Rejection before hashing (wrong target, truncated image, malformed signature) | under 0.01 ms |
+| Rejection before the signature (wrong target, malformed signature) | under 0.01 ms |
 
-At `opt-level = "z"` the two verifications took 83.3 ms and 53.3 ms. The
-whole test firmware, including the test harness, a 32 KiB test image and the
-expected vectors, used about 255 KB of flash (162 KB at `opt-level = "z"`). The heap
-peaked at 1,153 bytes, OTA verification itself needing 143. Peak stack depth:
+An earlier build of the same checks at `opt-level = "z"` verified the 32 KiB
+image in 83.3 ms and the Ed25519 signature alone in 53.3 ms. The whole test
+firmware, including the test harness, a 32 KiB test image and the expected
+vectors, used about 266 KB of flash. The heap peaked at 1,153 bytes; OTA
+verification itself needed 143 (159 streamed). Peak stack depth:
 
 | Call | Stack |
 | :--- | ---: |
-| `OtaManager::verify_update` | 7,656 B |
+| `OtaManager::verify_update` (32 KiB slice) | 8,152 B |
+| `begin_update`, eight 4 KiB `update` calls and `finish` | 7,640 B |
 | `OtaManager::new_with_running_partition` | 2,600 B |
 | `serde_json::from_slice::<SensorTelemetry>` | 492 B |
 | `OtaManifest::from_firmware` | 400 B |
@@ -312,18 +336,17 @@ to its own dependencies. On the micro:bit this made verification about 7%
 faster (34.2 ms and 59.8 ms), its stack 1.6 KiB smaller (6,144 B) and the
 firmware 7.5 KiB larger.
 
-**Hashed twice.** A device builds the manifest with
-`OtaManifest::from_firmware`, which hashes the image, and `verify_update`
-hashes it again, so verification costs two passes (about 26 ms per 32 KiB
-each), and the image must be one contiguous `&[u8]`: memory-mapped internal
-flash works, external SPI flash or a streamed download does not. A manifest
-built from its received fields and streaming verification are planned for
-13.1 (see the [crate roadmap](https://github.com/Rullst/Rullst/blob/main/rullst-iot/ROADMAP.md)).
+**Streamed and hashed once.** With the manifest built by `OtaManifest::new`
+or `from_signing_bytes`, the device hashes the image once, inside the
+verifier, and holds only one chunk at a time: the streamed run above never
+had the image as a slice. Building it with `OtaManifest::from_firmware`
+instead would add a second pass (26 ms per 32 KiB).
 
 **Not validated:** MQTT or CoAP transports, TLS/DTLS or a broker; other
-boards and architectures (ESP32, RISC-V, Cortex-M0); external flash and
-streamed images; a persistent rollback-counter store (the run used one in
-RAM), flashing, bootloader handoff and power loss.
+boards and architectures (ESP32, RISC-V, Cortex-M0); an image read from real
+external flash or a network (the run streamed it from internal flash); a
+persistent rollback-counter store (the run used one in RAM), flashing,
+bootloader handoff and power loss.
 
 The firmware is in the repository at
 [`.github/fixtures/iot-microbit-v2`](https://github.com/Rullst/Rullst/tree/main/.github/fixtures/iot-microbit-v2).

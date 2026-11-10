@@ -30,14 +30,16 @@ cryptographic implementations.
   and the counter-store contract on 2026-11-10; CI builds that firmware
   (`.github/fixtures/iot-microbit-v2`). Encoders return `AllocationFailed`
   instead of aborting.
+- [x] Streaming firmware verification with bounded memory, from a manifest
+  built from its received fields (`OtaManifest::new`) or parsed from the
+  canonical signing bytes (`OtaManifest::from_signing_bytes`):
+  `OtaManager::begin_update` checks the signature before any image byte and
+  `OtaImageVerifier` hashes the image once, chunk by chunk (13.0.0-alpha.5).
 
 ## Required for an end-to-end OTA implementation
 
-- [ ] Authenticated manifest transport and a stable wire format.
-- [ ] Streaming firmware hashing with bounded memory, and a manifest built from
-  its received fields (13.1 candidate). Today the device hashes the image in
-  `OtaManifest::from_firmware` and again in `verify_update` (26 ms per 32 KiB
-  each on a 64 MHz Cortex-M4) and needs it as one contiguous slice.
+- [ ] Authenticated manifest transport. The canonical signing bytes are the
+  manifest's wire format since 13.0.0-alpha.5.
 - [ ] Platform flash writer, read-back validation, and power-loss-safe A/B state.
 - [ ] A concrete hardware-backed durable counter implementation and atomic
   bootloader selection, with power-loss/fault-injection device tests.

@@ -11,8 +11,10 @@
 //! encoders, the OTA gate and the counter-store contract on 2026-11-10; no
 //! other board or live broker has been tested. The default `std` feature can be
 //! disabled for `no_std` targets, which need `alloc` with a
-//! `#[global_allocator]` and about 8 KiB of stack for
-//! [`OtaManager::verify_update`]. Start with [`OtaManager`] for the signed
+//! `#[global_allocator]` and about 8 KiB of stack for the Ed25519 check in
+//! [`OtaManager::begin_update`]; its [`OtaImageVerifier`] hashes an image in
+//! chunks, so the image never has to be one slice in memory. Start with
+//! [`OtaManager`] for the signed
 //! firmware gate, or [`MqttPublish`] and [`CoapRequest`] for the packet
 //! encoders. The crate guide's [module
 //! status](https://rullst.github.io/Rullst/book/crates/iot.html#module-status)
