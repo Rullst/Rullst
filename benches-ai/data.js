@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794333536620,
+  "lastUpdate": 1794337903355,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -18023,6 +18023,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 268,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a95fd28b82d2aaf0d3584353596c9c15e949992d",
+          "message": "Merge pull request #626 from Rullst/feat/v13-alpha5-runtime-batch-c\n\nfeat: 13.0.0-alpha.5 runtime batch C (htmx accessors, access-log paths, Nexus stylesheet, html! grammar, OtaManager getters, Studio remote)",
+          "timestamp": "2026-11-10T15:44:10-03:00",
+          "tree_id": "2ec6858a0827deacb160bba2b20d408e82437a21",
+          "url": "https://github.com/Rullst/Rullst/commit/a95fd28b82d2aaf0d3584353596c9c15e949992d"
+        },
+        "date": 1794337902444,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1622,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 325,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 394,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
