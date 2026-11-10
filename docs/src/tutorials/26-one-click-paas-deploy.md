@@ -39,7 +39,7 @@ These staging and production defaults apply to every way of deploying:
   listens on `0.0.0.0` unless `HOST` (or `RULLST_HOST`) is set in the process
   environment or `.env`. Behind a reverse proxy on the same host, set
   `HOST=127.0.0.1` so the plain-HTTP port is reachable only through the proxy.
-  Inside a container keep `0.0.0.0` and publish
+  Inside a container on its own network keep `0.0.0.0` and publish
   the port only to the proxy's network. The server prints the address it
   listens on at startup (`Rullst framework serving on http://0.0.0.0:3000
   (every network interface)`); since 13.0.0-alpha.2, when that is every
@@ -48,6 +48,9 @@ These staging and production defaults apply to every way of deploying:
   `HOST=127.0.0.1` for a proxy on the same host outside a container network
   and, since 13.0.0-alpha.4, keeping `HOST=0.0.0.0` when the proxy reaches the
   application over a container network (as in the generated `compose.yaml`).
+  A container that shares the host network (`--network host`, Quadlet
+  `Network=host`) behind a proxy on the host is the first case: keep
+  `HOST=127.0.0.1`, or the port is reachable without the proxy.
 - **Caching.** The security baseline adds `Cache-Control: no-store` to every
   response without a `Cache-Control` of its own; the standard `/static` mount
   sets its own. Downloads, feeds and other responses that browsers or a CDN

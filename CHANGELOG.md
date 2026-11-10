@@ -131,6 +131,57 @@ A prepared version section does not establish that its tag or crates exist.
   `h1` as `h2` instead of `h3` (axe `landmark-one-main`, `region` and
   `heading-order`). `examples/lms`'s dashboard sign-out buttons use `#dc2626`
   (4.83:1) instead of white on `#ef4444` (3.76:1).
+- `rullst::htmx::render_page`, `render_page_with_lang` and
+  `render_page_with_head` no longer break htmx's Back button. When its
+  history cache misses, htmx 1.9.12 requests the page with both
+  `HX-Request: true` and `HX-History-Restore-Request: true` and replaces the
+  whole `<body>` with the answer; it received only the fragment, so the
+  restored page lost its header, menu and footer. History restores and
+  boosted requests (`HX-Boosted: true`) now receive the whole page, and other
+  htmx requests still receive the fragment. HTML responses of the
+  application's routes under `Server` carry `Vary: HX-Request`, so a cache
+  that stores the page or the fragment of a URL does not serve one for the
+  other. Reported while upgrading an application.
+- `html!` escapes a `"` in a fixed attribute value: `content="{\"a\":1}"`
+  was written as `content="{"a":1}"`, which the browser cut at the second
+  quote (an `htmx-config` meta tag lost its JSON this way, without a compile
+  error). It is now written `content="{&quot;a&quot;:1}"`; other characters,
+  including references such as `&amp;`, are kept as written. Reported while
+  upgrading an application.
+- `html!` warns about an `Option` in `name={value}`: `None` writes `name=""`,
+  which still turns a boolean attribute such as `disabled` or `selected` on,
+  so a button stayed disabled and every `<option>` was selected. The output
+  is unchanged, but the expansion now raises a `deprecated` warning at the
+  value that points to `name?={value}`, which leaves the attribute out for
+  `None` (or `value.unwrap_or_default()` to keep the empty value); a build
+  with `-D warnings` fails until it is changed. `{option}` as text is not
+  affected. Reported while upgrading an application.
+- `rullst-orm`'s query-builder error for a skipped column names the option
+  the field has. An `#[orm(skip)]` field is still read from the row, and the
+  shared message for `#[orm(skip)]`/`#[sqlx(skip)]` said it was not a
+  database column; the `#[orm(skip)]` error now says it is left out of
+  generated writes and of the builder but not of reads, the `#[sqlx(skip)]`
+  error says the model does not read it, and both point to
+  `#[orm(db_default)]` for a column the table has and that must be
+  filterable. Reported while upgrading an application.
+- Nexus list tables wider than the screen scroll sideways: `.nexus-table-wrap`
+  had `overflow: hidden`, so the last columns of a wide model were cut off
+  with no scroll bar. It now has `overflow-x: auto` and keeps its rounded
+  border. Reported while upgrading an application.
+- Nexus shows a failed save above the record dialog. The form opens in a
+  modal `<dialog>`, which the browser draws above the page, so "Save failed:
+  …" appeared behind the blurred backdrop and could not be read. While a
+  dialog is open the message container now moves into it and returns to the
+  page when the dialog closes; the dialog is centred without a CSS
+  transform, so the message keeps its place at the bottom right of the
+  window. Reported while upgrading an application.
+- The start-up line for a server listening on every interface behind a
+  trusted proxy says that a container sharing the host network
+  (`--network host`, Quadlet `Network=host`) with the proxy on the host still
+  needs `HOST=127.0.0.1`. It suggested keeping `HOST=0.0.0.0` for any proxy
+  reaching the application "through a container network", which in that
+  setup left the port open without the proxy. Reported while upgrading an
+  application.
 
 ## [13.0.0-alpha.4] - 2026-10-31
 
