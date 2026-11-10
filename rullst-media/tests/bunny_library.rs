@@ -50,6 +50,8 @@ fn upload_only_credentials_validate_the_api_key_and_refuse_delivery_configs() {
         );
     }
     assert!(BunnyCredentials::upload_only(format!("mock_{}", "k".repeat(508))).is_err());
+    // Mixed modes fail even when every key has a valid remote length.
+    assert!(BunnyCredentials::new(API, "mock_webhook_key_123456", EMBED, CDN).is_err());
     let credentials = BunnyCredentials::upload_only(API).unwrap();
     assert_eq!(format!("{credentials:?}"), "BunnyCredentials([REDACTED])");
     // A complete configuration needs the delivery keys it signs with.
