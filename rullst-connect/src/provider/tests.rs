@@ -661,9 +661,10 @@ async fn test_fetch_and_cache_jwks() {
     let jwk_set = fetch_and_cache_jwks(test_url, &client)
         .await
         .expect("Failed to fetch JWKS");
-    assert_eq!(jwk_set.keys.len(), 1);
+    assert_eq!(jwk_set.len(), 1);
 
     // Next fetch should be cached (does not require mock client execution if mocked to fail)
     let cached = fetch_and_cache_jwks(test_url, &client).await.unwrap();
-    assert_eq!(cached.keys.len(), 1);
+    assert_eq!(cached.len(), 1);
+    assert!(cached.ptr_eq(&jwk_set), "the second fetch is served from the cache");
 }

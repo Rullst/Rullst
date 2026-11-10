@@ -47,14 +47,25 @@ return redis.call('HINCRBY', KEYS[1], ARGV[1], ARGV[2])
 /// record ID, so applications and tenants sharing a Redis database never
 /// read or overwrite each other's hashes. IDs are 1-64 ASCII letters, digits,
 /// '-' or '_'.
-// Used by rullst-orm's live Redis tests, which inspect the stored hash.
+pub(super) fn hash_key(
+    table: &str,
+    tenant: Option<&RullstValue>,
+    id: &str,
+) -> Result<String, Error> {
+    build_model_hash_key(Orm::redis_cache_namespace()?, tenant, table, id)
+}
+
+/// [`hash_key`] for tests that inspect a stored hash.
+// Used by rullst-orm's live Redis tests (`test-util` feature); outside the
+// 13.x compatibility promise.
+#[cfg(feature = "test-util")]
 #[doc(hidden)]
 pub fn model_hash_key(
     table: &str,
     tenant: Option<&RullstValue>,
     id: &str,
 ) -> Result<String, Error> {
-    build_model_hash_key(Orm::redis_cache_namespace()?, tenant, table, id)
+    hash_key(table, tenant, id)
 }
 
 fn build_model_hash_key(
@@ -100,7 +111,7 @@ pub async fn read_model_hash(
 ) -> Result<HashMap<String, String>, Error> {
     use crate::_redis::AsyncCommands;
 
-    let key = model_hash_key(table, tenant, id)?;
+    let key = hash_key(table, tenant, id)?;
     let mut connection = Orm::redis_manager()?;
     let hash: HashMap<String, String> = connection
         .hgetall(&key)
@@ -127,7 +138,7 @@ pub async fn write_model_hash(
 ) -> Result<(), Error> {
     use crate::_redis::AsyncCommands;
 
-    let key = model_hash_key(table, tenant, id)?;
+    let key = hash_key(table, tenant, id)?;
     let mut connection = Orm::redis_manager()?;
     let Some(legacy) = legacy_model_hash_key(tenant, table, id) else {
         let _: () = connection
@@ -163,7 +174,7 @@ pub async fn increment_model_hash(
     field: &str,
     amount: i64,
 ) -> Result<i64, Error> {
-    let key = model_hash_key(table, tenant, id)?;
+    let key = hash_key(table, tenant, id)?;
     let mut connection = Orm::redis_manager()?;
     let incremented = match legacy_model_hash_key(tenant, table, id) {
         None => crate::_redis::cmd("HINCRBY")

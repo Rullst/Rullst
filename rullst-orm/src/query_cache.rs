@@ -1,11 +1,20 @@
+//! Keys and invalidation of the Redis query cache behind `.remember(...)`.
+//!
+//! Generated reads build their keys and invalidate them after each committed
+//! write; [`query_key`] and [`invalidate_table`] let application code find or
+//! drop the same entries. Requires the `redis` feature and `Orm::init_redis`.
+
 use sha2::{Digest, Sha256};
 
 use crate::{Error, Orm, RullstValue};
 
 mod model_hash;
-// Used by `#[derive(Orm)]`; `model_hash_key` only by the live Redis tests.
+// Used by `#[derive(Orm)]`.
 #[doc(hidden)]
-pub use model_hash::{increment_model_hash, model_hash_key, read_model_hash, write_model_hash};
+pub use model_hash::{increment_model_hash, read_model_hash, write_model_hash};
+#[cfg(feature = "test-util")]
+#[doc(hidden)]
+pub use model_hash::model_hash_key;
 
 /// Version 4 indexes entries in a sorted set; version 3 entries, indexed in a
 /// plain set, are never read again and expire through their TTL.
@@ -77,8 +86,31 @@ pub(crate) fn validate_namespace(namespace: &str) -> Result<(), Error> {
     Ok(())
 }
 
-/// Builds the versioned key of a `.remember(...)` query in the active tenant
-/// scope's partition (`global` outside `with_tenant`).
+/// Builds the key under which `.remember(...)` caches the result of `query`
+/// with `bindings` for `table`, in the active tenant's partition (`global`
+/// outside `with_tenant`).
+///
+/// `query` is the SQL the builder generates (`to_sql()`) and `bindings` its
+/// values in order. Generated reads of a model with a `tenant_column` use the
+/// active tenant's partition; reads of any other model always use the
+/// `global` one, so build their keys outside `with_tenant`. The key names
+/// the namespace given to `Orm::init_redis_with_namespace` and a digest of
+/// the rest; it fails with `Error::Validation` before `Orm::init_redis`.
+///
+/// ```rust,no_run
+/// use rullst_orm::{RullstValue, query_cache};
+///
+/// # async fn demo() -> Result<(), rullst_orm::Error> {
+/// rullst_orm::Orm::init_redis("redis://127.0.0.1:6379").await?;
+/// let key = query_cache::query_key(
+///     "posts",
+///     "SELECT * FROM posts WHERE status = ?",
+///     &[RullstValue::String("published".to_string())],
+/// )?;
+/// assert!(key.starts_with("rullst:orm:cache:v4:"));
+/// # Ok(())
+/// # }
+/// ```
 pub fn query_key(table: &str, query: &str, bindings: &[RullstValue]) -> Result<String, Error> {
     let namespace = Orm::redis_cache_namespace()?;
     let tenant = crate::tenant::get_tenant_id();
@@ -194,7 +226,20 @@ pub async fn store_entry(cache_key: &str, payload: &str, ttl_seconds: u64) -> Re
 /// follows the table's own index, never the rest of the Redis keyspace, and is
 /// capped at `MAX_INVALIDATION_KEYS` entries per call; entries beyond the cap
 /// stay indexed for the next write and otherwise expire through their TTL, as
-/// do entries written by earlier versions that were never indexed.
+/// do entries written by earlier versions that were never indexed. Returns the
+/// number of entries removed. Generated writes already call it after commit;
+/// call it after changing a table outside the ORM (raw SQL, another service).
+/// Inside `with_tenant` it drops that tenant's partition, outside it the
+/// `global` one.
+///
+/// ```rust,no_run
+/// # async fn demo() -> Result<(), rullst_orm::Error> {
+/// // After a bulk import with raw SQL:
+/// let removed = rullst_orm::query_cache::invalidate_table("posts").await?;
+/// println!("dropped {removed} cached reads of posts");
+/// # Ok(())
+/// # }
+/// ```
 pub async fn invalidate_table(table: &str) -> Result<usize, Error> {
     let Ok(namespace) = Orm::redis_cache_namespace() else {
         return Ok(0);

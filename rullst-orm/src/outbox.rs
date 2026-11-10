@@ -257,8 +257,10 @@ impl Outbox {
         .await
     }
 
-    // Used by the rullst-orm and rullst-messaging integration tests, which claim
-    // at a fixed time; not called by generated code.
+    /// [`Self::claim_next`] at a fixed `now_epoch_seconds`, for tests.
+    // Used by the rullst-orm and rullst-messaging integration tests
+    // (`test-util` feature); outside the 13.x compatibility promise.
+    #[cfg(feature = "test-util")]
     #[doc(hidden)]
     pub async fn claim_next_at(
         stream: impl Into<String>,

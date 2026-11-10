@@ -1,11 +1,12 @@
 //! The 13.0.0-alpha.5 public API clean-ups: removed alias paths, internals
-//! made crate-private, private `SecurityStore` collections and error
-//! variants whose payload changed. [`super::tokens`] and [`super::rust`]
+//! made crate-private, private Security collections, Connect's own JWKS key
+//! set and error variants whose payload changed. [`super::tokens`] and [`super::rust`]
 //! call these with the paths, identifiers and fields they read.
 
 use super::Rule;
 use super::catalog::{
-    AI_HTTP_STATUS, ALIAS_PATHS, ERROR_PAYLOADS, HIDDEN_INTERNALS, STORE_COLLECTIONS,
+    AI_HTTP_STATUS, ALIAS_PATHS, CONNECT_JWKS, ERROR_PAYLOADS, HIDDEN_INTERNALS, SECURITY_GLOBALS,
+    STORE_COLLECTIONS,
 };
 
 /// Removed second paths of an item, as consecutive path segments.
@@ -43,6 +44,23 @@ const HIDDEN_IDENTS: &[&str] = &[
     "get_real_rss_memory_mb",
     "generate_smart_nexus_ai_response",
     "field_kind_sql",
+    "claim_next_at",
+    "model_hash_key",
+];
+
+/// Security functions that returned `dashmap` collections.
+const SECURITY_GLOBAL_IDENTS: &[&str] = &[
+    "default_deception_traps",
+    "global_deception_routes",
+    "global_rate_limit_store",
+];
+
+/// Connect's JWKS items whose key-set type changed, and the removed raw cache.
+const JWKS_IDENTS: &[&str] = &[
+    "JWKS_CACHE",
+    "JwksCache",
+    "fetch_and_cache_jwks",
+    "fetch_and_cache_jwks_for_kid",
 ];
 
 /// Error variants whose payload is now a Rullst type.
@@ -82,7 +100,13 @@ pub(super) fn path_rule(segments: &[String]) -> Option<&'static Rule> {
 
 /// The rule for a distinctive identifier anywhere in the code, if any.
 pub(super) fn ident_rule(name: &str) -> Option<&'static Rule> {
-    HIDDEN_IDENTS.contains(&name).then_some(&HIDDEN_INTERNALS)
+    if HIDDEN_IDENTS.contains(&name) {
+        Some(&HIDDEN_INTERNALS)
+    } else if SECURITY_GLOBAL_IDENTS.contains(&name) {
+        Some(&SECURITY_GLOBALS)
+    } else {
+        JWKS_IDENTS.contains(&name).then_some(&CONNECT_JWKS)
+    }
 }
 
 /// The rule for a field access `.name` (not a method call) in a file whose

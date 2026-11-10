@@ -264,7 +264,7 @@ release:
 | 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
-| 13.0.0-alpha.5 | `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-AI-HTTP-STATUS` |
+| 13.0.0-alpha.5 | `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS` |
 | 13.0.0-rc.1 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them) |
 
 A rule is dated by the first release tag whose catalog contains its code
@@ -435,13 +435,13 @@ is classified for `rullst-upgrade-rules-v4`:
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
   application source (13 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (108 rows);
+  the affected API, feature or configuration, which the rules locate (109 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
   of inputs that previously failed) (100 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 125 rules. A row can map to several rules and a rule to
+has 127 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -663,8 +663,9 @@ the rule together.
 | `html!` attribute values and `render_page` | (c) none | — | The compiler's `deprecated` warning locates each `Option` in `name={value}`; the quote escaping and the whole-page htmx answers need no change; introduced in 13.0.0-rc.1 |
 | Internals hidden from the API documentation | (c) none | — | The items still compile in alpha.4; only their documentation and compatibility promise change; introduced in 13.0.0-alpha.4 (alpha.5 makes most private: Hidden internals made private) |
 | Duplicate API paths removed | (a) must-change | `V13-API-ALIAS-PATHS` | `rullst::rullst_orm`, `rullst::security_runtime`, `rullst_mail::mail`, `rullst_mail::drivers::mock` and their `rullst::mail::` forms, in paths and in `use` trees (braced groups included); introduced in 13.0.0-alpha.5 |
-| Hidden internals made private | (b) review | `V13-HIDDEN-INTERNALS-PRIVATE` | Module paths (`artisan::runner`, `server::dylib_loader`, `tenant::CURRENT_TENANT`, the three `schema::` statics, `passkey::cbor`, `client::DEFAULT_HTTP_CLIENT`, `rullst_connect::macros`) and distinctive names (`encrypt_aes_gcm`, `impl_standard_redirect_url!`, `get_real_rss_memory_mb`, `field_kind_sql`, …); review because a bare name can be the application's own; a failed gate repeats the guidance; introduced in 13.0.0-alpha.5 |
-| Security store collections | (b) review | `V13-SECURITY-STORE-COLLECTIONS` | `.banned_ips`, `.honeypot_route_hits` and `.live_events` field accesses (not method calls) in files that name `SecurityStore` or `SecurityTelemetry`; review because another type can have such a field; introduced in 13.0.0-alpha.5 |
+| Hidden internals made private | (b) review | `V13-HIDDEN-INTERNALS-PRIVATE` | Module paths (`artisan::runner`, `server::dylib_loader`, `tenant::CURRENT_TENANT`, the three `schema::` statics, `passkey::cbor`, `client::DEFAULT_HTTP_CLIENT`, `rullst_connect::macros`) and distinctive names (`encrypt_aes_gcm`, `impl_standard_redirect_url!`, `get_real_rss_memory_mb`, `field_kind_sql`, the `test-util` helpers `claim_next_at` and `model_hash_key`, …); review because a bare name can be the application's own; a failed gate repeats the guidance; introduced in 13.0.0-alpha.5 |
+| Security store collections | (b) review | `V13-SECURITY-STORE-COLLECTIONS`, `V13-SECURITY-GLOBAL-COLLECTIONS` | `.banned_ips`, `.honeypot_route_hits` and `.live_events` field accesses (not method calls) in files that name `SecurityStore` or `SecurityTelemetry`, review because another type can have such a field; `global_deception_routes`, `default_deception_traps` and `global_rate_limit_store` (`V13-SECURITY-GLOBAL-COLLECTIONS`), review because `contains` and `len` keep compiling; introduced in 13.0.0-alpha.5 |
+| Connect JWKS key sets | (b) review | `V13-CONNECT-JWKS-KEY-SET` | `JWKS_CACHE`, `JwksCache`, `fetch_and_cache_jwks` and `fetch_and_cache_jwks_for_kid`; uses of the returned set are not followed; introduced in 13.0.0-alpha.5 |
 | Rullst-owned error payloads | (b) review | `V13-ERROR-PAYLOADS` | `AiError::RequestError`, `AiError::SerializationError`, `ClientContractError::InvalidJson`/`EncodeJson` and `TwinSyncError::Serialization`; the removed `From` conversions (`?` on `reqwest`, `serde_json`, `base64`, `jsonwebtoken` or `redis` errors) are not located, the compiler names them; introduced in 13.0.0-alpha.5 |
 | AI provider HTTP errors | (b) review | `V13-AI-HTTP-STATUS` | `AiError::ApiError` paths (arms, `matches!`, constructions), which no longer see HTTP status failures; introduced in 13.0.0-alpha.5 |
 

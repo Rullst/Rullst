@@ -398,13 +398,19 @@ rules! {
         "Write `rullst::orm` (with `use rullst::orm as rullst_orm;` where code names `rullst_orm`), `rullst::security::runtime`, the `rullst_mail` crate root and `rullst_mail::mock`.";
     HIDDEN_INTERNALS: "V13-HIDDEN-INTERNALS-PRIVATE", Review, "13.0.0-alpha.5", "Hidden internals made private",
         "this names an internal that 13.0.0-alpha.4 hid from the documentation and 13.0.0-alpha.5 made crate-private or removed",
-        "Use the documented replacement: `Orm::transaction`, `with_tenant`/`get_tenant_id`, the `schema` query-log, timeout and limit setters and getters, `artisan::check_and_run_artisan`, `rullst_core::radar::get_process_memory_mb`, `SecurityStore::live_events`; the Connect provider macros, `DEFAULT_HTTP_CLIENT`, `passkey::cbor`, `encrypt_aes_gcm`/`decrypt_aes_gcm` and the Nexus helpers have no public replacement.";
+        "Use the documented replacement: `Orm::transaction`, `with_tenant`/`get_tenant_id`, the `schema` query-log, timeout and limit setters and getters, `artisan::check_and_run_artisan`, `rullst_core::radar::get_process_memory_mb`, `SecurityStore::live_events`; the Connect provider macros, `DEFAULT_HTTP_CLIENT`, `passkey::cbor`, `encrypt_aes_gcm`/`decrypt_aes_gcm` and the Nexus helpers have no public replacement. `Outbox::claim_next_at` and `query_cache::model_hash_key` need rullst-orm's `test-util` feature in `[dev-dependencies]`, outside the 13.x stability promise.";
     STORE_COLLECTIONS: "V13-SECURITY-STORE-COLLECTIONS", Review, "13.0.0-alpha.5", "Security store collections",
         "the `banned_ips`, `honeypot_route_hits` and `live_events` fields of `SecurityStore` are private since 13.0.0-alpha.5",
         "Read them with `store.active_bans()`, `store.is_banned(ip)`, `store.honeypot_route_hits()` and `store.live_events()`, which return sorted copies (events newest first).";
     ERROR_PAYLOADS: "V13-ERROR-PAYLOADS", Review, "13.0.0-alpha.5", "Rullst-owned error payloads",
         "this error variant no longer carries a `reqwest` or `serde_json` value: `AiError::RequestError` holds `AiRequestError`, `AiError::SerializationError` `AiJsonError`, `ClientContractError::InvalidJson`/`EncodeJson` `ContractJsonError` and `TwinSyncError::Serialization` `TwinJsonError`",
         "Use the payload through `Display`, `source()` or its methods (`is_timeout`, `is_connect`); match `TwinSyncError` with a `_` arm. `?` no longer converts `reqwest`, `serde_json`, `base64` or `jsonwebtoken` errors into `ConnectError`, or `serde_json`/`redis` errors into `rullst_orm::Error`: map them, for example `.map_err(|error| Error::SerializationError(error.to_string()))`.";
+    SECURITY_GLOBALS: "V13-SECURITY-GLOBAL-COLLECTIONS", Review, "13.0.0-alpha.5", "Security store collections",
+        "`global_deception_routes()` returns `DeceptionRoutes` and `default_deception_traps()` a sorted `Vec<String>` instead of `dashmap` sets, and `global_rate_limit_store()` is private since 13.0.0-alpha.5",
+        "Call `contains`, `len`, `is_empty` or `routes()` on `DeceptionRoutes` and register paths with `try_register_deception_trap`; use `is_rate_limited` or a `RateLimiter` instead of reading the rate-limit store.";
+    CONNECT_JWKS: "V13-CONNECT-JWKS-KEY-SET", Review, "13.0.0-alpha.5", "Connect JWKS key sets",
+        "`JwksCache` and `fetch_and_cache_jwks` return `JsonWebKeySet` instead of `jsonwebtoken`'s `JwkSet` since 13.0.0-alpha.5, and the deprecated `JWKS_CACHE` was removed",
+        "Read the set with `key_ids()`, `contains_key_id(kid)`, `len()` and `is_empty()`; the providers verify tokens with it. Replace `JWKS_CACHE` with a `JwksCache` the application owns.";
     AI_HTTP_STATUS: "V13-AI-HTTP-STATUS", Review, "13.0.0-alpha.5", "AI provider HTTP errors",
         "an unsuccessful provider HTTP status is `AiError::HttpStatus` since 13.0.0-alpha.5, no longer `AiError::ApiError`",
         "Match `AiError::HttpStatus(error)` and read `error.status()`, `error.retry_after()`, `error.code()` and `error.message()` instead of searching the text for `429` or `404`; the text is unchanged, and `ApiError` still reports malformed or incomplete replies.";
@@ -418,4 +424,6 @@ pub(crate) const REMOVED_API_RULES: &[&Rule] = &[
     &MAIL_REMOVED,
     &HIDDEN_INTERNALS,
     &STORE_COLLECTIONS,
+    &SECURITY_GLOBALS,
+    &CONNECT_JWKS,
 ];

@@ -71,14 +71,29 @@ A prepared version section does not establish that its tag or crates exist.
   methods (now on its sealed supertrait); Security `current_timestamp_str`;
   Nexus `generate_smart_nexus_ai_response`. Security's
   `get_real_rss_memory_mb` (use `rullst_core::radar::get_process_memory_mb`)
-  and Nexus's unused `field_kind_sql` were removed. The `#[doc(hidden)]` items
-  that stay public name the macro or crate that uses them in a comment.
+  and Nexus's unused `field_kind_sql` were removed. `Outbox::claim_next_at` and
+  `query_cache::model_hash_key` moved behind the new non-default `test-util`
+  feature of `rullst-orm` (test suites only, outside the 13.x stability
+  promise), and `query_cache::query_key` and `query_cache::invalidate_table`
+  are now documented. The `#[doc(hidden)]` items that stay public name the
+  macro or crate that uses them in a comment.
   `cargo rullst upgrade` reviews the names (`V13-HIDDEN-INTERNALS-PRIVATE`).
 - **Breaking:** the `banned_ips`, `honeypot_route_hits` and `live_events`
   fields of `rullst_security::SecurityStore` are private, so `dashmap` is no
   longer in its API; the new `active_bans`, `is_banned`,
   `honeypot_route_hits` and `live_events` methods return sorted copies. Nexus
   renders its security page from them (`V13-SECURITY-STORE-COLLECTIONS`).
+  `deception::global_deception_routes()` returns the new `DeceptionRoutes`
+  (`contains`, `len`, `is_empty`, `routes`), `default_deception_traps()` a
+  sorted `Vec<String>`, and `rate_limit::global_rate_limit_store()` is
+  private, so `dashmap` is no longer a public dependency
+  (`V13-SECURITY-GLOBAL-COLLECTIONS`).
+- **Breaking:** `JwksCache::get`/`get_for_kid` and
+  `fetch_and_cache_jwks`/`fetch_and_cache_jwks_for_kid` return the new
+  `JsonWebKeySet` (`key_ids`, `contains_key_id`, `len`, `is_empty`) instead of
+  `jsonwebtoken`'s `JwkSet`, and the deprecated `JWKS_CACHE` static was
+  removed, so `jsonwebtoken` is no longer a public dependency
+  (`V13-CONNECT-JWKS-KEY-SET`).
 - **Breaking:** no public error variant or `From` conversion names a
   `reqwest`, `jsonwebtoken`, `base64`, `redis` or `serde_json` error any more,
   so those crates are no longer public dependencies through errors.

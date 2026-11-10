@@ -90,6 +90,8 @@ fn rules_carry_the_release_of_their_change() {
             "V13-HIDDEN-INTERNALS-PRIVATE",
             "V13-SECURITY-STORE-COLLECTIONS",
             "V13-ERROR-PAYLOADS",
+            "V13-SECURITY-GLOBAL-COLLECTIONS",
+            "V13-CONNECT-JWKS-KEY-SET",
             "V13-AI-HTTP-STATUS",
         ]
     );

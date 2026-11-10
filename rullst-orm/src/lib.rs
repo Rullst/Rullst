@@ -125,8 +125,6 @@ pub mod pool;
 pub mod post_commit;
 pub mod privacy;
 #[cfg(feature = "redis")]
-// Used by `#[derive(Orm)]`.
-#[doc(hidden)]
 pub mod query_cache;
 pub mod raw;
 #[cfg(feature = "redis")]

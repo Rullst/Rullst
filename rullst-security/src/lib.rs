@@ -70,7 +70,7 @@ pub use ai_firewall::{
 pub use audit::{AuditChain, AuditLogger, AuditRecord, MIN_AUDIT_KEY_BYTES, StdoutAuditLogger};
 pub use cswsh::{CswsPolicy, CswsPolicyError, cswsh_guard_middleware};
 pub use deception::{
-    MAX_DECEPTION_TRAPS, deception_trap_middleware, register_deception_trap,
+    DeceptionRoutes, MAX_DECEPTION_TRAPS, deception_trap_middleware, register_deception_trap,
     try_register_deception_trap,
 };
 pub use digest::sha256_hex;

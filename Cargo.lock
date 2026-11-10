@@ -6636,6 +6636,7 @@ dependencies = [
  "rand 0.10.3",
  "redis",
  "reqwest",
+ "rullst-orm",
  "rullst-orm-macros",
  "rustls",
  "sea-orm",

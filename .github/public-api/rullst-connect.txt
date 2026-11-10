@@ -768,12 +768,24 @@ impl<'a> core::marker::Sync for rullst_connect::provider::ExchangeParams<'a>
 impl<'a> core::marker::Unpin for rullst_connect::provider::ExchangeParams<'a>
 impl<'a> core::panic::unwind_safe::RefUnwindSafe for rullst_connect::provider::ExchangeParams<'a>
 impl<'a> core::panic::unwind_safe::UnwindSafe for rullst_connect::provider::ExchangeParams<'a>
-#[deprecated] pub static rullst_connect::provider::JWKS_CACHE: std::sync::lazy_lock::LazyLock<tokio::sync::rwlock::RwLock<std::collections::hash::map::HashMap<alloc::string::String, alloc::sync::Arc<jsonwebtoken::jwk::JwkSet>>>>
+pub struct rullst_connect::provider::JsonWebKeySet(_)
+impl rullst_connect::provider::JsonWebKeySet
+pub fn rullst_connect::provider::JsonWebKeySet::contains_key_id(&self, kid: &str) -> bool
+pub fn rullst_connect::provider::JsonWebKeySet::is_empty(&self) -> bool
+pub fn rullst_connect::provider::JsonWebKeySet::key_ids(&self) -> alloc::vec::Vec<&str>
+pub fn rullst_connect::provider::JsonWebKeySet::len(&self) -> usize
+impl core::clone::Clone for rullst_connect::provider::JsonWebKeySet
+impl core::fmt::Debug for rullst_connect::provider::JsonWebKeySet
+impl core::marker::Send for rullst_connect::provider::JsonWebKeySet
+impl core::marker::Sync for rullst_connect::provider::JsonWebKeySet
+impl core::marker::Unpin for rullst_connect::provider::JsonWebKeySet
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_connect::provider::JsonWebKeySet
+impl core::panic::unwind_safe::UnwindSafe for rullst_connect::provider::JsonWebKeySet
 pub struct rullst_connect::provider::JwksCache
 impl rullst_connect::provider::JwksCache
 pub async fn rullst_connect::provider::JwksCache::clear(&self)
-pub async fn rullst_connect::provider::JwksCache::get(&self, url: &str, client: &dyn rullst_connect::client::HttpClient) -> core::result::Result<alloc::sync::Arc<jsonwebtoken::jwk::JwkSet>, rullst_connect::ConnectError>
-pub async fn rullst_connect::provider::JwksCache::get_for_kid(&self, url: &str, kid: &str, client: &dyn rullst_connect::client::HttpClient) -> core::result::Result<alloc::sync::Arc<jsonwebtoken::jwk::JwkSet>, rullst_connect::ConnectError>
+pub async fn rullst_connect::provider::JwksCache::get(&self, url: &str, client: &dyn rullst_connect::client::HttpClient) -> core::result::Result<rullst_connect::provider::JsonWebKeySet, rullst_connect::ConnectError>
+pub async fn rullst_connect::provider::JwksCache::get_for_kid(&self, url: &str, kid: &str, client: &dyn rullst_connect::client::HttpClient) -> core::result::Result<rullst_connect::provider::JsonWebKeySet, rullst_connect::ConnectError>
 pub fn rullst_connect::provider::JwksCache::new(policy: rullst_connect::provider::JwksCachePolicy) -> Self
 impl core::clone::Clone for rullst_connect::provider::JwksCache
 impl core::default::Default for rullst_connect::provider::JwksCache
@@ -840,11 +852,11 @@ impl<'a> core::panic::unwind_safe::UnwindSafe for rullst_connect::provider::Toke
 pub fn rullst_connect::provider::build_oauth_params<'a>(base_url: &str, client_id: &'a str, redirect_uri: &'a str, scopes: &'a str, state: core::option::Option<&'a str>, pkce_challenge: core::option::Option<&'a str>) -> form_urlencoded::Serializer<'a, alloc::string::String>
 pub async fn rullst_connect::provider::exchange_and_get_user<P>(provider: &P, client: &dyn rullst_connect::client::HttpClient, token_url: &str, form: &rullst_connect::provider::TokenExchangeForm<'_>, expected_nonce: core::option::Option<&str>) -> core::result::Result<rullst_connect::ConnectUser, rullst_connect::ConnectError> where P: rullst_connect::Provider + ?core::marker::Sized
 pub async fn rullst_connect::provider::fetch_access_token(client: &dyn rullst_connect::client::HttpClient, token_url: &str, form: &rullst_connect::provider::TokenExchangeForm<'_>) -> core::result::Result<rullst_connect::provider::Oauth2TokenResponse, rullst_connect::ConnectError>
-pub async fn rullst_connect::provider::fetch_and_cache_jwks(url: &str, client: &dyn rullst_connect::client::HttpClient) -> core::result::Result<alloc::sync::Arc<jsonwebtoken::jwk::JwkSet>, rullst_connect::ConnectError>
-pub async fn rullst_connect::provider::fetch_and_cache_jwks_for_kid(url: &str, kid: &str, client: &dyn rullst_connect::client::HttpClient) -> core::result::Result<alloc::sync::Arc<jsonwebtoken::jwk::JwkSet>, rullst_connect::ConnectError>
+pub async fn rullst_connect::provider::fetch_and_cache_jwks(url: &str, client: &dyn rullst_connect::client::HttpClient) -> core::result::Result<rullst_connect::provider::JsonWebKeySet, rullst_connect::ConnectError>
+pub async fn rullst_connect::provider::fetch_and_cache_jwks_for_kid(url: &str, kid: &str, client: &dyn rullst_connect::client::HttpClient) -> core::result::Result<rullst_connect::provider::JsonWebKeySet, rullst_connect::ConnectError>
 pub async fn rullst_connect::provider::fetch_refresh_token(client: &dyn rullst_connect::client::HttpClient, token_url: &str, client_id: &str, client_secret: &str, refresh_token: &str) -> core::result::Result<rullst_connect::provider::Oauth2TokenResponse, rullst_connect::ConnectError>
 pub mod rullst_connect::provider::jwks
-pub use rullst_connect::provider::jwks::JWKS_CACHE = static rullst_connect::provider::JWKS_CACHE
+pub use rullst_connect::provider::jwks::JsonWebKeySet = struct rullst_connect::provider::JsonWebKeySet
 pub use rullst_connect::provider::jwks::JwksCache = struct rullst_connect::provider::JwksCache
 pub use rullst_connect::provider::jwks::JwksCachePolicy = struct rullst_connect::provider::JwksCachePolicy
 pub use rullst_connect::provider::jwks::fetch_and_cache_jwks = function rullst_connect::provider::fetch_and_cache_jwks
