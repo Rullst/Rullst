@@ -435,6 +435,9 @@ rules! {
     IOT_CODEC_ERROR_MATCH: "V13-IOT-CODEC-ERROR-MATCH", MustChange, "13.0.0-alpha.5", "IoT encoder errors",
         "`MqttCodecError` and `CoapCodecError` are `#[non_exhaustive]` since 13.0.0-alpha.5 and gained `AllocationFailed`; a `match` on them without a wildcard arm no longer compiles",
         "Add a wildcard arm (`_ => ...`). Treat `AllocationFailed` as running out of memory, not as invalid input: the same packet encodes once memory is free.";
+    IOT_SENSOR_CARD_HTML: "V13-IOT-SENSOR-CARD-HTML", Review, "13.0.0-alpha.5", "IoT sensor card HTML",
+        "`IotDashboard::render_sensor_card` returns `IotHtml` instead of `String` since 13.0.0-alpha.5 and shows the value with at most two decimals",
+        "Call `.into_string()` where a `String` is needed, or insert it into a view with `Markup::from_trusted(card.into_string())`; `IotHtml` reads like a `&str`. Update tests or parsers that expected the raw `f64` text.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

@@ -322,6 +322,9 @@ impl Scanner<'_, '_> {
         if let Some(rule) = api_cleanups::ident_rule(name) {
             self.hit(rule, at);
         }
+        if let Some(rule) = super::alpha5_runtime::ident_rule(name) {
+            self.hit(rule, at);
+        }
         match name {
             "health_router"
             | "health_router_with_lifecycle"

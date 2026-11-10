@@ -3965,7 +3965,8 @@ provider](capital-custom-provider.md)); the
 * `cargo rullst make:iot <DeviceName>` generates and registers a local telemetry
   module, enables the umbrella `iot` feature and refuses unsafe names or
   collisions. It does not install firmware, a HAL, MQTT or CoAP.
-* `IotDashboard` renders an escaped HTML snapshot. It does not infer online
+* `IotDashboard` renders an escaped HTML snapshot as `IotHtml` (13.0.0-alpha.5),
+  the reading with at most two decimals. It does not infer online
   state or provide a live device connection.
 * `MqttPublish` encodes one bounded MQTT 5 PUBLISH packet with validated topic,
   minimal Remaining Length, QoS/packet-identifier invariants and an empty

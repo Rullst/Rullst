@@ -6,8 +6,10 @@ builders, deterministic edge helpers, and a fail-closed signed firmware gate.
 **Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
 The API may change between 13.x releases. On 2026-11-10 a BBC micro:bit V2
 (nRF52833) ran the encoders, the signed OTA gate and the counter-store
-contract with no failure ([hardware validation](#hardware-validation)); no
-other board, live broker or external flash has been tested. Experimental does
+contract with no failure ([hardware validation](#hardware-validation)), and
+the `std` telemetry, MQTT encoder and anomaly path ran end to end with an
+Arduino Uno sensor and a Rullst gateway and dashboard, with no broker
+involved. No other board, live broker or external flash has been tested. Experimental does
 not mean broken; the table below shows which modules are working
 implementations.
 
@@ -25,9 +27,9 @@ no hardware or network. **Fixture** is deterministic test data behind
 | `coap` | Working (encoder) | RFC 7252 base requests. No UDP/DTLS, retransmission or response decoding. |
 | `modbus` | Working (narrow) | CRC-16 and a Read Holding Registers RTU request. No response parsing, write builder or transport. |
 | `i2c` | Working (narrow) | Register-read transaction bytes with address/length checks. No bus access. |
-| `anomaly` | Working | Fixed mean/tolerance classification; non-finite values fail closed. |
+| `anomaly` | Working | Fixed mean/tolerance classification; non-finite values fail closed. `AnomalyState` displays and serializes (`"critical_anomaly"`). |
 | `twin` | Working (in memory) | Readings, latest per metric, JSON snapshot. No sync; readings grow until you trim them. |
-| `ui` | Working | Escaped HTML snapshot card. |
+| `ui` | Working | Escaped HTML snapshot card (`IotHtml`), reading shown with at most two decimals. |
 | `power` | Working (policy) | Hard-coded voltage thresholds to a recommended mode. Controls no hardware. |
 | `mesh` | Model only | Node list and strongest-RSSI relay pick. No routing or transport. |
 | `ble` | Model only | GATT data structs. No radio. |
@@ -37,6 +39,8 @@ no hardware or network. **Fixture** is deterministic test data behind
 ## Implemented scope
 
 - `SensorTelemetry` and `DigitalTwin` in-memory state models.
+  `SensorTelemetry::timestamp` is whole UNIX seconds; a reading that needs
+  finer time carries it in the application's own payload type.
 - Modbus frame/CRC helpers, BLE GATT data structures, I2C frame builders, and
   in-memory GPIO state. These are not operating-system or hardware drivers.
   `I2cHelper::try_build_read_frame` rejects reserved or non-7-bit addresses and
@@ -47,7 +51,12 @@ no hardware or network. **Fixture** is deterministic test data behind
   broker limits, acknowledgements, retries, congestion control, and identity.
 - Statistical anomaly evaluation, power policy helpers, and topology models.
 - An escaped HTML snapshot-card renderer. It deliberately labels the card as a
-  snapshot rather than inferring device connectivity.
+  snapshot rather than inferring device connectivity. It returns `IotHtml`, the
+  crate's own escaped-HTML type (this crate does not depend on the web
+  runtime): insert it into a Rullst view with
+  `Markup::from_trusted(card.into_string())`. The reading is shown with at most
+  two decimals, in scientific notation outside 0.01 to 10^9, and as `n/a` when
+  it is not finite.
 - Ed25519 verification of domain-separated OTA manifests. A signed manifest
   binds the device target, version, monotonic rollback counter, firmware length,
   and SHA-256 digest.
@@ -240,7 +249,10 @@ compare-and-set contract with an in-RAM store, and allocation failure. The
 streamed verification took 62.8 ms (36.6 ms for the signature before the first
 chunk, 3.3 ms per chunk) with 7.6 KiB of stack; the heap peaked at 1,153 bytes.
 Transports, other boards, external flash, a persistent counter store and the
-bootloader remain unvalidated. The
+bootloader remain unvalidated. On the same day the `std` build ran end to end on a host: readings from an
+Arduino Uno sensor went through `SensorTelemetry`, the MQTT 5 PUBLISH encoder
+and `AnomalyDetector` to a Rullst gateway and dashboard. No broker was
+involved, so the encoded packets were not delivered to one. The
 [crate guide](https://rullst.github.io/Rullst/book/crates/iot.html#hardware-validation-bbc-microbit-v2)
 has the full results; the firmware is
 [`.github/fixtures/iot-microbit-v2`](https://github.com/Rullst/Rullst/tree/main/.github/fixtures/iot-microbit-v2),

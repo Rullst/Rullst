@@ -7,8 +7,10 @@
 //!
 //! **Maturity: Experimental**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). The API may
-//! change between 13.x releases. A BBC micro:bit V2 (nRF52833) ran the
-//! encoders, the OTA gate and the counter-store contract on 2026-11-10; no
+//! change between 13.x releases. On 2026-11-10 a BBC micro:bit V2 (nRF52833)
+//! ran the encoders, the OTA gate and the counter-store contract, and the
+//! `std` telemetry, MQTT encoder and anomaly path ran end to end with an
+//! Arduino Uno sensor and a Rullst gateway and dashboard, with no broker; no
 //! other board or live broker has been tested. The default `std` feature can be
 //! disabled for `no_std` targets, which need `alloc` with a
 //! `#[global_allocator]` and about 8 KiB of stack for the Ed25519 check in
@@ -76,9 +78,15 @@ pub use power::{HarvesterState, PowerGovernor, PowerMode};
 #[cfg(feature = "experimental-simulators")]
 pub use pqc::SimulatedPqcFixture;
 pub use twin::{DigitalTwin, TwinJsonError, TwinSyncError};
-pub use ui::IotDashboard;
+pub use ui::{IotDashboard, IotHtml};
 
 /// Sensor payload telemetry model for IoT nodes.
+///
+/// `timestamp` is whole seconds since the UNIX epoch, the resolution of the
+/// real-time clocks of the boards this model targets. A reading that needs
+/// finer time carries it in the application's own payload type; this one keeps
+/// its field set and JSON shape (`device_id`, `metric`, `value`, `timestamp`)
+/// stable for 13.x.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SensorTelemetry {
     /// Device identifier string.
@@ -87,7 +95,7 @@ pub struct SensorTelemetry {
     pub metric: String,
     /// Floating point metric reading.
     pub value: f64,
-    /// UNIX timestamp in seconds.
+    /// UNIX timestamp in whole seconds (not milliseconds).
     pub timestamp: u64,
 }
 

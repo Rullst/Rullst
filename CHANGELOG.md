@@ -11,6 +11,11 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- `rullst-iot` (Experimental): `AnomalyDetector` derives `Clone`, `Copy`,
+  `Debug` and `PartialEq`; `AnomalyState` documents its variants, implements
+  `Display` (`normal`, `warning`, `critical anomaly`) and `as_str`, and
+  serializes with serde as `"normal"`, `"warning"` and `"critical_anomaly"`.
+  Requested after an Arduino Uno and Rullst gateway run of the `std` path.
 - `rullst-iot` (Experimental) streaming OTA verification. A device builds the
   manifest from the fields it receives with `OtaManifest::new(target,
   version, rollback_counter, firmware_len, firmware_sha256)` or parses the
@@ -242,6 +247,16 @@ A prepared version section does not establish that its tag or crates exist.
   `OtaManifest` and `OtaCommit` moved to their own file; their paths are
   unchanged. `cargo rullst upgrade` reports the three field accesses in files
   that name `OtaManager` (`V13-IOT-OTA-STATE`).
+- **Breaking:** `rullst-iot` (Experimental): `IotDashboard::render_sensor_card`
+  returns the new `IotHtml`, the crate's escaped-HTML type that reads like a
+  `&str`, instead of a `String`, and shows the reading with at most two
+  decimals (scientific notation outside 0.01 to 10^9, `n/a` when not finite)
+  instead of the full `f64` text. Call `.into_string()` for a `String`, or
+  insert it into a view with `Markup::from_trusted(card.into_string())`.
+  `cargo rullst upgrade` reports each file that calls it
+  (`V13-IOT-SENSOR-CARD-HTML`). `SensorTelemetry::timestamp` stays whole UNIX
+  seconds, now documented: a new field would break every struct literal and
+  the JSON shape, and changing the unit would silently misread stored data.
 - **Breaking:** `rullst-iot` (Experimental): `MqttCodecError` and
   `CoapCodecError` are `#[non_exhaustive]` and gain `AllocationFailed`;
   `OtaError` gains `AllocationFailed` too. A `match` on the two codec errors

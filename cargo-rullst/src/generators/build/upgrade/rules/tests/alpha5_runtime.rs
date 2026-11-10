@@ -7,6 +7,7 @@ use super::*;
 const OTA: &str = "V13-IOT-OTA-STATE";
 const ALPINE: &str = "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE";
 const CODEC: &str = "V13-IOT-CODEC-ERROR-MATCH";
+const CARD: &str = "V13-IOT-SENSOR-CARD-HTML";
 
 #[test]
 fn ota_manager_field_accesses_are_reviewed_once_per_file() {
@@ -137,6 +138,28 @@ fn h(e: MyCodecError) -> bool {
 }
 fn i(e: MqttCodecError) -> bool { matches!(e, MqttCodecError::EmptyTopic) }
 "#,
+        &[],
+    );
+}
+
+#[test]
+fn sensor_card_calls_are_reviewed_once_per_file() {
+    let source = r#"
+use rullst_iot::IotDashboard;
+
+fn page(reading: &rullst_iot::SensorTelemetry) -> String {
+    let card: String = IotDashboard::render_sensor_card(reading);
+    let again = rullst::iot::IotDashboard::render_sensor_card(reading);
+    card + &again
+}
+"#;
+    assert_eq!(
+        scan_with(source, "lib.rs", &WorkspaceFacts::default()),
+        [(CARD, 5)]
+    );
+    // Other renderers and the bare type are not reported.
+    assert_only(
+        "fn f(t: &T) -> String { IotDashboard::render_card(t) + &render_sensor_cards(t) }\n",
         &[],
     );
 }

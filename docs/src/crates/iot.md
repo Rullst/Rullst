@@ -15,8 +15,10 @@ Over-The-Air (OTA) firmware update state machine.
 > **Maturity: Experimental.** The API may change between 13.x releases. One
 > board has run it: a BBC micro:bit V2 (nRF52833) passed the crate's encoder,
 > OTA and counter-store checks on 2026-11-10 ([hardware
-> validation](#hardware-validation-bbc-microbit-v2)). Nothing has been tested
-> against a live broker, on another board or with external flash.
+> validation](#hardware-validation-bbc-microbit-v2)). The same day the `std`
+> telemetry, MQTT encoder and anomaly path ran end to end with an Arduino Uno
+> sensor and a Rullst gateway and dashboard, with no broker. Nothing has been
+> tested against a live broker, on another board or with external flash.
 > Experimental does not mean broken: the [module status](#module-status)
 > below separates working implementations from data models and contracts. See
 > the [maturity tiers](../maturity.md).
@@ -55,9 +57,9 @@ Each module falls into one of four kinds:
 | `coap` | Working (encoder) | `CoapRequest` encodes an RFC 7252 GET/POST/PUT/DELETE request with Uri-Path and Content-Format options under a 1152-byte ceiling. | No UDP/DTLS, retransmission, block-wise transfer or response decoding. |
 | `modbus` | Working (narrow) | Modbus CRC-16 and a Read Holding Registers (`0x03`) RTU request frame. | No response parsing and no write-request builder (`WriteSingleRegister` is only an enum value). It does not check the protocol's register-count limit and has no serial or TCP transport. |
 | `i2c` | Working (narrow) | Builds the byte layout of a register-read transaction, rejecting reserved or non-7-bit addresses and reads above 8,192 bytes. | No bus access. |
-| `anomaly` | Working | Classifies a reading against a fixed mean and tolerance (normal, warning beyond 1×, critical beyond 2×); non-finite values fail closed as critical. | No learned baseline or time-series analysis. |
+| `anomaly` | Working | Classifies a reading against a fixed mean and tolerance (normal, warning beyond 1×, critical beyond 2×); non-finite values fail closed as critical. `AnomalyState` displays as `normal`/`warning`/`critical anomaly` and serializes as `"normal"`/`"warning"`/`"critical_anomaly"`; `AnomalyDetector` is `Clone`, `Copy`, `Debug` and `PartialEq`. | No learned baseline or time-series analysis. |
 | `twin` | Working (in memory) | `DigitalTwin` stores readings, returns the latest per metric and serializes a JSON snapshot, refusing non-finite values. | No synchronization or transport. It keeps every ingested reading, so trim `readings` on long-running hosts. |
-| `ui` | Working | Renders an HTML-escaped sensor snapshot card. | No live updates or connectivity status. |
+| `ui` | Working | Renders an HTML-escaped sensor snapshot card as `IotHtml`, the reading with at most two decimals (scientific notation outside 0.01 to 10^9, `n/a` when not finite). Insert it into a Rullst view with `Markup::from_trusted(card.into_string())`; `rullst-iot` does not depend on the web runtime. | No live updates or connectivity status. |
 | `power` | Working (policy) | Recommends a power mode and harvester state from hard-coded millivolt thresholds. | Does not control sleep, wake, charging or solar hardware. |
 | `mesh` | Model only | In-memory node list; `best_relay` picks the online node with the strongest recorded RSSI. | No discovery, routing, failure detection or mesh transport. |
 | `ble` | Model only | GATT service and characteristic structs. | No radio and no GATT server. |
@@ -65,7 +67,10 @@ Each module falls into one of four kinds:
 | `hsm` | Fixture | `SimulatedHsmDevice` derives deterministic SHA-256 bytes. | Not an HSM: no key protection, signatures or MACs. |
 | `pqc` | Fixture | `SimulatedPqcFixture` derives deterministic hash bytes. | No ML-KEM/Kyber, no encapsulation and no quantum resistance. |
 
-`SensorTelemetry` (crate root) is the shared telemetry data model. The `ota`,
+`SensorTelemetry` (crate root) is the shared telemetry data model. Its
+`timestamp` is whole UNIX seconds, the resolution of the boards' real-time
+clocks; its four fields and their JSON names stay fixed for 13.x, so a reading
+that needs finer time carries it in the application's own payload type. The `ota`,
 `modbus` and `anomaly` modules also have fuzz targets, and CI builds the crate
 for Cortex-M and RISC-V targets. Those builds are compile evidence, not hardware
 tests.
@@ -347,6 +352,16 @@ boards and architectures (ESP32, RISC-V, Cortex-M0); an image read from real
 external flash or a network (the run streamed it from internal flash); a
 persistent rollback-counter store (the run used one in RAM), flashing,
 bootloader handoff and power loss.
+
+### Host end-to-end run (Arduino Uno and a Rullst gateway)
+
+Also on 2026-11-10, the `std` build ran end to end on a host: readings from an
+Arduino Uno sensor were turned into `SensorTelemetry`, encoded with
+`MqttPublish` and classified with `AnomalyDetector` by a Rullst gateway, which
+showed them on a dashboard. No broker was involved, so this does not validate
+MQTT delivery, a broker or the network. It is what led to `AnomalyState`'s
+`Display` and serde support, `AnomalyDetector`'s derives and the bounded
+reading format of `IotHtml`.
 
 The firmware is in the repository at
 [`.github/fixtures/iot-microbit-v2`](https://github.com/Rullst/Rullst/tree/main/.github/fixtures/iot-microbit-v2).
