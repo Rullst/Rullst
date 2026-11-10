@@ -250,9 +250,16 @@ to the counts above.
     classifies machine routes.
   - **Media:** upload-only Bunny credentials, browser uploads above 1 GiB and
     library listing.
-  - **`green`:** page weight (response bytes, first and repeat visits,
-    third-party requests) with a network term in the SCI estimate, and idle
-    memory and CPU on macOS and Windows.
+  - **`green` becomes `footprint`:** the command, its module, report schema
+    (`rullst.footprint.v1`) and book page are renamed without an alias, and a
+    `cargo rullst upgrade` rule points at scripts and workflows that still call
+    `cargo rullst green`. "Green" reads as an environmental claim (the EU's
+    Directive 2024/825 restricts generic ones from 27 September 2026); the
+    command measures resources and estimates SCI from the operator's inputs,
+    which is neither a certification nor a claim. It adds page weight
+    (response bytes, first and repeat visits, third-party requests) with a
+    network term in the SCI estimate, and idle memory and CPU on macOS and
+    Windows.
   - **CLI:** `make:mfa` enrolment pages and sign-in step with a QR code;
     `make:pwa --router`; `make:oauth` and `make:privacy` for applications
     with their own sign-in; a "reviewed" marker for upgrade review rules.
@@ -261,6 +268,15 @@ to the counts above.
     segments in the access log; an application stylesheet for Nexus; the
     remote Studio without database drivers or Capital; no development key
     written to the project root by tests.
+  - **Brought forward from the 13.x and v14 lists:** unquoted text in `html!`
+    (quoted literals keep working); `OtaManager` fields private behind getters
+    of the same names; and the four breaking clean-ups of the v14 list below,
+    which are cheaper before the 13.0 freeze than in 14.0: internals hidden
+    from the documentation become crate-private, Rullst error types replace
+    third-party types in public error variants and `From` conversions,
+    `SecurityStore`'s `dashmap` fields become private, and the duplicate
+    module paths are removed. Each breaking change gets a migration-guide
+    entry and, where it can be detected, an upgrade rule.
 - **13.0.0-rc.1: fixes and documentation only.** 13.0.0-alpha.5 freezes the
   features and the public API of 13.0. rc.1 adds no feature: it carries fixes
   for defects found in alpha.5 (by its release admission, the first-hour and
@@ -315,10 +331,6 @@ none is scheduled, and real user demand orders them.
 
 - **Production monitor** (13.1 candidate): desktop notifications in the
   standalone Studio, remote traces and security radar, and proxy support.
-- **`OtaManager` getters** (Experimental tier): private fields with getters of
-  the same names, as announced in 13.0.0-alpha.4.
-- **Unquoted text in `html!`**: an ergonomic grammar addition, only if users
-  ask for it; quoted literals keep working.
 - **More i18n locales and currency formats**, added as CLDR data when requested.
 
 Decided non-goals (not planned, so they are documented as scope rather than as
@@ -392,20 +404,10 @@ Recorded on 8 October 2026; ideas, not commitments.
 
 Breaking ideas raised during 13.x are collected here instead of shipping in a
 13.x release ([support window](docs/src/compatibility-policy.md#supported-release-window)).
-None is scheduled; v14 development starts only when they justify it.
-
-- Make the internals hidden from the documentation in 13.0.0-alpha.4
-  (`#[doc(hidden)]`) crate-private.
-- Replace third-party types in public error variants and `From` conversions
-  (`reqwest`, `jsonwebtoken`, `base64`, `redis`, `serde_json`) with Rullst
-  error types, so fewer crates are [public dependencies](docs/src/compatibility-policy.md#public-dependencies).
-- Make the `dashmap` fields of `rullst_security::SecurityStore`
-  (`banned_ips`, `honeypot_route_hits`) private, behind methods.
-- Keep one path per item: remove `rullst::rullst_orm` (same as
-  `rullst::orm`), `rullst::security_runtime` (same as
-  `rullst::security::runtime`) and Mail's alias modules `rullst_mail::mail`
-  and `rullst_mail::drivers::mock` (same as the crate root and
-  `rullst_mail::mock`).
+None is scheduled; v14 development starts only when they justify it. The four
+clean-ups recorded here before 13.0 (crate-private internals, Rullst error
+types instead of third-party ones, private `SecurityStore` fields, one path per
+item) moved into 13.0.0-alpha.5.
 
 ---
 
