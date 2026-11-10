@@ -500,6 +500,12 @@ list every change.
 - **Progressive web apps:** `cargo rullst make:pwa` (manifest, service worker,
   offline page), a Google Play Trusted Web Activity configuration and a
   Microsoft Store guide ([guide](https://rullst.github.io/Rullst/book/tutorials/43-progressive-web-apps.html)).
+- **Frontend tools, opt-in:** `rullst::assets::url("app.css")` links static
+  files under a content-hashed name served `immutable`; `cargo rullst add
+  tailwind` sets up Tailwind CSS v4 through its pinned, checksum-verified
+  standalone CLI (no Node.js) in `dev`, `build` and the Dockerfile; `cargo
+  rullst add alpine` vendors Alpine.js's CSP build for client-only state under
+  the strict CSP ([guide](https://rullst.github.io/Rullst/book/frontend.html)).
 - **Studio production monitoring:** a read-only monitoring endpoint, and a
   standalone Studio for remote projects with a project switcher, history and
   alerts ([guide](https://rullst.github.io/Rullst/book/production-monitoring.html)).
