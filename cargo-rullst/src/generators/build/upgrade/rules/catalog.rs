@@ -393,6 +393,12 @@ rules! {
     BLUEPRINTS_REMOVED: "V13-CLI-BLUEPRINTS-REMOVED", Review, "13.0.0-rc.1", "CLI starters moved to the examples",
         "this script passes `--blueprint lms|blog|portfolio|erp`, which `cargo rullst new` refuses with status 1 since 13.0.0-alpha.4, before writing anything",
         "Copy the application from the repository's `examples/lms`, `examples/erp`, `examples/portfolio` or `examples/blog` (https://github.com/Rullst/Rullst/tree/main/examples) instead, or start from `--blueprint api` or `--blueprint saas`.";
+    HTML_ALPINE_DIRECTIVE: "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE", MustChange, "13.0.0-alpha.5", "`html!` event handlers",
+        "a dynamic value in an Alpine.js `x-*` attribute of `html!` no longer compiles: Alpine runs it as JavaScript",
+        "Write the directive as a static string and pass the server value through a `data-*` attribute (`data-count={count}` read as `$el.dataset.count`), or render the JSON into a `<script type=\"application/json\">` data block that the component reads.";
+    IOT_OTA_STATE: "V13-IOT-OTA-STATE", Review, "13.0.0-alpha.5", "IoT OTA manager state",
+        "`OtaManager`'s `current_partition`, `status` and `firmware_version` are private fields since 13.0.0-alpha.5; this file reads or assigns one",
+        "Call the methods of the same names (`ota.current_partition()`, `ota.status()`, `ota.firmware_version()`). Replace an assignment `ota.current_partition = bank` with `ota = ota.with_running_partition(bank)` before verifying an update, or build the manager with `new_with_running_partition`.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

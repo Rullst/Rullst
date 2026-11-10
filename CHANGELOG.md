@@ -119,7 +119,8 @@ A prepared version section does not establish that its tag or crates exist.
   `xlink:href`, whose dynamic values get the URL scheme check. Dynamic and
   conditional values of `x-*`, `@*`, `:*` and `hx-on:*` attributes do not
   compile, like those of `on*` handlers, because the browser runs them as
-  JavaScript.
+  JavaScript. **Breaking** for a dynamic `x-*` value, which compiled before;
+  `cargo rullst upgrade` reports it (`V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`).
 
 ### Changed
 
@@ -132,7 +133,8 @@ A prepared version section does not establish that its tag or crates exist.
   `new_with_counter_store` calls the new `with_running_partition(bank)`,
   which also discards an update verified for the other bank.
   `OtaManifest` and `OtaCommit` moved to their own file; their paths are
-  unchanged.
+  unchanged. `cargo rullst upgrade` reports the three field accesses in files
+  that name `OtaManager` (`V13-IOT-OTA-STATE`).
 - `rullst-studio`: the local Studio (`Studio`, `run_studio` and its page
   modules) is the new `local` feature, which the default `drivers-all`, every
   `strict-*` profile and the facade's `studio` feature enable. `rullst-orm`,

@@ -35,6 +35,7 @@ cargo-rullst/src/generators/build/upgrade/current.rs
 cargo-rullst/src/generators/build/upgrade/isolated.rs
 cargo-rullst/src/generators/build/upgrade/manifest.rs
 cargo-rullst/src/generators/build/upgrade/report.rs
+cargo-rullst/src/generators/build/upgrade/rules/alpha5_runtime.rs
 cargo-rullst/src/generators/build/upgrade/rules/catalog.rs
 cargo-rullst/src/generators/build/upgrade/rules/files.rs
 cargo-rullst/src/generators/build/upgrade/rules/files/deploy.rs
