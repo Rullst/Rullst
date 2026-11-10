@@ -120,6 +120,10 @@ pub struct Remote {
     pub reject_create: bool,
     /// Acknowledges updates without applying them.
     pub ignore_updates: bool,
+    /// Decoded query of each list request.
+    pub queries: Vec<BTreeMap<String, String>>,
+    /// Reports this page size instead of the requested one.
+    pub list_page_size: Option<usize>,
     pub gate: Option<Arc<(tokio::sync::Notify, tokio::sync::Notify)>>,
 }
 pub struct Fixture {
@@ -185,7 +189,8 @@ async fn create(
     }
     remote.next_video += 1;
     let id = format!("12345678-1234-4234-8234-{:012x}", remote.next_video);
-    let video = json!({"videoLibraryId":7,"guid":id,"title":body["title"],"description":"","status":0,"length":12,"hasMP4Fallback":false,"availableResolutions":"720p"});
+    let video = json!({"videoLibraryId":7,"guid":id,"title":body["title"],"description":"","status":0,"length":12,"hasMP4Fallback":false,"availableResolutions":"720p",
+        "dateUploaded":format!("2026-11-01T12:00:{:02}.123", remote.next_video % 60),"thumbnailUrl":format!("https://test-library.b-cdn.net/{id}/thumbnail.jpg")});
     remote.videos.insert(id, video.clone());
     if remote.lost_create {
         return StatusCode::BAD_GATEWAY.into_response();
@@ -203,17 +208,40 @@ async fn list(
     }
     let mut remote = state.lock().unwrap();
     remote.calls.push("list".into());
-    let items: Vec<_> = remote
+    remote.queries.push(query.clone());
+    let search = query.get("search").map(|s| s.to_lowercase());
+    let mut items: Vec<_> = remote
         .videos
         .values()
         .filter(|v| {
-            v["title"]
-                .as_str()
-                .is_some_and(|s| s.contains(query.get("search").unwrap()))
+            v["title"].as_str().is_some_and(|s| {
+                search
+                    .as_ref()
+                    .is_none_or(|term| s.to_lowercase().contains(term))
+            })
         })
         .cloned()
         .collect();
-    Json(json!({"items":items,"totalItems":items.len(),"currentPage":1,"itemsPerPage":100}))
+    if query.get("orderBy").map(String::as_str) == Some("title") {
+        items.sort_by(|a, b| a["title"].as_str().cmp(&b["title"].as_str()));
+    }
+    let page: usize = query.get("page").map_or(1, |p| p.parse().unwrap());
+    let size: usize = query
+        .get("itemsPerPage")
+        .map_or(100, |p| p.parse().unwrap());
+    let total = items.len();
+    let mut items: Vec<_> = items
+        .into_iter()
+        .skip((page - 1) * size)
+        .take(size)
+        .collect();
+    if remote.wrong_identity {
+        for item in &mut items {
+            item["videoLibraryId"] = json!(8);
+        }
+    }
+    let size = remote.list_page_size.unwrap_or(size);
+    Json(json!({"items":items,"totalItems":total,"currentPage":page,"itemsPerPage":size}))
         .into_response()
 }
 async fn read(

@@ -236,6 +236,14 @@ Redirects/ambient proxies/arbitrary remote endpoints are disabled; request,
 response, retry and total-operation budgets are finite. Secret-bearing errors,
 credentials, grants and debug output must not leak keys or bearer URLs.
 
+An upload-only Bunny configuration (13.0.0-alpha.5) holds only the library API
+key: it signs upload grants and manages library videos, while playback grants and
+webhook verification return `Unsupported` and no delivery-protection assertion
+is made. `VideoProvider::list` reads one bounded, validated page of the provider
+library (at most 100 videos, 1 MiB) and grants no ownership; adapters without a
+listing return `Unsupported`. `create_with_metadata` keeps the random marker as
+the creation identity and applies metadata in a second request.
+
 Empty or `mock_*` credentials select deterministic offline behavior; mixed modes
 fail configuration. Production rejects mock or loopback-fixture capabilities.
 Automated protocol/browser/disposable-state evidence is required. The owner's

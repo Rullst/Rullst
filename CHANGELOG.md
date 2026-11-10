@@ -48,6 +48,22 @@ A prepared version section does not establish that its tag or crates exist.
   `rullst-security` and `rullst-orm`, weekly and on dispatch. It is
   informational (`continue-on-error`), so it never changes the Miri admission
   receipt.
+- `rullst-media` (Bunny Stream), requested while upgrading an application:
+  `BunnyCredentials::upload_only(api_key)` with
+  `BunnyConfig::upload_only(library, environment, credentials)` manages videos
+  with the library API key alone, without the webhook, embed and CDN keys, a
+  CDN host or the `PrivateDelivery` assertion; `playback` and
+  `verify_notification` then return `MediaError::Unsupported`.
+  `VideoProvider::list(&ListQuery)` returns one `VideoPage` of the provider
+  library (page, 10–100 per page, title search, date or title order) with each
+  video's id, title, duration, processing state, upload time and thumbnail
+  location; offline (`mock_*`) mode lists a fixed sample library and adapters
+  without a listing return `Unsupported`. `VideoProvider::create_with_metadata`
+  creates a video and applies its real title in one call, keeping the marker
+  for reconciliation. The browser module accepts `maxBytes` up to 64 GiB
+  (`BunnyUpload.MAX_BYTES`; the default stays 1 GiB), scales its chunk size and
+  run limit for large files, and takes a `types` list of accepted `video/*`
+  media types.
 
 ### Fixed
 
