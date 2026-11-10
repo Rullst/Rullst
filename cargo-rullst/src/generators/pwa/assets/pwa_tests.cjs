@@ -200,12 +200,14 @@ async function versionedNames() {
   assert.equal(networkCalls, plain.length);
 }
 
-function loadRegistration({ supported = true, controller = null, waiting = null, readyState = 'complete' } = {}) {
+function loadRegistration({ supported = true, controller = null, waiting = null, readyState = 'complete', linked = false } = {}) {
   const posted = [];
   const containerListeners = {};
   const windowListeners = {};
   const registrationListeners = {};
   const appended = [];
+  const stylesheets = [];
+  const selectors = [];
   const state = { reloads: 0, registered: [], warnings: [] };
   const registration = {
     waiting,
@@ -236,7 +238,8 @@ function loadRegistration({ supported = true, controller = null, waiting = null,
   const document = {
     readyState,
     body: { appendChild(child) { appended.push(child); } },
-    getElementById(id) { return appended.find((child) => child.id === id) ?? null; },
+    head: { appendChild(child) { stylesheets.push(child); } },
+    querySelector(selector) { selectors.push(selector); return linked ? {} : null; },
     createElement: element,
   };
   const window = {
@@ -246,7 +249,7 @@ function loadRegistration({ supported = true, controller = null, waiting = null,
   };
   const navigator = supported ? { serviceWorker: container } : {};
   const context = vm.createContext({ navigator, document, window });
-  return { context, state, appended, registration, container, containerListeners, windowListeners, registrationListeners, posted, run: () => vm.runInContext(registrationSource, context) };
+  return { context, state, appended, stylesheets, selectors, registration, container, containerListeners, windowListeners, registrationListeners, posted, run: () => vm.runInContext(registrationSource, context) };
 }
 
 function worker() {
@@ -296,19 +299,33 @@ async function registration() {
   first.containerListeners.controllerchange();
   assert.equal(first.state.reloads, 0);
 
-  // An update waiting behind a controlled page shows one prompt.
+  // An update waiting behind a controlled page shows one prompt, once its
+  // default stylesheet has loaded.
   const waiting = worker();
   const update = loadRegistration({ controller: {}, waiting });
   update.run();
   await tick();
+  assert.deepEqual(plain(update.selectors), ['link[href="/static/pwa.css"]']);
+  assert.equal(update.stylesheets.length, 1);
+  const [sheet] = update.stylesheets;
+  assert.equal(sheet.tag, 'link');
+  assert.equal(sheet.rel, 'stylesheet');
+  assert.equal(sheet.href, '/static/pwa.css');
+  assert.equal(update.appended.length, 0, 'shown once its look is loaded');
+  sheet.onload();
   assert.equal(update.appended.length, 1);
   const bar = update.appended[0];
   assert.equal(bar.id, 'rullst-pwa-update');
+  assert.equal(bar.className, 'pwa-update');
   assert.equal(bar.attributes.role, 'status');
-  assert.equal(bar.style.position, 'fixed');
-  assert.equal(bar.attributes.style, undefined, 'no style attribute: CSP refuses inline styles');
   const [text, button] = bar.children;
+  for (const element of [bar, text, button]) {
+    assert.deepEqual(Object.keys(element.style), [], 'styled by classes: CSP refuses inline styles');
+    assert.equal(element.attributes.style, undefined);
+  }
+  assert.equal(text.className, 'pwa-update-text');
   assert.equal(text.textContent, 'A new version of this app is available.');
+  assert.equal(button.className, 'pwa-update-button');
   assert.equal(button.textContent, 'Reload');
   assert.equal(button.type, 'button');
   const next = worker();
@@ -316,6 +333,7 @@ async function registration() {
   update.registrationListeners.updatefound();
   next.become('installed');
   assert.equal(update.appended.length, 1, 'one prompt at a time');
+  assert.equal(update.stylesheets.length, 1);
 
   update.containerListeners.controllerchange();
   assert.equal(update.state.reloads, 0, 'no reload before the user asks');
@@ -325,6 +343,19 @@ async function registration() {
   update.containerListeners.controllerchange();
   update.containerListeners.controllerchange();
   assert.equal(update.state.reloads, 1);
+
+  // A page that links the stylesheet itself shows the prompt at once, and a
+  // stylesheet that fails to load does not hide it.
+  const linked = loadRegistration({ controller: {}, waiting: worker(), linked: true });
+  linked.run();
+  await tick();
+  assert.equal(linked.stylesheets.length, 0);
+  assert.equal(linked.appended.length, 1);
+  const unstyled = loadRegistration({ controller: {}, waiting: worker() });
+  unstyled.run();
+  await tick();
+  unstyled.stylesheets[0].onerror();
+  assert.equal(unstyled.appended.length, 1);
 
   // A worker that is not yet installed shows nothing.
   const pending = loadRegistration({ controller: {} });
