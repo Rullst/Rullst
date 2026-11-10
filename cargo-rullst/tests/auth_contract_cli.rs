@@ -46,7 +46,7 @@ fn generated_code_compiles_against_the_authentication_contract() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path();
-    let mut manifest = build_cargo_toml(
+    let manifest = build_cargo_toml(
         "contract-consumer",
         false,
         true,
@@ -59,7 +59,6 @@ fn generated_code_compiles_against_the_authentication_contract() {
         workspace,
     )
     .unwrap();
-    manifest.push_str("\n[profile.dev]\ndebug = 0\nincremental = false\n");
     fs::write(root.join("Cargo.toml"), manifest).unwrap();
     fs::copy(workspace.join("Cargo.lock"), root.join("Cargo.lock")).unwrap();
     blueprints::apply(
@@ -166,6 +165,8 @@ fn generated_code_compiles_against_the_authentication_contract() {
         .args(["clippy", "--all-targets", "-j", "1", "--", "-D", "warnings"])
         .env("CARGO_TARGET_DIR", workspace.join("target"))
         .env("CARGO_NET_OFFLINE", "true")
+        .env("CARGO_PROFILE_DEV_DEBUG", "0")
+        .env("CARGO_INCREMENTAL", "0")
         .output()
         .unwrap();
     success(output);

@@ -1512,83 +1512,9 @@ calls and names any that are missing. Every error type only needs
 | `pub async fn create_account(transaction: &mut rullst::orm::db::Transaction<'static>, email: &str, name: &str) -> Result<i32, rullst::orm::Error>` | oauth | creates a passwordless account for a provider-verified e-mail inside the transaction that links the identity; returns its id |
 
 `Request`, `Next`, `Response` and `HeaderMap` are those of `rullst::server`.
-A version over an ORM `User` with a `session_epoch` column and the
-`rullst_session` cookie:
-
-```rust
-use crate::models::user::User;
-use rullst::server::{HeaderMap, IntoResponse, Next, Redirect, Request, Response, StatusCode};
-
-pub struct ContractAccount { pub id: i32, pub email: String, pub name: String }
-
-impl From<User> for ContractAccount {
-    fn from(user: User) -> Self {
-        Self { id: user.id, email: user.email, name: user.name }
-    }
-}
-
-pub async fn require_account(mut request: Request, next: Next) -> Response {
-    let Some(cookie) = rullst::auth::extract_session_cookie(request.headers()) else {
-        return Redirect::to("/login").into_response();
-    };
-    let Ok(app_key) = rullst::auth::get_app_key() else {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    };
-    let Ok(claims) = rullst::auth::decrypt_session_claims(&cookie, &app_key) else {
-        return Redirect::to("/login").into_response();
-    };
-    match User::find(claims.user_id).await {
-        Ok(Some(user)) if user.accepts_session(&claims) => {
-            request.extensions_mut().insert(user.id);
-            next.run(request).await
-        }
-        Ok(_) => Redirect::to("/login").into_response(),
-        Err(_) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
-    }
-}
-
-pub async fn find_account(id: i32) -> Result<Option<ContractAccount>, rullst::orm::Error> {
-    Ok(User::find(id).await?.map(ContractAccount::from))
-}
-
-pub async fn find_account_by_email(email: &str) -> Result<Option<ContractAccount>, rullst::orm::Error> {
-    Ok(User::find_by_email(email).await?.map(ContractAccount::from))
-}
-
-pub async fn sign_in_cookie(id: i32) -> Result<String, rullst::auth::AuthError> {
-    let user = User::find(id)
-        .await
-        .map_err(|error| rullst::auth::AuthError::General(error.to_string()))?
-        .ok_or(rullst::auth::AuthError::SessionRevoked)?;
-    let epoch = user.current_session_epoch().ok_or(rullst::auth::AuthError::SessionRevoked)?;
-    rullst::auth::make_login_cookie_with_epoch(user.id, epoch, rullst::auth::DEFAULT_SESSION_MAX_AGE)
-}
-
-pub async fn end_sessions(id: i32) -> Result<(), rullst::orm::Error> {
-    User::revoke_sessions(id).await
-}
-
-pub fn session_binding(headers: &HeaderMap) -> Option<String> {
-    rullst::auth::extract_session_cookie(headers)
-}
-
-pub async fn create_account(
-    transaction: &mut rullst::orm::db::Transaction<'static>,
-    email: &str,
-    name: &str,
-) -> Result<i32, rullst::orm::Error> {
-    let now = rullst::orm::chrono::Utc::now();
-    let mut user = User {
-        name: name.to_owned(),
-        email: email.to_owned(),
-        created_at: now,
-        updated_at: now,
-        ..User::default()
-    };
-    user.save_with_tx(transaction).await?;
-    Ok(user.id)
-}
-```
+[Rullst Auth](crates/auth.md#authentication-contract-for-generators) shows a
+complete version over an ORM `User` with a `session_epoch` column and the
+`rullst_session` cookie.
 
 What changes with the contract: the generators do not edit the application's
 router, sign-in handler or sign-in page; they print the routes to mount, the
