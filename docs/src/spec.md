@@ -1260,7 +1260,13 @@ new sandbox evidence and merchant refund/dispute operations are still required.
 **12.1 authenticated machine endpoints:** an immutable `MachineEndpointPolicy`
 on `Server` exempts only registered write-method/path pairs from browser CSRF after
 proving a strong bearer secret or an explicit host-supplied signed-webhook/mTLS
-verifier. Cookie/Origin/Sec-Fetch-Site inputs are rejected on these routes; body
+verifier. Since 13.0.0-alpha.5 `MachineEndpoint::address_token` registers the
+`AddressTokenWithSourceConfirmation` category for a provider that cannot sign
+its notifications: the verifier checks a high-entropy per-resource token in the
+request address, which authenticates only knowledge of that address (no body
+signature, freshness or replay protection), so the handler must confirm the
+notified state with the source before acting.
+Cookie/Origin/Sec-Fetch-Site inputs are rejected on these routes; body
 size is bounded and WAF/secure headers remain composed. The development
 hot-reload server (`Server::new_hot`) authenticates the same routes in front of
 each reloaded router. A path segment after the first may be a `{name}` placeholder

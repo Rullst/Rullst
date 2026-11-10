@@ -64,6 +64,23 @@ A prepared version section does not establish that its tag or crates exist.
   (`BunnyUpload.MAX_BYTES`; the default stays 1 GiB), scales its chunk size and
   run limit for large files, and takes a `types` list of accepted `video/*`
   media types.
+- Core machine endpoints, requested while upgrading an application:
+  `MachineEndpoint::address_token(method, path, verifier)` registers the new
+  `MachineAuthentication::AddressTokenWithSourceConfirmation` category for a
+  provider that cannot sign its notifications. The verifier checks a
+  per-resource token in the request address; the documentation states that
+  this authenticates only knowledge of the address (no body signature,
+  freshness or replay protection), so the handler confirms the notified state
+  with the source before acting. Previously such routes had to be registered
+  as `signed_webhook`.
+- `cargo rullst audit --idor` accepts `// rullst-access: machine — reason` on a
+  write route that a `MachineEndpoint` of the same crate registers with the
+  same method and path (a string literal or a `const` `&str`), and points an
+  unclassified registered route at `machine`. A provider callback such as
+  `POST /payments/{reference}/{token}` no longer has to move its parameters to
+  the query string to pass the audit; a `machine` marker without a matching
+  registration, on a GET route or on a route that also serves GET is still a
+  finding.
 
 ### Fixed
 
