@@ -88,7 +88,7 @@ sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls-aws-lc-rs", 
 uuid = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
-rustix = { version = "1.1.4", features = ["fs", "param", "process"] }
+rustix = { version = "1.1.6", features = ["fs", "param", "process"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
