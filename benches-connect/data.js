@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794283533396,
+  "lastUpdate": 1794291617645,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -12545,6 +12545,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 538,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9388e28f724b0440969e4c7e29bbd4c03be150e2",
+          "message": "Merge pull request #616 from Rullst/docs/v13-alpha5-release-plan\n\ndocs(release): move the 13.0 feature freeze to 13.0.0-alpha.5",
+          "timestamp": "2026-11-10T02:41:43-03:00",
+          "tree_id": "ecee84f88ed75750972eea6c1ea5705484266169",
+          "url": "https://github.com/Rullst/Rullst/commit/9388e28f724b0440969e4c7e29bbd4c03be150e2"
+        },
+        "date": 1794291616786,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 535,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
