@@ -2,7 +2,6 @@
 // The model and migration templates live under `src/` beside this module.
 
 use crate::generators::{
-    ProjectOrmBackend,
     auth::{models::with_session_epoch_methods, passwords},
     billing::render_billing_models,
 };
@@ -10,8 +9,7 @@ use crate::generators::{
 pub fn get_models_and_migrations() -> Vec<(&'static str, String)> {
     // Share persistence methods with make:billing so placeholder dialects and
     // ownership-model fixes cannot drift between the two generators.
-    let (mut subscription_model, billing_customer_model) =
-        render_billing_models("user_id", ProjectOrmBackend::Sqlx);
+    let (mut subscription_model, billing_customer_model) = render_billing_models("user_id");
     subscription_model.push_str(include_str!("fragments/subscription_nexus.rs.template"));
 
     vec![
@@ -45,7 +43,6 @@ pub fn get_models_and_migrations() -> Vec<(&'static str, String)> {
             crate::generators::billing::render_billing_migration(
                 "m20260601000002_create_subscriptions_table",
                 "user_id",
-                ProjectOrmBackend::Sqlx,
             ),
         ),
         (

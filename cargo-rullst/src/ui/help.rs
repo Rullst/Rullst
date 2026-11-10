@@ -54,14 +54,6 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                 ("cargo rullst make:worker <Name>", "New background worker"),
                 ("cargo rullst make:migration <name>", "Blank migration"),
                 (
-                    "cargo rullst make:island <name>",
-                    "New interactive Wasm Island",
-                ),
-                (
-                    "cargo rullst make:live <Name>",
-                    "Scaffold LiveView Server-Driven UI component",
-                ),
-                (
                     "cargo rullst make:k8s",
                     "Generate Kubernetes manifests & health probes",
                 ),
@@ -165,7 +157,6 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "cargo rullst build",
                     "Production binary + Brotli/Zstd assets",
                 ),
-                ("cargo rullst build:client", "Compile Wasm Islands"),
                 ("cargo rullst generate:openapi", "Generate OpenAPI spec"),
                 (
                     "cargo rullst generate:diagram",

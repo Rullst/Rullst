@@ -289,18 +289,14 @@ fn public_generators_materialize_and_preserve_reviewable_outputs() {
     fixture.succeeds(&["make:middleware", "RequestAudit"]);
     fixture.succeeds(&["make:middleware", "RequestAudit"]);
     fixture.succeeds(&["make:worker", "EmailDelivery"]);
-    fixture.succeeds(&["make:island", "ProgressChart"]);
-    fixture.succeeds(&["make:live", "LiveCounter"]);
 
     // Names that cannot be Rust identifiers never reach the filesystem.
-    let live_index = fs::read_to_string(fixture.root.join("src/live/mod.rs")).expect("live index");
     let controller_index =
         fs::read_to_string(fixture.root.join("src/controllers/mod.rs")).expect("controller index");
     let middleware_index =
         fs::read_to_string(fixture.root.join("src/middlewares/mod.rs")).expect("middleware index");
     for invalid in [
-        &["make:live", "../../notes"][..],
-        &["make:live", "self"],
+        &["make:controller", "../../notes"][..],
         &["make:controller", "Bad.Name"],
         &["make:middleware", "../escape"],
     ] {
@@ -310,9 +306,7 @@ fn public_generators_materialize_and_preserve_reviewable_outputs() {
         );
     }
     assert!(!fixture.root.join("notes.rs").exists());
-    assert!(!fixture.root.join("src/live/self.rs").exists());
     for (index, before) in [
-        ("src/live/mod.rs", &live_index),
         ("src/controllers/mod.rs", &controller_index),
         ("src/middlewares/mod.rs", &middleware_index),
     ] {
@@ -330,15 +324,16 @@ fn public_generators_materialize_and_preserve_reviewable_outputs() {
             "src/controllers/api_account_controller.rs",
             "src/middlewares/request_audit_middleware.rs",
             "src/workers/email_delivery_worker.rs",
-            "src/islands/progress_chart.rs",
-            "src/live/live_counter.rs",
         ],
     );
-    assert!(
-        fixture
-            .fails(&["make:live", "LiveCounter"])
-            .contains("already exists")
-    );
+    for removed in ["make:island", "make:live", "build:client"] {
+        assert!(
+            fixture
+                .fails(&[removed, "Counter"])
+                .contains(&format!("`cargo rullst {removed}` was removed")),
+            "{removed}"
+        );
+    }
 
     fixture.succeeds(&["generate:openapi"]);
     fixture.succeeds(&["generate:ts"]);

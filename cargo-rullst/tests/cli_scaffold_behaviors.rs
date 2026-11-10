@@ -73,24 +73,20 @@ serde = { version = "1", features = ["derive"] }
     }
 
     #[cfg(unix)]
-    fn install_wasm_tools(&self) -> PathBuf {
-        let directory = self.root.join("wasm-tools");
-        fs::create_dir_all(&directory).expect("Wasm tool directory");
+    fn install_fake_tools(&self) -> PathBuf {
+        let directory = self.root.join("fake-tools");
+        fs::create_dir_all(&directory).expect("tool directory");
         for (name, body) in [
             ("rustup", "#!/bin/sh\nexit 0\n"),
             (
                 "cargo",
-                "#!/bin/sh\nprintf '%s\\n' \"$*\" >> .cargo-invocations\nif [ \"$1\" = \"build\" ]; then\n  /bin/mkdir -p target/wasm32-unknown-unknown/debug\n  printf '\\000asm' > target/wasm32-unknown-unknown/debug/scaffold_fixture.wasm\nfi\nexit 0\n",
-            ),
-            (
-                "wasm-bindgen",
-                "#!/bin/sh\nif [ \"$1\" != \"--version\" ]; then\n  printf 'export default async function init() {}' > static/scaffold_fixture.js\nfi\nexit 0\n",
+                "#!/bin/sh\nprintf '%s\\n' \"$*\" >> .cargo-invocations\nexit 0\n",
             ),
         ] {
             let path = directory.join(name);
-            fs::write(&path, body).expect("Wasm tool fixture");
+            fs::write(&path, body).expect("tool fixture");
             fs::set_permissions(&path, fs::Permissions::from_mode(0o755))
-                .expect("Wasm tool permissions");
+                .expect("tool permissions");
         }
         directory
     }
@@ -548,7 +544,7 @@ fn project_creation_keeps_files_and_explains_a_failed_initial_migration() {
 #[test]
 fn database_forwarding_and_complete_project_packaging_use_controlled_cargo() {
     let project = Project::new();
-    let tools = project.install_wasm_tools();
+    let tools = project.install_fake_tools();
 
     for operation in ["db:migrate", "db:rollback", "db:status", "db:seed"] {
         let output = project.run_with_path(&[operation], Some(&tools));
@@ -601,30 +597,4 @@ fn database_forwarding_preserves_a_failed_cargo_status() {
         text.contains("Failed to execute db command: db:migrate"),
         "the failed operation must remain actionable: {text}"
     );
-}
-
-#[cfg(unix)]
-#[test]
-fn wasm_client_pipeline_uses_reviewable_tool_outputs() {
-    let project = Project::new();
-    let tools = project.install_wasm_tools();
-
-    let output = project.run_with_path(&["build:client", "--debug"], Some(&tools));
-    assert!(
-        output.status.success(),
-        "Wasm build failed:\n{}{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    project.assert_files(&[
-        "target/wasm32-unknown-unknown/debug/scaffold_fixture.wasm",
-        "static/scaffold_fixture.js",
-        "static/rullst-islands.js",
-    ]);
-    let manifest = fs::read_to_string(project.root.join("Cargo.toml")).expect("Wasm manifest");
-    assert!(manifest.contains("cdylib"));
-    let orchestrator = fs::read_to_string(project.root.join("static/rullst-islands.js"))
-        .expect("hydration orchestrator");
-    assert!(orchestrator.contains("await initialization"));
-    assert!(orchestrator.contains("./scaffold_fixture.js"));
 }

@@ -56,41 +56,17 @@ fn billing_migration(project: &Path) -> PathBuf {
         .expect("billing migration")
 }
 
-fn contract_source(database: &str) -> String {
-    let initialize = if database == "turso" {
-        r#"let config = rullst::orm::polyglot::TursoConfig::new("mock_billing", "")
-        .with_offline_path("turso-development.db")?;
-    rullst::orm::polyglot::TursoOrm::init(config).await?;"#
-    } else {
-        r#"rullst::orm::Orm::init("sqlite://db.sqlite?mode=rwc").await?;"#
-    };
-    // SQLx models declare the dirty-tracking snapshot; Turso models do not.
-    let snapshot = if database == "turso" {
-        ""
-    } else {
-        "snapshot: rullst::db::RowSnapshot::default(),"
-    };
-    // SQLx `timestamps()` columns hold `chrono` instants; Turso keeps text.
-    let (now, customer_stamps, subscription_stamps) = if database == "turso" {
-        (
-            "String::new()",
-            "assert_eq!((first.created_at.len(), first.updated_at.len()), (19, 19), \"customer timestamps\");",
-            "assert_eq!((subscription.created_at.len(), subscription.updated_at.len()), (19, 19), \"subscription timestamps\");",
-        )
-    } else {
-        (
-            "rullst::orm::chrono::Utc::now()",
-            "assert!(first.created_at.timestamp() > 1_767_225_599 && first.updated_at == first.created_at, \"customer timestamps\");",
-            "assert!(subscription.created_at.timestamp() > 1_767_225_599 && subscription.updated_at == subscription.created_at, \"subscription timestamps\");",
-        )
-    };
-    let execute_sql = if database == "turso" {
-        r#"rullst::orm::polyglot::TursoOrm::store()?.execute(
-            rullst::orm::polyglot::TursoStatement::new(statement, vec![])?
-        ).await?;"#
-    } else {
-        r#"rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement)).execute(rullst::db::Orm::pool()?).await?;"#
-    };
+fn contract_source() -> String {
+    let initialize = r#"rullst::orm::Orm::init("sqlite://db.sqlite?mode=rwc").await?;"#;
+    // Models declare the dirty-tracking snapshot.
+    let snapshot = "snapshot: rullst::db::RowSnapshot::default(),";
+    // `timestamps()` columns hold `chrono` instants.
+    let (now, customer_stamps, subscription_stamps) = (
+        "rullst::orm::chrono::Utc::now()",
+        "assert!(first.created_at.timestamp() > 1_767_225_599 && first.updated_at == first.created_at, \"customer timestamps\");",
+        "assert!(subscription.created_at.timestamp() > 1_767_225_599 && subscription.updated_at == subscription.created_at, \"subscription timestamps\");",
+    );
+    let execute_sql = r#"rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement)).execute(rullst::db::Orm::pool()?).await?;"#;
     format!(
         r#"#![allow(dead_code)]
 
@@ -246,21 +222,10 @@ async fn execute_sql(statement: &str) -> Result<(), Box<dyn std::error::Error>> 
     )
 }
 
-fn install_live_contract(project: &Path, database: &str) {
-    let initialize = if database == "turso" {
-        r#"let turso_config = rullst::orm::polyglot::TursoConfig::new("mock_billing", "")
-            .with_offline_path("turso-development.db").unwrap();
-        rullst::orm::polyglot::TursoOrm::init(turso_config).await.unwrap();"#
-    } else {
-        r#"rullst::orm::Orm::init("sqlite://db.sqlite?mode=rwc").await.unwrap();"#
-    };
-    let execute = if database == "turso" {
-        r#"rullst::orm::polyglot::TursoOrm::store().unwrap().execute(
-            rullst::orm::polyglot::TursoStatement::new(statement, vec![]).unwrap()).await.unwrap();"#
-    } else {
-        r#"rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement))
-        .execute(rullst::db::Orm::pool().unwrap()).await.unwrap();"#
-    };
+fn install_live_contract(project: &Path) {
+    let initialize = r#"rullst::orm::Orm::init("sqlite://db.sqlite?mode=rwc").await.unwrap();"#;
+    let execute = r#"rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement))
+        .execute(rullst::db::Orm::pool().unwrap()).await.unwrap();"#;
     let source = include_str!("fixtures/billing_live_contract.rs")
         .replace("__INITIALIZE_DB__", initialize)
         .replace("__EXECUTE_SQL__", execute);
@@ -344,7 +309,7 @@ fn verify_backend(database: &str) {
         .expect("billing controller");
     let migration_path = billing_migration(&project);
     let migration = fs::read_to_string(&migration_path).expect("billing migration");
-    assert_eq!(model.contains("backend = \"turso\""), database == "turso");
+    assert!(!model.contains("backend = \"turso\""));
     assert!(controller.contains("find_by_subscription_id"));
     assert!(!controller.contains("#[derive(Debug)]\nstruct BillingConfig"));
     assert!(migration.contains("subscriptions_subscription_id_unique"));
@@ -352,11 +317,11 @@ fn verify_backend(database: &str) {
     fs::create_dir_all(project.join("src/bin")).expect("contract bin directory");
     fs::write(
         project.join("src/bin/billing_contract.rs"),
-        contract_source(database),
+        contract_source(),
     )
     .expect("write billing runtime contract");
     install_workspace_lock(&project, workspace);
-    install_live_contract(&project, database);
+    install_live_contract(&project);
 
     let checked = run(
         Command::new("cargo")
@@ -507,7 +472,82 @@ fn verify_backend(database: &str) {
 #[test]
 // TM-DEPLOY-06: materialized billing defaults compile and deny cross-owner mutation.
 fn billing_scaffold_compiles_migrates_enforces_ownership_and_refuses_collisions() {
-    for database in ["sqlite", "turso"] {
-        verify_backend(database);
+    verify_backend("sqlite");
+}
+
+#[test]
+fn billing_scaffold_refuses_turso_primary_projects_without_writing() {
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("workspace root");
+    let project = std::env::temp_dir().join(format!(
+        "rullst-billing-scaffold-turso-{}",
+        rand::random::<u64>()
+    ));
+    let cli = env!("CARGO_BIN_EXE_rullst");
+    let generated = run(
+        Command::new(cli)
+            .current_dir(workspace)
+            .arg("new")
+            .arg(&project)
+            .args([
+                "--default",
+                "--api",
+                "--database",
+                "turso",
+                "--skip-initial-migration",
+            ]),
+        "generate Turso project",
+    );
+    assert_success(&generated, "Turso project generation");
+    let manifest = fs::read_to_string(project.join("Cargo.toml")).expect("generated manifest");
+
+    let refused = run(
+        Command::new(cli)
+            .current_dir(&project)
+            .args(["make:billing", "--model", "Workspace"]),
+        "scaffold billing in a Turso project",
+    );
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&refused.stdout),
+        String::from_utf8_lossy(&refused.stderr)
+    );
+    assert!(!refused.status.success(), "{text}");
+    assert!(
+        text.contains("make:billing needs the SQLx database layer"),
+        "{text}"
+    );
+    assert!(
+        text.contains("primary database of the Blank and API starters"),
+        "{text}"
+    );
+    for path in [
+        "src/models/subscription.rs",
+        "src/models/billing_customer.rs",
+        "src/controllers/billing_controller.rs",
+        "src/controllers/billing_store.rs",
+        "BILLING.md",
+    ] {
+        assert!(!project.join(path).exists(), "{path} was written");
     }
+    assert_eq!(
+        fs::read_to_string(project.join("Cargo.toml")).expect("manifest"),
+        manifest
+    );
+    let migrations = project.join("src/migrations");
+    if migrations.is_dir() {
+        assert!(
+            !fs::read_dir(&migrations)
+                .expect("migration directory")
+                .filter_map(Result::ok)
+                .any(|entry| {
+                    entry
+                        .file_name()
+                        .to_string_lossy()
+                        .ends_with("_create_subscriptions_table.rs")
+                })
+        );
+    }
+    fs::remove_dir_all(&project).expect("remove generated project");
 }
