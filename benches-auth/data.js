@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794346051736,
+  "lastUpdate": 1794348657904,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -20663,6 +20663,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3688,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bc7c69da8e1ef75989a82b5255642cfbc0158512",
+          "message": "Merge pull request #628 from Rullst/feat/v13-alpha5-generator-features\n\nfeat(cli): complete make:mfa flow, make:pwa --router and an authentication contract",
+          "timestamp": "2026-11-10T18:52:23-03:00",
+          "tree_id": "65b0bb246d20cc0a655c1a59901aa1ed71c2acde",
+          "url": "https://github.com/Rullst/Rullst/commit/bc7c69da8e1ef75989a82b5255642cfbc0158512"
+        },
+        "date": 1794348657218,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1029,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 759,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1773,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4189,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
