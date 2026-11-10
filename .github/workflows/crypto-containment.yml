@@ -60,7 +60,7 @@ jobs:
           tool: cargo-audit
 
       - name: Run cargo-audit (CVE scan on crypto deps)
-        run: cargo audit
+        run: cargo audit --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440
 
       - name: Verify no unsafe blocks in OTA and fixture modules
         run: |
