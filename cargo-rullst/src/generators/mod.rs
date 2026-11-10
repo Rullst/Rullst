@@ -32,6 +32,7 @@ pub mod dev;
 pub mod diagram;
 pub mod doctor;
 pub mod eject;
+pub(crate) mod frontend;
 pub(crate) mod green;
 pub mod hook;
 pub mod inspect;

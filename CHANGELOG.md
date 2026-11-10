@@ -43,6 +43,38 @@ A prepared version section does not establish that its tag or crates exist.
   contract with a complete example. `make:age-gate` stays SaaS-only, because
   it replaces the starter's dashboard route (reported while upgrading an
   application).
+- Content-hashed static asset URLs: `rullst::assets::url("app.css")` returns
+  `/static/app.<hash>.css` (the first 16 hex characters of the file's
+  SHA-256) while `Server` serves `static/`, and the plain `/static/app.css`
+  outside a server, for example in unit tests. The `/static` mount resolves
+  the hashed name to the real file, Brotli and Zstandard siblings included,
+  and serves it with `Cache-Control: public, max-age=31536000, immutable`;
+  an outdated hash gets a `307` redirect to the current URL with
+  `Cache-Control: no-store`, so a CDN or browser can no longer keep an old
+  stylesheet after a deploy (reported while upgrading an application that
+  hand-rolled `?v=` tokens). Debug builds follow edits and new files; symbolic
+  links, hidden paths and names that would need percent-encoding keep their
+  plain URL ([frontend guide](https://rullst.github.io/Rullst/book/frontend.html)).
+- `cargo rullst add tailwind`: sets up Tailwind CSS v4 with the official
+  standalone CLI, pinned to v4.3.3 (the newest release past a 14-day
+  cooldown) with the SHA-256 of every platform's asset embedded in the CLI. The binary is downloaded once into the user cache,
+  verified before every use and never run when it does not match. The
+  command writes `assets/css/app.css` (`@import "tailwindcss" source(none)`
+  and `@source "../../src/**/*.rs"`), builds `static/app.css`, links it in the
+  layout when one `html!` closes `<head>` (else prints the line), ignores the
+  output in `.gitignore` unless the project already tracks it, and adds
+  checksum-pinned BuildKit stages to a generated Dockerfile (and to the ones
+  `deploy` and `dockerize` write from then on). `cargo rullst dev` runs
+  `tailwindcss --watch` next to the server, and `cargo rullst build` minifies
+  the stylesheet before pre-compression. `--dry-run` downloads and writes
+  nothing.
+- `cargo rullst add alpine`: vendors Alpine.js's CSP build (`@alpinejs/csp`
+  3.17.5, checked against the npm registry's `dist.integrity`) into
+  `static/vendor/alpine-csp.min.js`, adds an example `Alpine.data` component in
+  `static/js/alpine-components.js` and loads both as deferred same-origin
+  scripts, so client-only state works under the default Content-Security-Policy
+  without `'unsafe-eval'`. The new book page lists what the CSP build cannot
+  parse.
 - CI compares the ORM across databases: the `ORM differential databases` job
   of `ci.yml` runs the same scenarios (`rullst-orm/tests/differential/`:
   `#[derive(Orm)]` CRUD, value round trips, query-builder filters, ordering
@@ -227,6 +259,65 @@ A prepared version section does not establish that its tag or crates exist.
   `h1` as `h2` instead of `h3` (axe `landmark-one-main`, `region` and
   `heading-order`). `examples/lms`'s dashboard sign-out buttons use `#dc2626`
   (4.83:1) instead of white on `#ef4444` (3.76:1).
+- `cargo rullst upgrade` stops before changing anything when the plan has
+  must-change findings. It used to change the versions, run `cargo fix` (more
+  than ten minutes on a cold cache) and fail on code the plan had already
+  located, such as `#[derive(FromRow, Orm)]`, then restore the project and
+  only then say to fix them first. The error now names each rule with its
+  first locations and guidance, and the plan (`--dry-run` included) says that
+  these findings stop the upgrade. `--keep-on-failure` still changes the
+  versions and keeps the edited files for repair, as the alpha.3 to alpha.4
+  checklist does for `FromRow`. Reported while upgrading an application.
+- `cargo rullst upgrade` links the migration guide's checklist for the
+  project's version at the end of the plan, in the Markdown report and in the
+  JSON `migration_guide`: an alpha.3 (or later 13.0 prerelease) project gets
+  "Upgrading an alpha.3 application to alpha.4" and an alpha.2 project the
+  alpha.2 checklist, instead of the table of changes since 12.1.0, which
+  findings still link for their rows.
+- On Windows, `cargo rullst upgrade` (the plan, `report.md` and its messages)
+  and `cargo rullst hook:install` print paths without the `\\?\` prefix that
+  canonical Windows paths carry, which many programs refuse when the path is
+  pasted.
+- Upgrade rule `V13-CREDENTIAL-RATE-LIMIT` no longer reports password hashing
+  that runs through the generated `run_password_work` helper or after a
+  semaphore permit, or in migrations, seeds, `src/bin`, tests, benches,
+  examples and test functions; only `credential_rate_limit` named in code
+  counts, so a comment or a string no longer silences it. It also reports
+  `hash_password_async`, which 12.x controllers called directly.
+- Upgrade rule `V13-LMS-RECORD-PROGRESS` reports a `record_progress` function
+  only when its first SQL write is not the `lesson_progress_events` insert
+  that claims the idempotency key. It reported every mention of the name: an
+  already fixed service, its controller and the route.
+- Upgrade rule `V13-ORM-SKIP-MANAGED-COLUMNS` reports every `#[orm(skip)]`
+  field that the model's `FromRow` reads, each at its own line, and says that
+  the query builder rejects every `skip` field; it named only `is_admin` and
+  `session_epoch` and marked one line per file.
+- `cargo rullst generate:ai-context` accepts its outputs when Git for Windows
+  checks them out with CRLF line endings (`core.autocrlf=true`): it refused
+  `.llms.txt` as "a link, special file or unrecognized generated output", and
+  `--check` called it stale. An output that differs only in line endings is
+  current and is left as it is. A refusal now names the file and the reason,
+  and when the command writes an output it appends `text eol=lf` entries for
+  both outputs to `.gitattributes`, creating it if needed and keeping every
+  existing line.
+- `cargo rullst new` lists `.rullst_dev_key` in the generated `.gitignore` and
+  `.dockerignore` (`dockerize` and `deploy` too), and `cargo rullst doctor`
+  warns when that file exists and Git does not ignore it (✗ when tracked).
+  `rullst::auth::get_app_key()` writes the development key there when no
+  `APP_KEY` is set outside staging and production, so a plain `cargo test`
+  left a secret that `git add .` picked up.
+- `cargo rullst green` reports the figures that need no running app (binary
+  size once built, image size, dependency count) when the release build
+  fails, the app does not start or nothing answers on `--url`, with the
+  failure in the report's new `failure` key (`null` otherwise); with `--json`
+  standard output used to be empty. The fix is chosen from the app's own
+  error (a database it cannot reach, `APP_KEY`, billing credentials) instead
+  of always naming the SaaS starter's billing credentials, and a failed
+  build shows at most 20 lines of its log, from the first error. The exit
+  status is still 1.
+- The README, the green guide and the CLI reference say that green measures
+  idle memory and CPU time only on Linux (they read `/proc`), and how to pass
+  `--path /` from Git Bash (`MSYS_NO_PATHCONV=1`).
 - `rullst::htmx::render_page`, `render_page_with_lang` and
   `render_page_with_head` no longer break htmx's Back button. When its
   history cache misses, htmx 1.9.12 requests the page with both

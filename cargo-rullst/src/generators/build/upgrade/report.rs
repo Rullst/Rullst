@@ -3,9 +3,52 @@
 use super::manifest::ManifestUpgradePlan;
 use super::relative_report_path;
 use super::rules::{self, FindingKind, RuleSelection, SourceScan};
+use crate::term::display_path;
 use colored::Colorize;
 use semver::Version;
 use std::path::Path;
+
+/// The published v13 migration guide.
+pub(super) const GUIDE: &str = "https://rullst.github.io/Rullst/book/migration-v13.html";
+/// Its checklist for 13.0.0-alpha.2 applications.
+pub(super) const ALPHA2_CHECKLIST: &str = "upgrading-an-alpha2-application-to-alpha3";
+/// Its checklist for 13.0.0-alpha.3 applications, which also explains the
+/// rules a later 13.0 prerelease adds for alpha.4 changes.
+pub(super) const ALPHA3_CHECKLIST: &str = "upgrading-an-alpha3-application-to-alpha4";
+
+/// The checklist for an application on the 13.0 prerelease `current`, if
+/// the guide has one: alpha.2 and alpha.3 have their own; a later alpha,
+/// beta or release candidate gets only rules for alpha.4 changes, which the
+/// alpha.3 checklist describes. alpha.1 has none.
+fn checklist(current: &Version) -> Option<&'static str> {
+    if (current.major, current.minor, current.patch) != (13, 0, 0) || current.pre.is_empty() {
+        return None;
+    }
+    let pre = current.pre.as_str();
+    match pre.strip_prefix("alpha.").map(str::parse::<u64>) {
+        Some(Ok(2)) => Some(ALPHA2_CHECKLIST),
+        Some(Ok(number)) if number >= 3 => Some(ALPHA3_CHECKLIST),
+        Some(_) => None,
+        None if pre.starts_with("alpha") => None,
+        None => Some(ALPHA3_CHECKLIST),
+    }
+}
+
+/// The part of the guide the plan links: the checklist for the project's
+/// version, or, for a v12 project, alpha.1, an unknown version or
+/// `--all-rules`, the table of changes from 12.1.0 that holds every
+/// finding's row.
+pub(super) fn guide_url(selection: &RuleSelection) -> String {
+    let checklist = selection
+        .current
+        .as_ref()
+        .filter(|_| !selection.all_rules)
+        .and_then(checklist);
+    match checklist {
+        Some(anchor) => format!("{GUIDE}#{anchor}"),
+        None => rules::MIGRATION_GUIDE_URL.to_string(),
+    }
+}
 
 /// What the plan says about the rules it skipped, when it skipped any.
 fn selection_note(selection: &RuleSelection) -> Option<String> {
@@ -25,7 +68,7 @@ pub(super) fn plan_text(
     plans: &[ManifestUpgradePlan],
     scan: &SourceScan,
 ) -> String {
-    let mut lines = vec![format!("Project: {}", root.display())];
+    let mut lines = vec![format!("Project: {}", display_path(root))];
     for plan in plans {
         let relative = relative_report_path(root, &plan.path);
         for change in &plan.changes {
@@ -67,8 +110,14 @@ pub(super) fn plan_text(
             relative_report_path(root, path)
         ));
     }
+    let must_change = scan.count(FindingKind::MustChange);
+    if must_change > 0 {
+        lines.push(format!(
+            "{must_change} must-change finding(s) stop `cargo rullst upgrade` before it changes anything: fix them first, or pass --keep-on-failure to change the versions anyway and fix them in the kept files."
+        ));
+    }
     if !scan.findings.is_empty() {
-        lines.push(format!("Migration guide: {}", rules::MIGRATION_GUIDE_URL));
+        lines.push(format!("Migration guide: {}", guide_url(&scan.selection)));
     }
     lines.join("\n")
 }
@@ -98,7 +147,7 @@ pub(super) fn render_report(
 ) -> String {
     let mut report = format!(
         "# Rullst assisted upgrade report\n\n- Project: `{}`\n- Target: `{target}`\n- Scope: dependency manifests, Cargo.lock and compiler-provided Rust fixes\n\n",
-        root.display()
+        display_path(root)
     );
     report.push_str("## Dependency plan\n\n");
     for plan in plans {
@@ -120,6 +169,12 @@ pub(super) fn render_report(
     ));
     if let Some(note) = selection_note(&scan.selection) {
         report.push_str(&format!("Rules: {note}.\n\n"));
+    }
+    let guide = guide_url(&scan.selection);
+    if guide != rules::MIGRATION_GUIDE_URL {
+        report.push_str(&format!(
+            "Checklist for this project's Rullst version: {guide}\n\n"
+        ));
     }
     if scan.findings.is_empty() {
         report.push_str(
@@ -211,7 +266,7 @@ pub(super) fn render_json_report(
             "hidden_findings": scan.selection.hidden_findings,
         },
         "unscanned_sources": unscanned,
-        "migration_guide": rules::MIGRATION_GUIDE_URL,
+        "migration_guide": guide_url(&scan.selection),
         "automatic_scope": [
             "workspace dependency manifests",
             "Cargo.lock resolution",

@@ -36,21 +36,31 @@ fn link(metadata: &fs::Metadata) -> bool {
     }
 }
 
-pub(super) fn read_output(path: &Path) -> Result<Option<String>, ContextError> {
+/// An output file (or `.gitattributes`) named `name` in errors: `None` when
+/// absent, refused when it is or lies below a link, is not a regular file
+/// or is not UTF-8.
+pub(super) fn read_output(path: &Path, name: &str) -> Result<Option<String>, ContextError> {
+    let refused = |reason| ContextError::Refused {
+        path: name.to_string(),
+        reason,
+    };
     for ancestor in path.ancestors() {
         match fs::symlink_metadata(ancestor) {
-            Ok(metadata) if link(&metadata) => return Err(ContextError::UnsafePath),
+            Ok(metadata) if link(&metadata) => {
+                return Err(refused("it is a link or lies below one"));
+            }
             Ok(_) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(error) => return Err(error.into()),
         }
     }
     match fs::symlink_metadata(path) {
+        Ok(metadata) if !metadata.is_file() => Err(refused("it is not a regular file")),
         Ok(_) => {
             let bytes = bounded_read(path, MAX_OUTPUT)?;
             String::from_utf8(bytes)
                 .map(Some)
-                .map_err(|_| ContextError::UnsafePath)
+                .map_err(|_| refused("it is not UTF-8 text"))
         }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(error.into()),
