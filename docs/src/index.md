@@ -46,8 +46,9 @@ sources each time it is published, so they describe the same `main` branch.
 - 🚀 **Measured performance:** Criterion suites and CI track regressions;
   application latency must be measured on the target workload.
 - 🧩 **Server-rendered UI:** `html!` and HTMX-oriented scaffolds are the audited
-  default. LiveView and Wasm Island primitives exist, while turnkey
-  Leptos/Dioxus adapters remain roadmap work.
+  default, with Server-Sent Events (`RealtimeSse`) for server pushes and native
+  HTML elements for client-only behaviour. Turnkey Leptos/Dioxus adapters
+  remain roadmap work.
 - 📖 **Interactive Scalar Docs (`/docs`):** `cargo rullst make:scalar`
   scaffolds an OpenAPI viewer for your reviewed specification.
 - ☸️ **Kubernetes manifests:** `cargo rullst make:k8s` scaffolds manifests

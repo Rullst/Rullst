@@ -16,7 +16,7 @@ The first command writes `.llms.txt` and `.rullst/context-map.json`. The second
 recomputes their expected content without writing and returns a nonzero exit
 status if either output is missing, modified or stale. New projects receive the
 same inventory and instructions. `make:controller`, `make:model`,
-`make:middleware`, `make:worker`, `make:island`, `auth`, `make:billing`,
+`make:middleware`, `make:worker`, `auth`, `make:billing`,
 `make:cors`, `make:jwt`, `make:privacy`, `make:age-gate` and `make:oauth`
 refresh the map after they write; a refresh failure is reported while
 preserving the completed scaffold.

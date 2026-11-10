@@ -139,7 +139,7 @@ error: Not inside a Rullst project
 
 The common failures have their own title and fix: not inside a Rullst project
 (pointing to an enclosing project root when there is one), a missing tool
-(`cargo`, `rustc`, `rustup`, `git`, `docker`, `wasm-bindgen`, `kubectl` or
+(`cargo`, `rustc`, `rustup`, `git`, `docker`, `kubectl` or
 `npm`), a missing Rust target (`rustup target add <target>`), an unreachable
 database, a port already in
 use, permission denied, invalid input, network failures, an interrupted
@@ -291,9 +291,10 @@ The choices that materially change the generated application:
   primary profile or flags. Specialized adapters remain separate from SQLx
   Active Record.
 * **Application profile:** the Blank and SaaS starters use the audited `html!`
-  SSR/HTMX path; API (`--api`) uses the headless JSON path. Repository, LiveView, Wasm Island,
+  SSR/HTMX path; API (`--api`) uses the headless JSON path. Repository,
   Pico.css and Tera foundations remain application-owned APIs and are not
-  presented as equivalent generated profiles.
+  presented as equivalent generated profiles. HTML scaffolds also write the
+  htmx SSE extension to `static/htmx-ext-sse-1.9.12.js`.
 * **Arguments:**
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
@@ -830,7 +831,7 @@ Rullst generators write the files described under each command. Some commands
 also register modules and refresh `.llms.txt`; this is command-specific, and a
 failed best-effort context refresh does not roll back generated source.
 `make:controller`, `make:model`, `make:middleware`, `make:worker`,
-`make:island`, `auth`, `make:billing`, `make:cors` and `make:jwt` also refresh
+`auth`, `make:billing`, `make:cors` and `make:jwt` also refresh
 the `generate:diagram` output `diagram.md`: a missing file is created, while a
 `diagram.md` the generator did not write is kept and reported instead of
 replaced. Review the diff and run `cargo check` after scaffolding.
@@ -908,8 +909,12 @@ Generates a standard Axum/Rullst Middleware struct in `src/middlewares/`. Perfec
 A name whose module and function would not be a non-keyword Rust identifier is
 rejected before any file is edited.
 
-### `cargo rullst make:island <name>`
-Creates a frontend interactive "Islands Architecture" component (similar to Fresh or Astro) in `src/islands/`. It generates the Rust infrastructure that, during build, will be transparently compiled to WebAssembly to run in the browser.
+### `make:island`, `make:live` and `build:client` (removed)
+These commands were removed in 13.0.0-alpha.5 with WebAssembly islands and
+Live components. Running one, with any arguments, prints what replaces it and
+exits with status 1; they are hidden from `--help` and completions. Use htmx
+and native HTML, and `rullst::realtime::RealtimeSse` for server pushes; see the
+[migration notes](migration-v13.md#upgrading-an-alpha4-application-to-alpha5).
 
 ### `cargo rullst make:worker <name>`
 Creates an asynchronous background worker in `src/workers/` against the queue
@@ -955,6 +960,9 @@ such columns with `make:migration`.
 Scaffolds a SaaS billing starting point with subscription models, authenticated
 billing routes, and signed-webhook integration points. Provider credentials,
 tenant policy, and deployment behavior still require application configuration.
+It needs the SQLx database layer (SQLite, PostgreSQL, MySQL or MariaDB). Since
+13.0.0-alpha.5 it refuses a Turso-primary project before writing anything;
+Turso is supported only as the primary database of the Blank and API starters.
 * **Optional Flags:**
   * `--model <MODEL>` (default `User`): The billable model; the subscription
     and customer tables reference it through a `<model>_id` column (`Team`
@@ -1205,15 +1213,6 @@ Scaffolds a Scalar API Documentation controller at
 `src/controllers/docs_controller.rs`. The interactive view loads a pinned CDN
 asset; its local fallback is status-only and final CSP/network policy belongs to
 the application.
-
-### `cargo rullst make:live <ComponentName>`
-Scaffolds a LiveView-style server component at `src/live/<name>.rs` using a
-WebSocket and HTMX out-of-band swaps. Application JavaScript may be unnecessary,
-but HTMX remains client-side JavaScript and the generated transport requires
-origin, reconnect, and backpressure review. It must run in a Rullst project
-root, and a name whose module or type would not be a non-keyword Rust
-identifier (for example `../notes`, `self` or `Bad.Name`) is rejected before
-anything is written.
 
 ### `cargo rullst deploy`
 Writes the files that run the application on any Linux VM with Docker or
@@ -1833,16 +1832,6 @@ for limitations, failure recovery and the v13 architecture decision.
 * **Optional Flags:**
   * `--ts-sync`: Regenerates the TypeScript client SDK (`rullst-client.ts`, as `generate:ts` writes it from the routes in `src/main.rs` and `src/lib.rs`) after the initial build and after every successful rebuild. A failed generation is reported and the application keeps running.
 
-### `cargo rullst build:client`
-Builds the library for `wasm32-unknown-unknown`, runs `wasm-bindgen`, and writes a
-separate `static/rullst-islands.js` hydrator that awaits binding initialization.
-It parses `Cargo.toml`, merges the required `cdylib` crate type without replacing
-existing library crate types, and honors an explicit `lib.name`. The command
-checks/installs the Rust target and `wasm-bindgen-cli`; any failed tool step
-aborts. Bundle size and browser performance depend on the generated application
-and must be measured.
-* **Flags:** `--debug` (builds the Wasm library with Cargo's debug profile instead of `--release`).
-
 ### `cargo rullst build`
 Creates the monolithic final Production binary of the backend and writes Brotli
 (`.br`) and Zstandard (`.zst`) siblings next to the `html`, `css`, `js`, `json`,
@@ -2087,8 +2076,7 @@ never printed.
 
 #### Doctor: toolchain
 `rustc` (✗ when missing or older than the 1.96.0 MSRV), Cargo, rustfmt and
-clippy (fixable with `--fix`), Git, the `wasm32-unknown-unknown` target when
-the project has `src/islands`, and one informational line for the optional
+clippy (fixable with `--fix`), Git, and one informational line for the optional
 tools (cargo-deny, cargo-geiger, cargo-mutants, Kani, cargo-llvm-cov, Docker).
 
 On Linux, `toolchain.linker` (v13) is a `!` hint, never a failure, when no
