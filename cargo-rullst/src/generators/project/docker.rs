@@ -31,6 +31,7 @@ coverage
 .env
 .env.*
 !.env.example
+.rullst_dev_key
 Foundry.toml
 .cargo/config.toml
 # Local databases
@@ -293,6 +294,14 @@ mod tests {
             assert!(
                 dockerignore.lines().any(|line| line == database),
                 "{database}"
+            );
+        }
+        // `rullst::auth::get_app_key()` writes this development secret in
+        // the working directory when no APP_KEY is set (`cargo test` too).
+        for ignore in [&gitignore, &dockerignore] {
+            assert!(
+                ignore.lines().any(|line| line == ".rullst_dev_key"),
+                "{ignore}"
             );
         }
     }

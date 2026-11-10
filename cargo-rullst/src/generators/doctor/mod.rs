@@ -128,6 +128,7 @@ fn collect(
             ));
             let mut security = vec![audit];
             security.extend(project::env_git_check(&project.root, probes.git.ok()));
+            security.extend(project::dev_key_git_check(&project.root, probes.git.ok()));
             security.extend(project::app_key_check(project, vars));
             security.push(project::lockfile_check(&project.root));
             groups.push(Group::new(

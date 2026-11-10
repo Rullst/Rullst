@@ -109,6 +109,8 @@ csp = "{billing_csp}"
 .env
 .env.*
 !.env.example
+# Development APP_KEY that `rullst::auth::get_app_key()` writes without APP_KEY
+.rullst_dev_key
 
 # Rullst: host-local linker selection (mold/lld when found)
 /.cargo/config.toml

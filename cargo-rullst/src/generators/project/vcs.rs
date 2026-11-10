@@ -63,7 +63,7 @@ impl VcsOutcome {
     }
 }
 
-const GITIGNORE: &str = "# Rust build artifacts\n/target\n\n# Rullst: Environment & Secrets\n.env\n.env.*\n!.env.example\n";
+const GITIGNORE: &str = "# Rust build artifacts\n/target\n\n# Rullst: Environment & Secrets\n.env\n.env.*\n!.env.example\n.rullst_dev_key\n";
 
 /// Writes a minimal `.gitignore` keeping `.env` and `target/` out when the
 /// project has none; an existing file is never changed.
@@ -178,6 +178,7 @@ mod tests {
         let written = std::fs::read_to_string(temporary.path().join(".gitignore")).unwrap();
         assert!(written.lines().any(|line| line == ".env"));
         assert!(written.lines().any(|line| line == "/target"));
+        assert!(written.lines().any(|line| line == ".rullst_dev_key"));
 
         std::fs::write(temporary.path().join(".gitignore"), "custom\n").unwrap();
         assert!(!ensure_gitignore(temporary.path()).unwrap());

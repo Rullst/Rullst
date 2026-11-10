@@ -280,29 +280,74 @@ pub(crate) fn app_key_check(project: &ProjectContext, vars: &impl Vars) -> Optio
     })
 }
 
+/// A secret file that must stay out of Git, and what to say about it.
+struct SecretFile {
+    id: &'static str,
+    title: &'static str,
+    name: &'static str,
+    tracked: &'static str,
+    tracked_fix: &'static str,
+    unignored_fix: &'static str,
+}
+
+const ENV_FILE: SecretFile = SecretFile {
+    id: "security.env_git",
+    title: ".env in Git",
+    name: ".env",
+    tracked: ".env is tracked by Git; its secrets are in the history",
+    tracked_fix: "git rm --cached .env, keep .env in .gitignore and rotate the exposed secrets",
+    unignored_fix: "Add .env to .gitignore",
+};
+
+/// The development `APP_KEY` that `rullst::auth::get_app_key()` writes to
+/// the working directory when no APP_KEY is set outside staging and
+/// production, which a plain `cargo test` does.
+const DEV_KEY_FILE: SecretFile = SecretFile {
+    id: "security.dev_key_git",
+    title: ".rullst_dev_key in Git",
+    name: ".rullst_dev_key",
+    tracked: ".rullst_dev_key is tracked by Git; the development key is in the history",
+    tracked_fix: "git rm --cached .rullst_dev_key, add it to .gitignore and .dockerignore, and replace the key wherever it was used",
+    unignored_fix: "Add .rullst_dev_key to .gitignore and .dockerignore (rullst::auth::get_app_key() writes it when APP_KEY is not set)",
+};
+
 /// `.env` must never be committed; checked only when it exists and Git works.
 pub(crate) fn env_git_check(root: &Path, git_available: bool) -> Option<Check> {
-    const ID: &str = "security.env_git";
-    const TITLE: &str = ".env in Git";
-    if !git_available || !root.join(".env").is_file() {
+    secret_git_check(root, git_available, &ENV_FILE)
+}
+
+/// The same for `.rullst_dev_key`.
+pub(crate) fn dev_key_git_check(root: &Path, git_available: bool) -> Option<Check> {
+    secret_git_check(root, git_available, &DEV_KEY_FILE)
+}
+
+fn secret_git_check(root: &Path, git_available: bool, file: &SecretFile) -> Option<Check> {
+    if !git_available || !root.join(file.name).is_file() {
         return None;
     }
     let root_text = root.to_string_lossy().into_owned();
     let root_text = root_text.as_str();
     let tracked = probe::run(
         "git",
-        &["-C", root_text, "ls-files", "--error-unmatch", "--", ".env"],
+        &[
+            "-C",
+            root_text,
+            "ls-files",
+            "--error-unmatch",
+            "--",
+            file.name,
+        ],
     );
     if tracked.ok() {
         return Some(Check::fail(
-            ID,
-            TITLE,
-            ".env is tracked by Git; its secrets are in the history",
-            "git rm --cached .env, keep .env in .gitignore and rotate the exposed secrets",
+            file.id,
+            file.title,
+            file.tracked,
+            file.tracked_fix,
         ));
     }
     let ignored = std::process::Command::new("git")
-        .args(["-C", root_text, "check-ignore", "-q", ".env"])
+        .args(["-C", root_text, "check-ignore", "-q", file.name])
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -310,14 +355,14 @@ pub(crate) fn env_git_check(root: &Path, git_available: bool) -> Option<Check> {
         .ok()
         .and_then(|status| status.code());
     Some(match ignored {
-        Some(0) => Check::pass(ID, TITLE, "ignored and untracked"),
+        Some(0) => Check::pass(file.id, file.title, "ignored and untracked"),
         Some(1) => Check::warn(
-            ID,
-            TITLE,
-            ".env is not ignored by Git",
-            "Add .env to .gitignore",
+            file.id,
+            file.title,
+            format!("{} is not ignored by Git", file.name),
+            file.unignored_fix,
         ),
-        _ => Check::info(ID, TITLE, "not a Git repository"),
+        _ => Check::info(file.id, file.title, "not a Git repository"),
     })
 }
 
