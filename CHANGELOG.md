@@ -132,6 +132,18 @@ A prepared version section does not establish that its tag or crates exist.
   `heading-order`). `examples/lms`'s dashboard sign-out buttons use `#dc2626`
   (4.83:1) instead of white on `#ef4444` (3.76:1).
 
+### Security
+
+- Two advisories published after 13.0.0-alpha.4 have time-bounded exceptions
+  in `docs/src/security-advisory-exceptions.md` (until 2027-01-28), because no
+  fixed dependency graph exists yet. `RUSTSEC-2026-0459` (bundled SQLite before
+  3.54.0 can return stale memory when it opens a database with a crafted
+  `-wal` file) affects every SQLite feature: `sqlx-sqlite` 0.9.0 does not
+  accept the fixed `libsqlite3-sys` 0.39. Do not open SQLite files that a less
+  trusted party can write until an `sqlx` release lifts the cap.
+  `RUSTSEC-2026-0440` marks `astral-tokio-tar` unmaintained; it is reached only
+  through the `testcontainers` dev-dependency of the integration tests.
+
 ## [13.0.0-alpha.4] - 2026-10-31
 
 Fourth v13 prerelease, for evaluation, and the 13.0 feature freeze:
