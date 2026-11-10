@@ -217,6 +217,7 @@ mod fixture {
                     Json(reply)
                 }),
             )
+            // rullst-access: public — local Stripe fixture without data.
             .route(
                 "/v1/checkout/sessions/{id}",
                 get(|State(stripe): State<Stripe>, Path(id): Path<String>, headers: HeaderMap| async move {

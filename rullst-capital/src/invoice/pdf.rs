@@ -251,7 +251,7 @@ mod tests {
         }
         assert!(!text.contains("Invoice"), "{text:?}");
         let spanish = pdf_text(
-            &invoice("Clase")
+            &invoice("Curso")
                 .with_locale(crate::InvoiceLocale::Es)
                 .generate_pdf()
                 .expect("WinAnsi covers Spanish labels"),
