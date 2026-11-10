@@ -70,6 +70,16 @@ and coordinates with a caller-provided counter store. Integrators must still
 download and flash the image, validate the written bank, implement truly durable
 counter storage, and configure/recover the platform bootloader.
 
+## Signing firmware with the CLI
+
+`cargo rullst iot:keygen --out keys/ota.key` writes an Ed25519 key pair (the
+secret with mode `0600`; the public key as a Rust `const`, raw bytes and
+hexadecimal), and `cargo rullst iot:sign --key keys/ota.key --image fw.bin
+--target board-revision-a --version 1.1.0 --counter 121` writes `fw.bin.manifest`
+(the bytes `OtaManifest::from_signing_bytes` parses) and `fw.bin.manifest.sig`
+(the signature for `begin_update`). Both use this crate's encoding, and
+`iot:sign` checks its output with `OtaManager::begin_update` before writing it.
+
 ## CLI telemetry scaffold
 
 Inside a Rullst application, the CLI creates and registers a local telemetry

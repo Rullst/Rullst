@@ -215,6 +215,31 @@ adapter boundary, but those tests do not certify a particular flash, secure
 element or board. A failure after the durable counter advances can require
 platform recovery and a newer signed update.
 
+### Signing firmware with the CLI
+
+`cargo rullst iot:keygen` and `cargo rullst iot:sign` (Experimental, since
+13.0.0-alpha.5) produce what the example above receives. On the publisher's
+machine:
+
+```console
+cargo rullst iot:keygen --out keys/ota.key
+cargo rullst iot:sign --key keys/ota.key --image firmware.bin \
+  --target esp32-sensor-node --version 2.0.0 --counter 15
+```
+
+`iot:keygen` writes the secret key (mode `0600`, never printed) and its public
+key as `keys/ota.key.pub.rs` (a `pub const OTA_PUBLIC_KEY: [u8; 32]`),
+`keys/ota.key.pub.bin` and `keys/ota.key.pub` (hexadecimal). Build the public
+key into the device, for example with `include!("ota.key.pub.rs")`, and keep
+the secret key on the publisher's side only. `iot:sign` writes
+`firmware.bin.manifest`, the canonical bytes `OtaManifest::from_signing_bytes`
+parses, and `firmware.bin.manifest.sig`, the 64-byte signature for
+`begin_update`. The command builds them with this crate's own encoding and,
+before writing, verifies them with `OtaManager::begin_update` and the image,
+as a device does; `--json` prints a summary for a release pipeline. The
+[CLI reference](../cli_reference.md#cargo-rullst-iotsign)
+lists every check.
+
 ---
 
 ## 🔌 Embedded Bare-Metal Telemetry (`#![no_std]`)
@@ -362,6 +387,19 @@ showed them on a dashboard. No broker was involved, so this does not validate
 MQTT delivery, a broker or the network. It is what led to `AnomalyState`'s
 `Display` and serde support, `AnomalyDetector`'s derives and the bounded
 reading format of `IotHtml`.
+
+### CLI-signed update on the board
+
+Also on 2026-11-10, `cargo rullst iot:keygen` and `iot:sign` signed a 40,000-byte
+test image on the host (target `microbit-v2`, version `2.0.0`, counter 7). The
+firmware embedded the 95-byte manifest, the 64-byte signature and the public
+key as the CLI wrote them, and the board parsed the manifest with
+`OtaManifest::from_signing_bytes`, verified the image in 4 KiB chunks through
+`OtaManager::begin_update` (71.2 ms) and rejected a copy with one image byte
+changed (`FirmwareHashMismatch`), a manifest with one version byte changed and
+a manager trusting another key (both `SignatureInvalid`), on two boots. The
+fixture repeats this when built with `RULLST_IOT_SIGNED_DIR` (see its
+`src/main.rs`).
 
 The firmware is in the repository at
 [`.github/fixtures/iot-microbit-v2`](https://github.com/Rullst/Rullst/tree/main/.github/fixtures/iot-microbit-v2).

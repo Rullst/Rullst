@@ -62,10 +62,22 @@ let _ = state;
 
 ## Signed firmware artifacts
 
-Use `OtaManifest` and `OtaManager::new_with_trusted_key` to verify a firmware
-artifact before selecting an inactive partition. See the
-[crate guide](../crates/iot.md) for the trust, persistence, and bootloader
-requirements that remain the integrator's responsibility.
+Sign the image on the publisher's machine with the CLI, then verify it on the
+device before selecting an inactive partition:
+
+```console
+cargo rullst iot:keygen --out keys/ota.key
+cargo rullst iot:sign --key keys/ota.key --image firmware.bin \
+  --target sensor-01 --version 1.1.0 --counter 2
+```
+
+The device embeds `keys/ota.key.pub.rs` (the public key as a Rust `const`),
+parses `firmware.bin.manifest` with `OtaManifest::from_signing_bytes` and
+passes it with `firmware.bin.manifest.sig` to `OtaManager::begin_update`,
+then streams the image through the returned verifier. See the
+[crate guide](../crates/iot.md#signing-firmware-with-the-cli) for the device
+code and the trust, persistence, and bootloader requirements that remain the
+integrator's responsibility.
 
 ## Experimental fixtures
 

@@ -69,6 +69,9 @@ cargo-rullst/src/generators/green/render.rs
 cargo-rullst/src/generators/green/report.rs
 cargo-rullst/src/generators/green/sci.rs
 cargo-rullst/src/generators/green/target.rs
+cargo-rullst/src/generators/iot_sign/key.rs
+cargo-rullst/src/generators/iot_sign/mod.rs
+cargo-rullst/src/generators/iot_sign/sign.rs
 cargo-rullst/src/generators/output_guard.rs
 cargo-rullst/src/update.rs
 cargo-rullst/src/update/cache.rs

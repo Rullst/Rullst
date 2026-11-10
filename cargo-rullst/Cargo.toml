@@ -82,6 +82,11 @@ tar = { version = "0.4.46", default-features = false }
 base64 = { workspace = true }
 reqwest = { workspace = true, features = ["json", "rustls"] }
 rand = { workspace = true }
+# `iot:keygen` and `iot:sign`: rullst-iot's own manifest encoding and verifier,
+# and Ed25519 signing (rullst-iot itself only verifies).
+rullst-iot = { workspace = true }
+ed25519-dalek = "2.2.0"
+zeroize = "1.9.1"
 quote = "1.0.47"
 proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "sqlite", "postgres", "mysql", "any"] }
