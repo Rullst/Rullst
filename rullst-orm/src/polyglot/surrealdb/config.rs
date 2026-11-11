@@ -14,14 +14,20 @@ const MAX_RESPONSE_LIMIT: usize = 8 * 1024 * 1024;
 pub enum SurrealAuth {
     /// Connect to an explicitly unauthenticated local or protected instance.
     None,
-    /// HTTP Basic authentication for root, namespace, or database users.
+    /// HTTP Basic authentication for a root-level system user (`DEFINE USER
+    /// ... ON ROOT`). SurrealDB authenticates namespace and database users
+    /// over HTTP only with extra `Surreal-Auth-NS`/`Surreal-Auth-DB` headers,
+    /// which this adapter does not send: sign those users in through
+    /// `/signin` and pass the returned token as [`SurrealAuth::Bearer`].
     Basic { username: String, password: String },
-    /// Bearer token authentication.
+    /// Bearer token authentication, for example the token SurrealDB's
+    /// `/signin` returns for a namespace, database or record user.
     Bearer(String),
 }
 
 impl SurrealAuth {
-    /// Creates Basic authentication without exposing secrets through `Debug`.
+    /// Creates Basic authentication for a root-level user without exposing
+    /// secrets through `Debug`; see [`SurrealAuth::Basic`].
     pub fn basic(username: impl Into<String>, password: impl Into<String>) -> Self {
         Self::Basic {
             username: username.into(),
