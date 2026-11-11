@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794434350778,
+  "lastUpdate": 1794436426518,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -32427,6 +32427,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2010,
             "range": "± 26",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58cdcdcf7738a3a560f19d8e57961ee617174db7",
+          "message": "Merge pull request #644 from Rullst/fix/v13-alpha5-acc-polyglot\n\nfix(orm): fail a SurrealDB create that returns no record",
+          "timestamp": "2026-11-11T19:26:40-03:00",
+          "tree_id": "65317c3daa468c72f9040a9a39088ff953278a9d",
+          "url": "https://github.com/Rullst/Rullst/commit/58cdcdcf7738a3a560f19d8e57961ee617174db7"
+        },
+        "date": 1794436422731,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 527,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 704,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 339,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1508,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
