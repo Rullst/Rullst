@@ -410,8 +410,12 @@ DuckDB is bundled for a predictable optional build. Its connection is guarded
 and every native operation runs through Tokio's blocking worker pool. Dynamic
 values are prepared parameters; SQL text remains trusted application structure.
 Results must declare a 1–10,000 row materialization limit. Scalar, decimal,
-temporal, interval, geometry and binary values are preserved; unsupported
-complex result types fail with a typed error instead of being guessed.
+temporal, interval, geometry and binary values are preserved; a `NULL`-typed
+column (`SELECT NULL`) reads as `AnalyticsValue::Null`. Unsupported complex
+result types (lists, structs, maps, enums, unions, `TIME_NS`) fail with
+`PolyglotError::UnsupportedValue` instead of being guessed, and the store stays
+usable. `TIMETZ` reads as a plain `Time` without its offset, and `BIT` and
+`VARINT` as DuckDB's internal bytes; cast them in SQL when the value matters.
 
 ## Specialized Qdrant and Redis stores
 

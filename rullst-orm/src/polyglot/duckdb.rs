@@ -5,7 +5,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use duckdb::{Connection, params_from_iter, types::ValueRef};
+use duckdb::{Connection, Row, arrow::datatypes::DataType, params_from_iter, types::ValueRef};
 
 use super::{Backend, BackendCapabilities, Capability, PolyglotError};
 
@@ -240,6 +240,9 @@ impl AnalyticsRepository for DuckDbStore {
                 });
             };
             let column_names = metadata.column_names();
+            let column_types = (0..column_names.len())
+                .map(|index| metadata.column_type(index))
+                .collect::<Vec<_>>();
             let mut materialized = Vec::new();
             while materialized.len() < limit.get() as usize {
                 let Some(row) = rows
@@ -249,17 +252,16 @@ impl AnalyticsRepository for DuckDbStore {
                     break;
                 };
                 let mut columns = BTreeMap::new();
-                for (index, name) in column_names.iter().enumerate() {
+                for (index, (name, column_type)) in
+                    column_names.iter().zip(&column_types).enumerate()
+                {
                     if columns.contains_key(name) {
                         return Err(PolyglotError::Driver {
                             backend: "DuckDB",
                             message: format!("duplicate result column name: {name}"),
                         });
                     }
-                    let value = row
-                        .get_ref(index)
-                        .map_err(|error| PolyglotError::driver("DuckDB", error))?;
-                    columns.insert(name.clone(), from_duckdb_value(value)?);
+                    columns.insert(name.clone(), read_cell(row, index, column_type)?);
                 }
                 materialized.push(AnalyticsRow { columns });
             }
@@ -268,6 +270,28 @@ impl AnalyticsRepository for DuckDbStore {
         .await
         .map_err(worker_error)?
     }
+}
+
+/// Reads one result cell. A `NULL`-typed column (`SELECT NULL`, an untyped
+/// `NULL` parameter) holds only NULLs. duckdb-rs panics instead of returning
+/// an error when it reads a cell of an Arrow type it does not map; that panic
+/// is contained here, so it neither escapes the worker nor poisons the
+/// connection lock, and the cell is reported as an unsupported value.
+fn read_cell(
+    row: &Row<'_>,
+    index: usize,
+    column_type: &DataType,
+) -> Result<AnalyticsValue, PolyglotError> {
+    if matches!(column_type, DataType::Null) {
+        return Ok(AnalyticsValue::Null);
+    }
+    let value = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| row.get_ref(index)))
+        .map_err(|_| PolyglotError::UnsupportedValue {
+            backend: "DuckDB",
+            kind: format!("{column_type:?}"),
+        })?
+        .map_err(|error| PolyglotError::driver("DuckDB", error))?;
+    from_duckdb_value(value)
 }
 
 fn validate_analytics_request(

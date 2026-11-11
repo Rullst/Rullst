@@ -561,6 +561,16 @@ describes each replacement.
 
 ### Fixed
 
+- `rullst-orm` DuckDB adapter: a query with a `NULL`-typed result column
+  (`SELECT NULL AS x`, or a `NULL` parameter selected as is) made the duckdb-rs
+  driver panic in the blocking worker. The query failed with a `Worker` error
+  and the panic poisoned the connection lock, so every later `execute` and
+  `query` on that `DuckDbStore` failed with "connection lock was poisoned"
+  until the process restarted. Such columns now read as
+  `AnalyticsValue::Null`, and a result type the driver panics on (for example
+  `TIME_NS`) returns `PolyglotError::UnsupportedValue` and leaves the store
+  usable. Found by acceptance testing with the bundled DuckDB of `duckdb`
+  1.20000.1.
 - `rullst-iot`: `MqttPublish::encode` aborted the program when the allocator
   could not provide the packet buffer, which on a BBC micro:bit V2 with a
   32 KiB heap happened for a 20 KiB payload; it and `CoapRequest::encode`,

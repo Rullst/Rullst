@@ -362,3 +362,38 @@ fn analytics_requests_reach_exactly_their_bounds() {
     assert!(validate_analytics_request("SELECT ?", &payload(8 * mib)).is_ok());
     assert!(validate_analytics_request("SELECT ?", &payload(8 * mib + 1)).is_err());
 }
+
+#[tokio::test]
+async fn null_and_unreadable_columns_keep_the_connection_usable() {
+    let store = DuckDbStore::in_memory().await.unwrap();
+    let limit = QueryLimit::new(1).unwrap();
+    // duckdb-rs panicked reading a `NULL`-typed column, which poisoned the
+    // connection lock and failed every later call on the store.
+    let rows = store
+        .query(
+            "SELECT NULL AS nothing, ? AS unbound, 1 AS one",
+            vec![AnalyticsValue::Null],
+            limit,
+        )
+        .await
+        .unwrap();
+    assert_eq!(rows[0].get("nothing"), Some(&AnalyticsValue::Null));
+    assert_eq!(rows[0].get("unbound"), Some(&AnalyticsValue::Null));
+    assert_eq!(rows[0].get("one"), Some(&AnalyticsValue::Signed(1)));
+    // duckdb-rs also panics on a `TIME_NS` cell; it is now a typed error.
+    let unsupported = store
+        .query("SELECT '12:00:00.000000001'::TIME_NS AS t", vec![], limit)
+        .await;
+    assert!(
+        matches!(
+            unsupported,
+            Err(PolyglotError::UnsupportedValue {
+                backend: "DuckDB",
+                ..
+            })
+        ),
+        "{unsupported:?}"
+    );
+    let after = store.query("SELECT 2 AS two", vec![], limit).await.unwrap();
+    assert_eq!(after[0].get("two"), Some(&AnalyticsValue::Signed(2)));
+}
