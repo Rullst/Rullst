@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794406103808,
+  "lastUpdate": 1794415533600,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -20764,6 +20764,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7f3865bf53661dea959f8615f2dcb8c840ceba49",
+          "message": "Merge pull request #641 from Rullst/dependabot/cargo/main/safe-updates-0577291c70\n\nchore(deps): Bump the safe-updates group across 9 directories with 4 updates",
+          "timestamp": "2026-11-11T13:25:59-03:00",
+          "tree_id": "08f9b7ef7b77b60a6818332cca0a316bb7fea4ba",
+          "url": "https://github.com/Rullst/Rullst/commit/7f3865bf53661dea959f8615f2dcb8c840ceba49"
+        },
+        "date": 1794415532698,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4011,
+            "range": "± 53",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 442,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 11,
             "range": "± 0",
             "unit": "ns/iter"
           }
