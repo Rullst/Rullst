@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794353256053,
+  "lastUpdate": 1794405113809,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -32265,6 +32265,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1508,
             "range": "± 21",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "626da951d672cffeff7697e9b2a08d7af015cdd8",
+          "message": "Merge pull request #629 from Rullst/feat/v13-alpha5-ui-components\n\nfeat(cli): cargo rullst ui add, the html! + Tailwind component library (alpha.5)",
+          "timestamp": "2026-11-11T10:46:06-03:00",
+          "tree_id": "c86458a244bc300ca6c9c0a02ad9c76ea19a23cc",
+          "url": "https://github.com/Rullst/Rullst/commit/626da951d672cffeff7697e9b2a08d7af015cdd8"
+        },
+        "date": 1794405109370,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 563,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 752,
+            "range": "± 65",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 445,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1563,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
