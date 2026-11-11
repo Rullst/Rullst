@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794415352400,
+  "lastUpdate": 1794435117508,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -20903,6 +20903,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3773,
             "range": "± 57",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "890bb7028d2a3dcf9263a95c2e5f0d3c5f5cf374",
+          "message": "Merge pull request #642 from Rullst/ci/v13-alpha5-duckdb-cache\n\nci: keep cached Rust targets from breaking the DuckDB build",
+          "timestamp": "2026-11-11T18:50:43-03:00",
+          "tree_id": "9da6f544758b8004a020882244f40fbd50a3d5da",
+          "url": "https://github.com/Rullst/Rullst/commit/890bb7028d2a3dcf9263a95c2e5f0d3c5f5cf374"
+        },
+        "date": 1794435116898,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1004,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 752,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1839,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4245,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
