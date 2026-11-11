@@ -82,6 +82,8 @@ fn replace(path: &Path, content: &[u8], create: bool) -> io::Result<()> {
     file.write_all(content)?;
     if let Ok(metadata) = fs::metadata(path) {
         file.as_file().set_permissions(metadata.permissions())?;
+    } else {
+        new_file_permissions(file.as_file())?;
     }
     file.as_file().sync_all()?;
     if create {
@@ -89,6 +91,21 @@ fn replace(path: &Path, content: &[u8], create: bool) -> io::Result<()> {
     } else {
         file.persist(path).map_err(|error| error.error)?;
     }
+    Ok(())
+}
+
+/// A temporary file is created owner-only (0600); a new generated file is an
+/// ordinary project file, readable like one `fs::write` creates (0644), so a
+/// web server or build stage running as another user can read static assets
+/// such as the PWA manifest and icons.
+#[cfg(unix)]
+fn new_file_permissions(file: &fs::File) -> io::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    file.set_permissions(fs::Permissions::from_mode(0o644))
+}
+
+#[cfg(not(unix))]
+fn new_file_permissions(_file: &fs::File) -> io::Result<()> {
     Ok(())
 }
 
@@ -165,6 +182,25 @@ pub(super) fn symlinked_project(temporary: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn created_files_are_readable_and_replaced_files_keep_their_mode() {
+        use std::os::unix::fs::PermissionsExt;
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().canonicalize().unwrap();
+        let created = root.join("static/manifest.webmanifest");
+        apply(&[Edit::create(created.clone(), "{}".into()).unwrap()]).unwrap();
+        let mode = fs::metadata(&created).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o644, "a new generated file is not owner-only");
+
+        let private = root.join("main.rs");
+        fs::write(&private, "old").unwrap();
+        fs::set_permissions(&private, fs::Permissions::from_mode(0o600)).unwrap();
+        apply(&[Edit::replace(private.clone(), "old".into(), "new".into())]).unwrap();
+        let mode = fs::metadata(&private).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "an edited file keeps the mode it had");
+    }
 
     #[test]
     fn changed_inputs_are_preserved_and_late_io_failure_restores_prior_edits() {
