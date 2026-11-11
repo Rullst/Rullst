@@ -87,10 +87,10 @@ fn interactive_blank_wizard_validates_names_and_composes_the_full_profile() {
     let mut ui = FakeUi::scripted(
         &["", "space name", "1number", "bad!", "crate", "learning_hub"],
         vec![
-            Answer::One(1),                    // API
-            Answer::One(4),                    // Turso primary
-            Answer::Many(vec![0, 3, 4, 5, 6]), // AI + every add-on offered
-            Answer::One(0),                    // Create
+            Answer::One(1),              // API
+            Answer::One(4),              // Turso primary
+            Answer::Many(vec![0, 3, 4]), // AI + every add-on offered
+            Answer::One(0),              // Create
         ],
     );
     let plan = created(run_with(NewProjectRequest::default(), &mut ui));
@@ -114,8 +114,6 @@ fn interactive_blank_wizard_validates_names_and_composes_the_full_profile() {
         options.polyglot_integrations,
         [
             PolyglotIntegration::Turso,
-            PolyglotIntegration::MongoDb,
-            PolyglotIntegration::DuckDb,
             PolyglotIntegration::SurrealDb,
             PolyglotIntegration::Qdrant,
         ]
@@ -134,7 +132,7 @@ fn interactive_blank_wizard_validates_names_and_composes_the_full_profile() {
     assert_eq!(
         features.selection,
         Selection::Many {
-            checked: vec![false; 7]
+            checked: vec![false; 5]
         }
     );
     assert_eq!(
@@ -255,7 +253,7 @@ fn profile_flags_skip_their_questions_and_their_features() {
             options: ProjectScaffoldOptions {
                 database: Some("Postgres"),
                 wants_ai: true,
-                mongodb: true,
+                surrealdb: true,
                 docker: true,
                 ..ProjectScaffoldOptions::default()
             },
@@ -274,20 +272,14 @@ fn profile_flags_skip_their_questions_and_their_features() {
         .collect();
     assert_eq!(
         offered,
-        [
-            "Redis adapters",
-            "Turso / libSQL add-on",
-            "DuckDB",
-            "SurrealDB",
-            "Qdrant"
-        ]
+        ["Redis adapters", "Turso / libSQL add-on", "Qdrant"]
     );
     assert!(plan.ai && plan.docker);
     assert_eq!(plan.database, Database::Provider("Postgres"));
-    assert_eq!(plan.integrations(), [PolyglotIntegration::MongoDb]);
+    assert_eq!(plan.integrations(), [PolyglotIntegration::SurrealDb]);
     let review = texts(&ui.screens[1].body).join("\n");
     assert!(
-        review.contains("Features     AI features, Dockerfile, MongoDB"),
+        review.contains("Features     AI features, Dockerfile, SurrealDB"),
         "{review}"
     );
 }

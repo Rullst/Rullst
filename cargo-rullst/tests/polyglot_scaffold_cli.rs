@@ -46,8 +46,6 @@ fn deterministic_cli_materializes_relational_and_specialized_persistence_choices
             "--database",
             "mariadb",
             "--turso",
-            "--mongodb",
-            "--duckdb",
             "--surrealdb",
             "--qdrant",
             "--skip-initial-migration",
@@ -69,13 +67,7 @@ fn deterministic_cli_materializes_relational_and_specialized_persistence_choices
         .iter()
         .filter_map(toml::Value::as_str)
         .collect::<Vec<_>>();
-    for feature in [
-        "orm-turso",
-        "orm-mongodb",
-        "orm-duckdb",
-        "orm-surrealdb",
-        "orm-qdrant",
-    ] {
+    for feature in ["orm-turso", "orm-surrealdb", "orm-qdrant"] {
         assert!(rullst_features.contains(&feature), "missing {feature}");
     }
     assert_eq!(
@@ -87,8 +79,6 @@ fn deterministic_cli_materializes_relational_and_specialized_persistence_choices
     for variable in [
         "DATABASE_URL=mysql://",
         "TURSO_DATABASE_URL=mock_local",
-        "MONGODB_URL=mock_local",
-        "DUCKDB_PATH=analytics.duckdb",
         "SURREALDB_URL=mock_local",
         "QDRANT_URL=mock_local",
     ] {
@@ -96,6 +86,29 @@ fn deterministic_cli_materializes_relational_and_specialized_persistence_choices
     }
 
     fs::remove_dir_all(&project).expect("remove generated test project");
+}
+
+#[test]
+fn removed_side_store_flags_fail_before_writing_and_name_the_recipe() {
+    let temporary = tempfile::tempdir().expect("temporary directory");
+    for (flag, recipe) in [
+        ("--mongodb", "book/recipes/mongodb.html"),
+        ("--duckdb", "book/recipes/duckdb.html"),
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_rullst"))
+            .current_dir(temporary.path())
+            .args(["new", "store-app", "--default", flag])
+            .output()
+            .expect("run the project generator");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert_eq!(output.status.code(), Some(1), "{flag}: {stderr}");
+        assert!(
+            stderr.contains(&format!("{flag} was removed in 13.0.0-alpha.5")),
+            "{flag}: {stderr}"
+        );
+        assert!(stderr.contains(recipe), "{flag}: {stderr}");
+        assert!(!temporary.path().join("store-app").exists(), "{flag}");
+    }
 }
 
 #[test]
