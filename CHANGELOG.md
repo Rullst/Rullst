@@ -578,7 +578,8 @@ describes each replacement.
   `make:privacy` and `make:age-gate`) were owner-only (mode 0600) because they
   were written through a temporary file, so a web server or build step
   running as another user could not read the PWA's static files. New files are
-  now created with mode 0644; an edited file keeps its mode.
+  now created in place, exclusively, with the mode the process umask gives
+  (as `fs::write` does); an edited file keeps its mode.
 - `rullst-iot`: `MqttPublish::encode` aborted the program when the allocator
   could not provide the packet buffer, which on a BBC micro:bit V2 with a
   32 KiB heap happened for a 20 KiB payload; it and `CoapRequest::encode`,

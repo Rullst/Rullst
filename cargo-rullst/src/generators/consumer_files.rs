@@ -78,34 +78,36 @@ fn replace(path: &Path, content: &[u8], create: bool) -> io::Result<()> {
         )
     })?;
     fs::create_dir_all(parent)?;
+    if create {
+        return create_new(path, content);
+    }
     let mut file = tempfile::NamedTempFile::new_in(parent)?;
     file.write_all(content)?;
     if let Ok(metadata) = fs::metadata(path) {
         file.as_file().set_permissions(metadata.permissions())?;
-    } else {
-        new_file_permissions(file.as_file())?;
     }
     file.as_file().sync_all()?;
-    if create {
-        file.persist_noclobber(path).map_err(|error| error.error)?;
-    } else {
-        file.persist(path).map_err(|error| error.error)?;
-    }
+    file.persist(path).map_err(|error| error.error)?;
     Ok(())
 }
 
-/// A temporary file is created owner-only (0600); a new generated file is an
-/// ordinary project file, readable like one `fs::write` creates (0644), so a
-/// web server or build stage running as another user can read static assets
-/// such as the PWA manifest and icons.
-#[cfg(unix)]
-fn new_file_permissions(file: &fs::File) -> io::Result<()> {
-    use std::os::unix::fs::PermissionsExt;
-    file.set_permissions(fs::Permissions::from_mode(0o644))
-}
-
-#[cfg(not(unix))]
-fn new_file_permissions(_file: &fs::File) -> io::Result<()> {
+/// Creates a file that must not exist yet (`O_EXCL`, so an existing entry or
+/// symlink is never followed or replaced). Unlike a temporary file, which is
+/// owner-only, it gets the mode `fs::write` would give it under the process
+/// umask, so a web server or build stage running as another user can read
+/// static assets such as the PWA manifest and icons. A failed write removes
+/// the partial file.
+fn create_new(path: &Path, content: &[u8]) -> io::Result<()> {
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)?;
+    let written = file.write_all(content).and_then(|()| file.sync_all());
+    if let Err(error) = written {
+        drop(file);
+        let _ = fs::remove_file(path);
+        return Err(error);
+    }
     Ok(())
 }
 
@@ -191,8 +193,28 @@ mod tests {
         let root = directory.path().canonicalize().unwrap();
         let created = root.join("static/manifest.webmanifest");
         apply(&[Edit::create(created.clone(), "{}".into()).unwrap()]).unwrap();
+        assert_eq!(read(&created).unwrap(), "{}");
+        // The mode `fs::write` gives a new file under this process's umask,
+        // not the owner-only mode of a temporary file.
+        let reference = root.join("static/reference.txt");
+        fs::write(&reference, "x").unwrap();
+        let expected = fs::metadata(&reference).unwrap().permissions().mode() & 0o777;
         let mode = fs::metadata(&created).unwrap().permissions().mode() & 0o777;
-        assert_eq!(mode, 0o644, "a new generated file is not owner-only");
+        assert_eq!(mode, expected, "a new generated file is not owner-only");
+        // An existing entry is never replaced by a creation.
+        assert!(
+            apply(&[
+                Edit::create(created.clone(), "{}".into()).unwrap_or_else(|_| {
+                    Edit {
+                        path: created.clone(),
+                        old: None,
+                        new: b"other".to_vec(),
+                    }
+                })
+            ])
+            .is_err()
+        );
+        assert_eq!(read(&created).unwrap(), "{}");
 
         let private = root.join("main.rs");
         fs::write(&private, "old").unwrap();
