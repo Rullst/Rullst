@@ -274,7 +274,15 @@ to the counts above.
     both Live stacks (`#[live_component]`/`make:live` and
     `rullst::live::recovery`), replaced for server push by Server-Sent Events
     from the realtime channels with the htmx SSE extension; and the Turso
-    variants of the billing generator.
+    variants of the billing generator. Decided 11 November 2026: the MongoDB
+    and DuckDB adapters of `rullst-orm`, replaced by
+    [application recipes](docs/src/recipes/index.md). Rullst keeps an
+    integration where it adds real value (security checks, verification,
+    offline modes, typed errors, bounds) and documents a thin wrapper over an
+    official SDK as a recipe instead, which keeps 13.x maintainable: MongoDB
+    was a thin layer over its driver, and DuckDB the heaviest dependency (a
+    bundled C++ engine, a past `zip` advisory exception, CI cache breakage)
+    with no known user.
   - **Brought forward from the 13.x and v14 lists:** unquoted text in `html!`
     (quoted literals keep working); `OtaManager` fields private behind getters
     of the same names; and the four breaking clean-ups of the v14 list below,

@@ -122,6 +122,12 @@
   - [Exam observation integration](supervision-observations.md)
 - [Private Course Video Integration Candidate](managed-video.md)
 
+# Recipes
+
+- [Application-owned integrations](recipes/index.md)
+  - [MongoDB with the official driver](recipes/mongodb.md)
+  - [DuckDB analytics with the official crate](recipes/duckdb.md)
+
 # Reference
 
 - [📜 Framework Spec](spec.md)

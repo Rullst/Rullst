@@ -555,6 +555,29 @@ A prepared version section does not establish that its tag or crates exist.
   refuses before writing anything, because billing needs the SQLx database
   layer and Turso is limited to the Blank and API starters' primary
   database. The six `billing_*_turso.rs.template` files were removed.
+- **Breaking:** the MongoDB adapter of `rullst-orm`: `polyglot::MongoDbStore`,
+  the `mongodb` feature (and the `mongodb` driver dependency) of `rullst-orm`,
+  the `orm-mongodb` feature of `rullst`, `Backend::MongoDb` and
+  `cargo rullst new --mongodb`. It was a thin layer over the official driver;
+  the new [MongoDB recipe](docs/src/recipes/mongodb.md) shows the driver in
+  application code, with one client shared through application state and an
+  offline fake behind an application trait. The document traits, the
+  deterministic store, SurrealDB and encrypted document recovery stay; the
+  live recovery matrix now runs SurrealDB → deterministic store → SurrealDB.
+- **Breaking:** the DuckDB adapter of `rullst-orm`: `polyglot::DuckDbStore`,
+  `AnalyticsRepository`, `AnalyticsRow`, `AnalyticsValue`,
+  `AnalyticsTimeUnit`, `QueryLimit`, `Backend::DuckDb`,
+  `Capability::Analytics`, `PolyglotError::Worker`, the `duckdb` feature (and
+  the bundled `duckdb` dependency) of `rullst-orm`, the `orm-duckdb` feature of
+  `rullst` and `cargo rullst new --duckdb`. It was the heaviest dependency of
+  the workspace (DuckDB's bundled C++ engine, a past `zip` advisory exception,
+  CI cache repairs) and had no known user; the new
+  [DuckDB recipe](docs/src/recipes/duckdb.md) runs the official crate in an
+  application. CI no longer repairs DuckDB sources restored from the Rust
+  cache, and docs.rs now documents every `rullst-orm` integration. The two
+  `new` flags are hidden and stop with status 1, naming the recipe;
+  `cargo rullst upgrade` reports the removed features and names
+  (`V13-ORM-ADAPTERS-REMOVED`).
 
 The [migration guide](docs/src/migration-v13.md#upgrading-an-alpha4-application-to-alpha5)
 describes each replacement.

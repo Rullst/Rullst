@@ -258,7 +258,7 @@ wizard. It asks, one screen at a time:
    used;
 3. the **primary database** (Turso and *No database* only for Blank and API);
 4. **optional features** (zero or more): AI, Redis adapters, Dockerfile
-   and the Turso, MongoDB, DuckDB, SurrealDB and Qdrant add-ons;
+   and the Turso, SurrealDB and Qdrant add-ons;
 5. a **review** of the answers, the file tree and the commands `new` will run
    (the initial migration, unless skipped or database-free), with *Create
    the project*, *Back* and *Cancel*.
@@ -287,7 +287,7 @@ The choices that materially change the generated application:
   [Starters that moved to the examples](#starters-that-moved-to-the-examples).
 * **Persistence:** a primary relational backend (SQLite, PostgreSQL, MySQL,
   MariaDB, or bounded Turso-primary for blank/API) plus optional Turso/libSQL,
-  MongoDB, DuckDB, SurrealDB, and Qdrant capabilities. The optional selector
+  SurrealDB, and Qdrant capabilities. The optional selector
   accepts zero or more choices and omits capabilities already selected by the
   primary profile or flags. Specialized adapters remain separate from SQLx
   Active Record.
@@ -336,10 +336,9 @@ The choices that materially change the generated application:
     used by `make:k8s` manifests and the `deploy` Caddyfile answer `200`
     without authentication.
   * `--turso`: Adds Turso/libSQL as a side store beside the primary database: the direct Hrana HTTP v3 adapter, checked migrations and its real-SQL offline development fallback. It does not imply transparent replication.
-  * `--mongodb`: Adds MongoDB as a side store: typed document CRUD and its deterministic offline store.
-  * `--duckdb`: Adds DuckDB as a side store for in-process analytics; the optional native dependency increases the first build time.
   * `--surrealdb`: Adds SurrealDB as a side store: HTTP document CRUD and bounded read-only graph queries.
   * `--qdrant`: Adds Qdrant as a side store for bounded dense-vector operations and generates empty/`mock_*`-compatible environment fields; it is not the SQL primary.
+  * `--mongodb` and `--duckdb` were removed in 13.0.0-alpha.5 with their adapters: they are hidden from `--help`, and `new` stops with status 1 before writing anything and names the [MongoDB](recipes/mongodb.md) or [DuckDB](recipes/duckdb.md) recipe.
   * `--nix` and `--buildah` were removed in 13.0.0-alpha.4; see [Advanced deployment](advanced-deployment.md).
   * `--default`: Skips every question and uses deterministic defaults for anything no flag sets (name `app`, Blank, SQLite, no features), intended for CI and reproducible scaffolding.
   * `--blueprint <blank|api|saas>`: Selects the starter; the wizard skips that question. `lms`, `blog`, `portfolio` and `erp` still parse but fail before anything is written, naming the example that replaced them (exit status 1).
@@ -425,14 +424,13 @@ a SaaS release build, runs every generated test target, and constructs the
 public router of each hot-reload project using offline-safe defaults. A
 separate seven-case test invokes the public `cargo rullst new` binary and
 verifies exact feature selection for SQLite, PostgreSQL, MySQL, MariaDB, AI,
-Redis, Turso, MongoDB, DuckDB, SurrealDB and Qdrant across the Blank, API and
+Redis, Turso, SurrealDB and Qdrant across the Blank, API and
 SaaS starters plus a polyglot profile. The invocation starts outside the source checkout, proving
 that an unpublished pre-release CLI retains its exact matching checkout as a
 path source instead of requesting unavailable registry packages.
 
 The public polyglot profile uses `cargo check` in that CLI-level set because a
-second bundled-DuckDB test build adds no adapter behavior and can consume
-several GiB on small machines. DuckDB, MongoDB, SurrealDB, Turso and Qdrant
+second test build adds no adapter behavior. SurrealDB, Turso and Qdrant
 runtime behavior is exercised by their dedicated ORM matrices instead. These
 gates prove reproducible local generation and bounded offline construction;
 they do not prove provider accounts, production deployment, browser behavior
