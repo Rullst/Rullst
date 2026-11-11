@@ -561,6 +561,14 @@ describes each replacement.
 
 ### Fixed
 
+- Documentation: the exam observation guide did not say that Rullst's default
+  `Permissions-Policy: camera=(), microphone=()` makes `getUserMedia` fail on
+  the capture page; it now shows the page-level header to send. The
+  InfinitePay sections of the `rullst-capital` README and the payment gateway
+  guide did not say that the merchant must enable external checkout in the
+  InfinitePay app first; until then `POST /links` answers 404
+  `external_checkout_not_enabled`, which the adapter reports as HTTP 404 (found
+  by the 13.0.0-alpha.5 acceptance application).
 - `rullst-iot`: `MqttPublish::encode` aborted the program when the allocator
   could not provide the packet buffer, which on a BBC micro:bit V2 with a
   32 KiB heap happened for a 20 KiB payload; it and `CoapRequest::encode`,
