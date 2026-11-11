@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794435117508,
+  "lastUpdate": 1794437066603,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -20951,6 +20951,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4245,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58cdcdcf7738a3a560f19d8e57961ee617174db7",
+          "message": "Merge pull request #644 from Rullst/fix/v13-alpha5-acc-polyglot\n\nfix(orm): fail a SurrealDB create that returns no record",
+          "timestamp": "2026-11-11T19:26:40-03:00",
+          "tree_id": "65317c3daa468c72f9040a9a39088ff953278a9d",
+          "url": "https://github.com/Rullst/Rullst/commit/58cdcdcf7738a3a560f19d8e57961ee617174db7"
+        },
+        "date": 1794437065541,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 936,
+            "range": "± 53",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 750,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1699,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3779,
+            "range": "± 30",
             "unit": "ns/iter"
           }
         ]
