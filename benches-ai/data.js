@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794406218169,
+  "lastUpdate": 1794415637999,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -18358,6 +18358,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 343,
+            "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7f3865bf53661dea959f8615f2dcb8c840ceba49",
+          "message": "Merge pull request #641 from Rullst/dependabot/cargo/main/safe-updates-0577291c70\n\nchore(deps): Bump the safe-updates group across 9 directories with 4 updates",
+          "timestamp": "2026-11-11T13:25:59-03:00",
+          "tree_id": "08f9b7ef7b77b60a6818332cca0a316bb7fea4ba",
+          "url": "https://github.com/Rullst/Rullst/commit/7f3865bf53661dea959f8615f2dcb8c840ceba49"
+        },
+        "date": 1794415636908,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1393,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 264,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 282,
             "range": "± 10",
             "unit": "ns/iter"
           }
