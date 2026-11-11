@@ -186,7 +186,7 @@ impl GoogleProvider {
     pub(crate) async fn get_jwks_for_kid(
         &self,
         kid: &str,
-    ) -> Result<std::sync::Arc<jsonwebtoken::jwk::JwkSet>, crate::error::ConnectError> {
+    ) -> Result<crate::provider::JsonWebKeySet, crate::error::ConnectError> {
         self.jwks_cache
             .get_for_kid(
                 "https://www.googleapis.com/oauth2/v3/certs",

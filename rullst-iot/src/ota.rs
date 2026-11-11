@@ -9,16 +9,17 @@
 extern crate alloc;
 
 use alloc::string::String;
-use alloc::vec::Vec;
 use ed25519_dalek::{Signature, VerifyingKey};
-use sha2::{Digest, Sha256};
 
 mod counter;
 mod error;
+mod manifest;
+mod stream;
 pub use counter::{RollbackCounterError, RollbackCounterStore};
 pub use error::OtaError;
-
-const MANIFEST_DOMAIN: &[u8] = b"RULLST-OTA-MANIFEST-V1\0";
+use manifest::validate_text_fields;
+pub use manifest::{OtaCommit, OtaManifest};
+pub use stream::OtaImageVerifier;
 
 /// Active firmware boot partition.
 #[non_exhaustive]
@@ -51,141 +52,16 @@ pub enum OtaStatus {
     Failed,
 }
 
-/// Canonical metadata signed by a firmware publisher.
-#[non_exhaustive]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OtaManifest {
-    target: String,
-    version: String,
-    rollback_counter: u64,
-    firmware_len: u64,
-    firmware_sha256: [u8; 32],
-}
-
-impl OtaManifest {
-    /// Builds a manifest and binds it to the supplied firmware bytes.
-    pub fn from_firmware(
-        target: impl Into<String>,
-        version: impl Into<String>,
-        rollback_counter: u64,
-        firmware: &[u8],
-    ) -> Result<Self, OtaError> {
-        let target = target.into();
-        let version = version.into();
-        validate_text_fields(&target, &version)?;
-        if firmware.is_empty() {
-            return Err(OtaError::EmptyFirmware);
-        }
-        let firmware_len = u64::try_from(firmware.len()).map_err(|_| OtaError::FirmwareTooLarge)?;
-
-        Ok(Self {
-            target,
-            version,
-            rollback_counter,
-            firmware_len,
-            firmware_sha256: Sha256::digest(firmware).into(),
-        })
-    }
-
-    /// Returns the device or board class this artifact targets.
-    #[must_use]
-    pub fn target(&self) -> &str {
-        &self.target
-    }
-
-    /// Returns the advertised firmware version.
-    #[must_use]
-    pub fn version(&self) -> &str {
-        &self.version
-    }
-
-    /// Returns the monotonic anti-rollback counter.
-    #[must_use]
-    pub fn rollback_counter(&self) -> u64 {
-        self.rollback_counter
-    }
-
-    /// Returns the signed firmware length.
-    #[must_use]
-    pub fn firmware_len(&self) -> u64 {
-        self.firmware_len
-    }
-
-    /// Returns the signed SHA-256 firmware digest.
-    #[must_use]
-    pub fn firmware_sha256(&self) -> [u8; 32] {
-        self.firmware_sha256
-    }
-
-    /// Encodes the exact domain-separated bytes that publishers must sign.
-    pub fn signing_bytes(&self) -> Result<Vec<u8>, OtaError> {
-        let target_len =
-            u32::try_from(self.target.len()).map_err(|_| OtaError::ManifestFieldTooLong)?;
-        let version_len =
-            u32::try_from(self.version.len()).map_err(|_| OtaError::ManifestFieldTooLong)?;
-        let mut encoded = Vec::with_capacity(
-            MANIFEST_DOMAIN.len()
-                + 4
-                + self.target.len()
-                + 4
-                + self.version.len()
-                + 8
-                + 8
-                + self.firmware_sha256.len(),
-        );
-        encoded.extend_from_slice(MANIFEST_DOMAIN);
-        encoded.extend_from_slice(&target_len.to_be_bytes());
-        encoded.extend_from_slice(self.target.as_bytes());
-        encoded.extend_from_slice(&version_len.to_be_bytes());
-        encoded.extend_from_slice(self.version.as_bytes());
-        encoded.extend_from_slice(&self.rollback_counter.to_be_bytes());
-        encoded.extend_from_slice(&self.firmware_len.to_be_bytes());
-        encoded.extend_from_slice(&self.firmware_sha256);
-        Ok(encoded)
-    }
-}
-
-/// Result of selecting the inactive partition for an already verified update.
-///
-/// This receipt is not proof that platform-specific flashing or reboot succeeded.
-#[non_exhaustive]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OtaCommit {
-    target_partition: BootPartition,
-    version: String,
-    rollback_counter: u64,
-}
-
-impl OtaCommit {
-    #[must_use]
-    pub fn target_partition(&self) -> BootPartition {
-        self.target_partition
-    }
-
-    #[must_use]
-    pub fn version(&self) -> &str {
-        &self.version
-    }
-
-    #[must_use]
-    pub fn rollback_counter(&self) -> u64 {
-        self.rollback_counter
-    }
-}
-
 /// Fail-closed verifier and boot-selection state machine for signed firmware.
+///
+/// Since 13.0.0-alpha.5 its state is read with [`Self::current_partition`],
+/// [`Self::status`] and [`Self::firmware_version`]; only the verification
+/// and commit methods change it.
 #[non_exhaustive]
 pub struct OtaManager {
-    /// Bank the device is running from. [`Self::new_with_running_partition`]
-    /// takes it explicitly; the other constructors assume
-    /// [`BootPartition::PartitionA`], so platform code must then set the bank
-    /// reported by its bootloader before verifying an update, for example after
-    /// the device rebooted into [`BootPartition::PartitionB`]. A commit does not
-    /// change it: the receipt names the bank selected for the next boot, which
-    /// runs only after the platform reboots into it.
-    pub current_partition: BootPartition,
-    pub status: OtaStatus,
-    pub firmware_version: String,
+    current_partition: BootPartition,
+    status: OtaStatus,
+    firmware_version: String,
     target: String,
     rollback_counter: u64,
     trusted_key: VerifyingKey,
@@ -269,14 +145,61 @@ impl OtaManager {
         trusted_public_key: [u8; 32],
         counter_store: &mut S,
     ) -> Result<Self, OtaError> {
-        let mut manager = Self::new_with_counter_store(
+        let manager = Self::new_with_counter_store(
             target,
             current_version,
             trusted_public_key,
             counter_store,
         )?;
-        manager.current_partition = running_partition;
-        Ok(manager)
+        Ok(manager.with_running_partition(running_partition))
+    }
+
+    /// Sets the bank the device is running from, as its bootloader reports
+    /// it, for a manager built with [`Self::new_with_trusted_key`] or
+    /// [`Self::new_with_counter_store`], which assume
+    /// [`BootPartition::PartitionA`]: for example after the device rebooted
+    /// into [`BootPartition::PartitionB`]. Call it before verifying an
+    /// update. An update verified or left uncommitted before the call is
+    /// discarded and must be verified again, because its target bank changes.
+    ///
+    /// Added in 13.0.0-alpha.5; before, platform code assigned the public
+    /// `current_partition` field.
+    #[must_use]
+    pub fn with_running_partition(mut self, running_partition: BootPartition) -> Self {
+        self.current_partition = running_partition;
+        self.pending_manifest = None;
+        self.uncertain_commit = None;
+        self.status = OtaStatus::Idle;
+        self
+    }
+
+    /// The bank the device is running from. [`Self::new_with_running_partition`]
+    /// and [`Self::with_running_partition`] set it; the other constructors
+    /// assume [`BootPartition::PartitionA`]. A commit does not change it: the
+    /// receipt names the bank selected for the next boot, which runs only
+    /// after the platform reboots into it.
+    ///
+    /// A method since 13.0.0-alpha.5, which made the field private.
+    #[must_use]
+    pub fn current_partition(&self) -> BootPartition {
+        self.current_partition
+    }
+
+    /// The state of the update in progress.
+    ///
+    /// A method since 13.0.0-alpha.5, which made the field private.
+    #[must_use]
+    pub fn status(&self) -> OtaStatus {
+        self.status
+    }
+
+    /// The version of the firmware last committed, initially the
+    /// `current_version` given to the constructor.
+    ///
+    /// A method since 13.0.0-alpha.5, which made the field private.
+    #[must_use]
+    pub fn firmware_version(&self) -> &str {
+        &self.firmware_version
     }
 
     /// Returns the last committed monotonic counter.
@@ -305,35 +228,63 @@ impl OtaManager {
         Ok(self.current_partition.opposite())
     }
 
-    /// Verifies the target, rollback counter, firmware hash/length, and strict
-    /// Ed25519 signature before making an update eligible for commit.
+    /// Starts verifying an update whose image arrives in chunks.
+    ///
+    /// It checks, cheapest first, the target, the rollback counter, the
+    /// signature encoding and the strict Ed25519 signature over the
+    /// manifest's signing bytes, before any byte of the image is hashed. Then
+    /// it returns an [`OtaImageVerifier`]: pass the image to
+    /// [`OtaImageVerifier::update`] in chunks of any size and call
+    /// [`OtaImageVerifier::finish`], which checks the length and SHA-256
+    /// digest and makes the update eligible for commit. Build the manifest
+    /// from the fields the device receives with [`OtaManifest::new`] or
+    /// [`OtaManifest::from_signing_bytes`], so the image is hashed once and
+    /// never has to be one slice in memory. Any pending update is discarded
+    /// first. Added in 13.0.0-alpha.5.
+    pub fn begin_update(
+        &mut self,
+        manifest: &OtaManifest,
+        signature: &[u8],
+    ) -> Result<OtaImageVerifier<'_>, OtaError> {
+        self.status = OtaStatus::Verifying;
+        self.pending_manifest = None;
+        if let Err(error) = self.check_signed_manifest(manifest, signature) {
+            self.status = OtaStatus::Failed;
+            return Err(error);
+        }
+        Ok(OtaImageVerifier::new(self, manifest.clone()))
+    }
+
+    /// Verifies an image held as one slice: [`Self::begin_update`], one
+    /// [`OtaImageVerifier::update`] and [`OtaImageVerifier::finish`].
+    ///
+    /// The target, rollback counter, signature and the slice's length are
+    /// checked before the image is hashed, then its SHA-256 digest. Since
+    /// 13.0.0-alpha.5 an invalid signature is reported before a length or
+    /// hash mismatch.
     pub fn verify_update(
         &mut self,
         manifest: &OtaManifest,
         firmware: &[u8],
         signature: &[u8],
     ) -> Result<(), OtaError> {
-        self.status = OtaStatus::Verifying;
-        self.pending_manifest = None;
-
-        let result = self.verify_update_inner(manifest, firmware, signature);
-        match result {
-            Ok(()) => {
-                self.pending_manifest = Some(manifest.clone());
-                self.status = OtaStatus::Verified;
-                Ok(())
-            }
-            Err(error) => {
-                self.status = OtaStatus::Failed;
-                Err(error)
-            }
+        let mut verifier = self.begin_update(manifest, signature)?;
+        let actual = u64::try_from(firmware.len()).map_err(|_| OtaError::FirmwareTooLarge)?;
+        if actual != manifest.firmware_len {
+            // Dropping the unfinished verifier marks the update failed.
+            return Err(OtaError::FirmwareLengthMismatch {
+                expected: manifest.firmware_len,
+                actual,
+            });
         }
+        verifier.update(firmware)?;
+        verifier.finish()
     }
 
-    fn verify_update_inner(
+    /// The checks that need no image byte, cheapest first.
+    fn check_signed_manifest(
         &self,
         manifest: &OtaManifest,
-        firmware: &[u8],
         signature: &[u8],
     ) -> Result<(), OtaError> {
         if manifest.target != self.target {
@@ -344,17 +295,6 @@ impl OtaManager {
                 current: self.rollback_counter,
                 proposed: manifest.rollback_counter,
             });
-        }
-        let actual_len = u64::try_from(firmware.len()).map_err(|_| OtaError::FirmwareTooLarge)?;
-        if manifest.firmware_len != actual_len {
-            return Err(OtaError::FirmwareLengthMismatch {
-                expected: manifest.firmware_len,
-                actual: actual_len,
-            });
-        }
-        let actual_hash: [u8; 32] = Sha256::digest(firmware).into();
-        if manifest.firmware_sha256 != actual_hash {
-            return Err(OtaError::FirmwareHashMismatch);
         }
         let signature =
             Signature::from_slice(signature).map_err(|_| OtaError::InvalidSignatureEncoding)?;
@@ -477,18 +417,6 @@ fn reports_committed_counter(error: RollbackCounterError, counter: u64) -> bool 
         RollbackCounterError::NonMonotonic { current, .. } => current == counter,
         _ => false,
     }
-}
-
-fn validate_text_fields(target: &str, version: &str) -> Result<(), OtaError> {
-    if target.is_empty() {
-        return Err(OtaError::EmptyTarget);
-    }
-    if version.is_empty() {
-        return Err(OtaError::EmptyVersion);
-    }
-    u32::try_from(target.len()).map_err(|_| OtaError::ManifestFieldTooLong)?;
-    u32::try_from(version.len()).map_err(|_| OtaError::ManifestFieldTooLong)?;
-    Ok(())
 }
 
 #[cfg(test)]

@@ -12,6 +12,8 @@ use syn::{Attribute, Expr, Fields, Lit, Pat, Token};
 
 #[path = "rust/functions.rs"]
 mod functions;
+#[path = "rust/removed_ui.rs"]
+mod removed_ui;
 #[path = "rust/sqlx_macros.rs"]
 mod sqlx_macros;
 
@@ -44,6 +46,7 @@ pub(super) fn scan_source(
     visitor.visit_file(&file);
     functions::scan(&file, context, visitor.out);
     markup::scan(&file, visitor.out);
+    removed_ui::scan(file.to_token_stream(), visitor.out);
     let facts = tokens::scan(file.to_token_stream(), context, visitor.out);
     if facts.protects_router
         && let Some(line) = facts.root_route
@@ -411,6 +414,15 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
         visit::visit_item_struct(self, item);
     }
 
+    fn visit_item_use(&mut self, item: &'ast syn::ItemUse) {
+        for (path, at) in super::api_cleanups::use_paths(&item.tree) {
+            if let Some(rule) = super::api_cleanups::path_rule(&path) {
+                self.hit(rule, at);
+            }
+        }
+        visit::visit_item_use(self, item);
+    }
+
     fn visit_item_enum(&mut self, item: &'ast syn::ItemEnum) {
         self.sqlx_derives(&item.attrs);
         visit::visit_item_enum(self, item);
@@ -446,12 +458,18 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
     }
 
     fn visit_expr_match(&mut self, expr: &'ast syn::ExprMatch) {
-        let names_kind = expr
-            .arms
-            .iter()
-            .any(|arm| mentions(arm.pat.to_token_stream(), "FieldKind"));
-        if names_kind && !expr.arms.iter().any(|arm| catches_all(&arm.pat)) {
-            self.hit(&NEXUS_FIELD_KIND_MATCH, line(expr.match_token.span()));
+        if !expr.arms.iter().any(|arm| catches_all(&arm.pat)) {
+            let names = |name: &str| {
+                expr.arms
+                    .iter()
+                    .any(|arm| mentions(arm.pat.to_token_stream(), name))
+            };
+            if names("FieldKind") {
+                self.hit(&NEXUS_FIELD_KIND_MATCH, line(expr.match_token.span()));
+            }
+            if let Some(rule) = super::alpha5_runtime::exhaustive_match_rule(names) {
+                self.hit(rule, line(expr.match_token.span()));
+            }
         }
         visit::visit_expr_match(self, expr);
     }

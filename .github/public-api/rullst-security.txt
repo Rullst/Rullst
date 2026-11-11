@@ -150,6 +150,18 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::CswsPolicyErro
 impl core::panic::unwind_safe::UnwindSafe for rullst_security::CswsPolicyError
 pub const rullst_security::DEFAULT_HONEYPOT_BAN_TTL: core::time::Duration
 pub const rullst_security::DEFAULT_MAX_HONEYPOT_BANS: usize
+pub struct rullst_security::DeceptionRoutes
+impl rullst_security::DeceptionRoutes
+pub fn rullst_security::DeceptionRoutes::contains(&self, path: &str) -> bool
+pub fn rullst_security::DeceptionRoutes::is_empty(&self) -> bool
+pub fn rullst_security::DeceptionRoutes::len(&self) -> usize
+pub fn rullst_security::DeceptionRoutes::routes(&self) -> alloc::vec::Vec<alloc::string::String>
+impl core::fmt::Debug for rullst_security::DeceptionRoutes
+impl !core::panic::unwind_safe::RefUnwindSafe for rullst_security::DeceptionRoutes
+impl core::marker::Send for rullst_security::DeceptionRoutes
+impl core::marker::Sync for rullst_security::DeceptionRoutes
+impl core::marker::Unpin for rullst_security::DeceptionRoutes
+impl core::panic::unwind_safe::UnwindSafe for rullst_security::DeceptionRoutes
 pub type rullst_security::DlpLayer = rullst_security::DlpResponseLayer
 pub struct rullst_security::DlpResponseLayer;
 impl core::clone::Clone for rullst_security::DlpResponseLayer
@@ -665,12 +677,11 @@ pub rullst_security::SecurityStore::dlp_secrets_masked_count: core::sync::atomic
 pub rullst_security::SecurityStore::secure_headers_applied_count: core::sync::atomic::AtomicU64
 pub rullst_security::SecurityStore::idor_warnings_count: core::sync::atomic::AtomicU64
 pub rullst_security::SecurityStore::timing_guard_protected_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::banned_ips: dashmap::DashMap<alloc::string::String, rullst_security::telemetry::BannedIpRecord>
-pub rullst_security::SecurityStore::honeypot_route_hits: dashmap::DashMap<alloc::string::String, core::sync::atomic::AtomicU64>
-pub rullst_security::SecurityStore::live_events: std::sync::poison::mutex::Mutex<alloc::vec::Vec<rullst_security::LiveSecurityEvent>>
 impl rullst_security::SecurityStore
 pub fn rullst_security::SecurityStore::active_banned_count(&self) -> usize
+pub fn rullst_security::SecurityStore::active_bans(&self) -> alloc::vec::Vec<rullst_security::telemetry::BannedIpRecord>
 pub fn rullst_security::SecurityStore::global() -> &'static rullst_security::SecurityStore
+pub fn rullst_security::SecurityStore::honeypot_route_hits(&self) -> alloc::vec::Vec<(alloc::string::String, u64)>
 pub fn rullst_security::SecurityStore::inc_cswsh_blocks(&self)
 pub fn rullst_security::SecurityStore::inc_deception_hits(&self)
 pub fn rullst_security::SecurityStore::inc_dlp_masked(&self)
@@ -688,6 +699,8 @@ pub fn rullst_security::SecurityStore::inc_siem_dispatches(&self)
 pub fn rullst_security::SecurityStore::inc_sri_signed_assets(&self)
 pub fn rullst_security::SecurityStore::inc_timing_guard_protected(&self)
 pub fn rullst_security::SecurityStore::inc_zero_trust_mismatches(&self)
+pub fn rullst_security::SecurityStore::is_banned(&self, ip: &str) -> bool
+pub fn rullst_security::SecurityStore::live_events(&self) -> alloc::vec::Vec<rullst_security::LiveSecurityEvent>
 pub fn rullst_security::SecurityStore::new() -> Self
 pub fn rullst_security::SecurityStore::prune_expired_bans(&self)
 pub fn rullst_security::SecurityStore::push_local_event(&self, event: rullst_security::LiveSecurityEvent)
@@ -1132,10 +1145,11 @@ pub use rullst_security::cswsh::CswsPolicyError = enum rullst_security::CswsPoli
 pub use rullst_security::cswsh::cswsh_guard_middleware = function rullst_security::cswsh_guard_middleware
 pub async fn rullst_security::cswsh_guard_middleware(req: axum_core::extract::Request, next: axum::middleware::from_fn::Next) -> axum_core::response::Response
 pub mod rullst_security::deception
+pub use rullst_security::deception::DeceptionRoutes = struct rullst_security::DeceptionRoutes
 pub use rullst_security::deception::MAX_DECEPTION_TRAPS = constant rullst_security::MAX_DECEPTION_TRAPS
 pub use rullst_security::deception::deception_trap_middleware = function rullst_security::deception_trap_middleware
-pub fn rullst_security::deception::default_deception_traps() -> dashmap::set::DashSet<alloc::string::String>
-pub fn rullst_security::deception::global_deception_routes() -> &'static dashmap::set::DashSet<alloc::string::String>
+pub fn rullst_security::deception::default_deception_traps() -> alloc::vec::Vec<alloc::string::String>
+pub fn rullst_security::deception::global_deception_routes() -> &'static rullst_security::DeceptionRoutes
 pub use rullst_security::deception::register_deception_trap = function rullst_security::register_deception_trap
 pub use rullst_security::deception::try_register_deception_trap = function rullst_security::try_register_deception_trap
 pub async fn rullst_security::deception_trap_middleware(req: axum_core::extract::Request, next: axum::middleware::from_fn::Next) -> axum_core::response::Response
@@ -1208,7 +1222,6 @@ pub use rullst_security::rate_limit::RateLimitError = enum rullst_security::Rate
 pub use rullst_security::rate_limit::RateLimiter = struct rullst_security::RateLimiter
 pub use rullst_security::rate_limit::RedisRateLimitMode = enum rullst_security::RedisRateLimitMode
 pub use rullst_security::rate_limit::RedisRateLimiter = struct rullst_security::RedisRateLimiter
-pub fn rullst_security::rate_limit::global_rate_limit_store() -> &'static dashmap::DashMap<alloc::string::String, (std::time::Instant, core::sync::atomic::AtomicU64)>
 pub use rullst_security::rate_limit::is_rate_limited = function rullst_security::is_rate_limited
 pub use rullst_security::rate_limit::rate_limit_middleware = function rullst_security::rate_limit_middleware
 pub async fn rullst_security::rate_limit_middleware(req: axum_core::extract::Request, next: axum::middleware::from_fn::Next) -> axum_core::response::Response

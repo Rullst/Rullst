@@ -51,13 +51,8 @@ pub fn stats_router() -> Router {
 fn collect_stats() -> ThreatRadarStats {
     let store = rullst_security::SecurityStore::global();
     let active_ip_bans = store.active_banned_count();
-    let live_events = match store.live_events.lock() {
-        Ok(events) => events,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-    let events: Vec<rullst_security::LiveSecurityEvent> =
-        live_events.iter().take(20).cloned().collect();
-    drop(live_events);
+    let mut events = store.live_events();
+    events.truncate(20);
 
     let honeypot_traps_blocked = store.honeypot_traps_count.load(Ordering::Relaxed);
     let xss_sanitizations = store.sanitizations_count.load(Ordering::Relaxed);

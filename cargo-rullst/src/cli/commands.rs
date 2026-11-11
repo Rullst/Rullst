@@ -200,30 +200,18 @@ pub enum Commands {
         /// Name of the worker (e.g. Email or email_worker)
         name: String,
     },
-    /// Creates a new interactive frontend Wasm Island in src/islands/
-    #[command(name = "make:island")]
-    MakeIsland {
-        /// Name of the Island component (e.g. Counter or user_profile)
-        name: String,
-    },
     /// Scaffolds ChatSession and ChatMessage models for Conversational AI memory
     #[command(name = "make:chat-session")]
     MakeChatSession,
     /// Scaffolds Kubernetes manifest files (Deployment, Service, ConfigMap, HPA, Ingress) in k8s/
     #[command(name = "make:k8s")]
     MakeK8s,
-    /// Scaffolds a server-side TOTP second factor (src/controllers/mfa.rs and a migration)
+    /// Scaffolds two-step verification: TOTP pages, the second sign-in step and admin:mfa-reset
     #[command(name = "make:mfa")]
     MakeMfa,
     /// Scaffolds interactive Scalar API documentation router at /docs
     #[command(name = "make:scalar")]
     MakeScalar,
-    /// Scaffolds a new LiveView-style reactive server component in src/live/
-    #[command(name = "make:live")]
-    MakeLive {
-        /// Name of the LiveComponent (e.g. Counter or UserFeed)
-        name: String,
-    },
     /// Writes the Dockerfile, compose.yaml and Caddyfile to run the app on a Linux VM with Docker or Podman
     Deploy {
         /// Accepted for compatibility: `vps` is the only path (fly, railway and render were removed)
@@ -277,20 +265,14 @@ pub enum Commands {
     Studio {
         /// Starts the standalone Studio for remote projects instead (the
         /// `rullst-studio` binary of the same release, installed with `cargo
-        /// install rullst-studio --version =<this version> --features remote
-        /// --locked`); no project needed
+        /// install rullst-studio --version =<this version>
+        /// --no-default-features --features remote --locked`); no project
+        /// needed
         #[arg(long)]
         remote: bool,
         /// Loopback port of the remote Studio (default 5556)
         #[arg(long, requires = "remote")]
         port: Option<u16>,
-    },
-    /// Compiles client-side components (Wasm Islands) to WebAssembly
-    #[command(name = "build:client")]
-    BuildClient {
-        /// Optional: compile in debug mode (default is release)
-        #[arg(long)]
-        debug: bool,
     },
     /// Compiles the production binary and pre-compresses static assets (Brotli + Zstandard)
     Build {

@@ -12,8 +12,6 @@ or proof that every crate and feature is exercised.
   `TenantContext`. Stories are bounded for a public deployment: titles up to 120
   characters, bodies up to 4,000, at most 100 per tenant and 64 KiB per form
   (422, 403 and 413 otherwise); the page lists the newest 20.
-- `/live-feed` (also `/live-counter`) and `/_live`: server-driven WebSocket
-  example.
 - `/pico-demo` and `/templates-demo`: Pico CSS integration and a deliberately
   small embedded file-template fixture; the latter is not a Tera/Jinja engine.
 - `/posts/repository`: parameterized repository queries bound to the selected

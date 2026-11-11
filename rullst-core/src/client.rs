@@ -1,5 +1,5 @@
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen::{JsCast, prelude::*};
+use wasm_bindgen::{JsCast, JsValue};
 
 #[cfg(target_arch = "wasm32")]
 use crate::client_contract::{
@@ -7,17 +7,6 @@ use crate::client_contract::{
 };
 #[cfg(target_arch = "wasm32")]
 use crate::rpc::{RpcFailure, RpcResult};
-
-/// Client-side utilities for Rullst Wasm Islands.
-/// This module is compiled when targeting `wasm32-unknown-unknown`.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-#[cfg_attr(mutants, mutants::skip)]
-pub fn rullst_client_init() {
-    // Setup client panic hooks for nicer debugging in browser console
-    console_error_panic_hook::set_once();
-    web_sys::console::log_1(&"Rullst Wasm Islands client initialized successfully!".into());
-}
 
 #[cfg(target_arch = "wasm32")]
 #[cfg_attr(mutants, mutants::skip)]
@@ -226,20 +215,5 @@ mod contract_tests {
         assert!(!is_safe_rpc_path("/api/rpc/counter.increment"));
         assert!(is_json_content_type("application/json; charset=utf-8"));
         assert!(!is_json_content_type("text/application/json"));
-    }
-}
-
-#[cfg(test)]
-#[cfg(target_arch = "wasm32")]
-mod tests {
-    use super::*;
-    use wasm_bindgen_test::*;
-
-    wasm_bindgen_test_configure!(run_in_browser);
-
-    #[wasm_bindgen_test]
-    fn test_client_init() {
-        // Just calling it should not panic
-        rullst_client_init();
     }
 }

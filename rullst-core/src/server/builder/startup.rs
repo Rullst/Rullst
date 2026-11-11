@@ -52,6 +52,10 @@ impl Server {
             read_optional_environment_variable(crate::server::console::LOG_HEALTH_PROBES_VARIABLE)?,
             &dotenv,
         )?;
+        self.access_log_route_paths = self
+            .access_log_paths
+            .unwrap_or(app_config.app.access_log_paths)
+            .writes_route(environment);
 
         self.init_database(&app_config, &dotenv).await?;
         self.migrate_on_startup(&dotenv).await?;
@@ -277,6 +281,7 @@ impl Server {
             lifecycle: self.lifecycle.clone(),
             trusted_proxy: self.trusted_proxy_layer(),
             machine_endpoints: self.machine_endpoints.clone(),
+            access_log_route_paths: self.access_log_route_paths,
         };
 
         println!(

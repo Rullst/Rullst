@@ -2,7 +2,7 @@
 
 extern crate alloc;
 
-use alloc::{string::String, vec, vec::Vec};
+use alloc::{string::String, vec::Vec};
 use core::fmt;
 
 /// Conservative datagram ceiling intended to avoid IP fragmentation.
@@ -53,6 +53,9 @@ impl CoapMethod {
 }
 
 /// Fail-closed CoAP request construction errors.
+///
+/// `#[non_exhaustive]` since 13.0.0-alpha.5: match it with a `_` arm.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CoapCodecError {
     /// RFC 7252 limits tokens to eight bytes.
@@ -65,6 +68,10 @@ pub enum CoapCodecError {
     OptionTooLarge,
     /// The encoded request exceeds the bounded datagram ceiling.
     DatagramTooLarge,
+    /// The allocator could not provide a buffer for the request. The input is
+    /// valid; it can succeed once memory is available. Added in
+    /// 13.0.0-alpha.5; earlier releases aborted instead.
+    AllocationFailed,
 }
 
 impl fmt::Display for CoapCodecError {
@@ -74,6 +81,7 @@ impl fmt::Display for CoapCodecError {
             Self::InvalidPathSegment => "CoAP URI path segment is invalid",
             Self::OptionTooLarge => "CoAP option cannot be represented",
             Self::DatagramTooLarge => "CoAP request exceeds the local datagram ceiling",
+            Self::AllocationFailed => "CoAP request buffer could not be allocated",
         })
     }
 }
@@ -146,6 +154,9 @@ impl CoapRequest {
         if projected_path_bytes > MAX_COAP_DATAGRAM_BYTES {
             return Err(CoapCodecError::DatagramTooLarge);
         }
+        self.path
+            .try_reserve(1)
+            .map_err(|_| CoapCodecError::AllocationFailed)?;
         self.path.push(segment);
         Ok(self)
     }
@@ -168,43 +179,76 @@ impl CoapRequest {
     }
 
     /// Encodes the RFC 7252 header, token, ordered options, and payload.
+    ///
+    /// The datagram is measured first and then written into a buffer of
+    /// exactly its length, allocated fallibly: when the allocator refuses it,
+    /// this returns [`CoapCodecError::AllocationFailed`] instead of aborting.
     pub fn encode(&self) -> Result<Vec<u8>, CoapCodecError> {
         if self.payload.len() > MAX_COAP_DATAGRAM_BYTES {
             return Err(CoapCodecError::DatagramTooLarge);
         }
-        let estimated_capacity = 4usize
-            .saturating_add(self.token.len())
-            .saturating_add(self.payload.len())
-            .saturating_add(self.path.len().saturating_mul(4));
-        let mut datagram = Vec::with_capacity(MAX_COAP_DATAGRAM_BYTES.min(estimated_capacity));
-        datagram.push(0x40 | (self.message_type.bits() << 4) | self.token.len() as u8);
-        datagram.push(self.method.code());
-        datagram.extend_from_slice(&self.message_id.to_be_bytes());
-        datagram.extend_from_slice(&self.token);
+        let mut length = ByteCount(0);
+        self.write_to(&mut length)?;
+        if length.0 > MAX_COAP_DATAGRAM_BYTES {
+            return Err(CoapCodecError::DatagramTooLarge);
+        }
+        let mut datagram = Vec::new();
+        datagram
+            .try_reserve_exact(length.0)
+            .map_err(|_| CoapCodecError::AllocationFailed)?;
+        self.write_to(&mut datagram)?;
+        Ok(datagram)
+    }
+
+    /// Writes the datagram layout to `out`, which counts or stores it.
+    fn write_to(&self, out: &mut impl ByteSink) -> Result<(), CoapCodecError> {
+        out.put(&[
+            0x40 | (self.message_type.bits() << 4) | self.token.len() as u8,
+            self.method.code(),
+        ]);
+        out.put(&self.message_id.to_be_bytes());
+        out.put(&self.token);
 
         let mut previous_option = 0u16;
         for segment in &self.path {
-            append_option(&mut datagram, previous_option, 11, segment.as_bytes())?;
+            write_option(out, previous_option, 11, segment.as_bytes())?;
             previous_option = 11;
         }
         if let Some(content_format) = self.content_format {
-            let value = minimal_u16(content_format);
-            append_option(&mut datagram, previous_option, 12, value.as_slice())?;
+            let (value, value_len) = minimal_u16(content_format);
+            write_option(out, previous_option, 12, &value[..value_len])?;
         }
         if !self.payload.is_empty() {
-            ensure_room(&datagram, 1usize.saturating_add(self.payload.len()))?;
-            datagram.push(0xff);
-            datagram.extend_from_slice(&self.payload);
+            out.put(&[0xff]);
+            out.put(&self.payload);
         }
-        if datagram.len() > MAX_COAP_DATAGRAM_BYTES {
-            return Err(CoapCodecError::DatagramTooLarge);
-        }
-        Ok(datagram)
+        Ok(())
     }
 }
 
-fn append_option(
-    datagram: &mut Vec<u8>,
+/// Destination of [`CoapRequest::write_to`]: a byte counter for the sizing
+/// pass, or the reserved datagram for the writing pass.
+trait ByteSink {
+    fn put(&mut self, bytes: &[u8]);
+}
+
+/// Counts the bytes of a layout without storing them.
+struct ByteCount(usize);
+
+impl ByteSink for ByteCount {
+    fn put(&mut self, bytes: &[u8]) {
+        self.0 = self.0.saturating_add(bytes.len());
+    }
+}
+
+impl ByteSink for Vec<u8> {
+    fn put(&mut self, bytes: &[u8]) {
+        self.extend_from_slice(bytes);
+    }
+}
+
+fn write_option(
+    out: &mut impl ByteSink,
     previous_number: u16,
     option_number: u16,
     value: &[u8],
@@ -214,16 +258,10 @@ fn append_option(
         .ok_or(CoapCodecError::OptionTooLarge)? as usize;
     let (delta_nibble, delta_extension) = option_component(delta)?;
     let (length_nibble, length_extension) = option_component(value.len())?;
-    let encoded_length = 1usize
-        .checked_add(delta_extension.len())
-        .and_then(|length| length.checked_add(length_extension.len()))
-        .and_then(|length| length.checked_add(value.len()))
-        .ok_or(CoapCodecError::DatagramTooLarge)?;
-    ensure_room(datagram, encoded_length)?;
-    datagram.push((delta_nibble << 4) | length_nibble);
-    datagram.extend_from_slice(&delta_extension);
-    datagram.extend_from_slice(&length_extension);
-    datagram.extend_from_slice(value);
+    out.put(&[(delta_nibble << 4) | length_nibble]);
+    out.put(delta_extension.as_slice());
+    out.put(length_extension.as_slice());
+    out.put(value);
     Ok(())
 }
 
@@ -237,17 +275,6 @@ fn uri_path_option_bytes(length: usize) -> Option<usize> {
         CoapOptionComponent::ExtendedTwo(_) => 2,
     };
     1usize.checked_add(extension)?.checked_add(length)
-}
-
-fn ensure_room(datagram: &[u8], additional: usize) -> Result<(), CoapCodecError> {
-    let final_length = datagram
-        .len()
-        .checked_add(additional)
-        .ok_or(CoapCodecError::DatagramTooLarge)?;
-    if final_length > MAX_COAP_DATAGRAM_BYTES {
-        return Err(CoapCodecError::DatagramTooLarge);
-    }
-    Ok(())
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -268,20 +295,36 @@ const fn classify_option_component(value: usize) -> Option<CoapOptionComponent> 
     }
 }
 
-fn option_component(value: usize) -> Result<(u8, Vec<u8>), CoapCodecError> {
+/// The extension bytes of an option delta or length (zero to two).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct OptionExtension {
+    bytes: [u8; 2],
+    len: usize,
+}
+
+impl OptionExtension {
+    fn as_slice(&self) -> &[u8] {
+        &self.bytes[..self.len]
+    }
+}
+
+fn option_component(value: usize) -> Result<(u8, OptionExtension), CoapCodecError> {
+    let extension = |bytes, len| OptionExtension { bytes, len };
     match classify_option_component(value) {
-        Some(CoapOptionComponent::Inline(nibble)) => Ok((nibble, Vec::new())),
-        Some(CoapOptionComponent::ExtendedOne(extension)) => Ok((13, vec![extension])),
-        Some(CoapOptionComponent::ExtendedTwo(extension)) => Ok((14, extension.to_vec())),
+        Some(CoapOptionComponent::Inline(nibble)) => Ok((nibble, extension([0, 0], 0))),
+        Some(CoapOptionComponent::ExtendedOne(byte)) => Ok((13, extension([byte, 0], 1))),
+        Some(CoapOptionComponent::ExtendedTwo(bytes)) => Ok((14, extension(bytes, 2))),
         None => Err(CoapCodecError::OptionTooLarge),
     }
 }
 
-fn minimal_u16(value: u16) -> Vec<u8> {
+/// The shortest big-endian `uint` encoding of `value` (RFC 7252 section 3.2)
+/// and its length: zero bytes for 0, one for values below 256.
+fn minimal_u16(value: u16) -> ([u8; 2], usize) {
     match value {
-        0 => Vec::new(),
-        1..=255 => vec![value as u8],
-        _ => value.to_be_bytes().to_vec(),
+        0 => ([0, 0], 0),
+        1..=255 => ([value as u8, 0], 1),
+        _ => (value.to_be_bytes(), 2),
     }
 }
 

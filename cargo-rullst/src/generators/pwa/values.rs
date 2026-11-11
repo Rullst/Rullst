@@ -42,6 +42,9 @@ pub(super) struct PwaFlags {
     pub android: bool,
     pub host: Option<String>,
     pub package_id: Option<String>,
+    /// `--router`: the file that mounts the PWA routes, relative to the
+    /// project or absolute; `None` searches `src/`.
+    pub router: Option<std::path::PathBuf>,
 }
 
 pub(super) fn invalid(message: impl Into<String>) -> io::Error {

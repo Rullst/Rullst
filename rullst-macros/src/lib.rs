@@ -1,13 +1,11 @@
 //! Procedural macros of the Rullst framework: `html!`, `#[server_function]`,
 //! `#[require_role]`, `#[derive(Billable)]`, the catalog macro behind
-//! `rullst::i18n::catalog!`, and the `#[island]`, `#[live_component]`,
-//! `#[live_event]` and `#[memoize]` attributes.
+//! `rullst::i18n::catalog!`, and the `#[memoize]` attribute.
 //!
 //! **Maturity: Core**
-//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). `#[island]`,
-//! `#[live_component]`/`#[live_event]` and `#[memoize]` are experimental
-//! compatibility surfaces with a weaker promise; `#[route]` is a deprecated
-//! marker that registers nothing (use `rullst::routes!`).
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). `#[memoize]`
+//! is an experimental compatibility surface with a weaker promise; `#[route]`
+//! is a deprecated marker that registers nothing (use `rullst::routes!`).
 //!
 //! Use these macros through the `rullst` facade rather than this crate: the
 //! expansions call `rullst::…` paths, `#[require_role]` needs the facade's
@@ -26,7 +24,6 @@ use syn::parse_macro_input;
 mod billable_tests;
 mod html_parser;
 mod i18n;
-mod live_parser;
 mod memoize;
 #[cfg(test)]
 mod memoize_tests;
@@ -43,7 +40,8 @@ mod server_function;
 /// inserts as it is.
 ///
 /// Dynamic URL attributes (`href`, `src`, `action`, …) render `#` for script or
-/// non-media `data:` URLs; dynamic `on*`/`hx-on*` values do not compile.
+/// non-media `data:` URLs; dynamic `on*`/`hx-on*` values and Alpine.js
+/// directives (`x-*`, `@*`, `:*`) do not compile.
 ///
 /// # Example
 ///
@@ -67,6 +65,46 @@ mod server_function;
 /// Element names may be Rust keywords, such as SVG's `<use href="#icon" />`.
 /// A document may start with `<!DOCTYPE html>`, which is emitted as written.
 ///
+/// # Text
+///
+/// Since 13.0.0-alpha.5 text can be written without quotes:
+/// `<p>Welcome back, {name}!</p>`. Rust passes the macro tokens, so the text
+/// is rebuilt from where they were written:
+///
+/// - words, numbers and punctuation written together stay together, and any
+///   whitespace between them (a line break or a comment too) becomes one
+///   space;
+/// - between text and an element, `{…}` or `@` block next to it, whitespace
+///   becomes one space and none stays none;
+/// - whitespace at the start and end of an element's content, of an `@` block
+///   body and of the whole input is dropped;
+/// - `(…)` and `[…]` are text and may contain `{…}` and elements:
+///   `Inbox ({count})`.
+///
+/// Write the text as a string literal (`<p>"it's 100%"</p>`), which keeps
+/// every character and space, when it contains `<`, `>`, `{`, `}` or `@`
+/// (`html!` syntax), quotes or apostrophes (`it's` is reserved Rust syntax),
+/// `//` or `/*` (comments, as in a URL), `#` right after a word (`C#`),
+/// characters that are not Rust tokens (emoji, `€`, `—`), or needs exact
+/// whitespace (`<pre>`, `<textarea>`). `>`, character literals, a URL cut by
+/// `//`, a `///` doc comment, `if cond { <tag> }` without `@` and a string
+/// literal written directly before a word (`"quoted"text`, a Rust literal
+/// suffix) are compile errors that say so. Text, quoted or not, is author-owned source written as
+/// it is: `&amp;` stays a character reference. Whitespace between two nodes
+/// that are not unquoted text is ignored, as before. When the tokens carry no
+/// source positions (an `html!` that another macro generated), words are
+/// separated by single spaces.
+///
+/// ```rust,ignore
+/// let page = html! {
+///     <p>
+///         Welcome back, {name}. You have {count} new messages.
+///         Read <a href="/terms">the terms</a> first.
+///     </p>
+/// };
+/// // <p>Welcome back, Ana. You have 3 new messages. Read <a href="/terms">the terms</a> first.</p>
+/// ```
+///
 /// # Attributes
 ///
 /// - `name="text"` is written as it is (author-owned source), except that a
@@ -84,6 +122,16 @@ mod server_function;
 ///   name or nothing, an `Option<T>` writes `name="value"` (escaped like
 ///   `name={value}`) or nothing. HTML boolean attributes mean presence, so
 ///   `disabled="false"` would still disable: write `disabled?={locked}`.
+///
+/// Names are identifiers (Rust keywords included) and segments that start
+/// with a digit (`500ms`), joined by `-`, `:`, `::` or `.`, optionally after
+/// a leading `@` or `:`, as Alpine.js and htmx write them (since
+/// 13.0.0-alpha.5): `@click.prevent`, `:class`, `x-on:click`,
+/// `x-bind:disabled`, `hx-on::after-request`, `xlink:href`. A `:` continues
+/// a name only when written directly after it, so `required :value="v"` is
+/// two attributes. A dynamic or conditional value is rejected for every name
+/// a browser or Alpine.js runs as JavaScript: `on*`, `hx-on`, `hx-on-*`,
+/// `hx-on:*` (also `data-` prefixed), `x-*`, `@*` and `:*`.
 ///
 /// # Control flow
 ///
@@ -165,144 +213,11 @@ pub fn i18n_catalog(input: TokenStream) -> TokenStream {
 }
 
 /// Expands a `t!` call against the catalog that `catalog!` encoded into it.
+// Used by the `t!` that `catalog!` generates, as `rullst::i18n::__translate!`.
 #[doc(hidden)]
 #[proc_macro]
 pub fn __i18n_translate(input: TokenStream) -> TokenStream {
     i18n::expand_translate(input.into()).into()
-}
-
-/// Proc macro attribute to define a Wasm Island client component.
-///
-/// It compiles dual versions depending on compilation targets:
-/// - On native server compiles, it wraps the component's HTML output in a `<div data-island="..." data-props="...">`
-/// - On wasm32-unknown-unknown compiles, it generates structural props parsing and registers a hydration function
-///
-/// Props that cannot be serialized to JSON leave `data-props` empty, so the
-/// server HTML renders without hydration instead of panicking.
-///
-/// On native builds the function returns `rullst::html::Markup`, so an
-/// island is interpolated into `html!` without escaping. The body is the
-/// component's trusted HTML (usually an `html!` result) and is inserted as it
-/// formats with `Display`.
-#[proc_macro_attribute]
-#[allow(clippy::collapsible_if)]
-pub fn island(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input_fn = parse_macro_input!(item as syn::ItemFn);
-    let vis = &input_fn.vis;
-    let sig = &input_fn.sig;
-    let name = &sig.ident;
-    let body = &input_fn.block;
-
-    // Extract argument names and types
-    let mut arg_names = Vec::new();
-    let mut arg_types = Vec::new();
-
-    for arg in &sig.inputs {
-        if let syn::FnArg::Typed(pat_type) = arg {
-            if let syn::Pat::Ident(pat_ident) = &*pat_type.pat {
-                arg_names.push(&pat_ident.ident);
-                arg_types.push(&pat_type.ty);
-            }
-        }
-    }
-
-    let props_struct_name =
-        syn::Ident::new(&format!("{}_Props", name), proc_macro2::Span::call_site());
-
-    let hydrate_fn_name =
-        syn::Ident::new(&format!("hydrate_{}", name), proc_macro2::Span::call_site());
-
-    let expanded = quote::quote! {
-        #[cfg(not(target_arch = "wasm32"))]
-        #vis fn #name(#(#arg_names: #arg_types),*) -> rullst::html::Markup {
-            let inner_html = {
-                #body
-            };
-
-            // Props that cannot be represented as JSON (for example a u128
-            // above u64::MAX) leave `data-props` empty, so the island renders
-            // without hydration instead of panicking.
-            let props_json = (|| -> ::core::result::Result<String, serde_json::Error> {
-                let mut props = serde_json::Map::new();
-                #(
-                    props.insert(
-                        stringify!(#arg_names).to_string(),
-                        serde_json::to_value(&#arg_names)?,
-                    );
-                )*
-                ::core::result::Result::Ok(serde_json::Value::Object(props).to_string())
-            })()
-            .unwrap_or_default();
-
-            let escaped_props = rullst::html::escape_str(&props_json);
-
-            rullst::html::Markup::from_trusted(format!(
-                "<div data-island=\"{}\" data-props=\"{}\">{}</div>",
-                stringify!(#name),
-                escaped_props,
-                inner_html
-            ))
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        #vis fn #name(#(#arg_names: #arg_types),*) -> String {
-            let Some(element) = web_sys::window()
-                .and_then(|w| w.document())
-                .and_then(|d| d.create_element("div").ok())
-            else {
-                return String::new();
-            };
-            let _ = {
-                #body
-            };
-            String::new()
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        #[derive(serde::Deserialize)]
-        #[allow(non_camel_case_types)]
-        struct #props_struct_name {
-            #(#arg_names: #arg_types),*
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        #[wasm_bindgen::prelude::wasm_bindgen]
-        #[allow(non_snake_case)]
-        pub fn #hydrate_fn_name(element: web_sys::Element, props_json: &str) {
-            let props: #props_struct_name = match serde_json::from_str(props_json) {
-                Ok(p) => p,
-                Err(_) => return,
-            };
-
-            #(let #arg_names = props.#arg_names;)*
-            let element = element;
-
-            let _ = {
-                #body
-            };
-        }
-    };
-
-    expanded.into()
-}
-
-/// Proc macro attribute to define a Live Component.
-/// Automatically implements the `LiveComponent` trait and wires `#[live_event]` methods.
-///
-/// Only the first present `rullst_event`, `action` or `event` string field
-/// selects a handler, and at most one runs per message; other payload keys
-/// and values, such as form inputs, never dispatch.
-#[proc_macro_attribute]
-pub fn live_component(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input = item.into();
-    live_parser::parse_live_component(input).into()
-}
-
-/// Marker attribute for events handled by a Live Component. `#[live_component]`
-/// recognizes it however its path is qualified, e.g. `#[rullst::live_event]`.
-#[proc_macro_attribute]
-pub fn live_event(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    item
 }
 
 /// A macro for intelligent caching of component renders or database queries.

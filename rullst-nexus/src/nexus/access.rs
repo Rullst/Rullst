@@ -1,6 +1,7 @@
 mod application;
 mod browser_boundary;
 mod credentials;
+mod error;
 #[cfg(test)]
 mod proxy_tests;
 mod rate_limit;
@@ -19,6 +20,7 @@ use axum::{
 };
 use base64::Engine;
 use credentials::{required_environment_variable, validate_password, validate_username};
+pub use error::NexusBuildError;
 use rate_limit::{AuthGuardStatus, BasicAuthRateLimiter};
 pub use rate_limit::{
     NEXUS_BASIC_AUTH_FAILURE_WINDOW, NEXUS_BASIC_AUTH_LOCKOUT, NEXUS_BASIC_AUTH_MAX_FAILURES,
@@ -36,92 +38,6 @@ pub const MIN_NEXUS_PASSWORD_LENGTH: usize = 16;
 pub const NEXUS_ADMIN_USERNAME_ENV: &str = "NEXUS_ADMIN_USERNAME";
 /// Environment variable used for the Nexus Basic Auth password.
 pub const NEXUS_ADMIN_PASSWORD_ENV: &str = "NEXUS_ADMIN_PASSWORD";
-
-/// Errors returned while securely constructing a Nexus router.
-#[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NexusBuildError {
-    /// No access policy was selected. Nexus never mounts an open admin router.
-    MissingAuthenticationPolicy,
-    /// The Basic Auth username is empty or only contains whitespace.
-    EmptyUsername,
-    /// The Basic Auth username is padded, oversized, or contains control characters.
-    InvalidUsername,
-    /// Basic Auth usernames cannot contain the `:` credential separator.
-    UsernameContainsSeparator,
-    /// A public/example placeholder was supplied as the username.
-    PlaceholderUsername,
-    /// The configured password is shorter than the required minimum.
-    WeakPassword { minimum: usize },
-    /// A public/example placeholder was supplied as the password.
-    PlaceholderPassword,
-    /// A required Nexus credential was not provided by the process or `.env` file.
-    MissingCredential { variable: &'static str },
-    /// A required Nexus credential contains invalid Unicode.
-    InvalidCredentialEncoding { variable: &'static str },
-    /// A required Nexus credential is absent from the process environment and
-    /// the project's `.env` file is unreadable or malformed. Added in v13.
-    InvalidDotenv { variable: &'static str },
-    /// Unauthenticated local access is never available in release builds.
-    LocalAccessRequiresDebugBuild,
-    /// Registered model metadata is ambiguous, oversized, or unsafe for dynamic CRUD.
-    InvalidModelMetadata { reason: &'static str },
-    /// The login page of [`NexusApplicationAuth::with_login_path`] is not a
-    /// local path. Added in v13.
-    InvalidLoginPath,
-}
-
-impl fmt::Display for NexusBuildError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::MissingAuthenticationPolicy => formatter.write_str(
-                "Nexus requires an explicit authentication policy before it can be mounted",
-            ),
-            Self::EmptyUsername => {
-                formatter.write_str("Nexus Basic Auth requires a non-empty username")
-            }
-            Self::InvalidUsername => formatter.write_str(
-                "Nexus Basic Auth usernames must not have surrounding whitespace, must contain at most 255 bytes, and must not contain control characters",
-            ),
-            Self::UsernameContainsSeparator => formatter.write_str(
-                "Nexus Basic Auth usernames cannot contain the ':' credential separator",
-            ),
-            Self::PlaceholderUsername => formatter.write_str(
-                "Nexus Basic Auth rejected a public placeholder username; configure a real value",
-            ),
-            Self::WeakPassword { minimum } => write!(
-                formatter,
-                "Nexus Basic Auth passwords must contain at least {minimum} characters"
-            ),
-            Self::PlaceholderPassword => formatter.write_str(
-                "Nexus Basic Auth rejected a public placeholder password; configure a unique secret",
-            ),
-            Self::MissingCredential { variable } => write!(
-                formatter,
-                "Nexus requires the {variable} environment variable; no default credential is used"
-            ),
-            Self::InvalidCredentialEncoding { variable } => write!(
-                formatter,
-                "Nexus requires {variable} to contain valid Unicode"
-            ),
-            Self::InvalidDotenv { variable } => write!(
-                formatter,
-                "Nexus could not read {variable}: the project .env file is unreadable or malformed"
-            ),
-            Self::LocalAccessRequiresDebugBuild => formatter.write_str(
-                "Nexus loopback-only access is restricted to debug builds; configure an authenticated policy for release builds",
-            ),
-            Self::InvalidModelMetadata { reason } => {
-                write!(formatter, "Nexus rejected registered model metadata: {reason}")
-            }
-            Self::InvalidLoginPath => formatter.write_str(
-                "the Nexus login path must be a local path starting with a single '/', of at most 512 visible ASCII characters without '\\'",
-            ),
-        }
-    }
-}
-
-impl std::error::Error for NexusBuildError {}
 
 /// Validated credentials for the built-in Nexus Basic Auth policy.
 ///

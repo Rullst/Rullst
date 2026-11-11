@@ -145,7 +145,7 @@ pub(super) enum Flow {
 }
 
 fn transport_error(error: reqwest::Error) -> AiError {
-    AiError::RequestError(error.without_url())
+    AiError::request(error)
 }
 
 fn validate_headers(

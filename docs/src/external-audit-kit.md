@@ -27,7 +27,7 @@ Endpoints worth a direct look in the starters: SaaS `/login`, `/register`,
 `/lessons/{id}/play` and `/lessons/{id}/progress`; ERP `/products`,
 `/products/{id}/add-stock` and `/orders`; Blank JSON API `POST /api/messages`.
 In the sample application: `POST /posts`, `/posts/repository`, `/checkout`,
-`/security-demo`, `/_live` (WebSocket), `/nexus` and the `/wp-admin` trap.
+`/security-demo`, `/nexus` and the `/wp-admin` trap.
 
 **Out of scope**
 

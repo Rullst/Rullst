@@ -125,7 +125,7 @@ pub(super) fn deleted_effects(parsed: &ParsedModel) -> TokenStream {
                 #invalidate
                 if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
                     let topic = format!("orm:events:{}:deleted", event.table);
-                    let _: usize = connection.publish(&topic, &event.payload).await?;
+                    let _: usize = connection.publish(&topic, &event.payload).await.map_err(|error| rullst_orm::Error::CacheError(error.to_string()))?;
                 }
                 invalidated?;
                 Ok(())
@@ -172,9 +172,9 @@ pub(super) fn saved_redis_effects(parsed: &ParsedModel) -> TokenStream {
                         event.table,
                         event.operation.as_str(),
                     );
-                    let _: usize = connection.publish(&topic, &event.payload).await?;
+                    let _: usize = connection.publish(&topic, &event.payload).await.map_err(|error| rullst_orm::Error::CacheError(error.to_string()))?;
                     let topic = format!("orm:events:{}:saved", event.table);
-                    let _: usize = connection.publish(&topic, &event.payload).await?;
+                    let _: usize = connection.publish(&topic, &event.payload).await.map_err(|error| rullst_orm::Error::CacheError(error.to_string()))?;
                 }
                 invalidated?;
                 Ok(())

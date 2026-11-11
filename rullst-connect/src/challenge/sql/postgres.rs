@@ -20,9 +20,9 @@ const INSERT: &str = "INSERT INTO rullst_connect_login_challenges (id_key, provi
 const TAKE: &str = "DELETE FROM rullst_connect_login_challenges WHERE id_key = $1 RETURNING provider, state, nonce, code_verifier, return_to, created_at, expires_at";
 const PURGE: &str = "DELETE FROM rullst_connect_login_challenges WHERE id_key IN (SELECT id_key FROM rullst_connect_login_challenges WHERE expires_at <= $1 ORDER BY expires_at LIMIT $2)";
 
-impl sealed::Sealed for Postgres {}
+impl ChallengeDatabase for Postgres {}
 
-impl ChallengeDatabase for Postgres {
+impl sealed::Sealed for Postgres {
     async fn prepare_challenges(pool: &PgPool) -> Result<(), ChallengeError> {
         let mut transaction = pool
             .begin()

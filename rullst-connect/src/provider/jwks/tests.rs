@@ -129,7 +129,7 @@ async fn keys_older_than_the_stale_bound_are_rejected_on_refresh_error() {
     cache.entries.write().await.insert(
         "https://issuer.example/expired-jwks".to_string(),
         CacheEntry {
-            keys: Arc::new(keys),
+            keys: JsonWebKeySet::new(keys),
             fetched_at: Instant::now()
                 .checked_sub(Duration::from_secs(2))
                 .expect("test instant supports a two-second offset"),
@@ -186,7 +186,7 @@ async fn get_serves_a_stale_set_on_refresh_error_only_within_the_stale_bound() {
     expired.entries.write().await.insert(
         url.to_string(),
         CacheEntry {
-            keys: Arc::new(keys),
+            keys: JsonWebKeySet::new(keys),
             fetched_at: Instant::now()
                 .checked_sub(Duration::from_secs(2))
                 .expect("test instant supports a two-second offset"),

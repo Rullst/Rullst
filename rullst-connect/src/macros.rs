@@ -142,8 +142,6 @@ macro_rules! define_provider {
 }
 
 // Shared by the built-in providers; not a provider-authoring API.
-#[doc(hidden)]
-#[macro_export]
 macro_rules! impl_standard_redirect_url {
     ($url:expr) => {
         fn redirect_url(&self) -> String {
@@ -171,8 +169,6 @@ macro_rules! impl_standard_redirect_url {
 }
 
 // Shared by the built-in providers; not a provider-authoring API.
-#[doc(hidden)]
-#[macro_export]
 macro_rules! impl_standard_refresh_token {
     () => {
         fn refresh_token<'life0, 'life1, 'async_trait>(
@@ -205,6 +201,8 @@ macro_rules! impl_standard_refresh_token {
         }
     };
 }
+
+pub(crate) use {impl_standard_redirect_url, impl_standard_refresh_token};
 
 #[cfg(all(test, not(miri)))]
 #[allow(dead_code)]

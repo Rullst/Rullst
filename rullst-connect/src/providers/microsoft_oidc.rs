@@ -179,7 +179,7 @@ impl MicrosoftOidcProvider {
         id_token: &str,
         expected_nonce: Option<&str>,
     ) -> Result<Value, ConnectError> {
-        let header = jsonwebtoken::decode_header(id_token)?;
+        let header = jsonwebtoken::decode_header(id_token).map_err(ConnectError::jwt)?;
         if header.alg != jsonwebtoken::Algorithm::RS256 {
             return Err(rejected("unsupported ID token algorithm"));
         }
@@ -197,7 +197,7 @@ impl MicrosoftOidcProvider {
         let jwk = jwks
             .find(&kid)
             .ok_or_else(|| ConnectError::JwkNotFound(kid.clone()))?;
-        let key = jsonwebtoken::DecodingKey::from_jwk(jwk)?;
+        let key = jsonwebtoken::DecodingKey::from_jwk(jwk).map_err(ConnectError::jwt)?;
         let mut validation = crate::provider::id_token::validation(
             jsonwebtoken::Algorithm::RS256,
             &self.client_id,

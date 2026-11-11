@@ -381,6 +381,28 @@ is kept as `assets/HTMX-LICENSE`. SHA-256
 The file is outside Cargo dependency scanning: an update needs upstream
 provenance, a license and digest review, and the Nexus CSP browser check.
 
+### Application stylesheet
+
+`Nexus::with_stylesheet(path)` (since 13.0.0-alpha.5) links a stylesheet the
+application serves on every Nexus page, right after `nexus.css`, so its rules
+override the panel's at equal specificity:
+
+```rust,ignore
+let nexus = Nexus::new()
+    .with_auth_policy(policy)
+    .with_stylesheet("/static/nexus-overrides.css");
+// static/nexus-overrides.css: .nexus-table-wrap { overflow-x: auto; }
+```
+
+`path` must be same-origin, so the production CSP (`style-src 'self'`) admits
+it unchanged: it starts with a single `/` and has at most 512 visible ASCII
+characters without quotes, `<`, `>`, `` ` `` or `\` (a query string such as
+`?v=3` is kept). Call it again to add more, at most eight, linked in that
+order. Anything else makes `try_build` fail with
+`NexusBuildError::InvalidStylesheet`. Nexus only links the file: the
+application serves it and decides who can read it. Nexus's own class names
+are not a stable API, so check overrides after each upgrade.
+
 ## Security boundaries
 
 Nexus includes CSRF protection, validates registered semantic form values, and

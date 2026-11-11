@@ -398,8 +398,17 @@ fn mfa_scaffold_is_server_side_registered_and_never_overwrites() {
     assert!(!index.contains("seeds::MigrationImpl"), "{index}");
     assert!(!index.contains("Do not edit manually"), "{index}");
     let controller = project.read("src/controllers/mfa.rs");
-    assert!(controller.contains("verify_totp_step_after"));
-    assert!(!controller.contains("pub secret: String,\n    pub code"));
+    assert!(controller.contains("pub use challenge::second_step;"));
+    let factor = project.read("src/controllers/mfa/factor.rs");
+    assert!(factor.contains("verify_totp_step_after"));
+    assert!(!factor.contains("pub secret: String,\n    pub code"));
+    // The password sign-in of `cargo rullst auth` asks for the code.
+    assert!(
+        project
+            .read("src/controllers/auth_controller.rs")
+            .contains("crate::controllers::mfa::second_step(user.id, \"/dashboard\")")
+    );
+    assert!(project.read("src/pages/mod.rs").contains("pub mod mfa;"));
     assert!(
         project
             .read("src/controllers/mod.rs")

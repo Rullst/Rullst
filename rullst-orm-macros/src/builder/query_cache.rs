@@ -44,7 +44,7 @@ pub fn generate_cache_read(parsed: &ParsedModel) -> TokenStream {
                     let decoded: Result<Vec<#name>, rullst_orm::Error> = items
                         .into_iter()
                         .map(|item| {
-                            let mut model = #name::from_json_value(item)?;
+                            let mut model = #name::from_json_value(item).map_err(|error| rullst_orm::Error::SerializationError(error.to_string()))?;
                             #decrypt_model
                             #capture_model
                             Ok(model)

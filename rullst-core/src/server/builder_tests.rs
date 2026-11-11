@@ -253,6 +253,20 @@ async fn a_past_scheduled_task_failure_is_logged_and_does_not_fail_shutdown() {
 }
 
 #[test]
+fn access_log_paths_are_chosen_on_the_builder() {
+    use crate::config::AccessLogPaths;
+    let server = Server::new(Router::new());
+    assert_eq!(server.access_log_paths, None);
+    assert!(!server.access_log_route_paths);
+    for paths in [AccessLogPaths::Route, AccessLogPaths::Full] {
+        let server = Server::new(Router::new()).access_log_paths(paths);
+        assert_eq!(server.access_log_paths, Some(paths));
+    }
+    let hot = Server::new_hot("target/debug/libapp.so").access_log_paths(AccessLogPaths::Route);
+    assert_eq!(hot.access_log_paths, Some(AccessLogPaths::Route));
+}
+
+#[test]
 fn server_accepts_a_shared_application_lifecycle() {
     let lifecycle = crate::lifecycle::ApplicationLifecycle::new();
     let server = Server::new(Router::new()).with_lifecycle(lifecycle.clone());

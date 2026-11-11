@@ -6,10 +6,9 @@ use axum::body::{Body, to_bytes};
 use axum::http::{Request, StatusCode, header};
 use tower::ServiceExt;
 
-const PAGES: [&str; 9] = [
+const PAGES: [&str; 8] = [
     "/",
     "/posts/repository",
-    "/live-feed",
     "/pico-demo",
     "/templates-demo",
     "/pricing",
@@ -164,7 +163,7 @@ async fn every_page_renders_under_the_production_content_security_policy() {
 
     same_origin_assets.sort();
     same_origin_assets.dedup();
-    assert!(same_origin_assets.len() >= 6, "{same_origin_assets:?}");
+    assert!(same_origin_assets.len() >= 5, "{same_origin_assets:?}");
     for asset in same_origin_assets
         .iter()
         .map(String::as_str)

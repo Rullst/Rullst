@@ -1,4 +1,4 @@
-error: html! supports `@if`, `@else`, `@for` and `@match`; for other control flow, interpolate a Rust expression that returns `Markup`, such as `{rows.iter().map(|row| html! { .. }).collect::<Markup>()}`
+error: html! supports `@if`, `@else`, `@for` and `@match`; for other control flow, interpolate a Rust expression that returns `Markup`, such as `{rows.iter().map(|row| html! { .. }).collect::<Markup>()}`; write a literal `@` (an e-mail address or a handle) in a string literal
  --> tests/ui/control_unsupported.rs:7:13
   |
 7 |             @while count > 0 { "tick" }

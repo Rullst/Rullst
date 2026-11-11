@@ -195,9 +195,10 @@ values and returns `Markup`, so views nest without re-escaping, while
 server rendering is the default path for applications that do not need a
 project-local SPA bundle.
 
-LiveView and selected Wasm islands are optional strategies with separate
-maturity and operational requirements, and a template engine such as Tera is
-the application's own choice. Rullst does not claim that every frontend mode
+Server pushes use Server-Sent Events (`RealtimeSse`) with the htmx SSE
+extension, or WebSockets; client-only behaviour uses native HTML such as
+`<dialog>`, `popover` and `<details>`. A template engine such as Tera is the
+application's own choice. Rullst does not claim that every frontend mode
 is interchangeable or bundle-free.
 
 The same server-rendered application becomes installable without a second

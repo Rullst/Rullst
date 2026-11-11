@@ -51,22 +51,6 @@ pub fn field_kind_label(kind: &FieldKind) -> &'static str {
     }
 }
 
-// Unused by Nexus itself; kept so existing callers still compile.
-#[doc(hidden)]
-#[cfg_attr(mutants, mutants::skip)]
-#[allow(dead_code)]
-pub fn field_kind_sql(kind: &FieldKind) -> &'static str {
-    match kind {
-        FieldKind::Number | FieldKind::Integer { .. } => "INTEGER",
-        FieldKind::Boolean => "INTEGER",
-        FieldKind::ForeignKey { .. } => "INTEGER",
-        FieldKind::Date | FieldKind::DateTime | FieldKind::Time | FieldKind::DateTimeUtc => "TEXT",
-        FieldKind::Json => "TEXT",
-        FieldKind::Enum { .. } => "TEXT",
-        _ => "TEXT",
-    }
-}
-
 /// Whether `field` is matched by the list search: a visible text, textarea,
 /// e-mail or URL column.
 pub(crate) fn is_searchable(field: &FieldMeta) -> bool {

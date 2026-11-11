@@ -17,7 +17,11 @@ runs under a strict Content-Security-Policy with a per-request nonce. Since
 1. **The server first, with htmx.** Anything that reads or changes data goes
    to the server: `hx-get`/`hx-post` and a fragment returned by a handler
    ([tutorial 06](tutorials/06-htmx-zero-bundle.md)). The state stays where the
-   authorization checks are.
+   authorization checks are. Updates the server pushes (a dashboard, a
+   notification) arrive over Server-Sent Events: `rullst::realtime::RealtimeSse`
+   streams a channel to the htmx SSE extension that new projects ship as
+   `static/htmx-ext-sse-1.9.12.js`
+   ([tutorial 34](tutorials/34-realtime-dashboard-sse.md)).
 2. **Native HTML before script.** Disclosure, dialogs and menus need no
    JavaScript in current browsers:
    `<details>`/`<summary>` for disclosure and accordions, `<dialog>` with a

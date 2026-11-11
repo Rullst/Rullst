@@ -43,6 +43,13 @@ pub(crate) fn command() -> Command {
         )
         .arg(value("host", "With --android: the HTTPS host of the site, such as app.example.com").requires("android"))
         .arg(value("package-id", "With --android: the application-owned Android package name, such as com.acme.notes").requires("android"))
+        .arg(
+            Arg::new("router")
+                .long("router")
+                .value_name("PATH")
+                .value_parser(clap::value_parser!(PathBuf))
+                .help("Source file that builds the router, such as src/routes.rs: mounts the PWA routes there when src/ has no single `.merge_axum(rullst::health::health_router())`"),
+        )
 }
 
 fn flags(matches: &ArgMatches) -> PwaFlags {
@@ -57,6 +64,7 @@ fn flags(matches: &ArgMatches) -> PwaFlags {
         android: matches.get_flag("android"),
         host: text("host"),
         package_id: text("package-id"),
+        router: matches.get_one::<PathBuf>("router").cloned(),
     }
 }
 
@@ -217,9 +225,30 @@ fn wire_layouts(
     Ok(files)
 }
 
+/// The index in `files` of the `--router` file: a source of this crate
+/// under `src/`, as `wire_layouts` lists them.
+fn router_file(root: &Path, files: &[Source], router: &Path) -> io::Result<usize> {
+    let shown = super::slash_path(router);
+    let wanted = std::fs::canonicalize(root.join(router))
+        .map_err(|_| invalid(format!("--router {shown}: no such file")))?;
+    files
+        .iter()
+        .position(|(path, _, _)| *path == wanted)
+        .ok_or_else(|| {
+            invalid(format!(
+                "--router {shown} is not a source of this crate: name a .rs file under src/ that builds the router (not src/bin/, src/main.rs beside a src/lib.rs, a test or a make:pwa file)"
+            ))
+        })
+}
+
 /// Mounts the PWA routes after the one health merge of the crate, in any
-/// module; without exactly one, the report says what to mount.
-fn mount_routes(files: &mut [Source], plan: &mut Plan) -> Result<(), Box<dyn Error>> {
+/// module, or in the `router` file; without exactly one merge and without
+/// `router`, the report says what to mount.
+fn mount_routes(
+    files: &mut [Source],
+    plan: &mut Plan,
+    router: Option<usize>,
+) -> Result<(), Box<dyn Error>> {
     let mut merges = Vec::new();
     for (index, (_, _, updated)) in files.iter().enumerate() {
         let (count, mounted) = wiring::health_merges(updated).unwrap_or_default();
@@ -227,6 +256,15 @@ fn mount_routes(files: &mut [Source], plan: &mut Plan) -> Result<(), Box<dyn Err
             return Ok(());
         }
         merges.extend(std::iter::repeat_n(index, count));
+    }
+    if let Some((path, _, updated)) = router.and_then(|index| files.get_mut(index)) {
+        let name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        *updated = wiring::mount_router_in(updated)
+            .map_err(|error| invalid(format!("--router {name}: {error}")))?;
+        return Ok(());
     }
     match merges.as_slice() {
         [index] => {
@@ -271,7 +309,12 @@ fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
     if !files.iter().any(|(path, _, _)| *path == crate_root) {
         return Err(invalid("make:pwa needs src/main.rs or src/lib.rs").into());
     }
-    mount_routes(&mut files, &mut plan)?;
+    let router = flags
+        .router
+        .as_deref()
+        .map(|router| router_file(root, &files, router))
+        .transpose()?;
+    mount_routes(&mut files, &mut plan, router)?;
     for (path, original, mut updated) in files {
         if path == crate_root
             && let Some(declared) = wiring::declare_module(&updated, is_library)?
@@ -334,6 +377,8 @@ fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
     Ok(plan)
 }
 
+#[cfg(test)]
+mod router_tests;
 #[cfg(test)]
 mod style_tests;
 #[cfg(test)]

@@ -1,31 +1,4 @@
-//! Sign-in with external identity providers (`cargo rullst make:oauth`):
-//! one module per provider (Google, GitHub, Microsoft, Apple) next to this
-//! shared flow.
-//!
-//! The browser keeps only a random challenge id, in the short-lived
-//! `rullst_oauth_challenge` cookie scoped to `/auth/<provider>`. The OAuth
-//! state, the PKCE verifier and the OpenID Connect nonce stay in the
-//! `rullst_connect_login_challenges` table of the application database
-//! (created on first use), and the callback consumes them exactly once.
-//!
-//! Accounts: a provider identity already linked in `oauth_identities`
-//! (provider + the provider's stable subject) signs in. Otherwise the
-//! provider must report the email address as verified: a new address creates
-//! an account without a password, and an address that already belongs to an
-//! account follows `EXISTING_ACCOUNT_POLICY`. Each provider module documents
-//! what its subject and email are. Sign-in issues the same `rullst_session`
-//! cookie as the password login, carrying the account's session epoch.
-
-pub mod __PROVIDER__;
-
-use crate::controllers::auth_controller::{
-    get_csp_nonce, get_csrf_token, normalize_email, utc_timestamp, valid_email,
-};
-use crate::models::oauth_identity::{self, OAuthIdentity};
-use crate::models::user::User;
-use crate::pages::auth;
 use rullst::async_runtime::tokio::sync::OnceCell;
-use rullst::auth as rullst_auth;
 use rullst::config::Environment;
 use rullst::connect::ConnectUser;
 use rullst::connect::challenge::{
@@ -54,25 +27,6 @@ const UNVERIFIED_EMAIL: &str = "The provider did not confirm this email address,
 const EXISTING_ACCOUNT: &str = "An account already uses this email address. Sign in with your password.";
 /// The password login's message when an account cannot start a session.
 const SESSION_ERROR: &str = "Error starting session";
-
-/// What a verified provider email that already belongs to an account does.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ExistingAccountPolicy {
-    /// Refuse and ask for the password. This is the default because
-    /// registration does not verify that an address belongs to whoever
-    /// registered it: linking would hand the real owner an account someone
-    /// else may still hold the password of.
-    Refuse,
-    /// Link the identity, remove the account's password and sign out every
-    /// device, so a password set by whoever registered the address first
-    /// stops working. The owner can set a new password with "Forgot your
-    /// password?".
-    LinkAndResetPassword,
-}
-
-/// Change to `ExistingAccountPolicy::LinkAndResetPassword` to link accounts
-/// by verified email.
-pub const EXISTING_ACCOUNT_POLICY: ExistingAccountPolicy = ExistingAccountPolicy::Refuse;
 
 /// The login challenges of every provider, in the application database.
 pub(crate) type ChallengeStore = SqlChallengeStore<__CHALLENGE_DATABASE__>;
@@ -284,7 +238,8 @@ pub(crate) async fn complete<P: Provider + ?Sized>(
             return refused(page, provider_name, StatusCode::SERVICE_UNAVAILABLE, UNAVAILABLE);
         }
     };
-    let session = match session_cookie(&user) {
+    // __RULLST_MFA_SECOND_STEP__
+    let session = match session_cookie(&user).await {
         Ok(session) => session,
         Err(error) => {
             eprintln!("Session creation failed: {error}");
@@ -299,122 +254,6 @@ pub(crate) async fn complete<P: Provider + ?Sized>(
         cookies.push(cookie.clear());
     }
     redirect_with_cookies(target, &cookies)
-}
-
-/// The password login's 30-day `rullst_session` cookie for `user`, carrying
-/// its current session epoch. Both sign-in paths refuse an account whose
-/// `current_session_epoch()` is `None`; if you add an account status (for
-/// example blocked or inactive), check it here and in `login_submit`.
-pub(crate) fn session_cookie(user: &User) -> Result<String, rullst_auth::AuthError> {
-    let epoch = user
-        .current_session_epoch()
-        .ok_or(rullst_auth::AuthError::SessionRevoked)?;
-    rullst_auth::make_login_cookie_with_epoch(user.id, epoch, rullst_auth::DEFAULT_SESSION_MAX_AGE)
-}
-
-/// Why a provider identity found no account to sign in.
-#[derive(Debug)]
-pub enum AccountError {
-    /// The provider returned no usable subject.
-    InvalidProfile,
-    /// The identity is not linked and the provider did not verify the email.
-    UnverifiedEmail,
-    /// The verified email belongs to an account and the policy refuses linking.
-    ExistingAccount,
-    /// A linked identity points at a missing account.
-    MissingAccount,
-    Storage(rullst::orm::Error),
-}
-
-impl From<rullst::orm::Error> for AccountError {
-    fn from(error: rullst::orm::Error) -> Self {
-        Self::Storage(error)
-    }
-}
-
-impl From<rullst::db::sqlx::Error> for AccountError {
-    fn from(error: rullst::db::sqlx::Error) -> Self {
-        Self::Storage(error.into())
-    }
-}
-
-/// The account for a provider identity, linking or creating it as the
-/// module documentation describes.
-pub async fn resolve_account(
-    provider: &str,
-    profile: &ConnectUser,
-    policy: ExistingAccountPolicy,
-) -> Result<User, AccountError> {
-    let subject = profile.id.as_str();
-    if subject.is_empty() || subject.len() > 255 || subject.chars().any(char::is_control) {
-        return Err(AccountError::InvalidProfile);
-    }
-    if let Some(user_id) = OAuthIdentity::user_id(provider, subject).await? {
-        return User::find(user_id).await?.ok_or(AccountError::MissingAccount);
-    }
-    let email = profile.email.as_deref().map(normalize_email).unwrap_or_default();
-    // Never trust an address the provider did not verify.
-    if profile.email_verified != Some(true) || !valid_email(&email) {
-        return Err(AccountError::UnverifiedEmail);
-    }
-    let user_id = match User::find_by_email(&email).await? {
-        Some(_) if policy == ExistingAccountPolicy::Refuse => {
-            return Err(AccountError::ExistingAccount);
-        }
-        Some(existing) => {
-            link_existing(provider, subject, existing.id).await?;
-            existing.id
-        }
-        None => create_account(provider, profile, &email).await?,
-    };
-    // Read the stored row back so the cookie carries its real session epoch.
-    User::find(user_id).await?.ok_or(AccountError::MissingAccount)
-}
-
-async fn create_account(provider: &str, profile: &ConnectUser, email: &str) -> Result<i32, AccountError> {
-    let now = utc_timestamp();
-    let mut user = User {
-        name: display_name(profile, email),
-        email: email.to_owned(),
-        oauth_provider: Some(provider.to_owned()),
-        oauth_id: Some(profile.id.clone()),
-        created_at: now,
-        updated_at: now,
-        ..User::default()
-    };
-    let mut transaction = rullst::db::Orm::begin_transaction().await?;
-    let created = async {
-        user.save_with_tx(&mut transaction).await?;
-        OAuthIdentity::link_with_tx(&mut transaction, user.id, provider, &profile.id, now).await
-    }
-    .await;
-    finish(transaction, created).await?;
-    Ok(user.id)
-}
-
-async fn link_existing(provider: &str, subject: &str, user_id: i32) -> Result<(), AccountError> {
-    let mut transaction = rullst::db::Orm::begin_transaction().await?;
-    let linked = async {
-        OAuthIdentity::link_with_tx(&mut transaction, user_id, provider, subject, utc_timestamp()).await?;
-        oauth_identity::remove_password_and_sessions_with_tx(&mut transaction, user_id).await
-    }
-    .await;
-    finish(transaction, linked).await
-}
-
-async fn finish(
-    transaction: rullst::orm::db::Transaction<'static>,
-    result: Result<(), rullst::orm::Error>,
-) -> Result<(), AccountError> {
-    match result {
-        Ok(()) => Ok(transaction.commit().await?),
-        Err(error) => {
-            if let Err(rollback) = transaction.rollback().await {
-                eprintln!("Account transaction rollback failed: {rollback}");
-            }
-            Err(error.into())
-        }
-    }
 }
 
 /// The provider's display name, else the email's local part: one line of
