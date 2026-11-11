@@ -84,7 +84,7 @@ fn receiver_with(config: TelemetryReceiverConfig) -> TelemetryReceiver<MemoryDev
 
 #[tokio::test]
 async fn rate_state_is_bounded_by_the_tracked_device_limit() {
-    let mut config = TelemetryReceiverConfig::new().with_rate_limit(1, Duration::from_secs(10));
+    let mut config = TelemetryReceiverConfig::new().with_rate_limit(2, Duration::from_secs(10));
     config.max_tracked_devices = 2;
     let receiver = receiver(config);
     for id in ["uno-b", "uno-c"] {
@@ -110,7 +110,9 @@ async fn rate_state_is_bounded_by_the_tracked_device_limit() {
     };
     assert!(send("uno-a", 0).await.is_ok());
     assert!(send("uno-b", 0).await.is_ok());
-    // Two windows are tracked and still open: a third device waits.
+    // At the bound, a device already tracked keeps its own budget...
+    assert!(send("uno-a", 1).await.is_ok());
+    // ...while a third device waits for a window to close.
     assert_eq!(
         send("uno-c", 1).await,
         Err(IngestError::RateLimited {
@@ -188,4 +190,11 @@ async fn ids_names_and_listing_follow_their_rules() {
         ["a-device".to_owned(), "b-device".to_owned(), "x".repeat(64)]
     );
     assert!(directory.get("ghost").is_none());
+}
+
+#[test]
+fn the_authenticated_device_names_its_token_owner() {
+    let device = AuthenticatedDevice::for_tests("uno-a");
+    assert_eq!(device.device_id(), "uno-a");
+    assert_eq!(device, AuthenticatedDevice::for_tests("uno-a"));
 }
