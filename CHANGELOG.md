@@ -561,6 +561,22 @@ describes each replacement.
 
 ### Fixed
 
+- `rullst-orm` SurrealDB adapter: `SurrealDbStore::create` reported a write
+  that SurrealDB had refused. SurrealDB 3 answers a CREATE denied by
+  permissions (a `VIEWER` database user, or a record user on a table with
+  `PERMISSIONS FOR create NONE`) with status OK and no record, and `create`
+  returned `Ok(())` although nothing was stored. It now fails with
+  `PolyglotError::Driver` ("create returned no record …") when the response
+  holds no record, which also happens for a table the user may write but not
+  read back. Found by acceptance testing against SurrealDB 3.2.4.
+- `rullst-orm` SurrealDB documentation said that `SurrealAuth::basic` signs in
+  namespace and database users; SurrealDB answers those with
+  `401 Unauthorized`, because it also needs `Surreal-Auth-NS`/`Surreal-Auth-DB`
+  headers that the adapter does not send. The rustdoc and the polyglot
+  persistence guide now say that Basic is for root-level users, that
+  namespace and database users sign in through `/signin` and pass the token to
+  `SurrealAuth::bearer`, and that the namespace and database must be defined
+  before use.
 - `rullst-iot`: `MqttPublish::encode` aborted the program when the allocator
   could not provide the packet buffer, which on a BBC micro:bit V2 with a
   32 KiB heap happened for a 20 KiB payload; it and `CoapRequest::encode`,
