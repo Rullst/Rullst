@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794415637999,
+  "lastUpdate": 1794435431551,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -18407,6 +18407,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 282,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "890bb7028d2a3dcf9263a95c2e5f0d3c5f5cf374",
+          "message": "Merge pull request #642 from Rullst/ci/v13-alpha5-duckdb-cache\n\nci: keep cached Rust targets from breaking the DuckDB build",
+          "timestamp": "2026-11-11T18:50:43-03:00",
+          "tree_id": "9da6f544758b8004a020882244f40fbd50a3d5da",
+          "url": "https://github.com/Rullst/Rullst/commit/890bb7028d2a3dcf9263a95c2e5f0d3c5f5cf374"
+        },
+        "date": 1794435430961,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1604,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 371,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 391,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
