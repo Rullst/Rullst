@@ -4,7 +4,7 @@ use super::super::files::{
 };
 use super::*;
 
-fn plan(path: PathBuf, original: &str) -> ManifestUpgradePlan {
+pub(super) fn plan(path: PathBuf, original: &str) -> ManifestUpgradePlan {
     ManifestUpgradePlan {
         path,
         original: original.to_string(),
@@ -180,7 +180,7 @@ edge = ["orm?/polyglot"]
     // Each package has its own name for the removed feature; the individual
     // adapters and unrelated packages are fine.
     let current = r#"[dependencies]
-rullst = { version = "13.0.0-alpha.1", default-features = false, features = ["polyglot", "orm-mongodb"] }
+rullst = { version = "13.0.0-alpha.1", default-features = false, features = ["polyglot", "orm-surrealdb"] }
 rullst-orm = { version = "13.0.0-alpha.1", default-features = false, features = ["orm-polyglot", "turso"] }
 plain = "1"
 

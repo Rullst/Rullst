@@ -344,7 +344,7 @@ rules! {
         "If the application uses the ORM or the SQLite queue, list them, for example `default-features = false, features = [\"strict-sqlite\", \"queue-sqlite\"]` (`drivers-all` for all three drivers); a database-free application needs no change.";
     POLYGLOT_FEATURE: "V13-POLYGLOT-FEATURE", MustChange, "13.0.0-alpha.2", "ORM adapter aggregate features",
         "the `orm-polyglot` (`rullst`) and `polyglot` (`rullst-orm`) features were removed; Cargo refuses a manifest that enables them",
-        "Enable only the adapters the application uses: `orm-turso`, `orm-mongodb`, `orm-duckdb`, `orm-surrealdb` or `orm-qdrant` on `rullst`, or `turso`, `mongodb`, `duckdb`, `surrealdb` or `qdrant` on `rullst-orm`.";
+        "Enable only the adapters the application uses: `orm-turso`, `orm-surrealdb` or `orm-qdrant` on `rullst`, or `turso`, `surrealdb` or `qdrant` on `rullst-orm` (13.0.0-alpha.5 removed MongoDB and DuckDB: see `V13-ORM-ADAPTERS-REMOVED`).";
     OMNI_REMOVED: "V13-OMNI-REMOVED", Review, "13.0.0-alpha.3", "Omni and offline sync removed",
         "13.0 removed `make:omni` and `cargo rullst omni`; this project has an Omni shell or runs the removed commands",
         "Run `cargo rullst make:pwa` (with `--android` for Google Play), ship the installable PWA, then retire `omni-app/` and the `cargo rullst omni` steps.";
@@ -441,6 +441,9 @@ rules! {
     CAPITAL_INVOICE_MINOR_UNITS: "V13-CAPITAL-INVOICE-MINOR-UNITS", MustChange, "13.0.0-alpha.5", "Capital invoice minor units",
         "Capital's `Invoice` and `InvoiceItem` hold integer minor units since 13.0.0-alpha.5: the `f64` fields `amount` and `total` are gone and both structs are built with constructors",
         "Build `Invoice::new(id, email, date, currency).with_item(description, amount_minor)` with each amount in the currency's smallest unit (49.90 BRL is `4_990`); the total is the sum of the items (`total_minor()`). Read `item.amount_minor` instead of `item.amount`, and use `with_locale(InvoiceLocale::PtBr)` or `InvoiceLocale::Es` for receipt labels.";
+    ORM_ADAPTERS_REMOVED: "V13-ORM-ADAPTERS-REMOVED", MustChange, "13.0.0-alpha.5", "MongoDB and DuckDB adapters removed",
+        "13.0.0-alpha.5 removed the MongoDB and DuckDB adapters: Cargo refuses the `orm-mongodb` and `orm-duckdb` (`rullst`) or `mongodb` and `duckdb` (`rullst-orm`) features, and `MongoDbStore`, `DuckDbStore` and the DuckDB analytics types no longer compile",
+        "Remove the feature and use the official `mongodb` or `duckdb` crate in the application: one client opened at start-up, shared through application state, behind a small trait with an offline fake for tests. https://rullst.github.io/Rullst/book/recipes/mongodb.html and https://rullst.github.io/Rullst/book/recipes/duckdb.html show both; `CollectionName`, `DocumentId`, the document traits and encrypted document recovery stay in `rullst::orm::polyglot`.";
     MAIL_MESSAGE_REPLY_TO: "V13-MAIL-MESSAGE-REPLY-TO", MustChange, "13.0.0-alpha.5", "Mail Reply-To",
         "Mail's `Message` has a `reply_to` field since 13.0.0-alpha.5, so a struct literal that lists every field without `..` no longer compiles",
         "Build the message with `Message::new()` and its builders (`.to(..)`, `.subject(..)`, `.reply_to(..)`), or add `reply_to: None` or `..Message::new()` to the literal.";
