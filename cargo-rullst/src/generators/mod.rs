@@ -22,6 +22,7 @@ pub mod billing;
 pub(crate) mod browser_tests;
 pub mod build;
 pub mod chat;
+pub(crate) mod components;
 mod consumer_files;
 mod consumer_support;
 pub mod controller;

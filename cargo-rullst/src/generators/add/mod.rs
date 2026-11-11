@@ -8,7 +8,7 @@
 //! features; [`frontend`] sets them up.
 
 mod capability;
-mod frontend;
+pub(crate) mod frontend;
 mod plan;
 #[cfg(test)]
 mod tests;

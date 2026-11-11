@@ -189,7 +189,8 @@ remains separate.
   of the file's SHA-256) while `Server` serves `static/`, and the plain
   `/static/app.css` outside a server. The mount serves the hashed name from
   the real file with `immutable` caching and answers an outdated hash with a
-  `307` redirect (`no-store`) to the current one; debug builds follow edits
+  `307` redirect (`no-store`) to the current one; debug builds follow edits.
+  `render_page*` links Core's `rullst.css` and the htmx client this way
   ([frontend guide](../frontend.md#content-hashed-asset-urls)).
 - **Prometheus `/metrics` Exporter:** Text-format metrics served at `GET /metrics`; formatting and collection have bounded runtime cost.
 - **Kubernetes probe routes (`rullst::health`):** the simple `health_router`

@@ -1856,7 +1856,9 @@ the same server-authoritative controls.
   answers an outdated hash with `307` to the current URL and `no-store`;
   each hashed request rechecks the file's size and modification time. Debug
   builds also refresh the links after edits
-  ([frontend guide](frontend.md#content-hashed-asset-urls)).
+  ([frontend guide](frontend.md#content-hashed-asset-urls)). Core's
+  `render_page*` links `rullst.css` and `htmx-1.9.12.min.js` through
+  `assets::url` since 13.0.0-alpha.5 (the favicon keeps its plain URL).
   Since 13.0.0-alpha.2 `rullst::cache_control` offers explicit policies for
   dynamic routes: `cache_control::public(max_age)` and `private(max_age)`
   are layers that set `public, max-age=<seconds>` or `private,
@@ -4907,6 +4909,29 @@ store package of the same site, only installs it.
   `Vary: HX-Request` (added to an existing `Vary` unless it already names the
   header or is `*`), so a cache keeps a page and the fragment of one URL
   apart.
+* 🟢 **`[Implemented / Bounded]` `cargo rullst ui add` (13.0.0-alpha.5):**
+  copies UI components into the application as source it owns:
+  `src/ui/<name>.rs` (`button`, `badge`, `alert`, `card`, `form`, `table`,
+  `pagination`, `dialog`, `menu`, `tabs`, `toast`; `dialog` and `menu` add
+  `button`), registered in `src/ui/mod.rs`, with `mod ui;` (or `pub mod ui;`
+  in `src/lib.rs`) declared in the crate root, and for `dialog`, `menu`,
+  `tabs` and `toast` a same-origin ES module `static/ui/<name>.js` that their
+  markup loads with `rullst::assets::url`. Each component is a function
+  returning `Markup` with an options struct, styled with complete Tailwind
+  class names; none uses an inline script or style, `eval` or Alpine. The
+  dialog is a native modal `<dialog>` opened by invoker commands
+  (`commandfor`/`command`, polyfilled by its module), the menu a `popover`
+  with the ARIA menu-button keyboard, the tabs the ARIA tabs pattern, the
+  toasts an `aria-live` region fed by `HX-Trigger` events; form fields link
+  help and errors with `aria-describedby` and `aria-invalid`, and the form
+  writes the CSRF `_token` first. A repeated run changes nothing; a copy whose
+  content differs stops the run before any write unless `--force`. Without
+  Tailwind an interactive run offers `cargo rullst add tailwind`, others copy
+  and print the command. CI renders every component in a fixture
+  application in three browsers and both colour schemes (CSP, axe
+  `serious`/`critical`, keyboard paths). `make:pwa`'s offline page and
+  `make:resource`'s views use Tailwind classes only when the project uses
+  Tailwind ([frontend guide](frontend.md#components)).
 * 🟢 **`[Implemented / Bounded]` htmx indicators under the strict CSP:** since
   13.0.0-rc.1, `render_page`, `render_page_with_lang` and
   `render_page_with_head` with a request CSP nonce (Rullst's security
