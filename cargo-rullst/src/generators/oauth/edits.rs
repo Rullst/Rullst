@@ -121,6 +121,17 @@ impl<'ast> Visit<'ast> for LoginRoute {
     }
 }
 
+/// Where each `.route("/login", <password login>)` call of `file` ends: the
+/// starter router's anchor for routes that belong next to the login.
+pub(crate) fn login_route_ends(file: &syn::File) -> Result<Vec<usize>> {
+    let mut visitor = LoginRoute {
+        expected: call_tokens(&syn::parse_str::<Expr>(LOGIN_ROUTE)?),
+        ends: Vec::new(),
+    };
+    visitor.visit_file(file);
+    Ok(visitor.ends)
+}
+
 /// Mounts the provider routes after the password login route and reads the
 /// provider settings at the start of `router()`, in a recognized starter
 /// router (`src/lib.rs`, else `src/main.rs`). `None` when the router is not
@@ -139,11 +150,7 @@ pub(super) fn router(root: &Path, provider: &ProviderSpec) -> Result<Option<Edit
         return Ok(None);
     }
     let file = syn::parse_file(&source)?;
-    let mut visitor = LoginRoute {
-        expected: call_tokens(&syn::parse_str::<Expr>(LOGIN_ROUTE)?),
-        ends: Vec::new(),
-    };
-    visitor.visit_file(&file);
+    let route_ends = login_route_ends(&file)?;
     let bodies: Vec<usize> = file
         .items
         .iter()
@@ -154,7 +161,7 @@ pub(super) fn router(root: &Path, provider: &ProviderSpec) -> Result<Option<Edit
             _ => None,
         })
         .collect();
-    let ([route_end], [body_start]) = (visitor.ends.as_slice(), bodies.as_slice()) else {
+    let ([route_end], [body_start]) = (route_ends.as_slice(), bodies.as_slice()) else {
         return Ok(None);
     };
     // Apple POSTs the callback; its offline mock returns with a GET.

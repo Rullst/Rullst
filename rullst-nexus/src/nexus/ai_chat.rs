@@ -2,6 +2,7 @@ use axum::{extract::State, response::Html};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+#[cfg(feature = "ai")]
 use crate::nexus::crud::sanitize_identifier;
 use crate::nexus::types::NexusState;
 #[cfg(feature = "ai")]
@@ -72,8 +73,8 @@ pub fn detect_ai_provider() -> (bool, String) {
 }
 
 // The assistant's reply builder behind `nexus_chat_query`.
-#[doc(hidden)]
-pub fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> String {
+#[cfg(feature = "ai")]
+pub(crate) fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> String {
     let msg_lower = message.to_lowercase();
 
     // Check if user is asking for LLM setup instructions

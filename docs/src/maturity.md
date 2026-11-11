@@ -96,7 +96,7 @@ what your application needs.
 | `rullst-nexus` | Extension | Admin CMS for registered models. |
 | `rullst-studio` | Extension | Local developer control room. |
 | `rullst-messaging` | Extension | Broker-neutral messaging, durable local state and the [Redis Streams profile](redis-messaging.md). |
-| `rullst-iot` | Experimental | Not validated on physical hardware and has no network transport. See the [module status](crates/iot.md#module-status). `OtaManager`'s public fields become getters in a 13.x minor release. |
+| `rullst-iot` | Experimental | Validated on one board only (a BBC micro:bit V2, see [hardware validation](crates/iot.md#hardware-validation-bbc-microbit-v2)) and has no network transport. See the [module status](crates/iot.md#module-status). |
 | `rullst-privacy` | Experimental | First published in the 13.0.0-alpha.1 prerelease. No live age providers or verified guardianship; see the [privacy roadmap](privacy-age-assurance-roadmap.md). |
 | `rullst-supervision` | Experimental | The host owns capture, models and reviewer workflow. Read [Responsible use](supervision.md#responsible-use) first. |
 | `rullst-media` | Experimental | Interoperability with real Bunny Stream accounts, transcoding and CDN delivery is unvalidated; the opt-in `s3` adapter (S3, R2, MinIO) is validated against the offline mock only. See the [managed-video candidate](managed-video.md). |
@@ -114,7 +114,7 @@ experimental `rullst-privacy`.
 
 | Generator | Commands | Tier | Why |
 | :--- | :--- | :--- | :--- |
-| IoT | `make:iot` | Experimental | Generates a telemetry module on top of the experimental `rullst-iot`. |
+| IoT | `make:iot`, `iot:keygen`, `iot:sign` | Experimental | Generates a telemetry module, and signs firmware updates, on top of the experimental `rullst-iot`. |
 | Green report | `green` | Experimental | Measured size, memory, dependency and benchmark CPU figures and a labelled SCI estimate; its files are in the pull-request mutation gate. See the [green guide](green.md). |
 
 For an experimental generator, the generated files, their layout, and the

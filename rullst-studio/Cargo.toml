@@ -14,7 +14,8 @@ keywords = ["studio", "dashboard", "telemetry", "debugger", "devtools"]
 categories = ["development-tools", "web-programming"]
 
 # docs.rs documents the default features (`drivers-all`, `queue-sqlite`) plus
-# `remote`; the `strict-*` profiles select one ORM backend instead.
+# `remote`; the `strict-*` profiles select one ORM backend instead. Each driver
+# profile enables `local`.
 [package.metadata.docs.rs]
 features = ["remote"]
 rustdoc-args = ["--cfg", "docsrs"]
@@ -25,29 +26,41 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
 [features]
 default = ["drivers-all", "queue-sqlite"]
-drivers-all = ["rullst-core/drivers-all", "rullst-orm/drivers-all"]
+# The local Studio (`Studio`, `run_studio` and its pages), which reads the
+# application's database through the ORM. Every driver profile below enables
+# it; `--no-default-features --features remote` builds only the remote Studio,
+# without the ORM, Capital and Security crates.
+local = [
+    "rullst-core/orm",
+    "dep:rullst-orm",
+    "dep:rullst-capital",
+    "dep:rullst-macros",
+    "dep:rullst-security",
+    "dep:utoipa",
+]
+drivers-all = ["local", "rullst-core/drivers-all", "rullst-orm/drivers-all"]
 queue-sqlite = ["rullst-core/queue-sqlite"]
-strict-sqlite = ["rullst-core/strict-sqlite", "rullst-orm/strict-sqlite"]
-strict-postgres = ["rullst-core/strict-postgres", "rullst-orm/strict-postgres"]
-strict-mysql = ["rullst-core/strict-mysql", "rullst-orm/strict-mysql"]
+strict-sqlite = ["local", "rullst-core/strict-sqlite", "rullst-orm/strict-sqlite"]
+strict-postgres = ["local", "rullst-core/strict-postgres", "rullst-orm/strict-postgres"]
+strict-mysql = ["local", "rullst-core/strict-mysql", "rullst-orm/strict-mysql"]
 # The standalone remote-projects Studio (`rullst-studio` binary): an HTTP
 # client, token encryption and the SQLite history. Off by default, so
 # applications that mount Studio in development do not build them.
 remote = ["sqlx/sqlite", "dep:reqwest", "dep:ring", "dep:rustls"]
 
 [dependencies]
-rullst-core = { workspace = true, features = ["orm"] }
-rullst-orm = { workspace = true }
-rullst-capital = { workspace = true }
-rullst-macros = { workspace = true }
-rullst-security = { workspace = true }
+rullst-core = { workspace = true }
+rullst-orm = { workspace = true, optional = true }
+rullst-capital = { workspace = true, optional = true }
+rullst-macros = { workspace = true, optional = true }
+rullst-security = { workspace = true, optional = true }
 
 axum = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tower = { workspace = true, features = ["util"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-utoipa = "6"
+utoipa = { version = "6", optional = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls-aws-lc-rs"] }
 urlencoding = { workspace = true }
 chrono = { workspace = true }

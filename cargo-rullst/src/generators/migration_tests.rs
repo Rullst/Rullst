@@ -279,7 +279,7 @@ fn every_cli_migration_template_uses_the_facade_paths() {
             include_str!("billing_migration_sqlx.rs.template"),
         ),
         ("oauth", include_str!("oauth/migration.rs.template")),
-        ("mfa", include_str!("auth/mfa_migration.rs.template")),
+        ("mfa", include_str!("auth/mfa/migration.rs.template")),
         (
             "password reset",
             include_str!("auth/password_reset_migration.rs.template"),

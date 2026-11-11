@@ -26,6 +26,7 @@ pub(crate) struct VerifiedLocalStudioAccess;
 
 /// Response of a privileged Studio handler reached without the marker, for
 /// example through a raw router mounted outside [`LocalStudioAccess`].
+#[cfg(feature = "local")]
 pub(crate) fn verified_local_access_required() -> Response {
     let mut response = Response::new(Body::from("Verified local Studio access is required"));
     *response.status_mut() = StatusCode::FORBIDDEN;

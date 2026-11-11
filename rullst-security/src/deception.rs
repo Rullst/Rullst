@@ -25,34 +25,82 @@ use dashmap::DashSet;
 use std::net::SocketAddr;
 use std::sync::OnceLock;
 
-static DECEPTION_ROUTES: OnceLock<DashSet<String>> = OnceLock::new();
+static DECEPTION_ROUTES: OnceLock<DeceptionRoutes> = OnceLock::new();
 /// Maximum dynamic trap paths retained by the process-local registry.
 pub const MAX_DECEPTION_TRAPS: usize = 1_024;
 
-/// Returns a new set holding the default decoy paths.
-pub fn default_deception_traps() -> DashSet<String> {
-    let set = DashSet::new();
-    for route in &[
-        "/.env",
-        "/.env.local",
-        "/.env.production",
-        "/.git/config",
-        "/.aws/credentials",
-        "/admin.php",
-        "/wp-login.php",
-        "/wp-admin/",
-        "/phpmyadmin/",
-        "/api/v1/admin/debug",
-        "/graphql/v1",
-    ] {
-        set.insert((*route).to_string());
+const DEFAULT_TRAPS: [&str; 11] = [
+    "/.env",
+    "/.env.local",
+    "/.env.production",
+    "/.git/config",
+    "/.aws/credentials",
+    "/admin.php",
+    "/wp-login.php",
+    "/wp-admin/",
+    "/phpmyadmin/",
+    "/api/v1/admin/debug",
+    "/graphql/v1",
+];
+
+/// The process-wide decoy paths that [`deception_trap_middleware`] refuses,
+/// returned by [`global_deception_routes`]. Paths are added with
+/// [`try_register_deception_trap`] and never removed.
+#[derive(Debug)]
+pub struct DeceptionRoutes {
+    routes: DashSet<String>,
+}
+
+impl DeceptionRoutes {
+    fn with_defaults() -> Self {
+        Self {
+            routes: DEFAULT_TRAPS
+                .iter()
+                .map(|route| (*route).to_string())
+                .collect(),
+        }
     }
-    set
+
+    /// Whether `path` is a registered decoy (an exact match).
+    pub fn contains(&self, path: &str) -> bool {
+        self.routes.contains(path)
+    }
+
+    /// The number of registered decoys, defaults included.
+    pub fn len(&self) -> usize {
+        self.routes.len()
+    }
+
+    /// Whether no decoy is registered.
+    pub fn is_empty(&self) -> bool {
+        self.routes.is_empty()
+    }
+
+    /// The registered decoy paths, sorted.
+    pub fn routes(&self) -> Vec<String> {
+        let mut routes: Vec<String> = self
+            .routes
+            .iter()
+            .map(|route| route.key().clone())
+            .collect();
+        routes.sort();
+        routes
+    }
+}
+
+/// The default decoy paths, sorted.
+pub fn default_deception_traps() -> Vec<String> {
+    let mut routes: Vec<String> = DEFAULT_TRAPS
+        .iter()
+        .map(|route| (*route).to_string())
+        .collect();
+    routes.sort();
+    routes
 }
 
 /// Returns the process-wide decoy registry, initialized with the defaults.
-pub fn global_deception_routes() -> &'static DashSet<String> {
-    DECEPTION_ROUTES.get_or_init(default_deception_traps)
+pub fn global_deception_routes() -> &'static DeceptionRoutes {
+    DECEPTION_ROUTES.get_or_init(DeceptionRoutes::with_defaults)
 }
 
 /// Registers a custom decoy route dynamically in the deception trap registry.
@@ -85,7 +133,7 @@ pub fn try_register_deception_trap(route: &str) -> Result<(), SecurityError> {
             "deception trap registry accepts at most {MAX_DECEPTION_TRAPS} paths"
         )));
     }
-    routes.insert(clean);
+    routes.routes.insert(clean);
     Ok(())
 }
 
@@ -118,6 +166,30 @@ mod tests {
     use super::*;
     use axum::{Router, body::Body, http::Request, middleware, routing::get};
     use tower::ServiceExt;
+
+    #[test]
+    fn the_registry_exposes_sorted_copies_of_its_paths() {
+        let defaults = default_deception_traps();
+        assert_eq!(defaults.len(), DEFAULT_TRAPS.len());
+        assert!(defaults.windows(2).all(|pair| pair[0] < pair[1]));
+        let fresh = DeceptionRoutes::with_defaults();
+        assert_eq!(fresh.routes(), defaults);
+        assert_eq!(fresh.len(), DEFAULT_TRAPS.len());
+        assert!(!fresh.is_empty());
+        let empty = DeceptionRoutes {
+            routes: DashSet::new(),
+        };
+        assert!(empty.is_empty());
+        assert_eq!(empty.len(), 0);
+        assert!(empty.routes().is_empty());
+        assert!(fresh.contains("/.env"));
+        assert!(!fresh.contains("/.env/"));
+        try_register_deception_trap("/sorted-registry-trap").expect("valid trap");
+        let routes = global_deception_routes().routes();
+        assert!(routes.windows(2).all(|pair| pair[0] < pair[1]));
+        assert!(routes.iter().any(|route| route == "/sorted-registry-trap"));
+        assert_eq!(routes.len(), global_deception_routes().len());
+    }
 
     #[test]
     fn test_register_deception_trap() {

@@ -34,7 +34,8 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
             rullst_orm::after_commit(move || async move {
                 if let Some(engine) = rullst_orm::scout::get_search_engine() {
                     let payload: rullst_orm::_serde_json::Value =
-                        rullst_orm::_serde_json::from_str(&event.payload)?;
+                        rullst_orm::_serde_json::from_str(&event.payload)
+                            .map_err(|error| rullst_orm::Error::SerializationError(error.to_string()))?;
                     engine.update(event.table, event.id, payload).await?;
                 }
                 Ok(())

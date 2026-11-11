@@ -35,14 +35,15 @@ Server-Sent Events, i18n and process telemetry. The `rullst` facade re-exports i
   See [the profile](https://github.com/Rullst/Rullst/blob/main/docs/src/distributed-tracing.md).
 - **Realtime over Server-Sent Events (v13):** `BroadcastManager` channels
   (and `TenantRealtime`'s tenant-scoped ones) stream to the browser through
-  `RealtimeSse`: one `text/event-stream` response per subscription, with
-  keep-alive comments, a shared connection limit (`503` with `Retry-After`
-  beyond it), a maximum connection lifetime, a 64 KiB event bound and a
+  `RealtimeSse`: one `text/event-stream` response per subscription, with a
+  `retry:` reconnect delay (1 s by default), keep-alive comments, a shared
+  connection limit (beyond it, a stream that only sends the browser away for
+  5–10 s), a maximum connection lifetime, a 64 KiB event bound and a
   `shutdown()` that ends every stream before the graceful drain. A connection
   that falls behind its channel's fixed queue ends instead of growing a
   buffer; the browser reconnects. HTML scaffolds ship the htmx 1.9.12 SSE
-  extension (`/static/htmx-ext-sse-1.9.12.js`) for `hx-ext="sse"` under the
-  strict CSP. Delivery is process-local and best effort.
+  extension (`/static/htmx-ext-sse-1.9.12.js`, patched so its reconnect
+  backoff grows) for `hx-ext="sse"` under the strict CSP. Delivery is process-local and best effort.
 - **Lifecycle-aware Readiness:** An opt-in process lifecycle gates new requests
   during startup, dependency unavailability, and graceful drain. It accepts at
   most 32 immutable component labels and exposes counts—not labels or errors—on

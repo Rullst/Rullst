@@ -1,4 +1,5 @@
 use super::*;
+use alloc::vec;
 
 #[test]
 fn encodes_well_known_core_get_vector() {
@@ -186,6 +187,10 @@ fn codec_errors_have_stable_messages() {
             CoapCodecError::DatagramTooLarge,
             "CoAP request exceeds the local datagram ceiling",
         ),
+        (
+            CoapCodecError::AllocationFailed,
+            "CoAP request buffer could not be allocated",
+        ),
     ] {
         assert_eq!(error.to_string(), message);
     }
@@ -227,17 +232,81 @@ fn payload_setter_accepts_exactly_the_datagram_ceiling() {
 }
 
 #[test]
-fn ensure_room_rejects_growth_past_the_ceiling() {
-    let datagram = vec![0; MAX_COAP_DATAGRAM_BYTES - 1];
-    assert_eq!(ensure_room(&datagram, 1), Ok(()));
+fn encoded_datagram_is_bounded_by_its_measured_length() {
+    // 4 header bytes + 0xff marker + 1_147 payload bytes = 1_152.
+    let at_ceiling = empty_get()
+        .and_then(|request| request.payload(vec![0; MAX_COAP_DATAGRAM_BYTES - 5]))
+        .and_then(|request| request.encode())
+        .expect("a datagram at the ceiling should encode");
+    assert_eq!(at_ceiling.len(), MAX_COAP_DATAGRAM_BYTES);
+    // The payload setter accepts it, but the header and marker push it over.
     assert_eq!(
-        ensure_room(&datagram, 2),
+        empty_get()
+            .and_then(|request| request.payload(vec![0; MAX_COAP_DATAGRAM_BYTES - 4]))
+            .and_then(|request| request.encode()),
         Err(CoapCodecError::DatagramTooLarge)
     );
+    // Options count toward the ceiling too: a 255-byte segment is 257 bytes.
     assert_eq!(
-        ensure_room(&datagram, usize::MAX),
+        empty_get()
+            .and_then(|request| request.path_segment("a".repeat(255)))
+            .and_then(|request| request.payload(vec![0; MAX_COAP_DATAGRAM_BYTES - 261]))
+            .and_then(|request| request.encode())
+            .map(|datagram| datagram.len()),
         Err(CoapCodecError::DatagramTooLarge)
     );
+}
+
+#[test]
+fn encoded_datagram_buffer_has_exactly_its_length() {
+    let shapes = [
+        empty_get(),
+        empty_get().and_then(|request| request.path_segment("a".repeat(13))),
+        empty_get().and_then(|request| request.path_segment("a".repeat(255))),
+        CoapRequest::new(CoapMessageType::Confirmable, CoapMethod::Put, 2, [9; 8])
+            .and_then(|request| request.path_segment("fw"))
+            .map(|request| request.content_format(11_542))
+            .and_then(|request| request.payload(vec![0xab; 300])),
+        empty_get().map(|request| request.content_format(0)),
+    ];
+    for request in shapes {
+        let request = request.expect("bounded request");
+        let datagram = request.encode().expect("bounded request should encode");
+        let mut length = ByteCount(0);
+        request.write_to(&mut length).expect("measured");
+        assert_eq!(datagram.len(), length.0);
+        assert_eq!(datagram.capacity(), datagram.len());
+    }
+}
+
+#[test]
+fn byte_count_saturates_instead_of_wrapping() {
+    let mut length = ByteCount(usize::MAX - 1);
+    length.put(&[0, 0, 0]);
+    assert_eq!(length.0, usize::MAX);
+}
+
+#[test]
+fn option_extensions_and_uints_take_no_heap() {
+    assert_eq!(
+        option_component(12).map(|(n, e)| (n, e.as_slice().to_vec())),
+        Ok((12, vec![]))
+    );
+    assert_eq!(
+        option_component(13).map(|(n, e)| (n, e.as_slice().to_vec())),
+        Ok((13, vec![0]))
+    );
+    assert_eq!(
+        option_component(65_804).map(|(n, e)| (n, e.as_slice().to_vec())),
+        Ok((14, vec![0xff, 0xff]))
+    );
+    assert_eq!(
+        option_component(65_805),
+        Err(CoapCodecError::OptionTooLarge)
+    );
+    assert_eq!(minimal_u16(0), ([0, 0], 0));
+    assert_eq!(minimal_u16(255), ([255, 0], 1));
+    assert_eq!(minimal_u16(256), ([1, 0], 2));
 }
 
 #[test]

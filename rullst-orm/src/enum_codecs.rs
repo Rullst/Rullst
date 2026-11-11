@@ -1,6 +1,7 @@
 //! Driver-owned expansion points: cfg is evaluated here, never in the application.
 
 #[cfg(any(feature = "drivers-all", feature = "strict-sqlite", feature = "turso"))]
+// Used by `#[derive(Enum)]`.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __rullst_enum_sqlite {
@@ -14,6 +15,7 @@ macro_rules! __rullst_enum_sqlite {
 }
 
 #[cfg(not(any(feature = "drivers-all", feature = "strict-sqlite", feature = "turso")))]
+// Used by `#[derive(Enum)]`.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __rullst_enum_sqlite {
@@ -21,6 +23,7 @@ macro_rules! __rullst_enum_sqlite {
 }
 
 #[cfg(any(feature = "drivers-all", feature = "strict-mysql"))]
+// Used by `#[derive(Enum)]`.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __rullst_enum_mysql {
@@ -37,6 +40,7 @@ macro_rules! __rullst_enum_mysql {
 }
 
 #[cfg(not(any(feature = "drivers-all", feature = "strict-mysql")))]
+// Used by `#[derive(Enum)]`.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __rullst_enum_mysql {
@@ -48,6 +52,7 @@ macro_rules! __rullst_enum_mysql {
     feature = "strict-postgres",
     feature = "pgvector"
 ))]
+// Used by `#[derive(Enum)]`.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __rullst_enum_postgres {
@@ -73,6 +78,7 @@ macro_rules! __rullst_enum_postgres {
     feature = "strict-postgres",
     feature = "pgvector"
 )))]
+// Used by `#[derive(Enum)]`.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __rullst_enum_postgres {

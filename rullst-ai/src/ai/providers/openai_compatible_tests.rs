@@ -372,8 +372,8 @@ fn assert_endpoint_redacted(error: AiError, base_url: &str) {
     let AiError::RequestError(error) = error else {
         panic!("expected a transport error, got {error:?}");
     };
-    assert!(error.url().is_none());
     let rendered = format!("{error} {error:?}");
+    assert!(!rendered.contains("http://"));
     assert!(!rendered.contains(base_url.trim_start_matches("http://")));
     assert!(!rendered.contains("private-gateway"));
 }

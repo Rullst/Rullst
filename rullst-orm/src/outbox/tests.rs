@@ -51,4 +51,16 @@ fn claimed_events_debug_without_keys_or_payload() {
         format!("{event:?}"),
         "ClaimedOutboxEvent { id: 7, stream: \"[REDACTED]\", event_key: \"[REDACTED]\", event_kind: \"order.created\", payload_bytes: 7, attempts: 2, claim_key: \"[REDACTED]\", claim_expires_at_epoch: 99 }"
     );
+    assert_eq!(
+        event.payload().expect("valid payload"),
+        serde_json::json!({"a": 1})
+    );
+    let corrupt = ClaimedOutboxEvent {
+        payload_json: "{not json".to_string(),
+        ..event
+    };
+    assert!(matches!(
+        corrupt.payload(),
+        Err(crate::Error::SerializationError(_))
+    ));
 }

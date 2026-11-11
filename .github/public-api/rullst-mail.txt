@@ -993,11 +993,6 @@ pub use rullst_mail::drivers::memory = module rullst_mail::memory
 pub use rullst_mail::drivers::memory::MailAssertion = struct rullst_mail::MailAssertion
 pub use rullst_mail::drivers::memory::MailTrap = struct rullst_mail::MailTrap
 pub use rullst_mail::drivers::memory::MemoryDriver = struct rullst_mail::MemoryDriver
-pub use rullst_mail::drivers::mock = module rullst_mail::mock
-pub use rullst_mail::drivers::mock::DeliveryMode = enum rullst_mail::DeliveryMode
-pub use rullst_mail::drivers::mock::OfflineMailMock = struct rullst_mail::OfflineMailMock
-pub use rullst_mail::drivers::mock::OfflineMockDelivery = struct rullst_mail::OfflineMockDelivery
-pub use rullst_mail::drivers::mock::credential_mode = function rullst_mail::credential_mode
 pub use rullst_mail::drivers::resend = module rullst_mail::resend
 pub use rullst_mail::drivers::resend::ResendDriver = struct rullst_mail::ResendDriver
 pub use rullst_mail::drivers::sendpulse = module rullst_mail::sendpulse
@@ -1036,7 +1031,6 @@ pub fn rullst_mail::is_disposable_email(email: &str) -> bool
 pub fn rullst_mail::is_homograph_domain(domain: &str) -> bool
 pub mod rullst_mail::log
 pub use rullst_mail::log::LogDriver = struct rullst_mail::LogDriver
-pub mod rullst_mail::mail
 pub mod rullst_mail::memory
 pub use rullst_mail::memory::MailAssertion = struct rullst_mail::MailAssertion
 pub use rullst_mail::memory::MailTrap = struct rullst_mail::MailTrap

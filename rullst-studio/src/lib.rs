@@ -13,8 +13,11 @@
 //! supported for its documented scope. The default features are `drivers-all`
 //! (every ORM driver) and `queue-sqlite` (Core's SQLite queue); with
 //! `default-features = false`, `strict-sqlite`, `strict-postgres` or
-//! `strict-mysql` selects one backend. The non-default `remote` feature builds
-//! the standalone `rullst-studio` binary for remote projects. See the [crate
+//! `strict-mysql` selects one backend. Each of them enables `local`, the local
+//! Studio (`Studio`, `run_studio` and its page modules). The non-default
+//! `remote` feature builds the standalone `rullst-studio` binary for remote
+//! projects; without `local` it builds neither the ORM nor the Capital and
+//! Security crates. See the [crate
 //! guide](https://rullst.github.io/Rullst/book/crates/studio.html) and the
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-studio/README.md).
 #![cfg_attr(docsrs, feature(doc_cfg))]
@@ -23,50 +26,74 @@ extern crate rullst_core as rullst;
 // Mutation testing covers only the remote-projects mode (`remote`), whose
 // tokens, outbound client, escaping and alerts are security relevant. The
 // local Studio pages and their wiring keep the `mutants::skip` below.
+#[cfg(feature = "local")]
 use axum::Router;
+#[cfg(feature = "local")]
 use rullst_core::Queue;
+#[cfg(feature = "local")]
 use std::sync::Arc;
+#[cfg(feature = "local")]
 use utoipa::openapi::OpenApi;
 
 #[cfg_attr(mutants, mutants::skip)]
 pub mod access;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod ai_playground;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod api_playground;
 pub use access::{LocalStudioAccess, StudioBuildError};
+#[cfg(any(feature = "local", feature = "remote"))]
 #[cfg_attr(mutants, mutants::skip)]
 mod assets;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod cache_inspector;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod data_browser;
+#[cfg(feature = "local")]
 pub use data_browser::run_studio;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod distributed_traces;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod env_viewer;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod er_diagram;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod feature_flags;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod jobs_monitor;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod logger;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod migration_manager;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod radar_visualizer;
 #[cfg(feature = "remote")]
 pub mod remote;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod revenue_dashboard;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod security_radar;
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod traces_visualizer;
 
+/// The local Studio builder (feature `local`, which every driver profile
+/// enables).
+#[cfg(feature = "local")]
 pub struct Studio {
     openapi: Option<OpenApi>,
     queue: Option<Queue>,
@@ -74,6 +101,7 @@ pub struct Studio {
     distributed_traces: distributed_traces::DistributedTraceStore,
 }
 
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 impl Default for Studio {
     fn default() -> Self {
@@ -81,6 +109,7 @@ impl Default for Studio {
     }
 }
 
+#[cfg(feature = "local")]
 #[cfg_attr(mutants, mutants::skip)]
 impl Studio {
     pub fn new() -> Self {
@@ -147,7 +176,7 @@ impl Studio {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "local"))]
 mod tests {
     use super::*;
     #[cfg(debug_assertions)]

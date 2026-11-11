@@ -39,10 +39,11 @@ pub mod error;
     feature = "rullst"
 ))]
 pub mod extractors;
-// Holds only `#[macro_export]` macros, which live at the crate root.
-#[doc(hidden)]
+// `define_provider!` is exported at the crate root; the other macros are
+// shared by the built-in providers only.
 #[macro_use]
-pub mod macros;
+mod macros;
+pub(crate) use macros::{impl_standard_redirect_url, impl_standard_refresh_token};
 pub mod mock_idp;
 pub mod pkce;
 pub mod prelude;

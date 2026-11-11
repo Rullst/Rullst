@@ -276,7 +276,7 @@ release:
 | 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
-| 13.0.0-alpha.5 | `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-MAIL-MESSAGE-REPLY-TO` |
+| 13.0.0-alpha.5 | `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-MAIL-MESSAGE-REPLY-TO` |
 | 13.0.0-rc.1 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them) |
 
 A rule is dated by the first release tag whose catalog contains its code
@@ -289,11 +289,10 @@ The plan takes the application's Rullst version to be the oldest version that
 a Rullst requirement in the workspace manifests admits (`=13.0.0-alpha.3`,
 or `13.0.0-alpha.1`, a caret requirement) or that `Cargo.lock` holds. When that
 version is a 13.0 prerelease, only the rules introduced after it apply: an
-alpha.4 application gets the alpha.5 rules, an alpha.3 application the alpha.4
-and alpha.5 rules, an alpha.2 application the seven alpha.3 rules and the later
-ones, and an alpha.1 application the alpha.2 rules and the later ones, because
-the earlier changes are already in the version it runs. The plan says what it
-skipped:
+alpha.4 application gets the alpha.5 and rc.1 rules, an alpha.3 application
+also the alpha.4 rules, an alpha.2 application also the seven alpha.3 rules,
+and an alpha.1 application also the alpha.2 rules, because the earlier
+changes are already in the version it runs. The plan says what it skipped:
 
 ```text
 Source findings (rullst-upgrade-rules-v4): 0 must-change, 1 review
@@ -448,15 +447,15 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (16 rows);
+  application source (18 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (106 rows);
+  the affected API, feature or configuration, which the rules locate (113 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (102 rows).
+  of inputs that previously failed) (104 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 126 rules. A row can map to several rules and a rule to
+has 137 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -476,7 +475,7 @@ the rule together.
 | Studio local access and table view | (b) review | `V13-STUDIO-TABLE-VALUES` |  |
 | LMS blueprint | (c) none | — | Generator output; existing applications keep their code |
 | Consumer generators | (c) none | — | Generator commands |
-| `html!` event handlers | (a) must-change | `V13-HTML-DYNAMIC-EVENT-HANDLER` |  |
+| `html!` event handlers | (a) must-change | `V13-HTML-DYNAMIC-EVENT-HANDLER`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE` | Dynamic `x-*` (also `data-x-*`) values at every location (`V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, 13.0.0-alpha.5) |
 | `html!` returns `Markup` | (a) must-change | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP` | Located in function signatures and `RawHtml` calls, including `html!` bodies; a `String` collected from `html!` output, an `#[island]` call or `Live::mount` output is reported where `RawHtml` wraps it |
 | Core request validation | (b) review | `V13-VALIDATION-STATUS` |  |
 | Core feature flags and scheduler | (b) review | `V13-SCHEDULER-WEEKDAYS` | A/B splits: the two feature-flag rules below; the bucket reassignment depends on flag configuration and is not located |
@@ -675,10 +674,21 @@ the rule together.
 | CLI `--no-database` files | (c) none | — | Generator output for new projects; an empty `rullst.db` is not located; introduced in 13.0.0-alpha.4 |
 | CLI `make:migration:auto` without a database to compare | (b) review | `V13-CLI-MIGRATION-AUTO-STATUS` | Workflows, root scripts, Makefile and justfile that run `make:migration:auto`, which exits with status 1 when there is no SQLite database to compare; introduced in 13.0.0-alpha.4, rule since 13.0.0-rc.1 |
 | `html!` attribute values and `render_page` | (c) none | — | The compiler's `deprecated` warning locates each `Option` in `name={value}`; the quote escaping and the whole-page htmx answers need no change; introduced in 13.0.0-rc.1 |
-| Internals hidden from the API documentation | (c) none | — | The items still compile; only their documentation and compatibility promise change; introduced in 13.0.0-alpha.4 |
+| Internals hidden from the API documentation | (c) none | — | The items still compile in alpha.4; only their documentation and compatibility promise change; introduced in 13.0.0-alpha.4 (alpha.5 makes most private: Hidden internals made private) |
+| Duplicate API paths removed | (a) must-change | `V13-API-ALIAS-PATHS` | `rullst::rullst_orm`, `rullst::security_runtime`, `rullst_mail::mail`, `rullst_mail::drivers::mock` and their `rullst::mail::` forms, in paths and in `use` trees (braced groups included); introduced in 13.0.0-alpha.5 |
+| Hidden internals made private | (b) review | `V13-HIDDEN-INTERNALS-PRIVATE` | Module paths (`artisan::runner`, `server::dylib_loader`, `tenant::CURRENT_TENANT`, the three `schema::` statics, `passkey::cbor`, `client::DEFAULT_HTTP_CLIENT`, `rullst_connect::macros`) and distinctive names (`encrypt_aes_gcm`, `impl_standard_redirect_url!`, `get_real_rss_memory_mb`, `field_kind_sql`, the `test-util` helpers `claim_next_at` and `model_hash_key`, …); review because a bare name can be the application's own; a failed gate repeats the guidance; introduced in 13.0.0-alpha.5 |
+| Security store collections | (b) review | `V13-SECURITY-STORE-COLLECTIONS`, `V13-SECURITY-GLOBAL-COLLECTIONS` | `.banned_ips`, `.honeypot_route_hits` and `.live_events` field accesses (not method calls) in files that name `SecurityStore` or `SecurityTelemetry`, review because another type can have such a field; `global_deception_routes`, `default_deception_traps` and `global_rate_limit_store` (`V13-SECURITY-GLOBAL-COLLECTIONS`), review because `contains` and `len` keep compiling; introduced in 13.0.0-alpha.5 |
+| Connect JWKS key sets | (b) review | `V13-CONNECT-JWKS-KEY-SET` | `JWKS_CACHE`, `JwksCache`, `fetch_and_cache_jwks` and `fetch_and_cache_jwks_for_kid`; uses of the returned set are not followed; introduced in 13.0.0-alpha.5 |
+| Rullst-owned error payloads | (b) review | `V13-ERROR-PAYLOADS` | `AiError::RequestError`, `AiError::SerializationError`, `ClientContractError::InvalidJson`/`EncodeJson` and `TwinSyncError::Serialization`; the removed `From` conversions (`?` on `reqwest`, `serde_json`, `base64`, `jsonwebtoken` or `redis` errors) are not located, the compiler names them; introduced in 13.0.0-alpha.5 |
+| AI provider HTTP errors | (b) review | `V13-AI-HTTP-STATUS` | `AiError::ApiError` paths (arms, `matches!`, constructions), which no longer see HTTP status failures; introduced in 13.0.0-alpha.5 |
 | Wasm islands removed | (a) must-change, (b) review | `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED` | `#[island]` however qualified and `rullst::island`/`rullst_core::island` paths, also in `use` groups and macro bodies, at every location; `make:island` or `build:client` in workflows, root scripts, Makefile and justfile (review); introduced in 13.0.0-alpha.5 |
 | Live components removed | (a) must-change, (b) review | `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED` | `#[live_component]`/`#[live_event]` however qualified and `rullst::live`/`rullst_core::live` paths (`LiveComponent`, `Live::mount`, `live_ws_handler`, `live::recovery`), also in `use` groups, `html!` and `routes!`, at every location; `make:live` in workflows, root scripts, Makefile and justfile (review); introduced in 13.0.0-alpha.5 |
 | Billing generator on Turso projects | (c) none | — | CLI behaviour on new runs; billing code generated earlier is unchanged; introduced in 13.0.0-alpha.5 |
+| IoT OTA manager state | (b) review | `V13-IOT-OTA-STATE` | `.current_partition`, `.status` or `.firmware_version` read or assigned (not called) in a file that names `OtaManager`, reported once per file; introduced in 13.0.0-alpha.5 |
+| IoT encoder errors | (a) must-change | `V13-IOT-CODEC-ERROR-MATCH` | A `match` whose arm patterns name `MqttCodecError` or `CoapCodecError` and that has no catch-all arm, at every location; the new `OtaError::AllocationFailed` and the verification order need no change, because `OtaError` was already `#[non_exhaustive]`; introduced in 13.0.0-alpha.5 |
+| IoT sensor card HTML | (b) review | `V13-IOT-SENSOR-CARD-HTML` | `render_sensor_card` named in Rust source, reported once per file; introduced in 13.0.0-alpha.5 |
+| Studio `local` feature | (c) none | — | Only direct `rullst-studio` dependencies without default features and without a driver profile, which the compiler reports; introduced in 13.0.0-alpha.5 |
+| Access-log paths | (c) none | — | Log output in staging and production, not application source; introduced in 13.0.0-alpha.5 |
 | Capital invoice minor units | (a) must-change | `V13-CAPITAL-INVOICE-MINOR-UNITS` | `Invoice { .. }` literals naming `total` and `InvoiceItem { .. }` literals naming `amount`, in files that name Capital (`rullst_capital` or `capital::`), so an application's own `Invoice` type is left alone; reads of `.total` and `.amount` are not located, the compiler names them; introduced in 13.0.0-alpha.5 |
 | Mail Reply-To | (a) must-change | `V13-MAIL-MESSAGE-REPLY-TO` | `Message { .. }` literals with `subject` and `body_html`, without `reply_to` and without `..rest`, in files that name Mail (`rullst_mail` or `mail::`); introduced in 13.0.0-alpha.5 |
 | Capital InfinitePay adapter | (c) none | — | Experimental adapter: `new` keeps compiling, and the mock answers that changed (portal, cancellation) surface in the application's own tests; introduced in 13.0.0-alpha.5 |

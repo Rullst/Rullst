@@ -10,7 +10,10 @@ use std::path::Path;
 
 /// Each generated file and its content.
 pub(crate) const FILES: [(&str, &str); 2] = [
-    (".github/workflows/ci.yml", include_str!("ci/ci.yml")),
+    (
+        ".github/workflows/ci.yml",
+        include_str!("ci/.github/workflows/ci.yml"),
+    ),
     (".github/dependabot.yml", include_str!("ci/dependabot.yml")),
 ];
 

@@ -218,9 +218,53 @@ fn live_event_buffer_keeps_the_newest_fifty_events() {
     assert_eq!(events[MAX_LIVE_EVENTS - 1].details, "event 1");
 }
 
-#[cfg(target_os = "linux")]
 #[test]
-fn resident_memory_reports_the_running_process() {
-    let megabytes = get_real_rss_memory_mb().expect("Linux exposes VmRSS");
-    assert!(megabytes > 1.0);
+fn accessors_return_sorted_copies_of_the_active_collections() {
+    let store = SecurityStore::new();
+    store.record_honeypot_trap("192.0.2.9", "/wp-login.php");
+    store.record_honeypot_trap("192.0.2.3", "/.env");
+    store.record_honeypot_trap("192.0.2.9", "/.env");
+    store.record_honeypot_observation("192.0.2.5", "/.git/config");
+    store.banned_ips.insert(
+        "192.0.2.1".to_string(),
+        ban_record("192.0.2.1", wall_clock_secs().saturating_sub(1)),
+    );
+
+    let bans = store.active_bans();
+    let ips: Vec<&str> = bans.iter().map(|ban| ban.ip.as_str()).collect();
+    assert_eq!(ips, ["192.0.2.3", "192.0.2.9"]);
+    assert!(store.is_banned("192.0.2.9"));
+    assert!(store.is_banned("192.0.2.3"));
+    assert!(!store.is_banned("192.0.2.5"), "an observation is not a ban");
+    assert!(!store.is_banned("192.0.2.1"), "the ban has expired");
+    assert!(!store.is_banned("not an address"));
+
+    assert_eq!(
+        store.honeypot_route_hits(),
+        [
+            ("/.env".to_string(), 2),
+            ("/.git/config".to_string(), 1),
+            ("/wp-login.php".to_string(), 1),
+        ]
+    );
+
+    let events = store.live_events();
+    assert_eq!(events.len(), 4);
+    assert_eq!(events[0].client_ip, "192.0.2.5", "newest first");
+    assert_eq!(events, store.live_events(), "reading does not drain");
+}
+
+#[test]
+fn an_expired_ban_stays_out_of_is_banned_before_it_is_pruned() {
+    let store = SecurityStore::new();
+    store.banned_ips.insert(
+        "192.0.2.44".to_string(),
+        ban_record("192.0.2.44", wall_clock_secs()),
+    );
+    assert!(!store.is_banned("192.0.2.44"));
+    store.banned_ips.insert(
+        "192.0.2.44".to_string(),
+        ban_record("192.0.2.44", wall_clock_secs() + 60),
+    );
+    assert!(store.is_banned("192.0.2.44"));
 }

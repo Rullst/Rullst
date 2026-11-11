@@ -57,7 +57,8 @@ pub(super) fn parse_control(input: ParseStream) -> Result<HtmlNode> {
             at.span,
             "html! supports `@if`, `@else`, `@for` and `@match`; for other control flow, \
              interpolate a Rust expression that returns `Markup`, such as \
-             `{rows.iter().map(|row| html! { .. }).collect::<Markup>()}`",
+             `{rows.iter().map(|row| html! { .. }).collect::<Markup>()}`; write a literal `@` \
+             (an e-mail address or a handle) in a string literal",
         ))
     }
 }

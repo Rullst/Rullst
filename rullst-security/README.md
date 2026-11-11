@@ -232,7 +232,7 @@ rullst-security = "=13.0.0-alpha.4"
 The shared Redis limiter needs the `redis-rate-limit` feature. In a Rullst
 application you can enable the `security` feature of `rullst` instead
 (`security-redis` adds `redis-rate-limit`); the crate is then available as
-`rullst::security_runtime`.
+`rullst::security::runtime`.
 
 ---
 

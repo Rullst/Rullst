@@ -9,8 +9,10 @@ use std::time::{Duration, Instant};
 
 mod exact_json;
 mod memo_value;
+// Used by `#[memoize]`.
 #[doc(hidden)]
 pub use exact_json::is_exact_json;
+// Used by `#[memoize]`.
 #[doc(hidden)]
 pub use memo_value::MemoValue;
 

@@ -6,6 +6,13 @@
 # exact, so an entry stops applying when its line moves and the mutant is
 # tested again; update or delete it then.
 
+# rullst-iot CoAP: the header's version, type and token-length fields and an
+# option's delta and length nibbles occupy disjoint bits, so OR equals XOR
+# (docs/src/mutation-testing.md, the rullst-iot `|` with `^` row).
+rullst-iot/src/coap.rs:206:18: replace | with ^ in CoapRequest::write_to
+rullst-iot/src/coap.rs:206:52: replace | with ^ in CoapRequest::write_to
+rullst-iot/src/coap.rs:261:35: replace | with ^ in write_option
+
 # rullst-orm: compiled only without a strict driver feature (SQLx Any pool), so
 # absent from the gate's --all-features build; default-feature tests cover them.
 rullst-orm/src/schema/schema_builder.rs:78:8: delete ! in prepare_postgres_enums

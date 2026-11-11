@@ -11,9 +11,7 @@ use rullst_security::telemetry::SecurityStore;
 
 fn dlp_events(store: &SecurityStore) -> usize {
     store
-        .live_events
-        .lock()
-        .expect("telemetry lock")
+        .live_events()
         .iter()
         .filter(|event| event.event_type == "DLP_SECRET_LEAK_PREVENTED")
         .count()

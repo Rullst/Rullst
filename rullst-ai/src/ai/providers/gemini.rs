@@ -133,7 +133,7 @@ impl GeminiProvider {
             .json(&body)
             .send()
             .await
-            .map_err(|error| AiError::RequestError(error.without_url()))?;
+            .map_err(AiError::request)?;
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
         reject_incomplete(&json["candidates"][0])?;
@@ -249,7 +249,7 @@ impl AiProvider for GeminiProvider {
             }))
             .send()
             .await
-            .map_err(|error| AiError::RequestError(error.without_url()))?;
+            .map_err(AiError::request)?;
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
         embedding_values(json["embedding"]["values"].as_array(), self.provider_name())

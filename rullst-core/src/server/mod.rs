@@ -1,5 +1,6 @@
 //! Application server bootstrap, hot-reloader, and Tower middleware integration.
 
+mod access_log;
 /// Fluent server builder and HTTP runner.
 pub mod builder;
 pub(crate) mod console;
@@ -8,8 +9,7 @@ mod dev_errors;
 mod dev_reload;
 pub(crate) mod dev_telemetry;
 /// Dynamic library router loader for hot-reload mode; `Server` uses it.
-#[doc(hidden)]
-pub mod dylib_loader;
+pub(crate) mod dylib_loader;
 /// Atomic hot-swappable Tower service.
 pub mod hotswap;
 mod project_settings;
@@ -30,13 +30,16 @@ pub(crate) static TEST_ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::co
 mod tests;
 
 pub use crate::Router;
+// Used by `rullst-studio`.
 #[doc(hidden)]
 pub use builder::read_optional_environment_variable;
 pub use builder::{Server, ServerError};
 #[cfg(feature = "orm")]
+// Used by `rullst-studio`.
 #[doc(hidden)]
 pub use database_url::resolve_project_database_url;
 pub use hotswap::HotSwapService;
+// Used by `rullst-mail`.
 #[doc(hidden)]
 pub use project_settings::{ProjectSettings, read_project_setting};
 pub use server_middleware::{inject_hmr_script, zstd_static_middleware};

@@ -139,8 +139,7 @@ fn a_manager_rebuilt_after_rebooting_into_b_targets_a() {
     assert_eq!(receipt.target_partition(), BootPartition::PartitionB);
 
     // The platform reboots into B and reports the running bank.
-    let mut after_reboot = manager(&mut store);
-    after_reboot.current_partition = receipt.target_partition();
+    let mut after_reboot = manager(&mut store).with_running_partition(receipt.target_partition());
     let (next, next_firmware, next_signature) = signed_update(52);
     after_reboot
         .verify_update(&next, &next_firmware, &next_signature)
@@ -153,7 +152,7 @@ fn a_manager_rebuilt_after_rebooting_into_b_targets_a() {
         .commit_verified_update_with_store(&mut store)
         .unwrap();
     assert_eq!(next_receipt.target_partition(), BootPartition::PartitionA);
-    assert_eq!(after_reboot.current_partition, BootPartition::PartitionB);
+    assert_eq!(after_reboot.current_partition(), BootPartition::PartitionB);
 }
 
 #[test]
@@ -171,14 +170,14 @@ fn the_explicit_running_partition_selects_the_other_bank() {
             &mut store,
         )
         .unwrap();
-        assert_eq!(ota.current_partition, running);
+        assert_eq!(ota.current_partition(), running);
         assert_eq!(ota.rollback_counter(), 60);
         let (manifest, firmware, signature) = signed_update(61);
         ota.verify_update(&manifest, &firmware, &signature).unwrap();
         assert_eq!(ota.verified_target_partition().unwrap(), target);
         let receipt = ota.commit_verified_update_with_store(&mut store).unwrap();
         assert_eq!(receipt.target_partition(), target);
-        assert_eq!(ota.current_partition, running);
+        assert_eq!(ota.current_partition(), running);
     }
 
     let mut store = MemoryCounterStore::new(70);
@@ -211,9 +210,9 @@ fn unavailable_store_preserves_verified_state_and_allows_retry() {
             RollbackCounterError::Unavailable
         ))
     );
-    assert_eq!(ota.status, OtaStatus::Verified);
-    assert_eq!(ota.current_partition, BootPartition::PartitionA);
-    assert_eq!(ota.firmware_version, "12.0.0");
+    assert_eq!(ota.status(), OtaStatus::Verified);
+    assert_eq!(ota.current_partition(), BootPartition::PartitionA);
+    assert_eq!(ota.firmware_version(), "12.0.0");
     assert_eq!(ota.rollback_counter(), 20);
     assert_eq!(ota.pending_manifest(), Some(&manifest));
     assert_eq!(store.value, 20);
@@ -242,8 +241,8 @@ fn stale_manager_detects_conflict_without_mutating_local_state() {
             }
         ))
     );
-    assert_eq!(stale.status, OtaStatus::Verified);
-    assert_eq!(stale.current_partition, BootPartition::PartitionA);
+    assert_eq!(stale.status(), OtaStatus::Verified);
+    assert_eq!(stale.current_partition(), BootPartition::PartitionA);
     assert_eq!(stale.rollback_counter(), 30);
     assert_eq!(stale.pending_manifest(), Some(&manifest));
     assert_eq!(store.value, 31);
@@ -293,20 +292,20 @@ fn retry_completes_a_commit_whose_acknowledgement_was_lost() {
             ))
         );
         assert_eq!(store.value, 21);
-        assert_eq!(ota.status, OtaStatus::Verified);
+        assert_eq!(ota.status(), OtaStatus::Verified);
         assert_eq!(ota.rollback_counter(), 20);
 
         // A retry whose store read confirms this manifest's counter completes.
         store.load_error = Some(RollbackCounterError::Unavailable);
         assert!(ota.commit_verified_update_with_store(&mut store).is_err());
-        assert_eq!(ota.status, OtaStatus::Verified);
+        assert_eq!(ota.status(), OtaStatus::Verified);
         assert_eq!(ota.pending_manifest(), Some(&manifest));
 
         let receipt = ota.commit_verified_update_with_store(&mut store).unwrap();
         assert_eq!(receipt.rollback_counter(), 21);
         assert_eq!(receipt.target_partition(), BootPartition::PartitionB);
         assert_eq!(ota.rollback_counter(), 21);
-        assert_eq!(ota.status, OtaStatus::Idle);
+        assert_eq!(ota.status(), OtaStatus::Idle);
         assert!(ota.pending_manifest().is_none());
         assert_eq!(store.value, 21);
     }
@@ -333,7 +332,7 @@ fn only_a_retry_of_an_uncertain_commit_adopts_an_equal_stored_counter() {
             ))
         ));
         assert_eq!(stale.rollback_counter(), 30);
-        assert_eq!(stale.status, OtaStatus::Verified);
+        assert_eq!(stale.status(), OtaStatus::Verified);
     }
 
     // After an uncertain commit of X, a different image Y with the same
@@ -365,7 +364,7 @@ fn only_a_retry_of_an_uncertain_commit_adopts_an_equal_stored_counter() {
             }
         ))
     );
-    assert_eq!(ota.firmware_version, "12.0.0");
+    assert_eq!(ota.firmware_version(), "12.0.0");
 
     ota.verify_update(&first, &first_firmware, &first_signature)
         .unwrap();

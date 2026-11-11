@@ -3,10 +3,10 @@
 use super::traits::MailDriver;
 #[cfg(feature = "mail-smtp")]
 use super::{DeliveryMode, credential_mode};
-#[cfg(feature = "mail-smtp")]
-use crate::drivers::mock::{record_offline_delivery, validate_credential};
 use crate::error::MailError;
 use crate::message::Message;
+#[cfg(feature = "mail-smtp")]
+use crate::mock::{record_offline_delivery, validate_credential};
 #[cfg(feature = "mail-smtp")]
 use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;

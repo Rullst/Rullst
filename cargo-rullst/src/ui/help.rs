@@ -66,6 +66,14 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "Scaffold a local IoT telemetry module",
                 ),
                 (
+                    "cargo rullst iot:keygen --out <file>",
+                    "Ed25519 key pair for signing firmware updates",
+                ),
+                (
+                    "cargo rullst iot:sign --key <file> --image <file> ...",
+                    "Signed OTA manifest a rullst-iot device verifies",
+                ),
+                (
                     "cargo rullst make:mail <Name>",
                     "Scaffold Mailable struct & email template",
                 ),

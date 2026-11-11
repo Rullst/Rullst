@@ -24,7 +24,10 @@ async fn the_root_and_module_paths_name_the_same_types() {
     let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
         .await
         .unwrap();
-    assert_eq!(&body[..], b"event: stats\ndata: <p>42</p>\n\n");
+    assert_eq!(
+        &body[..],
+        b"retry: 1000\n\nevent: stats\ndata: <p>42</p>\n\n"
+    );
     assert_eq!(sse.open_connections(), 0);
 }
 
@@ -64,16 +67,21 @@ async fn a_route_streams_published_fragments_until_shutdown() {
         response.headers()[http::header::CONTENT_TYPE],
         "text/event-stream"
     );
-    // The limit of one connection refuses the second stream.
+    // The limit of one connection refuses the second stream: a stream that
+    // only asks the browser to come back in 5-10 seconds, and ends.
     let refused = app.clone().oneshot(request()).await.unwrap();
-    assert_eq!(refused.status(), http::StatusCode::SERVICE_UNAVAILABLE);
-    assert!(refused.headers().contains_key(http::header::RETRY_AFTER));
+    assert_refusal(refused, "connection limit reached").await;
 
+    let mut body = response.into_body().into_data_stream();
+    let retry = futures_util::StreamExt::next(&mut body)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(&retry[..], b"retry: 1000\n\n");
     assert_eq!(
         state.channels.publish("dashboard", "stats", "<p>7</p>"),
         Ok(1)
     );
-    let mut body = response.into_body().into_data_stream();
     let first = futures_util::StreamExt::next(&mut body)
         .await
         .unwrap()
@@ -83,5 +91,25 @@ async fn a_route_streams_published_fragments_until_shutdown() {
     state.sse.shutdown();
     assert!(futures_util::StreamExt::next(&mut body).await.is_none());
     let after = app.oneshot(request()).await.unwrap();
-    assert_eq!(after.status(), http::StatusCode::SERVICE_UNAVAILABLE);
+    assert_refusal(after, "shutting down").await;
+}
+
+/// Checks a refused stream: its comment names `reason`, its `retry:` is
+/// 5-10 seconds, and the body ends there.
+async fn assert_refusal(response: Response, reason: &str) {
+    assert_eq!(response.status(), http::StatusCode::OK);
+    assert_eq!(
+        response.headers()[http::header::CONTENT_TYPE],
+        "text/event-stream"
+    );
+    let body = axum::body::to_bytes(response.into_body(), 1024)
+        .await
+        .unwrap();
+    let text = String::from_utf8(body.to_vec()).unwrap();
+    let retry = text
+        .strip_prefix(&format!(": {reason}\nretry: "))
+        .and_then(|rest| rest.strip_suffix("\n\n"))
+        .unwrap_or_else(|| panic!("unexpected refusal {text:?}"));
+    let retry: u64 = retry.parse().unwrap();
+    assert!((5_000..=10_000).contains(&retry), "{retry}");
 }

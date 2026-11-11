@@ -1,14 +1,46 @@
 //! `no_std` statistical threshold classification for sensor readings.
 
+use core::fmt;
+use serde::{Deserialize, Serialize};
+
 /// Classification result for sensor readings.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+///
+/// It serializes as `"normal"`, `"warning"` or `"critical_anomaly"`, and
+/// displays as `normal`, `warning` or `critical anomaly` (13.0.0-alpha.5).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum AnomalyState {
+    /// Within one tolerance of the expected mean (inclusive).
     Normal,
+    /// More than one and at most two tolerances from the expected mean.
     Warning,
+    /// More than two tolerances from the mean, or a non-finite reading or
+    /// configuration, which fails closed here.
     CriticalAnomaly,
 }
 
+impl AnomalyState {
+    /// The display text: `normal`, `warning` or `critical anomaly`.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Normal => "normal",
+            Self::Warning => "warning",
+            Self::CriticalAnomaly => "critical anomaly",
+        }
+    }
+}
+
+impl fmt::Display for AnomalyState {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
 /// Lightweight statistical anomaly detector.
+///
+/// `Clone`, `Copy`, `Debug` and `PartialEq` since 13.0.0-alpha.5.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AnomalyDetector {
     expected_mean: f64,
     allowed_tolerance: f64,
@@ -50,6 +82,38 @@ impl AnomalyDetector {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn states_display_and_serialize_as_documented() {
+        use alloc::string::ToString;
+        for (state, text, json) in [
+            (AnomalyState::Normal, "normal", "\"normal\""),
+            (AnomalyState::Warning, "warning", "\"warning\""),
+            (
+                AnomalyState::CriticalAnomaly,
+                "critical anomaly",
+                "\"critical_anomaly\"",
+            ),
+        ] {
+            assert_eq!(state.to_string(), text);
+            assert_eq!(state.as_str(), text);
+            assert_eq!(serde_json::to_string(&state).unwrap(), json);
+            assert_eq!(serde_json::from_str::<AnomalyState>(json).unwrap(), state);
+        }
+        assert!(serde_json::from_str::<AnomalyState>("\"critical\"").is_err());
+    }
+
+    #[test]
+    fn detectors_compare_copy_and_debug() {
+        let detector = AnomalyDetector::new(25.0, 5.0);
+        let copy = detector;
+        assert_eq!(copy, detector.clone());
+        assert_ne!(copy, AnomalyDetector::new(25.0, 4.0));
+        assert_eq!(
+            alloc::format!("{detector:?}"),
+            "AnomalyDetector { expected_mean: 25.0, allowed_tolerance: 5.0 }"
+        );
+    }
 
     #[test]
     fn test_anomaly_detection() {

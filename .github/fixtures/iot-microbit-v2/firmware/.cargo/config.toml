@@ -1,0 +1,3 @@
+# Only this directory: the firmware runs on a Cortex-M4F (nRF52833).
+[build]
+target = "thumbv7em-none-eabihf"

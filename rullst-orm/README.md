@@ -797,7 +797,9 @@ write; members of entries that already expired are pruned and not counted, and
 entries cached by earlier versions are not read again and expire by TTL). Raw SQL,
 bulk builders and writes outside generated model methods cannot be inferred, so
 keep a defensive TTL and do not cache authorization or other reads whose
-freshness requires a stronger distributed consistency contract.
+freshness requires a stronger distributed consistency contract. After such a
+write, `query_cache::invalidate_table("users")` drops the table's cached
+reads, and `query_cache::query_key(table, sql, bindings)` names one entry.
 
 Register process-local effects against the managed commit boundary:
 
@@ -847,6 +849,15 @@ to convert a table created by an earlier version, whose key columns used the
 server's case-insensitive default collation. Generated observers are not silently persisted, and an ACK lost
 after the external effect can cause redelivery; see the
 [transactional outbox tutorial](https://rullst.github.io/Rullst/book/tutorials/38-transactional-outbox.html).
+
+### Test helpers (`test-util`)
+
+The non-default `test-util` feature exposes helpers that Rullst's own test
+suites use: `Outbox::claim_next_at` (a claim at a fixed time) and
+`query_cache::model_hash_key` (the Redis key of a stored model hash). They are
+hidden from the API documentation and **outside the 13.x stability promise**:
+they may change or disappear in any release. Enable it only from
+`[dev-dependencies]`.
 
 ---
 

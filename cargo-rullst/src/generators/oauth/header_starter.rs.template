@@ -1,0 +1,27 @@
+//! Sign-in with external identity providers (`cargo rullst make:oauth`):
+//! one module per provider (Google, GitHub, Microsoft, Apple) next to this
+//! shared flow.
+//!
+//! The browser keeps only a random challenge id, in the short-lived
+//! `rullst_oauth_challenge` cookie scoped to `/auth/<provider>`. The OAuth
+//! state, the PKCE verifier and the OpenID Connect nonce stay in the
+//! `rullst_connect_login_challenges` table of the application database
+//! (created on first use), and the callback consumes them exactly once.
+//!
+//! Accounts: a provider identity already linked in `oauth_identities`
+//! (provider + the provider's stable subject) signs in. Otherwise the
+//! provider must report the email address as verified: a new address creates
+//! an account without a password, and an address that already belongs to an
+//! account follows `EXISTING_ACCOUNT_POLICY`. Each provider module documents
+//! what its subject and email are. Sign-in issues the same `rullst_session`
+//! cookie as the password login, carrying the account's session epoch.
+
+pub mod __PROVIDER__;
+
+use crate::controllers::auth_controller::{
+    get_csp_nonce, get_csrf_token, normalize_email, utc_timestamp, valid_email,
+};
+use crate::models::oauth_identity::{self, OAuthIdentity};
+use crate::models::user::User;
+use crate::pages::auth;
+use rullst::auth as rullst_auth;

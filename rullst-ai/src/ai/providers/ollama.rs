@@ -71,7 +71,7 @@ impl OllamaProvider {
             .json(&body)
             .send()
             .await
-            .map_err(|error| AiError::RequestError(error.without_url()))?;
+            .map_err(AiError::request)?;
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
         let text = json["message"]["content"]
@@ -206,7 +206,7 @@ impl AiProvider for OllamaProvider {
             }))
             .send()
             .await
-            .map_err(|error| AiError::RequestError(error.without_url()))?;
+            .map_err(AiError::request)?;
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
         embedding_values(json["embeddings"][0].as_array(), self.provider_name())

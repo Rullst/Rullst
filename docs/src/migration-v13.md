@@ -66,7 +66,7 @@ before that.
 | Studio local access and table view | `LocalStudioAccess::loopback_only()` now accepts an IPv4-mapped loopback peer (`::ffff:127.0.0.1`, reported by a dual-stack `HOST=::` listener) instead of returning 403; other mapped addresses stay rejected. The table view, and the public `get_any_value_as_string`, now report a present value that no text, integer, float or Boolean codec decodes (for example a non-UTF-8 BLOB) as `unreadable` instead of `NULL`, and a stored text `NULL` is no longer styled as SQL NULL. |
 | LMS blueprint | `--blueprint lms` now generates a small starter: catalog, modules, lessons, an accessible player, enrollment, owner-bound progress, login and a Nexus admin. The complete Academy scaffold (schools, roles, quizzes, activities, scores, automation, notifications, publication, privacy lifecycle) and `--lms-modules` were removed; existing generated applications keep their code. Registration no longer generates the school-membership hook, and the learner dashboard no longer claims a default demo school: it points to the course catalog. Since 13.0.0-alpha.4 this starter is the `examples/lms` application instead (see "CLI starters moved to the examples"). |
 | Consumer generators | `make:supervision` was removed with the complete Academy LMS it targeted; integrate `rullst-supervision` directly. `make:privacy` and `make:age-gate` now target only the SaaS starter (`--blueprint saas`, which requires `--tenant-ref`). |
-| `html!` event handlers | A dynamic value in an `on*`, `hx-on` or `hx-on-*` attribute (for example `onclick={handler}`) no longer compiles, because escaping cannot make data safe inside JavaScript. Static handler strings still compile; move data-driven handlers into a nonce'd script with `addEventListener` and pass values through `data-*` attributes. The default CSP already blocked such inline handlers. |
+| `html!` event handlers | A dynamic value in an `on*`, `hx-on` or `hx-on-*` attribute (for example `onclick={handler}`) no longer compiles, because escaping cannot make data safe inside JavaScript. Static handler strings still compile; move data-driven handlers into a nonce'd script with `addEventListener` and pass values through `data-*` attributes. The default CSP already blocked such inline handlers. **Breaking**, from 13.0.0-alpha.5: the same holds for Alpine.js directives (`x-data={state}`, `x-show?={open}`, also `data-x-*`), which Alpine runs as JavaScript, and for the `@*`, `:*` and `hx-on:*` names that alpha.5 accepts; write them as static strings and pass server values through `data-*` attributes (`$el.dataset` in Alpine) or a `<script type="application/json">` data block. `cargo rullst upgrade` reports dynamic `x-*` values (`V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`). |
 | `html!` returns `Markup` | Since 13.0.0-alpha.2, `html!` returns `rullst::html::Markup` (escaped HTML) instead of `String`. Interpolating a `Markup` inserts it as HTML, so a fragment built by another `html!` call is no longer shown as escaped text and needs no `RawHtml`; `String`, `&str` and numbers are still escaped. A function declared `-> String` that returns `html!` no longer compiles: declare it `-> Markup`. `RawHtml(html! { .. })` no longer compiles: interpolate the `Markup` directly. Collect lists with `.collect::<Markup>()` (collecting `Markup` into a `String` does not compile) and use `Option<Markup>` for optional parts. `render_page`/`render_page_with_lang` take `impl Into<Markup>` (wrap a `String` of trusted HTML with `Markup::from_trusted`). A handler can return `Markup` (`text/html; charset=utf-8`), `Html(html! { .. })` still compiles, `Markup` compares with and reads like a `&str`, and `.into_string()` returns the `String`. See [`html!` returns `Markup`](#html-returns-markup). |
 | Core request validation | `ValidatedForm`/`ValidatedJson` return 413 for oversized bodies and 415 for a wrong content type (HTMX requests receive the same code in `X-Rullst-Validation-Status`); other read failures stay 400. Nested errors are keyed `address.zip` and `items[0].name`, and `ValidationError` formatting no longer includes submitted values. Update clients or tests that expected 400 for these cases. |
 | Core feature flags and scheduler | A user outside a declared A/B split now resolves to `"disabled"` instead of falling through to the next driver, and a negative database `rollout_percentage` means 0%. `Scheduler::task` uses POSIX weekday numbering (0 and 7 are Sunday) with the day-of-month OR day-of-week rule in UTC; review numeric weekdays in existing schedules. `RullstConfig::environment()` now reports the environment the Server enforces, including a value read from `.env`. Percentage rollouts and A/B variants of the Env, TOML, Memory and DB drivers use a versioned SHA-256 bucket hash instead of `std`'s `DefaultHasher`, so upgrading reassigns users to buckets once (percentages and variant weights are kept). End experiments whose assignment must not change before upgrading, and keep the period in which 12.x and 13 replicas both serve short, because they assign the same user differently. |
@@ -265,10 +265,21 @@ before that.
 | CLI `--no-database` files | From 13.0.0-alpha.4, `cargo rullst new --no-database` (Blank or API) no longer writes an empty `rullst.db`, and with `--docker` its Dockerfile no longer sets `DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc`; SQLite projects still get both. A database-free project created earlier can delete the empty `rullst.db` and that Dockerfile line. |
 | CLI `make:migration:auto` without a database to compare | From 13.0.0-alpha.4, `cargo rullst make:migration:auto` exits with status 1 and a "No migration generated" report when there is no `.env`, no `DATABASE_URL` (a `--no-database` project), a non-SQLite `DATABASE_URL` or a Turso primary. alpha.3 printed a warning, exited with status 0 and suggested `cargo rullst db:migrate` to "apply the generated migrations" although none was written. A database already in sync with the models still exits with status 0, now without that next step. Scripts that ran it in such projects and relied on status 0 must stop running it there. From 13.0.0-rc.1, `cargo rullst upgrade` reports scripts that run it (`V13-CLI-MIGRATION-AUTO-STATUS`). |
 | `html!` attribute values and `render_page` | From 13.0.0-rc.1, a `"` written in a fixed attribute value (`content="{\"a\":1}"`) comes out as `&quot;` instead of ending the attribute, and an `Option` in `name={value}` raises a `deprecated` warning at the value: `None` writes `name=""`, which still turns `disabled`, `selected` and other boolean attributes on. The output of `name={value}` is unchanged; write `name?={value}` to leave the attribute out for `None`, or `value.unwrap_or_default()` to keep the empty value. A build with `-D warnings` fails until each one is changed. `render_page`, `render_page_with_lang` and `render_page_with_head` answer htmx history restores (`HX-History-Restore-Request: true`) and boosted requests (`HX-Boosted: true`) with the whole page instead of the fragment, and `Server` adds `Vary: HX-Request` to HTML responses. |
-| Internals hidden from the API documentation | From 13.0.0-alpha.4 these items are `#[doc(hidden)]`: they still compile, but they are no longer documented and are not part of the 13.x compatibility promise. Core: `html::optional_attr` (called by `html!`), `rpc::route` and `rpc::handle_request` (called by `#[server_function]`), the `server::dylib_loader` module (the hot-reload loader of `Server`) and the `artisan::runner` module, whose `check_and_run_artisan` stays documented as `artisan::check_and_run_artisan`. ORM: `CURRENT_TX` (use `Orm::transaction`), `tenant::CURRENT_TENANT` (use `with_tenant` and `get_tenant_id`), `schema::QUERY_LOGGING`, `schema::QUERY_TIMEOUT_SECS` and `schema::MAX_QUERY_LIMIT` (use `enable_query_log`, `disable_query_log`, `set_query_timeout`, `set_max_query_limit` and their getters) and `privacy::encrypt_aes_gcm`/`decrypt_aes_gcm`. Auth: the `passkey::cbor` module. Connect: the `impl_standard_redirect_url!` and `impl_standard_refresh_token!` macros, the empty `macros` module and `client::DEFAULT_HTTP_CLIENT`. Security: `current_timestamp_str` and `get_real_rss_memory_mb` (use `rullst_core::radar::get_process_memory_mb`). Nexus: `field_kind_sql` and `generate_smart_nexus_ai_response`. Code that names them keeps compiling; move to the documented replacement, because a later major release may make them private. No other API changes. |
+| Internals hidden from the API documentation | From 13.0.0-alpha.4 these items are `#[doc(hidden)]`: they still compile, but they are no longer documented and are not part of the 13.x compatibility promise. Core: `html::optional_attr` (called by `html!`), `rpc::route` and `rpc::handle_request` (called by `#[server_function]`), the `server::dylib_loader` module (the hot-reload loader of `Server`) and the `artisan::runner` module, whose `check_and_run_artisan` stays documented as `artisan::check_and_run_artisan`. ORM: `CURRENT_TX` (use `Orm::transaction`), `tenant::CURRENT_TENANT` (use `with_tenant` and `get_tenant_id`), `schema::QUERY_LOGGING`, `schema::QUERY_TIMEOUT_SECS` and `schema::MAX_QUERY_LIMIT` (use `enable_query_log`, `disable_query_log`, `set_query_timeout`, `set_max_query_limit` and their getters) and `privacy::encrypt_aes_gcm`/`decrypt_aes_gcm`. Auth: the `passkey::cbor` module. Connect: the `impl_standard_redirect_url!` and `impl_standard_refresh_token!` macros, the empty `macros` module and `client::DEFAULT_HTTP_CLIENT`. Security: `current_timestamp_str` and `get_real_rss_memory_mb` (use `rullst_core::radar::get_process_memory_mb`). Nexus: `field_kind_sql` and `generate_smart_nexus_ai_response`. Code that names them keeps compiling in alpha.4; move to the documented replacement. 13.0.0-alpha.5 makes most of them crate-private (see Hidden internals made private). No other API changes. |
+| Duplicate API paths removed | **Breaking**, from 13.0.0-alpha.5: each item keeps one path. `rullst::rullst_orm` (the same module as `rullst::orm`), `rullst::security_runtime` (the same as `rullst::security::runtime`), Mail's `rullst_mail::mail` module (a second name for the crate root) and `rullst_mail::drivers::mock` (the same as `rullst_mail::mock`) were removed. Write `rullst::orm`, adding `use rullst::orm as rullst_orm;` where the code names `rullst_orm` (as code generated by `#[derive(Orm)]` does), `rullst::security::runtime`, `rullst_mail::…` and `rullst_mail::mock::…`. `cargo rullst upgrade` reports each use (`V13-API-ALIAS-PATHS`). |
+| Hidden internals made private | **Breaking**, from 13.0.0-alpha.5: the internals hidden from the documentation in 13.0.0-alpha.4 that no Rullst macro expansion or other Rullst crate uses are crate-private or removed. Core: the `server::dylib_loader` and `artisan::runner` modules (`artisan::check_and_run_artisan` stays). ORM: `tenant::CURRENT_TENANT`, `schema::QUERY_LOGGING`, `schema::QUERY_TIMEOUT_SECS`, `schema::MAX_QUERY_LIMIT`, `privacy::encrypt_aes_gcm`, `privacy::decrypt_aes_gcm` and `Orm::redis_cache_namespace`. Auth: the `passkey::cbor` module. Connect: the `impl_standard_redirect_url!` and `impl_standard_refresh_token!` macros, the `macros` module (`define_provider!` stays at the crate root), `client::DEFAULT_HTTP_CLIENT`, and the methods of `ChallengeDatabase`, now on its sealed supertrait. Security: `current_timestamp_str`; `get_real_rss_memory_mb` was removed (use `rullst_core::radar::get_process_memory_mb`). Nexus: `generate_smart_nexus_ai_response`; `field_kind_sql` was removed. `Outbox::claim_next_at` and `query_cache::model_hash_key` need the new non-default `test-util` feature of `rullst-orm`, for test suites only and outside the 13.x stability promise; `query_cache::query_key` and `query_cache::invalidate_table` are now documented API. The other `#[doc(hidden)]` items stay public because macro expansions (`html!`, `#[server_function]`, `catalog!`/`t!`, `#[memoize]`, `assert_html_snapshot!`, `#[derive(Orm)]`, `#[derive(Enum)]`, `#[derive(TursoModel)]`, `#[rullst_orm::test]`) or other Rullst crates call them; they are not part of the 13.x compatibility promise. `cargo rullst upgrade` reports the names (`V13-HIDDEN-INTERNALS-PRIVATE`). |
+| Security store collections | **Breaking**, from 13.0.0-alpha.5: the `banned_ips`, `honeypot_route_hits` and `live_events` fields of `rullst_security::SecurityStore` are private, so `dashmap` and the event `Mutex` are no longer part of its API. Read them with `active_bans()` (active bans sorted by IP, expired ones pruned first), `is_banned(ip)`, `honeypot_route_hits()` (`(route, hits)` sorted by route) and `live_events()` (newest first, at most 50), which return copies. The counter fields stay public. Nexus renders its security page from these methods. Likewise `deception::global_deception_routes()` returns the new `DeceptionRoutes` (`contains`, `len`, `is_empty`, `routes()`; paths are added with `try_register_deception_trap`), `deception::default_deception_traps()` returns a sorted `Vec<String>`, and `rate_limit::global_rate_limit_store()` is private (use `is_rate_limited` or a `RateLimiter`), so `dashmap` is no longer a public dependency. `cargo rullst upgrade` reports field accesses in files that name `SecurityStore` (`V13-SECURITY-STORE-COLLECTIONS`) and the three functions (`V13-SECURITY-GLOBAL-COLLECTIONS`). |
+| Connect JWKS key sets | **Breaking**, from 13.0.0-alpha.5: `JwksCache::get`, `JwksCache::get_for_kid`, `fetch_and_cache_jwks` and `fetch_and_cache_jwks_for_kid` return the new `JsonWebKeySet` instead of `jsonwebtoken`'s `JwkSet`, so `jsonwebtoken` is no longer a public dependency. It has `key_ids()`, `contains_key_id(kid)`, `len()` and `is_empty()`; the providers verify ID tokens with it as before. The deprecated `JWKS_CACHE` static (unused by verification since 12.0) was removed: own a `JwksCache`. `cargo rullst upgrade` reports these names (`V13-CONNECT-JWKS-KEY-SET`). |
+| Rullst-owned error payloads | **Breaking**, from 13.0.0-alpha.5: no public error variant or `From` conversion names a `reqwest`, `jsonwebtoken`, `base64`, `redis` or `serde_json` error. `AiError::RequestError` carries `AiRequestError` (`is_timeout()`, `is_connect()`) and `AiError::SerializationError` carries `AiJsonError`; `ClientContractError::InvalidJson` and `EncodeJson` carry `ContractJsonError`; `TwinSyncError::Serialization` carries `TwinJsonError`, and `TwinSyncError` is now `#[non_exhaustive]` and implements `Error`. Each keeps the library error's message as `Display` and its causes as `source()`, so the texts are unchanged. `ConnectError` no longer implements `From` for `reqwest::Error`, `serde_json::Error`, `base64::DecodeError` or `jsonwebtoken::errors::Error`, and `rullst_orm::Error` no longer implements `From` for `serde_json::Error` or `redis::RedisError`: code that used `?` on those errors maps them, for example `.map_err(\|error\| Error::SerializationError(error.to_string()))` or `Error::CacheError(...)`; the variants and messages the crates produce are unchanged. `cargo rullst upgrade` reports the changed variants (`V13-ERROR-PAYLOADS`); the `?` conversions surface as compile errors. |
+| AI provider HTTP errors | **Breaking**, from 13.0.0-alpha.5: an unsuccessful HTTP status from a provider returns the new `AiError::HttpStatus(AiHttpError)` instead of `AiError::ApiError`, from every built-in provider and streaming transport. `AiHttpError` has `status()` (the code as a number), `retry_after()` (the `Retry-After` header in seconds or Gemini's `RetryInfo` delay), `code()` and `message()` (the provider's error code and its one-line message from the body, at most 300 characters, with URL queries and key-shaped tokens redacted) and `provider()`; `AiHttpError::new` and its `with_*` methods build one in a custom provider or a test. The text is unchanged: `API error: <Provider> returned HTTP <code> <reason>`, then `: <code>: <message>` when the body has one. `ApiError` still reports malformed or incomplete replies. `cargo rullst upgrade` reports `AiError::ApiError` matches (`V13-AI-HTTP-STATUS`). |
 | Wasm islands removed | **Breaking**, from 13.0.0-alpha.5: the `#[island]` attribute (`rullst::island`), `cargo rullst make:island`, `cargo rullst build:client` (the wasm-bindgen client build that wrote `static/rullst-islands.js`), the Blank starter's `src/islands/` and the `wasm32` `wasm-bindgen`/`web-sys` dependencies new projects declared were removed, with the doctor's Wasm-target check. Besides non-use, the default Content Security Policy has no `'wasm-unsafe-eval'`, which browsers require to compile WebAssembly, so islands could not run under Rullst's default headers. Code with `#[island]` no longer compiles: render the markup on the server with `html!`, send interaction to the server with htmx and use native HTML (`<dialog>`, `popover`, `<details>`) or a small same-origin script with the request's CSP nonce for client-only behaviour. `make:island` and `build:client` print this and exit with status 1. `#[server_function]` and its `wasm32` caller, `rullst::edge` and the `wasm32` builds of the crates are unchanged. |
-| Live components removed | **Breaking**, from 13.0.0-alpha.5: `rullst::live` was removed: the `LiveComponent` trait, `Live::mount`, `live_ws_handler`, the `#[live_component]` and `#[live_event]` attributes, `cargo rullst make:live` and the `live::recovery` API (`LiveRecovery`, `LiveRecoveryConfig`, `RecoverableLiveView`, `LiveScope`, `LiveSnapshot`, `LiveCommand`, `LiveResult`, `LiveRecoveryError`, `LIVE_RECOVERY_MODULE`) with its browser module. The legacy WebSocket protocol had no origin check, connection cap or idle timeout. Handle events as ordinary routes that return HTML fragments for htmx, and push server updates with Server-Sent Events: the new `rullst::realtime::RealtimeSse` (with `RealtimeSseConfig`) turns a `BroadcastManager` channel or a `TenantRealtime` subscription into a bounded `text/event-stream` response (keep-alive comments, a shared connection limit answered with `503` and `Retry-After`, a maximum connection lifetime, a 64 KiB event bound and `shutdown()` for the graceful drain), and HTML scaffolds ship the htmx 1.9.12 SSE extension as `static/htmx-ext-sse-1.9.12.js` (`hx-ext="sse"`, `sse-connect`, `sse-swap`). `make:live` prints this and exits with status 1. `BroadcastManager`, `PresenceTracker`, the tenant facades and `rullst::ws` are unchanged. See [Tutorial 34](tutorials/34-realtime-dashboard-sse.md). |
+| Live components removed | **Breaking**, from 13.0.0-alpha.5: `rullst::live` was removed: the `LiveComponent` trait, `Live::mount`, `live_ws_handler`, the `#[live_component]` and `#[live_event]` attributes, `cargo rullst make:live` and the `live::recovery` API (`LiveRecovery`, `LiveRecoveryConfig`, `RecoverableLiveView`, `LiveScope`, `LiveSnapshot`, `LiveCommand`, `LiveResult`, `LiveRecoveryError`, `LIVE_RECOVERY_MODULE`) with its browser module. The legacy WebSocket protocol had no origin check, connection cap or idle timeout. Handle events as ordinary routes that return HTML fragments for htmx, and push server updates with Server-Sent Events: the new `rullst::realtime::RealtimeSse` (with `RealtimeSseConfig`) turns a `BroadcastManager` channel or a `TenantRealtime` subscription into a bounded `text/event-stream` response (a `retry:` reconnect delay, keep-alive comments, a shared connection limit whose refused requests receive a stream that only asks the browser to return in 5–10 s, a maximum connection lifetime, a 64 KiB event bound and `shutdown()` for the graceful drain), and HTML scaffolds ship the htmx 1.9.12 SSE extension as `static/htmx-ext-sse-1.9.12.js` (`hx-ext="sse"`, `sse-connect`, `sse-swap`). `make:live` prints this and exits with status 1. `BroadcastManager`, `PresenceTracker`, the tenant facades and `rullst::ws` are unchanged. See [Tutorial 34](tutorials/34-realtime-dashboard-sse.md). |
 | Billing generator on Turso projects | **Breaking**, from 13.0.0-alpha.5: `cargo rullst make:billing` generates the SQLx billing scaffold only. In a Turso-primary project it now refuses before writing anything, because billing needs the SQLx database layer (SQLite, PostgreSQL, MySQL or MariaDB); Turso remains the primary database of the Blank and API starters only. Billing code generated by earlier releases in a Turso project is the application's and keeps compiling against the Turso adapter. |
+| IoT OTA manager state | **Breaking**, from 13.0.0-alpha.5 (Experimental `rullst-iot`, announced in 13.0.0-alpha.4): `OtaManager`'s fields `current_partition`, `status` and `firmware_version` are private. Read them with the methods of the same names, `ota.current_partition()`, `ota.status()` and `ota.firmware_version()`. Code that assigned `current_partition` after `new_with_trusted_key` or `new_with_counter_store` writes `ota = ota.with_running_partition(bank)` before verifying an update (or builds the manager with `new_with_running_partition`); the new method also discards an update verified for the other bank. `cargo rullst upgrade` reports the three field accesses in files that name `OtaManager` (`V13-IOT-OTA-STATE`). |
+| IoT encoder errors | **Breaking**, from 13.0.0-alpha.5 (Experimental `rullst-iot`): `MqttCodecError` and `CoapCodecError` are `#[non_exhaustive]` and gain `AllocationFailed`, which `MqttPublish::encode`, `CoapRequest::encode` and `CoapRequest::path_segment` return when the allocator refuses their buffer (on a device, a packet larger than the free heap); earlier releases aborted the program. A `match` on either enum outside `rullst-iot` needs a wildcard arm. `OtaError`, already `#[non_exhaustive]`, gains `AllocationFailed` for `OtaManifest::signing_bytes` and `OtaManager::verify_update`, and `MalformedManifest` for the new `OtaManifest::from_signing_bytes`. `verify_update` now runs the new streaming path (`OtaManager::begin_update` and `OtaImageVerifier`), which checks the signature before the image's length and digest: a malformed or invalid signature is reported before `FirmwareLengthMismatch` or `FirmwareHashMismatch`, and a manifest changed after signing is `SignatureInvalid`. A device can now build the manifest from received fields with `OtaManifest::new` or `from_signing_bytes` instead of `from_firmware`, which hashes the image a second time. `cargo rullst upgrade` reports each `match` on the two codec errors that has no catch-all arm (`V13-IOT-CODEC-ERROR-MATCH`). |
+| IoT sensor card HTML | **Breaking**, from 13.0.0-alpha.5 (Experimental `rullst-iot`): `IotDashboard::render_sensor_card` returns the new `IotHtml` (escaped HTML that reads like a `&str`) instead of a `String`, and shows the reading with at most two decimals, in scientific notation outside 0.01 to 10^9 and as `n/a` when it is not finite, instead of the full `f64` text (`0.30000000000000004` is now `0.3`). Code that needs a `String` calls `.into_string()`; a Rullst view inserts the card with `Markup::from_trusted(card.into_string())`, since `rullst-iot` escaped its text. `cargo rullst upgrade` reports each file that calls it (`V13-IOT-SENSOR-CARD-HTML`). |
+| Studio `local` feature | **Breaking**, from 13.0.0-alpha.5, only for a direct `rullst-studio` dependency with `default-features = false` and none of `drivers-all`, `strict-sqlite`, `strict-postgres` or `strict-mysql`: the local Studio (`Studio`, `run_studio` and its page modules) is the new `local` feature, which each of those and the facade's `studio` feature enable, so add `features = ["local"]`. `cargo install rullst-studio --no-default-features --features remote` builds the remote Studio without the ORM, Capital and Security crates. |
+| Access-log paths | From 13.0.0-alpha.5, in staging and production the `[HTTP] METHOD path -> status` line of `Server` shows the route that matched (`GET /booking/{token} -> 200`) instead of the request path, and a request that matched no route its path cut to 128 bytes with bytes outside visible ASCII written `%XX`; development and test are unchanged. Log parsers or alerts that match concrete production paths set `[app] access_log_paths = "full"` in `Rullst.toml` or call `Server::access_log_paths(AccessLogPaths::Full)`; `"route"` uses templates everywhere. |
 | Capital invoice minor units | **Breaking**, from 13.0.0-alpha.5: Capital's `Invoice` and `InvoiceItem` hold integer amounts in the currency's smallest unit, like `ChargeReceipt`, instead of `f64`. `InvoiceItem::amount: f64` became `amount_minor: u64` and `Invoice::total: f64` was removed: the total is the checked sum of the items (`total_minor()`, at most 99,999,999). Both structs are `#[non_exhaustive]`: build them with `Invoice::new(invoice_id, customer_email, date, currency)` and `.with_item(description, amount_minor)` (or `InvoiceItem::new`), so 49.90 BRL is `4_990`. The serialized form changes the same way (`amount_minor`, no `total`, an optional `labels` object), so invoice JSON stored by alpha.4 no longer decodes. The HTML and PDF print the new `labels` field: English by default (the same words, now with `<html lang="en">`, the currency code in capitals and a "Description \| Amount" line in the PDF), `with_locale(InvoiceLocale::PtBr)` or `InvoiceLocale::Es` for "Recibo" wording (Capital issues no tax invoice), or edited `InvoiceLabels`. `PaidInvoiceDelivery` takes its subject and PDF name from the title label (`Recibo INV-1`, `recibo-<key>.pdf`) and accepts `subject(...)` and `filename(...)`. `cargo rullst upgrade` reports each struct literal with the old fields (`V13-CAPITAL-INVOICE-MINOR-UNITS`). |
 | Mail Reply-To | From 13.0.0-alpha.5, `rullst_mail::Message` has a `reply_to: Option<String>` field and a `reply_to(...)` builder. The delivery pipeline validates it like `from` (no CR/LF, one mailbox, display names allowed), and the Resend, SendPulse, AWS SES (native and proxy) and SMTP drivers send it; the offline mock and memory drivers keep it. **Breaking** only for a struct literal that lists every field without `..`: add `reply_to: None`, or build the message with `Message::new()` and its builders. Messages serialized without it (queued jobs) still decode, and the field is left out of the serialized form when empty. `cargo rullst upgrade` reports such literals (`V13-MAIL-MESSAGE-REPLY-TO`). |
 | Capital InfinitePay adapter | From 13.0.0-alpha.5, `InfinitePayProvider::checkout(handle)` (with `with_api_key("inchk_…")` and `with_webhook_url(...)`) works against InfinitePay's public Checkout API: `create_one_off_checkout` creates a link with `POST /links`, the unsigned webhook is read with `parse_payment_notification`, and `confirm_one_off_payment` calls `POST /payment_check` and reports a payment only when InfinitePay confirms it with the server-side amount. The alpha.4 constructor `new(api_key, webhook_secret)` still compiles: it has no handle, keeps its offline fixtures with `mock_*` credentials and refuses live operations, and its `webhook_verification_mode()` returns the new `ConfirmedAtSource` instead of `Real` for a non-mock secret. `create_customer_portal` and `cancel_subscription` return `UnsupportedOperation` even with `mock_*` credentials, because InfinitePay has no portal or subscriptions. |
@@ -586,13 +597,22 @@ documentation. Work through the steps in order.
 
 This checklist moves an application from 13.0.0-alpha.4 to 13.0.0-alpha.5,
 the 13.0 feature and public API freeze. The rows above that name alpha.5 are
-the changes in between. alpha.5 makes 13.0 smaller before the freeze: it
-removes the Wasm islands, the Live components (including `live::recovery`) and
-the Turso variant of `make:billing`, and adds Server-Sent Events for server
-push (`RealtimeSse`). In Capital, invoices hold integer minor units and print
-localized labels, a provider-neutral one-off checkout confirms payments at the
-source, and the InfinitePay adapter works against InfinitePay's Checkout API;
-Mail messages gain `Reply-To`. Work through the steps in order.
+the changes in between. alpha.5 makes 13.0 smaller: it removes the Wasm
+islands, the Live components (including `live::recovery`) and the Turso
+variant of `make:billing`, and adds Server-Sent Events for server push
+(`RealtimeSse`). It also makes `OtaManager`'s state fields private and the
+IoT codec errors `#[non_exhaustive]`, rejects
+dynamic Alpine.js directive values in `html!`, moves the local Studio behind
+`rullst-studio`'s `local` feature and writes route templates instead of
+request paths in the staging and production access log. And it cleans up the
+public API before it is frozen for 13.x: one path per item, internals made
+crate-private, private Security collections, error and key-set types that
+name no third-party type, and a typed HTTP status error in `rullst-ai`.
+In Capital, invoices hold integer minor units and print localized
+labels, a provider-neutral one-off checkout confirms payments at the source and
+the InfinitePay adapter works against InfinitePay's Checkout API; Mail messages
+gain `Reply-To`. Applications that use none of them only change versions. Work through the
+steps in order.
 
 1. **Prepare.** Work on a branch with a clean tree and a committed
    `Cargo.lock`, record the current `cargo test` result, and back up every
@@ -608,25 +628,52 @@ Mail messages gain `Reply-To`. Work through the steps in order.
      `#[live_event]` attribute, or a `rullst::live` path (`LiveComponent`,
      `Live::mount`, `live_ws_handler`, `live::recovery`), also inside `html!`
      and `routes!`.
+   - `V13-API-ALIAS-PATHS` (`MUST-CHANGE`, step 7): `rullst::rullst_orm`,
+     `rullst::security_runtime`, `rullst_mail::mail` or
+     `rullst_mail::drivers::mock`, in a path or a `use` tree.
+   - `V13-HIDDEN-INTERNALS-PRIVATE` (`REVIEW`, step 8): a name of an
+     internal that alpha.5 made crate-private or removed.
+   - `V13-SECURITY-STORE-COLLECTIONS` (`REVIEW`, step 8): `.banned_ips`,
+     `.honeypot_route_hits` or `.live_events` in a file that names
+     `SecurityStore`.
+   - `V13-SECURITY-GLOBAL-COLLECTIONS` (`REVIEW`, step 8):
+     `global_deception_routes`, `default_deception_traps` or
+     `global_rate_limit_store`.
+   - `V13-CONNECT-JWKS-KEY-SET` (`REVIEW`, step 8): `JWKS_CACHE`,
+     `JwksCache`, `fetch_and_cache_jwks` or `fetch_and_cache_jwks_for_kid`.
+   - `V13-ERROR-PAYLOADS` (`REVIEW`, step 9): `AiError::RequestError`,
+     `AiError::SerializationError`, `ClientContractError::InvalidJson`,
+     `ClientContractError::EncodeJson` or `TwinSyncError::Serialization`.
+   - `V13-AI-HTTP-STATUS` (`REVIEW`, step 10): `AiError::ApiError`.
    - `V13-ISLAND-COMMANDS-REMOVED` and `V13-LIVE-COMMAND-REMOVED` (`REVIEW`,
-     step 11): workflows, root scripts, Makefile and justfile that run
+     step 16): workflows, root scripts, Makefile and justfile that run
      `make:island`, `build:client` or `make:live`.
-   - `V13-CAPITAL-INVOICE-MINOR-UNITS` (`MUST-CHANGE`, step 7): an
+   - `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE` (`MUST-CHANGE`, step 12): a dynamic
+     value in an `x-*` attribute of `html!` (`x-data={state}`).
+   - `V13-IOT-OTA-STATE` (`REVIEW`, step 12): `.current_partition`, `.status`
+     or `.firmware_version` in a file that names `OtaManager`.
+   - `V13-IOT-CODEC-ERROR-MATCH` (`MUST-CHANGE`, step 12): a `match` on
+     `MqttCodecError` or `CoapCodecError` without a wildcard arm.
+   - `V13-IOT-SENSOR-CARD-HTML` (`REVIEW`, step 12): a call of
+     `IotDashboard::render_sensor_card`.
+   - `V13-CAPITAL-INVOICE-MINOR-UNITS` (`MUST-CHANGE`, step 13): an
      `Invoice { .. total .. }` or `InvoiceItem { .. amount .. }` literal in a
      file that names Capital.
-   - `V13-MAIL-MESSAGE-REPLY-TO` (`MUST-CHANGE`, step 8): a `Message { .. }`
+   - `V13-MAIL-MESSAGE-REPLY-TO` (`MUST-CHANGE`, step 14): a `Message { .. }`
      literal that lists every field without `..`.
 
    The rules added in 13.0.0-rc.1 for alpha.4 changes (see the
    [alpha.3 to alpha.4 checklist](#upgrading-an-alpha3-application-to-alpha4))
-   also apply to an alpha.4 application.
-4. **Apply, keeping a failed state.** Code that uses the removed or changed
-   APIs does not compile against alpha.5. Run
-   `cargo rullst upgrade --keep-on-failure`: it pins every Rullst dependency
-   to `=13.0.0-alpha.5`, runs `cargo fix` and `cargo check --locked`, and,
-   when they fail, keeps the edited files and names the must-change findings.
-   Fix what steps 5 to 8 name. Without a `MUST-CHANGE` finding, a plain
-   `cargo rullst upgrade` is enough; go on with step 9.
+   also apply to an alpha.4 application. The review rules for private or
+   changed APIs name code that no longer compiles, so a failed check repeats
+   their guidance.
+4. **Apply, keeping a failed state.** Code that uses the removed APIs does not
+   compile against alpha.5. Run `cargo rullst upgrade --keep-on-failure`: it
+   pins every Rullst dependency to `=13.0.0-alpha.5`, runs `cargo fix` and
+   `cargo check --locked`, and, when they fail, keeps the edited files and
+   names the must-change findings. Fix what steps 5 to 14 name; without a
+   `MUST-CHANGE` finding, a plain `cargo rullst upgrade` is enough, and the
+   review findings of steps 8 to 12 still need a look.
 5. **Replace the islands.** Remove `#[island]` and render the component with
    `html!` on the server. Move interaction that needs the server to htmx
    (`hx-get`, `hx-post`, `hx-target`, `hx-swap`); use native HTML
@@ -656,7 +703,9 @@ Mail messages gain `Reply-To`. Work through the steps in order.
      `sse-swap="stats"` on the element an event named `stats` replaces. A
      project created before alpha.5 copies the extension from a new project's
      `static/` (or `cargo-rullst/src/blueprints/assets/` in the repository;
-     its SHA-256 is in the README beside it). Call `RealtimeSse::shutdown()`
+     its SHA-256 is in the README beside it). It is a patched copy of htmx
+     1.9.12's `dist/ext/sse.js` whose reconnect backoff grows, so do not
+     replace it with the upstream file. Call `RealtimeSse::shutdown()`
      in the future passed to `Server::run_with_shutdown`, so that open
      streams do not hold the graceful drain.
    - Remove the WebSocket route, `src/live/`, the `htmx-ext-ws` script and,
@@ -664,56 +713,119 @@ Mail messages gain `Reply-To`. Work through the steps in order.
 
    [Tutorial 34](tutorials/34-realtime-dashboard-sse.md) builds a complete
    dashboard this way.
-7. **Move invoices to minor units** (Capital invoice minor units row).
-   Replace each literal with the constructors, converting every amount to the
-   currency's smallest unit:
+7. **Use the one path of each item** (Duplicate API paths removed row):
+   `rullst::rullst_orm::…` becomes `rullst::orm::…` (with
+   `use rullst::orm as rullst_orm;` where code names `rullst_orm`),
+   `rullst::security_runtime::…` becomes `rullst::security::runtime::…`,
+   `rullst_mail::mail::…` becomes `rullst_mail::…` and
+   `rullst_mail::drivers::mock::…` becomes `rullst_mail::mock::…`.
+8. **Replace the private internals and store fields** (Hidden internals made
+   private and Security store collections rows): use `Orm::transaction`,
+   `with_tenant`/`get_tenant_id`, the `schema` query-log, timeout and limit
+   setters and getters, `artisan::check_and_run_artisan` and
+   `rullst_core::radar::get_process_memory_mb`. For the security store,
+   `store.live_events.lock()` becomes `store.live_events()`,
+   `store.banned_ips.iter()` becomes `store.active_bans()`,
+   `store.banned_ips.contains_key(ip)` becomes `store.is_banned(ip)` and
+   `store.honeypot_route_hits.iter()` becomes `store.honeypot_route_hits()`.
+   `global_deception_routes().contains(path)` and `.len()` keep compiling;
+   iterate `routes()` instead of the set and add paths with
+   `try_register_deception_trap`. Code that read the JWKS key set uses
+   `key_ids()` or `contains_key_id(kid)`, and code that used `JWKS_CACHE`
+   owns a `JwksCache`. Tests that called `Outbox::claim_next_at` or
+   `query_cache::model_hash_key` enable `rullst-orm`'s `test-util` feature
+   in `[dev-dependencies]`.
+   The Connect provider macros, `DEFAULT_HTTP_CLIENT`, `passkey::cbor`,
+   `encrypt_aes_gcm`/`decrypt_aes_gcm` and the Nexus helpers have no public
+   replacement: copy what you need.
+9. **Adapt to the Rullst error payloads** (Rullst-owned error payloads row).
+   Code that read the `reqwest::Error` of `AiError::RequestError` calls
+   `is_timeout()` or `is_connect()` on the `AiRequestError`, and other
+   payloads are read through `Display` and `source()`. Add a `_` arm to an
+   exhaustive `match` on `TwinSyncError`. Where `?` turned a `serde_json` or
+   `redis` error into `rullst_orm::Error` (in an observer, a hook or your
+   own query code), or a `reqwest`, `serde_json`, `base64` or `jsonwebtoken`
+   error into `ConnectError`, map it explicitly:
+   `.map_err(|error| rullst_orm::Error::SerializationError(error.to_string()))?`
+   or `Error::CacheError(...)`. No rule locates these `?` conversions; the
+   compiler names them.
+10. **Use the typed AI HTTP errors** (AI provider HTTP errors row). Replace
+    text searches such as `message.contains("429")` with
+    `AiError::HttpStatus(error)` and `error.status()`; wait
+    `error.retry_after()` before retrying, and show `error.message()` (the
+    provider's own reason, for example why a model is unavailable). Arms that
+    matched `AiError::ApiError` for HTTP failures no longer see them.
+11. **Billing in a Turso project.** `make:billing` now refuses a Turso-primary
+    project. Billing code an earlier CLI generated there stays and keeps
+    working; to generate it again, move the application to a SQLx database
+    (SQLite, PostgreSQL, MySQL or MariaDB) first.
+12. **Alpine.js values, IoT OTA state and errors, Studio and access-log paths.**
+    - Write `x-*` directives as static strings and pass server values through
+      a `data-*` attribute (`data-count={count}`, read as
+      `$el.dataset.count`) or a `<script type="application/json">` data block
+      (`html!` event handlers row).
+    - Read `ota.current_partition()`, `ota.status()` and
+      `ota.firmware_version()`; replace `ota.current_partition = bank` with
+      `ota = ota.with_running_partition(bank)` (IoT OTA manager state row).
+    - Give each `match` on `MqttCodecError` or `CoapCodecError` a `_ =>` arm,
+      and treat `AllocationFailed` as running out of memory rather than as
+      invalid input: the same packet encodes once memory is free (IoT encoder
+      errors row).
+    - Call `.into_string()` on the `IotHtml` of `render_sensor_card` where a
+      `String` is needed, or insert it with
+      `Markup::from_trusted(card.into_string())` (IoT sensor card HTML row).
+    - A direct `rullst-studio` dependency with `default-features = false` and
+      no driver profile adds `features = ["local"]` (Studio `local` feature
+      row).
+    - Log parsers that match concrete production request paths set
+      `[app] access_log_paths = "full"` in `Rullst.toml` (Access-log paths
+      row).
+13. **Move invoices to minor units** (Capital invoice minor units row).
+    Replace each literal with the constructors, converting every amount to the
+    currency's smallest unit:
 
-   ```rust,ignore
-   // alpha.4
-   let invoice = Invoice {
-       invoice_id: "INV-42".into(),
-       customer_email: "owner@example.com".into(),
-       date: Utc::now(),
-       items: vec![InvoiceItem { description: "Plan".into(), amount: 49.90 }],
-       total: 49.90,
-       currency: "BRL".into(),
-   };
-   // alpha.5
-   let invoice = Invoice::new("INV-42", "owner@example.com", Utc::now(), "BRL")
-       .with_item("Plan", 4_990)
-       .with_locale(InvoiceLocale::PtBr); // optional: "Recibo" labels
-   ```
+    ```rust,ignore
+    // alpha.4
+    let invoice = Invoice {
+        invoice_id: "INV-42".into(),
+        customer_email: "owner@example.com".into(),
+        date: Utc::now(),
+        items: vec![InvoiceItem { description: "Plan".into(), amount: 49.90 }],
+        total: 49.90,
+        currency: "BRL".into(),
+    };
+    // alpha.5
+    let invoice = Invoice::new("INV-42", "owner@example.com", Utc::now(), "BRL")
+        .with_item("Plan", 4_990)
+        .with_locale(InvoiceLocale::PtBr); // optional: "Recibo" labels
+    ```
 
-   Read `item.amount_minor` instead of `item.amount` and `total_minor()`
-   instead of `total`. Invoices stored as alpha.4 JSON need a one-off
-   conversion (multiply each amount by the currency's minor-unit factor and
-   drop `total`). A `PaidInvoiceDelivery` for a Portuguese or Spanish invoice
-   is now titled `Recibo …`; set `subject(...)` or `filename(...)` to keep
-   another wording.
-8. **Add `reply_to` to exhaustive `Message` literals** (Mail Reply-To row):
-   write `reply_to: None`, or build the message with `Message::new()` and its
-   builders. Use `.reply_to(visitor_email)` where replies should reach someone
-   other than the sender.
-9. **Billing in a Turso project.** `make:billing` now refuses a Turso-primary
-   project. Billing code an earlier CLI generated there stays and keeps
-   working; to generate it again, move the application to a SQLx database
-   (SQLite, PostgreSQL, MySQL or MariaDB) first.
-10. **Review Capital's new one-off checkout and InfinitePay** (Capital
-   InfinitePay adapter and Capital one-off checkout rows). An application that
-   implemented InfinitePay itself can move to
-   `InfinitePayProvider::checkout(handle)` with `create_one_off_checkout`,
-   `parse_payment_notification` and `confirm_one_off_payment`; mark a charge
-   paid only when `OneOffPayment::is_paid()` is true. Tests that expected an
-   InfinitePay mock portal URL or a successful mock cancellation now get
-   `UnsupportedOperation`. A Stripe development setup that passed the
-   `https://` form of a local URL to a `mock_*` key can pass
-   `http://localhost:…` again.
-11. **Update scripts, CI and other tools.** Remove the `make:island`,
-   `build:client` and `make:live` steps the review rules name; the commands
-   exit with status 1 and print what replaces them.
-12. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
-   edits and checks the result with `cargo fix` and `cargo check --locked`.
-13. **Verify** with the production feature set: `cargo build`, `cargo test`
+    Read `item.amount_minor` instead of `item.amount` and `total_minor()`
+    instead of `total`. Invoices stored as alpha.4 JSON need a one-off
+    conversion (multiply each amount by the currency's minor-unit factor and
+    drop `total`). A `PaidInvoiceDelivery` for a Portuguese or Spanish invoice
+    is now titled `Recibo …`; set `subject(...)` or `filename(...)` to keep
+    another wording.
+14. **Add `reply_to` to exhaustive `Message` literals** (Mail Reply-To row):
+    write `reply_to: None`, or build the message with `Message::new()` and its
+    builders. Use `.reply_to(visitor_email)` where replies should reach someone
+    other than the sender.
+15. **Review Capital's new one-off checkout and InfinitePay** (Capital
+    InfinitePay adapter and Capital one-off checkout rows). An application that
+    implemented InfinitePay itself can move to
+    `InfinitePayProvider::checkout(handle)` with `create_one_off_checkout`,
+    `parse_payment_notification` and `confirm_one_off_payment`; mark a charge
+    paid only when `OneOffPayment::is_paid()` is true. Tests that expected an
+    InfinitePay mock portal URL or a successful mock cancellation now get
+    `UnsupportedOperation`. A Stripe development setup that passed the
+    `https://` form of a local URL to a `mock_*` key can pass
+    `http://localhost:…` again.
+16. **Update scripts, CI and other tools.** Remove the `make:island`,
+    `build:client` and `make:live` steps the review rules name; the commands
+    exit with status 1 and print what replaces them.
+17. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
+    edits and checks the result with `cargo fix` and `cargo check --locked`.
+18. **Verify** with the production feature set: `cargo build`, `cargo test`
     and `cargo clippy --all-targets -- -D warnings`; then, on staging, every
     page that used an island or a Live component, with the browser's
     developer console open to catch CSP violations, before production.

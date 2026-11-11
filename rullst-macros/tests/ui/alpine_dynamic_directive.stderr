@@ -1,0 +1,5 @@
+error: dynamic `x-data` values are not allowed in html!: event-handler attributes and Alpine.js directives run their value as JavaScript, which HTML escaping cannot make safe; use a static handler string, or attach the listener from a nonce'd script and pass data through a `data-*` attribute
+ --> tests/ui/alpine_dynamic_directive.rs:6:14
+  |
+6 |         <div x-data={state} @click="open = !open"></div>
+  |              ^

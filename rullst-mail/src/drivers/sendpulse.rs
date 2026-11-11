@@ -1,5 +1,6 @@
 //! SendPulse SMTP REST API with a static API key (Bearer authentication).
-use super::{DeliveryMode, credential_mode, mock, rest};
+use super::{DeliveryMode, credential_mode, rest};
+use crate::mock;
 use crate::{DeliveryPipeline, MailDriver, MailError, Message};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use secrecy::{ExposeSecret, SecretString};
