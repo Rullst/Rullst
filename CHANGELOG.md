@@ -561,6 +561,17 @@ describes each replacement.
 
 ### Fixed
 
+- The Turso-primary Blank and API starters (`cargo rullst new --database
+  turso`) could not use a local libSQL server: `turso dev` and `sqld` serve
+  plain HTTP (for example `http://127.0.0.1:8080`), which `TursoConfig`
+  refuses without `allow_insecure_loopback()`, and a `libsql://` URL is sent
+  over HTTPS, so `db:migrate`, `db:status` and the server stopped with
+  "plain HTTP is limited to explicitly enabled loopback". The generated
+  `main.rs` now calls `allow_insecure_loopback()`, which accepts `http://`
+  only for `localhost` and loopback addresses; remote endpoints still need
+  `libsql://` or HTTPS. Existing projects can add the same call after
+  `with_offline_path(...)?`. Found by acceptance testing against `sqld`
+  0.24.32.
 - `rullst-iot`: `MqttPublish::encode` aborted the program when the allocator
   could not provide the packet buffer, which on a BBC micro:bit V2 with a
   32 KiB heap happened for a 20 KiB payload; it and `CoapRequest::encode`,
