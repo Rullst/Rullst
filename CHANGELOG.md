@@ -11,6 +11,23 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- `rullst-supervision` (Experimental): `PresenceObservation::Obscured`
+  (`camera_obscured`) reports a covered, dark or blocked camera view, and
+  `MediaSample::luminance(LuminanceStatistics::new(mean, standard_deviation,
+  samples)?)` (`SampleFormat::LuminanceStatistics`) gives a camera-presence
+  adapter a frame's brightness statistics with no image, so the browser can
+  send numbers instead of a frame. SQLite stores created from this release
+  accept the new observation; an older store keeps working and records it
+  after one call to the new `SqliteSupervision::upgrade_event_schema`, which
+  rebuilds the events table and keeps every row (found while building a camera
+  adapter for an acceptance application).
+- `rullst-labs` (Experimental): `ExecutionFailure::TimeLimit`. A runner that
+  stops an attempt at the wall limit and confirms its teardown reports
+  `Rejected(TimeLimit)` through `complete`; the job ends `Failed`, so the
+  learner sees a time limit instead of the `Cancelled` of their own
+  cancellation. The runner contract and the `byo_runner_controller` example
+  do this now (found while building a Docker runner for an acceptance
+  application).
 - `cargo rullst iot:keygen` and `cargo rullst iot:sign` (Experimental): sign
   firmware updates for `rullst-iot`'s OTA gate. `iot:keygen --out FILE`
   writes an Ed25519 secret key (mode 0600 on Unix, never printed) and its
@@ -384,6 +401,20 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Changed
 
+- **Breaking:** `rullst-labs` (Experimental): `ExecutionProfile`,
+  `WorkerOutcome`, `ExecutionFailure`, `TrapKind`, `CaseOutput`, `CaseGrade`,
+  `JobResult`, `JobState` and `ResultEvidence` are `#[non_exhaustive]`, and so
+  are the store-returned `JobView` and `CleanupJob`, so that another profile or
+  outcome can be added during 13.x; a `match` on them needs a wildcard arm.
+  `ExecutionProfile` is the extension point for another language. The
+  protocol v1 wire types, `ToolIdentity` and `RustSource` keep their names and
+  wire form, so existing stores open unchanged. `cargo rullst upgrade` reports
+  each `match` without a catch-all arm in a file that names `rullst_labs`
+  (`V13-LABS-NON-EXHAUSTIVE-MATCH`).
+- **Breaking:** `rullst-privacy` (Experimental): `ConsentChoice` is
+  `#[non_exhaustive]`; a `match` on it needs a wildcard arm, which should
+  treat an unknown choice as no consent. `cargo rullst upgrade` reports such
+  matches (`V13-PRIVACY-CONSENT-CHOICE-MATCH`).
 - **Breaking:** `rullst-iot` (Experimental): `OtaManager`'s fields
   `current_partition`, `status` and `firmware_version` are private, as
   13.0.0-alpha.4 announced; read them with the methods of the same names

@@ -171,7 +171,12 @@ Only an integrity-bound result matching the current job/lease, tenant, learner,
 exercise, grader, toolchain, source and execution profile may become a grade.
 Expected answers remain in the trusted grader; worker outputs are bounded data,
 not a passing-grade authority. Cancellation/expiry fence late results; worker
-loss never means success. Offline simulation is explicit and cannot establish
+loss never means success. A runner that stops an attempt at the wall limit and
+confirms its teardown reports `Rejected(TimeLimit)`, a `Failed` job distinct
+from a learner's cancellation. The enums a new profile or outcome would extend,
+and the store-returned views, are `#[non_exhaustive]`; `ExecutionProfile` is
+the extension point for another language, while protocol v1 types keep their
+names and wire form. Offline simulation is explicit and cannot establish
 execution evidence. Authorized course maintenance must expire queued submissions
 and remove their source without requiring a supported/available executor. It
 must not clear a running lease or infer teardown. Withdrawn exercise revisions
@@ -616,6 +621,14 @@ event state/logs. No camera/audio model, identity inference, hidden recording,
 grading or automated accusation is introduced. Selected capabilities do not
 establish browser permission or prove media belongs to the learner; the host
 must bind capture to the authenticated session and implement adapter cancellation.
+
+Since 13.0.0-alpha.5 a camera adapter can report `PresenceObservation::Obscured`
+(covered, dark or blocked view) and can receive `LuminanceStatistics` (mean,
+standard deviation, sample count) instead of a frame, so a privacy-preserving
+client sends no image. Stores created from alpha.5 accept the new observation
+code; an earlier store opens and works unchanged and records it only after the
+host calls `upgrade_event_schema`, which rebuilds the events table in one
+transaction without changing rows. Opening never rebuilds a store.
 
 The SQLite candidate moved to schema v2 before its first publication, with
 explicit rejection of old schemas. Never silently rewrite a v1 database: preserve it for review and

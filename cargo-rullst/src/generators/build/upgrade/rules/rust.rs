@@ -470,7 +470,9 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
             if names("FieldKind") {
                 self.hit(&NEXUS_FIELD_KIND_MATCH, line(expr.match_token.span()));
             }
-            if let Some(rule) = super::alpha5_runtime::exhaustive_match_rule(names) {
+            if let Some(rule) =
+                super::alpha5_runtime::exhaustive_match_rule(names, self.context.text)
+            {
                 self.hit(rule, line(expr.match_token.span()));
             }
         }

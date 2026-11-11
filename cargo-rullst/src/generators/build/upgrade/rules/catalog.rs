@@ -444,6 +444,12 @@ rules! {
     MAIL_MESSAGE_REPLY_TO: "V13-MAIL-MESSAGE-REPLY-TO", MustChange, "13.0.0-alpha.5", "Mail Reply-To",
         "Mail's `Message` has a `reply_to` field since 13.0.0-alpha.5, so a struct literal that lists every field without `..` no longer compiles",
         "Build the message with `Message::new()` and its builders (`.to(..)`, `.subject(..)`, `.reply_to(..)`), or add `reply_to: None` or `..Message::new()` to the literal.";
+    PRIVACY_CONSENT_CHOICE_MATCH: "V13-PRIVACY-CONSENT-CHOICE-MATCH", MustChange, "13.0.0-alpha.5", "Privacy consent choices",
+        "`rullst-privacy`'s `ConsentChoice` is `#[non_exhaustive]` since 13.0.0-alpha.5; a `match` on it without a wildcard arm no longer compiles",
+        "Add a wildcard arm (`_ => ...`) that treats an unknown choice like `Unset`: no consent, so the optional processing stays off.";
+    LABS_NON_EXHAUSTIVE_MATCH: "V13-LABS-NON-EXHAUSTIVE-MATCH", MustChange, "13.0.0-alpha.5", "Labs outcomes and states",
+        "`rullst-labs`'s `JobState`, `JobResult`, `CaseGrade`, `CaseOutput`, `TrapKind`, `WorkerOutcome`, `ExecutionFailure`, `ResultEvidence` and `ExecutionProfile` are `#[non_exhaustive]` since 13.0.0-alpha.5, and `ExecutionFailure` gained `TimeLimit`; a `match` on them without a wildcard arm no longer compiles",
+        "Add a wildcard arm (`_ => ...`) that shows an unknown state or result generically. Show `ExecutionFailure::TimeLimit` as the exercise's time limit, not as a cancellation; a runner controller that stops an attempt at the wall limit reports it through `complete` (Labs runner contract, step 4).";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

@@ -3,8 +3,10 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+/// `#[non_exhaustive]`: another profile may add evidence kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub enum ResultEvidence {
     /// Explicit local simulation; never execution evidence or academic credit.
     Simulation,
@@ -14,14 +16,18 @@ pub enum ResultEvidence {
     },
 }
 /// Minimized feedback by case position; no input, expected value or raw output.
+/// `#[non_exhaustive]`: render unknown grades generically.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum CaseGrade {
     Passed,
     WrongAnswer,
     Trapped(crate::TrapKind),
 }
+/// `#[non_exhaustive]`: render unknown results generically.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub enum JobResult {
     Graded {
         cases: Vec<CaseGrade>,

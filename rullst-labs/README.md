@@ -59,7 +59,10 @@ another learner's ID is a `Conflict` on submit and `NotFound` from `get_job`
 and `cancel` unless the caller may manage jobs. Your runner's trusted controller
 uses `claim_next`, monitors `lease_status`, has its isolated worker execute the
 attempt and submits a `SignedReceipt` to `complete`. Cancellation and expiry
-fence late results.
+fence late results. An attempt the runner stops at the wall limit is reported
+with confirmed teardown as `Rejected(TimeLimit)` (since 13.0.0-alpha.5): the
+job ends `Failed`, so the learner sees a time limit, not the `Cancelled` of
+their own cancellation.
 A job expires at the earlier of its `ttl_seconds` and the Submit permission's
 expiry, and is claimed only while more than the exercise's wall limit plus 5
 seconds remain. Grant Submit for longer than expected queueing plus that time;
@@ -130,6 +133,15 @@ semantics and are bound into every exercise and profile digest. Source is
 limited to 32 KiB, execution to 5–60 seconds, guest memory to 2–16 MiB and fuel
 to at most one million units per case. A runner must enforce these limits; this
 crate only validates and binds them.
+
+The enums a new profile or outcome would extend (`ExecutionProfile`,
+`WorkerOutcome`, `ExecutionFailure`, `TrapKind`, `CaseOutput`, `CaseGrade`,
+`JobResult`, `JobState`, `ResultEvidence`) and the store-returned `JobView` and
+`CleanupJob` are `#[non_exhaustive]` since 13.0.0-alpha.5: match them with a
+wildcard arm. Another language needs a new protocol version and an
+`ExecutionProfile` variant with its own tool slots, source and case types; the
+protocol v1 types (`ToolIdentity`, `RustSource`, `WorkerInput`) keep their
+names and wire form because they are bound into stored profiles and digests.
 
 ## What your runner must provide
 

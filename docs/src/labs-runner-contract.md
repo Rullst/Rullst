@@ -109,6 +109,17 @@ and binding, and an unexpired lease. `Stop` or an error means stop now. A status
 read never extends the lease. Enforce `limits().wall_seconds()` yourself. The
 removed candidate polled every 200 ms; choose an interval that bounds wasted work.
 
+When the wall limit elapses, stop the worker at once and tear it down. Once
+its absence is confirmed, report the limit itself: sign `Rejected(TimeLimit)`
+for the attempt's binding and send it to `complete` (step 6). The lease ends
+15 seconds after the wall limit, which leaves time for that. The job becomes
+`Failed` with `JobResult::Rejected { failure: TimeLimit, .. }`, so the learner
+and the application can tell a time limit from the learner's own
+cancellation, which ends `Cancelled` without a result. When teardown cannot be
+confirmed in time, take step 7 instead; the attempt is then fenced like any
+other failure. Before 13.0.0-alpha.5 a timed-out attempt could only take
+step 7 and ended `Cancelled`.
+
 ### 5. Validate the worker's reply
 
 Decode untrusted worker bytes with `WorkerOutput::from_bytes` (at most 20,480
@@ -121,6 +132,7 @@ bytes) and require `output.binding == *job.input().binding()`. Outcomes:
   no control characters except newline and tab. It is untrusted and can quote
   source; escape it when rendering.
 - `Rejected(failure)`: `Compile`, `InvalidModule`, `ResourceLimit`,
+  `TimeLimit` (the runner stopped the attempt at the wall limit, step 4),
   `WorkerProtocol`, `WorkerLost` or `Isolation`.
 
 The worker never sends expected values or a pass flag. Sign `Executed` only for
@@ -152,7 +164,8 @@ for a finished job is `Conflict`.
 
 ### 7. Abandon, clean up and reconcile
 
-On any failure, stop signal, timeout or rejected `complete`:
+On any failure, stop signal, rejected `complete`, or a wall limit whose
+teardown could not be confirmed in time (step 4):
 
 1. `abandon_attempt(&job)` fences the attempt immediately (`Running` becomes
    `Uncertain`, or `Expired`) and returns a `CleanupJob`. An old nonce cannot
@@ -226,7 +239,8 @@ before any production claim about hostile code.
 [`rullst-labs/examples/byo_runner_controller.rs`](https://github.com/Rullst/Rullst/blob/main/rullst-labs/examples/byo_runner_controller.rs)
 opens the store as a separate controller, recovers leftover leases, claims a
 job, polls `lease_status` under the wall limit, signs a fixed
-`Rejected(Isolation)` verdict and submits it to `complete`. It also fences
+`Rejected(Isolation)` verdict and submits it to `complete`, and reports a
+worker that outlives the wall limit as `Rejected(TimeLimit)`. It also fences
 failures through `abandon_attempt` and `reconcile_cleanup`. It never compiles or
 runs learner code; two `PLUG-IN POINT` functions mark where an isolated worker
 and its teardown belong.
@@ -247,3 +261,14 @@ unknown fields. A runner must use these exact types; there is no adapter layer
 or runner version negotiation, and interchangeable external executors are not
 provided. New profiles, languages or a remote job transport are `rullst-labs`
 roadmap work and require their own threat model and acceptance evidence.
+
+Since 13.0.0-alpha.5 the enums a new profile or outcome would extend are
+`#[non_exhaustive]`: `ExecutionProfile`, `WorkerOutcome`, `ExecutionFailure`,
+`TrapKind`, `CaseOutput`, `CaseGrade`, `JobResult`, `JobState` and
+`ResultEvidence`, as are the store-returned `JobView` and `CleanupJob`. Match
+them with a wildcard arm. `ExecutionProfile` is the extension point: another
+language arrives as a new protocol version and profile variant with its own
+tool slots, source and case types. The protocol v1 types keep their names and
+wire form (`ToolIdentity`'s slots, `RustSource`, `WorkerInput`), because they
+are bound into stored profiles and exercise digests; a runner documents what
+fills each `ToolIdentity` slot for its own tools.

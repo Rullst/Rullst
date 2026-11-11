@@ -28,16 +28,82 @@ pub enum SampleFormat {
     JpegFrame,
     PngFrame,
     Pcm16LeMono16Khz,
+    /// Brightness statistics of one camera frame, computed where it was
+    /// captured, with no image (v13). Built with
+    /// [`MediaSample::luminance`], never from bytes.
+    LuminanceStatistics,
 }
 
-/// Borrowed caller-owned bytes. The host binds capture to a participant's current
-/// permission and session. Bounds/signature checks do not decode or attest media.
+/// Brightness statistics of one camera frame on the 0–255 luma scale,
+/// computed by the capturing client so that no image leaves it (v13). A
+/// privacy-preserving camera-presence adapter can classify a covered or dark
+/// camera from these alone. Values are checked for range, not authenticity:
+/// like any client report, they can be forged.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
+pub struct LuminanceStatistics {
+    mean: f32,
+    standard_deviation: f32,
+    samples: u32,
+}
+impl LuminanceStatistics {
+    /// Largest number of luminance values one summary may describe
+    /// (a 4096×4096 frame).
+    pub const MAX_SAMPLES: u32 = 16_777_216;
+
+    /// `mean` within 0–255, the population `standard_deviation` within
+    /// 0–127.5 (the largest possible on that scale) and the number of
+    /// luminance values summarized (`samples`, 1 to [`Self::MAX_SAMPLES`]),
+    /// for example 192 for a 16×12 grid of block means.
+    pub fn new(mean: f32, standard_deviation: f32, samples: u32) -> Result<Self, Error> {
+        if !mean.is_finite()
+            || !standard_deviation.is_finite()
+            || !(0.0..=255.0).contains(&mean)
+            || !(0.0..=127.5).contains(&standard_deviation)
+            || !(1..=Self::MAX_SAMPLES).contains(&samples)
+        {
+            return Err(Error::InvalidInput);
+        }
+        Ok(Self {
+            mean,
+            standard_deviation,
+            samples,
+        })
+    }
+    pub fn mean(self) -> f32 {
+        self.mean
+    }
+    pub fn standard_deviation(self) -> f32 {
+        self.standard_deviation
+    }
+    pub fn samples(self) -> u32 {
+        self.samples
+    }
+}
+
+/// Borrowed caller-owned bytes, or brightness statistics without any image.
+/// The host binds capture to a participant's current permission and session.
+/// Bounds/signature checks do not decode or attest media.
 #[derive(Clone, Copy)]
 pub struct MediaSample<'a> {
     format: SampleFormat,
     bytes: &'a [u8],
+    statistics: Option<LuminanceStatistics>,
+}
+impl MediaSample<'static> {
+    /// A camera-presence sample that carries only brightness statistics
+    /// (`SampleFormat::LuminanceStatistics`, v13); `bytes()` is empty.
+    pub fn luminance(statistics: LuminanceStatistics) -> Self {
+        Self {
+            format: SampleFormat::LuminanceStatistics,
+            bytes: &[],
+            statistics: Some(statistics),
+        }
+    }
 }
 impl<'a> MediaSample<'a> {
+    /// Frames and audio from bytes. `SampleFormat::LuminanceStatistics` is
+    /// refused here (`InvalidInput`): use [`MediaSample::luminance`].
     pub fn new(format: SampleFormat, bytes: &'a [u8]) -> Result<Self, Error> {
         let valid = match format {
             SampleFormat::JpegFrame => {
@@ -49,21 +115,33 @@ impl<'a> MediaSample<'a> {
             SampleFormat::Pcm16LeMono16Khz => {
                 !bytes.is_empty() && bytes.len() <= 160_000 && bytes.len().is_multiple_of(2)
             }
+            SampleFormat::LuminanceStatistics => false,
         };
         if !valid {
             return Err(Error::InvalidInput);
         }
-        Ok(Self { format, bytes })
+        Ok(Self {
+            format,
+            bytes,
+            statistics: None,
+        })
     }
     pub fn format(self) -> SampleFormat {
         self.format
     }
+    /// The frame or audio bytes; empty for a statistics sample.
     pub fn bytes(self) -> &'a [u8] {
         self.bytes
     }
+    /// The brightness statistics of a `LuminanceStatistics` sample (v13).
+    pub fn statistics(self) -> Option<LuminanceStatistics> {
+        self.statistics
+    }
     pub fn kind(self) -> AnalysisKind {
         match self.format {
-            SampleFormat::JpegFrame | SampleFormat::PngFrame => AnalysisKind::CameraPresence,
+            SampleFormat::JpegFrame
+            | SampleFormat::PngFrame
+            | SampleFormat::LuminanceStatistics => AnalysisKind::CameraPresence,
             SampleFormat::Pcm16LeMono16Khz => AnalysisKind::AudioActivity,
         }
     }
