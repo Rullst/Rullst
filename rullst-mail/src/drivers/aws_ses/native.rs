@@ -48,10 +48,16 @@ impl NativeSesConfig {
             .to_addresses(super::address::recipient(&message.to)?)
             .build();
         let from = super::address::sender(crate::drivers::rest::required_sender(message)?)?;
+        let reply_to = message
+            .reply_to
+            .as_deref()
+            .map(super::address::sender)
+            .transpose()?;
         let content = build_content(message)?;
         let result = client
             .send_email()
             .from_email_address(from)
+            .set_reply_to_addresses(reply_to.map(|address| vec![address]))
             .destination(destination)
             .content(content)
             .send()

@@ -84,49 +84,7 @@ impl ResendDriver {
 
         let client = super::http::client()?;
 
-        let from_addr = super::rest::required_sender(message)?;
-        let mut body = serde_json::json!({
-            "to": message.to,
-            "from": from_addr,
-            "subject": message.subject,
-        });
-
-        if let Some(ref html) = message.body_html {
-            body["html"] = serde_json::json!(html);
-        }
-        if let Some(ref text) = message.body_text {
-            body["text"] = serde_json::json!(text);
-        }
-        if let Some(ref send_at) = message.send_at {
-            body["scheduled_at"] = serde_json::json!(send_at.to_rfc3339());
-        }
-        if !message.attachments.is_empty() {
-            let attachments_json: Vec<_> = message
-                .attachments
-                .iter()
-                .map(|att| {
-                    let mut obj = serde_json::json!({
-                        "filename": att.filename,
-                        "content": att.to_base64(),
-                    });
-                    if let Some(ref cid) = att.cid {
-                        obj["content_id"] = serde_json::json!(cid);
-                    }
-                    obj
-                })
-                .collect();
-            body["attachments"] = serde_json::json!(attachments_json);
-        }
-        if let Some(unsub) = message.list_unsubscribe_header() {
-            let mut headers_obj = serde_json::json!({
-                "List-Unsubscribe": unsub
-            });
-            if message.has_one_click_unsubscribe() {
-                headers_obj["List-Unsubscribe-Post"] =
-                    serde_json::json!("List-Unsubscribe=One-Click");
-            }
-            body["headers"] = headers_obj;
-        }
+        let body = payload(message, super::rest::required_sender(message)?);
 
         let mut request = client
             .post("https://api.resend.com/emails")
@@ -145,5 +103,130 @@ impl ResendDriver {
         } else {
             Err(crate::error::provider_http_error("resend", res).await)
         }
+    }
+}
+
+/// The Resend `POST /emails` body of a pipeline-validated message.
+fn payload(message: &Message, from_addr: &str) -> serde_json::Value {
+    let mut body = serde_json::json!({
+        "to": message.to,
+        "from": from_addr,
+        "subject": message.subject,
+    });
+
+    if let Some(ref reply_to) = message.reply_to {
+        body["reply_to"] = serde_json::json!(reply_to);
+    }
+    if let Some(ref html) = message.body_html {
+        body["html"] = serde_json::json!(html);
+    }
+    if let Some(ref text) = message.body_text {
+        body["text"] = serde_json::json!(text);
+    }
+    if let Some(ref send_at) = message.send_at {
+        body["scheduled_at"] = serde_json::json!(send_at.to_rfc3339());
+    }
+    if !message.attachments.is_empty() {
+        let attachments_json: Vec<_> = message
+            .attachments
+            .iter()
+            .map(|att| {
+                let mut obj = serde_json::json!({
+                    "filename": att.filename,
+                    "content": att.to_base64(),
+                });
+                if let Some(ref cid) = att.cid {
+                    obj["content_id"] = serde_json::json!(cid);
+                }
+                obj
+            })
+            .collect();
+        body["attachments"] = serde_json::json!(attachments_json);
+    }
+    if let Some(unsub) = message.list_unsubscribe_header() {
+        let mut headers_obj = serde_json::json!({
+            "List-Unsubscribe": unsub
+        });
+        if message.has_one_click_unsubscribe() {
+            headers_obj["List-Unsubscribe-Post"] = serde_json::json!("List-Unsubscribe=One-Click");
+        }
+        body["headers"] = headers_obj;
+    }
+    body
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn payload_carries_reply_to_and_unsubscribe_headers() {
+        let message = Message::new()
+            .to("user@example.com")
+            .subject("Contact")
+            .text("body")
+            .reply_to("Visitor <visitor@example.com>")
+            .unsubscribe_url("https://example.com/unsubscribe");
+        let body = payload(&message, "site@example.com");
+        assert_eq!(body["from"], "site@example.com");
+        assert_eq!(body["reply_to"], "Visitor <visitor@example.com>");
+        assert_eq!(
+            body["headers"]["List-Unsubscribe-Post"],
+            "List-Unsubscribe=One-Click"
+        );
+        let without = payload(
+            &Message::new().to("user@example.com").text("b"),
+            "s@example.com",
+        );
+        assert!(without.get("reply_to").is_none());
+        assert!(without.get("attachments").is_none());
+        assert!(without.get("headers").is_none());
+        assert!(without.get("scheduled_at").is_none());
+        assert_eq!(without["text"], "b");
+        assert!(without.get("html").is_none());
+
+        let at = chrono::Utc::now() + chrono::TimeDelta::days(1);
+        let rich = payload(
+            &Message::new()
+                .to("user@example.com")
+                .html(r#"<img src="cid:logo">"#)
+                .attach_bytes("a.txt", b"hi".to_vec(), "text/plain")
+                .attach_cid("logo", "logo.png", b"png".to_vec(), "image/png")
+                .unsubscribe_url("http://example.com/unsubscribe")
+                .send_at(at),
+            "s@example.com",
+        );
+        assert_eq!(rich["attachments"][0]["filename"], "a.txt");
+        assert_eq!(rich["attachments"][0]["content"], "aGk=");
+        assert!(rich["attachments"][0].get("content_id").is_none());
+        assert_eq!(rich["attachments"][1]["content_id"], "logo");
+        assert_eq!(rich["scheduled_at"], at.to_rfc3339());
+        assert!(
+            rich["html"]
+                .as_str()
+                .is_some_and(|html| html.contains("cid:logo"))
+        );
+        assert!(rich["headers"].get("List-Unsubscribe-Post").is_none());
+        assert_eq!(
+            rich["headers"]["List-Unsubscribe"],
+            "<http://example.com/unsubscribe>"
+        );
+    }
+
+    #[tokio::test]
+    async fn offline_mock_keeps_the_reply_to() {
+        let driver = ResendDriver::try_new("mock_resend").unwrap();
+        let message = Message::new()
+            .to("owner@example.com")
+            .from("site@example.com")
+            .subject("reply-to offline fixture")
+            .text("body")
+            .reply_to("ana@example.com");
+        driver.send(&message).await.unwrap();
+        let deliveries = crate::drivers::OfflineMailMock::deliveries().unwrap();
+        assert!(deliveries.iter().any(|delivery| {
+            delivery.message.subject == "reply-to offline fixture"
+                && delivery.message.reply_to.as_deref() == Some("ana@example.com")
+        }));
     }
 }

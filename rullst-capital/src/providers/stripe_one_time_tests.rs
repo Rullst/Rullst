@@ -215,3 +215,41 @@ fn paid_receipt_exposes_its_bound_identity() {
     assert!(debug.starts_with("StripePaymentCheckoutRequest"), "{debug}");
     assert!(!debug.contains("opaque_owner"), "{debug}");
 }
+
+#[tokio::test]
+async fn loopback_http_redirects_work_with_a_mock_key_and_fail_closed_live() {
+    let local = StripePaymentCheckoutRequest::new(
+        "cus_owner",
+        StripeOneTimePrice::new("price_once", 1990, "brl").unwrap(),
+        "opaque_owner",
+        "purchase_attempt_1",
+        "http://localhost:3000/orders/1/paid",
+        "http://[::1]:3000/orders/1",
+    )
+    .expect("loopback HTTP redirects build for local development");
+    let mock = StripeProvider::new("mock_key", "mock_webhook");
+    assert_eq!(
+        mock.create_one_time_checkout(&local)
+            .await
+            .unwrap()
+            .status(),
+        crate::StripeCheckoutStatus::Mock
+    );
+    let live = StripeProvider::new("sk_test_fixture", "whsec_fixture");
+    assert!(matches!(
+        live.create_one_time_checkout(&local).await,
+        Err(CapitalError::ConfigurationError(message)) if message.contains("HTTPS")
+    ));
+    assert!(
+        StripePaymentCheckoutRequest::new(
+            "cus_owner",
+            StripeOneTimePrice::new("price_once", 1990, "brl").unwrap(),
+            "opaque_owner",
+            "purchase_attempt_1",
+            "http://app.example/orders/1/paid",
+            "https://app.example/orders/1",
+        )
+        .is_err(),
+        "plain HTTP stays refused off loopback"
+    );
+}

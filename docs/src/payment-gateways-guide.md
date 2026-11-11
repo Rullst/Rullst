@@ -15,7 +15,7 @@ tax treatment, settlement time, pricing, or regulatory suitability.
 | Adapter | Status | Rullst contract |
 | :--- | :--- | :--- |
 | Stripe | Supported | Owner-bound customer and subscription checkout, bound portal, reconciliation reads, Payment Intents charges, Meter Events, coupons and trials; unsupported methods fail explicitly. |
-| InfinitePay | Experimental | Deterministic offline checkout, portal and webhook fixtures. Live plan-only checkout and live callbacks return `UnsupportedOperation` until a reviewed contract is validated against a live account. |
+| InfinitePay | Experimental | One-off payment links on the public Checkout API (`POST /links`) from a server-side `OneOffCheckoutRequest` (BRL); each unsigned webhook is confirmed with `POST /payment_check` and the server-side amount. No subscriptions, portal or sandbox; an empty or `mock_*` handle runs offline fixtures. Not yet validated against a live account. |
 | Your own adapter | Extension point | Implement `BillingProvider` (and optionally `MeteredBillingProvider`) in the application; see [Writing your own payment provider](capital-custom-provider.md). |
 
 v13 removed the Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago, Alipay,
@@ -67,8 +67,10 @@ handling are external contractual properties, not guarantees made by Rullst.
 
 The [Capital README](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md)
 lists each adapter's current operations. Stripe has a generated durable
-subscription integration (`cargo rullst make:billing` and the SaaS starter). InfinitePay
-is experimental and only its offline fixtures succeed. For another gateway,
+subscription integration (`cargo rullst make:billing` and the SaaS starter). Both
+adapters implement the provider-neutral one-off checkout
+(`create_one_off_checkout` and `confirm_one_off_payment`); InfinitePay is
+experimental and offers nothing else. For another gateway,
 write an application-owned adapter as described in
 [Writing your own payment provider](capital-custom-provider.md).
 
@@ -109,10 +111,11 @@ read current provider state under a database revision fence and atomically
 commit the scoped event receipt with subscription state. Exact replays do not
 repeat changes; conflicting receipts, foreign customers and obsolete attempts
 are rejected. Unknown provisioning/checkout outcomes require bounded recovery.
-InfinitePay accepts only explicit `mock_*` webhook fixtures; a real secret
-returns `UnsupportedOperation` until callback authentication is validated. A
-custom adapter supplies its own durable orchestration, atomic event processing
-and reconciliation.
+InfinitePay's webhook is unsigned (`WebhookVerificationMode::ConfirmedAtSource`):
+the middleware hands the handler a status-free `PaymentNotification`, and only
+`confirm_one_off_payment`, which calls `payment_check` and compares the amount
+with the stored request, reports a payment. A custom adapter supplies its own
+durable orchestration, atomic event processing and reconciliation.
 
 Rullst also supplies canonical Axum/Actix webhook middleware for supported
 normalized events. The production entry points reject empty/`mock_*` secrets.
@@ -230,7 +233,9 @@ they do not replace live provider-account testing.
 With the umbrella `capital-mail` feature, bind an authoritative invoice to the
 final charge receipt and prepare a pipeline-validated HTML/PDF message through
 `rullst::mail::PaidInvoiceDelivery`. Non-final/mock receipts and mismatched
-recipient, minor-unit total or currency fail before delivery. Persist the
+recipient, minor-unit total or currency fail before delivery. Invoice amounts
+are integer minor units, and `with_locale(InvoiceLocale::PtBr)` or
+`InvoiceLocale::Es` print "Recibo" labels and subject. Persist the
 stable delivery key under a unique constraint before calling `send`; the
 bridge is at-least-once and does not infer webhook reconciliation.
 

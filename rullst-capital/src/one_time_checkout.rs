@@ -53,11 +53,12 @@ pub struct StripePaymentCheckoutRequest {
 impl StripePaymentCheckoutRequest {
     /// Creates a one-time purchase attempt for an existing Stripe customer.
     ///
-    /// `success_url` and `cancel_url` must be bounded credential-free HTTPS
-    /// URLs without fragments. They are checked here, before the key that will
-    /// send the request is known, so `http://localhost` is rejected even for a
-    /// `mock_*` key that never opens it; pass the `https://` form in local
-    /// development.
+    /// `success_url` and `cancel_url` must be bounded credential-free URLs
+    /// without fragments. They must use HTTPS, except `http://` on
+    /// `localhost`, `127.0.0.1` or `[::1]`, which a `mock_*` key accepts for
+    /// local development; a live key requires HTTPS when
+    /// [`StripeProvider::create_one_time_checkout`](crate::StripeProvider::create_one_time_checkout)
+    /// sends the request (since 13.0.0-alpha.5).
     pub fn new(
         customer_id: impl Into<String>,
         price: StripeOneTimePrice,

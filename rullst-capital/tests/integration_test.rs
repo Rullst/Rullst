@@ -38,12 +38,13 @@ async fn test_kept_payment_providers_use_offline_fixtures() {
         .await
         .unwrap();
     assert!(url.contains("mock_session"));
+    // InfinitePay has no customer portal or subscriptions.
     assert!(
         ip.create_customer_portal("pix@empresa.com.br", "https://app.com")
             .await
-            .is_ok()
+            .is_err()
     );
-    assert!(ip.cancel_subscription("sub_ip").await.is_ok());
+    assert!(ip.cancel_subscription("sub_ip").await.is_err());
     let ip_payload = br#"{"event":"charge.paid","data":{"id":"sub_ip_1","customer":{"email":"pix@empresa.com.br"},"status":"paid"}}"#;
     assert!(ip.handle_webhook(ip_payload, &headers).is_err());
 }
@@ -129,25 +130,11 @@ fn test_revenue_metrics_and_dashboard() {
 #[test]
 fn test_invoice_html_generation() {
     use chrono::Utc;
-    use rullst_capital::invoice::{Invoice, InvoiceItem};
+    use rullst_capital::invoice::Invoice;
 
-    let invoice = Invoice {
-        invoice_id: "INV-2026-0042".to_string(),
-        customer_email: "billing@client.com".to_string(),
-        date: Utc::now(),
-        items: vec![
-            InvoiceItem {
-                description: "Rullst Enterprise License (Monthly)".to_string(),
-                amount: 499.00,
-            },
-            InvoiceItem {
-                description: "Priority 24/7 SLA Support".to_string(),
-                amount: 199.00,
-            },
-        ],
-        total: 698.00,
-        currency: "USD".to_string(),
-    };
+    let invoice = Invoice::new("INV-2026-0042", "billing@client.com", Utc::now(), "USD")
+        .with_item("Rullst Enterprise License (Monthly)", 49_900)
+        .with_item("Priority 24/7 SLA Support", 19_900);
 
     let html = invoice.generate_html();
     assert!(html.contains("INV-2026-0042"));

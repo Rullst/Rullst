@@ -316,3 +316,20 @@ fn message_builder_rejects_addresses_empty_body_and_invalid_attachment_mime() {
         Err(MailError::ValidationError(message)) if message.contains("MIME")
     ));
 }
+
+#[test]
+fn reply_to_header_is_written_and_validated() {
+    let message = base_message()
+        .text("body")
+        .reply_to("Ana Souza <ana@example.com>");
+    let text = formatted(&message);
+    assert!(
+        text.contains("Reply-To: \"Ana Souza\" <ana@example.com>"),
+        "{text}"
+    );
+    assert!(!formatted(&base_message().text("body")).contains("Reply-To"));
+    assert!(matches!(
+        build_smtp_message(&base_message().text("body").reply_to("not an address")),
+        Err(MailError::ValidationError(_))
+    ));
+}

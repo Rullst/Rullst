@@ -30,9 +30,13 @@ walk through a complete integration.
   bounded payload digests or semantic provider event keys across processes on
   SQLite, PostgreSQL, MySQL, and MariaDB. Reconciliation and authorization
   remain application responsibilities.
-- **Payment-bound invoices:** The opt-in `invoice-pdf` feature validates money
-  into exact minor units, renders bounded paginated PDF and binds delivery to a
-  final receipt matching recipient, amount and currency.
+- **Payment-bound invoices:** Integer minor-unit amounts, labels in English,
+  Brazilian Portuguese or Spanish ("Recibo") or your own, a bounded paginated
+  PDF (opt-in `invoice-pdf`) and delivery bound to a final receipt matching
+  recipient, amount and currency.
+- **One-off checkout confirmed at the source:** `OneOffCheckoutRequest` priced
+  on the server, unsigned notifications (`ConfirmedAtSource`) that never mark
+  anything paid by themselves, and `ProviderRequest` for application adapters.
 - **Provider-specific metered billing:** Current Stripe Meter Events
   request/response contract, bounded protocol parsing, deterministic non-live
   mocks and explicit retry evidence; custom adapters reuse the same receipt type.
@@ -90,8 +94,8 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 
 | Provider | Status | Current boundary |
 | :--- | :--- | :--- |
-| **Stripe** | Supported | Typed customer/subscription checkout, customer-ID portal, current-state reads and signed events; generated durable SQLx/Turso integration. Immediate Payment Intent charge is separate. |
-| **InfinitePay** | Experimental | Performs no real operation today: offline fixtures only; with real credentials checkout and webhook handling return `UnsupportedOperation` before any HTTP request. To charge through InfinitePay, implement `BillingProvider` in the application ([below](#infinitepay-today)). |
+| **Stripe** | Supported | Typed customer/subscription checkout, customer-ID portal, current-state reads and signed events; generated durable SQLx integration. Immediate Payment Intent charge is separate. |
+| **InfinitePay** | Experimental | One-off payment links on the public Checkout API (`POST /links`), priced from a server-side `OneOffCheckoutRequest` in BRL; the unsigned webhook is confirmed with `POST /payment_check` and the server-side amount ([below](#infinitepay)). No subscriptions, portal or sandbox. Not yet validated against a live account. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
@@ -100,22 +104,23 @@ fixtures, not authenticated portal sessions.
 Legacy checkout and portal fixtures use reserved `https://mock.<provider>.invalid/`
 hosts and carry only the plan ID, never the customer email or return URL, so a
 deployment started without credentials cannot send a browser or personal data
-to a real provider domain. InfinitePay cancellation likewise rejects live calls,
-and its pause, usage, coupon and trial operations are unsupported, until an
-actual provider operation is implemented.
+to a real provider domain. InfinitePay has no subscriptions or customer portal,
+so its portal, cancellation, pause, usage, coupon and trial operations return
+`UnsupportedOperation`, offline too.
 
 The legacy `create_checkout_session(email, plan_id, return_url)` accepts a
-provider-managed plan/price identity, not an amount or currency. InfinitePay
-does not have an implemented reviewed mapping for that contract; its live method
-returns `UnsupportedOperation` before HTTP dispatch. It never invents a price,
-currency, buyer identity or subscription from a plan label. Empty/`mock_*` API
-credentials preserve its deterministic offline fixture, while `handle_*` values
-are not mock credentials. An authoritative typed pricing/provider contract is
-required before enabling this live checkout path.
+provider-managed plan/price identity, not an amount or currency. InfinitePay has
+no plans, so its live method returns `UnsupportedOperation` before HTTP dispatch
+and points to `create_one_off_checkout`, which takes the amount from the
+server. It never invents a price, currency, buyer identity or subscription from
+a plan label. An empty or `mock_*` handle (or API key, for the legacy `new`
+constructor) keeps its deterministic offline fixture.
 
 | Reviewed legacy method boundary | Stripe | InfinitePay (experimental) |
 |---|---|---|
 | Plan/price-based checkout request | adapter | unsupported |
+| One-off checkout (`create_one_off_checkout`) | adapter | adapter |
+| One-off confirmation at the source (`confirm_one_off_payment`) | adapter | adapter |
 | Customer portal by email | unsupported | unsupported |
 | Immediate evidence-bound charge | adapter | unsupported |
 
@@ -123,39 +128,135 @@ required before enabling this live checkout path.
 validated acceptance or every response schema against a live provider account.
 Offline fixtures are deliberately excluded from the live-method matrix.
 
-InfinitePay's [checkout callback and payment lookup](https://www.infinitepay.io/checkout-documentacao)
-do not establish the HMAC/subscription contract assumed by the old adapter.
-The live body-only verifier and handler return `UnsupportedOperation`;
-explicit mock-secret verification remains available for offline fixtures.
-Enabling a real callback needs reviewed authentication, merchant/order/amount
-binding and authoritative reconciliation. A locally signed fixture does not
-prove that the provider emits that protocol. InfinitePay stays experimental
-until those live paths are implemented and validated against a real account.
+### One-off checkout confirmed at the source
 
-### InfinitePay today
+Since 13.0.0-alpha.5 every provider can offer one purchase priced on the
+server through `BillingProvider::create_one_off_checkout`. The application
+builds an `OneOffCheckoutRequest` from its own data (an order reference, the
+unit amount in minor units, currency, description, quantity, success and
+cancel URLs, an optional e-mail), persists it, and redirects to the returned
+`OneOffCheckout::url()`. Creating the checkout proves nothing. When the
+provider names the payment (a webhook body, the return URL's query or the
+stored `session_id()`), load the request by `PaymentNotification::reference()`
+and call `confirm_one_off_payment`: its `OneOffPayment` is paid only when the
+provider confirms the payment **and** reports the request's total and
+currency. The methods default to `UnsupportedOperation`, so existing custom
+providers keep compiling.
 
-The built-in `InfinitePayProvider` performs **no real operation**. With an
-empty or `mock_*` API key and a `mock_*` webhook secret it returns offline
-fixtures; with real credentials, `create_checkout_session` and
-`handle_webhook` return `UnsupportedOperation` before any HTTP request. Its
-model (`new(api_key, webhook_secret)` plus an HMAC over the body) does not
-match InfinitePay's public
+```rust,no_run
+use rullst_capital::{BillingProvider, OneOffCheckoutRequest, PaymentNotification, StripeProvider};
+
+async fn class_seat() -> Result<(), rullst_capital::CapitalError> {
+    let provider = StripeProvider::new("mock_key", "mock_webhook");
+    let request = OneOffCheckoutRequest::new(
+        "order_42", 4_990, "brl", "Group class",
+        "http://localhost:3000/orders/42/paid", "http://localhost:3000/orders/42",
+    )?
+    .with_quantity(3)?;
+    let checkout = provider.create_one_off_checkout(&request).await?;
+    // Persist `request` and `checkout.session_id()`, then redirect to `checkout.url()`.
+    let notification = PaymentNotification::new(request.reference())?
+        .with_transaction_id(checkout.session_id().unwrap_or_default())?;
+    let payment = provider.confirm_one_off_payment(&request, &notification).await?;
+    assert!(!payment.is_paid()); // a mock key never proves payment
+    Ok(())
+}
+```
+
+Stripe creates a card-only `mode=payment` session with inline `price_data`: no
+pre-created price or customer, the request's quantity, and no discounts,
+adaptive pricing or automatic tax; the Idempotency-Key comes from the request
+digest. Its confirmation reads the session back and requires `complete`/`paid`
+with the bound reference, amount and currency. `http://localhost`,
+`127.0.0.1` and `[::1]` redirects work with `mock_*` keys; a live key requires
+HTTPS and fails with `ConfigurationError` before any request.
+
+#### Notifications without a signature
+
+Some gateways, InfinitePay among them, send an **unsigned** webhook. Such a
+provider declares `WebhookVerificationMode::ConfirmedAtSource`. For it the
+webhook middleware never calls `handle_webhook` and never inserts a
+`WebhookEvent`: it calls `parse_payment_notification` and inserts the resulting
+`PaymentNotification`, which names the payment and carries **no status**. The
+handler loads its request and calls `confirm_one_off_payment`; only that result
+can mark the order paid. A repeated notification only repeats the
+confirmation, so these bodies skip the replay store. Mark the order paid
+atomically and idempotently in the application.
+
+### InfinitePay
+
+`InfinitePayProvider::checkout(handle)` targets InfinitePay's public
 [Checkout API](https://www.infinitepay.io/checkout-documentacao):
 
-- a payment link is created with `POST https://api.checkout.infinitepay.io/links`
-  from the merchant `handle` (InfiniteTag) and items priced in cents;
-- the webhook carries **no signature**, so it proves nothing by itself;
-- a payment is confirmed with `POST /payment_check` (`handle`, `order_nsu`,
-  `transaction_nsu`, `slug`).
+```rust,no_run
+use rullst_capital::{BillingProvider, InfinitePayProvider, OneOffCheckoutRequest};
 
-To charge through InfinitePay now, implement `BillingProvider` in the
-application ([custom providers](https://github.com/Rullst/Rullst/blob/main/docs/src/capital-custom-provider.md)):
-take the amount from a charge stored on the server (never from the browser),
-treat the webhook only as a hint of *which* charge to check, and mark the
-charge paid only after `payment_check` confirms the payment and the stored
-amount. Capital's `verify_webhook` middleware requires a provider that
-verifies a signature, so it does not authenticate this notification; see
-[gateways with unsigned webhooks](https://github.com/Rullst/Rullst/blob/main/docs/src/capital-custom-provider.md#gateways-with-unsigned-webhooks).
+async fn link() -> Result<(), rullst_capital::CapitalError> {
+    let provider = InfinitePayProvider::checkout("$your-infinitetag")?
+        .with_api_key("inchk_server_side_key")? // optional: single-payment links
+        .with_webhook_url("https://app.example/webhooks/infinitepay")?;
+    let request = OneOffCheckoutRequest::new(
+        "order_42", 15_000, "BRL", "Aulas de novembro",
+        "https://app.example/pagamento/retorno", "https://app.example/pagamento",
+    )?;
+    let checkout = provider.create_one_off_checkout(&request).await?;
+    println!("{}", checkout.url());
+    Ok(())
+}
+```
+
+- `create_one_off_checkout` sends `POST https://api.checkout.infinitepay.io/links`
+  with the handle, one item priced in cents (BRL only, at least R$ 1.00 per
+  unit), the reference as `order_nsu`, the success URL as `redirect_url` and
+  the configured `webhook_url`; with an `inchk_` key (`X-Api-Key`) the link
+  accepts a single payment. InfinitePay has no cancel URL. Only an HTTPS
+  `infinitepay.io` link is accepted from the response.
+- `parse_payment_notification` reads `order_nsu`, `transaction_nsu` and
+  `invoice_slug` from the webhook body and ignores its amounts and status.
+  The return URL's `order_nsu`, `transaction_nsu` and `slug` query values build
+  the same `PaymentNotification` with `with_transaction_id` and
+  `with_invoice_id`.
+- `confirm_one_off_payment` sends `POST /payment_check` (`handle`, `order_nsu`,
+  `transaction_nsu`, `slug`). It is paid only when InfinitePay answers
+  `success` and `paid` with an `amount` equal to the request's total;
+  `paid_amount` may be higher when the buyer pays instalment fees. Anyone can
+  create a link for a public handle, so a paid link of another amount that
+  reuses the reference fails with `InvalidCharge`.
+- InfinitePay has no subscriptions, customer portal, metered usage, coupons,
+  trials or sandbox: those operations return `UnsupportedOperation`. Refunds
+  happen in InfinitePay's app.
+- An empty or `mock_*` handle selects offline fixtures: a
+  `mock.infinitepay.invalid` checkout and an `OneOffPaymentState::Mock`
+  confirmation that never proves payment. The 13.0.0-alpha.4 constructor
+  `new(api_key, webhook_secret)` still compiles for its offline fixtures; it
+  has no handle and refuses live operations.
+
+The adapter stays **experimental** until it is validated against a live
+account; its requests and responses are pinned by local fixtures only.
+
+### HTTP rules for application-owned adapters
+
+`providers::ProviderRequest` sends a request with the client the built-in
+adapters use, without exposing an HTTP client type: no redirects, no proxy
+from the environment, 5-second connect and 20-second request timeouts, rustls
+TLS, responses read up to 1 MiB, HTTPS URLs (HTTP only on a loopback host) and
+redacted `ProviderFailure` errors with the status and a bounded `Retry-After`.
+
+```rust,no_run
+use rullst_capital::providers::ProviderRequest;
+
+async fn check() -> Result<serde_json::Value, rullst_capital::CapitalError> {
+    ProviderRequest::post_json(
+        "acmepay",
+        "payment check",
+        "https://api.acmepay.example/v1/check",
+        &serde_json::json!({ "order": "order_42" }),
+    )?
+    .bearer_auth("server-side key")
+    .send_json()
+    .await
+}
+```
 
 Applications that need another gateway implement `BillingProvider` (and, for
 metered billing, `MeteredBillingProvider`) themselves. Such an adapter must
@@ -264,10 +365,11 @@ async fn buy() -> Result<(), rullst_capital::CapitalError> {
 }
 ```
 
-- **HTTPS redirects, even in mock mode.** The request checks `success_url` and
-  `cancel_url` when it is built, before it knows which key will send it, so
-  `http://localhost:3000/...` is rejected even with a `mock_` key that never
-  opens it. In local development pass the `https://` form to the mock.
+- **Local redirects with mock keys.** `success_url` and `cancel_url` must be
+  credential-free HTTPS URLs without fragments, except `http://localhost`,
+  `127.0.0.1` or `[::1]`, which a `mock_` key accepts for local development
+  (since 13.0.0-alpha.5). A live key refuses them with `ConfigurationError`
+  before any request.
 - **Webhook route and CSRF.** In a Rullst application the production CSRF
   baseline answers 403 to Stripe's webhook `POST` until the route's exact path
   is listed in `Rullst.toml`:
@@ -580,8 +682,9 @@ application responsibilities.
 
 The provider-bound handle validates coupon IDs before dispatch. Stripe uses the
 current expanded subscription-discount update and checks that the response
-contains both the requested subscription and coupon. Unreviewed live adapters,
-including InfinitePay, return `UnsupportedOperation`.
+contains both the requested subscription and coupon. Unreviewed live adapters
+return `UnsupportedOperation`, and InfinitePay, which has no subscriptions,
+always does.
 
 ```rust,no_run
 use rullst_capital::{Billable as _, CapitalError, StripeProvider};
@@ -640,14 +743,26 @@ return a stable `UsageStatus::Mock`, never a live acceptance.
 
 ### Payment-Bound Invoice Delivery
 
-`Invoice::bind_succeeded_charge` accepts only final `Succeeded` evidence with
-an exact recipient, minor-unit amount and currency match. Invoice amounts are
-scaled by the currency's ISO 4217 exponent, so `total: 2500.0` in JPY binds a
-2,500-yen receipt and `12.34` KWD binds a 12,340 minor-unit receipt. The resulting
-`PaidInvoice` can be rendered as escaped HTML or a bounded A4 PDF. Mail's opt-in
-`PaidInvoiceDelivery` bridge attaches both formats, runs mandatory pre-flight
-and sends through the configured facade, a tenant route or an explicit static
-driver.
+Since 13.0.0-alpha.5 invoice amounts are integers in the currency's smallest
+unit, like `ChargeReceipt`: `Invoice::new(id, email, date, "BRL")
+.with_item("Plan", 4_990)` is 49.90 BRL, 2,500 in JPY is 2,500 yen and 12,340
+in KWD is 12.340 dinars. The total is the checked sum of the items
+(`total_minor()`). `Invoice::bind_succeeded_charge` accepts only final
+`Succeeded` evidence with an exact recipient, amount and currency match.
+
+The HTML and PDF print `Invoice::labels`: English by default ("Invoice",
+"Billed To", "Date", "Description", "Amount", "Total"),
+`with_locale(InvoiceLocale::PtBr)` ("Recibo", "Recebido de", "Data",
+"Descrição", "Valor", "Total") or `InvoiceLocale::Es` ("Recibo", "Recibido de",
+"Fecha", "Descripción", "Importe", "Total"), or `InvoiceLabels` edited for
+another language. Portuguese and Spanish say "Recibo" because Capital issues no
+tax invoice (nota fiscal, factura). `InvoiceLocale::from_tag("pt-BR")` maps a
+language tag. The resulting `PaidInvoice` can be rendered as escaped HTML or a
+bounded A4 PDF. Mail's opt-in `PaidInvoiceDelivery` bridge attaches both
+formats with the title label as subject and file name (`Recibo INV-1`,
+`recibo-<key>.pdf`; `subject(...)` and `filename(...)` replace them), runs
+mandatory pre-flight and sends through the configured facade, a tenant route or
+an explicit static driver.
 
 Persist and atomically claim `PaidInvoice::delivery_key()` in an application
 outbox before retryable delivery. The bridge does not infer webhook state or
@@ -700,7 +815,7 @@ customer-bound `create_subscription_checkout` described in
 
 ### Intercepting and Verifying Webhooks
 
-`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, require the provider to declare its verification mode, verify the provider signature (Stripe also enforces timestamp freshness), reject duplicate Standard Webhooks envelope headers, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. A custom provider whose protocol signs only the body without a checked timestamp lets an exact captured body verify again once its replay entry expires (24 hours by default) or, with the in-memory store, after a restart; persist and order its state changes in the application. Live InfinitePay verification is unavailable. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points. The in-memory store now fails closed when full instead of discarding an unexpired replay proof. The default store behind `verify_webhook`, `verify_webhook_mock_local` and their Actix equivalents holds at most 10,000 proofs for 24 hours each, so one process admits about 10,000 verified deliveries per rolling day before it answers 503. For busier endpoints, mount `verify_webhook_with_state` with `InMemoryWebhookReplayStore::new(capacity, ttl)` (up to 1,000,000 proofs and 30 days) or a shared `SqlWebhookReplayStore`.
+`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, require the provider to declare its verification mode, verify the provider signature (Stripe also enforces timestamp freshness), reject duplicate Standard Webhooks envelope headers, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. A custom provider whose protocol signs only the body without a checked timestamp lets an exact captured body verify again once its replay entry expires (24 hours by default) or, with the in-memory store, after a restart; persist and order its state changes in the application. For a provider in `WebhookVerificationMode::ConfirmedAtSource` (unsigned notifications, such as InfinitePay's) the middleware inserts a status-free `PaymentNotification` instead of an event and records no replay proof; see [notifications without a signature](#notifications-without-a-signature). Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points. The in-memory store now fails closed when full instead of discarding an unexpired replay proof. The default store behind `verify_webhook`, `verify_webhook_mock_local` and their Actix equivalents holds at most 10,000 proofs for 24 hours each, so one process admits about 10,000 verified deliveries per rolling day before it answers 503. For busier endpoints, mount `verify_webhook_with_state` with `InMemoryWebhookReplayStore::new(capacity, ttl)` (up to 1,000,000 proofs and 30 days) or a shared `SqlWebhookReplayStore`.
 
 The webhook route must receive a narrowly scoped CSRF exemption; never disable CSRF for browser routes. In a Rullst application, list the route's exact path in `[security] csrf_signed_webhook_paths` of `Rullst.toml` (for example `csrf_signed_webhook_paths = ["/webhooks/billing"]`); until then the production CSRF baseline answers the provider's `POST` with 403. The exemption is safe only when this signature/freshness/replay middleware remains mandatory on that exact route. An outer blanket CSRF layer will reject legitimate provider callbacks before Capital can verify them.
 
@@ -775,4 +890,4 @@ an outbox, idempotent consumers, and reconciliation.
 - **Fail-Closed Configuration**: Empty webhook secrets never authenticate a request; mock credentials require a deliberate `mock_*` value.
 - **Explicit Verification Mode**: A provider without an explicitly declared webhook verification mode cannot be mounted behind the canonical middleware.
 - **Freshness and Replay Protection**: Timestamped protocols have a configurable five-minute window, and middleware records provider-scoped payload hashes in a bounded 24-hour TTL store. `webhook-sql` adds bounded durable claims; stable semantic event IDs can share a transaction with the domain mutation.
-- **InfinitePay Containment**: The experimental adapter performs no real operation: its live checkout and callback verification return `UnsupportedOperation`; only empty or `mock_*` API keys and `mock_*` webhook secrets operate offline. See [InfinitePay today](#infinitepay-today) for the application-owned path.
+- **Unsigned Notifications Prove Nothing**: A `ConfirmedAtSource` notification never becomes a `WebhookEvent`; only `confirm_one_off_payment`, which queries the provider and compares the paid amount with the server-side request, reports a payment. InfinitePay's experimental adapter works this way; an empty or `mock_*` handle operates offline and never reports a paid payment.

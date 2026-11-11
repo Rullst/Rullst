@@ -56,13 +56,13 @@ impl Invoice {
         &self,
         receipt: &ChargeReceipt,
     ) -> Result<PaidInvoice, crate::error::CapitalError> {
-        let money = self.validated_money()?;
+        let total_minor = self.validated_total()?;
         if receipt.status() != ChargeStatus::Succeeded {
             return Err(invalid_invoice(
                 "invoice delivery requires a final succeeded charge receipt",
             ));
         }
-        if receipt.amount_minor() != money.total_minor
+        if receipt.amount_minor() != total_minor
             || !receipt.currency().eq_ignore_ascii_case(&self.currency)
         {
             return Err(invalid_invoice(
@@ -104,21 +104,12 @@ fn delivery_key(invoice: &Invoice, receipt: &ChargeReceipt) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ChargeStatus, InvoiceItem};
+    use crate::ChargeStatus;
     use chrono::Utc;
 
     fn invoice() -> Invoice {
-        Invoice {
-            invoice_id: "INV-42".to_string(),
-            customer_email: "owner@example.com".to_string(),
-            date: Utc::now(),
-            items: vec![InvoiceItem {
-                description: "Subscription".to_string(),
-                amount: 49.90,
-            }],
-            total: 49.90,
-            currency: "BRL".to_string(),
-        }
+        Invoice::new("INV-42", "owner@example.com", Utc::now(), "BRL")
+            .with_item("Subscription", 4_990)
     }
 
     fn receipt(status: ChargeStatus) -> ChargeReceipt {
@@ -212,16 +203,9 @@ mod tests {
 
     #[test]
     fn zero_and_three_decimal_currencies_bind_in_provider_minor_units() {
-        for (total, currency, amount_minor) in [(2_500.0, "JPY", 2_500), (12.34, "KWD", 12_340)] {
-            let invoice = Invoice {
-                items: vec![InvoiceItem {
-                    description: "Subscription".to_string(),
-                    amount: total,
-                }],
-                total,
-                currency: currency.to_string(),
-                ..invoice()
-            };
+        for (currency, amount_minor) in [("JPY", 2_500), ("KWD", 12_340)] {
+            let invoice = Invoice::new("INV-42", "owner@example.com", Utc::now(), currency)
+                .with_item("Subscription", amount_minor);
             let receipt = ChargeReceipt::from_verified_provider_response(
                 "fixture",
                 "charge_42",

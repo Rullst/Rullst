@@ -40,7 +40,9 @@ a run; it does not turn an informational workflow into a formal assurance.
 ## Explicit product boundaries
 
 - NFS-e preparation was removed from the framework in v13; Rullst issues no
-  fiscal documents. InfinitePay live checkout and callbacks fail closed.
+  fiscal documents; invoices print "Recibo" in Portuguese and Spanish.
+  InfinitePay unsigned callbacks never mark a payment paid without a
+  `payment_check` that matches the server-side amount.
 - IoT currently provides `no_std` data/frame helpers, bounded MQTT 5 PUBLISH
   and CoAP request encoders, Ed25519-signed OTA manifest verification and a
   durable rollback-counter CAS contract. MQTT/CoAP transports and session

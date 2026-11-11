@@ -6,8 +6,9 @@
 
 `rullst-capital` provides provider-neutral billing abstractions, revenue
 metrics, verified webhook plumbing and two payment-provider adapters: Stripe
-(supported) and InfinitePay (experimental; it performs no real operation today,
-see [gateways with unsigned webhooks](capital-custom-provider.md#gateways-with-unsigned-webhooks)).
+(supported) and InfinitePay (experimental: one-off payment links on its public
+Checkout API, each unsigned notification confirmed with `payment_check`; see
+[gateways with unsigned webhooks](capital-custom-provider.md#gateways-with-unsigned-webhooks)).
 Provider capabilities are not uniform: consult the adapter API and its tests
 before depending on a particular checkout, refund or webhook operation.
 Other gateways are integrated in application code by implementing the provider
@@ -98,9 +99,10 @@ creating a `mode=payment` session with one card-funded item. The
 [crate README](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md#one-time-stripe-checkout)
 has an example. Three points are easy to miss:
 
-- `success_url` and `cancel_url` must be HTTPS even with a `mock_` key: the
-  request checks them before it knows which key will send it, so pass the
-  `https://` form in local development.
+- `success_url` and `cancel_url` must be HTTPS, except `http://localhost`,
+  `127.0.0.1` or `[::1]`, which a `mock_` key accepts for local development
+  (since 13.0.0-alpha.5); a live key refuses them with `ConfigurationError`
+  before any request.
 - The production CSRF baseline answers Stripe's webhook `POST` with 403 until
   the route's exact path is listed in `[security] csrf_signed_webhook_paths` of
   `Rullst.toml`. List only a path whose handler verifies the signature.
@@ -131,8 +133,8 @@ fields.
 statically dispatched `SubscriptionHandle` applies it. Stripe uses the current
 expanded `discounts[0][coupon]` update and binds the response to the requested
 subscription/coupon. Adapters without reviewed subscription-discount contracts,
-including InfinitePay, return `UnsupportedOperation` instead of silently
-succeeding.
+and InfinitePay, which has no subscriptions, return `UnsupportedOperation`
+instead of silently succeeding.
 
 `handle.extend_trial(15)` resolves a bounded 15-day expiration from the current
 UTC clock. Retryable workers should persist the command creation time and call
@@ -170,8 +172,14 @@ outside the explicit quota boundary.
 Enable the umbrella `capital-mail` feature (or Capital's `invoice-pdf` and
 Mail's `capital-invoice` features separately). `Invoice::bind_succeeded_charge`
 rejects non-final/mock receipts and any recipient, minor-unit total or currency
-mismatch. `PaidInvoiceDelivery::prepare` then creates escaped HTML, a bounded
-native PDF attachment and a message that has already passed Mail pre-flight.
+mismatch. Amounts are integers in the currency's smallest unit
+(`Invoice::new(id, email, date, "BRL").with_item("Plan", 4_990)`), and the
+labels are English unless the invoice uses `with_locale(InvoiceLocale::PtBr)`,
+`InvoiceLocale::Es` (both say "Recibo", since Capital issues no tax invoice) or
+edited `InvoiceLabels`. `PaidInvoiceDelivery::prepare` then creates escaped HTML,
+a bounded native PDF attachment and a message that has already passed Mail
+pre-flight, with the title label as subject and file name (`subject(...)` and
+`filename(...)` replace them).
 It can use the configured facade, a tenant route or an explicit static driver.
 
 The returned stable `delivery_key` is for a unique durable outbox record owned

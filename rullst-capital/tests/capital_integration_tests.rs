@@ -85,23 +85,14 @@ fn test_url_encode_helper() {
 
 #[test]
 fn test_invoice_html_generation() {
-    let invoice = Invoice {
-        invoice_id: "INV-2026-001".to_string(),
-        customer_email: "alice@example.com".to_string(),
-        date: chrono::Utc::now(),
-        items: vec![
-            InvoiceItem {
-                description: "Pro Subscription".to_string(),
-                amount: 29.00,
-            },
-            InvoiceItem {
-                description: "Dedicated IP Addon".to_string(),
-                amount: 10.00,
-            },
-        ],
-        total: 39.00,
-        currency: "USD".to_string(),
-    };
+    let invoice = Invoice::new(
+        "INV-2026-001",
+        "alice@example.com",
+        chrono::Utc::now(),
+        "USD",
+    )
+    .with_item("Pro Subscription", 2_900)
+    .with_item("Dedicated IP Addon", 1_000);
 
     let html = invoice.generate_html();
     assert!(html.contains("Invoice INV-2026-001"));

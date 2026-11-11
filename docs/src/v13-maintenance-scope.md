@@ -173,7 +173,7 @@ this release.
 | v13 provider | Reason and current boundary |
 | :--- | :--- |
 | Stripe | Supported. Existing SaaS use and the generated durable billing integration. Preserve the reviewed operation boundaries rather than promising every Stripe product. |
-| InfinitePay | Experimental until validated against a live account. Offline fixtures only; live checkout and callbacks fail closed until a reviewed authoritative pricing and callback-authentication contract exists. |
+| InfinitePay | Experimental until validated against a live account. Since 13.0.0-alpha.5 it creates one-off payment links on the public Checkout API from a server-side amount and confirms each unsigned notification with `payment_check`; subscriptions, portal and plan checkout are unsupported. |
 
 Removed from the 13.0 workspace (8 October 2026; the source remains in git
 history and in the 12.x line): the Paddle, Lemon Squeezy, Polar, Razorpay,

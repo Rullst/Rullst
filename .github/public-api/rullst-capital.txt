@@ -26,11 +26,14 @@ pub trait rullst_capital::BillingProvider: core::marker::Send + core::marker::Sy
 pub fn rullst_capital::BillingProvider::apply_coupon<'life0, 'life1, 'life2, 'async_trait>(&'life0 self, subscription_id: &'life1 str, coupon_code: &'life2 str) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<(), rullst_capital::CapitalError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait, 'life2: 'async_trait
 pub fn rullst_capital::BillingProvider::cancel_subscription<'life0, 'life1, 'async_trait>(&'life0 self, subscription_id: &'life1 str) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<(), rullst_capital::CapitalError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait
 pub fn rullst_capital::BillingProvider::charge<'life0, 'life1, 'async_trait>(&'life0 self, _request: &'life1 rullst_capital::ChargeRequest) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<rullst_capital::ChargeReceipt, rullst_capital::CapitalError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait
+pub fn rullst_capital::BillingProvider::confirm_one_off_payment<'life0, 'life1, 'life2, 'async_trait>(&'life0 self, _request: &'life1 rullst_capital::OneOffCheckoutRequest, _notification: &'life2 rullst_capital::PaymentNotification) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<rullst_capital::OneOffPayment, rullst_capital::CapitalError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait, 'life2: 'async_trait
 pub fn rullst_capital::BillingProvider::create_checkout_session<'life0, 'life1, 'life2, 'life3, 'async_trait>(&'life0 self, customer_email: &'life1 str, plan_id: &'life2 str, redirect_url: &'life3 str) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<alloc::string::String, rullst_capital::CapitalError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait, 'life2: 'async_trait, 'life3: 'async_trait
 pub fn rullst_capital::BillingProvider::create_customer_portal<'life0, 'life1, 'life2, 'async_trait>(&'life0 self, customer_email: &'life1 str, return_url: &'life2 str) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<alloc::string::String, rullst_capital::CapitalError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait, 'life2: 'async_trait
+pub fn rullst_capital::BillingProvider::create_one_off_checkout<'life0, 'life1, 'async_trait>(&'life0 self, _request: &'life1 rullst_capital::OneOffCheckoutRequest) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<rullst_capital::OneOffCheckout, rullst_capital::CapitalError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait
 pub fn rullst_capital::BillingProvider::extend_trial<'life0, 'life1, 'async_trait>(&'life0 self, subscription_id: &'life1 str, trial_ends_at: i64) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<(), rullst_capital::CapitalError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait
 pub fn rullst_capital::BillingProvider::handle_webhook(&self, payload: &[u8], headers: &std::collections::hash::map::HashMap<alloc::string::String, alloc::string::String>) -> core::result::Result<rullst_capital::WebhookEvent, rullst_capital::CapitalError>
 pub fn rullst_capital::BillingProvider::name(&self) -> &'static str
+pub fn rullst_capital::BillingProvider::parse_payment_notification(&self, _payload: &[u8], _headers: &std::collections::hash::map::HashMap<alloc::string::String, alloc::string::String>) -> core::result::Result<rullst_capital::PaymentNotification, rullst_capital::CapitalError>
 pub fn rullst_capital::BillingProvider::pause_subscription<'life0, 'life1, 'async_trait>(&'life0 self, subscription_id: &'life1 str) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<(), rullst_capital::CapitalError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait
 pub fn rullst_capital::BillingProvider::report_usage<'life0, 'life1, 'life2, 'async_trait>(&'life0 self, subscription_id: &'life1 str, metric: &'life2 str, quantity: u64) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<(), rullst_capital::CapitalError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait, 'life2: 'async_trait
 pub fn rullst_capital::BillingProvider::webhook_verification_mode(&self) -> core::result::Result<rullst_capital::WebhookVerificationMode, rullst_capital::CapitalError>
@@ -193,29 +196,37 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::InMemoryWebhook
 impl core::panic::unwind_safe::UnwindSafe for rullst_capital::InMemoryWebhookReplayStore
 pub struct rullst_capital::InfinitePayProvider
 impl rullst_capital::InfinitePayProvider
+pub fn rullst_capital::InfinitePayProvider::checkout(handle: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+pub fn rullst_capital::InfinitePayProvider::is_mock(&self) -> bool
 pub fn rullst_capital::InfinitePayProvider::new(api_key: impl core::convert::Into<alloc::string::String>, webhook_secret: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_capital::InfinitePayProvider::verify_signature(&self, _payload: &[u8], signature_hex: &str) -> core::result::Result<(), rullst_capital::CapitalError>
+pub fn rullst_capital::InfinitePayProvider::with_api_key(self, api_key: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+pub fn rullst_capital::InfinitePayProvider::with_webhook_url(self, url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
 impl rullst_capital::BillingProvider for rullst_capital::InfinitePayProvider
 impl core::marker::Send for rullst_capital::InfinitePayProvider
 impl core::marker::Sync for rullst_capital::InfinitePayProvider
 impl core::marker::Unpin for rullst_capital::InfinitePayProvider
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::InfinitePayProvider
 impl core::panic::unwind_safe::UnwindSafe for rullst_capital::InfinitePayProvider
-pub struct rullst_capital::Invoice
+#[non_exhaustive] pub struct rullst_capital::Invoice
 pub rullst_capital::Invoice::invoice_id: alloc::string::String
 pub rullst_capital::Invoice::customer_email: alloc::string::String
 pub rullst_capital::Invoice::date: chrono::datetime::DateTime<chrono::offset::utc::Utc>
 pub rullst_capital::Invoice::items: alloc::vec::Vec<rullst_capital::InvoiceItem>
-pub rullst_capital::Invoice::total: f64
 pub rullst_capital::Invoice::currency: alloc::string::String
+pub rullst_capital::Invoice::labels: rullst_capital::InvoiceLabels
 impl rullst_capital::Invoice
 pub fn rullst_capital::Invoice::bind_succeeded_charge(&self, receipt: &rullst_capital::ChargeReceipt) -> core::result::Result<rullst_capital::PaidInvoice, rullst_capital::CapitalError>
 pub fn rullst_capital::Invoice::generate_html(&self) -> alloc::string::String
 pub fn rullst_capital::Invoice::generate_pdf(&self) -> core::result::Result<alloc::vec::Vec<u8>, rullst_capital::CapitalError>
 pub fn rullst_capital::Invoice::generate_pdf_with_font(&self, font_bytes: &[u8]) -> core::result::Result<alloc::vec::Vec<u8>, rullst_capital::CapitalError>
+pub fn rullst_capital::Invoice::new(invoice_id: impl core::convert::Into<alloc::string::String>, customer_email: impl core::convert::Into<alloc::string::String>, date: chrono::datetime::DateTime<chrono::offset::utc::Utc>, currency: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_capital::Invoice::total_minor(&self) -> core::result::Result<u64, rullst_capital::CapitalError>
 pub fn rullst_capital::Invoice::try_generate_html(&self) -> core::result::Result<alloc::string::String, rullst_capital::CapitalError>
 pub fn rullst_capital::Invoice::validate(&self) -> core::result::Result<(), rullst_capital::CapitalError>
+pub fn rullst_capital::Invoice::with_item(self, description: impl core::convert::Into<alloc::string::String>, amount_minor: u64) -> Self
+pub fn rullst_capital::Invoice::with_labels(self, labels: rullst_capital::InvoiceLabels) -> Self
+pub fn rullst_capital::Invoice::with_locale(self, locale: rullst_capital::InvoiceLocale) -> Self
 impl core::clone::Clone for rullst_capital::Invoice
 impl core::fmt::Debug for rullst_capital::Invoice
 impl serde_core::ser::Serialize for rullst_capital::Invoice
@@ -225,10 +236,14 @@ impl core::marker::Sync for rullst_capital::Invoice
 impl core::marker::Unpin for rullst_capital::Invoice
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::Invoice
 impl core::panic::unwind_safe::UnwindSafe for rullst_capital::Invoice
-pub struct rullst_capital::InvoiceItem
+#[non_exhaustive] pub struct rullst_capital::InvoiceItem
 pub rullst_capital::InvoiceItem::description: alloc::string::String
-pub rullst_capital::InvoiceItem::amount: f64
+pub rullst_capital::InvoiceItem::amount_minor: u64
+impl rullst_capital::InvoiceItem
+pub fn rullst_capital::InvoiceItem::new(description: impl core::convert::Into<alloc::string::String>, amount_minor: u64) -> Self
 impl core::clone::Clone for rullst_capital::InvoiceItem
+impl core::cmp::Eq for rullst_capital::InvoiceItem
+impl core::cmp::PartialEq for rullst_capital::InvoiceItem
 impl core::fmt::Debug for rullst_capital::InvoiceItem
 impl serde_core::ser::Serialize for rullst_capital::InvoiceItem
 impl<'de> serde_core::de::Deserialize<'de> for rullst_capital::InvoiceItem
@@ -237,12 +252,132 @@ impl core::marker::Sync for rullst_capital::InvoiceItem
 impl core::marker::Unpin for rullst_capital::InvoiceItem
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::InvoiceItem
 impl core::panic::unwind_safe::UnwindSafe for rullst_capital::InvoiceItem
+#[non_exhaustive] pub struct rullst_capital::InvoiceLabels
+pub rullst_capital::InvoiceLabels::language: alloc::string::String
+pub rullst_capital::InvoiceLabels::title: alloc::string::String
+pub rullst_capital::InvoiceLabels::billed_to: alloc::string::String
+pub rullst_capital::InvoiceLabels::date: alloc::string::String
+pub rullst_capital::InvoiceLabels::description: alloc::string::String
+pub rullst_capital::InvoiceLabels::amount: alloc::string::String
+pub rullst_capital::InvoiceLabels::total: alloc::string::String
+impl core::clone::Clone for rullst_capital::InvoiceLabels
+impl core::cmp::Eq for rullst_capital::InvoiceLabels
+impl core::cmp::PartialEq for rullst_capital::InvoiceLabels
+impl core::default::Default for rullst_capital::InvoiceLabels
+impl core::fmt::Debug for rullst_capital::InvoiceLabels
+impl serde_core::ser::Serialize for rullst_capital::InvoiceLabels
+impl<'de> serde_core::de::Deserialize<'de> for rullst_capital::InvoiceLabels
+impl core::marker::Send for rullst_capital::InvoiceLabels
+impl core::marker::Sync for rullst_capital::InvoiceLabels
+impl core::marker::Unpin for rullst_capital::InvoiceLabels
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::InvoiceLabels
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::InvoiceLabels
+#[non_exhaustive] pub enum rullst_capital::InvoiceLocale
+pub rullst_capital::InvoiceLocale::En
+pub rullst_capital::InvoiceLocale::PtBr
+pub rullst_capital::InvoiceLocale::Es
+impl rullst_capital::InvoiceLocale
+pub fn rullst_capital::InvoiceLocale::from_tag(tag: &str) -> core::option::Option<Self>
+pub fn rullst_capital::InvoiceLocale::labels(self) -> rullst_capital::InvoiceLabels
+pub fn rullst_capital::InvoiceLocale::tag(self) -> &'static str
+impl core::clone::Clone for rullst_capital::InvoiceLocale
+impl core::cmp::Eq for rullst_capital::InvoiceLocale
+impl core::cmp::PartialEq for rullst_capital::InvoiceLocale
+impl core::default::Default for rullst_capital::InvoiceLocale
+impl core::fmt::Debug for rullst_capital::InvoiceLocale
+impl core::marker::Copy for rullst_capital::InvoiceLocale
+impl core::marker::Send for rullst_capital::InvoiceLocale
+impl core::marker::Sync for rullst_capital::InvoiceLocale
+impl core::marker::Unpin for rullst_capital::InvoiceLocale
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::InvoiceLocale
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::InvoiceLocale
 pub const rullst_capital::MAX_CHARGE_AMOUNT_MINOR: u64
+pub const rullst_capital::MAX_ONE_OFF_QUANTITY: u32
 pub const rullst_capital::MAX_TRIAL_EXTENSION_DAYS: u16
 pub const rullst_capital::MAX_USAGE_QUANTITY: u64
 pub trait rullst_capital::MeteredBillingProvider: core::marker::Send + core::marker::Sync
 pub fn rullst_capital::MeteredBillingProvider::report_metered_usage<'life0, 'life1, 'async_trait>(&'life0 self, request: &'life1 <Self as rullst_capital::MeteredBillingProvider>::UsageRequest) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<rullst_capital::UsageReceipt, rullst_capital::CapitalError>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait
 pub type rullst_capital::MeteredBillingProvider::UsageRequest: core::marker::Send + core::marker::Sync
+#[non_exhaustive] pub struct rullst_capital::OneOffCheckout
+impl rullst_capital::OneOffCheckout
+pub fn rullst_capital::OneOffCheckout::from_verified_provider_response(provider: &'static str, request: &rullst_capital::OneOffCheckoutRequest, url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+pub fn rullst_capital::OneOffCheckout::is_mock(&self) -> bool
+pub fn rullst_capital::OneOffCheckout::provider(&self) -> &'static str
+pub fn rullst_capital::OneOffCheckout::reference(&self) -> &str
+pub fn rullst_capital::OneOffCheckout::request_digest(&self) -> [u8; 32]
+pub fn rullst_capital::OneOffCheckout::session_id(&self) -> core::option::Option<&str>
+pub fn rullst_capital::OneOffCheckout::url(&self) -> &str
+pub fn rullst_capital::OneOffCheckout::with_session_id(self, session_id: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+impl core::clone::Clone for rullst_capital::OneOffCheckout
+impl core::cmp::Eq for rullst_capital::OneOffCheckout
+impl core::cmp::PartialEq for rullst_capital::OneOffCheckout
+impl core::fmt::Debug for rullst_capital::OneOffCheckout
+impl core::marker::Send for rullst_capital::OneOffCheckout
+impl core::marker::Sync for rullst_capital::OneOffCheckout
+impl core::marker::Unpin for rullst_capital::OneOffCheckout
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::OneOffCheckout
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::OneOffCheckout
+#[non_exhaustive] pub struct rullst_capital::OneOffCheckoutRequest
+impl rullst_capital::OneOffCheckoutRequest
+pub fn rullst_capital::OneOffCheckoutRequest::cancel_url(&self) -> &str
+pub fn rullst_capital::OneOffCheckoutRequest::currency(&self) -> &str
+pub fn rullst_capital::OneOffCheckoutRequest::customer_email(&self) -> core::option::Option<&str>
+pub fn rullst_capital::OneOffCheckoutRequest::description(&self) -> &str
+pub fn rullst_capital::OneOffCheckoutRequest::new(reference: impl core::convert::Into<alloc::string::String>, unit_amount_minor: u64, currency: impl core::convert::Into<alloc::string::String>, description: impl core::convert::Into<alloc::string::String>, success_url: impl core::convert::Into<alloc::string::String>, cancel_url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+pub fn rullst_capital::OneOffCheckoutRequest::quantity(&self) -> u32
+pub fn rullst_capital::OneOffCheckoutRequest::reference(&self) -> &str
+pub fn rullst_capital::OneOffCheckoutRequest::request_digest(&self) -> [u8; 32]
+pub fn rullst_capital::OneOffCheckoutRequest::success_url(&self) -> &str
+pub fn rullst_capital::OneOffCheckoutRequest::total_amount_minor(&self) -> u64
+pub fn rullst_capital::OneOffCheckoutRequest::unit_amount_minor(&self) -> u64
+pub fn rullst_capital::OneOffCheckoutRequest::with_customer_email(self, email: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+pub fn rullst_capital::OneOffCheckoutRequest::with_quantity(self, quantity: u32) -> core::result::Result<Self, rullst_capital::CapitalError>
+impl core::clone::Clone for rullst_capital::OneOffCheckoutRequest
+impl core::cmp::Eq for rullst_capital::OneOffCheckoutRequest
+impl core::cmp::PartialEq for rullst_capital::OneOffCheckoutRequest
+impl core::fmt::Debug for rullst_capital::OneOffCheckoutRequest
+impl core::marker::Send for rullst_capital::OneOffCheckoutRequest
+impl core::marker::Sync for rullst_capital::OneOffCheckoutRequest
+impl core::marker::Unpin for rullst_capital::OneOffCheckoutRequest
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::OneOffCheckoutRequest
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::OneOffCheckoutRequest
+#[non_exhaustive] pub struct rullst_capital::OneOffPayment
+impl rullst_capital::OneOffPayment
+pub fn rullst_capital::OneOffPayment::amount_minor(&self) -> u64
+pub fn rullst_capital::OneOffPayment::currency(&self) -> &str
+pub fn rullst_capital::OneOffPayment::is_paid(&self) -> bool
+pub fn rullst_capital::OneOffPayment::paid(provider: &'static str, request: &rullst_capital::OneOffCheckoutRequest, charged_amount_minor: u64, paid_amount_minor: u64, currency: &str) -> core::result::Result<Self, rullst_capital::CapitalError>
+pub fn rullst_capital::OneOffPayment::paid_amount_minor(&self) -> u64
+pub fn rullst_capital::OneOffPayment::provider(&self) -> &'static str
+pub fn rullst_capital::OneOffPayment::reference(&self) -> &str
+pub fn rullst_capital::OneOffPayment::request_digest(&self) -> [u8; 32]
+pub fn rullst_capital::OneOffPayment::state(&self) -> rullst_capital::OneOffPaymentState
+pub fn rullst_capital::OneOffPayment::transaction_id(&self) -> core::option::Option<&str>
+pub fn rullst_capital::OneOffPayment::unpaid(provider: &'static str, request: &rullst_capital::OneOffCheckoutRequest) -> Self
+pub fn rullst_capital::OneOffPayment::with_transaction_id(self, id: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+impl core::clone::Clone for rullst_capital::OneOffPayment
+impl core::cmp::Eq for rullst_capital::OneOffPayment
+impl core::cmp::PartialEq for rullst_capital::OneOffPayment
+impl core::fmt::Debug for rullst_capital::OneOffPayment
+impl core::marker::Send for rullst_capital::OneOffPayment
+impl core::marker::Sync for rullst_capital::OneOffPayment
+impl core::marker::Unpin for rullst_capital::OneOffPayment
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::OneOffPayment
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::OneOffPayment
+#[non_exhaustive] pub enum rullst_capital::OneOffPaymentState
+pub rullst_capital::OneOffPaymentState::Paid
+pub rullst_capital::OneOffPaymentState::Unpaid
+pub rullst_capital::OneOffPaymentState::Mock
+impl core::clone::Clone for rullst_capital::OneOffPaymentState
+impl core::cmp::Eq for rullst_capital::OneOffPaymentState
+impl core::cmp::PartialEq for rullst_capital::OneOffPaymentState
+impl core::fmt::Debug for rullst_capital::OneOffPaymentState
+impl core::marker::Copy for rullst_capital::OneOffPaymentState
+impl core::marker::Send for rullst_capital::OneOffPaymentState
+impl core::marker::Sync for rullst_capital::OneOffPaymentState
+impl core::marker::Unpin for rullst_capital::OneOffPaymentState
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::OneOffPaymentState
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::OneOffPaymentState
 pub struct rullst_capital::PaidInvoice
 impl rullst_capital::PaidInvoice
 pub fn rullst_capital::PaidInvoice::charge_id(&self) -> &str
@@ -256,6 +391,23 @@ impl core::marker::Sync for rullst_capital::PaidInvoice
 impl core::marker::Unpin for rullst_capital::PaidInvoice
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::PaidInvoice
 impl core::panic::unwind_safe::UnwindSafe for rullst_capital::PaidInvoice
+#[non_exhaustive] pub struct rullst_capital::PaymentNotification
+impl rullst_capital::PaymentNotification
+pub fn rullst_capital::PaymentNotification::invoice_id(&self) -> core::option::Option<&str>
+pub fn rullst_capital::PaymentNotification::new(reference: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+pub fn rullst_capital::PaymentNotification::reference(&self) -> &str
+pub fn rullst_capital::PaymentNotification::transaction_id(&self) -> core::option::Option<&str>
+pub fn rullst_capital::PaymentNotification::with_invoice_id(self, id: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+pub fn rullst_capital::PaymentNotification::with_transaction_id(self, id: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+impl core::clone::Clone for rullst_capital::PaymentNotification
+impl core::cmp::Eq for rullst_capital::PaymentNotification
+impl core::cmp::PartialEq for rullst_capital::PaymentNotification
+impl core::fmt::Debug for rullst_capital::PaymentNotification
+impl core::marker::Send for rullst_capital::PaymentNotification
+impl core::marker::Sync for rullst_capital::PaymentNotification
+impl core::marker::Unpin for rullst_capital::PaymentNotification
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::PaymentNotification
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::PaymentNotification
 #[non_exhaustive] pub struct rullst_capital::ProviderFailure
 impl rullst_capital::ProviderFailure
 pub fn rullst_capital::ProviderFailure::class(&self) -> rullst_capital::ProviderFailureClass
@@ -308,6 +460,21 @@ impl core::marker::Sync for rullst_capital::ProviderFailureKind
 impl core::marker::Unpin for rullst_capital::ProviderFailureKind
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::ProviderFailureKind
 impl core::panic::unwind_safe::UnwindSafe for rullst_capital::ProviderFailureKind
+#[non_exhaustive] pub struct rullst_capital::ProviderRequest
+impl rullst_capital::ProviderRequest
+pub async fn rullst_capital::ProviderRequest::send(self) -> core::result::Result<alloc::vec::Vec<u8>, rullst_capital::CapitalError>
+pub async fn rullst_capital::ProviderRequest::send_json<T: serde_core::de::DeserializeOwned>(self) -> core::result::Result<T, rullst_capital::CapitalError>
+pub fn rullst_capital::ProviderRequest::bearer_auth(self, token: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn rullst_capital::ProviderRequest::get(provider: &'static str, operation: &'static str, url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+pub fn rullst_capital::ProviderRequest::header(self, name: impl core::convert::Into<alloc::string::String>, value: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn rullst_capital::ProviderRequest::post_form(provider: &'static str, operation: &'static str, url: impl core::convert::Into<alloc::string::String>, body: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+pub fn rullst_capital::ProviderRequest::post_json<T: serde_core::ser::Serialize + ?core::marker::Sized>(provider: &'static str, operation: &'static str, url: impl core::convert::Into<alloc::string::String>, body: &T) -> core::result::Result<Self, rullst_capital::CapitalError>
+impl core::fmt::Debug for rullst_capital::ProviderRequest
+impl core::marker::Send for rullst_capital::ProviderRequest
+impl core::marker::Sync for rullst_capital::ProviderRequest
+impl core::marker::Unpin for rullst_capital::ProviderRequest
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::ProviderRequest
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::ProviderRequest
 #[non_exhaustive] pub enum rullst_capital::QuotaError
 pub rullst_capital::QuotaError::InvalidRequest(alloc::string::String)
 pub rullst_capital::QuotaError::LimitExceeded { .. }
@@ -1050,6 +1217,7 @@ impl core::marker::Unpin for rullst_capital::WebhookReplayBackend
 #[non_exhaustive] pub enum rullst_capital::WebhookVerificationMode
 pub rullst_capital::WebhookVerificationMode::Real
 pub rullst_capital::WebhookVerificationMode::Mock
+pub rullst_capital::WebhookVerificationMode::ConfirmedAtSource
 impl core::clone::Clone for rullst_capital::WebhookVerificationMode
 impl core::cmp::Eq for rullst_capital::WebhookVerificationMode
 impl core::cmp::PartialEq for rullst_capital::WebhookVerificationMode
@@ -1068,6 +1236,7 @@ pub mod rullst_capital::capital
 pub use rullst_capital::capital::BillingProvider = trait rullst_capital::BillingProvider
 pub use rullst_capital::capital::DEFAULT_WEBHOOK_TOLERANCE = constant rullst_capital::DEFAULT_WEBHOOK_TOLERANCE
 pub use rullst_capital::capital::InfinitePayProvider = struct rullst_capital::InfinitePayProvider
+pub use rullst_capital::capital::ProviderRequest = struct rullst_capital::ProviderRequest
 pub use rullst_capital::capital::StripeCheckoutSnapshot = struct rullst_capital::StripeCheckoutSnapshot
 pub use rullst_capital::capital::StripeProvider = struct rullst_capital::StripeProvider
 pub use rullst_capital::capital::SubscriptionStatus = enum rullst_capital::SubscriptionStatus
@@ -1220,7 +1389,16 @@ pub fn rullst_capital::init_provider(provider: alloc::boxed::Box<dyn rullst_capi
 pub mod rullst_capital::invoice
 pub use rullst_capital::invoice::Invoice = struct rullst_capital::Invoice
 pub use rullst_capital::invoice::InvoiceItem = struct rullst_capital::InvoiceItem
+pub use rullst_capital::invoice::InvoiceLabels = struct rullst_capital::InvoiceLabels
+pub use rullst_capital::invoice::InvoiceLocale = enum rullst_capital::InvoiceLocale
 pub use rullst_capital::invoice::PaidInvoice = struct rullst_capital::PaidInvoice
+pub mod rullst_capital::one_off
+pub use rullst_capital::one_off::MAX_ONE_OFF_QUANTITY = constant rullst_capital::MAX_ONE_OFF_QUANTITY
+pub use rullst_capital::one_off::OneOffCheckout = struct rullst_capital::OneOffCheckout
+pub use rullst_capital::one_off::OneOffCheckoutRequest = struct rullst_capital::OneOffCheckoutRequest
+pub use rullst_capital::one_off::OneOffPayment = struct rullst_capital::OneOffPayment
+pub use rullst_capital::one_off::OneOffPaymentState = enum rullst_capital::OneOffPaymentState
+pub use rullst_capital::one_off::PaymentNotification = struct rullst_capital::PaymentNotification
 pub mod rullst_capital::one_time_checkout
 pub use rullst_capital::one_time_checkout::StripeOneTimePaymentState = enum rullst_capital::StripeOneTimePaymentState
 pub use rullst_capital::one_time_checkout::StripeOneTimePrice = struct rullst_capital::StripeOneTimePrice
@@ -1233,6 +1411,7 @@ pub mod rullst_capital::providers
 pub use rullst_capital::providers::BillingProvider = trait rullst_capital::BillingProvider
 pub use rullst_capital::providers::DEFAULT_WEBHOOK_TOLERANCE = constant rullst_capital::DEFAULT_WEBHOOK_TOLERANCE
 pub use rullst_capital::providers::InfinitePayProvider = struct rullst_capital::InfinitePayProvider
+pub use rullst_capital::providers::ProviderRequest = struct rullst_capital::ProviderRequest
 pub use rullst_capital::providers::StripeCheckoutSnapshot = struct rullst_capital::StripeCheckoutSnapshot
 pub use rullst_capital::providers::StripeProvider = struct rullst_capital::StripeProvider
 pub use rullst_capital::providers::SubscriptionStatus = enum rullst_capital::SubscriptionStatus

@@ -3,7 +3,10 @@ use super::{
     ensure_fresh_timestamp, url_encode, verify_explicit_mock_signature, webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
-use crate::{ChargeReceipt, ChargeRequest};
+use crate::{
+    ChargeReceipt, ChargeRequest, OneOffCheckout, OneOffCheckoutRequest, OneOffPayment,
+    PaymentNotification,
+};
 use async_trait::async_trait;
 use ring::hmac;
 use serde_json::Value;
@@ -62,7 +65,9 @@ impl StripeProvider {
                     signature_header,
                 );
             }
-            WebhookVerificationMode::Real => {}
+            // Stripe signs every webhook; its secret never selects the
+            // unsigned mode.
+            WebhookVerificationMode::Real | WebhookVerificationMode::ConfirmedAtSource => {}
         }
 
         if signature_header.len() > 4096 {
@@ -197,6 +202,29 @@ impl BillingProvider for StripeProvider {
 
     async fn charge(&self, request: &ChargeRequest) -> Result<ChargeReceipt, CapitalError> {
         super::stripe_charge::execute(&self.api_key, request).await
+    }
+
+    /// Creates a card-only `mode=payment` Checkout Session with inline
+    /// `price_data`: no pre-created price or customer is needed, the quantity
+    /// is the request's, and discounts, adaptive pricing and automatic tax are
+    /// off. The Idempotency-Key is derived from the request digest.
+    async fn create_one_off_checkout(
+        &self,
+        request: &OneOffCheckoutRequest,
+    ) -> Result<OneOffCheckout, CapitalError> {
+        super::stripe_one_off::create(&self.api_key, request).await
+    }
+
+    /// Reads the Checkout Session named by the notification's transaction ID
+    /// (`cs_…`, from [`OneOffCheckout::session_id`] or a signed event) and
+    /// reports it paid only when it is complete, paid, and bound to the
+    /// request's reference, total and currency.
+    async fn confirm_one_off_payment(
+        &self,
+        request: &OneOffCheckoutRequest,
+        notification: &PaymentNotification,
+    ) -> Result<OneOffPayment, CapitalError> {
+        super::stripe_one_off::confirm(&self.api_key, request, notification).await
     }
 
     fn handle_webhook(

@@ -13,6 +13,7 @@ pub(super) fn validate_message_limits(message: &Message) -> Result<(), MailError
         Some(&message.to),
         Some(&message.subject),
         message.from.as_ref(),
+        message.reply_to.as_ref(),
         message.body_html.as_ref(),
         message.body_text.as_ref(),
         message.unsubscribe_url.as_ref(),

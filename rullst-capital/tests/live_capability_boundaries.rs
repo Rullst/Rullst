@@ -109,12 +109,16 @@ async fn live_portal_creation_requires_a_reviewed_provider_session_contract() {
     );
     for key in ["", "mock_key"] {
         for provider in providers(key) {
-            assert!(
-                provider
-                    .create_customer_portal("user@example.invalid", "https://app.example/billing")
-                    .await
-                    .is_ok()
-            );
+            let portal = provider
+                .create_customer_portal("user@example.invalid", "https://app.example/billing")
+                .await;
+            match provider.name() {
+                // InfinitePay has no customer portal, offline or live.
+                "infinitepay" => {
+                    assert!(matches!(portal, Err(CapitalError::UnsupportedOperation(_))))
+                }
+                _ => assert!(portal.is_ok()),
+            }
         }
     }
 }

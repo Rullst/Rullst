@@ -28,6 +28,7 @@ impl super::StripeProvider {
                 request_digest: digest,
             });
         }
+        super::require_https_redirects(&[request.success_url(), request.cancel_url()])?;
         let response = execute_http(
             build_request(http_client()?, api_key, request)?,
             "stripe",
