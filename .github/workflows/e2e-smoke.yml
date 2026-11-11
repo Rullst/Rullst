@@ -33,6 +33,7 @@ jobs:
         with:
           rustflags: "-D warnings"
           build-warnings: ""
+          cache-on-failure: false
 
       - name: Configure environment for Blog Example
         working-directory: examples/blog
