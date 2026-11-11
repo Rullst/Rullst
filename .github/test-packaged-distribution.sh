@@ -483,8 +483,9 @@ fi
 # `green` is part of the installed CLI since 13.0.0-alpha.4.
 "$rullst_bin" green --help > /dev/null
 
-# The CLI's starters since 13.0.0-alpha.4; LMS, Blog, Portfolio and ERP are
-# repository examples, and asking for one fails before anything is written.
+# The CLI's starters since 13.0.0-alpha.4; LMS and Blog are repository
+# examples (Portfolio and ERP point to the blog example), and asking for one
+# fails before anything is written.
 blueprints=(blank api saas)
 if (cd "$projects_dir" && "$rullst_bin" new packaged-lms --default --blueprint lms \
   --skip-initial-migration > /dev/null 2>&1); then

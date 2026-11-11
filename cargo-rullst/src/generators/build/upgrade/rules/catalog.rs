@@ -302,7 +302,7 @@ rules! {
         "Page with `paginate` (newest first) or read one row with `query().first()`; return 503 on database errors (see also Blank database status).";
     PROFILE_FIND: "V13-PORTFOLIO-PROFILE", Review, "13.0.0-alpha.1", "Portfolio profile",
         "the Portfolio page hard-codes `Profile::find(1)`",
-        "Show the first profile by id and answer 404 when none exists, as the new controller does.";
+        "Show the first profile by id and answer 404 when none exists.";
     PAGE_CSP_NONCE: "V13-PAGE-CSP-NONCE", Review, "13.0.0-alpha.1", "Blog and Portfolio pages",
         "this page renders without the request's CSP nonce, so the production CSP blocks its inline styles",
         "Pass the request's `CspNonce` into the page, replace `style` attributes with classes and serve assets same-origin.";
@@ -392,7 +392,7 @@ rules! {
         "Run it only where `.env` has a SQLite `DATABASE_URL` (no `.env`, no `DATABASE_URL`, a non-SQLite URL or a Turso primary has nothing to compare), or stop expecting status 0 there; a database already in sync with the models still exits with status 0.";
     BLUEPRINTS_REMOVED: "V13-CLI-BLUEPRINTS-REMOVED", Review, "13.0.0-rc.1", "CLI starters moved to the examples",
         "this script passes `--blueprint lms|blog|portfolio|erp`, which `cargo rullst new` refuses with status 1 since 13.0.0-alpha.4, before writing anything",
-        "Copy the application from the repository's `examples/lms`, `examples/erp`, `examples/portfolio` or `examples/blog` (https://github.com/Rullst/Rullst/tree/main/examples) instead, or start from `--blueprint api` or `--blueprint saas`.";
+        "Copy the application from the repository's `examples/lms` or `examples/blog` (https://github.com/Rullst/Rullst/tree/main/examples; the blog example also replaces the Portfolio and ERP examples that 13.0.0-alpha.5 removed) instead, or start from `--blueprint api` or `--blueprint saas`.";
     ALIAS_PATHS: "V13-API-ALIAS-PATHS", MustChange, "13.0.0-alpha.5", "Duplicate API paths removed",
         "13.0.0-alpha.5 removed `rullst::rullst_orm`, `rullst::security_runtime`, `rullst_mail::mail` and `rullst_mail::drivers::mock`; this path no longer compiles",
         "Write `rullst::orm` (with `use rullst::orm as rullst_orm;` where code names `rullst_orm`), `rullst::security::runtime`, the `rullst_mail` crate root and `rullst_mail::mock`.";

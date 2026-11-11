@@ -79,7 +79,7 @@ candidate's release line, including the source policy of reused runs.
   full-matrix run points to the exact candidate tree.
 
 Each operating system runs seven shards: the non-CLI workspace (with the
-Blog, ERP, LMS, Portfolio and WebGPU examples), ordinary CLI targets, three
+Blog, LMS and WebGPU examples), ordinary CLI targets, three
 public-profile groups and two generated-starter groups; the partitions keep
 every case. Hosted CI permits two nested compiler jobs for generated builds,
 and each CLI shard fetches the locked registry inventory before its generated
@@ -188,10 +188,11 @@ attests the executables and manifests in build provenance and adds them as
 release assets only after attestation and registry publication.
 
 The Linux `workspace` shard sets `RULLST_UI_BROWSER_TESTS=1` (Node 24,
-Chromium) and runs real Nexus and Portfolio-example HTML through
+Chromium) and runs real Nexus HTML through
 `.github/mobile-ui-browser-smoke.mjs`: drawer dismissal and focus, no-JS
-behaviour, layouts at 320–1440px, long content and reduced motion, with CDN
-resources blocked and the Nexus shell under the default production CSP.
+behaviour, layouts from 390 to 1200px, wide tables, save errors over the
+record dialog and reduced motion, with CDN resources blocked and the Nexus
+shell under the default production CSP.
 Missing browser prerequisites fail the shard. This is not WebKit/Firefox,
 device or WCAG evidence.
 

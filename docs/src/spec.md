@@ -523,7 +523,8 @@ them `make:omni`, `cargo rullst omni` and the `offline-sync` feature (section
 Railway deploy targets; the self-updater's binary replacement (section 12);
 `cargo rullst ai` (section 11.3); the Capital providers of section 6.4 and the
 Mail transports of the v13 Mail provider scope below; and the LMS, Blog,
-Portfolio and ERP starters, now applications in `examples/`. The
+Portfolio and ERP starters (LMS and Blog are now applications in `examples/`;
+the Portfolio and ERP examples were removed in 13.0.0-alpha.5). The
 [migration guide](migration-v13.md) lists every break; retain each in the
 migration inventory.
 
@@ -1384,8 +1385,9 @@ application-level workaround routes must be removed before upgrading.
 
 The published 12.1.0 mobile maintenance contract keeps Nexus navigation
 dismissible by close control, backdrop, Escape and links, with keyboard focus
-containment/return and visible no-JavaScript navigation. The Portfolio example
-(`examples/portfolio`, the former scaffold) must reflow at phone widths and wrap long content instead of hiding overflow.
+containment/return and visible no-JavaScript navigation. The Portfolio
+scaffold had to reflow at phone widths and wrap long content instead of hiding
+overflow; its example (`examples/portfolio`) was removed in 13.0.0-alpha.5.
 These are presentation fixes, not changes to server authorization; pre-existing
 generated source and showcase HTML-rewriting workarounds need explicit migration.
 

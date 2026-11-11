@@ -452,7 +452,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (113 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (104 rows).
+  of inputs that previously failed) (105 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
 has 138 rules. A row can map to several rules and a rule to
@@ -685,6 +685,7 @@ the rule together.
 | Live components removed | (a) must-change, (b) review | `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED` | `#[live_component]`/`#[live_event]` however qualified and `rullst::live`/`rullst_core::live` paths (`LiveComponent`, `Live::mount`, `live_ws_handler`, `live::recovery`), also in `use` groups, `html!` and `routes!`, at every location; `make:live` in workflows, root scripts, Makefile and justfile (review); introduced in 13.0.0-alpha.5 |
 | Billing generator on Turso projects | (c) none | — | CLI behaviour on new runs; billing code generated earlier is unchanged; introduced in 13.0.0-alpha.5 |
 | Academy production preset removed | (a) must-change | `V13-ACADEMY-REMOVED` | The five distinctive `Academy*` type names and `ProductionPreset::academy`, also in `use` groups, at every location; `academy:doctor` in workflows, root scripts, Makefile and justfile, also must-change because the command exits with status 1; introduced in 13.0.0-alpha.5 |
+| ERP and Portfolio examples removed | (c) none | — | Repository examples, not framework API; copied applications keep their code; introduced in 13.0.0-alpha.5 |
 | IoT OTA manager state | (b) review | `V13-IOT-OTA-STATE` | `.current_partition`, `.status` or `.firmware_version` read or assigned (not called) in a file that names `OtaManager`, reported once per file; introduced in 13.0.0-alpha.5 |
 | IoT encoder errors | (a) must-change | `V13-IOT-CODEC-ERROR-MATCH` | A `match` whose arm patterns name `MqttCodecError` or `CoapCodecError` and that has no catch-all arm, at every location; the new `OtaError::AllocationFailed` and the verification order need no change, because `OtaError` was already `#[non_exhaustive]`; introduced in 13.0.0-alpha.5 |
 | IoT sensor card HTML | (b) review | `V13-IOT-SENSOR-CARD-HTML` | `render_sensor_card` named in Rust source, reported once per file; introduced in 13.0.0-alpha.5 |

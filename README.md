@@ -62,7 +62,7 @@ and can take a few minutes; later rebuilds are much faster
 version is named because 13.0 is still a prerelease ([why](#versions)).
 Want a bigger starting point? Copy an application from
 [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples): a complete
-LMS, ERP or portfolio, or the blog showcase
+LMS or the blog showcase
 ([where the examples live](#where-the-examples-live)).
 
 [Installation and prerequisites](https://rullst.github.io/Rullst/book/1-getting-started.html)
@@ -222,10 +222,8 @@ Rullst's examples have two homes:
   than the one this page describes.
 - **[`examples/`](https://github.com/Rullst/Rullst/tree/main/examples) in this
   repository** — applications built and tested with the current framework
-  source: complete [LMS](https://github.com/Rullst/Rullst/tree/main/examples/lms),
-  [ERP](https://github.com/Rullst/Rullst/tree/main/examples/erp) and
-  [Portfolio](https://github.com/Rullst/Rullst/tree/main/examples/portfolio)
-  applications (the former starters of `cargo rullst new`), the
+  source: the complete [LMS](https://github.com/Rullst/Rullst/tree/main/examples/lms)
+  application (a former starter of `cargo rullst new`), the
   [blog showcase](https://github.com/Rullst/Rullst/tree/main/examples/blog) and
   a [WebGPU wave demo](https://github.com/Rullst/Rullst/tree/main/examples/webgpu).
   The [SaaS recipe](https://github.com/Rullst/Rullst/tree/main/examples/saas)
@@ -458,9 +456,9 @@ list every change.
 - **Three starters and complete examples:** `cargo rullst new` offers Blank,
   API and SaaS through a wizard that previews the files and commands before
   writing anything (`--dry-run` without prompts) and initializes a Git
-  repository (`--vcs none` skips it). The LMS, ERP, Portfolio and blog
-  applications are in [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples)
-  to copy from.
+  repository (`--vcs none` skips it). The LMS and blog applications are in
+  [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples) to copy
+  from.
 - **A friendlier CLI:** `cargo rullst tour` (a guided walkthrough of the main
   commands), a searchable command list on the `cargo rullst` home screen, live
   request metrics in `cargo rullst dash`, toolchain, project, database,
@@ -561,8 +559,10 @@ list every change.
   `update verify`, `update stage`, `update install`): install a newer CLI with
   `cargo install cargo-rullst --version =<version> --locked`, which a daily
   notice prints.
-- The LMS, Blog, Portfolio and ERP starters of `cargo rullst new`: they are
-  applications in [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples).
+- The LMS, Blog, Portfolio and ERP starters of `cargo rullst new`: LMS and
+  Blog are applications in [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples);
+  the Portfolio and ERP examples were removed in 13.0.0-alpha.5, and the blog
+  example shows the same CRUD with Nexus.
 - WebAssembly islands (`#[island]`, `make:island`, `build:client`): the
   default CSP does not allow browsers to compile WebAssembly. Use htmx and
   native HTML; `#[server_function]` and its `wasm32` caller remain.

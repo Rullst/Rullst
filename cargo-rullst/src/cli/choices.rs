@@ -4,9 +4,9 @@
 use clap::ValueEnum;
 
 /// Starter names accepted by `--blueprint`. The variant comments are the value
-/// help that `--help` lists. `lms`, `blog`, `portfolio` and `erp` moved to the
-/// repository's `examples/` in 13.0.0-alpha.4: they still parse, hidden, so the
-/// command can point to the example before it writes anything.
+/// help that `--help` lists. `lms`, `blog`, `portfolio` and `erp` left the CLI
+/// in 13.0.0-alpha.4: they still parse, hidden, so the command can point to
+/// the repository example that replaces them before it writes anything.
 #[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum BlueprintChoice {
@@ -22,10 +22,10 @@ pub enum BlueprintChoice {
     /// Moved to examples/blog
     #[value(hide = true)]
     Blog,
-    /// Moved to examples/portfolio
+    /// Removed; see examples/blog
     #[value(hide = true)]
     Portfolio,
-    /// Moved to examples/erp
+    /// Removed; see examples/blog
     #[value(hide = true)]
     Erp,
 }

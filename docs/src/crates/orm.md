@@ -328,7 +328,7 @@ async fn rename(id: i32, name: String) -> Result<(), rullst_orm::Error> {
   `generate:models` (with `#[serde(skip)]`; a table with its own `snapshot`
   column keeps full-row saves), `auth`, `make:billing`,
   `make:chat-session` and the models of every `cargo rullst new` starter
-  (Blank, API and SaaS) and of the LMS, ERP and Portfolio examples. Their struct literals set
+  (Blank, API and SaaS) and of the LMS example. Their struct literals set
   `snapshot: RowSnapshot::default()`. Turso models have no dirty tracking.
   Projects generated earlier keep their models until you add the field.
 

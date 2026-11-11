@@ -303,12 +303,12 @@ administrator can then grant others from the Users model in Nexus. The
 #### Serving the application without Nexus
 
 Because the helper fails closed, a release build without
-`NEXUS_ADMIN_USERNAME`/`NEXUS_ADMIN_PASSWORD` cannot build Nexus. The
-Portfolio and ERP examples then start without `/nexus` (the ERP, whose back
-office shares the Nexus policy, serves only `/health` and `/ready`) and print
-one line naming the variables; a weak, placeholder or unreadable credential
-still stops startup. In your own application, mount Nexus only when its policy
-builds:
+`NEXUS_ADMIN_USERNAME`/`NEXUS_ADMIN_PASSWORD` cannot build Nexus. An
+application can then start without `/nexus` (an application whose back office
+shares the Nexus policy serves only `/health` and `/ready`) and print one line
+naming the variables, as the Portfolio and ERP examples did until
+13.0.0-alpha.5; a weak, placeholder or unreadable credential still stops
+startup. In your own application, mount Nexus only when its policy builds:
 
 ```rust,no_run
 # #[cfg(feature = "nexus")]
@@ -443,7 +443,7 @@ that property is required.
 
 ## 👤 Example: Dynamic Profile Settings
 
-Applications like the **Portfolio** example (`examples/portfolio`) use explicit Nexus metadata to expose
+Applications such as a developer portfolio use explicit Nexus metadata to expose
 single-row or multi-row site configuration settings (such as developer name,
 title, bio, email, personal website, avatar photo, and social links).
 
@@ -579,9 +579,9 @@ desktop-only Portfolio layout. The changes shipped in **12.1.0** and are absent 
   mobile links are inert; the background is inert while the drawer is open.
   Desktop resizing clears that state. Without JavaScript, ordinary navigation
   stays visible. The drawer does not require HTMX or a CDN to dismiss.
-- The Portfolio generator (since 13.0.0-alpha.4 the
-  [`examples/portfolio`](https://github.com/Rullst/Rullst/tree/main/examples/portfolio)
-  application) stacks its sections below 900px, tightens spacing
+- The Portfolio generator (in 13.0.0-alpha.4 the
+  [`examples/portfolio`](https://github.com/Rullst/Rullst/tree/v13.0.0-alpha.4/examples/portfolio)
+  application, removed in 13.0.0-alpha.5) stacks its sections below 900px, tightens spacing
   below 640px, wraps long content and keeps project cards inside the viewport.
   Reduced-motion preferences stop decorative animations.
 
@@ -593,7 +593,7 @@ CSRF or other security middleware along with that presentation-only patch.
 
 Existing Portfolio projects own their generated `src/pages/home.rs`: updating
 the CLI or dependency alone does **not** replace that file. Compare its styles
-with `examples/portfolio/src/pages/home.rs`, apply the responsive CSS while preserving your
+with `examples/portfolio/src/pages/home.rs` at the `v13.0.0-alpha.4` tag, apply the responsive CSS while preserving your
 content/design, and remove conflicting old overrides. Verify narrow screens,
 long names/URLs, keyboard focus, touch dismissal, desktop resizing and reduced
 motion before redeployment. Other repositories and deployed Azure applications

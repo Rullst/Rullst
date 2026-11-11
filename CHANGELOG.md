@@ -567,6 +567,13 @@ A prepared version section does not establish that its tag or crates exist.
   remain. `academy:doctor` prints this and exits with status 1, and
   `cargo rullst upgrade` reports the removed names and scripts that run the
   command (`V13-ACADEMY-REMOVED`).
+- The `examples/erp` and `examples/portfolio` applications (the former ERP and
+  Portfolio starters). Both showed CRUD with a Nexus back office, which
+  `examples/blog` and the SaaS starter already cover. `cargo rullst new
+  --blueprint erp` or `portfolio` still exits with status 1 before writing
+  anything, and its report now points to `examples/blog`; the CI browser job
+  checks the Nexus shell only. Their last version is in the `v13.0.0-alpha.4`
+  tag.
 
 The [migration guide](docs/src/migration-v13.md#upgrading-an-alpha4-application-to-alpha5)
 describes each replacement.

@@ -19,13 +19,13 @@ runs from a checkout of the commit under review.
 | `rullst-capital` | Payment webhook signature, freshness and replay verification. |
 | `rullst-nexus`, `rullst-studio` | The Nexus administrator boundary (loopback in debug builds, Basic Auth over verified TLS in release) and that Studio stays a debug-only, loopback-only tool. |
 | `rullst-macros` | Output escaping of `html!`. |
-| `cargo-rullst` starters | The code `cargo rullst new` generates for the Blank, API and SaaS starters, and the `audit` command. The LMS, ERP and Portfolio applications (former starters) are workspace examples under `examples/`. |
+| `cargo-rullst` starters | The code `cargo rullst new` generates for the Blank, API and SaaS starters, and the `audit` command. The LMS application (a former starter) is a workspace example under `examples/`. |
 
 Endpoints worth a direct look in the starters: SaaS `/login`, `/register`,
 `/logout`, `/dashboard`, `/billing/checkout`, `/billing/portal`,
 `/billing/webhook` and `/nexus`; LMS `/courses/{id}/enroll`,
-`/lessons/{id}/play` and `/lessons/{id}/progress`; ERP `/products`,
-`/products/{id}/add-stock` and `/orders`; Blank JSON API `POST /api/messages`.
+`/lessons/{id}/play` and `/lessons/{id}/progress`; Blank JSON API
+`POST /api/messages`.
 In the sample application: `POST /posts`, `/posts/repository`, `/checkout`,
 `/security-demo`, `/nexus` and the `/wp-admin` trap.
 
@@ -105,9 +105,8 @@ cd ../audit-saas
 cargo test
 ```
 
-Use `--blueprint blank` or `api` for the other starters; the LMS, ERP and
-Portfolio examples run their tests with `cargo test -p rullst-lms-example` (or
-`-erp-`, `-portfolio-`) from the repository. `cargo test` runs the generated `src/security_tests.rs`
+Use `--blueprint blank` or `api` for the other starters; the LMS example runs
+its tests with `cargo test -p rullst-lms-example` from the repository. `cargo test` runs the generated `src/security_tests.rs`
 offline against the starter's own router behind the staging/production
 baseline: security headers, CSRF, WAF, and where the starter has them, the
 sign-in rate limit (SaaS, LMS), the owner check of the lesson routes (LMS) and
@@ -155,8 +154,8 @@ cargo-deny (`.github/workflows/supply-chain.yml`); locally, `cargo deny check`.
 3. **Tenant isolation:** `TenantContext`, fail-closed `tenant_column` models
    (the showcase's `X-Tenant-ID` selector and `/posts/repository`) and
    Nexus tenant columns.
-4. **IDOR:** parameterized routes such as the LMS lesson and enrollment routes
-   and ERP stock updates. `cargo rullst audit --idor` fails on a route without
+4. **IDOR:** parameterized routes such as the LMS lesson and enrollment
+   routes. `cargo rullst audit --idor` fails on a route without
    a declared access class (`// rullst-access: ...`) and a recognized guard;
    verify that the guard actually protects the route.
 5. **Webhooks:** signature, freshness and replay checks on `/billing/webhook`

@@ -281,7 +281,7 @@ APIs show a `curl` command instead).
 The choices that materially change the generated application:
 * **Starter:** Blank, API and SaaS (`--blueprint` values `blank`, `api` and
   `saas`; `api` is the Blank blueprint with `--api`). The LMS, Blog, Portfolio
-  and ERP blueprints left the CLI in 13.0.0-alpha.4 and are now complete
+  and ERP blueprints left the CLI in 13.0.0-alpha.4; LMS and Blog are complete
   applications in the repository's `examples/` directory; see
   [Starters that moved to the examples](#starters-that-moved-to-the-examples).
 * **Persistence:** a primary relational backend (SQLite, PostgreSQL, MySQL,
@@ -440,15 +440,14 @@ or application-specific authorization.
 #### Starters that moved to the examples
 
 Since 13.0.0-alpha.4 `cargo rullst new` offers three starters: Blank, API and
-SaaS. The other blueprints left the CLI and live on as complete applications
-in the Rullst repository, tested in its workspace:
+SaaS. The other blueprints left the CLI; complete applications in the Rullst
+repository, tested in its workspace, replace them:
 
 | Former `--blueprint` | Example | What it shows |
 | :--- | :--- | :--- |
 | `lms` | [`examples/lms`](https://github.com/Rullst/Rullst/tree/main/examples/lms) | Course catalog, modules and lessons, accessible player, enrollment, owner-bound progress, sign-in and a Nexus admin |
-| `portfolio` | [`examples/portfolio`](https://github.com/Rullst/Rullst/tree/main/examples/portfolio) | A developer portfolio edited in Nexus |
-| `erp` | [`examples/erp`](https://github.com/Rullst/Rullst/tree/main/examples/erp) | Products, stock movements and orders behind one administrator policy |
 | `blog` | [`examples/blog`](https://github.com/Rullst/Rullst/tree/main/examples/blog) | The blog showcase (a larger application than the old starter) |
+| `portfolio`, `erp` | [`examples/blog`](https://github.com/Rullst/Rullst/tree/main/examples/blog) | Their own examples were removed in 13.0.0-alpha.5; the blog example shows the same CRUD with a Nexus back office (their last version is in the `v13.0.0-alpha.4` tag) |
 
 `--blueprint lms`, `blog`, `portfolio` or `erp` still parses but fails before
 anything is written: the report names the example directory and its GitHub URL
