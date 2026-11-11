@@ -64,7 +64,50 @@ pub(crate) async fn execute(
         .get(reqwest::header::RETRY_AFTER)
         .and_then(|value| value.to_str().ok())
         .and_then(parse_retry_after);
-    Err(ProviderFailure::http_response(provider, operation, status.as_u16(), retry_after).into())
+    let reason = error_body(response).await;
+    Err(
+        ProviderFailure::http_response(provider, operation, status.as_u16(), retry_after)
+            .with_reason(reason.as_deref().and_then(error_code).as_deref())
+            .into(),
+    )
+}
+
+/// At most this many bytes of an unsuccessful response are read, only to find
+/// its error code.
+const MAX_ERROR_BODY_BYTES: usize = 4096;
+
+/// The body of an unsuccessful response when it is small; `None` otherwise.
+async fn error_body(mut response: Response) -> Option<Vec<u8>> {
+    if response
+        .content_length()
+        .is_some_and(|length| length > MAX_ERROR_BODY_BYTES as u64)
+    {
+        return None;
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = response.chunk().await.ok()? {
+        if body.len().saturating_add(chunk.len()) > MAX_ERROR_BODY_BYTES {
+            return None;
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Some(body)
+}
+
+/// The provider's error code in a JSON error body: a string `error` (as
+/// InfinitePay sends) or `error.code`, else `error.type` (as Stripe sends).
+/// [`ProviderFailure`] keeps it only when it is a short token.
+pub(crate) fn error_code(body: &[u8]) -> Option<String> {
+    let value: serde_json::Value = serde_json::from_slice(body).ok()?;
+    let error = value.get("error")?;
+    error
+        .as_str()
+        .or_else(|| {
+            ["code", "type"]
+                .iter()
+                .find_map(|field| error.get(*field).and_then(serde_json::Value::as_str))
+        })
+        .map(str::to_owned)
 }
 
 pub(crate) async fn send_json<T: DeserializeOwned>(

@@ -225,6 +225,11 @@ async fn link() -> Result<(), rullst_capital::CapitalError> {
 - InfinitePay has no subscriptions, customer portal, metered usage, coupons,
   trials or sandbox: those operations return `UnsupportedOperation`. Refunds
   happen in InfinitePay's app.
+- A refused request keeps InfinitePay's error code in
+  `ProviderFailure::reason()` and in the message, for example
+  `infinitepay create payment link returned HTTP 404 (external_checkout_not_enabled)`
+  until external checkout ("Checkout externo") is enabled for the tag. Only a
+  short code is kept, never the provider's message.
 - An empty or `mock_*` handle selects offline fixtures: a
   `mock.infinitepay.invalid` checkout and an `OneOffPaymentState::Mock`
   confirmation that never proves payment. The 13.0.0-alpha.4 constructor

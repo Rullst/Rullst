@@ -561,6 +561,14 @@ describes each replacement.
 
 ### Fixed
 
+- `rullst-capital`: an unsuccessful provider response lost the provider's
+  reason, so InfinitePay's refusal to create links for a tag without external
+  checkout ("Checkout externo") read only `returned HTTP 404`. The error now
+  keeps the provider's error code when it is a short token (InfinitePay's
+  `error`, Stripe's `error.code` or `error.type`), read from at most 4 KiB of
+  the body: `ProviderFailure::reason()` returns it and the message ends with
+  it, for example `(external_checkout_not_enabled)`. The provider's message is
+  never kept (found by the 13.0.0-alpha.5 acceptance application).
 - `rullst-orm` SurrealDB adapter: `SurrealDbStore::create` reported a write
   that SurrealDB had refused. SurrealDB 3 answers a CREATE denied by
   permissions (a `VIEWER` database user, or a record user on a table with
