@@ -31,6 +31,13 @@ jobs:
         with:
           rustflags: "-D warnings"
           build-warnings: ""
+          cache-on-failure: false
+
+      - name: Drop incomplete DuckDB sources restored from the Rust cache
+        # Required for cached --all-features builds by
+        # .github/check-rust-cache-policy.py; nothing to do while rullst-iot
+        # does not reach libduckdb-sys.
+        run: python3 .github/repair-duckdb-sources.py
 
       - name: Run helper, simulator-boundary, and signed OTA tests
         run: cargo test -p rullst-iot --all-features
@@ -69,6 +76,7 @@ jobs:
           rustflags: "-D warnings"
           build-warnings: ""
           target: thumbv7em-none-eabihf
+          cache-on-failure: false
 
       - name: Add ARM target
         run: rustup target add thumbv7em-none-eabihf
@@ -101,6 +109,7 @@ jobs:
           build-warnings: ""
           target: thumbv7em-none-eabihf
           components: llvm-tools-preview
+          cache-on-failure: false
 
       - name: Check the host-generated vectors are current
         run: |
