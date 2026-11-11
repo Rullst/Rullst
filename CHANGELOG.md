@@ -555,6 +555,18 @@ A prepared version section does not establish that its tag or crates exist.
   refuses before writing anything, because billing needs the SQLx database
   layer and Turso is limited to the Blank and API starters' primary
   database. The six `billing_*_turso.rs.template` files were removed.
+- **Breaking:** the Academy production preset. `ProductionPreset::academy()`
+  and the `rullst-core` types `AcademyProductionPreset`,
+  `AcademyProductionRequirement`, `AcademyCheckStatus`,
+  `AcademyBoundaryAssessment` and `AcademyPresetError` were removed with
+  `cargo rullst academy:doctor` and its `rullst.academy-evidence.v1` and
+  `rullst.academy-diagnostic.v1` documents. Framework code should not carry
+  one application's types: the twelve requirements described Rullst Academy,
+  an external application, which keeps its own checklist.
+  `ProductionPreset::middleware_order()` and `ProductionMiddlewareStage`
+  remain. `academy:doctor` prints this and exits with status 1, and
+  `cargo rullst upgrade` reports the removed names and scripts that run the
+  command (`V13-ACADEMY-REMOVED`).
 
 The [migration guide](docs/src/migration-v13.md#upgrading-an-alpha4-application-to-alpha5)
 describes each replacement.

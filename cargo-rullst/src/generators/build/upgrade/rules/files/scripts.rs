@@ -2,9 +2,9 @@
 //! later releases removed or changed. Each predicate reads one line.
 
 use super::super::catalog::{
-    BLUEPRINTS_REMOVED, CLI_AI_REMOVED, CLI_SELF_UPDATE, DEPLOY_GENERATORS_REMOVED,
-    DEPLOY_TARGETS_REMOVED, ISLAND_COMMANDS_REMOVED, LIVE_COMMAND_REMOVED, MIGRATION_AUTO_STATUS,
-    OMNI_REMOVED,
+    ACADEMY_REMOVED, BLUEPRINTS_REMOVED, CLI_AI_REMOVED, CLI_SELF_UPDATE,
+    DEPLOY_GENERATORS_REMOVED, DEPLOY_TARGETS_REMOVED, ISLAND_COMMANDS_REMOVED,
+    LIVE_COMMAND_REMOVED, MIGRATION_AUTO_STATUS, OMNI_REMOVED,
 };
 use super::{Rule, line_of};
 
@@ -12,7 +12,7 @@ use super::{Rule, line_of};
 type LineCheck = fn(&str) -> bool;
 
 /// Each script rule with the line predicate that locates it.
-const CHECKS: [(&Rule, LineCheck); 9] = [
+const CHECKS: [(&Rule, LineCheck); 10] = [
     (&OMNI_REMOVED, runs_omni),
     (&CLI_AI_REMOVED, runs_removed_cli_command),
     (&CLI_SELF_UPDATE, runs_removed_update_command),
@@ -22,6 +22,7 @@ const CHECKS: [(&Rule, LineCheck); 9] = [
     (&BLUEPRINTS_REMOVED, passes_removed_blueprint),
     (&ISLAND_COMMANDS_REMOVED, runs_island_command),
     (&LIVE_COMMAND_REMOVED, runs_live_command),
+    (&ACADEMY_REMOVED, runs_academy_doctor),
 ];
 
 /// Each rule a script matches, at its first matching line.
@@ -141,4 +142,9 @@ pub(in super::super) fn runs_island_command(line: &str) -> bool {
 /// A script line running `make:live`, removed in 13.0.0-alpha.5.
 pub(in super::super) fn runs_live_command(line: &str) -> bool {
     runs_command(line, "make:live")
+}
+
+/// A script line running `academy:doctor`, removed in 13.0.0-alpha.5.
+pub(in super::super) fn runs_academy_doctor(line: &str) -> bool {
+    runs_command(line, "academy:doctor")
 }

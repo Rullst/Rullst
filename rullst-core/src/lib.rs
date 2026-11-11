@@ -229,10 +229,7 @@ pub use ws::{WebSocket, WsError};
 
 // Re-export Milestone 6 Resilience Features
 #[cfg(not(target_arch = "wasm32"))]
-pub use production::{
-    AcademyBoundaryAssessment, AcademyCheckStatus, AcademyPresetError, AcademyProductionPreset,
-    AcademyProductionRequirement, ProductionMiddlewareStage, ProductionPreset,
-};
+pub use production::{ProductionMiddlewareStage, ProductionPreset};
 #[cfg(not(target_arch = "wasm32"))]
 pub use resilience::{
     RateLimitConfig, RateLimiter, TrafficShield, TrafficShieldConfig, TrafficShieldError,

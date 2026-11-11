@@ -289,9 +289,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::Doctor { fix } => {
             crate::generators::doctor::run_doctor(*fix)?;
         }
-        Commands::AcademyDoctor { evidence, json } => {
-            crate::generators::academy_doctor::run_academy_doctor(evidence.as_deref(), *json)?;
-        }
         Commands::Eject { force, output } => {
             crate::generators::eject::run_eject_project(*force, output.as_deref())?;
         }

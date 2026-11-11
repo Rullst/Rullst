@@ -318,16 +318,6 @@ pub enum Commands {
         #[arg(long)]
         fix: bool,
     },
-    /// Evaluates the Academy production-boundary contract without claiming certification
-    #[command(name = "academy:doctor")]
-    AcademyDoctor {
-        /// JSON evidence declarations; omitted requirements remain NOT_EVALUATED
-        #[arg(long)]
-        evidence: Option<PathBuf>,
-        /// Emits the normalized diagnostic as machine-readable JSON
-        #[arg(long)]
-        json: bool,
-    },
     /// Writes an inspectable Axum/Tokio-oriented migration entry point
     Eject {
         /// Optional: Overwrite src/main.rs directly instead of creating src/ejected_main.rs

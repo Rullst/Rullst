@@ -325,6 +325,9 @@ impl Scanner<'_, '_> {
         if let Some(rule) = super::alpha5_runtime::ident_rule(name) {
             self.hit(rule, at);
         }
+        if let Some(rule) = super::alpha5_slimming::ident_rule(name) {
+            self.hit(rule, at);
+        }
         match name {
             "health_router"
             | "health_router_with_lifecycle"
@@ -345,6 +348,9 @@ impl Scanner<'_, '_> {
         at: usize,
     ) {
         if let Some(rule) = api_cleanups::path_rule(segments) {
+            self.hit(rule, at);
+        }
+        if let Some(rule) = super::alpha5_slimming::path_rule(segments) {
             self.hit(rule, at);
         }
         for pair in segments.windows(2) {

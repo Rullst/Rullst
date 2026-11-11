@@ -34,8 +34,8 @@ all of them:
 * Human messages, progress and failures go to standard error. Exit statuses are
   the same with and without `--json`: a failed check or a refused request still
   exits non-zero, and the document is still printed when the command could
-  compute one (`doctor`, `deploy:doctor` and `academy:doctor` print their
-  report and then exit with status 1 when a check fails).
+  compute one (`doctor` and `deploy:doctor` print their report and then exit
+  with status 1 when a check fails).
 * A request that has no JSON form (for example `pkg add --json`) is refused on
   standard error with a non-zero exit status and prints nothing on standard
   output.
@@ -51,7 +51,6 @@ all of them:
 | `cargo rullst pkg list --json` | `rullst.cli-pkg.v1` |
 | `cargo rullst upgrade --dry-run --json` | `rullst.upgrade-plan.v1` |
 | `cargo rullst deploy:doctor --json` | `rullst.deployment-diagnostic.v1` |
-| `cargo rullst academy:doctor --json` | `rullst.academy-diagnostic.v1` |
 | `cargo rullst update project prepare --json` | `rullst.project-preparation-result.v1` |
 | `cargo rullst update project verify --dry-run` or `--json` | `rullst.project-verification-plan.v1` (dry run), `rullst.project-verification.v1` |
 | `cargo rullst update project review --json` | `rullst.project-review-report.v1` |
@@ -2457,25 +2456,16 @@ passing checks. Group ids are `toolchain`, `project`, `config`, `database`,
 `config.env_keys`, `security.app_key`, ...) are stable, but a check appears
 only when it applies.
 
-### `cargo rullst academy:doctor`
-Evaluates the twelve requirements of `ProductionPreset::academy()` (identity,
-school membership, entitlements, object authorization, tenant isolation,
-assessments, score events, durable automation and audit, content safety,
-privacy and distributed abuse controls) against the declarations in a
-`rullst.academy-evidence.v1` file passed with `--evidence <file>`. It reads
-only that file and never inspects the project, so it needs no Academy
-scaffold: v13 removed the complete Academy scaffold, and the LMS example
-(the former LMS starter) has no evidence file. Without `--evidence` every requirement is
-`NOT_EVALUATED`.
-
-Each requirement is reported as `PASS`, `FAIL`, `SKIPPED` or `NOT_EVALUATED`.
-Unknown fields or requirements, a repeated requirement and a `PASS` without a
-non-empty evidence reference are rejected. `--json` prints
-`rullst.academy-diagnostic.v1` with `certification` (always `false`),
-`contract_satisfied` and each requirement's `status` and `declared_evidence`.
-The command exits with status `1` until every requirement has an evidenced
-`PASS`. Evidence strings are caller declarations, not verified proof; see the
-[Academy production-boundary diagnostic](security-architecture.md#academy-production-boundary-diagnostic).
+### `cargo rullst academy:doctor` (removed)
+Removed in 13.0.0-alpha.5 with `ProductionPreset::academy()` and the
+`Academy*` production types of `rullst-core`: the twelve-requirement checklist
+described one application's boundaries (Rullst Academy, an external
+application), not the framework's. Running it, with any arguments, prints this
+and exits with status 1; it is hidden from `--help` and completions. Keep an
+application's own production checklist in its tests or CI;
+`ProductionPreset::middleware_order()` remains the framework's ordering
+contract. See the
+[migration notes](migration-v13.md#upgrading-an-alpha4-application-to-alpha5).
 
 ---
 

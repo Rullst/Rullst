@@ -169,13 +169,13 @@ fn not_in_project_points_to_an_enclosing_root_when_one_exists() {
 #[test]
 fn the_generic_fallback_names_the_failed_command() {
     let friendly = classify(&Facts {
-        command: Some("academy:doctor".to_string()),
-        ..facts("Academy production-boundary contract is not satisfied")
+        command: Some("deploy:doctor".to_string()),
+        ..facts("deployment preflight reported 2 blocking checks")
     });
-    assert_eq!(friendly.title, "`cargo rullst academy:doctor` failed");
+    assert_eq!(friendly.title, "`cargo rullst deploy:doctor` failed");
     assert_eq!(
         friendly.happened,
-        "Academy production-boundary contract is not satisfied"
+        "deployment preflight reported 2 blocking checks"
     );
     assert!(friendly.fix.unwrap_or_default().contains("-v"));
     assert_eq!(classify(&facts("boom")).title, "Command failed");

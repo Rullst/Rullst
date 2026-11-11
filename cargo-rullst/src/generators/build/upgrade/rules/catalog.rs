@@ -444,6 +444,9 @@ rules! {
     MAIL_MESSAGE_REPLY_TO: "V13-MAIL-MESSAGE-REPLY-TO", MustChange, "13.0.0-alpha.5", "Mail Reply-To",
         "Mail's `Message` has a `reply_to` field since 13.0.0-alpha.5, so a struct literal that lists every field without `..` no longer compiles",
         "Build the message with `Message::new()` and its builders (`.to(..)`, `.subject(..)`, `.reply_to(..)`), or add `reply_to: None` or `..Message::new()` to the literal.";
+    ACADEMY_REMOVED: "V13-ACADEMY-REMOVED", MustChange, "13.0.0-alpha.5", "Academy production preset removed",
+        "`ProductionPreset::academy()`, the `Academy*` production types and `cargo rullst academy:doctor` were removed in 13.0.0-alpha.5; this code no longer compiles, and the command exits with status 1",
+        "Keep the application's own production checklist in its tests or CI instead of `ProductionPreset::academy()` and the `AcademyProductionRequirement`, `AcademyCheckStatus`, `AcademyBoundaryAssessment`, `AcademyPresetError` and `AcademyProductionPreset` types, and remove `academy:doctor` steps; `ProductionPreset::middleware_order()` and `ProductionMiddlewareStage` remain.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer
