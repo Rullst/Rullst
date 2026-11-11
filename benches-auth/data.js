@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794405892002,
+  "lastUpdate": 1794415352400,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -20855,6 +20855,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2754,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7f3865bf53661dea959f8615f2dcb8c840ceba49",
+          "message": "Merge pull request #641 from Rullst/dependabot/cargo/main/safe-updates-0577291c70\n\nchore(deps): Bump the safe-updates group across 9 directories with 4 updates",
+          "timestamp": "2026-11-11T13:25:59-03:00",
+          "tree_id": "08f9b7ef7b77b60a6818332cca0a316bb7fea4ba",
+          "url": "https://github.com/Rullst/Rullst/commit/7f3865bf53661dea959f8615f2dcb8c840ceba49"
+        },
+        "date": 1794415351404,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 920,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 752,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1703,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3773,
+            "range": "± 57",
             "unit": "ns/iter"
           }
         ]
