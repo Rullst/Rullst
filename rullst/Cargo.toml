@@ -14,12 +14,11 @@ keywords = ["framework", "web", "async", "tokio", "fullstack"]
 categories = ["web-programming::http-server", "asynchronous"]
 exclude = ["tests/*", "benches/*", "storage/*", "*.db", ".env*"]
 
-# docs.rs documents every feature except `orm-duckdb`, which compiles DuckDB's
-# bundled C++ engine, and the `strict-*` profiles, which select one ORM backend
-# instead of `drivers-all`.
+# docs.rs documents every feature except the `strict-*` profiles, which select
+# one ORM backend instead of `drivers-all`.
 [package.metadata.docs.rs]
 features = [
-    "drivers-all", "orm", "orm-mongodb", "orm-turso", "orm-surrealdb", "orm-scout",
+    "drivers-all", "orm", "orm-turso", "orm-surrealdb", "orm-scout",
     "orm-pgvector", "orm-qdrant", "orm-redis", "queue-sqlite", "queue-redis",
     "cache-redis", "redis", "scheduler-tz", "storage-s3", "storage-multipart",
     "telemetry", "nexus", "nexus-ai", "nexus-tz", "studio", "auth", "auth-jwt",
@@ -45,8 +44,6 @@ targets = ["x86_64-unknown-linux-gnu"]
 default = []
 drivers-all = ["orm", "rullst-core/drivers-all", "rullst-studio?/drivers-all", "rullst-nexus?/drivers-all"]
 orm = ["dep:rullst-orm", "rullst-core/orm"]
-orm-mongodb = ["orm", "rullst-orm/mongodb"]
-orm-duckdb = ["orm", "rullst-orm/duckdb"]
 orm-turso = ["orm", "rullst-orm/turso"]
 orm-surrealdb = ["orm", "rullst-orm/surrealdb"]
 orm-scout = ["orm", "rullst-orm/scout-http"]

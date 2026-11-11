@@ -2,13 +2,9 @@
 """Keep the Cargo `target/` cache of setup-rust-toolchain safe to restore.
 
 actions-rust-lang/setup-rust-toolchain archives `target/` with
-Swatinem/rust-cache unless its step sets `cache: false`. Every such step must:
-
-1. set `cache-on-failure: false`, so a failed or cancelled run (an interrupted
-   build script, a half-written output directory) never saves a cache;
-2. be followed by a step running `.github/repair-duckdb-sources.py` before any
-   later step that runs Cargo with `--all-features` or a DuckDB feature: the
-   archive cannot hold a usable libduckdb-sys source tree (see that script).
+Swatinem/rust-cache unless its step sets `cache: false`. Every such step must
+set `cache-on-failure: false`, so a failed or cancelled run (an interrupted
+build script, a half-written output directory) never saves a cache.
 
 This reads the repository's block-style workflow layout, not arbitrary YAML,
 and fails closed on a setup step it cannot attribute to a job's steps. It
@@ -24,9 +20,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLCHAIN = "actions-rust-lang/setup-rust-toolchain@"
-REPAIR = ".github/repair-duckdb-sources.py"
-CARGO = re.compile(r"(?<![\w./-])cargo(?![\w-])")
-DUCKDB_BUILD = re.compile(r"--all-features|duckdb")
 KEY = re.compile(r"(?P<key>[A-Za-z0-9_-]+) *:(?P<value>.*)")
 USES = re.compile(r"\s*(?:- +)?uses *:")
 
@@ -88,7 +81,7 @@ def parse_step(lines: Lines) -> dict:
     dash = indentation(first)
     lines = [(number, first[:dash] + "  " + first[dash + 2:]), *lines[1:]]
     key_indent = indentation(lines[0][1])
-    step = {"line": number, "uses": "", "run": "", "with": {}}
+    step = {"line": number, "uses": "", "with": {}}
     index = 0
     while index < len(lines):
         end = max(block_end(lines, index + 1, key_indent), index + 1)
@@ -96,8 +89,6 @@ def parse_step(lines: Lines) -> dict:
         key = match["key"] if match is not None else ""
         if key == "uses":
             step["uses"] = scalar(match["value"])
-        elif key == "run":
-            step["run"] = "\n".join([match["value"], *(text for _, text in lines[index + 1:end])])
         elif key == "with":
             step["with"] = options(lines[index + 1:end])
         index = end
@@ -139,34 +130,14 @@ def jobs(lines: Lines) -> list[tuple[str, Lines]]:
             for head, stop in zip(heads, [*heads[1:], len(body)])]
 
 
-def unrepaired_duckdb_build(steps: list[dict]) -> dict | None:
-    """The first Cargo step that may build DuckDB before the repair runs."""
-    for step in steps:
-        run = step["run"]
-        cargo = CARGO.search(run)
-        repair = run.find(REPAIR)
-        if repair != -1 and (cargo is None or repair < cargo.start()):
-            return None
-        if cargo is not None and DUCKDB_BUILD.search(run):
-            return step
-    return None
-
-
-def check_toolchain(name: str, job: str, steps: list[dict], index: int) -> list[str]:
-    step = steps[index]
+def check_toolchain(name: str, job: str, step: dict) -> list[str]:
     if step["with"].get("cache", "true") == "false":
         return []
-    errors = []
     if step["with"].get("cache-on-failure") != "false":
-        errors.append(f"{name}:{step['line']}: job {job}: setup-rust-toolchain caches target/ "
-                      "but would save it from a failed or cancelled run; set "
-                      "`cache-on-failure: false`")
-    build = unrepaired_duckdb_build(steps[index + 1:])
-    if build is not None:
-        errors.append(f"{name}:{build['line']}: job {job}: run `python3 {REPAIR}` after the "
-                      "cached setup-rust-toolchain step and before Cargo builds with "
-                      "--all-features or a DuckDB feature")
-    return errors
+        return [f"{name}:{step['line']}: job {job}: setup-rust-toolchain caches target/ "
+                "but would save it from a failed or cancelled run; set "
+                "`cache-on-failure: false`"]
+    return []
 
 
 def check_text(name: str, text: str) -> list[str]:
@@ -174,11 +145,10 @@ def check_text(name: str, text: str) -> list[str]:
     errors = []
     found = 0
     for job, job_lines in jobs(lines):
-        steps = job_steps(job_lines)
-        for index, step in enumerate(steps):
+        for step in job_steps(job_lines):
             if step["uses"].startswith(TOOLCHAIN):
                 found += 1
-                errors += check_toolchain(name, job, steps, index)
+                errors += check_toolchain(name, job, step)
     expected = sum(1 for _, line in lines if USES.match(line) and TOOLCHAIN in line)
     if found != expected:
         errors.append(f"{name}: {expected - found} setup-rust-toolchain step(s) outside a "

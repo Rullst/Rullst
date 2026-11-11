@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """Mutate the ORM's optional backends against their suites on the SQLx Any pool.
 
-Like `orm-sqlite`, but `rullst-orm` is also built with its Redis, MongoDB,
-SurrealDB, Turso, Scout HTTP and Qdrant features, so the polyglot, search,
+Like `orm-sqlite`, but `rullst-orm` is also built with its Redis, SurrealDB,
+Turso, Scout HTTP and Qdrant features, so the polyglot, search,
 Redis data and query-cache modules and the tests that exercise them through
 mocks and loopback servers are compiled. A disposable Redis server that this
 wrapper owns serves the opt-in `RULLST_TEST_REDIS_URL` contracts of the query
 cache and the Redis hash scope, which the all-feature build compiles out. The
-testcontainers matrices are skipped. DuckDB, whose bundled build is large, is
-left to targeted runs.
+testcontainers matrices are skipped.
 """
 from __future__ import annotations
 
@@ -29,7 +28,7 @@ ORM_SQLITE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ORM_SQLITE)
 
 REDIS_IMAGE = "redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf"
-FEATURES = ["drivers-all", "redis", "mongodb", "surrealdb", "turso", "scout-http", "qdrant"]
+FEATURES = ["drivers-all", "redis", "surrealdb", "turso", "scout-http", "qdrant"]
 
 
 def redis_url(name: str) -> str:

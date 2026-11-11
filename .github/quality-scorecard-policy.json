@@ -39,7 +39,7 @@
       "documentation_dx": 15,
       "operations_release": 18,
       "specialist_gate": "strict-database-redis-and-threat",
-      "finding": "Deep relational and tenant-bound audit/revision evidence now includes authenticated, bounded document recovery with real MongoDB-to-SurrealDB-to-MongoDB rehearsal; online snapshot isolation, managed/PITR backup, vendor operations and application writer/tenant/key policy remain external.",
+      "finding": "Deep relational and tenant-bound audit/revision evidence now includes authenticated, bounded document recovery with a real SurrealDB-to-deterministic-store-to-SurrealDB rehearsal; online snapshot isolation, managed/PITR backup, vendor operations and application writer/tenant/key policy remain external.",
       "evidence": ["rullst-orm/README.md", "rullst-orm/src/polyglot/recovery.rs", "rullst-orm/src/polyglot/recovery", "rullst-orm/tests", "docs/src/polyglot-persistence.md", "docs/src/threat-models.md", "docs/src/tutorials/50-auditable-revisions.md"]
     },
     {

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Mutate the ORM's optional backends against their server matrices.
 
-`orm-polyglot` reaches the MongoDB, SurrealDB, Qdrant, Meilisearch, Redis
-data and Turso adapters through mocks and loopback fakes. This contract runs
+`orm-polyglot` reaches the SurrealDB, Qdrant, Meilisearch, Redis data and
+Turso adapters through mocks and loopback fakes. This contract runs
 their testcontainers matrices for every selected mutant, so the code that
 talks to a real server is measured too; a server that cannot start fails the
 run. Select the adapters' live paths with `--mutants REGEX`.
@@ -20,9 +20,9 @@ if SPEC is None or SPEC.loader is None:
 SERVERS = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SERVERS)
 
-FEATURES = ["drivers-all", "redis", "mongodb", "surrealdb", "turso", "scout-http", "qdrant"]
-MATRICES = ["matrix_mongodb", "matrix_surrealdb", "matrix_document_recovery", "matrix_qdrant",
-            "matrix_meilisearch", "matrix_redis_data", "matrix_turso"]
+FEATURES = ["drivers-all", "redis", "surrealdb", "turso", "scout-http", "qdrant"]
+MATRICES = ["matrix_surrealdb", "matrix_document_recovery", "matrix_qdrant", "matrix_meilisearch",
+            "matrix_redis_data", "matrix_turso"]
 
 
 if __name__ == "__main__":

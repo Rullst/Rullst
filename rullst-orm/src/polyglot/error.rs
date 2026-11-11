@@ -53,23 +53,10 @@ pub enum PolyglotError {
         /// Backend type name.
         kind: String,
     },
-    /// Work delegated to a blocking worker could not complete.
-    #[error("{backend} worker failed: {message}")]
-    Worker {
-        /// Backend whose worker stopped.
-        backend: &'static str,
-        /// Join or lock failure detail.
-        message: String,
-    },
 }
 
 impl PolyglotError {
-    #[cfg(any(
-        feature = "duckdb",
-        feature = "mongodb",
-        feature = "surrealdb",
-        feature = "turso"
-    ))]
+    #[cfg(any(feature = "surrealdb", feature = "turso"))]
     pub(crate) fn driver(backend: &'static str, error: impl fmt::Display) -> Self {
         Self::Driver {
             backend,
