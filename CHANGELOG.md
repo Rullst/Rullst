@@ -561,6 +561,16 @@ describes each replacement.
 
 ### Fixed
 
+- `rullst-orm` query cache: while Redis was down, every `.remember(...)` read
+  waited about 9.5 seconds before falling back to the database, every
+  generated save or delete about 19 seconds before reporting its failed cache
+  invalidation, and `Orm::init_redis`/`init_redis_with_namespace` about 9.5
+  seconds before failing on a wrong password or an unreachable server: the
+  connection manager used redis-rs's default of six backed-off reconnection
+  retries per command. It now retries once, so a stopped Redis costs a
+  remembered read about 0.15 s and initialization fails as quickly; a
+  restarted Redis is used again on the next command. Found by acceptance
+  testing against Redis 7.4.
 - `rullst-iot`: `MqttPublish::encode` aborted the program when the allocator
   could not provide the packet buffer, which on a BBC micro:bit V2 with a
   32 KiB heap happened for a 20 KiB payload; it and `CoapRequest::encode`,
