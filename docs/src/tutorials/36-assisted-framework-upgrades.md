@@ -362,7 +362,7 @@ entry that names an old command or code that already bounds its input, can
 carry a marker comment with the rule's code, in any comment syntax, after the
 code on the finding's line or alone on the line directly above it:
 
-```rust
+```rust,ignore
 // rullst-upgrade: reviewed V13-PAGE-BOUNDS: the extractor caps `page`
 let posts = Post::query().paginate(page, 20).await?;
 ```
