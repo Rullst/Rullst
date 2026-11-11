@@ -561,6 +561,11 @@ describes each replacement.
 
 ### Fixed
 
+- The CI workflow that `cargo rullst new` writes no longer saves the Rust
+  dependency cache from a failed or cancelled run (`cache-on-failure: false`),
+  which could leave a half-built `target/` that broke every later run. Rullst's
+  own cache policy check now covers that workflow too.
+
 - `rullst-iot`: `MqttPublish::encode` aborted the program when the allocator
   could not provide the packet buffer, which on a BBC micro:bit V2 with a
   32 KiB heap happened for a 20 KiB payload; it and `CoapRequest::encode`,
