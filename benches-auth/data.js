@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794353896455,
+  "lastUpdate": 1794405892002,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -20807,6 +20807,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3713,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "626da951d672cffeff7697e9b2a08d7af015cdd8",
+          "message": "Merge pull request #629 from Rullst/feat/v13-alpha5-ui-components\n\nfeat(cli): cargo rullst ui add, the html! + Tailwind component library (alpha.5)",
+          "timestamp": "2026-11-11T10:46:06-03:00",
+          "tree_id": "c86458a244bc300ca6c9c0a02ad9c76ea19a23cc",
+          "url": "https://github.com/Rullst/Rullst/commit/626da951d672cffeff7697e9b2a08d7af015cdd8"
+        },
+        "date": 1794405891157,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1097,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 815,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1945,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2754,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
