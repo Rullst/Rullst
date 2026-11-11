@@ -561,6 +561,13 @@ describes each replacement.
 
 ### Fixed
 
+- `cargo rullst audit` reported a dependency advisory found by cargo-audit as
+  a check that failed to complete (`[ERROR] cargo-audit did not complete
+  successfully`, `dependency_audit` status `error`), because cargo-audit exits
+  with status 1 for both. It now reads cargo-audit's JSON report: advisories
+  are `[FINDINGS]` (status `findings` with their count, in `--report` and
+  `--compliance` too), and only a run that produced no report is an error
+  (found by the 13.0.0-alpha.5 acceptance application).
 - `rullst-orm` SurrealDB adapter: `SurrealDbStore::create` reported a write
   that SurrealDB had refused. SurrealDB 3 answers a CREATE denied by
   permissions (a `VIEWER` database user, or a record user on a table with
