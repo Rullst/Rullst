@@ -561,6 +561,13 @@ describes each replacement.
 
 ### Fixed
 
+- The `rullst-supervision` observation guide did not say that the
+  `Permissions-Policy: camera=(), microphone=()` header of Rullst's staging and
+  production security baseline makes the browser refuse `getUserMedia`, so a
+  camera-presence page that worked in development failed after deployment. It
+  now explains how to allow only the captured device on the capture page's
+  response, both with `Server`'s baseline and with `SecureHeadersLayer`
+  (found while building an acceptance application).
 - `rullst-iot`: `MqttPublish::encode` aborted the program when the allocator
   could not provide the packet buffer, which on a BBC micro:bit V2 with a
   32 KiB heap happened for a 20 KiB payload; it and `CoapRequest::encode`,

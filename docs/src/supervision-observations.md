@@ -88,6 +88,21 @@ The framework stores only typed findings and source metadata, with no raw media.
 The caller owns capture and transient sample lifetime and must stop/release its
 media tracks when permission is revoked, paused or ended.
 
+The page that captures must also be allowed to ask for the device. Rullst's
+staging and production security headers send
+`Permissions-Policy: camera=(), microphone=(), …`, under which the browser
+refuses `getUserMedia` (`NotAllowedError`) before showing any prompt.
+Development sends no such header, so the problem first appears after
+deployment. Allow only the device you capture, and only on the capture page's
+response, for example
+`Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()`
+for camera presence. With `Server`'s baseline, a header the handler sets wins.
+`rullst_security::SecureHeadersLayer` replaces it with its configured value
+instead, so serve the capture page from a router whose
+`SecureHeadersLayer::with_config` sets that `permissions_policy`, and do not
+also wrap it in an application-wide `SecureHeadersLayer`. Keep the default
+everywhere else.
+
 Camera results are person detected, no person detected or inconclusive. Audio
 results are speech detected, no speech detected or inconclusive. A detector
 failure returns `AnalysisUnavailable`; it must not become a negative observation.
