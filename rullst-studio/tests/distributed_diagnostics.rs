@@ -1,4 +1,4 @@
-#![cfg(debug_assertions)]
+#![cfg(all(debug_assertions, feature = "local"))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use axum::body::Body;

@@ -1,0 +1,262 @@
+//! The TOTP factor of each account (`cargo rullst make:mfa`). Secrets are
+//! generated and kept on the server, in `user_mfa_factors`: protect that
+//! table and its backups like credentials. A client never submits a secret.
+use super::account::Account;
+use rullst::db::{Orm, sqlx};
+use rullst::security::runtime::{build_mfa_qr_svg, try_generate_mfa_secret, verify_totp_step_after};
+
+/// Second-factor failures; none of them carries secret material.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MfaError {
+    /// The account already has a confirmed factor.
+    AlreadyEnrolled,
+    /// No pending (or confirmed) factor exists for the account.
+    NotEnrolled,
+    /// The code is malformed, wrong, expired or was already used.
+    InvalidCode,
+    /// The sign-in used up its attempts; it opens again when it expires.
+    TooManyAttempts,
+    /// Storage or randomness failed; nothing was accepted.
+    Unavailable,
+}
+
+impl MfaError {
+    /// What the pages say about the failure.
+    pub fn message(self) -> &'static str {
+        match self {
+            Self::AlreadyEnrolled => "Two-step verification is already on.",
+            Self::NotEnrolled => "Start the setup again: no pending setup was found.",
+            Self::InvalidCode => {
+                "That code is wrong, expired or was already used. Enter the current code."
+            }
+            Self::TooManyAttempts => "Too many wrong codes. Wait five minutes, then sign in again.",
+            Self::Unavailable => {
+                "Two-step verification is temporarily unavailable. Try again in a moment."
+            }
+        }
+    }
+}
+
+/// A pending enrollment: the QR code and the key to type by hand.
+pub struct Enrollment {
+    /// The Base32 key, shown once more for typing it into the app.
+    pub secret: String,
+    /// A self-contained SVG of the `otpauth://` URI.
+    pub qr_svg: String,
+}
+
+/// The issuer authenticator apps show when `MFA_ISSUER` and `APP_NAME` are
+/// unset; change it to your product's name.
+const APPLICATION_NAME: &str = env!("CARGO_PKG_NAME");
+
+/// The issuer authenticator apps show next to the account: `MFA_ISSUER`,
+/// else `APP_NAME` (each from the process environment, then `.env`), else
+/// `APPLICATION_NAME`.
+fn issuer() -> String {
+    ["MFA_ISSUER", "APP_NAME"]
+        .into_iter()
+        .find_map(|name| match rullst::config::project_setting(name) {
+            Ok(Some(value)) if !value.trim().is_empty() => Some(value.trim().to_owned()),
+            _ => None,
+        })
+        .unwrap_or_else(|| APPLICATION_NAME.to_owned())
+}
+
+/// PostgreSQL numbers its bind markers; the other drivers take `?`.
+pub(super) fn dialect(sql: &str) -> Result<String, MfaError> {
+    Ok(
+        if Orm::driver().map_err(|_| MfaError::Unavailable)? == "postgres" {
+            rullst::orm::replace_placeholders(sql)
+        } else {
+            sql.to_owned()
+        },
+    )
+}
+
+/// Loads the stored secret and last accepted step for one factor state.
+async fn load_factor(
+    owner: i64,
+    confirmed: i32,
+) -> Result<Option<(String, Option<i64>)>, MfaError> {
+    let sql = dialect(
+        "SELECT secret, last_accepted_step FROM user_mfa_factors WHERE user_id = ? AND confirmed = ?",
+    )?;
+    sqlx::query_as::<_, (String, Option<i64>)>(sqlx::AssertSqlSafe(sql.as_str()))
+        .bind(owner)
+        .bind(confirmed)
+        .fetch_optional(Orm::pool().map_err(|_| MfaError::Unavailable)?)
+        .await
+        .map_err(|_| MfaError::Unavailable)
+}
+
+/// Verifies `code` (spaces allowed) against the server-side secret,
+/// rejecting reused steps.
+fn accepted_step(secret: &str, code: &str, last: Option<i64>) -> Result<i64, MfaError> {
+    let last = last
+        .map(u64::try_from)
+        .transpose()
+        .map_err(|_| MfaError::Unavailable)?;
+    let code: String = code
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .collect();
+    let step = verify_totp_step_after(secret, &code, last).ok_or(MfaError::InvalidCode)?;
+    i64::try_from(step).map_err(|_| MfaError::Unavailable)
+}
+
+/// Records `step` only when no equal or later step was accepted concurrently.
+async fn record_step(sql: &str, step: i64, owner: i64, secret: &str) -> Result<(), MfaError> {
+    let sql = dialect(sql)?;
+    let changed = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
+        .bind(step)
+        .bind(owner)
+        .bind(secret)
+        .bind(step)
+        .execute(Orm::pool().map_err(|_| MfaError::Unavailable)?)
+        .await
+        .map_err(|_| MfaError::Unavailable)?
+        .rows_affected();
+    if changed == 1 {
+        Ok(())
+    } else {
+        Err(MfaError::InvalidCode)
+    }
+}
+
+/// The QR code of `secret`, labelled with the account's e-mail address.
+fn enrollment(account: &Account, secret: String) -> Result<Enrollment, MfaError> {
+    let qr_svg =
+        build_mfa_qr_svg(&issuer(), &account.email, &secret).map_err(|_| MfaError::Unavailable)?;
+    Ok(Enrollment { secret, qr_svg })
+}
+
+/// Whether the account has a confirmed factor.
+pub async fn is_enrolled(user_id: i32) -> Result<bool, MfaError> {
+    Ok(load_factor(i64::from(user_id), 1).await?.is_some())
+}
+
+/// Starts (or restarts) enrollment with a new server-generated secret.
+pub async fn begin_enrollment(account: &Account) -> Result<Enrollment, MfaError> {
+    let owner = i64::from(account.id);
+    if load_factor(owner, 1).await?.is_some() {
+        return Err(MfaError::AlreadyEnrolled);
+    }
+    let secret = try_generate_mfa_secret().map_err(|_| MfaError::Unavailable)?;
+    let delete = dialect("DELETE FROM user_mfa_factors WHERE user_id = ? AND confirmed = 0")?;
+    let insert = dialect(
+        "INSERT INTO user_mfa_factors (user_id, secret, confirmed, last_accepted_step) VALUES (?, ?, 0, NULL)",
+    )?;
+    let mut transaction = Orm::begin_transaction()
+        .await
+        .map_err(|_| MfaError::Unavailable)?;
+    let stored = async {
+        sqlx::query(sqlx::AssertSqlSafe(delete.as_str()))
+            .bind(owner)
+            .execute(&mut *transaction)
+            .await?;
+        sqlx::query(sqlx::AssertSqlSafe(insert.as_str()))
+            .bind(owner)
+            .bind(secret.as_str())
+            .execute(&mut *transaction)
+            .await?;
+        Ok::<(), sqlx::Error>(())
+    }
+    .await;
+    if stored.is_err() {
+        let _ = transaction.rollback().await;
+        return Err(MfaError::Unavailable);
+    }
+    transaction
+        .commit()
+        .await
+        .map_err(|_| MfaError::Unavailable)?;
+    enrollment(account, secret)
+}
+
+/// The pending enrollment again (after a wrong code), with the same secret.
+pub async fn pending_enrollment(account: &Account) -> Result<Option<Enrollment>, MfaError> {
+    match load_factor(i64::from(account.id), 0).await? {
+        Some((secret, _)) => enrollment(account, secret).map(Some),
+        None => Ok(None),
+    }
+}
+
+/// Activates the pending factor with a current code from the authenticator.
+pub async fn confirm_enrollment(user_id: i32, code: &str) -> Result<(), MfaError> {
+    let owner = i64::from(user_id);
+    let (secret, last) = load_factor(owner, 0).await?.ok_or(MfaError::NotEnrolled)?;
+    let step = accepted_step(&secret, code, last)?;
+    record_step(
+        "UPDATE user_mfa_factors SET confirmed = 1, last_accepted_step = ? WHERE user_id = ? AND confirmed = 0 AND secret = ? AND (last_accepted_step IS NULL OR last_accepted_step < ?)",
+        step,
+        owner,
+        &secret,
+    )
+    .await
+}
+
+/// Verifies a code for the confirmed factor; each time step is accepted
+/// once. The second sign-in step calls it; call it too before a sensitive
+/// action (a step-up check).
+pub async fn verify_second_factor(user_id: i32, code: &str) -> Result<(), MfaError> {
+    let owner = i64::from(user_id);
+    let (secret, last) = load_factor(owner, 1).await?.ok_or(MfaError::NotEnrolled)?;
+    let step = accepted_step(&secret, code, last)?;
+    record_step(
+        "UPDATE user_mfa_factors SET last_accepted_step = ? WHERE user_id = ? AND confirmed = 1 AND secret = ? AND (last_accepted_step IS NULL OR last_accepted_step < ?)",
+        step,
+        owner,
+        &secret,
+    )
+    .await
+}
+
+/// Removes every factor of the account: turning it off, or the
+/// `admin:mfa-reset` command for a lost phone.
+pub async fn remove_factor(user_id: i32) -> Result<(), MfaError> {
+    let sql = dialect("DELETE FROM user_mfa_factors WHERE user_id = ?")?;
+    sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
+        .bind(i64::from(user_id))
+        .execute(Orm::pool().map_err(|_| MfaError::Unavailable)?)
+        .await
+        .map_err(|_| MfaError::Unavailable)?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn codes_are_accepted_once_with_or_without_spaces() {
+        let secret = rullst::security::runtime::generate_mfa_secret();
+        let Some(code) = rullst::security::runtime::generate_totp_code(&secret) else {
+            panic!("a fresh secret yields a code");
+        };
+        let spaced = format!("{} {}", &code[..3], &code[3..]);
+        let Ok(step) = accepted_step(&secret, &spaced, None) else {
+            panic!("the current code is accepted");
+        };
+        assert_eq!(
+            accepted_step(&secret, &code, Some(step)),
+            Err(MfaError::InvalidCode)
+        );
+        assert_eq!(
+            accepted_step(&secret, "12345x", None),
+            Err(MfaError::InvalidCode)
+        );
+    }
+
+    #[test]
+    fn every_failure_has_a_message_without_secret_material() {
+        for error in [
+            MfaError::AlreadyEnrolled,
+            MfaError::NotEnrolled,
+            MfaError::InvalidCode,
+            MfaError::TooManyAttempts,
+            MfaError::Unavailable,
+        ] {
+            assert!(error.message().ends_with('.'));
+        }
+    }
+}

@@ -1,0 +1,5 @@
+error: `//` starts a Rust comment, so the rest of this URL is not text in html!; write the URL as a string literal, such as `"https://example.com"`
+ --> tests/ui/unquoted_text_url.rs:6:24
+  |
+6 |             Visit https://example.com
+  |                        ^

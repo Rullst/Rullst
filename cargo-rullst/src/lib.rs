@@ -87,6 +87,10 @@ fn run_command(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         return Err(cli::removed::report(name));
     } else if let Some(footprint) = matches.subcommand_matches("footprint") {
         generators::footprint::run(footprint)?;
+    } else if let Some(keygen) = matches.subcommand_matches("iot:keygen") {
+        generators::iot_sign::run_keygen(keygen)?;
+    } else if let Some(sign) = matches.subcommand_matches("iot:sign") {
+        generators::iot_sign::run_sign(sign)?;
     } else if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
         generators::deploy_doctor::run(doctor)?;
     } else if let Some(api) = matches.subcommand_matches("generate:api") {
@@ -134,6 +138,8 @@ pub(crate) fn command() -> clap::Command {
         .subcommand(generators::api_contract::command())
         .subcommand(generators::deploy_doctor::command())
         .subcommand(generators::footprint::command())
+        .subcommand(generators::iot_sign::keygen_command())
+        .subcommand(generators::iot_sign::sign_command())
         .subcommands(cli::removed::commands())
         .subcommand(tour::command())
         // Extend executable syntax without changing the published v12 enum.

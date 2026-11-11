@@ -281,11 +281,7 @@ async fn a_ban_ttl_beyond_the_clock_still_bans_the_peer() {
     assert_eq!(state.banned_count(), 2);
 
     // Enforcement and the SOC view agree: the peer is banned in both.
-    assert!(
-        crate::telemetry::SecurityStore::global()
-            .banned_ips
-            .contains_key("192.0.2.61")
-    );
+    assert!(crate::telemetry::SecurityStore::global().is_banned("192.0.2.61"));
     let mut later = Request::builder()
         .uri("/safe")
         .body(Body::empty())
@@ -323,14 +319,16 @@ async fn route_hits_are_keyed_by_the_configured_trap_not_the_request_spelling() 
         assert_eq!(response.status(), StatusCode::FORBIDDEN, "{variant}");
     }
 
-    let hits = &crate::telemetry::SecurityStore::global().honeypot_route_hits;
+    let hits = crate::telemetry::SecurityStore::global().honeypot_route_hits();
+    let count = |route: &str| {
+        hits.iter()
+            .find(|(path, _)| path == route)
+            .map(|(_, count)| *count)
+    };
     for variant in ["/.GIT/HEAD", "/.git/head", "/.gIt/hEaD"] {
-        assert!(!hits.contains_key(variant), "{variant} got its own row");
+        assert!(count(variant).is_none(), "{variant} got its own row");
     }
-    let canonical = hits
-        .get("/.Git/HEAD")
-        .expect("the configured trap is counted")
-        .load(std::sync::atomic::Ordering::Relaxed);
+    let canonical = count("/.Git/HEAD").expect("the configured trap is counted");
     assert!(canonical >= variants.len() as u64);
 }
 

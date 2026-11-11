@@ -28,6 +28,8 @@ pub struct HotSwapService {
     /// `Server::with_machine_endpoints` policy, authenticated in front of
     /// every router generation as in the static development stack.
     pub(crate) machine_endpoints: Option<crate::security::MachineEndpointPolicy>,
+    /// Whether access-log lines show the matched route (`Server::access_log_paths`).
+    pub(crate) access_log_route_paths: bool,
 }
 
 impl HotSwapService {
@@ -235,6 +237,15 @@ impl Service<axum::extract::Request> for HotSwapService {
             Err(poisoned) => poisoned.into_inner().clone(),
         };
 
+        // Innermost, after routing, as in the static server stack. Hot reload
+        // runs only in development, which logs every probe.
+        router = router.layer(axum::middleware::from_fn_with_state(
+            super::console::AccessLog {
+                log_health_probes: true,
+                route_paths: self.access_log_route_paths,
+            },
+            super::console::access_log_middleware,
+        ));
         router = super::traffic::apply_traffic_controls(
             router,
             self.limiter.clone(),
@@ -254,24 +265,13 @@ impl Service<axum::extract::Request> for HotSwapService {
         let render_details = crate::error_console::console_details_allowed(req.extensions());
         let method = req.method().to_string();
         let path = req.uri().path().to_string();
-        let start = std::time::Instant::now();
         use tower::ServiceExt;
         let fut = router.oneshot(req);
         Box::pin(async move {
             let (handle, panic_slot) =
                 crate::error_console::capture::spawn_capturing(async move { fut.await });
             match handle.await {
-                Ok(Ok(res)) => {
-                    // Hot reload runs only in development, which logs every probe.
-                    super::console::log_request(
-                        &method,
-                        &path,
-                        res.status().as_u16(),
-                        start.elapsed(),
-                        true,
-                    );
-                    Ok(res)
-                }
+                Ok(Ok(res)) => Ok(res),
                 Ok(Err(_)) => Self::handle_oneshot_error(),
                 Err(join_err) => {
                     Self::handle_panic_error(

@@ -9,11 +9,36 @@ use serde::{Deserialize, Serialize};
 
 /// Failure to serialize a Digital Twin snapshot without losing sensor data.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum TwinSyncError {
     /// JSON has no representation for NaN or infinity.
     NonFiniteReading,
     /// Serialization failed for another reason.
-    Serialization(serde_json::Error),
+    Serialization(TwinJsonError),
+}
+
+/// The JSON encoder's own error behind [`TwinSyncError::Serialization`].
+///
+/// `Display` is that error's message. The JSON library is an implementation
+/// detail, so its error type is not exposed.
+#[derive(Debug)]
+pub struct TwinJsonError(serde_json::Error);
+
+impl fmt::Display for TwinJsonError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
+impl core::error::Error for TwinJsonError {}
+
+impl core::error::Error for TwinSyncError {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Self::NonFiniteReading => None,
+            Self::Serialization(error) => Some(error),
+        }
+    }
 }
 
 impl fmt::Display for TwinSyncError {
@@ -24,12 +49,6 @@ impl fmt::Display for TwinSyncError {
                 write!(formatter, "snapshot serialization failed: {error}")
             }
         }
-    }
-}
-
-impl From<serde_json::Error> for TwinSyncError {
-    fn from(error: serde_json::Error) -> Self {
-        Self::Serialization(error)
     }
 }
 
@@ -70,7 +89,8 @@ impl DigitalTwin {
         {
             return Err(TwinSyncError::NonFiniteReading);
         }
-        serde_json::to_string(self).map_err(TwinSyncError::from)
+        serde_json::to_string(self)
+            .map_err(|error| TwinSyncError::Serialization(TwinJsonError(error)))
     }
 
     /// Serializes the twin state, returning a static valid JSON error payload
@@ -154,9 +174,13 @@ mod tests {
         );
         let source = serde_json::from_str::<u8>("x").expect_err("invalid JSON");
         let message = source.to_string();
+        let error = TwinSyncError::Serialization(TwinJsonError(source));
         assert_eq!(
-            TwinSyncError::from(source).to_string(),
+            error.to_string(),
             alloc::format!("snapshot serialization failed: {message}")
         );
+        let inner = core::error::Error::source(&error).expect("JSON error source");
+        assert_eq!(inner.to_string(), message);
+        assert!(core::error::Error::source(&TwinSyncError::NonFiniteReading).is_none());
     }
 }

@@ -1,6 +1,5 @@
-//! Toolchain checks: Rust (MSRV), Cargo, rustfmt/clippy, Git, the Wasm
-//! target when the project has islands, the Linux fast-linker hint and the
-//! optional analysis tools.
+//! Toolchain checks: Rust (MSRV), Cargo, rustfmt/clippy, Git, the Linux
+//! fast-linker hint and the optional analysis tools.
 
 use super::context::ProcessVars;
 use super::linker::{self, LinkerFacts};
@@ -9,7 +8,6 @@ use super::report::Check;
 use std::path::Path;
 
 pub(crate) const RULLST_MSRV: RustVersion = RustVersion(1, 96, 0);
-pub(crate) const WASM_TARGET: &str = "wasm32-unknown-unknown";
 pub(crate) const COMPONENT_FIX: &str =
     "rustup component add rustfmt clippy (or cargo rullst doctor --fix)";
 
@@ -80,14 +78,12 @@ pub(crate) struct Probes {
     pub git: Probe,
     pub cargo_audit: Probe,
     pub optional: Vec<Probe>,
-    /// `rustup target list --installed`, only when the project has islands.
-    pub targets: Option<Probe>,
     /// Linker configuration and installed fast linkers, on Linux only.
     pub linker: Option<LinkerFacts>,
 }
 
 impl Probes {
-    pub(crate) fn collect(needs_wasm: bool, cwd: &Path) -> Self {
+    pub(crate) fn collect(cwd: &Path) -> Self {
         let mut list: Vec<(&str, Vec<&str>)> = vec![
             ("rustc", vec!["--version"]),
             ("cargo", vec!["--version"]),
@@ -100,9 +96,6 @@ impl Probes {
             Detect::Run(program, args) => Some((*program, args.to_vec())),
             Detect::Installed(_) => None,
         }));
-        if needs_wasm {
-            list.push(("rustup", vec!["target", "list", "--installed"]));
-        }
         let mut results = probe::run_all(&list).into_iter();
         let mut next = || results.next().unwrap_or_default();
         let rustc = next();
@@ -118,7 +111,6 @@ impl Probes {
                 Detect::Installed(binary) => probe::installed(binary),
             })
             .collect();
-        let targets = needs_wasm.then(&mut next);
         let linker = linker::detect(cwd, &rustc, &ProcessVars);
         Self {
             rustc,
@@ -128,7 +120,6 @@ impl Probes {
             git,
             cargo_audit,
             optional,
-            targets,
             linker,
         }
     }
@@ -223,29 +214,6 @@ pub(crate) fn git_check(probe: &Probe) -> Check {
     }
 }
 
-pub(crate) fn wasm_check(targets: &Probe) -> Check {
-    const ID: &str = "toolchain.wasm_target";
-    const TITLE: &str = "Wasm target";
-    let fix = format!("rustup target add {WASM_TARGET}");
-    if !targets.found {
-        return Check::warn(
-            ID,
-            TITLE,
-            "rustup not found; islands need the Wasm target",
-            fix,
-        );
-    }
-    if targets
-        .stdout
-        .lines()
-        .any(|line| line.trim() == WASM_TARGET)
-    {
-        Check::pass(ID, TITLE, format!("{WASM_TARGET} installed"))
-    } else {
-        Check::warn(ID, TITLE, format!("{WASM_TARGET} is not installed"), fix)
-    }
-}
-
 /// One informational line for the optional analysis tools.
 pub(crate) fn optional_check(probes: &[Probe]) -> Check {
     let mut installed = Vec::new();
@@ -301,9 +269,6 @@ pub(crate) fn checks(probes: &Probes) -> Vec<Check> {
         components_check(&probes.rustfmt, &probes.clippy),
         git_check(&probes.git),
     ];
-    if let Some(targets) = &probes.targets {
-        checks.push(wasm_check(targets));
-    }
     checks.extend(probes.linker.as_ref().and_then(linker::check));
     checks.push(optional_check(&probes.optional));
     checks

@@ -57,7 +57,7 @@ const PROJECT_ENTRIES: [HomeEntry; 12] = [
     ),
     HomeEntry::new(
         "🧰  Scaffold Code            ",
-        "(make:controller, make:model, LiveView, Islands...)",
+        "(make:controller, make:model, make:worker...)",
         HomeAction::Scaffold,
     ),
     HomeEntry::new(

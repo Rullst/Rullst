@@ -68,7 +68,19 @@ fn native_only_reexports_are_guarded_for_wasm32() {
             checked += 1;
         }
     }
-    // db::*, orm, rullst_orm, auth, account_mail, mail, messaging, privacy,
-    // ai, nexus, capital, studio, security::runtime and security_runtime.
-    assert!(checked >= 14, "only {checked} native-only re-exports found");
+    // db::*, orm, auth, account_mail, mail, messaging, privacy, ai, nexus,
+    // capital, studio and security::runtime.
+    assert!(checked >= 12, "only {checked} native-only re-exports found");
+}
+
+/// 13.0.0-alpha.5 keeps one path per crate: `rullst::orm` and
+/// `rullst::security::runtime`, without the `rullst_orm` and
+/// `security_runtime` aliases.
+#[test]
+fn optional_crates_have_one_facade_path() {
+    let source = include_str!("../src/lib.rs");
+    assert!(!source.contains("pub use rullst_orm;"));
+    assert!(!source.contains("security_runtime"));
+    assert!(source.contains("pub use rullst_orm as orm;"));
+    assert!(source.contains("pub use rullst_security as runtime;"));
 }

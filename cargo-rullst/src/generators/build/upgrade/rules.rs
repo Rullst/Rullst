@@ -11,6 +11,8 @@
 //! row in `docs/src/migration-v13.md`. A [`reviewed`] marker on or above a
 //! REVIEW finding's line leaves that location out of the plan.
 
+mod alpha5_runtime;
+mod api_cleanups;
 mod catalog;
 mod files;
 mod markup;

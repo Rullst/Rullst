@@ -40,6 +40,18 @@ registered it owns the address. See
 [`cargo rullst make:oauth`](../cli_reference.md#cargo-rullst-makeoauth-v13-prerelease-preview)
 for the settings and the linking policy.
 
+An application with its own sign-in, without those account files, writes
+`src/auth_contract.rs` instead: the
+[authentication contract](../cli_reference.md#authentication-contract) gives
+the generated flow the account lookups by id and e-mail, a passwordless
+account creation inside the transaction that links the identity, and the
+session cookie. The command then leaves the router and the sign-in page to the
+application and prints the routes and the link to add; a verified e-mail that
+already belongs to an account is always refused. After
+[`cargo rullst make:mfa`](../cli_reference.md#cargo-rullst-makemfa), in either
+order, an account with two-step verification finishes the provider sign-in at
+`/login/mfa` before it gets a session.
+
 Run the command once per provider: the first one creates the shared flow
 (`src/controllers/oauth/mod.rs`), the table and its migration; each further
 provider adds only its module, routes, login link and settings, so Google and

@@ -31,6 +31,113 @@ A prepared version section does not establish that its tag or crates exist.
   (never a command-line argument, sent only over HTTPS or to loopback and
   never after a redirect), and shows the `--path` route's production bytes
   per request beside the lab's, in a new `production` section.
+- `cargo rullst iot:keygen` and `cargo rullst iot:sign` (Experimental): sign
+  firmware updates for `rullst-iot`'s OTA gate. `iot:keygen --out FILE`
+  writes an Ed25519 secret key (mode 0600 on Unix, never printed) and its
+  public key as `FILE.pub` (hexadecimal), `FILE.pub.bin` and `FILE.pub.rs` (a
+  Rust `const` for the device). `iot:sign --key FILE --image IMAGE --target T
+  --version V --counter N` writes the canonical manifest bytes that
+  `OtaManifest::from_signing_bytes` parses and the 64-byte signature for
+  `OtaManager::begin_update`, built with `rullst-iot`'s own encoding and
+  verified with its own verifier before anything is written. Both refuse to
+  replace existing files without `--force`; `iot:sign` refuses malformed,
+  placeholder or weak keys, an empty image, empty version text and a counter
+  of 0; `--json` prints `rullst.iot-keygen.v1` and `rullst.iot-sign.v1`
+  summaries.
+- `cargo rullst make:mfa` now generates the whole two-step verification flow
+  instead of a JSON API that returned the secret: HTML pages at
+  `/account/security` with the QR code of `rullst-security`'s
+  `build_mfa_qr_svg` (labelled with the account's e-mail instead of
+  `user-<id>`) and the key to type by hand, confirmation and turning it off
+  with a current code; a second sign-in step at `/login/mfa` (only a random
+  id in a five-minute cookie scoped to that page, its SHA-256 in a new
+  `mfa_challenges` table, five codes per challenge, one live challenge per
+  account, single use), called from the password sign-in of
+  `cargo rullst auth` and the SaaS starter and from the `make:oauth` flow in
+  either installation order; turning it on signs out the account's other
+  sessions through the session epoch; and `admin:mfa-reset <email>`, which
+  the application binary runs before `rullst::artisan!` to remove a lost
+  phone's factor and sign the account out everywhere. The pages carry the
+  request's CSP nonce and no inline script. In the SaaS starter it also mounts
+  the routes and links the page from the dashboard; elsewhere it prints what
+  to mount (reported while upgrading an application).
+- `cargo rullst make:pwa --router <file>` names the file that builds the
+  router when `src/` merges `rullst::health::health_router()` several times or
+  not at all: the PWA routes are mounted there, after its health merge or
+  inside its `headers_middleware` layer.
+- An authentication contract for applications with their own sign-in:
+  `make:mfa`, `make:oauth` and `make:privacy` generate against
+  `src/auth_contract.rs` (`ContractAccount`, `require_account`,
+  `find_account`, `find_account_by_email`, `sign_in_cookie`, `end_sessions`,
+  `session_binding`, `create_account`) when the project does not have the
+  account files of `cargo rullst auth` or the SaaS starter, which they still
+  use unchanged when present. Each checks the functions it calls before
+  writing and names any that are missing; the CLI reference documents the
+  contract with a complete example. `make:age-gate` stays SaaS-only, because
+  it replaces the starter's dashboard route (reported while upgrading an
+  application).
+- `rullst-iot` (Experimental): `AnomalyDetector` derives `Clone`, `Copy`,
+  `Debug` and `PartialEq`; `AnomalyState` documents its variants, implements
+  `Display` (`normal`, `warning`, `critical anomaly`) and `as_str`, and
+  serializes with serde as `"normal"`, `"warning"` and `"critical_anomaly"`.
+  Requested after an Arduino Uno and Rullst gateway run of the `std` path.
+- `rullst-iot` (Experimental) streaming OTA verification. A device builds the
+  manifest from the fields it receives with `OtaManifest::new(target,
+  version, rollback_counter, firmware_len, firmware_sha256)` or parses the
+  canonical bytes the publisher signed with `OtaManifest::from_signing_bytes`
+  (`OtaError::MalformedManifest` for anything else), without hashing the
+  image. `OtaManager::begin_update(&manifest, signature)` checks the target,
+  the rollback counter and the Ed25519 signature before any image byte and
+  returns an `OtaImageVerifier`: `update(chunk)` hashes the image in chunks of
+  any size and refuses one past the signed length, and `finish()` checks the
+  length and the SHA-256 digest and makes the update eligible for commit. The
+  image is hashed once and never has to be one slice in memory, so it can
+  stream from the network or external flash; on a micro:bit V2 a 32 KiB image
+  in 4 KiB chunks verified in 62.8 ms with 7.6 KiB of stack.
+- Server-Sent Events for realtime channels: `rullst::realtime::RealtimeSse`
+  and `RealtimeSseConfig` (also re-exported at the `rullst` and `rullst-core`
+  crate roots). `RealtimeSse::channel(&manager, name)` or
+  `RealtimeSse::subscribe(receiver)` returns a `text/event-stream` response
+  in which each `RealtimeMessage` is an event named after its `event` with
+  the payload as data. Every stream starts with an SSE `retry:` field, the
+  delay before the browser reconnects when it ends
+  (`RealtimeSseConfig::with_reconnect_delay`, default 1 s, clamped to
+  100 ms–5 min; browsers otherwise wait about 3 s). Every connection is
+  bounded: keep-alive comments (default 15 s, clamped to 1 s–5 min), a
+  maximum lifetime (30 min, 1 s–24 h), a connection limit shared by every
+  clone (1,024, 1–65,536), a 64 KiB event payload, and the channel's fixed
+  broadcast queue as the only per-connection buffer: a connection that falls
+  behind it ends so the browser reconnects, instead of buffering. A request
+  beyond the limit, or after `shutdown()`, opens no channel and receives a
+  `200` stream holding only a comment with the reason and a `retry:` of a
+  random 5–10 s, then ending: `EventSource` and the htmx extension honour
+  that delay, while they ignore `Retry-After` and retry an error status such
+  as `503` on their own schedule (the htmx extension first within half a
+  second). Messages with an event name SSE cannot
+  carry are skipped. `shutdown()` ends every open stream, so they do not hold
+  the graceful drain. Responses send `Cache-Control: no-cache` and
+  `X-Accel-Buffering: no`.
+- HTML scaffolds (`cargo rullst new`, Blank and SaaS) write the htmx 1.9.12
+  Server-Sent Events extension to `static/htmx-ext-sse-1.9.12.js`, beside
+  `htmx-1.9.12.min.js` and served the same way, so pages use `hx-ext="sse"`,
+  `sse-connect` and `sse-swap` under the strict CSP. The file is a patched
+  copy of upstream `dist/ext/sse.js` of htmx commit
+  `f38e07d4be8145a39e2bb477ec9fcc56bdd2d16d` (SHA-256
+  `be05b2e2265279f035271adbea0b72a356f20ce4dfa5870481bfe9c51b822fc1`):
+  upstream computes its reconnect delay with the bitwise XOR `2 ^ retryCount`,
+  so it never backs off past about 2.5 s and sometimes retries at once; the
+  copy doubles the delay up to 64 s and resets it when a connection opens, as
+  the htmx 2 extension does (SHA-256
+  `afb588b88863ec49fe7d9f958b788ab1e1df1f45016466d2ea573f374c89e5d4`). The
+  diff is in `cargo-rullst/src/blueprints/assets/README.md`; a test checks
+  both digests, the patched lines and the written bytes. Tutorial 34 is now a realtime
+  dashboard with SSE and htmx (`tutorials/34-realtime-dashboard-sse.md`).
+- `cargo rullst upgrade` rules for 13.0.0-alpha.5: `V13-ISLANDS-REMOVED` and
+  `V13-LIVE-REMOVED` (must-change: `#[island]`, `#[live_component]`,
+  `#[live_event]` and `rullst::island`/`rullst::live` paths, also in `use`
+  groups and macro bodies) and `V13-ISLAND-COMMANDS-REMOVED` and
+  `V13-LIVE-COMMAND-REMOVED` (review: scripts running `make:island`,
+  `build:client` or `make:live`). The catalog has 124 rules.
 - Generated applications start with tests and CI
   ([Testing your application](docs/src/testing-your-app.md)). Every starter's
   `src/security_tests.rs` has a `PAGES` list of its parameterless pages and a
@@ -149,6 +256,51 @@ A prepared version section does not establish that its tag or crates exist.
   `rullst-security` and `rullst-orm`, weekly and on dispatch. It is
   informational (`continue-on-error`), so it never changes the Miri admission
   receipt.
+- `HtmxRequest::is_history_restore()` and `HtmxRequest::is_boosted()` report
+  htmx's `HX-History-Restore-Request: true` and `HX-Boosted: true`, the two
+  htmx requests that expect the whole page. `render_page` already answers
+  them with it; a handler that builds its own response can now do the same
+  (reported while upgrading an application).
+- `Nexus::with_stylesheet(path)` links an application stylesheet on every
+  Nexus page, after Nexus's own `nexus.css`, so an application can adjust the
+  panel (for example `.nexus-table-wrap { overflow-x: auto; }` for a wide
+  table) without replacing Nexus's assets. Up to eight same-origin paths are
+  accepted, so the production CSP needs no change; another origin or an
+  unsafe path makes `try_build` fail with the new
+  `NexusBuildError::InvalidStylesheet` (reported while upgrading an
+  application).
+- The `[HTTP] METHOD path -> status` access log of `Server` no longer writes
+  a path that may carry a secret in staging and production: it writes the
+  route that matched (`GET /booking/{token} -> 200`), and a request that
+  matched no route its path cut to 128 bytes with bytes outside visible ASCII
+  escaped. Development and test keep the request path. The new
+  `config::AccessLogPaths` (`[app] access_log_paths = "auto" | "route" |
+  "full"` in `Rullst.toml`, or `Server::access_log_paths`, which takes
+  precedence) chooses one form in every environment. The query string is
+  never written (reported while upgrading an application).
+- `html!` text can be written without quotes (`<p>Welcome back, {name}!</p>`;
+  quoted literals keep working and keep exact spacing). The macro rebuilds the
+  text from where its tokens were written: whitespace between words, or
+  between text and a neighbouring element, `{…}` or `@` block, becomes one
+  space, and whitespace at the start and end of an element or block is
+  dropped; `(…)` and `[…]` are text and may hold `{…}`. `>`, character
+  literals, a URL that `//` cut into a comment, a `///` doc comment and
+  `if cond { <tag> }` without `@` are compile errors that name the fix, as
+  is a string literal written directly before a word (`"quoted"text`, in
+  text or an attribute value): Rust reads the word as a literal suffix, which
+  `html!` used to drop silently.
+  Whitespace between nodes that are not unquoted text is still ignored, so
+  existing templates render the same. The positions come from the
+  compiler's `Span::start`/`end` (stable since Rust 1.88), so no dependency
+  feature changes.
+- `html!` attribute names take the forms Alpine.js and htmx use:
+  `@click.prevent`, `:class`, `x-on:click`, `x-bind:disabled`,
+  `hx-on::after-request`, `x-transition:enter.duration.500ms` and SVG's
+  `xlink:href`, whose dynamic values get the URL scheme check. Dynamic and
+  conditional values of `x-*`, `@*`, `:*` and `hx-on:*` attributes do not
+  compile, like those of `on*` handlers, because the browser runs them as
+  JavaScript. **Breaking** for a dynamic `x-*` value, which compiled before;
+  `cargo rullst upgrade` reports it (`V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`).
 - `rullst-media` (Bunny Stream), requested while upgrading an application:
   `BunnyCredentials::upload_only(api_key)` with
   `BunnyConfig::upload_only(library, environment, credentials)` manages videos
@@ -186,9 +338,56 @@ A prepared version section does not establish that its tag or crates exist.
   that sets the order of `LOCALES.iter()` for a language menu; it must list
   every catalog file once. Without it the locales stay sorted by tag.
   Requested while upgrading an application.
+- `Server` prints a warning at startup when the working directory has no
+  `static/` directory, naming the path it looked for: nothing is served
+  under `/static/` then, so pages from `render_page` load without htmx, its
+  SSE extension and their stylesheet and stop updating, while the page
+  itself still answers `200`. Nothing else changes. Found while running a
+  dashboard binary from another directory.
 
 ### Changed
 
+- **Breaking:** `rullst-iot` (Experimental): `OtaManager`'s fields
+  `current_partition`, `status` and `firmware_version` are private, as
+  13.0.0-alpha.4 announced; read them with the methods of the same names
+  (`current_partition()`, `status()`, `firmware_version()`), so only
+  verification and commit change the state. Code that assigned
+  `current_partition` after `new_with_trusted_key` or
+  `new_with_counter_store` calls the new `with_running_partition(bank)`,
+  which also discards an update verified for the other bank.
+  `OtaManifest` and `OtaCommit` moved to their own file; their paths are
+  unchanged. `cargo rullst upgrade` reports the three field accesses in files
+  that name `OtaManager` (`V13-IOT-OTA-STATE`).
+- **Breaking:** `rullst-iot` (Experimental): `IotDashboard::render_sensor_card`
+  returns the new `IotHtml`, the crate's escaped-HTML type that reads like a
+  `&str`, instead of a `String`, and shows the reading with at most two
+  decimals (scientific notation outside 0.01 to 10^9, `n/a` when not finite)
+  instead of the full `f64` text. Call `.into_string()` for a `String`, or
+  insert it into a view with `Markup::from_trusted(card.into_string())`.
+  `cargo rullst upgrade` reports each file that calls it
+  (`V13-IOT-SENSOR-CARD-HTML`). `SensorTelemetry::timestamp` stays whole UNIX
+  seconds, now documented: a new field would break every struct literal and
+  the JSON shape, and changing the unit would silently misread stored data.
+- **Breaking:** `rullst-iot` (Experimental): `MqttCodecError` and
+  `CoapCodecError` are `#[non_exhaustive]` and gain `AllocationFailed`;
+  `OtaError` gains `AllocationFailed` too. A `match` on the two codec errors
+  outside the crate needs a wildcard arm, and `cargo rullst upgrade` reports
+  each one that has none (`V13-IOT-CODEC-ERROR-MATCH`). `verify_update` now
+  runs the streaming path below, which checks the target, the rollback counter
+  and the signature before the image's length and digest: a malformed or
+  invalid signature is reported before `FirmwareLengthMismatch` or
+  `FirmwareHashMismatch`, a manifest changed after signing is
+  `SignatureInvalid`, and neither costs a hash of the image (26 ms per 32 KiB
+  on a 64 MHz Cortex-M4).
+- `rullst-studio`: the local Studio (`Studio`, `run_studio` and its page
+  modules) is the new `local` feature, which the default `drivers-all`, every
+  `strict-*` profile and the facade's `studio` feature enable. `rullst-orm`,
+  `rullst-capital`, `rullst-security`, `rullst-macros` and `utoipa` are
+  optional dependencies that only `local` selects, so
+  `cargo install rullst-studio --no-default-features --features remote`
+  builds no ORM, database driver, Capital or Security crate. A direct
+  `rullst-studio` dependency with `default-features = false` and none of those
+  profiles adds `features = ["local"]`.
 - `t!` compiles in constant time per call: the generated macro now forwards
   only the catalog's directory, locale order and default, and the hidden
   `__translate!` reads and prepares the catalog once per compilation (for
@@ -213,6 +412,70 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Changed
 
+- **Breaking:** one path per item: `rullst::rullst_orm` (the same module as
+  `rullst::orm`), `rullst::security_runtime` (the same as
+  `rullst::security::runtime`), Mail's `rullst_mail::mail` alias of the crate
+  root and `rullst_mail::drivers::mock` (the same as `rullst_mail::mock`) were
+  removed. Write `rullst::orm` (with `use rullst::orm as rullst_orm;` where code
+  names `rullst_orm`), `rullst::security::runtime`, `rullst_mail::…` and
+  `rullst_mail::mock`. `cargo rullst upgrade` reports each use
+  (`V13-API-ALIAS-PATHS`).
+- **Breaking:** the internals that 13.0.0-alpha.4 hid from the documentation
+  and that no Rullst macro expansion or other Rullst crate uses are now
+  crate-private: Core `server::dylib_loader` and `artisan::runner`
+  (`artisan::check_and_run_artisan` stays); ORM `tenant::CURRENT_TENANT`,
+  `schema::QUERY_LOGGING`, `QUERY_TIMEOUT_SECS`, `MAX_QUERY_LIMIT`,
+  `privacy::encrypt_aes_gcm`/`decrypt_aes_gcm` and
+  `Orm::redis_cache_namespace`; Auth `passkey::cbor`; Connect's
+  `impl_standard_redirect_url!`/`impl_standard_refresh_token!` macros, its
+  `macros` module, `client::DEFAULT_HTTP_CLIENT` and the `ChallengeDatabase`
+  methods (now on its sealed supertrait); Security `current_timestamp_str`;
+  Nexus `generate_smart_nexus_ai_response`. Security's
+  `get_real_rss_memory_mb` (use `rullst_core::radar::get_process_memory_mb`)
+  and Nexus's unused `field_kind_sql` were removed. `Outbox::claim_next_at` and
+  `query_cache::model_hash_key` moved behind the new non-default `test-util`
+  feature of `rullst-orm` (test suites only, outside the 13.x stability
+  promise), and `query_cache::query_key` and `query_cache::invalidate_table`
+  are now documented. The `#[doc(hidden)]` items that stay public name the
+  macro or crate that uses them in a comment.
+  `cargo rullst upgrade` reviews the names (`V13-HIDDEN-INTERNALS-PRIVATE`).
+- **Breaking:** the `banned_ips`, `honeypot_route_hits` and `live_events`
+  fields of `rullst_security::SecurityStore` are private, so `dashmap` is no
+  longer in its API; the new `active_bans`, `is_banned`,
+  `honeypot_route_hits` and `live_events` methods return sorted copies. Nexus
+  renders its security page from them (`V13-SECURITY-STORE-COLLECTIONS`).
+  `deception::global_deception_routes()` returns the new `DeceptionRoutes`
+  (`contains`, `len`, `is_empty`, `routes`), `default_deception_traps()` a
+  sorted `Vec<String>`, and `rate_limit::global_rate_limit_store()` is
+  private, so `dashmap` is no longer a public dependency
+  (`V13-SECURITY-GLOBAL-COLLECTIONS`).
+- **Breaking:** `JwksCache::get`/`get_for_kid` and
+  `fetch_and_cache_jwks`/`fetch_and_cache_jwks_for_kid` return the new
+  `JsonWebKeySet` (`key_ids`, `contains_key_id`, `len`, `is_empty`) instead of
+  `jsonwebtoken`'s `JwkSet`, and the deprecated `JWKS_CACHE` static was
+  removed, so `jsonwebtoken` is no longer a public dependency
+  (`V13-CONNECT-JWKS-KEY-SET`).
+- **Breaking:** no public error variant or `From` conversion names a
+  `reqwest`, `jsonwebtoken`, `base64`, `redis` or `serde_json` error any more,
+  so those crates are no longer public dependencies through errors.
+  `AiError::RequestError` carries the new `AiRequestError` (`is_timeout`,
+  `is_connect`), `AiError::SerializationError` the new `AiJsonError`,
+  `ClientContractError::InvalidJson`/`EncodeJson` the new `ContractJsonError`
+  and `TwinSyncError::Serialization` the new `TwinJsonError` (`TwinSyncError`
+  is now `#[non_exhaustive]` and implements `Error`); their texts and
+  `source()` chains are unchanged. `ConnectError` lost its `From` impls for
+  `reqwest`, `serde_json`, `base64` and `jsonwebtoken` errors and
+  `rullst_orm::Error` those for `serde_json` and `redis` errors: map them
+  where `?` relied on them; the variants the crates produce are unchanged
+  (`V13-ERROR-PAYLOADS`).
+- **Breaking:** an unsuccessful HTTP status from an AI provider returns the new
+  `AiError::HttpStatus(AiHttpError)` instead of `AiError::ApiError`, with the
+  status code as a number, the `Retry-After` delay (or Gemini's `RetryInfo`
+  delay) and the provider's error code and bounded message from the body, so
+  an application no longer searches the text for `429` or `404`. The text is
+  unchanged (`API error: Gemini returned HTTP 429 Too Many Requests: …`).
+  `AiHttpError::new` builds one in custom providers and tests. Reported while
+  upgrading an application (`V13-AI-HTTP-STATUS`).
 - **Breaking:** `cargo rullst green` is `cargo rullst footprint`, without an
   alias, and its JSON report is `rullst.footprint.v1` instead of
   `rullst.green.v1`; `cargo rullst green` now fails as an unknown command.
@@ -229,6 +492,40 @@ A prepared version section does not establish that its tag or crates exist.
   justfiles and documentation that still run `cargo rullst green` or read
   `rullst.green.v1` (`V13-CLI-GREEN-RENAMED`), and `V13-CLI-AI-REMOVED` no
   longer tells alpha.3 applications to use `green`.
+
+### Removed
+
+- **Breaking:** WebAssembly islands. The `#[island]` attribute
+  (`rullst::island`, `rullst_core::island`, `rullst_macros::island`),
+  `cargo rullst make:island`, `cargo rullst build:client` (the wasm-bindgen
+  client build and its `static/rullst-islands.js` loader), the Blank
+  starter's `src/islands/` counter and the `wasm32` `wasm-bindgen`/`web-sys`
+  dependencies of generated manifests were removed, with the doctor's
+  `toolchain.wasm_target` check, `rullst_client_init` and Tutorial 18.
+  Rullst's default CSP has no `'wasm-unsafe-eval'`, which browsers require
+  to compile WebAssembly, so islands could not run under the default security
+  headers. The removed commands print their replacement and exit with status
+  1. `#[server_function]` keeps its `wasm32` caller, and the `wasm32` checks
+  of the crates are unchanged.
+- **Breaking:** Live components. `rullst::live` was removed: the
+  `LiveComponent` trait, `Live::mount`, `live_ws_handler` (the HTMX WebSocket
+  protocol, which had no origin check, connection cap or idle timeout), the
+  `#[live_component]` and `#[live_event]` attributes, `cargo rullst make:live`,
+  and the `live::recovery` candidate (`LiveRecovery`, `LiveRecoveryConfig`,
+  `RecoverableLiveView`, `LiveScope`, `LiveSnapshot`, `LiveCommand`,
+  `LiveResult`, `LiveRecoveryError`, `LIVE_RECOVERY_MODULE` and its browser
+  module), with its guide, Tutorial 16 and the CI browser job. Push server
+  updates with `RealtimeSse` (above); `BroadcastManager`, `PresenceTracker`,
+  the tenant facades and `rullst::ws` stay. The blog example drops its Live
+  counter page and the vendored htmx WebSocket extension.
+- **Breaking:** the Turso variant of `cargo rullst make:billing`. Billing is
+  generated for SQLx projects only; in a Turso-primary project the command
+  refuses before writing anything, because billing needs the SQLx database
+  layer and Turso is limited to the Blank and API starters' primary
+  database. The six `billing_*_turso.rs.template` files were removed.
+
+The [migration guide](docs/src/migration-v13.md#upgrading-an-alpha4-application-to-alpha5)
+describes each replacement.
 
 ### Fixed
 
@@ -249,6 +546,26 @@ A prepared version section does not establish that its tag or crates exist.
   `V13-CLI-BLUEPRINTS-REMOVED`) were dated 13.0.0-rc.1 and now ship in
   13.0.0-alpha.5, the release they are dated with, so an application already
   on alpha.5 no longer gets them again.
+- `rullst-iot`: `MqttPublish::encode` aborted the program when the allocator
+  could not provide the packet buffer, which on a BBC micro:bit V2 with a
+  32 KiB heap happened for a 20 KiB payload; it and `CoapRequest::encode`,
+  `CoapRequest::path_segment` and `OtaManifest::signing_bytes` now reserve
+  their buffers fallibly and return `AllocationFailed`, and the board keeps
+  running. The CoAP encoder measures the datagram first and allocates exactly
+  its length, and neither encoder allocates for its length fields.
+- `rullst-iot` documentation said that nothing had run on physical hardware
+  and did not say what a `no_std` build needs. The crate guide now has the
+  results of a micro:bit V2 (nRF52833) run on 2026-11-10 (59 checks, timings,
+  flash, heap and stack use), states that `no_std` use needs `alloc` with a
+  `#[global_allocator]` and about 8 KiB of stack for `verify_update`, shows
+  how an application enables `ed25519-dalek`'s faster precomputed tables, and
+  lists what remains unvalidated. CI now links that firmware for
+  `thumbv7em-none-eabihf` (`.github/fixtures/iot-microbit-v2`).
+- `cargo rullst studio --remote` printed
+  `cargo install rullst-studio --version =… --features remote --locked` when
+  the `rullst-studio` binary was missing, and `cargo rullst studio --help`
+  showed the same command, which also builds the local Studio's database
+  drivers: both now add `--no-default-features`, as the documentation does.
 - `rullst-orm` on MariaDB: a `DateTime<Utc>` before 1970-01-01 or after
   2038-01-19 03:14:07 UTC is no longer lost. SQLx's MySQL driver binds it as a
   `TIMESTAMP` parameter, and MariaDB turned such a value into `NULL` even for
@@ -4184,7 +4501,8 @@ with the other Capital adapters.
   state without replaying uncertain mutations. Actual protocol and Chromium
   tests include revocation, disconnect and process restart. Legacy components
   and scaffolds remain separate; hosted source/package admission is pending.
-  See [the adoption and limits guide](docs/src/live-recovery.md).
+  The adoption and limits guide (`docs/src/live-recovery.md`) was removed with
+  the API in 13.0.0-alpha.5.
 
 ### Distributed tracing candidate
 

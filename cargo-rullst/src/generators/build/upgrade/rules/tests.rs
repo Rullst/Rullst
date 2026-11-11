@@ -3,6 +3,9 @@
 use super::*;
 
 mod alpha4_orm_nexus;
+mod alpha5_api;
+mod alpha5_removed_ui;
+mod alpha5_runtime;
 mod data;
 mod docs;
 mod files;

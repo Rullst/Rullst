@@ -1,10 +1,12 @@
 # Authenticated privacy consumer — v13 preview
 
 This opt-in consumer adds `/privacy` preferences, `/privacy/personalization`
-and `/privacy/export`. It supports the recognized SaaS starter and
-composes with `make:age-gate` in either installation order. Custom authentication,
-unknown privacy dependencies, ambiguous routes and existing output files need
-manual review. The dependency uses the registry version matching this CLI unless
+and `/privacy/export`. It supports the recognized SaaS starter, where it
+composes with `make:age-gate` in either installation order, and an
+application's own sign-in through its authentication contract
+(`src/auth_contract.rs`: `require_account`, `find_account` and
+`session_binding`). Other authentication, unknown privacy dependencies,
+ambiguous routes and existing output files need manual review. The dependency uses the registry version matching this CLI unless
 `--privacy-source` explicitly selected a matching local source. Before that
 version is published, use the local override or a reviewed archive-only patch.
 Composing consumers does not silently switch an existing dependency source.

@@ -133,6 +133,36 @@ Set `RULLST_LOG_HEALTH_PROBES=true` in the process environment or `.env` to
 print every probe again, or `false` to skip successful probes in development
 too.
 
+### Paths in the access log
+
+A request path can carry a secret, such as the token of a booking or sign-in
+link (`/booking/3f9a…`). Since 13.0.0-alpha.5, in staging and production the
+access log writes the route that matched instead, as it was declared:
+
+```text
+[HTTP] GET /booking/{token} -> 200 (3.10 ms)
+```
+
+Development and test keep the request path, which is what you want to see
+while working. A request that matched no route (a `404`, or a path under a
+nested service such as a `ServeDir`) writes its path cut to 128 bytes, ending
+in `…` when cut, with every byte outside visible ASCII written as `%XX`. The
+query string is never written. To choose one form in every environment, set
+it in `Rullst.toml`:
+
+```toml
+[app]
+access_log_paths = "route" # or "full", or "auto" (the default)
+```
+
+or on the server, which takes precedence:
+
+```rust,ignore
+use rullst::config::AccessLogPaths;
+
+Server::new(router).access_log_paths(AccessLogPaths::Route);
+```
+
 `RedactPersonalDataLayer` detects a small list of sensitive *field names* and
 emits a warning. It cannot rewrite a tracing event already observed by another
 layer, so secrets must be removed or redacted at the call site.

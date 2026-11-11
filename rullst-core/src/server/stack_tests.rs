@@ -176,6 +176,7 @@ async fn hot_reload_service_resolves_clients_behind_trusted_proxies() {
             TrustedProxyConfig::new(["10.0.0.0/8"]).unwrap(),
         )),
         machine_endpoints: None,
+        access_log_route_paths: false,
     };
     let mut connection = ConnectedHotSwap {
         inner,
@@ -348,4 +349,26 @@ async fn html_pages_of_the_server_vary_on_hx_request() {
             "htmx: {htmx}"
         );
     }
+}
+
+#[test]
+fn a_missing_static_directory_is_named_in_the_startup_warning() {
+    let directory = super::working_static_directory();
+    assert!(directory.is_absolute(), "{}", directory.display());
+    assert_eq!(
+        directory,
+        std::env::current_dir().unwrap().join("static"),
+        "the working directory's static/"
+    );
+
+    let warning = super::missing_static_warning(std::path::Path::new("/srv/app/static"));
+    assert!(
+        warning.contains("no static directory at /srv/app/static,"),
+        "{warning}"
+    );
+    assert!(warning.contains("/static/htmx-1.9.12.min.js"), "{warning}");
+    assert!(
+        warning.contains("start the server in the directory"),
+        "{warning}"
+    );
 }

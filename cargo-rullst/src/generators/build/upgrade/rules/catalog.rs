@@ -393,6 +393,51 @@ rules! {
     BLUEPRINTS_REMOVED: "V13-CLI-BLUEPRINTS-REMOVED", Review, "13.0.0-alpha.5", "CLI starters moved to the examples",
         "this script passes `--blueprint lms|blog|portfolio|erp`, which `cargo rullst new` refuses with status 1 since 13.0.0-alpha.4, before writing anything",
         "Copy the application from the repository's `examples/lms`, `examples/erp`, `examples/portfolio` or `examples/blog` (https://github.com/Rullst/Rullst/tree/main/examples) instead, or start from `--blueprint api` or `--blueprint saas`.";
+    ALIAS_PATHS: "V13-API-ALIAS-PATHS", MustChange, "13.0.0-alpha.5", "Duplicate API paths removed",
+        "13.0.0-alpha.5 removed `rullst::rullst_orm`, `rullst::security_runtime`, `rullst_mail::mail` and `rullst_mail::drivers::mock`; this path no longer compiles",
+        "Write `rullst::orm` (with `use rullst::orm as rullst_orm;` where code names `rullst_orm`), `rullst::security::runtime`, the `rullst_mail` crate root and `rullst_mail::mock`.";
+    HIDDEN_INTERNALS: "V13-HIDDEN-INTERNALS-PRIVATE", Review, "13.0.0-alpha.5", "Hidden internals made private",
+        "this names an internal that 13.0.0-alpha.4 hid from the documentation and 13.0.0-alpha.5 made crate-private or removed",
+        "Use the documented replacement: `Orm::transaction`, `with_tenant`/`get_tenant_id`, the `schema` query-log, timeout and limit setters and getters, `artisan::check_and_run_artisan`, `rullst_core::radar::get_process_memory_mb`, `SecurityStore::live_events`; the Connect provider macros, `DEFAULT_HTTP_CLIENT`, `passkey::cbor`, `encrypt_aes_gcm`/`decrypt_aes_gcm` and the Nexus helpers have no public replacement. `Outbox::claim_next_at` and `query_cache::model_hash_key` need rullst-orm's `test-util` feature in `[dev-dependencies]`, outside the 13.x stability promise.";
+    STORE_COLLECTIONS: "V13-SECURITY-STORE-COLLECTIONS", Review, "13.0.0-alpha.5", "Security store collections",
+        "the `banned_ips`, `honeypot_route_hits` and `live_events` fields of `SecurityStore` are private since 13.0.0-alpha.5",
+        "Read them with `store.active_bans()`, `store.is_banned(ip)`, `store.honeypot_route_hits()` and `store.live_events()`, which return sorted copies (events newest first).";
+    ERROR_PAYLOADS: "V13-ERROR-PAYLOADS", Review, "13.0.0-alpha.5", "Rullst-owned error payloads",
+        "this error variant no longer carries a `reqwest` or `serde_json` value: `AiError::RequestError` holds `AiRequestError`, `AiError::SerializationError` `AiJsonError`, `ClientContractError::InvalidJson`/`EncodeJson` `ContractJsonError` and `TwinSyncError::Serialization` `TwinJsonError`",
+        "Use the payload through `Display`, `source()` or its methods (`is_timeout`, `is_connect`); match `TwinSyncError` with a `_` arm. `?` no longer converts `reqwest`, `serde_json`, `base64` or `jsonwebtoken` errors into `ConnectError`, or `serde_json`/`redis` errors into `rullst_orm::Error`: map them, for example `.map_err(|error| Error::SerializationError(error.to_string()))`.";
+    SECURITY_GLOBALS: "V13-SECURITY-GLOBAL-COLLECTIONS", Review, "13.0.0-alpha.5", "Security store collections",
+        "`global_deception_routes()` returns `DeceptionRoutes` and `default_deception_traps()` a sorted `Vec<String>` instead of `dashmap` sets, and `global_rate_limit_store()` is private since 13.0.0-alpha.5",
+        "Call `contains`, `len`, `is_empty` or `routes()` on `DeceptionRoutes` and register paths with `try_register_deception_trap`; use `is_rate_limited` or a `RateLimiter` instead of reading the rate-limit store.";
+    CONNECT_JWKS: "V13-CONNECT-JWKS-KEY-SET", Review, "13.0.0-alpha.5", "Connect JWKS key sets",
+        "`JwksCache` and `fetch_and_cache_jwks` return `JsonWebKeySet` instead of `jsonwebtoken`'s `JwkSet` since 13.0.0-alpha.5, and the deprecated `JWKS_CACHE` was removed",
+        "Read the set with `key_ids()`, `contains_key_id(kid)`, `len()` and `is_empty()`; the providers verify tokens with it. Replace `JWKS_CACHE` with a `JwksCache` the application owns.";
+    AI_HTTP_STATUS: "V13-AI-HTTP-STATUS", Review, "13.0.0-alpha.5", "AI provider HTTP errors",
+        "an unsuccessful provider HTTP status is `AiError::HttpStatus` since 13.0.0-alpha.5, no longer `AiError::ApiError`",
+        "Match `AiError::HttpStatus(error)` and read `error.status()`, `error.retry_after()`, `error.code()` and `error.message()` instead of searching the text for `429` or `404`; the text is unchanged, and `ApiError` still reports malformed or incomplete replies.";
+    ISLANDS_REMOVED: "V13-ISLANDS-REMOVED", MustChange, "13.0.0-alpha.5", "Wasm islands removed",
+        "`#[island]` (`rullst::island`) was removed in 13.0.0-alpha.5; this code no longer compiles",
+        "Render the component on the server with `html!` and drop the attribute; send interaction to the server with htmx (`hx-get`, `hx-post`) and use native HTML (`<dialog>`, `popover`, `<details>`) or a small same-origin script with the request's CSP nonce for client-only behaviour. Remove `src/islands/`, the `wasm32` dependencies `make:island` added and `static/rullst-islands.js`.";
+    ISLAND_COMMANDS_REMOVED: "V13-ISLAND-COMMANDS-REMOVED", Review, "13.0.0-alpha.5", "Wasm islands removed",
+        "this script runs `make:island` or `build:client`, which 13.0.0-alpha.5 removed; both now exit with status 1",
+        "Remove the step: there is no island client to build. Serve the page with `html!` and htmx, and delete the generated `static/rullst-islands.js` and wasm-bindgen output.";
+    LIVE_REMOVED: "V13-LIVE-REMOVED", MustChange, "13.0.0-alpha.5", "Live components removed",
+        "`rullst::live` (`LiveComponent`, `Live::mount`, `live_ws_handler`, `live::recovery`) and `#[live_component]`/`#[live_event]` were removed in 13.0.0-alpha.5; this code no longer compiles",
+        "Handle events as ordinary routes that return HTML fragments for htmx (`hx-post`, `hx-target`, `hx-swap`), and push server updates with Server-Sent Events: publish to a `BroadcastManager` channel and return `RealtimeSse::channel` from a `GET` route that the page opens with the htmx SSE extension (`hx-ext=\"sse\"`, `sse-connect`, `sse-swap`). Remove the WebSocket route and the `htmx-ext-ws` script.";
+    LIVE_COMMAND_REMOVED: "V13-LIVE-COMMAND-REMOVED", Review, "13.0.0-alpha.5", "Live components removed",
+        "this script runs `make:live`, which 13.0.0-alpha.5 removed; it now exits with status 1",
+        "Remove the step; write the route and its `html!` fragment by hand, with `cargo rullst make:controller` for the module.";
+    HTML_ALPINE_DIRECTIVE: "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE", MustChange, "13.0.0-alpha.5", "`html!` event handlers",
+        "a dynamic value in an Alpine.js `x-*` attribute of `html!` no longer compiles: Alpine runs it as JavaScript",
+        "Write the directive as a static string and pass the server value through a `data-*` attribute (`data-count={count}` read as `$el.dataset.count`), or render the JSON into a `<script type=\"application/json\">` data block that the component reads.";
+    IOT_OTA_STATE: "V13-IOT-OTA-STATE", Review, "13.0.0-alpha.5", "IoT OTA manager state",
+        "`OtaManager`'s `current_partition`, `status` and `firmware_version` are private fields since 13.0.0-alpha.5; this file reads or assigns one",
+        "Call the methods of the same names (`ota.current_partition()`, `ota.status()`, `ota.firmware_version()`). Replace an assignment `ota.current_partition = bank` with `ota = ota.with_running_partition(bank)` before verifying an update, or build the manager with `new_with_running_partition`.";
+    IOT_CODEC_ERROR_MATCH: "V13-IOT-CODEC-ERROR-MATCH", MustChange, "13.0.0-alpha.5", "IoT encoder errors",
+        "`MqttCodecError` and `CoapCodecError` are `#[non_exhaustive]` since 13.0.0-alpha.5 and gained `AllocationFailed`; a `match` on them without a wildcard arm no longer compiles",
+        "Add a wildcard arm (`_ => ...`). Treat `AllocationFailed` as running out of memory, not as invalid input: the same packet encodes once memory is free.";
+    IOT_SENSOR_CARD_HTML: "V13-IOT-SENSOR-CARD-HTML", Review, "13.0.0-alpha.5", "IoT sensor card HTML",
+        "`IotDashboard::render_sensor_card` returns `IotHtml` instead of `String` since 13.0.0-alpha.5 and shows the value with at most two decimals",
+        "Call `.into_string()` where a `String` is needed, or insert it into a view with `Markup::from_trusted(card.into_string())`; `IotHtml` reads like a `&str`. Update tests or parsers that expected the raw `f64` text.";
     CLI_GREEN_RENAMED: "V13-CLI-GREEN-RENAMED", Review, "13.0.0-alpha.5", "CLI `green` renamed `footprint`",
         "`cargo rullst green` is `cargo rullst footprint` since 13.0.0-alpha.5, without an alias, and its JSON report is `rullst.footprint.v1` instead of `rullst.green.v1`; this file runs or reads the old one",
         "Replace `cargo rullst green` with `cargo rullst footprint` (the same flags, plus `--page-weight` and `--network-kwh-per-gb`) and `rullst.green.v1` with `rullst.footprint.v1`; the report adds `page_weight` and the benchmark's bytes. A line kept on purpose, such as a changelog entry, can carry `rullst-upgrade: reviewed V13-CLI-GREEN-RENAMED`.";
@@ -401,4 +446,11 @@ rules! {
 /// Review rules that name APIs v13 removed: code using them no longer
 /// compiles, but a flagged name can also be an application's own type, so
 /// they are not must-change. A failed upgrade gate repeats their guidance.
-pub(crate) const REMOVED_API_RULES: &[&Rule] = &[&CAPITAL_REMOVED, &MAIL_REMOVED];
+pub(crate) const REMOVED_API_RULES: &[&Rule] = &[
+    &CAPITAL_REMOVED,
+    &MAIL_REMOVED,
+    &HIDDEN_INTERNALS,
+    &STORE_COLLECTIONS,
+    &SECURITY_GLOBALS,
+    &CONNECT_JWKS,
+];

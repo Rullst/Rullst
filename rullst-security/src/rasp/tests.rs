@@ -522,10 +522,7 @@ async fn a_rejection_is_recorded_in_security_telemetry() {
         .unwrap();
     let response = guarded_app().oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
-    let events = crate::telemetry::SecurityStore::global()
-        .live_events
-        .lock()
-        .unwrap();
+    let events = crate::telemetry::SecurityStore::global().live_events();
     assert!(events.iter().any(|event| {
         event.event_type == "RASP_PAYLOAD_INTERCEPTED"
             && event

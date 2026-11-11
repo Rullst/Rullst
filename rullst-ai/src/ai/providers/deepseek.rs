@@ -73,7 +73,7 @@ impl DeepSeekProvider {
             .json(&body)
             .send()
             .await
-            .map_err(|error| AiError::RequestError(error.without_url()))?;
+            .map_err(AiError::request)?;
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
         let text = openai_chat_content(&json, self.provider_name())?;
@@ -198,7 +198,7 @@ impl AiProvider for DeepSeekProvider {
             }))
             .send()
             .await
-            .map_err(|error| AiError::RequestError(error.without_url()))?;
+            .map_err(AiError::request)?;
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
         json["output"]

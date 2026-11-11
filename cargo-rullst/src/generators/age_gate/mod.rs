@@ -107,7 +107,11 @@ fn plan(
     let manifest_path = root.join("Cargo.toml");
     let manifest = writes::read(&manifest_path)?;
     let mut parsed = manifest.parse::<DocumentMut>()?;
-    consumer_support::recognized_auth(root, consumer)?;
+    consumer_support::recognized_auth(
+        root,
+        consumer,
+        "A custom authentication is not supported; review its integration separately",
+    )?;
     let mut edits = Vec::new();
     let main_path = root.join("src/main.rs");
     let main = writes::read(&main_path)?;

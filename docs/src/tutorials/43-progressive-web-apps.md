@@ -94,6 +94,15 @@ And mount the routes once, outside any CSRF layer (they answer GET only):
 router.merge_axum(crate::pwa::router().into_axum())
 ```
 
+When the router merges `rullst::health::health_router()` in several files, or
+not at all, the generator mounts nothing and says so. Name the file that builds
+the router instead, and it mounts the routes there, after its health merge or,
+without one, right inside its `headers_middleware` layer:
+
+```bash
+cargo rullst make:pwa --router src/routes.rs
+```
+
 ## How it fits the security defaults
 
 **Content-Security-Policy.** The default policy is

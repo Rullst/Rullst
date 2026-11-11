@@ -64,7 +64,7 @@ impl fmt::Debug for ClaimedOutboxEvent {
 impl ClaimedOutboxEvent {
     /// Parses the bounded payload as JSON.
     pub fn payload(&self) -> Result<Value, Error> {
-        serde_json::from_str(&self.payload_json).map_err(Into::into)
+        serde_json::from_str(&self.payload_json).map_err(crate::Error::json)
     }
 }
 
@@ -177,7 +177,7 @@ impl Outbox {
         validate_key("stream", stream)?;
         validate_key("event_key", event_key)?;
         validate_key("event_kind", event_kind)?;
-        let payload_json = serde_json::to_string(payload)?;
+        let payload_json = serde_json::to_string(payload).map_err(crate::Error::json)?;
         if payload_json.len() > MAX_PAYLOAD_BYTES {
             return Err(Error::Validation(format!(
                 "outbox payload exceeds {MAX_PAYLOAD_BYTES} bytes"
@@ -257,6 +257,10 @@ impl Outbox {
         .await
     }
 
+    /// [`Self::claim_next`] at a fixed `now_epoch_seconds`, for tests.
+    // Used by the rullst-orm and rullst-messaging integration tests
+    // (`test-util` feature); outside the 13.x compatibility promise.
+    #[cfg(feature = "test-util")]
     #[doc(hidden)]
     pub async fn claim_next_at(
         stream: impl Into<String>,

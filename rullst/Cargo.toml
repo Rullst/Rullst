@@ -59,7 +59,7 @@ nexus = ["dep:rullst-nexus"]
 # alone no longer enables; it adds `rullst-ai`.
 nexus-ai = ["nexus", "rullst-nexus/ai"]
 nexus-tz = ["nexus", "rullst-nexus/tz"]
-studio = ["dep:rullst-studio", "rullst-core/studio"]
+studio = ["dep:rullst-studio", "rullst-studio/local", "rullst-core/studio"]
 auth = ["dep:rullst-auth"]
 auth-jwt = ["auth", "rullst-auth/jwt"]
 auth-sqlite = ["auth-jwt", "rullst-auth/sqlite"]
@@ -171,8 +171,6 @@ wasm-bindgen = "0.2.123"
 wasm-bindgen-futures = "0.4.73"
 web-sys = { version = "0.3.100", features = ["Document", "Element", "Window", "EventTarget", "HtmlElement", "console", "Request", "RequestInit", "RequestMode", "Response"] }
 js-sys = "0.3.103"
-serde-wasm-bindgen = "0.6.5"
-console_error_panic_hook = "0.1.7"
 getrandom = { version = "0.4.2", features = ["wasm_js"] }
 
 [dev-dependencies]
@@ -181,7 +179,6 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread", "process", 
 rullst-connect = { workspace = true, features = ["axum-session"] }
 tower-sessions = "0.15"
 futures-util = "0.3.32"
-tokio-tungstenite = "0.30.0"
 criterion = { version = "0.8.2", features = ["html_reports", "async_tokio"] }
 insta = { version = "1.41", features = ["yaml"] }
 reqwest = "0.13.4"

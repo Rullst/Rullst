@@ -95,6 +95,7 @@ pub fn rullst_nexus::Nexus::with_auth_policy(self, policy: rullst_nexus::NexusAu
 pub fn rullst_nexus::Nexus::with_brand(self, brand: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_nexus::Nexus::with_local_access(self, access: rullst_nexus::LocalNexusAccess) -> Self
 pub fn rullst_nexus::Nexus::with_required_audit(self) -> Self
+pub fn rullst_nexus::Nexus::with_stylesheet(self, path: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_nexus::Nexus::with_time_zone(self, zone: rullst_nexus::NexusTimeZone) -> Self
 impl core::default::Default for rullst_nexus::Nexus
 impl !core::panic::unwind_safe::RefUnwindSafe for rullst_nexus::Nexus
@@ -230,6 +231,7 @@ pub rullst_nexus::NexusBuildError::LocalAccessRequiresDebugBuild
 pub rullst_nexus::NexusBuildError::InvalidModelMetadata { .. }
 pub rullst_nexus::NexusBuildError::InvalidModelMetadata::reason: &'static str
 pub rullst_nexus::NexusBuildError::InvalidLoginPath
+pub rullst_nexus::NexusBuildError::InvalidStylesheet
 impl core::clone::Clone for rullst_nexus::NexusBuildError
 impl core::cmp::Eq for rullst_nexus::NexusBuildError
 impl core::cmp::PartialEq for rullst_nexus::NexusBuildError

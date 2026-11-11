@@ -17,8 +17,6 @@ pub mod showcase_nav;
 pub mod templates_demo;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub mod live_counter;
-
 #[cfg(not(target_arch = "wasm32"))]
 pub mod app;
 
@@ -59,9 +57,6 @@ fn router_with_nexus_auth(
         get("/" => index),
         post("/posts" => store),
         get("/posts/repository" => crate::repository_demo::repository_page),
-        get("/live-feed" => live_demo),
-        get("/live-counter" => live_demo),
-        get("/_live" => live_ws),
         get("/pico-demo" => crate::pico_demo::render_pico_demo_page),
         get("/templates-demo" => crate::templates_demo::render_templates_demo_page),
         get("/pricing" => crate::billing_demo::pricing_page),
@@ -75,7 +70,6 @@ fn router_with_nexus_auth(
         get("/assets/pages.css" => crate::assets::pages_css),
         get("/assets/showcase.js" => crate::assets::showcase_js),
         get("/assets/vendor/htmx-1.9.12.min.js" => crate::assets::htmx_js),
-        get("/assets/vendor/htmx-ext-ws-1.9.12.js" => crate::assets::htmx_ws_js),
         get("/assets/vendor/pico-2.1.1.slate.min.css" => crate::assets::pico_css),
         get("/assets/rullst-logo.png" => crate::assets::rullst_logo),
         get("/favicon.ico" => crate::assets::rullst_logo),

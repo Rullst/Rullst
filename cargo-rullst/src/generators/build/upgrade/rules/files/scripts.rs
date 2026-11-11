@@ -3,7 +3,8 @@
 
 use super::super::catalog::{
     BLUEPRINTS_REMOVED, CLI_AI_REMOVED, CLI_SELF_UPDATE, DEPLOY_GENERATORS_REMOVED,
-    DEPLOY_TARGETS_REMOVED, MIGRATION_AUTO_STATUS, OMNI_REMOVED,
+    DEPLOY_TARGETS_REMOVED, ISLAND_COMMANDS_REMOVED, LIVE_COMMAND_REMOVED, MIGRATION_AUTO_STATUS,
+    OMNI_REMOVED,
 };
 use super::{Rule, line_of};
 
@@ -11,7 +12,7 @@ use super::{Rule, line_of};
 type LineCheck = fn(&str) -> bool;
 
 /// Each script rule with the line predicate that locates it.
-const CHECKS: [(&Rule, LineCheck); 7] = [
+const CHECKS: [(&Rule, LineCheck); 9] = [
     (&OMNI_REMOVED, runs_omni),
     (&CLI_AI_REMOVED, runs_removed_cli_command),
     (&CLI_SELF_UPDATE, runs_removed_update_command),
@@ -19,6 +20,8 @@ const CHECKS: [(&Rule, LineCheck); 7] = [
     (&DEPLOY_GENERATORS_REMOVED, runs_removed_generator),
     (&MIGRATION_AUTO_STATUS, runs_migration_auto),
     (&BLUEPRINTS_REMOVED, passes_removed_blueprint),
+    (&ISLAND_COMMANDS_REMOVED, runs_island_command),
+    (&LIVE_COMMAND_REMOVED, runs_live_command),
 ];
 
 /// Each rule a script matches, at its first matching line that no
@@ -123,4 +126,30 @@ pub(in super::super) fn passes_removed_blueprint(line: &str) -> bool {
                 "lms" | "blog" | "portfolio" | "erp"
             )
     })
+}
+
+/// Whether `line` runs the CLI command `command` as a whole word
+/// (`make:live`, not `make:live-x` or `make:lively`).
+fn runs_command(line: &str, command: &str) -> bool {
+    line.match_indices(command).any(|(index, _)| {
+        let before = line[..index].chars().next_back();
+        let after = line[index + command.len()..].chars().next();
+        let boundary = |character: Option<char>| {
+            character.is_none_or(|character| {
+                !(character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | ':'))
+            })
+        };
+        boundary(before) && boundary(after)
+    })
+}
+
+/// A script line running a Wasm island command removed in 13.0.0-alpha.5:
+/// `make:island` or `build:client`.
+pub(in super::super) fn runs_island_command(line: &str) -> bool {
+    runs_command(line, "make:island") || runs_command(line, "build:client")
+}
+
+/// A script line running `make:live`, removed in 13.0.0-alpha.5.
+pub(in super::super) fn runs_live_command(line: &str) -> bool {
+    runs_command(line, "make:live")
 }

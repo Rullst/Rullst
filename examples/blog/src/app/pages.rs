@@ -1,55 +1,6 @@
 //! Showcase pages and small public endpoints that do not touch the `Post` model.
 
-use crate::live_counter::CounterComponent;
-use crate::showcase_nav::{render_head_assets, render_showcase_nav};
-use rullst::{
-    html,
-    response::{Html, IntoResponse},
-};
-
-/// LiveView WebSocket Feed Page (`/live-feed` and `/live-counter`)
-pub async fn live_demo() -> impl IntoResponse {
-    let nav = render_showcase_nav("/live-feed");
-    let head_assets = render_head_assets();
-    let component_mount = rullst::live::Live::mount::<CounterComponent>("/_live").await;
-
-    Html(html! {
-        <html lang="en">
-        <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <meta name="htmx-config" content="{&quot;includeIndicatorStyles&quot;:false}" />
-            <title>"Rullst LiveView - Real-time WebSockets Feed"</title>
-            { head_assets }
-            <script src="/assets/vendor/htmx-1.9.12.min.js"></script>
-            <script src="/assets/vendor/htmx-ext-ws-1.9.12.js"></script>
-        </head>
-        <body>
-            { nav }
-            <div class="container">
-                <div class="card">
-                    <h1 class="card-title">
-                        "🔴 LiveView Server-Driven UI"
-                        <span class="feature-tag tag-ai">"rullst::live"</span>
-                    </h1>
-                    <p class="lead">
-                        "State mutations execute on Tokio server tasks. The page loads a vendored, same-origin HTMX 1.9.12 and its WebSocket extension as a thin browser transport that sends events and applies returned markup."
-                    </p>
-
-                    <div class="panel centered">
-                        { component_mount }
-                    </div>
-                </div>
-            </div>
-        </body>
-        </html>
-    })
-}
-
-/// WebSocket handler for LiveView
-pub async fn live_ws(ws: axum::extract::ws::WebSocketUpgrade) -> impl IntoResponse {
-    rullst::live::live_ws_handler::<CounterComponent>(ws).await
-}
+use rullst::response::IntoResponse;
 
 /// Honeypot sensor endpoint (`/wp-admin`)
 pub async fn honeypot_trap() -> impl IntoResponse {

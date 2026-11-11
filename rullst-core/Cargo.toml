@@ -75,6 +75,7 @@ tower-layer = { workspace = true }
 tower-service = { workspace = true }
 async-trait = { workspace = true }
 rand = { workspace = true }
+futures-util = { workspace = true }
 subtle = { workspace = true }
 serde_urlencoded = "0.7"
 base64 = { workspace = true }
@@ -98,7 +99,6 @@ wasm-bindgen = "0.2.123"
 wasm-bindgen-futures = "0.4.73"
 web-sys = { version = "0.3.100", features = ["Document", "Headers", "HtmlDocument", "Window", "Request", "RequestCredentials", "RequestInit", "RequestMode", "Response", "console"] }
 js-sys = "0.3.103"
-console_error_panic_hook = "0.1.7"
 getrandom = { version = "0.4.2", features = ["wasm_js"] }
 uuid = { workspace = true, features = ["v4", "rng-getrandom"] }
 

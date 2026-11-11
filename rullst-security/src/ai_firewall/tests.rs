@@ -180,14 +180,9 @@ fn boolean_safety_helper_reflects_the_full_inspection() {
 }
 
 fn shielded_event_from(client_ip: &str) -> bool {
-    SecurityStore::global()
-        .live_events
-        .lock()
-        .unwrap()
-        .iter()
-        .any(|event| {
-            event.event_type == "AI_PROMPT_INJECTION_SHIELDED" && event.client_ip == client_ip
-        })
+    SecurityStore::global().live_events().iter().any(|event| {
+        event.event_type == "AI_PROMPT_INJECTION_SHIELDED" && event.client_ip == client_ip
+    })
 }
 
 #[tokio::test]

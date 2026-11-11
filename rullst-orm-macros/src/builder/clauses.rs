@@ -350,7 +350,7 @@ pub fn generate_builder_struct(
                 let vec_str = match rullst_orm::_serde_json::to_string(&vector) {
                     Ok(value) => value,
                     Err(error) => {
-                        self.errors.push(error.into());
+                        self.errors.push(rullst_orm::Error::SerializationError(error.to_string()));
                         return self;
                     }
                 };
@@ -374,7 +374,7 @@ pub fn generate_builder_struct(
                 let vec_str = match rullst_orm::_serde_json::to_string(&vector) {
                     Ok(value) => value,
                     Err(error) => {
-                        self.errors.push(error.into());
+                        self.errors.push(rullst_orm::Error::SerializationError(error.to_string()));
                         return self;
                     }
                 };
@@ -398,7 +398,7 @@ pub fn generate_builder_struct(
                 let vec_str = match rullst_orm::_serde_json::to_string(&vector) {
                     Ok(value) => value,
                     Err(error) => {
-                        self.errors.push(error.into());
+                        self.errors.push(rullst_orm::Error::SerializationError(error.to_string()));
                         return self;
                     }
                 };
@@ -428,7 +428,7 @@ pub fn generate_builder_struct(
                 let vec_str = match rullst_orm::_serde_json::to_string(&vector) {
                     Ok(value) => value,
                     Err(error) => {
-                        self.errors.push(error.into());
+                        self.errors.push(rullst_orm::Error::SerializationError(error.to_string()));
                         return self;
                     }
                 };

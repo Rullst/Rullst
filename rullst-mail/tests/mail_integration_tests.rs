@@ -1,4 +1,4 @@
-use rullst_mail::mail::*;
+use rullst_mail::*;
 
 #[tokio::test]
 async fn test_message_builder_and_log_driver() {

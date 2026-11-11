@@ -6,6 +6,7 @@ pub mod crud;
 mod metadata;
 mod principal;
 pub mod security;
+mod stylesheet;
 pub mod telemetry;
 mod time_zone;
 pub mod types;
@@ -35,6 +36,7 @@ pub struct Nexus {
     auth: Option<PendingAuthPolicy>,
     audit_policy: NexusAuditPolicy,
     time_zone: NexusTimeZone,
+    stylesheets: Vec<String>,
 }
 
 enum PendingAuthPolicy {
@@ -56,6 +58,7 @@ impl Nexus {
             auth: None,
             audit_policy: NexusAuditPolicy::Disabled,
             time_zone: NexusTimeZone::utc(),
+            stylesheets: Vec::new(),
         }
     }
 
@@ -111,6 +114,25 @@ impl Nexus {
         self
     }
 
+    /// Links an application stylesheet on every Nexus page, after Nexus's own
+    /// `/nexus/assets/nexus.css`, so its rules override the panel's at equal
+    /// specificity: for example
+    /// `.with_stylesheet("/static/nexus-overrides.css")` with
+    /// `.nexus-table-wrap { overflow-x: auto; }`. Call it again to add another
+    /// stylesheet (at most eight, linked in the order added).
+    ///
+    /// `path` must be served by the application itself, so the production
+    /// CSP (`style-src 'self'`) admits it: a path starting with a single `/`,
+    /// at most 512 visible ASCII characters without quotes, `<`, `>`, `` ` ``
+    /// or `\`; a query string such as `?v=3` is kept. [`Nexus::try_build`]
+    /// fails with [`NexusBuildError::InvalidStylesheet`] otherwise. The
+    /// application serves the file (and decides who may read it); Nexus only
+    /// links it. Added in 13.0.0-alpha.5.
+    pub fn with_stylesheet(mut self, path: impl Into<String>) -> Self {
+        self.stylesheets.push(path.into());
+        self
+    }
+
     /// Explicitly enables loopback-only access for debug builds.
     pub fn with_local_access(self, access: LocalNexusAccess) -> Self {
         self.with_auth_policy(NexusAuthPolicy::loopback_only(access))
@@ -153,6 +175,7 @@ impl Nexus {
             None => return Err(NexusBuildError::MissingAuthenticationPolicy),
         };
         metadata::validate_registry(&self.registry)?;
+        stylesheet::validate(&self.stylesheets)?;
 
         let state = Arc::new(NexusState {
             registry: Arc::new(self.registry),
@@ -201,6 +224,14 @@ impl Nexus {
                 rullst_core::security::csrf_middleware,
             ))
             .layer(axum::Extension(self.time_zone));
+        let router = if self.stylesheets.is_empty() {
+            router
+        } else {
+            router.layer(axum::middleware::from_fn_with_state(
+                Arc::<[String]>::from(self.stylesheets),
+                stylesheet::scope,
+            ))
+        };
 
         let router = policy.protect_router(router)?;
 

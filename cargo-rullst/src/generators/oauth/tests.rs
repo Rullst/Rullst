@@ -237,7 +237,7 @@ fn projects_without_the_account_model_are_refused() {
     let error = plan(&root, "google", TIMESTAMP).err().unwrap().to_string();
     assert!(
         error.ends_with(
-            "a custom authentication is not supported: the `User` of src/models/user.rs (fields and methods) lacks `oauth_provider`, `oauth_id`"
+            "src/auth_contract.rs (https://rullst.github.io/Rullst/book/cli_reference.html#authentication-contract): the `User` of src/models/user.rs (fields and methods) lacks `oauth_provider`, `oauth_id`"
         ),
         "{error}"
     );

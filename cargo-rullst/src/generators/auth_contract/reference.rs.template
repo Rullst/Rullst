@@ -1,0 +1,112 @@
+//! The authentication contract of this application: how the code that
+//! `cargo rullst make:mfa`, `make:oauth` and `make:privacy` generate reaches
+//! its own sign-in. Contract reference:
+//! https://rullst.github.io/Rullst/book/cli_reference.html#authentication-contract
+//!
+//! This version implements it with an ORM `User` model (with `email`,
+//! `name` and a `session_epoch` column) and the encrypted `rullst_session`
+//! cookie of `rullst::auth`; replace the bodies with your own sign-in.
+use crate::models::user::User;
+use rullst::server::{HeaderMap, IntoResponse, Next, Redirect, Request, Response, StatusCode};
+
+/// An account as the generated code sees it.
+pub struct ContractAccount {
+    pub id: i32,
+    /// The sign-in e-mail: the authenticator label, the privacy export.
+    pub email: String,
+    /// The display name: the privacy export and greeting.
+    pub name: String,
+}
+
+impl From<User> for ContractAccount {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+        }
+    }
+}
+
+/// Route middleware: runs `next` with the signed-in account's id inserted
+/// as `Extension<i32>`; any other request is sent to the sign-in page.
+pub async fn require_account(mut request: Request, next: Next) -> Response {
+    let Some(cookie) = rullst::auth::extract_session_cookie(request.headers()) else {
+        return Redirect::to("/login").into_response();
+    };
+    let Ok(app_key) = rullst::auth::get_app_key() else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+    let Ok(claims) = rullst::auth::decrypt_session_claims(&cookie, &app_key) else {
+        return Redirect::to("/login").into_response();
+    };
+    match User::find(claims.user_id).await {
+        Ok(Some(user)) if user.accepts_session(&claims) => {
+            request.extensions_mut().insert(user.id);
+            next.run(request).await
+        }
+        Ok(_) => Redirect::to("/login").into_response(),
+        Err(_) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    }
+}
+
+/// The account with this id.
+pub async fn find_account(id: i32) -> Result<Option<ContractAccount>, rullst::orm::Error> {
+    Ok(User::find(id).await?.map(ContractAccount::from))
+}
+
+/// The account using this e-mail address; generators pass it trimmed and
+/// lowercase.
+pub async fn find_account_by_email(
+    email: &str,
+) -> Result<Option<ContractAccount>, rullst::orm::Error> {
+    Ok(User::find_by_email(email).await?.map(ContractAccount::from))
+}
+
+/// The `Set-Cookie` value of a full session for the account, at its current
+/// session epoch.
+pub async fn sign_in_cookie(id: i32) -> Result<String, rullst::auth::AuthError> {
+    let user = User::find(id)
+        .await
+        .map_err(|error| rullst::auth::AuthError::General(error.to_string()))?
+        .ok_or(rullst::auth::AuthError::SessionRevoked)?;
+    let epoch = user
+        .current_session_epoch()
+        .ok_or(rullst::auth::AuthError::SessionRevoked)?;
+    rullst::auth::make_login_cookie_with_epoch(
+        user.id,
+        epoch,
+        rullst::auth::DEFAULT_SESSION_MAX_AGE,
+    )
+}
+
+/// Ends every session of the account: bumping its session epoch makes each
+/// cookie issued before stop matching.
+pub async fn end_sessions(id: i32) -> Result<(), rullst::orm::Error> {
+    User::revoke_sessions(id).await
+}
+
+/// An opaque value naming this browser's current sign-in (here the session
+/// cookie), or `None` when it is not signed in. Privacy forms are bound to it.
+pub fn session_binding(headers: &HeaderMap) -> Option<String> {
+    rullst::auth::extract_session_cookie(headers)
+}
+
+/// Creates a passwordless account for an e-mail address a provider verified
+/// (`make:oauth`), inside the caller's transaction, and returns its id.
+pub async fn create_account(
+    transaction: &mut rullst::orm::db::Transaction<'static>,
+    email: &str,
+    name: &str,
+) -> Result<i32, rullst::orm::Error> {
+    let now = rullst::orm::chrono::Utc::now();
+    let mut user = User {
+        name: name.to_owned(),
+        email: email.to_owned(),
+        created_at: now,
+        updated_at: now,
+        ..User::default()
+    };
+    user.save_with_tx(transaction).await?;
+    Ok(user.id)
+}

@@ -1,4 +1,4 @@
-error: dynamic `onclick` values are not allowed in html!: event-handler attributes run their value as JavaScript, which HTML escaping cannot make safe; use a static handler string, or attach the listener from a nonce'd script and pass data through a `data-*` attribute
+error: dynamic `onclick` values are not allowed in html!: event-handler attributes and Alpine.js directives run their value as JavaScript, which HTML escaping cannot make safe; use a static handler string, or attach the listener from a nonce'd script and pass data through a `data-*` attribute
  --> tests/ui/conditional_event_handler.rs:6:17
   |
 6 |         <button onclick?={handler}>"Go"</button>

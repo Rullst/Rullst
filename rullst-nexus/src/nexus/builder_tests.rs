@@ -339,3 +339,90 @@ fn builder_options_keep_the_registry_and_policy() {
         )))
     ));
 }
+
+#[tokio::test]
+async fn application_stylesheets_follow_the_nexus_stylesheet_on_every_page() {
+    use axum::http::{Request, StatusCode};
+    use base64::Engine;
+    use tower::ServiceExt;
+
+    let password = "stylesheet_test_password_0123456789";
+    let router = Nexus::new()
+        .with_auth("admin", password)
+        .with_stylesheet("/static/nexus-overrides.css")
+        .with_stylesheet("/static/brand.css?v=2&theme=dark")
+        .try_build()
+        .expect("same-origin stylesheets");
+    let mut request = Request::builder()
+        .uri("/")
+        .header(
+            axum::http::header::AUTHORIZATION,
+            format!(
+                "Basic {}",
+                base64::engine::general_purpose::STANDARD.encode(format!("admin:{password}"))
+            ),
+        )
+        .body(axum::body::Body::empty())
+        .expect("request");
+    request.extensions_mut().insert(axum::extract::ConnectInfo(
+        "192.0.2.31:443"
+            .parse::<std::net::SocketAddr>()
+            .expect("valid test peer"),
+    ));
+    request
+        .extensions_mut()
+        .insert(NexusVerifiedTls::from_trusted_tls_termination());
+    let response = router.oneshot(request).await.expect("dashboard");
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), 1024 * 1024)
+        .await
+        .expect("bounded page");
+    let page = String::from_utf8(body.to_vec()).expect("UTF-8 page");
+    let links = "<link rel=\"stylesheet\" href=\"/nexus/assets/nexus.css\" />\n\
+                 <link rel=\"stylesheet\" href=\"/static/nexus-overrides.css\" />\n\
+                 <link rel=\"stylesheet\" href=\"/static/brand.css?v=2&amp;theme=dark\" />\n\
+                 <script src=\"/nexus/assets/htmx-2.0.4.min.js\" defer></script>";
+    assert!(page.contains(links), "{page}");
+
+    // Without the option the shell links Nexus's stylesheet only.
+    let state = NexusState {
+        registry: Arc::new(Vec::new()),
+        brand: Arc::new("Nexus".to_string()),
+        audit_policy: NexusAuditPolicy::Disabled,
+    };
+    let shell = render_shell(&state, "", "");
+    assert_eq!(shell.matches("rel=\"stylesheet\"").count(), 1, "{shell}");
+}
+
+#[test]
+fn stylesheets_from_another_origin_do_not_build() {
+    for path in [
+        "https://cdn.example.com/admin.css",
+        "//cdn.example.com/admin.css",
+        "static/admin.css",
+        "/admin.css\"><script>",
+    ] {
+        let result = Nexus::new()
+            .with_auth("admin", "stylesheet_test_password_0123456789")
+            .with_stylesheet(path)
+            .try_build();
+        let Err(error) = result else {
+            panic!("{path} must not build");
+        };
+        assert_eq!(error, NexusBuildError::InvalidStylesheet, "{path}");
+        assert!(
+            error.to_string().starts_with(
+                "a Nexus stylesheet must be a same-origin path starting with a single '/'"
+            ),
+            "{error}"
+        );
+    }
+    let nine = (0..9).fold(
+        Nexus::new().with_auth("admin", "stylesheet_test_password_0123456789"),
+        |nexus, index| nexus.with_stylesheet(format!("/static/{index}.css")),
+    );
+    assert!(matches!(
+        nine.try_build(),
+        Err(NexusBuildError::InvalidStylesheet)
+    ));
+}

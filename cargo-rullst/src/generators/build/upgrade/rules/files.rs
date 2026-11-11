@@ -21,8 +21,9 @@ use features::{
 };
 #[cfg(test)]
 pub(super) use scripts::{
-    passes_removed_blueprint, runs_migration_auto, runs_removed_cli_command,
-    runs_removed_deploy_target, runs_removed_generator, runs_removed_update_command,
+    passes_removed_blueprint, runs_island_command, runs_live_command, runs_migration_auto,
+    runs_removed_cli_command, runs_removed_deploy_target, runs_removed_generator,
+    runs_removed_update_command,
 };
 
 const MAX_FILE_BYTES: u64 = 1024 * 1024;

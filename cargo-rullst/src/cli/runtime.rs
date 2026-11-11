@@ -328,6 +328,8 @@ mod tests {
             "deploy:doctor",
             "ai",
             "footprint",
+            "iot:keygen",
+            "iot:sign",
         ] {
             assert!(command.find_subcommand(name).is_some(), "{name}");
         }

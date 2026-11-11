@@ -1,0 +1,14 @@
+[package]
+name = "rullst-iot-microbit-v2-vectors"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Writes the micro:bit firmware's expected bytes with the std build of rullst-iot"
+
+# A separate workspace, so it never takes the firmware's thumbv7em target.
+[workspace]
+
+[dependencies]
+rullst-iot = { path = "../../../../rullst-iot" }
+ed25519-dalek = "=2.2.0"
+serde_json = "=1.0.154"
