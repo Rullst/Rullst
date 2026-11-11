@@ -8,7 +8,7 @@ import importlib.util
 import os
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 from unittest import mock
@@ -108,13 +108,12 @@ class RepairDuckdbSourcesTests(unittest.TestCase):
         self.assertEqual(REPAIR.repair(self.target), [])
         stripped_tree(self.target / "duckdb-sources" / KEY)
         output = StringIO()
-        with mock.patch.dict(os.environ, {"CARGO_TARGET_DIR": str(self.target)}), \
-                redirect_stdout(output):
-            self.assertEqual(REPAIR.main(["repair-duckdb-sources.py"]), 0)
+        with mock.patch.object(REPAIR, "TARGET", self.target), redirect_stdout(output):
+            self.assertEqual(REPAIR.main(), 0)
+            self.assertEqual(REPAIR.main(), 0)
         self.assertIn("Removed incomplete DuckDB source tree", output.getvalue())
+        self.assertIn("No incomplete DuckDB source tree", output.getvalue())
         self.assertFalse((self.target / "duckdb-sources" / KEY).exists())
-        with redirect_stderr(StringIO()):
-            self.assertEqual(REPAIR.main(["repair-duckdb-sources.py", "a", "b"]), 2)
 
 
 def workflow(options: str, *steps: str, header: str = "    steps:\n      - uses: actions/checkout@" + "0" * 40 + "\n") -> str:
@@ -185,7 +184,7 @@ class RustCachePolicyTests(unittest.TestCase):
     def test_repository_workflows_hold(self) -> None:
         output = StringIO()
         with redirect_stdout(output):
-            self.assertEqual(POLICY.main(["check-rust-cache-policy.py"]), 0)
+            self.assertEqual(POLICY.main(), 0)
         self.assertIn("Rust cache policy holds", output.getvalue())
 
 

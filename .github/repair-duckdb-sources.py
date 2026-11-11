@@ -18,8 +18,8 @@ fails. Run this after the cache is restored and before Cargo builds: it
 deletes every entry of a `duckdb-sources` directory that is not a complete
 tree, interrupted staging directories included, and keeps complete trees.
 
-Usage: repair-duckdb-sources.py [TARGET_DIR]
-(default: $CARGO_TARGET_DIR, else ./target)
+It repairs the repository's `target/`, the directory the cache restores, and
+takes no arguments.
 """
 
 from __future__ import annotations
@@ -29,6 +29,7 @@ import shutil
 import sys
 from pathlib import Path
 
+TARGET = Path(__file__).resolve().parents[1] / "target"
 SOURCES = "duckdb-sources"
 COMPLETE = ".complete"
 STAGING = ".duckdb-unpack-"
@@ -76,18 +77,14 @@ def repair(target: Path) -> list[str]:
     return removed
 
 
-def main(argv: list[str]) -> int:
-    if len(argv) > 2:
-        print("usage: repair-duckdb-sources.py [TARGET_DIR]", file=sys.stderr)
-        return 2
-    target = Path(argv[1] if len(argv) == 2 else os.environ.get("CARGO_TARGET_DIR") or "target")
-    removed = repair(target)
+def main() -> int:
+    removed = repair(TARGET)
     for line in removed:
         print(f"Removed incomplete DuckDB source tree {line}")
     if not removed:
-        print(f"No incomplete DuckDB source tree below {target}")
+        print(f"No incomplete DuckDB source tree below {TARGET}")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    sys.exit(main())
