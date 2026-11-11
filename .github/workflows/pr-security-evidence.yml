@@ -33,6 +33,7 @@ jobs:
         with:
           rustflags: "-D warnings"
           build-warnings: ""
+          cache-on-failure: false
 
       - name: Run bounded IDOR, dependency, and evidence audit
         run: |
