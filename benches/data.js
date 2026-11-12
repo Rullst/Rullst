@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794472289567,
+  "lastUpdate": 1794476503765,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -32859,6 +32859,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1004,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "44a47140ee2408320343d0a91683722a66504b43",
+          "message": "Merge pull request #665 from Rullst/feat/v13-alpha5-remove-rpc-frontend\n\nfeat!: remove typed server functions and the legacy frontend adapters",
+          "timestamp": "2026-11-12T06:35:31-03:00",
+          "tree_id": "9dce80ff374936fdb2083961962e5359003f8be9",
+          "url": "https://github.com/Rullst/Rullst/commit/44a47140ee2408320343d0a91683722a66504b43"
+        },
+        "date": 1794476500140,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 545,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 705,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 315,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1559,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
