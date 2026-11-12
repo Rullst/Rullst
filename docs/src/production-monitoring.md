@@ -75,8 +75,8 @@ in the server chain, and list `# RULLST_MONITOR_TOKENS=` in `.env` and
 `.env.example`, also commented out. To enable the monitor, uncomment the
 `.with_monitor(...)` call, generate a token and set `RULLST_MONITOR_TOKENS` in
 the deployment's environment (keep real tokens out of `.env.example`). Until
-then nothing is mounted. Projects generated earlier, and the ERP and Portfolio
-examples, add the call as shown above.
+then nothing is mounted. Projects generated earlier add the call as shown
+above.
 
 Read it with the token in the `Authorization` header, never in the URL:
 

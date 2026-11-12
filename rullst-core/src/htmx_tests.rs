@@ -139,7 +139,7 @@ fn test_render_page_helper() {
     assert!(res_normal.0.contains("/static/rullst.css"));
     assert!(res_normal.0.contains("/static/rullst.png"));
     assert!(!res_normal.0.contains("https://cdn.tailwindcss.com"));
-    assert!(res_normal.0.contains("/static/htmx-1.9.12.min.js"));
+    assert!(res_normal.0.contains("/static/htmx-2.0.11.min.js"));
     assert!(!res_normal.0.contains("https://unpkg.com"));
 }
 
@@ -310,7 +310,7 @@ fn head_markup_ends_the_document_head_and_stays_out_of_htmx_fragments() {
     );
     assert!(
         page.0.contains(
-            "<script src=\"/static/htmx-1.9.12.min.js\"></script><link rel=\"manifest\" href=\"/static/manifest.webmanifest\" /></head><body class=\"h-full\"><p>body</p></body>"
+            "<script src=\"/static/htmx-2.0.11.min.js\"></script><link rel=\"manifest\" href=\"/static/manifest.webmanifest\" /></head><body class=\"h-full\"><p>body</p></body>"
         ),
         "{}",
         page.0
@@ -345,6 +345,10 @@ fn head_markup_ends_the_document_head_and_stays_out_of_htmx_fragments() {
 
 #[test]
 fn nonce_pages_keep_htmx_indicator_rules_inside_the_csp() {
+    // htmx 2's rules: no test may mount a `static/` with only htmx 1.9.12.
+    let _manifest = crate::assets::TEST_MANIFEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let nonce = crate::security::CspNonce::generate();
     let request = HtmxRequest {
         is_htmx: false,
@@ -362,16 +366,15 @@ fn nonce_pages_keep_htmx_indicator_rules_inside_the_csp() {
         "<meta name=\"htmx-config\" content=\"{&quot;includeIndicatorStyles&quot;:false}\" />"
     ));
     let styled = format!(
-        "<style nonce=\"{}\">.htmx-indicator{{opacity:0}}",
+        "<style nonce=\"{}\">.htmx-indicator{{opacity:0;visibility:hidden}}",
         nonce.as_str()
     );
     assert!(page.contains(&styled), "{page}");
-    assert!(
-        page.contains(".htmx-request .htmx-indicator{opacity:1;transition:opacity 200ms ease-in}")
-    );
-    assert!(
-        page.contains(".htmx-request.htmx-indicator{opacity:1;transition:opacity 200ms ease-in}")
-    );
+    // The rules htmx 2.0.11 inserts with `includeIndicatorStyles`.
+    assert!(page.contains(
+        ".htmx-request .htmx-indicator,.htmx-request.htmx-indicator\
+         {opacity:1;visibility:visible;transition:opacity 200ms ease-in}</style>"
+    ));
     assert_eq!(page.matches("<style").count(), 1);
 
     // An application's own htmx-config in the head stays the only one.

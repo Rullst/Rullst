@@ -3,15 +3,15 @@ use rullst_capital::{CapitalError, providers::*};
 
 #[test]
 fn authenticated_incomplete_events_cannot_grant_active_access() {
-    use ring::hmac;
     use std::collections::HashMap;
     let payload = b"{}";
     let secret = "secret";
     let now = chrono::Utc::now().timestamp();
     let sign = |bytes: &[u8]| {
-        hex::encode(
-            hmac::sign(&hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes()), bytes).as_ref(),
-        )
+        let mut mac =
+            <hmac::Hmac<sha2::Sha256> as hmac::KeyInit>::new_from_slice(secret.as_bytes()).unwrap();
+        hmac::Mac::update(&mut mac, bytes);
+        hex::encode(hmac::Mac::finalize(mac).into_bytes())
     };
     let mut accepted = Vec::new();
     for provider in providers("fixture-key") {

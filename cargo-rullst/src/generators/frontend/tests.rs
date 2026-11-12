@@ -506,5 +506,8 @@ fn generated_dockerfiles_build_the_stylesheet_only_for_managed_tailwind() {
     crate::generators::project::generate_docker_files(root.path(), "shop", None, None).unwrap();
     let styled = std::fs::read_to_string(root.path().join("Dockerfile")).unwrap();
     assert_eq!(Some(styled.clone()), docker::add_to(&plain));
-    assert!(styled.contains(docker::COPY_LINE));
+    // The stylesheet joins static/ in the stage that pre-compresses it
+    // (tested with that stage in project/docker_static.rs).
+    assert!(styled.contains(docker::STATIC_STAGE_COPY_LINE));
+    assert!(!styled.contains(docker::COPY_LINE));
 }

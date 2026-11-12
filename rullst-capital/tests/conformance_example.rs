@@ -3,7 +3,7 @@
 #![cfg(feature = "conformance")]
 
 use async_trait::async_trait;
-use ring::hmac;
+use hmac::{KeyInit, Mac};
 use rullst_capital::conformance::{
     BillingHarness, SourcePayment, WebhookDelivery, check_billing_provider,
 };
@@ -121,9 +121,11 @@ impl<A: ExamplePayApi> BillingProvider for ExamplePay<A> {
         let invalid = || CapitalError::InvalidSignature("ExamplePay signature".into());
         let signature = headers.get("examplepay-signature").ok_or_else(invalid)?;
         let tag = hex::decode(signature).map_err(|_| invalid())?;
-        let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
+        let mut mac = hmac::Hmac::<sha2::Sha256>::new_from_slice(self.webhook_secret.as_bytes())
+            .map_err(|_| invalid())?;
+        mac.update(payload);
         // Constant-time comparison of the whole body's MAC.
-        hmac::verify(&key, payload, &tag).map_err(|_| invalid())?;
+        mac.verify_slice(&tag).map_err(|_| invalid())?;
         let body: Value = serde_json::from_slice(payload)
             .map_err(|_| CapitalError::PayloadParseError("ExamplePay event".into()))?;
         let field = |name: &str| body[name].as_str().unwrap_or_default().to_owned();
@@ -208,8 +210,9 @@ impl BillingHarness for Harness {
 
     fn authentic_delivery(&self, _: Option<&OneOffCheckoutRequest>) -> Option<WebhookDelivery> {
         let body = r#"{"subscription_id":"sub_1","customer_id":"cus_1","plan_id":"plan_1","status":"active"}"#;
-        let key = hmac::Key::new(hmac::HMAC_SHA256, SECRET.as_bytes());
-        let signature = hex::encode(hmac::sign(&key, body.as_bytes()));
+        let mut mac = hmac::Hmac::<sha2::Sha256>::new_from_slice(SECRET.as_bytes()).ok()?;
+        mac.update(body.as_bytes());
+        let signature = hex::encode(mac.finalize().into_bytes());
         Some(WebhookDelivery::new(body).with_header("examplepay-signature", signature))
     }
 

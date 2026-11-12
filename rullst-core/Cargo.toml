@@ -34,7 +34,7 @@ queue-redis = ["dep:redis"]
 cache-redis = ["dep:redis"]
 scheduler-tz = ["dep:jiff"]
 storage-s3 = ["dep:aws-credential-types", "dep:aws-sigv4", "dep:reqwest", "dep:rustls"]
-storage-multipart = ["storage-s3", "dep:roxmltree", "dep:zeroize"]
+storage-multipart = ["storage-s3", "dep:ring", "dep:roxmltree", "dep:zeroize"]
 telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "dep:opentelemetry-http", "dep:opentelemetry-proto", "dep:prost", "dep:reqwest", "reqwest/blocking", "dep:rustls"]
 strict-postgres = ["orm", "rullst-orm/strict-postgres"]
 strict-mysql = ["orm", "rullst-orm/strict-mysql"]
@@ -88,7 +88,10 @@ jiff = { version = "0.2.35", optional = true, default-features = false, features
 chrono = { workspace = true, features = ["clock"] }
 validator = { workspace = true, features = ["derive"] }
 libloading = { workspace = true }
-ring = { workspace = true, features = ["std"] }
+# AES-256-GCM and the nonce source of `storage-multipart` recovery records;
+# SHA-256 uses `sha2`.
+ring = { workspace = true, features = ["std"], optional = true }
+sha2 = { workspace = true }
 tracing = { workspace = true }
 tracing-core = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
@@ -106,6 +109,7 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Syste
 ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "base64", "ring", "rullst-auth", "windows-sys"]
 
 [dev-dependencies]
+hmac = { workspace = true }
 criterion = { workspace = true, features = ["async_tokio"] }
 futures-util = { workspace = true, features = ["sink"] }
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"] }

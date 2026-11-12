@@ -52,7 +52,9 @@ fn page(nonce: &CspNonce, title: &str, content: Markup) -> Markup {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>{title}</title>
                 <link rel="stylesheet" href="/static/rullst.css" />
-                <script nonce={nonce.as_str()} src="/static/htmx-1.9.12.min.js"></script>
+                <script nonce={nonce.as_str()} src="/static/htmx-2.0.11.min.js"></script>
+                // htmx's own indicator <style> has no nonce; the CSP refuses it.
+                <meta name="htmx-config" content="{\"includeIndicatorStyles\":false}" />
             </head>
             <body><main class="container">{content}</main></body>
         </html>

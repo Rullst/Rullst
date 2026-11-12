@@ -224,3 +224,13 @@ fn has_token_counts_the_refill_since_the_last_decision() {
     std::thread::sleep(std::time::Duration::from_millis(1));
     assert!(limiter.has_token("client"));
 }
+
+#[test]
+fn long_bucket_keys_use_the_sha256_known_answer() {
+    // FIPS 180-2 appendix B.3: one million repetitions of "a".
+    let key = "a".repeat(1_000_000);
+    assert_eq!(
+        buckets::bounded_bucket_key(&key),
+        "\0sha256:cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0"
+    );
+}

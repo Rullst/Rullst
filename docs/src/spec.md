@@ -1476,12 +1476,13 @@ Server push uses Server-Sent Events over the in-process realtime channels.
 `text/event-stream` response per request: each `RealtimeMessage` becomes an
 event named after its `event` with its `payload` as data, which the htmx SSE
 extension swaps into the page (`hx-ext="sse"`, `sse-connect`, `sse-swap`).
-HTML scaffolds write the htmx 1.9.12 extension to
-`static/htmx-ext-sse-1.9.12.js`, beside htmx, so pages need no CDN and no
-relaxed CSP. It is a patched copy with recorded upstream and patched SHA-256
-digests: upstream's reconnect backoff used the bitwise XOR `2 ^ retryCount`
-and never grew, the copy doubles it up to 64 s and resets it when a
-connection opens.
+HTML scaffolds write the htmx 2 extension (`htmx-ext-sse` 2.2.4) to
+`static/htmx-ext-sse-2.2.4.js`, beside htmx 2.0.11, so pages need no CDN and
+no relaxed CSP. It is the unmodified upstream file with recorded registry
+integrity and SHA-256: its reconnect backoff doubles up to 64 s and resets
+when a connection opens, so the patch Rullst carried on the htmx 1.9.12
+extension (whose backoff used the bitwise XOR `2 ^ retryCount` and never
+grew) is no longer needed.
 
 `RealtimeSseConfig` bounds every connection, clamping each setting: keep-alive
 comments (default 15 s, 1 s–5 min), the reconnect delay every stream sends
@@ -1896,8 +1897,11 @@ the same server-authoritative controls.
   each hashed request rechecks the file's size and modification time. Debug
   builds also refresh the links after edits
   ([frontend guide](frontend.md#content-hashed-asset-urls)). Core's
-  `render_page*` links `rullst.css` and `htmx-1.9.12.min.js` through
-  `assets::url` since 13.0.0-alpha.5 (the favicon keeps its plain URL).
+  `render_page*` links `rullst.css` and the htmx client
+  (`htmx-2.0.11.min.js`, or the `htmx-1.9.12.min.js` of an application
+  created before 13.0.0-alpha.5 while it is the only one `static/` holds)
+  through `assets::url` since 13.0.0-alpha.5 (the favicon keeps its plain
+  URL).
   Since 13.0.0-alpha.2 `rullst::cache_control` offers explicit policies for
   dynamic routes: `cache_control::public(max_age)` and `private(max_age)`
   are layers that set `public, max-age=<seconds>` or `private,
@@ -4088,8 +4092,12 @@ provider](capital-custom-provider.md)); the
   a Rullst crate makes (reqwest, SQLx, Redis, SMTP, OTLP). No Rullst
   crate enables rustls' `ring` feature or a ring TLS feature of SQLx,
   lettre or testcontainers.
-* **Primitives:** `ring` stays a direct dependency for HMAC, digests,
-  randomness and signatures, because it builds for wasm and edge targets.
+* **Primitives:** `rullst-core` and `rullst-capital` hash and sign with the
+  pure-Rust RustCrypto `sha2` and `hmac` crates (since 13.0.0-alpha.5); Core
+  keeps `ring` only for the AES-256-GCM recovery records of its
+  `storage-multipart` feature. In the other crates `ring` stays a direct
+  dependency for HMAC, digests, randomness and signatures, because it builds
+  for wasm and edge targets.
 * **Process default:** `Server` start-up (Core `orm`, `storage-s3` or
   `telemetry`), the OTLP exporter, Redis TLS connections and the standalone
   `rullst-studio` binary install aws-lc-rs as the rustls process default only
@@ -4986,8 +4994,9 @@ store package of the same site, only installs it.
 * 🟢 **`[Implemented / Bounded]` htmx history restores and boosted requests:**
   since 13.0.0-rc.1, `render_page`, `render_page_with_lang` and
   `render_page_with_head` answer `HX-History-Restore-Request: true` (htmx
-  1.9.12 sends it with `HX-Request: true` after a history cache miss and
-  replaces the whole `<body>`) and `HX-Boosted: true` with the whole page;
+  1.9.12, and htmx 2 with its default `historyRestoreAsHxRequest`, send it
+  with `HX-Request: true` after a history cache miss and replace the whole
+  `<body>`) and `HX-Boosted: true` with the whole page;
   any other `HX-Request: true` request still receives only the content.
   Since 13.0.0-alpha.5 `HtmxRequest::is_history_restore()` and
   `HtmxRequest::is_boosted()` report the two headers (each `true` only for
@@ -5024,8 +5033,9 @@ store package of the same site, only installs it.
   13.0.0-rc.1, `render_page`, `render_page_with_lang` and
   `render_page_with_head` with a request CSP nonce (Rullst's security
   headers) send `<meta name="htmx-config"
-  content='{"includeIndicatorStyles":false}'>` and htmx 1.9.12's
-  `.htmx-indicator`/`.htmx-request` rules in a `<style>` carrying the nonce,
+  content='{"includeIndicatorStyles":false}'>` and the loaded htmx release's
+  `.htmx-indicator`/`.htmx-request` rules (htmx 2.0.11's, or 1.9.12's for an
+  application that still vendors it) in a `<style>` carrying the nonce,
   instead of letting htmx insert a nonce-less inline `<style>` that
   `style-src` blocks. Head markup containing its own `htmx-config` keeps
   control of it; without a nonce the page is unchanged.

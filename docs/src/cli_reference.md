@@ -293,8 +293,9 @@ The choices that materially change the generated application:
 * **Application profile:** the Blank and SaaS starters use the audited `html!`
   SSR/HTMX path; API (`--api`) uses the headless JSON path. Repository,
   Pico.css and Tera foundations remain application-owned APIs and are not
-  presented as equivalent generated profiles. HTML scaffolds also write the
-  htmx SSE extension to `static/htmx-ext-sse-1.9.12.js`.
+  presented as equivalent generated profiles. HTML scaffolds write htmx
+  2.0.11 to `static/htmx-2.0.11.min.js` and its SSE extension to
+  `static/htmx-ext-sse-2.2.4.js` (with their licenses).
 * **Arguments:**
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
@@ -319,7 +320,13 @@ The choices that materially change the generated application:
     stage is `gcr.io/distroless/cc-debian12:nonroot` (glibc, libgcc, libstdc++,
     CA certificates and tzdata; no shell or package manager). It runs as
     UID/GID 10001 with `HOME=/app`, sets the production bind address and copies
-    local static/config assets when present. The builder stage prepares the
+    local static/config assets when present. Since 13.0.0-alpha.5 a
+    `static-assets` stage (the same `rust` image, with Debian's `brotli` and
+    `zstd`) writes the `.br`/`.zst` siblings that `cargo rullst build` writes
+    (the same file types and levels) next to the files in `static/`, and the
+    runtime stage copies that directory, so the server sends them to browsers
+    that accept them; siblings already in `static/` are written again from the
+    files the image serves. The builder stage prepares the
     `/app` tree, so an explicit SQLite selection still uses the writable
     `/app/data` directory. Without a shell the image has no `HEALTHCHECK`;
     let the platform probe `/health` and `/ready` over HTTP. The migration job
@@ -1183,8 +1190,8 @@ cargo rullst make:privacy \
 
 The version and lifetime are explicit application choices; the engineering cap
 of 365 days is not a legal retention rule. It targets the recognized SaaS
-starter, or an application's own sign-in through the
-[authentication contract](#authentication-contract) (`require_account`,
+starter (`--blueprint saas`, the default), or an application's own sign-in
+through the [authentication contract](#authentication-contract) (`require_account`,
 `find_account` and `session_binding`: the routes use the contract's middleware,
 the export its account and the forms its session binding), and requires
 `--tenant-ref`; v13 removed the LMS target. The tenant is
@@ -1417,7 +1424,11 @@ written through a link):
 * `Caddyfile`: proxies to the app, checks its `/health` every 5 seconds and
   stops routing to it while that fails, and holds each request for up to 15
   seconds while the app is down (a restart or an update) instead of answering
-  `503` at once.
+  `503` at once. It has no `encode` directive, and its comment says why:
+  pages carry the CSRF token, which is not masked per response, so
+  compressing them would expose it to BREACH; static files are served
+  pre-compressed. Add `encode` only for routes that never mix secrets with
+  reflected input (`encode /api/* zstd gzip`).
 
 Caddy is pinned to `172.31.250.10` on a `172.31.250.0/24` compose network,
 and the command adds that address to `[security] trusted_proxies` in

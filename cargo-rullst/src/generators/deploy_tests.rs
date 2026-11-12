@@ -39,6 +39,15 @@ fn compose_pins_caddy_hardens_both_containers_and_checks_health() {
     );
     assert!(CADDYFILE.contains("\treverse_proxy app:3000 {\n"));
     assert!(CADDYFILE.contains("\t\thealth_uri /health\n"));
+    // Pages carry the unmasked CSRF token, so Caddy does not compress them
+    // (BREACH); the comment says when `encode` may be added.
+    assert!(
+        CADDYFILE
+            .lines()
+            .all(|line| !line.trim_start().starts_with("encode"))
+    );
+    assert!(CADDYFILE.contains("\t# No `encode`: pages carry the CSRF token unmasked"));
+    assert!(CADDYFILE.contains("such as `encode /api/* zstd gzip`.\n"));
 }
 
 // Caddy's first active check runs before the app listens, and with a

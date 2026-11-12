@@ -210,21 +210,21 @@ A prepared version section does not establish that its tag or crates exist.
   carry are skipped. `shutdown()` ends every open stream, so they do not hold
   the graceful drain. Responses send `Cache-Control: no-cache` and
   `X-Accel-Buffering: no`.
-- HTML scaffolds (`cargo rullst new`, Blank and SaaS) write the htmx 1.9.12
-  Server-Sent Events extension to `static/htmx-ext-sse-1.9.12.js`, beside
-  `htmx-1.9.12.min.js` and served the same way, so pages use `hx-ext="sse"`,
-  `sse-connect` and `sse-swap` under the strict CSP. The file is a patched
-  copy of upstream `dist/ext/sse.js` of htmx commit
-  `f38e07d4be8145a39e2bb477ec9fcc56bdd2d16d` (SHA-256
-  `be05b2e2265279f035271adbea0b72a356f20ce4dfa5870481bfe9c51b822fc1`):
-  upstream computes its reconnect delay with the bitwise XOR `2 ^ retryCount`,
-  so it never backs off past about 2.5 s and sometimes retries at once; the
-  copy doubles the delay up to 64 s and resets it when a connection opens, as
-  the htmx 2 extension does (SHA-256
-  `afb588b88863ec49fe7d9f958b788ab1e1df1f45016466d2ea573f374c89e5d4`). The
-  diff is in `cargo-rullst/src/blueprints/assets/README.md`; a test checks
-  both digests, the patched lines and the written bytes. Tutorial 34 is now a realtime
-  dashboard with SSE and htmx (`tutorials/34-realtime-dashboard-sse.md`).
+- HTML scaffolds (`cargo rullst new`, Blank and SaaS) write the htmx 2
+  Server-Sent Events extension 2.2.4 to `static/htmx-ext-sse-2.2.4.js`, beside
+  htmx and served the same way, so pages use `hx-ext="sse"`, `sse-connect`
+  and `sse-swap` under the strict CSP. It is the unmodified `dist/sse.js` of
+  the npm package `htmx-ext-sse` 2.2.4 (registry integrity
+  `sha512-LJmxVhykyflBWgh5PvbRidcyuqMHlgfajmmzumvKctv9puvsufeH6OaejSMZTNTnEI8O2wXXn4ZZtBdpEMqmEQ==`,
+  SHA-256 `3b5992a541619babefc4c169505af474df5c3039da51e59b96ccf9241ecd61d2`),
+  with its Zero-Clause BSD license as `static/HTMX-EXT-SSE-LICENSE`: after a
+  failed connection it waits 0.5 s, doubling up to 64 s, and resets when a
+  connection opens, so it needs none of the patch the htmx 1.9.12 extension
+  would have (its delay used the bitwise XOR `2 ^ retryCount` and never
+  grew). `cargo-rullst/src/blueprints/assets/README.md` records the
+  provenance; a test checks the digests, the backoff lines and the written
+  bytes. Tutorial 34 is now a realtime dashboard with SSE and htmx
+  (`tutorials/34-realtime-dashboard-sse.md`).
 - `cargo rullst upgrade` rules for 13.0.0-alpha.5: `V13-ISLANDS-REMOVED` and
   `V13-LIVE-REMOVED` (must-change: `#[island]`, `#[live_component]`,
   `#[live_event]` and `rullst::island`/`rullst::live` paths, also in `use`
@@ -316,7 +316,8 @@ A prepared version section does not establish that its tag or crates exist.
 - Core's `render_page`, `render_page_with_lang` and `render_page_with_head`
   link `rullst.css` and the htmx client with `rullst::assets::url`, so while
   the server runs they are `/static/rullst.<hash>.css` and
-  `/static/htmx-1.9.12.min.<hash>.js`, cached as immutable, and an edited
+  `/static/htmx-2.0.11.min.<hash>.js` (or `htmx-1.9.12.min.<hash>.js`, see
+  the htmx 2 entry under Changed), cached as immutable, and an edited
   stylesheet reaches browsers and CDNs on the next deploy. The service worker
   of `make:pwa` now also stores, when it installs, the `/static/` files its
   offline page links, which have such hashed names; a worker generated before
@@ -572,6 +573,31 @@ A prepared version section does not establish that its tag or crates exist.
   and the home menu no longer label `footprint`, `iot:keygen` and `iot:sign`
   experimental, and `cargo rullst upgrade` no longer describes
   `InfinitePayProvider` as experimental.
+- New applications use htmx 2.0.11 instead of htmx 1.9.12: `cargo rullst new`
+  (Blank and SaaS) writes `static/htmx-2.0.11.min.js` (the npm package
+  `htmx.org` 2.0.11, registry integrity
+  `sha512-Thx/WtpeOQqSrqBCw/A1cwGJGg4UrVa3+sW0GmrM3p4gJgO89ecH4qtbnyzDDWFvBTqjnIMCgELTNt636dtamA==`,
+  plus a terminal LF; SHA-256
+  `7f14135fe8ee3ed5f1a85fea21ba4dfba8236d697c4f95ab575d1c9091bb06ca`), and
+  Core's `render_page`, `render_page_with_lang` and `render_page_with_head`
+  load it, with htmx 2's indicator rules in the nonce'd `<style>` they send
+  under the strict CSP (no `'unsafe-inline'` or `'unsafe-eval'` is needed).
+  Existing applications keep working without a change: while the `static/`
+  directory the server publishes holds `htmx-1.9.12.min.js` and not
+  `htmx-2.0.11.min.js`, those pages keep loading htmx 1.9.12 with its own
+  indicator rules, and `make:pwa`'s service worker stores whichever of the
+  two the project has. `cargo rullst upgrade` reports `V13-HTMX-2` (review)
+  on that file. To move an application to htmx 2, which the SSE extension
+  needs, copy `htmx-2.0.11.min.js`, `htmx-ext-sse-2.2.4.js`, `HTMX-LICENSE`
+  and `HTMX-EXT-SSE-LICENSE` from a new project's `static/`, change layouts of
+  its own that name the old file, delete `static/htmx-1.9.12.min.js`, and send
+  the CSRF token of `hx-delete` requests in the `X-CSRF-Token` header (htmx 2
+  puts DELETE parameters in the query string); the frontend guide's "The htmx
+  client" section lists the other htmx 2 changes a Rullst page can meet. The
+  `HX-*` headers `HtmxRequest` and `HtmxResponse` read and write are
+  unchanged. The LMS and IoT gateway examples use htmx 2; Nexus keeps its own
+  htmx 2.0.4 under `/nexus/assets/`.
+
 - **Breaking:** `rullst-labs` (Experimental): `ExecutionProfile`,
   `WorkerOutcome`, `ExecutionFailure`, `TrapKind`, `CaseOutput`, `CaseGrade`,
   `JobResult`, `JobState` and `ResultEvidence` are `#[non_exhaustive]`, and so
@@ -664,6 +690,20 @@ A prepared version section does not establish that its tag or crates exist.
   weighs 64,422 bytes on a first visit instead of 501,296 (87 % less; SaaS
   22,881 instead of 459,755). The LMS and IoT gateway examples ship the same
   file.
+- Generated starters no longer depend directly on `rullst-security`, nor the
+  SaaS starter on `rullst-auth` and `rullst-capital`: their code uses
+  `rullst::security`, `rullst::auth` and `rullst::capital`, and the `make:*`
+  generators enable the facade feature they need (the `contract.rs` of
+  `generate:api` still needs the `rullst-security` dependency its guide asks
+  for). The `rullst` facade no longer forwards `strict-*` and `drivers-all` to
+  `rullst-nexus`, which needs neither (Core and the ORM already get the
+  backend); because of that forwarding, Cargo kept `rullst-nexus`,
+  `rullst-auth` and 23 crates for password hashing and P-256 in the
+  `Cargo.lock` of every application with `strict-*` or `drivers-all` and
+  without `nexus`, although none of them was compiled. Blank and API starters:
+  397 → 374 packages in `Cargo.lock`; SaaS unchanged at 398 (it compiles
+  Nexus). The crates compiled are the same (293 for Blank and API, 319 for
+  SaaS).
 - **Breaking:** `rullst-ai`'s DeepSeek and Ollama providers are presets of the
   OpenAI-compatible adapter. Both services implement the OpenAI request
   shapes, so `DeepSeekProvider` and `OllamaProvider` (with their
@@ -777,6 +817,34 @@ A prepared version section does not establish that its tag or crates exist.
   after the ORM pool exists, and the supervision guide says that a parental
   window is one period of at most 30 days. `AGENTS.md` lists the alpha.5
   state of the crates.
+- Documentation: removed stale references to the ERP and Portfolio examples
+  (the Studio, start-here, maturity and production monitoring pages and the
+  site's home page) and to the frontend adapters and Wasm client that
+  13.0.0-alpha.5 removed (getting started, capability status); the CLI
+  reference names `make:privacy --blueprint`.
+- `rullst-core` and `rullst-capital` hash and sign with the pure-Rust
+  RustCrypto `sha2` and `hmac` crates instead of `ring`, at the versions
+  already in the dependency graph. Every digest, identifier and stored key is
+  byte-identical: FIPS 180-2 and RFC 4231 known-answer tests and
+  independently computed vectors pin them, including Capital's webhook replay
+  keys and Stripe inbox scope. Stripe signatures are checked with
+  `Mac::verify_slice` (constant time), and Capital's quota claim tokens come
+  from the operating system through `rand`'s `SysRng`. Core keeps `ring` only
+  as an optional dependency of `storage-multipart`, for the AES-256-GCM
+  recovery records. The Blank and API starters compile 291 normal crates
+  instead of 293 (`ring` and `getrandom` 0.2 are gone); their `Cargo.lock`
+  still lists 397 packages, and the SaaS starter (398 packages, 319 crates) is
+  unchanged, because `rullst-auth`, which uses `ring` for passkeys, stays in
+  their dependency graphs.
+
+### Deprecated
+
+- `rullst_orm::schema_diff` (`extract_tables_from_ast`, `ParsedTable`,
+  `ParsedField`) is deprecated and will be removed in 14.0. Nothing in Rullst
+  calls it (the CLI has its own copy), and its `syn` and `walkdir`
+  dependencies are built by every application that uses the ORM. Write a
+  migration from the models with `cargo rullst make:migration:auto`, or read
+  their tables and columns with `cargo rullst inspect schema --json`.
 
 ### Removed
 
@@ -879,12 +947,95 @@ A prepared version section does not establish that its tag or crates exist.
   anything, and its report now points to `examples/blog`; the CI browser job
   checks the Nexus shell only. Their last version is in the `v13.0.0-alpha.4`
   tag.
+- The `rullst` facade's `wasm32`-only dependencies `wasm-bindgen`,
+  `wasm-bindgen-futures`, `web-sys`, `js-sys` and `getrandom` (with
+  `wasm_js`), left over from the removed `rullst::client`. Nothing in the
+  facade used them. The only facade features that reach `getrandom` on
+  `wasm32` (the `oauth` ones, through `rullst-connect`) also reach
+  `getrandom` 0.3, whose backend the facade never configured, so they did not
+  compile for `wasm32-unknown-unknown` before either; a `wasm32` application
+  that uses `getrandom` enables its `wasm_js` backend in its own manifest. The
+  workspace `exclude` list of `benchmark/` directories that no longer exist
+  was removed too.
 
 The [migration guide](docs/src/migration-v13.md#upgrading-an-alpha4-application-to-alpha5)
 describes each replacement.
 
 ### Fixed
 
+- `rullst-orm` Turso/libSQL: a UNIQUE or PRIMARY KEY violation was reported
+  as `PolyglotError::Driver` (`Hrana server error SQLITE_CONSTRAINT: ...`)
+  instead of `PolyglotError::Conflict`, unlike the SQL adapters. `execute`,
+  `query`, `transaction` and the typed `save`/`create` now return `Conflict`,
+  against a remote server and the offline fallback alike; NOT NULL, CHECK and
+  FOREIGN KEY violations stay `Driver` errors. A Hrana error carries only
+  SQLite's primary code (`SQLITE_CONSTRAINT` for every constraint), so the
+  remote adapter tells a unique violation apart by SQLite's fixed `UNIQUE
+  constraint failed` text under that code (found by the 13.0.0-alpha.5
+  acceptance run).
+- `rullst-orm` Turso/libSQL: saving or creating a model whose `String` (or
+  other non-integer) primary key was empty sent the insert without the key, so
+  a nullable `TEXT PRIMARY KEY` without a `DEFAULT` stored a row with a NULL
+  key and the call then failed decoding it, leaving that row behind. Such an
+  insert now runs in a transaction with `RETURNING` the key: a key filled by
+  the column's `DEFAULT` (for example `DEFAULT (lower(hex(randomblob(16))))`)
+  is committed and assigned to the model as before, and a NULL key is rolled
+  back and fails with `PolyglotError::InvalidIdentifier` ("the database
+  generated no value for this key; assign it before saving or give its column
+  a DEFAULT"), with nothing written. Integer keys keep the single-statement
+  insert (found by the 13.0.0-alpha.5 acceptance run).
+- `rullst-orm` SurrealDB: a failed statement or request dropped SurrealDB's
+  reason (`statement returned status ERR`, `HTTP status 400 Bad Request`,
+  `RPC query returned an error`). The error now ends with it, for example
+  `statement returned status ERR: The database 'app' does not exist`, kept to
+  one line of at most 240 characters with URLs and the configured password or
+  token redacted (found by the 13.0.0-alpha.5 acceptance run).
+- `rullst-orm` Redis data store: every failure read `Redis operation failed:
+  Redis operation failed`. The message now says what failed once, with the
+  server's code and reason as Redis writes them (`Redis operation failed:
+  WRONGPASS invalid username-password pair or user is disabled.`, `ERR hash
+  value is not an integer`) or the driver's text for a connection failure,
+  kept to one bounded line without URLs; the offline store reports the same
+  increment errors as Redis (found by the 13.0.0-alpha.5 acceptance run).
+- Standalone Studio (`rullst-studio`, `cargo rullst studio --remote`):
+  it printed `Rullst Studio (remote projects) on http://127.0.0.1:PORT/studio`
+  before taking the port, so a port in use printed the address and then
+  failed with `Studio could not listen: Address already in use`. It now takes
+  the port first, prints the address only once it listens, and a port in use
+  fails before anything else starts, naming it (`Studio could not listen:
+  127.0.0.1:5556: Address already in use`) (found by the 13.0.0-alpha.5
+  acceptance run).
+- Generated applications now serve their static files compressed: before,
+  `cargo rullst build` wrote `.br`/`.zst` siblings of static assets that the
+  server sends, but the generated Dockerfile built with plain `cargo build`,
+  so the image had none and every file went out uncompressed. The
+  Dockerfile that `cargo rullst new --docker`, `dockerize` and `deploy` write
+  now has a `static-assets` stage that writes the siblings with Debian's
+  `brotli` and `zstd` (the file types and levels of `cargo rullst build`, the
+  Tailwind stylesheet included) and that the runtime stage copies; the
+  runtime image still has no shell or package manager, and content-hashed
+  names keep their `immutable` caching. Pages stay uncompressed on purpose:
+  they carry the CSRF token, which is not masked per response, so
+  compressing them next to reflected input would expose it to BREACH. The
+  generated `Caddyfile` has no `encode` directive, and its comment says to
+  add one only for routes that never mix secrets with reflected input.
+  Existing files are kept: the migration guide says what to copy (reported
+  by the 13.0.0-alpha.5 release review).
+- The alpha.4 to alpha.5 checklist and the `V13-CLI-GREEN-RENAMED` guidance of
+  `cargo rullst upgrade` said to replace `cargo rullst green` with
+  `cargo rullst footprint`, but not that a workflow which installs a pinned CLI
+  (`cargo install cargo-rullst --version =13.0.0-alpha.4`) must pin alpha.5 as
+  well, since the alpha.4 CLI has no `footprint`; both now say so. The
+  checklist's AI step also warns that tests which build
+  `AiError::ApiError("… returned HTTP 429 …")` by hand keep passing after the
+  upgrade although providers now return `AiError::HttpStatus` (found while
+  upgrading applications from alpha.4).
+- Documentation: the Cargo feature matrix did not list the `conformance`
+  features of `rullst-capital`, `rullst-mail` and `rullst-media`, Studio's
+  `local` feature or the ORM's test-only `test-util`; it now does. The fuzz
+  evidence page is in the book's table of contents, and the README features
+  and architecture panels no longer name the removed ERP and Portfolio
+  examples.
 - The `rullst-supervision` observation guide did not say that the
   `Permissions-Policy: camera=(), microphone=()` header of Rullst's staging and
   production security baseline makes the browser refuse `getUserMedia`, so a

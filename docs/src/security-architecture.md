@@ -215,13 +215,14 @@ therefore end detection early.
 
 ## Cryptography providers
 
-Rullst uses two cryptography libraries, each with one role (since
-13.0.0-alpha.4):
+Rullst uses these cryptography libraries, each with one role (since
+13.0.0-alpha.4; the RustCrypto row since 13.0.0-alpha.5):
 
 | Component | Library | Why |
 | --- | --- | --- |
 | Every TLS connection Rullst makes: outbound HTTPS (reqwest: AI and payment providers, OAuth, webhooks, S3 storage, Studio's remote poller), SQLx (PostgreSQL and MySQL), Redis (Redis Streams messaging, ORM Redis data and cache), SMTP (`mail-smtp`) and OTLP telemetry | `aws-lc-rs`, as the rustls crypto provider | Post-quantum hybrid key exchange (`X25519MLKEM768`, offered first) and a FIPS-capable build |
-| HMAC, digests, randomness and signatures in `rullst-auth`, `rullst-capital`, `rullst-core`, `rullst-labs`, `rullst-media`, `rullst-privacy`, `rullst-studio` and `rullst-supervision` | `ring`, used directly | Portable to wasm and edge targets, where `aws-lc-rs` is not available |
+| SHA-256 and HMAC-SHA256 in `rullst-core` and `rullst-capital` (since 13.0.0-alpha.5) | RustCrypto `sha2` and `hmac` | Pure Rust, portable to wasm and edge targets; signatures are checked with `Mac::verify_slice` (constant time) |
+| HMAC, digests, randomness and signatures in `rullst-auth`, `rullst-labs`, `rullst-media`, `rullst-privacy`, `rullst-studio` and `rullst-supervision`, and the AES-256-GCM recovery records of Core's `storage-multipart` | `ring`, used directly | Portable to wasm and edge targets, where `aws-lc-rs` is not available |
 
 `ring` is not a rustls provider in Rullst: no Rullst crate enables rustls' `ring`
 feature. JWT signing (`rullst-auth` `jwt`) uses `jsonwebtoken`'s `aws_lc_rs`

@@ -14,6 +14,8 @@ mod deploy;
 mod features;
 #[path = "files/footprint.rs"]
 mod footprint;
+#[path = "files/htmx.rs"]
+mod htmx;
 #[path = "files/scripts.rs"]
 mod scripts;
 use features::{
@@ -446,6 +448,9 @@ pub(super) fn project_findings(
         && !text.contains("X-CSRF-Token")
     {
         push(&TS_CLIENT_REGENERATE, "rullst-client.ts", 1);
+    }
+    if let Some(client) = htmx::legacy_client(root) {
+        push(&HTMX_2_CLIENT, client, 1);
     }
     for name in [".env", ".env.example"] {
         let Some(text) = read_small(&root.join(name)) else {

@@ -353,6 +353,9 @@ none is scheduled, and real user demand orders them.
 - **Production monitor** (13.1 candidate): desktop notifications in the
   standalone Studio, remote traces and security radar, and proxy support.
 - **More i18n locales and currency formats**, added as CLDR data when requested.
+- **Mask the CSRF token per response (BREACH defence), then compress dynamic
+  HTML in the generated Caddyfile.** Since 13.0.0-alpha.5 generated
+  deployments serve static files pre-compressed and pages uncompressed.
 
 Decided non-goals (not planned, so they are documented as scope rather than as
 pending work):

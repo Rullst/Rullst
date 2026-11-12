@@ -37,9 +37,11 @@ pub(super) const ICONS: [(&str, &[u8]); 4] = [
 ];
 
 /// Static files the starters ship that the offline page may need; each is
-/// stored by the worker only when the project has it.
-const OPTIONAL_PRECACHE: [&str; 3] = [
+/// stored by the worker only when the project has it. Projects created
+/// before 13.0.0-alpha.5 ship htmx 1.9.12, newer ones htmx 2.0.11.
+const OPTIONAL_PRECACHE: [&str; 4] = [
     "static/rullst.css",
+    "static/htmx-2.0.11.min.js",
     "static/htmx-1.9.12.min.js",
     "static/rullst.png",
 ];
