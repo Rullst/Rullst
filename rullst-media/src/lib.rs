@@ -16,14 +16,18 @@
 //! adapter and browser upload module, `s3` for S3-compatible object storage
 //! (AWS S3, Cloudflare R2, MinIO) without transcoding, and `sqlite` for the
 //! shared-local store and `sqlite::MediaService`; a complete service uses
-//! `bunny` or `s3` together with `sqlite`. See the
+//! `bunny` or `s3` together with `sqlite`. `conformance` adds a kit that checks
+//! an application-owned [`VideoProvider`]. See the
 //! [private video guide](https://rullst.github.io/Rullst/book/managed-video.html)
 //! and the [README](https://github.com/Rullst/Rullst/blob/main/rullst-media/README.md).
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 
+#[cfg(feature = "conformance")]
+pub mod conformance;
 mod contracts;
 mod error;
+mod grant;
 mod library;
 mod provider;
 

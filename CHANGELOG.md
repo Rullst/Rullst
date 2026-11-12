@@ -28,6 +28,47 @@ A prepared version section does not establish that its tag or crates exist.
   cancellation. The runner contract and the `byo_runner_controller` example
   do this now (found while building a Docker runner for an acceptance
   application).
+- Provider conformance kits: an application-owned payment gateway, mail
+  transport or video adapter can now prove in its own tests that it behaves
+  like Rullst's built-in ones, without a network. Each kit sits behind a new
+  `conformance` Cargo feature, runs every case under `catch_unwind` (a panic
+  fails that case, never the run) and returns a `ConformanceReport` of
+  `ConformanceCase`s (`Passed`, `Failed` or `Skipped`, with the failed
+  expectations) whose `assert_passed` fails a test with the whole report.
+  `rullst_capital::conformance::check_billing_provider` takes a
+  `BillingProvider` and a `BillingHarness` (the server-side
+  `OneOffCheckoutRequest`, an authentic `WebhookDelivery` and, optionally, a
+  simulated `SourcePayment` at the provider's source of truth) and checks that
+  checkouts validate their inputs and are bound to the server-side amount,
+  forged, stripped and tampered notifications are refused, a replayed
+  notification gives the same answer, nothing is paid until the source
+  confirms it, another amount, currency or order is never paid, offline
+  results are deterministic and hostile input returns a `CapitalError`; Stripe
+  (mock and signed-webhook modes) and InfinitePay (offline fixtures and a local
+  Checkout API) pass it. `rullst_mail::conformance::check_mail_driver` takes a
+  `MailDriver` and a `DeliveryCapture` (`OfflineMockCapture` for the built-in
+  drivers) and checks that CR/LF in the subject, recipient, sender or
+  Reply-To and oversized or badly named attachments are a `ValidationError`
+  with nothing delivered, a suppressed recipient is refused behind a
+  `SuppressionGuard`, offline delivery is deterministic and malformed
+  recipients, delivery IDs and tenants are refused; Resend, AWS SES,
+  SendPulse and SMTP pass it. `rullst_media::conformance::check_video_provider`
+  takes a `VideoProvider` and `VideoExpectations` (upload, playback and
+  listing, each declarable absent) and checks marker validation, the
+  create/get/update/delete lifecycle, upload and playback grant expiry, mode,
+  HTTPS and TTL bounds, that upload-only credentials refuse playback, bounded
+  listing pages and offline determinism; offline Bunny Stream, complete and
+  upload-only, passes it. So that an application-owned video adapter can
+  create its own grants and library pages, `rullst-media` adds
+  `UploadGrant::new`, `UploadGrant::with_declaration` and
+  `PlaybackGrant::new`, which take the adapter's `ProviderBinding` and refuse
+  non-HTTPS or credential-bearing URLs, empty or non-ASCII signatures and
+  expiry times outside 1970 to 9999 with `MediaError::InvalidInput`, and
+  `ListedVideo::new` (with `with_created_at` and `with_thumbnail_url`) and
+  `VideoPage::new`, which bound titles, durations and thumbnails and keep a
+  page within its query. The new book page "Provider Conformance Kits"
+  lists every case and walks through an application-owned payment provider
+  and video provider that pass their kits.
 - `rullst::iot_ingest` (facade feature `iot-ingest`, Experimental): a
   bounded telemetry receiver for devices on the server side.
   `TelemetryReceiver` accepts one `SensorTelemetry` JSON object or an array

@@ -26,6 +26,8 @@ bunny = ["dep:reqwest", "dep:ring", "dep:base64", "dep:zeroize", "dep:tokio"]
 sqlite = ["dep:sqlx", "dep:ring", "dep:tokio"]
 # Experimental S3/R2/MinIO object storage; reuses Core's `aws-sigv4` signer.
 s3 = ["dep:reqwest", "dep:ring", "dep:zeroize", "dep:aws-sigv4", "dep:aws-credential-types", "dep:tracing"]
+# Test kit that checks a `VideoProvider` against the Bunny adapter's contract.
+conformance = []
 
 [dependencies]
 thiserror = { workspace = true }
