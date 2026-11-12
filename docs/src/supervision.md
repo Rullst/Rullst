@@ -116,7 +116,12 @@ and human review; the framework includes no detector or automatic penalty.
 An operator enrolls a learner and a server-selected access-policy resource into
 parental management. Enrolled learners are denied while no valid policy exists.
 An explicitly authorized manager can set a bounded course allowlist and one
-absolute UTC access window, using the current revision. Missing/expired policy,
+absolute UTC access window, using the current revision. The window
+(`CoursePolicy::new(courses, not_before, expires_at)`) is a single period of
+at most 30 days, not a recurring schedule. Daily allowed hours, such as
+16:00–18:00 on school days, belong to the host: it keeps the schedule and
+replaces the window each day with `set_course_policy` and the current
+revision. Missing/expired policy,
 clock failure and storage failure deny protected operations. Unmanaged learners
 retain the existing learning authorization. These restrictions cannot grant
 enrollment, unpublished lessons or assessment permissions.

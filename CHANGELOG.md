@@ -632,9 +632,6 @@ A prepared version section does not establish that its tag or crates exist.
   weighs 64,422 bytes on a first visit instead of 501,296 (87 % less; SaaS
   22,881 instead of 459,755). The LMS and IoT gateway examples ship the same
   file.
-
-### Changed
-
 - **Breaking:** `rullst-ai`'s DeepSeek and Ollama providers are presets of the
   OpenAI-compatible adapter. Both services implement the OpenAI request
   shapes, so `DeepSeekProvider` and `OllamaProvider` (with their
@@ -730,6 +727,17 @@ A prepared version section does not establish that its tag or crates exist.
   justfiles and documentation that still run `cargo rullst green` or read
   `rullst.green.v1` (`V13-CLI-GREEN-RENAMED`), and `V13-CLI-AI-REMOVED` no
   longer tells alpha.3 applications to use `green`.
+- Documentation: the README has a highlights section (`footprint`, the
+  testing kit, the frontend tools) and an integrations list that says how far
+  each built-in integration is tested (real accounts, servers in local
+  containers in CI, or offline only). The 13.x support window in the compatibility policy and
+  `SECURITY.md` is stated as the maintainer's intention, not a guarantee, with
+  any change announced in advance. `CONTRIBUTING.md` says that contributions
+  are open, that every pull request is reviewed and that the maintainer
+  decides what is merged. Tutorials 38 and 49 say to start an outbox worker
+  after the ORM pool exists, and the supervision guide says that a parental
+  window is one period of at most 30 days. `AGENTS.md` lists the alpha.5
+  state of the crates.
 
 ### Removed
 

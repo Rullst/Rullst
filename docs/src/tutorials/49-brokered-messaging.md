@@ -315,3 +315,9 @@ SHA-256 of the stream, `/`, then the event key), so relays of different streams
 can share one topic. This is at-least-once relay with bounded idempotency, not
 an atomic transaction across two systems. Keep the worker supervised and make
 the final consumer idempotent too.
+
+Start that worker after the ORM pool exists: `Server::run` opens the pool
+while it starts, so a relay spawned before it gets "Orm is not initialized".
+Call `Orm::init` in `main` first, as the
+[outbox tutorial](38-transactional-outbox.md#3-claim-deliver-and-acknowledge)
+shows; `Server` keeps the existing pool.
