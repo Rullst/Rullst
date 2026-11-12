@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794504346167,
+  "lastUpdate": 1794512161451,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -33399,6 +33399,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1761,
             "range": "± 42",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "429e0707bbb2ca2c187be37942dd055dfdad933d",
+          "message": "Merge pull request #674 from Rullst/chore/v13-release-13.0.0-alpha.5\n\nchore(release): prepare 13.0.0-alpha.5",
+          "timestamp": "2026-11-12T16:30:43-03:00",
+          "tree_id": "0a795838d7e17c65dce1c7c2ff0e39871a8b1a7f",
+          "url": "https://github.com/Rullst/Rullst/commit/429e0707bbb2ca2c187be37942dd055dfdad933d"
+        },
+        "date": 1794512157415,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 681,
+            "range": "± 41",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 895,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 421,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1730,
+            "range": "± 33",
             "unit": "ns/iter"
           }
         ]
