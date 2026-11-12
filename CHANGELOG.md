@@ -584,6 +584,15 @@ describes each replacement.
 
 ### Fixed
 
+- Nothing said that the Tailwind stylesheet of `cargo rullst add tailwind` is
+  rebuilt only by `cargo rullst dev` and `cargo rullst build`: an application
+  started with plain `cargo run`, or a release binary started by a script,
+  served the `static/app.css` built when the kit was added and its pages
+  looked unstyled. `cargo rullst doctor` now warns (`project.tailwind`) when
+  `static/app.css` is missing or older than `assets/css/app.css` or a file its
+  `@source` lines scan, `add tailwind` lists that check in its next steps, and
+  the frontend guide says that plain Cargo builds do not run Tailwind (found by
+  the 13.0.0-alpha.5 acceptance application).
 - `rullst-orm` SurrealDB adapter: `SurrealDbStore::create` reported a write
   that SurrealDB had refused. SurrealDB 3 answers a CREATE denied by
   permissions (a `VIEWER` database user, or a record user on a table with
