@@ -40,6 +40,22 @@ application, as shown in
 and the offline `examples/custom_transport.rs`
 (`cargo run -p rullst-mail --example custom_transport`).
 
+The `conformance` feature (13.0.0-alpha.5) adds
+`conformance::check_mail_driver`, the contract the built-in transports pass,
+for such a transport's own tests: CR/LF in the subject, recipient, sender or
+Reply-To and attachments over the limits are a `ValidationError` with nothing
+delivered, a suppressed recipient is refused behind `SuppressionGuard`, the
+offline mode is deterministic and malformed input is a typed error. A
+`DeliveryCapture` returns what the driver's offline mode captured
+(`OfflineMockCapture::new("resend")` for the built-in drivers):
+
+```rust,ignore
+let report = check_mail_driver("acmemail", &driver, &capture).await;
+report.assert_passed();
+```
+
+See [Provider conformance kits](https://github.com/Rullst/Rullst/blob/main/docs/src/provider-conformance.md).
+
 ## Installation and Cargo features
 
 This README describes the v13 prerelease. Cargo never selects a prerelease on
