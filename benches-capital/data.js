@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794478370018,
+  "lastUpdate": 1794479925156,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -16270,6 +16270,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "26c7ce17cb8b9b115ce790e77e842357683ecd2e",
+          "message": "Merge pull request #658 from Rullst/feat/v13-alpha5-slimming\n\nfeat!: alpha.5 slimming (Academy preset, ERP/Portfolio examples, DeepSeek/Ollama presets, Qdrant)",
+          "timestamp": "2026-11-12T07:17:35-03:00",
+          "tree_id": "cfd9bbe15619853b0440ce4d2ef92fc3977b92fe",
+          "url": "https://github.com/Rullst/Rullst/commit/26c7ce17cb8b9b115ce790e77e842357683ecd2e"
+        },
+        "date": 1794479924271,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 3,
             "range": "± 0",
             "unit": "ns/iter"
           }
