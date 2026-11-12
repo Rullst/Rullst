@@ -21,6 +21,18 @@ A prepared version section does not establish that its tag or crates exist.
   after one call to the new `SqliteSupervision::upgrade_event_schema`, which
   rebuilds the events table and keeps every row (found while building a camera
   adapter for an acceptance application).
+- `rullst-supervision` (Experimental): `MediaSample::loudness(LoudnessStatistics::new(mean_dbfs,
+  peak_dbfs, active_fraction, window_ms)?)` (`SampleFormat::LoudnessStatistics`)
+  gives an audio-activity adapter the loudness of up to five seconds of
+  microphone input with no audio, so a microphone check can send four numbers
+  instead of PCM: the mean and loudest frame level in dBFS (`-120` to 0), the
+  share of frames above the client's activity threshold and the window length
+  in milliseconds (at most 5,000, like a PCM sample). Out-of-range, NaN and
+  infinite values are refused, and a statistics sample sent to an adapter of
+  the other kind is `InvalidInput`. The accessor of the brightness statistics
+  added above is `MediaSample::luminance_statistics()`, next to the new
+  `loudness_statistics()` (found while building a microphone check for an
+  acceptance application).
 - `rullst-labs` (Experimental): `ExecutionFailure::TimeLimit`. A runner that
   stops an attempt at the wall limit and confirms its teardown reports
   `Rejected(TimeLimit)` through `complete`; the job ends `Failed`, so the

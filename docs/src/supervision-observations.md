@@ -81,6 +81,21 @@ Enable `analysis` plus `sqlite` to call `SqliteSupervision::analyze`. The
   summarize, at most 16,777,216) and no bytes, for a camera-presence adapter
   that needs no image: the browser computes them and no frame leaves it.
   Ranges are checked; like any client report, the values can be forged.
+  `luminance_statistics()` returns them to the adapter.
+- Since 13.0.0-alpha.5, `MediaSample::loudness(LoudnessStatistics::new(mean_dbfs,
+  peak_dbfs, active_fraction, window_ms)?)` is the audio counterpart, for an
+  audio-activity adapter that needs no audio. The browser measures the RMS
+  level of short frames of up to five seconds of microphone input (the length
+  of the longest PCM sample) and sends four numbers: the mean and the loudest
+  frame level in dBFS (`-120` to 0, mean not above peak; report quieter frames
+  and digital silence as `-120`), the share of frames above its own activity
+  threshold (0–1) and the window length in milliseconds (1 to 5,000). No
+  sample leaves the browser, and `loudness_statistics()` returns the numbers to
+  the adapter, which must know the client's frame length and threshold. Ranges
+  are checked, NaN and infinite values refused; the values can be forged too.
+  A statistics sample goes only to an adapter of its kind: brightness to camera
+  presence, loudness to audio activity; any other pairing is `InvalidInput`
+  before the adapter runs.
 - `AnalysisOptions`: a 1–15 second orchestration timeout. Simulated adapters are
   rejected unless `allow_simulated_for_testing()` is explicitly selected.
 

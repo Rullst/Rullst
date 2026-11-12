@@ -89,6 +89,9 @@ mod exams;
 #[path = "sqlite_cases/isolation.rs"]
 mod isolation;
 #[cfg(feature = "analysis")]
+#[path = "sqlite_cases/loudness.rs"]
+mod loudness;
+#[cfg(feature = "analysis")]
 #[path = "sqlite_cases/obscured.rs"]
 mod obscured;
 #[path = "sqlite_cases/observations.rs"]
