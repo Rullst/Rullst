@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794485553129,
+  "lastUpdate": 1794489851724,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -21479,6 +21479,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3818,
             "range": "± 31",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "01556989b2e9505f40d30e6e1fa620084ed92ff5",
+          "message": "Merge pull request #671 from Rullst/fix/v13-alpha5-public-explicit-key-encryption\n\nfix(orm): keep the explicit-key encryption helpers public and documented",
+          "timestamp": "2026-11-12T10:08:31-03:00",
+          "tree_id": "a01cad114fdd4c6ada74d88b066c11c9088f9223",
+          "url": "https://github.com/Rullst/Rullst/commit/01556989b2e9505f40d30e6e1fa620084ed92ff5"
+        },
+        "date": 1794489850754,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 932,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 756,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1701,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3763,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
