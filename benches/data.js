@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794512161451,
+  "lastUpdate": 1794516901484,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -33453,6 +33453,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1730,
             "range": "± 33",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ccbf205f9058fd8aa01d16d92cc39ec9276729d",
+          "message": "Merge pull request #686 from Rullst/test/v13-alpha5-deception-registry-race\n\ntest(security): stop comparing the global decoy registry across two reads",
+          "timestamp": "2026-11-12T17:50:34-03:00",
+          "tree_id": "1e22fa0b81fc80d3f86a27118fbf16b2b4fed003",
+          "url": "https://github.com/Rullst/Rullst/commit/3ccbf205f9058fd8aa01d16d92cc39ec9276729d"
+        },
+        "date": 1794516897341,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 540,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 691,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 346,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1329,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
