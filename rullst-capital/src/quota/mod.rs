@@ -470,10 +470,10 @@ pub(crate) fn validate_replay(
 }
 
 pub(crate) fn random_claim_token() -> Result<String, QuotaError> {
-    use ring::rand::{SecureRandom, SystemRandom};
+    use rand::{TryRng, rngs::SysRng};
     let mut bytes = [0_u8; 16];
-    SystemRandom::new()
-        .fill(&mut bytes)
+    SysRng
+        .try_fill_bytes(&mut bytes)
         .map_err(|_| QuotaError::StorageUnavailable)?;
     Ok(hex::encode(bytes))
 }

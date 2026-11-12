@@ -26,10 +26,7 @@ fn limits() -> MultipartLimits {
     MultipartLimits::new(u64::from(PART) * 3, PART, Duration::from_secs(3600)).unwrap()
 }
 fn checksum(bytes: &[u8]) -> [u8; 32] {
-    ring::digest::digest(&ring::digest::SHA256, bytes)
-        .as_ref()
-        .try_into()
-        .unwrap()
+    <sha2::Sha256 as sha2::Digest>::digest(bytes).into()
 }
 
 #[tokio::test]

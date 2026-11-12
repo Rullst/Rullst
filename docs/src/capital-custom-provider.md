@@ -22,8 +22,8 @@ cargo run -p rullst-capital --example custom_provider
 In an application, the same types are available through the facade as
 `rullst::capital::*` with the `capital` feature. `BillingProvider` is an
 `#[async_trait]` trait: use the `async-trait` crate, as the example does, or
-the facade's `rullst::async_trait`. The example's HMAC check uses `ring`, `hex`
-and `subtle`; add equivalent crates to your own `Cargo.toml`.
+the facade's `rullst::async_trait`. The example's HMAC check uses `hmac`, `sha2`,
+`hex` and `subtle`; add equivalent crates to your own `Cargo.toml`.
 
 ## What the framework does and what the adapter does
 
@@ -52,7 +52,7 @@ Points that matter for security and testing:
   configuration error; a `mock_*` secret selects `WebhookVerificationMode::Mock`.
 - **Authenticate before parsing.** `handle_webhook` verifies the exact body
   bytes with the gateway's documented algorithm and a constant-time comparison
-  (`ring::hmac::verify` here), and checks the timestamp window when the protocol
+  (`hmac::Mac::verify_slice` here), and checks the timestamp window when the protocol
   signs one. Mock fixtures still require the configured `mock_*` secret.
 - **Map only documented states.** An unknown status or a missing identity is a
   `PayloadParseError`, never `Active`.

@@ -78,8 +78,8 @@ impl MultipartStorage {
         if self.part_size(&state, number)? != bytes.len() as u64 {
             return Err(MultipartError::InvalidInput);
         }
-        let actual = ring::digest::digest(&ring::digest::SHA256, bytes);
-        if !bool::from(actual.as_ref().ct_eq(&sha256)) {
+        let actual = <sha2::Sha256 as sha2::Digest>::digest(bytes);
+        if !bool::from(actual.as_slice().ct_eq(&sha256)) {
             return Err(MultipartError::Checksum);
         }
         let response = self

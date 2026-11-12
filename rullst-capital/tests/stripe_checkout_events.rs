@@ -12,14 +12,17 @@ fn fixture(kind: &str) -> Value {
 fn sign(body: &Value) -> (Vec<u8>, HashMap<String, String>) {
     let body = serde_json::to_vec(body).unwrap();
     let timestamp = chrono::Utc::now().timestamp();
-    let key = ring::hmac::Key::new(ring::hmac::HMAC_SHA256, b"whsec_fixture");
-    let mut signer = ring::hmac::Context::with_key(&key);
-    signer.update(format!("{timestamp}.").as_bytes());
-    signer.update(&body);
+    let mut signer =
+        <hmac::Hmac<sha2::Sha256> as hmac::KeyInit>::new_from_slice(b"whsec_fixture").unwrap();
+    hmac::Mac::update(&mut signer, format!("{timestamp}.").as_bytes());
+    hmac::Mac::update(&mut signer, &body);
     let mut headers = HashMap::new();
     headers.insert(
         "stripe-signature".into(),
-        format!("t={timestamp},v1={}", hex::encode(signer.sign())),
+        format!(
+            "t={timestamp},v1={}",
+            hex::encode(hmac::Mac::finalize(signer).into_bytes())
+        ),
     );
     (body, headers)
 }

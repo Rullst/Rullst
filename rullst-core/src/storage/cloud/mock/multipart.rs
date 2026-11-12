@@ -133,9 +133,9 @@ impl MockStore {
                 .and_then(|n| n.checked_add(body.len()))
                 .filter(|n| *n <= MAX_BYTES)
                 .ok_or(CloudError::MockUnavailable)?;
-            let digest = ring::digest::digest(&ring::digest::SHA256, body);
+            let digest = <sha2::Sha256 as sha2::Digest>::digest(body);
             let mut etag = String::from("\"");
-            for byte in digest.as_ref() {
+            for byte in digest.iter() {
                 use std::fmt::Write;
                 write!(etag, "{byte:02x}").map_err(|_| MultipartError::InvalidInput)?;
             }

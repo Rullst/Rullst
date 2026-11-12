@@ -745,6 +745,20 @@ A prepared version section does not establish that its tag or crates exist.
   after the ORM pool exists, and the supervision guide says that a parental
   window is one period of at most 30 days. `AGENTS.md` lists the alpha.5
   state of the crates.
+- `rullst-core` and `rullst-capital` hash and sign with the pure-Rust
+  RustCrypto `sha2` and `hmac` crates instead of `ring`, at the versions
+  already in the dependency graph. Every digest, identifier and stored key is
+  byte-identical: FIPS 180-2 and RFC 4231 known-answer tests and
+  independently computed vectors pin them, including Capital's webhook replay
+  keys and Stripe inbox scope. Stripe signatures are checked with
+  `Mac::verify_slice` (constant time), and Capital's quota claim tokens come
+  from the operating system through `rand`'s `SysRng`. Core keeps `ring` only
+  as an optional dependency of `storage-multipart`, for the AES-256-GCM
+  recovery records. The Blank and API starters compile 291 normal crates
+  instead of 293 (`ring` and `getrandom` 0.2 are gone); their `Cargo.lock`
+  still lists 397 packages, and the SaaS starter (398 packages, 319 crates) is
+  unchanged, because `rullst-auth`, which uses `ring` for passkeys, stays in
+  their dependency graphs.
 
 ### Removed
 

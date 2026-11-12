@@ -4085,8 +4085,12 @@ provider](capital-custom-provider.md)); the
   a Rullst crate makes (reqwest, SQLx, Redis, SMTP, OTLP). No Rullst
   crate enables rustls' `ring` feature or a ring TLS feature of SQLx,
   lettre or testcontainers.
-* **Primitives:** `ring` stays a direct dependency for HMAC, digests,
-  randomness and signatures, because it builds for wasm and edge targets.
+* **Primitives:** `rullst-core` and `rullst-capital` hash and sign with the
+  pure-Rust RustCrypto `sha2` and `hmac` crates (since 13.0.0-alpha.5); Core
+  keeps `ring` only for the AES-256-GCM recovery records of its
+  `storage-multipart` feature. In the other crates `ring` stays a direct
+  dependency for HMAC, digests, randomness and signatures, because it builds
+  for wasm and edge targets.
 * **Process default:** `Server` start-up (Core `orm`, `storage-s3` or
   `telemetry`), the OTLP exporter, Redis TLS connections and the standalone
   `rullst-studio` binary install aws-lc-rs as the rustls process default only

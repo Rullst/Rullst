@@ -1,7 +1,7 @@
 //! Immutable signed Stripe event metadata for caller-owned transactional processing.
 
 use crate::{CapitalError, WebhookEvent, WebhookVerificationMode};
-use ring::digest::{Context, SHA256};
+use sha2::{Digest, Sha256};
 
 /// A bounded Stripe subscription event returned only by the provider verifier.
 ///
@@ -88,14 +88,14 @@ impl StripeSubscriptionEvent {
     /// silently applied as another event. Include the configured account and
     /// mode in the durable namespace; no platform account is inferred here.
     pub fn mutation_digest(&self) -> [u8; 32] {
-        let mut hash = Context::new(&SHA256);
+        let mut hash = Sha256::new();
         hash.update(b"rullst.stripe.subscription-event-mutation.v1\0");
-        hash.update(&[
+        hash.update([
             u8::from(self.livemode),
             u8::from(self.verification_mode == WebhookVerificationMode::Real),
         ]);
-        hash.update(&self.created_at.to_be_bytes());
-        hash.update(&self.subscription.ends_at.unwrap_or(0).to_be_bytes());
+        hash.update(self.created_at.to_be_bytes());
+        hash.update(self.subscription.ends_at.unwrap_or(0).to_be_bytes());
         for field in [
             self.event_id(),
             self.event_type(),
@@ -108,12 +108,10 @@ impl StripeSubscriptionEvent {
             &self.subscription.plan_id,
             self.subscription.status.as_str(),
         ] {
-            hash.update(&(field.len() as u64).to_be_bytes());
+            hash.update((field.len() as u64).to_be_bytes());
             hash.update(field.as_bytes());
         }
-        let mut digest = [0; 32];
-        digest.copy_from_slice(hash.finish().as_ref());
-        digest
+        hash.finalize().into()
     }
 }
 

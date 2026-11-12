@@ -275,3 +275,16 @@ fn replay_provider_names_are_bounded_ascii_identifiers() {
     store.record_payload(&"p".repeat(64), b"payload").unwrap();
     store.record_event_key("pay-pal_v2.0", "evt_1").unwrap();
 }
+
+#[test]
+fn replay_keys_are_sha256_known_answers() {
+    // SHA-256 of `provider NUL domain NUL material`, computed independently.
+    assert_eq!(
+        payload_key("stripe", b"abc"),
+        "e19f3411b0e25b75c326ca27f94deb3fa15b35abc391fb6f5ff4f45e8e76d5b4"
+    );
+    assert_eq!(
+        event_key_hash("stripe", "evt_kat"),
+        "4dcad8e27b501c8b3fbf4468e032f1febff70f543af1f55d7a693b082ebe6d44"
+    );
+}

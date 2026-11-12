@@ -2,7 +2,7 @@
 
 use crate::CapitalError;
 use crate::providers::stripe_contract::{API_VERSION, valid_reference};
-use ring::digest::{Context, SHA256};
+use sha2::{Digest, Sha256};
 use std::fmt;
 
 /// Immutable input for one hosted Stripe subscription checkout attempt.
@@ -91,7 +91,7 @@ impl StripeCheckoutRequest {
     /// Scope the attempt by provider account and test/live mode as well as this
     /// digest. This value is not encryption, a signature or durable deduplication.
     pub fn request_digest(&self) -> [u8; 32] {
-        let mut hash = Context::new(&SHA256);
+        let mut hash = Sha256::new();
         hash.update(b"rullst.stripe.subscription-checkout.v1\0");
         hash.update(API_VERSION.as_bytes());
         hash.update(b"\0");
@@ -103,13 +103,10 @@ impl StripeCheckoutRequest {
             self.success_url(),
             self.cancel_url(),
         ] {
-            hash.update(&(field.len() as u64).to_be_bytes());
+            hash.update((field.len() as u64).to_be_bytes());
             hash.update(field.as_bytes());
         }
-        let digest = hash.finish();
-        let mut result = [0; 32];
-        result.copy_from_slice(digest.as_ref());
-        result
+        hash.finalize().into()
     }
 }
 
