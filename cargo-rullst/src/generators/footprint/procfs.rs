@@ -1,5 +1,5 @@
-//! Process CPU time and memory from Linux `/proc`. Other platforms report
-//! `NOT MEASURED` instead of guessing.
+//! Process CPU time and memory from Linux `/proc`, the readings behind
+//! [`super::process`] on Linux.
 
 /// `utime + stime` clock ticks from the text of `/proc/<pid>/stat`.
 ///
@@ -26,20 +26,11 @@ pub(super) fn status_bytes(status: &str, key: &str) -> Option<u64> {
 }
 
 /// Clock ticks per second used by `/proc/<pid>/stat` (`_SC_CLK_TCK`).
-#[cfg(unix)]
 pub(super) fn ticks_per_second() -> Option<u64> {
     Some(rustix::param::clock_ticks_per_second()).filter(|ticks| *ticks > 0)
 }
 
-#[cfg(not(unix))]
-pub(super) fn ticks_per_second() -> Option<u64> {
-    None
-}
-
 fn read(pid: u32, file: &str) -> Option<String> {
-    if !cfg!(target_os = "linux") {
-        return None;
-    }
     std::fs::read_to_string(format!("/proc/{pid}/{file}")).ok()
 }
 
@@ -61,11 +52,8 @@ pub(super) fn cpu_seconds(start: u64, end: u64, ticks_per_second: u64) -> Option
     (ticks_per_second > 0).then(|| ticks as f64 / ticks_per_second as f64)
 }
 
-/// The first `model name` of `/proc/cpuinfo` (Linux), for the report header.
+/// The first `model name` of `/proc/cpuinfo`, for the report header.
 pub(super) fn cpu_model() -> Option<String> {
-    if !cfg!(target_os = "linux") {
-        return None;
-    }
     let cpuinfo = std::fs::read_to_string("/proc/cpuinfo").ok()?;
     cpuinfo_model(&cpuinfo)
 }
@@ -120,7 +108,6 @@ mod tests {
         assert_eq!(cpuinfo_model("processor\t: 0\n"), None);
     }
 
-    #[cfg(target_os = "linux")]
     #[test]
     fn the_current_process_can_be_sampled() {
         let pid = std::process::id();
@@ -131,7 +118,6 @@ mod tests {
         assert!(ticks_per_second().is_some_and(|ticks| ticks >= 10));
     }
 
-    #[cfg(target_os = "linux")]
     #[test]
     fn samples_match_the_proc_files() {
         let direct = || {

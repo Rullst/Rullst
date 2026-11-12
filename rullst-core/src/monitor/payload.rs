@@ -54,6 +54,8 @@ pub(super) struct Http {
     pub(super) routes_overflowed: bool,
     pub(super) requests_total: u64,
     pub(super) status_total: StatusClasses,
+    /// Response body bytes sent since start, after compression.
+    pub(super) bytes_total: u64,
     pub(super) window: WindowReport,
     pub(super) routes: Vec<RouteReport>,
 }
@@ -65,6 +67,8 @@ pub(super) struct WindowReport {
     pub(super) requests_per_second: f64,
     pub(super) status: StatusClasses,
     pub(super) latency_ms: Option<Latency>,
+    /// Response body bytes sent in the window.
+    pub(super) bytes: u64,
 }
 
 #[derive(Debug, Serialize)]
@@ -73,6 +77,7 @@ pub(super) struct RouteReport {
     pub(super) route: String,
     pub(super) requests_total: u64,
     pub(super) status_total: StatusClasses,
+    pub(super) bytes_total: u64,
     pub(super) window: WindowReport,
 }
 
@@ -172,9 +177,11 @@ impl Document {
 pub(super) fn http(collector: &Collector, now: Duration) -> Http {
     let routes = collector.routes();
     let mut requests_total = 0_u64;
+    let mut bytes_total = 0_u64;
     let mut status_total = StatusClasses::default();
     for route in &routes {
         requests_total = requests_total.saturating_add(route.stats.requests_total);
+        bytes_total = bytes_total.saturating_add(route.stats.bytes_total);
         status_total.add(&route.stats.status_total);
     }
     Http {
@@ -183,6 +190,7 @@ pub(super) fn http(collector: &Collector, now: Duration) -> Http {
         routes_overflowed: collector.overflowed(),
         requests_total,
         status_total,
+        bytes_total,
         window: window_report(&total_window(&routes, now), now),
         routes: routes
             .iter()
@@ -197,6 +205,7 @@ fn route_report(route: &RouteSnapshot, now: Duration) -> RouteReport {
         route: route.route.to_string(),
         requests_total: route.stats.requests_total,
         status_total: route.stats.status_total,
+        bytes_total: route.stats.bytes_total,
         window: window_report(&route.stats.window(now), now),
     }
 }
@@ -210,6 +219,7 @@ fn window_report(counts: &WindowCounts, now: Duration) -> WindowReport {
         requests_per_second: (rate * 1_000.0).round() / 1_000.0,
         status: counts.status,
         latency_ms: counts.histogram.latency(),
+        bytes: counts.bytes,
     }
 }
 

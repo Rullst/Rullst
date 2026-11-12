@@ -17,3 +17,8 @@ git-repository-url = "https://github.com/Rullst/Rullst"
 edit-url-template = "https://github.com/Rullst/Rullst/edit/main/docs/{path}"
 additional-css = ["theme/release-status.css"]
 additional-js = ["theme/release-status.js"]
+
+# Pages renamed in 13.0.0-alpha.5; the 13.0.0-alpha.4 CLI links the old ones.
+[output.html.redirect]
+"/green.html" = "footprint.html"
+"/green-software-roadmap.html" = "resource-efficiency-roadmap.html"

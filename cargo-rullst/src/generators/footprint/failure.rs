@@ -46,7 +46,7 @@ impl Failure {
             stage: "build",
             title: "Release build failed",
             message: error_report::sanitize(&build_excerpt(log)),
-            fix: "Fix the build errors (`cargo build --release`), then run green again.".into(),
+            fix: "Fix the build errors (`cargo build --release`), then run footprint again.".into(),
         }
     }
 
@@ -70,7 +70,7 @@ impl Failure {
             stage: "reach",
             title: "App not reachable",
             message: format!("Nothing answered on {url}."),
-            fix: "Start the app first (for example `cargo rullst dev` or the release binary), or omit --url to let green build and start it.".into(),
+            fix: "Start the app first (for example `cargo rullst dev` or the release binary), or omit --url to let footprint build and start it.".into(),
         }
     }
 

@@ -1,5 +1,6 @@
-//! What gets measured: a loopback-only URL, the process listening on it, or
-//! the project's release binary started on a free loopback port.
+//! What gets measured: a loopback-only URL or the project's release binary
+//! started on a free loopback port. [`super::process`] finds the process
+//! listening on a URL's port.
 use std::collections::VecDeque;
 use std::io::{self, Read};
 use std::net::IpAddr;
@@ -20,7 +21,7 @@ pub(crate) enum UrlError {
     #[error("only http:// URLs are supported, such as http://127.0.0.1:3000")]
     Scheme,
     #[error(
-        "green measures loopback addresses only (127.0.0.0/8, ::1 or localhost); `{0}` is not loopback"
+        "footprint measures loopback addresses only (127.0.0.0/8, ::1 or localhost); `{0}` is not loopback"
     )]
     NotLoopback(String),
     #[error("the URL must not contain credentials, a query or a fragment")]
@@ -82,23 +83,6 @@ pub(super) fn request_url(base: &reqwest::Url, path: &str) -> reqwest::Url {
     url
 }
 
-/// Inodes of sockets listening on `port` in a `/proc/net/tcp{,6}` table.
-pub(super) fn listening_inodes(table: &str, port: u16) -> Vec<u64> {
-    const LISTEN: &str = "0A";
-    table
-        .lines()
-        .skip(1)
-        .filter_map(|line| {
-            let fields: Vec<&str> = line.split_whitespace().collect();
-            let (_, local_port) = fields.get(1)?.rsplit_once(':')?;
-            let listening = *fields.get(3)? == LISTEN;
-            let inode: u64 = fields.get(9)?.parse().ok()?;
-            (listening && u16::from_str_radix(local_port, 16).ok()? == port && inode != 0)
-                .then_some(inode)
-        })
-        .collect()
-}
-
 /// The process found listening on the URL's port.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum Listener {
@@ -106,57 +90,8 @@ pub(super) enum Listener {
     Unknown(&'static str),
 }
 
-/// Finds the one process listening on `port` by matching socket inodes
-/// against `/proc/<pid>/fd` links (Linux; same-user processes only).
-pub(super) fn listening_process(port: u16) -> Listener {
-    if !cfg!(target_os = "linux") {
-        return Listener::Unknown("process lookup by port uses /proc and is Linux-only");
-    }
-    let mut inodes = Vec::new();
-    for table in ["/proc/net/tcp", "/proc/net/tcp6"] {
-        if let Ok(text) = std::fs::read_to_string(table) {
-            inodes.extend(listening_inodes(&text, port));
-        }
-    }
-    if inodes.is_empty() {
-        return Listener::Unknown("no listening socket found for the port in /proc/net/tcp");
-    }
-    let targets: Vec<String> = inodes
-        .iter()
-        .map(|inode| format!("socket:[{inode}]"))
-        .collect();
-    let mut owners = Vec::new();
-    let Ok(processes) = std::fs::read_dir("/proc") else {
-        return Listener::Unknown("/proc is not readable");
-    };
-    for entry in processes.flatten() {
-        let Some(pid) = entry
-            .file_name()
-            .to_str()
-            .and_then(|name| name.parse::<u32>().ok())
-        else {
-            continue;
-        };
-        // Other users' descriptors are unreadable and skipped.
-        let Ok(descriptors) = std::fs::read_dir(entry.path().join("fd")) else {
-            continue;
-        };
-        let owns = descriptors.flatten().any(|descriptor| {
-            std::fs::read_link(descriptor.path()).is_ok_and(|link| {
-                targets
-                    .iter()
-                    .any(|target| link.as_os_str() == target.as_str())
-            })
-        });
-        if owns && !owners.contains(&pid) {
-            owners.push(pid);
-        }
-    }
-    single_owner(&owners)
-}
-
 /// The listener when exactly one process owns the socket.
-fn single_owner(owners: &[u32]) -> Listener {
+pub(super) fn single_owner(owners: &[u32]) -> Listener {
     match owners {
         [pid] => Listener::Found(*pid),
         [] => Listener::Unknown("the listening process belongs to another user or is not visible"),
@@ -170,7 +105,7 @@ pub(super) fn free_port() -> io::Result<u16> {
     Ok(listener.local_addr()?.port())
 }
 
-/// The release binary started by `green`, stopped when dropped.
+/// The release binary started by `footprint`, stopped when dropped.
 pub(super) struct OwnedApp {
     child: Child,
     stderr: Arc<Mutex<VecDeque<u8>>>,

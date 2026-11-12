@@ -10,6 +10,10 @@ use super::rust::FileContext;
 use super::{Collector, Rule, api_cleanups};
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
 
+#[path = "tokens/names.rs"]
+mod names;
+use names::CodeNames;
+
 /// Identifiers whose presence (in a path, type, call or method) is enough.
 const IDENT_RULES: &[(&str, &Rule)] = &[
     ("SqlRecoveryStore", &AUTH_RECOVERY_MIGRATE),
@@ -98,6 +102,7 @@ pub(super) fn scan(
         context,
         out,
         facts: TokenFacts::default(),
+        names: CodeNames::of(stream.clone()),
     };
     scanner.level(stream, None);
     scanner.facts
@@ -107,6 +112,7 @@ struct Scanner<'a, 'b> {
     context: &'a FileContext<'a>,
     out: &'b mut Collector,
     facts: TokenFacts,
+    names: CodeNames,
 }
 
 fn line(tree: &TokenTree) -> usize {
@@ -352,7 +358,7 @@ impl Scanner<'_, '_> {
                 ("FieldKind", "Number") if comparison_macro || compared(tokens, start, end) => {
                     self.hit(&NEXUS_FIELD_KIND_NUMBER, at);
                 }
-                ("FieldKind", "Url") if self.context.text.contains("captions_url") => {
+                ("FieldKind", "Url") if self.names.captions_url => {
                     self.hit(&LMS_MEDIA_KINDS, at);
                 }
                 ("QuotaError", "InvalidRequest") => self.hit(&ZERO_TIER, at),
@@ -393,7 +399,7 @@ impl Scanner<'_, '_> {
             {
                 self.hit(&CONNECT_GITHUB_EMAIL, at);
             }
-            [.., "Orm", "transaction"] if self.context.text.contains("DatabaseError") => {
+            [.., "Orm", "transaction"] if self.names.database_error => {
                 self.hit(&ORM_TRANSACTION_ERRORS, at);
             }
             [.., "Profile", "find"] if args.len() == 1 && args[0].to_string() == "1" => {
@@ -449,7 +455,7 @@ impl Scanner<'_, '_> {
             }
             "restore" if args.is_empty() => self.hit(&ORM_MISSING_ROW, at),
             "with_openapi" if self.context.facts.utoipa_below_6 => self.hit(&UTOIPA_6, at),
-            "paginate" if !self.context.text.contains("MAX_PAGE") => self.hit(&PAGE_BOUNDS, at),
+            "paginate" if !self.names.max_page => self.hit(&PAGE_BOUNDS, at),
             _ => {}
         }
     }

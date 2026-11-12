@@ -1,12 +1,13 @@
-# Green Software Roadmap
+# Resource Efficiency Roadmap
 
 Status: **planned (recorded 2026-10-01)** for the v13 feature line. Nothing on
 this page is a shipped capability unless it links to existing documentation.
-Item 1 and parts of items 3, 4, 6 and 7 exist in the v13 development source
-(`13.0.0-alpha.4`); see [measured release defaults](#measured-release-defaults).
-Page weight in the `green` report and idle memory and CPU on macOS and Windows
-are planned for 13.0.0-alpha.5, the 13.0 feature freeze; the rest comes after
-13.0.
+Item 1 and parts of items 3, 4, 5, 6 and 7 exist in the v13 development source
+(`13.0.0-alpha.5`); see [measured release defaults](#measured-release-defaults).
+The rest comes after 13.0. The page was the "Green Software Roadmap" until
+13.0.0-alpha.5; it follows the methods of the green software discipline, such
+as the Green Software Foundation's SCI, without describing Rullst or the
+applications built with it as green.
 
 ## Goal
 
@@ -43,16 +44,16 @@ can choose to publish.
 
 | # | Item | Notes |
 | :--- | :--- | :--- |
-| 1 | **`cargo rullst green` report** | **13.0.0-alpha.4 development source, Experimental command of the CLI:** [`cargo rullst green`](green.md) (formerly `footprint`) reports only measured figures, each with its method: release binary size, a named local container image's size, the started app's idle resident memory, the `Cargo.lock` dependency count and, with `--bench`, the app's CPU time per request under a bounded loopback load. It measures no energy; a Software Carbon Intensity figure (SCI, ISO/IEC 21031:2024) appears only as a labelled estimate from the measured CPU time and the power figure and grid intensity you supply. Still planned: a fixed multi-route reference scenario, repeated runs with a reported spread, and stated uncertainty for the estimate's inputs. |
+| 1 | **`cargo rullst footprint` report** | **13.0.0-alpha.5 development source, Experimental command of the CLI:** [`cargo rullst footprint`](footprint.md) (`green` in 13.0.0-alpha.4) reports only measured figures, each with its method: release binary size, a named local container image's size, the app's idle resident memory (Linux, macOS and Windows), the `Cargo.lock` dependency count, with `--bench` the app's CPU time and response bytes per request under a bounded loopback load, and with `--page-weight` a page's bytes and requests on a first and a repeat visit and the third-party origins it references. It measures no energy; a Software Carbon Intensity figure (SCI, ISO/IEC 21031:2024) appears only as a labelled estimate from the measured CPU time and bytes and the power, network and grid figures you supply. It is a measurement and an estimate, not a certification or an environmental claim. Still planned: a fixed multi-route reference scenario, repeated runs with a reported spread, and stated uncertainty for the estimate's inputs. |
 | 2 | **Reproducible public benchmark** | The same reference application implemented idiomatically in Rullst and in other frameworks, with published code, scenario, hardware and dates, so comparisons are verifiable instead of claimed. |
 | 3 | **Efficient release defaults** | v13 source: generated projects get a tuned `[profile.release]` (thin LTO, one codegen unit, stripped symbols; `panic` stays `unwind` so one panicking handler cannot stop the server) and a distroless runtime image ([CLI reference](cli_reference.md#cargo-rullst-new-name)). Remaining: measured image sizes and fast start-up suitable for scale-to-zero hosting. |
 | 4 | **Efficient HTTP defaults** | v13 source: the standard `/static` mount sends `Cache-Control: public, max-age=31536000, immutable` for content-hashed file names and `no-cache` with `ETag`/`Last-Modified` revalidation (`304`) for other files ([static assets](tutorials/10-static-assets-and-compression.md#step-3-cache-headers)). Pre-compressed assets already exist: `cargo rullst build` writes Brotli/Zstandard siblings that the Core static handler serves. Remaining: fingerprinted names written by the asset pipeline itself and modern image formats. |
-| 5 | **Lean pages** | Keep zero-bundle HTMX rendering the default, report page weight in `cargo rullst dash`, and warn on oversized assets. |
+| 5 | **Lean pages** | Keep zero-bundle HTMX rendering the default. 13.0.0-alpha.5: `cargo rullst footprint --page-weight` reports a page's first-visit and repeat-visit bytes and requests ([page weight](footprint.md#page-weight)). Remaining: page weight in `cargo rullst dash` and warnings on oversized assets. |
 | 6 | **Database efficiency** | Development-time N+1 query warnings are in the v13 dash ([N+1 query warning](cli_reference.md#n1-query-warning)); slow-query hints are already visible there. Default pagination and index suggestions remain planned. |
 | 7 | **Carbon-aware jobs** | Started in v13: see [carbon-aware deferrable jobs](#carbon-aware-deferrable-jobs-v13). Region selection remains planned. |
 | 8 | **AI efficiency** | Token usage is already reported by `rullst-ai`; add response caching, prompt-size budgets and guidance for choosing smaller or local models when they are sufficient. |
 | 9 | **Resource view in the dash** | Show the app process's CPU and memory next to the request metrics so developers see the cost of a change while they work. |
-| 10 | **Green hosting guidance** | Document how to choose lower-carbon regions and providers, and show region information during `cargo rullst deploy` when it is available. |
+| 10 | **Lower-carbon hosting guidance** | Document how to choose lower-carbon regions and providers, and show region information during `cargo rullst deploy` when it is available. |
 
 ## Measured release defaults
 

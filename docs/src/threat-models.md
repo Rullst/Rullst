@@ -161,8 +161,8 @@ mounts with `Server::with_monitor`. The standalone Studio that reads it for
 several projects from the developer's machine (phases 2 and 3) is modelled in
 `TM-STUDIO-3`.
 
-**Assets:** operational metrics of a production process (request counts, rates
-and latency per route pattern, status classes, queue depth and worker
+**Assets:** operational metrics of a production process (request counts, rates,
+latency and response bytes per route pattern, status classes, queue depth and worker
 activity, possible N+1 query fingerprints, process radar); the monitor tokens;
 the availability of the application that serves the endpoint.
 
