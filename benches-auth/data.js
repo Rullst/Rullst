@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794469799837,
+  "lastUpdate": 1794472929719,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -21191,6 +21191,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4250,
             "range": "± 63",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c045e3ea4da2bcdd7e9d733e5f03696d33e22635",
+          "message": "Merge pull request #652 from Rullst/feat/v13-alpha5-remove-mongodb\n\nfeat(orm): remove the MongoDB and DuckDB adapters in favour of application recipes",
+          "timestamp": "2026-11-12T05:26:59-03:00",
+          "tree_id": "71d961e7c9ede9e753e0ccd7ac38948f5a9ab1b9",
+          "url": "https://github.com/Rullst/Rullst/commit/c045e3ea4da2bcdd7e9d733e5f03696d33e22635"
+        },
+        "date": 1794472928697,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 704,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 531,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1283,
+            "range": "± 149",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3222,
+            "range": "± 70",
             "unit": "ns/iter"
           }
         ]
