@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794493265420,
+  "lastUpdate": 1794505134709,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -13355,6 +13355,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 506,
             "range": "± 25",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "91f19dd675711f7accdbc2271792a438f725f16c",
+          "message": "Merge pull request #685 from Rullst/train/v13-alpha5-batch-2\n\nchore: alpha.5 merge batch 2 (eight reviewed PRs)",
+          "timestamp": "2026-11-12T14:20:21-03:00",
+          "tree_id": "0e8ec3fdc8e99e0a8fa5a67f4cf364b7af9f5f96",
+          "url": "https://github.com/Rullst/Rullst/commit/91f19dd675711f7accdbc2271792a438f725f16c"
+        },
+        "date": 1794505134086,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 506,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
