@@ -13,7 +13,8 @@
 # dependency_count was lowered from 417 (measured 397) when the `rullst`
 # facade stopped forwarding `strict-*` and `drivers-all` to the optional
 # rullst-nexus: that kept rullst-nexus, rullst-auth and 23 crates they need
-# in this starter's Cargo.lock although none of them is compiled.
+# in this starter's Cargo.lock although none of them is compiled (374
+# measured by run 43234888928 on 2026-11-12).
 #
 # To raise a limit on purpose, copy the "Suggested limit" of the job summary
 # into this file in the pull request that causes the increase, update the
