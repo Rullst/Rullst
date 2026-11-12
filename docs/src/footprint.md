@@ -296,8 +296,21 @@ credentials and checks the budget:
 ```
 
 Compare figures only on the same runner type: hosted runners vary, so leave
-some headroom in time-based limits such as `cpu_ms_per_request`. The
-generated CI workflow of [the testing kit](testing-your-app.md) does not
+some headroom in time-based limits such as `cpu_ms_per_request`.
+
+Rullst's own CI budgets the starters this way: the `Starter footprint
+budgets` job of the repository's `ci.yml` builds the Blank, SaaS and API
+starters in release mode and runs footprint with `--env staging --page-weight
+--bench --budget` against one file per starter in `.github/starter-footprint/`.
+Their limits are the figures measured on a GitHub-hosted Linux runner plus a
+margin (15 % for the binary, 20 % for idle memory, 5 % for dependencies,
+10 % but at least 1 KiB for bytes, none for page requests and third-party
+origins), and `cpu_ms_per_request` is reported there but not limited,
+because it varies from run to run on shared runners. A starter that grows
+past a limit fails the job until the growth is removed or the limit is
+raised on purpose.
+
+The generated CI workflow of [the testing kit](testing-your-app.md) does not
 include this job, because it needs the CLI installed and an application that
 starts in CI; add it when your application does.
 

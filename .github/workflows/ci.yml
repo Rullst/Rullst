@@ -41,6 +41,7 @@ on:
           - vm-deployment
           - first-hour
           - starter-browsers
+          - starter-footprint
   # PRs to main run the Linux gate; the nightly run restores the full
   # cross-platform matrix on the default branch.
   schedule:
@@ -133,7 +134,7 @@ jobs:
     if: >-
       !cancelled() &&
       (github.event_name != 'workflow_dispatch' || inputs.shard != 'packaged-distribution' || inputs.platform == 'all') &&
-      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'vm-deployment' && inputs.shard != 'first-hour' && inputs.shard != 'starter-browsers')) &&
+      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'vm-deployment' && inputs.shard != 'first-hour' && inputs.shard != 'starter-browsers' && inputs.shard != 'starter-footprint')) &&
       (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     name: Code Quality & Format
     runs-on: ubuntu-latest
@@ -186,7 +187,7 @@ jobs:
     # expensive cross-platform suite starts when the PR is ready for review.
     if: >-
       !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
-      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'packaged-distribution' && inputs.shard != 'vm-deployment' && inputs.shard != 'first-hour' && inputs.shard != 'starter-browsers')) &&
+      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'packaged-distribution' && inputs.shard != 'vm-deployment' && inputs.shard != 'first-hour' && inputs.shard != 'starter-browsers' && inputs.shard != 'starter-footprint')) &&
       (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     runs-on: ${{ matrix.os }}
     # Generated CLI applications are real independent Cargo workspaces. Keep
@@ -1210,6 +1211,93 @@ jobs:
         with:
           name: starter-browsers-${{ github.run_attempt }}
           path: ${{ runner.temp }}/starter-browser-artifacts
+          if-no-files-found: warn
+          retention-days: 14
+
+  starter-footprint:
+    name: Starter footprint budgets
+    # Generates the Blank, SaaS and API starters with this checkout's CLI,
+    # builds each in release mode with its generated [profile.release] and
+    # runs `cargo rullst footprint --page-weight --bench` against
+    # .github/starter-footprint/<starter>.toml: binary size, idle memory,
+    # dependencies, bytes per request and page weight have limits, CPU time is
+    # reported only. A starter that grows past a limit fails; raise the limit
+    # in the same pull request when the growth is intended (MAINTAINING.md).
+    # Full manual runs, the nightly run and the `starter-footprint` diagnostic
+    # always run it; ready pull requests only when a framework crate, the
+    # lockfile, the toolchain, the starter templates or this check change (a
+    # first step decides). Branch pushes skip it, so their job inventory is
+    # unchanged. It is not a required release job.
+    if: >-
+      !cancelled() && github.event_name != 'push' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'starter-footprint')
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      RULLST_DISABLE_UPDATE_CHECK: "true"
+    steps:
+      - name: Checkout source without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The pull-request merge commit and its base parent.
+          fetch-depth: 2
+
+      - name: Select the pull requests that can change the starters' footprint
+        id: selection
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" != pull_request ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only HEAD^1 HEAD)"
+          if grep -Eq '^(Cargo\.(toml|lock)|rust-toolchain\.toml|rullst[a-z-]*/(Cargo\.toml|build\.rs|src/|assets/)|cargo-rullst/src/(blueprints/|generators/(project/|auth/|billing|components/|add/frontend/|frontend/|footprint/|dev/))|\.github/(check-starter-footprint\.py|starter-footprint/|dast-generated-app\.py))' <<< "$changed"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No framework crate, lockfile, toolchain, starter template or check change; the nightly and release runs cover this job."
+          fi
+
+      - name: Set up content-addressed compiler cache
+        if: steps.selection.outputs.run == 'true'
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up Rust toolchain
+        if: steps.selection.outputs.run == 'true'
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          # The starters build as a newcomer builds them.
+          rustflags: ""
+          build-warnings: ""
+          cache: false
+
+      - name: Build the CLI from this checkout
+        if: steps.selection.outputs.run == 'true'
+        run: |
+          cargo fetch --locked
+          cargo build --locked -p cargo-rullst --bin cargo-rullst
+
+      - name: Generate, build and measure the starters against their budgets
+        if: steps.selection.outputs.run == 'true'
+        run: |
+          python3 .github/check-starter-footprint.py \
+            --cli target/debug/cargo-rullst \
+            --work "$RUNNER_TEMP/starter-footprint" \
+            --out "$RUNNER_TEMP/starter-footprint-reports"
+
+      - name: Keep the footprint reports
+        if: >-
+          !cancelled() && steps.selection.outputs.run == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: starter-footprint-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/starter-footprint-reports
           if-no-files-found: warn
           retention-days: 14
 
