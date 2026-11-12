@@ -690,6 +690,20 @@ A prepared version section does not establish that its tag or crates exist.
   weighs 64,422 bytes on a first visit instead of 501,296 (87 % less; SaaS
   22,881 instead of 459,755). The LMS and IoT gateway examples ship the same
   file.
+- Generated starters no longer depend directly on `rullst-security`, nor the
+  SaaS starter on `rullst-auth` and `rullst-capital`: their code uses
+  `rullst::security`, `rullst::auth` and `rullst::capital`, and the `make:*`
+  generators enable the facade feature they need (the `contract.rs` of
+  `generate:api` still needs the `rullst-security` dependency its guide asks
+  for). The `rullst` facade no longer forwards `strict-*` and `drivers-all` to
+  `rullst-nexus`, which needs neither (Core and the ORM already get the
+  backend); because of that forwarding, Cargo kept `rullst-nexus`,
+  `rullst-auth` and 23 crates for password hashing and P-256 in the
+  `Cargo.lock` of every application with `strict-*` or `drivers-all` and
+  without `nexus`, although none of them was compiled. Blank and API starters:
+  397 → 374 packages in `Cargo.lock`; SaaS unchanged at 398 (it compiles
+  Nexus). The crates compiled are the same (293 for Blank and API, 319 for
+  SaaS).
 - **Breaking:** `rullst-ai`'s DeepSeek and Ollama providers are presets of the
   OpenAI-compatible adapter. Both services implement the OpenAI request
   shapes, so `DeepSeekProvider` and `OllamaProvider` (with their

@@ -52,11 +52,9 @@ fn stable_blueprint_ids_enable_only_their_required_domain_features() {
     )
     .expect("Blank manifest");
     assert!(saas.contains("\"nexus\", \"auth\", \"mail\", \"capital\""));
-    assert!(saas.contains("rullst-auth = "));
     for feature in ["\"nexus\"", "\"auth\"", "\"mail\"", "\"capital\""] {
         assert!(!blank.contains(feature), "{feature}");
     }
-    assert!(!blank.contains("rullst-auth = "));
 }
 
 #[test]
@@ -86,22 +84,12 @@ fn starters_declare_only_the_framework_crates_their_code_uses() {
         names.sort();
         names
     };
-    // `make:oauth` enables the facade's `oauth-*` feature, so the SaaS
-    // starter does not compile `rullst-connect` and its JWT stack up front.
-    assert_eq!(
-        direct(SAAS_BLUEPRINT_ID),
-        [
-            "rullst",
-            "rullst-auth",
-            "rullst-capital",
-            "rullst-orm",
-            "rullst-security"
-        ]
-    );
-    assert_eq!(
-        direct(BLANK_BLUEPRINT_ID),
-        ["rullst", "rullst-orm", "rullst-security"]
-    );
+    // Generated code names `rullst_orm` directly and reaches auth, billing
+    // and security through the facade; `make:oauth` enables the facade's
+    // `oauth-*` feature, so the SaaS starter does not compile
+    // `rullst-connect` and its JWT stack up front.
+    assert_eq!(direct(SAAS_BLUEPRINT_ID), ["rullst", "rullst-orm"]);
+    assert_eq!(direct(BLANK_BLUEPRINT_ID), ["rullst", "rullst-orm"]);
 }
 
 #[test]
@@ -127,20 +115,10 @@ fn blank_database_project_does_not_compile_an_unmounted_nexus() {
 #[test]
 fn registry_dependencies_preserve_the_cli_prerelease_version() {
     let root = isolated_root();
-    for crate_name in [
-        "rullst",
-        "rullst-orm",
-        "rullst-auth",
-        "rullst-capital",
-        "rullst-connect",
-        "rullst-security",
-    ] {
-        let dependency =
-            dependency_line(&root, crate_name, "12.0.0-rc.7").expect("registry dependency");
-        assert_eq!(
-            dependency,
-            format!("{crate_name} = {{ version = \"=12.0.0-rc.7\" }}\n")
-        );
+    for crate_name in ["rullst", "rullst-orm"] {
+        let source =
+            dependency_source(&root, crate_name, "12.0.0-rc.7").expect("registry dependency");
+        assert_eq!(source, "version = \"=12.0.0-rc.7\"", "{crate_name}");
     }
 }
 

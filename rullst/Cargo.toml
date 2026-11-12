@@ -42,7 +42,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 # No default feature: a database-free application compiles no SQLx driver.
 # Select `orm` with `drivers-all` or one `strict-*` backend, and `queue-sqlite`.
 default = []
-drivers-all = ["orm", "rullst-core/drivers-all", "rullst-studio?/drivers-all", "rullst-nexus?/drivers-all"]
+drivers-all = ["orm", "rullst-core/drivers-all", "rullst-studio?/drivers-all"]
 orm = ["dep:rullst-orm", "rullst-core/orm"]
 orm-turso = ["orm", "rullst-orm/turso"]
 orm-surrealdb = ["orm", "rullst-orm/surrealdb"]
@@ -50,6 +50,9 @@ orm-scout = ["orm", "rullst-orm/scout-http"]
 orm-pgvector = ["orm", "rullst-orm/pgvector"]
 orm-redis = ["orm", "rullst-orm/redis"]
 queue-sqlite = ["rullst-core/queue-sqlite", "rullst-studio?/queue-sqlite"]
+# Nexus reads the backend `rullst-core` and `rullst-orm` already get from
+# `drivers-all` or `strict-*`; forwarding those features to `rullst-nexus`
+# would put it and `rullst-auth` in the lockfile of every application.
 nexus = ["dep:rullst-nexus"]
 # v13 (13.0.0-alpha.4): the Nexus AI assistant (`/nexus/chat`), which `nexus`
 # alone no longer enables; it adds `rullst-ai`.
@@ -114,9 +117,9 @@ iot = ["dep:rullst-iot"]
 # device telemetry receiver.
 iot-ingest = ["iot", "dep:sha2"]
 telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "rullst-core/telemetry"]
-strict-postgres = ["orm", "rullst-core/strict-postgres", "rullst-studio?/strict-postgres", "rullst-nexus?/strict-postgres"]
-strict-mysql = ["orm", "rullst-core/strict-mysql", "rullst-studio?/strict-mysql", "rullst-nexus?/strict-mysql"]
-strict-sqlite = ["orm", "rullst-core/strict-sqlite", "rullst-studio?/strict-sqlite", "rullst-nexus?/strict-sqlite"]
+strict-postgres = ["orm", "rullst-core/strict-postgres", "rullst-studio?/strict-postgres"]
+strict-mysql = ["orm", "rullst-core/strict-mysql", "rullst-studio?/strict-mysql"]
+strict-sqlite = ["orm", "rullst-core/strict-sqlite", "rullst-studio?/strict-sqlite"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
