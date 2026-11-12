@@ -184,11 +184,18 @@ mod tests {
         assert!(empty.routes().is_empty());
         assert!(fresh.contains("/.env"));
         assert!(!fresh.contains("/.env/"));
+        let local = DeceptionRoutes::with_defaults();
+        local.routes.insert("/sorted-registry-trap".to_string());
+        let local_routes = local.routes();
+        assert_eq!(local.len(), DEFAULT_TRAPS.len() + 1);
+        assert_eq!(local_routes.len(), local.len());
+        assert!(local_routes.windows(2).all(|pair| pair[0] < pair[1]));
+        // Other tests register traps in the process-wide registry at the same
+        // time, so its size is never compared across two separate reads.
         try_register_deception_trap("/sorted-registry-trap").expect("valid trap");
         let routes = global_deception_routes().routes();
         assert!(routes.windows(2).all(|pair| pair[0] < pair[1]));
         assert!(routes.iter().any(|route| route == "/sorted-registry-trap"));
-        assert_eq!(routes.len(), global_deception_routes().len());
     }
 
     #[test]
