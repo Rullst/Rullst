@@ -46,10 +46,12 @@ UNRELEASED = "## [Unreleased]"
 NAME = re.compile(r"[0-9a-z][0-9a-z-]*\.md")
 HEADING = re.compile(r"#{1,6}(?:[ \t]|$)")
 FENCE = re.compile(r"[ \t]*(?:```|~~~)")
-HUNK = re.compile(r"@@ -[0-9]+(?:,[0-9]+)? \+([0-9]+)(?:,([0-9]+))? @@")
-RELEASE_BRANCH = re.compile(r"chore/v[0-9]+-release-.+")
-VERSION = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?")
-DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+HUNK = re.compile(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", re.ASCII)
+RELEASE_BRANCH = re.compile(r"chore/v\d+-release-.+", re.ASCII)
+VERSION = re.compile(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?", re.ASCII)
+DATE = re.compile(r"\d{4}-\d{2}-\d{2}", re.ASCII)
+# A commit name or SHA for --base; never an option.
+REVISION = re.compile(r"\w[\w.@{}~^/-]*", re.ASCII)
 
 
 class ChangelogError(Exception):
@@ -98,8 +100,14 @@ def parse_fragment(path: Path) -> Fragment:
         raise ChangelogError(f"{name}: has no entry below its heading")
     if not body[0].startswith("- "):
         raise ChangelogError(f"{name}: the entry must start with a `- ` bullet")
+    check_entry_lines(name, body, len(lines) - len(body) + 1)
+    return Fragment(path, heading[1], tuple(body))
+
+
+def check_entry_lines(name: str, body: list[str], first_number: int) -> None:
+    """Bullets with indented continuations; no heading outside a code fence."""
     fenced = False
-    for number, line in enumerate(body, len(lines) - len(body) + 1):
+    for number, line in enumerate(body, first_number):
         if not fenced and HEADING.match(line.lstrip()):
             raise ChangelogError(f"{name}:{number}: only the first line may be a heading")
         if line and not line.startswith(("- ", " ", "\t")):
@@ -110,7 +118,6 @@ def parse_fragment(path: Path) -> Fragment:
             fenced = not fenced
     if fenced:
         raise ChangelogError(f"{name}: a code fence is not closed")
-    return Fragment(path, heading[1], tuple(body))
 
 
 def load_fragments(root: Path) -> list[Fragment]:
@@ -249,7 +256,13 @@ def git(root: Path, *args: str) -> str:
 
 def unreleased_additions(root: Path, base: str) -> list[str]:
     """Non-blank lines that HEAD adds, relative to `base`, under `## [Unreleased]`."""
-    diff = git(root, "diff", "--unified=0", "--no-color", "--no-ext-diff", base, "HEAD",
+    if REVISION.fullmatch(base) is None:
+        raise ChangelogError(f"invalid --base revision: {base!r}")
+    commit = git(root, "rev-parse", "--verify", "--quiet", "--end-of-options",
+                 f"{base}^{{commit}}").strip()
+    if re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit) is None:
+        raise ChangelogError(f"--base {base} is not a commit")
+    diff = git(root, "diff", "--unified=0", "--no-color", "--no-ext-diff", commit, "HEAD",
                "--", CHANGELOG)
     added: set[int] = set()
     for line in diff.splitlines():

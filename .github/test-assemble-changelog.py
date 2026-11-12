@@ -359,10 +359,22 @@ class PolicyTests(FixtureTest):
         with self.assertRaises(MODULE.ChangelogError):
             MODULE.check(self.root, self.base, "chore/v13-release-13.0.0-rc.1")
 
-    def test_unknown_base_is_refused(self):
+    def test_unknown_or_option_like_base_is_refused(self):
         with self.assertRaises(MODULE.ChangelogError) as refused:
             MODULE.check(self.root, "0" * 40, "")
-        self.assertIn("git diff", str(refused.exception))
+        self.assertIn("git rev-parse", str(refused.exception))
+        for base in ("--output=/tmp/x", "-p", "", "main HEAD", "main\n"):
+            with self.subTest(base=base), self.assertRaises(MODULE.ChangelogError) as refused:
+                MODULE.check(self.root, base, "")
+            self.assertIn("invalid --base revision", str(refused.exception))
+
+    def test_base_may_be_a_branch_name_or_sha(self):
+        self.edit_changelog("- Existing addition.\n", "- Existing addition.\n- New entry.\n")
+        self.commit("docs(changelog): edit unreleased")
+        for base in ("main~1", "HEAD^", self.base):
+            with self.subTest(base=base):
+                self.assertEqual(MODULE.unreleased_additions(self.root, base),
+                                 ["CHANGELOG.md:16: - New entry."])
 
 
 if __name__ == "__main__":
