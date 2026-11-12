@@ -13,6 +13,11 @@ receiver) with the fixes they found, removes what 13.0 should not carry
 (WebAssembly islands, Live components, typed server functions, the frontend
 adapters, the MongoDB, DuckDB and Qdrant adapters, the Academy preset, the
 ERP and Portfolio examples) and cleans up the public API before the freeze.
+On the evidence of its acceptance runs, the maintainer promoted `rullst-iot`,
+`rullst-media` (its S3/R2 adapter stays experimental), `rullst-labs`,
+`rullst-privacy` and `rullst-supervision` to the Extension tier, made the
+InfinitePay adapter supported and moved `cargo rullst footprint` into the
+CLI's Core tier ([maturity tiers](maturity.md#promotions-in-1300-alpha5)).
 Next come 13.0.0-rc.1 (fixes and documentation only) and then 13.0.0. Work
 planned next is under
 [Planned after 13.0.0-alpha.5](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha5);
@@ -24,25 +29,27 @@ published from tag `v13.0.0-alpha.4` at `2bd3c2ad`
 ([release run 41233925160](https://github.com/Rullst/Rullst/actions/runs/41233925160)).
 It was planned as the 13.0 feature and public API freeze; on 9 November 2026
 the freeze moved to 13.0.0-alpha.5, which adds what the applications upgraded
-to alpha.4 asked for. It makes the main CLI leaner: `green`
-(formerly `footprint`) stays in it as an Experimental command and the terminal
-AI assistant (`cargo rullst ai`) is removed, while the development error page
-offers a read-only prompt for the developer's own assistant. It removes
-Foundry, Nix, Buildah, gRPC, the Fly.io, Render and Railway deploy targets and
-the self-updater's binary replacement; gives `deploy` one path for any Linux
-VM, which CI builds and starts with Docker and rootless Podman, with guides for
-Hetzner Cloud, DigitalOcean, Oracle Cloud and Google Cloud; keeps three
-starters and moves LMS, ERP and Portfolio to the repository's examples beside
-Blog; makes `cargo rullst auth` work on fresh starters; adds one `--json`
-contract and an optional section to `llms.txt`; and shortens the first builds
-of generated projects with a development profile and without SQLx's macros.
-In the framework crates, `#[derive(Orm)]` implements `FromRow`, aws-lc-rs is
-the single rustls crypto provider, the Nexus AI assistant is the opt-in
-`nexus-ai` feature, and internals documented by accident are hidden; each
+to alpha.4 asked for. alpha.4 made the main CLI leaner: the resource report
+became `green` (it is `footprint` again since 13.0.0-alpha.5, without an
+alias) and the terminal AI assistant (`cargo rullst ai`) was removed, while
+the development error page offers a read-only prompt for the developer's own
+assistant. It removed Foundry, Nix, Buildah, gRPC, the Fly.io, Render and
+Railway deploy targets and the self-updater's binary replacement; gave
+`deploy` one path for any Linux VM, which CI builds and starts with Docker and
+rootless Podman, with guides for Hetzner Cloud, DigitalOcean, Oracle Cloud and
+Google Cloud; kept three starters and moved LMS, ERP and Portfolio to the
+repository's examples beside Blog (13.0.0-alpha.5 removed the ERP and
+Portfolio examples); made `cargo rullst auth` work on fresh starters; added
+one `--json` contract and an optional section to `llms.txt`; and shortened the
+first builds of generated projects with a development profile and without
+SQLx's macros. In the framework crates, `#[derive(Orm)]` implements
+`FromRow`, aws-lc-rs is the single rustls crypto provider, the Nexus AI
+assistant is the opt-in `nexus-ai` feature, and internals documented by
+accident were hidden (13.0.0-alpha.5 made most of them crate-private); each
 crate's documented API is recorded in `.github/public-api/` and checked in CI.
 A documentation audit checked the book, the crate pages and the README against
 the code, and a CI job runs the first-hour pages' commands as written. The
-first targeted `cargo-rullst` mutation campaign is merged, and the CLI's
+first targeted `cargo-rullst` mutation campaign was merged, and the CLI's
 measured files are in the pull-request mutation gate. The work planned next
 was delivered in
 [13.0.0-alpha.5](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-13).
@@ -1013,7 +1020,7 @@ when its dependencies and verification capacity are ready.
 | Transparent supervision | The baseline passed hosted and archive acceptance in PR #222. PR #226 merged the prioritized exam-platform extension after hosted checks; its missing archive gate subsequently passed in the exact-commit run recorded above. The generated LMS journey (`make:supervision`) was later removed with the complete Academy scaffold; the crate's contracts remain. | Preserve transparent permissions, typed uncertain observations, manual review and no raw media retention in the final campaign. See the [integration boundary](supervision-observations.md). |
 | M27 — deployment acceptance with an existing proxy | PR #224 admitted the response-body lifetime correction and the real two-process Caddy/Redis contract for readiness, draining, shared budgets/outage, forwarding, CSRF/body limits and WebSocket behavior. | Preserve combined-release coverage. This loopback fixture does not establish a multi-replica deployment (the Foundry generator was removed in 13.0.0-alpha.4), cross-host failover or zero downtime. See [deployment acceptance](deployment-acceptance.md). |
 | M10/M27 — cloud and VPS application protection | PR #225 merged the offline `deploy:doctor` with explicit environment sources, bounded inputs, redacted reports and rejection of the public Auth key placeholder after hosted checks; its missing archive gate subsequently passed in the exact-commit run recorded above. | Preserve the installed-archive and diagnostic coverage in the final campaign and prepare the separate stable Auth backport. No automatic host/cloud changes or volumetric DDoS guarantee. See the [diagnostic](deployment-diagnostic.md) and [deployment boundary](security-architecture.md#cloud-and-vps-deployments). |
-| LMS/Academy — managed private video | PR #227 admitted the unpublished `rullst-media` candidate after hosted workspace/platform, browser and installed-archive acceptance. It implements Bunny lifecycle management, resumable upload, authoritative processing, private playback and deletion with SQLite recovery. | Preserve the supported journey in the final combined release campaign. Live-account interoperability stays unvalidated. The package has since joined the release inventory (`.github/release-order.json`) and was first published in the 13.0.0-alpha.1 prerelease; final release admission remains separate. See the [managed-video candidate](managed-video-roadmap.md). |
+| LMS/Academy — managed private video | PR #227 admitted the unpublished `rullst-media` candidate after hosted workspace/platform, browser and installed-archive acceptance. It implements Bunny lifecycle management, resumable upload, authoritative processing, private playback and deletion with SQLite recovery. | Preserve the supported journey in the final combined release campaign. A production application uses the Bunny adapter with a real Bunny Stream library; transcoding and CDN edge cases are not covered by Rullst's own tests, and the package is in the Extension tier since 13.0.0-alpha.5. The package has since joined the release inventory (`.github/release-order.json`) and was first published in the 13.0.0-alpha.1 prerelease; final release admission remains separate. See the [managed-video candidate](managed-video-roadmap.md). |
 | M40 — Labs | The `rullst-labs` candidate, first published in the 13.0.0-alpha.1 prerelease, provides encrypted durable exercises/jobs, exact grading and cancellation/recovery/retention. The former `rullst-labs-runner` candidate, a separate Linux Rust/Wasmi executor, passed 26 ordinary and 26 instrumented hosted journey checks at `977e40a3`. On 30 September 2026 the maintainer removed it from the 13.0 workspace; its source remains in git history. `rullst-labs` is now bring-your-own-runner, with a documented [controller contract](labs-runner-contract.md) and a non-executing example controller. | PR #228 passed workspace/platform and actual extracted-package source admission, plus both 90% coverage floors; that historical evidence covered the removed runner. Final release admission of `rullst-labs` remains outstanding, and each application-owned runner needs its own isolation review. See the [recorded profile evidence](labs-first-profile.md#recorded-linux-acceptance). |
 | M15 — remote messaging | PR #236 admitted the optional standalone Redis Streams profile with TLS, restart/redelivery, fenced leases, exact replay, retry/DLQ and outbox evidence. | Preserve the documented Redis and operator boundaries in combined validation. Other broker adapters, native Redis group interoperability and replication/failover remain separate roadmap work. |
 | M39 — optional Rullst Gateway | No `rullst-gateway` crate or executable exists. On 8 October 2026 the maintainer abandoned it in favour of generated Caddy/nginx configuration for established proxies; see the [master roadmap](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#ideas-recorded-for-after-130). | No delivery. Proxy work continues as generated configuration (Caddy today, nginx planned) consuming the existing readiness/drain signals. |
