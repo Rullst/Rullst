@@ -50,17 +50,25 @@ makes 13.0 smaller before its API is frozen:
   presets of the OpenAI-compatible adapter. The public API is cleaned up for
   the freeze: one path per item, internals made crate-private, no third-party
   types in public errors.
-- **IoT** (Experimental): streaming OTA verification, run on a micro:bit V2;
+- **IoT:** streaming OTA verification, run on a micro:bit V2;
   `cargo rullst iot:keygen` and `iot:sign` to sign firmware manifests; and
   `rullst::iot_ingest`, an authenticated, bounded telemetry receiver (the new
   `examples/iot-gateway` ran with two Arduino Uno boards).
-- **Labs, Supervision and Privacy** (Experimental) complete their 13.0 APIs:
+- **Labs, Supervision and Privacy** complete their 13.0 APIs:
   their outcome, state and choice enums are `#[non_exhaustive]`, Labs reports
   a `TimeLimit` outcome, and Supervision adds an obscured-camera observation
   and brightness and loudness statistics, so a browser sends numbers instead
   of frames or audio; its microphone path was validated on a real phone
   (speech and no speech recorded). `make:mfa`, `make:oauth` and
   `make:privacy` also work with an application's own sign-in.
+- **Maturity tiers:** on the evidence of the acceptance runs, `rullst-iot`,
+  `rullst-media` (Bunny Stream; its S3/R2 adapter stays experimental),
+  `rullst-labs`, `rullst-privacy` and `rullst-supervision` move from
+  Experimental to Extension, so no package is Experimental any more; Capital's
+  InfinitePay adapter is supported for one-off payment links and
+  source-confirmed notifications; and `cargo rullst footprint` joins the
+  CLI's Core tier, while `make:iot`, `iot:keygen` and `iot:sign` follow
+  `rullst-iot`.
 
 The release still has twenty packages. Pin `=13.0.0-alpha.5`. Upgrade steps
 are in the
@@ -135,10 +143,11 @@ for you to fix.
   adapters are the application's, and the browser sends statistics, not
   frames or audio. A parental `CoursePolicy` is one absolute UTC window of at
   most 30 days; recurring allowed hours are application code.
-- The InfinitePay adapter stays Experimental, with one real Pix payment
-  validated. Subscriptions, the portal, usage, coupons and trials return
-  `UnsupportedOperation`, and the merchant must enable external checkout
-  ("Checkout externo") in the InfinitePay app first.
+- The InfinitePay adapter covers one-off payment links and source-confirmed
+  notifications, validated with one real Pix payment. Subscriptions, the
+  portal, usage, coupons and trials return `UnsupportedOperation`, and the
+  merchant must enable external checkout ("Checkout externo") in the
+  InfinitePay app first.
 - Generated starters serve their pages and static files uncompressed: the
   generated Dockerfile builds with `cargo build`, without the `.br`/`.zst`
   siblings that `cargo rullst build` writes and the server would serve, and
@@ -157,12 +166,11 @@ for you to fix.
   emails, a sign-up over HTTP and `db:rollback`; the API starter, other server
   versions and a real deployment's data are not tested. Back up the database and try
   it on a copy first.
-- `cargo rullst footprint` is Experimental. Its carbon figure is an SCI
-  estimate from the `--cpu-watts`, `--grid-intensity` and
-  `--network-kwh-per-gb` figures you give, not a measurement; an image size is
-  measured only through a local Docker or Podman socket; and the page weight
-  fetches same-origin resources only, listing third-party origins without
-  fetching them.
+- `cargo rullst footprint`'s carbon figure is an SCI estimate from the
+  `--cpu-watts`, `--grid-intensity` and `--network-kwh-per-gb` figures you
+  give, not a measurement; an image size is measured only through a local
+  Docker or Podman socket; and the page weight fetches same-origin resources
+  only, listing third-party origins without fetching them.
 - `cargo rullst deploy`: CI builds the generated Dockerfile and starts the
   generated `compose.yaml` and `Caddyfile` for the Blank and SaaS starters with
   Docker and rootless Podman on a GitHub Ubuntu runner, checking HTTPS through
@@ -210,14 +218,15 @@ for you to fix.
 - PWA: the generated icons are placeholders. The Google Play (Bubblewrap) and
   Microsoft Store (PWABuilder) flows are documented, not validated with real
   store submissions; no App Store package is generated.
-- Experimental packages keep their documented gaps. IoT ran on a micro:bit V2,
-  and its `std` build in a gateway fed by Arduino Uno boards; MQTT and CoAP
-  transports, TLS/DTLS and brokers, other boards, a persistent
+- The packages promoted to Extension keep their documented scope. IoT ran on
+  a micro:bit V2, and its `std` build in a gateway fed by Arduino Uno boards;
+  MQTT and CoAP transports, TLS/DTLS and brokers, other boards, a persistent
   rollback-counter store, flashing, bootloader handoff and power loss are not
   validated. Privacy has no live age provider or verified guardianship.
   Media's Bunny Stream adapter is used with a real library by a production
   application, but transcoding and CDN edge cases are not covered by Rullst's
-  own tests, which run offline; its S3/R2 adapter is tested offline only.
+  own tests, which run offline; its S3/R2 adapter stays experimental and is
+  tested offline only.
 - CI runs the commands of the first-hour pages only (the README quickstart,
   getting started, tutorials 01, 02, 03, 05 and 11 and the REST API
   quickstart), without PostgreSQL or MySQL servers or external accounts.
