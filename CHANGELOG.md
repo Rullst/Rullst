@@ -692,8 +692,8 @@ A prepared version section does not establish that its tag or crates exist.
   longer tells alpha.3 applications to use `green`.
 - Documentation: the README has a highlights section (`footprint`, the
   testing kit, the frontend tools) and an integrations list that says how far
-  each built-in integration is tested (real accounts, local servers in CI, or
-  offline only). The 13.x support window in the compatibility policy and
+  each built-in integration is tested (real accounts, servers in local
+  containers in CI, or offline only). The 13.x support window in the compatibility policy and
   `SECURITY.md` is stated as the maintainer's intention, not a guarantee, with
   any change announced in advance. `CONTRIBUTING.md` says that contributions
   are open, that every pull request is reviewed and that the maintainer

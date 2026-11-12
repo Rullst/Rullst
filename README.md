@@ -206,7 +206,7 @@ How far each built-in integration has been tested:
 | Status | Integrations |
 | :--- | :--- |
 | **Validated with real accounts** | Stripe (real payments); InfinitePay (a real Pix payment; the adapter is still Experimental); Bunny Stream, Resend, Google sign-in and GitHub sign-in (used in production applications) |
-| **Tested against local servers and containers in CI** | PostgreSQL, MySQL, MariaDB and SQLite; Redis (cache, queues, rate limits, ORM data structures and Redis Streams messaging); SurrealDB; Turso/libSQL (a local `sqld` server); Meilisearch search; pgvector; S3-compatible storage (a local Garage server) |
+| **Tested in CI against servers in local containers** | PostgreSQL, MySQL and MariaDB, plus SQLite (embedded, no server); Redis (cache, queues, rate limits, ORM data structures and Redis Streams messaging); SurrealDB; Turso/libSQL (the `libsql-server` image, which is `sqld`); Meilisearch search; pgvector; S3-compatible storage (a Garage server) |
 | **Offline only: mock mode, local fixtures or a [conformance kit](https://rullst.github.io/Rullst/book/provider-conformance.html)** | AWS SES, SendPulse and SMTP mail; OpenAI, Anthropic Claude, Google Gemini, DeepSeek, Ollama and other OpenAI-compatible AI endpoints; Microsoft, Apple, Auth0, AWS Cognito, Facebook, X (Twitter), Discord, LinkedIn and generic OpenID Connect sign-in; the S3/R2 adapter of `rullst-media` |
 
 Other services are application code: write an adapter on the provider trait
