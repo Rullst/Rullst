@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794481923987,
+  "lastUpdate": 1794483239066,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -16343,6 +16343,48 @@ window.BENCHMARK_DATA = {
             "name": "capital_subscription/parse_status_active",
             "value": 13,
             "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "12c560d7ab446a807de28bd2c879cc7d60638c97",
+          "message": "Merge pull request #669 from Rullst/docs/v13-alpha5-readme-policies\n\ndocs: alpha.5 README highlights, integrations status and policy wording",
+          "timestamp": "2026-11-12T08:14:15-03:00",
+          "tree_id": "e7719699f6aedfc55d092cae2f9053530286abe3",
+          "url": "https://github.com/Rullst/Rullst/commit/12c560d7ab446a807de28bd2c879cc7d60638c97"
+        },
+        "date": 1794483238293,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 13,
+            "range": "± 1",
             "unit": "ns/iter"
           },
           {
