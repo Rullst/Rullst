@@ -5,7 +5,10 @@ use std::fs;
 const REFERENCE: &str = include_str!("reference.rs.template");
 
 fn project(contract: &str, main: &str) -> tempfile::TempDir {
-    let temporary = tempfile::tempdir().unwrap();
+    // A canonical parent: on macOS the temporary directory sits below the
+    // `/var` symlink, which the application path check refuses.
+    let parent = std::env::temp_dir().canonicalize().unwrap();
+    let temporary = tempfile::tempdir_in(parent).unwrap();
     let root = temporary.path();
     fs::create_dir_all(root.join("src")).unwrap();
     fs::write(root.join("src/main.rs"), main).unwrap();
