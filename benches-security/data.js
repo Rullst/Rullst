@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794485728984,
+  "lastUpdate": 1794490014126,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -21466,6 +21466,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "01556989b2e9505f40d30e6e1fa620084ed92ff5",
+          "message": "Merge pull request #671 from Rullst/fix/v13-alpha5-public-explicit-key-encryption\n\nfix(orm): keep the explicit-key encryption helpers public and documented",
+          "timestamp": "2026-11-12T10:08:31-03:00",
+          "tree_id": "a01cad114fdd4c6ada74d88b066c11c9088f9223",
+          "url": "https://github.com/Rullst/Rullst/commit/01556989b2e9505f40d30e6e1fa620084ed92ff5"
+        },
+        "date": 1794490013221,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4041,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 444,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 11,
             "range": "± 0",
             "unit": "ns/iter"
           }
