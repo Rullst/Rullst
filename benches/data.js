@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794454944040,
+  "lastUpdate": 1794461480494,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -32589,6 +32589,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1008,
             "range": "± 22",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4e26ec9093c3a56a62a1c639eeaa4cacce7e1d05",
+          "message": "Merge pull request #654 from Rullst/feat/v13-alpha5-labs-supervision-api\n\nfeat(labs,supervision,privacy): freeze-ready outcomes, time limit, obscured camera",
+          "timestamp": "2026-11-12T01:57:24-03:00",
+          "tree_id": "bd6d733c6e4600163b2de25648403c987d3a9712",
+          "url": "https://github.com/Rullst/Rullst/commit/4e26ec9093c3a56a62a1c639eeaa4cacce7e1d05"
+        },
+        "date": 1794461476591,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 697,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 907,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 417,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2093,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
