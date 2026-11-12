@@ -163,7 +163,7 @@ class WorkflowGuardTests(unittest.TestCase):
         distribution = {"native-cli-artifacts", "packaged-distribution"}
         self.assertEqual(set(jobs), runtime | distribution | {"scope", "site-validation", "quality-scorecard",
                                                               "vm-deployment", "first-hour",
-                                                              "starter-browsers"})
+                                                              "starter-browsers", "starter-footprint"})
         for name, body in jobs.items():
             self.assertEqual(len(re.findall(r"(?m)^    if:", body)), 1 if name != "scope" else 0, name)
         for name in distribution:
@@ -192,14 +192,17 @@ class WorkflowGuardTests(unittest.TestCase):
         # The deployment job never runs on branch pushes (site-only admission
         # reads their job inventory), always runs in full manual runs and its
         # own diagnostic, and filters pull requests by path in its first step.
-        # The first-hour documentation and starter browser jobs follow the same
-        # rules; none is a required release job (release-required-workflows.json).
+        # The first-hour documentation, starter browser and starter footprint
+        # jobs follow the same rules; none is a required release job
+        # (release-required-workflows.json).
         required = json.loads((HERE / "release-required-workflows.json").read_text())
         required_jobs = {name for workflow in required["workflows"] for name in workflow.get("required_jobs", [])}
         for shard, script, name in (("vm-deployment", "check-vm-deploy.py", "Generated VM deployment"),
                                     ("first-hour", "check-first-hour.py", "First-hour documentation"),
                                     ("starter-browsers", "check-starter-browsers.py",
-                                     "Generated starters in browsers")):
+                                     "Generated starters in browsers"),
+                                    ("starter-footprint", "check-starter-footprint.py",
+                                     "Starter footprint budgets")):
             with self.subTest(job=shard):
                 body = jobs[shard]
                 guard = body.split("    runs-on:", 1)[0]
@@ -217,6 +220,7 @@ class WorkflowGuardTests(unittest.TestCase):
         options = (HERE / "workflows/ci.yml").read_text().split("    inputs:", 1)[1].split("  schedule:", 1)[0]
         self.assertIn("          - first-hour\n", options)
         self.assertIn("          - starter-browsers\n", options)
+        self.assertIn("          - starter-footprint\n", options)
         first_hour = jobs["first-hour"]
         self.assertIn("python3 .github/check-first-hour.py --pages", first_hour)
         self.assertIn('rustflags: ""', first_hour)
