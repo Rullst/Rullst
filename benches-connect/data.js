@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794479625673,
+  "lastUpdate": 1794481644966,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -13205,6 +13205,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 302,
             "range": "± 18",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ebf0101d7c3ac29c3effbe9ea3697828141c95e7",
+          "message": "Merge pull request #673 from Rullst/test/v13-alpha5-app-key-etxtbsy\n\ntest(auth): retry the app-key child when its executable is busy",
+          "timestamp": "2026-11-12T07:51:13-03:00",
+          "tree_id": "bb52d355f5e139a6f43801cc8dee46cffbef8860",
+          "url": "https://github.com/Rullst/Rullst/commit/ebf0101d7c3ac29c3effbe9ea3697828141c95e7"
+        },
+        "date": 1794481644114,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 382,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
