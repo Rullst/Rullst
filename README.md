@@ -175,6 +175,45 @@ replace your authorization rules, and databases are not interchangeable. See the
 · [An AI assistant's candid evaluation](https://rullst.github.io/Rullst/book/ai-evaluation.html)
 · [Axum & SQLx escape hatches](https://rullst.github.io/Rullst/book/axum-sqlx-migration.html)
 
+<a id="highlights"></a>
+
+## 🔎 Highlights
+
+**Software has an environmental cost:** the energy of the servers that run it, of the networks that carry its pages and of the devices that open them. Rullst takes that cost seriously, which is why it ships `cargo rullst footprint`. It measures what your application uses (binary size, memory, CPU time per request and page weight) and estimates its carbon with the SCI method. You can see the numbers, set budgets that fail CI when they grow, and publish them. The report is a measurement and an estimate, not a certification.
+[Footprint guide](https://rullst.github.io/Rullst/book/footprint.html).
+
+**Tests from the first commit:** every project that `cargo rullst new`
+creates has a smoke test of each page (status, security headers, HTML
+hygiene and htmx history restores) and, unless you pass `--no-ci`, a CI
+workflow with Clippy, tests, `cargo audit` and a secret scan. `make:mfa`, `make:privacy` and `make:pwa`
+add their pages to that test, `cargo rullst add browser-tests` opens every
+page in Chromium, Firefox and WebKit with axe-core, and `rullst::testing`
+gives your own tests the same HTML and header checks.
+[Testing your application](https://rullst.github.io/Rullst/book/testing-your-app.html).
+
+**Frontend without a bundler:** pages are rendered on the server and use
+htmx, under a strict Content-Security-Policy with a nonce per request.
+Tailwind CSS (through its pinned standalone CLI, no Node.js), Alpine.js's
+CSP build and accessible components from `cargo rullst ui add` are opt-in.
+[Frontend guide](https://rullst.github.io/Rullst/book/frontend.html).
+
+<a id="integrations"></a>
+
+## 🔌 Integrations
+
+How far each built-in integration has been tested:
+
+| Status | Integrations |
+| :--- | :--- |
+| **Validated with real accounts** | Stripe (real payments); InfinitePay (a real Pix payment; the adapter is still Experimental); Bunny Stream, Resend, Google sign-in and GitHub sign-in (used in production applications) |
+| **Tested against local servers and containers in CI** | PostgreSQL, MySQL, MariaDB and SQLite; Redis (cache, queues, rate limits, ORM data structures and Redis Streams messaging); SurrealDB; Turso/libSQL (a local `sqld` server); Meilisearch search; pgvector; S3-compatible storage (a local Garage server) |
+| **Offline only: mock mode, local fixtures or a [conformance kit](https://rullst.github.io/Rullst/book/provider-conformance.html)** | AWS SES, SendPulse and SMTP mail; OpenAI, Anthropic Claude, Google Gemini, DeepSeek, Ollama and other OpenAI-compatible AI endpoints; Microsoft, Apple, Auth0, AWS Cognito, Facebook, X (Twitter), Discord, LinkedIn and generic OpenID Connect sign-in; the S3/R2 adapter of `rullst-media` |
+
+Other services are application code: write an adapter on the provider trait
+(payments, mail, video) or follow a
+[recipe](https://rullst.github.io/Rullst/book/recipes/index.html) such as the
+MongoDB and DuckDB ones.
+
 <a id="live-examples"></a>
 
 ## 🌍 Built with Rullst
@@ -492,7 +531,7 @@ list every change.
   ([build times](https://rullst.github.io/Rullst/book/build-times.html)).
 - **A stable 13.x API:** each crate's documented API is recorded and checked
   in CI, and the compatibility policy names the third-party crates the API
-  exposes and the 13.x support window
+  exposes and the intended 13.x support window
   ([compatibility policy](https://rullst.github.io/Rullst/book/compatibility-policy.html)).
 - **One TLS provider:** aws-lc-rs is the rustls crypto provider for every TLS
   connection Rullst makes, with post-quantum hybrid key exchange; ring remains
@@ -550,6 +589,9 @@ list every change.
   a `MailDriver` in your application.
 - The `orm-polyglot` and `polyglot` features, which enabled every storage
   adapter at once: name the adapters you use.
+- The MongoDB and DuckDB adapters of `rullst-orm` (`orm-mongodb`,
+  `orm-duckdb`): use the official driver as the
+  [recipes](https://rullst.github.io/Rullst/book/recipes/index.html) show.
 - The CLI's Foundry (`foundry:init`, `foundry:deploy`), Nix (`nixify`,
   `new --nix`), Buildah (`generate:buildah`, `new --buildah`) and gRPC
   (`make:grpc`) generators: files they wrote stay yours, and the
@@ -599,6 +641,7 @@ matter as much as new features.
 
 [Contributing](https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md)
 · [Issues](https://github.com/Rullst/Rullst/issues)
+· [Good first issues](https://github.com/Rullst/Rullst/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22)
 · [Discord](https://discord.com/invite/2ntKFtsSjw)
 · [Community links](https://rullst.github.io/Rullst/#community)
 · [Our story and philosophy](https://rullst.github.io/Rullst/book/philosophy.html)
