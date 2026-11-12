@@ -106,6 +106,9 @@ pub use rullst_studio as studio;
 #[cfg(feature = "iot")]
 pub use rullst_iot as iot;
 
+#[cfg(all(feature = "iot-ingest", not(target_arch = "wasm32")))]
+pub mod iot_ingest;
+
 // Compile the public guides and tutorials as doctests without exposing their aggregation
 // module in normal builds or generated API documentation.
 #[cfg(doctest)]
