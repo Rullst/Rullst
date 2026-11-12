@@ -649,6 +649,13 @@ describes each replacement.
   the body: `ProviderFailure::reason()` returns it and the message ends with
   it, for example `(external_checkout_not_enabled)`. The provider's message is
   never kept (found by the 13.0.0-alpha.5 acceptance application).
+- `cargo rullst audit` reported a dependency advisory found by cargo-audit as
+  a check that failed to complete (`[ERROR] cargo-audit did not complete
+  successfully`, `dependency_audit` status `error`), because cargo-audit exits
+  with status 1 for both. It now reads cargo-audit's JSON report: advisories
+  are `[FINDINGS]` (status `findings` with their count, in `--report` and
+  `--compliance` too), and only a run that produced no report is an error
+  (found by the 13.0.0-alpha.5 acceptance application).
 - `cargo rullst make:privacy` and `cargo rullst make:age-gate` refused a SaaS
   project in which `cargo rullst make:mfa` had already run
   (`src/controllers/auth_controller.rs differs from the starter's`), although

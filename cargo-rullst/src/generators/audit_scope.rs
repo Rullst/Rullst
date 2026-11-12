@@ -179,12 +179,18 @@ pub(super) fn cargo_audit_status(
     let mut audit = Command::new(program);
     audit
         .args(cargo_audit_arguments(audit_ignores))
+        // The JSON report tells advisories found apart from a failed run;
+        // both exit with status 1.
+        .arg("--json")
         .current_dir(root);
     // A workspace member has no `Cargo.lock` of its own.
     if let Some(lockfile) = audit_lockfile(program, root) {
         audit.arg("--file").arg(lockfile);
     }
     match audit.output() {
+        Ok(out) if !out.status.success() && reported_vulnerabilities(&out.stdout) > 0 => {
+            EvidenceStatus::Findings(reported_vulnerabilities(&out.stdout))
+        }
         Ok(out) if out.status.success() && audit_ignores.is_empty() => EvidenceStatus::NoFindings,
         Ok(out) if out.status.success() => {
             EvidenceStatus::NoFindingsOutsideExceptions(audit_ignores.to_vec())
@@ -199,6 +205,16 @@ pub(super) fn cargo_audit_status(
         }
         Err(error) => EvidenceStatus::Error(error.to_string()),
     }
+}
+
+/// The number of vulnerabilities in a `cargo audit --json` report (its
+/// `vulnerabilities.count`); 0 when the output is not such a report.
+fn reported_vulnerabilities(stdout: &[u8]) -> usize {
+    serde_json::from_slice::<serde_json::Value>(stdout)
+        .ok()
+        .and_then(|report| report.get("vulnerabilities")?.get("count")?.as_u64())
+        .and_then(|count| usize::try_from(count).ok())
+        .unwrap_or(0)
 }
 
 pub(super) fn cargo_audit_arguments(audit_ignores: &[String]) -> Vec<String> {
@@ -349,6 +365,42 @@ mod tests {
             status = cargo_audit_status(cargo.as_os_str(), &member, &[]);
         }
         assert_eq!(status, EvidenceStatus::NoFindings);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn advisories_found_are_findings_and_a_failed_run_is_an_error() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write(&root.join("Cargo.lock"), "version = 4\n");
+        let report = r#"{"vulnerabilities":{"found":true,"count":2,"list":[]},"warnings":{}}"#;
+        let clean = r#"{"vulnerabilities":{"found":false,"count":0,"list":[]},"warnings":{}}"#;
+        // `$AUDIT_OUTPUT` and `$AUDIT_STATUS` choose what the fake cargo-audit does.
+        let script = "#!/bin/sh\nif [ \"$1\" = metadata ]; then exit 1; fi\nif [ \"$2\" = --version ]; then exit 0; fi\ncase \" $* \" in *' --json '*) ;; *) exit 9;; esac\nprintf '%s' \"$(cat \"$0.out\")\"\necho 'error: 2 vulnerabilities found!' >&2\nexit \"$(cat \"$0.status\")\"\n";
+        let cargo = root.join("fake-cargo");
+        fs::write(&cargo, script).unwrap();
+        fs::set_permissions(&cargo, fs::Permissions::from_mode(0o755)).unwrap();
+        let run = |output: &str, status: &str| {
+            fs::write(root.join("fake-cargo.out"), output).unwrap();
+            fs::write(root.join("fake-cargo.status"), status).unwrap();
+            let mut result = cargo_audit_status(cargo.as_os_str(), root, &[]);
+            // A forking test thread can make the fresh script fail with ETXTBSY.
+            for _ in 0..20 {
+                if result != EvidenceStatus::NotChecked("cargo-audit is unavailable") {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(50));
+                result = cargo_audit_status(cargo.as_os_str(), root, &[]);
+            }
+            result
+        };
+        assert_eq!(run(report, "1"), EvidenceStatus::Findings(2));
+        assert_eq!(run(clean, "0"), EvidenceStatus::NoFindings);
+        assert!(matches!(run("", "1"), EvidenceStatus::Error(_)));
+        assert!(matches!(run(clean, "1"), EvidenceStatus::Error(_)));
+        assert_eq!(reported_vulnerabilities(report.as_bytes()), 2);
+        assert_eq!(reported_vulnerabilities(b"not json"), 0);
     }
 
     #[test]

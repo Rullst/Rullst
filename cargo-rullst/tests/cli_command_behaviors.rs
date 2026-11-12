@@ -819,6 +819,50 @@ exit 0
 
 #[cfg(unix)]
 #[test]
+fn audit_reports_advisories_found_by_cargo_audit_as_findings() {
+    let fixture = Fixture::new("audit-advisories");
+    let tools = fixture.install_successful_tool_fixtures();
+    let cargo = tools.join("cargo");
+    fs::write(
+        &cargo,
+        r#"#!/bin/sh
+if [ "$1" = "audit" ] && [ "$2" = "--version" ]; then
+  exit 0
+fi
+if [ "$1" = "audit" ]; then
+  printf '{"vulnerabilities":{"found":true,"count":1,"list":[]},"warnings":{}}'
+  echo 'error: 1 vulnerability found!' >&2
+  exit 1
+fi
+exit 0
+"#,
+    )
+    .expect("advisory cargo tool fixture");
+    fs::set_permissions(&cargo, fs::Permissions::from_mode(0o755))
+        .expect("cargo tool fixture permissions");
+
+    let result = fixture.command_with_path(&["audit"], &tools);
+    let output = output_text(&result);
+    assert!(!result.status.success(), "advisories must fail the audit");
+    assert!(
+        output.contains("cargo-audit reported 1 vulnerable dependency advisory(ies)"),
+        "{output}"
+    );
+    assert!(
+        !output.contains("did not complete successfully"),
+        "{output}"
+    );
+
+    let result = fixture.command_with_path(&["audit", "--json"], &tools);
+    let summary: serde_json::Value =
+        serde_json::from_slice(&result.stdout).expect("audit JSON summary");
+    assert_eq!(summary["checks"][1]["id"], "dependency_audit");
+    assert_eq!(summary["checks"][1]["status"], "findings");
+    assert_eq!(summary["checks"][1]["count"], 1);
+}
+
+#[cfg(unix)]
+#[test]
 fn doctor_reports_outdated_unrecognized_and_failing_toolchains() {
     let fixture = Fixture::new("doctor-failures");
     let tools = fixture.install_successful_tool_fixtures();
