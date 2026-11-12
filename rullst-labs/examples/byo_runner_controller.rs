@@ -108,7 +108,7 @@ async fn execute_claimed(
         // Sample after `claim_next` returns, on a clock synchronized with the
         // store's: `complete` refuses a receipt that starts before the claim.
         let started_at = clock.now()?;
-        let attempt = attempt(store, job).await?;
+        let attempt = attempt(store, job, run_in_isolated_worker(job.input())).await?;
         let signed = signer.sign(ExecutionReceipt {
             output: attempt.output,
             started_at,
@@ -135,26 +135,44 @@ async fn execute_claimed(
 
 /// Releases work only under a current lease, enforces the exercise's wall
 /// limit and stops as soon as cancellation, withdrawal or expiry is recorded.
-async fn attempt(store: &SqliteLabs, job: &LeasedJob) -> Result<IsolatedAttempt, LabError> {
+///
+/// At the wall limit the worker is stopped and, once its teardown is
+/// confirmed, the limit itself is the attempt's outcome:
+/// `Rejected(TimeLimit)`, which `complete` records as a `Failed` job, so the
+/// learner sees a time limit rather than a cancellation. The lease still has
+/// 15 seconds left for that. When teardown cannot be confirmed, the error
+/// takes the abandon/reconcile path instead.
+async fn attempt(
+    store: &SqliteLabs,
+    job: &LeasedJob,
+    worker: impl std::future::Future<Output = Result<IsolatedAttempt, LabError>>,
+) -> Result<IsolatedAttempt, LabError> {
     if store.lease_status(job).await? != LeaseStatus::Active {
         return Err(LabError::Conflict);
     }
     let wall = Duration::from_secs(u64::from(job.input().limits().wall_seconds()));
     let deadline = tokio::time::sleep(wall);
-    let worker = run_in_isolated_worker(job.input());
     let mut deadline = std::pin::pin!(deadline);
     let mut worker = std::pin::pin!(worker);
     let mut poll = tokio::time::interval(Duration::from_millis(200));
     loop {
         tokio::select! {
             output = &mut worker => return output,
-            _ = &mut deadline => return Err(LabError::Expired),
+            _ = &mut deadline => break,
             // A read error is also a stop signal.
             _ = poll.tick() => if store.lease_status(job).await? != LeaseStatus::Active {
                 return Err(LabError::Conflict);
             },
         }
     }
+    tear_down_attempt(&job.input().binding().nonce)?;
+    Ok(IsolatedAttempt {
+        output: WorkerOutput {
+            binding: job.input().binding().clone(),
+            outcome: WorkerOutcome::Rejected(ExecutionFailure::TimeLimit),
+        },
+        observations: ContentHash::of(b"byo-example: wall limit reached, attempt torn down"),
+    })
 }
 
 /// Attests confirmed teardown of an abandoned attempt. The cleanup receipt
@@ -253,6 +271,9 @@ struct Demo {
 }
 impl Demo {
     async fn start() -> Result<Self, LabError> {
+        Self::with_wall_limit(10).await
+    }
+    async fn with_wall_limit(wall_seconds: u32) -> Result<Self, LabError> {
         let dir = tempfile::tempdir().map_err(|_| LabError::Storage)?;
         let path: PathBuf = dir.path().join("labs-jobs.sqlite");
         // Separate random secrets: the content key is shared by the
@@ -283,7 +304,7 @@ impl Demo {
                     expected: 6,
                 },
             ],
-            ExecutionLimits::new(10, 100_000, 64)?,
+            ExecutionLimits::new(wall_seconds, 100_000, 64)?,
         )?;
         app.register_exercise(&DemoPolicy, &Reference::new("teacher")?, &exercise)
             .await?;
@@ -356,116 +377,5 @@ async fn main() -> std::process::ExitCode {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use rullst_labs::sqlite::{JobResult, JobState, ResultEvidence};
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    /// The wall clock, except that its second read steps back 30 seconds
-    /// like an NTP correction.
-    struct SteppedClock(AtomicUsize);
-    impl Clock for SteppedClock {
-        fn now(&self) -> Result<i64, LabError> {
-            let now = SystemClock.now()?;
-            Ok(if self.0.fetch_add(1, Ordering::SeqCst) == 1 {
-                now - 30
-            } else {
-                now
-            })
-        }
-    }
-
-    #[tokio::test]
-    async fn a_receipt_that_cannot_be_signed_still_fences_and_reconciles_the_attempt() {
-        let demo = Demo::start().await.unwrap();
-        let queued = demo.submit().await.unwrap();
-        let job = demo.controller.claim_next().await.unwrap().unwrap();
-        let clock = SteppedClock(AtomicUsize::new(0));
-        // `finished_at` precedes `started_at`, so `sign` refuses the receipt.
-        let error = execute_claimed(&demo.controller, &demo.signer, &clock, &job)
-            .await
-            .unwrap_err();
-        assert_eq!(error, LabError::Protocol);
-        // The attempt is fenced and attested at once instead of staying
-        // `Running` under a live lease until a later recovery pass.
-        let view = demo.status(&queued.id).await.unwrap();
-        assert_eq!(view.state, JobState::Cancelled);
-        assert!(!view.cleanup_pending && view.result.is_none());
-        assert_eq!(recover(&demo.controller, &demo.signer).await.unwrap(), 0);
-        demo.close().await;
-    }
-
-    #[tokio::test]
-    async fn fixed_verdict_receipt_is_accepted_and_never_graded_as_executed() {
-        let view = run().await.unwrap();
-        assert_eq!(view.state, JobState::Failed);
-        assert!(!view.cleanup_pending);
-        assert!(matches!(
-            view.result,
-            Some(JobResult::Rejected {
-                failure: ExecutionFailure::Isolation,
-                diagnostics: None,
-                evidence: ResultEvidence::Experimental { .. },
-            })
-        ));
-    }
-
-    #[tokio::test]
-    async fn cancellation_before_release_is_fenced_and_reconciled() {
-        let demo = Demo::start().await.unwrap();
-        let queued = demo.submit().await.unwrap();
-        let job = demo.controller.claim_next().await.unwrap().unwrap();
-        let alice = Reference::new("alice").unwrap();
-        demo.app
-            .cancel(
-                &DemoPolicy,
-                &alice,
-                &demo_scope().unwrap(),
-                &queued.id,
-                job.revision(),
-            )
-            .await
-            .unwrap();
-        let error = execute_claimed(&demo.controller, &demo.signer, &SystemClock, &job)
-            .await
-            .unwrap_err();
-        assert_eq!(error, LabError::Conflict);
-        let view = demo.status(&queued.id).await.unwrap();
-        assert_eq!(view.state, JobState::Cancelled);
-        assert!(!view.cleanup_pending && view.result.is_none());
-        assert!(
-            process_one(&demo.controller, &demo.signer)
-                .await
-                .unwrap()
-                .is_none()
-        );
-        demo.close().await;
-    }
-
-    #[tokio::test]
-    async fn startup_recovery_attests_a_lease_left_by_a_lost_controller() {
-        let demo = Demo::start().await.unwrap();
-        let queued = demo.submit().await.unwrap();
-        // A controller claims and then disappears; the learner cancels.
-        let lost = demo.controller.claim_next().await.unwrap().unwrap();
-        let alice = Reference::new("alice").unwrap();
-        let cancelled = demo
-            .app
-            .cancel(
-                &DemoPolicy,
-                &alice,
-                &demo_scope().unwrap(),
-                &queued.id,
-                lost.revision(),
-            )
-            .await
-            .unwrap();
-        assert!(cancelled.cleanup_pending);
-        assert_eq!(recover(&demo.controller, &demo.signer).await.unwrap(), 1);
-        let view = demo.status(&queued.id).await.unwrap();
-        assert_eq!(view.state, JobState::Cancelled);
-        assert!(!view.cleanup_pending);
-        assert_eq!(recover(&demo.controller, &demo.signer).await.unwrap(), 0);
-        demo.close().await;
-    }
-}
+#[path = "byo_runner_controller/tests.rs"]
+mod tests;

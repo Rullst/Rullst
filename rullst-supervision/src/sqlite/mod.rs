@@ -12,6 +12,7 @@ mod parental;
 mod schema;
 mod sessions;
 mod transaction;
+mod upgrade;
 
 use crate::{Clock, StoreConfig, SupervisionError as Error, SystemClock};
 pub use maintenance::PurgeReceipt;
@@ -170,11 +171,17 @@ impl<C: Clock> SqliteSupervision<C> {
                 .fetch_all(&mut *tx)
                 .await
                 .map_err(storage)?;
+        // A store created before 13.0.0-alpha.5 keeps its narrower events
+        // table until `upgrade_event_schema` rebuilds it.
+        let accepted = |name: &str, sql: &str, definition: &str| {
+            sql == definition
+                || (name == schema::EVENTS_TABLE && definition == schema::LEGACY_EVENTS)
+        };
         if records.len() != schema::SCHEMA.len()
             || schema::SCHEMA.iter().any(|(name, sql)| {
                 !records
                     .iter()
-                    .any(|(found, definition)| name == found && sql == definition)
+                    .any(|(found, definition)| name == found && accepted(name, sql, definition))
             })
         {
             return Err(Error::Configuration);
