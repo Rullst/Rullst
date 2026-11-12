@@ -1,17 +1,34 @@
 //! The 13.0.0-alpha.5 runtime changes that application code can name:
 //! `OtaManager`'s private state fields, dynamic Alpine.js directive values
-//! in `html!`, the IoT codec errors that became `#[non_exhaustive]` and the IoT
-//! sensor card that returns `IotHtml`. [`super::tokens`] calls the field,
+//! in `html!`, the IoT codec errors, Privacy's `ConsentChoice` and the Labs
+//! outcome and state enums that became `#[non_exhaustive]` and the IoT sensor
+//! card that returns `IotHtml`. [`super::tokens`] calls the field,
 //! attribute and identifier rules with what it reads, [`super::rust`] the
 //! match rule with each `match`.
 
 use super::Rule;
 use super::catalog::{
     HTML_ALPINE_DIRECTIVE, IOT_CODEC_ERROR_MATCH, IOT_OTA_STATE, IOT_SENSOR_CARD_HTML,
+    LABS_NON_EXHAUSTIVE_MATCH, PRIVACY_CONSENT_CHOICE_MATCH,
 };
 
 /// The `rullst-iot` error enums 13.0.0-alpha.5 made `#[non_exhaustive]`.
 const IOT_CODEC_ERRORS: &[&str] = &["MqttCodecError", "CoapCodecError"];
+
+/// The `rullst-labs` enums 13.0.0-alpha.5 made `#[non_exhaustive]`. Names
+/// such as `JobState` are common, so they count only in a file that names
+/// the crate.
+const LABS_ENUMS: &[&str] = &[
+    "JobState",
+    "JobResult",
+    "CaseGrade",
+    "CaseOutput",
+    "TrapKind",
+    "WorkerOutcome",
+    "ExecutionFailure",
+    "ResultEvidence",
+    "ExecutionProfile",
+];
 
 /// The fields that are now read with methods of the same names.
 const OTA_FIELDS: &[&str] = &["current_partition", "status", "firmware_version"];
@@ -33,12 +50,24 @@ pub(super) fn html_attribute_rule(name: &str) -> Option<&'static Rule> {
 }
 
 /// The rule for a `match` without a catch-all arm, given whether its arm
-/// patterns name an identifier: one of the IoT codec error enums.
-pub(super) fn exhaustive_match_rule(names: impl Fn(&str) -> bool) -> Option<&'static Rule> {
-    IOT_CODEC_ERRORS
-        .iter()
-        .any(|name| names(name))
-        .then_some(&IOT_CODEC_ERROR_MATCH)
+/// patterns name an identifier and the file's text: one of the IoT codec
+/// error enums, `ConsentChoice` in a file that names `rullst-privacy`
+/// (directly or as `rullst::privacy`), or a Labs enum in a file that names
+/// `rullst_labs`.
+pub(super) fn exhaustive_match_rule(
+    names: impl Fn(&str) -> bool,
+    text: &str,
+) -> Option<&'static Rule> {
+    if IOT_CODEC_ERRORS.iter().any(|name| names(name)) {
+        return Some(&IOT_CODEC_ERROR_MATCH);
+    }
+    if (text.contains("rullst_privacy") || text.contains("rullst::privacy"))
+        && names("ConsentChoice")
+    {
+        return Some(&PRIVACY_CONSENT_CHOICE_MATCH);
+    }
+    (text.contains("rullst_labs") && LABS_ENUMS.iter().any(|name| names(name)))
+        .then_some(&LABS_NON_EXHAUSTIVE_MATCH)
 }
 
 /// The rule for an identifier: `render_sensor_card`, whose return type

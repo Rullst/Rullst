@@ -65,7 +65,10 @@ impl ConsentPurpose {
     }
 }
 
+/// A purpose's consent state. `#[non_exhaustive]` since 13.0.0-alpha.5:
+/// match it with a wildcard arm that treats an unknown choice as no consent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ConsentChoice {
     Unset,
     Granted,

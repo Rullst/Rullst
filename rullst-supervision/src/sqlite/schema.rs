@@ -1,3 +1,15 @@
+/// The events table of stores created since 13.0.0-alpha.5: observation
+/// codes 1-63, so `camera_obscured` (28) and later kinds fit. Codes above 28
+/// are reserved; reading an unknown code still fails closed.
+pub(super) const EVENTS: &str = "CREATE TABLE rullst_supervision_events (session_id TEXT NOT NULL REFERENCES rullst_supervision_sessions(id) ON DELETE CASCADE, sequence INTEGER NOT NULL CHECK(sequence > 0), kind INTEGER NOT NULL CHECK(kind BETWEEN 1 AND 63), source INTEGER NOT NULL DEFAULT 1 CHECK(source IN (1,2,3)), adapter_id TEXT, adapter_version TEXT, received_at INTEGER NOT NULL CHECK(received_at >= 0), expires_at INTEGER NOT NULL CHECK(expires_at > received_at), PRIMARY KEY(session_id,sequence))";
+/// The events table of stores created before 13.0.0-alpha.5 (codes 1-27).
+/// Such stores open and work unchanged; `upgrade_event_schema` rebuilds
+/// the table as [`EVENTS`].
+pub(super) const LEGACY_EVENTS: &str = "CREATE TABLE rullst_supervision_events (session_id TEXT NOT NULL REFERENCES rullst_supervision_sessions(id) ON DELETE CASCADE, sequence INTEGER NOT NULL CHECK(sequence > 0), kind INTEGER NOT NULL CHECK(kind BETWEEN 1 AND 27), source INTEGER NOT NULL DEFAULT 1 CHECK(source IN (1,2,3)), adapter_id TEXT, adapter_version TEXT, received_at INTEGER NOT NULL CHECK(received_at >= 0), expires_at INTEGER NOT NULL CHECK(expires_at > received_at), PRIMARY KEY(session_id,sequence))";
+pub(super) const EVENTS_TABLE: &str = "rullst_supervision_events";
+pub(super) const EVENT_INDEX: &str =
+    "CREATE INDEX rullst_supervision_event_expiry ON rullst_supervision_events(expires_at)";
+
 pub(super) const SCHEMA: &[(&str, &str)] = &[
     (
         "rullst_supervision_analysis",
@@ -19,14 +31,8 @@ pub(super) const SCHEMA: &[(&str, &str)] = &[
         "rullst_supervision_session_scope",
         "CREATE INDEX rullst_supervision_session_scope ON rullst_supervision_sessions(tenant,subject,resource)",
     ),
-    (
-        "rullst_supervision_events",
-        "CREATE TABLE rullst_supervision_events (session_id TEXT NOT NULL REFERENCES rullst_supervision_sessions(id) ON DELETE CASCADE, sequence INTEGER NOT NULL CHECK(sequence > 0), kind INTEGER NOT NULL CHECK(kind BETWEEN 1 AND 27), source INTEGER NOT NULL DEFAULT 1 CHECK(source IN (1,2,3)), adapter_id TEXT, adapter_version TEXT, received_at INTEGER NOT NULL CHECK(received_at >= 0), expires_at INTEGER NOT NULL CHECK(expires_at > received_at), PRIMARY KEY(session_id,sequence))",
-    ),
-    (
-        "rullst_supervision_event_expiry",
-        "CREATE INDEX rullst_supervision_event_expiry ON rullst_supervision_events(expires_at)",
-    ),
+    ("rullst_supervision_events", EVENTS),
+    ("rullst_supervision_event_expiry", EVENT_INDEX),
     (
         "rullst_supervision_managed",
         "CREATE TABLE rullst_supervision_managed (tenant TEXT NOT NULL, subject TEXT NOT NULL, resource TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision > 0), operator_ref TEXT NOT NULL, evidence_ref TEXT NOT NULL, policy_actor TEXT, not_before INTEGER, expires_at INTEGER, PRIMARY KEY(tenant,subject,resource), CHECK((policy_actor IS NULL AND not_before IS NULL AND expires_at IS NULL) OR (policy_actor IS NOT NULL AND not_before IS NOT NULL AND expires_at IS NOT NULL AND not_before >= 0 AND expires_at > not_before)))",

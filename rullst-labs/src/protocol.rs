@@ -88,7 +88,9 @@ impl From<WorkerInput> for InputWire {
         }
     }
 }
+/// How one case stopped. `#[non_exhaustive]`: another profile may add kinds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum TrapKind {
     Fuel,
     Memory,
@@ -96,8 +98,10 @@ pub enum TrapKind {
     Guest,
 }
 /// Raw values are transient trusted-grader input, never a student-facing result.
+/// `#[non_exhaustive]`: another profile may return other value types.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub enum CaseOutput {
     Value(i64),
     Trap(TrapKind),
@@ -110,7 +114,10 @@ impl std::fmt::Debug for CaseOutput {
         }
     }
 }
+/// Why an attempt produced no graded cases. `#[non_exhaustive]`: match it
+/// with a wildcard arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum ExecutionFailure {
     Compile,
     InvalidModule,
@@ -118,9 +125,17 @@ pub enum ExecutionFailure {
     WorkerProtocol,
     WorkerLost,
     Isolation,
+    /// The runner stopped the attempt when `ExecutionLimits::wall_seconds`
+    /// elapsed and confirmed its teardown (v13). Reported through
+    /// `SqliteLabs::complete`, it ends the job `Failed`, unlike a learner's
+    /// cancellation (`Cancelled`).
+    TimeLimit,
 }
+/// What the worker (or the runner on its behalf) reports for one attempt.
+/// `#[non_exhaustive]`: another profile may add outcomes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub enum WorkerOutcome {
     CompileRejected {
         diagnostics: crate::Diagnostic,

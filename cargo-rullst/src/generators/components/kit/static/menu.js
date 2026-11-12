@@ -12,8 +12,6 @@ const MENU = '[role="menu"][popover]';
 const ITEM = '[role="menuitem"]:not([disabled]):not([aria-disabled="true"])';
 const GAP = 4;
 const MARGIN = 8;
-// Which item to focus when a menu opens: "first" or "last".
-const focusOnOpen = new WeakMap();
 
 function items(menu) {
   return [...menu.querySelectorAll(ITEM)];
@@ -41,7 +39,15 @@ function place(menu, button) {
   menu.style.left = `${left}px`;
 }
 
-// `toggle` does not bubble: listen while it is captured on its way down.
+// An open menu sits under its button, which says so.
+function opened(menu, button) {
+  button.setAttribute("aria-expanded", "true");
+  place(menu, button);
+}
+
+// `toggle` does not bubble: listen while it is captured on its way down. It
+// arrives after the menu opened, so it never takes focus back from an item
+// the keyboard already reached (ArrowDown on the button focuses one at once).
 document.addEventListener(
   "toggle",
   (event) => {
@@ -49,12 +55,8 @@ document.addEventListener(
     if (!(menu instanceof HTMLElement) || !menu.matches(MENU)) return;
     const button = buttonOf(menu);
     if (event.newState === "open") {
-      button?.setAttribute("aria-expanded", "true");
-      if (button) place(menu, button);
-      const list = items(menu);
-      const first = focusOnOpen.get(menu) === "last" ? list.at(-1) : list[0];
-      focusOnOpen.delete(menu);
-      first?.focus();
+      if (button) opened(menu, button);
+      if (!menu.contains(document.activeElement)) items(menu)[0]?.focus();
     } else {
       button?.setAttribute("aria-expanded", "false");
       const active = document.activeElement;
@@ -96,13 +98,14 @@ document.addEventListener("keydown", (event) => {
   const controlled = document.getElementById(button.getAttribute("popovertarget") || "");
   if (!controlled?.matches(MENU)) return;
   event.preventDefault();
-  if (controlled.matches(":popover-open")) {
-    moveFocus(controlled, null, event.key === "ArrowUp" ? "End" : "Home");
-  } else {
-    focusOnOpen.set(controlled, event.key === "ArrowUp" ? "last" : "first");
-    // A click keeps the button as the popover's invoker.
+  if (!controlled.matches(":popover-open")) {
+    // A click keeps the button as the popover's invoker; the menu opens at
+    // once, so its item takes focus now, before the next key.
     button.click();
+    if (!controlled.matches(":popover-open")) return;
+    opened(controlled, button);
   }
+  moveFocus(controlled, null, event.key === "ArrowUp" ? "End" : "Home");
 });
 
 // Choosing an item closes the menu; links and submit buttons then act.
