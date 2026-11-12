@@ -126,7 +126,11 @@ let current = Event::find(event.id).await?;
 `rullst::config::project_setting`, which falls back to `./.env` without loading
 it into the process, and passes them to `TursoConfig::new` and
 `with_offline_path`; since 13.0.0-alpha.2 it no longer calls
-`dotenvy::dotenv()` or depends on `dotenvy`.
+`dotenvy::dotenv()` or depends on `dotenvy`. The starter also calls
+`allow_insecure_loopback()`, so `TURSO_DATABASE_URL=http://127.0.0.1:8080`
+reaches a local `turso dev` or `sqld` server; any other `http://` endpoint is
+still refused. `init_from_env` does not opt in, so for a local server build
+the `TursoConfig` as the starter does.
 
 The typed contract includes CRUD, equality filters, ordering, bounded
 pagination/counts, app-assigned or generated primary keys, checksummed

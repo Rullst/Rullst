@@ -88,6 +88,10 @@ fn the_saas_starter_is_wired_end_to_end() {
             assert!(features.iter().any(|known| known == feature), "{feature}");
         }
         assert!(read(&root, "src/controllers/mod.rs").contains("pub mod mfa;"));
+        // The smoke test of the non-hot starter now checks the security page.
+        if !hot {
+            assert!(read(&root, "src/security_tests.rs").contains("(\"/account/security\", 303),"));
+        }
         assert!(read(&root, "src/pages/mod.rs").contains("pub mod mfa;"));
 
         let login = read(&root, "src/controllers/auth_controller.rs");

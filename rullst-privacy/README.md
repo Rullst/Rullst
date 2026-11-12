@@ -126,9 +126,11 @@ remains separate.
   promotion can revive old grants. Quiesce optional processing, reconcile
   withdrawals and change purpose versions before resuming after rollback.
 
-The CLI's `make:privacy` consumer still selects shared-local SQLite. An
-application can select this PostgreSQL adapter explicitly without changing its
-ordinary authentication, tenant authorization or CSRF boundary:
+The CLI's `make:privacy` consumer selects this PostgreSQL adapter for a
+PostgreSQL project (or with `--consent-store postgres`, since 13.0.0-alpha.5)
+and shared-local SQLite otherwise. An application can also select it explicitly
+without changing its ordinary authentication, tenant authorization or CSRF
+boundary:
 
 ```rust,no_run
 # #[cfg(feature = "consent-postgres")]

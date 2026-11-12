@@ -21,6 +21,18 @@ A prepared version section does not establish that its tag or crates exist.
   after one call to the new `SqliteSupervision::upgrade_event_schema`, which
   rebuilds the events table and keeps every row (found while building a camera
   adapter for an acceptance application).
+- `rullst-supervision` (Experimental): `MediaSample::loudness(LoudnessStatistics::new(mean_dbfs,
+  peak_dbfs, active_fraction, window_ms)?)` (`SampleFormat::LoudnessStatistics`)
+  gives an audio-activity adapter the loudness of up to five seconds of
+  microphone input with no audio, so a microphone check can send four numbers
+  instead of PCM: the mean and loudest frame level in dBFS (`-120` to 0), the
+  share of frames above the client's activity threshold and the window length
+  in milliseconds (at most 5,000, like a PCM sample). Out-of-range, NaN and
+  infinite values are refused, and a statistics sample sent to an adapter of
+  the other kind is `InvalidInput`. The accessor of the brightness statistics
+  added above is `MediaSample::luminance_statistics()`, next to the new
+  `loudness_statistics()` (found while building a microphone check for an
+  acceptance application).
 - `rullst-labs` (Experimental): `ExecutionFailure::TimeLimit`. A runner that
   stops an attempt at the wall limit and confirms its teardown reports
   `Rejected(TimeLimit)` through `complete`; the job ends `Failed`, so the
@@ -28,6 +40,47 @@ A prepared version section does not establish that its tag or crates exist.
   cancellation. The runner contract and the `byo_runner_controller` example
   do this now (found while building a Docker runner for an acceptance
   application).
+- Provider conformance kits: an application-owned payment gateway, mail
+  transport or video adapter can now prove in its own tests that it behaves
+  like Rullst's built-in ones, without a network. Each kit sits behind a new
+  `conformance` Cargo feature, runs every case under `catch_unwind` (a panic
+  fails that case, never the run) and returns a `ConformanceReport` of
+  `ConformanceCase`s (`Passed`, `Failed` or `Skipped`, with the failed
+  expectations) whose `assert_passed` fails a test with the whole report.
+  `rullst_capital::conformance::check_billing_provider` takes a
+  `BillingProvider` and a `BillingHarness` (the server-side
+  `OneOffCheckoutRequest`, an authentic `WebhookDelivery` and, optionally, a
+  simulated `SourcePayment` at the provider's source of truth) and checks that
+  checkouts validate their inputs and are bound to the server-side amount,
+  forged, stripped and tampered notifications are refused, a replayed
+  notification gives the same answer, nothing is paid until the source
+  confirms it, another amount, currency or order is never paid, offline
+  results are deterministic and hostile input returns a `CapitalError`; Stripe
+  (mock and signed-webhook modes) and InfinitePay (offline fixtures and a local
+  Checkout API) pass it. `rullst_mail::conformance::check_mail_driver` takes a
+  `MailDriver` and a `DeliveryCapture` (`OfflineMockCapture` for the built-in
+  drivers) and checks that CR/LF in the subject, recipient, sender or
+  Reply-To and oversized or badly named attachments are a `ValidationError`
+  with nothing delivered, a suppressed recipient is refused behind a
+  `SuppressionGuard`, offline delivery is deterministic and malformed
+  recipients, delivery IDs and tenants are refused; Resend, AWS SES,
+  SendPulse and SMTP pass it. `rullst_media::conformance::check_video_provider`
+  takes a `VideoProvider` and `VideoExpectations` (upload, playback and
+  listing, each declarable absent) and checks marker validation, the
+  create/get/update/delete lifecycle, upload and playback grant expiry, mode,
+  HTTPS and TTL bounds, that upload-only credentials refuse playback, bounded
+  listing pages and offline determinism; offline Bunny Stream, complete and
+  upload-only, passes it. So that an application-owned video adapter can
+  create its own grants and library pages, `rullst-media` adds
+  `UploadGrant::new`, `UploadGrant::with_declaration` and
+  `PlaybackGrant::new`, which take the adapter's `ProviderBinding` and refuse
+  non-HTTPS or credential-bearing URLs, empty or non-ASCII signatures and
+  expiry times outside 1970 to 9999 with `MediaError::InvalidInput`, and
+  `ListedVideo::new` (with `with_created_at` and `with_thumbnail_url`) and
+  `VideoPage::new`, which bound titles, durations and thumbnails and keep a
+  page within its query. The new book page "Provider Conformance Kits"
+  lists every case and walks through an application-owned payment provider
+  and video provider that pass their kits.
 - `rullst::iot_ingest` (facade feature `iot-ingest`, Experimental): a
   bounded telemetry receiver for devices on the server side.
   `TelemetryReceiver` accepts one `SensorTelemetry` JSON object or an array
@@ -676,11 +729,108 @@ describes each replacement.
 
 ### Fixed
 
+- The `rullst-supervision` observation guide did not say that the
+  `Permissions-Policy: camera=(), microphone=()` header of Rullst's staging and
+  production security baseline makes the browser refuse `getUserMedia`, so a
+  camera-presence page that worked in development failed after deployment. It
+  now explains how to allow only the captured device on the capture page's
+  response, both with `Server`'s baseline and with `SecureHeadersLayer`
+  (found while building an acceptance application).
+- Documentation: the Alpine section of the frontend guide, and the comment
+  at the top of the `static/js/alpine-components.js` that
+  `cargo rullst add alpine` writes, still said that `html!` cannot write
+  attribute names containing `@` or `:`, so events and bindings had to go
+  through an `x-bind` object. Since 13.0.0-alpha.5 `html!` accepts `@click`,
+  `:class`, `x-on:keydown.enter` and the other Alpine names with string-literal
+  values; both now say so (found by the 13.0.0-alpha.5 acceptance
+  application).
 - Documentation: the InfinitePay sections of the `rullst-capital` README and
   the payment gateway guide did not say that the merchant must enable external
   checkout ("Checkout externo") in the InfinitePay app first; until then
   `POST /links` answers 404 `external_checkout_not_enabled`, also for a tag
   that does not exist (found by the 13.0.0-alpha.5 acceptance application).
+- The Turso-primary Blank and API starters (`cargo rullst new --database
+  turso`) could not use a local libSQL server: `turso dev` and `sqld` serve
+  plain HTTP (for example `http://127.0.0.1:8080`), which `TursoConfig`
+  refuses without `allow_insecure_loopback()`, and a `libsql://` URL is sent
+  over HTTPS, so `db:migrate`, `db:status` and the server stopped with
+  "plain HTTP is limited to explicitly enabled loopback". The generated
+  `main.rs` now calls `allow_insecure_loopback()`, which accepts `http://`
+  only for `localhost` and loopback addresses; remote endpoints still need
+  `libsql://` or HTTPS. Existing projects can add the same call after
+  `with_offline_path(...)?`. Found by acceptance testing against `sqld`
+  0.24.32.
+- `rullst-orm` query cache: while Redis was down, every `.remember(...)` read
+  waited about 9.5 seconds before falling back to the database, every
+  generated save or delete about 19 seconds before reporting its failed cache
+  invalidation, and `Orm::init_redis`/`init_redis_with_namespace` about 9.5
+  seconds before failing on a wrong password or an unreachable server: the
+  connection manager used redis-rs's default of six backed-off reconnection
+  retries per command. It now retries once, so a stopped Redis costs a
+  remembered read about 0.15 s and initialization fails as quickly; a
+  restarted Redis is used again on the next command. Found by acceptance
+  testing against Redis 7.4.
+- `rullst-capital`: an unsuccessful provider response lost the provider's
+  reason, so InfinitePay's refusal to create links for a tag without external
+  checkout ("Checkout externo") read only `returned HTTP 404`. The error now
+  keeps the provider's error code when it is a short token (InfinitePay's
+  `error`, Stripe's `error.code` or `error.type`), read from at most 4 KiB of
+  the body: `ProviderFailure::reason()` returns it and the message ends with
+  it, for example `(external_checkout_not_enabled)`. The provider's message is
+  never kept (found by the 13.0.0-alpha.5 acceptance application).
+- `cargo rullst audit` reported a dependency advisory found by cargo-audit as
+  a check that failed to complete (`[ERROR] cargo-audit did not complete
+  successfully`, `dependency_audit` status `error`), because cargo-audit exits
+  with status 1 for both. It now reads cargo-audit's JSON report: advisories
+  are `[FINDINGS]` (status `findings` with their count, in `--report` and
+  `--compliance` too), and only a run that produced no report is an error
+  (found by the 13.0.0-alpha.5 acceptance application).
+- The CI workflow `cargo rullst new` writes failed its daily `cargo audit`
+  for every application that uses SQLite, on `RUSTSEC-2026-0459` (bundled
+  SQLite through `sqlx-sqlite` 0.9), which Rullst governs as a time-bounded
+  exception but no application can fix yet. The workflow now ignores that one
+  advisory until the same expiry as Rullst's ledger, 2027-01-28, and audits
+  without the exception after it; a comment explains the exposure and says to
+  remove the exception when the application upgrades to a Rullst release that
+  updates `sqlx` (found by the 13.0.0-alpha.5 acceptance application).
+- `cargo rullst make:age-gate --replay-store postgres` generated no way to
+  create the replay store: `AGE_GATE.md` said to call
+  `PostgresReplayStore::initialize` in a deployment step and application
+  startup only connects, so the app could not start. It now also writes
+  `src/bin/age-init.rs` (`cargo run --bin age-init`, with `default-run` keeping
+  `cargo run` on the application), as `make:privacy` does with `privacy-init`.
+- `cargo rullst make:privacy` always generated the shared-local SQLite consent
+  store, even for a PostgreSQL project, and after an application switched it to
+  `rullst-privacy`'s `consent-postgres` feature, `make:age-gate` (and the other
+  privacy consumers) refused the "unknown privacy feature". `make:privacy` now
+  selects the PostgreSQL store (`PostgresConsentStore`, `consent-postgres`, a
+  `privacy-init` that initializes the schema, and its `PRIVACY.md` setup) when
+  the project's primary database is PostgreSQL, `--consent-store sqlite|postgres`
+  chooses explicitly, and the consumers accept `consent-postgres` (found by the
+  13.0.0-alpha.5 acceptance application).
+- The generators that add pages left them out of the smoke test that
+  `cargo rullst new` writes (`PAGES` in `src/security_tests.rs`, also read by
+  `cargo rullst add browser-tests`), although that list says to add every
+  page. `make:mfa` now adds `/account/security` (303 when signed out),
+  `make:privacy` adds `/privacy` (303) and `make:pwa` adds `/offline` (200),
+  once and only to a recognized list (found by the 13.0.0-alpha.5 acceptance
+  application).
+- Nothing said that the Tailwind stylesheet of `cargo rullst add tailwind` is
+  rebuilt only by `cargo rullst dev` and `cargo rullst build`: an application
+  started with plain `cargo run`, or a release binary started by a script,
+  served the `static/app.css` built when the kit was added and its pages
+  looked unstyled. `cargo rullst doctor` now warns (`project.tailwind`) when
+  `static/app.css` is missing or older than `assets/css/app.css` or a file its
+  `@source` lines scan, `add tailwind` lists that check in its next steps, and
+  the frontend guide says that plain Cargo builds do not run Tailwind (found by
+- The SaaS starter's dashboard broke at phone width: its header actions were
+  inline links with vertical padding in a non-wrapping flex row, so on a
+  390 px screen they overlapped one another and the logo. The header and its
+  actions now wrap with gaps, the buttons are inline blocks and small screens
+  get less padding. The starter's `static/rullst.css`, which `render_page*`
+  links, centred `<body>` as a flex row, so a page that put several elements in
+  `<body>` showed them side by side; it now stacks them in a column (found by
+  the 13.0.0-alpha.5 acceptance application).
 - `cargo rullst make:privacy` and `cargo rullst make:age-gate` refused a SaaS
   project in which `cargo rullst make:mfa` had already run
   (`src/controllers/auth_controller.rs differs from the starter's`), although
@@ -700,6 +850,11 @@ describes each replacement.
   running as another user could not read the PWA's static files. New files are
   now created in place, exclusively, with the mode the process umask gives
   (as `fs::write` does); an edited file keeps its mode.
+- The CI workflow that `cargo rullst new` writes no longer saves the Rust
+  dependency cache from a failed or cancelled run (`cache-on-failure: false`),
+  which could leave a half-built `target/` that broke every later run. Rullst's
+  own cache policy check now covers that workflow too.
+
 - `rullst-orm` SurrealDB adapter: `SurrealDbStore::create` reported a write
   that SurrealDB had refused. SurrealDB 3 answers a CREATE denied by
   permissions (a `VIEWER` database user, or a record user on a table with

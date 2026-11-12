@@ -77,7 +77,9 @@ GET with [`TestApp`](crates/core.md) and checks:
   after a history-cache miss (`HX-Request` and `HX-History-Restore-Request`)
   must answer the whole document too, not a fragment.
 
-**Add each new page to `PAGES`.** Use the path a signed-out visitor opens and
+**Add each new page to `PAGES`.** `make:mfa` (`/account/security`, 303),
+`make:privacy` (`/privacy`, 303) and `make:pwa` (`/offline`, 200) add theirs
+(since 13.0.0-alpha.5). Use the path a signed-out visitor opens and
 the status they receive; pages that need a signed-in user can be checked in
 your own tests by sending the session cookie with `TestApp::get(path)
 .header("cookie", …)`. Routes with parameters (`/posts/{id}`) are not listed:
@@ -113,7 +115,11 @@ edit them freely.
   `cargo test --all-targets`, with a dependency cache.
 - **Dependency advisories:** `cargo audit` on every push and pull request and
   daily at 06:17 UTC, so a new RustSec advisory for a locked crate fails the
-  scheduled run. It reads `Cargo.lock`: commit it.
+  scheduled run. It reads `Cargo.lock`: commit it. It ignores one advisory
+  that Rullst governs and cannot fix yet, `RUSTSEC-2026-0459` (bundled SQLite
+  through `sqlx-sqlite`), until its expiry, 2027-01-28, after which the step
+  audits without it; the comment above the step says when to remove it (see
+  [security advisory exceptions](security-advisory-exceptions.md)).
 - **Secret scan:** TruffleHog, verified findings only, over the commits of the
   push or pull request.
 

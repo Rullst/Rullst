@@ -95,6 +95,29 @@ it (two requests): the marker stays the identity that `find_created` searches
 after an ambiguous creation. If the metadata step fails, the created video is
 returned with its marker title; retry `update` with its id.
 
+### Conformance kit (13.0.0-alpha.5)
+
+The `conformance` feature adds `conformance::check_video_provider`, the
+contract the offline Bunny adapter passes, for an application's own
+`VideoProvider` or a wrapper around a built-in one. `VideoExpectations::new(now)`
+expects upload grants, playback grants and listing; `without_playback()` (as
+with upload-only credentials), `without_upload()` and `without_listing()`
+require `MediaError::Unsupported` instead. The kit checks marker validation,
+the create/get/update/delete lifecycle, grant expiry, mode, HTTPS and TTL
+bounds, bounded listing pages and offline determinism, and returns a
+`ConformanceReport`. Run it against the offline mode or a disposable library:
+it creates and deletes videos. An application-owned adapter creates its own
+grants with `UploadGrant::new(&binding, video, protocol, endpoint, signature,
+expires_at)` and `PlaybackGrant::new(&binding, url, expires_at)`, which take
+the binding's library and mode and refuse non-HTTPS or credential-bearing URLs,
+empty or non-ASCII signatures and impossible expiry times with `InvalidInput`;
+`UploadGrant::with_declaration` adds a declared type and length. Its `list`
+builds pages with `ListedVideo::new(id, title, length_seconds, processing)`
+(optional `with_created_at` and HTTPS `with_thumbnail_url`) and
+`VideoPage::new(&query, items, total)`, which echoes the query and refuses
+more than `per_page` items. See
+[Provider conformance kits](https://github.com/Rullst/Rullst/blob/main/docs/src/provider-conformance.md).
+
 ### Library listing (13.0.0-alpha.5)
 
 `VideoProvider::list(&ListQuery)` returns one `VideoPage` of the provider

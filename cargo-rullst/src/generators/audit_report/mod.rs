@@ -94,8 +94,11 @@ fn dependency_check(root: &Path, cargo: &OsStr, ignores: &[String]) -> Check {
             "cargo-audit reported no advisory outside the governed exceptions {}; those advisories remain unresolved and need separate review.",
             ids.join(", ")
         ),
+        EvidenceStatus::Findings(count) => format!(
+            "cargo-audit reported {count} vulnerable dependency advisory(ies); run `cargo audit` for the advisories and their fixes."
+        ),
         EvidenceStatus::Error(error) => format!(
-            "cargo-audit did not complete successfully (advisories found or the run failed); run `cargo audit` for its full output. Last error: {}",
+            "cargo-audit did not complete successfully; run `cargo audit` for its full output. Last error: {}",
             last_error_line(error)
         ),
         other => other.detail(),

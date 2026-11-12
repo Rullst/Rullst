@@ -86,6 +86,7 @@
 - [💳 Payment Gateways & Financial Infrastructure](payment-gateways-guide.md)
 - [Writing Your Own Payment Provider](capital-custom-provider.md)
 - [Writing Your Own Mail Transport](mail-custom-transport.md)
+- [Provider Conformance Kits](provider-conformance.md)
 - [🧪 Monorepo Examples & Reference Apps](examples.md)
 - [Axum/SQLx Interoperability](axum-sqlx-migration.md)
 - [GitHub CLI Installation & Safe Login](gh-install.md)

@@ -230,6 +230,11 @@ async fn link() -> Result<(), rullst_capital::CapitalError> {
 - InfinitePay has no subscriptions, customer portal, metered usage, coupons,
   trials or sandbox: those operations return `UnsupportedOperation`. Refunds
   happen in InfinitePay's app.
+- A refused request keeps InfinitePay's error code in
+  `ProviderFailure::reason()` and in the message, for example
+  `infinitepay create payment link returned HTTP 404 (external_checkout_not_enabled)`
+  until external checkout ("Checkout externo") is enabled for the tag. Only a
+  short code is kept, never the provider's message.
 - An empty or `mock_*` handle selects offline fixtures: a
   `mock.infinitepay.invalid` checkout and an `OneOffPaymentState::Mock`
   confirmation that never proves payment. The 13.0.0-alpha.4 constructor
@@ -268,6 +273,27 @@ metered billing, `MeteredBillingProvider`) themselves. Such an adapter must
 declare its webhook verification mode explicitly before the canonical
 middleware accepts it; see
 [Writing your own payment provider](https://github.com/Rullst/Rullst/blob/main/docs/src/capital-custom-provider.md).
+
+### Conformance kit for application-owned adapters (13.0.0-alpha.5)
+
+The `conformance` feature adds `conformance::check_billing_provider`, the
+contract Stripe and InfinitePay pass, to run in the adapter's own tests
+without a network. A `BillingHarness` supplies the server-side
+`OneOffCheckoutRequest` the gateway accepts, an authentic `WebhookDelivery`
+and, optionally, a simulated `SourcePayment` at the gateway's source of truth;
+the kit checks input validation, binding to the server-side amount, forged,
+stripped and tampered notifications, replays, confirmation at the source,
+another amount, currency or order, offline determinism and typed errors, and
+returns a `ConformanceReport`:
+
+```rust,ignore
+// [dev-dependencies] rullst-capital = { version = "=13.0.0-alpha.5", features = ["conformance"] }
+let report = rullst_capital::conformance::check_billing_provider(&provider, &harness).await;
+report.assert_passed(); // or inspect report.cases()
+```
+
+[Provider conformance kits](https://github.com/Rullst/Rullst/blob/main/docs/src/provider-conformance.md)
+lists every case and walks through an application-owned provider that passes.
 
 ### Customer-bound Stripe subscription checkout (12.1)
 

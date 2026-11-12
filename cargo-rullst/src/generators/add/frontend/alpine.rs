@@ -20,8 +20,9 @@ pub(crate) const COMPONENTS_JS: &str = r#"// Alpine.js components (`cargo rullst
 // Rules and limits: https://rullst.github.io/Rullst/book/frontend.html
 // and https://alpinejs.dev/advanced/csp
 //
-// Use in html! (attribute names there cannot hold ":" or "@", so events and
-// bindings go through an `x-bind` object such as `clear` below):
+// Use in html! (since 13.0.0-alpha.5 it accepts Alpine attribute names such
+// as @click and :disabled with string-literal values; an `x-bind` object such
+// as `clear` below keeps several directives together):
 //
 //   <div x-data="charCounter(160)">
 //       <textarea name="message" x-model="text"></textarea>

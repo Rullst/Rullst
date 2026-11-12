@@ -452,6 +452,17 @@ pub(super) fn wire(root: &Path, accounts: Accounts, changes: &mut Changes) -> Re
     if !linked {
         notes.push("Link /account/security from your account pages.".to_owned());
     }
+    // The smoke test of `cargo rullst new` checks the security page too
+    // (signed out, it redirects to the sign-in).
+    let smoke = root.join(crate::generators::smoke_pages::FILE);
+    if accounts == Accounts::Starter && smoke.try_exists()? {
+        changes.change(&smoke, |source| {
+            Ok(crate::generators::smoke_pages::with_pages(
+                source,
+                &[("/account/security", 303)],
+            ))
+        })?;
+    }
     let main = root.join("src/main.rs");
     if main.try_exists()? && changes.change(&main, main_hook)? {
         notes.push("`<application> admin:mfa-reset <email>` (for example `cargo run -- admin:mfa-reset member@example.com`) removes an account's second factor and signs it out everywhere.".to_owned());

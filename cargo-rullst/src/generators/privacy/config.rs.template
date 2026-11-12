@@ -1,4 +1,4 @@
-use rullst_privacy::consent::{ConsentError, ConsentGate, ConsentPurpose, ConsentSubject, SqliteConsentStore};
+use rullst_privacy::consent::{ConsentError, ConsentGate, ConsentPurpose, ConsentSubject, __STORE_TYPE__};
 use super::proof::ProofKey;
 
 /// Fixed at generation by `--tenant-ref`; no request input selects the tenant.
@@ -8,7 +8,7 @@ pub(super) const NOTICE_VERSION: &str = __NOTICE_VERSION__;
 pub(super) const VALIDITY_SECONDS: i64 = __VALIDITY_SECONDS__;
 
 pub struct PrivacyState {
-    pub(super) gate: ConsentGate<SqliteConsentStore>,
+    pub(super) gate: ConsentGate<__STORE_TYPE__>,
     pub(super) purpose: ConsentPurpose,
     pub(super) proof: ProofKey,
 }
@@ -16,9 +16,7 @@ pub struct PrivacyState {
 impl PrivacyState {
     pub(super) async fn from_env() -> Result<Self, ConsentError> {
         let proof = ProofKey::from_env()?;
-        let database = std::env::var_os("RULLST_PRIVACY_DATABASE")
-            .filter(|value| !value.is_empty()).ok_or(ConsentError::InvalidConfiguration)?;
-        let store = SqliteConsentStore::open(std::path::Path::new(&database), 10_000).await?;
+        __STORE_OPEN__
         Ok(Self { gate: ConsentGate::new(store)?, purpose: ConsentPurpose::new(PURPOSE_ID, NOTICE_VERSION)?, proof })
     }
 }

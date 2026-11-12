@@ -1148,7 +1148,12 @@ cargo rullst make:age-gate \
 The threshold above is an example for an application-assessed low-assurance
 policy. Select `postgres` explicitly for a shared database across hosts.
 Configure the required private key and replay database as described by the
-generated `AGE_GATE.md`; missing state or configuration denies access. The
+generated `AGE_GATE.md`; missing state or configuration denies access. With
+`postgres` (since 13.0.0-alpha.5) the command also writes `src/bin/age-init.rs`:
+run `cargo run --bin age-init` once in a deployment step, with
+`RULLST_AGE_REPLAY_DATABASE` exported, to create the replay schema that
+application startup only connects to (`default-run` keeps `cargo run` on the
+application). The
 candidate defaults to the registry version matching this CLI. The source
 override shown above is required for development before that version is published,
 unless an explicit archive-only patch is configured. Generation refuses unknown
@@ -1197,12 +1202,17 @@ publication use the explicit local override shown above or a reviewed archive pa
 Unknown authentication, dependencies, routes or existing output files require
 manual integration rather than overwriting application code.
 
-Follow generated `PRIVACY.md`: provision an independent random
-`RULLST_PRIVACY_FORM_KEY_HEX` and initialize a new private local consent file with
-`cargo run --bin privacy-init`, with `RULLST_PRIVACY_DATABASE` exported into that
-process environment. Ordinary opening never creates or repairs missing state.
-The generated 10,000-record SQLite store requires one trusted shared local file;
-it does not provide multi-host replication. Preferences and personalization deny
+The consent store is PostgreSQL (`PostgresConsentStore`, `consent-postgres`)
+when the project's primary database is PostgreSQL (`strict-postgres`) and a
+shared-local SQLite file otherwise; `--consent-store sqlite|postgres` chooses
+explicitly (since 13.0.0-alpha.5). Follow generated `PRIVACY.md`: provision an
+independent random `RULLST_PRIVACY_FORM_KEY_HEX` and initialize the store once
+with `cargo run --bin privacy-init`, with `RULLST_PRIVACY_DATABASE` (the SQLite
+file path or the PostgreSQL URL) exported into that process environment.
+Ordinary opening never creates or repairs missing state. The generated SQLite
+store (10,000 records) requires one trusted shared local file and does not
+provide multi-host replication; the PostgreSQL store shares one authoritative
+database across hosts. Preferences and personalization deny
 unavailable state, while the authenticated export remains independent of that
 store and form key.
 
@@ -2423,7 +2433,11 @@ links with its bundled LLD by default.
 #### Doctor: project
 The enclosing Rullst project (a `Cargo.toml` that depends on `rullst`) and its
 `rullst` requirement compared with the CLI's major version; an older project
-suggests `cargo rullst upgrade --dry-run`.
+suggests `cargo rullst upgrade --dry-run`. With the Tailwind kit of
+`cargo rullst add tailwind`, `project.tailwind` warns when `static/app.css` is
+missing or older than `assets/css/app.css` or a file under its
+`@source "<dir>/**/*.<ext>"` lines: plain `cargo build`/`cargo run` never
+rebuild it, `cargo rullst dev` and `cargo rullst build` do.
 
 #### Doctor: config and .env
 Whether `.env` parses, which keys listed in `.env.example` are set neither in

@@ -256,7 +256,17 @@ webhook verification return `Unsupported` and no delivery-protection assertion
 is made. `VideoProvider::list` reads one bounded, validated page of the provider
 library (at most 100 videos, 1 MiB) and grants no ownership; adapters without a
 listing return `Unsupported`. `create_with_metadata` keeps the random marker as
-the creation identity and applies metadata in a second request.
+the creation identity and applies metadata in a second request. The opt-in
+`conformance` feature (13.0.0-alpha.5) checks a `VideoProvider`, or a wrapper
+around a built-in one, with `conformance::check_video_provider`; a capability
+declared absent must return `Unsupported`
+([Provider conformance kits](provider-conformance.md)). Application-owned
+adapters create grants with `UploadGrant::new` and `PlaybackGrant::new`
+(13.0.0-alpha.5), which bind the adapter's library and mode and accept only
+bounded credential-free HTTPS URLs (HTTP only in `ProtocolFixture` mode),
+visible-ASCII signatures and expiry times from 1970 to 9999; their `list`
+builds pages with `ListedVideo::new` and `VideoPage::new`, which bound titles
+(1 to 1024 bytes), durations (one week), thumbnails (HTTPS) and page size.
 
 Empty or `mock_*` credentials select deterministic offline behavior; mixed modes
 fail configuration. Production rejects mock or loopback-fixture capabilities.
@@ -625,7 +635,11 @@ must bind capture to the authenticated session and implement adapter cancellatio
 Since 13.0.0-alpha.5 a camera adapter can report `PresenceObservation::Obscured`
 (covered, dark or blocked view) and can receive `LuminanceStatistics` (mean,
 standard deviation, sample count) instead of a frame, so a privacy-preserving
-client sends no image. Stores created from alpha.5 accept the new observation
+client sends no image. An audio-activity adapter can likewise receive
+`LoudnessStatistics` (mean and peak frame level in dBFS, share of frames above
+the client's activity threshold, window length of at most five seconds)
+instead of PCM, so the client sends no audio. Both are range-checked client
+reports, not attestations, and each goes only to an adapter of its kind. Stores created from alpha.5 accept the new observation
 code; an earlier store opens and works unchanged and records it only after the
 host calls `upgrade_event_schema`, which rebuilds the events table in one
 transaction without changing rows. Opening never rebuilds a store.
@@ -1293,7 +1307,10 @@ header; it is omitted from the serialized message when empty, so queued jobs
 without it decode unchanged. Applications implement other providers with `MailDriver`
 ([Writing your own mail transport](mail-custom-transport.md)); the
 [migration guide](migration-v13.md) lists the removed names, and
-`cargo rullst upgrade` reports them as `V13-MAIL-REMOVED`.
+`cargo rullst upgrade` reports them as `V13-MAIL-REMOVED`. The opt-in
+`conformance` feature (13.0.0-alpha.5) checks such a transport against the
+built-in drivers' contract with `conformance::check_mail_driver`
+([Provider conformance kits](provider-conformance.md)).
 
 **12.1 one-time Stripe foundation:** a separate fixed-price `mode=payment`
 contract checks active provider catalog amount/currency before creation and
@@ -3502,7 +3519,11 @@ while portability and semantic review remain the model author's responsibility.
 `rullst-capital` exposes provider-neutral billing contracts, a supported Stripe
 adapter and an experimental InfinitePay adapter. Applications integrate any
 other gateway by implementing the same traits in their own code; see
-[Writing your own payment provider](capital-custom-provider.md).
+[Writing your own payment provider](capital-custom-provider.md). The opt-in
+`conformance` feature (13.0.0-alpha.5) runs the provider contract as a test
+kit, `conformance::check_billing_provider`, against such an adapter without a
+network; Stripe and InfinitePay pass it
+([Provider conformance kits](provider-conformance.md)).
 
 Every reviewed live adapter uses the same fail-closed outbound HTTP boundary:
 redirects and ambient proxy environment variables are disabled, connection and
