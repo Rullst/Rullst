@@ -151,7 +151,8 @@ fn working_static_directory() -> PathBuf {
 fn missing_static_warning(directory: &Path) -> String {
     format!(
         "⚠️  Rullst: no static directory at {}, so nothing is served under /static/. \
-         Pages from rullst::htmx::render_page load /static/htmx-1.9.12.min.js and \
+         Pages from rullst::htmx::render_page load /static/htmx-2.0.11.min.js (or the \
+         htmx-1.9.12.min.js of an application created before 13.0.0-alpha.5) and \
          /static/rullst.css from it: start the server in the directory that contains \
          static/ (an application without pages can ignore this).",
         directory.display()

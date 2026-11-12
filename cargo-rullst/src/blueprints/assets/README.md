@@ -1,82 +1,72 @@
 # Vendored browser client
 
-`htmx-1.9.12.min.js` and `htmx-ext-sse-1.9.12.js` come from the official
-HTMX repository, version 1.9.12, commit
-`f38e07d4be8145a39e2bb477ec9fcc56bdd2d16d`:
+HTML scaffolds (`cargo rullst new`, Blank and SaaS) write these files to
+`static/`. Since 13.0.0-alpha.5 they are htmx 2 and its separately packaged
+Server-Sent Events extension, taken from the npm registry tarballs (not a CDN)
+and checked against the registry's `integrity`:
 
-- [Upstream script](https://github.com/bigskysoftware/htmx/blob/f38e07d4be8145a39e2bb477ec9fcc56bdd2d16d/dist/htmx.min.js)
-- [Upstream Server-Sent Events extension](https://github.com/bigskysoftware/htmx/blob/f38e07d4be8145a39e2bb477ec9fcc56bdd2d16d/dist/ext/sse.js)
-- [Upstream Zero-Clause BSD license](https://github.com/bigskysoftware/htmx/blob/f38e07d4be8145a39e2bb477ec9fcc56bdd2d16d/LICENSE), retained as `HTMX-LICENSE`.
+| File | Package | Tarball file | Registry `integrity` of the tarball |
+| --- | --- | --- | --- |
+| `htmx-2.0.11.min.js` | [`htmx.org` 2.0.11](https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz), published 2026-09-22 | `package/dist/htmx.min.js` | `sha512-Thx/WtpeOQqSrqBCw/A1cwGJGg4UrVa3+sW0GmrM3p4gJgO89ecH4qtbnyzDDWFvBTqjnIMCgELTNt636dtamA==` |
+| `htmx-ext-sse-2.2.4.js` | [`htmx-ext-sse` 2.2.4](https://registry.npmjs.org/htmx-ext-sse/-/htmx-ext-sse-2.2.4.tgz), published 2025-10-18 | `package/dist/sse.js` | `sha512-LJmxVhykyflBWgh5PvbRidcyuqMHlgfajmmzumvKctv9puvsufeH6OaejSMZTNTnEI8O2wXXn4ZZtBdpEMqmEQ==` |
+| `HTMX-LICENSE` | `htmx.org` 2.0.11 | `package/LICENSE` (Zero-Clause BSD) | |
+| `HTMX-EXT-SSE-LICENSE` | `htmx-ext-sse` 2.2.4 | `package/LICENSE` (Zero-Clause BSD) | |
 
-The vendored `htmx-1.9.12.min.js` adds one terminal LF to the upstream
-minified text and changes no behavior. `htmx-ext-sse-1.9.12.js` is the
-upstream file with one fix, so Rullst ships a **patched copy** under the
-upstream name. Upstream computes the reconnect delay after a failed
-connection with `2 ^ retryCount`, which in JavaScript is a bitwise XOR: the
-delay never grows past about 2.5 seconds and is sometimes zero, so a server
-that keeps refusing is retried at full speed. The copy grows the delay as a
-real power of two (a random delay below 0.5, 1, 2, … up to 64 seconds, the
-existing cap of seven doublings) and resets it when a connection opens, as
-the later htmx 2 extension does. A header comment in the file records the
-patch:
+Both are the `latest` dist-tag of their package, checked on 2026-11-12 with
+`https://registry.npmjs.org/htmx.org` and `https://registry.npmjs.org/htmx-ext-sse`
+(`htmx.org` 4.x is published only under the `next` tag and is not used). They
+follow the 14-day cooldown of the other pinned frontend tools
+(`cargo-rullst/src/generators/frontend/tailwind_release.rs`): 2.0.11 was 51
+days old when it was pinned. Sources:
+[htmx](https://github.com/bigskysoftware/htmx) (`gitHead`
+`fa978b24e75fb03c137bf2cdae4fef0e711cf8a1`) and
+[htmx-extensions](https://github.com/bigskysoftware/htmx-extensions) (`gitHead`
+`5f10b3bf036455162009df5394ba82837e034085`).
 
-```diff
-@@ -3,6 +3,9 @@
- ============================
- This extension adds support for Server Sent Events to htmx.  See /www/extensions/sse.md for usage instructions.
- 
-+Patched by Rullst: the reconnect delay grows as 2^n (upstream computes the
-+bitwise XOR `2 ^ n`) and a successful connection resets it.
-+
- */
- 
- (function() {
-@@ -252,7 +255,7 @@
- 			// Otherwise, try to reconnect the EventSource
- 			if (source.readyState === EventSource.CLOSED) {
- 				retryCount = retryCount || 0;
--				var timeout = Math.random() * (2 ^ retryCount) * 500;
-+				var timeout = Math.random() * Math.pow(2, retryCount) * 500;
- 				window.setTimeout(function() {
- 					ensureEventSourceOnElement(elt, Math.min(7, retryCount + 1));
- 				}, timeout);
-@@ -260,6 +263,7 @@
- 		};
- 
- 		source.onopen = function(evt) {
-+			retryCount = 0;
- 			api.triggerEvent(elt, "htmx:sseOpen", { source: source });
- 		}
- 
-```
+`htmx-2.0.11.min.js` adds one terminal LF to the upstream minified text and
+changes no behavior. `htmx-ext-sse-2.2.4.js` is the upstream file unchanged.
 
-This path runs when the browser gives up on a stream (an error status or a
-wrong content type, for example from a proxy). `rullst::realtime::RealtimeSse`
-itself never answers with an error: it ends a refused stream with a `retry:`
-delay, which the browser's own reconnection honours.
+## The SSE reconnect patch is gone
 
-SHA-256:
+Until 13.0.0-alpha.5 Rullst shipped a patched copy of htmx 1.9.12's
+`dist/ext/sse.js`, whose reconnect delay after a failed connection used
+`2 ^ retryCount`, a bitwise XOR in JavaScript, so it never grew past about 2.5
+seconds. The htmx 2 extension 2.2.4 fixes this upstream: after the browser
+gives up on a stream (an error status or a wrong content type, for example
+from a proxy) it waits 0.5, 1, 2, … up to 64 seconds
+(`retryCount = Math.max(Math.min(retryCount * 2, 128), 1)`, `timeout =
+retryCount * 500`) and resets the count when a connection opens. Rullst
+therefore ships it unmodified. `rullst::realtime::RealtimeSse` itself never
+answers with an error: it ends a refused stream with a `retry:` delay, which
+the browser's own `EventSource` reconnection honours without the extension.
 
-| Artifact | Digest |
-| --- | --- |
-| Upstream `htmx.min.js` bytes | `449317ade7881e949510db614991e195c3a099c4c791c24dacec55f9f4a2a452` |
-| Vendored `htmx-1.9.12.min.js` including final LF | `73eabc44d978b226a667c62ca3c40e99236d11aa6f8fc8a27be6f0b36a73b42d` |
-| Upstream `dist/ext/sse.js` | `be05b2e2265279f035271adbea0b72a356f20ce4dfa5870481bfe9c51b822fc1` |
-| Vendored, patched `htmx-ext-sse-1.9.12.js` | `afb588b88863ec49fe7d9f958b788ab1e1df1f45016466d2ea573f374c89e5d4` |
+## Digests
 
-`browser_assets.rs` checks these digests, the patched lines, and that a new
-project's `static/` receives these exact bytes.
+| Artifact | SHA-256 | SRI |
+| --- | --- | --- |
+| Upstream `dist/htmx.min.js` bytes | `d6fdc75f204e6bdefa99b69bf1e6d4ac69b8a364f77929f45c13476b4000f717` | |
+| Vendored `htmx-2.0.11.min.js` including final LF | `7f14135fe8ee3ed5f1a85fea21ba4dfba8236d697c4f95ab575d1c9091bb06ca` | `sha384-0rfIGBBgDyW0JtoZiNfcOM2jtv0x8QjJvQv7XDKYD8IbMa5Zz13HgPszfLfX2Sa8` |
+| Vendored `htmx-ext-sse-2.2.4.js` (upstream `dist/sse.js`) | `3b5992a541619babefc4c169505af474df5c3039da51e59b96ccf9241ecd61d2` | `sha384-QA9wXqexhwzXTuTvuF5QP82pddm3R2hy81UzXi7ioNTqNF2b75hlkkSGjafohhL3` |
 
-HTML scaffolds emit both scripts and the license into `static/`; the standard
-page helper loads the same-origin htmx script. A page that uses
-`hx-ext="sse"` loads `/static/htmx-ext-sse-1.9.12.js` itself, after htmx and
-with the request's CSP nonce, and connects to a route that returns
-`rullst::realtime::RealtimeSse`. Applications using `render_page` without
-CLI-generated assets must provide the files at those paths themselves.
-This removes a runtime CDN dependency; it is not a browser-security
-certification or a claim that every separate Studio/Nexus asset is vendored.
+`browser_assets.rs` checks these digests, the version string, the extension's
+backoff lines and that a new project's `static/` receives these exact bytes.
 
-Updates require upstream provenance, license/digest review, re-applying (or
-dropping, once upstream fixes it) the SSE backoff patch, and HTMX/CSP browser
-regressions. The vendored JavaScript is outside Cargo dependency scanning and
-therefore needs explicit review when upstream security changes are published.
+## Use
+
+Core's page helpers (`rullst::htmx::render_page*`) load
+`/static/htmx-2.0.11.min.js` with the request's CSP nonce. An application
+created before 13.0.0-alpha.5 keeps its `static/htmx-1.9.12.min.js`, which
+the helpers keep loading while it is the only htmx file the server publishes;
+`cargo rullst upgrade` reports `V13-HTMX-2` with the steps to move it to htmx 2.
+A page that uses `hx-ext="sse"` loads `/static/htmx-ext-sse-2.2.4.js` itself,
+after htmx and with the request's CSP nonce, and connects to a route that
+returns `rullst::realtime::RealtimeSse`. Applications using `render_page`
+without CLI-generated assets must provide the files at those paths
+themselves. This removes a runtime CDN dependency; it is not a
+browser-security certification.
+
+Updates require upstream provenance (the registry tarball and its
+`integrity`), the cooldown, a license and digest review, and the htmx/CSP
+browser regressions (the "Generated starters in browsers" CI job). The
+vendored JavaScript is outside Cargo dependency scanning and therefore needs
+explicit review when upstream security changes are published.

@@ -23,8 +23,9 @@ fn app() -> Router {
     )
 }
 
-/// The swap predicate of the pinned htmx 1.9.12 client
-/// (`status>=200&&status<400&&status!==204`), also htmx 2's default.
+/// The swap rule of htmx 2.0.11's default `responseHandling` (`204` no swap,
+/// `2xx`/`3xx` swap, `4xx`/`5xx` error without swap), the same as htmx
+/// 1.9.12's `status>=200&&status<400&&status!==204`.
 fn htmx_swaps(status: StatusCode) -> bool {
     status.as_u16() >= 200 && status.as_u16() < 400 && status != StatusCode::NO_CONTENT
 }

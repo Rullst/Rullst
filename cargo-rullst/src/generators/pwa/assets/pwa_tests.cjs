@@ -92,7 +92,7 @@ async function offlinePageAssets() {
   // listed file is fetched once, and a refused one is skipped.
   const page = response({
     headers: { 'Cache-Control': 'no-cache' },
-    body: '<link rel="stylesheet" href="/static/rullst.0123456789abcdef.css" /><script nonce="n" src="/static/htmx-1.9.12.min.fedcba9876543210.js"></script><link rel="icon" href="/static/rullst.png" /><img src="/static/private.png" /><a href="https://cdn.example/static/x.css">x</a>',
+    body: '<link rel="stylesheet" href="/static/rullst.0123456789abcdef.css" /><script nonce="n" src="/static/htmx-2.0.11.min.fedcba9876543210.js"></script><link rel="icon" href="/static/rullst.png" /><img src="/static/private.png" /><a href="https://cdn.example/static/x.css">x</a>',
   });
   const worker = loadWorker({
     precache: ['/offline', '/static/rullst.png'],
@@ -106,7 +106,7 @@ async function offlinePageAssets() {
   const stored = worker.stores.get('rullst-pwa-dev');
   assert.deepEqual([...stored.keys()].sort((a, b) => a.localeCompare(b)), [
     `${ORIGIN}/offline`,
-    `${ORIGIN}/static/htmx-1.9.12.min.fedcba9876543210.js`,
+    `${ORIGIN}/static/htmx-2.0.11.min.fedcba9876543210.js`,
     `${ORIGIN}/static/rullst.0123456789abcdef.css`,
     `${ORIGIN}/static/rullst.png`,
   ]);

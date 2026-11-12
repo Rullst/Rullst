@@ -36,9 +36,10 @@ Server-Sent Events, i18n and process telemetry. The `rullst` facade re-exports i
   5–10 s), a maximum connection lifetime, a 64 KiB event bound and a
   `shutdown()` that ends every stream before the graceful drain. A connection
   that falls behind its channel's fixed queue ends instead of growing a
-  buffer; the browser reconnects. HTML scaffolds ship the htmx 1.9.12 SSE
-  extension (`/static/htmx-ext-sse-1.9.12.js`, patched so its reconnect
-  backoff grows) for `hx-ext="sse"` under the strict CSP. Delivery is process-local and best effort.
+  buffer; the browser reconnects. HTML scaffolds ship htmx 2.0.11 and its
+  SSE extension 2.2.4 (`/static/htmx-ext-sse-2.2.4.js`, whose reconnect
+  backoff doubles up to 64 s) for `hx-ext="sse"` under the strict CSP.
+  Delivery is process-local and best effort.
 - **Lifecycle-aware Readiness:** An opt-in process lifecycle gates new requests
   during startup, dependency unavailability, and graceful drain. It accepts at
   most 32 immutable component labels and exposes counts—not labels or errors—on

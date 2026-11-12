@@ -179,7 +179,8 @@ before deployment; do not remove `Secure` to accommodate a production HTTP URL.
 
 ### Show failures instead of a silent spinner
 
-For the pinned HTMX 1.9.12 used by these examples, ordinary HTTP errors do not
+With htmx's default `responseHandling` (htmx 2.0.11, which new projects
+load, and htmx 1.9.12 alike), ordinary HTTP errors do not
 automatically replace the target content (`ValidatedForm` failures are the
 exception described above). Put the following in an
 application-owned, same-origin external script loaded with `defer`. This avoids
@@ -209,7 +210,7 @@ if (form && status) {
 
 Keep the message on failure so the visitor can retry. Never insert an arbitrary
 server error body using `innerHTML`. Resetting only after success is also clearer
-than relying on event-order assumptions. In HTMX 1.9.12, form values have already
+than relying on event-order assumptions. In htmx (1.9.12 and 2.0.11), form values have already
 been collected before `htmx:beforeRequest`; clearing an input there alone does
 not establish that an empty message was transmitted.
 

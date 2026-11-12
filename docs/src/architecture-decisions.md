@@ -71,7 +71,7 @@ interchangeable renderers:
 | Earlier label | In 13.0 |
 | --- | --- |
 | HTMX + Tailwind SSR | The generated scaffold: server-rendered `html!` views with the starter's own stylesheet (`static/rullst.css`; no Tailwind build step). There is no project-local SPA bundle, but HTMX and styles are still browser assets that must be pinned and served. |
-| LiveView | Removed in 13.0.0-alpha.5 (`LiveComponent`, `Live::mount`, `live_ws_handler`, `make:live`, `live::recovery`). Server-driven updates use htmx with `rullst::realtime::RealtimeSse`: HTML scaffolds write the htmx SSE extension to `static/htmx-ext-sse-1.9.12.js`. The application owns routes, authentication and event design. See [the migration notes](migration-v13.md#upgrading-an-alpha4-application-to-alpha5). |
+| LiveView | Removed in 13.0.0-alpha.5 (`LiveComponent`, `Live::mount`, `live_ws_handler`, `make:live`, `live::recovery`). Server-driven updates use htmx with `rullst::realtime::RealtimeSse`: HTML scaffolds write htmx 2.0.11 and its SSE extension to `static/htmx-ext-sse-2.2.4.js`. The application owns routes, authentication and event design. See [the migration notes](migration-v13.md#upgrading-an-alpha4-application-to-alpha5). |
 | Wasm Island | Removed in 13.0.0-alpha.5 (`#[island]`, `make:island`, `build:client`). The default CSP has no `'wasm-unsafe-eval'`, so browsers could not compile islands under the default headers. The typed browser RPC that islands used to call the server was removed with them; use ordinary routes. |
 | Pico.css | Not generated. The application adds, pins and serves Pico.css and validates the resulting pages. |
 | Tera | Not generated. The application adds the dependency and its own file-template renderer. |

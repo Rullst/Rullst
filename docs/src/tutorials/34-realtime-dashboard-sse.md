@@ -19,7 +19,7 @@ that 13.0.0-alpha.5 removed (see the
 | :--- | :--- |
 | `BroadcastManager` | One shared, process-local registry of named channels (`rullst::realtime`). |
 | `RealtimeSse` | Turns a channel subscription into a bounded `text/event-stream` response. |
-| `static/htmx-ext-sse-1.9.12.js` | The htmx 1.9.12 SSE extension, written by `cargo rullst new` next to htmx. Rullst ships it patched so that its reconnect delay grows after failures (upstream's never did); use this copy rather than the upstream file. |
+| `static/htmx-ext-sse-2.2.4.js` | The htmx 2 SSE extension (`htmx-ext-sse` 2.2.4, unmodified), written by `cargo rullst new` next to htmx 2.0.11. After a failed connection it waits 0.5 s, then twice as long each time up to 64 s. An application created before 13.0.0-alpha.5 still loads htmx 1.9.12: move it to htmx 2 first ([frontend guide](../frontend.md#the-htmx-client)), because this extension needs htmx 2. |
 | `hx-ext="sse"`, `sse-connect`, `sse-swap` | Attributes that open the stream and say which element each event replaces. |
 
 Each message published to the channel becomes one SSE event: its name is the
@@ -99,7 +99,7 @@ async fn page(
     let (active_users, queued_jobs) = dashboard.figures();
     let nonce = nonce.map(|Extension(nonce)| nonce.as_str().to_owned());
     let head = html! {
-        <script nonce?={nonce} src="/static/htmx-ext-sse-1.9.12.js"></script>
+        <script nonce?={nonce} src="/static/htmx-ext-sse-2.2.4.js"></script>
     };
     let content = html! {
         <main hx-ext="sse" sse-connect="/dashboard/events">

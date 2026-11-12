@@ -293,8 +293,9 @@ The choices that materially change the generated application:
 * **Application profile:** the Blank and SaaS starters use the audited `html!`
   SSR/HTMX path; API (`--api`) uses the headless JSON path. Repository,
   Pico.css and Tera foundations remain application-owned APIs and are not
-  presented as equivalent generated profiles. HTML scaffolds also write the
-  htmx SSE extension to `static/htmx-ext-sse-1.9.12.js`.
+  presented as equivalent generated profiles. HTML scaffolds write htmx
+  2.0.11 to `static/htmx-2.0.11.min.js` and its SSE extension to
+  `static/htmx-ext-sse-2.2.4.js` (with their licenses).
 * **Arguments:**
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**

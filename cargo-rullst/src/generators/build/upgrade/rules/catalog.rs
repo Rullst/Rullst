@@ -471,6 +471,9 @@ rules! {
     AI_PROVIDER_PRESETS: "V13-AI-PROVIDER-PRESETS", MustChange, "13.0.0-alpha.5", "DeepSeek and Ollama as OpenAI-compatible presets",
         "`DeepSeekProvider` and `OllamaProvider` (`rullst_ai::ai::providers::deepseek` and `::ollama`) were removed in 13.0.0-alpha.5; this code no longer compiles",
         "Use the presets of the OpenAI-compatible adapter: `OpenAiCompatibleProvider::deepseek(api_key)?` (`.try_with_model(..)?` instead of `.with_model(..)`) and `OpenAiCompatibleProvider::ollama(host, model)?` (`.try_with_embedding_model(..)?` instead of `.with_embedding_model(..)`), from `rullst::ai::providers::openai_compatible`. Both return a `Result`; Ollama is now reached through its `/v1` API.";
+    HTMX_2_CLIENT: "V13-HTMX-2", Review, "13.0.0-alpha.5", "htmx 2 client",
+        "new applications load htmx 2.0.11 since 13.0.0-alpha.5; this one vendors htmx 1.9.12, which `render_page*` keep loading while it is the only htmx file in `static/`",
+        "Nothing breaks if you wait. To move to htmx 2 (the SSE extension `hx-ext=\"sse\"` needs it), copy `htmx-2.0.11.min.js`, `htmx-ext-sse-2.2.4.js`, `HTMX-LICENSE` and `HTMX-EXT-SSE-LICENSE` from a new project's `static/`, point your own layouts at them and delete `static/htmx-1.9.12.min.js`; write `hx-on=\"click: …\"` as `hx-on:click`, and send the CSRF token of `hx-delete` in the `X-CSRF-Token` header (`hx-headers`), because htmx 2 puts DELETE parameters in the query string.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer
