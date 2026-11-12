@@ -104,7 +104,13 @@ fn luminance_statistics_are_bounded_and_carry_no_bytes() {
             Err(Error::InvalidInput)
         );
     }
+    let grid = LuminanceStatistics::new(12.5, 3.25, 192).unwrap();
+    assert_eq!(
+        (grid.mean(), grid.standard_deviation(), grid.samples()),
+        (12.5, 3.25, 192)
+    );
     let stats = LuminanceStatistics::new(255.0, 127.5, LuminanceStatistics::MAX_SAMPLES).unwrap();
+    assert_eq!(stats.samples(), LuminanceStatistics::MAX_SAMPLES);
     let sample = MediaSample::luminance(stats);
     assert_eq!(sample.format(), SampleFormat::LuminanceStatistics);
     assert_eq!(sample.kind(), AnalysisKind::CameraPresence);
@@ -142,13 +148,18 @@ async fn obscured_findings_from_statistics_are_recorded_and_read_back() {
 
 /// Turns a fresh store's events table back into the pre-alpha.5 definition.
 async fn make_legacy(path: &std::path::Path) {
+    rebuild_events(path, LEGACY_EVENTS).await;
+}
+
+/// Replaces the events table of a store with `definition`, keeping its rows.
+async fn rebuild_events(path: &std::path::Path, definition: &'static str) {
     let mut connection =
         SqliteConnection::connect_with(&SqliteConnectOptions::new().filename(path))
             .await
             .unwrap();
     for statement in [
         "ALTER TABLE rullst_supervision_events RENAME TO old_events",
-        LEGACY_EVENTS,
+        definition,
         "INSERT INTO rullst_supervision_events SELECT * FROM old_events",
         "DROP TABLE old_events",
         "CREATE INDEX rullst_supervision_event_expiry ON rullst_supervision_events(expires_at)",
@@ -205,4 +216,37 @@ async fn a_store_from_before_alpha5_keeps_working_and_upgrades_once_on_request()
         ["presence_inconclusive", "camera_obscured"]
     );
     assert!(!reopened.upgrade_event_schema().await.unwrap());
+}
+
+/// Only the exact pre-alpha.5 table is rebuilt; any other definition (here
+/// one changed after the store was opened) is refused and left as it is, and
+/// a store holding it no longer opens.
+#[tokio::test]
+async fn an_unknown_events_table_is_refused_and_left_unchanged() {
+    const OTHER: &str = "CREATE TABLE rullst_supervision_events (session_id TEXT NOT NULL REFERENCES rullst_supervision_sessions(id) ON DELETE CASCADE, sequence INTEGER NOT NULL CHECK(sequence > 0), kind INTEGER NOT NULL CHECK(kind BETWEEN 1 AND 99), source INTEGER NOT NULL DEFAULT 1 CHECK(source IN (1,2,3)), adapter_id TEXT, adapter_version TEXT, received_at INTEGER NOT NULL CHECK(received_at >= 0), expires_at INTEGER NOT NULL CHECK(expires_at > received_at), PRIMARY KEY(session_id,sequence))";
+    let (temp, store, clock) = fixture().await;
+    let path = temp.path().join("supervision.sqlite");
+    rebuild_events(&path, OTHER).await;
+    assert_eq!(
+        store.upgrade_event_schema().await.unwrap_err(),
+        Error::Configuration
+    );
+    store.close().await;
+    // Opening accepts only the current and the pre-alpha.5 events table.
+    assert!(matches!(
+        SqliteSupervision::open(&path, config(), clock).await,
+        Err(Error::Configuration)
+    ));
+    let mut connection =
+        SqliteConnection::connect_with(&SqliteConnectOptions::new().filename(&path))
+            .await
+            .unwrap();
+    let definition: String = sqlx::query_scalar(
+        "SELECT sql FROM sqlite_schema WHERE type='table' AND name='rullst_supervision_events'",
+    )
+    .fetch_one(&mut connection)
+    .await
+    .unwrap();
+    assert_eq!(definition, OTHER);
+    connection.close().await.unwrap();
 }
