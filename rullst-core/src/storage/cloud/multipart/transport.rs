@@ -1,7 +1,7 @@
 use super::super::{CloudClient, CloudError, client::Backend, signing};
 use super::{MultipartError, MultipartLimits};
 use reqwest::{Method, header::HeaderMap};
-use ring::digest::{Context, SHA256};
+use sha2::{Digest, Sha256};
 use std::time::SystemTime;
 
 pub(crate) struct Wire {
@@ -12,7 +12,7 @@ pub(crate) struct Wire {
 
 impl CloudClient {
     pub(crate) fn multipart_binding(&self, key: &str, limits: &MultipartLimits) -> [u8; 32] {
-        let mut digest = Context::new(&SHA256);
+        let mut digest = Sha256::new();
         let incarnation = match &self.backend {
             Backend::Mock(store) => store.incarnation().to_string(),
             Backend::Live(_) => String::new(),
@@ -29,11 +29,11 @@ impl CloudClient {
             &limits.part_bytes.to_string(),
             &limits.lifetime.as_secs().to_string(),
         ] {
-            digest.update(&(value.len() as u64).to_be_bytes());
+            digest.update((value.len() as u64).to_be_bytes());
             digest.update(value.as_bytes());
         }
         let mut output = [0; 32];
-        output.copy_from_slice(digest.finish().as_ref());
+        output.copy_from_slice(&digest.finalize());
         output
     }
 

@@ -1,6 +1,7 @@
 //! The content hashes of the files below one `static/` directory.
 
 use super::names::{HASH_LEN, hashable, hashed_name, plain_segment, plain_url, split_hashed};
+use sha2::Digest;
 use std::collections::HashMap;
 use std::fs::{self, File, Metadata};
 use std::io::Read;
@@ -186,7 +187,7 @@ fn hash_file(path: &Path, max_bytes: u64) -> Option<Entry> {
     if !metadata.is_file() || metadata.len() > max_bytes {
         return None;
     }
-    let mut context = ring::digest::Context::new(&ring::digest::SHA256);
+    let mut context = sha2::Sha256::new();
     let mut buffer = [0_u8; 65_536];
     loop {
         let read = file.read(&mut buffer).ok()?;
@@ -195,9 +196,8 @@ fn hash_file(path: &Path, max_bytes: u64) -> Option<Entry> {
         }
         context.update(&buffer[..read]);
     }
-    let digest = context.finish();
+    let digest = context.finalize();
     let hash = digest
-        .as_ref()
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect::<String>();

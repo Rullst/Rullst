@@ -131,9 +131,9 @@ fn sign_headers(
         })
         .collect::<Result<_, CloudError>>()?;
     // Never give upload bytes to the signer's optional raw-body trace formatter.
-    let digest = ring::digest::digest(&ring::digest::SHA256, body);
+    let digest = <sha2::Sha256 as sha2::Digest>::digest(body);
     let mut checksum = String::with_capacity(64);
-    for byte in digest.as_ref() {
+    for byte in digest.iter() {
         write!(checksum, "{byte:02x}").map_err(|_| CloudError::Signing)?;
     }
     let request = SignableRequest::new(

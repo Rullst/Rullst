@@ -1,7 +1,7 @@
 //! Fixtures shared by the billing conformance tests.
 #![allow(dead_code)]
 
-use ring::hmac;
+use hmac::{KeyInit, Mac};
 use rullst_capital::OneOffCheckoutRequest;
 use rullst_capital::conformance::{
     BillingHarness, CaseOutcome, ConformanceReport, SourcePayment, WebhookDelivery,
@@ -40,11 +40,12 @@ pub fn brl_request() -> Option<OneOffCheckoutRequest> {
 /// Stripe's `t=<unix>,v1=<HMAC-SHA256("<t>.<body>")>` signature.
 pub fn stripe_signed(payload: &str, secret: &str) -> WebhookDelivery {
     let now = chrono::Utc::now().timestamp();
-    let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
-    let tag = hmac::sign(&key, format!("{now}.{payload}").as_bytes());
+    let mut mac = hmac::Hmac::<sha2::Sha256>::new_from_slice(secret.as_bytes()).unwrap();
+    mac.update(format!("{now}.{payload}").as_bytes());
+    let tag = mac.finalize().into_bytes();
     WebhookDelivery::new(payload).with_header(
         "Stripe-Signature",
-        format!("t={now},v1={}", hex::encode(tag.as_ref())),
+        format!("t={now},v1={}", hex::encode(tag)),
     )
 }
 

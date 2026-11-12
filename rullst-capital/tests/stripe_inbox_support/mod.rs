@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use ring::hmac;
+use hmac::{KeyInit, Mac};
 use rullst_capital::{
     SqlStripeEventInbox, SqlWebhookBackend, StripeInboxError as Error,
     StripeInboxOutcome as Outcome, StripeInboxScope, StripeProvider, StripeSubscriptionEvent,
@@ -45,7 +45,7 @@ pub fn snapshot(id: &str) -> Value {
 pub fn verify(value: &Value, mock: bool) -> StripeSubscriptionEvent {
     let payload = serde_json::to_vec(value).unwrap();
     let now = chrono::Utc::now().timestamp();
-    let mut context = hmac::Context::with_key(&hmac::Key::new(hmac::HMAC_SHA256, b"whsec_inbox"));
+    let mut context = hmac::Hmac::<sha2::Sha256>::new_from_slice(b"whsec_inbox").unwrap();
     context.update(format!("{now}.").as_bytes());
     context.update(&payload);
     let headers = HashMap::from([(
@@ -53,7 +53,10 @@ pub fn verify(value: &Value, mock: bool) -> StripeSubscriptionEvent {
         if mock {
             "mock_inbox".into()
         } else {
-            format!("t={now},v1={}", hex::encode(context.sign()))
+            format!(
+                "t={now},v1={}",
+                hex::encode(context.finalize().into_bytes())
+            )
         },
     )]);
     let secret = if mock { "mock_inbox" } else { "whsec_inbox" };

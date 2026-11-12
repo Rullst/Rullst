@@ -808,6 +808,29 @@ A prepared version section does not establish that its tag or crates exist.
   site's home page) and to the frontend adapters and Wasm client that
   13.0.0-alpha.5 removed (getting started, capability status); the CLI
   reference names `make:privacy --blueprint`.
+- `rullst-core` and `rullst-capital` hash and sign with the pure-Rust
+  RustCrypto `sha2` and `hmac` crates instead of `ring`, at the versions
+  already in the dependency graph. Every digest, identifier and stored key is
+  byte-identical: FIPS 180-2 and RFC 4231 known-answer tests and
+  independently computed vectors pin them, including Capital's webhook replay
+  keys and Stripe inbox scope. Stripe signatures are checked with
+  `Mac::verify_slice` (constant time), and Capital's quota claim tokens come
+  from the operating system through `rand`'s `SysRng`. Core keeps `ring` only
+  as an optional dependency of `storage-multipart`, for the AES-256-GCM
+  recovery records. The Blank and API starters compile 291 normal crates
+  instead of 293 (`ring` and `getrandom` 0.2 are gone); their `Cargo.lock`
+  still lists 397 packages, and the SaaS starter (398 packages, 319 crates) is
+  unchanged, because `rullst-auth`, which uses `ring` for passkeys, stays in
+  their dependency graphs.
+
+### Deprecated
+
+- `rullst_orm::schema_diff` (`extract_tables_from_ast`, `ParsedTable`,
+  `ParsedField`) is deprecated and will be removed in 14.0. Nothing in Rullst
+  calls it (the CLI has its own copy), and its `syn` and `walkdir`
+  dependencies are built by every application that uses the ORM. Write a
+  migration from the models with `cargo rullst make:migration:auto`, or read
+  their tables and columns with `cargo rullst inspect schema --json`.
 
 ### Removed
 

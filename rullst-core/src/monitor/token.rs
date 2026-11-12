@@ -2,6 +2,7 @@
 
 use super::{MAX_MONITOR_TOKENS, MonitorError};
 use axum::http::{HeaderMap, header};
+use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 
 /// Base64 or base64url characters of 32 bytes, without padding.
@@ -69,7 +70,7 @@ fn distinct_bytes(value: &str) -> usize {
 
 /// The accepted tokens, kept only as SHA-256 digests.
 pub(super) struct TokenSet {
-    digests: Vec<ring::digest::Digest>,
+    digests: Vec<[u8; 32]>,
 }
 
 impl TokenSet {
@@ -101,14 +102,14 @@ impl TokenSet {
             .digests
             .iter()
             .fold(subtle::Choice::from(0), |matched, expected| {
-                matched | expected.as_ref().ct_eq(presented.as_ref())
+                matched | expected.as_slice().ct_eq(presented.as_slice())
             });
         bool::from(matched)
     }
 }
 
-fn digest(token: &str) -> ring::digest::Digest {
-    ring::digest::digest(&ring::digest::SHA256, token.as_bytes())
+pub(super) fn digest(token: &str) -> [u8; 32] {
+    Sha256::digest(token.as_bytes()).into()
 }
 
 /// The credential a request presents in `Authorization`.

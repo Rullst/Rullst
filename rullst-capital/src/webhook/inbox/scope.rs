@@ -1,7 +1,7 @@
 use super::StripeInboxError;
 use crate::StripeSubscriptionEvent;
 use crate::providers::stripe_contract::valid_reference;
-use ring::digest::{Context, SHA256};
+use sha2::{Digest, Sha256};
 
 /// Trusted endpoint configuration, never inferred from webhook contact data.
 ///
@@ -49,15 +49,15 @@ impl StripeInboxScope {
         if !valid_reference(&namespace, "", 200) || !valid_reference(&account, "acct_", 200) {
             return Err(StripeInboxError::InvalidConfiguration);
         }
-        let mut hash = Context::new(&SHA256);
+        let mut hash = Sha256::new();
         hash.update(b"rullst.stripe.inbox-scope.v1\0");
-        hash.update(&[u8::from(livemode), u8::from(connected)]);
+        hash.update([u8::from(livemode), u8::from(connected)]);
         for field in [&namespace, &account] {
-            hash.update(&(field.len() as u64).to_be_bytes());
+            hash.update((field.len() as u64).to_be_bytes());
             hash.update(field.as_bytes());
         }
         Ok(Self {
-            hash: hex::encode(hash.finish()),
+            hash: hex::encode(hash.finalize()),
             account,
             connected,
             livemode,
@@ -83,5 +83,27 @@ impl std::fmt::Debug for StripeInboxScope {
             .field("connected", &self.connected)
             .field("livemode", &self.livemode)
             .finish_non_exhaustive()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::StripeInboxScope;
+
+    #[test]
+    fn scope_hashes_are_sha256_known_answers() {
+        // SHA-256 of the v1 tag, [livemode, connected] and each
+        // length-prefixed field, computed independently. Stored inbox rows
+        // are keyed by this hash, so it must not change.
+        let platform = StripeInboxScope::platform("billing", "acct_1KAT", false).unwrap();
+        assert_eq!(
+            platform.hash,
+            "94fb098576f05816a91a3fd2ad6c3683796b36fbafc765b367797e97cc10e30d"
+        );
+        let connected = StripeInboxScope::connected("billing", "acct_1KAT", true).unwrap();
+        assert_eq!(
+            connected.hash,
+            "a73df6b09469993ed85286063b9c5209693fcfe57b2667575ae56683c3c1d7e4"
+        );
     }
 }

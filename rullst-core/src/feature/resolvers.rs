@@ -1,3 +1,5 @@
+use sha2::Digest;
+
 // ─── Deterministic Hashing & Resolvers ──────────────────────────────────────────
 
 /// Domain separator of the version 1 bucket hash.
@@ -19,14 +21,14 @@ pub fn calculate_hash_bucket(flag: &str, identifier: &str) -> u32 {
 }
 
 fn bucket_hash(flag: &str, identifier: &str) -> u64 {
-    let mut context = ring::digest::Context::new(&ring::digest::SHA256);
+    let mut context = sha2::Sha256::new();
     context.update(BUCKET_DOMAIN_V1);
-    context.update(&(flag.len() as u64).to_le_bytes());
+    context.update((flag.len() as u64).to_le_bytes());
     context.update(flag.as_bytes());
     context.update(identifier.as_bytes());
-    let digest = context.finish();
+    let digest = context.finalize();
     let mut prefix = [0_u8; 8];
-    prefix.copy_from_slice(&digest.as_ref()[..8]);
+    prefix.copy_from_slice(&digest[..8]);
     u64::from_be_bytes(prefix)
 }
 

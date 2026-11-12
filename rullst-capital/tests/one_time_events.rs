@@ -1,4 +1,3 @@
-use ring::hmac;
 use rullst_capital::{CapitalError, StripeProvider};
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -6,17 +5,17 @@ use std::collections::HashMap;
 fn headers(payload: &[u8], now: i64) -> HashMap<String, String> {
     let mut message = format!("{now}.").into_bytes();
     message.extend_from_slice(payload);
-    let signature = hmac::sign(
-        &hmac::Key::new(hmac::HMAC_SHA256, b"whsec_contract"),
-        &message,
-    );
-    let hex: String = signature
-        .as_ref()
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect();
+    let signature = hmac_sha256(b"whsec_contract", &message);
+    let hex: String = signature.iter().map(|b| format!("{b:02x}")).collect();
     HashMap::from([("stripe-signature".into(), format!("t={now},v1={hex}"))])
 }
+/// HMAC-SHA256 of `message` under `key`.
+fn hmac_sha256(key: &[u8], message: &[u8]) -> Vec<u8> {
+    let mut mac = <hmac::Hmac<sha2::Sha256> as hmac::KeyInit>::new_from_slice(key).unwrap();
+    hmac::Mac::update(&mut mac, message);
+    hmac::Mac::finalize(mac).into_bytes().to_vec()
+}
+
 fn event(kind: &str, object: Value, now: i64) -> Value {
     json!({"id":"evt_one_time","object":"event","type":kind,"created":now,
         "livemode":false,"data":{"object":object}})
@@ -116,7 +115,7 @@ fn verified_one_time_event_exposes_identity_digests_and_mode() {
     assert_eq!(verified.event_id(), "evt_one_time");
     assert_eq!(
         verified.payload_digest().as_slice(),
-        ring::digest::digest(&ring::digest::SHA256, &body).as_ref()
+        <sha2::Sha256 as sha2::Digest>::digest(&body).as_slice()
     );
     // Versioned digest over mode, id, type, session and payment intent.
     assert_eq!(

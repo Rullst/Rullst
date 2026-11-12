@@ -13,7 +13,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use ring::digest::{SHA256, digest};
+use sha2::{Digest, Sha256};
 #[cfg(any(feature = "axum", feature = "actix", test))]
 use std::collections::HashMap;
 #[cfg(any(feature = "axum", feature = "actix"))]
@@ -347,8 +347,7 @@ fn scoped_replay_key(provider_name: &str, domain: &[u8], material: &[u8]) -> Str
     scoped.extend_from_slice(domain);
     scoped.push(0);
     scoped.extend_from_slice(material);
-    let hash = digest(&SHA256, &scoped);
-    hex::encode(hash.as_ref())
+    hex::encode(Sha256::digest(scoped))
 }
 
 #[cfg(any(feature = "axum", feature = "actix"))]
