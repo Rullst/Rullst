@@ -2395,7 +2395,6 @@ dependencies = [
  "rullst-auth",
  "rullst-core",
  "rullst-macros",
- "rullst-nexus",
  "rullst-orm",
  "rullst-studio",
  "serde",
@@ -2524,25 +2523,6 @@ dependencies = [
  "quote",
  "syn 3.0.9",
  "toml",
-]
-
-[[package]]
-name = "rullst-nexus"
-version = "13.0.0-alpha.4"
-dependencies = [
- "axum",
- "base64 0.23.1",
- "rullst-auth",
- "rullst-core",
- "rullst-orm",
- "rullst-security",
- "serde",
- "serde_json",
- "subtle",
- "tokio",
- "tracing",
- "url",
- "urlencoding",
 ]
 
 [[package]]
