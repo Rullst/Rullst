@@ -41,7 +41,9 @@ reqwest = { workspace = true, features = ["json", "rustls"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 async-trait = { workspace = true }
-ring = { workspace = true, features = ["std"] }
+sha2 = { workspace = true }
+hmac = { workspace = true }
+rand = { workspace = true }
 subtle = { workspace = true }
 hex = { workspace = true }
 chrono = { workspace = true, features = ["clock", "serde"] }
@@ -70,4 +72,4 @@ name = "custom_provider"
 required-features = ["axum"]
 
 [package.metadata.cargo-machete]
-ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]
+ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "rullst-auth"]

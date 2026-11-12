@@ -54,6 +54,9 @@ fn receipt_and_mock_keep_status_deduplication_and_secrets_explicit() {
     let second = mock_usage_receipt("stripe", "event-key", 3, &["cus_1", "metric"])
         .expect("mock usage receipt");
     assert_eq!(first, second);
+    // The first 12 bytes of SHA-256 over the NUL-terminated provider and
+    // identity parts and the big-endian quantity, computed independently.
+    assert_eq!(first.record_id(), "usage_mock_aa3795e799440a4a17e81de2");
     assert_eq!(first.provider(), "stripe");
     assert_eq!(first.event_key(), "event-key");
     assert_eq!(first.quantity(), 3);

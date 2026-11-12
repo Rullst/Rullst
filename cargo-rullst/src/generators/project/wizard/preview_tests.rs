@@ -59,7 +59,7 @@ fn previews_come_from_the_real_writers_for_every_starter() {
             );
         }
         assert_eq!(
-            files.iter().any(|file| file == "static/htmx-1.9.12.min.js"),
+            files.iter().any(|file| file == "static/htmx-2.0.11.min.js"),
             !info.api,
             "{}: only HTML starters serve HTMX",
             info.flag

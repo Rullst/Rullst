@@ -461,7 +461,7 @@ rules! {
         "Add a wildcard arm (`_ => ...`) that shows an unknown state or result generically. Show `ExecutionFailure::TimeLimit` as the exercise's time limit, not as a cancellation; a runner controller that stops an attempt at the wall limit reports it through `complete` (Labs runner contract, step 4).";
     CLI_GREEN_RENAMED: "V13-CLI-GREEN-RENAMED", Review, "13.0.0-alpha.5", "CLI `green` renamed `footprint`",
         "`cargo rullst green` is `cargo rullst footprint` since 13.0.0-alpha.5, without an alias, and its JSON report is `rullst.footprint.v1` instead of `rullst.green.v1`; this file runs or reads the old one",
-        "Replace `cargo rullst green` with `cargo rullst footprint` (the same flags, plus `--page-weight` and `--network-kwh-per-gb`) and `rullst.green.v1` with `rullst.footprint.v1`; the report adds `page_weight` and the benchmark's bytes. A line kept on purpose, such as a changelog entry, can carry `rullst-upgrade: reviewed V13-CLI-GREEN-RENAMED`.";
+        "Replace `cargo rullst green` with `cargo rullst footprint` (the same flags, plus `--page-weight` and `--network-kwh-per-gb`) and `rullst.green.v1` with `rullst.footprint.v1`; the report adds `page_weight` and the benchmark's bytes. Where the file installs a pinned CLI (`cargo install cargo-rullst --version =…`), pin 13.0.0-alpha.5 or later: the 13.0.0-alpha.4 CLI has no `footprint`. A line kept on purpose, such as a changelog entry, can carry `rullst-upgrade: reviewed V13-CLI-GREEN-RENAMED`.";
     ACADEMY_REMOVED: "V13-ACADEMY-REMOVED", MustChange, "13.0.0-alpha.5", "Academy production preset removed",
         "`ProductionPreset::academy()`, the `Academy*` production types and `cargo rullst academy:doctor` were removed in 13.0.0-alpha.5; this code no longer compiles, and the command exits with status 1",
         "Keep the application's own production checklist in its tests or CI instead of `ProductionPreset::academy()` and the `AcademyProductionRequirement`, `AcademyCheckStatus`, `AcademyBoundaryAssessment`, `AcademyPresetError` and `AcademyProductionPreset` types, and remove `academy:doctor` steps; `ProductionPreset::middleware_order()` and `ProductionMiddlewareStage` remain.";
@@ -471,6 +471,9 @@ rules! {
     AI_PROVIDER_PRESETS: "V13-AI-PROVIDER-PRESETS", MustChange, "13.0.0-alpha.5", "DeepSeek and Ollama as OpenAI-compatible presets",
         "`DeepSeekProvider` and `OllamaProvider` (`rullst_ai::ai::providers::deepseek` and `::ollama`) were removed in 13.0.0-alpha.5; this code no longer compiles",
         "Use the presets of the OpenAI-compatible adapter: `OpenAiCompatibleProvider::deepseek(api_key)?` (`.try_with_model(..)?` instead of `.with_model(..)`) and `OpenAiCompatibleProvider::ollama(host, model)?` (`.try_with_embedding_model(..)?` instead of `.with_embedding_model(..)`), from `rullst::ai::providers::openai_compatible`. Both return a `Result`; Ollama is now reached through its `/v1` API.";
+    HTMX_2_CLIENT: "V13-HTMX-2", Review, "13.0.0-alpha.5", "htmx 2 client",
+        "new applications load htmx 2.0.11 since 13.0.0-alpha.5; this one vendors htmx 1.9.12, which `render_page*` keep loading while it is the only htmx file in `static/`",
+        "Nothing breaks if you wait. To move to htmx 2 (the SSE extension `hx-ext=\"sse\"` needs it), copy `htmx-2.0.11.min.js`, `htmx-ext-sse-2.2.4.js`, `HTMX-LICENSE` and `HTMX-EXT-SSE-LICENSE` from a new project's `static/`, point your own layouts at them and delete `static/htmx-1.9.12.min.js`; write `hx-on=\"click: …\"` as `hx-on:click`, and send the CSRF token of `hx-delete` in the `X-CSRF-Token` header (`hx-headers`), because htmx 2 puts DELETE parameters in the query string.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

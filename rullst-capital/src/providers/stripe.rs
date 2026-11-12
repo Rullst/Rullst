@@ -8,11 +8,11 @@ use crate::{
     PaymentNotification,
 };
 use async_trait::async_trait;
-use ring::hmac;
+use hmac::{Hmac, KeyInit, Mac};
 use serde_json::Value;
+use sha2::Sha256;
 use std::collections::HashMap;
 use std::time::Duration;
-use subtle::ConstantTimeEq;
 
 /// Billing provider implementation for Stripe.
 pub struct StripeProvider {
@@ -107,21 +107,17 @@ impl StripeProvider {
             ));
         }
 
-        let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
-        let mut ctx = hmac::Context::with_key(&key);
-        ctx.update(timestamp.as_bytes());
-        ctx.update(b".");
-        ctx.update(payload);
-
-        let tag = ctx.sign();
-        let mut matched = subtle::Choice::from(0);
+        let mac = signed_payload_mac(self.webhook_secret.as_bytes(), timestamp, payload)?;
+        // `verify_slice` compares in constant time, and every candidate is
+        // checked: a match does not end the loop early.
+        let mut matched = false;
         for candidate in signatures {
             let mut decoded = [0_u8; 32];
             if candidate.len() == 64 && hex::decode_to_slice(candidate, &mut decoded).is_ok() {
-                matched |= tag.as_ref().ct_eq(&decoded);
+                matched |= mac.clone().verify_slice(&decoded).is_ok();
             }
         }
-        if matched.unwrap_u8() == 0 {
+        if !matched {
             return Err(CapitalError::InvalidSignature(
                 "Stripe signature verification failed".to_string(),
             ));
@@ -137,6 +133,21 @@ impl StripeProvider {
 
         Ok(())
     }
+}
+
+/// HMAC-SHA256 of Stripe's signed payload, `timestamp` `.` `payload`.
+fn signed_payload_mac(
+    secret: &[u8],
+    timestamp: &str,
+    payload: &[u8],
+) -> Result<Hmac<Sha256>, CapitalError> {
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret).map_err(|_| {
+        CapitalError::ConfigurationError("Stripe webhook secret cannot key HMAC-SHA256".into())
+    })?;
+    mac.update(timestamp.as_bytes());
+    mac.update(b".");
+    mac.update(payload);
+    Ok(mac)
 }
 
 #[async_trait]

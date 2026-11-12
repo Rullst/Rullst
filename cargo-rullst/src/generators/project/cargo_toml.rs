@@ -69,15 +69,6 @@ pub(crate) fn version_requirement(version: &str) -> String {
     }
 }
 
-fn dependency_line(
-    current_dir: &Path,
-    crate_name: &str,
-    crate_version: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let source = dependency_source(current_dir, crate_name, crate_version)?;
-    Ok(format!("{crate_name} = {{ {source} }}\n"))
-}
-
 /// `#[derive(rullst::Validate)]` expands to `::validator::…` paths, which
 /// only a direct dependency resolves, so `ValidatedForm`/`ValidatedJson` DTOs
 /// compile without the user adding it. Rullst Core already builds this
@@ -230,21 +221,12 @@ rust-version = "1.96.0"
         ));
     }
 
-    if blueprint_selection == SAAS_BLUEPRINT_ID {
-        let auth_dep = dependency_line(current_dir, "rullst-auth", crate_version)?;
-        cargo_toml.push_str(&auth_dep);
-    }
-
-    // No direct `rullst-connect`: `make:oauth` enables the facade's `oauth-*`
-    // feature, and an unused dependency only lengthens the first build.
-    if blueprint_selection == SAAS_BLUEPRINT_ID {
-        let capital_dep = dependency_line(current_dir, "rullst-capital", crate_version)?;
-        cargo_toml.push_str(&capital_dep);
-    }
-
-    let security_dep = dependency_line(current_dir, "rullst-security", crate_version)?;
-    cargo_toml.push_str(&security_dep);
-
+    // No direct `rullst-auth`, `rullst-capital`, `rullst-security` or
+    // `rullst-connect`: generated code reaches them through the facade
+    // (`rullst::auth`, `rullst::capital`, `rullst::security`), and `make:*`
+    // generators enable the facade feature they need. The `contract.rs` of
+    // `generate:api` names `rullst_security`; its guide (`typed-api.md`) says
+    // to add that dependency.
     let fe_dep = crate::blueprints::common::frontend_cargo_dependency(frontend_engine);
     cargo_toml.push_str(&fe_dep);
 

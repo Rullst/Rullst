@@ -1,8 +1,8 @@
 //! The rustls process-wide crypto provider.
 //!
 //! aws-lc-rs is the rustls provider for every TLS connection Rullst makes:
-//! outbound HTTPS, SQLx, Redis, SMTP and OTLP. ring remains a primitives
-//! library only. Clients that read the process default (Redis, and reqwest or
+//! outbound HTTPS, SQLx, Redis, SMTP and OTLP. Core uses ring only for the
+//! `storage-multipart` recovery-record encryption. Clients that read the process default (Redis, and reqwest or
 //! lettre once a default exists) would otherwise depend on initialisation
 //! order, and rustls cannot pick a default when an application's graph
 //! enables both providers.

@@ -393,6 +393,9 @@ none is scheduled, and real user demand orders them.
 - **htmx 4 as an opt-in for new applications**, once npm's `latest` tag points
   to 4.x and its Server-Sent Events extension is stable; existing applications
   keep the htmx they use.
+- **Mask the CSRF token per response (BREACH defence), then compress dynamic
+  HTML in the generated Caddyfile.** Since 13.0.0-alpha.5 generated
+  deployments serve static files pre-compressed and pages uncompressed.
 
 Decided non-goals (not planned, so they are documented as scope rather than as
 pending work):

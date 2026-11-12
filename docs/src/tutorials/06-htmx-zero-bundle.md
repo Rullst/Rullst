@@ -3,9 +3,12 @@
 The Blank and SaaS starters render HTML on the server and use HTMX attributes
 for targeted requests and fragment swaps. It does not require a project-local
 SPA bundle, but HTMX itself is browser JavaScript. The CLI's HTML starters write
-a pinned copy to `static/htmx-1.9.12.min.js`, which `rullst::htmx::render_page`
-loads from the same origin; an application without those generated assets must
-serve that file itself. The application's CSP must permit it.
+a pinned copy of htmx 2.0.11 to `static/htmx-2.0.11.min.js`, which
+`rullst::htmx::render_page` loads from the same origin; an application without
+those generated assets must serve that file itself. The application's CSP must
+permit it. An application created before 13.0.0-alpha.5 vendors
+`static/htmx-1.9.12.min.js` instead, which `render_page` keeps loading until
+the application moves to htmx 2 ([frontend guide](../frontend.md#the-htmx-client)).
 
 Rullst's strict CSP has no `'unsafe-inline'` for styles, so htmx may not insert
 its own `<style>` for `hx-indicator`. Under Rullst's security headers,

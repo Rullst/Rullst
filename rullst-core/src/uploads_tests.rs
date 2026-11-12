@@ -90,3 +90,16 @@ fn unavailable_or_tampered_scan_fails_closed() {
         Err(UploadError::ScanUnavailable)
     ));
 }
+
+#[test]
+fn quarantine_digests_are_sha256_known_answers() {
+    // FIPS 180-2 appendix B.1 vector.
+    let admitted = text_policy()
+        .admit("school-1", "abc.txt", "text/plain", b"abc")
+        .expect("admitted text");
+    assert_eq!(
+        admitted.sha256_hex(),
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    );
+    assert!(OfflineMockScanner.scan(&admitted, b"abc").is_ok());
+}

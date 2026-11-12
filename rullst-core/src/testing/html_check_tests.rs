@@ -23,7 +23,7 @@ fn a_well_formed_rullst_page_has_no_issues() {
     clean(
         "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\" />\
          <title>Caf\u{e9} &amp; co &lt; 3</title>\
-         <script nonce=\"nonce1\" src=\"/static/htmx-1.9.12.min.js\"></script>\
+         <script nonce=\"nonce1\" src=\"/static/htmx-2.0.11.min.js\"></script>\
          <meta name=\"htmx-config\" content=\"{&quot;includeIndicatorStyles&quot;:false}\" />\
          <style nonce=\"nonce1\">.a>.b{opacity:0}</style>\
          <script type=\"application/json\">{\"a\": \"<b>\"}</script>\

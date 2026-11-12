@@ -16,11 +16,12 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::post;
 use axum::{Extension, Router, middleware};
-use ring::hmac;
+use hmac::{Hmac, KeyInit, Mac};
 use rullst_capital::{
     Billable, BillingProvider, CapitalError, InMemoryWebhookReplayStore, SubscriptionStatus,
     WebhookEvent, WebhookMiddlewareState, WebhookVerificationMode, verify_webhook_with_state,
 };
+use sha2::Sha256;
 use std::collections::HashMap;
 use std::sync::Arc;
 use subtle::ConstantTimeEq;
@@ -87,11 +88,12 @@ impl AcmePayProvider {
         if (now - timestamp).abs() > WEBHOOK_TOLERANCE_SECONDS {
             return Err(CapitalError::StaleWebhook("acmepay timestamp".into()));
         }
-        let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
-        let mut signed = format!("{timestamp}.").into_bytes();
-        signed.extend_from_slice(payload);
-        // `ring::hmac::verify` compares in constant time.
-        hmac::verify(&key, &signed, &signature)
+        let mut mac = Hmac::<Sha256>::new_from_slice(self.webhook_secret.as_bytes())
+            .map_err(|_| CapitalError::ConfigurationError("acmepay secret".into()))?;
+        mac.update(format!("{timestamp}.").as_bytes());
+        mac.update(payload);
+        // `verify_slice` compares in constant time.
+        mac.verify_slice(&signature)
             .map_err(|_| CapitalError::InvalidSignature("acmepay signature".into()))
     }
 }
@@ -328,8 +330,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The live HMAC path: sign `<t>.<body>` with the real secret.
     let live = AcmePayProvider::new("live_key", "whsec_live_fixture");
     let now = chrono::Utc::now().timestamp();
-    let key = hmac::Key::new(hmac::HMAC_SHA256, b"whsec_live_fixture");
-    let signature = hex::encode(hmac::sign(&key, format!("{now}.{body}").as_bytes()));
+    let mut mac = Hmac::<Sha256>::new_from_slice(b"whsec_live_fixture")
+        .map_err(|_| CapitalError::ConfigurationError("fixture secret".into()))?;
+    mac.update(format!("{now}.{body}").as_bytes());
+    let signature = hex::encode(mac.finalize().into_bytes());
     let headers = HashMap::from([(
         "acme-signature".to_string(),
         format!("t={now},v1={signature}"),

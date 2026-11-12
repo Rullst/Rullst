@@ -40,7 +40,7 @@ pub(crate) const REMOVED: [Removed; 5] = [
     Removed {
         name: "make:live",
         release: "13.0.0-alpha.5",
-        instead: "Live components were removed. Send forms and clicks with htmx (`hx-post`), and push server updates with Server-Sent Events: `rullst::realtime::RealtimeSse` streams a `BroadcastManager` channel to the htmx SSE extension (`/static/htmx-ext-sse-1.9.12.js`).",
+        instead: "Live components were removed. Send forms and clicks with htmx (`hx-post`), and push server updates with Server-Sent Events: `rullst::realtime::RealtimeSse` streams a `BroadcastManager` channel to the htmx 2 SSE extension (`/static/htmx-ext-sse-2.2.4.js`, written by `cargo rullst new` with htmx 2.0.11).",
         docs: ALPHA5_DOCS,
     },
     Removed {

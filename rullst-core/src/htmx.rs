@@ -220,31 +220,65 @@ impl IntoResponse for HtmxResponse {
     }
 }
 
-/// The `htmx-config` that stops htmx 1.9.12 from inserting its indicator
-/// rules as an inline `<style>`, which has no CSP nonce.
+/// The `htmx-config` that stops htmx from inserting its indicator rules as
+/// an inline `<style>`, which has no CSP nonce.
 const HTMX_INDICATOR_CONFIG: &str = r#"{"includeIndicatorStyles":false}"#;
 
-/// The rules htmx 1.9.12 inserts with `includeIndicatorStyles` (its default
-/// `htmx-indicator` and `htmx-request` classes), sent with the request's nonce.
-const HTMX_INDICATOR_STYLES: &str = ".htmx-indicator{opacity:0}\
-.htmx-request .htmx-indicator{opacity:1;transition:opacity 200ms ease-in}\
-.htmx-request.htmx-indicator{opacity:1;transition:opacity 200ms ease-in}";
+/// A version-pinned htmx browser client below `static/` that the page loads.
+#[derive(Debug)]
+struct HtmxClient {
+    /// The file below `static/`.
+    script: &'static str,
+    /// The rules this release inserts with `includeIndicatorStyles` (its
+    /// default `htmx-indicator` and `htmx-request` classes), which the page
+    /// sends with the request's nonce instead.
+    indicator_styles: &'static str,
+}
 
-/// The version-pinned htmx client below `static/` that the page loads.
-const HTMX_SCRIPT: &str = "htmx-1.9.12.min.js";
+/// htmx 2.0.11, which `cargo rullst new` writes since 13.0.0-alpha.5.
+const HTMX_2: HtmxClient = HtmxClient {
+    script: "htmx-2.0.11.min.js",
+    indicator_styles: ".htmx-indicator{opacity:0;visibility:hidden}\
+.htmx-request .htmx-indicator,.htmx-request.htmx-indicator\
+{opacity:1;visibility:visible;transition:opacity 200ms ease-in}",
+};
+
+/// htmx 1.9.12, which applications created before 13.0.0-alpha.5 vendor.
+const HTMX_1: HtmxClient = HtmxClient {
+    script: "htmx-1.9.12.min.js",
+    indicator_styles: ".htmx-indicator{opacity:0}\
+.htmx-request .htmx-indicator{opacity:1;transition:opacity 200ms ease-in}\
+.htmx-request.htmx-indicator{opacity:1;transition:opacity 200ms ease-in}",
+};
+
+/// The client the page loads: htmx 2.0.11, or htmx 1.9.12 while the
+/// `static/` directory the server publishes holds that file and not the
+/// htmx 2 one, so an application created before 13.0.0-alpha.5 keeps
+/// loading the client it vendors until it moves to htmx 2.
+fn htmx_client() -> &'static HtmxClient {
+    if !crate::assets::is_served(HTMX_2.script) && crate::assets::is_served(HTMX_1.script) {
+        &HTMX_1
+    } else {
+        &HTMX_2
+    }
+}
 
 /// Helper function to render a hybrid SSR layout page.
 /// - An htmx request (`HX-Request: true`) receives just the inner `content`
 ///   as a fragment.
 /// - Every other request receives `content` wrapped in an HTML5 skeleton that
 ///   loads the generated same-origin stylesheet and the version-pinned HTMX
-///   browser client. CLI scaffolds supply `/static/htmx-1.9.12.min.js`;
-///   manually built applications must serve that asset themselves. Since
-///   13.0.0-alpha.5 both are linked with [`crate::assets::url`]: while the
-///   server serves `static/`, `/static/rullst.<hash>.css` and
-///   `/static/htmx-1.9.12.min.<hash>.js`, cached as immutable, so a deploy
-///   that changes `static/rullst.css` reaches every browser and CDN at once;
-///   outside a server (unit tests), the plain URLs. Since
+///   browser client. Since 13.0.0-alpha.5 that is htmx 2.0.11,
+///   `/static/htmx-2.0.11.min.js`, which CLI scaffolds supply; an
+///   application created earlier vendors `/static/htmx-1.9.12.min.js`, and
+///   the page keeps loading it while the served `static/` holds it and not
+///   the htmx 2 file. Manually built applications must serve the asset
+///   themselves. Since 13.0.0-alpha.5 both are linked with
+///   [`crate::assets::url`]: while the server serves `static/`,
+///   `/static/rullst.<hash>.css` and `/static/htmx-2.0.11.min.<hash>.js`,
+///   cached as immutable, so a deploy that changes `static/rullst.css`
+///   reaches every browser and CDN at once; outside a server (unit tests),
+///   the plain URLs, with htmx 2. Since
 ///   13.0.0-alpha.5 that includes the two htmx requests that expect a page: a
 ///   history restore after a cache miss (`HX-History-Restore-Request: true`,
 ///   which replaces the whole `<body>`) and a boosted link or form
@@ -257,9 +291,10 @@ const HTMX_SCRIPT: &str = "htmx-1.9.12.min.js";
 ///
 /// Since 13.0.0-alpha.5, under Rullst's security headers (a request CSP nonce),
 /// the page also sends `<meta name="htmx-config"
-/// content='{"includeIndicatorStyles":false}'>` and htmx's `.htmx-indicator`
-/// rules in a `<style>` carrying the nonce: htmx's own inline indicator
-/// `<style>` has none, and the strict `style-src` would block it. `hx-indicator` keeps working. Head markup passed to
+/// content='{"includeIndicatorStyles":false}'>` and the `.htmx-indicator`
+/// rules of the loaded htmx release in a `<style>` carrying the nonce: htmx's
+/// own inline indicator `<style>` has none, and the strict `style-src` would
+/// block it. `hx-indicator` keeps working. Head markup passed to
 /// [`render_page_with_head`] that contains its own `htmx-config` is left in
 /// charge of htmx's configuration. Without a nonce the page is unchanged.
 ///
@@ -311,7 +346,8 @@ pub fn render_page_with_head(
         return Html(content.into_string());
     }
     let head = head.into();
-    let htmx_source = crate::assets::url(HTMX_SCRIPT);
+    let client = htmx_client();
+    let htmx_source = crate::assets::url(client.script);
     let htmx_script = if let Some(nonce) = htmx.csp_nonce.as_ref() {
         // htmx's own indicator `<style>` would carry no nonce: turn it off
         // (unless `head` brings its own htmx-config) and send the same rules
@@ -322,7 +358,7 @@ pub fn render_page_with_head(
         crate::html! {
             <script nonce={nonce.as_str()} src={htmx_source.as_str()}></script>
             {config}
-            <style nonce={nonce.as_str()}>{HTMX_INDICATOR_STYLES}</style>
+            <style nonce={nonce.as_str()}>{client.indicator_styles}</style>
         }
     } else {
         crate::html! {

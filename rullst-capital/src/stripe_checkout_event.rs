@@ -1,6 +1,7 @@
 //! Signed Checkout events alongside the subscription event contract.
 use crate::{BillingProvider, CapitalError, StripeProvider, WebhookVerificationMode};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -46,9 +47,9 @@ impl StripeCheckoutEvent {
     /// Stable mutation identity excluding delivery counters, JSON formatting
     /// and optional contact data. Scope the durable key by account and mode.
     pub fn mutation_digest(&self) -> [u8; 32] {
-        let mut hash = ring::digest::Context::new(&ring::digest::SHA256);
+        let mut hash = Sha256::new();
         hash.update(b"rullst.stripe.checkout-event.v1\0");
-        hash.update(&[u8::from(self.livemode)]);
+        hash.update([u8::from(self.livemode)]);
         for value in [
             self.event_id(),
             self.event_type(),
@@ -58,12 +59,10 @@ impl StripeCheckoutEvent {
             self.subscription_id().unwrap_or(""),
             self.attempt_reference(),
         ] {
-            hash.update(&(value.len() as u64).to_be_bytes());
+            hash.update((value.len() as u64).to_be_bytes());
             hash.update(value.as_bytes());
         }
-        let mut digest = [0; 32];
-        digest.copy_from_slice(hash.finish().as_ref());
-        digest
+        hash.finalize().into()
     }
 }
 impl std::fmt::Debug for StripeCheckoutEvent {
@@ -127,7 +126,7 @@ impl StripeProvider {
             Some(reference(&data["subscription"], "sub_")?.into())
         };
         let mut digest = [0; 32];
-        digest.copy_from_slice(ring::digest::digest(&ring::digest::SHA256, payload).as_ref());
+        digest.copy_from_slice(&Sha256::digest(payload));
         Ok(StripeCheckoutEvent {
             id: reference(&root["id"], "evt_")?.into(),
             kind: kind.into(),

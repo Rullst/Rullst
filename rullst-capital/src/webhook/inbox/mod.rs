@@ -6,6 +6,7 @@ pub use scope::StripeInboxScope;
 
 use crate::{SqlWebhookBackend, StripeSubscriptionEvent};
 use rullst_orm::{RullstPool, db::Transaction, sqlx};
+use sha2::{Digest, Sha256};
 use std::{future::Future, pin::Pin};
 
 /// Redacted inbox failures. A conflict never grants permission to apply again.
@@ -168,10 +169,7 @@ impl SqlStripeEventInbox {
         >,
     {
         self.scope.verify(event)?;
-        let event_hash = hex::encode(ring::digest::digest(
-            &ring::digest::SHA256,
-            event.event_id().as_bytes(),
-        ));
+        let event_hash = hex::encode(Sha256::digest(event.event_id().as_bytes()));
         let mutation_hash = hex::encode(event.mutation_digest());
         let mut tx = self.pool.begin().await.map_err(storage)?;
         let result = async {

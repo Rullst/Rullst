@@ -25,17 +25,6 @@ members = [
     "rullst-media",
     "rullst-labs",
 ]
-exclude = [
-    "benchmark/rullst",
-    "benchmark/axum",
-    "benchmark/actix",
-    "benchmark/loco",
-
-    "benchmark/leptos",
-    "benchmark/poem",
-    "benchmark/warp",
-    "benchmark/dioxus",
-]
 resolver = "2"
 
 [workspace.dependencies]

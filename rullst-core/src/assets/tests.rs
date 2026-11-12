@@ -8,8 +8,8 @@ use std::time::{Duration, SystemTime};
 
 /// The 16-hex-character hash `url` writes for `content`.
 fn hash_of(content: &[u8]) -> String {
-    let digest = ring::digest::digest(&ring::digest::SHA256, content);
-    digest.as_ref()[..8]
+    let digest = <sha2::Sha256 as sha2::Digest>::digest(content);
+    digest[..8]
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
@@ -374,4 +374,13 @@ fn url_reads_the_active_manifest_and_is_plain_without_one() {
     );
     deactivate();
     assert_eq!(url("app.css"), "/static/app.css");
+}
+
+#[test]
+fn file_hashes_are_sha256_known_answers() {
+    // The first eight bytes of the FIPS 180-2 appendix B.1 SHA-256 vector.
+    let root = tempfile::tempdir().unwrap();
+    write(root.path(), "abc.css", "abc");
+    let manifest = manifest(root.path(), false);
+    assert_eq!(manifest.url("abc.css"), "/static/abc.ba7816bf8f01cfea.css");
 }

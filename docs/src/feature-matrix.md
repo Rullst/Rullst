@@ -255,6 +255,7 @@ or a `strict-*` backend explicitly.
 | `strict-postgres` | The PostgreSQL driver plus concrete PostgreSQL pool, database, query-result, and query paths |
 | `strict-mysql` | The MySQL driver plus concrete MySQL paths when PostgreSQL is not also selected |
 | `strict-sqlite` | The SQLite driver plus concrete SQLite paths when PostgreSQL and MySQL are not also selected |
+| `test-util` | Test-only helpers for Rullst's own test suites (`Outbox::claim_next_at`, `query_cache::model_hash_key`); not for applications and outside the 13.x stability promise |
 
 The strict backend selection rules and precedence are the same as the umbrella
 crate. Each `strict-*` feature enables its own SQLx driver and selects concrete
@@ -347,6 +348,7 @@ Default feature: `axum`.
 | `quota-sql` | Durable idempotent shared quota accounting over SQLite, PostgreSQL, MySQL, and MariaDB; schema setup/migrations and authoritative membership/tier state remain application-owned |
 | `webhook-sql` | Bounded durable provider-scoped payload/event claims over SQLite, PostgreSQL, MySQL, and MariaDB, including a caller-owned transaction path; cross-system effects and reconciliation remain application-owned |
 | `invoice-pdf` | Bounded paginated A4 invoice PDF with embedded WinAnsi or a validated caller-supplied TTF/OTF; payment/mail orchestration is separate |
+| `conformance` | v13: the test kit `conformance::check_billing_provider`, which runs Capital's provider contract against your own `BillingProvider`; enable it in development dependencies only (see [provider conformance kits](provider-conformance.md)) |
 
 ### `rullst-mail`
 
@@ -359,6 +361,7 @@ Default features: none. HTTP mail providers remain available without SMTP.
 | `capital-invoice` | Capital's native invoice PDF plus the final-payment-bound delivery bridge; durable outbox claiming remains application-owned |
 | `sqlite` | File-backed shared-local suppression state with exact provider-event replay binding and immutable quotas; webhook authentication, encryption and multi-host replication remain application-owned |
 | `postgres` | v13 candidate: namespaced suppression on one authoritative writable PostgreSQL database; independent of SQLite. See [shared mail suppression](shared-mail-suppression.md) for initialization, runtime grants, retention and pending admission |
+| `conformance` | v13: the test kit `conformance::check_mail_driver`, which runs the built-in drivers' contract against your own `MailDriver`; enable it in development dependencies only (see [provider conformance kits](provider-conformance.md)) |
 
 ### `rullst-auth`
 
@@ -421,6 +424,7 @@ backend (and, for Nexus, to leave out the AI assistant and `rullst-ai`):
 | `rullst-nexus` | `strict-sqlite` | SQLite selection in Core and ORM |
 | `rullst-nexus` | `ai` | The AI assistant at `/nexus/chat` and `rullst-ai` (default); the `rullst` facade enables it only with `nexus-ai` |
 | `rullst-nexus` | `tz` | v13: `NexusTimeZone::named` for `DateTimeUtc` form values in a named IANA time zone (system zoneinfo, bundled `jiff` database as fallback) |
+| `rullst-studio` | `local` | The local Studio (`Studio`, `run_studio` and its pages), which reads the application's database through the ORM and adds the ORM, Capital and Security crates; every driver feature below enables it, and so does the `rullst` facade's `studio` |
 | `rullst-studio` | `drivers-all` | All three SQLx drivers in Core and ORM (default) |
 | `rullst-studio` | `queue-sqlite` | Core's durable SQLite queue backend (default) |
 | `rullst-studio` | `strict-postgres` | PostgreSQL selection in Core and ORM |
@@ -445,6 +449,7 @@ no umbrella features; depend on them directly. None has default features.
 | `rullst-media` | `bunny` | Bunny Stream adapter, signatures, bounded HTTP and the browser upload module |
 | `rullst-media` | `sqlite` | Shared-local durable assets, leased operations and the application service |
 | `rullst-media` | `s3` | Experimental S3-compatible object storage (AWS S3, Cloudflare R2, MinIO): presigned upload and playback of the original, no transcoding |
+| `rullst-media` | `conformance` | The test kit `conformance::check_video_provider`, which runs the Bunny adapter's contract against your own `VideoProvider`; enable it in development dependencies only (see [provider conformance kits](provider-conformance.md)) |
 | `rullst-labs` | `sqlite` | Encrypted shared-local exercise and job storage with leases, cancellation and retention |
 | `rullst-labs` | `receipt-signing` | Receipt signing for the application-owned runner controller |
 
