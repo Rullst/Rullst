@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794463348913,
+  "lastUpdate": 1794470113439,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -18647,6 +18647,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 186,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89217d072361f11dd4b4f098bba10613d3b967cd",
+          "message": "Merge pull request #630 from Rullst/feat/v13-alpha5-footprint\n\nfeat(cli)!: rename green to footprint, add page weight and macOS/Windows sampling",
+          "timestamp": "2026-11-12T04:31:48-03:00",
+          "tree_id": "fe7b45a28cb4c79c53f5ab74eb9f7d7625a56fe2",
+          "url": "https://github.com/Rullst/Rullst/commit/89217d072361f11dd4b4f098bba10613d3b967cd"
+        },
+        "date": 1794470112501,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1742,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 322,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 392,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
