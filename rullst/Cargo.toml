@@ -165,14 +165,6 @@ tracing = { workspace = true }
 tracing-core = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = "0.2.123"
-wasm-bindgen-futures = "0.4.73"
-web-sys = { version = "0.3.100", features = ["Document", "Element", "Window", "EventTarget", "HtmlElement", "console", "Request", "RequestInit", "RequestMode", "Response"] }
-js-sys = "0.3.103"
-getrandom = { version = "0.4.2", features = ["wasm_js"] }
-
 [dev-dependencies]
 tempfile = "3"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "process", "io-util"] }
