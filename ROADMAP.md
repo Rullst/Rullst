@@ -318,6 +318,9 @@ to the counts above.
   [maturity tiers](docs/src/maturity.md) state which packages the 13.x
   promise covers. After rc.1, changes are limited to defects found in the
   release candidate.
+- **Verification in the rc.1 window (test and process only):** changelog
+  fragments ([#668](https://github.com/Rullst/Rullst/pull/668)), a merge
+  queue, and `Generated starters in browsers` as a required check.
 - **Turso/libSQL beyond the blank and API starters**, only if users ask for it
   and the maintenance cost stays low. Turso can be the primary database only
   in those starters and does not work with `#[derive(Orm)]`, `Schema`,
@@ -364,6 +367,23 @@ none is scheduled, and real user demand orders them.
 - **Production monitor** (13.1 candidate): desktop notifications in the
   standalone Studio, remote traces and security radar, and proxy support.
 - **More i18n locales and currency formats**, added as CLDR data when requested.
+- **Smaller internal dependency graphs** (13.0.x or 13.1, from the starter
+  dependency audit), changing no public path:
+  - Studio and Nexus stop depending on all of `rullst-security`:
+    `SecurityStore` and `LiveSecurityEvent` move to Core and stay available
+    where they are today (about 48 fewer packages).
+  - SQLite-only starters build without a TLS stack (about 43 fewer packages,
+    the largest binary-size gain); the rustls `CryptoProvider` must still be
+    installed wherever TLS is used.
+  - A five-field cron evaluator of Rullst's own replaces the `cron` crate
+    (about 9 fewer), tested differentially against it.
+  - Passkeys without `p256` (about 18 fewer in the SaaS starter), checked with
+    test vectors.
+- **`cargo rullst footprint` reports the compiled crate count** beside the
+  lockfile count, which includes packages that are never compiled.
+- **htmx 4 as an opt-in for new applications**, once npm's `latest` tag points
+  to 4.x and its Server-Sent Events extension is stable; existing applications
+  keep the htmx they use.
 
 Decided non-goals (not planned, so they are documented as scope rather than as
 pending work):
@@ -440,6 +460,9 @@ None is scheduled; v14 development starts only when they justify it. The four
 clean-ups recorded here before 13.0 (crate-private internals, Rullst error
 types instead of third-party ones, private `SecurityStore` fields, one path per
 item) moved into 13.0.0-alpha.5.
+
+- **Remove `rullst_orm::schema_diff`**, deprecated in 13.0.0-alpha.5. It stays
+  available, unchanged, in every 13.x release.
 
 ---
 
