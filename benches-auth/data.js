@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794489851724,
+  "lastUpdate": 1794493200296,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -21527,6 +21527,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3763,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "32619c37965c80856732727ce8f4682015a0dd46",
+          "message": "Merge pull request #676 from Rullst/docs/v13-alpha5-tier-promotions\n\ndocs: promote iot, media, labs, privacy and supervision to Extension",
+          "timestamp": "2026-11-12T10:58:06-03:00",
+          "tree_id": "b6b534e71e67900e1b990ce73a845146bf2e7ef7",
+          "url": "https://github.com/Rullst/Rullst/commit/32619c37965c80856732727ce8f4682015a0dd46"
+        },
+        "date": 1794493199453,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1051,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 829,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1912,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4670,
+            "range": "± 29",
             "unit": "ns/iter"
           }
         ]
