@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794455624784,
+  "lastUpdate": 1794463155306,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -13055,6 +13055,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 292,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b2a420ebfc4ec2cae362e08aad604a19a0f240e7",
+          "message": "Merge pull request #648 from Rullst/fix/v13-alpha5-acc-docs\n\ndocs(capital): InfinitePay needs external checkout enabled before links",
+          "timestamp": "2026-11-12T02:40:24-03:00",
+          "tree_id": "f1f349379cd0a294baa69213bb1747bc28869b57",
+          "url": "https://github.com/Rullst/Rullst/commit/b2a420ebfc4ec2cae362e08aad604a19a0f240e7"
+        },
+        "date": 1794463154413,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 285,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
