@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794455906730,
+  "lastUpdate": 1794463425016,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -16085,6 +16085,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/a829e57bb4fd66ce78ac7c55efd62554dc18a57d"
         },
         "date": 1794455905688,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b2a420ebfc4ec2cae362e08aad604a19a0f240e7",
+          "message": "Merge pull request #648 from Rullst/fix/v13-alpha5-acc-docs\n\ndocs(capital): InfinitePay needs external checkout enabled before links",
+          "timestamp": "2026-11-12T02:40:24-03:00",
+          "tree_id": "f1f349379cd0a294baa69213bb1747bc28869b57",
+          "url": "https://github.com/Rullst/Rullst/commit/b2a420ebfc4ec2cae362e08aad604a19a0f240e7"
+        },
+        "date": 1794463424206,
         "tool": "cargo",
         "benches": [
           {
