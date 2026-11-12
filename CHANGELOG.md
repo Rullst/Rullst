@@ -11,6 +11,29 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- `rullst::iot_ingest` (facade feature `iot-ingest`, Experimental): a
+  bounded telemetry receiver for devices on the server side.
+  `TelemetryReceiver` accepts one `SensorTelemetry` JSON object or an array
+  of them and publishes each accepted request to a `BroadcastManager`
+  channel as a `TelemetryBatch`. Every device has its own bearer token
+  (`DeviceToken`, 190 random bits behind an `rdt1_` prefix); the
+  receiver's `machine_endpoint(path)` verifies it through
+  `MachineEndpoint::verified_bearer` against a `DeviceDirectory` that
+  stores only its SHA-256 (`TokenHash`), so the route is exempt from CSRF
+  only after authentication, ambient browser credentials are refused, and a
+  revoked device is refused from the next request on. A request reaching the
+  route without that verification is refused (`401`), never accepted
+  anonymously. Bodies (16 KiB), readings per request (64), timestamps
+  (5 minutes ahead, 24 hours old), metric names and each device's request
+  rate (120 per minute, `429` with `Retry-After`) are bounded, and every
+  refusal is an `IngestError` with a stable code and status. The device's id
+  in every reading must match its token (`403`). `MemoryDeviceDirectory`
+  serves tests and fixed device lists; a database registry is application
+  code (`validate_device` checks ids and names for it). New example
+  `examples/iot-gateway`: per-board serial gateways post to the receiver,
+  the registry is an ORM model with a migration and a Nexus page, and a
+  dashboard shows every device live over Server-Sent Events; it ran with two
+  Arduino Uno boards on 2026-11-11.
 - `cargo rullst iot:keygen` and `cargo rullst iot:sign` (Experimental): sign
   firmware updates for `rullst-iot`'s OTA gate. `iot:keygen --out FILE`
   writes an Ed25519 secret key (mode 0600 on Unix, never printed) and its
@@ -568,6 +591,22 @@ describes each replacement.
   now explains how to allow only the captured device on the capture page's
   response, both with `Server`'s baseline and with `SecureHeadersLayer`
   (found while building an acceptance application).
+- `rullst-orm` SurrealDB adapter: `SurrealDbStore::create` reported a write
+  that SurrealDB had refused. SurrealDB 3 answers a CREATE denied by
+  permissions (a `VIEWER` database user, or a record user on a table with
+  `PERMISSIONS FOR create NONE`) with status OK and no record, and `create`
+  returned `Ok(())` although nothing was stored. It now fails with
+  `PolyglotError::Driver` ("create returned no record …") when the response
+  holds no record, which also happens for a table the user may write but not
+  read back. Found by acceptance testing against SurrealDB 3.2.4.
+- `rullst-orm` SurrealDB documentation said that `SurrealAuth::basic` signs in
+  namespace and database users; SurrealDB answers those with
+  `401 Unauthorized`, because it also needs `Surreal-Auth-NS`/`Surreal-Auth-DB`
+  headers that the adapter does not send. The rustdoc and the polyglot
+  persistence guide now say that Basic is for root-level users, that
+  namespace and database users sign in through `/signin` and pass the token to
+  `SurrealAuth::bearer`, and that the namespace and database must be defined
+  before use.
 - `rullst-iot`: `MqttPublish::encode` aborted the program when the allocator
   could not provide the packet buffer, which on a BBC micro:bit V2 with a
   32 KiB heap happened for a 20 KiB payload; it and `CoapRequest::encode`,

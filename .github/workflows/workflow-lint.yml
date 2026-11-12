@@ -96,6 +96,11 @@ jobs:
           python3 .github/validate-action-pins.py cargo-rullst/src/generators/project/ci/.github/workflows/ci.yml
           python3 .github/validate-action-pins.py cargo-rullst/src/generators/browser_tests/assets/browser-tests.yml
 
+      - name: Keep cached Rust targets restorable
+        run: |
+          python3 .github/test-rust-cache-policy.py
+          python3 .github/check-rust-cache-policy.py
+
       - name: Parse workflows and enforce immutable Action references
         uses: zgosalvez/github-actions-ensure-sha-pinned-actions@76ed8a4c86957c2d27d44bab47f172193149d926 # v5.0.11
 
