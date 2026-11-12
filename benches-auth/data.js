@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794463107927,
+  "lastUpdate": 1794469799837,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -21143,6 +21143,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2975,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89217d072361f11dd4b4f098bba10613d3b967cd",
+          "message": "Merge pull request #630 from Rullst/feat/v13-alpha5-footprint\n\nfeat(cli)!: rename green to footprint, add page weight and macOS/Windows sampling",
+          "timestamp": "2026-11-12T04:31:48-03:00",
+          "tree_id": "fe7b45a28cb4c79c53f5ab74eb9f7d7625a56fe2",
+          "url": "https://github.com/Rullst/Rullst/commit/89217d072361f11dd4b4f098bba10613d3b967cd"
+        },
+        "date": 1794469798940,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1025,
+            "range": "± 60",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 745,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1773,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4250,
+            "range": "± 63",
             "unit": "ns/iter"
           }
         ]
