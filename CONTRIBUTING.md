@@ -2,6 +2,13 @@
 
 First off, thank you for considering contributing to Rullst! It's people like you that make Rullst such a great tool for the Rust ecosystem.
 
+Contributions are open: issues and pull requests are welcome, from a typo fix
+to a new feature. Every pull request is reviewed before it is merged, and the
+maintainer decides what is merged (see [GOVERNANCE.md](GOVERNANCE.md)). For a
+large change, open an issue first so the design can be agreed before you write
+the code. To find a first task, look at the issues labelled
+[good first issue](https://github.com/Rullst/Rullst/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22).
+
 ## How Can I Contribute?
 
 ### Reporting Bugs
@@ -29,6 +36,9 @@ This section guides you through submitting an enhancement suggestion for Rullst,
   `cargo test --workspace --all-features` before declaring a change complete.
 - Fill in the required Pull Request template.
 - End files with a newline.
+- Expect a review: the maintainer may ask for changes, split a pull request or
+  decline it with a reason. A pull request is merged only after its review and
+  its required CI checks pass.
 
 ### AI-Assisted Contributions
 
