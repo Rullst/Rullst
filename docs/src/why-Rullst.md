@@ -10,7 +10,7 @@ boundaries, first-party backend capabilities, offline development contracts,
 and one coordinated CLI and release train.
 
 > **Version status:** the Rullst v12 release line reached end of life on
-> 16 October 2026; v13 is in prerelease (`13.0.0-alpha.4`, installed with an
+> 16 October 2026; v13 is in prerelease (`13.0.0-alpha.5`, installed with an
 > exact version as [Getting Started](1-getting-started.md) shows). This page
 > lists implemented or explicitly bounded capabilities;
 > it is not a production-readiness certificate. The
@@ -344,6 +344,6 @@ the more responsible decision.
 5. Pin an immutable release or commit for evaluation; do not deploy from a
    moving development branch.
 
-This page describes the v13 prerelease line (`13.0.0-alpha.4`). It remains a
+This page describes the v13 prerelease line (`13.0.0-alpha.5`). It remains a
 concise map of the strongest implemented ideas, not a substitute for the
 detailed contracts or application-specific validation.

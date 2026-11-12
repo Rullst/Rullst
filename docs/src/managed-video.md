@@ -9,7 +9,7 @@ v13 release inventory, pending final release acceptance; it is not part of the f
 changed.
 
 The [crate integration guide](../../rullst-media/README.md) describes installation
-(`rullst-media = { version = "=13.0.0-alpha.4", features = ["bunny", "sqlite"] }`),
+(`rullst-media = { version = "=13.0.0-alpha.5", features = ["bunny", "sqlite"] }`),
 separate provider keys, required embed/CDN/direct-file
 protection, HTTP security composition, browser uploads, captions/transcripts,
 typed failure handling, SQLite retention and backup responsibilities.

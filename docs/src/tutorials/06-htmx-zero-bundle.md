@@ -148,7 +148,7 @@ Values of `x-*`, `@*`, `:*` and `hx-on*` attributes run as JavaScript, so
 they must be static strings; pass server data through a `data-*` attribute.
 
 `render_page` and its variants answer an htmx request (`HX-Request: true`)
-with the content alone, for the swap. Since 13.0.0-rc.1 two htmx requests
+with the content alone, for the swap. Since 13.0.0-alpha.5 two htmx requests
 receive the whole page instead: the request htmx sends to restore a page that
 is not in its history cache (`HX-History-Restore-Request: true`, so a link with
 `hx-push-url` keeps its layout after Back) and a boosted link or form

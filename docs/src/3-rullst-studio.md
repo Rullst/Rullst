@@ -20,7 +20,7 @@ To watch a deployed application, mount the read-only
 v13): it reports request rates, latency, errors, queues and N+1
 findings behind a token or the application's own sign-in. The standalone
 `rullst-studio` binary
-(`cargo install rullst-studio --version =13.0.0-alpha.4 --no-default-features --features remote --locked`,
+(`cargo install rullst-studio --version =13.0.0-alpha.5 --no-default-features --features remote --locked`,
 then `rullst-studio` or `cargo rullst studio --remote`) reads it for several projects from your
 machine, with a project switcher and encrypted local tokens; see
 [Watch your projects from Studio](production-monitoring.md#watch-your-projects-from-studio).

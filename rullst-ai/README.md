@@ -13,9 +13,9 @@ it exactly:
 
 ```toml
 [dependencies]
-rullst-ai = "=13.0.0-alpha.4"
+rullst-ai = "=13.0.0-alpha.5"
 # With durable SQL chat memory (SqlChatMemory):
-# rullst-ai = { version = "=13.0.0-alpha.4", features = ["sql-memory"] }
+# rullst-ai = { version = "=13.0.0-alpha.5", features = ["sql-memory"] }
 ```
 
 Through the umbrella crate, enable the `ai` feature (and `ai-sql-memory` for `SqlChatMemory`)

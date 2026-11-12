@@ -12,7 +12,7 @@ This README describes the v13 prerelease; Cargo never selects a prerelease on
 its own, so pin it exactly:
 
 ```bash
-cargo add rullst-auth@=13.0.0-alpha.4
+cargo add rullst-auth@=13.0.0-alpha.5
 ```
 
 Passwords, cookie sessions, passkey ceremonies, RBAC and policies need no

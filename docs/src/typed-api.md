@@ -9,7 +9,7 @@ helpers with placeholder/unchecked types.
 
 ## Generate and check
 
-Use the v13 CLI (`cargo install cargo-rullst --version =13.0.0-alpha.4 --locked`;
+Use the v13 CLI (`cargo install cargo-rullst --version =13.0.0-alpha.5 --locked`;
 see [Getting started](1-getting-started.md)). From the project root:
 
 ```bash
@@ -80,7 +80,7 @@ This minimal input uses the explicit `rullst.api.v1` profile:
 
 Add direct `serde` (with `derive`), `serde_json` and `rullst-security`
 dependencies; pin `rullst-security` to the same exact version as `rullst`
-(`rullst-security = "=13.0.0-alpha.4"`), because `contract.rs` uses its
+(`rullst-security = "=13.0.0-alpha.5"`), because `contract.rs` uses its
 `schema_guard::JsonSchemaPolicy`. Import `contract.rs` as an application
 module and construct `Contract::new()` once during startup; handle configuration
 errors before serving traffic. Each `op_<operationId>` module provides `METHOD`,

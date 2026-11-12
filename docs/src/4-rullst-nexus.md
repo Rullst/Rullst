@@ -508,7 +508,7 @@ The security and telemetry pages report the assistant as not enabled. With
 the feature, routes and behaviour are those of earlier releases:
 
 ```toml
-rullst = { version = "=13.0.0-alpha.4", default-features = false, features = ["nexus-ai", "strict-sqlite"] }
+rullst = { version = "=13.0.0-alpha.5", default-features = false, features = ["nexus-ai", "strict-sqlite"] }
 ```
 
 ## Content Security Policy

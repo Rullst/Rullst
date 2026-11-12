@@ -22,7 +22,7 @@ cargo check
   or `rullst_` and ending in an alphanumeric character;
 - parses `Cargo.toml` as TOML and inserts the dependency into the real
   `[dependencies]` table using the installed CLI's version (an exact `=`
-  requirement for a prerelease such as `=13.0.0-alpha.4`); in a virtual
+  requirement for a prerelease such as `=13.0.0-alpha.5`); in a virtual
   workspace manifest (`[workspace]` without `[package]`), which cannot declare
   `[dependencies]`, it uses `[workspace.dependencies]` instead, and members
   opt in with `rullst-auth = { workspace = true }`;

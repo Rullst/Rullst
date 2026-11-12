@@ -15,7 +15,7 @@ This README describes the v13 prerelease; Cargo never selects a prerelease on
 its own, so pin it exactly:
 
 ```bash
-cargo add rullst-messaging@=13.0.0-alpha.4
+cargo add rullst-messaging@=13.0.0-alpha.5
 ```
 
 The in-memory broker needs no feature. The optional parts, each described

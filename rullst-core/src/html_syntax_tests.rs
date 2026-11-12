@@ -71,7 +71,7 @@ fn conditional_bool_attributes_are_present_or_absent() {
 #[test]
 fn static_attribute_values_escape_double_quotes_only() {
     // A `"` (a Rust `\"`) would end the attribute: the browser read
-    // `content` as `{` before 13.0.0-rc.1.
+    // `content` as `{` before 13.0.0-alpha.5.
     assert_eq!(
         crate::html! { <meta name="htmx-config" content="{\"includeIndicatorStyles\":false}" /> },
         "<meta name=\"htmx-config\" content=\"{&quot;includeIndicatorStyles&quot;:false}\" />"

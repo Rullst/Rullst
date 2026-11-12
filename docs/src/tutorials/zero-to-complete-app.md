@@ -25,7 +25,7 @@ CLI. Cargo never selects a prerelease on its own, so name the exact version, as
 described in [Getting Started](../1-getting-started.md#1-installation):
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.5 --locked
 ```
 
 ## 2. Create the app from the SaaS starter

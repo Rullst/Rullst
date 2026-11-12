@@ -6,7 +6,7 @@ claim must always point to the GitHub Actions run, commit SHA, logs, and produce
 artifacts.
 
 Last source-level review: **2026-09-20 UTC**, with later workflow changes
-recorded through 13.0.0-alpha.4.
+recorded through 13.0.0-alpha.5.
 
 ## Status language
 

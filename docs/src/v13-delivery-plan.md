@@ -1,12 +1,30 @@
 # v13 delivery plan and evidence
 
-**13.0.0-alpha.4 prepared on October 29 and 30, 2026, for a tag on October 31
+**13.0.0-alpha.5 prepared on November 12, 2026, for a tag on November 13
 (not yet published).** The release commit sets the twenty packages of the
-release order to `13.0.0-alpha.4`; the coordinator records the tag, the
-exact-SHA admission and the release run here after publication. It was
-planned as the 13.0 feature and public API freeze; on 9 November 2026 the
-freeze moved to 13.0.0-alpha.5, which adds what the applications upgraded to
-alpha.4 asked for. It makes the main CLI leaner: `green`
+release order to `13.0.0-alpha.5`; the coordinator records the tag, the
+exact-SHA admission and the release run here after publication. It is the
+13.0 feature and public API freeze: it adds what the three applications
+upgraded to alpha.4 asked for (the `footprint` report with page weight and
+budgets, a frontend toolkit, a testing kit for generated applications,
+provider conformance kits, Capital's one-off checkout and InfinitePay
+adapter, IoT firmware signing, streaming OTA verification and a telemetry
+receiver) with the fixes they found, removes what 13.0 should not carry
+(WebAssembly islands, Live components, typed server functions, the frontend
+adapters, the MongoDB, DuckDB and Qdrant adapters, the Academy preset, the
+ERP and Portfolio examples) and cleans up the public API before the freeze.
+Next come 13.0.0-rc.1 (fixes and documentation only) and then 13.0.0. Work
+planned next is under
+[Planned after 13.0.0-alpha.5](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha5);
+the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-13)
+lists every change and the known limitations.
+
+**13.0.0-alpha.4 published on October 31, 2026.** All twenty packages were
+published from tag `v13.0.0-alpha.4` at `2bd3c2ad`
+([release run 41233925160](https://github.com/Rullst/Rullst/actions/runs/41233925160)).
+It was planned as the 13.0 feature and public API freeze; on 9 November 2026
+the freeze moved to 13.0.0-alpha.5, which adds what the applications upgraded
+to alpha.4 asked for. It makes the main CLI leaner: `green`
 (formerly `footprint`) stays in it as an Experimental command and the terminal
 AI assistant (`cargo rullst ai`) is removed, while the development error page
 offers a read-only prompt for the developer's own assistant. It removes
@@ -25,9 +43,9 @@ crate's documented API is recorded in `.github/public-api/` and checked in CI.
 A documentation audit checked the book, the crate pages and the README against
 the code, and a CI job runs the first-hour pages' commands as written. The
 first targeted `cargo-rullst` mutation campaign is merged, and the CLI's
-measured files are in the pull-request mutation gate. Next come 13.0.0-rc.1
-(fixes and documentation only) and then 13.0.0. Work planned next is under
-[Planned after 13.0.0-alpha.4](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha4).
+measured files are in the pull-request mutation gate. The work planned next
+was delivered in
+[13.0.0-alpha.5](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-13).
 
 **13.0.0-alpha.3 published on October 24, 2026.** All twenty packages were
 published from tag `v13.0.0-alpha.3` at `be336833` after the 25 required
