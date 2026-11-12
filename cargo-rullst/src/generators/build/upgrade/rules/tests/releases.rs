@@ -104,6 +104,7 @@ fn rules_carry_the_release_of_their_change() {
             "V13-CAPITAL-INVOICE-MINOR-UNITS",
             "V13-MAIL-MESSAGE-REPLY-TO",
             "V13-ACADEMY-REMOVED",
+            "V13-AI-PROVIDER-PRESETS",
         ]
     );
     // Rules added after alpha.4 for its changes take the next release, so

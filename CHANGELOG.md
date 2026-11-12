@@ -460,6 +460,21 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Changed
 
+- **Breaking:** `rullst-ai`'s DeepSeek and Ollama providers are presets of the
+  OpenAI-compatible adapter. Both services implement the OpenAI request
+  shapes, so `DeepSeekProvider` and `OllamaProvider` (with their
+  `providers::deepseek` and `providers::ollama` modules) were removed in favour
+  of `OpenAiCompatibleProvider::deepseek(api_key)` and
+  `OpenAiCompatibleProvider::ollama(host, model)`, plus the new
+  `OpenAiCompatibleProvider::try_with_model`. The presets keep the provider
+  names, default models, offline `mock_*` mode and typed HTTP errors, and add
+  streaming with usage. DeepSeek JSON Schema output still uses DeepSeek's
+  `/responses`, because its Chat Completions accepts no `json_schema` format,
+  now also for `deepseek-flash` and `deepseek-v4-pro`; Ollama is reached
+  through its `/v1` API (Ollama 0.5 or later), whose image input accepts JPEG,
+  PNG and WebP. A malformed key, host or model fails at construction with
+  `AiError::ConfigError`, also in `AiClient::auto()`. `cargo rullst upgrade`
+  reports the removed paths and names (`V13-AI-PROVIDER-PRESETS`).
 - **Breaking:** one path per item: `rullst::rullst_orm` (the same module as
   `rullst::orm`), `rullst::security_runtime` (the same as
   `rullst::security::runtime`), Mail's `rullst_mail::mail` alias of the crate

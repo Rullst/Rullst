@@ -447,6 +447,9 @@ rules! {
     ACADEMY_REMOVED: "V13-ACADEMY-REMOVED", MustChange, "13.0.0-alpha.5", "Academy production preset removed",
         "`ProductionPreset::academy()`, the `Academy*` production types and `cargo rullst academy:doctor` were removed in 13.0.0-alpha.5; this code no longer compiles, and the command exits with status 1",
         "Keep the application's own production checklist in its tests or CI instead of `ProductionPreset::academy()` and the `AcademyProductionRequirement`, `AcademyCheckStatus`, `AcademyBoundaryAssessment`, `AcademyPresetError` and `AcademyProductionPreset` types, and remove `academy:doctor` steps; `ProductionPreset::middleware_order()` and `ProductionMiddlewareStage` remain.";
+    AI_PROVIDER_PRESETS: "V13-AI-PROVIDER-PRESETS", MustChange, "13.0.0-alpha.5", "DeepSeek and Ollama as OpenAI-compatible presets",
+        "`DeepSeekProvider` and `OllamaProvider` (`rullst_ai::ai::providers::deepseek` and `::ollama`) were removed in 13.0.0-alpha.5; this code no longer compiles",
+        "Use the presets of the OpenAI-compatible adapter: `OpenAiCompatibleProvider::deepseek(api_key)?` (`.try_with_model(..)?` instead of `.with_model(..)`) and `OpenAiCompatibleProvider::ollama(host, model)?` (`.try_with_embedding_model(..)?` instead of `.with_embedding_model(..)`), from `rullst::ai::providers::openai_compatible`. Both return a `Result`; Ollama is now reached through its `/v1` API.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

@@ -4114,13 +4114,27 @@ provider](capital-custom-provider.md)); the
   for one exact model. Loopback may be unauthenticated, cloud requires
   HTTPS/Bearer, and unrelated protocols implement the public `AiProvider`
   boundary rather than passing through arbitrary HTTP.
+* **DeepSeek and Ollama presets (13.0.0-alpha.5):** both services implement the
+  OpenAI shapes, so they are named constructors of the compatible adapter, not
+  separate providers. `OpenAiCompatibleProvider::deepseek(api_key)` targets
+  `https://api.deepseek.com` (model `deepseek-v4-flash`, `try_with_model` for
+  another) with chat, JSON mode and streaming with usage; its JSON Schema
+  output alone uses DeepSeek's `/responses`, because DeepSeek's Chat
+  Completions accepts no `json_schema` format, and it is enabled only for the
+  models DeepSeek documents there. `OpenAiCompatibleProvider::ollama(host,
+  model)` reads the host like `OLLAMA_HOST`, targets its `/v1` API without a
+  credential (plain HTTP to any host, since nothing secret is sent) and adds
+  embeddings (`nomic-embed-text` by default), image input and JSON Schema. The
+  presets keep the provider names `DeepSeek` and `Ollama` in errors and the
+  offline `mock_*` behaviour of the former `DeepSeekProvider` and
+  `OllamaProvider`.
 * **Prompt Injection Firewall:** Real-time token heuristics intercepting prompt exfiltration, instruction overrides (`DAN mode`), and delimiter injection attacks.
 * **Automated PII Masking:** Scrubs check-digit-valid CPF/CNPJ numbers (canonical formatted or unformatted), card-like digit runs and email usernames prior to outbound LLM dispatch. Alphanumeric CNPJs and other identifiers are not recognized.
 
 * **Token usage (v13):** `chat_with_usage`/`send_with_usage` return a
   `ChatCompletion` with optional `TokenUsage` parsed only from documented
   provider fields (OpenAI/DeepSeek `usage`, Anthropic `usage`, Gemini
-  `usageMetadata`, Ollama eval counts, compatible servers' `usage`). Streams
+  `usageMetadata`, compatible servers' `usage`, Ollama's included). Streams
   report it through `AiStreamSink::usage` and `StreamSummary::usage()`;
   compatible configurations request it only with `with_stream_usage()`.
   Missing counts are `None`, never estimated.

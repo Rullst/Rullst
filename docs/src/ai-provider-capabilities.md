@@ -17,19 +17,24 @@ falling back to another operation.
 | OpenAI | yes | yes | yes | yes | native mode | yes | no | no | yes | no | no |
 | Anthropic | yes | yes | no | yes | prompt only | no | native SSE | no | yes | no | yes (stream) |
 | Gemini | yes | yes | yes | yes | native mode | yes | native SSE | no | yes | no | yes (stream) |
-| DeepSeek | yes | yes | no | no | native mode | default model only | no | no | yes | no | no |
-| Ollama | yes | yes | yes | yes | native mode | yes | no | no | yes | no | no |
+| DeepSeek (compatible preset) | yes | yes | no | no | native mode | documented models | SSE | no | yes | no | yes (stream) |
+| Ollama (compatible preset) | yes | yes | yes | yes | native mode | yes | SSE | no | yes | no | yes (stream) |
 | OpenAI-compatible | yes | yes | declared | declared | declared native mode | declared | declared SSE | no | yes | no | declared for SSE |
 
 `yes` means Rullst constructs and parses that provider request. A configured
 model can still reject vision, embeddings, or schema output. In particular:
 
-- DeepSeek JSON Schema is enabled only for the default `deepseek-v4-flash`
-  transport contract. Selecting another model makes the capability false and
+- DeepSeek and Ollama are presets of the OpenAI-compatible adapter
+  (`OpenAiCompatibleProvider::deepseek` and `::ollama`) that declare the rows
+  above. DeepSeek JSON Schema goes to DeepSeek's `/responses` (its Chat
+  Completions accepts no `json_schema` format) and is enabled for the models
+  DeepSeek documents there: `deepseek-v4-flash` (the default), `deepseek-flash`
+  and `deepseek-v4-pro`. Selecting another model makes the capability false and
   returns `UnsupportedCapability`, including in deterministic offline mode.
 - Ollama vision, embeddings, JSON, and schema support depend on the installed
-  local models. The transport can send those request shapes; it cannot prove
-  that an arbitrary model implements them.
+  local models. The preset sends those request shapes to Ollama's `/v1` API;
+  it cannot prove that an arbitrary model implements them. Ollama's
+  OpenAI-compatible API accepts JPEG, PNG and WebP images.
 - Anthropic JSON uses an instruction requesting one JSON value. It is labelled
   `prompt only` because the current transport does not request native JSON mode
   or schema enforcement.
@@ -99,18 +104,18 @@ an error and requires a final `finishReason`. A truncated or withheld reply
 (Anthropic `max_tokens`, `model_context_window_exceeded` or `refusal`; Gemini
 `MAX_TOKENS` or a safety/recitation/blocklist reason) fails instead of being
 returned as complete, in both the streaming and the non-streaming paths.
-DeepSeek and Ollama ordinary payloads still select `stream: false`; DeepSeek
-streams through the OpenAI-compatible adapter.
+The DeepSeek and Ollama presets stream through the OpenAI-compatible adapter
+and request the final usage chunk.
 
 ### Token usage (v13)
 
 | Provider transport | Fields read | Streamed usage |
 | --- | --- | --- |
 | OpenAI | `usage.prompt_tokens`, `completion_tokens`, `total_tokens`, `prompt_tokens_details.cached_tokens` | through the OpenAI-compatible adapter with `with_stream_usage()` |
-| DeepSeek | as OpenAI, with `prompt_cache_hit_tokens` | as OpenAI |
+| DeepSeek (compatible preset) | as OpenAI, with `prompt_cache_hit_tokens` | as OpenAI |
 | Anthropic | `usage.input_tokens` + cache creation/read input tokens, `output_tokens` | `message_start` usage updated by cumulative `message_delta` usage |
 | Gemini | `usageMetadata.promptTokenCount`, `candidatesTokenCount` + `thoughtsTokenCount`, `totalTokenCount`, `cachedContentTokenCount` | the latest `usageMetadata` of the stream |
-| Ollama | `prompt_eval_count`, `eval_count` | no streaming transport |
+| Ollama (compatible preset) | as OpenAI (`/v1` reports `usage`) | as OpenAI |
 | OpenAI-compatible | `usage` when the server sends it | final usage chunk when the server sends one; requested only with `with_stream_usage()` |
 
 Counts come only from these fields. A response without them reports `None`;
