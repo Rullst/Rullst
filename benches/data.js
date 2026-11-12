@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794482319182,
+  "lastUpdate": 1794484873652,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -33183,6 +33183,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1477,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "14752b67a0a5619983ccb5a795d2ec0352b0c4e1",
+          "message": "Merge pull request #675 from Rullst/docs/v13-alpha5-validated-providers\n\ndocs: record the live InfinitePay and Bunny Stream validations",
+          "timestamp": "2026-11-12T08:56:32-03:00",
+          "tree_id": "26bb370fe451640b0fcfd4f946af7b6963082770",
+          "url": "https://github.com/Rullst/Rullst/commit/14752b67a0a5619983ccb5a795d2ec0352b0c4e1"
+        },
+        "date": 1794484870135,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 535,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 688,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 335,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1516,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
