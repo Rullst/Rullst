@@ -200,12 +200,18 @@ and fixes ship in a new prerelease. From 13.0.0:
   performance improvements, new opt-in features and compatible dependency
   updates.
 - **14.0** carries only breaking changes.
-- 13.x stays the active line for at least 12 months after 13.0.0. Meanwhile
-  breaking ideas go to the [v14 candidates](../../ROADMAP.md#v14-candidates)
-  list, and a 13.x release may mark a future change with `#[deprecated]`.
-- v14 development starts only when breaking changes justify it, and never
-  before that minimum.
-- After 14.0.0 is published, 13.x receives security fixes for 12 more months.
+- The maintainer intends to keep 13.x the active line for 12 months after
+  13.0.0. Meanwhile breaking ideas go to the
+  [v14 candidates](../../ROADMAP.md#v14-candidates) list, and a 13.x release
+  may mark a future change with `#[deprecated]`.
+- v14 development starts only when breaking changes justify it, and is not
+  planned before those 12 months end.
+- After 14.0.0 is published, the maintainer intends to give 13.x security
+  fixes for 12 more months.
+
+These periods are an intention, not a guarantee, and they may change for
+reasons nobody can foresee today. Any change will be announced in advance in
+the CHANGELOG, the README and on GitHub.
 
 There is no LTS or multi-minor backport program: fixes ship in the newest
 minor. The exact versions receiving security triage are listed in
