@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794512909818,
+  "lastUpdate": 1794517492053,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -21671,6 +21671,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4203,
             "range": "± 42",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ccbf205f9058fd8aa01d16d92cc39ec9276729d",
+          "message": "Merge pull request #686 from Rullst/test/v13-alpha5-deception-registry-race\n\ntest(security): stop comparing the global decoy registry across two reads",
+          "timestamp": "2026-11-12T17:50:34-03:00",
+          "tree_id": "1e22fa0b81fc80d3f86a27118fbf16b2b4fed003",
+          "url": "https://github.com/Rullst/Rullst/commit/3ccbf205f9058fd8aa01d16d92cc39ec9276729d"
+        },
+        "date": 1794517490951,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 951,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 772,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1711,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3764,
+            "range": "± 26",
             "unit": "ns/iter"
           }
         ]
