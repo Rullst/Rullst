@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794482953481,
+  "lastUpdate": 1794485607606,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -13265,6 +13265,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 384,
             "range": "± 18",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "14752b67a0a5619983ccb5a795d2ec0352b0c4e1",
+          "message": "Merge pull request #675 from Rullst/docs/v13-alpha5-validated-providers\n\ndocs: record the live InfinitePay and Bunny Stream validations",
+          "timestamp": "2026-11-12T08:56:32-03:00",
+          "tree_id": "26bb370fe451640b0fcfd4f946af7b6963082770",
+          "url": "https://github.com/Rullst/Rullst/commit/14752b67a0a5619983ccb5a795d2ec0352b0c4e1"
+        },
+        "date": 1794485606661,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 385,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
