@@ -112,7 +112,11 @@ edit them freely.
   `cargo test --all-targets`, with a dependency cache.
 - **Dependency advisories:** `cargo audit` on every push and pull request and
   daily at 06:17 UTC, so a new RustSec advisory for a locked crate fails the
-  scheduled run. It reads `Cargo.lock`: commit it.
+  scheduled run. It reads `Cargo.lock`: commit it. It ignores one advisory
+  that Rullst governs and cannot fix yet, `RUSTSEC-2026-0459` (bundled SQLite
+  through `sqlx-sqlite`), until its expiry, 2027-01-28, after which the step
+  audits without it; the comment above the step says when to remove it (see
+  [security advisory exceptions](security-advisory-exceptions.md)).
 - **Secret scan:** TruffleHog, verified findings only, over the commits of the
   push or pull request.
 

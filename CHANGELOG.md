@@ -656,6 +656,14 @@ describes each replacement.
   are `[FINDINGS]` (status `findings` with their count, in `--report` and
   `--compliance` too), and only a run that produced no report is an error
   (found by the 13.0.0-alpha.5 acceptance application).
+- The CI workflow `cargo rullst new` writes failed its daily `cargo audit`
+  for every application that uses SQLite, on `RUSTSEC-2026-0459` (bundled
+  SQLite through `sqlx-sqlite` 0.9), which Rullst governs as a time-bounded
+  exception but no application can fix yet. The workflow now ignores that one
+  advisory until the same expiry as Rullst's ledger, 2027-01-28, and audits
+  without the exception after it; a comment explains the exposure and says to
+  remove the exception when the application upgrades to a Rullst release that
+  updates `sqlx` (found by the 13.0.0-alpha.5 acceptance application).
 - `cargo rullst make:privacy` and `cargo rullst make:age-gate` refused a SaaS
   project in which `cargo rullst make:mfa` had already run
   (`src/controllers/auth_controller.rs differs from the starter's`), although

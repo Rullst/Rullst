@@ -90,8 +90,24 @@ jobs:
           tool: cargo-audit
 
       # Reads Cargo.lock: commit it (applications should).
+      #
+      # Governed exception, reviewed by Rullst until 2027-01-28:
+      # RUSTSEC-2026-0459 is SQLite < 3.54, bundled by libsqlite3-sys 0.37,
+      # which sqlx-sqlite 0.9 (every SQLx SQLite feature, Rullst's included)
+      # cannot leave yet. It matters only if someone less trusted can write both
+      # a SQLite database this application opens and its `-wal` file; never open
+      # uploaded or replaced SQLite files until the exception is gone. See
+      # https://rullst.github.io/Rullst/book/security-advisory-exceptions.html
+      # After 2027-01-28 this step stops ignoring the advisory, so review it
+      # then. Remove the exception when you upgrade to a Rullst release that
+      # updates sqlx, and remove it now if your threat model includes that case.
       - name: Audit Cargo.lock against the RustSec database
-        run: cargo audit
+        run: |
+          if [ "$(date -u +%Y%m%d)" -le 20270128 ]; then
+            cargo audit --ignore RUSTSEC-2026-0459
+          else
+            cargo audit
+          fi
 
   secrets:
     name: Secret scan
