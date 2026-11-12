@@ -139,8 +139,9 @@ an alias.
 
 `cargo rullst new` offers three starters with the CLI's Core tier: Blank, API
 and SaaS. 13.0.0-alpha.4 moved the LMS, Blog, Portfolio and ERP starters out of
-the CLI; the LMS, ERP, Portfolio and Blog applications in `examples/` replace
-them. These [examples](examples.md) are applications to copy from and carry no
+the CLI; the LMS and Blog applications in `examples/` replace them
+(13.0.0-alpha.5 removed the ERP and Portfolio examples). These
+[examples](examples.md) are applications to copy from and carry no
 tier.
 
 ## How a tier changes
