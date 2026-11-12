@@ -385,6 +385,9 @@ none is scheduled, and real user demand orders them.
     (about 9 fewer), tested differentially against it.
   - Passkeys without `p256` (about 18 fewer in the SaaS starter), checked with
     test vectors.
+  - Core's `storage-multipart` recovery records move from `ring`'s AES-256-GCM
+    to the RustCrypto `aes-gcm` crate, with the same stored format and
+    known-answer tests, so `ring` leaves Core entirely.
 - **`cargo rullst footprint` reports the compiled crate count** beside the
   lockfile count, which includes packages that are never compiled.
 - **htmx 4 as an opt-in for new applications**, once npm's `latest` tag points
