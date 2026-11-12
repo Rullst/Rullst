@@ -720,6 +720,13 @@ describes each replacement.
   the project's primary database is PostgreSQL, `--consent-store sqlite|postgres`
   chooses explicitly, and the consumers accept `consent-postgres` (found by the
   13.0.0-alpha.5 acceptance application).
+- The generators that add pages left them out of the smoke test that
+  `cargo rullst new` writes (`PAGES` in `src/security_tests.rs`, also read by
+  `cargo rullst add browser-tests`), although that list says to add every
+  page. `make:mfa` now adds `/account/security` (303 when signed out),
+  `make:privacy` adds `/privacy` (303) and `make:pwa` adds `/offline` (200),
+  once and only to a recognized list (found by the 13.0.0-alpha.5 acceptance
+  application).
 - `cargo rullst make:privacy` and `cargo rullst make:age-gate` refused a SaaS
   project in which `cargo rullst make:mfa` had already run
   (`src/controllers/auth_controller.rs differs from the starter's`), although

@@ -76,7 +76,9 @@ GET with [`TestApp`](crates/core.md) and checks:
   after a history-cache miss (`HX-Request` and `HX-History-Restore-Request`)
   must answer the whole document too, not a fragment.
 
-**Add each new page to `PAGES`.** Use the path a signed-out visitor opens and
+**Add each new page to `PAGES`.** `make:mfa` (`/account/security`, 303),
+`make:privacy` (`/privacy`, 303) and `make:pwa` (`/offline`, 200) add theirs
+(since 13.0.0-alpha.5). Use the path a signed-out visitor opens and
 the status they receive; pages that need a signed-in user can be checked in
 your own tests by sending the session cookie with `TestApp::get(path)
 .header("cookie", …)`. Routes with parameters (`/posts/{id}`) are not listed:
