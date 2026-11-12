@@ -328,7 +328,7 @@ fn back_returns_to_the_previous_question_with_the_earlier_answer_selected() {
     assert_eq!(
         ui.screens[6].selection,
         Selection::Many {
-            checked: vec![false, true, false, false, false, false, false, false]
+            checked: vec![false, true, false, false, false, false]
         }
     );
     assert_eq!(plan.blueprint, BLANK_BLUEPRINT_ID);
