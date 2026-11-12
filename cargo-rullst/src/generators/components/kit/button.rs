@@ -19,9 +19,10 @@
 //! element its `hx-indicator` names. Disable the button meanwhile with
 //! `hx-disabled-elt`:
 //! `<form id="order" hx-post="/save" hx-indicator="#order" hx-disabled-elt="#save">`
-//! with `id: Some("save".into())`. Name different elements in the two
-//! attributes: htmx 1.9.12 counts requests per element for both, so an
-//! element named in both keeps `htmx-request` after the response.
+//! with `id: Some("save".into())`. With htmx 1.9.12 (projects created before
+//! Rullst 13.0.0-alpha.5) name different elements in the two attributes: it
+//! counts requests per element for both, so an element named in both keeps
+//! `htmx-request` after the response. htmx 2 releases both.
 
 use rullst::html;
 use rullst::html::Markup;

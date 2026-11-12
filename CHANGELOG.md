@@ -210,21 +210,21 @@ A prepared version section does not establish that its tag or crates exist.
   carry are skipped. `shutdown()` ends every open stream, so they do not hold
   the graceful drain. Responses send `Cache-Control: no-cache` and
   `X-Accel-Buffering: no`.
-- HTML scaffolds (`cargo rullst new`, Blank and SaaS) write the htmx 1.9.12
-  Server-Sent Events extension to `static/htmx-ext-sse-1.9.12.js`, beside
-  `htmx-1.9.12.min.js` and served the same way, so pages use `hx-ext="sse"`,
-  `sse-connect` and `sse-swap` under the strict CSP. The file is a patched
-  copy of upstream `dist/ext/sse.js` of htmx commit
-  `f38e07d4be8145a39e2bb477ec9fcc56bdd2d16d` (SHA-256
-  `be05b2e2265279f035271adbea0b72a356f20ce4dfa5870481bfe9c51b822fc1`):
-  upstream computes its reconnect delay with the bitwise XOR `2 ^ retryCount`,
-  so it never backs off past about 2.5 s and sometimes retries at once; the
-  copy doubles the delay up to 64 s and resets it when a connection opens, as
-  the htmx 2 extension does (SHA-256
-  `afb588b88863ec49fe7d9f958b788ab1e1df1f45016466d2ea573f374c89e5d4`). The
-  diff is in `cargo-rullst/src/blueprints/assets/README.md`; a test checks
-  both digests, the patched lines and the written bytes. Tutorial 34 is now a realtime
-  dashboard with SSE and htmx (`tutorials/34-realtime-dashboard-sse.md`).
+- HTML scaffolds (`cargo rullst new`, Blank and SaaS) write the htmx 2
+  Server-Sent Events extension 2.2.4 to `static/htmx-ext-sse-2.2.4.js`, beside
+  htmx and served the same way, so pages use `hx-ext="sse"`, `sse-connect`
+  and `sse-swap` under the strict CSP. It is the unmodified `dist/sse.js` of
+  the npm package `htmx-ext-sse` 2.2.4 (registry integrity
+  `sha512-LJmxVhykyflBWgh5PvbRidcyuqMHlgfajmmzumvKctv9puvsufeH6OaejSMZTNTnEI8O2wXXn4ZZtBdpEMqmEQ==`,
+  SHA-256 `3b5992a541619babefc4c169505af474df5c3039da51e59b96ccf9241ecd61d2`),
+  with its Zero-Clause BSD license as `static/HTMX-EXT-SSE-LICENSE`: after a
+  failed connection it waits 0.5 s, doubling up to 64 s, and resets when a
+  connection opens, so it needs none of the patch the htmx 1.9.12 extension
+  would have (its delay used the bitwise XOR `2 ^ retryCount` and never
+  grew). `cargo-rullst/src/blueprints/assets/README.md` records the
+  provenance; a test checks the digests, the backoff lines and the written
+  bytes. Tutorial 34 is now a realtime dashboard with SSE and htmx
+  (`tutorials/34-realtime-dashboard-sse.md`).
 - `cargo rullst upgrade` rules for 13.0.0-alpha.5: `V13-ISLANDS-REMOVED` and
   `V13-LIVE-REMOVED` (must-change: `#[island]`, `#[live_component]`,
   `#[live_event]` and `rullst::island`/`rullst::live` paths, also in `use`
@@ -316,7 +316,8 @@ A prepared version section does not establish that its tag or crates exist.
 - Core's `render_page`, `render_page_with_lang` and `render_page_with_head`
   link `rullst.css` and the htmx client with `rullst::assets::url`, so while
   the server runs they are `/static/rullst.<hash>.css` and
-  `/static/htmx-1.9.12.min.<hash>.js`, cached as immutable, and an edited
+  `/static/htmx-2.0.11.min.<hash>.js` (or `htmx-1.9.12.min.<hash>.js`, see
+  the htmx 2 entry under Changed), cached as immutable, and an edited
   stylesheet reaches browsers and CDNs on the next deploy. The service worker
   of `make:pwa` now also stores, when it installs, the `/static/` files its
   offline page links, which have such hashed names; a worker generated before
@@ -572,6 +573,31 @@ A prepared version section does not establish that its tag or crates exist.
   and the home menu no longer label `footprint`, `iot:keygen` and `iot:sign`
   experimental, and `cargo rullst upgrade` no longer describes
   `InfinitePayProvider` as experimental.
+- New applications use htmx 2.0.11 instead of htmx 1.9.12: `cargo rullst new`
+  (Blank and SaaS) writes `static/htmx-2.0.11.min.js` (the npm package
+  `htmx.org` 2.0.11, registry integrity
+  `sha512-Thx/WtpeOQqSrqBCw/A1cwGJGg4UrVa3+sW0GmrM3p4gJgO89ecH4qtbnyzDDWFvBTqjnIMCgELTNt636dtamA==`,
+  plus a terminal LF; SHA-256
+  `7f14135fe8ee3ed5f1a85fea21ba4dfba8236d697c4f95ab575d1c9091bb06ca`), and
+  Core's `render_page`, `render_page_with_lang` and `render_page_with_head`
+  load it, with htmx 2's indicator rules in the nonce'd `<style>` they send
+  under the strict CSP (no `'unsafe-inline'` or `'unsafe-eval'` is needed).
+  Existing applications keep working without a change: while the `static/`
+  directory the server publishes holds `htmx-1.9.12.min.js` and not
+  `htmx-2.0.11.min.js`, those pages keep loading htmx 1.9.12 with its own
+  indicator rules, and `make:pwa`'s service worker stores whichever of the
+  two the project has. `cargo rullst upgrade` reports `V13-HTMX-2` (review)
+  on that file. To move an application to htmx 2, which the SSE extension
+  needs, copy `htmx-2.0.11.min.js`, `htmx-ext-sse-2.2.4.js`, `HTMX-LICENSE`
+  and `HTMX-EXT-SSE-LICENSE` from a new project's `static/`, change layouts of
+  its own that name the old file, delete `static/htmx-1.9.12.min.js`, and send
+  the CSRF token of `hx-delete` requests in the `X-CSRF-Token` header (htmx 2
+  puts DELETE parameters in the query string); the frontend guide's "The htmx
+  client" section lists the other htmx 2 changes a Rullst page can meet. The
+  `HX-*` headers `HtmxRequest` and `HtmxResponse` read and write are
+  unchanged. The LMS and IoT gateway examples use htmx 2; Nexus keeps its own
+  htmx 2.0.4 under `/nexus/assets/`.
+
 - **Breaking:** `rullst-labs` (Experimental): `ExecutionProfile`,
   `WorkerOutcome`, `ExecutionFailure`, `TrapKind`, `CaseOutput`, `CaseGrade`,
   `JobResult`, `JobState` and `ResultEvidence` are `#[non_exhaustive]`, and so

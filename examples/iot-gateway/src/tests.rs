@@ -239,9 +239,10 @@ fn the_static_assets_are_the_scaffold_copies() {
         std::fs::read(path).unwrap()
     };
     for name in [
-        "htmx-1.9.12.min.js",
-        "htmx-ext-sse-1.9.12.js",
+        "htmx-2.0.11.min.js",
+        "htmx-ext-sse-2.2.4.js",
         "HTMX-LICENSE",
+        "HTMX-EXT-SSE-LICENSE",
     ] {
         let copy = std::fs::read(format!("{}/static/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap();
         assert!(

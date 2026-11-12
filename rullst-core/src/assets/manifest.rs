@@ -95,6 +95,12 @@ impl Manifest {
         }
     }
 
+    /// Whether `relative` is a recorded file (in debug builds, after the
+    /// same checks as [`Manifest::url`]).
+    pub(crate) fn contains(&self, relative: &str) -> bool {
+        self.current_hash(relative, self.follow_edits).is_some()
+    }
+
     /// How to answer a request for `requested` (the path below `/static/`).
     /// Checks the file's metadata, hashing it again after a change.
     pub(crate) fn resolve(&self, requested: &str) -> Resolution {

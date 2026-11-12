@@ -20,7 +20,7 @@ runs under a strict Content-Security-Policy with a per-request nonce. Since
    authorization checks are. Updates the server pushes (a dashboard, a
    notification) arrive over Server-Sent Events: `rullst::realtime::RealtimeSse`
    streams a channel to the htmx SSE extension that new projects ship as
-   `static/htmx-ext-sse-1.9.12.js`
+   `static/htmx-ext-sse-2.2.4.js`
    ([tutorial 34](tutorials/34-realtime-dashboard-sse.md)).
 2. **Native HTML before script.** Disclosure, dialogs and menus need no
    JavaScript in current browsers:
@@ -34,6 +34,56 @@ runs under a strict Content-Security-Policy with a per-request nonce. Since
    `Alpine.data` in a same-origin `.js` file.
 4. **Tailwind when you want utility classes.** It is optional: a plain
    stylesheet in `static/` works the same way with `rullst::assets::url`.
+
+## The htmx client
+
+`cargo rullst new` (Blank and SaaS) writes htmx **2.0.11** to
+`static/htmx-2.0.11.min.js` and the htmx 2 Server-Sent Events extension
+**2.2.4** to `static/htmx-ext-sse-2.2.4.js`, with their Zero-Clause BSD
+licenses. Both are the unmodified files of the npm packages `htmx.org` and
+`htmx-ext-sse`, checked against the registry's integrity;
+`cargo-rullst/src/blueprints/assets/README.md` records their provenance and
+digests. Core's `render_page*` load htmx with the request's CSP nonce; a page
+that uses `hx-ext="sse"` loads the extension itself, after htmx.
+
+htmx needs neither `'unsafe-inline'` nor `'unsafe-eval'` for what Rullst
+pages use. Under Rullst's security headers `render_page*` turn off htmx's
+nonce-less indicator `<style>` (`includeIndicatorStyles: false`) and send the
+same rules with the nonce. What htmx evaluates as JavaScript (`hx-on*`,
+`hx-vars`, `js:` values in `hx-vals`, trigger filters such as
+`click[ctrlKey]`) is refused by the strict CSP, in htmx 1 and 2 alike: use a
+same-origin script that listens to htmx's events instead.
+
+**Applications created before 13.0.0-alpha.5** vendor htmx 1.9.12 in
+`static/htmx-1.9.12.min.js`. They keep working without a change:
+`render_page*` load that file, with htmx 1.9.12's indicator rules, while the
+`static/` directory the server publishes holds it and not
+`htmx-2.0.11.min.js`. `cargo rullst upgrade` reports `V13-HTMX-2` (review)
+until the application moves. To move, copy `htmx-2.0.11.min.js`,
+`htmx-ext-sse-2.2.4.js`, `HTMX-LICENSE` and `HTMX-EXT-SSE-LICENSE` from the
+`static/` of a new project, change layouts of your own that name the old
+file, delete `static/htmx-1.9.12.min.js` and check the htmx 2 changes that
+can reach a Rullst page (the full list is htmx's
+[1.x → 2.x migration guide](https://htmx.org/migration-guide-htmx-1/)):
+
+- `hx-delete` sends its parameters in the query string, like `hx-get`, so a
+  hidden `_token` field no longer reaches the CSRF middleware: send the token
+  in the `X-CSRF-Token` header (`hx-headers`), or use `hx-post` to a delete
+  route.
+- `hx-on="click: …"` is written `hx-on:click="…"` (`hx-on::after-request`
+  for htmx events).
+- Requests to another origin are refused (`htmx.config.selfRequestsOnly`).
+- The `hx-sse` and `hx-ws` attributes are gone: use `hx-ext="sse"` with
+  `sse-connect`/`sse-swap`, and the htmx 1.9.12 SSE extension does not work
+  with htmx 2.
+- The history cache is kept in `sessionStorage`; a cache miss still sends
+  `HX-History-Restore-Request: true` with `HX-Request: true`, which
+  `render_page*` answer with the whole page.
+
+The `HX-*` headers that `HtmxRequest` reads (`HX-Request`, `HX-Trigger`,
+`HX-Target`, `HX-Prompt`, `HX-Current-URL`, `HX-Boosted`,
+`HX-History-Restore-Request`) and that `HtmxResponse` writes (`HX-Trigger`,
+`HX-Redirect`, `HX-Refresh`) mean the same in htmx 2.
 
 ## Content-hashed asset URLs
 
@@ -98,7 +148,7 @@ gets plain URLs.
 Core's own page (`rullst::htmx::render_page`, `render_page_with_lang` and
 `render_page_with_head`) links its stylesheet and the htmx client this way
 since 13.0.0-alpha.5: `/static/rullst.<hash>.css` and
-`/static/htmx-1.9.12.min.<hash>.js` while the server runs, so an edited
+`/static/htmx-2.0.11.min.<hash>.js` while the server runs, so an edited
 `static/rullst.css` reaches every visitor on the next deploy. The favicon
 keeps its plain `/static/rullst.png`. The service worker `cargo rullst make:pwa`
 writes stores the static files its offline page links when it installs, so
@@ -418,9 +468,11 @@ html! {
   `hx-disabled-elt` disables the button meanwhile, so a screen reader
   announces it as unavailable and it cannot be pressed twice:
   `<form id="order" hx-post="/save" hx-indicator="#order" hx-disabled-elt="#save">`
-  with `id: Some("save".into())`. Name different elements in the two
-  attributes: htmx 1.9.12 counts requests per element for both, so an element
-  named in both keeps its `htmx-request` class after the response.
+  with `id: Some("save".into())`. With htmx 1.9.12 (applications created
+  before 13.0.0-alpha.5 that still load it) name different elements in the
+  two attributes: it counts requests per element for both, so an element
+  named in both keeps its `htmx-request` class after the response. htmx 2
+  releases both.
 - **Accessibility:** a real `<button>` (or `<a>` for navigation), so Enter and
   Space work; a visible focus outline on keyboard focus. An `Icon` button
   needs an `aria-label`. The spinner is `aria-hidden`.
