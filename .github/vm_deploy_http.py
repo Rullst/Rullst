@@ -13,8 +13,8 @@ import urllib.request
 
 ACCOUNT_NAME = "Deploy Smoke"
 # Every starter ships the htmx client; the Blank page links its hashed name.
-HTMX = "/static/htmx-1.9.12.min.js"
-HASHED_HTMX = re.compile(r"/static/htmx-1\.9\.12\.min\.[0-9a-f]{16}\.js")
+HTMX = "/static/htmx-2.0.11.min.js"
+HASHED_HTMX = re.compile(r"/static/htmx-2\.0\.11\.min\.[0-9a-f]{16}\.js")
 
 
 class Failure(Exception):
