@@ -15,7 +15,7 @@ tax treatment, settlement time, pricing, or regulatory suitability.
 | Adapter | Status | Rullst contract |
 | :--- | :--- | :--- |
 | Stripe | Supported | Owner-bound customer and subscription checkout, bound portal, reconciliation reads, Payment Intents charges, Meter Events, coupons and trials; unsupported methods fail explicitly. |
-| InfinitePay | Experimental | One-off payment links on the public Checkout API (`POST /links`) from a server-side `OneOffCheckoutRequest` (BRL); each unsigned webhook is confirmed with `POST /payment_check` and the server-side amount. No subscriptions, portal or sandbox; an empty or `mock_*` handle runs offline fixtures. One real Pix payment validated in the 13.0.0-alpha.5 acceptance run. |
+| InfinitePay | Supported (since 13.0.0-alpha.5) | One-off payment links on the public Checkout API (`POST /links`) from a server-side `OneOffCheckoutRequest` (BRL); each unsigned webhook is confirmed with `POST /payment_check` and the server-side amount. No subscriptions, portal or sandbox; an empty or `mock_*` handle runs offline fixtures. One real Pix payment validated in the 13.0.0-alpha.5 acceptance run. |
 | Your own adapter | Extension point | Implement `BillingProvider` (and optionally `MeteredBillingProvider`) in the application; see [Writing your own payment provider](capital-custom-provider.md). |
 
 v13 removed the Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago, Alipay,
@@ -69,8 +69,8 @@ The [Capital README](https://github.com/Rullst/Rullst/blob/main/rullst-capital/R
 lists each adapter's current operations. Stripe has a generated durable
 subscription integration (`cargo rullst make:billing` and the SaaS starter). Both
 adapters implement the provider-neutral one-off checkout
-(`create_one_off_checkout` and `confirm_one_off_payment`); InfinitePay is
-experimental and offers nothing else. For another gateway,
+(`create_one_off_checkout` and `confirm_one_off_payment`); InfinitePay offers
+nothing else. For another gateway,
 write an application-owned adapter as described in
 [Writing your own payment provider](capital-custom-provider.md).
 

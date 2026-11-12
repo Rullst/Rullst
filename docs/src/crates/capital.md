@@ -5,9 +5,9 @@
 commerce in Rust: billing/metering traits, checkout and subscription contracts,
 entitlements, quotas, revenue analytics, paid-invoice rendering, canonical
 webhook verification with replay protection, Axum/Actix adapters and offline
-mocks. It ships two adapters: **Stripe** (supported) and **InfinitePay**
-(experimental; one real Pix payment validated in the 13.0.0-alpha.5
-acceptance run). Live readiness must be
+mocks. It ships two supported adapters: **Stripe** and **InfinitePay** (since
+13.0.0-alpha.5, for one-off payment links; one real Pix payment validated in
+the 13.0.0-alpha.5 acceptance run). Live readiness must be
 established per operation and environment.
 
 Integrate any other gateway in application code by implementing the provider
@@ -20,7 +20,7 @@ traits: see **[Writing your own payment provider](../capital-custom-provider.md)
 | Subsystem | Lifecycle Status | Description |
 | :--- | :---: | :--- |
 | **Stripe Adapter** | 🟢 `[Supported / Bounded]` | Owner-bound customer, subscription checkout, bound portal, reconciliation reads, direct charge, meter events, coupons and trials with deterministic mocks. Live account acceptance remains per deployment. |
-| **InfinitePay Adapter** | 🟡 `[Experimental]` | Since 13.0.0-alpha.5, `InfinitePayProvider::checkout(handle)` creates one-off payment links on InfinitePay's public Checkout API (`POST /links`, BRL, priced on the server) and confirms each unsigned webhook with `POST /payment_check` against the server-side amount. No subscriptions, portal or sandbox; an empty or `mock_*` handle runs offline fixtures. Pinned by local fixtures; one real Pix payment validated in the 13.0.0-alpha.5 acceptance run. |
+| **InfinitePay Adapter** | 🟢 `[Supported / Bounded]` | Since 13.0.0-alpha.5, `InfinitePayProvider::checkout(handle)` creates one-off payment links on InfinitePay's public Checkout API (`POST /links`, BRL, priced on the server) and confirms each unsigned webhook with `POST /payment_check` against the server-side amount. No subscriptions, portal or sandbox; an empty or `mock_*` handle runs offline fixtures. Pinned by local fixtures; in the 13.0.0-alpha.5 acceptance run a real Pix payment was confirmed, forged webhooks and a wrong amount were refused, and replays were idempotent. |
 | **One-off Checkout** | 🟢 `[Implemented / Bounded]` | Provider-neutral `OneOffCheckoutRequest` (server-side reference, minor-unit amount, currency, description, quantity, redirects, optional e-mail) with `create_one_off_checkout` and `confirm_one_off_payment`; Stripe uses inline `price_data`. Unsigned notifications (`WebhookVerificationMode::ConfirmedAtSource`) reach the handler as a status-free `PaymentNotification`; only the confirmation reports a payment. |
 | **Custom Providers** | 🟢 `[Extension Point]` | Applications implement `BillingProvider` (and optionally `MeteredBillingProvider`) for another gateway and reuse the canonical webhook verifier. See [the guide](../capital-custom-provider.md). |
 | **Outbound Failure Boundary** | 🟢 `[Implemented / Bounded]` | Reviewed live methods share finite timeouts, disabled redirects/ambient proxies, one-MiB JSON parsing, HTTPS checkout-location validation, and redacted permanent/transient/rate-limited failures. Rullst performs no automatic mutation retry. |
@@ -38,7 +38,7 @@ traits: see **[Writing your own payment provider](../capital-custom-provider.md)
 | Provider | Status | Scope |
 | :--- | :--- | :--- |
 | 💳 **Stripe** | Supported | Card checkout, Customer Portal, recurring subscriptions, Payment Intents charges and Meter Events within the reviewed operation boundaries. |
-| ⚡ **InfinitePay** | Experimental | Brazilian Pix/card provider. One-off payment links (`POST /links`) priced on the server, unsigned webhooks confirmed with `POST /payment_check` and the stored amount; no subscriptions, portal or sandbox. |
+| ⚡ **InfinitePay** | Supported (since 13.0.0-alpha.5) | Brazilian Pix/card provider. One-off payment links (`POST /links`) priced on the server, unsigned webhooks confirmed with `POST /payment_check` and the stored amount; no subscriptions, portal or sandbox. |
 
 Neither entry means every provider product, fee, payment method, tax promise or
 live API path has been homologated by Rullst. The

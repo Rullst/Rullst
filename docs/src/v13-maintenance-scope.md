@@ -71,7 +71,10 @@ Measured on 29 October 2026 at the `main` that follows the 13.0.0-alpha.3
 publication. These are proxies for recurring work, not hours: each line of
 production code, each mutant and each fuzz target is something every release
 must keep compiling, tested and admitted. Hosted CI minutes per crate and the
-time spent on reviews and incidents were not measured; they stay unknown.
+time spent on reviews and incidents were not measured; they stay unknown. The
+tiers are those of the measurement date: the five Experimental packages were
+promoted to Extension in 13.0.0-alpha.5 (see the
+[maturity tiers](maturity.md#promotions-in-1300-alpha5)).
 
 | Package | Tier | Production lines | Test lines | Tests | Mutants | Fuzz targets | Dependencies | Commits (60 days) |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -146,7 +149,7 @@ dependencies are the unique packages in `cargo tree -p <package>
 | `rullst-orm`, `rullst-orm-macros` | High: transactions, schema changes, database differences and native dependencies. | Prioritize dependable relational persistence and migrations. Treat specialized stores as explicit adapters; do not promise universal parity or generic replication. |
 | `rullst-auth`, `rullst-security`, `rullst-connect` | High and necessary: failures affect application identity, secrets and tenant boundaries. | Maintain narrow, coherent contracts using established primitives. Reduce duplicated responsibilities and close documented gaps before expanding providers or security-product ambitions. |
 | `rullst-messaging` | High: leases, retries, duplicates, outbox consistency and backend recovery. | Maintain bounded durable delivery and supported backends. Additional brokers need a demonstrated application requirement and their own recovery evidence. |
-| `rullst-capital` | High: provider-specific money/state semantics, reconciliation, subscriptions and fiscal expansion. | Preserve reusable SaaS billing: the provider-neutral base plus Stripe and an experimental InfinitePay adapter. The other adapters, payouts and NFS-e preparation were removed from 13.0 as described below. |
+| `rullst-capital` | High: provider-specific money/state semantics, reconciliation, subscriptions and fiscal expansion. | Preserve reusable SaaS billing: the provider-neutral base plus the Stripe and InfinitePay adapters. The other adapters, payouts and NFS-e preparation were removed from 13.0 as described below. |
 | `rullst-mail`, `rullst-ai`, `rullst-media` | Medium to high: external services, feedback/events, transport changes and provider-specific behavior. | Maintain common contracts and adapters justified by actual use. Prefer interoperable protocols where appropriate, while retaining provider-specific assertions and explicit unsupported operations. Mail keeps Resend, AWS SES, SendPulse and SMTP in 13.0, as described below. |
 | `rullst-privacy` | Bounded current foundations; broader legal or biometric promises would create high continuing cost. | Keep reusable consent, minimal-data and proportional age-policy mechanisms. Provider attestations remain separate from native declarations; global legal certification and a first-party facial model are not part of this direction. |
 | `rullst-supervision` | Specialized, sensitive application state; models, capture and operational expansion raise the cost. | Keep transparent observation contracts as an optional education/parental extension. Product workflows, verified relationships, media models and human review belong to the application or separately governed integration. |
@@ -173,7 +176,7 @@ this release.
 | v13 provider | Reason and current boundary |
 | :--- | :--- |
 | Stripe | Supported. Existing SaaS use and the generated durable billing integration. Preserve the reviewed operation boundaries rather than promising every Stripe product. |
-| InfinitePay | Experimental; one real Pix payment validated in the 13.0.0-alpha.5 acceptance run. Since 13.0.0-alpha.5 it creates one-off payment links on the public Checkout API from a server-side amount and confirms each unsigned notification with `payment_check`; subscriptions, portal and plan checkout are unsupported. |
+| InfinitePay | Supported since 13.0.0-alpha.5 (Experimental before); one real Pix payment validated in the 13.0.0-alpha.5 acceptance run. Since 13.0.0-alpha.5 it creates one-off payment links on the public Checkout API from a server-side amount and confirms each unsigned notification with `payment_check`; subscriptions, portal and plan checkout are unsupported. |
 
 Removed from the 13.0 workspace (8 October 2026; the source remains in git
 history and in the 12.x line): the Paddle, Lemon Squeezy, Polar, Razorpay,
@@ -410,7 +413,7 @@ task fixtures and evaluation boundaries; this decision claims no model benchmark
    record the product user, maintained operations/platforms, dependencies,
    evidence gaps, responsible reviewer and estimated recurring work. Start with
    current SaaS and Academy journeys. The v13 billing-provider set is Stripe
-   (supported) and InfinitePay (experimental), with crypto excluded; the other
+   and InfinitePay (both supported; InfinitePay since 13.0.0-alpha.5), with crypto excluded; the other
    adapters and NFS-e were removed with migration guidance. The v13 mail
    transports are Resend, AWS SES, SendPulse and SMTP; the other transports
    were removed the same way.
@@ -433,7 +436,8 @@ task fixtures and evaluation boundaries; this decision claims no model benchmark
    together when an actual boundary changes.
 
 The current synchronized release train remains authoritative. Labs is in the
-release inventory as a contracts-only Experimental package and its runner
+release inventory as a contracts-only package (Extension since
+13.0.0-alpha.5) and its runner
 candidate was removed; other crates in the inventory are not removed by calling
 them extensions. Their possible future
 independent release lifecycles must be explicitly implemented and validated.

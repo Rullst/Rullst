@@ -85,8 +85,10 @@ Extension packages are supported and follow the contract above for the whole
 13.x line. Experimental packages, experimental CLI generators and facade
 features that re-export an experimental crate are the exception: their public
 APIs, features, schemas and generated output may change between 13.x releases.
-Every such break is still listed in the changelog and migration guide. Security
-handling is the same for every tier.
+Since 13.0.0-alpha.5 no package or CLI generator is Experimental; the exception
+covers the parts of a package that its documentation marks experimental, such
+as the `s3` adapter of `rullst-media`. Every such break is still listed in the
+changelog and migration guide. Security handling is the same for every tier.
 
 ## Minimum Supported Rust Version
 

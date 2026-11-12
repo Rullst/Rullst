@@ -116,7 +116,7 @@
       "documentation_dx": 15,
       "operations_release": 14,
       "specialist_gate": "provider-matrix",
-      "finding": "Bounded payments share a redacted classified egress contract with real fault fixtures; quotas and relational webhook claims add transaction/four-protocol evidence. v13 narrows the built-in providers to Stripe and the experimental InfinitePay adapter behind provider-neutral traits, and removes payouts and NFS-e preparation. Provider-account acceptance, InfinitePay live validation and authoritative outbox/reconciliation remain external.",
+      "finding": "Bounded payments share a redacted classified egress contract with real fault fixtures; quotas and relational webhook claims add transaction/four-protocol evidence. v13 narrows the built-in providers to Stripe and the InfinitePay one-off adapter behind provider-neutral traits, and removes payouts and NFS-e preparation. One real InfinitePay Pix payment was validated in the 13.0.0-alpha.5 acceptance run; provider-account acceptance per deployment and authoritative outbox/reconciliation remain external.",
       "evidence": ["rullst-capital/README.md", "rullst-capital/src/providers/http.rs", "rullst-capital/src/webhook/sql.rs", "rullst-capital/tests", "docs/src/crates/capital.md", "docs/src/payment-gateways-guide.md", "docs/src/spec.md"]
     },
     {

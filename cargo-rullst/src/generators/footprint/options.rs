@@ -42,7 +42,7 @@ pub(super) const DISCLAIMER: &str = "The report is a measurement and an estimate
 
 pub(crate) fn command() -> Command {
     Command::new("footprint")
-        .about("(experimental) Measure binary and image size, idle memory, dependencies, benchmark CPU time and page weight; an SCI carbon estimate only from inputs you supply")
+        .about("Measure binary and image size, idle memory, dependencies, benchmark CPU time and page weight; an SCI carbon estimate only from inputs you supply")
         .after_help(DISCLAIMER)
         .arg(
             Arg::new("url")

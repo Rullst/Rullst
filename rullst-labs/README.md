@@ -12,10 +12,15 @@ but was removed from the workspace for 13.0; its source remains in git history.
 Final release acceptance of this crate remains outstanding. Neither the
 candidate name nor a signed receipt establishes production readiness.
 
-**Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):
-the API may change between 13.x releases. The crate is in the 13.0 release
-inventory and has shipped since `13.0.0-alpha.1`; it contains contracts only and never
-executes learner code. Experimental does not mean broken.
+**Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)),
+since 13.0.0-alpha.5: optional, and supported for the scope documented here.
+The crate has shipped since `13.0.0-alpha.1`; it contains contracts only and
+never executes learner code. In the 13.0.0-alpha.5 acceptance run a runner
+that starts one Docker container per job graded Python submissions through
+these contracts (correct answers 3/3, wrong answers 0/3, a syntax error
+reported, network blocked, the wall-time limit enforced). A container per job
+alone is not enough isolation for hostile code; see the
+[controller contract](https://github.com/Rullst/Rullst/blob/main/docs/src/labs-runner-contract.md#isolation-the-host-owns).
 
 With no feature enabled (the default), the crate provides bounded, versioned
 contracts with no executor or network/runtime dependency. `sqlite` adds a

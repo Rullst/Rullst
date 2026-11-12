@@ -138,3 +138,9 @@ page will say what changed and when.
 updated to the work merged after the page was written: the workflow count
 (37 → 34), the CI job that runs the first-hour pages' commands, and the
 fuzz-evidence policy. The assessment itself is unchanged.
+
+*Amended on 12 November 2026:* the five packages this page calls Experimental
+(IoT, Privacy, Supervision, Media and Labs) were promoted to Extension in
+13.0.0-alpha.5, with the evidence recorded on the
+[maturity tiers](maturity.md#promotions-in-1300-alpha5) page; that is item 5
+of "What would raise my confidence most". The assessment itself is unchanged.

@@ -5,9 +5,9 @@ published in the 13.0.0-alpha.1 prerelease. The package is in the v13
 distribution inventory. It is not part of v12 or the default `rullst`
 dependency graph.
 
-**Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):
-the API may change between 13.x releases and not every real-world scenario is
-validated yet. Experimental does not mean broken.
+**Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)),
+since 13.0.0-alpha.5: optional, and supported for the scope documented here.
+Live age providers and verified guardianship are not part of it.
 
 Enable `age-assurance` for age checks or `consent` for independent purpose-bound
 choices. No feature is enabled by default. Pin the prerelease exactly, for
