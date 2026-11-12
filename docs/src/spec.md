@@ -635,7 +635,11 @@ must bind capture to the authenticated session and implement adapter cancellatio
 Since 13.0.0-alpha.5 a camera adapter can report `PresenceObservation::Obscured`
 (covered, dark or blocked view) and can receive `LuminanceStatistics` (mean,
 standard deviation, sample count) instead of a frame, so a privacy-preserving
-client sends no image. Stores created from alpha.5 accept the new observation
+client sends no image. An audio-activity adapter can likewise receive
+`LoudnessStatistics` (mean and peak frame level in dBFS, share of frames above
+the client's activity threshold, window length of at most five seconds)
+instead of PCM, so the client sends no audio. Both are range-checked client
+reports, not attestations, and each goes only to an adapter of its kind. Stores created from alpha.5 accept the new observation
 code; an earlier store opens and works unchanged and records it only after the
 host calls `upgrade_event_schema`, which rebuilds the events table in one
 transaction without changing rows. Opening never rebuilds a store.

@@ -32,6 +32,10 @@ pub enum SampleFormat {
     /// captured, with no image (v13). Built with
     /// [`MediaSample::luminance`], never from bytes.
     LuminanceStatistics,
+    /// Loudness statistics of at most five seconds of microphone input,
+    /// computed where it was captured, with no audio (v13). Built with
+    /// [`MediaSample::loudness`], never from bytes.
+    LoudnessStatistics,
 }
 
 /// Brightness statistics of one camera frame on the 0–255 luma scale,
@@ -81,14 +85,83 @@ impl LuminanceStatistics {
     }
 }
 
-/// Borrowed caller-owned bytes, or brightness statistics without any image.
-/// The host binds capture to a participant's current permission and session.
-/// Bounds/signature checks do not decode or attest media.
+/// Loudness statistics of one microphone window of at most five seconds (as
+/// long as the longest PCM sample), computed by the capturing client so that
+/// no audio leaves it (v13). The client measures the RMS level of short
+/// frames in dBFS (decibels relative to full scale: 0 is the loudest digital
+/// signal) and counts the frames above its own activity threshold. A
+/// privacy-preserving audio-activity adapter that knows that frame length and
+/// threshold can report speech, no speech or inconclusive from these alone.
+/// Values are checked for range, not authenticity: like any client report,
+/// they can be forged.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
+pub struct LoudnessStatistics {
+    mean_dbfs: f32,
+    peak_dbfs: f32,
+    active_fraction: f32,
+    window_ms: u32,
+}
+impl LoudnessStatistics {
+    /// Lowest level, in dBFS. A client reports quieter frames, digital
+    /// silence included, as this level.
+    pub const MIN_DBFS: f32 = -120.0;
+    /// Longest window one summary may describe, in milliseconds: the five
+    /// seconds of a `Pcm16LeMono16Khz` sample.
+    pub const MAX_WINDOW_MS: u32 = 5_000;
+
+    /// `mean_dbfs`, the mean frame level, and `peak_dbfs`, the loudest frame
+    /// level, both within [`Self::MIN_DBFS`] to 0 dBFS and the mean not above
+    /// the peak; `active_fraction`, the share of frames above the client's
+    /// activity threshold, within 0–1; and `window_ms`, the length of the
+    /// measured window, 1 to [`Self::MAX_WINDOW_MS`] milliseconds. NaN and
+    /// infinite values are out of range (`InvalidInput`).
+    pub fn new(
+        mean_dbfs: f32,
+        peak_dbfs: f32,
+        active_fraction: f32,
+        window_ms: u32,
+    ) -> Result<Self, Error> {
+        let level = Self::MIN_DBFS..=0.0;
+        if !level.contains(&mean_dbfs)
+            || !level.contains(&peak_dbfs)
+            || mean_dbfs > peak_dbfs
+            || !(0.0..=1.0).contains(&active_fraction)
+            || !(1..=Self::MAX_WINDOW_MS).contains(&window_ms)
+        {
+            return Err(Error::InvalidInput);
+        }
+        Ok(Self {
+            mean_dbfs,
+            peak_dbfs,
+            active_fraction,
+            window_ms,
+        })
+    }
+    pub fn mean_dbfs(self) -> f32 {
+        self.mean_dbfs
+    }
+    pub fn peak_dbfs(self) -> f32 {
+        self.peak_dbfs
+    }
+    pub fn active_fraction(self) -> f32 {
+        self.active_fraction
+    }
+    pub fn window_ms(self) -> u32 {
+        self.window_ms
+    }
+}
+
+/// Borrowed caller-owned bytes, or brightness or loudness statistics without
+/// any image or audio. The host binds capture to a participant's current
+/// permission and session. Bounds/signature checks do not decode or attest
+/// media.
 #[derive(Clone, Copy)]
 pub struct MediaSample<'a> {
     format: SampleFormat,
     bytes: &'a [u8],
-    statistics: Option<LuminanceStatistics>,
+    luminance: Option<LuminanceStatistics>,
+    loudness: Option<LoudnessStatistics>,
 }
 impl MediaSample<'static> {
     /// A camera-presence sample that carries only brightness statistics
@@ -97,13 +170,25 @@ impl MediaSample<'static> {
         Self {
             format: SampleFormat::LuminanceStatistics,
             bytes: &[],
-            statistics: Some(statistics),
+            luminance: Some(statistics),
+            loudness: None,
+        }
+    }
+    /// An audio-activity sample that carries only loudness statistics
+    /// (`SampleFormat::LoudnessStatistics`, v13); `bytes()` is empty.
+    pub fn loudness(statistics: LoudnessStatistics) -> Self {
+        Self {
+            format: SampleFormat::LoudnessStatistics,
+            bytes: &[],
+            luminance: None,
+            loudness: Some(statistics),
         }
     }
 }
 impl<'a> MediaSample<'a> {
-    /// Frames and audio from bytes. `SampleFormat::LuminanceStatistics` is
-    /// refused here (`InvalidInput`): use [`MediaSample::luminance`].
+    /// Frames and audio from bytes. The statistics formats are refused here
+    /// (`InvalidInput`): use [`MediaSample::luminance`] or
+    /// [`MediaSample::loudness`].
     pub fn new(format: SampleFormat, bytes: &'a [u8]) -> Result<Self, Error> {
         let valid = match format {
             SampleFormat::JpegFrame => {
@@ -115,7 +200,7 @@ impl<'a> MediaSample<'a> {
             SampleFormat::Pcm16LeMono16Khz => {
                 !bytes.is_empty() && bytes.len() <= 160_000 && bytes.len().is_multiple_of(2)
             }
-            SampleFormat::LuminanceStatistics => false,
+            SampleFormat::LuminanceStatistics | SampleFormat::LoudnessStatistics => false,
         };
         if !valid {
             return Err(Error::InvalidInput);
@@ -123,7 +208,8 @@ impl<'a> MediaSample<'a> {
         Ok(Self {
             format,
             bytes,
-            statistics: None,
+            luminance: None,
+            loudness: None,
         })
     }
     pub fn format(self) -> SampleFormat {
@@ -133,16 +219,24 @@ impl<'a> MediaSample<'a> {
     pub fn bytes(self) -> &'a [u8] {
         self.bytes
     }
-    /// The brightness statistics of a `LuminanceStatistics` sample (v13).
-    pub fn statistics(self) -> Option<LuminanceStatistics> {
-        self.statistics
+    /// The brightness statistics of a `LuminanceStatistics` sample (v13);
+    /// `None` for every other format.
+    pub fn luminance_statistics(self) -> Option<LuminanceStatistics> {
+        self.luminance
+    }
+    /// The loudness statistics of a `LoudnessStatistics` sample (v13);
+    /// `None` for every other format.
+    pub fn loudness_statistics(self) -> Option<LoudnessStatistics> {
+        self.loudness
     }
     pub fn kind(self) -> AnalysisKind {
         match self.format {
             SampleFormat::JpegFrame
             | SampleFormat::PngFrame
             | SampleFormat::LuminanceStatistics => AnalysisKind::CameraPresence,
-            SampleFormat::Pcm16LeMono16Khz => AnalysisKind::AudioActivity,
+            SampleFormat::Pcm16LeMono16Khz | SampleFormat::LoudnessStatistics => {
+                AnalysisKind::AudioActivity
+            }
         }
     }
 }
