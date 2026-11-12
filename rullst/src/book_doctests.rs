@@ -236,6 +236,10 @@ tutorial!(
 );
 tutorial!(managed_video, "../../docs/src/managed-video.md");
 tutorial!(
+    provider_conformance,
+    "../../docs/src/provider-conformance.md"
+);
+tutorial!(
     ai_integration_guide,
     "../../docs/src/6-ai-integration-tutorial.md"
 );
