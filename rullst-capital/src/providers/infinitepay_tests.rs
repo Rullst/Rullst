@@ -454,13 +454,15 @@ async fn a_refused_link_keeps_only_infinitepays_error_code() {
     // A body of exactly 4 KiB is read; one byte more is not.
     let exact = 4096 - serde_json::to_vec(&refusal(0)).unwrap().len();
     let base = refusing_api(exact).await;
-    let Err(CapitalError::Provider(failure)) = live(&base).create_one_off_checkout(&request()).await
+    let Err(CapitalError::Provider(failure)) =
+        live(&base).create_one_off_checkout(&request()).await
     else {
         panic!("a 404 is a provider failure");
     };
     assert_eq!(failure.reason(), Some("external_checkout_not_enabled"));
     let base = refusing_api(exact + 1).await;
-    let Err(CapitalError::Provider(failure)) = live(&base).create_one_off_checkout(&request()).await
+    let Err(CapitalError::Provider(failure)) =
+        live(&base).create_one_off_checkout(&request()).await
     else {
         panic!("a 404 is a provider failure");
     };
