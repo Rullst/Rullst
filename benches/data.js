@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794436426518,
+  "lastUpdate": 1794442025643,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -32481,6 +32481,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1508,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd6772005334e45e65d3c0dd74bb547e2cbf8dc2",
+          "message": "Merge pull request #643 from Rullst/feat/v13-alpha5-iot-ingest\n\nfeat(iot): authenticated device telemetry receiver and two-board IoT gateway example",
+          "timestamp": "2026-11-11T21:01:19-03:00",
+          "tree_id": "35ee228038fb1591c67c6ce5e4f4f0bb11d40f57",
+          "url": "https://github.com/Rullst/Rullst/commit/bd6772005334e45e65d3c0dd74bb547e2cbf8dc2"
+        },
+        "date": 1794442021708,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 550,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 776,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 398,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1572,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
