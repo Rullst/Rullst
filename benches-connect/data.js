@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794505134709,
+  "lastUpdate": 1794512937417,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -13385,6 +13385,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 506,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "429e0707bbb2ca2c187be37942dd055dfdad933d",
+          "message": "Merge pull request #674 from Rullst/chore/v13-release-13.0.0-alpha.5\n\nchore(release): prepare 13.0.0-alpha.5",
+          "timestamp": "2026-11-12T16:30:43-03:00",
+          "tree_id": "0a795838d7e17c65dce1c7c2ff0e39871a8b1a7f",
+          "url": "https://github.com/Rullst/Rullst/commit/429e0707bbb2ca2c187be37942dd055dfdad933d"
+        },
+        "date": 1794512936777,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 561,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
