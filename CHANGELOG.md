@@ -58,8 +58,9 @@ makes 13.0 smaller before its API is frozen:
   their outcome, state and choice enums are `#[non_exhaustive]`, Labs reports
   a `TimeLimit` outcome, and Supervision adds an obscured-camera observation
   and brightness and loudness statistics, so a browser sends numbers instead
-  of frames or audio. `make:mfa`, `make:oauth` and `make:privacy` also work
-  with an application's own sign-in.
+  of frames or audio; its microphone path was validated on a real phone
+  (speech and no speech recorded). `make:mfa`, `make:oauth` and
+  `make:privacy` also work with an application's own sign-in.
 
 The release still has twenty packages. Pin `=13.0.0-alpha.5`. Upgrade steps
 are in the
