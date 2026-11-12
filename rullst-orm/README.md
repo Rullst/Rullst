@@ -106,7 +106,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   which rejects envelopes instead of decrypting them. The key settings
   (`RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID`,
   `RULLST_ENCRYPTION_KEYRING`) are read from the process environment, then
-  from `./.env`, which is never loaded into the process environment.
+  from `./.env`, which is never loaded into the process environment. For
+  values under a key the application manages itself (for example one derived
+  from `APP_KEY`), `privacy::encrypt_aes_gcm` and `privacy::decrypt_aes_gcm`
+  take the 32-byte key explicitly and bind no table or column.
 - **Scout Search Providers**: `scout-http` adds bounded Meilisearch,
   Elasticsearch and Algolia update/delete/search adapters with deterministic
   offline fallbacks. Generated projections run after commit; guaranteed crash
