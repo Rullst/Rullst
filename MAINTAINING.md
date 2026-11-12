@@ -190,6 +190,41 @@ and fails on any surviving mutant.
   behaviour in tests; never `Box::leak` in tests (the AddressSanitizer job
   reports it).
 
+### Starter footprint budgets
+
+The `Starter footprint budgets` job of `ci.yml` (not a required check) runs
+[`.github/check-starter-footprint.py`](.github/check-starter-footprint.py):
+it generates the Blank, SaaS and API starters with the checkout's CLI, builds
+each in release mode (its generated `[profile.release]`, the toolchain of
+`rust-toolchain.toml`) and runs `cargo rullst footprint --env staging
+--page-weight --bench` with the limits in
+`.github/starter-footprint/<starter>.toml`.
+
+- **What fails it:** a figure above its limit (release binary size, idle
+  memory, dependency count, bytes per request of `GET /`, and that page's
+  first-visit bytes, repeat-visit bytes, requests and third-party origins); a
+  limited figure that was not measured; a starter that does not build, start
+  or answer. CPU time per request is in the job summary but never limited,
+  because it varies between shared runners.
+- **When it runs:** ready pull requests that change a framework crate,
+  `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, the starter templates,
+  `footprint` or the check; nightly; full manual runs; and the
+  `starter-footprint` diagnostic shard. A failure also fails the full manual
+  run that release admission needs.
+- **Raising a limit on purpose:** in the pull request that causes the
+  increase, copy the job summary's "Suggested limit" (the measured figure
+  plus its margin: binary +15 %, idle memory +20 %, dependencies +5 %, bytes
+  per request and page bytes +10 % but at least 1 KiB, page requests and
+  third-party origins +0) into the starter's file, update the measured value
+  beside it and the run in its header, and say why in the pull request.
+  Never raise a limit to pass an increase nobody can explain. When a change
+  shrinks a starter by more than its margin, lower the limit the same way so
+  the next increase is caught.
+- **A new starter** needs its own budget file: the offline test
+  [`.github/test-check-starter-footprint.py`](.github/test-check-starter-footprint.py)
+  requires one per starter. Measure it first with the script's
+  `--report-only` flag, which prints suggested limits without checking any.
+
 ## 5. Fuzzing evidence
 
 Release mode of `fuzzing.yml` covers all 42 targets

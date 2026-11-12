@@ -176,6 +176,25 @@ starter (no HTML) is covered by the ZAP baseline instead. This is automated
 evidence for the pages exercised, not WCAG conformance or screen-reader
 testing.
 
+`Starter footprint budgets` runs `.github/check-starter-footprint.py`: with
+the CLI built from the checkout, it generates the Blank, SaaS and API starters
+(framework crates resolved from the checkout as above), builds each in release
+mode with its generated `[profile.release]` and the toolchain of
+`rust-toolchain.toml`, applies its migrations and runs `cargo rullst footprint
+--env staging --page-weight --bench --budget .github/starter-footprint/<starter>.toml`.
+Blocking: a limit exceeded (release binary size, idle resident memory,
+dependency count, bytes per request of `GET /`, and that page's first-visit
+and repeat-visit bytes, requests and third-party origins), a limited figure
+that was not measured, or a starter that does not build or start. CPU time
+per request is reported in the job summary, never limited: it varies between
+shared runners. The JSON reports are kept as an artifact. Its triggers follow
+the deployment jobs (pull requests only when they change a framework crate,
+the workspace manifest or lockfile, `rust-toolchain.toml`, the starter
+templates, `footprint` or the check); it is not a required release job. The
+figures describe one GitHub-hosted Linux runner, not users' machines;
+[MAINTAINING.md](MAINTAINING.md#starter-footprint-budgets) says how a limit
+is raised on purpose.
+
 ### Native CLI artifacts and browser checks
 
 Manual all-platform `all` and `cli-standard` selections call
@@ -665,7 +684,7 @@ dependency graph make static estimates unreliable.
 | :--- | :--- | :--- | :--- |
 | [`architecture.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/architecture.yml) | main/v12/v13 push and PR, manual | Blocking | Compares Cargo's publishable non-dev internal dependency graph with the reviewed `crate-architecture-policy.json`; unreviewed normal/build edges, removals, or optionality changes fail, while test-only dev-dependencies do not masquerade as production coupling. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, the ORM differential comparison of SQLite, PostgreSQL, MySQL and MariaDB, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), the first-hour documentation path run as written (manual, nightly and pull requests changing a marked page or the CLI), the generated Blank and SaaS starters driven in Chromium, Firefox and WebKit with keyboard, CSP and axe-core checks (manual, nightly and pull requests changing the starters, `html!` or Core's pages, headers or CSRF), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, the ORM differential comparison of SQLite, PostgreSQL, MySQL and MariaDB, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), the first-hour documentation path run as written (manual, nightly and pull requests changing a marked page or the CLI), the generated Blank and SaaS starters driven in Chromium, Firefox and WebKit with keyboard, CSP and axe-core checks (manual, nightly and pull requests changing the starters, `html!` or Core's pages, headers or CSRF), release builds of the Blank, SaaS and API starters checked against their footprint budgets (manual, nightly and pull requests changing a framework crate, the lockfile, the toolchain or the starters), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from full/CLI manual Rust CI or admitted tag release | Blocking caller job; required release evidence | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories before attestation. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation with a pinned, zero-retry, bounded-concurrency nextest scheduler and retained JUnit inventory; a focused default-SQLite pass for ORM/Studio/Nexus/the facade; exact local 90% floors; and blocking OIDC-authenticated Codecov upload. Scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |

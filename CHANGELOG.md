@@ -378,6 +378,24 @@ A prepared version section does not establish that its tag or crates exist.
   it is not a required release job. It found the starter defects and the
   Core CSP violation fixed above; a framework defect that cannot be fixed at
   once is versioned in `.github/starter-browsers/known-defects.json`.
+- CI budgets the footprint of the generated starters: the
+  `Starter footprint budgets` job of `ci.yml`
+  (`.github/check-starter-footprint.py`) builds the Blank, SaaS and API
+  starters in release mode and runs `cargo rullst footprint --env staging
+  --page-weight --bench` against one budget file per starter in
+  `.github/starter-footprint/`. It fails when the release binary, idle memory,
+  dependency count, bytes per request or the home page's bytes, requests or
+  third-party origins grow past their limit, which is the figure measured on
+  a GitHub-hosted Linux runner plus a margin (+15 % binary, +20 % memory,
+  +5 % dependencies, +10 % but at least 1 KiB for bytes, none for requests
+  and origins). CPU time per request is reported in the job summary, never
+  limited. It runs on ready pull requests that change a framework crate, the
+  lockfile, the toolchain or the starter templates, nightly, in full manual
+  runs and as a `starter-footprint` diagnostic shard; it is not a required
+  check. `MAINTAINING.md` says how to raise a limit on purpose. Its first
+  run measured release binaries of 11.2 MB (Blank), 15.8 MB (SaaS) and
+  11.1 MB (API), about 10–12 MB of idle memory and a 501 KB Blank home page,
+  448 KB of which is the starters' `rullst.png` logo.
 - `miri.yml` also runs `cargo careful test` (cargo-careful 0.4.10 on Miri's
   pinned `nightly-2026-08-21`) over the library unit tests of `rullst-core`,
   `rullst-security` and `rullst-orm`, weekly and on dispatch. It is

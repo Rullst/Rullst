@@ -233,6 +233,14 @@ class WorkflowGuardTests(unittest.TestCase):
         self.assertIn("install --with-deps chromium firefox webkit", browsers)
         self.assertIn("if: failure() && steps.selection.outputs.run == 'true'", browsers)
         self.assertIn("cargo-rullst/src/(blueprints/|", browsers)
+        # The footprint job checks every starter against its budget file: it
+        # never measures without them and never tolerates a failure.
+        footprint = jobs["starter-footprint"]
+        self.assertIn("python3 .github/check-starter-footprint.py \\\n            --cli target/debug/cargo-rullst",
+                      footprint)
+        self.assertNotIn("--report-only", footprint)
+        self.assertNotIn("continue-on-error", footprint)
+        self.assertIn("Cargo\\.(toml|lock)|rust-toolchain\\.toml|rullst[a-z-]*/", footprint)
         # `cargo rullst auth` against PostgreSQL, MySQL and MariaDB runs after
         # the relational profiles on Linux, with the CLI that shard built.
         auth = jobs["test"].split("Run cargo rullst auth on Blank starters", 1)[1].split("      - name:", 1)[0]

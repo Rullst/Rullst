@@ -14,7 +14,8 @@ reach); a starter without a budget file. CPU time per request is reported in
 the job summary and never budgeted: it varies between shared runners.
 
 The summary lists each figure with its limit and the limit this check
-suggests (the measured figure plus its margin in MARGINS). --report-only
+suggests (the measured figure plus its margin in MARGINS, and at least
+MIN_HEADROOM). --report-only
 measures without budgets, for a first measurement or a new starter.
 
 Usage: check-starter-footprint.py --cli PATH --work DIR [--out DIR]
@@ -64,6 +65,9 @@ MARGINS = {
     "page_requests": 0.0,
     "page_third_party_origins": 0.0,
 }
+# Response bodies of a few kilobytes get at least 1 KiB of headroom, so a
+# sentence more in a starter's HTML does not need a new limit.
+MIN_HEADROOM = {"bytes_per_request": 1024, "page_first_visit_bytes": 1024, "page_repeat_visit_bytes": 1024}
 
 _SPEC = importlib.util.spec_from_file_location("dast_generated_app", HERE / "dast-generated-app.py")
 if _SPEC is None or _SPEC.loader is None:
@@ -87,8 +91,8 @@ def load_budget(path: Path) -> dict[str, float]:
 
 
 def suggest(name: str, measured: float) -> int:
-    """The measured figure plus the limit's margin, rounded up."""
-    return math.ceil(round(measured * (1 + MARGINS[name]), 6))
+    """The measured figure plus the limit's margin (at least its minimum headroom), rounded up."""
+    return math.ceil(max(round(measured * (1 + MARGINS[name]), 6), measured + MIN_HEADROOM.get(name, 0)))
 
 
 def figures(report: dict) -> dict[str, float | None]:

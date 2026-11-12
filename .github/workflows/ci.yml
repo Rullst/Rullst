@@ -1291,8 +1291,7 @@ jobs:
           python3 .github/check-starter-footprint.py \
             --cli target/debug/cargo-rullst \
             --work "$RUNNER_TEMP/starter-footprint" \
-            --out "$RUNNER_TEMP/starter-footprint-reports" \
-            --report-only
+            --out "$RUNNER_TEMP/starter-footprint-reports"
 
       - name: Keep the footprint reports
         if: >-
