@@ -52,6 +52,7 @@ VERSION = re.compile(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?", re
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}", re.ASCII)
 # A commit name or SHA for --base; never an option.
 REVISION = re.compile(r"\w[\w.@{}~^/-]*", re.ASCII)
+COMMIT = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 
 
 class ChangelogError(Exception):
@@ -244,10 +245,10 @@ def release(root: Path, version: str, date: str) -> str:
     )
 
 
-def git(root: Path, *args: str) -> str:
+def git(root: Path, *args: str, stdin: str | None = None) -> str:
     try:
         return subprocess.run(
-            ["git", *args], cwd=root, check=True, capture_output=True, text=True
+            ["git", *args], cwd=root, input=stdin, check=True, capture_output=True, text=True
         ).stdout
     except (OSError, subprocess.CalledProcessError) as error:
         detail = getattr(error, "stderr", "") or str(error)
@@ -256,12 +257,13 @@ def git(root: Path, *args: str) -> str:
 
 def unreleased_additions(root: Path, base: str) -> list[str]:
     """Non-blank lines that HEAD adds, relative to `base`, under `## [Unreleased]`."""
-    if REVISION.fullmatch(base) is None:
+    if not REVISION.fullmatch(base):
         raise ChangelogError(f"invalid --base revision: {base!r}")
-    commit = git(root, "rev-parse", "--verify", "--quiet", "--end-of-options",
-                 f"{base}^{{commit}}").strip()
-    if re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit) is None:
-        raise ChangelogError(f"--base {base} is not a commit")
+    # The revision reaches git on standard input, never as an argument.
+    resolved = git(root, "cat-file", "--batch-check", stdin=f"{base}^{{commit}}\n").split()
+    if len(resolved) != 3 or resolved[1] != "commit" or not COMMIT.fullmatch(resolved[0]):
+        raise ChangelogError(f"--base {base} is not a commit in this repository")
+    commit = resolved[0]
     diff = git(root, "diff", "--unified=0", "--no-color", "--no-ext-diff", commit, "HEAD",
                "--", CHANGELOG)
     added: set[int] = set()

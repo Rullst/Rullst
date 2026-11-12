@@ -362,7 +362,7 @@ class PolicyTests(FixtureTest):
     def test_unknown_or_option_like_base_is_refused(self):
         with self.assertRaises(MODULE.ChangelogError) as refused:
             MODULE.check(self.root, "0" * 40, "")
-        self.assertIn("git rev-parse", str(refused.exception))
+        self.assertIn("is not a commit in this repository", str(refused.exception))
         for base in ("--output=/tmp/x", "-p", "", "main HEAD", "main\n"):
             with self.subTest(base=base), self.assertRaises(MODULE.ChangelogError) as refused:
                 MODULE.check(self.root, base, "")
