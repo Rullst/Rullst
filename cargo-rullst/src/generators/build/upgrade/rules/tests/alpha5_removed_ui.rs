@@ -1,6 +1,6 @@
-//! Rules of 13.0.0-alpha.5 for the removed Wasm islands and Live components:
-//! their attributes and paths in Rust source, and the removed CLI commands
-//! in scripts.
+//! Rules of 13.0.0-alpha.5 for the removed Wasm islands, Live components,
+//! typed server functions and frontend adapters: their attributes and paths
+//! in Rust source, and the removed CLI commands in scripts.
 
 use super::super::files::{runs_island_command, runs_live_command};
 use super::files::Project;
@@ -8,12 +8,14 @@ use super::*;
 
 const ISLANDS: &str = "V13-ISLANDS-REMOVED";
 const LIVE: &str = "V13-LIVE-REMOVED";
+const RPC: &str = "V13-SERVER-FUNCTIONS-REMOVED";
+const FRONTEND: &str = "V13-FRONTEND-ADAPTERS-REMOVED";
 const PACKAGE: &str = "[package]\nname = \"app\"\n";
 
 fn removed_ui(source: &str) -> Vec<(&'static str, usize)> {
     scan_with(source, "lib.rs", &WorkspaceFacts::default())
         .into_iter()
-        .filter(|(code, _)| *code == ISLANDS || *code == LIVE)
+        .filter(|(code, _)| [ISLANDS, LIVE, RPC, FRONTEND].contains(code))
         .collect()
 }
 
@@ -77,6 +79,48 @@ fn routes() -> Router {
 }
 
 #[test]
+fn server_functions_and_their_envelope_must_change() {
+    let source = r#"
+use rullst::server_function;
+use rullst::{html, rpc::RpcResult, client_contract::IdempotencyKey};
+#[server_function(path = "/api/rpc/counter")]
+pub async fn increment() -> RpcResult<u32> { Ok(1) }
+#[rullst::server_function]
+async fn reset() -> rullst::rpc::RpcResult<()> {
+    rullst_core::client::rpc_call::<(), ()>("/api/rpc/reset", &()).await
+}
+fn failure() -> rullst::rpc::RpcFailure { todo!() }
+"#;
+    assert_eq!(
+        removed_ui(source),
+        [
+            (RPC, 2),
+            (RPC, 3),
+            (RPC, 4),
+            (RPC, 6),
+            (RPC, 7),
+            (RPC, 8),
+            (RPC, 10)
+        ]
+    );
+}
+
+#[test]
+fn frontend_adapters_must_change() {
+    let source = r#"
+use rullst::frontend::{HtmlAdapter, LeptosAdapter};
+use rullst_core::{frontend, routes};
+async fn page() -> rullst::frontend::PicoAdapter {
+    rullst_core::frontend::PicoAdapter(String::new())
+}
+"#;
+    assert_eq!(
+        removed_ui(source),
+        [(FRONTEND, 2), (FRONTEND, 3), (FRONTEND, 4), (FRONTEND, 5)]
+    );
+}
+
+#[test]
 fn other_names_comments_strings_and_kept_apis_do_not_match() {
     let source = r##"
 //! Docs may mention `#[island]` and rullst::live::Live::mount.
@@ -86,13 +130,21 @@ fn other_names_comments_strings_and_kept_apis_do_not_match() {
 #[cfg_attr(test, allow(dead_code))]
 struct Island { live: bool }
 use rullst::realtime::{BroadcastManager, RealtimeSse};
-use rullst::{html, server_function};
+use rullst::{html, routes};
 use my_app::live::Feed;
+use my_app::{rpc, frontend::Page, client::Api};
+use rullst_connect::client::HttpClient;
+#[rpc(server, client)]
+trait Api {}
+#[jsonrpsee::proc_macros::rpc(client)]
+trait Other {}
 const TEXT: &str = "#[island] rullst::live";
 fn island() -> bool { let live = true; app::live::check(live) }
 fn view() -> Markup { html! { <a href="#live" data-island="x">"live"</a> } }
 #[my_macros::islands]
 fn kept() {}
+/// Formerly `#[server_function]` returning `rullst::rpc::RpcResult`.
+const RPC: &str = "rullst::client_contract rullst::frontend";
 "##;
     assert_eq!(removed_ui(source), []);
 }
@@ -167,6 +219,16 @@ fn the_alpha5_rules_name_their_rows_kinds_and_release() {
             FindingKind::Review,
             "Live components removed",
         ),
+        (
+            &catalog::SERVER_FUNCTIONS_REMOVED,
+            FindingKind::MustChange,
+            "Typed server functions removed",
+        ),
+        (
+            &catalog::FRONTEND_ADAPTERS_REMOVED,
+            FindingKind::MustChange,
+            "Frontend adapters removed",
+        ),
     ] {
         assert_eq!(rule.kind, kind, "{}", rule.code);
         assert_eq!(rule.row, row, "{}", rule.code);
@@ -175,4 +237,10 @@ fn the_alpha5_rules_name_their_rows_kinds_and_release() {
     }
     assert!(catalog::LIVE_REMOVED.guidance.contains("RealtimeSse"));
     assert!(catalog::ISLANDS_REMOVED.guidance.contains("htmx"));
+    assert!(
+        catalog::SERVER_FUNCTIONS_REMOVED
+            .guidance
+            .contains("routes!")
+    );
+    assert!(catalog::FRONTEND_ADAPTERS_REMOVED.guidance.contains("Html"));
 }

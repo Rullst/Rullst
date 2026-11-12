@@ -561,8 +561,7 @@ A prepared version section does not establish that its tag or crates exist.
   `reqwest`, `jsonwebtoken`, `base64`, `redis` or `serde_json` error any more,
   so those crates are no longer public dependencies through errors.
   `AiError::RequestError` carries the new `AiRequestError` (`is_timeout`,
-  `is_connect`), `AiError::SerializationError` the new `AiJsonError`,
-  `ClientContractError::InvalidJson`/`EncodeJson` the new `ContractJsonError`
+  `is_connect`), `AiError::SerializationError` the new `AiJsonError`
   and `TwinSyncError::Serialization` the new `TwinJsonError` (`TwinSyncError`
   is now `#[non_exhaustive]` and implements `Error`); their texts and
   `source()` chains are unchanged. `ConnectError` lost its `From` impls for
@@ -591,8 +590,7 @@ A prepared version section does not establish that its tag or crates exist.
   Rullst's default CSP has no `'wasm-unsafe-eval'`, which browsers require
   to compile WebAssembly, so islands could not run under the default security
   headers. The removed commands print their replacement and exit with status
-  1. `#[server_function]` keeps its `wasm32` caller, and the `wasm32` checks
-  of the crates are unchanged.
+  1. The `wasm32` checks of the crates are unchanged.
 - **Breaking:** Live components. `rullst::live` was removed: the
   `LiveComponent` trait, `Live::mount`, `live_ws_handler` (the HTMX WebSocket
   protocol, which had no origin check, connection cap or idle timeout), the
@@ -604,6 +602,23 @@ A prepared version section does not establish that its tag or crates exist.
   updates with `RealtimeSse` (above); `BroadcastManager`, `PresenceTracker`,
   the tenant facades and `rullst::ws` stay. The blog example drops its Live
   counter page and the vendored htmx WebSocket extension.
+- **Breaking:** typed server functions. The `#[server_function]` attribute
+  and the `<name>_rpc_router()` it generated, `rullst::rpc` (`RpcResult`,
+  `RpcFailure`), the `wasm32` caller `rullst::client` and
+  `rullst::client_contract` (the `rullst.client` v1 JSON envelope and its
+  types) were removed, with the Blank starter's `src/rpc.rs` counter (its page
+  already used the htmx `/clicked` route, and the RPC answered an empty `{}`
+  body with 400), Tutorial 52 and the RPC tests. The RPC existed so that
+  WebAssembly islands could call the server; with islands removed, htmx calls
+  ordinary routes and Alpine.js can fetch JSON from one, so it was a second
+  way to do the same thing. `cargo rullst upgrade` reports the attribute and
+  the paths (`V13-SERVER-FUNCTIONS-REMOVED`, must-change).
+- **Breaking:** the `rullst_core::frontend` adapters (`RenderAdapter`,
+  `HtmlAdapter`, `PicoAdapter`, `TopcoatAdapter`, `TemplateAdapter`,
+  `LiveViewAdapter`, `WasmIslandAdapter`, `LeptosAdapter`, `DioxusAdapter`).
+  Each only answered its string as `text/html` and nothing used them: return
+  the `Markup` of `html!` or `rullst::response::Html(...)`. `cargo rullst
+  upgrade` reports the paths (`V13-FRONTEND-ADAPTERS-REMOVED`, must-change).
 - **Breaking:** the Turso variant of `cargo rullst make:billing`. Billing is
   generated for SQLx projects only; in a Turso-primary project the command
   refuses before writing anything, because billing needs the SQLx database

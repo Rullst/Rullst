@@ -67,8 +67,6 @@ const JWKS_IDENTS: &[&str] = &[
 const PAYLOAD_VARIANTS: &[[&str; 2]] = &[
     ["AiError", "RequestError"],
     ["AiError", "SerializationError"],
-    ["ClientContractError", "InvalidJson"],
-    ["ClientContractError", "EncodeJson"],
     ["TwinSyncError", "Serialization"],
 ];
 

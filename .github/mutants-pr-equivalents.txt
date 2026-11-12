@@ -108,9 +108,6 @@ rullst-core/src/radar.rs:310:28: replace / with * in calculate_windows_cpu_perce
 rullst-core/src/radar.rs:310:28: replace / with % in calculate_windows_cpu_percent
 rullst-core/src/radar.rs:310:44: replace * with + in calculate_windows_cpu_percent
 rullst-core/src/radar.rs:310:44: replace * with / in calculate_windows_cpu_percent
-rullst-core/src/rpc.rs:164:13: delete match arm ClientContractError::BodyTooLarge{..} in server::request_contract_failure
-rullst-core/src/rpc.rs:261:67: replace * with + in tests::failure_for
-rullst-core/src/rpc.rs:56:9: replace RpcFailure::from_detail -> Self with Default::default()
 rullst-core/src/server/dylib_loader.rs:9:5: replace is_expected_loaded_library_removal_error -> bool with false
 rullst-core/src/server/dylib_loader.rs:9:5: replace is_expected_loaded_library_removal_error -> bool with true
 rullst-core/src/storage/cloud/multipart/codec.rs:302:31: replace > with == in MultipartStorage::open
