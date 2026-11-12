@@ -136,7 +136,11 @@ the `TursoConfig` as the starter does.
 
 The typed contract includes CRUD, equality filters, ordering, bounded
 pagination/counts, app-assigned or generated primary keys, checksummed
-migrations, status, and rollback. An equality filter whose value encodes as
+migrations, status, and rollback. As with the SQLx models, the database
+generates only integer keys: saving a model whose `String` key is empty fails
+with `PolyglotError::InvalidIdentifier` before anything is written. A UNIQUE or
+PRIMARY KEY violation returns `PolyglotError::Conflict`, on a remote server and
+the offline fallback alike. An equality filter whose value encodes as
 `NULL` (such as `Option::None`) matches with `IS NULL`. `#[orm(encrypted)]`
 columns store randomized ciphertext, so filtering or ordering on them returns
 an error instead of silently matching nothing. Generated `make:model` and `make:migration`
@@ -345,7 +349,10 @@ ceiling, and sends namespace/database headers on every scoped request.
 
 SurrealDB 3 requires the namespace and database to exist (`DEFINE NAMESPACE`,
 `DEFINE DATABASE`); against an undefined one every call fails with
-`statement returned status ERR`. `SurrealAuth::basic` authenticates root-level
+`statement returned status ERR: The database '<name>' does not exist`. A failed
+statement, HTTP request or RPC call ends its `PolyglotError::Driver` message
+with SurrealDB's own reason, kept to one line of at most 240 characters with
+URLs and the configured password or token redacted. `SurrealAuth::basic` authenticates root-level
 users only: SurrealDB authenticates namespace and database users over HTTP with
 extra `Surreal-Auth-NS`/`Surreal-Auth-DB` headers that the adapter does not
 send, so sign those users in through SurrealDB's `/signin` endpoint and pass the
