@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794442835422,
+  "lastUpdate": 1794455624784,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -13025,6 +13025,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 460,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a829e57bb4fd66ce78ac7c55efd62554dc18a57d",
+          "message": "Merge pull request #651 from Rullst/fix/v13-alpha5-acc-consumers-after-mfa\n\nfix(cli): consumer generators after make:mfa and readable new files",
+          "timestamp": "2026-11-11T23:28:11-03:00",
+          "tree_id": "42122713e207045a9666d626f83bd9ec61cc2842",
+          "url": "https://github.com/Rullst/Rullst/commit/a829e57bb4fd66ce78ac7c55efd62554dc18a57d"
+        },
+        "date": 1794455623706,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 292,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
