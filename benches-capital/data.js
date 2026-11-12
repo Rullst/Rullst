@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794470212654,
+  "lastUpdate": 1794473265192,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -16186,6 +16186,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c045e3ea4da2bcdd7e9d733e5f03696d33e22635",
+          "message": "Merge pull request #652 from Rullst/feat/v13-alpha5-remove-mongodb\n\nfeat(orm): remove the MongoDB and DuckDB adapters in favour of application recipes",
+          "timestamp": "2026-11-12T05:26:59-03:00",
+          "tree_id": "71d961e7c9ede9e753e0ccd7ac38948f5a9ab1b9",
+          "url": "https://github.com/Rullst/Rullst/commit/c045e3ea4da2bcdd7e9d733e5f03696d33e22635"
+        },
+        "date": 1794473264267,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 3,
             "range": "± 0",
             "unit": "ns/iter"
           }
