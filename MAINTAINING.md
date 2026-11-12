@@ -75,16 +75,25 @@ rules come from real failures; follow them on any similar machine.
 - **Commits** follow AGENTS.md section 3.10. Commit and push after each
   self-contained item.
 - **Documentation travels with the change.** Update the spec section, the
-  crate README or guide, and `CHANGELOG.md` under `## [Unreleased]`. A breaking
+  crate README or guide, and add a changelog fragment under
+  [`changelog.d/`](changelog.d/README.md). A breaking
   change also gets a row in `docs/src/migration-v13.md` and, when the old usage
   can be detected in an application, a `cargo rullst upgrade` rule
   (`cargo-rullst/src/generators/build/upgrade/rules/`). The classification
   table and counts in
   [tutorial 36](docs/src/tutorials/36-assisted-framework-upgrades.md) must
   match the migration rows and the rule catalog.
-- **CHANGELOG conflicts.** Parallel branches append to the same
-  `[Unreleased]` subsections. When merging `main` into a branch, keep both
-  sides' bullets and keep the subsection order already on `main`.
+- **Changelog fragments.** A user-visible change adds one file,
+  `changelog.d/<slug>.md`: a `### Added`, `### Changed`, `### Deprecated`,
+  `### Removed`, `### Fixed` or `### Security` line, then the bullets as they
+  will read in `CHANGELOG.md` ([format and example](changelog.d/README.md)).
+  Pull requests do not edit `## [Unreleased]` in `CHANGELOG.md`, so they no
+  longer conflict there. The `Changelog fragment policy` job of
+  `workflow-lint.yml` validates the fragments and fails when a pull request adds
+  lines under `## [Unreleased]`; it is not a required check, but the merge
+  rule below applies to it. Release-preparation branches
+  (`chore/v<major>-release-<version>`) are exempt; Dependabot pull requests need
+  no fragment.
 - **Merging.** Merge a pull request only when every check, including the
   mutation gate, is green on its latest commit. Branch protection does not
   require an up-to-date branch, so after merging one pull request, merge
@@ -246,12 +255,17 @@ testing.
 
 [`RELEASE_GUIDE.md`](RELEASE_GUIDE.md) is the procedure. In practice:
 
-1. Prepare the release commit: version of every package in
-   `release-order.json`, exact internal pins, the CLI's generated pins,
-   `Cargo.lock`, every fuzz lockfile and the two lockfiles of
-   `.github/fixtures/iot-microbit-v2` (they record the `rullst-iot` version);
-   fold `[Unreleased]` into the version section with a short summary and a
-   `### Known limitations` subsection.
+1. Prepare the release commit on a `chore/v<major>-release-<version>` branch:
+   version of every package in `release-order.json`, exact internal pins, the
+   CLI's generated pins, `Cargo.lock`, every fuzz lockfile and the two
+   lockfiles of `.github/fixtures/iot-microbit-v2` (they record the
+   `rullst-iot` version). Run
+   `python3 .github/assemble-changelog.py --release <version> --date <YYYY-MM-DD>`:
+   it merges the `changelog.d/` fragments into the `[Unreleased]` subsections,
+   opens the dated version section below the `[Unreleased]` introduction and
+   deletes the fragments. Then write the version's short summary and its
+   `### Known limitations` subsection below the new heading. Preflight and
+   `release.yml` refuse a release while `changelog.d/` has unmerged fragments.
 2. Show the maintainer the known limitations and get an explicit approval for
    this publication. An approval for an earlier release does not carry over.
 3. On the exact candidate commit on `main`, every workflow in

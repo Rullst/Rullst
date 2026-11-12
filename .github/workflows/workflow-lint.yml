@@ -117,6 +117,7 @@ jobs:
           release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("rullst/Cargo.toml").read_text())["package"]["version"])')"
           python3 .github/render-release-notes.py "$release_version" "$RUNNER_TEMP/release-notes.md"
           python3 .github/test-render-release-notes.py
+          python3 .github/test-assemble-changelog.py
 
       - name: Validate mutation artifact aggregation
         run: |
@@ -144,3 +145,24 @@ jobs:
             -color \
             cargo-rullst/src/generators/project/ci/.github/workflows/ci.yml \
             cargo-rullst/src/generators/browser_tests/assets/browser-tests.yml
+
+  changelog-fragments:
+    name: Changelog fragment policy
+    # Advisory: not a required check (see changelog.d/README.md). Pushes skip
+    # it, so the push run that release admission requires never depends on it.
+    # Dependabot pull requests need no fragment.
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Validate fragments and refuse new lines under [Unreleased]
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: python3 .github/assemble-changelog.py --check --base "$BASE_SHA" --branch "$HEAD_REF"

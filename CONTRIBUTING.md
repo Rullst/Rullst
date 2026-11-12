@@ -27,6 +27,10 @@ This section guides you through submitting an enhancement suggestion for Rullst,
 - Run `cargo fmt --all`,
   `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and
   `cargo test --workspace --all-features` before declaring a change complete.
+- Describe a user-visible change in a changelog fragment,
+  `changelog.d/<slug>.md`, instead of editing `CHANGELOG.md`; the
+  [fragment guide](changelog.d/README.md) has the format and an example, and
+  `python3 .github/assemble-changelog.py --check` validates it.
 - Fill in the required Pull Request template.
 - End files with a newline.
 
