@@ -207,12 +207,12 @@ How far each built-in integration has been tested:
 | :--- | :--- |
 | **Validated with real accounts** | Stripe (real payments); InfinitePay (a real Pix payment; the adapter is still Experimental); Bunny Stream, Resend, Google sign-in and GitHub sign-in (used in production applications) |
 | **Tested in CI against servers in local containers** | PostgreSQL, MySQL and MariaDB, plus SQLite (embedded, no server); Redis (cache, queues, rate limits, ORM data structures and Redis Streams messaging); SurrealDB; Turso/libSQL (the `libsql-server` image, which is `sqld`); Meilisearch search; pgvector; S3-compatible storage (a Garage server) |
-| **Offline only: mock mode, local fixtures or a [conformance kit](https://rullst.github.io/Rullst/book/provider-conformance.html)** | AWS SES, SendPulse and SMTP mail; OpenAI, Anthropic Claude, Google Gemini, DeepSeek, Ollama and other OpenAI-compatible AI endpoints; Microsoft, Apple, Auth0, AWS Cognito, Facebook, X (Twitter), Discord, LinkedIn and generic OpenID Connect sign-in; the S3/R2 adapter of `rullst-media` |
+| **Offline only: mock mode, local fixtures or a [conformance kit](https://rullst.github.io/Rullst/book/provider-conformance.html)** | AWS SES, SendPulse and SMTP mail; OpenAI, Anthropic Claude, Google Gemini and OpenAI-compatible AI endpoints (with DeepSeek and Ollama presets); Microsoft, Apple, Auth0, AWS Cognito, Facebook, X (Twitter), Discord, LinkedIn and generic OpenID Connect sign-in; the S3/R2 adapter of `rullst-media` |
 
 Other services are application code: write an adapter on the provider trait
 (payments, mail, video) or follow a
 [recipe](https://rullst.github.io/Rullst/book/recipes/index.html) such as the
-MongoDB and DuckDB ones.
+MongoDB, DuckDB and Qdrant ones.
 
 <a id="live-examples"></a>
 
@@ -587,8 +587,8 @@ list every change.
   a `MailDriver` in your application.
 - The `orm-polyglot` and `polyglot` features, which enabled every storage
   adapter at once: name the adapters you use.
-- The MongoDB and DuckDB adapters of `rullst-orm` (`orm-mongodb`,
-  `orm-duckdb`): use the official driver as the
+- The MongoDB, DuckDB and Qdrant adapters of `rullst-orm` (`orm-mongodb`,
+  `orm-duckdb`, `orm-qdrant`): use the official client as the
   [recipes](https://rullst.github.io/Rullst/book/recipes/index.html) show.
 - The CLI's Foundry (`foundry:init`, `foundry:deploy`), Nix (`nixify`,
   `new --nix`), Buildah (`generate:buildah`, `new --buildah`) and gRPC
