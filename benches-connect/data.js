@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794472985433,
+  "lastUpdate": 1794478029220,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -13145,6 +13145,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 303,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3e0f009fe0c3d3c3237f1b638a76d5451abfbcd1",
+          "message": "Merge pull request #672 from Rullst/ci/v13-alpha5-iot-ingest-boundary\n\nci(features): check the iot-ingest umbrella feature in isolation",
+          "timestamp": "2026-11-12T06:45:48-03:00",
+          "tree_id": "2046a88c6cf2a40df792c3f4bb598360b8eda54d",
+          "url": "https://github.com/Rullst/Rullst/commit/3e0f009fe0c3d3c3237f1b638a76d5451abfbcd1"
+        },
+        "date": 1794478028628,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 531,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
