@@ -63,11 +63,7 @@ fn selected_persistence_integrations_get_offline_safe_development_values() {
         &root,
         true,
         "MariaDB",
-        &[
-            PolyglotIntegration::Turso,
-            PolyglotIntegration::SurrealDb,
-            PolyglotIntegration::Qdrant,
-        ],
+        &[PolyglotIntegration::Turso, PolyglotIntegration::SurrealDb],
         BLANK_BLUEPRINT_ID,
         "0123456789abcdef0123456789abcdef",
     )
@@ -78,11 +74,10 @@ fn selected_persistence_integrations_get_offline_safe_development_values() {
     assert!(development.contains("DATABASE_URL=mysql://"));
     assert!(development.contains("TURSO_DATABASE_URL=mock_local"));
     assert!(!development.contains("MONGODB_URL") && !development.contains("DUCKDB_PATH"));
+    assert!(!development.contains("QDRANT_URL") && !example.contains("QDRANT_URL"));
     assert!(development.contains("SURREALDB_URL=mock_local"));
-    assert!(development.contains("QDRANT_URL=mock_local"));
     assert!(example.contains("TURSO_DATABASE_URL=\n"));
     assert!(example.contains("SURREALDB_URL=\n"));
-    assert!(example.contains("QDRANT_URL=\n"));
 
     fs::remove_dir_all(root).expect("temporary project cleanup");
 }

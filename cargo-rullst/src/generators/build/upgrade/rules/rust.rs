@@ -421,6 +421,9 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
             if let Some(rule) = super::api_cleanups::path_rule(&path) {
                 self.hit(rule, at);
             }
+            if let Some(rule) = super::alpha5_slimming::path_rule(&path, self.context.text) {
+                self.hit(rule, at);
+            }
             if let Some(rule) = super::removed_adapters::path_rule(&path, self.context.text) {
                 self.hit(rule, at);
             }

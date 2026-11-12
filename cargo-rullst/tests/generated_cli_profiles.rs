@@ -144,15 +144,8 @@ const PROFILE_CASES: [ProfileCase; 7] = [
             "sqlite",
             "--surrealdb",
             "--turso",
-            "--qdrant",
         ],
-        required_rullst_features: &[
-            "orm",
-            "strict-sqlite",
-            "orm-surrealdb",
-            "orm-turso",
-            "orm-qdrant",
-        ],
+        required_rullst_features: &["orm", "strict-sqlite", "orm-surrealdb", "orm-turso"],
         rejected_rullst_features: &["strict-postgres", "strict-mysql"],
         router_returns_result: None,
         // Runtime behavior for these adapters is exercised in the ORM

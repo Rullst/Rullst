@@ -8,7 +8,7 @@ The repository examples and CLI starters serve different purposes:
 | `examples/saas` | Reproducible CLI-generated SQLite SaaS with authenticated notes, tenant membership and the same HTTP journey used in CI. | Disposable Linux development example; membership is an explicit local operator action. |
 | `examples/webgpu` | Browser wave-interference lesson served by `rullst-core`, with WebGPU rendering and a Canvas fallback. | Public read-only demo on loopback; browser output establishes no server-owned result. |
 | `examples/iot-gateway` | Arduino Uno boards streaming through per-board serial gateways and per-device tokens to `rullst::iot_ingest`, with an ORM device registry, Nexus and a live SSE dashboard. | Example to copy from; the registry table is application code, and the hardware path ran on two Unos, not a fleet. |
-| `examples/lms`, `examples/erp`, `examples/portfolio` | Complete applications that were the LMS, ERP and Portfolio starters of `cargo rullst new` until 13.0.0-alpha.4, kept as workspace members with their own tests. | Examples to copy from, not supported starters: no generator or upgrade path behind them. |
+| `examples/lms` | The complete application that was the LMS starter of `cargo rullst new` until 13.0.0-alpha.4, kept as a workspace member with its own tests. | An example to copy from, not a supported starter: no generator or upgrade path behind it. |
 | CLI starters (Blank, API, SaaS) | Small starting structures generated into a new project. | Generated output must be reviewed, configured, formatted, checked, and tested by the application owner. |
 
 No example is expected to exercise 100% of workspace behavior. External provider
@@ -52,24 +52,28 @@ initial disk headroom. It removes generated data on exit and uses no real
 provider account. This directory holds the canonical example recipe and
 resource; it is not a duplicate checked-in copy of a generated application.
 
-## LMS, ERP and Portfolio examples
+## LMS example
 
-Until 13.0.0-alpha.4, `cargo rullst new --blueprint lms|erp|portfolio`
-generated these applications; the CLI now offers only the Blank, API and SaaS
-starters, and `--blueprint lms`, `erp`, `portfolio` or `blog` fails before
-writing anything with a report that names the example. Each was generated with
-that CLI (SQLite, `--default`), then adapted to the workspace: `publish = false`,
-workspace dependencies, a library with `router()` plus a thin binary, and the
-generated tests (security baseline, CSRF, rate limits, ownership checks) as the
-package's own tests.
+Until 13.0.0-alpha.4, `cargo rullst new --blueprint lms` generated this
+application; the CLI now offers only the Blank, API and SaaS starters, and
+`--blueprint lms` or `blog` fails before writing anything with a report that
+names the example. It was generated with that CLI (SQLite, `--default`), then
+adapted to the workspace: `publish = false`, workspace dependencies, a library
+with `router()` plus a thin binary, and the generated tests (security baseline,
+CSRF, rate limits, ownership checks) as the package's own tests.
 
 | Example | What it shows |
 | :--- | :--- |
 | [`examples/lms`](https://github.com/Rullst/Rullst/tree/main/examples/lms) | Course catalog, modules and lessons, an accessible player, enrollment, owner-bound progress, sign-in with password reset and a Nexus admin for signed-in administrators. Its owner-boundary test is the threat-model evidence for `ACADEMY-02`. |
-| [`examples/erp`](https://github.com/Rullst/Rullst/tree/main/examples/erp) | Products, stock movements and orders; the dashboard, forms and Nexus share one administrator policy. |
-| [`examples/portfolio`](https://github.com/Rullst/Rullst/tree/main/examples/portfolio) | A developer portfolio read from the database and edited in Nexus, checked in a mobile Chromium viewport in Linux CI. |
 
-Run one from its directory, so the server finds `.env`, `Rullst.toml` and its
+The ERP and Portfolio examples (the former `--blueprint erp` and `portfolio`
+starters) were removed in 13.0.0-alpha.5: both showed CRUD with a Nexus back
+office, which the blog example and the SaaS starter already cover.
+`--blueprint erp` or `portfolio` fails before writing anything with a report
+that points to `examples/blog`; their last version is in the `v13.0.0-alpha.4`
+tag of the repository.
+
+Run it from its directory, so the server finds `.env`, `Rullst.toml` and its
 static files:
 
 ```bash
@@ -79,13 +83,10 @@ cargo run -p rullst-lms-example -- db:migrate
 cargo run -p rullst-lms-example
 ```
 
-The ERP and Portfolio examples work the same way with `rullst-erp-example` and
-`rullst-portfolio-example`.
-
-To start your own application from one, copy the directory and replace its
+To start your own application from it, copy the directory and replace its
 `workspace = true` dependencies with the published crates (each README shows
-the line). Applications generated earlier from these blueprints keep working:
-their code is theirs.
+the line). Applications generated earlier from the LMS, Blog, Portfolio or ERP
+blueprints keep working: their code is theirs.
 
 ## IoT gateway example
 

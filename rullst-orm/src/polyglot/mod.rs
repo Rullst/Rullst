@@ -1,8 +1,8 @@
 //! Optional capability-oriented persistence adapters.
 //!
 //! The SQLx-backed ORM remains the default. Turso exposes an explicitly
-//! selected typed relational profile, while the document, graph and vector
-//! backends do not pretend to share relational semantics they cannot provide.
+//! selected typed relational profile, while the document and graph backends do
+//! not pretend to share relational semantics they cannot provide.
 
 mod capability;
 mod document;
@@ -10,8 +10,6 @@ mod error;
 mod mock;
 mod recovery;
 
-#[cfg(feature = "qdrant")]
-mod qdrant;
 #[cfg(feature = "surrealdb")]
 mod surrealdb;
 #[cfg(feature = "turso")]
@@ -23,11 +21,6 @@ pub use document::{
 };
 pub use error::PolyglotError;
 pub use mock::MockDocumentStore;
-#[cfg(feature = "qdrant")]
-pub use qdrant::{
-    QdrantConfig, QdrantStore, VectorCollectionName, VectorDimensions, VectorMatch, VectorPoint,
-    VectorQueryLimit, VectorRepository,
-};
 pub use recovery::{
     DocumentRecoveryBinding, DocumentRecoveryError, DocumentRecoveryKey, DocumentRecoveryPolicy,
     DocumentRecoveryReport, EncryptedDocumentSnapshot, export_document_snapshot,

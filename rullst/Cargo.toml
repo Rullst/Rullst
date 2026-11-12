@@ -19,7 +19,7 @@ exclude = ["tests/*", "benches/*", "storage/*", "*.db", ".env*"]
 [package.metadata.docs.rs]
 features = [
     "drivers-all", "orm", "orm-turso", "orm-surrealdb", "orm-scout",
-    "orm-pgvector", "orm-qdrant", "orm-redis", "queue-sqlite", "queue-redis",
+    "orm-pgvector", "orm-redis", "queue-sqlite", "queue-redis",
     "cache-redis", "redis", "scheduler-tz", "storage-s3", "storage-multipart",
     "telemetry", "nexus", "nexus-ai", "nexus-tz", "studio", "auth", "auth-jwt",
     "auth-sqlite", "auth-passkey-postgres", "auth-sessions-sqlite", "auth-sessions-postgres",
@@ -48,7 +48,6 @@ orm-turso = ["orm", "rullst-orm/turso"]
 orm-surrealdb = ["orm", "rullst-orm/surrealdb"]
 orm-scout = ["orm", "rullst-orm/scout-http"]
 orm-pgvector = ["orm", "rullst-orm/pgvector"]
-orm-qdrant = ["orm", "rullst-orm/qdrant"]
 orm-redis = ["orm", "rullst-orm/redis"]
 queue-sqlite = ["rullst-core/queue-sqlite", "rullst-studio?/queue-sqlite"]
 nexus = ["dep:rullst-nexus"]

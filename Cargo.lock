@@ -5786,17 +5786,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rullst-erp-example"
-version = "13.0.0-alpha.4"
-dependencies = [
- "rullst",
- "rullst-orm",
- "serde",
- "sqlx",
- "tokio",
-]
-
-[[package]]
 name = "rullst-iot"
 version = "13.0.0-alpha.4"
 dependencies = [
@@ -6017,16 +6006,6 @@ dependencies = [
  "quote",
  "syn 3.0.9",
  "trybuild",
-]
-
-[[package]]
-name = "rullst-portfolio-example"
-version = "13.0.0-alpha.4"
-dependencies = [
- "rullst",
- "rullst-orm",
- "sqlx",
- "tokio",
 ]
 
 [[package]]

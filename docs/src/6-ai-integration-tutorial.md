@@ -1,7 +1,8 @@
 # Integrating AI into Rullst
 
-`rullst-ai` provides guarded adapters for OpenAI, Anthropic, Gemini, DeepSeek,
-Ollama, and explicitly configured OpenAI-compatible local/cloud endpoints. The
+`rullst-ai` provides guarded adapters for OpenAI, Anthropic, Gemini and
+explicitly configured OpenAI-compatible local/cloud endpoints, with presets of
+the compatible adapter for DeepSeek and Ollama. The
 high-level `AiClient` applies prompt-injection heuristics and PII masking before
 dispatch. Those controls reduce known risks; passing them does not prove that a
 prompt or model response is safe or correct.
@@ -48,8 +49,14 @@ Other built-in constructors are available under:
 
 - `providers::anthropic::AnthropicProvider`;
 - `providers::gemini::GeminiProvider`;
-- `providers::deepseek::DeepSeekProvider`;
-- `providers::ollama::OllamaProvider`.
+- `providers::openai_compatible::OpenAiCompatibleProvider::deepseek(api_key)`,
+  DeepSeek's API with the model `deepseek-flash`
+  (`.try_with_model("deepseek-v4-pro")` selects another);
+- `providers::openai_compatible::OpenAiCompatibleProvider::ollama(host, model)`,
+  an Ollama server, whose host is read like `OLLAMA_HOST`.
+
+Both presets return a `Result` (a malformed key, host or model is an
+`AiError::ConfigError`) and declare the capabilities of their service.
 
 For a local server exposing an OpenAI-compatible endpoint, declare only the
 request shapes verified for the exact model:
@@ -212,8 +219,9 @@ can still be false, malicious, stale, or unauthorized.
 `StreamingAiClient` streams guarded, bounded and cancellable (`AiCancellation`)
 output from an OpenAI-compatible configuration that declares `with_streaming()`
 and (new in v13) from Anthropic and Gemini through their native SSE
-protocols; `StreamSummary::usage()` returns the token usage the provider
-reported. The OpenAI, DeepSeek and Ollama transports do not stream. Rullst can
+protocols; the DeepSeek and Ollama presets declare streaming with usage.
+`StreamSummary::usage()` returns the token usage the provider reported. The
+native OpenAI transport does not stream. Rullst can
 host ordinary Axum SSE responses, but an application that uses a third-party
 streaming SDK owns its authentication, guardrails, backpressure, deadlines,
 cancellation, error mapping, and dependency lifecycle. Do not present that

@@ -1253,12 +1253,8 @@ pub use rullst_ai::ai::memory::StatefulChatError = enum rullst_ai::StatefulChatE
 pub use rullst_ai::ai::providers = module rullst_ai::providers
 pub use rullst_ai::ai::providers::anthropic = module rullst_ai::providers::anthropic
 pub use rullst_ai::ai::providers::anthropic::AnthropicProvider = struct rullst_ai::providers::anthropic::AnthropicProvider
-pub use rullst_ai::ai::providers::deepseek = module rullst_ai::providers::deepseek
-pub use rullst_ai::ai::providers::deepseek::DeepSeekProvider = struct rullst_ai::providers::deepseek::DeepSeekProvider
 pub use rullst_ai::ai::providers::gemini = module rullst_ai::providers::gemini
 pub use rullst_ai::ai::providers::gemini::GeminiProvider = struct rullst_ai::providers::gemini::GeminiProvider
-pub use rullst_ai::ai::providers::ollama = module rullst_ai::providers::ollama
-pub use rullst_ai::ai::providers::ollama::OllamaProvider = struct rullst_ai::providers::ollama::OllamaProvider
 pub use rullst_ai::ai::providers::openai = module rullst_ai::providers::openai
 pub use rullst_ai::ai::providers::openai::OpenAiProvider = struct rullst_ai::providers::openai::OpenAiProvider
 pub use rullst_ai::ai::providers::openai_compatible = module rullst_ai::providers::openai_compatible
@@ -1332,19 +1328,6 @@ impl core::marker::Sync for rullst_ai::providers::anthropic::AnthropicProvider
 impl core::marker::Unpin for rullst_ai::providers::anthropic::AnthropicProvider
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::providers::anthropic::AnthropicProvider
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::providers::anthropic::AnthropicProvider
-pub mod rullst_ai::providers::deepseek
-pub struct rullst_ai::providers::deepseek::DeepSeekProvider
-impl rullst_ai::providers::deepseek::DeepSeekProvider
-pub fn rullst_ai::providers::deepseek::DeepSeekProvider::new(api_key: impl core::convert::Into<alloc::string::String>) -> Self
-pub fn rullst_ai::providers::deepseek::DeepSeekProvider::with_base_url(self, base_url: impl core::convert::Into<alloc::string::String>) -> Self
-pub fn rullst_ai::providers::deepseek::DeepSeekProvider::with_model(self, model: impl core::convert::Into<alloc::string::String>) -> Self
-pub fn rullst_ai::providers::deepseek::DeepSeekProvider::with_request_timeout(self, request_timeout: core::time::Duration) -> Self
-impl rullst_ai::AiProvider for rullst_ai::providers::deepseek::DeepSeekProvider
-impl core::marker::Send for rullst_ai::providers::deepseek::DeepSeekProvider
-impl core::marker::Sync for rullst_ai::providers::deepseek::DeepSeekProvider
-impl core::marker::Unpin for rullst_ai::providers::deepseek::DeepSeekProvider
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::providers::deepseek::DeepSeekProvider
-impl core::panic::unwind_safe::UnwindSafe for rullst_ai::providers::deepseek::DeepSeekProvider
 pub mod rullst_ai::providers::gemini
 pub struct rullst_ai::providers::gemini::GeminiProvider
 impl rullst_ai::providers::gemini::GeminiProvider
@@ -1361,18 +1344,6 @@ impl core::marker::Sync for rullst_ai::providers::gemini::GeminiProvider
 impl core::marker::Unpin for rullst_ai::providers::gemini::GeminiProvider
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::providers::gemini::GeminiProvider
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::providers::gemini::GeminiProvider
-pub mod rullst_ai::providers::ollama
-pub struct rullst_ai::providers::ollama::OllamaProvider
-impl rullst_ai::providers::ollama::OllamaProvider
-pub fn rullst_ai::providers::ollama::OllamaProvider::new(host: impl core::convert::Into<alloc::string::String>, model: impl core::convert::Into<alloc::string::String>) -> Self
-pub fn rullst_ai::providers::ollama::OllamaProvider::with_embedding_model(self, model: impl core::convert::Into<alloc::string::String>) -> Self
-pub fn rullst_ai::providers::ollama::OllamaProvider::with_request_timeout(self, request_timeout: core::time::Duration) -> Self
-impl rullst_ai::AiProvider for rullst_ai::providers::ollama::OllamaProvider
-impl core::marker::Send for rullst_ai::providers::ollama::OllamaProvider
-impl core::marker::Sync for rullst_ai::providers::ollama::OllamaProvider
-impl core::marker::Unpin for rullst_ai::providers::ollama::OllamaProvider
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::providers::ollama::OllamaProvider
-impl core::panic::unwind_safe::UnwindSafe for rullst_ai::providers::ollama::OllamaProvider
 pub mod rullst_ai::providers::openai
 pub struct rullst_ai::providers::openai::OpenAiProvider
 impl rullst_ai::providers::openai::OpenAiProvider
@@ -1410,11 +1381,14 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::providers::openai_co
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::providers::openai_compatible::OpenAiCompatibleCapabilities
 pub struct rullst_ai::providers::openai_compatible::OpenAiCompatibleProvider
 impl rullst_ai::providers::openai_compatible::OpenAiCompatibleProvider
+pub fn rullst_ai::providers::openai_compatible::OpenAiCompatibleProvider::deepseek(api_key: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_ai::AiError>
 pub fn rullst_ai::providers::openai_compatible::OpenAiCompatibleProvider::mock(model: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_ai::AiError>
+pub fn rullst_ai::providers::openai_compatible::OpenAiCompatibleProvider::ollama(host: impl core::convert::Into<alloc::string::String>, model: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_ai::AiError>
 pub fn rullst_ai::providers::openai_compatible::OpenAiCompatibleProvider::try_cloud(base_url: impl core::convert::Into<alloc::string::String>, api_key: impl core::convert::Into<alloc::string::String>, model: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_ai::AiError>
 pub fn rullst_ai::providers::openai_compatible::OpenAiCompatibleProvider::try_local(base_url: impl core::convert::Into<alloc::string::String>, model: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_ai::AiError>
 pub fn rullst_ai::providers::openai_compatible::OpenAiCompatibleProvider::try_local_with_bearer(base_url: impl core::convert::Into<alloc::string::String>, api_key: impl core::convert::Into<alloc::string::String>, model: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_ai::AiError>
 pub fn rullst_ai::providers::openai_compatible::OpenAiCompatibleProvider::try_with_embedding_model(self, model: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_ai::AiError>
+pub fn rullst_ai::providers::openai_compatible::OpenAiCompatibleProvider::try_with_model(self, model: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_ai::AiError>
 pub fn rullst_ai::providers::openai_compatible::OpenAiCompatibleProvider::with_capabilities(self, capabilities: rullst_ai::providers::openai_compatible::OpenAiCompatibleCapabilities) -> Self
 pub fn rullst_ai::providers::openai_compatible::OpenAiCompatibleProvider::with_request_timeout(self, request_timeout: core::time::Duration) -> Self
 impl core::fmt::Debug for rullst_ai::providers::openai_compatible::OpenAiCompatibleProvider

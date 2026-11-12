@@ -281,7 +281,7 @@ release:
 | 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
-| 13.0.0-alpha.5 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them), `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-SERVER-FUNCTIONS-REMOVED`, `V13-FRONTEND-ADAPTERS-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-ORM-ADAPTERS-REMOVED`, `V13-MAIL-MESSAGE-REPLY-TO`, `V13-PRIVACY-CONSENT-CHOICE-MATCH`, `V13-LABS-NON-EXHAUSTIVE-MATCH`, `V13-CLI-GREEN-RENAMED` |
+| 13.0.0-alpha.5 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them), `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-SERVER-FUNCTIONS-REMOVED`, `V13-FRONTEND-ADAPTERS-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-ORM-ADAPTERS-REMOVED`, `V13-MAIL-MESSAGE-REPLY-TO`, `V13-PRIVACY-CONSENT-CHOICE-MATCH`, `V13-LABS-NON-EXHAUSTIVE-MATCH`, `V13-CLI-GREEN-RENAMED`, `V13-ACADEMY-REMOVED`, `V13-ORM-QDRANT-REMOVED`, `V13-AI-PROVIDER-PRESETS` |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -474,15 +474,15 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (23 rows);
+  application source (26 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
   the affected API, feature or configuration, which the rules locate (114 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (105 rows).
+  of inputs that previously failed) (106 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 143 rules. A row can map to several rules and a rule to
+has 146 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -714,7 +714,11 @@ the rule together.
 | Typed server functions removed | (a) must-change | `V13-SERVER-FUNCTIONS-REMOVED` | `#[server_function]` however qualified and `rullst::rpc`, `rullst::client` and `rullst::client_contract` paths (also `rullst_core::`), also in `use` groups and macro bodies, at every location; calls of the generated `<name>_rpc_router()` are not located, the compiler names them; introduced in 13.0.0-alpha.5 |
 | Frontend adapters removed | (a) must-change | `V13-FRONTEND-ADAPTERS-REMOVED` | `rullst::frontend`/`rullst_core::frontend` paths, also in `use` groups and macro bodies, at every location; introduced in 13.0.0-alpha.5 |
 | MongoDB and DuckDB adapters removed | (a) must-change | `V13-ORM-ADAPTERS-REMOVED` | The `orm-mongodb`/`orm-duckdb` (`rullst`) and `mongodb`/`duckdb` (`rullst-orm`) features in dependency declarations, renamed ones included, and in `[features]` entries; `MongoDbStore`, `DuckDbStore`, `AnalyticsRepository`, `AnalyticsRow`, `AnalyticsValue`, `AnalyticsTimeUnit` and `QueryLimit` only in files that name `polyglot`, so an application's own types with these names are left alone; `polyglot::mongodb`, `polyglot::duckdb` and `PolyglotError::Worker` paths, and `Backend::MongoDb`, `Backend::DuckDb` and `Capability::Analytics` in files that name the ORM, also in `use` groups and macro bodies, at every location; `cargo rullst new --mongodb`/`--duckdb` in scripts is not located (the command stops and names the recipe); introduced in 13.0.0-alpha.5 |
+| Qdrant adapter removed | (a) must-change | `V13-ORM-QDRANT-REMOVED` | The `orm-qdrant` (`rullst`) and `qdrant` (`rullst-orm`) features in dependency declarations and `[features]` entries; `QdrantStore`, `QdrantConfig`, `VectorRepository`, `VectorCollectionName`, `VectorDimensions`, `VectorPoint`, `VectorMatch` and `VectorQueryLimit`, and `Backend::Qdrant`/`Capability::Vectors`, in files that name `rullst_orm`, `orm::` or `polyglot` (an application's own type of such a name elsewhere is left alone), at every location; introduced in 13.0.0-alpha.5 |
 | Billing generator on Turso projects | (c) none | — | CLI behaviour on new runs; billing code generated earlier is unchanged; introduced in 13.0.0-alpha.5 |
+| Academy production preset removed | (a) must-change | `V13-ACADEMY-REMOVED` | The five distinctive `Academy*` type names and `ProductionPreset::academy`, also in `use` groups, at every location; `academy:doctor` in workflows, root scripts, Makefile and justfile, also must-change because the command exits with status 1; introduced in 13.0.0-alpha.5 |
+| ERP and Portfolio examples removed | (c) none | — | Repository examples, not framework API; copied applications keep their code; introduced in 13.0.0-alpha.5 |
+| DeepSeek and Ollama as OpenAI-compatible presets | (a) must-change | `V13-AI-PROVIDER-PRESETS` | `providers::deepseek` and `providers::ollama` paths, also in `use` groups, and the names `DeepSeekProvider` and `OllamaProvider` in files that name `rullst_ai` or `ai::providers` (an application's own type of that name elsewhere is left alone), at every location; the new construction errors and the Ollama `/v1` switch are not located; introduced in 13.0.0-alpha.5 |
 | IoT OTA manager state | (b) review | `V13-IOT-OTA-STATE` | `.current_partition`, `.status` or `.firmware_version` read or assigned (not called) in a file that names `OtaManager`, reported once per file; introduced in 13.0.0-alpha.5 |
 | IoT encoder errors | (a) must-change | `V13-IOT-CODEC-ERROR-MATCH` | A `match` whose arm patterns name `MqttCodecError` or `CoapCodecError` and that has no catch-all arm, at every location; the new `OtaError::AllocationFailed` and the verification order need no change, because `OtaError` was already `#[non_exhaustive]`; introduced in 13.0.0-alpha.5 |
 | IoT sensor card HTML | (b) review | `V13-IOT-SENSOR-CARD-HTML` | `render_sensor_card` named in Rust source, reported once per file; introduced in 13.0.0-alpha.5 |

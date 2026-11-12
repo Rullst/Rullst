@@ -131,7 +131,7 @@ pub(crate) enum Feature {
 }
 
 /// Every optional feature, in the order the wizard lists them.
-pub(crate) const FEATURES: [(Feature, &str, &str); 6] = [
+pub(crate) const FEATURES: [(Feature, &str, &str); 5] = [
     (
         Feature::Ai,
         "AI features",
@@ -156,11 +156,6 @@ pub(crate) const FEATURES: [(Feature, &str, &str); 6] = [
         Feature::Storage(PolyglotIntegration::SurrealDb),
         "SurrealDB",
         "side store: documents, read-only graph queries",
-    ),
-    (
-        Feature::Storage(PolyglotIntegration::Qdrant),
-        "Qdrant",
-        "side store: dense-vector search",
     ),
 ];
 

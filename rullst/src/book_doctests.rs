@@ -274,6 +274,7 @@ tutorial!(telemetry_guide, "../../docs/src/telemetry-guide.md");
 tutorial!(testing_your_app, "../../docs/src/testing-your-app.md");
 tutorial!(recipe_mongodb, "../../docs/src/recipes/mongodb.md");
 tutorial!(recipe_duckdb, "../../docs/src/recipes/duckdb.md");
+tutorial!(recipe_qdrant, "../../docs/src/recipes/qdrant.md");
 tutorial!(crate_ai, "../../docs/src/crates/ai.md");
 tutorial!(crate_auth, "../../docs/src/crates/auth.md");
 tutorial!(crate_capital, "../../docs/src/crates/capital.md");

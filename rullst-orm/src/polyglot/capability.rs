@@ -8,8 +8,6 @@ pub enum Backend {
     Turso,
     /// SurrealDB multi-model database through its HTTP protocol.
     SurrealDb,
-    /// Qdrant dense-vector database through its HTTP protocol.
-    Qdrant,
     /// Redis native data structures through its RESP protocol.
     Redis,
 }
@@ -26,8 +24,6 @@ pub enum Capability {
     EdgeSql,
     /// Typed relational model CRUD and bounded queries.
     RelationalModels,
-    /// Dense-vector collection lifecycle and bounded nearest-neighbor queries.
-    Vectors,
     /// Explicit hash, set, and sorted-set operations.
     KeyValueStructures,
 }

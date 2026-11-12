@@ -127,7 +127,7 @@ compile-time schema verified.
   verifies the final collection. Online snapshot isolation, cross-store
   transactions, managed backups, writer coordination and vendor operations
   remain external.
-- [x] **Advanced Vector & Key-Value Stores (bounded)**: Qdrant exposes validated dense-cosine collection/upsert/delete/query operations; Redis exposes namespaced Hash, Set and Sorted Set operations. Both select deterministic empty/`mock_*` fallbacks and pass digest-pinned live lifecycles. Named/sparse Qdrant vectors, arbitrary filters, Redis Lists/Streams and distributed topology remain outside this contract.
+- [x] **Advanced Vector & Key-Value Stores (bounded)**: Qdrant exposed validated dense-cosine collection/upsert/delete/query operations until 13.0.0-alpha.5, which replaced the adapter with the [Qdrant recipe](https://rullst.github.io/Rullst/book/recipes/qdrant.html); Redis exposes namespaced Hash, Set and Sorted Set operations. Both select deterministic empty/`mock_*` fallbacks and pass digest-pinned live lifecycles. Named/sparse Qdrant vectors, arbitrary filters, Redis Lists/Streams and distributed topology remain outside this contract.
 - [x] **Schema Visualizer**: `cargo rullst generate:diagram` emits Mermaid from statically inspected models.
 - [~] **Cascading Soft Deletes**: Marked `has_one`/`has_many` relations cascade;
   implicit deletes now create an atomic transaction when necessary and reuse
@@ -153,5 +153,5 @@ compile-time schema verified.
 - [~] **ORM Sail**: `sail:install` writes a local-development Compose starting point for Postgres, Redis, Meilisearch and pgAdmin whose published ports bind `127.0.0.1` (the credentials are fixed development defaults). It refuses to replace an existing `docker-compose.yml` unless `--force` is passed, and it does not start services or scaffold the application container.
 - [ ] **Post-Quantum Field Encryption**: No production `#[orm(encrypt_pq)]` implementation exists; custom cryptography is not recommended.
 - [ ] **Automatic Distributed Graph Traversal**: Manual CTE and bounded SurrealDB read-only GQL are separate foundations, not this capability.
-- [x] **Qdrant / Redis Datastore (bounded)**: Separate capability APIs preserve vector and key-value semantics, enforce transport/resource limits and have live matrix evidence. They are not a universal Active Record backend or cluster/failover certification.
+- [x] **Qdrant / Redis Datastore (bounded; Qdrant removed in 13.0.0-alpha.5)**: Separate capability APIs preserve vector and key-value semantics, enforce transport/resource limits and have live matrix evidence. They are not a universal Active Record backend or cluster/failover certification.
 - [x] **Edge Databases (bounded v12)**: Direct official Hrana HTTP v3 support provides parameterized Turso SQL, atomic transactions, bounded responses/materialization, checksummed migrations and a real-SQL offline fallback; transparent replicas and SQLx Active Record parity are not claimed.

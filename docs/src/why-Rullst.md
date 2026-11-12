@@ -118,9 +118,9 @@ auditing, encrypted fields, typed pgvector helpers, structured telemetry, and
 an opt-in transactional outbox.
 
 The primary relational matrix covers SQLite, PostgreSQL, MySQL, and MariaDB.
-Turso/libSQL has a separate typed primary profile. SurrealDB, Qdrant, Redis,
-and external search engines use capability-specific adapters so their
-different consistency and query models stay visible; MongoDB and DuckDB are
+Turso/libSQL has a separate typed primary profile. SurrealDB, Redis, and
+external search engines use capability-specific adapters so their different
+consistency and query models stay visible; MongoDB, DuckDB and Qdrant are
 application [recipes](recipes/index.md) over their official crates. Document
 stores share only a narrow identifier-preserving recovery boundary: a
 bounded encrypted snapshot can be rehearsed across them, while writer

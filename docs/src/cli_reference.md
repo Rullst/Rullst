@@ -34,8 +34,8 @@ all of them:
 * Human messages, progress and failures go to standard error. Exit statuses are
   the same with and without `--json`: a failed check or a refused request still
   exits non-zero, and the document is still printed when the command could
-  compute one (`doctor`, `deploy:doctor` and `academy:doctor` print their
-  report and then exit with status 1 when a check fails).
+  compute one (`doctor` and `deploy:doctor` print their report and then exit
+  with status 1 when a check fails).
 * A request that has no JSON form (for example `pkg add --json`) is refused on
   standard error with a non-zero exit status and prints nothing on standard
   output.
@@ -51,7 +51,6 @@ all of them:
 | `cargo rullst pkg list --json` | `rullst.cli-pkg.v1` |
 | `cargo rullst upgrade --dry-run --json` | `rullst.upgrade-plan.v1` |
 | `cargo rullst deploy:doctor --json` | `rullst.deployment-diagnostic.v1` |
-| `cargo rullst academy:doctor --json` | `rullst.academy-diagnostic.v1` |
 | `cargo rullst update project prepare --json` | `rullst.project-preparation-result.v1` |
 | `cargo rullst update project verify --dry-run` or `--json` | `rullst.project-verification-plan.v1` (dry run), `rullst.project-verification.v1` |
 | `cargo rullst update project review --json` | `rullst.project-review-report.v1` |
@@ -258,7 +257,7 @@ wizard. It asks, one screen at a time:
    used;
 3. the **primary database** (Turso and *No database* only for Blank and API);
 4. **optional features** (zero or more): AI, Redis adapters, Dockerfile
-   and the Turso, SurrealDB and Qdrant add-ons;
+   and the Turso and SurrealDB add-ons;
 5. a **review** of the answers, the file tree and the commands `new` will run
    (the initial migration, unless skipped or database-free), with *Create
    the project*, *Back* and *Cancel*.
@@ -282,12 +281,12 @@ APIs show a `curl` command instead).
 The choices that materially change the generated application:
 * **Starter:** Blank, API and SaaS (`--blueprint` values `blank`, `api` and
   `saas`; `api` is the Blank blueprint with `--api`). The LMS, Blog, Portfolio
-  and ERP blueprints left the CLI in 13.0.0-alpha.4 and are now complete
+  and ERP blueprints left the CLI in 13.0.0-alpha.4; LMS and Blog are complete
   applications in the repository's `examples/` directory; see
   [Starters that moved to the examples](#starters-that-moved-to-the-examples).
 * **Persistence:** a primary relational backend (SQLite, PostgreSQL, MySQL,
-  MariaDB, or bounded Turso-primary for blank/API) plus optional Turso/libSQL,
-  SurrealDB, and Qdrant capabilities. The optional selector
+  MariaDB, or bounded Turso-primary for blank/API) plus optional Turso/libSQL
+  and SurrealDB capabilities. The optional selector
   accepts zero or more choices and omits capabilities already selected by the
   primary profile or flags. Specialized adapters remain separate from SQLx
   Active Record.
@@ -337,8 +336,7 @@ The choices that materially change the generated application:
     without authentication.
   * `--turso`: Adds Turso/libSQL as a side store beside the primary database: the direct Hrana HTTP v3 adapter, checked migrations and its real-SQL offline development fallback. It does not imply transparent replication.
   * `--surrealdb`: Adds SurrealDB as a side store: HTTP document CRUD and bounded read-only graph queries.
-  * `--qdrant`: Adds Qdrant as a side store for bounded dense-vector operations and generates empty/`mock_*`-compatible environment fields; it is not the SQL primary.
-  * `--mongodb` and `--duckdb` were removed in 13.0.0-alpha.5 with their adapters: they are hidden from `--help`, and `new` stops with status 1 before writing anything and names the [MongoDB](recipes/mongodb.md) or [DuckDB](recipes/duckdb.md) recipe.
+  * `--mongodb`, `--duckdb` and `--qdrant` were removed in 13.0.0-alpha.5 with their adapters: they are hidden from `--help`, and `new` stops with status 1 before writing anything and names the [MongoDB](recipes/mongodb.md), [DuckDB](recipes/duckdb.md) or [Qdrant](recipes/qdrant.md) recipe.
   * `--nix` and `--buildah` were removed in 13.0.0-alpha.4; see [Advanced deployment](advanced-deployment.md).
   * `--default`: Skips every question and uses deterministic defaults for anything no flag sets (name `app`, Blank, SQLite, no features), intended for CI and reproducible scaffolding.
   * `--blueprint <blank|api|saas>`: Selects the starter; the wizard skips that question. `lms`, `blog`, `portfolio` and `erp` still parse but fail before anything is written, naming the example that replaced them (exit status 1).
@@ -424,13 +422,13 @@ a SaaS release build, runs every generated test target, and constructs the
 public router of each hot-reload project using offline-safe defaults. A
 separate seven-case test invokes the public `cargo rullst new` binary and
 verifies exact feature selection for SQLite, PostgreSQL, MySQL, MariaDB, AI,
-Redis, Turso, SurrealDB and Qdrant across the Blank, API and
+Redis, Turso and SurrealDB across the Blank, API and
 SaaS starters plus a polyglot profile. The invocation starts outside the source checkout, proving
 that an unpublished pre-release CLI retains its exact matching checkout as a
 path source instead of requesting unavailable registry packages.
 
 The public polyglot profile uses `cargo check` in that CLI-level set because a
-second test build adds no adapter behavior. SurrealDB, Turso and Qdrant
+second test build adds no adapter behavior. SurrealDB and Turso
 runtime behavior is exercised by their dedicated ORM matrices instead. These
 gates prove reproducible local generation and bounded offline construction;
 they do not prove provider accounts, production deployment, browser behavior
@@ -439,15 +437,14 @@ or application-specific authorization.
 #### Starters that moved to the examples
 
 Since 13.0.0-alpha.4 `cargo rullst new` offers three starters: Blank, API and
-SaaS. The other blueprints left the CLI and live on as complete applications
-in the Rullst repository, tested in its workspace:
+SaaS. The other blueprints left the CLI; complete applications in the Rullst
+repository, tested in its workspace, replace them:
 
 | Former `--blueprint` | Example | What it shows |
 | :--- | :--- | :--- |
 | `lms` | [`examples/lms`](https://github.com/Rullst/Rullst/tree/main/examples/lms) | Course catalog, modules and lessons, accessible player, enrollment, owner-bound progress, sign-in and a Nexus admin |
-| `portfolio` | [`examples/portfolio`](https://github.com/Rullst/Rullst/tree/main/examples/portfolio) | A developer portfolio edited in Nexus |
-| `erp` | [`examples/erp`](https://github.com/Rullst/Rullst/tree/main/examples/erp) | Products, stock movements and orders behind one administrator policy |
 | `blog` | [`examples/blog`](https://github.com/Rullst/Rullst/tree/main/examples/blog) | The blog showcase (a larger application than the old starter) |
+| `portfolio`, `erp` | [`examples/blog`](https://github.com/Rullst/Rullst/tree/main/examples/blog) | Their own examples were removed in 13.0.0-alpha.5; the blog example shows the same CRUD with a Nexus back office (their last version is in the `v13.0.0-alpha.4` tag) |
 
 `--blueprint lms`, `blog`, `portfolio` or `erp` still parses but fails before
 anything is written: the report names the example directory and its GitHub URL
@@ -2504,25 +2501,16 @@ passing checks. Group ids are `toolchain`, `project`, `config`, `database`,
 `config.env_keys`, `security.app_key`, ...) are stable, but a check appears
 only when it applies.
 
-### `cargo rullst academy:doctor`
-Evaluates the twelve requirements of `ProductionPreset::academy()` (identity,
-school membership, entitlements, object authorization, tenant isolation,
-assessments, score events, durable automation and audit, content safety,
-privacy and distributed abuse controls) against the declarations in a
-`rullst.academy-evidence.v1` file passed with `--evidence <file>`. It reads
-only that file and never inspects the project, so it needs no Academy
-scaffold: v13 removed the complete Academy scaffold, and the LMS example
-(the former LMS starter) has no evidence file. Without `--evidence` every requirement is
-`NOT_EVALUATED`.
-
-Each requirement is reported as `PASS`, `FAIL`, `SKIPPED` or `NOT_EVALUATED`.
-Unknown fields or requirements, a repeated requirement and a `PASS` without a
-non-empty evidence reference are rejected. `--json` prints
-`rullst.academy-diagnostic.v1` with `certification` (always `false`),
-`contract_satisfied` and each requirement's `status` and `declared_evidence`.
-The command exits with status `1` until every requirement has an evidenced
-`PASS`. Evidence strings are caller declarations, not verified proof; see the
-[Academy production-boundary diagnostic](security-architecture.md#academy-production-boundary-diagnostic).
+### `cargo rullst academy:doctor` (removed)
+Removed in 13.0.0-alpha.5 with `ProductionPreset::academy()` and the
+`Academy*` production types of `rullst-core`: the twelve-requirement checklist
+described one application's boundaries (Rullst Academy, an external
+application), not the framework's. Running it, with any arguments, prints this
+and exits with status 1; it is hidden from `--help` and completions. Keep an
+application's own production checklist in its tests or CI;
+`ProductionPreset::middleware_order()` remains the framework's ordering
+contract. See the
+[migration notes](migration-v13.md#upgrading-an-alpha4-application-to-alpha5).
 
 ---
 

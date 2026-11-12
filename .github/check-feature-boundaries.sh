@@ -89,7 +89,6 @@ rullst-orm|surrealdb
 rullst-orm|scout-http
 rullst-orm|pgvector
 rullst-orm|ai
-rullst-orm|qdrant
 rullst-core|orm
 rullst-core|drivers-all
 rullst-core|queue-sqlite
@@ -173,7 +172,6 @@ rullst|orm-turso
 rullst|orm-surrealdb
 rullst|orm-scout
 rullst|orm-pgvector
-rullst|orm-qdrant
 rullst|orm-redis
 rullst|queue-sqlite
 rullst|queue-redis

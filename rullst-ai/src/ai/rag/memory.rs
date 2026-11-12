@@ -21,7 +21,8 @@ struct IndexedDocument {
 ///
 /// This is deterministic process-local infrastructure for development, tests, and small ephemeral
 /// workloads. It is not durable or distributed. Production applications can implement
-/// [`RagRetriever`] over Rullst ORM pgvector/Qdrant while retaining the same pipeline contract.
+/// [`RagRetriever`] over Rullst ORM pgvector or their own Qdrant client while retaining the same
+/// pipeline contract.
 #[derive(Debug)]
 pub struct InMemoryRagRetriever {
     capacity: usize,

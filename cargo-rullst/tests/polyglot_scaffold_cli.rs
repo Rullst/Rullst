@@ -47,7 +47,6 @@ fn deterministic_cli_materializes_relational_and_specialized_persistence_choices
             "mariadb",
             "--turso",
             "--surrealdb",
-            "--qdrant",
             "--skip-initial-migration",
         ])
         .output()
@@ -67,7 +66,7 @@ fn deterministic_cli_materializes_relational_and_specialized_persistence_choices
         .iter()
         .filter_map(toml::Value::as_str)
         .collect::<Vec<_>>();
-    for feature in ["orm-turso", "orm-surrealdb", "orm-qdrant"] {
+    for feature in ["orm-turso", "orm-surrealdb"] {
         assert!(rullst_features.contains(&feature), "missing {feature}");
     }
     assert_eq!(
@@ -80,7 +79,6 @@ fn deterministic_cli_materializes_relational_and_specialized_persistence_choices
         "DATABASE_URL=mysql://",
         "TURSO_DATABASE_URL=mock_local",
         "SURREALDB_URL=mock_local",
-        "QDRANT_URL=mock_local",
     ] {
         assert!(environment.contains(variable), "missing {variable}");
     }
@@ -94,6 +92,7 @@ fn removed_side_store_flags_fail_before_writing_and_name_the_recipe() {
     for (flag, recipe) in [
         ("--mongodb", "book/recipes/mongodb.html"),
         ("--duckdb", "book/recipes/duckdb.html"),
+        ("--qdrant", "book/recipes/qdrant.html"),
     ] {
         let output = Command::new(env!("CARGO_BIN_EXE_rullst"))
             .current_dir(temporary.path())

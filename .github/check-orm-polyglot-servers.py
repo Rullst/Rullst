@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Mutate the ORM's optional backends against their server matrices.
 
-`orm-polyglot` reaches the SurrealDB, Qdrant, Meilisearch, Redis data and
+`orm-polyglot` reaches the SurrealDB, Meilisearch, Redis data and
 Turso adapters through mocks and loopback fakes. This contract runs
 their testcontainers matrices for every selected mutant, so the code that
 talks to a real server is measured too; a server that cannot start fails the
@@ -20,8 +20,8 @@ if SPEC is None or SPEC.loader is None:
 SERVERS = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SERVERS)
 
-FEATURES = ["drivers-all", "redis", "surrealdb", "turso", "scout-http", "qdrant"]
-MATRICES = ["matrix_surrealdb", "matrix_document_recovery", "matrix_qdrant", "matrix_meilisearch",
+FEATURES = ["drivers-all", "redis", "surrealdb", "turso", "scout-http"]
+MATRICES = ["matrix_surrealdb", "matrix_document_recovery", "matrix_meilisearch",
             "matrix_redis_data", "matrix_turso"]
 
 

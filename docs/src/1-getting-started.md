@@ -179,13 +179,13 @@ An opinionated SaaS starting point, pre-wired with:
 ### Larger example applications
 
 Up to 13.0.0-alpha.3 the CLI also generated LMS, Blog, Portfolio and ERP
-starters. Since 13.0.0-alpha.4 they are complete applications in the repository's
-[`examples/`](examples.md) directory — `examples/lms` (courses, lessons, an
-accessible player, enrollment and owner-bound progress), `examples/erp`
-(products, stock and orders), `examples/portfolio` (a developer showcase edited
-in Nexus) and the `examples/blog` showcase — tested in the workspace. Copy one
-to start a bigger application; `cargo rullst new --blueprint lms` (or `erp`,
-`portfolio`, `blog`) creates nothing and names the example instead.
+starters. The repository's [`examples/`](examples.md) directory holds the
+complete applications that replace them — `examples/lms` (courses, lessons, an
+accessible player, enrollment and owner-bound progress) and the `examples/blog`
+showcase, whose CRUD with Nexus also replaces the Portfolio and ERP examples
+removed in 13.0.0-alpha.5 — tested in the workspace. Copy one to start a bigger
+application; `cargo rullst new --blueprint lms` (or `blog`, `portfolio`, `erp`)
+creates nothing and names the example instead.
 
 ---
 
@@ -196,7 +196,7 @@ to start a bigger application; `cargo rullst new --blueprint lms` (or `erp`,
 
 ### Local Studio and Nexus access
 
-The SaaS starter (and the LMS, ERP, Portfolio and Blog examples) expose
+The SaaS starter (and the LMS and Blog examples) expose
 visible buttons for both control surfaces during local development:
 
 - **Nexus** is mounted at `/nexus` and accepts only a verified loopback peer in a
@@ -215,13 +215,11 @@ real sign-in:
   (`UPDATE users SET is_admin = TRUE WHERE email = 'you@example.com';`); that
   administrator can grant others from the Users model in Nexus. See
   [using the application's sign-in](4-rullst-nexus.md#using-the-applications-sign-in).
-- **The Portfolio and ERP examples** require unique `NEXUS_ADMIN_USERNAME` and
-  `NEXUS_ADMIN_PASSWORD` values (Basic Auth behind verified TLS). Without them
-  the application starts without `/nexus` (the ERP without its back office)
-  and prints one line naming the missing variable; see
+- **The blog example** requires unique `NEXUS_ADMIN_USERNAME` and
+  `NEXUS_ADMIN_PASSWORD` values (Basic Auth behind verified TLS) in a release
+  build and does not start without them; an application can instead start
+  without `/nexus` and print one line naming the missing variable, see
   [serving the application without Nexus](4-rullst-nexus.md#serving-the-application-without-nexus).
-  The blog example needs the same variables in a release build and does not
-  start without them.
 
 Put production Nexus behind a verified TLS boundary; do not expose Studio
 publicly. Studio has no
@@ -238,9 +236,9 @@ The wizard deliberately makes two separate decisions:
    database, through a separate adapter that has no Nexus, Studio database
    pages, `Schema` migrations, `artisan!` or SQLx query builder.
 2. Optionally add side stores: **Turso/libSQL** edge SQL, **SurrealDB**
-   documents/graph reads, **Qdrant** vectors or **Redis** structures. They use
-   their own APIs and do not replace the primary pool. For MongoDB or DuckDB,
-   use the official crate as the [recipes](recipes/index.md) show.
+   documents/graph reads or **Redis** structures. They use their own APIs and
+   do not replace the primary pool. For MongoDB, DuckDB or Qdrant, use the
+   official crate as the [recipes](recipes/index.md) show.
 
 [Database Support](database-support.md) lists what each backend works with;
 read it before you choose.

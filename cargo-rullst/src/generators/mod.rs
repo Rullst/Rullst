@@ -3,7 +3,6 @@
 use std::fs;
 use std::path::Path;
 
-pub mod academy_doctor;
 pub(crate) mod add;
 pub(crate) mod age_gate;
 pub mod ai_context;

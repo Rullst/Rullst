@@ -1,6 +1,6 @@
 //! Active Record models, a typed query builder, schema migrations and managed
 //! transactions on SQLx for SQLite, PostgreSQL and MySQL/MariaDB, with opt-in
-//! Redis, search, vector and document stores.
+//! Redis, search, pgvector and document stores.
 //!
 //! **Maturity: Core**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). The optional
@@ -11,7 +11,7 @@
 //! `drivers-all` for all three on SQLx's `Any` pool; without one,
 //! [`Orm::init`] returns an error that names the feature to enable. Other
 //! features add integrations: `redis`, `scout-http`, `pgvector`, `ai`,
-//! `qdrant`, `turso` and `surrealdb`. docs.rs builds this page with
+//! `turso` and `surrealdb`. docs.rs builds this page with
 //! `drivers-all` and every integration, and labels each item with the features
 //! it needs; a `strict-*` profile changes the pool and database type aliases to
 //! that backend's SQLx types.
@@ -114,7 +114,6 @@ pub mod intent;
     feature = "redis",
     feature = "turso",
     feature = "scout-http",
-    feature = "qdrant",
     feature = "surrealdb"
 ))]
 mod loopback;
@@ -170,11 +169,6 @@ pub use polyglot::{
     DocumentRecoveryKey, DocumentRecoveryPolicy, DocumentRecoveryReport, DocumentRepository,
     EncryptedDocumentSnapshot, MockDocumentStore, PolyglotError, export_document_snapshot,
     restore_document_snapshot,
-};
-#[cfg(feature = "qdrant")]
-pub use polyglot::{
-    QdrantConfig, QdrantStore, VectorCollectionName, VectorDimensions, VectorMatch, VectorPoint,
-    VectorQueryLimit, VectorRepository,
 };
 // Used by `#[derive(Orm)]`.
 #[doc(hidden)]

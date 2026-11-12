@@ -109,10 +109,9 @@ and the side stores have their own APIs, as
   `save_with_embedding(&rullst_ai::AiClient)` to models with an
   `#[orm(embedding_for = "...")]` field; the application must also depend on
   `rullst-ai`.
-- **Bounded Qdrant vectors:** `qdrant` keeps specialized dense-cosine
-  collection/upsert/delete/query semantics separate from SQL Active Record,
-  with resource/transport bounds, deterministic fallback, authenticated
-  protocol fixtures and a pinned live lifecycle.
+- **Qdrant:** the adapter was removed in 13.0.0-alpha.5; the
+  [Qdrant recipe](../recipes/qdrant.md) uses the official `qdrant-client`
+  crate in the application.
 - **Native Redis structures:** `redis` adds an immutable namespace and bounded
   Hash, Set and Sorted Set operations in addition to `.remember`; remote
   endpoints require TLS and live evidence covers isolation and native commands.
@@ -329,7 +328,7 @@ async fn rename(id: i32, name: String) -> Result<(), rullst_orm::Error> {
   `generate:models` (with `#[serde(skip)]`; a table with its own `snapshot`
   column keeps full-row saves), `auth`, `make:billing`,
   `make:chat-session` and the models of every `cargo rullst new` starter
-  (Blank, API and SaaS) and of the LMS, ERP and Portfolio examples. Their struct literals set
+  (Blank, API and SaaS) and of the LMS example. Their struct literals set
   `snapshot: RowSnapshot::default()`. Turso models have no dirty tracking.
   Projects generated earlier keep their models until you add the field.
 

@@ -18,7 +18,7 @@ pub(crate) struct Removed {
 
 const ALPHA5_DOCS: &str = "https://rullst.github.io/Rullst/book/migration-v13.html#upgrading-an-alpha4-application-to-alpha5";
 
-pub(crate) const REMOVED: [Removed; 4] = [
+pub(crate) const REMOVED: [Removed; 5] = [
     Removed {
         name: "ai",
         release: "13.0.0-alpha.4",
@@ -41,6 +41,12 @@ pub(crate) const REMOVED: [Removed; 4] = [
         name: "make:live",
         release: "13.0.0-alpha.5",
         instead: "Live components were removed. Send forms and clicks with htmx (`hx-post`), and push server updates with Server-Sent Events: `rullst::realtime::RealtimeSse` streams a `BroadcastManager` channel to the htmx SSE extension (`/static/htmx-ext-sse-1.9.12.js`).",
+        docs: ALPHA5_DOCS,
+    },
+    Removed {
+        name: "academy:doctor",
+        release: "13.0.0-alpha.5",
+        instead: "The Academy production-boundary checklist belonged to one application, not to the framework. Keep the application's own checklist in its tests or CI; `cargo rullst doctor` and `cargo rullst deploy:doctor` remain for the toolchain and the deployment.",
         docs: ALPHA5_DOCS,
     },
 ];

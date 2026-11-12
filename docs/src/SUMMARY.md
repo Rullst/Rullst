@@ -127,6 +127,7 @@
 - [Application-owned integrations](recipes/index.md)
   - [MongoDB with the official driver](recipes/mongodb.md)
   - [DuckDB analytics with the official crate](recipes/duckdb.md)
+  - [Qdrant vector search with the official client](recipes/qdrant.md)
 
 # Reference
 
