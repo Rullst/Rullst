@@ -41,9 +41,14 @@ A prepared version section does not establish that its tag or crates exist.
   create/get/update/delete lifecycle, upload and playback grant expiry, mode,
   HTTPS and TTL bounds, that upload-only credentials refuse playback, bounded
   listing pages and offline determinism; offline Bunny Stream, complete and
-  upload-only, passes it. The new book page "Provider Conformance Kits" lists
-  every case and walks through an application-owned provider that passes the
-  billing kit.
+  upload-only, passes it. So that an application-owned video adapter can
+  create its own grants, `rullst-media` adds `UploadGrant::new`,
+  `UploadGrant::with_declaration` and `PlaybackGrant::new`, which take the
+  adapter's `ProviderBinding` and refuse non-HTTPS or credential-bearing URLs,
+  empty or non-ASCII signatures and expiry times outside 1970 to 9999 with
+  `MediaError::InvalidInput`. The new book page "Provider Conformance Kits"
+  lists every case and walks through an application-owned payment provider
+  and video provider that pass their kits.
 - `rullst::iot_ingest` (facade feature `iot-ingest`, Experimental): a
   bounded telemetry receiver for devices on the server side.
   `TelemetryReceiver` accepts one `SensorTelemetry` JSON object or an array

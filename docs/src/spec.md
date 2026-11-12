@@ -255,7 +255,11 @@ the creation identity and applies metadata in a second request. The opt-in
 `conformance` feature (13.0.0-alpha.5) checks a `VideoProvider`, or a wrapper
 around a built-in one, with `conformance::check_video_provider`; a capability
 declared absent must return `Unsupported`
-([Provider conformance kits](provider-conformance.md)).
+([Provider conformance kits](provider-conformance.md)). Application-owned
+adapters create grants with `UploadGrant::new` and `PlaybackGrant::new`
+(13.0.0-alpha.5), which bind the adapter's library and mode and accept only
+bounded credential-free HTTPS URLs (HTTP only in `ProtocolFixture` mode),
+visible-ASCII signatures and expiry times from 1970 to 9999.
 
 Empty or `mock_*` credentials select deterministic offline behavior; mixed modes
 fail configuration. Production rejects mock or loopback-fixture capabilities.

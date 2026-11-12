@@ -191,18 +191,41 @@ capability absent, which the provider must then refuse with
 | `offline.deterministic` | in `ProviderMode::Offline`, the same grant and listing requests give the same answers (skipped in other modes) |
 | `errors.typed_no_panic` | an unknown video reads as `None`, deletes successfully and updates as `NotFound`; impossible clocks are refused |
 
-`UploadGrant` and `PlaybackGrant` have no public constructor in 13.0, so an
-adapter outside the crate can only return the grants of a built-in adapter, or
-declare upload and playback absent. The kit is therefore most often run
-against a wrapper that adds instrumentation or policy around `BunnyStream` or
-the S3 adapter. Such a wrapper must forward `list` and `upload_declared`
-explicitly: their default implementations return `Unsupported`, which
-`list.bounded` reports.
+### Worked example: an application-owned video provider
+
+An adapter creates its own grants with `UploadGrant::new` and
+`PlaybackGrant::new` (since 13.0.0-alpha.5). Both take the adapter's
+`ProviderBinding`, whose library and mode the grant records, and validate
+their input: the endpoint or URL is an absolute `https://` URL of at most
+2 KiB without credentials, fragment, spaces or control characters (plain
+`http://` only in `ProviderMode::ProtocolFixture`), the upload signature is
+1 to 4096 visible ASCII characters, and the expiry is a UTC second between
+1970 and 9999; anything else is `MediaError::InvalidInput`.
+`UploadGrant::with_declaration` adds the content type and length a declared
+upload binds. Both keep the URL or signature out of `Debug`.
+
+`ExampleVideo` is a fictitious service that signs its own upload and HLS
+URLs. The code is included from
+[`rullst-media/tests/conformance_example.rs`](https://github.com/Rullst/Rullst/blob/main/rullst-media/tests/conformance_example.rs),
+which CI runs:
 
 ```rust,ignore
-let provider = MeteredVideo::new(BunnyStream::new(config)?);
-let now = SystemClock.now()?;
-check_video_provider("bunny-metered", &provider, VideoExpectations::new(now))
-    .await
-    .assert_passed();
+{{#include ../../rullst-media/tests/conformance_example.rs:provider}}
 ```
+
+ExampleVideo grants only HLS playback, so every other kind returns
+`Unsupported`, which the `playback.grant` case accepts. It has no library
+listing, so the test declares it absent:
+
+```rust,ignore
+{{#include ../../rullst-media/tests/conformance_example.rs:check}}
+```
+
+`ListedVideo` and `VideoPage` have no public constructor, so an adapter
+outside the crate cannot implement `list` and declares listing absent with
+`without_listing()`.
+
+A wrapper that adds instrumentation or policy around `BunnyStream` or the S3
+adapter passes the kit the same way. It must forward `list` and
+`upload_declared` explicitly: their default implementations return
+`Unsupported`, which `list.bounded` reports.
