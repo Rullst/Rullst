@@ -365,6 +365,17 @@ requires HTTPS outside loopback unless cleartext is explicitly enabled, redacts
 authentication in `Debug`, streams through a configurable 1 KiB–8 MiB memory
 ceiling, and sends namespace/database headers on every scoped request.
 
+SurrealDB 3 requires the namespace and database to exist (`DEFINE NAMESPACE`,
+`DEFINE DATABASE`); against an undefined one every call fails with
+`statement returned status ERR`. `SurrealAuth::basic` authenticates root-level
+users only: SurrealDB authenticates namespace and database users over HTTP with
+extra `Surreal-Auth-NS`/`Surreal-Auth-DB` headers that the adapter does not
+send, so sign those users in through SurrealDB's `/signin` endpoint and pass the
+returned token to `SurrealAuth::bearer`. SurrealDB answers a CREATE that
+permissions deny with an empty success, so `create` fails with
+`PolyglotError::Driver` when the response contains no record, including for a
+table the user may write but not read back.
+
 Every `DocumentId` is stored as a string record key, including all-digit IDs
 such as `9` (sent as a quoted key; SurrealDB would otherwise parse them as
 numbers). Inventory pages therefore follow the portable string order, `10`
