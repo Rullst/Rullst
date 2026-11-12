@@ -4092,6 +4092,39 @@ provider](capital-custom-provider.md)); the
   negotiation, acknowledgements, retransmission/congestion control, block-wise
   transfer and interoperability matrices remain separate integration work.
 
+### 8.3. Device telemetry ingestion (`rullst::iot_ingest`, facade feature `iot-ingest`)
+* 🟢 **`[Implemented / Bounded]`, Experimental (13.0.0-alpha.5):**
+  `TelemetryReceiver<D: DeviceDirectory>` accepts one `SensorTelemetry` JSON
+  object or an array over `POST`, from devices authenticated one by one, and
+  publishes each accepted request to a `BroadcastManager` channel (default
+  `iot.telemetry`, event `telemetry`) as a JSON `TelemetryBatch`.
+* **Authentication:** each device has a bearer token (`DeviceToken`: `rdt1_`
+  plus 32 CSPRNG alphanumerics, `Debug` redacted); a `DeviceDirectory` stores
+  and looks up only its SHA-256 (`TokenHash`) and reads current state on every
+  request, so a revocation applies to the next one.
+  `TelemetryReceiver::machine_endpoint` registers the route with
+  `MachineEndpoint::verified_bearer`: one `Authorization: Bearer` header, no
+  `Cookie`, `Origin` or `Sec-Fetch-Site`, and the CSRF exemption only after
+  verification. The verifier attaches `AuthenticatedDevice`; the handler
+  answers `401` without it, so a route mounted without its machine endpoint
+  accepts nothing. A directory failure fails closed (`401` from the verifier,
+  `503` when recording the delivery).
+* **Bounds:** body (16 KiB, 256 B–1 MiB), readings per request (64,
+  1–1,024), each reading's `device_id` equal to the token's device (`403`),
+  metric 1–64 bytes of `[A-Za-z0-9._-]`, finite value, timestamp at most
+  5 minutes ahead and 24 hours old (both configurable), per-device fixed-window
+  rate (120/min; `429` with `Retry-After`) with state for at most 10,000
+  devices, and an optional `X-Rullst-Firmware` header (1–64 printable ASCII).
+  Every refusal is an `IngestError` with a stable code, a JSON body and
+  `Cache-Control: no-store`.
+* **Directories:** `MemoryDeviceDirectory` (process memory, for tests and
+  fixed lists). A persistent registry is application code over the
+  `DeviceDirectory` trait; `examples/iot-gateway` keeps it in an ORM model,
+  so no table schema is part of the framework's contract. `validate_device`
+  checks ids (1–64 bytes of `[A-Za-z0-9._-]`) and names.
+* 🔵 **`[Roadmap]`:** MQTT/CoAP ingestion, device certificates (mTLS),
+  per-device scopes, durable delivery and cross-instance fan-out.
+
 ---
 
 ## 🤖 9. AI Agent & LLM Orchestration (`rullst-ai`)

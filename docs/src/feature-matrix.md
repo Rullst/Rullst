@@ -165,6 +165,7 @@ the drivers.
 | `security` | no | RASP/WAF and application-security primitives from `rullst-security` |
 | `security-redis` | no | `security` plus the atomic Redis rate limiter |
 | `iot` | no | IoT models, frame helpers, and signed OTA verification from `rullst-iot` |
+| `iot-ingest` | no | `iot` plus `rullst::iot_ingest` (Experimental): the authenticated device telemetry receiver, its `DeviceDirectory` contract and an in-memory directory |
 | `telemetry` | no | OpenTelemetry dependencies and Core's OTLP integration |
 | `strict-postgres` | no | `orm` with the concrete PostgreSQL pool/backend selected |
 | `strict-mysql` | no | `orm` with the concrete MySQL pool/backend selected when PostgreSQL is not also selected |
