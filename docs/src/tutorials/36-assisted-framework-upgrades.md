@@ -479,7 +479,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (114 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (106 rows).
+  of inputs that previously failed) (107 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
 has 146 rules. A row can map to several rules and a rule to
@@ -715,6 +715,7 @@ the rule together.
 | Frontend adapters removed | (a) must-change | `V13-FRONTEND-ADAPTERS-REMOVED` | `rullst::frontend`/`rullst_core::frontend` paths, also in `use` groups and macro bodies, at every location; introduced in 13.0.0-alpha.5 |
 | MongoDB and DuckDB adapters removed | (a) must-change | `V13-ORM-ADAPTERS-REMOVED` | The `orm-mongodb`/`orm-duckdb` (`rullst`) and `mongodb`/`duckdb` (`rullst-orm`) features in dependency declarations, renamed ones included, and in `[features]` entries; `MongoDbStore`, `DuckDbStore`, `AnalyticsRepository`, `AnalyticsRow`, `AnalyticsValue`, `AnalyticsTimeUnit` and `QueryLimit` only in files that name `polyglot`, so an application's own types with these names are left alone; `polyglot::mongodb`, `polyglot::duckdb` and `PolyglotError::Worker` paths, and `Backend::MongoDb`, `Backend::DuckDb` and `Capability::Analytics` in files that name the ORM, also in `use` groups and macro bodies, at every location; `cargo rullst new --mongodb`/`--duckdb` in scripts is not located (the command stops and names the recipe); introduced in 13.0.0-alpha.5 |
 | Qdrant adapter removed | (a) must-change | `V13-ORM-QDRANT-REMOVED` | The `orm-qdrant` (`rullst`) and `qdrant` (`rullst-orm`) features in dependency declarations and `[features]` entries; `QdrantStore`, `QdrantConfig`, `VectorRepository`, `VectorCollectionName`, `VectorDimensions`, `VectorPoint`, `VectorMatch` and `VectorQueryLimit`, and `Backend::Qdrant`/`Capability::Vectors`, in files that name `rullst_orm`, `orm::` or `polyglot` (an application's own type of such a name elsewhere is left alone), at every location; introduced in 13.0.0-alpha.5 |
+| ORM `schema_diff` deprecated | (c) none | — | The compiler's `deprecated` warning locates each use of `rullst_orm::schema_diff`; it still compiles until 14.0; introduced in 13.0.0-alpha.5 |
 | Billing generator on Turso projects | (c) none | — | CLI behaviour on new runs; billing code generated earlier is unchanged; introduced in 13.0.0-alpha.5 |
 | Academy production preset removed | (a) must-change | `V13-ACADEMY-REMOVED` | The five distinctive `Academy*` type names and `ProductionPreset::academy`, also in `use` groups, at every location; `academy:doctor` in workflows, root scripts, Makefile and justfile, also must-change because the command exits with status 1; introduced in 13.0.0-alpha.5 |
 | ERP and Portfolio examples removed | (c) none | — | Repository examples, not framework API; copied applications keep their code; introduced in 13.0.0-alpha.5 |
