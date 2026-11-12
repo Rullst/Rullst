@@ -30,8 +30,10 @@ makes 13.0 smaller before its API is frozen:
   alpine` (Alpine.js's CSP build), `cargo rullst ui add` (accessible
   components copied into the application as Rust it owns) and
   content-hashed static asset URLs (`rullst::assets::url`, cached as
-  immutable). `html!` accepts unquoted text and the attribute names Alpine.js
-  and htmx use.
+  immutable). New applications use htmx 2.0.11 with its Server-Sent Events
+  extension (existing ones keep htmx 1.9.12 until they copy the new files),
+  and generated Dockerfiles ship pre-compressed static files. `html!` accepts
+  unquoted text and the attribute names Alpine.js and htmx use.
 - **Testing kit for applications:** new projects get a smoke test of their
   pages, a CI workflow and Dependabot; `cargo rullst add browser-tests` adds
   Playwright and axe-core checks; `rullst::testing` checks HTML hygiene and
@@ -70,7 +72,10 @@ makes 13.0 smaller before its API is frozen:
   CLI's Core tier, while `make:iot`, `iot:keygen` and `iot:sign` follow
   `rullst-iot`.
 
-The release still has twenty packages. Pin `=13.0.0-alpha.5`. Upgrade steps
+`rullst_orm::schema_diff` is deprecated and will be removed in 14.0. Core and
+Capital hash and sign with `sha2` and `hmac` instead of `ring` (which Core
+keeps only for `storage-multipart`). The release still has twenty packages.
+Pin `=13.0.0-alpha.5`. Upgrade steps
 are in the
 [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md#upgrading-an-alpha4-application-to-alpha5).
 
@@ -88,7 +93,7 @@ and `ConsentChoice`; and match `AiError::HttpStatus` where code matched
 `AiError::ApiError` for HTTP failures. In the CLI, `cargo rullst green` is
 `cargo rullst footprint`, and `make:island`, `build:client`, `make:live`,
 `academy:doctor` and `new --mongodb|--duckdb|--qdrant` exit with status 1
-and name the replacement. `cargo rullst upgrade` has 31 rules for alpha.5,
+and name the replacement. `cargo rullst upgrade` has 32 rules for alpha.5,
 15 of them must-change; while it reports a must-change finding, run it with
 `--keep-on-failure`, which applies the versions and keeps the failed state
 for you to fix.
@@ -113,19 +118,11 @@ for you to fix.
   in the Blank and API starters, with its own client, and does not work with
   the SQLx `#[derive(Orm)]`, `Schema`, `artisan!`/`db:*`, `Server::with_db`,
   Nexus, Studio's database pages or `make:billing`. Full ORM parity is not
-  planned (see the ROADMAP's decided non-goals). Two defects of its
-  repository are planned for 13.0.0-rc.1: a unique-constraint violation is
-  reported as `PolyglotError::Driver` instead of `Conflict`, and a model whose
-  `String` primary key is empty is inserted without its key, so a
-  `TEXT PRIMARY KEY` column that accepts NULL gets a row with a NULL key and
-  the call then fails.
-- Planned for 13.0.0-rc.1 as well: `rullst-orm`'s SurrealDB adapter reports a
-  failed statement or request without the server's detail (`statement
-  returned status ERR`, `HTTP status …`); its Redis data store's error
-  repeats itself (`Redis operation failed: Redis operation failed`); and the
-  standalone Studio (`rullst-studio`, `cargo rullst studio --remote`) prints
-  its address before it binds the port, so a port already in use prints the
-  address and then fails.
+  planned (see the ROADMAP's decided non-goals). Saving a model whose text
+  primary key a database `DEFAULT` fills uses an interactive Hrana stream,
+  and the client does not follow a multi-instance server (such as Turso
+  Cloud) that asks it to continue at another `base_url`, so such an insert
+  fails without writing a row; integer keys are unaffected.
 - `RUSTSEC-2026-0459` (bundled SQLite before 3.54, through `sqlx-sqlite`
   0.9.0 and every Rullst SQLite feature) and `RUSTSEC-2026-0440`
   (`astral-tokio-tar`, unmaintained, reached only through the integration
@@ -148,11 +145,9 @@ for you to fix.
   portal, usage, coupons and trials return `UnsupportedOperation`, and the
   merchant must enable external checkout ("Checkout externo") in the
   InfinitePay app first.
-- Generated starters serve their pages and static files uncompressed: the
-  generated Dockerfile builds with `cargo build`, without the `.br`/`.zst`
-  siblings that `cargo rullst build` writes and the server would serve, and
-  the generated `Caddyfile` has no `encode` directive. Compress at the proxy
-  or CDN (in Caddy, `encode zstd gzip`).
+- Generated deployments serve pages uncompressed on purpose (static files go
+  out pre-compressed): the CSRF token is not masked per response, so
+  compressing pages next to reflected input would expose it to BREACH.
 - `Generated starters in browsers`, the CI job that drives the generated
   starters and the `ui add` components in Chromium, Firefox and WebKit, is
   not a required check or a required release job yet, because of its flake
