@@ -82,7 +82,7 @@ const PROJECT_ENTRIES: [HomeEntry; 12] = [
     ),
     HomeEntry::new(
         "📏  Footprint Report         ",
-        "(cargo rullst footprint · experimental)",
+        "(cargo rullst footprint)",
         HomeAction::Command("footprint"),
     ),
     HomeEntry::new(

@@ -333,7 +333,7 @@ are revalidated with their `ETag`. Started with the development `.env`, the
 binary answered `200` on `/health`, redirected `/notes` to `/login`, and served
 `/static/rullst.css` Brotli-compressed with `no-cache` and an `ETag`.
 
-Measure the build with `cargo rullst footprint` (Experimental).
+Measure the build with `cargo rullst footprint`.
 On its own, `cargo rullst footprint --path /health` starts the release binary with
 `RULLST_ENV=production`, which the SaaS starter refuses until the production
 billing settings exist:

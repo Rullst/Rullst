@@ -38,7 +38,7 @@ In the sample application: `POST /posts`, `/posts/repository`, `/checkout`,
   hardening, and volumetric DDoS.
 - The deliberate mock credentials and offline fixtures of `examples/`
   (see `examples/blog/README.md`).
-- The Experimental-tier crates added in v13 (`rullst-privacy`, `rullst-labs`,
+- The optional crates added in v13 (`rullst-privacy`, `rullst-labs`,
   `rullst-media`, `rullst-supervision`; see [maturity tiers](maturity.md))
   unless the engagement names them.
 

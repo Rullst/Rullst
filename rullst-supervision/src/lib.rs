@@ -2,9 +2,10 @@
 //! Context constructors validate shape, not identity or guardian relationships.
 //! The host authenticates each request before calling this library.
 //!
-//! **Maturity: Experimental**
-//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). The API may
-//! change between 13.x releases. This crate is for consented, transparent exams
+//! **Maturity: Extension**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)) since
+//! 13.0.0-alpha.5: optional, and supported for its documented scope. This
+//! crate is for consented, transparent exams
 //! and parental controls over a learning application; it has no covert capture
 //! mode.
 //!

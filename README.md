@@ -207,9 +207,9 @@ How far each built-in integration has been tested:
 
 | Status | Integrations |
 | :--- | :--- |
-| **Validated with real accounts** | Stripe (real payments); InfinitePay (a real Pix payment; the adapter is still Experimental); Bunny Stream, Resend, Google sign-in and GitHub sign-in (used in production applications) |
-| **Tested in CI against servers in local containers** | PostgreSQL, MySQL and MariaDB, plus SQLite (embedded, no server); Redis (cache, queues, rate limits, ORM data structures and Redis Streams messaging); SurrealDB; Turso/libSQL (the `libsql-server` image, which is `sqld`); Meilisearch search; pgvector; S3-compatible storage (a Garage server) |
-| **Offline only: mock mode, local fixtures or a [conformance kit](https://rullst.github.io/Rullst/book/provider-conformance.html)** | AWS SES, SendPulse and SMTP mail; OpenAI, Anthropic Claude, Google Gemini and OpenAI-compatible AI endpoints (with DeepSeek and Ollama presets); Microsoft, Apple, Auth0, AWS Cognito, Facebook, X (Twitter), Discord, LinkedIn and generic OpenID Connect sign-in; the S3/R2 adapter of `rullst-media` |
+| **Validated with real accounts** | Stripe (real payments); InfinitePay (a real Pix payment); Bunny Stream, Resend, SMTP mail, Google Gemini, Google sign-in and GitHub sign-in (used in production applications); PostgreSQL and SQLite (in production in the maintainer's applications, besides CI); the OpenAI-compatible AI adapter (validated with Groq, an OpenAI-compatible provider, not with OpenAI) |
+| **Tested in CI against servers in local containers** | MySQL and MariaDB; Redis (cache, queues, rate limits, ORM data structures and Redis Streams messaging); SurrealDB; Turso/libSQL (the `libsql-server` image, which is `sqld`); Meilisearch search; pgvector; S3-compatible storage (a Garage server) |
+| **Offline only: mock mode, local fixtures or a [conformance kit](https://rullst.github.io/Rullst/book/provider-conformance.html)** | AWS SES and SendPulse mail; OpenAI and Anthropic Claude, and the DeepSeek and Ollama presets of the OpenAI-compatible adapter; Microsoft, Apple, Auth0, AWS Cognito, Facebook, X (Twitter), Discord, LinkedIn and generic OpenID Connect sign-in; the S3/R2 adapter of `rullst-media` |
 
 Other services are application code: write an adapter on the provider trait
 (payments, mail, video) or follow a
@@ -288,9 +288,10 @@ Rullst's examples have two homes:
 Rullst is a family of focused crates in one versioned workspace: v13 publishes
 20 packages with the same version, and the `rullst` facade compiles only the
 features you select. Each package has a maturity tier. *Core* packages are
-needed by every application. *Extensions* are optional and supported.
-*Experimental* packages are optional, may change between 13.x releases and are
-not validated in every scenario — experimental does not mean broken. The
+needed by every application. *Extensions* are optional and supported. Since
+13.0.0-alpha.5 no package is *Experimental* (optional, may change between 13.x
+releases); a few parts of supported packages still are, such as the S3/R2
+adapter of `rullst-media`. The
 [maturity tiers](https://rullst.github.io/Rullst/book/maturity.html) page
 defines each promise, and the
 [specification](https://rullst.github.io/Rullst/book/spec.html) records the
@@ -311,16 +312,16 @@ detailed feature and provider boundaries.
 | [rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth) | Passwords, sessions, passkeys and authorization helpers | Extension |
 | [rullst-connect](https://github.com/Rullst/Rullst/tree/main/rullst-connect) | OAuth2/OIDC identity integrations | Extension |
 | [rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai) | Guarded local/cloud clients and tenant-aware retrieval | Extension |
-| [rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital) | Billing contracts, Stripe and experimental InfinitePay adapters, webhooks | Extension |
+| [rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital) | Billing contracts, Stripe and InfinitePay adapters, webhooks | Extension |
 | [rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail) | Transactional email with Resend, AWS SES, SendPulse and SMTP transports, and delivery controls | Extension |
 | [rullst-messaging](https://github.com/Rullst/Rullst/tree/main/rullst-messaging) | Broker-neutral contracts and durable local messaging | Extension |
 | [rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio) | Local developer control room | Extension |
 | [rullst-nexus](https://github.com/Rullst/Rullst/tree/main/rullst-nexus) | Registered-model admin with explicit access policy | Extension |
-| [rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot) | Bounded no_std helpers and signed OTA verification, not device integration | Experimental |
-| [rullst-privacy](https://github.com/Rullst/Rullst/tree/main/rullst-privacy) | Proportional age-assurance policies and optional consent records | Experimental |
-| [rullst-supervision](https://github.com/Rullst/Rullst/tree/main/rullst-supervision) | Transparent exam and parental supervision contracts | Experimental |
-| [rullst-media](https://github.com/Rullst/Rullst/tree/main/rullst-media) | Private course video with Bunny Stream and an optional S3/R2 adapter | Experimental |
-| [rullst-labs](https://github.com/Rullst/Rullst/tree/main/rullst-labs) | Programming-exercise contracts; you bring the runner | Experimental |
+| [rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot) | Bounded no_std helpers and signed OTA verification, not device integration | Extension |
+| [rullst-privacy](https://github.com/Rullst/Rullst/tree/main/rullst-privacy) | Proportional age-assurance policies and optional consent records | Extension |
+| [rullst-supervision](https://github.com/Rullst/Rullst/tree/main/rullst-supervision) | Transparent exam and parental supervision contracts | Extension |
+| [rullst-media](https://github.com/Rullst/Rullst/tree/main/rullst-media) | Private course video with Bunny Stream and an optional S3/R2 adapter | Extension |
+| [rullst-labs](https://github.com/Rullst/Rullst/tree/main/rullst-labs) | Programming-exercise contracts; you bring the runner | Extension |
 
 </details>
 
@@ -515,7 +516,7 @@ list every change.
   Markdown, HTML or JSON report mapped to OWASP ASVS 5.0 Level 1, with a
   personal-data inventory and accessibility checks — evidence for a reviewer,
   not a certification ([guide](https://rullst.github.io/Rullst/book/security-report.html)).
-- **Resource figures (Experimental):** `cargo rullst footprint` reports
+- **Resource figures:** `cargo rullst footprint` reports
   measured binary and image size, idle memory, dependency count, CPU time and
   bytes per request, and a page's weight on a first and a repeat visit (on
   Linux, macOS and Windows), each with its method, and a carbon figure only as
@@ -582,8 +583,8 @@ list every change.
 <summary><strong>What v13 removed from 12.x</strong></summary>
 
 - The Omni Tauri shells (`make:omni`, `omni`) and `offline-sync`: use a PWA.
-- `rullst-capital` providers other than Stripe and the experimental
-  InfinitePay, payouts and NFS-e: use those or an application-owned adapter on
+- `rullst-capital` providers other than Stripe and InfinitePay, payouts and
+  NFS-e: use those or an application-owned adapter on
   the provider traits.
 - `rullst-mail` providers other than Resend, AWS SES, SendPulse and SMTP: write
   a `MailDriver` in your application.

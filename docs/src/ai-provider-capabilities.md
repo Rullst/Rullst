@@ -46,6 +46,16 @@ model can still reject vision, embeddings, or schema output. In particular:
   native JSON mode, JSON Schema, and SSE streaming. This reports which request shapes Rullst
   will send; it does not discover or certify model behavior.
 
+## Live validation
+
+Two transports have been used with real accounts: **Gemini**, by a production
+application, and the **OpenAI-compatible** adapter, validated with Groq. Groq
+is an OpenAI-compatible provider, so this says nothing about OpenAI's own API.
+The OpenAI and Anthropic transports and the DeepSeek and Ollama presets are
+tested offline only. Rullst's own tests stay offline in every case, and a live
+use is evidence for the requests that application sends, not for every column
+of its row.
+
 ## Vision input sources
 
 The Vision column describes provider request-shape support, not unrestricted

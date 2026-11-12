@@ -110,7 +110,7 @@ capital-mail = ["capital-pdf", "mail", "rullst-mail/capital-invoice"]
 security = ["dep:rullst-security"]
 security-redis = ["security", "rullst-security/redis-rate-limit"]
 iot = ["dep:rullst-iot"]
-# v13 (13.0.0-alpha.5), Experimental: `rullst::iot_ingest`, the authenticated
+# v13 (13.0.0-alpha.5), Extension like `rullst-iot`: `rullst::iot_ingest`, the authenticated
 # device telemetry receiver.
 iot-ingest = ["iot", "dep:sha2"]
 telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "rullst-core/telemetry"]

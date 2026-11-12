@@ -12,16 +12,19 @@
 data structures and packet encoders, and a cryptographically verified
 Over-The-Air (OTA) firmware update state machine.
 
-> **Maturity: Experimental.** The API may change between 13.x releases. One
-> board has run it: a BBC micro:bit V2 (nRF52833) passed the crate's encoder,
-> OTA and counter-store checks on 2026-11-10 ([hardware
+> **Maturity: Extension** since 13.0.0-alpha.5 ([maturity
+> tiers](../maturity.md#promotions-in-1300-alpha5)): optional, and supported
+> for the scope this page documents. A BBC micro:bit V2 (nRF52833) passed the
+> crate's encoder, OTA and counter-store checks on 2026-11-10 ([hardware
 > validation](#hardware-validation-bbc-microbit-v2)). The same day the `std`
 > telemetry, MQTT encoder and anomaly path ran end to end with an Arduino Uno
-> sensor and a Rullst gateway and dashboard, with no broker. Nothing has been
-> tested against a live broker, on another board or with external flash.
-> Experimental does not mean broken: the [module status](#module-status)
-> below separates working implementations from data models and contracts. See
-> the [maturity tiers](../maturity.md).
+> sensor and a Rullst gateway and dashboard, and on 2026-11-11 two Uno boards
+> sent telemetry through `rullst::iot_ingest` ([two-board
+> run](#two-boards-through-rullstiot_ingest)), with no broker. Network
+> transports, secure elements, flashing and bootloaders are the application's.
+> Nothing has been tested against a live broker, on another board or with
+> external flash. The [module status](#module-status) below separates working
+> implementations from data models and contracts.
 
 ---
 
@@ -108,9 +111,9 @@ The `OtaManager` enforces a **fail-closed eligibility gate**: its state machine 
 > methods `current_partition()`, `status()` and `firmware_version()`; the
 > fields of those names are private, so only verification and commit change
 > them. Code that assigned `current_partition` calls
-> `with_running_partition(bank)` instead. `rullst-iot` is
-> [Experimental](../maturity.md), which allows this break; the migration
-> guide lists it.
+> `with_running_partition(bank)` instead. `rullst-iot` was
+> [Experimental](../maturity.md) until this release, which allowed this
+> break; the migration guide lists it.
 
 ### The Cryptographic Invariant
 
@@ -217,8 +220,8 @@ platform recovery and a newer signed update.
 
 ### Signing firmware with the CLI
 
-`cargo rullst iot:keygen` and `cargo rullst iot:sign` (Experimental, since
-13.0.0-alpha.5) produce what the example above receives. On the publisher's
+`cargo rullst iot:keygen` and `cargo rullst iot:sign` (since 13.0.0-alpha.5,
+Extension tier like this crate) produce what the example above receives. On the publisher's
 machine:
 
 ```console
@@ -407,12 +410,30 @@ CI builds it for `thumbv7em-none-eabihf` and reports its size, so a `no_std`
 regression fails the build; its `src/main.rs` says how to flash it and read
 the results from the board's USB serial port.
 
+### Two boards through `rullst::iot_ingest`
+
+On 2026-11-11 two Arduino Uno boards, each flashed with the sketch of
+[`examples/iot-gateway`](https://github.com/Rullst/Rullst/tree/main/examples/iot-gateway)
+under its own device id, streamed readings at the same time. One gateway
+process per board read its USB serial port and posted the readings with that
+board's token to a server running the receiver
+[below](#receiving-telemetry-on-the-server-rullstiot_ingest) with
+`RULLST_ENV=production`; the device registry was the example's ORM table with
+a Nexus page, and a dashboard in headless Chrome showed both boards. The
+server accepted 204 posts, with no CSP violation or console error. A minute
+in, one board was revoked: all 86 later posts from its gateway were refused
+with `401`, the other board kept sending, and the dashboard showed the revoked
+board's readings frozen. Neither the tokens nor their digests appeared on the
+Nexus page. No broker or radio was involved: the boards reached their
+gateways over USB serial.
+
 ---
 
 ## Receiving telemetry on the server (`rullst::iot_ingest`)
 
 `rullst-iot` has no network code. On the server, the `rullst` facade's
-`iot-ingest` feature adds `rullst::iot_ingest` (Experimental, 13.0.0-alpha.5):
+`iot-ingest` feature adds `rullst::iot_ingest` (since 13.0.0-alpha.5, Extension
+tier like this crate):
 a `TelemetryReceiver` that accepts `SensorTelemetry` JSON from devices, each
 authenticated by its own bearer token, and publishes every accepted request
 to a realtime channel for a dashboard, a queue worker or a database writer.

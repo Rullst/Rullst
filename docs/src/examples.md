@@ -132,7 +132,7 @@ used to select a tenant.
 ## Provider fixtures
 
 The `/pricing` page uses `mock_*` credentials and performs no live checkout. It
-lists only the built-in Stripe and InfinitePay (experimental) adapters.
+lists only the built-in Stripe and InfinitePay adapters.
 
 Mock URLs and sample provider metadata are test fixtures, not a promise of live
 capability, pricing, tax treatment, or regional availability.

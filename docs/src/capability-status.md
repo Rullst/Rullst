@@ -5,8 +5,9 @@ from the root [ROADMAP](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md); 
 [capability ledger](capability-ledger.md) retain the evidence and limitations.
 The labels here deliberately do not turn partial foundations into completed
 features. Package stability is a separate question: the
-[maturity tiers](maturity.md) classify every crate as Core, Extension or
-Experimental and state what each tier promises within 13.x.
+[maturity tiers](maturity.md) classify every crate as Core or Extension (none
+has been Experimental since 13.0.0-alpha.5) and state what each tier promises
+within 13.x.
 
 ## v12 stable snapshot — 15 September 2026
 

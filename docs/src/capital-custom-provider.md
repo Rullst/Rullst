@@ -1,7 +1,7 @@
 # Writing your own payment provider
 
 Rullst Capital ships two built-in adapters: **Stripe** (supported) and
-**InfinitePay** (experimental; see
+**InfinitePay** (supported since 13.0.0-alpha.5, for one-off payments; see
 [gateways with unsigned webhooks](#gateways-with-unsigned-webhooks)).
 Every other gateway is integrated by the application through the same
 provider-neutral contracts the built-in adapters use. Version 13 removed the

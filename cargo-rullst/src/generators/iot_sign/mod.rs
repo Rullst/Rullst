@@ -1,4 +1,5 @@
-//! `cargo rullst iot:keygen` and `cargo rullst iot:sign` (Experimental).
+//! `cargo rullst iot:keygen` and `cargo rullst iot:sign` (Extension tier, like
+//! `rullst-iot`).
 //!
 //! `iot:keygen` writes an Ed25519 key pair for a firmware publisher.
 //! `iot:sign` turns a firmware image into the canonical manifest bytes and
@@ -75,7 +76,7 @@ fn path_arg(id: &'static str, help: &'static str) -> Arg {
 
 pub(crate) fn keygen_command() -> Command {
     Command::new("iot:keygen")
-        .about("Generate an Ed25519 key pair for signing rullst-iot firmware updates (Experimental)")
+        .about("Generate an Ed25519 key pair for signing rullst-iot firmware updates")
         .arg(path_arg(
             "out",
             "Secret key file to create (mode 0600 on Unix); the public key is written beside it as FILE.pub, FILE.pub.bin and FILE.pub.rs",
@@ -92,7 +93,7 @@ pub(crate) fn keygen_command() -> Command {
 
 pub(crate) fn sign_command() -> Command {
     Command::new("iot:sign")
-        .about("Sign a firmware image into a rullst-iot OTA manifest and signature (Experimental)")
+        .about("Sign a firmware image into a rullst-iot OTA manifest and signature")
         .arg(
             path_arg(
                 "key",

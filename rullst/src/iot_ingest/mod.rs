@@ -42,7 +42,7 @@
 //! migration and a Nexus admin page, and [`MemoryDeviceDirectory`] serves
 //! tests and fixed device lists.
 //!
-//! **Maturity: Experimental**, like `rullst-iot`.
+//! **Maturity: Extension** since 13.0.0-alpha.5, like `rullst-iot`.
 //!
 //! Added in v13.0.0-alpha.5.
 
