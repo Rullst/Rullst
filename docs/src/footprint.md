@@ -171,7 +171,9 @@ and what the repeat visit did. Rullst's `/static` mount already sends
 others ([static assets](tutorials/10-static-assets-and-compression.md#step-3-cache-headers)).
 
 The figures are what the app serves over loopback: a CDN, reverse proxy or
-another compression setting in production changes what users receive, and a
+another compression setting in production changes what users receive (the
+`Caddyfile` that `cargo rullst deploy` writes compresses pages with zstd or
+gzip, which the app alone does not), and a
 page that differs per user (a session, a nonce) can weigh differently for
 each visitor.
 

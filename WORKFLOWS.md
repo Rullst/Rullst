@@ -111,14 +111,15 @@ follow the [VM guide](docs/src/vm-deployment.md) (`deploy:doctor`, the
 generated `Dockerfile`, `compose.yaml` and `Caddyfile`, unmodified) and check
 `/health` over HTTPS through Caddy, the HTTPS redirect, the unpublished app
 port, the read-only root filesystem, capabilities and `no-new-privileges`,
-Caddy's trusted-proxy address, `db:migrate`, a database-backed page (SaaS:
+Caddy's trusted-proxy address, a page gzipped by Caddy and the htmx client
+served from the image's `.br`/`.zst` siblings, `db:migrate`, a database-backed page (SaaS:
 sign-up and sign-in with a Secure cookie), SQLite persistence across a
 restart, the guide's backup command and the absence of panics. Podman runs
 rootless with the unprivileged-port setting the guide documents. Full manual
 runs, the nightly run and the `vm-deployment` diagnostic run both jobs; a
 ready pull request runs them only when it changes
 `cargo-rullst/src/generators/deploy.rs`, `generators/project/docker.rs`,
-`blueprints/deploy.rs` or the check. They are not required release jobs, but a
+`generators/project/docker_static.rs`, `blueprints/deploy.rs` or the check. They are not required release jobs, but a
 failure fails the full manual run that admission requires. Real DNS, Let's
 Encrypt, provider accounts, Arm images and reboots are not covered.
 

@@ -38,9 +38,9 @@ For a plain Linux VM this writes three files and does not contact any provider:
 
 | File | Purpose |
 | :--- | :--- |
-| `Dockerfile` | Builds the release binary in a build stage (with a separate dependency-cache layer, so later builds are faster) and copies it into a small runtime image that runs as a non-root user. |
+| `Dockerfile` | Builds the release binary in a build stage (with a separate dependency-cache layer, so later builds are faster) and copies it into a small runtime image that runs as a non-root user. Another build stage writes Brotli (`.br`) and Zstandard (`.zst`) copies of the text files in `static/`, as `cargo rullst build` does, so the app sends them compressed. |
 | `compose.yaml` | Describes the two containers (your app and Caddy), the private network between them and the volumes. The app reads its settings from `.env.production` and keeps its data in the `app_data` volume. It works with `docker compose` and with `podman compose`. |
-| `Caddyfile` | Tells Caddy to serve the domain in the `DOMAIN` variable and to forward requests to the application. |
+| `Caddyfile` | Tells Caddy to serve the domain in the `DOMAIN` variable, to forward requests to the application and to compress its pages with zstd or gzip (`encode zstd gzip`). |
 
 It also adds the Caddy container's fixed address to `[security]
 trusted_proxies` in `Rullst.toml` (see section 5), and prints the next steps.
@@ -234,6 +234,17 @@ docker compose run --rm app /app/<binary-name> db:migrate
 (`<binary-name>` is your package name from `Cargo.toml`. The runtime image has
 no shell, so call the binary directly.)
 
+**Compression.** Pages and other responses the app sends uncompressed are
+compressed by Caddy (`encode zstd gzip`) for browsers that accept it. Static
+files come from the image already compressed, and Caddy passes them on
+unchanged, with their caching: content-hashed names stay `immutable`. A page
+that shows text from the request (a search term, for example) next to a secret
+such as the CSRF token can, once compressed, let an attacker who watches
+response sizes guess that secret (the BREACH attack). Rullst's CSRF token is
+the same in every response until its cookie changes, so give such a response
+`Cache-Control: no-store, no-transform`: Caddy does not compress a response
+marked `no-transform`.
+
 When the DNS record is correct and ports 80 and 443 are open, Caddy requests
 a certificate as soon as it starts, and retries until it gets one. Open
 `https://your-domain.example` in a browser. If it does not work, read
@@ -343,7 +354,9 @@ with rootless Podman (`podman compose` with podman-compose):
   settings), checked with `cargo rullst deploy:doctor`;
 - `compose up -d --build` with `DOMAIN=localhost`, so Caddy uses its own local
   certificate authority instead of Let's Encrypt;
-- `/health` over HTTPS through Caddy, the HTTP-to-HTTPS redirect, that only
+- `/health` over HTTPS through Caddy, the HTTP-to-HTTPS redirect, a page
+  gzipped by Caddy, the htmx client served from the image's `.br` and `.zst`
+  files (Blank: its content-hashed name stays `immutable`), that only
   Caddy publishes ports, Caddy's fixed address, and in both containers a
   read-only root filesystem, no capabilities except Caddy's
   `NET_BIND_SERVICE`, and `no-new-privileges`;

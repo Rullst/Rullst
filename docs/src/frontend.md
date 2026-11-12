@@ -161,7 +161,10 @@ The command, at the root of a Rullst project:
    arm64) with `ADD --checksum=sha256:…`, which refuses the file unless it
    matches; a stage on the build platform runs
    `tailwindcss --input assets/css/app.css --output /css/app.css --minify`,
-   and the runtime stage copies the result to `/app/static/app.css`. It needs
+   and the result becomes `static/app.css`: in a Dockerfile generated since
+   13.0.0-alpha.5 it is copied into the `static-assets` stage, which writes
+   its `.br`/`.zst` siblings with the other static files; in an older one the
+   runtime stage copies it to `/app/static/app.css`. It needs
    BuildKit (Docker 25 or later, `docker buildx`, or Podman 4.8 or later). A
    hand-written Dockerfile gets the stages printed instead.
 
