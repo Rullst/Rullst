@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794485607606,
+  "lastUpdate": 1794489904308,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -13295,6 +13295,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 385,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "01556989b2e9505f40d30e6e1fa620084ed92ff5",
+          "message": "Merge pull request #671 from Rullst/fix/v13-alpha5-public-explicit-key-encryption\n\nfix(orm): keep the explicit-key encryption helpers public and documented",
+          "timestamp": "2026-11-12T10:08:31-03:00",
+          "tree_id": "a01cad114fdd4c6ada74d88b066c11c9088f9223",
+          "url": "https://github.com/Rullst/Rullst/commit/01556989b2e9505f40d30e6e1fa620084ed92ff5"
+        },
+        "date": 1794489903360,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 386,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
