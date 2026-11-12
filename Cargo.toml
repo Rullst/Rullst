@@ -8,6 +8,7 @@ members = [
     "rullst-connect",
     "examples/blog",
     "examples/lms",
+    "examples/iot-gateway",
     "examples/webgpu",
     "rullst-core",
     "rullst-auth",

@@ -7,6 +7,7 @@ The repository examples and CLI starters serve different purposes:
 | `examples/blog` | Workspace integration showcase with local data, interactive demos, and offline provider fixtures. | Development-only; not a production template or compliance proof. |
 | `examples/saas` | Reproducible CLI-generated SQLite SaaS with authenticated notes, tenant membership and the same HTTP journey used in CI. | Disposable Linux development example; membership is an explicit local operator action. |
 | `examples/webgpu` | Browser wave-interference lesson served by `rullst-core`, with WebGPU rendering and a Canvas fallback. | Public read-only demo on loopback; browser output establishes no server-owned result. |
+| `examples/iot-gateway` | Arduino Uno boards streaming through per-board serial gateways and per-device tokens to `rullst::iot_ingest`, with an ORM device registry, Nexus and a live SSE dashboard. | Example to copy from; the registry table is application code, and the hardware path ran on two Unos, not a fleet. |
 | `examples/lms` | The complete application that was the LMS starter of `cargo rullst new` until 13.0.0-alpha.4, kept as a workspace member with its own tests. | An example to copy from, not a supported starter: no generator or upgrade path behind it. |
 | CLI starters (Blank, API, SaaS) | Small starting structures generated into a new project. | Generated output must be reviewed, configured, formatted, checked, and tested by the application owner. |
 
@@ -86,6 +87,19 @@ To start your own application from it, copy the directory and replace its
 `workspace = true` dependencies with the published crates (each README shows
 the line). Applications generated earlier from the LMS, Blog, Portfolio or ERP
 blueprints keep working: their code is theirs.
+
+## IoT gateway example
+
+[`examples/iot-gateway`](https://github.com/Rullst/Rullst/tree/main/examples/iot-gateway)
+turns Arduino Uno boards into authenticated telemetry sources. Each board runs
+the sketch in `sketch/` with its own device id; one gateway process per board
+reads its serial port and posts the readings with that board's token to the
+server's `rullst::iot_ingest::TelemetryReceiver`. The server keeps the device
+registry in its database (`iot_devices`, an ORM model with a migration and a
+Nexus page whose token digest is hidden), refuses revoked tokens, and pushes
+a dashboard with every device over Server-Sent Events. Its README has the
+flashing, registration and run commands; its tests run two devices through
+the production security baseline without hardware.
 
 ## Browser graphics example
 
