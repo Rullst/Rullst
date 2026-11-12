@@ -5540,9 +5540,7 @@ dependencies = [
  "chrono",
  "criterion",
  "futures-util",
- "getrandom 0.4.3",
  "insta",
- "js-sys",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
@@ -5582,9 +5580,6 @@ dependencies = [
  "urlencoding",
  "uuid",
  "validator",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]

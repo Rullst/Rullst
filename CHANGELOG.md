@@ -947,6 +947,16 @@ A prepared version section does not establish that its tag or crates exist.
   anything, and its report now points to `examples/blog`; the CI browser job
   checks the Nexus shell only. Their last version is in the `v13.0.0-alpha.4`
   tag.
+- The `rullst` facade's `wasm32`-only dependencies `wasm-bindgen`,
+  `wasm-bindgen-futures`, `web-sys`, `js-sys` and `getrandom` (with
+  `wasm_js`), left over from the removed `rullst::client`. Nothing in the
+  facade used them. The only facade features that reach `getrandom` on
+  `wasm32` (the `oauth` ones, through `rullst-connect`) also reach
+  `getrandom` 0.3, whose backend the facade never configured, so they did not
+  compile for `wasm32-unknown-unknown` before either; a `wasm32` application
+  that uses `getrandom` enables its `wasm_js` backend in its own manifest. The
+  workspace `exclude` list of `benchmark/` directories that no longer exist
+  was removed too.
 
 The [migration guide](docs/src/migration-v13.md#upgrading-an-alpha4-application-to-alpha5)
 describes each replacement.
@@ -1020,6 +1030,12 @@ describes each replacement.
   `AiError::ApiError("… returned HTTP 429 …")` by hand keep passing after the
   upgrade although providers now return `AiError::HttpStatus` (found while
   upgrading applications from alpha.4).
+- Documentation: the Cargo feature matrix did not list the `conformance`
+  features of `rullst-capital`, `rullst-mail` and `rullst-media`, Studio's
+  `local` feature or the ORM's test-only `test-util`; it now does. The fuzz
+  evidence page is in the book's table of contents, and the README features
+  and architecture panels no longer name the removed ERP and Portfolio
+  examples.
 - The `rullst-supervision` observation guide did not say that the
   `Permissions-Policy: camera=(), microphone=()` header of Rullst's staging and
   production security baseline makes the browser refuse `getUserMedia`, so a

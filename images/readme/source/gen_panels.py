@@ -34,7 +34,7 @@ h2 span{{background:linear-gradient(90deg,#ff6a1a,#f59e0b 50%,#22c55e);-webkit-b
 FEATURES = [
     ("🔐", "Secure by default", "Argon2id, sessions, passkeys, OAuth2/OIDC, CSRF, strict headers, WAF and login jail.", "#f97316"),
     ("🗄️", "Data that stays correct", "Active Record, transactions, migrations and an outbox on SQLite, PostgreSQL and MySQL.", "#22c55e"),
-    ("🧱", "Starters and examples", "Blank, API and SaaS starters, plus LMS, ERP, Portfolio and blog examples — ordinary Rust you own.", "#eab308"),
+    ("🧱", "Starters and examples", "Blank, API and SaaS starters, plus LMS and blog examples — ordinary Rust you own.", "#eab308"),
     ("🤖", "Made for AI coding", "Explicit APIs, compile-time macros, typed errors and no runtime reflection.", "#a855f7"),
     ("💳", "Payments &amp; email", "Stripe billing with signed webhooks; Resend, AWS SES, SendPulse and SMTP delivery.", "#14b8a6"),
     ("🧠", "AI built in", "OpenAI, Claude, Gemini, DeepSeek and Ollama with prompt-injection filtering and PII masking.", "#ec4899"),
@@ -82,7 +82,7 @@ LAYERS = [
 TOOLS = [("CLI &amp; generators", "cargo-rullst", "🛠️"), ("Developer control room", "rullst-studio", "📊"),
          ("Admin &amp; security radar", "rullst-nexus", "🛡️")]
 STARTERS = ["Blank", "API", "SaaS"]
-EXAMPLES = ["LMS", "ERP", "Portfolio", "Blog"]
+EXAMPLES = ["LMS", "Blog"]
 
 
 def architecture(theme: str) -> str:

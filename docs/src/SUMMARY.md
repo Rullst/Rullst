@@ -156,6 +156,7 @@
 - [🧾 Security Advisory Exceptions](security-advisory-exceptions.md)
 - [🛡️ CI/CD & Security Workflows](workflows.md)
   - [Mutation Testing Record](mutation-testing.md)
+  - [Fuzz Evidence Reuse](fuzz-evidence.md)
 - [Reproducible Crate Archives](reproducible-builds.md)
 
 # 📦 Crates Ecosystem

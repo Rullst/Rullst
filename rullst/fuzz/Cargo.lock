@@ -2390,8 +2390,6 @@ dependencies = [
  "async-trait",
  "axum",
  "chrono",
- "getrandom 0.4.3",
- "js-sys",
  "rullst-auth",
  "rullst-core",
  "rullst-macros",
@@ -2412,9 +2410,6 @@ dependencies = [
  "urlencoding",
  "uuid",
  "validator",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]
