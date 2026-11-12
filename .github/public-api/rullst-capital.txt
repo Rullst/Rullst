@@ -415,6 +415,7 @@ pub fn rullst_capital::ProviderFailure::is_retryable(&self) -> bool
 pub fn rullst_capital::ProviderFailure::kind(&self) -> rullst_capital::ProviderFailureKind
 pub fn rullst_capital::ProviderFailure::operation(&self) -> &'static str
 pub fn rullst_capital::ProviderFailure::provider(&self) -> &'static str
+pub fn rullst_capital::ProviderFailure::reason(&self) -> core::option::Option<&str>
 pub fn rullst_capital::ProviderFailure::retry_after(&self) -> core::option::Option<core::time::Duration>
 pub fn rullst_capital::ProviderFailure::status(&self) -> core::option::Option<u16>
 impl core::clone::Clone for rullst_capital::ProviderFailure
