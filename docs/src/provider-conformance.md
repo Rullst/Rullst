@@ -191,11 +191,13 @@ capability absent, which the provider must then refuse with
 | `offline.deterministic` | in `ProviderMode::Offline`, the same grant and listing requests give the same answers (skipped in other modes) |
 | `errors.typed_no_panic` | an unknown video reads as `None`, deletes successfully and updates as `NotFound`; impossible clocks are refused |
 
-An application-owned adapter can return its own grants only through a
-built-in adapter's grant types, so the kit is most often run against a wrapper
-that adds instrumentation or policy around `BunnyStream` or the S3 adapter.
-Such a wrapper must forward `list` and `upload_declared` explicitly: their
-default implementations return `Unsupported`, which `list.bounded` reports.
+`UploadGrant` and `PlaybackGrant` have no public constructor in 13.0, so an
+adapter outside the crate can only return the grants of a built-in adapter, or
+declare upload and playback absent. The kit is therefore most often run
+against a wrapper that adds instrumentation or policy around `BunnyStream` or
+the S3 adapter. Such a wrapper must forward `list` and `upload_declared`
+explicitly: their default implementations return `Unsupported`, which
+`list.bounded` reports.
 
 ```rust,ignore
 let provider = MeteredVideo::new(BunnyStream::new(config)?);

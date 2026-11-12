@@ -1259,6 +1259,89 @@ pub mod rullst_capital::checkout
 pub use rullst_capital::checkout::StripeCheckoutRequest = struct rullst_capital::StripeCheckoutRequest
 pub use rullst_capital::checkout::StripeCheckoutSession = struct rullst_capital::StripeCheckoutSession
 pub use rullst_capital::checkout::StripeCheckoutStatus = enum rullst_capital::StripeCheckoutStatus
+pub mod rullst_capital::conformance
+pub trait rullst_capital::conformance::BillingHarness: core::marker::Send + core::marker::Sync
+pub fn rullst_capital::conformance::BillingHarness::authentic_delivery(&self, request: core::option::Option<&rullst_capital::OneOffCheckoutRequest>) -> core::option::Option<rullst_capital::conformance::WebhookDelivery>
+pub fn rullst_capital::conformance::BillingHarness::one_off_request(&self) -> core::option::Option<rullst_capital::OneOffCheckoutRequest>
+pub fn rullst_capital::conformance::BillingHarness::set_source_payment(&self, request: &rullst_capital::OneOffCheckoutRequest, payment: &rullst_capital::conformance::SourcePayment) -> bool
+#[non_exhaustive] pub enum rullst_capital::conformance::CaseOutcome
+pub rullst_capital::conformance::CaseOutcome::Passed
+pub rullst_capital::conformance::CaseOutcome::Failed
+pub rullst_capital::conformance::CaseOutcome::Skipped
+impl core::clone::Clone for rullst_capital::conformance::CaseOutcome
+impl core::cmp::Eq for rullst_capital::conformance::CaseOutcome
+impl core::cmp::PartialEq for rullst_capital::conformance::CaseOutcome
+impl core::fmt::Debug for rullst_capital::conformance::CaseOutcome
+impl core::marker::Copy for rullst_capital::conformance::CaseOutcome
+impl core::marker::Send for rullst_capital::conformance::CaseOutcome
+impl core::marker::Sync for rullst_capital::conformance::CaseOutcome
+impl core::marker::Unpin for rullst_capital::conformance::CaseOutcome
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::conformance::CaseOutcome
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::conformance::CaseOutcome
+#[non_exhaustive] pub struct rullst_capital::conformance::ConformanceCase
+impl rullst_capital::conformance::ConformanceCase
+pub fn rullst_capital::conformance::ConformanceCase::detail(&self) -> &str
+pub fn rullst_capital::conformance::ConformanceCase::id(&self) -> &'static str
+pub fn rullst_capital::conformance::ConformanceCase::outcome(&self) -> rullst_capital::conformance::CaseOutcome
+impl core::clone::Clone for rullst_capital::conformance::ConformanceCase
+impl core::cmp::Eq for rullst_capital::conformance::ConformanceCase
+impl core::cmp::PartialEq for rullst_capital::conformance::ConformanceCase
+impl core::fmt::Debug for rullst_capital::conformance::ConformanceCase
+impl core::marker::Send for rullst_capital::conformance::ConformanceCase
+impl core::marker::Sync for rullst_capital::conformance::ConformanceCase
+impl core::marker::Unpin for rullst_capital::conformance::ConformanceCase
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::conformance::ConformanceCase
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::conformance::ConformanceCase
+#[non_exhaustive] pub struct rullst_capital::conformance::ConformanceReport
+impl rullst_capital::conformance::ConformanceReport
+pub fn rullst_capital::conformance::ConformanceReport::assert_passed(&self)
+pub fn rullst_capital::conformance::ConformanceReport::case(&self, id: &str) -> core::option::Option<&rullst_capital::conformance::ConformanceCase>
+pub fn rullst_capital::conformance::ConformanceReport::cases(&self) -> &[rullst_capital::conformance::ConformanceCase]
+pub fn rullst_capital::conformance::ConformanceReport::failures(&self) -> impl core::iter::traits::iterator::Iterator<Item = &rullst_capital::conformance::ConformanceCase>
+pub fn rullst_capital::conformance::ConformanceReport::passed(&self) -> bool
+pub fn rullst_capital::conformance::ConformanceReport::provider(&self) -> &str
+impl core::clone::Clone for rullst_capital::conformance::ConformanceReport
+impl core::cmp::Eq for rullst_capital::conformance::ConformanceReport
+impl core::cmp::PartialEq for rullst_capital::conformance::ConformanceReport
+impl core::fmt::Debug for rullst_capital::conformance::ConformanceReport
+impl core::fmt::Display for rullst_capital::conformance::ConformanceReport
+impl core::marker::Send for rullst_capital::conformance::ConformanceReport
+impl core::marker::Sync for rullst_capital::conformance::ConformanceReport
+impl core::marker::Unpin for rullst_capital::conformance::ConformanceReport
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::conformance::ConformanceReport
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::conformance::ConformanceReport
+#[non_exhaustive] pub struct rullst_capital::conformance::SourcePayment
+impl rullst_capital::conformance::SourcePayment
+pub fn rullst_capital::conformance::SourcePayment::amount_minor(&self) -> u64
+pub fn rullst_capital::conformance::SourcePayment::currency(&self) -> &str
+pub fn rullst_capital::conformance::SourcePayment::is_paid(&self) -> bool
+pub fn rullst_capital::conformance::SourcePayment::paid(amount_minor: u64, currency: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn rullst_capital::conformance::SourcePayment::unpaid() -> Self
+impl core::clone::Clone for rullst_capital::conformance::SourcePayment
+impl core::cmp::Eq for rullst_capital::conformance::SourcePayment
+impl core::cmp::PartialEq for rullst_capital::conformance::SourcePayment
+impl core::fmt::Debug for rullst_capital::conformance::SourcePayment
+impl core::marker::Send for rullst_capital::conformance::SourcePayment
+impl core::marker::Sync for rullst_capital::conformance::SourcePayment
+impl core::marker::Unpin for rullst_capital::conformance::SourcePayment
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::conformance::SourcePayment
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::conformance::SourcePayment
+#[non_exhaustive] pub struct rullst_capital::conformance::WebhookDelivery
+impl rullst_capital::conformance::WebhookDelivery
+pub fn rullst_capital::conformance::WebhookDelivery::headers(&self) -> &std::collections::hash::map::HashMap<alloc::string::String, alloc::string::String>
+pub fn rullst_capital::conformance::WebhookDelivery::new(payload: impl core::convert::Into<alloc::vec::Vec<u8>>) -> Self
+pub fn rullst_capital::conformance::WebhookDelivery::payload(&self) -> &[u8]
+pub fn rullst_capital::conformance::WebhookDelivery::with_header(self, name: impl core::convert::Into<alloc::string::String>, value: impl core::convert::Into<alloc::string::String>) -> Self
+impl core::clone::Clone for rullst_capital::conformance::WebhookDelivery
+impl core::cmp::Eq for rullst_capital::conformance::WebhookDelivery
+impl core::cmp::PartialEq for rullst_capital::conformance::WebhookDelivery
+impl core::fmt::Debug for rullst_capital::conformance::WebhookDelivery
+impl core::marker::Send for rullst_capital::conformance::WebhookDelivery
+impl core::marker::Sync for rullst_capital::conformance::WebhookDelivery
+impl core::marker::Unpin for rullst_capital::conformance::WebhookDelivery
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::conformance::WebhookDelivery
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::conformance::WebhookDelivery
+pub async fn rullst_capital::conformance::check_billing_provider<P, H>(provider: &P, harness: &H) -> rullst_capital::conformance::ConformanceReport where P: rullst_capital::BillingProvider + ?core::marker::Sized, H: rullst_capital::conformance::BillingHarness + ?core::marker::Sized
 pub mod rullst_capital::customer
 pub use rullst_capital::customer::StripeCustomerReceipt = struct rullst_capital::StripeCustomerReceipt
 pub use rullst_capital::customer::StripeCustomerRequest = struct rullst_capital::StripeCustomerRequest
