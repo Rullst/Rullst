@@ -561,6 +561,14 @@ describes each replacement.
 
 ### Fixed
 
+- The CI workflow `cargo rullst new` writes failed its daily `cargo audit`
+  for every application that uses SQLite, on `RUSTSEC-2026-0459` (bundled
+  SQLite through `sqlx-sqlite` 0.9), which Rullst governs as a time-bounded
+  exception but no application can fix yet. The workflow now ignores that one
+  advisory until the same expiry as Rullst's ledger, 2027-01-28, and audits
+  without the exception after it; a comment explains the exposure and says to
+  remove the exception when the application upgrades to a Rullst release that
+  updates `sqlx` (found by the 13.0.0-alpha.5 acceptance application).
 - `rullst-orm` SurrealDB adapter: `SurrealDbStore::create` reported a write
   that SurrealDB had refused. SurrealDB 3 answers a CREATE denied by
   permissions (a `VIEWER` database user, or a record user on a table with

@@ -122,7 +122,7 @@ mod tests {
             "run: cargo fmt --all -- --check",
             "run: cargo clippy --all-targets -- -D warnings",
             "run: cargo test --all-targets",
-            "run: cargo audit",
+            "            cargo audit --ignore RUSTSEC-2026-0459\n          else\n            cargo audit\n",
             "- cron: \"17 6 * * *\"",
             "fetch-depth: 0",
             "extra_args: --only-verified",
@@ -137,6 +137,33 @@ mod tests {
             3
         );
         assert!(!workflow.contains('\t') && !workflow.contains('\r'));
+    }
+
+    #[test]
+    fn the_sqlite_advisory_exception_expires_with_rullsts_own() {
+        let (_, workflow) = FILES[0];
+        // The same advisory and expiry as Rullst's ledger
+        // (docs/src/security-advisory-exceptions.md); after it the step
+        // audits without the exception.
+        assert!(workflow.contains("if [ \"$(date -u +%Y%m%d)\" -le 20270128 ]; then\n"));
+        assert_eq!(workflow.matches("--ignore").count(), 1);
+        let ledger = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../docs/src/security-advisory-exceptions.md");
+        if let Ok(ledger) = fs::read_to_string(ledger) {
+            let row = ledger
+                .lines()
+                .find(|line| line.starts_with("| `RUSTSEC-2026-0459`"))
+                .expect("the exception is governed in Rullst's ledger");
+            assert!(row.contains("2027-01-28"), "{row}");
+        }
+        for explained in [
+            "Governed exception, reviewed by Rullst until 2027-01-28",
+            "-wal",
+            "review it\n      # then",
+            "Remove the exception when you upgrade to a Rullst release that\n      # updates sqlx",
+        ] {
+            assert!(workflow.contains(explained), "{explained}");
+        }
     }
 
     #[test]
