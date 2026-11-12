@@ -620,6 +620,17 @@ describes each replacement.
   checkout ("Checkout externo") in the InfinitePay app first; until then
   `POST /links` answers 404 `external_checkout_not_enabled`, also for a tag
   that does not exist (found by the 13.0.0-alpha.5 acceptance application).
+- The Turso-primary Blank and API starters (`cargo rullst new --database
+  turso`) could not use a local libSQL server: `turso dev` and `sqld` serve
+  plain HTTP (for example `http://127.0.0.1:8080`), which `TursoConfig`
+  refuses without `allow_insecure_loopback()`, and a `libsql://` URL is sent
+  over HTTPS, so `db:migrate`, `db:status` and the server stopped with
+  "plain HTTP is limited to explicitly enabled loopback". The generated
+  `main.rs` now calls `allow_insecure_loopback()`, which accepts `http://`
+  only for `localhost` and loopback addresses; remote endpoints still need
+  `libsql://` or HTTPS. Existing projects can add the same call after
+  `with_offline_path(...)?`. Found by acceptance testing against `sqld`
+  0.24.32.
 - `cargo rullst make:privacy` and `cargo rullst make:age-gate` refused a SaaS
   project in which `cargo rullst make:mfa` had already run
   (`src/controllers/auth_controller.rs differs from the starter's`), although

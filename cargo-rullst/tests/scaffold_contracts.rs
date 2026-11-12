@@ -347,6 +347,9 @@ fn blank_turso_reads_its_settings_without_loading_dotenv() {
                 );
             }
             assert!(sources.contains("TursoOrm::init(turso).await?;"));
+            // A local `turso dev`/`sqld` serves plain HTTP on loopback; the
+            // adapter refuses it without this opt-in (loopback hosts only).
+            assert!(sources.contains(".allow_insecure_loopback();"));
         }
     }
 }
