@@ -360,7 +360,10 @@ fn cargo_audit_outcomes_are_reported_and_counted() {
     assert_eq!(audit.summary()["checks"][1]["status"], "findings");
     assert_eq!(audit.summary()["checks"][1]["count"], 2);
     let printed = format!("{}{}", audit.stdout, audit.stderr);
-    assert!(printed.contains("[FINDINGS] cargo-audit reported 2"), "{printed}");
+    assert!(
+        printed.contains("[FINDINGS] cargo-audit reported 2"),
+        "{printed}"
+    );
 }
 
 #[cfg(unix)]
