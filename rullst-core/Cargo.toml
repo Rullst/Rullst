@@ -94,13 +94,10 @@ tracing-core = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 zeroize = { workspace = true, optional = true }
 
+# `edge::spawn` and `EdgeServer::run` on `wasm32`.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = "0.2.123"
 wasm-bindgen-futures = "0.4.73"
-web-sys = { version = "0.3.100", features = ["Document", "Headers", "HtmlDocument", "Window", "Request", "RequestCredentials", "RequestInit", "RequestMode", "Response", "console"] }
-js-sys = "0.3.103"
-getrandom = { version = "0.4.2", features = ["wasm_js"] }
-uuid = { workspace = true, features = ["v4", "rng-getrandom"] }
+web-sys = { version = "0.3.100", features = ["console"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_ProcessStatus", "Win32_System_Threading"] }

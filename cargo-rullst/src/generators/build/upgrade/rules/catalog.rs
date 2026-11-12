@@ -403,7 +403,7 @@ rules! {
         "the `banned_ips`, `honeypot_route_hits` and `live_events` fields of `SecurityStore` are private since 13.0.0-alpha.5",
         "Read them with `store.active_bans()`, `store.is_banned(ip)`, `store.honeypot_route_hits()` and `store.live_events()`, which return sorted copies (events newest first).";
     ERROR_PAYLOADS: "V13-ERROR-PAYLOADS", Review, "13.0.0-alpha.5", "Rullst-owned error payloads",
-        "this error variant no longer carries a `reqwest` or `serde_json` value: `AiError::RequestError` holds `AiRequestError`, `AiError::SerializationError` `AiJsonError`, `ClientContractError::InvalidJson`/`EncodeJson` `ContractJsonError` and `TwinSyncError::Serialization` `TwinJsonError`",
+        "this error variant no longer carries a `reqwest` or `serde_json` value: `AiError::RequestError` holds `AiRequestError`, `AiError::SerializationError` `AiJsonError` and `TwinSyncError::Serialization` `TwinJsonError`",
         "Use the payload through `Display`, `source()` or its methods (`is_timeout`, `is_connect`); match `TwinSyncError` with a `_` arm. `?` no longer converts `reqwest`, `serde_json`, `base64` or `jsonwebtoken` errors into `ConnectError`, or `serde_json`/`redis` errors into `rullst_orm::Error`: map them, for example `.map_err(|error| Error::SerializationError(error.to_string()))`.";
     SECURITY_GLOBALS: "V13-SECURITY-GLOBAL-COLLECTIONS", Review, "13.0.0-alpha.5", "Security store collections",
         "`global_deception_routes()` returns `DeceptionRoutes` and `default_deception_traps()` a sorted `Vec<String>` instead of `dashmap` sets, and `global_rate_limit_store()` is private since 13.0.0-alpha.5",
@@ -426,6 +426,12 @@ rules! {
     LIVE_COMMAND_REMOVED: "V13-LIVE-COMMAND-REMOVED", Review, "13.0.0-alpha.5", "Live components removed",
         "this script runs `make:live`, which 13.0.0-alpha.5 removed; it now exits with status 1",
         "Remove the step; write the route and its `html!` fragment by hand, with `cargo rullst make:controller` for the module.";
+    SERVER_FUNCTIONS_REMOVED: "V13-SERVER-FUNCTIONS-REMOVED", MustChange, "13.0.0-alpha.5", "Typed server functions removed",
+        "`#[server_function]`, `rullst::rpc` (`RpcResult`, `RpcFailure`), its `wasm32` caller `rullst::client` and the `rullst::client_contract` envelope were removed in 13.0.0-alpha.5; this code no longer compiles",
+        "Make the function an ordinary handler registered with `routes!` (`post(\"/counter\" => increment)`) inside the CSRF layer: return an `html!` fragment for htmx (`hx-post`, `hx-target`) or `rullst::web::axum::Json` that Alpine.js reads with `fetch`, sending the CSRF token in the `X-CSRF-Token` header. Report failures with HTTP status codes, and remove the `<name>_rpc_router()` calls.";
+    FRONTEND_ADAPTERS_REMOVED: "V13-FRONTEND-ADAPTERS-REMOVED", MustChange, "13.0.0-alpha.5", "Frontend adapters removed",
+        "`rullst::frontend` (`RenderAdapter`, `HtmlAdapter`, `PicoAdapter`, `TopcoatAdapter`, `TemplateAdapter`, `LiveViewAdapter`, `WasmIslandAdapter`, `LeptosAdapter`, `DioxusAdapter`) was removed in 13.0.0-alpha.5; this code no longer compiles",
+        "Return the `Markup` of `html!` from the handler, or wrap HTML rendered elsewhere in `rullst::response::Html(...)`: each adapter only answered its string as `text/html`.";
     HTML_ALPINE_DIRECTIVE: "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE", MustChange, "13.0.0-alpha.5", "`html!` event handlers",
         "a dynamic value in an Alpine.js `x-*` attribute of `html!` no longer compiles: Alpine runs it as JavaScript",
         "Write the directive as a static string and pass the server value through a `data-*` attribute (`data-count={count}` read as `$el.dataset.count`), or render the JSON into a `<script type=\"application/json\">` data block that the component reads.";

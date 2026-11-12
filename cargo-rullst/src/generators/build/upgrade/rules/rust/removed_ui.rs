@@ -1,11 +1,16 @@
 //! The browser UI stacks 13.0.0-alpha.5 removed: Wasm islands
-//! (`V13-ISLANDS-REMOVED`) and Live components (`V13-LIVE-REMOVED`). The
-//! token stream locates their attributes (`#[island]`, `#[live_component]`,
-//! `#[live_event]`, however qualified) and every path through the framework
-//! (`rullst::live::…`, `rullst_core::island`, `use rullst::{live, …}`), in
-//! macro bodies too. Literals, so doc comments, never match.
+//! (`V13-ISLANDS-REMOVED`), Live components (`V13-LIVE-REMOVED`), typed
+//! server functions (`V13-SERVER-FUNCTIONS-REMOVED`) and the frontend
+//! adapters (`V13-FRONTEND-ADAPTERS-REMOVED`). The token stream locates their
+//! attributes (`#[island]`, `#[live_component]`, `#[live_event]`,
+//! `#[server_function]`, however qualified) and every path through the
+//! framework (`rullst::live::…`, `rullst_core::island`, `rullst::rpc`,
+//! `rullst::client_contract`, `rullst_core::frontend`, `use rullst::{live, …}`),
+//! in macro bodies too. Literals, so doc comments, never match.
 
-use super::super::catalog::{ISLANDS_REMOVED, LIVE_REMOVED};
+use super::super::catalog::{
+    FRONTEND_ADAPTERS_REMOVED, ISLANDS_REMOVED, LIVE_REMOVED, SERVER_FUNCTIONS_REMOVED,
+};
 use super::super::{Collector, Rule};
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
 
@@ -15,7 +20,18 @@ fn removed(name: &str) -> Option<&'static Rule> {
     match name {
         "island" => Some(&ISLANDS_REMOVED),
         "live" | "live_component" | "live_event" => Some(&LIVE_REMOVED),
+        "server_function" | "rpc" | "client" | "client_contract" => Some(&SERVER_FUNCTIONS_REMOVED),
+        "frontend" => Some(&FRONTEND_ADAPTERS_REMOVED),
         _ => None,
+    }
+}
+
+/// The rule of a removed attribute, by the last segment of its path. Module
+/// names are not attributes: `#[rpc(server)]` belongs to other crates.
+fn removed_attribute(name: &str) -> Option<&'static Rule> {
+    match name {
+        "rpc" | "client" | "client_contract" | "frontend" => None,
+        _ => removed(name),
     }
 }
 
@@ -84,7 +100,7 @@ fn attribute(stream: TokenStream, out: &mut Collector) {
         }
     }
     if let Some(ident) = last
-        && let Some(rule) = removed(&ident.to_string())
+        && let Some(rule) = removed_attribute(&ident.to_string())
     {
         out.add(rule, ident.span().start().line);
     }

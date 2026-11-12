@@ -99,7 +99,7 @@ jobs:
             -p rullst-orm-macros --lib \
             generated_runtime_code_has_no_panicking_calls
 
-      - name: Run Clippy (Deny Panics) — Wasm client path
+      - name: Run Clippy (Deny Panics) — Core on wasm32
         run: |
           cargo clippy \
             -p rullst-core \

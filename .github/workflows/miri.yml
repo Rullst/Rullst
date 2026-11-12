@@ -36,9 +36,9 @@ jobs:
           - scope: rullst-core/security baseline
             manifest: rullst-core/Cargo.toml
             filter: security::baseline::tests
-          - scope: rullst-macros/RPC expansion
+          - scope: rullst-macros/require_role expansion
             manifest: rullst-macros/Cargo.toml
-            filter: server_function::tests
+            filter: require_role_tests
           - scope: rullst-orm/privacy envelopes
             manifest: rullst-orm/Cargo.toml
             filter: privacy::tests

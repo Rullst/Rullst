@@ -1,7 +1,7 @@
 use rullst::{routes, Router, response::IntoResponse};
 use serde::Serialize;
 
-__MIGRATIONS_MOD_DECLARATION____CLIENT_MODULES__
+__MIGRATIONS_MOD_DECLARATION__
 
 __DB_MODEL_CODE__
 

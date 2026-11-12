@@ -68,7 +68,6 @@
 - [49. Bounded Brokered Messaging](tutorials/49-brokered-messaging.md)
 - [50. Auditable Revisions](tutorials/50-auditable-revisions.md)
 - [51. Supervised Development Auto-Reload](tutorials/51-authenticated-hot-reload.md)
-- [52. Typed Server Functions](tutorials/52-typed-server-functions.md)
 
 # Guides
 

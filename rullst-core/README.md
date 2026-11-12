@@ -10,11 +10,6 @@ Server-Sent Events, i18n and process telemetry. The `rullst` facade re-exports i
 ## ✨ Features
 
 - **Typed Axum Integration:** Wraps Axum routing while retaining access to the underlying router and middleware ecosystem.
-- **Bounded Server Functions:** `#[server_function]` shares the versioned
-  `rullst.client` v1 envelope between native Axum routes and Wasm callers, with
-  a 256 KiB body ceiling, correlation checks, same-origin paths, CSRF header
-  forwarding, and message-free typed failures. Identity and domain policy stay
-  server-owned.
 - **Translations and Locales (v13):** `rullst::i18n::catalog!` loads one
   TOML catalog per locale at compile time and fails the build on missing keys
   or mismatched placeholders; the generated `t!` returns text that `html!`
