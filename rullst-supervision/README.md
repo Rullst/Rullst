@@ -9,8 +9,11 @@ resource authorization and independent guardian/reviewer verification.
 `exam` provides typed sessions, explicit collection categories and browser/capture
 observations. `parental` provides course/window policies. `sqlite` selects both
 and the shared-local durable adapter. Optional `analysis` defines bounded camera
-presence/audio activity adapters; combining it with `sqlite` adds authorization,
-concurrency leases and deadline checks around invocation. There are no default
+presence/audio activity adapters (frames, audio or, since 13.0.0-alpha.5,
+brightness statistics with no image and loudness statistics with no audio;
+camera findings include `Obscured`);
+combining it with `sqlite` adds authorization, concurrency leases and deadline
+checks around invocation. There are no default
 features or Core dependencies. Pin the prerelease exactly, for example
 `rullst-supervision = { version = "=13.0.0-alpha.4", features = ["sqlite"] }`.
 

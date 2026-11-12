@@ -129,11 +129,8 @@ import tomllib
 from pathlib import Path
 
 manifest = tomllib.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-# This consumer resolves its graph fresh, as a new application does. crates.io
-# yanked every zip release before 9.0.3, and libduckdb-sys still requires zip 6,
-# so `orm-duckdb` cannot resolve without an existing lockfile (CHANGELOG known
-# limitation). The workspace's locked builds keep compiling DuckDB.
-unresolvable = {"default", "orm-duckdb"}
+# This consumer resolves its graph fresh, as a new application does.
+unresolvable = {"default"}
 features = sorted(name for name in manifest.get("features", {}) if name not in unresolvable)
 if not features:
     raise SystemExit("packaged rullst manifest has no public features")
@@ -480,8 +477,8 @@ if [ ! -x "$rullst_bin" ]; then
 fi
 "$rullst_bin" --version
 
-# `green` is part of the installed CLI since 13.0.0-alpha.4.
-"$rullst_bin" green --help > /dev/null
+# `footprint` is part of the installed CLI (`green` in 13.0.0-alpha.4).
+"$rullst_bin" footprint --help > /dev/null
 
 # The CLI's starters since 13.0.0-alpha.4; LMS and Blog are repository
 # examples (Portfolio and ERP point to the blog example), and asking for one

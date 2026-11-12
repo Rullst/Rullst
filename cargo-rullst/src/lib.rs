@@ -90,8 +90,8 @@ fn run_command(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     {
         // Reached only when a global flag precedes the subcommand.
         return Err(cli::removed::report(name));
-    } else if let Some(green) = matches.subcommand_matches("green") {
-        generators::green::run(green)?;
+    } else if let Some(footprint) = matches.subcommand_matches("footprint") {
+        generators::footprint::run(footprint)?;
     } else if let Some(keygen) = matches.subcommand_matches("iot:keygen") {
         generators::iot_sign::run_keygen(keygen)?;
     } else if let Some(sign) = matches.subcommand_matches("iot:sign") {
@@ -145,7 +145,7 @@ pub(crate) fn command() -> clap::Command {
         .subcommand(generators::oauth::command())
         .subcommand(generators::api_contract::command())
         .subcommand(generators::deploy_doctor::command())
-        .subcommand(generators::green::command())
+        .subcommand(generators::footprint::command())
         .subcommand(generators::iot_sign::keygen_command())
         .subcommand(generators::iot_sign::sign_command())
         .subcommands(cli::removed::commands())

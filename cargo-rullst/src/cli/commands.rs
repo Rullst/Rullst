@@ -47,11 +47,11 @@ pub enum Commands {
         /// Adds Turso/libSQL as a side store (edge SQL) beside the primary database
         #[arg(long)]
         turso: bool,
-        /// Adds MongoDB as a side store (document CRUD)
-        #[arg(long)]
+        /// Removed in 13.0.0-alpha.5; always rejected with the MongoDB recipe
+        #[arg(long, hide = true)]
         mongodb: bool,
-        /// Adds DuckDB as a side store (in-process analytics; longer first build)
-        #[arg(long)]
+        /// Removed in 13.0.0-alpha.5; always rejected with the DuckDB recipe
+        #[arg(long, hide = true)]
         duckdb: bool,
         /// Adds SurrealDB as a side store (documents and read-only graph queries)
         #[arg(long)]

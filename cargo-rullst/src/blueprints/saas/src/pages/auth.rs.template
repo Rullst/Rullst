@@ -157,14 +157,15 @@ pub fn dashboard_page(user_name: &str, csrf_token: &str, csp_nonce: &str) -> Htm
          <style nonce="__RULLST_CSP_NONCE__">
          * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
          body { background: #0b0f19; color: #f3f4f6; min-height: 100vh; padding: 2rem; }
-         .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; max-width: 1200px; margin: 0 auto 3rem auto; }
+         .topbar { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto 3rem auto; }
+         .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
          .logo { font-size: 1.5rem; font-weight: 800; color: #10b981; }
          .container { max-width: 1200px; margin: 0 auto; }
          .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
          .card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-radius: 1rem; padding: 2rem; }
          .btn-logout { background: #dc2626; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.9rem; border: 0; cursor: pointer; }
-         .logout-form { display: inline; }
-         .btn-nexus { background: #1e293b; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem; border: 1px solid #374151; margin-right: 0.75rem; }
+         .logout-form { display: inline-block; }
+         .btn-nexus { display: inline-block; background: #1e293b; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem; border: 1px solid #374151; }
          .muted { color: #9ca3af; margin-top: 0.5rem; }
          .small { font-size: 0.85rem; }
          .metric { font-size: 1.5rem; font-weight: 700; }
@@ -172,10 +173,11 @@ pub fn dashboard_page(user_name: &str, csrf_token: &str, csp_nonce: &str) -> Htm
          .subscription { color: #10b981; }
          .performance { color: #38bdf8; }
          .security { color: #a855f7; }
+         @media (max-width: 600px) { body { padding: 1rem; } h1 { font-size: 1.6rem; } .card { padding: 1.25rem; } }
          </style></head><body>
          <header class="topbar">
            <div class="logo">⚡ Rullst SaaS Dashboard</div>
-           <div>
+           <div class="actions">
              <a href="/nexus" class="btn-nexus">⚙️ Nexus CMS</a>
              <a href="http://127.0.0.1:5555" target="_blank" class="btn-nexus">📊 Local Studio</a>
              <a href="/password/change" class="btn-nexus">🔑 Change password</a>

@@ -190,7 +190,7 @@ fn json_dry_run_is_versioned_and_machine_readable() {
     assert_eq!(report["source_findings"], serde_json::json!([]));
     assert_eq!(
         report["finding_counts"],
-        serde_json::json!({"must_change": 0, "review": 0})
+        serde_json::json!({"must_change": 0, "review": 0, "reviewed": 0})
     );
     assert_eq!(report["unscanned_sources"], serde_json::json!([]));
     // A v12 application is planned with every rule.
@@ -246,7 +246,7 @@ fn json_findings_extend_the_v1_schema_with_kind_and_migration_row() {
     );
     assert_eq!(
         report["finding_counts"],
-        serde_json::json!({"must_change": 1, "review": 1})
+        serde_json::json!({"must_change": 1, "review": 1, "reviewed": 0})
     );
     assert_eq!(
         report["unscanned_sources"],

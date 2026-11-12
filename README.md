@@ -474,11 +474,12 @@ list every change.
   Markdown, HTML or JSON report mapped to OWASP ASVS 5.0 Level 1, with a
   personal-data inventory and accessibility checks — evidence for a reviewer,
   not a certification ([guide](https://rullst.github.io/Rullst/book/security-report.html)).
-- **Efficiency figures (Experimental):** `cargo rullst green` reports measured
-  binary and image size, idle memory, dependency count and CPU time per
-  request (idle memory and CPU time on Linux only, since they read `/proc`),
-  each with its method, and a carbon figure only as a labelled SCI
-  estimate from your own inputs ([guide](https://rullst.github.io/Rullst/book/green.html)).
+- **Resource figures (Experimental):** `cargo rullst footprint` reports
+  measured binary and image size, idle memory, dependency count, CPU time and
+  bytes per request, and a page's weight on a first and a repeat visit (on
+  Linux, macOS and Windows), each with its method, and a carbon figure only as
+  a labelled SCI estimate from your own inputs: a measurement and an estimate,
+  not a certification or an environmental claim ([guide](https://rullst.github.io/Rullst/book/footprint.html)).
 - **For AI assistants:** every `--json` output follows one contract with a
   `schema` id, the site publishes `llms.txt` and `llms-full.txt`, and the
   development error page gives your own assistant a ready prompt.

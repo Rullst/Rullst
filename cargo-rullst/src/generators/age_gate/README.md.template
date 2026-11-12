@@ -23,9 +23,13 @@ Configure these server-only variables through the deployment secret manager:
   connection URL matching the generated `__PROFILE__` profile. All instances
   share the same authoritative store and fixed 10,000-live-claim capacity.
 
-Initialize PostgreSQL once in a deployment step with
-`PostgresReplayStore::initialize(url, 10_000)`; application startup uses `connect`
-and does not create/repair state. SQLite creates its file in an existing private
+Initialize PostgreSQL once in a deployment step: with `--replay-store postgres`
+the generator writes `src/bin/age-init.rs`, so run
+`cargo run --bin age-init` (or the built `age-init` binary) with
+`RULLST_AGE_REPLAY_DATABASE` exported. It calls
+`PostgresReplayStore::initialize(url, 10_000)`, which creates only an absent
+schema and validates an existing one; application startup uses `connect` and
+does not create/repair state. SQLite creates its file in an existing private
 directory and is supported only on one host, never on a network filesystem.
 Remote PostgreSQL verifies TLS; replication/failover, clocks, permissions,
 backups and durable hardware remain operator responsibilities. A restored old

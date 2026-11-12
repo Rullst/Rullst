@@ -75,6 +75,27 @@ Enable `analysis` plus `sqlite` to call `SqliteSupervision::analyze`. The
 - `MediaSample`: borrowed JPEG/PNG bytes up to 1 MiB, or up to five seconds of
   mono 16 kHz signed 16-bit little-endian PCM (160,000 bytes). Signature/length
   checks do not decode, establish media validity or bind it to a learner.
+  Since 13.0.0-alpha.5, `MediaSample::luminance(LuminanceStatistics::new(mean,
+  standard_deviation, samples)?)` carries only a frame's brightness
+  statistics (0–255 scale; `samples` is how many luminance values they
+  summarize, at most 16,777,216) and no bytes, for a camera-presence adapter
+  that needs no image: the browser computes them and no frame leaves it.
+  Ranges are checked; like any client report, the values can be forged.
+  `luminance_statistics()` returns them to the adapter.
+- Since 13.0.0-alpha.5, `MediaSample::loudness(LoudnessStatistics::new(mean_dbfs,
+  peak_dbfs, active_fraction, window_ms)?)` is the audio counterpart, for an
+  audio-activity adapter that needs no audio. The browser measures the RMS
+  level of short frames of up to five seconds of microphone input (the length
+  of the longest PCM sample) and sends four numbers: the mean and the loudest
+  frame level in dBFS (`-120` to 0, mean not above peak; report quieter frames
+  and digital silence as `-120`), the share of frames above its own activity
+  threshold (0–1) and the window length in milliseconds (1 to 5,000). No
+  sample leaves the browser, and `loudness_statistics()` returns the numbers to
+  the adapter, which must know the client's frame length and threshold. Ranges
+  are checked, NaN and infinite values refused; the values can be forged too.
+  A statistics sample goes only to an adapter of its kind: brightness to camera
+  presence, loudness to audio activity; any other pairing is `InvalidInput`
+  before the adapter runs.
 - `AnalysisOptions`: a 1–15 second orchestration timeout. Simulated adapters are
   rejected unless `allow_simulated_for_testing()` is explicitly selected.
 
@@ -88,7 +109,24 @@ The framework stores only typed findings and source metadata, with no raw media.
 The caller owns capture and transient sample lifetime and must stop/release its
 media tracks when permission is revoked, paused or ended.
 
-Camera results are person detected, no person detected or inconclusive. Audio
+The page that captures must also be allowed to ask for the device. Rullst's
+staging and production security headers send
+`Permissions-Policy: camera=(), microphone=(), …`, under which the browser
+refuses `getUserMedia` (`NotAllowedError`) before showing any prompt.
+Development sends no such header, so the problem first appears after
+deployment. Allow only the device you capture, and only on the capture page's
+response, for example
+`Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()`
+for camera presence. With `Server`'s baseline, a header the handler sets wins.
+`rullst_security::SecureHeadersLayer` replaces it with its configured value
+instead, so serve the capture page from a router whose
+`SecureHeadersLayer::with_config` sets that `permissions_policy`, and do not
+also wrap it in an application-wide `SecureHeadersLayer`. Keep the default
+everywhere else.
+
+Camera results are person detected, no person detected, inconclusive or, since
+13.0.0-alpha.5, obscured (`PresenceObservation::Obscured`, `camera_obscured`:
+the view is covered, dark or blocked, which says nothing about why). Audio
 results are speech detected, no speech detected or inconclusive. A detector
 failure returns `AnalysisUnavailable`; it must not become a negative observation.
 No result identifies a person, speaker, emotion, intent, supplied answer or
@@ -131,6 +169,16 @@ with a new independently retained deployment epoch and independently re-establis
 authority/restrictions. A fresh store has no parental enrollment, so provision
 required restrictions before allowing protected learning. Do not delete old state
 or change only its epoch to bypass refusal. There is no live upgrade tool yet.
+
+Stores created from 13.0.0-alpha.5 accept observation codes up to 63, so
+`camera_obscured` (code 28) and later observation kinds fit. A v2 store
+created earlier opens and works unchanged; recording `Obscured` in it returns
+`Configuration` until the host calls `SqliteSupervision::upgrade_event_schema`
+once. That call rebuilds the events table in one transaction, copies every row
+unchanged and keeps the configuration and retention; it returns `false` when
+the store is already current. Afterwards the file no longer opens with
+13.0.0-alpha.4 or earlier, so upgrade every process that shares it first and
+keep a backup. Opening a store never rebuilds it.
 
 `observations` returns at most 100 retained entries per page to the learner or a
 currently authorized exam reviewer. `events` preserves the legacy visibility-only

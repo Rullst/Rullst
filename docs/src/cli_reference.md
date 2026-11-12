@@ -15,7 +15,7 @@ cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
 
 `cargo-rullst` is a Core package. Four commands carry their own **Maturity**
 label below the command name, *Experimental*: `make:iot`, `iot:keygen`,
-`iot:sign` and `green`. The
+`iot:sign` and `footprint`. The
 [maturity tiers](maturity.md#cli-generators) page explains what the label
 promises.
 
@@ -55,7 +55,7 @@ all of them:
 | `cargo rullst update project verify --dry-run` or `--json` | `rullst.project-verification-plan.v1` (dry run), `rullst.project-verification.v1` |
 | `cargo rullst update project review --json` | `rullst.project-review-report.v1` |
 | `cargo rullst update project apply --json` and `recover --json` | `rullst.project-application.v1` |
-| `cargo rullst green --json` (experimental) | `rullst.green.v1` |
+| `cargo rullst footprint --json` (experimental) | `rullst.footprint.v1` |
 
 `pkg list --json` prints `{"schema": "rullst.cli-pkg.v1", "table":
 "dependencies", "packages": ["rullst-auth"]}`; `table` is
@@ -83,8 +83,8 @@ and a summary of where you are.
   Turso-primary project), the number of `src/migrations` files and the latest
   one, and the Git branch. Connection URLs are never displayed. The menu leads
   with dev, dash, scaffolding, database, `doctor` and deploy, keeps every
-  project operation of earlier releases, and offers **Green Report**
-  ([`cargo rullst green`](#cargo-rullst-green), Experimental). Started from a
+  project operation of earlier releases, and offers **Footprint Report**
+  ([`cargo rullst footprint`](#cargo-rullst-footprint), Experimental). Started from a
   subdirectory, menu
   commands run at the project root (except `new`). The migration count is the
   files on disk; run `cargo rullst db:status` for the applied state.
@@ -257,7 +257,7 @@ wizard. It asks, one screen at a time:
    used;
 3. the **primary database** (Turso and *No database* only for Blank and API);
 4. **optional features** (zero or more): AI, Redis adapters, Dockerfile
-   and the Turso, MongoDB, DuckDB, SurrealDB and Qdrant add-ons;
+   and the Turso, SurrealDB and Qdrant add-ons;
 5. a **review** of the answers, the file tree and the commands `new` will run
    (the initial migration, unless skipped or database-free), with *Create
    the project*, *Back* and *Cancel*.
@@ -286,7 +286,7 @@ The choices that materially change the generated application:
   [Starters that moved to the examples](#starters-that-moved-to-the-examples).
 * **Persistence:** a primary relational backend (SQLite, PostgreSQL, MySQL,
   MariaDB, or bounded Turso-primary for blank/API) plus optional Turso/libSQL,
-  MongoDB, DuckDB, SurrealDB, and Qdrant capabilities. The optional selector
+  SurrealDB, and Qdrant capabilities. The optional selector
   accepts zero or more choices and omits capabilities already selected by the
   primary profile or flags. Specialized adapters remain separate from SQLx
   Active Record.
@@ -335,10 +335,9 @@ The choices that materially change the generated application:
     used by `make:k8s` manifests and the `deploy` Caddyfile answer `200`
     without authentication.
   * `--turso`: Adds Turso/libSQL as a side store beside the primary database: the direct Hrana HTTP v3 adapter, checked migrations and its real-SQL offline development fallback. It does not imply transparent replication.
-  * `--mongodb`: Adds MongoDB as a side store: typed document CRUD and its deterministic offline store.
-  * `--duckdb`: Adds DuckDB as a side store for in-process analytics; the optional native dependency increases the first build time.
   * `--surrealdb`: Adds SurrealDB as a side store: HTTP document CRUD and bounded read-only graph queries.
   * `--qdrant`: Adds Qdrant as a side store for bounded dense-vector operations and generates empty/`mock_*`-compatible environment fields; it is not the SQL primary.
+  * `--mongodb` and `--duckdb` were removed in 13.0.0-alpha.5 with their adapters: they are hidden from `--help`, and `new` stops with status 1 before writing anything and names the [MongoDB](recipes/mongodb.md) or [DuckDB](recipes/duckdb.md) recipe.
   * `--nix` and `--buildah` were removed in 13.0.0-alpha.4; see [Advanced deployment](advanced-deployment.md).
   * `--default`: Skips every question and uses deterministic defaults for anything no flag sets (name `app`, Blank, SQLite, no features), intended for CI and reproducible scaffolding.
   * `--blueprint <blank|api|saas>`: Selects the starter; the wizard skips that question. `lms`, `blog`, `portfolio` and `erp` still parse but fail before anything is written, naming the example that replaced them (exit status 1).
@@ -366,7 +365,7 @@ neither linker) build with the toolchain default.
 Since v13 the generated `Cargo.toml` also has a `[profile.release]` with
 `lto = "thin"`, `codegen-units = 1` and `strip = "symbols"`; `panic` stays
 `unwind` so one panicking handler cannot stop the server. Release builds take
-longer and their backtraces lose symbol names; the [measured release defaults](green-software-roadmap.md#measured-release-defaults)
+longer and their backtraces lose symbol names; the [measured release defaults](resource-efficiency-roadmap.md#measured-release-defaults)
 state the size and build-time effect on one starter. Since 13.0.0-alpha.4 it
 has a `[profile.dev]` as well: the application keeps line tables (file:line in
 panics and backtraces) and dependencies are built without debug information,
@@ -424,14 +423,13 @@ a SaaS release build, runs every generated test target, and constructs the
 public router of each hot-reload project using offline-safe defaults. A
 separate seven-case test invokes the public `cargo rullst new` binary and
 verifies exact feature selection for SQLite, PostgreSQL, MySQL, MariaDB, AI,
-Redis, Turso, MongoDB, DuckDB, SurrealDB and Qdrant across the Blank, API and
+Redis, Turso, SurrealDB and Qdrant across the Blank, API and
 SaaS starters plus a polyglot profile. The invocation starts outside the source checkout, proving
 that an unpublished pre-release CLI retains its exact matching checkout as a
 path source instead of requesting unavailable registry packages.
 
 The public polyglot profile uses `cargo check` in that CLI-level set because a
-second bundled-DuckDB test build adds no adapter behavior and can consume
-several GiB on small machines. DuckDB, MongoDB, SurrealDB, Turso and Qdrant
+second test build adds no adapter behavior. SurrealDB, Turso and Qdrant
 runtime behavior is exercised by their dedicated ORM matrices instead. These
 gates prove reproducible local generation and bounded offline construction;
 they do not prove provider accounts, production deployment, browser behavior
@@ -511,7 +509,7 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
-The v13 CLI's `rullst-upgrade-rules-v4` catalog (135 rules) parses Rust sources
+The v13 CLI's `rullst-upgrade-rules-v4` catalog (136 rules) parses Rust sources
 (with `syn`; comments, doc comments and strings never match an API rule), Cargo
 manifests and generated project files, and reports each finding as
 `MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed
@@ -523,9 +521,14 @@ and `--dry-run` say so, and the error names each rule's locations and
 guidance) unless `--keep-on-failure` asks it to change the versions anyway and
 keep the edited files for repair. Review findings do not stop the transaction;
 a failed Cargo gate repeats the guidance of `V13-CAPITAL-REMOVED` and
-`V13-MAIL-REMOVED` (removed APIs reported for review). The plan ends with a
-link to the migration guide's checklist for the project's version (alpha.2,
-or alpha.3 and later prereleases), or to the table of changes.
+`V13-MAIL-REMOVED` (removed APIs reported for review). A comment
+`rullst-upgrade: reviewed V13-…` after the code on a review finding's line, or
+alone on the line above it, records that the location was reviewed: the plan
+leaves it out, reports the rule's next unmarked location in that file, and
+counts the marked locations (`finding_counts.reviewed` in JSON). Must-change
+findings ignore the marker. The plan ends with a link to the migration guide's
+checklist for the project's version (alpha.2, alpha.3, or alpha.4 and later
+prereleases), or to the table of changes.
 Each rule records the release that introduced its change. The plan reads the
 project's Rullst version (the oldest version a Rullst requirement admits or
 `Cargo.lock` holds); for a project already on a 13.0 prerelease it applies only
@@ -1141,7 +1144,12 @@ cargo rullst make:age-gate \
 The threshold above is an example for an application-assessed low-assurance
 policy. Select `postgres` explicitly for a shared database across hosts.
 Configure the required private key and replay database as described by the
-generated `AGE_GATE.md`; missing state or configuration denies access. The
+generated `AGE_GATE.md`; missing state or configuration denies access. With
+`postgres` (since 13.0.0-alpha.5) the command also writes `src/bin/age-init.rs`:
+run `cargo run --bin age-init` once in a deployment step, with
+`RULLST_AGE_REPLAY_DATABASE` exported, to create the replay schema that
+application startup only connects to (`default-run` keeps `cargo run` on the
+application). The
 candidate defaults to the registry version matching this CLI. The source
 override shown above is required for development before that version is published,
 unless an explicit archive-only patch is configured. Generation refuses unknown
@@ -1190,12 +1198,17 @@ publication use the explicit local override shown above or a reviewed archive pa
 Unknown authentication, dependencies, routes or existing output files require
 manual integration rather than overwriting application code.
 
-Follow generated `PRIVACY.md`: provision an independent random
-`RULLST_PRIVACY_FORM_KEY_HEX` and initialize a new private local consent file with
-`cargo run --bin privacy-init`, with `RULLST_PRIVACY_DATABASE` exported into that
-process environment. Ordinary opening never creates or repairs missing state.
-The generated 10,000-record SQLite store requires one trusted shared local file;
-it does not provide multi-host replication. Preferences and personalization deny
+The consent store is PostgreSQL (`PostgresConsentStore`, `consent-postgres`)
+when the project's primary database is PostgreSQL (`strict-postgres`) and a
+shared-local SQLite file otherwise; `--consent-store sqlite|postgres` chooses
+explicitly (since 13.0.0-alpha.5). Follow generated `PRIVACY.md`: provision an
+independent random `RULLST_PRIVACY_FORM_KEY_HEX` and initialize the store once
+with `cargo run --bin privacy-init`, with `RULLST_PRIVACY_DATABASE` (the SQLite
+file path or the PostgreSQL URL) exported into that process environment.
+Ordinary opening never creates or repairs missing state. The generated SQLite
+store (10,000 records) requires one trusted shared local file and does not
+provide multi-host replication; the PostgreSQL store shares one authoritative
+database across hosts. Preferences and personalization deny
 unavailable state, while the authenticated export remains independent of that
 store and form key.
 
@@ -2122,35 +2135,59 @@ their source at startup and on every change (siblings without a source file are
 kept).
 * **Flags:** `--debug` (builds with Cargo's debug profile instead of `--release`).
 
-### `cargo rullst green`
-**Maturity:** Experimental. It replaces `cargo rullst footprint` (13.0.0-alpha.1
-to alpha.3) and is part of the main CLI, so it needs no separate install.
+### `cargo rullst footprint`
+**Maturity:** Experimental. Part of the main CLI, so it needs no separate
+install. It was `cargo rullst green` in 13.0.0-alpha.4 and was renamed in
+13.0.0-alpha.5 without an alias (`cargo rullst upgrade` flags scripts that
+still run `green`); the `footprint` of 13.0.0-alpha.1 to alpha.3 was a
+different report.
 
 Reports figures it measured for the app, each with its method: the release
 binary size, a local container image's size (`--image`, through `docker` or
-`podman image inspect`), the idle resident memory of the started app (Linux
-`VmRSS`), the third-party dependency count from `Cargo.lock` and, with
-`--bench`, the app process's CPU time during a bounded closed-loop loopback
-load and the CPU time per request. Idle memory and CPU time read `/proc`, so
-they are measured on Linux only; on macOS and Windows they are `NOT MEASURED`.
-Anything unavailable is `NOT MEASURED` with the reason. In Git Bash (MSYS),
-`--path /` reaches the CLI as `C:/Program Files/Git/`; run it as
-`MSYS_NO_PATHCONV=1 cargo rullst green --path /`. It measures no energy: a Software Carbon Intensity (SCI,
-ISO/IEC 21031:2024) figure appears only as an estimate labelled `estimate`,
-computed from the measured CPU time, your `--cpu-watts` and your
-`--grid-intensity`, with every input shown.
+`podman image inspect`), the app's idle resident memory, the third-party
+dependency count from `Cargo.lock`; with `--bench`, the app process's CPU time
+and the response bytes it served during a bounded closed-loop loopback load,
+and both per request; with `--page-weight`, the bytes and requests of the
+`--path` page and its same-origin resources on a first and a repeat visit
+(honouring `Cache-Control`, `ETag` and `Last-Modified`) and the third-party
+origins it references, listed and never fetched. Requests send
+`Accept-Encoding: zstd, br, gzip` and bodies are counted as served. Idle
+memory and CPU time are read on Linux (`/proc`), macOS (`proc_pidinfo`) and
+Windows (`GetProcessMemoryInfo`, `GetProcessTimes`). Anything unavailable is
+`NOT MEASURED` with the reason. In Git Bash (MSYS), `--path /` reaches the CLI
+as `C:/Program Files/Git/`; run it as
+`MSYS_NO_PATHCONV=1 cargo rullst footprint --path /`. It measures no energy: a
+Software Carbon Intensity (SCI, ISO/IEC 21031:2024) figure appears only as an
+estimate labelled `estimate`, computed from the measured CPU time, your
+`--cpu-watts`, optionally the measured bytes and your `--network-kwh-per-gb`,
+and your `--grid-intensity`, with every input shown. The report is a
+measurement and an estimate, not a certification or an environmental claim;
+an application that publishes its numbers is responsible for how it words
+them.
+
+With `--check-budget` it checks the figures against the limits of
+`[footprint.budgets]` in `Rullst.toml` (`--budget FILE` reads that table from
+another file): an exceeded limit exits with status 1 after the report, and a
+limit whose figure was not measured is reported as skipped, never as passed.
+With `--monitor-url` it also reads the response bytes the application served
+in production per route from its monitor (`Server::with_monitor`), over HTTPS
+with the token from `RULLST_MONITOR_TOKEN`, and shows the `--path` route
+beside the lab's bytes per request.
 
 Without `--url` it builds the release binary (reusing an existing build),
 starts it with `RULLST_ENV=production` (or `--env staging`, which accepts the
 starters' mock billing credentials) on a free `127.0.0.1` port, measures it
 and stops it. With `--url` it measures an app already running on loopback and
-refuses any other host; it makes no network calls beyond loopback and the
-local container engine, and never fetches grid intensity.
+refuses any other host; it makes no network calls beyond loopback, the local
+container engine and the `--monitor-url` you pass, and never fetches grid
+intensity.
 
 ```bash
-cargo rullst green --image my-app:latest
-cargo rullst green --url http://127.0.0.1:3000 --path /health --bench --json
-cargo rullst green --bench --cpu-watts 15 --grid-intensity 120
+cargo rullst footprint --env staging --bench --page-weight --check-budget
+cargo rullst footprint --image my-app:latest
+cargo rullst footprint --url http://127.0.0.1:3000 --path /health --bench --json
+cargo rullst footprint --page-weight
+cargo rullst footprint --bench --cpu-watts 15 --network-kwh-per-gb 0.059 --grid-intensity 120
 ```
 
 * **Flags:** `--url <http://127.0.0.1:PORT>`, `--env <production|staging>`
@@ -2158,15 +2195,21 @@ cargo rullst green --bench --cpu-watts 15 --grid-intensity 120
   `--image <NAME>`, `--bench`, `--duration <10s|1m|1500ms>` (default `10s`,
   1 s to 10 min; needs `--bench`), `--concurrency <N>` (default 4, at most
   256; needs `--bench`), `--cpu-watts <W>` (needs `--bench`),
-  `--grid-intensity <gCO2e/kWh>` (needs `--cpu-watts`), `--embodied <gCO2e>`
-  (needs `--grid-intensity`), `--json` (versioned `rullst.green.v1`).
+  `--network-kwh-per-gb <kWh/GB>` (more than 0, at most 100; needs
+  `--cpu-watts`), `--grid-intensity <gCO2e/kWh>` (needs `--cpu-watts`),
+  `--embodied <gCO2e>` (needs `--grid-intensity`), `--page-weight`,
+  `--check-budget`, `--budget <FILE>`, `--monitor-url <https://ORIGIN>`
+  (token from `RULLST_MONITOR_TOKEN`), `--json` (versioned
+  `rullst.footprint.v1`).
 * **Exit status:** `0` when the measurement ran, even with `NOT MEASURED`
-  fields; `1` when the build failed or the app could not be started or reached,
-  after the report (the JSON with `--json`) with the figures that need no
-  running app and the failure in `failure`; `2` for invalid arguments.
+  fields or skipped limits; `1` when the build failed or the app could not be
+  started or reached, after the report (the JSON with `--json`) with the
+  figures that need no running app and the failure in `failure`, when a budget
+  limit was exceeded (after the report) or when the budget cannot be read;
+  `2` for invalid arguments.
 
-See the [green guide](green.md) for what each figure means and how to choose a
-grid intensity.
+See [resource figures for an app](footprint.md) for what each figure means,
+how page weight is loaded and how to choose the network and grid figures.
 
 ### `cargo rullst dockerize`
 
@@ -2386,7 +2429,11 @@ links with its bundled LLD by default.
 #### Doctor: project
 The enclosing Rullst project (a `Cargo.toml` that depends on `rullst`) and its
 `rullst` requirement compared with the CLI's major version; an older project
-suggests `cargo rullst upgrade --dry-run`.
+suggests `cargo rullst upgrade --dry-run`. With the Tailwind kit of
+`cargo rullst add tailwind`, `project.tailwind` warns when `static/app.css` is
+missing or older than `assets/css/app.css` or a file under its
+`@source "<dir>/**/*.<ext>"` lines: plain `cargo build`/`cargo run` never
+rebuild it, `cargo rullst dev` and `cargo rullst build` do.
 
 #### Doctor: config and .env
 Whether `.env` parses, which keys listed in `.env.example` are set neither in

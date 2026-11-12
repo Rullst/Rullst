@@ -11,10 +11,10 @@
 //! `drivers-all` for all three on SQLx's `Any` pool; without one,
 //! [`Orm::init`] returns an error that names the feature to enable. Other
 //! features add integrations: `redis`, `scout-http`, `pgvector`, `ai`,
-//! `qdrant`, `mongodb`, `duckdb`, `turso` and `surrealdb`. docs.rs builds this
-//! page with `drivers-all` and every integration except `duckdb`, and labels
-//! each item with the features it needs; a `strict-*` profile changes the
-//! pool and database type aliases to that backend's SQLx types.
+//! `qdrant`, `turso` and `surrealdb`. docs.rs builds this page with
+//! `drivers-all` and every integration, and labels each item with the features
+//! it needs; a `strict-*` profile changes the pool and database type aliases to
+//! that backend's SQLx types.
 //!
 //! Start with the [`Orm`](struct@Orm) pool, `#[derive(Orm)]`,
 //! [`schema::Schema`] and [`Orm::transaction`]. `#[derive(Orm)]` also

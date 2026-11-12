@@ -49,6 +49,19 @@ impl<C: Clock> SqliteSupervision<C> {
         let mut op = self.begin().await?;
         op.authorize_observation(request, observation.capability())
             .await?;
+        if observation.code() >= crate::exam::OBSCURED_CODE {
+            // A store created before 13.0.0-alpha.5 accepts codes 1-27 only.
+            let definition: Option<String> = sqlx::query_scalar(
+                "SELECT substr(sql,1,2049) FROM sqlite_schema WHERE type='table' AND name=?",
+            )
+            .bind(super::schema::EVENTS_TABLE)
+            .fetch_optional(&mut *op.tx)
+            .await
+            .map_err(storage)?;
+            if definition.as_deref() != Some(super::schema::EVENTS) {
+                return Err(Error::Configuration);
+            }
+        }
         if let Some(token) = analysis_token {
             let pending: Option<(String, i64, i64, String, i64)> = sqlx::query_as("SELECT substr(token,1,129),revision,sequence,substr(capability,1,129),expires_at FROM rullst_supervision_analysis WHERE session_id=?")
                 .bind(request.session.as_str()).fetch_optional(&mut *op.tx).await.map_err(storage)?;

@@ -46,8 +46,9 @@ pub(super) fn equivalent(left: &str, right: &str) -> Result<bool, Box<dyn std::e
     Ok(left == right || formatted(&left)? == formatted(&right)?)
 }
 
-/// Checks the unmodified SaaS authentication; a refusal ends with `remedy`,
-/// what the calling generator offers a project without it.
+/// Checks the unmodified SaaS authentication, or the same files after
+/// `make:mfa` wired its second step into `login_submit`; a refusal ends with
+/// `remedy`, what the calling generator offers a project without it.
 pub(super) fn recognized_auth(
     root: &Path,
     consumer: &str,
@@ -72,6 +73,18 @@ pub(super) fn recognized_auth(
             .ok_or_else(|| invalid("authentication template is missing"))?;
         let state = match consumer_files::read(&root.join(name)) {
             Ok(source) if equivalent(&source, &expected.1)? => continue,
+            // `make:mfa` adds its second step to `login_submit`; these
+            // consumers do not touch that function, so the wired controller
+            // is still the recognized one, as in the reverse order.
+            Ok(source)
+                if name == "src/controllers/auth_controller.rs"
+                    && crate::generators::auth::mfa::login_hook(&expected.1)?
+                        .map(|wired| equivalent(&source, &wired))
+                        .transpose()?
+                        .unwrap_or(false) =>
+            {
+                continue;
+            }
             Ok(_) => "differs from the starter's",
             Err(error) if error.kind() == io::ErrorKind::NotFound => "is missing",
             Err(error) => return Err(error.into()),
@@ -106,6 +119,48 @@ pub(super) fn privacy_source(
     Ok(Some(source))
 }
 
+/// Names the package binary in `default-run`, so the second binary these
+/// consumers add (an initialization step) leaves ordinary `cargo run` alone.
+/// A custom binary inventory needs manual integration.
+pub(super) fn default_run(manifest: &mut DocumentMut) -> Result<(), Box<dyn std::error::Error>> {
+    let package = manifest
+        .get("package")
+        .and_then(toml_edit::Item::as_table_like)
+        .ok_or_else(|| invalid("project package table is missing"))?;
+    if package.get("autobins").is_some() || manifest.get("bin").is_some() {
+        return Err(invalid(
+            "custom binary inventory requires manual store initialization integration",
+        )
+        .into());
+    }
+    if package.get("default-run").is_none() {
+        let name = package
+            .get("name")
+            .and_then(toml_edit::Item::as_str)
+            .ok_or_else(|| invalid("project package name is missing"))?
+            .to_owned();
+        manifest["package"]["default-run"] = toml_edit::value(name);
+    }
+    Ok(())
+}
+
+/// Whether the project's primary database is PostgreSQL (the `strict-postgres`
+/// profile `cargo rullst new --database postgres` selects).
+pub(super) fn primary_postgres(manifest: &DocumentMut) -> bool {
+    ["rullst", "rullst-orm"].iter().any(|name| {
+        manifest
+            .get("dependencies")
+            .and_then(|dependencies| dependencies.get(name))
+            .and_then(|dependency| dependency.get("features"))
+            .and_then(|features| features.as_array())
+            .is_some_and(|features| {
+                features
+                    .iter()
+                    .any(|feature| feature.as_str() == Some("strict-postgres"))
+            })
+    })
+}
+
 /// Compose only the known registry or explicit local dependency from these consumers.
 /// Unknown source/version/defaults/keys require manual review, never replacement.
 pub(super) fn privacy_dependency(
@@ -130,6 +185,7 @@ pub(super) fn privacy_dependency(
         "postgres",
         "consent",
         "consent-sqlite",
+        "consent-postgres",
     ];
     let mut features = Vec::new();
     if let Some(existing) = manifest["dependencies"].get("rullst-privacy") {
@@ -233,6 +289,25 @@ mod tests {
             fs::write(path, content).unwrap();
         }
         recognized_auth(root.as_path(), "saas", REMEDY).unwrap();
+        // The controller as `make:mfa` leaves it is still recognized.
+        let controller = root.as_path().join("src/controllers/auth_controller.rs");
+        let starter = fs::read_to_string(&controller).unwrap();
+        let wired = crate::generators::auth::mfa::login_hook(&starter)
+            .unwrap()
+            .expect("make:mfa recognizes the starter's login_submit");
+        assert_ne!(wired, starter);
+        fs::write(&controller, &wired).unwrap();
+        recognized_auth(root.as_path(), "saas", REMEDY).unwrap();
+        // Another edit of the same file is not.
+        fs::write(&controller, format!("{wired}\nfn custom() {{}}\n")).unwrap();
+        let error = recognized_auth(root.as_path(), "saas", REMEDY)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("src/controllers/auth_controller.rs differs from the starter's"),
+            "{error}"
+        );
+        fs::write(&controller, &starter).unwrap();
         let middleware = root.as_path().join("src/middlewares/auth_middleware.rs");
         let edited = format!(
             "{}\nfn custom() {{}}\n",
@@ -278,6 +353,29 @@ mod tests {
         let error = recognized_auth(root.as_path(), "saas", REMEDY).unwrap_err();
         assert!(error.downcast_ref::<io::Error>().is_some(), "{error}");
         assert!(!error.to_string().contains("is missing"), "{error}");
+    }
+
+    #[test]
+    fn a_second_binary_keeps_cargo_run_on_the_application() {
+        let mut manifest: DocumentMut = "[package]\nname = \"shop\"\n".parse().unwrap();
+        default_run(&mut manifest).unwrap();
+        assert_eq!(manifest["package"]["default-run"].as_str(), Some("shop"));
+        let mut chosen: DocumentMut = "[package]\nname = \"shop\"\ndefault-run = \"server\"\n"
+            .parse()
+            .unwrap();
+        default_run(&mut chosen).unwrap();
+        assert_eq!(chosen["package"]["default-run"].as_str(), Some("server"));
+        for custom in [
+            "[package]\nname = \"shop\"\nautobins = false\n",
+            "[package]\nname = \"shop\"\n\n[[bin]]\nname = \"shop\"\npath = \"src/main.rs\"\n",
+        ] {
+            let mut manifest: DocumentMut = custom.parse().unwrap();
+            assert!(default_run(&mut manifest).is_err(), "{custom}");
+        }
+        let mut nameless: DocumentMut = "[package]\nversion = \"0.1.0\"\n".parse().unwrap();
+        assert!(default_run(&mut nameless).is_err());
+        let mut workspace: DocumentMut = "[workspace]\nmembers = []\n".parse().unwrap();
+        assert!(default_run(&mut workspace).is_err());
     }
 
     #[test]

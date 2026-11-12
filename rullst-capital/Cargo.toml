@@ -31,6 +31,8 @@ actix = ["dep:actix-web", "dep:futures-util"]
 invoice-pdf = ["dep:printpdf"]
 quota-sql = ["dep:rullst-orm"]
 webhook-sql = ["dep:rullst-orm"]
+# Test kit that checks a `BillingProvider` against Capital's provider contract.
+conformance = []
 
 [dependencies]
 rullst-core = { workspace = true }

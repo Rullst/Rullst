@@ -267,7 +267,7 @@ cargo test --workspace --all-features
 
 Rust CI disables incremental compilation and keeps content-addressed compiler
 outputs in the GitHub Actions cache with the pinned `sccache` Action and
-binary; the `cc` build dependency honours the same wrapper, so bundled DuckDB
+binary; the `cc` build dependency honours the same wrapper, so bundled C and
 C++ objects are reused. Same-repository pull requests write only their
 isolated `refs/pull/.../merge` scope, fork pull requests are read-only, pushes
 and manual runs on `main` populate entries for later pull requests, and the
@@ -282,15 +282,9 @@ assertions. SemVer checks fan out from the machine-readable release order, one
 published API per job.
 
 Jobs that keep the setup action's `target/` archive (Swatinem/rust-cache) set
-`cache-on-failure: false`, so a failed or cancelled run never saves one. The
-archive cannot carry libduckdb-sys's shared `target/duckdb-sources` tree: its
-cleanup deletes every file there, including the `.complete` marker, but keeps
-the directories, and a build script that has to run again (for example after
-a lockfile change to one of its build dependencies) cannot publish its sources
-over them (`DirectoryNotEmpty`). Jobs that build with `--all-features` or a
-DuckDB feature therefore run `.github/repair-duckdb-sources.py` after the cache
-is restored; the cached DuckDB library itself is reused. `workflow-lint.yml`
-enforces both rules with `.github/check-rust-cache-policy.py`.
+`cache-on-failure: false`, so a failed or cancelled run never saves one (an
+interrupted build script or a half-written output directory).
+`workflow-lint.yml` enforces this with `.github/check-rust-cache-policy.py`.
 
 The `Public API snapshot` job of `semver.yml` runs `.github/public-api.py
 --check` (tested by `.github/test-public-api.py`). On the pinned
@@ -573,11 +567,11 @@ mutant, compiled incrementally without sccache.
 | `messaging-redis` | `rullst-messaging/src/redis_streams/**` | the password, TLS, fault, ordering, outbox and bounds contracts and the AOF restart exercise |
 | `connect-sql` | `rullst-connect/src/challenge/sql/postgres.rs`, `sql/mysql.rs` (the wrapper also owns a MySQL server, which each contract resets by dropping its table) | `postgres_challenge_contract`, `mysql_challenge_contract` |
 | `orm-sqlite` | `rullst-orm/src/**` and `rullst-orm-macros/src/**`, test files excluded; select files with `mutants_regex` (for example `^rullst-orm/src/pool/savepoint\.rs:`) | every `rullst-orm` test target, built with `drivers-all` (the SQLx `Any` pool) |
-| `orm-polyglot` | the same files; select the optional-backend modules (`polyglot`, `scout`, `redis_data`, `query_cache`) with `mutants_regex` | every `rullst-orm` test target, built with `drivers-all` and the Redis, MongoDB, SurrealDB, Turso, Scout HTTP and Qdrant features, with an owned Redis server for the `RULLST_TEST_REDIS_URL` contracts |
+| `orm-polyglot` | the same files; select the optional-backend modules (`polyglot`, `scout`, `redis_data`, `query_cache`) with `mutants_regex` | every `rullst-orm` test target, built with `drivers-all` and the Redis, SurrealDB, Turso, Scout HTTP and Qdrant features, with an owned Redis server for the `RULLST_TEST_REDIS_URL` contracts |
 | `orm-sql-servers` | the same files; select the PostgreSQL and MySQL/MariaDB branches with `mutants_regex` | `matrix_postgres`, `matrix_mysql` and `matrix_mariadb`, built with `drivers-all`; their testcontainers start a disposable server per test binary, and a server that cannot start fails the run |
 | `orm-strict-postgres` | the same files | `matrix_postgres`, built with `strict-postgres` only, which also exercises the native enum types and typed binds of that pool |
 | `orm-strict-mysql` | the same files | `matrix_mysql`, built with `strict-mysql` only |
-| `orm-polyglot-servers` | the same files; select the optional backends' live paths with `mutants_regex` | the MongoDB, SurrealDB, document-recovery, Qdrant, Meilisearch, Redis data and Turso testcontainers matrices, built like `orm-polyglot` |
+| `orm-polyglot-servers` | the same files; select the optional backends' live paths with `mutants_regex` | the SurrealDB, document-recovery (SurrealDB), Qdrant, Meilisearch, Redis data and Turso testcontainers matrices, built like `orm-polyglot` |
 
 `orm-sqlite` owns no server. The all-feature build selects the strict
 PostgreSQL pool and compiles the SQLite behaviour tests of `rullst-orm` out;
@@ -585,8 +579,7 @@ this contract builds the ORM with `drivers-all` and runs its whole suite on
 SQLite for every mutant, including the code `#[derive(Orm)]` generates.
 PostgreSQL-only branches stay with targeted runs. `orm-polyglot` adds the
 optional backends (mocks and loopback servers) and runs the query-cache and
-Redis hash-scope contracts against its own Redis; DuckDB stays with targeted
-runs. `orm-sql-servers` measures dialect branches (placeholders, migration
+Redis hash-scope contracts against its own Redis. `orm-sql-servers` measures dialect branches (placeholders, migration
 locks, collations, payload types) against three real servers, so select only
 those branches. `orm-strict-postgres` and `orm-strict-mysql` cover code that
 the `Any` pool does not compile.

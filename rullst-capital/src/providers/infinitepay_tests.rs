@@ -400,3 +400,80 @@ fn notifications_read_identifiers_and_ignore_status_and_amounts() {
 
 #[path = "infinitepay_legacy_tests.rs"]
 mod legacy;
+
+/// InfinitePay's 404 body, with a `padding` field of `padding` bytes.
+fn refusal(padding: usize) -> Value {
+    json!({
+        "success": false,
+        "error": "external_checkout_not_enabled",
+        "message": "External checkout is not enabled for this merchant. Enable it in your checkout settings to start creating payment links.",
+        "redirect_url": "https://app.infinitepay.io/external-checkout#configuracoes?enabled=true",
+        "padding": "x".repeat(padding),
+    })
+}
+
+/// A `/links` endpoint that refuses with InfinitePay's 404 body, padded to
+/// `padding` extra bytes.
+async fn refusing_api(padding: usize) -> String {
+    let body = refusal(padding);
+    let app = Router::new().route(
+        "/links",
+        post(move || {
+            let body = body.clone();
+            async move { (axum::http::StatusCode::NOT_FOUND, Json(body)) }
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        let _ = axum::serve(listener, app).await;
+    });
+    format!("http://{address}")
+}
+
+#[tokio::test]
+async fn a_refused_link_keeps_only_infinitepays_error_code() {
+    let base = refusing_api(0).await;
+    let Err(CapitalError::Provider(failure)) =
+        live(&base).create_one_off_checkout(&request()).await
+    else {
+        panic!("a 404 is a provider failure");
+    };
+    assert_eq!(failure.status(), Some(404));
+    assert_eq!(failure.reason(), Some("external_checkout_not_enabled"));
+    let text = failure.to_string();
+    assert_eq!(
+        text,
+        "infinitepay create payment link returned HTTP 404 (external_checkout_not_enabled)"
+    );
+    assert!(
+        !text.contains("Enable it"),
+        "the provider's message is not kept"
+    );
+
+    // A body of exactly 4 KiB is read; one byte more is not.
+    let exact = 4096 - serde_json::to_vec(&refusal(0)).unwrap().len();
+    let base = refusing_api(exact).await;
+    let Err(CapitalError::Provider(failure)) =
+        live(&base).create_one_off_checkout(&request()).await
+    else {
+        panic!("a 404 is a provider failure");
+    };
+    assert_eq!(failure.reason(), Some("external_checkout_not_enabled"));
+    let base = refusing_api(exact + 1).await;
+    let Err(CapitalError::Provider(failure)) =
+        live(&base).create_one_off_checkout(&request()).await
+    else {
+        panic!("a 404 is a provider failure");
+    };
+    assert_eq!(failure.reason(), None);
+    // A much larger body is not read either.
+    let base = refusing_api(5_000).await;
+    let Err(CapitalError::Provider(failure)) =
+        live(&base).create_one_off_checkout(&request()).await
+    else {
+        panic!("a 404 is a provider failure");
+    };
+    assert_eq!(failure.status(), Some(404));
+    assert_eq!(failure.reason(), None);
+}

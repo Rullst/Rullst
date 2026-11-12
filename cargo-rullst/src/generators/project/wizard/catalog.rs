@@ -131,7 +131,7 @@ pub(crate) enum Feature {
 }
 
 /// Every optional feature, in the order the wizard lists them.
-pub(crate) const FEATURES: [(Feature, &str, &str); 8] = [
+pub(crate) const FEATURES: [(Feature, &str, &str); 6] = [
     (
         Feature::Ai,
         "AI features",
@@ -151,16 +151,6 @@ pub(crate) const FEATURES: [(Feature, &str, &str); 8] = [
         Feature::Storage(PolyglotIntegration::Turso),
         "Turso / libSQL add-on",
         "side store: edge SQL; not the primary database",
-    ),
-    (
-        Feature::Storage(PolyglotIntegration::MongoDb),
-        "MongoDB",
-        "side store: document CRUD",
-    ),
-    (
-        Feature::Storage(PolyglotIntegration::DuckDb),
-        "DuckDB",
-        "side store: analytics; longer first build",
     ),
     (
         Feature::Storage(PolyglotIntegration::SurrealDb),

@@ -144,6 +144,71 @@ async fn the_recorder_leaves_responses_unchanged() {
     assert_eq!(installed.collector().routes().len(), 3);
 }
 
+/// Bytes of a fixed body count when the response is recorded, those of a
+/// streamed body when it ends or is dropped, and a `HEAD` sends none.
+#[tokio::test]
+async fn response_bytes_are_counted_as_sent() {
+    use axum::body::{Body, Bytes};
+    let installed = installed();
+    let streamed = || async {
+        let chunks = [Bytes::from_static(b"abc"), Bytes::from_static(b"defgh")];
+        Body::from_stream(futures_util::stream::iter(
+            chunks.map(Ok::<_, std::io::Error>),
+        ))
+    };
+    let app = installed.record(
+        Router::new()
+            // rullst-access: public — test fixture without data.
+            .route("/full", get_route(|| async { "0123456789" }))
+            // rullst-access: public — test fixture without data.
+            .route("/stream", get_route(streamed))
+            // rullst-access: public — test fixture without data.
+            .route("/dropped", get_route(streamed)),
+    );
+    for uri in ["/full", "/full", "/stream"] {
+        let response = app.clone().oneshot(get(uri, CLIENT, &[])).await.unwrap();
+        let (_, body) = read(response).await;
+        assert!(!body.is_empty(), "{uri}");
+    }
+    let mut head = get("/full", CLIENT, &[]);
+    *head.method_mut() = axum::http::Method::HEAD;
+    let _ = app.clone().oneshot(head).await.unwrap();
+    // A client that goes away after the first chunk: only it was sent.
+    let mut dropped = app
+        .clone()
+        .oneshot(get("/dropped", CLIENT, &[]))
+        .await
+        .unwrap()
+        .into_body();
+    let first = std::future::poll_fn(|context| {
+        http_body::Body::poll_frame(std::pin::Pin::new(&mut dropped), context)
+    })
+    .await;
+    assert!(first.is_some_and(|frame| frame.is_ok()));
+    drop(dropped);
+    let bytes: Vec<(&str, String, u64)> = installed
+        .collector()
+        .routes()
+        .iter()
+        .map(|route| {
+            (
+                route.method,
+                route.route.to_string(),
+                route.stats.bytes_total,
+            )
+        })
+        .collect();
+    assert_eq!(
+        bytes,
+        [
+            ("GET", "/dropped".to_string(), 3),
+            ("GET", "/full".to_string(), 20),
+            ("HEAD", "/full".to_string(), 0),
+            ("GET", "/stream".to_string(), 8),
+        ]
+    );
+}
+
 /// Emits one ORM operation span, as `rullst-orm` does.
 fn orm_find(model: &str, table: &str) {
     tracing::info_span!(

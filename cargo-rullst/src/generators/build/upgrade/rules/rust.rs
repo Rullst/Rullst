@@ -424,6 +424,9 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
             if let Some(rule) = super::alpha5_slimming::path_rule(&path) {
                 self.hit(rule, at);
             }
+            if let Some(rule) = super::removed_adapters::path_rule(&path, self.context.text) {
+                self.hit(rule, at);
+            }
         }
         visit::visit_item_use(self, item);
     }
@@ -473,7 +476,9 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
             if names("FieldKind") {
                 self.hit(&NEXUS_FIELD_KIND_MATCH, line(expr.match_token.span()));
             }
-            if let Some(rule) = super::alpha5_runtime::exhaustive_match_rule(names) {
+            if let Some(rule) =
+                super::alpha5_runtime::exhaustive_match_rule(names, self.context.text)
+            {
                 self.hit(rule, line(expr.match_token.span()));
             }
         }

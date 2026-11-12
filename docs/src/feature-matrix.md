@@ -100,8 +100,6 @@ the drivers.
 | --- | :---: | --- |
 | `orm` | no | `rullst-orm` and Core's ORM integration, without a SQLx driver; pair it with `drivers-all` or one `strict-*` backend |
 | `drivers-all` | no | `orm` plus the SQLite, PostgreSQL and MySQL/MariaDB SQLx drivers in the ORM and Core, and in Studio and Nexus when `studio` or `nexus` is enabled |
-| `orm-mongodb` | no | `orm` plus the MongoDB document adapter |
-| `orm-duckdb` | no | `orm` plus the in-process DuckDB analytics adapter |
 | `orm-turso` | no | `orm` plus typed Turso-primary CRUD/query, parameterized remote libSQL SQL over Hrana HTTP v3, transactions, reversible checked migrations, and a persistent offline fallback |
 | `orm-surrealdb` | no | `orm` plus SurrealDB HTTP document and bounded graph adapters |
 | `orm-scout` | no | `orm` plus bounded Meilisearch, Elasticsearch and Algolia Scout HTTP adapters |
@@ -254,8 +252,6 @@ or a `strict-*` backend explicitly.
 | --- | --- |
 | `drivers-all` | The SQLite, PostgreSQL and MySQL/MariaDB SQLx drivers |
 | `redis` | Redis query cache plus bounded namespaced Hash, Set and Sorted Set datastore operations |
-| `mongodb` | Official MongoDB driver plus typed document CRUD, identifier inventory, encrypted recovery participation and offline fallback |
-| `duckdb` | Bundled DuckDB client plus parameterized, bounded analytics queries |
 | `turso` | Direct official Hrana HTTP v3 transport, typed primary CRUD/query facade, parameterized SQL, atomic batches, reversible checksummed migrations, and a persistent SQLite-compatible offline fallback |
 | `surrealdb` | SurrealDB HTTP document CRUD, identifier inventory, encrypted recovery participation and bounded read-only ISO GQL; no embedded SDK |
 | `scout-http` | Bounded Meilisearch, Elasticsearch and Algolia adapters with deterministic offline fallbacks; Meilisearch also has a live container contract |
@@ -273,12 +269,14 @@ defaults to keep the other drivers out of the graph.
 
 The Polyglot features expose capability-specific APIs under
 `rullst_orm::polyglot`; they do not participate in a shared cross-backend
-transaction. The base deterministic document store and the MongoDB/SurrealDB
-adapters implement `DocumentInventory` for an application-operated bounded
+transaction. The base deterministic document store and the SurrealDB adapter
+implement `DocumentInventory` for an application-operated bounded
 snapshot/restore contract; it does not supply online isolation or managed
 backup. Turso can additionally be selected explicitly by
 `#[orm(backend = "turso")]` and the blank/API scaffold. See the
-[Polyglot Persistence guide](polyglot-persistence.md).
+[Polyglot Persistence guide](polyglot-persistence.md). 13.0.0-alpha.5 removed
+the `mongodb` and `duckdb` features (and `orm-mongodb`/`orm-duckdb` on
+`rullst`); the [recipes](recipes/index.md) use the official crates instead.
 
 ### `rullst-orm-macros`
 
@@ -462,7 +460,7 @@ These packages have no public optional Cargo features:
 | Package | Always-available scope |
 | --- | --- |
 | `rullst-macros` | Core procedural macros |
-| `cargo-rullst` | CLI commands, generators, auditing, deployment helpers and the Experimental `cargo rullst green`; its internal `maintainer-tools` feature only builds the repository's `sync-badges` tool and is not part of the installed CLI |
+| `cargo-rullst` | CLI commands, generators, auditing, deployment helpers and the Experimental `cargo rullst footprint`; its internal `maintainer-tools` feature only builds the repository's `sync-badges` tool and is not part of the installed CLI |
 
 No optional feature does not mean that a provider is contacted automatically.
 External integrations still require explicit runtime configuration and use the

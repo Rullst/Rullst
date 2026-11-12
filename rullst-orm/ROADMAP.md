@@ -117,10 +117,11 @@ compile-time schema verified.
 - [~] **ORM Admin Panel**: A static dashboard shell exists; authenticated data-management CRUD belongs to Nexus.
 - [x] **API Resources & Transformers**: Explicit resource and collection transforms generate bounded JSON projections.
 - [~] **Distributed Graph Traversal**: Manual recursive CTE helpers exist; automatic relationship-graph traversal and distribution do not.
-- [x] **Polyglot Persistence (bounded v12)**: Optional MongoDB document CRUD,
-  DuckDB parameterized/bounded OLAP, Turso/libSQL SQL/transactions/migrations
-  and SurrealDB HTTP document/read-only GQL adapters preserve separate
-  semantics. MongoDB, SurrealDB and the deterministic store additionally expose
+- [x] **Polyglot Persistence (bounded v12)**: Optional Turso/libSQL
+  SQL/transactions/migrations and SurrealDB HTTP document/read-only GQL
+  adapters preserve separate semantics (13.0.0-alpha.5 replaced the MongoDB and
+  DuckDB adapters with application recipes). SurrealDB and the deterministic
+  store additionally expose
   stable identifier inventory plus an application-operated encrypted snapshot
   that detects ordinary source changes, resumes only into an exact subset and
   verifies the final collection. Online snapshot isolation, cross-store

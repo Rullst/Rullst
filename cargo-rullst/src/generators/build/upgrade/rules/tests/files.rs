@@ -4,7 +4,7 @@ use super::super::files::{
 };
 use super::*;
 
-fn plan(path: PathBuf, original: &str) -> ManifestUpgradePlan {
+pub(super) fn plan(path: PathBuf, original: &str) -> ManifestUpgradePlan {
     ManifestUpgradePlan {
         path,
         original: original.to_string(),
@@ -32,6 +32,10 @@ impl Project {
         }
     }
 
+    pub(super) fn root(&self) -> &Path {
+        &self.root
+    }
+
     pub(super) fn write(&self, relative: &str, text: &str) -> &Self {
         let path = self.root.join(relative);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -42,6 +46,7 @@ impl Project {
     pub(super) fn findings(&self, manifest: &str) -> Vec<(String, &'static str, usize)> {
         let plans = vec![plan(self.root.join("Cargo.toml"), manifest)];
         project_findings(&self.root, &plans)
+            .0
             .into_iter()
             .map(|finding| {
                 let relative = finding.path.strip_prefix(&self.root).unwrap();
@@ -180,7 +185,7 @@ edge = ["orm?/polyglot"]
     // Each package has its own name for the removed feature; the individual
     // adapters and unrelated packages are fine.
     let current = r#"[dependencies]
-rullst = { version = "13.0.0-alpha.1", default-features = false, features = ["polyglot", "orm-mongodb"] }
+rullst = { version = "13.0.0-alpha.1", default-features = false, features = ["polyglot", "orm-surrealdb"] }
 rullst-orm = { version = "13.0.0-alpha.1", default-features = false, features = ["orm-polyglot", "turso"] }
 plain = "1"
 

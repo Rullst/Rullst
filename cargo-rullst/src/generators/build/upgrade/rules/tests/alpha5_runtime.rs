@@ -1,6 +1,7 @@
 //! 13.0.0-alpha.5: `OtaManager`'s state fields became private, dynamic
 //! Alpine.js directive values in `html!` no longer compile, and the IoT codec
-//! errors became `#[non_exhaustive]`.
+//! errors, Privacy's `ConsentChoice` and the Labs outcome and state enums
+//! became `#[non_exhaustive]`.
 
 use super::*;
 
@@ -8,6 +9,8 @@ const OTA: &str = "V13-IOT-OTA-STATE";
 const ALPINE: &str = "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE";
 const CODEC: &str = "V13-IOT-CODEC-ERROR-MATCH";
 const CARD: &str = "V13-IOT-SENSOR-CARD-HTML";
+const LABS: &str = "V13-LABS-NON-EXHAUSTIVE-MATCH";
+const CONSENT: &str = "V13-PRIVACY-CONSENT-CHOICE-MATCH";
 
 #[test]
 fn ota_manager_field_accesses_are_reviewed_once_per_file() {
@@ -160,6 +163,108 @@ fn page(reading: &rullst_iot::SensorTelemetry) -> String {
     // Other renderers and the bare type are not reported.
     assert_only(
         "fn f(t: &T) -> String { IotDashboard::render_card(t) + &render_sensor_cards(t) }\n",
+        &[],
+    );
+}
+
+#[test]
+fn exhaustive_matches_on_labs_enums_must_change_in_files_that_name_the_crate() {
+    let source = r#"
+use rullst_labs::sqlite::{CaseGrade, JobState};
+
+fn label(state: JobState) -> &'static str {
+    match state {
+        JobState::Queued | JobState::Running => "waiting",
+        JobState::Completed => "graded",
+        JobState::Failed | JobState::Expired | JobState::Uncertain => "failed",
+        JobState::Cancelled | JobState::Simulated => "stopped",
+    }
+}
+
+fn grade(grade: CaseGrade) -> bool {
+    match grade {
+        CaseGrade::Passed => true,
+        CaseGrade::WrongAnswer | CaseGrade::Trapped(_) => false,
+    }
+}
+
+fn failure(error: rullst_labs::ExecutionFailure) -> u8 {
+    match error {
+        rullst_labs::ExecutionFailure::Compile => 1,
+        _ => 2,
+    }
+}
+"#;
+    // The two matches without a catch-all arm, not the one with `_`.
+    assert_eq!(
+        scan_with(source, "lib.rs", &WorkspaceFacts::default()),
+        [(LABS, 5), (LABS, 14)]
+    );
+    // Every listed enum counts, one per match.
+    for name in [
+        "JobResult",
+        "CaseOutput",
+        "TrapKind",
+        "WorkerOutcome",
+        "ExecutionFailure",
+        "ResultEvidence",
+        "ExecutionProfile",
+    ] {
+        let source = format!(
+            "use rullst_labs::*;\nfn f(x: {name}) -> u8 {{ match x {{ {name}::A => 1, {name}::B(_) => 2 }} }}\n"
+        );
+        assert_eq!(
+            scan_with(&source, "lib.rs", &WorkspaceFacts::default()),
+            [(LABS, 2)],
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn labs_enum_names_elsewhere_or_with_a_wildcard_are_not_reported() {
+    // An application's own `JobState` in a file that does not name the crate.
+    assert_only(
+        "enum JobState { A, B }\nfn f(s: JobState) -> u8 { match s { JobState::A => 1, JobState::B => 2 } }\n",
+        &[],
+    );
+    assert_only(
+        "use rullst_labs::sqlite::JobState;\nfn f(s: JobState) -> u8 { match s { JobState::Queued => 1, other => 2 } }\nfn g(s: Other) -> u8 { match s { Other::A => 1, Other::B => 2 } }\n",
+        &[],
+    );
+    // The IoT rule keeps precedence for a match on a codec error.
+    assert_eq!(
+        scan_with(
+            "use rullst_labs::JobState;\nfn f(e: MqttCodecError) -> u8 { match e { MqttCodecError::EmptyTopic => 1, MqttCodecError::InvalidTopic => 2 } }\n",
+            "lib.rs",
+            &WorkspaceFacts::default()
+        ),
+        [(CODEC, 2)]
+    );
+}
+
+#[test]
+fn exhaustive_consent_choice_matches_must_change_through_either_path() {
+    for import in [
+        "use rullst_privacy::consent::ConsentChoice;",
+        "use rullst::privacy::consent::ConsentChoice;",
+    ] {
+        let source = format!(
+            "{import}\nfn on(c: ConsentChoice) -> bool {{\n    match c {{\n        ConsentChoice::Granted => true,\n        ConsentChoice::Unset | ConsentChoice::Declined | ConsentChoice::Withdrawn => false,\n    }}\n}}\n"
+        );
+        assert_eq!(
+            scan_with(&source, "lib.rs", &WorkspaceFacts::default()),
+            [(CONSENT, 3)],
+            "{import}"
+        );
+    }
+    // With a wildcard, `==`, or an application's own `ConsentChoice`.
+    assert_only(
+        "use rullst_privacy::consent::ConsentChoice;\nfn on(c: ConsentChoice) -> bool { match c { ConsentChoice::Granted => true, _ => false } }\nfn off(c: ConsentChoice) -> bool { c == ConsentChoice::Declined }\n",
+        &[],
+    );
+    assert_only(
+        "enum ConsentChoice { Yes, No }\nfn on(c: ConsentChoice) -> bool { match c { ConsentChoice::Yes => true, ConsentChoice::No => false } }\n",
         &[],
     );
 }

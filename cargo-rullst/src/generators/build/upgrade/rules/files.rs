@@ -12,6 +12,8 @@ use walkdir::WalkDir;
 mod deploy;
 #[path = "files/features.rs"]
 mod features;
+#[path = "files/footprint.rs"]
+mod footprint;
 #[path = "files/scripts.rs"]
 mod scripts;
 use features::{
@@ -153,15 +155,22 @@ fn minimum(declaration: &toml::Value) -> Option<(u64, u64)> {
 }
 
 /// The features v13 removed from a Rullst package, with their rule:
-/// `V13-POLYGLOT-FEATURE` and `V13-OFFLINE-SYNC-REMOVED`.
+/// `V13-POLYGLOT-FEATURE`, `V13-OFFLINE-SYNC-REMOVED` and
+/// `V13-ORM-ADAPTERS-REMOVED`.
 fn removed_features(package: &str) -> &'static [(&'static str, &'static Rule)] {
     match package {
         "rullst" => &[
             ("orm-polyglot", &POLYGLOT_FEATURE),
             ("offline-sync", &OFFLINE_SYNC_REMOVED),
+            ("orm-mongodb", &ORM_ADAPTERS_REMOVED),
+            ("orm-duckdb", &ORM_ADAPTERS_REMOVED),
         ],
         "rullst-core" => &[("offline-sync", &OFFLINE_SYNC_REMOVED)],
-        "rullst-orm" => &[("polyglot", &POLYGLOT_FEATURE)],
+        "rullst-orm" => &[
+            ("polyglot", &POLYGLOT_FEATURE),
+            ("mongodb", &ORM_ADAPTERS_REMOVED),
+            ("duckdb", &ORM_ADAPTERS_REMOVED),
+        ],
         _ => &[],
     }
 }
@@ -332,8 +341,12 @@ fn dns_label(name: &str) -> bool {
         && !name.ends_with('-')
 }
 
-/// Findings in generated project files at the workspace root.
-pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Vec<SourceFinding> {
+/// Findings in generated project files at the workspace root, and the rule
+/// of every script line a `rullst-upgrade: reviewed` marker left out.
+pub(super) fn project_findings(
+    root: &Path,
+    plans: &[ManifestUpgradePlan],
+) -> (Vec<SourceFinding>, Vec<&'static Rule>) {
     let mut findings = Vec::new();
     let mut push = |rule: &'static Rule, relative: &str, line: usize| {
         findings.push(finding(rule, root.join(relative), line));
@@ -490,13 +503,17 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
             scripts.push(relative);
         }
     }
+    let mut reviewed = Vec::new();
     for script in scripts {
         let Some(text) = read_small(&root.join(&script)) else {
             continue;
         };
-        for (rule, line) in scripts::script_findings(&text) {
+        for (rule, line) in scripts::script_findings(&text, &mut reviewed) {
             push(rule, &script, line);
         }
+    }
+    for (file, line) in footprint::green_mentions(root, &mut reviewed) {
+        push(&CLI_GREEN_RENAMED, &file, line);
     }
     if kubernetes
         && let Some((manifest, name, line)) = package_name(root, plans)
@@ -504,5 +521,5 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
     {
         findings.push(finding(&K8S_NAMES, manifest, line));
     }
-    findings
+    (findings, reviewed)
 }

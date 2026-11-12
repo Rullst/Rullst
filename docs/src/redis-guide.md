@@ -125,6 +125,11 @@ The failure and consistency rules are explicit:
   outside a transaction.
 - Redis command failures or corrupt JSON fall back to the authoritative
   database; a successful read is returned even if cache population fails.
+  While Redis is unreachable each command makes one reconnection attempt
+  before it fails (about 0.15 s against a refused port), so an outage slows
+  remembered reads by that much rather than by redis-rs's default six
+  backed-off retries; an unresponsive server still costs the 500 ms response
+  timeout per command.
 - Explicit and task-scoped ORM transactions always bypass query cache.
 - Generated model saves/deletes invalidate the table's global entries and, for
   a tenant-scoped model, those of the tenant active at the write, only after

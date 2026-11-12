@@ -61,7 +61,8 @@ Server-Sent Events, i18n and process telemetry. The `rullst` facade re-exports i
   the proxy address; list only your real proxy networks.
 - **Production Monitoring Endpoint (v13, 13.0.0-alpha.3):** opt-in
   `Server::with_monitor` serves a read-only `GET /_rullst/monitor/v1` JSON
-  document (request rate, latency and status classes per route pattern,
+  document (request rate, latency, status classes and response bytes per
+  route pattern,
   queues, N+1 fingerprints, process radar) to a bearer token from
   `RULLST_MONITOR_TOKENS` or to the application's own sign-in, with TLS
   evidence required in staging and production. Nothing is mounted without a

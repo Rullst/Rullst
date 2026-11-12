@@ -83,9 +83,16 @@ fn rules_carry_the_release_of_their_change() {
             "V13-SQLX-TLS-RING"
         ]
     );
+    // Rules added after alpha.4 for its changes take the next release,
+    // 13.0.0-alpha.5, so an application already on alpha.4 still gets them.
     assert_eq!(
         codes_introduced_in("13.0.0-alpha.5"),
         [
+            "V13-SQLX-TLS-NATIVE-ROOTS",
+            "V13-DEPLOY-SQLITE-URL",
+            "V13-DEPLOY-CADDY-HEALTH",
+            "V13-CLI-MIGRATION-AUTO-STATUS",
+            "V13-CLI-BLUEPRINTS-REMOVED",
             "V13-API-ALIAS-PATHS",
             "V13-HIDDEN-INTERNALS-PRIVATE",
             "V13-SECURITY-STORE-COLLECTIONS",
@@ -102,23 +109,25 @@ fn rules_carry_the_release_of_their_change() {
             "V13-IOT-CODEC-ERROR-MATCH",
             "V13-IOT-SENSOR-CARD-HTML",
             "V13-CAPITAL-INVOICE-MINOR-UNITS",
+            "V13-ORM-ADAPTERS-REMOVED",
             "V13-MAIL-MESSAGE-REPLY-TO",
+            "V13-PRIVACY-CONSENT-CHOICE-MATCH",
+            "V13-LABS-NON-EXHAUSTIVE-MATCH",
+            "V13-CLI-GREEN-RENAMED",
             "V13-ACADEMY-REMOVED",
             "V13-AI-PROVIDER-PRESETS",
         ]
     );
-    // Rules added after alpha.4 for its changes take the next release, so
-    // an application already on alpha.4 still gets them.
-    assert_eq!(
-        codes_introduced_in("13.0.0-rc.1"),
-        [
-            "V13-SQLX-TLS-NATIVE-ROOTS",
-            "V13-DEPLOY-SQLITE-URL",
-            "V13-DEPLOY-CADDY-HEALTH",
-            "V13-CLI-MIGRATION-AUTO-STATUS",
-            "V13-CLI-BLUEPRINTS-REMOVED",
-        ]
-    );
+    assert!(codes_introduced_in("13.0.0-rc.1").is_empty());
+    let alpha4 = version("13.0.0-alpha.4");
+    let alpha5 = version("13.0.0-alpha.5");
+    for rule in CATALOG
+        .iter()
+        .filter(|rule| rule.introduced == "13.0.0-alpha.5")
+    {
+        assert!(rule.introduced_after(&alpha4), "{}", rule.code);
+        assert!(!rule.introduced_after(&alpha5), "{}", rule.code);
+    }
     assert_eq!(codes_introduced_in("13.0.0-alpha.1").len(), 95);
     assert!(codes_introduced_in("13.0.0-alpha.1").contains(&"V13-RENDER-PAGE-LANGUAGE"));
 }

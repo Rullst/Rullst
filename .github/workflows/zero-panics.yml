@@ -35,11 +35,6 @@ jobs:
           target: wasm32-unknown-unknown
           cache-on-failure: false
 
-      - name: Drop incomplete DuckDB sources restored from the Rust cache
-        # The cache cleanup keeps libduckdb-sys's target/duckdb-sources tree
-        # without its completion marker; a rerun build script cannot replace it.
-        run: python3 .github/repair-duckdb-sources.py
-
       - name: Run Clippy (Deny Panics) — native libraries and macro engines
         # Both procedural-macro crates are included because they generate
         # application runtime code. Tests are intentionally excluded here:

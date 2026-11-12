@@ -98,3 +98,61 @@ async fn only_a_worker_loss_attestation_reconciles_an_abandoned_attempt() {
         .unwrap();
     assert_eq!(view.state, JobState::Cancelled);
 }
+
+/// The wall limit, reported with confirmed teardown inside the lease, ends
+/// the job `Failed` with `TimeLimit`: the learner can tell it apart from
+/// their own cancellation, which ends `Cancelled` without a result.
+#[tokio::test]
+async fn a_wall_limit_is_a_failed_time_limit_unlike_a_cancellation() {
+    let key = signer(8);
+    let f = Fixture::with_profile(3, profile(&key)).await;
+    f.store
+        .submit(&f.policy, &id("alice"), &scope(), submission("slow"))
+        .await
+        .unwrap();
+    let job = f.store.claim_next().await.unwrap().unwrap();
+    let wall = i64::from(job.input().limits().wall_seconds());
+    f.clock.0.store(NOW + wall + 2, Ordering::SeqCst);
+    let limit = WorkerOutput {
+        binding: job.input().binding().clone(),
+        outcome: WorkerOutcome::Rejected(ExecutionFailure::TimeLimit),
+    };
+    let timed_out = f
+        .store
+        .complete(
+            job.scope(),
+            job.id(),
+            &timed(&key, limit, NOW, NOW + wall + 1),
+        )
+        .await
+        .unwrap();
+    assert_eq!(timed_out.state, JobState::Failed);
+    assert!(matches!(
+        timed_out.result,
+        Some(JobResult::Rejected {
+            failure: ExecutionFailure::TimeLimit,
+            diagnostics: None,
+            ..
+        })
+    ));
+    assert!(!timed_out.cleanup_pending);
+
+    let cancelled = f
+        .store
+        .submit(&f.policy, &id("alice"), &scope(), submission("mine"))
+        .await
+        .unwrap();
+    let view = f
+        .store
+        .cancel(
+            &f.policy,
+            &id("alice"),
+            &scope(),
+            &cancelled.id,
+            cancelled.revision,
+        )
+        .await
+        .unwrap();
+    assert_eq!(view.state, JobState::Cancelled);
+    assert!(view.result.is_none());
+}

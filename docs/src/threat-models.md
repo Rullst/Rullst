@@ -161,8 +161,8 @@ mounts with `Server::with_monitor`. The standalone Studio that reads it for
 several projects from the developer's machine (phases 2 and 3) is modelled in
 `TM-STUDIO-3`.
 
-**Assets:** operational metrics of a production process (request counts, rates
-and latency per route pattern, status classes, queue depth and worker
+**Assets:** operational metrics of a production process (request counts, rates,
+latency and response bytes per route pattern, status classes, queue depth and worker
 activity, possible N+1 query fingerprints, process radar); the monitor tokens;
 the availability of the application that serves the endpoint.
 
@@ -265,7 +265,7 @@ snapshot contents ↔ destination repository.
 | Abuse case | Required disposition | Repository evidence or remaining work |
 | --- | --- | --- |
 | `ORM-01` copied, tampered or cross-scope snapshot discloses or substitutes documents | Encrypt and authenticate the complete versioned payload with a fresh nonce, explicit rotation key ID, length-delimited application/collection binding and fixed decode limits; authenticate before JSON decoding. | The exact negative changes ciphertext, key material and application binding and proves all three fail closed. Key bytes are consumed through a zeroizing temporary, opaque snapshot/key `Debug` output is redacted and plaintext labels are absent from the envelope. Key generation/custody/rotation, external snapshot permissions and deletion remain operator responsibilities. |
-| `ORM-02` partial retry overwrites conflicting destination data or silently accepts extras | Accept only an empty destination or an exact matching subset, insert without replacement, treat only an exact raced duplicate as replay and verify the final complete inventory. Never delete an extra row or claim transactionality across stores. | The exact negative proves a differing row and an extra row fail before mutation. Deterministic tests cover partial resume and idempotent replay; the live matrix exports MongoDB→SurrealDB→MongoDB and checks ordered IDs. Export performs two equal observations, but formal consistency still requires the application to quiesce writers; a failed restore can retain prior successful inserts for the documented retry path. |
+| `ORM-02` partial retry overwrites conflicting destination data or silently accepts extras | Accept only an empty destination or an exact matching subset, insert without replacement, treat only an exact raced duplicate as replay and verify the final complete inventory. Never delete an extra row or claim transactionality across stores. | The exact negative proves a differing row and an extra row fail before mutation. Deterministic tests cover partial resume and idempotent replay; the live matrix exports SurrealDB→deterministic store→SurrealDB and checks ordered IDs. Export performs two equal observations, but formal consistency still requires the application to quiesce writers; a failed restore can retain prior successful inserts for the documented retry path. |
 
 **Release-negative minimum:** ciphertext/key/scope substitution and conflicting
 or extra destination state.

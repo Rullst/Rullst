@@ -220,7 +220,7 @@ Rullst uses two cryptography libraries, each with one role (since
 
 | Component | Library | Why |
 | --- | --- | --- |
-| Every TLS connection Rullst makes: outbound HTTPS (reqwest: AI and payment providers, OAuth, webhooks, S3 storage, Studio's remote poller), SQLx (PostgreSQL and MySQL), Redis (Redis Streams messaging, ORM Redis data and cache), SMTP (`mail-smtp`), MongoDB (`orm-mongodb`) and OTLP telemetry | `aws-lc-rs`, as the rustls crypto provider | Post-quantum hybrid key exchange (`X25519MLKEM768`, offered first) and a FIPS-capable build |
+| Every TLS connection Rullst makes: outbound HTTPS (reqwest: AI and payment providers, OAuth, webhooks, S3 storage, Studio's remote poller), SQLx (PostgreSQL and MySQL), Redis (Redis Streams messaging, ORM Redis data and cache), SMTP (`mail-smtp`) and OTLP telemetry | `aws-lc-rs`, as the rustls crypto provider | Post-quantum hybrid key exchange (`X25519MLKEM768`, offered first) and a FIPS-capable build |
 | HMAC, digests, randomness and signatures in `rullst-auth`, `rullst-capital`, `rullst-core`, `rullst-labs`, `rullst-media`, `rullst-privacy`, `rullst-studio` and `rullst-supervision` | `ring`, used directly | Portable to wasm and edge targets, where `aws-lc-rs` is not available |
 
 `ring` is not a rustls provider in Rullst: no Rullst crate enables rustls' `ring`
@@ -229,8 +229,7 @@ backend.
 
 How each client chooses its provider:
 
-- SQLx and MongoDB select aws-lc-rs at compile time (`tls-rustls-aws-lc-rs`,
-  `rustls-tls-aws-lc`). SQLx switches to ring as soon as any crate in the
+- SQLx selects aws-lc-rs at compile time (`tls-rustls-aws-lc-rs`). SQLx switches to ring as soon as any crate in the
   application enables one of its ring TLS features (`tls-rustls`,
   `tls-rustls-ring` and the `tls-rustls-ring-*` variants), so an application's
   own `sqlx` dependency should use `tls-rustls-aws-lc-rs`, as generated

@@ -4,10 +4,6 @@
 pub enum Backend {
     /// Deterministic, in-process document backend for tests and local work.
     Mock,
-    /// MongoDB document database.
-    MongoDb,
-    /// DuckDB in-process analytics database.
-    DuckDb,
     /// Turso/libSQL edge database through its remote protocol.
     Turso,
     /// SurrealDB multi-model database through its HTTP protocol.
@@ -24,8 +20,6 @@ pub enum Backend {
 pub enum Capability {
     /// Typed document CRUD and bounded listing.
     Documents,
-    /// Parameterized analytical statements and bounded result sets.
-    Analytics,
     /// Explicit, bounded graph queries.
     Graph,
     /// Parameterized SQL over an edge-native remote protocol.

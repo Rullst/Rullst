@@ -243,11 +243,50 @@ impl core::marker::Sync for rullst_supervision::analysis::Finding
 impl core::marker::Unpin for rullst_supervision::analysis::Finding
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_supervision::analysis::Finding
 impl core::panic::unwind_safe::UnwindSafe for rullst_supervision::analysis::Finding
+#[non_exhaustive] pub struct rullst_supervision::analysis::LoudnessStatistics
+impl rullst_supervision::analysis::LoudnessStatistics
+pub const rullst_supervision::analysis::LoudnessStatistics::MAX_WINDOW_MS: u32
+pub const rullst_supervision::analysis::LoudnessStatistics::MIN_DBFS: f32
+pub fn rullst_supervision::analysis::LoudnessStatistics::active_fraction(self) -> f32
+pub fn rullst_supervision::analysis::LoudnessStatistics::mean_dbfs(self) -> f32
+pub fn rullst_supervision::analysis::LoudnessStatistics::new(mean_dbfs: f32, peak_dbfs: f32, active_fraction: f32, window_ms: u32) -> core::result::Result<Self, rullst_supervision::SupervisionError>
+pub fn rullst_supervision::analysis::LoudnessStatistics::peak_dbfs(self) -> f32
+pub fn rullst_supervision::analysis::LoudnessStatistics::window_ms(self) -> u32
+impl core::clone::Clone for rullst_supervision::analysis::LoudnessStatistics
+impl core::cmp::PartialEq for rullst_supervision::analysis::LoudnessStatistics
+impl core::fmt::Debug for rullst_supervision::analysis::LoudnessStatistics
+impl core::marker::Copy for rullst_supervision::analysis::LoudnessStatistics
+impl core::marker::Send for rullst_supervision::analysis::LoudnessStatistics
+impl core::marker::Sync for rullst_supervision::analysis::LoudnessStatistics
+impl core::marker::Unpin for rullst_supervision::analysis::LoudnessStatistics
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_supervision::analysis::LoudnessStatistics
+impl core::panic::unwind_safe::UnwindSafe for rullst_supervision::analysis::LoudnessStatistics
+#[non_exhaustive] pub struct rullst_supervision::analysis::LuminanceStatistics
+impl rullst_supervision::analysis::LuminanceStatistics
+pub const rullst_supervision::analysis::LuminanceStatistics::MAX_SAMPLES: u32
+pub fn rullst_supervision::analysis::LuminanceStatistics::mean(self) -> f32
+pub fn rullst_supervision::analysis::LuminanceStatistics::new(mean: f32, standard_deviation: f32, samples: u32) -> core::result::Result<Self, rullst_supervision::SupervisionError>
+pub fn rullst_supervision::analysis::LuminanceStatistics::samples(self) -> u32
+pub fn rullst_supervision::analysis::LuminanceStatistics::standard_deviation(self) -> f32
+impl core::clone::Clone for rullst_supervision::analysis::LuminanceStatistics
+impl core::cmp::PartialEq for rullst_supervision::analysis::LuminanceStatistics
+impl core::fmt::Debug for rullst_supervision::analysis::LuminanceStatistics
+impl core::marker::Copy for rullst_supervision::analysis::LuminanceStatistics
+impl core::marker::Send for rullst_supervision::analysis::LuminanceStatistics
+impl core::marker::Sync for rullst_supervision::analysis::LuminanceStatistics
+impl core::marker::Unpin for rullst_supervision::analysis::LuminanceStatistics
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_supervision::analysis::LuminanceStatistics
+impl core::panic::unwind_safe::UnwindSafe for rullst_supervision::analysis::LuminanceStatistics
 pub struct rullst_supervision::analysis::MediaSample<'a>
+impl rullst_supervision::analysis::MediaSample<'static>
+pub fn rullst_supervision::analysis::MediaSample::loudness(statistics: rullst_supervision::analysis::LoudnessStatistics) -> Self
+pub fn rullst_supervision::analysis::MediaSample::luminance(statistics: rullst_supervision::analysis::LuminanceStatistics) -> Self
 impl<'a> rullst_supervision::analysis::MediaSample<'a>
 pub fn rullst_supervision::analysis::MediaSample::bytes(self) -> &'a [u8]
 pub fn rullst_supervision::analysis::MediaSample::format(self) -> rullst_supervision::analysis::SampleFormat
 pub fn rullst_supervision::analysis::MediaSample::kind(self) -> rullst_supervision::analysis::AnalysisKind
+pub fn rullst_supervision::analysis::MediaSample::loudness_statistics(self) -> core::option::Option<rullst_supervision::analysis::LoudnessStatistics>
+pub fn rullst_supervision::analysis::MediaSample::luminance_statistics(self) -> core::option::Option<rullst_supervision::analysis::LuminanceStatistics>
 pub fn rullst_supervision::analysis::MediaSample::new(format: rullst_supervision::analysis::SampleFormat, bytes: &'a [u8]) -> core::result::Result<Self, rullst_supervision::SupervisionError>
 impl core::fmt::Debug for rullst_supervision::analysis::MediaSample<'_>
 impl<'a> core::clone::Clone for rullst_supervision::analysis::MediaSample<'a>
@@ -261,6 +300,8 @@ impl<'a> core::panic::unwind_safe::UnwindSafe for rullst_supervision::analysis::
 pub rullst_supervision::analysis::SampleFormat::JpegFrame
 pub rullst_supervision::analysis::SampleFormat::PngFrame
 pub rullst_supervision::analysis::SampleFormat::Pcm16LeMono16Khz
+pub rullst_supervision::analysis::SampleFormat::LuminanceStatistics
+pub rullst_supervision::analysis::SampleFormat::LoudnessStatistics
 impl core::clone::Clone for rullst_supervision::analysis::SampleFormat
 impl core::cmp::Eq for rullst_supervision::analysis::SampleFormat
 impl core::cmp::PartialEq for rullst_supervision::analysis::SampleFormat
@@ -492,6 +533,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_supervision::exam::Observat
 pub rullst_supervision::exam::PresenceObservation::PersonDetected
 pub rullst_supervision::exam::PresenceObservation::NoPersonDetected
 pub rullst_supervision::exam::PresenceObservation::Inconclusive
+pub rullst_supervision::exam::PresenceObservation::Obscured
 impl core::clone::Clone for rullst_supervision::exam::PresenceObservation
 impl core::cmp::Eq for rullst_supervision::exam::PresenceObservation
 impl core::cmp::PartialEq for rullst_supervision::exam::PresenceObservation
@@ -643,6 +685,7 @@ pub async fn rullst_supervision::sqlite::SqliteSupervision::revoke_authority(&se
 pub async fn rullst_supervision::sqlite::SqliteSupervision::session(&self, context: &rullst_supervision::Context, scope: &rullst_supervision::Scope, id: &rullst_supervision::OpaqueId) -> core::result::Result<rullst_supervision::exam::Session, rullst_supervision::SupervisionError>
 pub async fn rullst_supervision::sqlite::SqliteSupervision::set_course_policy(&self, context: &rullst_supervision::Context, scope: &rullst_supervision::Scope, expected: rullst_supervision::Revision, policy: &rullst_supervision::parental::CoursePolicy) -> core::result::Result<rullst_supervision::parental::ManagedLearner, rullst_supervision::SupervisionError>
 pub async fn rullst_supervision::sqlite::SqliteSupervision::start_exam(&self, context: &rullst_supervision::Context, scope: &rullst_supervision::Scope, policy: &rullst_supervision::exam::ExamPolicy, acknowledgement: &rullst_supervision::exam::Acknowledgement, previous: core::option::Option<rullst_supervision::Revision>) -> core::result::Result<rullst_supervision::exam::Session, rullst_supervision::SupervisionError>
+pub async fn rullst_supervision::sqlite::SqliteSupervision::upgrade_event_schema(&self) -> core::result::Result<bool, rullst_supervision::SupervisionError>
 impl<C: core::clone::Clone> core::clone::Clone for rullst_supervision::sqlite::SqliteSupervision<C>
 impl<C = rullst_supervision::SystemClock> !core::panic::unwind_safe::RefUnwindSafe for rullst_supervision::sqlite::SqliteSupervision<C>
 impl<C = rullst_supervision::SystemClock> !core::panic::unwind_safe::UnwindSafe for rullst_supervision::sqlite::SqliteSupervision<C>
