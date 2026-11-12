@@ -6,8 +6,8 @@ selected Bunny Stream lifecycle with opt-in HTTP and shared-local SQLite, an
 authenticated browser acceptance consumer and an executable offline example.
 It remains outside the framework facade. Its standalone package is now included
 in the v13 release inventory and was first published in the 13.0.0-alpha.1
-prerelease; the final release campaign remains outstanding, and real-provider
-interoperability remains unvalidated.
+prerelease; the final release campaign remains outstanding, and a production
+application uses the Bunny adapter with a real Bunny Stream library.
 [PR #227](https://github.com/Rullst/Rullst/pull/227) passed workspace/platform
 checks and the actual [installed-archive job](https://github.com/Rullst/Rullst/actions/runs/35564717398)
 at `b21d52e7692ffceec689223a04658a95156778a0`, then merged into `v13` at

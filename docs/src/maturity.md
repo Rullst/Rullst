@@ -91,7 +91,7 @@ what your application needs.
 | `rullst-auth` | Extension | Passwords, sessions, passkeys and authorization helpers. |
 | `rullst-connect` | Extension | OAuth2/OIDC identity integrations. |
 | `rullst-mail` | Extension | Transactional email and delivery controls; see the [crate page](crates/mail.md) for the supported drivers. |
-| `rullst-capital` | Extension | Payments and billing: Stripe (supported) and InfinitePay (experimental: one-off payment links and source-confirmed notifications on its public Checkout API since 13.0.0-alpha.5, not yet validated against a live account). |
+| `rullst-capital` | Extension | Payments and billing: Stripe (supported) and InfinitePay (experimental: one-off payment links and source-confirmed notifications on its public Checkout API since 13.0.0-alpha.5, one real Pix payment validated in the 13.0.0-alpha.5 acceptance run). |
 | `rullst-ai` | Extension | Guarded LLM clients and retrieval; provider coverage is in the [AI provider matrix](ai-provider-capabilities.md). |
 | `rullst-nexus` | Extension | Admin CMS for registered models. |
 | `rullst-studio` | Extension | Local developer control room. |
@@ -99,7 +99,7 @@ what your application needs.
 | `rullst-iot` | Experimental | Validated on one board only (a BBC micro:bit V2, see [hardware validation](crates/iot.md#hardware-validation-bbc-microbit-v2)) and has no network transport. See the [module status](crates/iot.md#module-status). |
 | `rullst-privacy` | Experimental | First published in the 13.0.0-alpha.1 prerelease. No live age providers or verified guardianship; see the [privacy roadmap](privacy-age-assurance-roadmap.md). |
 | `rullst-supervision` | Experimental | The host owns capture, models and reviewer workflow. Read [Responsible use](supervision.md#responsible-use) first. |
-| `rullst-media` | Experimental | Interoperability with real Bunny Stream accounts, transcoding and CDN delivery is unvalidated; the opt-in `s3` adapter (S3, R2, MinIO) is validated against the offline mock only. See the [managed-video candidate](managed-video.md). |
+| `rullst-media` | Experimental | A production application uses the Bunny adapter with a real Bunny Stream library (create, browser upload, status, update, deletion and private playback); transcoding and CDN edge cases are not covered by Rullst's own tests; the opt-in `s3` adapter (S3, R2, MinIO) is validated against the offline mock only. See the [managed-video candidate](managed-video.md). |
 | `rullst-labs` | Experimental | In the 13.0 release inventory since `13.0.0-alpha.1`. Contracts only; it never executes learner code. Bring your own runner; see the [runner contract](labs-runner-contract.md). |
 
 ## CLI generators
