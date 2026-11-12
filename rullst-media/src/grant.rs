@@ -94,7 +94,7 @@ fn grant_expiry(expires_at: i64) -> Result<i64, MediaError> {
 
 /// HTTPS (HTTP only for the loopback protocol fixture), a host, no
 /// credentials or fragment, visible ASCII only, at most 2 KiB.
-fn url_valid(url: &str, mode: ProviderMode) -> bool {
+pub(crate) fn url_valid(url: &str, mode: ProviderMode) -> bool {
     let rest = url.strip_prefix("https://").or_else(|| {
         url.strip_prefix("http://")
             .filter(|_| mode == ProviderMode::ProtocolFixture)

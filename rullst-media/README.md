@@ -111,7 +111,11 @@ grants with `UploadGrant::new(&binding, video, protocol, endpoint, signature,
 expires_at)` and `PlaybackGrant::new(&binding, url, expires_at)`, which take
 the binding's library and mode and refuse non-HTTPS or credential-bearing URLs,
 empty or non-ASCII signatures and impossible expiry times with `InvalidInput`;
-`UploadGrant::with_declaration` adds a declared type and length. See
+`UploadGrant::with_declaration` adds a declared type and length. Its `list`
+builds pages with `ListedVideo::new(id, title, length_seconds, processing)`
+(optional `with_created_at` and HTTPS `with_thumbnail_url`) and
+`VideoPage::new(&query, items, total)`, which echoes the query and refuses
+more than `per_page` items. See
 [Provider conformance kits](https://github.com/Rullst/Rullst/blob/main/docs/src/provider-conformance.md).
 
 ### Library listing (13.0.0-alpha.5)

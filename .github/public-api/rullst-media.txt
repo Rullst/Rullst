@@ -79,6 +79,10 @@ pub rullst_media::ListedVideo::length_seconds: u32
 pub rullst_media::ListedVideo::processing: rullst_media::Processing
 pub rullst_media::ListedVideo::created_at: core::option::Option<i64>
 pub rullst_media::ListedVideo::thumbnail_url: core::option::Option<alloc::string::String>
+impl rullst_media::ListedVideo
+pub fn rullst_media::ListedVideo::new(id: rullst_media::VideoId, title: impl core::convert::Into<alloc::string::String>, length_seconds: u32, processing: rullst_media::Processing) -> core::result::Result<Self, rullst_media::MediaError>
+pub fn rullst_media::ListedVideo::with_created_at(self, created_at: i64) -> core::result::Result<Self, rullst_media::MediaError>
+pub fn rullst_media::ListedVideo::with_thumbnail_url(self, url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_media::MediaError>
 impl core::clone::Clone for rullst_media::ListedVideo
 impl core::cmp::Eq for rullst_media::ListedVideo
 impl core::cmp::PartialEq for rullst_media::ListedVideo
@@ -376,6 +380,7 @@ pub rullst_media::VideoPage::per_page: u32
 pub rullst_media::VideoPage::total: u64
 impl rullst_media::VideoPage
 pub fn rullst_media::VideoPage::has_more(&self) -> bool
+pub fn rullst_media::VideoPage::new(query: &rullst_media::ListQuery, items: alloc::vec::Vec<rullst_media::ListedVideo>, total: u64) -> core::result::Result<Self, rullst_media::MediaError>
 impl core::clone::Clone for rullst_media::VideoPage
 impl core::cmp::Eq for rullst_media::VideoPage
 impl core::cmp::PartialEq for rullst_media::VideoPage

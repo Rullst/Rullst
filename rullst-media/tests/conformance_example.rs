@@ -1,5 +1,5 @@
 //! An application-owned video provider that creates its own grants and
-//! passes the video conformance kit, without a network.
+//! listing pages and passes the video conformance kit, without a network.
 //! `docs/src/provider-conformance.md` walks through it.
 #![cfg(feature = "conformance")]
 
@@ -15,7 +15,8 @@ const MAX_UPLOAD_TTL: u32 = 3_600;
 const MAX_PLAYBACK_TTL: u32 = 900;
 
 /// Adapter for the fictitious ExampleVideo service, here with its offline
-/// library kept in memory. ExampleVideo signs its own upload and HLS URLs.
+/// library kept in memory. ExampleVideo signs its own upload and HLS URLs and
+/// lists its library.
 pub struct ExampleVideo {
     binding: ProviderBinding,
     videos: Mutex<BTreeMap<VideoId, RemoteVideo>>,
@@ -153,6 +154,35 @@ impl VideoProvider for ExampleVideo {
         );
         PlaybackGrant::new(&self.binding, url, expires_at)
     }
+
+    async fn list(&self, query: &ListQuery) -> Result<VideoPage, MediaError> {
+        let term = query.search().map(str::to_lowercase);
+        let mut matches = Vec::new();
+        for video in self.videos()?.values() {
+            if term
+                .as_ref()
+                .is_none_or(|term| video.title.to_lowercase().contains(term))
+            {
+                let listed = ListedVideo::new(
+                    video.id.clone(),
+                    &video.title,
+                    video.length_seconds,
+                    video.processing,
+                )?;
+                matches.push(listed);
+            }
+        }
+        // ExampleVideo keeps no upload dates, so both orders list by title.
+        matches.sort_by(|a, b| a.title.cmp(&b.title));
+        let total = matches.len() as u64;
+        let skip = (query.page() as usize - 1) * query.per_page() as usize;
+        let items = matches
+            .into_iter()
+            .skip(skip)
+            .take(query.per_page() as usize)
+            .collect();
+        VideoPage::new(query, items, total)
+    }
 }
 // ANCHOR_END: provider
 
@@ -160,10 +190,50 @@ impl VideoProvider for ExampleVideo {
 #[tokio::test]
 async fn example_video_passes_the_video_conformance_kit() {
     let provider = ExampleVideo::offline(LibraryId::new(7).unwrap()).unwrap();
-    // ExampleVideo has no library listing: `list` keeps its `Unsupported` default.
-    let expect = VideoExpectations::new(1_793_534_400).without_listing();
+    // Upload grants, HLS playback and listing, checked at this UTC second.
+    let expect = VideoExpectations::new(1_793_534_400);
     let report = check_video_provider("example-video", &provider, expect).await;
     println!("{report}");
     report.assert_passed();
 }
 // ANCHOR_END: check
+
+#[tokio::test]
+async fn example_video_lists_its_library_in_bounded_pages() {
+    let provider = ExampleVideo::offline(LibraryId::new(7).unwrap()).unwrap();
+    for (index, title) in ["Ownership", "Borrowing", "Lifetimes"].iter().enumerate() {
+        let video = provider
+            .create(&format!("rullst-video-{:032x}", index + 1))
+            .await
+            .unwrap();
+        provider
+            .update(&video.id, &Metadata::new(*title, "").unwrap())
+            .await
+            .unwrap();
+    }
+    let titles = |page: &VideoPage| {
+        page.items
+            .iter()
+            .map(|video| video.title.clone())
+            .collect::<Vec<_>>()
+    };
+    let first = provider
+        .list(&ListQuery::new(1, 10).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(titles(&first), ["Borrowing", "Lifetimes", "Ownership"]);
+    assert_eq!((first.page, first.per_page, first.total), (1, 10, 3));
+    assert!(!first.has_more());
+    let search = ListQuery::new(1, 10).unwrap().with_search("LIFE").unwrap();
+    let found = provider.list(&search).await.unwrap();
+    assert_eq!(
+        (titles(&found), found.total),
+        (vec!["Lifetimes".to_owned()], 1)
+    );
+    let second = provider
+        .list(&ListQuery::new(2, 10).unwrap())
+        .await
+        .unwrap();
+    assert!(second.items.is_empty());
+    assert_eq!(second.total, 3);
+}
