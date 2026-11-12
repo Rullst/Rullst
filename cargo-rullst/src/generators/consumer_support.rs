@@ -46,8 +46,9 @@ pub(super) fn equivalent(left: &str, right: &str) -> Result<bool, Box<dyn std::e
     Ok(left == right || formatted(&left)? == formatted(&right)?)
 }
 
-/// Checks the unmodified SaaS authentication; a refusal ends with `remedy`,
-/// what the calling generator offers a project without it.
+/// Checks the unmodified SaaS authentication, or the same files after
+/// `make:mfa` wired its second step into `login_submit`; a refusal ends with
+/// `remedy`, what the calling generator offers a project without it.
 pub(super) fn recognized_auth(
     root: &Path,
     consumer: &str,
@@ -72,6 +73,18 @@ pub(super) fn recognized_auth(
             .ok_or_else(|| invalid("authentication template is missing"))?;
         let state = match consumer_files::read(&root.join(name)) {
             Ok(source) if equivalent(&source, &expected.1)? => continue,
+            // `make:mfa` adds its second step to `login_submit`; these
+            // consumers do not touch that function, so the wired controller
+            // is still the recognized one, as in the reverse order.
+            Ok(source)
+                if name == "src/controllers/auth_controller.rs"
+                    && crate::generators::auth::mfa::login_hook(&expected.1)?
+                        .map(|wired| equivalent(&source, &wired))
+                        .transpose()?
+                        .unwrap_or(false) =>
+            {
+                continue;
+            }
             Ok(_) => "differs from the starter's",
             Err(error) if error.kind() == io::ErrorKind::NotFound => "is missing",
             Err(error) => return Err(error.into()),
@@ -233,6 +246,25 @@ mod tests {
             fs::write(path, content).unwrap();
         }
         recognized_auth(root.as_path(), "saas", REMEDY).unwrap();
+        // The controller as `make:mfa` leaves it is still recognized.
+        let controller = root.as_path().join("src/controllers/auth_controller.rs");
+        let starter = fs::read_to_string(&controller).unwrap();
+        let wired = crate::generators::auth::mfa::login_hook(&starter)
+            .unwrap()
+            .expect("make:mfa recognizes the starter's login_submit");
+        assert_ne!(wired, starter);
+        fs::write(&controller, &wired).unwrap();
+        recognized_auth(root.as_path(), "saas", REMEDY).unwrap();
+        // Another edit of the same file is not.
+        fs::write(&controller, format!("{wired}\nfn custom() {{}}\n")).unwrap();
+        let error = recognized_auth(root.as_path(), "saas", REMEDY)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("src/controllers/auth_controller.rs differs from the starter's"),
+            "{error}"
+        );
+        fs::write(&controller, &starter).unwrap();
         let middleware = root.as_path().join("src/middlewares/auth_middleware.rs");
         let edited = format!(
             "{}\nfn custom() {{}}\n",
