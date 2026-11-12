@@ -141,8 +141,8 @@ this learning project at a production database.
 > 
 > The CLI deliberately generates one audited application profile: Active
 > Record with server-rendered `html!` views and HTMX enhancement. The framework
-> still exposes lower-level repository and client-runtime foundations for
-> application-owned integration. See the [Architecture Choices Guide](architecture-decisions.md).
+> still exposes lower-level repository foundations for application-owned
+> integration. See the [Architecture Choices Guide](architecture-decisions.md).
 
 
 ## 3. Rullst Starters
@@ -156,9 +156,8 @@ depend on the generated page and runtime.
 **Use Case:** Custom, from-scratch development.
 This is the minimal template powered by server-rendered `html!` views and HTMX
 without a project-local JavaScript bundle. It includes a simple reactive counter
-to demonstrate server-driven communication. Other frontend foundations remain
-available as application APIs, but are not advertised as equivalent generated
-starters.
+to demonstrate server-driven communication. Other frontend stacks are
+application code, not generated starters.
 
 ### API
 **Use Case:** Headless JSON services.

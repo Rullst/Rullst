@@ -777,6 +777,11 @@ A prepared version section does not establish that its tag or crates exist.
   after the ORM pool exists, and the supervision guide says that a parental
   window is one period of at most 30 days. `AGENTS.md` lists the alpha.5
   state of the crates.
+- Documentation: removed stale references to the ERP and Portfolio examples
+  (the Studio, start-here, maturity and production monitoring pages and the
+  site's home page) and to the frontend adapters and Wasm client that
+  13.0.0-alpha.5 removed (getting started, capability status); the CLI
+  reference names `make:privacy --blueprint`.
 
 ### Removed
 

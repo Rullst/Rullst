@@ -1183,8 +1183,8 @@ cargo rullst make:privacy \
 
 The version and lifetime are explicit application choices; the engineering cap
 of 365 days is not a legal retention rule. It targets the recognized SaaS
-starter, or an application's own sign-in through the
-[authentication contract](#authentication-contract) (`require_account`,
+starter (`--blueprint saas`, the default), or an application's own sign-in
+through the [authentication contract](#authentication-contract) (`require_account`,
 `find_account` and `session_binding`: the routes use the contract's middleware,
 the export its account and the forms its session binding), and requires
 `--tenant-ref`; v13 removed the LMS target. The tenant is
