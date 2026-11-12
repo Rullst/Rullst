@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794462538997,
+  "lastUpdate": 1794469048509,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -32697,6 +32697,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 960,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89217d072361f11dd4b4f098bba10613d3b967cd",
+          "message": "Merge pull request #630 from Rullst/feat/v13-alpha5-footprint\n\nfeat(cli)!: rename green to footprint, add page weight and macOS/Windows sampling",
+          "timestamp": "2026-11-12T04:31:48-03:00",
+          "tree_id": "fe7b45a28cb4c79c53f5ab74eb9f7d7625a56fe2",
+          "url": "https://github.com/Rullst/Rullst/commit/89217d072361f11dd4b4f098bba10613d3b967cd"
+        },
+        "date": 1794469044687,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 729,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 956,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 435,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2077,
+            "range": "± 105",
             "unit": "ns/iter"
           }
         ]
