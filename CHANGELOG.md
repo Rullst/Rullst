@@ -714,8 +714,8 @@ for you to fix.
   Subscriptions, portal, usage, coupons and trials return
   `UnsupportedOperation` (also with `mock_*` credentials, which used to
   return portal and cancellation fixtures); an empty or `mock_*` handle runs
-  deterministic offline fixtures. The adapter stays experimental until it is
-  validated against a live account.
+  deterministic offline fixtures. The adapter stays experimental; one real
+  Pix payment was validated with it.
 - `rullst_capital::providers::ProviderRequest` gives application-owned
   payment adapters Capital's HTTP rules (no redirects, no ambient proxy,
   finite timeouts, rustls, 1 MiB responses, HTTPS or loopback HTTP, redacted
