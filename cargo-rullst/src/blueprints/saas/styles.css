@@ -14,6 +14,9 @@ body {
 
 body {
     display: flex;
+    /* A column: pages rendered with render_page* that put several elements
+       in <body> stack them instead of placing them side by side. */
+    flex-direction: column;
     min-height: 100vh;
     align-items: center;
     justify-content: center;

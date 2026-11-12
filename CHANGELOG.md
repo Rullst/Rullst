@@ -584,6 +584,14 @@ describes each replacement.
 
 ### Fixed
 
+- The SaaS starter's dashboard broke at phone width: its header actions were
+  inline links with vertical padding in a non-wrapping flex row, so on a
+  390 px screen they overlapped one another and the logo. The header and its
+  actions now wrap with gaps, the buttons are inline blocks and small screens
+  get less padding. The starter's `static/rullst.css`, which `render_page*`
+  links, centred `<body>` as a flex row, so a page that put several elements in
+  `<body>` showed them side by side; it now stacks them in a column (found by
+  the 13.0.0-alpha.5 acceptance application).
 - `cargo rullst make:privacy` and `cargo rullst make:age-gate` refused a SaaS
   project in which `cargo rullst make:mfa` had already run
   (`src/controllers/auth_controller.rs differs from the starter's`), although
