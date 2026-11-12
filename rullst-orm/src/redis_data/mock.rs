@@ -7,7 +7,7 @@ use tokio::sync::RwLock;
 
 use super::{
     RedisDataKey, RedisField, RedisMember, RedisScanLimit, RedisStructure, RedisValue,
-    ScoredRedisMember, redis_error, validate_score,
+    ScoredRedisMember, redis_failure, validate_score,
 };
 use crate::polyglot::PolyglotError;
 
@@ -57,10 +57,15 @@ impl MockRedisData {
     ) -> Result<i64, PolyglotError> {
         let mut hashes = self.hashes.write().await;
         let hash = hashes.entry(key.as_str().to_owned()).or_default();
+        // The texts Redis itself returns for these HINCRBY failures.
         let current = hash.get(field.as_str()).map_or(Ok(0), |value| {
-            value.parse::<i64>().map_err(|_| redis_error())
+            value
+                .parse::<i64>()
+                .map_err(|_| redis_failure("ERR hash value is not an integer"))
         })?;
-        let updated = current.checked_add(amount).ok_or_else(redis_error)?;
+        let updated = current
+            .checked_add(amount)
+            .ok_or_else(|| redis_failure("ERR increment or decrement would overflow"))?;
         hash.insert(field.as_str().to_owned(), updated.to_string());
         Ok(updated)
     }

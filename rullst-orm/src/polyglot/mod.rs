@@ -20,6 +20,8 @@ pub use document::{
     CollectionName, DocumentEntry, DocumentId, DocumentInventory, DocumentPage, DocumentRepository,
 };
 pub use error::PolyglotError;
+#[cfg(any(feature = "surrealdb", feature = "redis"))]
+pub(crate) use error::server_detail;
 pub use mock::MockDocumentStore;
 pub use recovery::{
     DocumentRecoveryBinding, DocumentRecoveryError, DocumentRecoveryKey, DocumentRecoveryPolicy,

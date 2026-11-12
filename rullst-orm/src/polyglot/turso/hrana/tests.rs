@@ -154,3 +154,68 @@ fn decodes_unpadded_and_padded_blob_cells() {
         );
     }
 }
+
+fn coded(code: Option<&str>, message: &str) -> PolyglotError {
+    server_error(ServerError {
+        message: message.to_owned(),
+        code: code.map(str::to_owned),
+    })
+}
+
+#[test]
+fn unique_and_primary_key_violations_are_conflicts() {
+    // libSQL server v0.24 sends the primary code and SQLite's fixed text.
+    for message in [
+        "SQLite error: UNIQUE constraint failed: users.email",
+        "SQLite error: UNIQUE constraint failed: users.id",
+    ] {
+        assert!(
+            matches!(
+                coded(Some("SQLITE_CONSTRAINT"), message),
+                PolyglotError::Conflict
+            ),
+            "{message}"
+        );
+    }
+    for code in ["SQLITE_CONSTRAINT_UNIQUE", "SQLITE_CONSTRAINT_PRIMARYKEY"] {
+        assert!(
+            matches!(coded(Some(code), "constraint"), PolyglotError::Conflict),
+            "{code}"
+        );
+    }
+}
+
+#[test]
+fn other_constraint_and_server_errors_stay_driver_errors() {
+    for (code, message, expected) in [
+        (
+            Some("SQLITE_CONSTRAINT"),
+            "SQLite error: NOT NULL constraint failed: users.name",
+            "Hrana server error SQLITE_CONSTRAINT: SQLite error: NOT NULL constraint failed: users.name",
+        ),
+        (
+            Some("SQLITE_CONSTRAINT_NOTNULL"),
+            "UNIQUE constraint failed: users.id",
+            "Hrana server error SQLITE_CONSTRAINT_NOTNULL: UNIQUE constraint failed: users.id",
+        ),
+        // The text alone is not trusted without the constraint code.
+        (
+            Some("SQLITE_ERROR"),
+            "UNIQUE constraint failed: users.id",
+            "Hrana server error SQLITE_ERROR: UNIQUE constraint failed: users.id",
+        ),
+        (
+            None,
+            "UNIQUE constraint failed: users.id",
+            "Hrana server error: UNIQUE constraint failed: users.id",
+        ),
+    ] {
+        match coded(code, message) {
+            PolyglotError::Driver { backend, message } => {
+                assert_eq!(backend, "Turso");
+                assert_eq!(message, expected);
+            }
+            other => panic!("{code:?} {message}: {other:?}"),
+        }
+    }
+}

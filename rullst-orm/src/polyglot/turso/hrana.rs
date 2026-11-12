@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{PolyglotError, TursoQueryLimit, TursoRow, TursoStatement, TursoValue};
 
+mod stream;
 mod value;
 use value::WireValue;
 
@@ -112,6 +113,29 @@ impl HranaClient {
         &self,
         requests: Vec<StreamRequest>,
     ) -> Result<PipelineResponse, PolyglotError> {
+        self.closing(None, requests).await
+    }
+
+    /// Sends requests that end with `close`; the stream must not stay open.
+    async fn closing(
+        &self,
+        baton: Option<String>,
+        requests: Vec<StreamRequest>,
+    ) -> Result<PipelineResponse, PolyglotError> {
+        let response = self.post(baton, requests).await?;
+        if response.baton.is_some() {
+            return Err(protocol_error("server kept a stream open after close"));
+        }
+        Ok(response)
+    }
+
+    /// Posts one pipeline request to the configured endpoint. A `base_url`
+    /// in the response is not followed, so the token only ever goes there.
+    async fn post(
+        &self,
+        baton: Option<String>,
+        requests: Vec<StreamRequest>,
+    ) -> Result<PipelineResponse, PolyglotError> {
         let mut request = self
             .client
             .post(self.pipeline_url.clone())
@@ -121,10 +145,7 @@ impl HranaClient {
             request = request.bearer_auth(&self.auth_token);
         }
         let response = request
-            .json(&PipelineRequest {
-                baton: None,
-                requests,
-            })
+            .json(&PipelineRequest { baton, requests })
             .send()
             .await
             .map_err(|error| PolyglotError::driver("Turso", error))?;
@@ -149,12 +170,7 @@ impl HranaClient {
             }
             body.extend_from_slice(&chunk);
         }
-        let response: PipelineResponse =
-            serde_json::from_slice(&body).map_err(PolyglotError::serialization)?;
-        if response.baton.is_some() {
-            return Err(protocol_error("server kept a stream open after close"));
-        }
-        Ok(response)
+        serde_json::from_slice(&body).map_err(PolyglotError::serialization)
     }
 }
 
@@ -420,12 +436,33 @@ fn expect_close(response: StreamResponse) -> Result<(), PolyglotError> {
 
 fn server_error(error: ServerError) -> PolyglotError {
     let code = error.code.filter(|code| !code.is_empty());
+    if is_unique_violation(code.as_deref(), &error.message) {
+        return PolyglotError::Conflict;
+    }
     PolyglotError::Driver {
         backend: "Turso",
         message: match code {
             Some(code) => format!("Hrana server error {code}: {}", error.message),
             None => format!("Hrana server error: {}", error.message),
         },
+    }
+}
+
+/// Whether a Hrana error is a UNIQUE or PRIMARY KEY violation, which the SQL
+/// adapters report as a conflict.
+///
+/// A Hrana v3 error carries only a message and SQLite's primary result code:
+/// libSQL server sends `SQLITE_CONSTRAINT` for every constraint kind (UNIQUE,
+/// PRIMARY KEY, NOT NULL, CHECK, FOREIGN KEY) and no extended code such as
+/// `SQLITE_CONSTRAINT_UNIQUE`. Under that code, the fixed text SQLite writes
+/// for both unique-index and primary-key violations, `UNIQUE constraint
+/// failed`, is the only discriminator left. An extended code is used directly
+/// when a server sends one.
+fn is_unique_violation(code: Option<&str>, message: &str) -> bool {
+    match code {
+        Some("SQLITE_CONSTRAINT_UNIQUE" | "SQLITE_CONSTRAINT_PRIMARYKEY") => true,
+        Some("SQLITE_CONSTRAINT") => message.contains("UNIQUE constraint failed"),
+        _ => false,
     }
 }
 
@@ -446,6 +483,9 @@ fn response_too_large() -> PolyglotError {
 #[cfg(test)]
 #[path = "hrana/pipeline_tests.rs"]
 mod pipeline_tests;
+#[cfg(test)]
+#[path = "hrana/stream_tests.rs"]
+mod stream_tests;
 #[cfg(test)]
 #[path = "hrana/tests.rs"]
 mod tests;

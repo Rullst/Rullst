@@ -75,3 +75,68 @@ impl PolyglotError {
         Self::serialization(error)
     }
 }
+
+/// Most characters of server-provided text a driver error keeps.
+#[cfg(any(feature = "surrealdb", feature = "redis"))]
+const MAX_SERVER_DETAIL_CHARS: usize = 240;
+
+/// A server's own error text made safe to carry in [`PolyglotError::Driver`]:
+/// one line without control characters, every URL (which can embed
+/// credentials) replaced, and at most 240 characters. `None` when no text is
+/// left.
+#[cfg(any(feature = "surrealdb", feature = "redis"))]
+pub(crate) fn server_detail(text: &str) -> Option<String> {
+    let words = text
+        .split(|character: char| character.is_whitespace() || character.is_control())
+        .filter(|word| !word.is_empty())
+        .map(|word| {
+            if word.contains("://") {
+                "[redacted URL]"
+            } else {
+                word
+            }
+        })
+        .collect::<Vec<_>>();
+    if words.is_empty() {
+        return None;
+    }
+    let detail = words.join(" ");
+    if detail.chars().count() <= MAX_SERVER_DETAIL_CHARS {
+        return Some(detail);
+    }
+    let mut bounded = detail
+        .chars()
+        .take(MAX_SERVER_DETAIL_CHARS - 1)
+        .collect::<String>();
+    bounded.push('…');
+    Some(bounded)
+}
+
+#[cfg(all(test, any(feature = "surrealdb", feature = "redis")))]
+mod tests {
+    use super::server_detail;
+
+    #[test]
+    fn server_detail_is_one_bounded_line_without_urls() {
+        assert_eq!(server_detail(""), None);
+        assert_eq!(server_detail(" \n\t\u{1b} "), None);
+        assert_eq!(
+            server_detail("  The database 'app'\n  does not exist\r\n"),
+            Some("The database 'app' does not exist".to_owned())
+        );
+        // A control character that is not whitespace also splits words.
+        assert_eq!(
+            server_detail("bad\u{1b}[31mcolour"),
+            Some("bad [31mcolour".to_owned())
+        );
+        assert_eq!(
+            server_detail("cannot reach https://user:secret@db.example:8000/sql now"),
+            Some("cannot reach [redacted URL] now".to_owned())
+        );
+        let exact = "é".repeat(240);
+        assert_eq!(server_detail(&exact), Some(exact.clone()));
+        let long = server_detail(&format!("{exact}x")).unwrap();
+        assert_eq!(long.chars().count(), 240);
+        assert_eq!(long, format!("{}…", "é".repeat(239)));
+    }
+}

@@ -58,7 +58,7 @@ async fn test_matrix_surrealdb_document_contract() {
     assert!(bootstrap.iter().all(|result| result["status"] == "OK"));
 
     let config = SurrealConfig::new(
-        endpoint,
+        endpoint.clone(),
         "rullst_matrix",
         "persistence",
         SurrealAuth::basic("root", "root"),
@@ -168,4 +168,38 @@ async fn test_matrix_surrealdb_document_contract() {
         .expect("list all-digit inventory");
     let ids: Vec<&str> = entries.iter().map(|entry| entry.id().as_str()).collect();
     assert_eq!(ids, ["10", "9"]);
+
+    // Failures keep SurrealDB's own reason, without the password.
+    let driver_message = |result: Result<Option<Event>, PolyglotError>| match result {
+        Err(PolyglotError::Driver { message, .. }) => message,
+        other => panic!("expected a driver error, got {other:?}"),
+    };
+    let undefined = SurrealDbStore::<Event>::connect_or_mock(SurrealConfig::new(
+        endpoint.clone(),
+        "rullst_matrix",
+        "undefined_database",
+        SurrealAuth::basic("root", "root"),
+    ))
+    .expect("SurrealDB HTTP adapter should initialize");
+    let message = driver_message(undefined.find(&collection, &second).await);
+    assert!(
+        message.starts_with("statement returned status ERR: ")
+            && message.contains("undefined_database"),
+        "{message}"
+    );
+    let wrong_password = "wrong-matrix-password";
+    let unauthorized = SurrealDbStore::<Event>::connect_or_mock(SurrealConfig::new(
+        endpoint,
+        "rullst_matrix",
+        "persistence",
+        SurrealAuth::basic("root", wrong_password),
+    ))
+    .expect("SurrealDB HTTP adapter should initialize");
+    let message = driver_message(unauthorized.find(&collection, &second).await);
+    assert!(
+        message.len() > "HTTP status 401 Unauthorized: ".len()
+            && message.starts_with("HTTP status 401 Unauthorized: ")
+            && !message.contains(wrong_password),
+        "{message}"
+    );
 }

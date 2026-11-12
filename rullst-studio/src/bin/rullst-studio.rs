@@ -62,8 +62,6 @@ async fn main() -> ExitCode {
         );
         return ExitCode::FAILURE;
     };
-    println!("Rullst Studio (remote projects) on http://127.0.0.1:{port}/studio");
-    println!("Project list: {}", paths.projects.display());
     match run_remote_studio(RemoteStudioOptions::new(paths).with_port(port)).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
