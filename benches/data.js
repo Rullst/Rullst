@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794480327275,
+  "lastUpdate": 1794481006019,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -33075,6 +33075,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1502,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ebf0101d7c3ac29c3effbe9ea3697828141c95e7",
+          "message": "Merge pull request #673 from Rullst/test/v13-alpha5-app-key-etxtbsy\n\ntest(auth): retry the app-key child when its executable is busy",
+          "timestamp": "2026-11-12T07:51:13-03:00",
+          "tree_id": "bb52d355f5e139a6f43801cc8dee46cffbef8860",
+          "url": "https://github.com/Rullst/Rullst/commit/ebf0101d7c3ac29c3effbe9ea3697828141c95e7"
+        },
+        "date": 1794481002803,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 528,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 689,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 332,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1490,
+            "range": "± 43",
             "unit": "ns/iter"
           }
         ]
