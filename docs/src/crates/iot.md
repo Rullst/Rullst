@@ -409,6 +409,51 @@ the results from the board's USB serial port.
 
 ---
 
+## Receiving telemetry on the server (`rullst::iot_ingest`)
+
+`rullst-iot` has no network code. On the server, the `rullst` facade's
+`iot-ingest` feature adds `rullst::iot_ingest` (Experimental, 13.0.0-alpha.5):
+a `TelemetryReceiver` that accepts `SensorTelemetry` JSON from devices, each
+authenticated by its own bearer token, and publishes every accepted request
+to a realtime channel for a dashboard, a queue worker or a database writer.
+
+```rust,no_run
+use std::sync::Arc;
+use rullst::iot_ingest::{MemoryDeviceDirectory, TelemetryReceiver, TelemetryReceiverConfig};
+use rullst::realtime::BroadcastManager;
+use rullst::security::MachineEndpointPolicy;
+
+# async fn run() -> Result<(), Box<dyn std::error::Error>> {
+let devices = MemoryDeviceDirectory::new();
+let token = devices.register("uno-a", "Greenhouse Uno")?; // shown once
+# let _ = token;
+let channels = Arc::new(BroadcastManager::new());
+let receiver = TelemetryReceiver::new(devices, Arc::clone(&channels), TelemetryReceiverConfig::new());
+let policy = MachineEndpointPolicy::new(vec![receiver.machine_endpoint("/iot/telemetry")?])?;
+rullst::Server::new(receiver.routes("/iot/telemetry"))
+    .with_machine_endpoints(policy)
+    .run(3000)
+    .await?;
+# Ok(())
+# }
+```
+
+A device (or a gateway speaking for it) sends `POST /iot/telemetry` with
+`Authorization: Bearer <token>`, `Content-Type: application/json` and,
+optionally, `X-Rullst-Firmware`. The answer is `202` with
+`{"accepted": n}`, or an `IngestError`: `401` without a valid, unrevoked
+token, `403` when a reading names another device, `413`, `415`, `400` or `422`
+for oversized, non-JSON, malformed or invalid readings, and `429` with
+`Retry-After` beyond the device's rate. Subscribers of `iot.telemetry`
+receive each request as a JSON `TelemetryBatch`.
+
+The registry behind the receiver is a `DeviceDirectory`. Keep it in the
+application's database by implementing the trait over your own table:
+[`examples/iot-gateway`](https://github.com/Rullst/Rullst/tree/main/examples/iot-gateway)
+does it with an ORM model, a migration, register/revoke commands and a Nexus
+page, and runs two Arduino Uno boards through per-board serial gateways to a
+live SSE dashboard.
+
 ## 🔬 Experimental Simulators (`experimental-simulators`)
 
 For local integration tests without physical hardware attached, enable the simulator feature:

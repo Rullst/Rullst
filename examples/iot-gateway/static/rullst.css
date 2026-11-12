@@ -1,0 +1,20 @@
+:root { color-scheme: dark; }
+body { margin: 0; background: #020617; color: #e2e8f0; font-family: system-ui, sans-serif; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 1.6rem; margin: 0.5rem 0; }
+h2 { font-size: 1.1rem; margin: 0; }
+.muted { color: #94a3b8; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.card { padding: 16px; border: 1px solid #1e293b; border-radius: 12px; background: #0f172a; }
+.card header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.card dl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+.card dt { color: #94a3b8; font-size: 0.8rem; }
+.card dd { margin: 0; font: 700 1.4rem ui-monospace, monospace; }
+.badge { padding: 2px 8px; border-radius: 999px; font-size: 0.8rem; background: #1e293b; color: #cbd5e1; }
+.badge-active { background: #064e3b; color: #a7f3d0; }
+.badge-revoked { background: #7f1d1d; color: #fecaca; }
+.history { width: 100%; border-collapse: collapse; margin-top: 16px; font-variant-numeric: tabular-nums; }
+.history caption { text-align: left; color: #94a3b8; padding: 4px 0; }
+.history th, .history td { border-bottom: 1px solid #1e293b; padding: 4px 8px; text-align: right; }
+.history th:first-child, .history td:first-child { text-align: left; }
+code { overflow-wrap: anywhere; }
