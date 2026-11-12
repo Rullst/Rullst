@@ -161,6 +161,8 @@ pub trait BillingHarness: Send + Sync {
     /// in for it) report `payment` for `request` from now on. Returns `false`
     /// when the harness cannot simulate that answer; the kit then notes the
     /// check it could not run. The default simulates nothing.
+    // Its `false` mutant is the default itself.
+    #[cfg_attr(mutants, mutants::skip)]
     fn set_source_payment(&self, request: &OneOffCheckoutRequest, payment: &SourcePayment) -> bool {
         let _ = (request, payment);
         false

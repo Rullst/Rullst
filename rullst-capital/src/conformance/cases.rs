@@ -14,8 +14,8 @@ const RETURN_URL: &str = "https://conformance.invalid/return";
 const CANCEL_URL: &str = "https://conformance.invalid/cancel";
 const PROBE_REFERENCE: &str = "rullst-conformance-probe";
 const OTHER_REFERENCE: &str = "rullst-conformance-other";
-/// Larger than the 2 MiB the webhook middleware accepts.
-const OVERSIZED_BODY: usize = 3 * 1024 * 1024;
+/// 3 MiB, larger than the 2 MiB the webhook middleware accepts.
+const OVERSIZED_BODY: usize = 3_145_728;
 
 /// The provider under test and the implementer's fixtures.
 pub(super) struct Subject<'a, P: ?Sized, H: ?Sized> {

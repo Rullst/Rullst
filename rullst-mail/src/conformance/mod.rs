@@ -14,7 +14,7 @@
 //! `mock_*` credentials), so the kit never needs a network. The
 //! [`DeliveryCapture`] returns what the offline mode captured instead of
 //! sending; [`OfflineMockCapture`] reads the built-in drivers' shared
-//! [`OfflineMailMock`](crate::OfflineMailMock).
+//! [`OfflineMailMock`].
 //!
 //! | Case | What a conforming driver does |
 //! | --- | --- |

@@ -26,6 +26,7 @@ enum Defect {
     NonDeterministic,
     TrimsSignedBody,
     AcceptsUnsigned,
+    TrustsPaidStatus,
     ReplayDiffers,
     TrustsNotification,
     NeverPaid,
@@ -129,45 +130,53 @@ impl BillingProvider for Probe {
         if notification.reference() != request.reference() && !self.has(Defect::IgnoresReference) {
             return Err(CapitalError::InvalidCharge("another order".into()));
         }
-        let lie = |holds: bool| {
-            holds.then(|| OneOffPayment::paid("probe", request, total, total, currency))
+        // Each defect changes one thing; the rest stays correct.
+        let label = if self.has(Defect::MislabelsPayment) {
+            "other"
+        } else {
+            "probe"
         };
-        let forced = match self.defect {
-            Some(Defect::TrustsNotification) => lie(true),
-            Some(Defect::NeverPaid) => Some(Ok(OneOffPayment::unpaid("probe", request))),
+        let other;
+        let bound = if self.has(Defect::RebindsPayment) {
+            other = OneOffCheckoutRequest::new(
+                "order-2",
+                total,
+                currency,
+                "x",
+                request.success_url(),
+                request.cancel_url(),
+            )?;
+            &other
+        } else {
+            request
+        };
+        let same_currency = source.currency() == currency;
+        let trusted = match self.defect {
+            Some(Defect::TrustsNotification) => true,
+            Some(Defect::NeverPaid) => false,
             Some(Defect::AcceptsOverpayment) => {
-                lie(source.is_paid() && source.amount_minor() >= total)
+                source.is_paid() && same_currency && source.amount_minor() >= total
             }
             Some(Defect::AcceptsUnderpayment) => {
-                lie(source.is_paid() && source.amount_minor() <= total)
+                source.is_paid() && same_currency && source.amount_minor() <= total
             }
-            Some(Defect::IgnoresCurrency) => {
-                lie(source.is_paid() && source.amount_minor() == total)
+            Some(Defect::IgnoresCurrency) => source.is_paid() && source.amount_minor() == total,
+            _ => {
+                return match source.is_paid() {
+                    true => OneOffPayment::paid(
+                        label,
+                        bound,
+                        source.amount_minor(),
+                        source.amount_minor(),
+                        source.currency(),
+                    ),
+                    false => Ok(OneOffPayment::unpaid(label, bound)),
+                };
             }
-            Some(Defect::MislabelsPayment) => Some(Ok(OneOffPayment::unpaid("other", request))),
-            Some(Defect::RebindsPayment) => {
-                let other = OneOffCheckoutRequest::new(
-                    "order-2",
-                    total,
-                    currency,
-                    "x",
-                    request.success_url(),
-                    request.cancel_url(),
-                )?;
-                Some(Ok(OneOffPayment::unpaid("probe", &other)))
-            }
-            _ => None,
         };
-        match (forced, source.is_paid()) {
-            (Some(answer), _) => answer,
-            (None, true) => OneOffPayment::paid(
-                "probe",
-                request,
-                source.amount_minor(),
-                source.amount_minor(),
-                source.currency(),
-            ),
-            (None, false) => Ok(OneOffPayment::unpaid("probe", request)),
+        match trusted {
+            true => OneOffPayment::paid(label, bound, total, total, currency),
+            false => Ok(OneOffPayment::unpaid(label, bound)),
         }
     }
     fn handle_webhook(
@@ -180,14 +189,12 @@ impl BillingProvider for Probe {
             Some(Defect::TrimsSignedBody) => self
                 .stripe
                 .handle_webhook(payload.trim_ascii_end(), headers),
-            Some(Defect::AcceptsUnsigned) => Ok(WebhookEvent {
-                subscription_id: "sub_forged".into(),
-                customer_id: "cus_forged".into(),
-                customer_email: String::new(),
-                plan_id: "price_pro".into(),
-                status: SubscriptionStatus::Active,
-                ends_at: None,
-            }),
+            Some(Defect::TrustsPaidStatus)
+                if String::from_utf8_lossy(payload).contains(r#""status":"paid""#) =>
+            {
+                Ok(forged_event())
+            }
+            Some(Defect::AcceptsUnsigned) => Ok(forged_event()),
             Some(Defect::ReplayDiffers) if self.tick() % 2 == 1 => {
                 Err(CapitalError::WebhookReplay("seen".into()))
             }
@@ -219,6 +226,18 @@ impl BillingProvider for Probe {
     }
     async fn extend_trial(&self, id: &str, ends_at: i64) -> Result<(), CapitalError> {
         self.stripe.extend_trial(id, ends_at).await
+    }
+}
+
+/// An event a broken provider makes up without verifying anything.
+fn forged_event() -> WebhookEvent {
+    WebhookEvent {
+        subscription_id: "sub_forged".into(),
+        customer_id: "cus_forged".into(),
+        customer_email: String::new(),
+        plan_id: "price_pro".into(),
+        status: SubscriptionStatus::Active,
+        ends_at: None,
     }
 }
 
@@ -263,6 +282,7 @@ async fn each_defect_fails_its_case() {
         (NonDeterministic, "offline.deterministic"),
         (TrimsSignedBody, "notification.forged_refused"),
         (AcceptsUnsigned, "notification.forged_refused"),
+        (TrustsPaidStatus, "notification.forged_refused"),
         (Panics, "notification.forged_refused"),
         (ReplayDiffers, "notification.replay_idempotent"),
         (TrustsNotification, "confirmation.required"),

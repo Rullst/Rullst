@@ -17,7 +17,7 @@ const DELIVERY_ID: &str = "conformance_delivery_0001";
 const TENANT: &str = "conformance-tenant";
 const INJECTION: &str = "\r\nBcc: attacker@example.com";
 /// Under the 20 MiB per-attachment limit; two exceed the 25 MiB total.
-const HALF_TOTAL: usize = 13 * 1024 * 1024;
+const HALF_TOTAL: usize = 13_631_488;
 
 static RUNS: AtomicU64 = AtomicU64::new(0);
 
