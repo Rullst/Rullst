@@ -106,11 +106,11 @@ fn qdrant_names_and_variants_must_change_in_files_that_name_the_orm() {
     let source = r#"
 use rullst::orm::{QdrantConfig, QdrantStore, VectorRepository};
 use rullst_orm::polyglot::{Backend, Capability};
-fn store() -> QdrantStore {
-    QdrantStore::connect_or_mock(QdrantConfig::new("mock_local", "")).unwrap()
+fn store() -> Result<QdrantStore, Error> {
+    QdrantStore::connect_or_mock(QdrantConfig::new("mock_local", ""))
 }
-async fn search(store: &QdrantStore, name: &rullst_orm::VectorCollectionName) {
-    let _ = store.search(name, &[0.0], rullst_orm::VectorQueryLimit::new(3).unwrap()).await;
+async fn search(store: &QdrantStore, name: &rullst_orm::VectorCollectionName) -> Result<(), Error> {
+    store.search(name, &[0.0], rullst_orm::VectorQueryLimit::new(3)?).await.map(drop)
 }
 fn kind(backend: Backend) -> bool { backend == Backend::Qdrant }
 fn vectors(capability: Capability) -> bool { matches!(capability, Capability::Vectors) }
