@@ -104,6 +104,8 @@ fn rules_carry_the_release_of_their_change() {
             "V13-ISLAND-COMMANDS-REMOVED",
             "V13-LIVE-REMOVED",
             "V13-LIVE-COMMAND-REMOVED",
+            "V13-SERVER-FUNCTIONS-REMOVED",
+            "V13-FRONTEND-ADAPTERS-REMOVED",
             "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE",
             "V13-IOT-OTA-STATE",
             "V13-IOT-CODEC-ERROR-MATCH",

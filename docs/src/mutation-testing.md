@@ -195,9 +195,6 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-core/src/storage/cloud/multipart/codec.rs`: `MultipartStorage::open`, `checkpoint.0.len() > MAX_TOKEN` with `==` or `>=`, and `bytes.len() < 28` with `<=` | No authentic checkpoint reaches 256 KiB (256 receipts and a 2,048-byte upload id stay under 180 KiB), and a 28-byte token has an empty plaintext; both fail with the same `InvalidCheckpoint`. |
 | `rullst-core/src/testing/snapshot.rs`: `line_diff`, the deletion test's `table[i * width + j + 1]` with `j * 1` | Without a match, `table[i][j]` is the larger of `table[i + 1][j]` and `table[i][j + 1]`, so `table[i + 1][j] >= table[i][j]` holds exactly when `table[i + 1][j] >= table[i][j + 1]`. |
 | `rullst-core/src/queue/deferral/planner.rs`: `lowest_intensity`, the tie-break `overlap_start < best_start` with `<=` | A tie at the same start stores the same start and value again. |
-| `rullst-core/src/rpc.rs`: `request_contract_failure`, delete the `BodyTooLarge` arm | `to_bytes` already refuses a body over the same limit with the same 413 and code, so decoding never reports it. |
-| `rullst-core/src/rpc.rs`: `RpcFailure::from_detail` with `Default::default()` | Compiled only for `wasm32`. |
-| `rullst-core/src/rpc.rs`: the test helper `failure_for`, `64 * 1024` with `+` | Test code: every failure envelope it reads is far below 1,088 bytes. |
 | `rullst-core/src/storage/cloud/multipart/protocol.rs`: `parse`, delete the `allow_dtd` field | roxmltree's default `ParsingOptions` already rejects a DTD. |
 | `rullst-core/src/cache/memory/exact_json.rs`: `Display for Inexact` with `Ok(Default::default())` | `is_exact_json` only checks whether serialization succeeds; the error text is never formatted. |
 | `rullst-core/src/radar.rs`: `get_windows_memory_mb`, `get_windows_process_cpu_usage`, `filetime_100ns`, `calculate_windows_cpu_percent`, and the Windows and other-platform `get_process_cpu_usage` | Not compiled on Linux. |

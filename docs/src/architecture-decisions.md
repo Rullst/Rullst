@@ -73,7 +73,7 @@ interchangeable renderers:
 | --- | --- |
 | HTMX + Tailwind SSR | The generated scaffold: server-rendered `html!` views with the starter's own stylesheet (`static/rullst.css`; no Tailwind build step). There is no project-local SPA bundle, but HTMX and styles are still browser assets that must be pinned and served. |
 | LiveView | Removed in 13.0.0-alpha.5 (`LiveComponent`, `Live::mount`, `live_ws_handler`, `make:live`, `live::recovery`). Server-driven updates use htmx with `rullst::realtime::RealtimeSse`: HTML scaffolds write the htmx SSE extension to `static/htmx-ext-sse-1.9.12.js`. The application owns routes, authentication and event design. See [the migration notes](migration-v13.md#upgrading-an-alpha4-application-to-alpha5). |
-| Wasm Island | Removed in 13.0.0-alpha.5 (`#[island]`, `make:island`, `build:client`). The default CSP has no `'wasm-unsafe-eval'`, so browsers could not compile islands under the default headers. `#[server_function]` and its `wasm32` caller remain. |
+| Wasm Island | Removed in 13.0.0-alpha.5 (`#[island]`, `make:island`, `build:client`). The default CSP has no `'wasm-unsafe-eval'`, so browsers could not compile islands under the default headers. The typed browser RPC that islands used to call the server was removed with them; use ordinary routes. |
 | Pico.css | Not generated. The application adds, pins and serves Pico.css and validates the resulting pages. |
 | Tera | Not generated. The application adds the dependency and its own file-template renderer. |
 
@@ -152,14 +152,11 @@ release workflows, Tauri upgrades and per-platform signing. 13.0 removes
 `make:omni`, `cargo rullst omni` and the native-only `offline-sync` feature,
 whose only consumer was the shell.
 
-`rullst::client_contract` supplies one shared `rullst.client` v1 JSON boundary
-for browser, server and future platform-enhanced code. It negotiates positive
-versions, rejects unknown outer fields and oversized bodies, and carries typed
-payloads, correlation, optional mutation idempotency, server time and bounded
-failure codes. It deliberately has no user/tenant/role claim: authentication,
-authorization, domain validation and durable replay handling remain server
-work. A page that accepts writes offline queues them in IndexedDB with an
-idempotency key, as the PWA guide shows; the server accepts each key once.
+A page that accepts writes offline queues them in IndexedDB with an
+idempotency key, as the PWA guide shows, and replays them to ordinary routes;
+the server validates each key, accepts it once and derives identity, tenant
+and permissions from its own session. 13.0.0-alpha.5 removed the versioned
+client envelope that islands used to call the server.
 
 ## Engineering invariants
 

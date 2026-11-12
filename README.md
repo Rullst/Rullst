@@ -566,7 +566,14 @@ list every change.
   applications in [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples).
 - WebAssembly islands (`#[island]`, `make:island`, `build:client`): the
   default CSP does not allow browsers to compile WebAssembly. Use htmx and
-  native HTML; `#[server_function]` and its `wasm32` caller remain.
+  native HTML.
+- The typed browser RPC (its attribute, the `rpc` module, the versioned
+  client envelope and its `wasm32` caller): it existed so islands could call
+  the server. Use an ordinary route registered with `routes!`, returning an
+  HTML fragment for htmx or JSON for Alpine.
+- The unused `rullst_core::frontend` response wrappers (`HtmlAdapter`,
+  `PicoAdapter`, `LiveViewAdapter`, `WasmIslandAdapter` and the rest): return
+  `Markup` or `Html` from the handler.
 - Live components (`LiveComponent`, `#[live_component]`, `make:live`,
   `rullst::live::recovery`): use htmx with `rullst::realtime::RealtimeSse`
   (Server-Sent Events) or `rullst::ws` WebSockets.

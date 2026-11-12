@@ -1,7 +1,7 @@
 __FE_IMPORTS__use rullst::{routes, Router, response::{Html, IntoResponse}, server::Extension};
 use rullst::htmx::{HtmxRequest, render_page_with_lang};
 
-__MIGRATIONS_MOD_DECLARATION____CLIENT_MODULES__
+__MIGRATIONS_MOD_DECLARATION__
 
 __DB_MODEL_CODE__
 
@@ -76,7 +76,6 @@ pub fn router() -> Router {
         get("/" => home),
         post("/clicked" => clicked),
     ]
-    .merge_axum(rpc::increment_counter_rpc_router().into_axum())
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
     // `/health` and `/ready` for container, Kubernetes and PaaS probes.
     .merge_axum(rullst::health::health_router())
