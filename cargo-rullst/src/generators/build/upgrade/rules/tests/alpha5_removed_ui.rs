@@ -89,7 +89,7 @@ pub async fn increment() -> RpcResult<u32> { Ok(1) }
 async fn reset() -> rullst::rpc::RpcResult<()> {
     rullst_core::client::rpc_call::<(), ()>("/api/rpc/reset", &()).await
 }
-fn failure() -> rullst::rpc::RpcFailure { todo!() }
+fn failure(_failure: rullst::rpc::RpcFailure) {}
 "#;
     assert_eq!(
         removed_ui(source),
