@@ -660,6 +660,11 @@ describes each replacement.
   running as another user could not read the PWA's static files. New files are
   now created in place, exclusively, with the mode the process umask gives
   (as `fs::write` does); an edited file keeps its mode.
+- The CI workflow that `cargo rullst new` writes no longer saves the Rust
+  dependency cache from a failed or cancelled run (`cache-on-failure: false`),
+  which could leave a half-built `target/` that broke every later run. Rullst's
+  own cache policy check now covers that workflow too.
+
 - `rullst-orm` SurrealDB adapter: `SurrealDbStore::create` reported a write
   that SurrealDB had refused. SurrealDB 3 answers a CREATE denied by
   permissions (a `VIEWER` database user, or a record user on a table with

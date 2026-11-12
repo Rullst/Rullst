@@ -62,6 +62,9 @@ jobs:
         with:
           components: clippy
           rustflags: ""
+          # Never save target/ from a failed or cancelled run: a half-built
+          # cache would break every later run that restores it.
+          cache-on-failure: false
 
       - name: Clippy (warnings fail)
         run: cargo clippy --all-targets -- -D warnings

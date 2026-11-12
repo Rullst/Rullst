@@ -12,7 +12,8 @@ Swatinem/rust-cache unless its step sets `cache: false`. Every such step must:
 
 This reads the repository's block-style workflow layout, not arbitrary YAML,
 and fails closed on a setup step it cannot attribute to a job's steps. It
-checks every `.github/workflows/*.yml` file and takes no arguments.
+checks every `.github/workflows/*.yml` file and the CI workflow that
+`cargo rullst new` generates, and takes no arguments.
 """
 
 from __future__ import annotations
@@ -188,6 +189,9 @@ def check_text(name: str, text: str) -> list[str]:
 
 def main() -> int:
     paths = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
+    # The CI workflow `cargo rullst new` writes for applications follows the
+    # same cache rule.
+    paths.append(ROOT / "cargo-rullst/src/generators/project/ci/.github/workflows/ci.yml")
     errors = []
     for path in paths:
         errors += check_text(str(path.relative_to(ROOT)), path.read_text(encoding="utf-8"))
