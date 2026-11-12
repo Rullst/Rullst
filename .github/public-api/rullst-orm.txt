@@ -1486,8 +1486,8 @@ pub mod rullst_orm::schema::validation
 pub use rullst_orm::schema::validation::ALLOWED_OPERATORS = constant rullst_orm::schema::ALLOWED_OPERATORS
 pub use rullst_orm::schema::validation::validate_identifier = function rullst_orm::schema::validate_identifier
 pub use rullst_orm::schema::validation::validate_table_name = function rullst_orm::schema::validate_table_name
-pub mod rullst_orm::schema_diff
-pub struct rullst_orm::schema_diff::ParsedField
+#[deprecated] pub mod rullst_orm::schema_diff
+#[deprecated] pub struct rullst_orm::schema_diff::ParsedField
 pub rullst_orm::schema_diff::ParsedField::name: alloc::string::String
 pub rullst_orm::schema_diff::ParsedField::rust_type: alloc::string::String
 pub rullst_orm::schema_diff::ParsedField::is_option: bool
@@ -1497,7 +1497,7 @@ impl core::marker::Sync for rullst_orm::schema_diff::ParsedField
 impl core::marker::Unpin for rullst_orm::schema_diff::ParsedField
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::schema_diff::ParsedField
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::schema_diff::ParsedField
-pub struct rullst_orm::schema_diff::ParsedTable
+#[deprecated] pub struct rullst_orm::schema_diff::ParsedTable
 pub rullst_orm::schema_diff::ParsedTable::table_name: alloc::string::String
 pub rullst_orm::schema_diff::ParsedTable::struct_name: alloc::string::String
 pub rullst_orm::schema_diff::ParsedTable::fields: alloc::vec::Vec<rullst_orm::schema_diff::ParsedField>
@@ -1507,7 +1507,7 @@ impl core::marker::Sync for rullst_orm::schema_diff::ParsedTable
 impl core::marker::Unpin for rullst_orm::schema_diff::ParsedTable
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::schema_diff::ParsedTable
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::schema_diff::ParsedTable
-pub fn rullst_orm::schema_diff::extract_tables_from_ast() -> alloc::vec::Vec<rullst_orm::schema_diff::ParsedTable>
+#[deprecated] pub fn rullst_orm::schema_diff::extract_tables_from_ast() -> alloc::vec::Vec<rullst_orm::schema_diff::ParsedTable>
 pub mod rullst_orm::scout
 pub use rullst_orm::scout::AlgoliaEngine = struct rullst_orm::AlgoliaEngine
 pub use rullst_orm::scout::ElasticsearchEngine = struct rullst_orm::ElasticsearchEngine

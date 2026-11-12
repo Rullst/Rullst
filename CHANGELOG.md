@@ -760,6 +760,15 @@ A prepared version section does not establish that its tag or crates exist.
   unchanged, because `rullst-auth`, which uses `ring` for passkeys, stays in
   their dependency graphs.
 
+### Deprecated
+
+- `rullst_orm::schema_diff` (`extract_tables_from_ast`, `ParsedTable`,
+  `ParsedField`) is deprecated and will be removed in 14.0. Nothing in Rullst
+  calls it (the CLI has its own copy), and its `syn` and `walkdir`
+  dependencies are built by every application that uses the ORM. Write a
+  migration from the models with `cargo rullst make:migration:auto`, or read
+  their tables and columns with `cargo rullst inspect schema --json`.
+
 ### Removed
 
 - **Breaking:** WebAssembly islands. The `#[island]` attribute

@@ -134,6 +134,22 @@ pub mod replica;
 pub mod repository;
 pub mod resource;
 pub mod schema;
+/// Reads the `#[derive(Orm)]` models under `./src` with `syn`.
+///
+/// Deprecated: use `cargo rullst make:migration:auto` (a migration from the
+/// difference between the models and the database) or `cargo rullst inspect
+/// schema --json` (the models' tables and columns). Nothing in Rullst calls it,
+/// and its `syn` and `walkdir` dependencies are built by every application
+/// that uses the ORM.
+// Not under `cfg(test)`: the test harness names this module's unit tests
+// through its path, which would raise the warning in Rullst's own tests.
+#[cfg_attr(
+    not(test),
+    deprecated(
+        since = "13.0.0-alpha.5",
+        note = "use `cargo rullst make:migration:auto` or `cargo rullst inspect schema --json`; removed in 14.0"
+    )
+)]
 pub mod schema_diff;
 pub mod scout;
 pub mod snapshot;
