@@ -4,11 +4,12 @@
 # staging --page-weight --bench --budget` on its release build).
 #
 # Each limit is the figure measured on a GitHub-hosted ubuntu-latest runner
-# (4 logical CPUs, Rust 1.99.1; run 43184063650 on 2026-11-12) plus a margin,
-# rounded up: binary +15 %, idle memory +20 %, dependencies +5 %, bytes per
-# request and page bytes +10 % (at least 1 KiB), page requests and
-# third-party origins +0. CPU time is reported in the job summary and never
-# limited: it varies between shared runners.
+# (4 logical CPUs, Rust 1.99.1; run 43184063650 on 2026-11-12, and run
+# 43192785034 for page_first_visit_bytes after the favicon became a 192x192
+# PNG) plus a margin, rounded up: binary +15 %, idle memory +20 %,
+# dependencies +5 %, bytes per request and page bytes +10 % (at least 1 KiB),
+# page requests and third-party origins +0. CPU time is reported in the job
+# summary and never limited: it varies between shared runners.
 #
 # To raise a limit on purpose, copy the "Suggested limit" of the job summary
 # into this file in the pull request that causes the increase, update the
@@ -20,7 +21,7 @@ binary_size_bytes = 12_873_726    # measured 11_194_544
 idle_rss_bytes = 12_273_255       # measured 10_227_712
 dependency_count = 417            # measured 397
 bytes_per_request = 3_424         # measured 2_400
-page_first_visit_bytes = 551_426  # measured 501_296
+page_first_visit_bytes = 70_865   # measured 64_422
 page_repeat_visit_bytes = 3_424   # measured 2_400
 page_requests = 4                 # measured 4
 page_third_party_origins = 0      # measured 0

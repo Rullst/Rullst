@@ -392,10 +392,10 @@ A prepared version section does not establish that its tag or crates exist.
   limited. It runs on ready pull requests that change a framework crate, the
   lockfile, the toolchain or the starter templates, nightly, in full manual
   runs and as a `starter-footprint` diagnostic shard; it is not a required
-  check. `MAINTAINING.md` says how to raise a limit on purpose. Its first
-  run measured release binaries of 11.2 MB (Blank), 15.8 MB (SaaS) and
-  11.1 MB (API), about 10–12 MB of idle memory and a 501 KB Blank home page,
-  448 KB of which is the starters' `rullst.png` logo.
+  check. `MAINTAINING.md` says how to raise a limit on purpose. Its runs
+  measured release binaries of 11.2 MB (Blank), 15.8 MB (SaaS) and 11.1 MB
+  (API) and about 10–12 MB of idle memory; the first one found the favicon
+  that made up 448 KB of the Blank home page (see Changed).
 - `miri.yml` also runs `cargo careful test` (cargo-careful 0.4.10 on Miri's
   pinned `nightly-2026-08-21`) over the library unit tests of `rullst-core`,
   `rullst-security` and `rullst-orm`, weekly and on dispatch. It is
@@ -627,6 +627,11 @@ A prepared version section does not establish that its tag or crates exist.
   `reply_to` field; add `reply_to: None` or build it with `Message::new()`.
   Serialized messages without it still decode. `cargo rullst upgrade` reports
   such literals (`V13-MAIL-MESSAGE-REPLY-TO`).
+- The starters' favicon (`static/rullst.png`) is now a 192×192 PNG of 11 KB
+  instead of the 448 KB full-size logo, so the Blank starter's home page
+  weighs 64,422 bytes on a first visit instead of 501,296 (87 % less; SaaS
+  22,881 instead of 459,755). The LMS and IoT gateway examples ship the same
+  file.
 
 ### Changed
 
