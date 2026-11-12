@@ -81,6 +81,11 @@ pub enum CaptureEvent {
     Unavailable,
 }
 
+/// Stored code of `PresenceObservation::Obscured`, the first code beyond the
+/// range that stores created before 13.0.0-alpha.5 accept.
+#[cfg(feature = "sqlite")]
+pub(crate) const OBSCURED_CODE: i64 = 28;
+
 /// Detector output, never an identity, intent, attendance or misconduct verdict.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -88,6 +93,11 @@ pub enum PresenceObservation {
     PersonDetected,
     NoPersonDetected,
     Inconclusive,
+    /// The camera view is covered, dark or blocked, so nobody can be seen
+    /// (v13). It says nothing about why. A store created before
+    /// 13.0.0-alpha.5 records it only after
+    /// `SqliteSupervision::upgrade_event_schema`.
+    Obscured,
 }
 
 /// Speech activity cannot determine whether answers or outside help were received.
@@ -158,6 +168,7 @@ impl Observation {
                 PresenceObservation::PersonDetected => "person_detected",
                 PresenceObservation::NoPersonDetected => "no_person_detected",
                 PresenceObservation::Inconclusive => "presence_inconclusive",
+                PresenceObservation::Obscured => "camera_obscured",
             },
             Self::AudioActivity(event) => match event {
                 AudioObservation::SpeechDetected => "speech_detected",
@@ -171,6 +182,8 @@ impl Observation {
         match self {
             Self::Browser(event) => event as i64 + 1,
             Self::Capture { device, event } => 10 + (device as i64) * 4 + event as i64,
+            // 25-27 already belong to audio: the fourth presence value is 28.
+            Self::CameraPresence(PresenceObservation::Obscured) => OBSCURED_CODE,
             Self::CameraPresence(event) => 22 + event as i64,
             Self::AudioActivity(event) => 25 + event as i64,
         }
@@ -216,6 +229,7 @@ impl Observation {
                 event: CAPTURE[((code - 10) % 4) as usize],
             }),
             22..=24 => Ok(Self::CameraPresence(PRESENCE[(code - 22) as usize])),
+            OBSCURED_CODE => Ok(Self::CameraPresence(PresenceObservation::Obscured)),
             25..=27 => Ok(Self::AudioActivity(AUDIO[(code - 25) as usize])),
             _ => Err(Error::Configuration),
         }

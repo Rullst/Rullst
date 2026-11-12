@@ -4,6 +4,8 @@ use crate::{OpaqueId, Revision, Scope, SupervisionError as Error};
 mod collection;
 mod observation;
 pub use collection::{Capability, Collection};
+#[cfg(feature = "sqlite")]
+pub(crate) use observation::OBSCURED_CODE;
 pub use observation::{
     AudioObservation, BrowserEvent, CaptureDevice, CaptureEvent, Observation, ObservationReceipt,
     ObservationRequest, ObservationSource, PresenceObservation,

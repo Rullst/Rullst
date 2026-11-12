@@ -35,7 +35,7 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_labs::AttemptBinding
 impl core::panic::unwind_safe::UnwindSafe for rullst_labs::AttemptBinding
 pub trait rullst_labs::Authorization: core::marker::Send + core::marker::Sync
 pub fn rullst_labs::Authorization::check(&self, actor: &rullst_labs::Reference, scope: &rullst_labs::Scope, action: rullst_labs::Action) -> impl core::future::future::Future<Output = core::result::Result<rullst_labs::Permission, rullst_labs::LabError>> + core::marker::Send
-pub enum rullst_labs::CaseOutput
+#[non_exhaustive] pub enum rullst_labs::CaseOutput
 pub rullst_labs::CaseOutput::Value(i64)
 pub rullst_labs::CaseOutput::Trap(rullst_labs::TrapKind)
 impl core::clone::Clone for rullst_labs::CaseOutput
@@ -86,13 +86,14 @@ impl core::marker::Sync for rullst_labs::Diagnostic
 impl core::marker::Unpin for rullst_labs::Diagnostic
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_labs::Diagnostic
 impl core::panic::unwind_safe::UnwindSafe for rullst_labs::Diagnostic
-pub enum rullst_labs::ExecutionFailure
+#[non_exhaustive] pub enum rullst_labs::ExecutionFailure
 pub rullst_labs::ExecutionFailure::Compile
 pub rullst_labs::ExecutionFailure::InvalidModule
 pub rullst_labs::ExecutionFailure::ResourceLimit
 pub rullst_labs::ExecutionFailure::WorkerProtocol
 pub rullst_labs::ExecutionFailure::WorkerLost
 pub rullst_labs::ExecutionFailure::Isolation
+pub rullst_labs::ExecutionFailure::TimeLimit
 impl core::clone::Clone for rullst_labs::ExecutionFailure
 impl core::cmp::Eq for rullst_labs::ExecutionFailure
 impl core::cmp::PartialEq for rullst_labs::ExecutionFailure
@@ -122,7 +123,7 @@ impl core::marker::Sync for rullst_labs::ExecutionLimits
 impl core::marker::Unpin for rullst_labs::ExecutionLimits
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_labs::ExecutionLimits
 impl core::panic::unwind_safe::UnwindSafe for rullst_labs::ExecutionLimits
-pub enum rullst_labs::ExecutionProfile
+#[non_exhaustive] pub enum rullst_labs::ExecutionProfile
 pub rullst_labs::ExecutionProfile::Simulation
 pub rullst_labs::ExecutionProfile::LinuxExperimental { .. }
 pub rullst_labs::ExecutionProfile::LinuxExperimental::tools: rullst_labs::ToolIdentity
@@ -392,7 +393,7 @@ impl core::marker::Sync for rullst_labs::ToolIdentity
 impl core::marker::Unpin for rullst_labs::ToolIdentity
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_labs::ToolIdentity
 impl core::panic::unwind_safe::UnwindSafe for rullst_labs::ToolIdentity
-pub enum rullst_labs::TrapKind
+#[non_exhaustive] pub enum rullst_labs::TrapKind
 pub rullst_labs::TrapKind::Fuel
 pub rullst_labs::TrapKind::Memory
 pub rullst_labs::TrapKind::Stack
@@ -426,7 +427,7 @@ impl core::marker::Sync for rullst_labs::WorkerInput
 impl core::marker::Unpin for rullst_labs::WorkerInput
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_labs::WorkerInput
 impl core::panic::unwind_safe::UnwindSafe for rullst_labs::WorkerInput
-pub enum rullst_labs::WorkerOutcome
+#[non_exhaustive] pub enum rullst_labs::WorkerOutcome
 pub rullst_labs::WorkerOutcome::CompileRejected { .. }
 pub rullst_labs::WorkerOutcome::CompileRejected::diagnostics: rullst_labs::Diagnostic
 pub rullst_labs::WorkerOutcome::Executed { .. }
@@ -463,7 +464,7 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_labs::WorkerOutput
 impl core::panic::unwind_safe::UnwindSafe for rullst_labs::WorkerOutput
 pub fn rullst_labs::simulate(input: &rullst_labs::WorkerInput) -> rullst_labs::WorkerOutput
 pub mod rullst_labs::sqlite
-pub enum rullst_labs::sqlite::CaseGrade
+#[non_exhaustive] pub enum rullst_labs::sqlite::CaseGrade
 pub rullst_labs::sqlite::CaseGrade::Passed
 pub rullst_labs::sqlite::CaseGrade::WrongAnswer
 pub rullst_labs::sqlite::CaseGrade::Trapped(rullst_labs::TrapKind)
@@ -479,7 +480,7 @@ impl core::marker::Sync for rullst_labs::sqlite::CaseGrade
 impl core::marker::Unpin for rullst_labs::sqlite::CaseGrade
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_labs::sqlite::CaseGrade
 impl core::panic::unwind_safe::UnwindSafe for rullst_labs::sqlite::CaseGrade
-pub struct rullst_labs::sqlite::CleanupJob
+#[non_exhaustive] pub struct rullst_labs::sqlite::CleanupJob
 pub rullst_labs::sqlite::CleanupJob::scope: rullst_labs::Scope
 pub rullst_labs::sqlite::CleanupJob::id: rullst_labs::Reference
 pub rullst_labs::sqlite::CleanupJob::binding: rullst_labs::AttemptBinding
@@ -501,7 +502,7 @@ impl core::marker::Sync for rullst_labs::sqlite::ContentKey
 impl core::marker::Unpin for rullst_labs::sqlite::ContentKey
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_labs::sqlite::ContentKey
 impl core::panic::unwind_safe::UnwindSafe for rullst_labs::sqlite::ContentKey
-pub enum rullst_labs::sqlite::JobResult
+#[non_exhaustive] pub enum rullst_labs::sqlite::JobResult
 pub rullst_labs::sqlite::JobResult::Graded { .. }
 pub rullst_labs::sqlite::JobResult::Graded::cases: alloc::vec::Vec<rullst_labs::sqlite::CaseGrade>
 pub rullst_labs::sqlite::JobResult::Graded::passed: u16
@@ -525,7 +526,7 @@ impl core::marker::Sync for rullst_labs::sqlite::JobResult
 impl core::marker::Unpin for rullst_labs::sqlite::JobResult
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_labs::sqlite::JobResult
 impl core::panic::unwind_safe::UnwindSafe for rullst_labs::sqlite::JobResult
-pub enum rullst_labs::sqlite::JobState
+#[non_exhaustive] pub enum rullst_labs::sqlite::JobState
 pub rullst_labs::sqlite::JobState::Queued
 pub rullst_labs::sqlite::JobState::Running
 pub rullst_labs::sqlite::JobState::Cancelled
@@ -546,7 +547,7 @@ impl core::marker::Sync for rullst_labs::sqlite::JobState
 impl core::marker::Unpin for rullst_labs::sqlite::JobState
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_labs::sqlite::JobState
 impl core::panic::unwind_safe::UnwindSafe for rullst_labs::sqlite::JobState
-pub struct rullst_labs::sqlite::JobView
+#[non_exhaustive] pub struct rullst_labs::sqlite::JobView
 pub rullst_labs::sqlite::JobView::id: rullst_labs::Reference
 pub rullst_labs::sqlite::JobView::scope: rullst_labs::Scope
 pub rullst_labs::sqlite::JobView::learner: rullst_labs::Reference
@@ -597,7 +598,7 @@ impl core::marker::Sync for rullst_labs::sqlite::LeasedJob
 impl core::marker::Unpin for rullst_labs::sqlite::LeasedJob
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_labs::sqlite::LeasedJob
 impl core::panic::unwind_safe::UnwindSafe for rullst_labs::sqlite::LeasedJob
-pub enum rullst_labs::sqlite::ResultEvidence
+#[non_exhaustive] pub enum rullst_labs::sqlite::ResultEvidence
 pub rullst_labs::sqlite::ResultEvidence::Simulation
 pub rullst_labs::sqlite::ResultEvidence::Experimental { .. }
 pub rullst_labs::sqlite::ResultEvidence::Experimental::receipt: rullst_labs::ContentHash

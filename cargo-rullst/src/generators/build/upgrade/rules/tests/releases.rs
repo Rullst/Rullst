@@ -110,6 +110,8 @@ fn rules_carry_the_release_of_their_change() {
             "V13-IOT-SENSOR-CARD-HTML",
             "V13-CAPITAL-INVOICE-MINOR-UNITS",
             "V13-MAIL-MESSAGE-REPLY-TO",
+            "V13-PRIVACY-CONSENT-CHOICE-MATCH",
+            "V13-LABS-NON-EXHAUSTIVE-MATCH",
             "V13-CLI-GREEN-RENAMED",
         ]
     );
