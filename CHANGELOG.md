@@ -11,6 +11,29 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- `rullst::iot_ingest` (facade feature `iot-ingest`, Experimental): a
+  bounded telemetry receiver for devices on the server side.
+  `TelemetryReceiver` accepts one `SensorTelemetry` JSON object or an array
+  of them and publishes each accepted request to a `BroadcastManager`
+  channel as a `TelemetryBatch`. Every device has its own bearer token
+  (`DeviceToken`, 190 random bits behind an `rdt1_` prefix); the
+  receiver's `machine_endpoint(path)` verifies it through
+  `MachineEndpoint::verified_bearer` against a `DeviceDirectory` that
+  stores only its SHA-256 (`TokenHash`), so the route is exempt from CSRF
+  only after authentication, ambient browser credentials are refused, and a
+  revoked device is refused from the next request on. A request reaching the
+  route without that verification is refused (`401`), never accepted
+  anonymously. Bodies (16 KiB), readings per request (64), timestamps
+  (5 minutes ahead, 24 hours old), metric names and each device's request
+  rate (120 per minute, `429` with `Retry-After`) are bounded, and every
+  refusal is an `IngestError` with a stable code and status. The device's id
+  in every reading must match its token (`403`). `MemoryDeviceDirectory`
+  serves tests and fixed device lists; a database registry is application
+  code (`validate_device` checks ids and names for it). New example
+  `examples/iot-gateway`: per-board serial gateways post to the receiver,
+  the registry is an ORM model with a migration and a Nexus page, and a
+  dashboard shows every device live over Server-Sent Events; it ran with two
+  Arduino Uno boards on 2026-11-11.
 - `cargo rullst iot:keygen` and `cargo rullst iot:sign` (Experimental): sign
   firmware updates for `rullst-iot`'s OTA gate. `iot:keygen --out FILE`
   writes an Ed25519 secret key (mode 0600 on Unix, never printed) and its
