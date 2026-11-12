@@ -10,6 +10,7 @@ members = [
     "examples/erp",
     "examples/lms",
     "examples/portfolio",
+    "examples/iot-gateway",
     "examples/webgpu",
     "rullst-core",
     "rullst-auth",
