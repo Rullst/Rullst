@@ -42,11 +42,14 @@ A prepared version section does not establish that its tag or crates exist.
   HTTPS and TTL bounds, that upload-only credentials refuse playback, bounded
   listing pages and offline determinism; offline Bunny Stream, complete and
   upload-only, passes it. So that an application-owned video adapter can
-  create its own grants, `rullst-media` adds `UploadGrant::new`,
-  `UploadGrant::with_declaration` and `PlaybackGrant::new`, which take the
-  adapter's `ProviderBinding` and refuse non-HTTPS or credential-bearing URLs,
-  empty or non-ASCII signatures and expiry times outside 1970 to 9999 with
-  `MediaError::InvalidInput`. The new book page "Provider Conformance Kits"
+  create its own grants and library pages, `rullst-media` adds
+  `UploadGrant::new`, `UploadGrant::with_declaration` and
+  `PlaybackGrant::new`, which take the adapter's `ProviderBinding` and refuse
+  non-HTTPS or credential-bearing URLs, empty or non-ASCII signatures and
+  expiry times outside 1970 to 9999 with `MediaError::InvalidInput`, and
+  `ListedVideo::new` (with `with_created_at` and `with_thumbnail_url`) and
+  `VideoPage::new`, which bound titles, durations and thumbnails and keep a
+  page within its query. The new book page "Provider Conformance Kits"
   lists every case and walks through an application-owned payment provider
   and video provider that pass their kits.
 - `rullst::iot_ingest` (facade feature `iot-ingest`, Experimental): a

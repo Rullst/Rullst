@@ -259,7 +259,9 @@ declared absent must return `Unsupported`
 adapters create grants with `UploadGrant::new` and `PlaybackGrant::new`
 (13.0.0-alpha.5), which bind the adapter's library and mode and accept only
 bounded credential-free HTTPS URLs (HTTP only in `ProtocolFixture` mode),
-visible-ASCII signatures and expiry times from 1970 to 9999.
+visible-ASCII signatures and expiry times from 1970 to 9999; their `list`
+builds pages with `ListedVideo::new` and `VideoPage::new`, which bound titles
+(1 to 1024 bytes), durations (one week), thumbnails (HTTPS) and page size.
 
 Empty or `mock_*` credentials select deterministic offline behavior; mixed modes
 fail configuration. Production rejects mock or loopback-fixture capabilities.

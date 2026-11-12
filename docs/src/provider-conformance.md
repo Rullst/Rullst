@@ -202,10 +202,15 @@ their input: the endpoint or URL is an absolute `https://` URL of at most
 1 to 4096 visible ASCII characters, and the expiry is a UTC second between
 1970 and 9999; anything else is `MediaError::InvalidInput`.
 `UploadGrant::with_declaration` adds the content type and length a declared
-upload binds. Both keep the URL or signature out of `Debug`.
+upload binds. Both keep the URL or signature out of `Debug`. For `list`,
+`ListedVideo::new` (a 1 to 1024-byte title and a duration of at most a week,
+with optional `with_created_at` and an HTTPS `with_thumbnail_url`) and
+`VideoPage::new(&query, items, total)` build the page; the page echoes the
+query's number and size and refuses more than `per_page` items or a total
+lower than their number.
 
 `ExampleVideo` is a fictitious service that signs its own upload and HLS
-URLs. The code is included from
+URLs and lists its library. The code is included from
 [`rullst-media/tests/conformance_example.rs`](https://github.com/Rullst/Rullst/blob/main/rullst-media/tests/conformance_example.rs),
 which CI runs:
 
@@ -214,16 +219,12 @@ which CI runs:
 ```
 
 ExampleVideo grants only HLS playback, so every other kind returns
-`Unsupported`, which the `playback.grant` case accepts. It has no library
-listing, so the test declares it absent:
+`Unsupported`, which the `playback.grant` case accepts. The test expects every
+capability:
 
 ```rust,ignore
 {{#include ../../rullst-media/tests/conformance_example.rs:check}}
 ```
-
-`ListedVideo` and `VideoPage` have no public constructor, so an adapter
-outside the crate cannot implement `list` and declares listing absent with
-`without_listing()`.
 
 A wrapper that adds instrumentation or policy around `BunnyStream` or the S3
 adapter passes the kit the same way. It must forward `list` and
