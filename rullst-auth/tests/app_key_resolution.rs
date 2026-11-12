@@ -5,9 +5,11 @@ use rullst_auth::{
 };
 use std::{
     fs,
+    io::ErrorKind,
     path::{Path, PathBuf},
-    process::Command,
-    time::{SystemTime, UNIX_EPOCH},
+    process::{Command, Output},
+    thread,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 const CHILD_CASE: &str = "RULLST_APP_KEY_TEST_CASE";
@@ -105,9 +107,7 @@ fn run_child(case: &str, directory: &IsolatedDirectory, application: bool) {
         command.env("APP_ENV", OsString::from_vec(vec![0xff]));
     }
 
-    let output = command
-        .output()
-        .expect("isolated app-key test should start");
+    let output = output_retrying_busy_executable(&mut command);
 
     assert!(
         output.status.success(),
@@ -115,6 +115,25 @@ fn run_child(case: &str, directory: &IsolatedDirectory, application: bool) {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+}
+
+/// Runs `command`, retrying while Linux reports the executable as busy.
+///
+/// `run_child` copies the test binary and runs the copy. Another test thread
+/// that forks while the copy is still open for writing holds that descriptor
+/// until its child execs, and the kernel refuses to run a file open for writing
+/// (`ETXTBSY`). The window is a few milliseconds, so a short retry is enough.
+fn output_retrying_busy_executable(command: &mut Command) -> Output {
+    let mut attempts = 0;
+    loop {
+        match command.output() {
+            Err(error) if error.kind() == ErrorKind::ExecutableFileBusy && attempts < 50 => {
+                attempts += 1;
+                thread::sleep(Duration::from_millis(20));
+            }
+            result => return result.expect("isolated app-key test should start"),
+        }
+    }
 }
 
 #[test]
