@@ -65,6 +65,7 @@ pub(crate) fn stage_start(dockerfile: &str) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
     use std::fs;
 
     #[test]
