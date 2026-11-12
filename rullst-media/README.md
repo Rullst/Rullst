@@ -15,9 +15,10 @@ automated acceptance uses local HTTP protocol fixtures and controlled browser me
 so transcoding, CDN and player edge cases are not covered by it.
 The `s3` adapter is validated against the offline mock only.
 
-**Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):
-the API may change between 13.x releases and not every real-world scenario is
-validated yet. Experimental does not mean broken.
+**Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)),
+since 13.0.0-alpha.5: optional, and supported for the scope documented here.
+The opt-in `s3` adapter stays experimental: it may change between 13.x
+releases and is validated against the offline mock only.
 
 [PR #227](https://github.com/Rullst/Rullst/pull/227) passed hosted workspace,
 platform and installed-archive source admission at `b21d52e7`. The final release

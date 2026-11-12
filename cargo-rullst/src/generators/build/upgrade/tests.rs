@@ -76,7 +76,7 @@ fn a_failed_gate_repeats_the_guidance_of_removed_api_findings() {
     assert!(!hint.contains(".env.example"), "{hint}");
     assert!(hint.contains("`StripeProvider`"), "{hint}");
     assert!(
-        hint.contains("`InfinitePayProvider` is experimental"),
+        hint.contains("`InfinitePayProvider` covers one-off payment links only"),
         "{hint}"
     );
     assert!(hint.contains("V13-MAIL-REMOVED at src/mail.rs:3"), "{hint}");

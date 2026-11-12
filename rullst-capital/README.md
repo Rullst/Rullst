@@ -2,15 +2,15 @@
 
 `rullst-capital` provides provider-neutral billing contracts, normalized
 billing types, bounded webhook verification helpers and application-supplied
-revenue snapshots, with a supported **Stripe** adapter and an **experimental**
-InfinitePay adapter. Provider method coverage is not uniform; inspect the
+revenue snapshots, with supported **Stripe** and **InfinitePay** adapters
+(InfinitePay for one-off payment links only). Provider method coverage is not uniform; inspect the
 selected adapter and test it in the provider sandbox. Other gateways are
 integrated by implementing the provider traits in application code.
 
 `rullst-capital` is an **Extension** crate in the
 [maturity tiers](https://rullst.github.io/Rullst/book/maturity.html): optional,
-and supported for the scope documented here, with InfinitePay marked
-experimental inside it. Start with the [Quickstart](#-quickstart) for the
+and supported for the scope documented here; the InfinitePay adapter has been
+supported since 13.0.0-alpha.5. Start with the [Quickstart](#-quickstart) for the
 Cargo features; the [book page](https://rullst.github.io/Rullst/book/crates/capital.html)
 and the [SaaS billing tutorial](https://rullst.github.io/Rullst/book/tutorials/19-saas-billing-capital.html)
 walk through a complete integration.
@@ -95,7 +95,7 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 | Provider | Status | Current boundary |
 | :--- | :--- | :--- |
 | **Stripe** | Supported | Typed customer/subscription checkout, customer-ID portal, current-state reads and signed events; generated durable SQLx integration. Immediate Payment Intent charge is separate. |
-| **InfinitePay** | Experimental | One-off payment links on the public Checkout API (`POST /links`), priced from a server-side `OneOffCheckoutRequest` in BRL; the unsigned webhook is confirmed with `POST /payment_check` and the server-side amount ([below](#infinitepay)). No subscriptions, portal or sandbox. One real Pix payment validated in the 13.0.0-alpha.5 acceptance run. |
+| **InfinitePay** | Supported (since 13.0.0-alpha.5) | One-off payment links on the public Checkout API (`POST /links`), priced from a server-side `OneOffCheckoutRequest` in BRL; the unsigned webhook is confirmed with `POST /payment_check` and the server-side amount ([below](#infinitepay)). No subscriptions, portal or sandbox. In the 13.0.0-alpha.5 acceptance run a real Pix payment was confirmed, forged webhooks and a wrong amount were refused, and replays were idempotent. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
@@ -116,7 +116,7 @@ server. It never invents a price, currency, buyer identity or subscription from
 a plan label. An empty or `mock_*` handle (or API key, for the legacy `new`
 constructor) keeps its deterministic offline fixture.
 
-| Reviewed legacy method boundary | Stripe | InfinitePay (experimental) |
+| Reviewed legacy method boundary | Stripe | InfinitePay |
 |---|---|---|
 | Plan/price-based checkout request | adapter | unsupported |
 | One-off checkout (`create_one_off_checkout`) | adapter | adapter |
@@ -241,8 +241,10 @@ async fn link() -> Result<(), rullst_capital::CapitalError> {
   `new(api_key, webhook_secret)` still compiles for its offline fixtures; it
   has no handle and refuses live operations.
 
-The adapter stays **experimental** until it is validated against a live
-account; its requests and responses are pinned by local fixtures only.
+The adapter is **supported** since 13.0.0-alpha.5. Its requests and responses
+are pinned by local fixtures, and in the 13.0.0-alpha.5 acceptance run a real
+Pix payment was confirmed through it, forged webhooks and a wrong amount were
+refused, and replayed notifications were idempotent.
 
 ### HTTP rules for application-owned adapters
 
@@ -921,4 +923,4 @@ an outbox, idempotent consumers, and reconciliation.
 - **Fail-Closed Configuration**: Empty webhook secrets never authenticate a request; mock credentials require a deliberate `mock_*` value.
 - **Explicit Verification Mode**: A provider without an explicitly declared webhook verification mode cannot be mounted behind the canonical middleware.
 - **Freshness and Replay Protection**: Timestamped protocols have a configurable five-minute window, and middleware records provider-scoped payload hashes in a bounded 24-hour TTL store. `webhook-sql` adds bounded durable claims; stable semantic event IDs can share a transaction with the domain mutation.
-- **Unsigned Notifications Prove Nothing**: A `ConfirmedAtSource` notification never becomes a `WebhookEvent`; only `confirm_one_off_payment`, which queries the provider and compares the paid amount with the server-side request, reports a payment. InfinitePay's experimental adapter works this way; an empty or `mock_*` handle operates offline and never reports a paid payment.
+- **Unsigned Notifications Prove Nothing**: A `ConfirmedAtSource` notification never becomes a `WebhookEvent`; only `confirm_one_off_payment`, which queries the provider and compares the paid amount with the server-side request, reports a payment. InfinitePay's adapter works this way; an empty or `mock_*` handle operates offline and never reports a paid payment.

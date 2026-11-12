@@ -18,8 +18,8 @@
 //! | `messaging` | `rullst::messaging` | `rullst-messaging` | Extension |
 //! | `nexus` | `rullst::nexus` | `rullst-nexus` | Extension |
 //! | `studio` | `rullst::studio` | `rullst-studio` | Extension |
-//! | `iot` | `rullst::iot` | `rullst-iot` | Experimental |
-//! | `privacy` | `rullst::privacy` | `rullst-privacy` | Experimental |
+//! | `iot` | `rullst::iot` | `rullst-iot` | Extension |
+//! | `privacy` | `rullst::privacy` | `rullst-privacy` | Extension |
 //!
 //! There is no default feature, so a database-free application compiles no
 //! database code. Pin the exact version with `=` and name the features you use,

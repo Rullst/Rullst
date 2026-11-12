@@ -4,9 +4,11 @@
 //! [controller contract](https://rullst.github.io/Rullst/book/labs-runner-contract.html)
 //! in the Rullst book and the non-executing `byo_runner_controller` example.
 //!
-//! **Maturity: Experimental**
-//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). The API may
-//! change between 13.x releases.
+//! **Maturity: Extension**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)) since
+//! 13.0.0-alpha.5: optional, and supported for its documented scope. The
+//! isolation of learner code is the runner's, and a container per job alone is
+//! not enough for hostile code.
 //!
 //! No feature is enabled by default; the default build holds the bounded,
 //! versioned exercise, submission, authorization and receipt contracts with no

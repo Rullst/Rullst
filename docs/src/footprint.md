@@ -1,7 +1,8 @@
 # Resource Figures for an App (`cargo rullst footprint`)
 
-**Status:** experimental command of the main CLI, `cargo-rullst`
-(13.0.0-alpha.5 and later; it was `cargo rullst green` in 13.0.0-alpha.4).
+**Status:** command of the main CLI, `cargo-rullst`, with the CLI's Core
+[maturity tier](maturity.md#cli-generators) since 13.0.0-alpha.5 (Experimental
+before; it was `cargo rullst green` in 13.0.0-alpha.4).
 Part of the [resource efficiency roadmap](resource-efficiency-roadmap.md).
 
 `cargo rullst footprint` reports resource figures it **measured** for your

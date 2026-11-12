@@ -4,7 +4,7 @@ Arduino Uno boards stream sensor readings to a Rullst server, each with its own
 bearer token, and a dashboard shows every board live.
 
 This is an example to copy from, not a supported starter. `rullst::iot_ingest`
-is Experimental.
+is in the Extension tier, like `rullst-iot`.
 
 ```text
 Uno "uno-a" --USB serial--> gateway uno-a --HTTP + token A--+

@@ -6,7 +6,7 @@
 
 `rullst-capital` provides provider-neutral billing abstractions, revenue
 metrics, verified webhook plumbing and two payment-provider adapters: Stripe
-(supported) and InfinitePay (experimental: one-off payment links on its public
+(supported) and InfinitePay (supported since 13.0.0-alpha.5: one-off payment links on its public
 Checkout API, each unsigned notification confirmed with `payment_check`; see
 [gateways with unsigned webhooks](capital-custom-provider.md#gateways-with-unsigned-webhooks)).
 Provider capabilities are not uniform: consult the adapter API and its tests

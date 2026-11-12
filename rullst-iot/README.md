@@ -3,15 +3,15 @@
 `rullst-iot` provides `no_std`-compatible telemetry models, protocol frame
 builders, deterministic edge helpers, and a fail-closed signed firmware gate.
 
-**Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
-The API may change between 13.x releases. On 2026-11-10 a BBC micro:bit V2
-(nRF52833) ran the encoders, the signed OTA gate and the counter-store
-contract with no failure ([hardware validation](#hardware-validation)), and
-the `std` telemetry, MQTT encoder and anomaly path ran end to end with an
-Arduino Uno sensor and a Rullst gateway and dashboard, with no broker
-involved. No other board, live broker or external flash has been tested. Experimental does
-not mean broken; the table below shows which modules are working
-implementations.
+**Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)),
+since 13.0.0-alpha.5: optional, and supported for the scope documented here.
+On 2026-11-10 a BBC micro:bit V2 (nRF52833) ran the encoders, the signed OTA
+gate and the counter-store contract with no failure ([hardware
+validation](#hardware-validation)), and on 2026-11-11 two Arduino Uno boards
+sent telemetry to a Rullst server through gateways, with no broker involved.
+Network transports, secure elements, flashing and bootloaders are the
+application's. No other board, live broker or external flash has been tested.
+The table below shows which modules are working implementations.
 
 ## Module status
 
@@ -262,7 +262,11 @@ Transports, other boards, external flash, a persistent counter store and the
 bootloader remain unvalidated. On the same day the `std` build ran end to end on a host: readings from an
 Arduino Uno sensor went through `SensorTelemetry`, the MQTT 5 PUBLISH encoder
 and `AnomalyDetector` to a Rullst gateway and dashboard. No broker was
-involved, so the encoded packets were not delivered to one. The
+involved, so the encoded packets were not delivered to one. On 2026-11-11 two
+Uno boards streamed readings at once through per-board gateways to the
+facade's `rullst::iot_ingest` receiver, with a device registry kept by the
+application; after one board was revoked, every later post with its token was
+refused. The
 [crate guide](https://rullst.github.io/Rullst/book/crates/iot.html#hardware-validation-bbc-microbit-v2)
 has the full results; the firmware is
 [`.github/fixtures/iot-microbit-v2`](https://github.com/Rullst/Rullst/tree/main/.github/fixtures/iot-microbit-v2),

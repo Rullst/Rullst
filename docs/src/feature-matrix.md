@@ -155,7 +155,7 @@ the drivers.
 | `oauth-mock` | no | v13: `oauth` plus `rullst-connect/mock`, so empty or `mock_*` provider credentials build an offline mock provider that signs in a fixed mock user; enable it only in development and test builds |
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
 | `ai-sql-memory` | no | `ai` plus tenant-aware durable chat memory for SQLite, PostgreSQL, MySQL, and MariaDB |
-| `capital` | no | Provider-neutral billing contracts, the Stripe and experimental InfinitePay adapters, webhooks and analytics from `rullst-capital` |
+| `capital` | no | Provider-neutral billing contracts, the Stripe and InfinitePay adapters, webhooks and analytics from `rullst-capital` |
 | `capital-actix` | no | `capital` plus the Actix Web adapter for the canonical signed-webhook verifier |
 | `capital-quota-sql` | no | `capital` and `orm` plus atomic shared resource quotas for SQLite, PostgreSQL, MySQL, and MariaDB |
 | `capital-webhook-sql` | no | `capital` and `orm` plus bounded durable webhook replay/event claims for SQLite, PostgreSQL, MySQL, and MariaDB |
@@ -164,7 +164,7 @@ the drivers.
 | `security` | no | RASP/WAF and application-security primitives from `rullst-security` |
 | `security-redis` | no | `security` plus the atomic Redis rate limiter |
 | `iot` | no | IoT models, frame helpers, and signed OTA verification from `rullst-iot` |
-| `iot-ingest` | no | `iot` plus `rullst::iot_ingest` (Experimental): the authenticated device telemetry receiver, its `DeviceDirectory` contract and an in-memory directory |
+| `iot-ingest` | no | `iot` plus `rullst::iot_ingest`: the authenticated device telemetry receiver, its `DeviceDirectory` contract and an in-memory directory |
 | `telemetry` | no | OpenTelemetry dependencies and Core's OTLP integration |
 | `strict-postgres` | no | `orm` with the concrete PostgreSQL pool/backend selected |
 | `strict-mysql` | no | `orm` with the concrete MySQL pool/backend selected when PostgreSQL is not also selected |
@@ -455,7 +455,7 @@ These packages have no public optional Cargo features:
 | Package | Always-available scope |
 | --- | --- |
 | `rullst-macros` | Core procedural macros |
-| `cargo-rullst` | CLI commands, generators, auditing, deployment helpers and the Experimental `cargo rullst footprint`; its internal `maintainer-tools` feature only builds the repository's `sync-badges` tool and is not part of the installed CLI |
+| `cargo-rullst` | CLI commands, generators, auditing, deployment helpers and `cargo rullst footprint`; its internal `maintainer-tools` feature only builds the repository's `sync-badges` tool and is not part of the installed CLI |
 
 No optional feature does not mean that a provider is contacted automatically.
 External integrations still require explicit runtime configuration and use the

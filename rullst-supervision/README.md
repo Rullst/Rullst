@@ -32,7 +32,8 @@ cargo run -p rullst-supervision --example observation_adapter --features sqlite,
 
 ## Responsible use
 
-**Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
+**Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)),
+since 13.0.0-alpha.5: optional, and supported for the scope documented here.
 This crate is designed for consented, transparent scenarios such as online
 exams and parental controls over a learning application.
 

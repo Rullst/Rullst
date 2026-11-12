@@ -9,9 +9,10 @@ It also provides bounded MQTT 5 PUBLISH (`MqttPublish`) and CoAP request
 or provide MQTT/CoAP network transport, OPC-UA, Sparkplug B, HSM, or
 post-quantum implementations.
 
-> **Experimental.** `rullst-iot` and the `make:iot` generator are in the
-> Experimental [maturity tier](../maturity.md): the API may change between 13.x
-> releases. One board, a BBC micro:bit V2, has run the encoders and the OTA gate
+> **Extension.** `rullst-iot` and the `make:iot` generator have been in the
+> Extension [maturity tier](../maturity.md) since 13.0.0-alpha.5: optional,
+> and supported for their documented scope. A BBC micro:bit V2 has run the
+> encoders and the OTA gate
 > ([hardware validation](../crates/iot.md#hardware-validation-bbc-microbit-v2)),
 > and the `std` telemetry, MQTT encoder and anomaly path below ran end to end
 > with an Arduino Uno sensor and a Rullst gateway and dashboard on 2026-11-10,

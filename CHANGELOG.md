@@ -783,6 +783,38 @@ for you to fix.
 
 ### Changed
 
+- **Maturity tiers:** on 12 November 2026 the maintainer promoted five
+  packages from Experimental to Extension; the
+  [maturity tiers](docs/src/maturity.md#promotions-in-1300-alpha5) page
+  records the evidence. `rullst-iot` (with the facade's `iot` and `iot-ingest`
+  features and `make:iot`, `iot:keygen` and `iot:sign`): a BBC micro:bit V2
+  ran the encoder, signed-OTA (also streamed) and rollback-counter checks and
+  verified an update signed by `iot:sign`, and two Arduino Uno boards sent
+  telemetry through `rullst::iot_ingest` to an application-owned device
+  registry that refused a revoked device's token; network transports, secure
+  elements and bootloaders stay application-owned. `rullst-media`: a
+  production application uses the Bunny adapter with a real Bunny Stream
+  library (create, browser upload, status, update, deletion and private
+  playback); the opt-in `s3` adapter stays experimental. `rullst-labs`: in
+  the 13.0.0-alpha.5 acceptance run a runner with one Docker container per job
+  graded Python submissions end to end (correct answers 3/3, wrong answers
+  0/3, a syntax error reported, network blocked, the wall-time limit
+  enforced); the crate still never executes learner code, and a container per
+  job is not enough isolation for hostile code. `rullst-privacy` (with the
+  facade's `privacy` features): the acceptance application ran the
+  `make:age-gate` and `make:privacy` consumers with PostgreSQL consent stores;
+  live age providers and verified guardianship stay out of scope.
+  `rullst-supervision`: exercised on a real phone (camera presence, including
+  a covered camera, page hidden and visible, microphone loudness statistics
+  with speech and no speech recorded, and parental time windows); it includes
+  no media model. The InfinitePay adapter of `rullst-capital` is supported for
+  one-off payment links and source-confirmed notifications: a real Pix payment
+  was confirmed, forged webhooks and a wrong amount were refused and replays
+  were idempotent. `cargo rullst footprint` takes the CLI's Core tier, since
+  Rullst's own CI budgets the starters with it. `--help`, `cargo rullst help`
+  and the home menu no longer label `footprint`, `iot:keygen` and `iot:sign`
+  experimental, and `cargo rullst upgrade` no longer describes
+  `InfinitePayProvider` as experimental.
 - **Breaking:** `rullst-labs` (Experimental): `ExecutionProfile`,
   `WorkerOutcome`, `ExecutionFailure`, `TrapKind`, `CaseOutput`, `CaseGrade`,
   `JobResult`, `JobState` and `ResultEvidence` are `#[non_exhaustive]`, and so

@@ -184,7 +184,7 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                 ),
                 (
                     "cargo rullst footprint [--bench] [--page-weight] [--json]",
-                    "(experimental) Measured size, memory, CPU and page weight; optional SCI estimate",
+                    "Measured size, memory, CPU and page weight; optional SCI estimate",
                 ),
             ],
         ),

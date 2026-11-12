@@ -13,7 +13,7 @@ mod api;
 /// InfinitePay's public Checkout API.
 const API_BASE: &str = "https://api.checkout.infinitepay.io";
 
-/// Experimental adapter for InfinitePay's public
+/// Adapter for InfinitePay's public
 /// [Checkout API](https://www.infinitepay.io/checkout-documentacao) (CloudWalk,
 /// Brazil). Since 13.0.0-alpha.5 it performs real operations.
 ///
@@ -52,8 +52,9 @@ const API_BASE: &str = "https://api.checkout.infinitepay.io";
 /// `mock_*` credentials and refuses live operations.
 ///
 /// Fees, settlement schedules, instalment terms and merchant eligibility belong
-/// to the merchant's InfinitePay account. The adapter stays experimental until
-/// it is validated against a live account.
+/// to the merchant's InfinitePay account. The adapter is supported since
+/// 13.0.0-alpha.5 for this scope: a real Pix payment was confirmed through it,
+/// and forged notifications and a wrong amount were refused.
 pub struct InfinitePayProvider {
     /// `None` for the legacy [`Self::new`] constructor.
     handle: Option<String>,

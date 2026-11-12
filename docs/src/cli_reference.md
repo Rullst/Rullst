@@ -13,11 +13,11 @@ with an exact version:
 cargo install cargo-rullst --version =13.0.0-alpha.5 --locked
 ```
 
-`cargo-rullst` is a Core package. Four commands carry their own **Maturity**
-label below the command name, *Experimental*: `make:iot`, `iot:keygen`,
-`iot:sign` and `footprint`. The
-[maturity tiers](maturity.md#cli-generators) page explains what the label
-promises.
+`cargo-rullst` is a Core package. Three commands carry their own **Maturity**
+label below the command name, *Extension*: `make:iot`, `iot:keygen` and
+`iot:sign`, which build on `rullst-iot`. Since 13.0.0-alpha.5 no command is
+Experimental. The [maturity tiers](maturity.md#cli-generators) page explains
+what each label promises.
 
 ## Machine-readable output
 
@@ -55,7 +55,7 @@ all of them:
 | `cargo rullst update project verify --dry-run` or `--json` | `rullst.project-verification-plan.v1` (dry run), `rullst.project-verification.v1` |
 | `cargo rullst update project review --json` | `rullst.project-review-report.v1` |
 | `cargo rullst update project apply --json` and `recover --json` | `rullst.project-application.v1` |
-| `cargo rullst footprint --json` (experimental) | `rullst.footprint.v1` |
+| `cargo rullst footprint --json` | `rullst.footprint.v1` |
 
 `pkg list --json` prints `{"schema": "rullst.cli-pkg.v1", "table":
 "dependencies", "packages": ["rullst-auth"]}`; `table` is
@@ -84,7 +84,7 @@ and a summary of where you are.
   one, and the Git branch. Connection URLs are never displayed. The menu leads
   with dev, dash, scaffolding, database, `doctor` and deploy, keeps every
   project operation of earlier releases, and offers **Footprint Report**
-  ([`cargo rullst footprint`](#cargo-rullst-footprint), Experimental). Started from a
+  ([`cargo rullst footprint`](#cargo-rullst-footprint)). Started from a
   subdirectory, menu
   commands run at the project root (except `new`). The migration count is the
   files on disk; run `cargo rullst db:status` for the applied state.
@@ -1316,7 +1316,7 @@ still written and the report prints each step left to do by hand, as the
 [PWA guide](tutorials/43-progressive-web-apps.md) shows.
 
 ### `cargo rullst make:iot <DeviceName>`
-**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
+**Maturity:** Extension · [tiers](maturity.md#cli-generators)
 
 Scaffolds and registers a telemetry-only IoT module in `src/iot/` using the
 public `rullst::iot::SensorTelemetry` facade, and enables the `iot` feature in
@@ -1325,7 +1325,7 @@ files are rejected. It does not install an MQTT/CoAP transport, HAL, firmware,
 or claim broker connectivity.
 
 ### `cargo rullst iot:keygen`
-**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
+**Maturity:** Extension · [tiers](maturity.md#cli-generators)
 
 ```bash
 cargo rullst iot:keygen --out <FILE> [--force] [--json]
@@ -1347,7 +1347,7 @@ Keep the secret key out of version control and out of the devices: a device
 holds only the public key, provisioned through a trusted manufacturing path.
 
 ### `cargo rullst iot:sign`
-**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
+**Maturity:** Extension · [tiers](maturity.md#cli-generators)
 
 ```bash
 cargo rullst iot:sign --key <FILE> --image <FILE> --target <TARGET> \
@@ -2135,7 +2135,8 @@ kept).
 * **Flags:** `--debug` (builds with Cargo's debug profile instead of `--release`).
 
 ### `cargo rullst footprint`
-**Maturity:** Experimental. Part of the main CLI, so it needs no separate
+**Maturity:** Core, the CLI's tier, since 13.0.0-alpha.5 (Experimental
+before). Part of the main CLI, so it needs no separate
 install. It was `cargo rullst green` in 13.0.0-alpha.4 and was renamed in
 13.0.0-alpha.5 without an alias (`cargo rullst upgrade` flags scripts that
 still run `green`); the `footprint` of 13.0.0-alpha.1 to alpha.3 was a

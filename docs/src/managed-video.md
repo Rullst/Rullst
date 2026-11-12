@@ -6,7 +6,9 @@ private-video lifecycle: authorized creation and resumable upload, processing
 refresh, explicit publication, current-entitlement playback, withdrawal, metadata
 updates, deletion and durable reconciliation. Its standalone package is in the
 v13 release inventory, pending final release acceptance; it is not part of the framework facade. Existing starters are not
-changed.
+changed. Its [maturity tier](maturity.md) has been Extension since
+13.0.0-alpha.5; the `s3` adapter [below](#s3-compatible-object-storage-s3-r2-minio)
+stays experimental.
 
 The [crate integration guide](../../rullst-media/README.md) describes installation
 (`rullst-media = { version = "=13.0.0-alpha.5", features = ["bunny", "sqlite"] }`),

@@ -1,8 +1,9 @@
 //! Optional privacy contracts for the Rullst v13 line.
 //!
-//! **Maturity: Experimental**
-//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). The API may
-//! change between 13.x releases.
+//! **Maturity: Extension**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)) since
+//! 13.0.0-alpha.5: optional, and supported for its documented scope. Live age
+//! providers and verified guardianship are not part of it.
 //!
 //! No feature is enabled by default, and without one this crate exposes no
 //! items. Enable `age-assurance` for risk policies, signed threshold

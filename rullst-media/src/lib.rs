@@ -4,11 +4,13 @@
 //! processing refresh, explicit publication, current-entitlement playback,
 //! withdrawal, deletion and recovery of interrupted operations.
 //!
-//! **Maturity: Experimental**
-//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). The API may
-//! change between 13.x releases. Interoperability with real Bunny Stream
-//! accounts, transcoding and CDN delivery is unvalidated, and the `s3` adapter
-//! is validated against the offline mock only.
+//! **Maturity: Extension**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)) since
+//! 13.0.0-alpha.5: optional, and supported for its documented scope. A
+//! production application uses the Bunny adapter with a real Bunny Stream
+//! library; transcoding and CDN edge cases are not covered by Rullst's own
+//! tests. The opt-in `s3` adapter is experimental: it is validated against
+//! the offline mock only and may change between 13.x releases.
 //!
 //! No feature is enabled by default; the default build holds the validated
 //! identities, the [`Authorization`] and [`VideoProvider`] contracts and

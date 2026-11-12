@@ -110,7 +110,7 @@ neither release readiness nor remaining effort.
 | **M37** | One-click AI error-console autofix | `[~] Partial` *(the development error page no longer edits files and makes no network request. The server keeps a bounded, expiring, header- and body-free panic context that only a direct loopback request can read. The terminal assistant that fixed it (`cargo rullst ai fix`) was removed in 13.0.0-alpha.4; the page's "Ask your AI assistant" panel now gives a copyable prompt and the recorded-context path to the developer's own assistant, and the dead `/_rullst/autofix` endpoint (`410 Gone`) points there. Still open: a one-click flow, an edit audit trail beyond the checkpoint ref, evidence of fix quality with live providers, and the hot-reload server, which does not record errors)* | v13 |
 | **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
 | **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented — abandoned` *(decided on 8 October 2026: not worth building. A Rullst-owned `rullst-gateway` crate/binary will not be developed. Self-hosted deployments use an established reverse proxy configured by generated files instead: `cargo rullst deploy` writes a Caddyfile and the [two-replica deployment contract](docs/src/deployment-acceptance.md) exercises Caddy; generated nginx configuration is planned. Readiness/drain signals stay in `rullst-core` for any proxy to consume. Parity with a managed global cloud load balancer remains external infrastructure. The idea stays recorded here and in the `[ ]` count.)* | Abandoned (replaced by generated proxy configuration) |
-| **M40** | Isolated programming labs and learning-game execution | `[~] Experimental implementation — bring your own runner` *(experimental `rullst-labs` contracts, in the 13.0 release inventory, provide durable submissions, exact grading, cancellation, recovery and retention, plus a documented [controller contract](docs/src/labs-runner-contract.md) and a non-executing example controller. The separately deployed Linux Rust/Wasmi `rullst-labs-runner` candidate passed 26 isolated checks and source admission in PRs #228 and #239, but was removed from the 13.0 workspace on 30 September 2026; its source remains in git history. Applications deploy and review their own runner; final release acceptance of `rullst-labs` remains pending. The web process never executes learner code or receives a container control socket. Broader language packs and offensive CTF infrastructure remain separate; see the dedicated roadmap.)* | v13 research/foundation |
+| **M40** | Isolated programming labs and learning-game execution | `[~] Contracts implemented — bring your own runner` *(`rullst-labs` contracts, in the 13.0 release inventory and the Extension tier since 13.0.0-alpha.5, provide durable submissions, exact grading, cancellation, recovery and retention, plus a documented [controller contract](docs/src/labs-runner-contract.md) and a non-executing example controller. The separately deployed Linux Rust/Wasmi `rullst-labs-runner` candidate passed 26 isolated checks and source admission in PRs #228 and #239, but was removed from the 13.0 workspace on 30 September 2026; its source remains in git history. Applications deploy and review their own runner; final release acceptance of `rullst-labs` remains pending. The web process never executes learner code or receives a container control socket. Broader language packs and offensive CTF infrastructure remain separate; see the dedicated roadmap.)* | v13 research/foundation |
 | **M41** | Privacy defaults and proportional age assurance | `[~] Initial foundation` *(opt-in `rullst-privacy` (first published in the 13.0.0-alpha.1 prerelease) age policies, signed evidence, asynchronous replay claims, trusted-clock rechecks, shared-local SQLite and optional PostgreSQL storage across application hosts with focused real-database tests; native declarations, versioned optional consent and generated SaaS preference/profile-export journeys have focused evidence (the LMS consumers were retired with the complete Academy scaffold). The package candidate adds optional facade features and passed hosted/archive source acceptance in PR #221; final release admission, live age providers, guardian verification, broader rights/retention and reviewed regional profiles remain open. See the [privacy roadmap](docs/src/privacy-age-assurance-roadmap.md). No automatic worldwide compliance claim.)* | v13 P0 |
 
 ## Audit of the detailed crate roadmaps
@@ -269,6 +269,12 @@ table below. They add no milestone to the counts above.
     segments in the access log; an application stylesheet for Nexus; the
     remote Studio without database drivers or Capital; no development key
     written to the project root by tests.
+  - **Maturity** (decided 12 November 2026): `rullst-iot`, `rullst-media`,
+    `rullst-labs`, `rullst-privacy` and `rullst-supervision` move from
+    Experimental to Extension, the InfinitePay adapter becomes supported and
+    `cargo rullst footprint` takes the CLI's Core tier, on the evidence the
+    [maturity tiers](docs/src/maturity.md#promotions-in-1300-alpha5) page
+    records.
   - **Removed to keep 13.0 lean** (decided 10 November 2026; no application
     used them): WebAssembly islands (`#[island]`, `make:island`, the client
     build), which the default CSP could not run without `'wasm-unsafe-eval'`;
@@ -440,7 +446,7 @@ A green book build does not prove reference coverage.
 Recorded on 8 October 2026; ideas, not commitments.
 
 - **Offline IoT/health example:** sensor readings stored in SQLite and shown on
-  a dashboard without internet, built on the experimental `rullst-iot`
+  a dashboard without internet, built on `rullst-iot`
   (`SensorTelemetry`, `AnomalyDetector`) and a maintained transport crate such
   as `rumqttc`. A health variant treats readings as sensitive personal data
   and is not a medical device.
