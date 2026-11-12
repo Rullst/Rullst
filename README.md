@@ -180,6 +180,8 @@ replace your authorization rules, and databases are not interchangeable. See the
 ## 🔎 Highlights
 
 **Software has an environmental cost:** the energy of the servers that run it, of the networks that carry its pages and of the devices that open them. Rullst takes that cost seriously, which is why it ships `cargo rullst footprint`. It measures what your application uses (binary size, memory, CPU time per request and page weight) and estimates its carbon with the SCI method. You can see the numbers, set budgets that fail CI when they grow, and publish them. The report is a measurement and an estimate, not a certification.
+Rullst's own CI holds the Blank, API and SaaS starters to such budgets
+([how](https://rullst.github.io/Rullst/book/footprint.html#budgets-in-ci)).
 [Footprint guide](https://rullst.github.io/Rullst/book/footprint.html).
 
 **Tests from the first commit:** every project that `cargo rullst new`
