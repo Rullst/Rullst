@@ -231,7 +231,7 @@ const LOGIN_HOOK: [&str; 10] = [
 
 /// `login_submit` of `src/controllers/auth_controller.rs` with the second
 /// step before its session; `None` when it is not recognized.
-pub(super) fn login_hook(source: &str) -> Result<Option<String>> {
+pub(crate) fn login_hook(source: &str) -> Result<Option<String>> {
     insert_before(
         source,
         "login_submit",
