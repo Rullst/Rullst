@@ -438,6 +438,12 @@ rules! {
     IOT_SENSOR_CARD_HTML: "V13-IOT-SENSOR-CARD-HTML", Review, "13.0.0-alpha.5", "IoT sensor card HTML",
         "`IotDashboard::render_sensor_card` returns `IotHtml` instead of `String` since 13.0.0-alpha.5 and shows the value with at most two decimals",
         "Call `.into_string()` where a `String` is needed, or insert it into a view with `Markup::from_trusted(card.into_string())`; `IotHtml` reads like a `&str`. Update tests or parsers that expected the raw `f64` text.";
+    CAPITAL_INVOICE_MINOR_UNITS: "V13-CAPITAL-INVOICE-MINOR-UNITS", MustChange, "13.0.0-alpha.5", "Capital invoice minor units",
+        "Capital's `Invoice` and `InvoiceItem` hold integer minor units since 13.0.0-alpha.5: the `f64` fields `amount` and `total` are gone and both structs are built with constructors",
+        "Build `Invoice::new(id, email, date, currency).with_item(description, amount_minor)` with each amount in the currency's smallest unit (49.90 BRL is `4_990`); the total is the sum of the items (`total_minor()`). Read `item.amount_minor` instead of `item.amount`, and use `with_locale(InvoiceLocale::PtBr)` or `InvoiceLocale::Es` for receipt labels.";
+    MAIL_MESSAGE_REPLY_TO: "V13-MAIL-MESSAGE-REPLY-TO", MustChange, "13.0.0-alpha.5", "Mail Reply-To",
+        "Mail's `Message` has a `reply_to` field since 13.0.0-alpha.5, so a struct literal that lists every field without `..` no longer compiles",
+        "Build the message with `Message::new()` and its builders (`.to(..)`, `.subject(..)`, `.reply_to(..)`), or add `reply_to: None` or `..Message::new()` to the literal.";
     CLI_GREEN_RENAMED: "V13-CLI-GREEN-RENAMED", Review, "13.0.0-alpha.5", "CLI `green` renamed `footprint`",
         "`cargo rullst green` is `cargo rullst footprint` since 13.0.0-alpha.5, without an alias, and its JSON report is `rullst.footprint.v1` instead of `rullst.green.v1`; this file runs or reads the old one",
         "Replace `cargo rullst green` with `cargo rullst footprint` (the same flags, plus `--page-weight` and `--network-kwh-per-gb`) and `rullst.green.v1` with `rullst.footprint.v1`; the report adds `page_weight` and the benchmark's bytes. A line kept on purpose, such as a changelog entry, can carry `rullst-upgrade: reviewed V13-CLI-GREEN-RENAMED`.";

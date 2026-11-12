@@ -242,3 +242,28 @@ fn debug_output_names_the_request_and_session() {
     assert!(debug.contains("status: Created"), "{debug}");
     assert!(debug.contains("livemode: Some(false)"), "{debug}");
 }
+
+#[tokio::test]
+async fn loopback_http_redirects_work_with_a_mock_key_and_fail_closed_live() {
+    let local = StripeCheckoutRequest::new(
+        "cus_fixture",
+        "price_fixture",
+        "owner_fixture",
+        "attempt_fixture",
+        "http://localhost:3000/success",
+        "http://127.0.0.1:3000/cancel",
+    )
+    .expect("loopback HTTP redirects build for local development");
+    let mock = crate::StripeProvider::new("mock_key", "mock_webhook");
+    let session = mock
+        .create_subscription_checkout(&local)
+        .await
+        .expect("a mock key never opens the redirect");
+    assert_eq!(session.status(), StripeCheckoutStatus::Mock);
+    // A live key refuses before any request leaves the process.
+    let live = crate::StripeProvider::new("sk_test_fixture", "whsec_fixture");
+    assert!(matches!(
+        live.create_subscription_checkout(&local).await,
+        Err(CapitalError::ConfigurationError(message)) if message.contains("HTTPS")
+    ));
+}

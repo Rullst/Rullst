@@ -3,53 +3,146 @@ use super::{
     verify_explicit_mock_signature, webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
+use crate::{OneOffCheckout, OneOffCheckoutRequest, OneOffPayment, PaymentNotification};
 use async_trait::async_trait;
 use serde_json::Value;
 use std::collections::HashMap;
 
-/// Experimental billing provider adapter for InfinitePay (CloudWalk Brazil).
+mod api;
+
+/// InfinitePay's public Checkout API.
+const API_BASE: &str = "https://api.checkout.infinitepay.io";
+
+/// Experimental adapter for InfinitePay's public
+/// [Checkout API](https://www.infinitepay.io/checkout-documentacao) (CloudWalk,
+/// Brazil). Since 13.0.0-alpha.5 it performs real operations.
 ///
-/// **It performs no real operation today.** With an empty or `mock_*` API key
-/// and a `mock_*` webhook secret, checkout, portal, cancellation and webhook
-/// handling return deterministic offline fixtures. With any other credentials, `create_checkout_session`,
-/// `create_customer_portal` and `cancel_subscription` (live API key) and
-/// `handle_webhook` and `verify_signature` (live webhook secret) return
-/// [`CapitalError::UnsupportedOperation`] before any HTTP request; pause,
-/// usage, coupon and trial operations are always unsupported.
+/// Build it with [`Self::checkout`] from the merchant's handle (InfiniteTag):
 ///
-/// The adapter's model (an API key plus an HMAC over the webhook body) does not
-/// match InfinitePay's public
-/// [Checkout API](https://www.infinitepay.io/checkout-documentacao): a payment
-/// link is created with `POST https://api.checkout.infinitepay.io/links` from
-/// the merchant `handle` and items priced in cents, the webhook carries **no
-/// signature**, and a payment is confirmed with `POST /payment_check`. To
-/// charge through InfinitePay, implement [`BillingProvider`] in the
-/// application ([custom providers](https://github.com/Rullst/Rullst/blob/main/docs/src/capital-custom-provider.md)):
-/// take the amount from a server-side price, treat the webhook only as a hint of
-/// which payment to check, and mark the payment paid only after
-/// `payment_check` confirms it and the stored amount.
+/// - [`BillingProvider::create_one_off_checkout`] creates a payment link with
+///   `POST https://api.checkout.infinitepay.io/links`: one item priced in
+///   cents from the server-side [`OneOffCheckoutRequest`] (BRL, at least
+///   R$ 1.00 per unit), the request's reference as `order_nsu`, its success
+///   URL as `redirect_url` and the configured `webhook_url`. With an
+///   `inchk_…` API key ([`Self::with_api_key`]) the link also accepts a single
+///   payment. InfinitePay has no cancel URL.
+/// - The webhook is **unsigned**, so the adapter's mode is
+///   [`WebhookVerificationMode::ConfirmedAtSource`]:
+///   [`BillingProvider::parse_payment_notification`] reads only `order_nsu`,
+///   `transaction_nsu` and `invoice_slug`, and
+///   [`BillingProvider::confirm_one_off_payment`] calls
+///   `POST /payment_check` and reports the payment paid only when InfinitePay
+///   confirms it and its `amount` equals the request's total (`paid_amount`
+///   may be higher when the buyer pays instalment fees).
+/// - InfinitePay has no subscriptions, customer portal, metered usage,
+///   coupons, trials or sandbox: those operations, and plan-only
+///   `create_checkout_session` with a live handle, return
+///   [`CapitalError::UnsupportedOperation`].
 ///
-/// Fees, settlement schedules, installment terms, geography, and merchant
-/// eligibility belong to the current provider contract and account.
+/// An empty or `mock_*` handle selects deterministic offline fixtures: a
+/// `mock.infinitepay.invalid` checkout URL and an
+/// [`OneOffPaymentState::Mock`](crate::OneOffPaymentState::Mock) confirmation
+/// that never proves payment. [`Self::new`] keeps the 13.0.0-alpha.4
+/// constructor, which has no handle: it runs the offline fixtures with
+/// `mock_*` credentials and refuses live operations.
+///
+/// Fees, settlement schedules, instalment terms and merchant eligibility belong
+/// to the merchant's InfinitePay account. The adapter stays experimental until
+/// it is validated against a live account.
 pub struct InfinitePayProvider {
+    /// `None` for the legacy [`Self::new`] constructor.
+    handle: Option<String>,
+    /// The legacy API key, or the optional `inchk_` key ("" when unset).
     api_key: String,
+    /// The legacy webhook secret; unused by [`Self::checkout`].
     webhook_secret: String,
+    webhook_url: Option<String>,
+    api_base: String,
 }
 
 impl InfinitePayProvider {
-    /// Creates a new `InfinitePayProvider` instance.
+    /// The 13.0.0-alpha.4 constructor, kept for source compatibility.
+    ///
+    /// It has no merchant handle. With an empty or `mock_*` API key and a
+    /// `mock_*` webhook secret it runs the offline fixtures (a mock checkout,
+    /// a mock-signed webhook); live operations fail. Use [`Self::checkout`].
     pub fn new(api_key: impl Into<String>, webhook_secret: impl Into<String>) -> Self {
         Self {
+            handle: None,
             api_key: api_key.into(),
             webhook_secret: webhook_secret.into(),
+            webhook_url: None,
+            api_base: API_BASE.to_string(),
         }
     }
 
-    /// Retained for source compatibility; live callback authentication is unavailable.
+    /// An adapter for the merchant's handle (InfiniteTag, with or without the
+    /// leading `$`). An empty or `mock_*` handle selects the offline fixtures.
+    /// Since 13.0.0-alpha.5.
+    pub fn checkout(handle: impl Into<String>) -> Result<Self, CapitalError> {
+        let handle = handle.into();
+        let handle = handle.trim().trim_start_matches('$').to_string();
+        let valid = handle.len() <= 64
+            && handle
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'));
+        if !valid {
+            return Err(CapitalError::ConfigurationError(
+                "InfinitePay handle must be the InfiniteTag: up to 64 ASCII letters, digits, '-', '_' or '.', without spaces".into(),
+            ));
+        }
+        Ok(Self {
+            handle: Some(handle),
+            api_key: String::new(),
+            webhook_secret: String::new(),
+            webhook_url: None,
+            api_base: API_BASE.to_string(),
+        })
+    }
+
+    /// Sends the `inchk_…` API key in `X-Api-Key`, which lets each link accept
+    /// a single payment (`options.single_payment`). Keep it on the server.
+    pub fn with_api_key(mut self, api_key: impl Into<String>) -> Result<Self, CapitalError> {
+        let api_key = api_key.into();
+        if !api_key.starts_with("inchk_")
+            || api_key.len() > 200
+            || !api_key.bytes().all(|byte| byte.is_ascii_graphic())
+        {
+            return Err(CapitalError::ConfigurationError(
+                "InfinitePay API key must start with inchk_ and contain at most 200 visible ASCII characters".into(),
+            ));
+        }
+        self.api_key = api_key;
+        Ok(self)
+    }
+
+    /// The URL InfinitePay notifies after a payment (`webhook_url` of each
+    /// link). It must be HTTPS when a live handle creates a link; mount it
+    /// behind Capital's webhook middleware or call
+    /// [`BillingProvider::parse_payment_notification`] in the handler.
+    pub fn with_webhook_url(mut self, url: impl Into<String>) -> Result<Self, CapitalError> {
+        let url = url.into();
+        super::validate_redirect_url(&url).map_err(|_| {
+            CapitalError::ConfigurationError(
+                "InfinitePay webhook URL must be a bounded credential-free HTTPS URL without a fragment".into(),
+            )
+        })?;
+        self.webhook_url = Some(url);
+        Ok(self)
+    }
+
+    /// Whether the adapter runs the deterministic offline fixtures.
+    pub fn is_mock(&self) -> bool {
+        match &self.handle {
+            Some(handle) => handle.is_empty() || handle.starts_with("mock_"),
+            None => self.api_key.is_empty() || self.api_key.starts_with("mock_"),
+        }
+    }
+
+    /// Verifies the legacy mock signature of [`Self::new`]'s offline fixture.
     ///
-    /// The documented checkout callback and payment lookup need a separately
-    /// reviewed merchant/order/amount contract. A locally generated HMAC does
-    /// not establish that InfinitePay authenticates this body-only protocol.
+    /// InfinitePay does not sign its webhook, so a live secret is refused;
+    /// confirm payments with [`BillingProvider::confirm_one_off_payment`].
     pub fn verify_signature(
         &self,
         _payload: &[u8],
@@ -62,8 +155,21 @@ impl InfinitePayProvider {
                 signature_hex,
             );
         }
+        Err(unsigned_notification())
+    }
 
-        Err(live_webhook_unavailable())
+    #[cfg(test)]
+    pub(crate) fn with_api_base(mut self, base: impl Into<String>) -> Self {
+        self.api_base = base.into();
+        self
+    }
+
+    fn live_handle(&self) -> Result<&str, CapitalError> {
+        self.handle.as_deref().ok_or_else(|| {
+            CapitalError::ConfigurationError(
+                "InfinitePayProvider::new has no merchant handle; build the adapter with InfinitePayProvider::checkout(handle)".into(),
+            )
+        })
     }
 }
 
@@ -73,8 +179,16 @@ impl BillingProvider for InfinitePayProvider {
         "infinitepay"
     }
 
+    /// [`WebhookVerificationMode::ConfirmedAtSource`], except for the legacy
+    /// [`Self::new`] fixture with a `mock_*` secret, which is `Mock`.
     fn webhook_verification_mode(&self) -> Result<WebhookVerificationMode, CapitalError> {
-        webhook_mode_from_secret(self.name(), &self.webhook_secret)
+        if self.handle.is_some() {
+            return Ok(WebhookVerificationMode::ConfirmedAtSource);
+        }
+        match webhook_mode_from_secret(self.name(), &self.webhook_secret)? {
+            WebhookVerificationMode::Mock => Ok(WebhookVerificationMode::Mock),
+            _ => Ok(WebhookVerificationMode::ConfirmedAtSource),
+        }
     }
 
     async fn create_checkout_session(
@@ -93,111 +207,83 @@ impl BillingProvider for InfinitePayProvider {
                 "Plan ID cannot be empty".to_string(),
             ));
         }
-
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
+        if self.is_mock() {
             return Ok(super::fixture::checkout_url(self.name(), plan_id));
         }
-
         Err(CapitalError::UnsupportedOperation(
-            "infinitepay plan-only checkout has no reviewed authoritative pricing contract".into(),
+            "InfinitePay has no plans; create a link priced on the server with create_one_off_checkout".into(),
         ))
     }
 
+    async fn create_one_off_checkout(
+        &self,
+        request: &OneOffCheckoutRequest,
+    ) -> Result<OneOffCheckout, CapitalError> {
+        api::validate_request(request)?;
+        if self.is_mock() {
+            return Ok(OneOffCheckout::mock(self.name(), request));
+        }
+        let handle = self.live_handle()?;
+        api::create_link(self, handle, request).await
+    }
+
+    fn parse_payment_notification(
+        &self,
+        payload: &[u8],
+        _headers: &HashMap<String, String>,
+    ) -> Result<PaymentNotification, CapitalError> {
+        api::parse_notification(payload)
+    }
+
+    async fn confirm_one_off_payment(
+        &self,
+        request: &OneOffCheckoutRequest,
+        notification: &PaymentNotification,
+    ) -> Result<OneOffPayment, CapitalError> {
+        notification.require_reference_of(request)?;
+        if self.is_mock() {
+            return Ok(OneOffPayment::mock(self.name(), request));
+        }
+        let handle = self.live_handle()?;
+        api::payment_check(self, handle, request, notification).await
+    }
+
+    /// Only the legacy [`Self::new`] fixture with a `mock_*` secret reads a
+    /// mock-signed body. InfinitePay's real webhook is unsigned, so any other
+    /// configuration returns [`CapitalError::UnsupportedOperation`]: read it
+    /// with [`BillingProvider::parse_payment_notification`] and confirm it.
     fn handle_webhook(
         &self,
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, CapitalError> {
-        if self.webhook_verification_mode()? == WebhookVerificationMode::Real {
-            return Err(live_webhook_unavailable());
+        if self.webhook_verification_mode()? != WebhookVerificationMode::Mock {
+            return Err(unsigned_notification());
         }
-        let sig_header = headers
+        let signature = headers
             .get("x-signature")
             .or_else(|| headers.get("x-infinitepay-signature"))
             .ok_or_else(|| {
                 CapitalError::InvalidSignature("Missing X-Signature header".to_string())
             })?;
-        self.verify_signature(payload, sig_header)?;
-
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
-
-        let subscription_id = json["id"]
-            .as_str()
-            .or_else(|| json["transaction_id"].as_str())
-            .or_else(|| json["data"]["id"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let customer_id = json["customer"]["id"]
-            .as_str()
-            .or_else(|| json["customer_id"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let customer_email = json["customer"]["email"]
-            .as_str()
-            .or_else(|| json["customer_email"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let plan_id = json["plan_id"]
-            .as_str()
-            .or_else(|| json["order_id"].as_str())
-            .unwrap_or("default")
-            .to_string();
-
-        let status_str = json["status"]
-            .as_str()
-            .or_else(|| json["event"].as_str())
-            .filter(|status| !status.trim().is_empty())
-            .ok_or_else(|| {
-                CapitalError::PayloadParseError("Webhook status is missing or invalid".into())
-            })?;
-
-        let ends_at = json["ends_at"].as_i64();
-
-        Ok(WebhookEvent {
-            subscription_id,
-            customer_id,
-            customer_email,
-            plan_id,
-            status: SubscriptionStatus::parse_status(status_str),
-            ends_at,
-        })
+        self.verify_signature(payload, signature)?;
+        mock_event(payload)
     }
 
     async fn create_customer_portal(
         &self,
-        customer_email: &str,
+        _customer_email: &str,
         _return_url: &str,
     ) -> Result<String, CapitalError> {
-        if customer_email.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError(
-                "Customer email cannot be empty".to_string(),
-            ));
-        }
-
-        super::require_mock_operation(&self.api_key, self.name(), "create customer portal")?;
-
-        Ok(super::fixture::portal_url(self.name()))
+        Err(unsupported("a customer portal"))
     }
 
-    async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
-        if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError(
-                "Subscription ID cannot be empty".to_string(),
-            ));
-        }
-        super::require_mock_operation(&self.api_key, self.name(), "cancel subscription")?;
-
-        Ok(())
+    async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), CapitalError> {
+        Err(unsupported("subscriptions"))
     }
 
     async fn pause_subscription(&self, _subscription_id: &str) -> Result<(), CapitalError> {
-        Err(CapitalError::UnsupportedOperation(
-            "InfinitePay does not support subscription pause".to_string(),
-        ))
+        Err(unsupported("subscriptions"))
     }
 
     async fn report_usage(
@@ -206,9 +292,7 @@ impl BillingProvider for InfinitePayProvider {
         _metric: &str,
         _quantity: u64,
     ) -> Result<(), CapitalError> {
-        Err(CapitalError::UnsupportedOperation(
-            "InfinitePay does not support metered usage reporting".to_string(),
-        ))
+        Err(unsupported("metered usage"))
     }
 
     async fn apply_coupon(
@@ -216,9 +300,7 @@ impl BillingProvider for InfinitePayProvider {
         _subscription_id: &str,
         _coupon_code: &str,
     ) -> Result<(), CapitalError> {
-        Err(CapitalError::UnsupportedOperation(
-            "InfinitePay does not support coupon application".to_string(),
-        ))
+        Err(unsupported("coupons"))
     }
 
     async fn extend_trial(
@@ -226,129 +308,53 @@ impl BillingProvider for InfinitePayProvider {
         _subscription_id: &str,
         _trial_ends_at: i64,
     ) -> Result<(), CapitalError> {
-        Err(CapitalError::UnsupportedOperation(
-            "InfinitePay does not support trial extension".to_string(),
-        ))
+        Err(unsupported("trials"))
     }
 }
 
-fn live_webhook_unavailable() -> CapitalError {
+/// The legacy offline fixture body of [`InfinitePayProvider::new`].
+fn mock_event(payload: &[u8]) -> Result<WebhookEvent, CapitalError> {
+    let json: Value = serde_json::from_slice(payload).map_err(|error| {
+        CapitalError::PayloadParseError(format!("Invalid JSON payload: {error}"))
+    })?;
+    let text = |paths: &[&[&str]], default: &str| {
+        paths
+            .iter()
+            .find_map(|path| {
+                path.iter()
+                    .try_fold(&json, |value, key| value.get(*key))
+                    .and_then(Value::as_str)
+            })
+            .unwrap_or(default)
+            .to_string()
+    };
+    let status = json["status"]
+        .as_str()
+        .or_else(|| json["event"].as_str())
+        .filter(|status| !status.trim().is_empty())
+        .ok_or_else(|| {
+            CapitalError::PayloadParseError("Webhook status is missing or invalid".into())
+        })?;
+    Ok(WebhookEvent {
+        subscription_id: text(&[&["id"], &["transaction_id"], &["data", "id"]], ""),
+        customer_id: text(&[&["customer", "id"], &["customer_id"]], ""),
+        customer_email: text(&[&["customer", "email"], &["customer_email"]], ""),
+        plan_id: text(&[&["plan_id"], &["order_id"]], "default"),
+        status: SubscriptionStatus::parse_status(status),
+        ends_at: json["ends_at"].as_i64(),
+    })
+}
+
+fn unsupported(feature: &str) -> CapitalError {
+    CapitalError::UnsupportedOperation(format!("InfinitePay's Checkout API has no {feature}"))
+}
+
+fn unsigned_notification() -> CapitalError {
     CapitalError::UnsupportedOperation(
-        "InfinitePay live callbacks require reviewed authentication and authoritative payment lookup".into(),
+        "InfinitePay webhooks are unsigned; read them with parse_payment_notification and confirm the payment with confirm_one_off_payment".into(),
     )
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ring::hmac;
-
-    #[tokio::test]
-    async fn test_infinitepay_provider_methods() {
-        let provider = InfinitePayProvider::new("mock_key", "sec_inf123");
-        assert_eq!(provider.name(), "infinitepay");
-
-        // 1. Checkout session
-        let url = provider
-            .create_checkout_session(
-                "user@infinite.com",
-                "plan_starter",
-                "https://app.com/callback",
-            )
-            .await
-            .unwrap();
-        assert!(url.starts_with("https://mock.infinitepay.invalid/checkout/mock_session?plan="));
-        assert!(!url.contains("%40") && !url.contains("callback") && !url.contains("app.com"));
-
-        // 2. Checkout validation
-        assert!(
-            provider
-                .create_checkout_session("", "plan", "url")
-                .await
-                .is_err()
-        );
-        assert!(
-            provider
-                .create_checkout_session("email", "", "url")
-                .await
-                .is_err()
-        );
-
-        // 3. Customer portal
-        let portal = provider
-            .create_customer_portal("user@infinite.com", "https://app.com")
-            .await
-            .unwrap();
-        assert_eq!(
-            portal,
-            "https://mock.infinitepay.invalid/portal/mock_portal"
-        );
-        assert!(provider.create_customer_portal("", "url").await.is_err());
-
-        // 4. Cancel
-        assert!(provider.cancel_subscription("sub_inf1").await.is_ok());
-        assert!(provider.cancel_subscription("").await.is_err());
-
-        // 5. Unsupported operations
-        assert!(matches!(
-            provider.pause_subscription("sub").await,
-            Err(CapitalError::UnsupportedOperation(_))
-        ));
-        assert!(matches!(
-            provider.report_usage("sub", "api", 1).await,
-            Err(CapitalError::UnsupportedOperation(_))
-        ));
-        assert!(matches!(
-            provider.apply_coupon("sub", "CODE").await,
-            Err(CapitalError::UnsupportedOperation(_))
-        ));
-        assert!(matches!(
-            provider.extend_trial("sub", 1800000000).await,
-            Err(CapitalError::UnsupportedOperation(_))
-        ));
-
-        // 6. Signature verification
-        let secret = "sec_inf123";
-        let payload = br#"{"id":"tx_inf_100","customer":{"id":"c1","email":"user@infinite.com"},"plan_id":"plan_starter","status":"paid"}"#;
-
-        let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
-        let sig = hmac::sign(&key, payload);
-        let sig_hex = hex::encode(sig.as_ref());
-
-        assert!(matches!(
-            provider.verify_signature(payload, &sig_hex),
-            Err(CapitalError::UnsupportedOperation(_))
-        ));
-
-        // Signature error paths
-        let no_sec = InfinitePayProvider::new("k", "");
-        assert!(matches!(
-            no_sec.verify_signature(payload, ""),
-            Err(CapitalError::ConfigurationError(_))
-        ));
-        assert!(provider.verify_signature(payload, "invalid_hex!").is_err());
-        assert!(
-            provider
-                .verify_signature(
-                    payload,
-                    "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
-                )
-                .is_err()
-        );
-
-        // 7. Handle webhook
-        let provider = InfinitePayProvider::new("mock_key", "mock_webhook");
-        let mut headers = HashMap::new();
-        headers.insert("x-signature".to_string(), "mock_webhook".into());
-
-        let event = provider.handle_webhook(payload, &headers).unwrap();
-        assert_eq!(event.subscription_id, "tx_inf_100");
-        assert_eq!(event.customer_email, "user@infinite.com");
-        assert_eq!(event.status, SubscriptionStatus::Active);
-
-        // Webhook error paths
-        let empty_headers = HashMap::new();
-        assert!(provider.handle_webhook(payload, &empty_headers).is_err());
-        assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
-    }
-}
+#[path = "infinitepay_tests.rs"]
+mod tests;

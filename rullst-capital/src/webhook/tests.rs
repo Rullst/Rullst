@@ -38,7 +38,7 @@ async fn reconstructed_request_preserves_parts_extensions_and_body() {
 
     let (parts, body) = request.into_parts();
     let body = axum::body::to_bytes(body, 1024).await.unwrap();
-    let request = rebuild_request(parts, body, event());
+    let request = rebuild_request(parts, body, VerifiedWebhook::Event(event()));
 
     assert_eq!(request.method(), Method::PATCH);
     assert_eq!(request.uri(), "/billing/webhook?tenant=acme");

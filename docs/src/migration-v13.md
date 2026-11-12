@@ -281,6 +281,10 @@ before that.
 | IoT sensor card HTML | **Breaking**, from 13.0.0-alpha.5 (Experimental `rullst-iot`): `IotDashboard::render_sensor_card` returns the new `IotHtml` (escaped HTML that reads like a `&str`) instead of a `String`, and shows the reading with at most two decimals, in scientific notation outside 0.01 to 10^9 and as `n/a` when it is not finite, instead of the full `f64` text (`0.30000000000000004` is now `0.3`). Code that needs a `String` calls `.into_string()`; a Rullst view inserts the card with `Markup::from_trusted(card.into_string())`, since `rullst-iot` escaped its text. `cargo rullst upgrade` reports each file that calls it (`V13-IOT-SENSOR-CARD-HTML`). |
 | Studio `local` feature | **Breaking**, from 13.0.0-alpha.5, only for a direct `rullst-studio` dependency with `default-features = false` and none of `drivers-all`, `strict-sqlite`, `strict-postgres` or `strict-mysql`: the local Studio (`Studio`, `run_studio` and its page modules) is the new `local` feature, which each of those and the facade's `studio` feature enable, so add `features = ["local"]`. `cargo install rullst-studio --no-default-features --features remote` builds the remote Studio without the ORM, Capital and Security crates. |
 | Access-log paths | From 13.0.0-alpha.5, in staging and production the `[HTTP] METHOD path -> status` line of `Server` shows the route that matched (`GET /booking/{token} -> 200`) instead of the request path, and a request that matched no route its path cut to 128 bytes with bytes outside visible ASCII written `%XX`; development and test are unchanged. Log parsers or alerts that match concrete production paths set `[app] access_log_paths = "full"` in `Rullst.toml` or call `Server::access_log_paths(AccessLogPaths::Full)`; `"route"` uses templates everywhere. |
+| Capital invoice minor units | **Breaking**, from 13.0.0-alpha.5: Capital's `Invoice` and `InvoiceItem` hold integer amounts in the currency's smallest unit, like `ChargeReceipt`, instead of `f64`. `InvoiceItem::amount: f64` became `amount_minor: u64` and `Invoice::total: f64` was removed: the total is the checked sum of the items (`total_minor()`, at most 99,999,999). Both structs are `#[non_exhaustive]`: build them with `Invoice::new(invoice_id, customer_email, date, currency)` and `.with_item(description, amount_minor)` (or `InvoiceItem::new`), so 49.90 BRL is `4_990`. The serialized form changes the same way (`amount_minor`, no `total`, an optional `labels` object), so invoice JSON stored by alpha.4 no longer decodes. The HTML and PDF print the new `labels` field: English by default (the same words, now with `<html lang="en">`, the currency code in capitals and a "Description \| Amount" line in the PDF), `with_locale(InvoiceLocale::PtBr)` or `InvoiceLocale::Es` for "Recibo" wording (Capital issues no tax invoice), or edited `InvoiceLabels`. `PaidInvoiceDelivery` takes its subject and PDF name from the title label (`Recibo INV-1`, `recibo-<key>.pdf`) and accepts `subject(...)` and `filename(...)`. `cargo rullst upgrade` reports each struct literal with the old fields (`V13-CAPITAL-INVOICE-MINOR-UNITS`). |
+| Mail Reply-To | From 13.0.0-alpha.5, `rullst_mail::Message` has a `reply_to: Option<String>` field and a `reply_to(...)` builder. The delivery pipeline validates it like `from` (no CR/LF, one mailbox, display names allowed), and the Resend, SendPulse, AWS SES (native and proxy) and SMTP drivers send it; the offline mock and memory drivers keep it. **Breaking** only for a struct literal that lists every field without `..`: add `reply_to: None`, or build the message with `Message::new()` and its builders. Messages serialized without it (queued jobs) still decode, and the field is left out of the serialized form when empty. `cargo rullst upgrade` reports such literals (`V13-MAIL-MESSAGE-REPLY-TO`). |
+| Capital InfinitePay adapter | From 13.0.0-alpha.5, `InfinitePayProvider::checkout(handle)` (with `with_api_key("inchk_…")` and `with_webhook_url(...)`) works against InfinitePay's public Checkout API: `create_one_off_checkout` creates a link with `POST /links`, the unsigned webhook is read with `parse_payment_notification`, and `confirm_one_off_payment` calls `POST /payment_check` and reports a payment only when InfinitePay confirms it with the server-side amount. The alpha.4 constructor `new(api_key, webhook_secret)` still compiles: it has no handle, keeps its offline fixtures with `mock_*` credentials and refuses live operations, and its `webhook_verification_mode()` returns the new `ConfirmedAtSource` instead of `Real` for a non-mock secret. `create_customer_portal` and `cancel_subscription` return `UnsupportedOperation` even with `mock_*` credentials, because InfinitePay has no portal or subscriptions. |
+| Capital one-off checkout and unsigned notifications | Opt-in from 13.0.0-alpha.5: `OneOffCheckoutRequest` (server-side reference, unit amount in minor units, currency, description, quantity, success and cancel URLs, optional e-mail), `BillingProvider::create_one_off_checkout`, `parse_payment_notification` and `confirm_one_off_payment` (each defaults to `UnsupportedOperation`, so custom providers keep compiling), `OneOffCheckout`, `PaymentNotification`, `OneOffPayment`, `WebhookVerificationMode::ConfirmedAtSource` (the webhook middleware inserts a `PaymentNotification` instead of a `WebhookEvent` for such a provider) and `providers::ProviderRequest`. Stripe implements the one-off checkout with inline `price_data`; `create_one_time_checkout` with a fixed price is unchanged. `StripeCheckoutRequest` and `StripePaymentCheckoutRequest` now accept `http://localhost`, `127.0.0.1` and `[::1]` redirects for `mock_*` keys; a live key still requires HTTPS and fails with `ConfigurationError` before any request. |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
@@ -605,9 +609,12 @@ dynamic Alpine.js directive values in `html!`, moves the local Studio behind
 request paths in the staging and production access log. And it cleans up the
 public API before it is frozen for 13.x: one path per item, internals made
 crate-private, private Security collections, error and key-set types that
-name no third-party type, and a typed HTTP status error in `rullst-ai`. In
-the CLI, `cargo rullst green` is `cargo rullst footprint`, without an alias.
-Applications that use none of them only change versions. Work through the
+name no third-party type, and a typed HTTP status error in `rullst-ai`.
+In Capital, invoices hold integer minor units and print localized
+labels, a provider-neutral one-off checkout confirms payments at the source and
+the InfinitePay adapter works against InfinitePay's Checkout API; Mail messages
+gain `Reply-To`. In the CLI, `cargo rullst green` is `cargo rullst footprint`,
+without an alias. Applications that use none of them only change versions. Work through the
 steps in order.
 
 1. **Prepare.** Work on a branch with a clean tree and a committed
@@ -642,7 +649,7 @@ steps in order.
      `ClientContractError::EncodeJson` or `TwinSyncError::Serialization`.
    - `V13-AI-HTTP-STATUS` (`REVIEW`, step 10): `AiError::ApiError`.
    - `V13-ISLAND-COMMANDS-REMOVED` and `V13-LIVE-COMMAND-REMOVED` (`REVIEW`,
-     step 13): workflows, root scripts, Makefile and justfile that run
+     step 16): workflows, root scripts, Makefile and justfile that run
      `make:island`, `build:client` or `make:live`.
    - `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE` (`MUST-CHANGE`, step 12): a dynamic
      value in an `x-*` attribute of `html!` (`x-data={state}`).
@@ -652,7 +659,12 @@ steps in order.
      `MqttCodecError` or `CoapCodecError` without a wildcard arm.
    - `V13-IOT-SENSOR-CARD-HTML` (`REVIEW`, step 12): a call of
      `IotDashboard::render_sensor_card`.
-   - `V13-CLI-GREEN-RENAMED` (`REVIEW`, step 13): `cargo rullst green`,
+   - `V13-CAPITAL-INVOICE-MINOR-UNITS` (`MUST-CHANGE`, step 13): an
+     `Invoice { .. total .. }` or `InvoiceItem { .. amount .. }` literal in a
+     file that names Capital.
+   - `V13-MAIL-MESSAGE-REPLY-TO` (`MUST-CHANGE`, step 14): a `Message { .. }`
+     literal that lists every field without `..`.
+   - `V13-CLI-GREEN-RENAMED` (`REVIEW`, step 16): `cargo rullst green`,
      `rullst green` or `rullst.green.v1` in CI workflows and configuration,
      scripts, Dockerfiles and Containerfiles, Makefiles, justfiles and
      documentation.
@@ -679,7 +691,7 @@ steps in order.
    compile against alpha.5. Run `cargo rullst upgrade --keep-on-failure`: it
    pins every Rullst dependency to `=13.0.0-alpha.5`, runs `cargo fix` and
    `cargo check --locked`, and, when they fail, keeps the edited files and
-   names the must-change findings. Fix what steps 5 to 12 name; without a
+   names the must-change findings. Fix what steps 5 to 14 name; without a
    `MUST-CHANGE` finding, a plain `cargo rullst upgrade` is enough, and the
    review findings of steps 8 to 12 still need a look.
 5. **Replace the islands.** Remove `#[island]` and render the component with
@@ -788,7 +800,47 @@ steps in order.
     - Log parsers that match concrete production request paths set
       `[app] access_log_paths = "full"` in `Rullst.toml` (Access-log paths
       row).
-13. **Update scripts, CI and other tools.** Remove the `make:island`,
+13. **Move invoices to minor units** (Capital invoice minor units row).
+    Replace each literal with the constructors, converting every amount to the
+    currency's smallest unit:
+
+    ```rust,ignore
+    // alpha.4
+    let invoice = Invoice {
+        invoice_id: "INV-42".into(),
+        customer_email: "owner@example.com".into(),
+        date: Utc::now(),
+        items: vec![InvoiceItem { description: "Plan".into(), amount: 49.90 }],
+        total: 49.90,
+        currency: "BRL".into(),
+    };
+    // alpha.5
+    let invoice = Invoice::new("INV-42", "owner@example.com", Utc::now(), "BRL")
+        .with_item("Plan", 4_990)
+        .with_locale(InvoiceLocale::PtBr); // optional: "Recibo" labels
+    ```
+
+    Read `item.amount_minor` instead of `item.amount` and `total_minor()`
+    instead of `total`. Invoices stored as alpha.4 JSON need a one-off
+    conversion (multiply each amount by the currency's minor-unit factor and
+    drop `total`). A `PaidInvoiceDelivery` for a Portuguese or Spanish invoice
+    is now titled `Recibo …`; set `subject(...)` or `filename(...)` to keep
+    another wording.
+14. **Add `reply_to` to exhaustive `Message` literals** (Mail Reply-To row):
+    write `reply_to: None`, or build the message with `Message::new()` and its
+    builders. Use `.reply_to(visitor_email)` where replies should reach someone
+    other than the sender.
+15. **Review Capital's new one-off checkout and InfinitePay** (Capital
+    InfinitePay adapter and Capital one-off checkout rows). An application that
+    implemented InfinitePay itself can move to
+    `InfinitePayProvider::checkout(handle)` with `create_one_off_checkout`,
+    `parse_payment_notification` and `confirm_one_off_payment`; mark a charge
+    paid only when `OneOffPayment::is_paid()` is true. Tests that expected an
+    InfinitePay mock portal URL or a successful mock cancellation now get
+    `UnsupportedOperation`. A Stripe development setup that passed the
+    `https://` form of a local URL to a `mock_*` key can pass
+    `http://localhost:…` again.
+16. **Update scripts, CI and other tools.** Remove the `make:island`,
     `build:client` and `make:live` steps the review rules name; the commands
     exit with status 1 and print what replaces them. Replace
     `cargo rullst green` with `cargo rullst footprint`, and `rullst.green.v1`
@@ -798,9 +850,9 @@ steps in order.
     its CPU per request with alpha.5 runs only. If the application publishes
     these figures, check the wording: the report is a measurement and an
     estimate, not a certification or an environmental claim.
-14. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
+17. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
     edits and checks the result with `cargo fix` and `cargo check --locked`.
-15. **Verify** with the production feature set: `cargo build`, `cargo test`
+18. **Verify** with the production feature set: `cargo build`, `cargo test`
     and `cargo clippy --all-targets -- -D warnings`; then, on staging, every
     page that used an island or a Live component, with the browser's
     developer console open to catch CSP violations, before production.

@@ -31,14 +31,24 @@ impl std::fmt::Debug for PaidInvoiceDelivery {
 
 impl PaidInvoiceDelivery {
     /// Renders HTML and PDF, attaches the document and runs the mail pre-flight pipeline.
+    ///
+    /// The subject is the invoice's title label and ID (`Invoice INV-42`, or
+    /// `Recibo INV-42` for an invoice with Portuguese or Spanish labels) and
+    /// the PDF is named after the title (`invoice-<key>.pdf`,
+    /// `recibo-<key>.pdf`); [`Self::subject`] and [`Self::filename`] replace
+    /// them.
     pub fn prepare(paid: &PaidInvoice) -> Result<Self, MailError> {
         let invoice = paid.invoice();
         let html = invoice.try_generate_html().map_err(capital_error)?;
         let pdf = invoice.generate_pdf().map_err(capital_error)?;
-        let filename = format!("invoice-{}.pdf", short_key(paid.delivery_key())?);
+        let filename = format!(
+            "{}-{}.pdf",
+            file_stem(&invoice.labels.title),
+            short_key(paid.delivery_key())?
+        );
         let message = Message::new()
             .to(&invoice.customer_email)
-            .subject(format!("Invoice {}", invoice.invoice_id))
+            .subject(format!("{} {}", invoice.labels.title, invoice.invoice_id))
             .html(html)
             .attach_bytes(filename, pdf, "application/pdf");
         let prepared = DeliveryPipeline::prepare(&message)?;
@@ -57,6 +67,39 @@ impl PaidInvoiceDelivery {
     pub fn from(self, sender: impl Into<String>) -> Result<Self, MailError> {
         let mut message = self.prepared.into_message();
         message.from = Some(sender.into());
+        Ok(Self {
+            delivery_key: self.delivery_key,
+            prepared: DeliveryPipeline::prepare(&message)?,
+        })
+    }
+
+    /// Replaces the subject and re-runs the pre-flight pipeline, which
+    /// rejects a header-breaking value. Since 13.0.0-alpha.5.
+    pub fn subject(self, subject: impl Into<String>) -> Result<Self, MailError> {
+        let mut message = self.prepared.into_message();
+        message.subject = subject.into();
+        Ok(Self {
+            delivery_key: self.delivery_key,
+            prepared: DeliveryPipeline::prepare(&message)?,
+        })
+    }
+
+    /// Replaces the PDF attachment's file name, a basename ending in `.pdf`,
+    /// and re-runs the pre-flight pipeline. Since 13.0.0-alpha.5.
+    pub fn filename(self, filename: impl Into<String>) -> Result<Self, MailError> {
+        let filename = filename.into();
+        if !filename
+            .get(filename.len().saturating_sub(4)..)
+            .is_some_and(|extension| extension.eq_ignore_ascii_case(".pdf"))
+        {
+            return Err(MailError::ValidationError(
+                "paid invoice file name must end in .pdf".to_string(),
+            ));
+        }
+        let mut message = self.prepared.into_message();
+        for attachment in &mut message.attachments {
+            attachment.filename.clone_from(&filename);
+        }
         Ok(Self {
             delivery_key: self.delivery_key,
             prepared: DeliveryPipeline::prepare(&message)?,
@@ -96,6 +139,24 @@ fn capital_error(error: rullst_capital::CapitalError) -> MailError {
     MailError::ValidationError(format!("paid invoice could not be rendered: {error}"))
 }
 
+/// The lowercase ASCII words of the title (`Recibo` → `recibo`), or `invoice`.
+fn file_stem(title: &str) -> String {
+    let mut stem = String::with_capacity(title.len());
+    for character in title.chars() {
+        if character.is_ascii_alphanumeric() {
+            stem.push(character.to_ascii_lowercase());
+        } else if !stem.is_empty() && !stem.ends_with('-') {
+            stem.push('-');
+        }
+    }
+    let stem = stem.trim_end_matches('-');
+    if stem.is_empty() {
+        "invoice".to_string()
+    } else {
+        stem.to_string()
+    }
+}
+
 fn short_key(value: &str) -> Result<&str, MailError> {
     value
         .strip_prefix("paid_invoice_")
@@ -111,20 +172,21 @@ mod tests {
     use super::*;
     use crate::MemoryDriver;
     use chrono::Utc;
-    use rullst_capital::{ChargeReceipt, ChargeStatus, Invoice, InvoiceItem};
+    use rullst_capital::{ChargeReceipt, ChargeStatus, Invoice, InvoiceLocale};
+
+    fn invoice() -> Invoice {
+        Invoice::new("INV-2026-42", "owner@example.com", Utc::now(), "BRL")
+            .with_item("Serviço de hospedagem", 4_990)
+    }
 
     fn paid_invoice(status: ChargeStatus) -> Result<PaidInvoice, rullst_capital::CapitalError> {
-        let invoice = Invoice {
-            invoice_id: "INV-2026-42".to_string(),
-            customer_email: "owner@example.com".to_string(),
-            date: Utc::now(),
-            items: vec![InvoiceItem {
-                description: "Serviço de hospedagem".to_string(),
-                amount: 49.90,
-            }],
-            total: 49.90,
-            currency: "BRL".to_string(),
-        };
+        bound(invoice(), status)
+    }
+
+    fn bound(
+        invoice: Invoice,
+        status: ChargeStatus,
+    ) -> Result<PaidInvoice, rullst_capital::CapitalError> {
         let receipt = ChargeReceipt::from_verified_provider_response(
             "fixture",
             "charge_42",
@@ -156,6 +218,93 @@ mod tests {
         );
         assert!(!format!("{delivery:?}").contains("owner@example.com"));
         assert!(!format!("{delivery:?}").contains("%PDF-"));
+    }
+
+    #[test]
+    fn subject_and_file_name_follow_the_invoice_labels() {
+        let english = PaidInvoiceDelivery::prepare(&paid_invoice(ChargeStatus::Succeeded).unwrap())
+            .expect("prepared delivery");
+        assert_eq!(english.message().subject, "Invoice INV-2026-42");
+        let name = &english.message().attachments[0].filename;
+        assert!(
+            name.starts_with("invoice-") && name.ends_with(".pdf"),
+            "{name}"
+        );
+        assert_eq!(name.len(), "invoice-".len() + 24 + ".pdf".len());
+
+        let receipt = bound(
+            invoice().with_locale(InvoiceLocale::PtBr),
+            ChargeStatus::Succeeded,
+        )
+        .expect("paid receipt");
+        let delivery = PaidInvoiceDelivery::prepare(&receipt).expect("prepared receipt");
+        assert_eq!(delivery.message().subject, "Recibo INV-2026-42");
+        assert!(
+            delivery.message().attachments[0]
+                .filename
+                .starts_with("recibo-")
+        );
+        assert!(
+            delivery
+                .message()
+                .body_html
+                .as_deref()
+                .is_some_and(|body| body.contains("Recebido de"))
+        );
+    }
+
+    #[test]
+    fn subject_and_file_name_can_be_replaced_and_are_validated() {
+        let delivery =
+            PaidInvoiceDelivery::prepare(&paid_invoice(ChargeStatus::Succeeded).unwrap())
+                .expect("prepared delivery");
+        let key = delivery.delivery_key().to_string();
+        let changed = delivery
+            .clone()
+            .subject("Seu recibo da aula")
+            .and_then(|delivery| delivery.filename("recibo-aula.PDF"))
+            .expect("valid subject and file name");
+        assert_eq!(changed.message().subject, "Seu recibo da aula");
+        assert_eq!(changed.message().attachments[0].filename, "recibo-aula.PDF");
+        assert_eq!(changed.delivery_key(), key);
+        assert!(
+            changed.message().attachments[0]
+                .content
+                .starts_with(b"%PDF-")
+        );
+
+        assert!(
+            delivery
+                .clone()
+                .subject("Receipt\r\nBcc: other@example.com")
+                .is_err()
+        );
+        for invalid in [
+            "receipt.txt",
+            "pdf",
+            "../receipt.pdf",
+            "a/b.pdf",
+            ".pdf\u{1}",
+        ] {
+            assert!(
+                matches!(
+                    delivery.clone().filename(invalid),
+                    Err(MailError::ValidationError(_))
+                ),
+                "{invalid}"
+            );
+        }
+        assert!(delivery.filename("x.pdf").is_ok());
+    }
+
+    #[test]
+    fn file_stems_keep_ascii_words_of_the_title() {
+        assert_eq!(file_stem("Invoice"), "invoice");
+        assert_eq!(file_stem("Recibo"), "recibo");
+        assert_eq!(file_stem("Tax Receipt 2026"), "tax-receipt-2026");
+        assert_eq!(file_stem("  Nota de débito! "), "nota-de-d-bito");
+        assert_eq!(file_stem("Квитанция"), "invoice");
+        assert_eq!(file_stem(""), "invoice");
     }
 
     #[test]

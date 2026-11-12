@@ -1,7 +1,7 @@
 # Writing your own payment provider
 
 Rullst Capital ships two built-in adapters: **Stripe** (supported) and
-**InfinitePay** (experimental; it performs no real operation today, see
+**InfinitePay** (experimental; see
 [gateways with unsigned webhooks](#gateways-with-unsigned-webhooks)).
 Every other gateway is integrated by the application through the same
 provider-neutral contracts the built-in adapters use. Version 13 removed the
@@ -113,24 +113,47 @@ prefer the stable event ID when the gateway provides one.
 Some gateways notify the application without signing the request.
 InfinitePay's public [Checkout API](https://www.infinitepay.io/checkout-documentacao)
 is one: a payment link is created with
-`POST https://api.checkout.infinitepay.io/links` from the merchant `handle`
-and items priced in cents, the webhook carries no signature, and a payment is
-confirmed with `POST /payment_check` (`handle`, `order_nsu`,
-`transaction_nsu`, `slug`). The built-in `InfinitePayProvider` does not
-implement that API: with real credentials its checkout and webhook methods
-return `UnsupportedOperation` before any HTTP request.
+`POST https://api.checkout.infinitepay.io/links`, the webhook carries no
+signature, and a payment is confirmed with `POST /payment_check`. The built-in
+`InfinitePayProvider::checkout(handle)` implements that API (see the
+[crate README](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md#infinitepay));
+an adapter for another such gateway follows the same contract:
 
-The canonical middleware above requires a provider that verifies a signature,
-so it cannot authenticate such a notification, and a `WebhookEvent` built from
-an unsigned body proves nothing. An application adapter for these gateways
-should:
+- declare `WebhookVerificationMode::ConfirmedAtSource`. The canonical
+  middleware then never calls `handle_webhook` and never inserts a
+  `WebhookEvent`, whose status would be the sender's word;
+- implement `parse_payment_notification` to read only *which* payment the body
+  names into a `PaymentNotification` (`reference`, `transaction_id`,
+  `invoice_id`); the middleware inserts it into the request extensions;
+- implement `create_one_off_checkout` from the server-side
+  `OneOffCheckoutRequest`, never from amounts the browser sent, and return
+  `OneOffCheckout::from_verified_provider_response`;
+- implement `confirm_one_off_payment` with the gateway's own lookup and return
+  `OneOffPayment::paid(provider, request, charged, paid, currency)`, which fails
+  unless the charged amount equals the request's total and the currency
+  matches, or `OneOffPayment::unpaid`.
 
-- take the amount from a charge stored on the server, never from the browser
-  or the notification;
-- treat the notification only as a hint of *which* stored charge to check;
-- mark the charge paid only after the gateway's own lookup
-  (`payment_check` for InfinitePay) confirms the payment and the stored amount,
-  and make that transition idempotent.
+The handler loads the request it persisted by `notification.reference()`,
+calls `confirm_one_off_payment` and marks the order paid, idempotently, only
+when `is_paid()` is true. These notifications skip the replay store: a repeated
+one only repeats the lookup. Send the gateway requests with
+`providers::ProviderRequest`, which applies the built-in adapters' HTTP rules
+(no redirects, no ambient proxy, finite timeouts, 1 MiB responses, HTTPS,
+redacted errors) without exposing an HTTP client type:
+
+```rust,ignore
+use rullst_capital::providers::ProviderRequest;
+
+let check: serde_json::Value = ProviderRequest::post_json(
+    "acmepay",
+    "payment check",
+    "https://api.acmepay.example/v1/check",
+    &serde_json::json!({ "order": notification.reference() }),
+)?
+.header("X-Api-Key", api_key)
+.send_json()
+.await?;
+```
 
 ## 4. Test the adapter
 

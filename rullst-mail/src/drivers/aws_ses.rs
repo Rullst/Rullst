@@ -243,8 +243,16 @@ impl AwsSesDriver {
         limits::validate_message_limits(message)?;
         let from = address::sender(super::rest::required_sender(message)?)?;
         let to = address::recipient(&message.to)?;
+        let reply_to = message
+            .reply_to
+            .as_deref()
+            .map(address::sender)
+            .transpose()?;
         let client = super::http::client()?;
-        let payload = proxy_payload(message, &from, &to);
+        let mut payload = proxy_payload(message, &from, &to);
+        if let Some(reply_to) = reply_to {
+            payload["ReplyToAddresses"] = serde_json::json!([reply_to]);
+        }
         let response = client
             .post(endpoint)
             .header("Content-Type", "application/json")

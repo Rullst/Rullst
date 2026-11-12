@@ -40,6 +40,7 @@ jobs:
           rustflags: "-D warnings"
           build-warnings: ""
           target: ${{ matrix.target }}
+          cache-on-failure: false
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target }}

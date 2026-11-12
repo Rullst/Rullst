@@ -28,6 +28,7 @@ impl super::StripeProvider {
                 request_digest: digest,
             });
         }
+        super::require_https_redirects(&[request.success_url(), request.cancel_url()])?;
         let price = self
             .read_one_time_object(&format!("prices/{}", request.price().id()))
             .await?;

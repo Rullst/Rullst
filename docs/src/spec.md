@@ -1272,7 +1272,12 @@ driver and the migration row, and must never fall back to `log`, `memory` or
 an offline mock. Queued `rullst_mail_send` jobs carry no provider name, so a
 13 worker delivers 12.x jobs through its configured driver or fails them
 visibly. Suppression rows and observations keep free-form provider labels and
-stay readable. Applications implement other providers with `MailDriver`
+stay readable. `Message::reply_to` (13.0.0-alpha.5) is validated by the
+pipeline like `from` (no CR/LF, one mailbox, display name allowed) and sent by
+every built-in transport: Resend `reply_to`, SendPulse `reply_to` object, SES
+`ReplyToAddresses` (7-bit form, native and proxy) and the SMTP `Reply-To`
+header; it is omitted from the serialized message when empty, so queued jobs
+without it decode unchanged. Applications implement other providers with `MailDriver`
 ([Writing your own mail transport](mail-custom-transport.md)); the
 [migration guide](migration-v13.md) lists the removed names, and
 `cargo rullst upgrade` reports them as `V13-MAIL-REMOVED`.
@@ -1851,7 +1856,9 @@ the same server-authoritative controls.
   answers an outdated hash with `307` to the current URL and `no-store`;
   each hashed request rechecks the file's size and modification time. Debug
   builds also refresh the links after edits
-  ([frontend guide](frontend.md#content-hashed-asset-urls)).
+  ([frontend guide](frontend.md#content-hashed-asset-urls)). Core's
+  `render_page*` links `rullst.css` and `htmx-1.9.12.min.js` through
+  `assets::url` since 13.0.0-alpha.5 (the favicon keeps its plain URL).
   Since 13.0.0-alpha.2 `rullst::cache_control` offers explicit policies for
   dynamic routes: `cache_control::public(max_age)` and `private(max_age)`
   are layers that set `public, max-age=<seconds>` or `private,
@@ -3499,15 +3506,18 @@ credential-free HTTPS URLs. Offline legacy checkout and portal fixtures use
 reserved `mock.<provider>.invalid` hosts and omit the customer email and
 return URL. Stripe's documented opaque hosted-URL fragment is
 preserved; other adapters reject fragments. Provider/account sandbox acceptance
-remains external evidence.
+remains external evidence. Application-owned adapters reuse the same boundary
+through `providers::ProviderRequest` (`get`, `post_json`, `post_form`, `header`,
+`bearer_auth`, `send`, `send_json`): its URL must be credential-free HTTPS, or
+HTTP on a loopback host for local fixtures, its body is at most one MiB, and no
+`reqwest` type appears in its API.
 
 ### 6.1. Provider Architecture
 Billing adapters implement `BillingProvider`; metered usage adapters implement
 `MeteredBillingProvider` with a provider-specific request type. Rullst ships two
 adapters: Stripe, the supported provider used by the generated billing flow, and
-InfinitePay, which is experimental and performs no real operation until it is
-reworked and validated against a live account (its live plan-only checkout and
-live callbacks return `UnsupportedOperation` before any request). The trait
+InfinitePay, which is experimental until it is validated against a live account
+(section 6.2.2). The trait
 default for webhook verification mode fails closed, so a custom adapter must
 declare its verification mode before Rullst's webhook middleware accepts it.
 Individual billing operations may still return `Unsupported` when a provider
@@ -3627,8 +3637,9 @@ Stripe rather than guessing the required provider-specific identity.
 `CouponCode` accepts at most 256 ASCII identifier bytes and redacts its value
 from `Debug`. The Stripe adapter uses `discounts[0][coupon]`, requests expanded
 discount evidence and accepts only a response bound to both the subscription
-and requested coupon. InfinitePay and every adapter without a reviewed live
-contract return `UnsupportedOperation` rather than a false success. Empty
+and requested coupon. InfinitePay (which has no subscriptions) and every
+adapter without a reviewed live contract return `UnsupportedOperation` rather
+than a false success. Empty
 or `mock_*` credentials retain the deterministic offline no-op required for
 local applications and tests.
 
@@ -3712,13 +3723,24 @@ explicit application work.
 
 ### 6.2. Invoice Rendering
 
-`Invoice::generate_html` remains the source-compatible escaped HTML renderer.
-Trusted paths use `validate`/`try_generate_html`: the legacy public `f64` model
-accepts only bounded finite positive values with no more decimals than the
-currency's ISO 4217 minor unit (none for JPY, three for KWD, two by default),
-converts them to 1 to 99,999,999 integer minor units of that currency, and
-requires the exact item sum. HTML and PDF amounts use the same number of decimals, so the minor
-units match a provider receipt for zero- and three-decimal currencies too.
+Since 13.0.0-alpha.5 `Invoice` and `InvoiceItem` are `#[non_exhaustive]` and
+hold integer amounts in the currency's smallest unit, like `ChargeReceipt`:
+`Invoice::new(invoice_id, customer_email, date, currency)` plus
+`with_item(description, amount_minor)`. There is no stored total:
+`total_minor()` is the sum of the items. `Invoice::generate_html` renders
+without validation; trusted paths use `validate`/`try_generate_html`, which
+accept 1 to 128 items of 1 to 99,999,999 minor units each, a total within the
+same bound, a three-letter currency and bounded text. HTML and PDF print the
+amounts with the currency's ISO 4217 decimals (none for JPY, three for KWD, two
+by default) and the currency code in capitals.
+
+The printed words come from the public `labels: InvoiceLabels` field
+(`language`, `title`, `billed_to`, `date`, `description`, `amount`, `total`;
+1 to 64 characters each, validated before rendering, English by default).
+`InvoiceLocale` (`#[non_exhaustive]`: `En`, `PtBr`, `Es`) provides built-in
+labels; Portuguese and Spanish use "Recibo" because Capital issues no tax
+invoice. `InvoiceLocale::from_tag` maps any `pt*`, `es*` or `en*` tag. The HTML
+document carries `lang` from the labels.
 
 The opt-in `invoice-pdf` feature adds bounded paginated A4 rendering. Its
 embedded Helvetica subset supports WinAnsi text; other scripts require a
@@ -3729,25 +3751,71 @@ recipient, minor-unit amount and currency. It derives a stable non-secret key
 from the invoice and provider evidence for use by an application outbox.
 
 The downstream `rullst-mail/capital-invoice` feature converts that value into a
-pipeline-validated HTML message with the PDF attached and exposes one-call
+pipeline-validated HTML message with the PDF attached (subject `<title> <id>`,
+file `<title>-<key>.pdf`, replaceable with `subject` and `filename`, the latter
+ending in `.pdf`) and exposes one-call
 facade, tenant-aware or static-driver delivery. It does not infer a webhook
 event, atomically claim the delivery key, guarantee provider acceptance or
 promise exactly-once delivery. Applications processing retries or multiple
 instances must persist/claim the key and reconcile payment state durably before
 sending.
 
+### 6.2.1. One-off Checkout Confirmed at the Source
+
+`OneOffCheckoutRequest` (13.0.0-alpha.5, `#[non_exhaustive]`) is one purchase
+priced on the server: an opaque reference (1 to 200 ASCII letters, digits, `-`,
+`_`), a unit amount of 1 to 99,999,999 minor units, a three-letter currency
+stored in lowercase, a description of 1 to 250 characters, a quantity of 1 to
+10,000 (`with_quantity`, total within the same amount bound), success and cancel
+URLs and an optional e-mail (`with_customer_email`). Redirects are bounded,
+credential-free and fragment-free; HTTPS is required, except `http://` on
+`localhost`, `127.0.0.1` or `[::1]` for `mock_*` keys, and a live dispatch
+refuses those with `ConfigurationError` before any request. The same rule
+applies to `StripeCheckoutRequest` and `StripePaymentCheckoutRequest`.
+
+`BillingProvider` gains `create_one_off_checkout`, `parse_payment_notification`
+and `confirm_one_off_payment`, each defaulting to `UnsupportedOperation`.
+`OneOffCheckout` (URL, optional session ID, mock flag, request digest) never
+proves payment. `PaymentNotification` names the payment without a status.
+`OneOffPayment::paid` fails with `InvalidCharge` unless the provider's charged
+amount equals the request's total, the currency matches and the paid amount is
+not lower (it may be higher when the buyer pays instalment fees);
+`OneOffPaymentState::Mock` never counts as paid. Stripe creates a card-only
+`mode=payment` Checkout Session with inline `price_data`, the request's
+quantity, disabled discounts, adaptive pricing and automatic tax, and an
+Idempotency-Key derived from the request digest; it confirms by reading the
+session back (`complete` and `paid`, bound reference, total and currency).
+
+### 6.2.2. InfinitePay Adapter (Experimental)
+
+`InfinitePayProvider::checkout(handle)` (13.0.0-alpha.5) targets InfinitePay's
+public Checkout API. `with_api_key` adds an `inchk_` key (`X-Api-Key`, which
+enables `options.single_payment`) and `with_webhook_url` the per-link
+notification URL. `create_one_off_checkout` requires BRL and at least 100 cents
+per unit and sends `POST /links` (`handle`, one item with `quantity`, `price`
+and `description`, `order_nsu` = reference, `redirect_url` = success URL,
+`webhook_url`, optional `customer.email`); only an HTTPS `infinitepay.io` link
+is accepted. `parse_payment_notification` reads `order_nsu`, `transaction_nsu`
+and `invoice_slug` (or `slug`) from a body of at most 64 KiB and ignores its
+amounts and status. `confirm_one_off_payment` sends `POST /payment_check`
+(`handle`, `order_nsu`, `transaction_nsu`, `slug`) and is paid only for
+`success` and `paid` with `amount` equal to the request's total. Plan checkout,
+portal, subscriptions, usage, coupons and trials return `UnsupportedOperation`.
+An empty or `mock_*` handle runs offline fixtures. `InfinitePayProvider::new`
+remains for its offline fixtures and has no handle for live operations.
+
 ### 6.3. Webhook Signature Verification
-* The experimental InfinitePay adapter performs no real operation. It has a
-  body-only verifier but no reviewed authentication and authoritative
-  payment-lookup contract for the documented checkout callback: InfinitePay's
-  public Checkout API sends an unsigned webhook and confirms a payment with
-  `POST /payment_check`.
-  Real-secret verification and normalization return `UnsupportedOperation`;
-  explicit mock-secret fixtures remain offline-only. A local HMAC fixture is
-  not evidence that the provider signs that protocol. Enabling live processing
-  requires order/merchant/amount binding and provider reconciliation first;
-  until then applications charge through InfinitePay with their own
-  `BillingProvider` that confirms each payment with `payment_check`.
+* `WebhookVerificationMode::ConfirmedAtSource` (13.0.0-alpha.5) declares an
+  unauthenticated notification that only names a payment. For such a provider
+  the middleware calls `parse_payment_notification`, inserts the resulting
+  `PaymentNotification` (reference, transaction ID, invoice ID; no status)
+  into the request extensions and records no replay proof; it never calls
+  `handle_webhook` and never inserts a `WebhookEvent`, and the internal
+  signed-event path refuses the mode. Only `confirm_one_off_payment`, which
+  queries the provider and binds its answer to the server-side request, can
+  report a payment. InfinitePay's webhook works this way (section 6.2.2); the
+  legacy `InfinitePayProvider::new` fixture with a `mock_*` secret keeps its
+  mock-signed `Mock` mode.
 * The additive `StripeProvider::verify_subscription_event` returns an immutable
   `StripeSubscriptionEvent` after the existing signature/freshness check and
   bounded subscription normalization. It retains event ID/type/API version,
@@ -4026,6 +4094,39 @@ provider](capital-custom-provider.md)); the
 * 🔵 **`[Roadmap]` MQTT/CoAP Transport:** Async connections, TLS/DTLS, broker
   negotiation, acknowledgements, retransmission/congestion control, block-wise
   transfer and interoperability matrices remain separate integration work.
+
+### 8.3. Device telemetry ingestion (`rullst::iot_ingest`, facade feature `iot-ingest`)
+* 🟢 **`[Implemented / Bounded]`, Experimental (13.0.0-alpha.5):**
+  `TelemetryReceiver<D: DeviceDirectory>` accepts one `SensorTelemetry` JSON
+  object or an array over `POST`, from devices authenticated one by one, and
+  publishes each accepted request to a `BroadcastManager` channel (default
+  `iot.telemetry`, event `telemetry`) as a JSON `TelemetryBatch`.
+* **Authentication:** each device has a bearer token (`DeviceToken`: `rdt1_`
+  plus 32 CSPRNG alphanumerics, `Debug` redacted); a `DeviceDirectory` stores
+  and looks up only its SHA-256 (`TokenHash`) and reads current state on every
+  request, so a revocation applies to the next one.
+  `TelemetryReceiver::machine_endpoint` registers the route with
+  `MachineEndpoint::verified_bearer`: one `Authorization: Bearer` header, no
+  `Cookie`, `Origin` or `Sec-Fetch-Site`, and the CSRF exemption only after
+  verification. The verifier attaches `AuthenticatedDevice`; the handler
+  answers `401` without it, so a route mounted without its machine endpoint
+  accepts nothing. A directory failure fails closed (`401` from the verifier,
+  `503` when recording the delivery).
+* **Bounds:** body (16 KiB, 256 B–1 MiB), readings per request (64,
+  1–1,024), each reading's `device_id` equal to the token's device (`403`),
+  metric 1–64 bytes of `[A-Za-z0-9._-]`, finite value, timestamp at most
+  5 minutes ahead and 24 hours old (both configurable), per-device fixed-window
+  rate (120/min; `429` with `Retry-After`) with state for at most 10,000
+  devices, and an optional `X-Rullst-Firmware` header (1–64 printable ASCII).
+  Every refusal is an `IngestError` with a stable code, a JSON body and
+  `Cache-Control: no-store`.
+* **Directories:** `MemoryDeviceDirectory` (process memory, for tests and
+  fixed lists). A persistent registry is application code over the
+  `DeviceDirectory` trait; `examples/iot-gateway` keeps it in an ORM model,
+  so no table schema is part of the framework's contract. `validate_device`
+  checks ids (1–64 bytes of `[A-Za-z0-9._-]`) and names.
+* 🔵 **`[Roadmap]`:** MQTT/CoAP ingestion, device certificates (mTLS),
+  per-device scopes, durable delivery and cross-instance fan-out.
 
 ---
 
@@ -4847,6 +4948,29 @@ store package of the same site, only installs it.
   `Vary: HX-Request` (added to an existing `Vary` unless it already names the
   header or is `*`), so a cache keeps a page and the fragment of one URL
   apart.
+* 🟢 **`[Implemented / Bounded]` `cargo rullst ui add` (13.0.0-alpha.5):**
+  copies UI components into the application as source it owns:
+  `src/ui/<name>.rs` (`button`, `badge`, `alert`, `card`, `form`, `table`,
+  `pagination`, `dialog`, `menu`, `tabs`, `toast`; `dialog` and `menu` add
+  `button`), registered in `src/ui/mod.rs`, with `mod ui;` (or `pub mod ui;`
+  in `src/lib.rs`) declared in the crate root, and for `dialog`, `menu`,
+  `tabs` and `toast` a same-origin ES module `static/ui/<name>.js` that their
+  markup loads with `rullst::assets::url`. Each component is a function
+  returning `Markup` with an options struct, styled with complete Tailwind
+  class names; none uses an inline script or style, `eval` or Alpine. The
+  dialog is a native modal `<dialog>` opened by invoker commands
+  (`commandfor`/`command`, polyfilled by its module), the menu a `popover`
+  with the ARIA menu-button keyboard, the tabs the ARIA tabs pattern, the
+  toasts an `aria-live` region fed by `HX-Trigger` events; form fields link
+  help and errors with `aria-describedby` and `aria-invalid`, and the form
+  writes the CSRF `_token` first. A repeated run changes nothing; a copy whose
+  content differs stops the run before any write unless `--force`. Without
+  Tailwind an interactive run offers `cargo rullst add tailwind`, others copy
+  and print the command. CI renders every component in a fixture
+  application in three browsers and both colour schemes (CSP, axe
+  `serious`/`critical`, keyboard paths). `make:pwa`'s offline page and
+  `make:resource`'s views use Tailwind classes only when the project uses
+  Tailwind ([frontend guide](frontend.md#components)).
 * 🟢 **`[Implemented / Bounded]` htmx indicators under the strict CSP:** since
   13.0.0-rc.1, `render_page`, `render_page_with_lang` and
   `render_page_with_head` with a request CSP nonce (Rullst's security

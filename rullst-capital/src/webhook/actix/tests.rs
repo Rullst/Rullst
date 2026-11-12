@@ -220,3 +220,57 @@ async fn middleware_accepts_one_standard_header_and_a_two_mebibyte_body() {
         StatusCode::UNAUTHORIZED
     );
 }
+
+async fn notification_handler(req: HttpRequest) -> HttpResponse {
+    if req.extensions().get::<WebhookEvent>().is_some() {
+        return HttpResponse::InternalServerError().finish();
+    }
+    match req
+        .extensions()
+        .get::<crate::PaymentNotification>()
+        .map(|notification| notification.reference().to_string())
+    {
+        Some(reference) => HttpResponse::Ok().body(reference),
+        None => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+#[tokio::test]
+async fn unsigned_notifications_reach_the_handler_without_an_event() {
+    let state = WebhookMiddlewareState::production_with_provider(
+        Arc::new(crate::InfinitePayProvider::checkout("loja").unwrap()),
+        Arc::new(InMemoryWebhookReplayStore::default()),
+    );
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .wrap(actix_web::middleware::from_fn(
+                verify_webhook_actix_with_state,
+            ))
+            .route("/webhook", web::post().to(notification_handler)),
+    )
+    .await;
+    let body =
+        r#"{"order_nsu":"order_42","transaction_nsu":"nsu-1","invoice_slug":"s1","status":"paid"}"#;
+    for _ in 0..2 {
+        let response = test::call_service(
+            &app,
+            test::TestRequest::post()
+                .uri("/webhook")
+                .set_payload(body)
+                .to_request(),
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(test::read_body(response).await, "order_42");
+    }
+    let rejected = test::call_service(
+        &app,
+        test::TestRequest::post()
+            .uri("/webhook")
+            .set_payload("{}")
+            .to_request(),
+    )
+    .await;
+    assert_eq!(rejected.status(), StatusCode::BAD_REQUEST);
+}

@@ -13,7 +13,7 @@ mod csp_tests;
 #[cfg(test)]
 mod kit_tests;
 mod layout;
-mod project;
+pub(crate) mod project;
 mod report;
 mod tailwind;
 #[cfg(test)]

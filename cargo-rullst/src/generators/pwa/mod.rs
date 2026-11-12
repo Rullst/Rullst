@@ -330,7 +330,7 @@ fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
         &mut plan,
         root,
         "src/pwa.rs",
-        files::module(&values).into_bytes(),
+        files::module(&values, crate::generators::frontend::uses_tailwind(root)).into_bytes(),
     )?;
     create(
         &mut plan,
@@ -379,6 +379,8 @@ fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
 
 #[cfg(test)]
 mod router_tests;
+#[cfg(test)]
+mod style_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

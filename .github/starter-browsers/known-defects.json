@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "starter": "ui-components",
+    "kind": "csp",
+    "key": "style-src-attr inline",
+    "browsers": ["webkit"],
+    "owner": "WebKit (browser engine)",
+    "reason": "WebKit 27.2 as Playwright 1.64.1 ships it reports a blocked style attribute for every <select> under style-src 'self', from the engine's own select internals: the driver's probe gets the same report from a bare <select> alone, and Chromium and Firefox report nothing. The select renders and works; the gallery keeps the native <select> rather than a scripted listbox."
+  }
+]

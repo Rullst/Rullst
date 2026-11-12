@@ -415,3 +415,30 @@ fn one_click_post_header_is_limited_to_https_unsubscribe_urls() {
         ["List-Unsubscribe"]
     );
 }
+
+#[tokio::test]
+async fn bearer_proxy_sends_reply_to_in_seven_bit_form() {
+    let (endpoint, capture) = spawn_response(200, &[], "{}");
+    let driver = AwsSesDriver::try_new("sa-east-1", "proxy-secret")
+        .unwrap()
+        .try_with_endpoint(endpoint)
+        .unwrap();
+    let replying = message().reply_to("Jos\u{e9} <jose@b\u{fc}cher.de>");
+    driver.send(&replying).await.unwrap();
+    let request = String::from_utf8(capture.join().unwrap()).unwrap();
+    let body: serde_json::Value =
+        serde_json::from_str(request.split_once("\r\n\r\n").unwrap().1).unwrap();
+    assert_eq!(
+        body["ReplyToAddresses"],
+        serde_json::json!(["=?UTF-8?B?Sm9zw6k=?= <jose@xn--bcher-kva.de>"])
+    );
+
+    let (endpoint, capture) = spawn_response(200, &[], "{}");
+    let driver = AwsSesDriver::try_new("sa-east-1", "proxy-secret")
+        .unwrap()
+        .try_with_endpoint(endpoint)
+        .unwrap();
+    driver.send(&message()).await.unwrap();
+    let request = String::from_utf8(capture.join().unwrap()).unwrap();
+    assert!(!request.contains("ReplyToAddresses"));
+}

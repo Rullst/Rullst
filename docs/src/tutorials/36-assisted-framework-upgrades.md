@@ -281,7 +281,7 @@ release:
 | 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
-| 13.0.0-alpha.5 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them), `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CLI-GREEN-RENAMED` |
+| 13.0.0-alpha.5 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them), `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-MAIL-MESSAGE-REPLY-TO`, `V13-CLI-GREEN-RENAMED` |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -474,15 +474,15 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (16 rows);
+  application source (18 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
   the affected API, feature or configuration, which the rules locate (114 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (102 rows).
+  of inputs that previously failed) (104 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 136 rules. A row can map to several rules and a rule to
+has 138 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -717,6 +717,10 @@ the rule together.
 | IoT sensor card HTML | (b) review | `V13-IOT-SENSOR-CARD-HTML` | `render_sensor_card` named in Rust source, reported once per file; introduced in 13.0.0-alpha.5 |
 | Studio `local` feature | (c) none | — | Only direct `rullst-studio` dependencies without default features and without a driver profile, which the compiler reports; introduced in 13.0.0-alpha.5 |
 | Access-log paths | (c) none | — | Log output in staging and production, not application source; introduced in 13.0.0-alpha.5 |
+| Capital invoice minor units | (a) must-change | `V13-CAPITAL-INVOICE-MINOR-UNITS` | `Invoice { .. }` literals naming `total` and `InvoiceItem { .. }` literals naming `amount`, in files that name Capital (`rullst_capital` or `capital::`), so an application's own `Invoice` type is left alone; reads of `.total` and `.amount` are not located, the compiler names them; introduced in 13.0.0-alpha.5 |
+| Mail Reply-To | (a) must-change | `V13-MAIL-MESSAGE-REPLY-TO` | `Message { .. }` literals with `subject` and `body_html`, without `reply_to` and without `..rest`, in files that name Mail (`rullst_mail` or `mail::`); introduced in 13.0.0-alpha.5 |
+| Capital InfinitePay adapter | (c) none | — | Experimental adapter: `new` keeps compiling, and the mock answers that changed (portal, cancellation) surface in the application's own tests; introduced in 13.0.0-alpha.5 |
+| Capital one-off checkout and unsigned notifications | (c) none | — | Opt-in additions; the new trait methods have defaults and the redirect check only accepts more URLs with mock keys; introduced in 13.0.0-alpha.5 |
 
 ## Planned simpler update experience
 

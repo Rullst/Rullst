@@ -11,6 +11,29 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Added
 
+- `rullst::iot_ingest` (facade feature `iot-ingest`, Experimental): a
+  bounded telemetry receiver for devices on the server side.
+  `TelemetryReceiver` accepts one `SensorTelemetry` JSON object or an array
+  of them and publishes each accepted request to a `BroadcastManager`
+  channel as a `TelemetryBatch`. Every device has its own bearer token
+  (`DeviceToken`, 190 random bits behind an `rdt1_` prefix); the
+  receiver's `machine_endpoint(path)` verifies it through
+  `MachineEndpoint::verified_bearer` against a `DeviceDirectory` that
+  stores only its SHA-256 (`TokenHash`), so the route is exempt from CSRF
+  only after authentication, ambient browser credentials are refused, and a
+  revoked device is refused from the next request on. A request reaching the
+  route without that verification is refused (`401`), never accepted
+  anonymously. Bodies (16 KiB), readings per request (64), timestamps
+  (5 minutes ahead, 24 hours old), metric names and each device's request
+  rate (120 per minute, `429` with `Retry-After`) are bounded, and every
+  refusal is an `IngestError` with a stable code and status. The device's id
+  in every reading must match its token (`403`). `MemoryDeviceDirectory`
+  serves tests and fixed device lists; a database registry is application
+  code (`validate_device` checks ids and names for it). New example
+  `examples/iot-gateway`: per-board serial gateways post to the receiver,
+  the registry is an ORM model with a migration and a Nexus page, and a
+  dashboard shows every device live over Server-Sent Events; it ran with two
+  Arduino Uno boards on 2026-11-11.
 - `cargo rullst footprint --check-budget` checks the measured figures
   against limits in `Rullst.toml` `[footprint.budgets]` (`--budget FILE` reads
   the table from another file): binary and image size, idle memory,
@@ -194,6 +217,40 @@ A prepared version section does not establish that its tag or crates exist.
   scripts, so client-only state works under the default Content-Security-Policy
   without `'unsafe-eval'`. The new book page lists what the CSP build cannot
   parse.
+- `cargo rullst ui add <component>...` and `cargo rullst ui list`: a component
+  library copied into the application as Rust source it owns, like shadcn/ui
+  or Topcoat. Each of `button` (variants, sizes, an htmx loading spinner),
+  `badge`, `alert`, `card`, `form` (a CSRF-aware form and labelled fields with
+  `aria-describedby` help and errors and `aria-invalid`), `table` (a focusable
+  scroll region and an empty state), `pagination`, `dialog` (a native modal
+  `<dialog>` opened with `commandfor`/`command`), `menu` (a `popover` with the
+  ARIA menu-button keyboard), `tabs` (the ARIA tabs pattern) and `toast` (an
+  `aria-live` region fed by htmx `HX-Trigger` events) is a function returning
+  `Markup` with a small options struct, styled with Tailwind classes in light
+  and dark, written to `src/ui/<name>.rs` and registered in `src/ui/mod.rs`
+  and the crate root. The last four load a small same-origin module from
+  `static/ui/` with `rullst::assets::url`: no inline script or style, no
+  `eval`, no Alpine. Running it again changes nothing; a copy that differs
+  from the CLI's is kept unless `--force` (`--dry-run` shows the diff;
+  `--all` copies every component). Without Tailwind an interactive run offers
+  `cargo rullst add tailwind` first, and other runs print it. The "Generated
+  starters in browsers" CI job now also copies every component into a
+  fixture application with Tailwind and drives it in Chromium, Firefox and
+  WebKit, light and dark: no console error or CSP violation, no axe-core
+  `serious`/`critical` finding, and the dialog, menu, tabs, toast and
+  loading-state keyboard paths ([frontend guide](https://rullst.github.io/Rullst/book/frontend.html#components)).
+- Generators follow the project's styling choice: `make:pwa`'s offline page
+  and `make:resource`'s views get Tailwind utility classes when the project
+  uses Tailwind, and plain markup otherwise (the resource views always had
+  Tailwind classes; their form's input now has the `id` its label names).
+- Core's `render_page`, `render_page_with_lang` and `render_page_with_head`
+  link `rullst.css` and the htmx client with `rullst::assets::url`, so while
+  the server runs they are `/static/rullst.<hash>.css` and
+  `/static/htmx-1.9.12.min.<hash>.js`, cached as immutable, and an edited
+  stylesheet reaches browsers and CDNs on the next deploy. The service worker
+  of `make:pwa` now also stores, when it installs, the `/static/` files its
+  offline page links, which have such hashed names; a worker generated before
+  stores them the first time a page it controls loads them.
 - `cargo rullst footprint --page-weight` weighs a page as a browser would:
   the `--path` page and the same-origin stylesheets (with their `url()` and
   `@import`), scripts, fonts, images, icon and manifest it references, on a
@@ -301,6 +358,54 @@ A prepared version section does not establish that its tag or crates exist.
   compile, like those of `on*` handlers, because the browser runs them as
   JavaScript. **Breaking** for a dynamic `x-*` value, which compiled before;
   `cargo rullst upgrade` reports it (`V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`).
+- `rullst-capital` has a provider-neutral one-off checkout: an
+  `OneOffCheckoutRequest` holds a server-side reference, the unit amount in
+  integer minor units, currency, description, quantity (1 to 10,000),
+  success and cancel URLs and an optional e-mail, and
+  `BillingProvider::create_one_off_checkout` returns an `OneOffCheckout`.
+  Stripe creates a card-only `mode=payment` session with inline `price_data`,
+  so no pre-created price or customer is needed. `confirm_one_off_payment`
+  returns an `OneOffPayment` that is paid only when the provider confirms the
+  payment with the request's total and currency. The new trait methods
+  default to `UnsupportedOperation`, so custom providers keep compiling.
+  Reported while building applications on alpha.4.
+- `WebhookVerificationMode::ConfirmedAtSource` declares an unsigned
+  notification that only names a payment. For such a provider the webhook
+  middleware (Axum and Actix) never calls `handle_webhook` and never inserts a
+  `WebhookEvent`: it inserts the `PaymentNotification` read by the new
+  `parse_payment_notification`, which carries no status, so only
+  `confirm_one_off_payment` can mark an order paid.
+- `InfinitePayProvider::checkout(handle)` works against InfinitePay's public
+  Checkout API: it creates payment links with `POST /links` (BRL, priced from
+  the server-side request, optional `inchk_` key for single-payment links and
+  a configured `webhook_url`), reads the unsigned webhook, and confirms each
+  payment with `POST /payment_check`, comparing the charged amount with the
+  server-side total. alpha.4's adapter performed no real operation.
+  Subscriptions, portal, usage, coupons and trials return
+  `UnsupportedOperation` (also with `mock_*` credentials, which used to
+  return portal and cancellation fixtures); an empty or `mock_*` handle runs
+  deterministic offline fixtures. The adapter stays experimental until it is
+  validated against a live account.
+- `rullst_capital::providers::ProviderRequest` gives application-owned
+  payment adapters Capital's HTTP rules (no redirects, no ambient proxy,
+  finite timeouts, rustls, 1 MiB responses, HTTPS or loopback HTTP, redacted
+  `ProviderFailure` errors) without exposing an HTTP client type.
+- Capital invoices print localized labels: `Invoice::with_locale` with
+  `InvoiceLocale::En` (the default), `PtBr` or `Es`, whose "Recibo" wording
+  does not read as a tax invoice, or edited `InvoiceLabels`, in the HTML (with
+  `lang`) and the PDF. `PaidInvoiceDelivery` takes its subject and PDF name
+  from the title (`Recibo INV-1`, `recibo-<key>.pdf`) and gains `subject(...)`
+  and `filename(...)`. Reported while building applications on alpha.4.
+- `rullst_mail::Message` has `Reply-To`: the `reply_to` field and builder,
+  validated by the pipeline like `from` and sent by the Resend, SendPulse, AWS
+  SES (native and proxy) and SMTP drivers. Reported while building
+  applications on alpha.4.
+- Stripe checkout requests (`StripeCheckoutRequest`,
+  `StripePaymentCheckoutRequest`, `OneOffCheckoutRequest`) accept
+  `http://localhost`, `127.0.0.1` and `[::1]` success and cancel URLs, so a
+  `mock_*` key works with a local development server; a live key still
+  requires HTTPS and fails with `ConfigurationError` before any request.
+  alpha.4 refused `http://` when the request was built, even for a mock key.
 - `rullst-media` (Bunny Stream), requested while upgrading an application:
   `BunnyCredentials::upload_only(api_key)` with
   `BunnyConfig::upload_only(library, environment, credentials)` manages videos
@@ -409,6 +514,17 @@ A prepared version section does not establish that its tag or crates exist.
   where `cargo test` runs tests) never writes a key and keeps a new one in
   memory; tests that need one key in several processes set `APP_KEY`.
   Reported while upgrading an application.
+- **Breaking:** Capital's `Invoice` and `InvoiceItem` hold integer amounts in
+  the currency's smallest unit, like `ChargeReceipt`, instead of `f64`:
+  `InvoiceItem::amount` became `amount_minor: u64`, `Invoice::total` was
+  removed (`total_minor()` sums the items), and both structs are
+  `#[non_exhaustive]`, built with `Invoice::new(...).with_item(description,
+  amount_minor)`. The serialized form changes the same way. `cargo rullst
+  upgrade` reports the old literals (`V13-CAPITAL-INVOICE-MINOR-UNITS`).
+- **Breaking** for exhaustive struct literals only: Mail's `Message` gained the
+  `reply_to` field; add `reply_to: None` or build it with `Message::new()`.
+  Serialized messages without it still decode. `cargo rullst upgrade` reports
+  such literals (`V13-MAIL-MESSAGE-REPLY-TO`).
 
 ### Changed
 
@@ -529,6 +645,22 @@ describes each replacement.
 
 ### Fixed
 
+- `rullst-orm` SurrealDB adapter: `SurrealDbStore::create` reported a write
+  that SurrealDB had refused. SurrealDB 3 answers a CREATE denied by
+  permissions (a `VIEWER` database user, or a record user on a table with
+  `PERMISSIONS FOR create NONE`) with status OK and no record, and `create`
+  returned `Ok(())` although nothing was stored. It now fails with
+  `PolyglotError::Driver` ("create returned no record …") when the response
+  holds no record, which also happens for a table the user may write but not
+  read back. Found by acceptance testing against SurrealDB 3.2.4.
+- `rullst-orm` SurrealDB documentation said that `SurrealAuth::basic` signs in
+  namespace and database users; SurrealDB answers those with
+  `401 Unauthorized`, because it also needs `Surreal-Auth-NS`/`Surreal-Auth-DB`
+  headers that the adapter does not send. The rustdoc and the polyglot
+  persistence guide now say that Basic is for root-level users, that
+  namespace and database users sign in through `/signin` and pass the token to
+  `SurrealAuth::bearer`, and that the namespace and database must be defined
+  before use.
 - The `APP_KEY` comment that `cargo rullst add auth` writes to `.env.example`
   and the `cargo rullst doctor` fix for an unignored `.rullst_dev_key` still
   said that development writes the key into the project; since this release it

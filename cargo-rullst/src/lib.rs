@@ -29,6 +29,11 @@
     )
 )]
 
+// The UI components `cargo rullst ui add` copies call `rullst::…`; their
+// tests compile them against Core under that name.
+#[cfg(test)]
+extern crate rullst_core as rullst;
+
 pub mod blueprints;
 pub mod cli;
 mod diff;
@@ -103,6 +108,8 @@ fn run_command(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     } else if let Some(age_gate) = matches.subcommand_matches("make:age-gate") {
         generators::age_gate::run(age_gate)?;
         generators::ai_context::refresh_after_scaffold();
+    } else if let Some(ui) = matches.subcommand_matches("ui") {
+        generators::components::run(ui)?;
     } else if let Some(pwa) = matches.subcommand_matches("make:pwa") {
         generators::pwa::run(pwa)?;
     } else if let Some(oauth) = matches.subcommand_matches("make:oauth") {
@@ -131,6 +138,7 @@ pub(crate) fn command() -> clap::Command {
     let command = <cli::Cli as clap::CommandFactory>::command()
         .subcommand(update::command())
         .subcommand(generators::add::command())
+        .subcommand(generators::components::command())
         .subcommand(generators::age_gate::command())
         .subcommand(generators::privacy::command())
         .subcommand(generators::pwa::command())

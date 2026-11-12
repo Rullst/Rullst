@@ -264,3 +264,47 @@ fn plain_text_fallback_keeps_http_link_targets() {
         "Docs <https://rullst.dev/docs> https://rullst.dev Email us x relative <https://rullst.dev/logo>"
     );
 }
+
+#[test]
+fn reply_to_is_validated_by_the_pipeline_and_omitted_when_unset() {
+    let message = Message::new()
+        .to("owner@example.com")
+        .from("site@example.com")
+        .subject("New booking")
+        .text("A visitor asked for a class")
+        .reply_to("Ana Souza <ana@example.com>");
+    assert_eq!(
+        message.reply_to.as_deref(),
+        Some("Ana Souza <ana@example.com>")
+    );
+    let prepared = crate::DeliveryPipeline::prepare(&message).expect("valid Reply-To");
+    assert_eq!(
+        prepared.message().reply_to.as_deref(),
+        Some("Ana Souza <ana@example.com>")
+    );
+    for invalid in [
+        "ana@example.com\r\nBcc: attacker@example.com",
+        "not an address",
+        "",
+    ] {
+        assert!(
+            matches!(
+                crate::DeliveryPipeline::prepare(&message.clone().reply_to(invalid)),
+                Err(MailError::ValidationError(_))
+            ),
+            "{invalid:?}"
+        );
+    }
+
+    // Absent, the field is not serialized, so queued jobs and offline
+    // delivery IDs of messages without it are unchanged.
+    let plain = Message::new().to("owner@example.com").text("body");
+    let json = serde_json::to_value(&plain).unwrap();
+    assert!(json.get("reply_to").is_none());
+    let restored: Message = serde_json::from_value(json).unwrap();
+    assert_eq!(restored.reply_to, None);
+    let with_reply = serde_json::to_value(&message).unwrap();
+    assert_eq!(with_reply["reply_to"], "Ana Souza <ana@example.com>");
+    let round_trip: Message = serde_json::from_value(with_reply).unwrap();
+    assert_eq!(round_trip, message);
+}

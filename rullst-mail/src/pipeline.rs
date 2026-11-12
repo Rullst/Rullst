@@ -126,6 +126,11 @@ impl DeliveryPipeline {
             recipient_address(from)
                 .map_err(|error| MailError::ValidationError(error.to_string()))?;
         }
+        if let Some(reply_to) = message.reply_to.as_deref() {
+            validate_header("Reply-To", reply_to)?;
+            recipient_address(reply_to)
+                .map_err(|error| MailError::ValidationError(error.to_string()))?;
+        }
 
         // Both values are written verbatim inside `<...>` in List-Unsubscribe,
         // so neither may close its bracket or start another entry.

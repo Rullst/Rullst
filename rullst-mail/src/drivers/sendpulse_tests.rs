@@ -87,3 +87,32 @@ async fn offline_fallback_and_future_rejection_need_no_network() {
             .is_err()
     );
 }
+
+#[test]
+fn reply_to_is_sent_as_a_mailbox_object() {
+    let message = Message::new()
+        .from("site@example.com")
+        .to("owner@example.com")
+        .subject("New booking")
+        .text("A visitor asked for a class")
+        .reply_to("Ana Souza <ana@example.com>");
+    let value = payload(&message).unwrap();
+    assert_eq!(
+        value["email"]["reply_to"],
+        json!({"email": "ana@example.com", "name": "Ana Souza"})
+    );
+    let bare = payload(&message.clone().reply_to("ana@example.com")).unwrap();
+    assert_eq!(
+        bare["email"]["reply_to"],
+        json!({"email": "ana@example.com"})
+    );
+    let without = Message {
+        reply_to: None,
+        ..message
+    };
+    assert!(
+        payload(&without).unwrap()["email"]
+            .get("reply_to")
+            .is_none()
+    );
+}

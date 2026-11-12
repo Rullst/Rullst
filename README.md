@@ -506,7 +506,9 @@ list every change.
   tailwind` sets up Tailwind CSS v4 through its pinned, checksum-verified
   standalone CLI (no Node.js) in `dev`, `build` and the Dockerfile; `cargo
   rullst add alpine` vendors Alpine.js's CSP build for client-only state under
-  the strict CSP ([guide](https://rullst.github.io/Rullst/book/frontend.html)).
+  the strict CSP; `cargo rullst ui add` copies accessible `html!` components
+  (button, form fields, table, dialog, menu, tabs, toasts and more) styled
+  with Tailwind into `src/ui/` ([guide](https://rullst.github.io/Rullst/book/frontend.html)).
 - **Studio production monitoring:** a read-only monitoring endpoint, and a
   standalone Studio for remote projects with a project switcher, history and
   alerts ([guide](https://rullst.github.io/Rullst/book/production-monitoring.html)).

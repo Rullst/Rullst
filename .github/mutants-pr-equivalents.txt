@@ -6,10 +6,6 @@
 # exact, so an entry stops applying when its line moves and the mutant is
 # tested again; update or delete it then.
 
-# rullst-capital money_to_minor: after the `rounded >= 1` check, only amounts
-# that round to zero can hit exactly 1e-7, and those are rejected either way.
-rullst-capital/src/invoice.rs:182:33: replace > with >= in money_to_minor
-
 # rullst-iot CoAP: the header's version, type and token-length fields and an
 # option's delta and length nibbles occupy disjoint bits, so OR equals XOR
 # (docs/src/mutation-testing.md, the rullst-iot `|` with `^` row).

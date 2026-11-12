@@ -3,6 +3,8 @@ use crate::capital::provider;
 #[cfg(any(feature = "axum", feature = "actix", test))]
 use crate::capital::{BillingProvider, WebhookEvent, WebhookVerificationMode};
 use crate::error::CapitalError;
+#[cfg(any(feature = "axum", feature = "actix", test))]
+use crate::one_off::PaymentNotification;
 #[cfg(feature = "axum")]
 use axum::{
     body::{Body, Bytes},
@@ -137,6 +139,13 @@ pub use actix::{
 /// freshness, prevents payload replay, preserves every request part and the original body, and
 /// inserts the parsed `WebhookEvent` into request extensions.
 ///
+/// For a provider in [`WebhookVerificationMode::ConfirmedAtSource`] (an unsigned notification
+/// such as InfinitePay's) it inserts the [`PaymentNotification`] read by
+/// [`BillingProvider::parse_payment_notification`] instead, never a `WebhookEvent`: the handler
+/// loads its request by reference and calls [`BillingProvider::confirm_one_off_payment`]. Such a
+/// notification is not recorded in the replay store, because a repeated one only repeats the
+/// confirmation.
+///
 /// Replay proofs go to a process-wide default [`InMemoryWebhookReplayStore`] holding at most
 /// 10,000 proofs for 24 hours each. When it is full, further deliveries get 503 instead of
 /// evicting an unexpired proof; mount [`verify_webhook_with_state`] with a sized or shared store
@@ -207,7 +216,7 @@ async fn verify_webhook_inner(
     }
 
     let active_provider = active_provider.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
-    let event = verify_payload(
+    let verified = verify_delivery(
         active_provider,
         &body_bytes,
         &header_map,
@@ -217,14 +226,49 @@ async fn verify_webhook_inner(
     .await
     .map_err(capital_error_status)?;
 
-    let request = rebuild_request(parts, body_bytes, event);
+    let request = rebuild_request(parts, body_bytes, verified);
     Ok(next.run(request).await)
 }
 
 #[cfg(feature = "axum")]
-fn rebuild_request(mut parts: Parts, body: Bytes, event: WebhookEvent) -> Request {
-    parts.extensions.insert(event);
+fn rebuild_request(mut parts: Parts, body: Bytes, verified: VerifiedWebhook) -> Request {
+    match verified {
+        VerifiedWebhook::Event(event) => {
+            parts.extensions.insert(event);
+        }
+        VerifiedWebhook::Notification(notification) => {
+            parts.extensions.insert(notification);
+        }
+    }
     Request::from_parts(parts, Body::from(body))
+}
+
+/// What the middleware inserts into the request extensions.
+#[cfg(any(feature = "axum", feature = "actix", test))]
+#[derive(Debug)]
+pub(super) enum VerifiedWebhook {
+    /// A signed (or local mock) event.
+    Event(WebhookEvent),
+    /// An unauthenticated notification that names a payment to confirm.
+    Notification(PaymentNotification),
+}
+
+#[cfg(any(feature = "axum", feature = "actix", test))]
+pub(super) async fn verify_delivery(
+    active_provider: &dyn BillingProvider,
+    body: &[u8],
+    headers: &HashMap<String, String>,
+    replay_store: &WebhookReplayBackend,
+    allow_mock: bool,
+) -> Result<VerifiedWebhook, CapitalError> {
+    if active_provider.webhook_verification_mode()? == WebhookVerificationMode::ConfirmedAtSource {
+        return active_provider
+            .parse_payment_notification(body, headers)
+            .map(VerifiedWebhook::Notification);
+    }
+    verify_payload(active_provider, body, headers, replay_store, allow_mock)
+        .await
+        .map(VerifiedWebhook::Event)
 }
 
 #[cfg(any(feature = "axum", feature = "actix", test))]
@@ -235,11 +279,21 @@ pub(super) async fn verify_payload(
     replay_store: &WebhookReplayBackend,
     allow_mock: bool,
 ) -> Result<WebhookEvent, CapitalError> {
-    let mode = active_provider.webhook_verification_mode()?;
-    if mode == WebhookVerificationMode::Mock && !allow_mock {
-        return Err(CapitalError::MockWebhookNotAllowed(
-            active_provider.name().to_string(),
-        ));
+    match active_provider.webhook_verification_mode()? {
+        WebhookVerificationMode::Mock if !allow_mock => {
+            return Err(CapitalError::MockWebhookNotAllowed(
+                active_provider.name().to_string(),
+            ));
+        }
+        // An unauthenticated body never becomes an event: its status would be
+        // the sender's word, not the provider's.
+        WebhookVerificationMode::ConfirmedAtSource => {
+            return Err(CapitalError::UnsupportedOperation(format!(
+                "{} notifications are unsigned; read them with parse_payment_notification and confirm with confirm_one_off_payment",
+                active_provider.name()
+            )));
+        }
+        WebhookVerificationMode::Real | WebhookVerificationMode::Mock => {}
     }
     let event = active_provider.handle_webhook(body, headers)?;
     replay_store
@@ -336,3 +390,7 @@ mod tests;
 #[cfg(all(test, feature = "axum"))]
 #[path = "webhook_axum_tests.rs"]
 mod axum_tests;
+
+#[cfg(all(test, feature = "axum"))]
+#[path = "webhook/unsigned_tests.rs"]
+mod unsigned_tests;

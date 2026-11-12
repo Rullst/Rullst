@@ -45,12 +45,28 @@ async function store(request, response) {
   }
 }
 
+// Same-origin static files the offline page links. Pages link them by
+// content-hashed URLs (`rullst::assets::url`, Core's page since
+// 13.0.0-alpha.5), which this list cannot name in advance.
+const LINKED = /\s(?:href|src)="(\/static\/[^"?#]+)"/g;
+
+async function storeLinked(cache, html) {
+  const urls = new Set([...html.matchAll(LINKED)].map((match) => match[1]));
+  await Promise.all(
+    [...urls].filter((url) => !PRECACHE.includes(url)).map(async (url) => {
+      const response = await fetch(url, { credentials: 'same-origin' }).catch(() => null);
+      if (storable(response)) await cache.put(url, response);
+    }),
+  );
+}
+
 async function precache() {
   const cache = await caches.open(CACHE);
   await Promise.all(
     PRECACHE.map(async (url) => {
       const response = await fetch(url, { cache: 'no-cache', credentials: 'same-origin' }).catch(() => null);
       if (storable(response)) {
+        if (url === OFFLINE_URL) await storeLinked(cache, await response.clone().text());
         await cache.put(url, response);
       } else if (url === OFFLINE_URL) {
         throw new Error('the offline page must answer 200 without no-store or private');

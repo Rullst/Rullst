@@ -870,6 +870,39 @@ cargo rullst add tailwind
 cargo rullst add alpine
 ```
 
+### `cargo rullst ui add` and `cargo rullst ui list` (13.0.0-alpha.5)
+
+`cargo rullst ui add <component>... [--all] [--force] [--dry-run]` copies UI
+components into the project as Rust source the application then owns; `ui
+list` prints them with their files. Components: `button`, `badge`, `alert`,
+`card`, `form`, `table`, `pagination`, `dialog`, `menu`, `tabs`, `toast`.
+
+| Writes | When |
+| :--- | :--- |
+| `src/ui/<name>.rs` | each named component, and the ones it uses (`dialog` and `menu` use `button`) |
+| `static/ui/<name>.js` | `dialog`, `menu`, `tabs`, `toast`: a same-origin ES module their markup loads with `rullst::assets::url` |
+| `src/ui/mod.rs` | created with `#![allow(dead_code)]` and a `pub mod` line per component, or extended with the missing lines |
+| `mod ui;` | added to `src/main.rs`, or `pub mod ui;` to `src/lib.rs` when the project has one; printed when the crate root cannot be read |
+
+It runs only at the root of a Rullst project. Running it again changes
+nothing. A copied file whose content differs from this CLI's copy stops the
+command before anything is written (exit status 1); `--dry-run` prints the
+planned files and their diff and writes nothing, `--force` replaces the
+differing copies, `--all` copies every component. When the project does not
+use Tailwind CSS, an interactive terminal is asked whether to run `cargo
+rullst add tailwind` first (Yes by default); in scripts, CI and with
+`--dry-run` the components are copied and the command to style them is
+printed. A project locked to a `rullst` older than 13.0.0-alpha.5 (no
+`rullst::assets::url`) is told to run `cargo rullst upgrade` first. Each
+component's options, accessibility and CSP notes are in the [frontend
+guide](frontend.md#components).
+
+```bash
+cargo rullst ui list
+cargo rullst ui add dialog menu --dry-run
+cargo rullst ui add --all
+```
+
 ---
 
 ## 🛠️ 2. Architecture Scaffolding (`make:*`)
@@ -892,7 +925,9 @@ Model (`src/models/<name>.rs`), Migration
 (`src/migrations/m<timestamp>_create_<plural>.rs`, for example
 `create_categories` for `Category`), Controller
 (`src/controllers/<name>_controller.rs`), and HTML view placeholders
-(`views/<name>/index.html` and `views/<name>/form.html`). It does not infer
+(`views/<name>/index.html` and `views/<name>/form.html`; since
+13.0.0-alpha.5 they use Tailwind utility classes only when the project uses
+Tailwind, and plain markup otherwise). It does not infer
 application fields, register routes, establish ownership/RBAC, or turn the
 placeholder handlers into a complete authorized CRUD implementation. Like
 `make:model --migration`, it keeps an existing model and does not add a second
@@ -1222,7 +1257,8 @@ icons in `static/icons/` (the Rullst logo; replace them), `static/pwa.js`,
 the manifest link, `theme-color`, the apple-touch icon and the registration
 script. `/offline` and the update prompt are written in the `--lang` language
 when it is English, Portuguese or Spanish (English otherwise), with plain
-markup; the prompt is styled by the classes `pwa-update`, `pwa-update-text` and
+markup (since 13.0.0-alpha.5 the offline page gets Tailwind utility classes
+when the project uses Tailwind); the prompt is styled by the classes `pwa-update`, `pwa-update-text` and
 `pwa-update-button`, whose default look `static/pwa.css` gives with
 zero-specificity `:where()` rules. The existing source is edited in three
 recognized places:
