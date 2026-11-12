@@ -151,6 +151,40 @@ async fn oversized_responses_are_rejected_before_deserialization() {
     server.abort();
 }
 
+#[tokio::test]
+async fn a_create_answered_without_a_record_is_not_reported_as_written() {
+    // SurrealDB 3 answers a CREATE denied by permissions this way.
+    async fn denied() -> Json<Value> {
+        Json(json!([{ "status": "OK", "result": [] }]))
+    }
+    let (endpoint, server) =
+        spawn_test_server(Router::new().route("/key/events/%22evt-1%22", post(denied))).await;
+    let store = SurrealDbStore::<Event>::connect_or_mock(SurrealConfig::new(
+        endpoint,
+        "main",
+        "app",
+        SurrealAuth::None,
+    ))
+    .unwrap();
+    let result = store
+        .create(
+            &CollectionName::new("events").unwrap(),
+            &DocumentId::new("evt-1").unwrap(),
+            &Event {
+                label: "live".to_owned(),
+            },
+        )
+        .await;
+    match result {
+        Err(PolyglotError::Driver { backend, message }) => {
+            assert_eq!(backend, "SurrealDB");
+            assert!(message.contains("create returned no record"), "{message}");
+        }
+        other => panic!("an unconfirmed create must fail, got {other:?}"),
+    }
+    server.abort();
+}
+
 async fn update_missing_record(Json(body): Json<Value>) -> Json<Value> {
     assert_eq!(body["method"], "query");
     assert!(
