@@ -50,7 +50,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             surrealdb,
             qdrant,
         } => {
-            reject_removed_side_stores(*mongodb, *duckdb)?;
+            reject_removed_side_stores(*mongodb, *duckdb, *qdrant)?;
             let starter = blueprint.map(BlueprintChoice::starter).transpose()?;
             create_new_project_with_cli_options(
                 name.as_deref(),
@@ -60,7 +60,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                     use_defaults: *default,
                     turso: *turso,
                     surrealdb: *surrealdb,
-                    qdrant: *qdrant,
                     database: database.map(DatabaseChoice::provider),
                     no_database: *no_database,
                     hot_reload: *hot_reload,

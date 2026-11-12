@@ -89,7 +89,7 @@ use rullst_orm::{Backend, Capability, PolyglotError};
 fn f(error: PolyglotError) {
     let _ = (Backend::SurrealDb, Capability::Documents);
     let _ = matches!(error, PolyglotError::Driver { .. });
-    let _ = rullst_orm::polyglot::QdrantStore::capabilities;
+    let _ = rullst_orm::polyglot::SurrealDbStore::capabilities;
 }
 "#
         ),
@@ -129,8 +129,8 @@ reports = ["rullst/orm-duckdb"]
     assert_eq!(found, vec![(CODE, 5), (CODE, 6), (CODE, 7), (CODE, 12)]);
     // The kept adapters are not reported.
     let kept = r#"[dependencies]
-rullst = { version = "13.0.0-alpha.4", default-features = false, features = ["orm-surrealdb", "orm-turso", "orm-qdrant"] }
-rullst-orm = { version = "13.0.0-alpha.4", default-features = false, features = ["surrealdb", "turso", "qdrant", "redis"] }
+rullst = { version = "13.0.0-alpha.4", default-features = false, features = ["orm-surrealdb", "orm-turso"] }
+rullst-orm = { version = "13.0.0-alpha.4", default-features = false, features = ["surrealdb", "turso", "redis"] }
 "#;
     let (findings, _) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), kept)]);
     assert!(findings.is_empty(), "{findings:?}");

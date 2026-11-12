@@ -87,10 +87,10 @@ fn interactive_blank_wizard_validates_names_and_composes_the_full_profile() {
     let mut ui = FakeUi::scripted(
         &["", "space name", "1number", "bad!", "crate", "learning_hub"],
         vec![
-            Answer::One(1),              // API
-            Answer::One(4),              // Turso primary
-            Answer::Many(vec![0, 3, 4]), // AI + every add-on offered
-            Answer::One(0),              // Create
+            Answer::One(1),           // API
+            Answer::One(4),           // Turso primary
+            Answer::Many(vec![0, 3]), // AI + every add-on offered
+            Answer::One(0),           // Create
         ],
     );
     let plan = created(run_with(NewProjectRequest::default(), &mut ui));
@@ -112,11 +112,7 @@ fn interactive_blank_wizard_validates_names_and_composes_the_full_profile() {
     assert_eq!(options.orm_pattern, "Turso Active Record");
     assert_eq!(
         options.polyglot_integrations,
-        [
-            PolyglotIntegration::Turso,
-            PolyglotIntegration::SurrealDb,
-            PolyglotIntegration::Qdrant,
-        ]
+        [PolyglotIntegration::Turso, PolyglotIntegration::SurrealDb,]
     );
 
     let features = &ui.screens[2];
@@ -132,7 +128,7 @@ fn interactive_blank_wizard_validates_names_and_composes_the_full_profile() {
     assert_eq!(
         features.selection,
         Selection::Many {
-            checked: vec![false; 5]
+            checked: vec![false; 4]
         }
     );
     assert_eq!(
@@ -270,10 +266,7 @@ fn profile_flags_skip_their_questions_and_their_features() {
         .iter()
         .map(|choice| choice.label.as_str())
         .collect();
-    assert_eq!(
-        offered,
-        ["Redis adapters", "Turso / libSQL add-on", "Qdrant"]
-    );
+    assert_eq!(offered, ["Redis adapters", "Turso / libSQL add-on"]);
     assert!(plan.ai && plan.docker);
     assert_eq!(plan.database, Database::Provider("Postgres"));
     assert_eq!(plan.integrations(), [PolyglotIntegration::SurrealDb]);
@@ -328,7 +321,7 @@ fn back_returns_to_the_previous_question_with_the_earlier_answer_selected() {
     assert_eq!(
         ui.screens[6].selection,
         Selection::Many {
-            checked: vec![false, true, false, false, false, false]
+            checked: vec![false, true, false, false, false]
         }
     );
     assert_eq!(plan.blueprint, BLANK_BLUEPRINT_ID);

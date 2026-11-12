@@ -50,7 +50,7 @@ Other built-in constructors are available under:
 - `providers::anthropic::AnthropicProvider`;
 - `providers::gemini::GeminiProvider`;
 - `providers::openai_compatible::OpenAiCompatibleProvider::deepseek(api_key)`,
-  DeepSeek's API with the model `deepseek-v4-flash`
+  DeepSeek's API with the model `deepseek-flash`
   (`.try_with_model("deepseek-v4-pro")` selects another);
 - `providers::openai_compatible::OpenAiCompatibleProvider::ollama(host, model)`,
   an Ollama server, whose host is read like `OLLAMA_HOST`.

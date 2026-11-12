@@ -40,11 +40,6 @@ rullst-orm/src/polyglot/turso/model.rs:42:9: replace TursoModel::opaque_columns 
 # differ by 96.
 rullst-orm/src/polyglot/recovery/codec.rs:192:34: replace - with + in base64url_value
 
-# No Qdrant request body can reach 4 MiB: a vector holds at most 65,536 values and a
-# payload at most 1 MiB.
-rullst-orm/src/polyglot/qdrant/mod.rs:242:24: replace > with == in LiveQdrant::send_json
-rullst-orm/src/polyglot/qdrant/mod.rs:242:24: replace > with >= in LiveQdrant::send_json
-
 # The MySQL key-collation conversion is idempotent, so running it on keys that
 # are already ascii_bin only rebuilds the table; the migration lock lives in the
 # connection's session, which dropping the connection ends as closing it does.

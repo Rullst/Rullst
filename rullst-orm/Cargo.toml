@@ -17,7 +17,7 @@ categories = ["database"]
 # The `strict-*` profiles select one backend's pool and database type aliases
 # instead.
 [package.metadata.docs.rs]
-features = ["drivers-all", "redis", "turso", "surrealdb", "scout-http", "pgvector", "ai", "qdrant"]
+features = ["drivers-all", "redis", "turso", "surrealdb", "scout-http", "pgvector", "ai"]
 rustdoc-args = ["--cfg", "docsrs"]
 targets = ["x86_64-unknown-linux-gnu"]
 
@@ -78,7 +78,6 @@ pgvector = ["dep:pgvector"]
 # The generated method takes `&rullst_ai::AiClient`, so the application must
 # also depend on `rullst-ai`.
 ai = ["pgvector", "rullst-orm-macros/ai"]
-qdrant = ["dep:reqwest", "dep:url"]
 strict-postgres = ["sqlx/postgres"]
 strict-mysql = ["sqlx/mysql"]
 strict-sqlite = ["sqlx/sqlite"]

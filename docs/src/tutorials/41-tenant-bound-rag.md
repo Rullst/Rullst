@@ -116,8 +116,9 @@ tests, development, and small ephemeral datasets.
 Production applications implement the public async `RagRetriever` trait over
 their chosen store. A PostgreSQL implementation should put the tenant predicate
 inside the same parameterized pgvector query that performs similarity ordering.
-A Qdrant implementation should apply the deployment's reviewed tenant filter
-or separate-collection policy. It then creates each `RagDocument` from the same
+A Qdrant implementation (see the [Qdrant recipe](../recipes/qdrant.md))
+should apply the deployment's reviewed tenant filter or separate-collection
+policy. It then creates each `RagDocument` from the same
 trusted context passed to `retrieve`.
 
 The essential shape is:

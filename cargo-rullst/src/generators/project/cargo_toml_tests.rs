@@ -211,11 +211,7 @@ fn selected_persistence_integrations_enable_only_their_features() {
         false,
         true,
         "MariaDB",
-        &[
-            PolyglotIntegration::Turso,
-            PolyglotIntegration::SurrealDb,
-            PolyglotIntegration::Qdrant,
-        ],
+        &[PolyglotIntegration::Turso, PolyglotIntegration::SurrealDb],
         false,
         false,
         BLANK_BLUEPRINT_ID,
@@ -223,17 +219,10 @@ fn selected_persistence_integrations_enable_only_their_features() {
         &isolated_root(),
     )
     .expect("polyglot manifest");
-    for feature in [
-        "orm-turso",
-        "orm-surrealdb",
-        "orm-qdrant",
-        "turso",
-        "surrealdb",
-        "qdrant",
-    ] {
+    for feature in ["orm-turso", "orm-surrealdb", "turso", "surrealdb"] {
         assert!(manifest.contains(&format!("\"{feature}\"")));
     }
-    for removed in ["mongodb", "duckdb"] {
+    for removed in ["mongodb", "duckdb", "qdrant"] {
         assert!(!manifest.contains(removed), "{removed} in:\n{manifest}");
     }
     assert!(manifest.contains("\"mysql\""));

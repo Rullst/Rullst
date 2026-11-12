@@ -12,19 +12,19 @@ use super::{OpenAiCompatibleCapabilities, OpenAiCompatibleProvider, Preset};
 use crate::ai::{AiError, StructuredOutputSchema};
 
 const BASE_URL: &str = "https://api.deepseek.com";
-const DEFAULT_MODEL: &str = "deepseek-v4-flash";
-/// The models DeepSeek documents for `/responses` JSON Schema output;
-/// `deepseek-v4-flash` is the older name it still accepts for `deepseek-flash`.
-const SCHEMA_MODELS: [&str; 3] = [DEFAULT_MODEL, "deepseek-flash", "deepseek-v4-pro"];
+const DEFAULT_MODEL: &str = "deepseek-flash";
+/// The models DeepSeek documents for `/responses` JSON Schema output, and
+/// `deepseek-v4-flash`, the older name it still accepts for `deepseek-flash`.
+const SCHEMA_MODELS: [&str; 3] = [DEFAULT_MODEL, "deepseek-v4-pro", "deepseek-v4-flash"];
 
 impl OpenAiCompatibleProvider {
     /// DeepSeek's API (`https://api.deepseek.com`) with Bearer `api_key`
-    /// and the model `deepseek-v4-flash`; choose another with
+    /// and the model `deepseek-flash`; choose another with
     /// [`Self::try_with_model`].
     ///
     /// It declares chat, native JSON mode, streaming with usage and JSON
     /// Schema output (through DeepSeek's `/responses`, for
-    /// `deepseek-v4-flash`, `deepseek-flash` and `deepseek-v4-pro`); DeepSeek
+    /// `deepseek-flash`, `deepseek-v4-pro` and the older `deepseek-v4-flash`); DeepSeek
     /// offers no embeddings or image input, which fail with
     /// [`AiError::UnsupportedCapability`]. Surrounding whitespace in the key
     /// is ignored; an empty or `mock_*` key selects deterministic offline mode.

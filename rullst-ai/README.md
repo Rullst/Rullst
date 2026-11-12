@@ -32,13 +32,13 @@ cover the same API with more context.
 | OpenAI | yes | yes | yes | yes | yes |
 | Gemini | yes | yes | yes | yes | yes |
 | Anthropic | yes | yes | no | prompt-constrained | no |
-| DeepSeek (compatible preset) | yes | no | no | yes | `deepseek-v4-flash`, `deepseek-flash`, `deepseek-v4-pro` |
+| DeepSeek (compatible preset) | yes | no | no | yes | `deepseek-flash`, `deepseek-v4-pro` (and the older `deepseek-v4-flash`) |
 | Ollama (compatible preset) | yes | model-dependent | yes | yes | model-dependent |
 | OpenAI-compatible local/cloud | yes | declared | declared | declared | declared |
 
 DeepSeek and Ollama are presets of the OpenAI-compatible adapter:
 `OpenAiCompatibleProvider::deepseek(api_key)` (DeepSeek's API, model
-`deepseek-v4-flash`, `try_with_model` for another; JSON Schema output goes to
+`deepseek-flash`, `try_with_model` for another; JSON Schema output goes to
 DeepSeek's `/responses`) and `OpenAiCompatibleProvider::ollama(host, model)`
 (the server's `/v1` API, no credential, embeddings with `nomic-embed-text`).
 Both also stream with usage. They replace the `DeepSeekProvider` and
@@ -395,7 +395,7 @@ remote definition `[site-logo]: https://...` in another are.
 `InMemoryRagRetriever` supplies bounded tenant-partitioned cosine retrieval for tests, local
 development, and small ephemeral datasets. It is not durable or distributed. Production
 applications implement the static-dispatch `RagRetriever` boundary over a store such as Rullst ORM
-pgvector or Qdrant and must enforce authoritative tenant/ownership predicates in that store. The
+pgvector or an application's Qdrant client and must enforce authoritative tenant/ownership predicates in that store. The
 pipeline's tenant-tag check is an additional invariant, not datastore authorization.
 
 `DurableRagAuditTrail` and `DurableToolAuditTrail` provide bounded synchronous

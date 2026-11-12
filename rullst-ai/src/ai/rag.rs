@@ -19,7 +19,8 @@ pub use pipeline::{
 ///
 /// This formatting-only compatibility helper does not retrieve documents, bind a tenant, enforce
 /// limits, apply guardrails, or record an audit event. Prefer [`RagPipeline`] for an end-to-end
-/// operation. A retriever may adapt Rullst ORM pgvector/Qdrant or another authorized store.
+/// operation. A retriever may adapt Rullst ORM pgvector, an application's Qdrant client or another
+/// authorized store.
 ///
 /// # Example
 /// ```rust

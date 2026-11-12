@@ -619,8 +619,9 @@ A prepared version section does not establish that its tag or crates exist.
   of `OpenAiCompatibleProvider::deepseek(api_key)` and
   `OpenAiCompatibleProvider::ollama(host, model)`, plus the new
   `OpenAiCompatibleProvider::try_with_model`. The presets keep the provider
-  names, default models, offline `mock_*` mode and typed HTTP errors, and add
-  streaming with usage. DeepSeek JSON Schema output still uses DeepSeek's
+  names, offline `mock_*` mode and typed HTTP errors, and add streaming with
+  usage. The DeepSeek default model is `deepseek-flash`, the name DeepSeek now
+  documents, instead of `deepseek-v4-flash`, an older name it still accepts. DeepSeek JSON Schema output still uses DeepSeek's
   `/responses`, because its Chat Completions accepts no `json_schema` format,
   now also for `deepseek-flash` and `deepseek-v4-pro`; Ollama is reached
   through its `/v1` API (Ollama 0.5 or later), whose image input accepts JPEG,
@@ -761,6 +762,19 @@ A prepared version section does not establish that its tag or crates exist.
   `new` flags are hidden and stop with status 1, naming the recipe;
   `cargo rullst upgrade` reports the removed features and names
   (`V13-ORM-ADAPTERS-REMOVED`).
+- **Breaking:** the Qdrant adapter of `rullst-orm`: `QdrantStore`,
+  `QdrantConfig`, `VectorRepository`, `VectorCollectionName`,
+  `VectorDimensions`, `VectorPoint`, `VectorMatch`, `VectorQueryLimit`,
+  `Backend::Qdrant`, `Capability::Vectors`, the `qdrant` feature of
+  `rullst-orm`, the `orm-qdrant` feature of `rullst` and
+  `cargo rullst new --qdrant`. It wrapped four operations of Qdrant's REST
+  API; the new [Qdrant recipe](docs/src/recipes/qdrant.md) uses the official
+  `qdrant-client` crate in an application, with one client in state,
+  tenant-filtered and capped searches, an offline fake behind an application
+  trait and tests against a container. `pgvector` and the ORM's `ai` feature
+  stay. `new --qdrant` is hidden and stops with status 1, naming the recipe;
+  `cargo rullst upgrade` reports the removed features and names
+  (`V13-ORM-QDRANT-REMOVED`).
 - **Breaking:** the Academy production preset. `ProductionPreset::academy()`
   and the `rullst-core` types `AcademyProductionPreset`,
   `AcademyProductionRequirement`, `AcademyCheckStatus`,

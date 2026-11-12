@@ -13,10 +13,10 @@ separate adapter (`TursoOrm`, `TursoModel`, `TursoRepository`,
 `TursoMigration`) that does not plug into any of those parts. Integrating it is
 roadmap work, not part of 13.0.
 
-SurrealDB, Qdrant and Redis data structures are side stores: you add them
-next to the primary database and call them through their own APIs. They never
-replace the primary database, and there is no transaction across stores.
-MongoDB and DuckDB have no Rullst adapter since 13.0.0-alpha.5: the
+SurrealDB and Redis data structures are side stores: you add them next to the
+primary database and call them through their own APIs. They never replace the
+primary database, and there is no transaction across stores. MongoDB, DuckDB
+and Qdrant have no Rullst adapter since 13.0.0-alpha.5: the
 [recipes](recipes/index.md) use their official crates in application code.
 
 ## Capability table
@@ -30,7 +30,7 @@ MongoDB and DuckDB have no Rullst adapter since 13.0.0-alpha.5: the
 | MongoDB | No | No (application code: [recipe](recipes/mongodb.md)) | No | No | No | No | No | No | No flag; adapter removed in 13.0.0-alpha.5 | None in Rullst; the recipe shows a container test |
 | DuckDB | No | No (application code: [recipe](recipes/duckdb.md)) | No | No | No | No | No | No | No flag; adapter removed in 13.0.0-alpha.5 | None in Rullst; the recipe tests in memory |
 | SurrealDB | No | No (`SurrealDbStore`) | No | No | No | No | No | No | Side store: `--surrealdb` with any starter | `matrix_surrealdb` (SurrealDB 3.2.4) |
-| Qdrant | No | No (`QdrantStore`) | No | No | No | No | No | No | Side store: `--qdrant` with any starter | `matrix_qdrant` |
+| Qdrant | No | No (application code: [recipe](recipes/qdrant.md)) | No | No | No | No | No | No | No flag; adapter removed in 13.0.0-alpha.5 | None in Rullst; the recipe tests against a container |
 | Redis data | No | No (`RedisDataStore`) | No | No | No | No | No (note 6) | No: each command is atomic on its own | Side store: `--redis` with any starter (it also enables Redis queues and cache) | `matrix_redis_data` |
 
 Notes:
@@ -96,8 +96,8 @@ nested `Orm::transaction` to continue.
 - Add a side store when the application needs documents, graph reads,
   vectors or Redis structures next to its primary database. Enable only the
   adapters you use: each one is its own Cargo feature (`orm-turso`,
-  `orm-surrealdb`, `orm-qdrant`, `orm-redis` on `rullst`). For MongoDB or
-  DuckDB, follow the [recipes](recipes/index.md).
+  `orm-surrealdb`, `orm-redis` on `rullst`). For MongoDB, DuckDB or Qdrant,
+  follow the [recipes](recipes/index.md).
 
 The APIs of Turso and the side stores are described in
 [Polyglot Persistence](polyglot-persistence.md); the SQLx ORM in

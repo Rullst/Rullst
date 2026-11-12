@@ -1,13 +1,14 @@
 //! Rules of 13.0.0-alpha.5 for the removals that make the framework smaller:
-//! the Academy production preset and its `academy:doctor` command, and the
-//! DeepSeek and Ollama provider types.
+//! the Academy production preset and its `academy:doctor` command, the
+//! DeepSeek and Ollama provider types and the Qdrant adapter.
 
-use super::super::files::runs_academy_doctor;
-use super::files::Project;
+use super::super::files::{manifest_findings, runs_academy_doctor};
+use super::files::{Project, plan};
 use super::*;
 
 const ACADEMY: &str = "V13-ACADEMY-REMOVED";
 const PRESETS: &str = "V13-AI-PROVIDER-PRESETS";
+const QDRANT: &str = "V13-ORM-QDRANT-REMOVED";
 const PACKAGE: &str = "[package]\nname = \"app\"\n";
 
 fn found(source: &str, code: &str) -> Vec<usize> {
@@ -101,6 +102,62 @@ fn cloud() -> Result<OpenAiCompatibleProvider, rullst::ai::AiError> {
 }
 
 #[test]
+fn qdrant_names_and_variants_must_change_in_files_that_name_the_orm() {
+    let source = r#"
+use rullst::orm::{QdrantConfig, QdrantStore, VectorRepository};
+use rullst_orm::polyglot::{Backend, Capability};
+fn store() -> QdrantStore {
+    QdrantStore::connect_or_mock(QdrantConfig::new("mock_local", "")).unwrap()
+}
+async fn search(store: &QdrantStore, name: &rullst_orm::VectorCollectionName) {
+    let _ = store.search(name, &[0.0], rullst_orm::VectorQueryLimit::new(3).unwrap()).await;
+}
+fn kind(backend: Backend) -> bool { backend == Backend::Qdrant }
+fn vectors(capability: Capability) -> bool { matches!(capability, Capability::Vectors) }
+fn kept(backend: Backend) -> bool { backend == Backend::SurrealDb }
+"#;
+    assert_eq!(found(source, QDRANT), [2, 4, 5, 7, 8, 10, 11]);
+    // Generic names in a file that does not name the ORM are the application's.
+    let own = r#"
+pub struct VectorPoint { pub id: u64 }
+pub struct VectorMatch { pub score: f32 }
+enum Backend { Qdrant }
+fn pick(point: VectorPoint) -> Backend { let _ = point; Backend::Qdrant }
+"#;
+    assert_eq!(found(own, QDRANT), Vec::<usize>::new());
+    // `polyglot` alone is enough, and `orm::` alone too.
+    let polyglot = "mod polyglot {}\nfn f(_: VectorPoint) {}\n";
+    assert_eq!(found(polyglot, QDRANT), [2]);
+    let facade = "use rullst::orm::Orm;\nfn f(_: VectorMatch) {}\n";
+    assert_eq!(found(facade, QDRANT), [2]);
+    let direct = "extern crate rullst_orm;\nfn f(_: VectorDimensions) {}\n";
+    assert_eq!(found(direct, QDRANT), [2]);
+}
+
+#[test]
+fn qdrant_features_must_change_in_manifests() {
+    let manifest = r#"[package]
+name = "app"
+
+[dependencies]
+rullst = { version = "13.0.0-alpha.4", default-features = false, features = ["orm-qdrant"] }
+rullst-orm = { version = "13.0.0-alpha.4", default-features = false, features = ["qdrant"] }
+qdrant-client = "1"
+
+[features]
+vectors = ["rullst/orm-qdrant"]
+"#;
+    let (findings, _) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), manifest)]);
+    let mut found: Vec<_> = findings
+        .iter()
+        .map(|finding| (finding.rule.code, finding.line))
+        .collect();
+    found.sort_by_key(|(_, line)| *line);
+    // The application's own `qdrant-client` dependency is fine.
+    assert_eq!(found, vec![(QDRANT, 5), (QDRANT, 6), (QDRANT, 10)]);
+}
+
+#[test]
 fn scripts_running_academy_doctor_must_change() {
     let project = Project::new();
     project
@@ -152,6 +209,11 @@ fn the_slimming_rules_name_their_rows_kinds_and_release() {
             &catalog::AI_PROVIDER_PRESETS,
             FindingKind::MustChange,
             "DeepSeek and Ollama as OpenAI-compatible presets",
+        ),
+        (
+            &catalog::ORM_QDRANT_REMOVED,
+            FindingKind::MustChange,
+            "Qdrant adapter removed",
         ),
     ] {
         assert_eq!(rule.kind, kind, "{}", rule.code);

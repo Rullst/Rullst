@@ -56,8 +56,8 @@ pub enum Commands {
         /// Adds SurrealDB as a side store (documents and read-only graph queries)
         #[arg(long)]
         surrealdb: bool,
-        /// Adds Qdrant as a side store (dense-vector search)
-        #[arg(long)]
+        /// Removed in 13.0.0-alpha.5; always rejected with the Qdrant recipe
+        #[arg(long, hide = true)]
         qdrant: bool,
     },
     /// Creates a new Controller in the src/controllers/ folder

@@ -236,9 +236,9 @@ The wizard deliberately makes two separate decisions:
    database, through a separate adapter that has no Nexus, Studio database
    pages, `Schema` migrations, `artisan!` or SQLx query builder.
 2. Optionally add side stores: **Turso/libSQL** edge SQL, **SurrealDB**
-   documents/graph reads, **Qdrant** vectors or **Redis** structures. They use
-   their own APIs and do not replace the primary pool. For MongoDB or DuckDB,
-   use the official crate as the [recipes](recipes/index.md) show.
+   documents/graph reads or **Redis** structures. They use their own APIs and
+   do not replace the primary pool. For MongoDB, DuckDB or Qdrant, use the
+   official crate as the [recipes](recipes/index.md) show.
 
 [Database Support](database-support.md) lists what each backend works with;
 read it before you choose.

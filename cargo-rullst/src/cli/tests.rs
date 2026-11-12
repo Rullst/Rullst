@@ -38,7 +38,6 @@ fn parses_deterministic_persistence_flags_independently() {
         "mariadb",
         "--turso",
         "--surrealdb",
-        "--qdrant",
         "--skip-initial-migration",
     ])
     .expect("persistence CLI flags");
@@ -50,7 +49,7 @@ fn parses_deterministic_persistence_flags_independently() {
             mongodb: false,
             duckdb: false,
             surrealdb: true,
-            qdrant: true,
+            qdrant: false,
             database: Some(DatabaseChoice::Mariadb),
             ..
         }

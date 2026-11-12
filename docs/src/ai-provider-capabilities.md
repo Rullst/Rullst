@@ -28,8 +28,8 @@ model can still reject vision, embeddings, or schema output. In particular:
   (`OpenAiCompatibleProvider::deepseek` and `::ollama`) that declare the rows
   above. DeepSeek JSON Schema goes to DeepSeek's `/responses` (its Chat
   Completions accepts no `json_schema` format) and is enabled for the models
-  DeepSeek documents there: `deepseek-v4-flash` (the default), `deepseek-flash`
-  and `deepseek-v4-pro`. Selecting another model makes the capability false and
+  DeepSeek documents there: `deepseek-flash` (the default) and
+  `deepseek-v4-pro`, plus the older name `deepseek-v4-flash`. Selecting another model makes the capability false and
   returns `UnsupportedCapability`, including in deterministic offline mode.
 - Ollama vision, embeddings, JSON, and schema support depend on the installed
   local models. The preset sends those request shapes to Ollama's `/v1` API;

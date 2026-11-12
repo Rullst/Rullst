@@ -37,7 +37,7 @@ fn deepseek_declares_its_service_and_capabilities() {
     let provider = OpenAiCompatibleProvider::deepseek("sk-live").expect("valid key");
     assert_eq!(provider.provider_name(), "DeepSeek");
     assert_eq!(provider.base_url, "https://api.deepseek.com");
-    assert_eq!(provider.model, "deepseek-v4-flash");
+    assert_eq!(provider.model, "deepseek-flash");
     assert!(!provider.mode.is_mock());
     let capabilities = provider.capabilities();
     assert!(capabilities.json_schema && capabilities.streaming);
@@ -115,7 +115,7 @@ async fn deepseek_chat_and_json_mode_use_chat_completions_with_bearer() {
             .to_ascii_lowercase()
             .contains("authorization: bearer sk-fixture")
     );
-    assert_eq!(body(&request)["model"], "deepseek-v4-flash");
+    assert_eq!(body(&request)["model"], "deepseek-flash");
 
     let (url, request) = serve_once(r#"{"choices":[{"message":{"content":"{}"}}]}"#, None);
     assert_eq!(
@@ -153,7 +153,7 @@ async fn deepseek_structured_output_uses_its_responses_endpoint() {
         .expect("request");
     assert!(request.starts_with("POST /responses HTTP/1.1\r\n"));
     let sent = body(&request);
-    assert_eq!(sent["model"], "deepseek-v4-flash");
+    assert_eq!(sent["model"], "deepseek-flash");
     assert_eq!(sent["input"], "hello");
     assert_eq!(sent["text"]["format"]["type"], "json_schema");
     assert_eq!(sent["text"]["format"]["name"], "answer");

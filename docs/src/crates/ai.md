@@ -15,7 +15,7 @@ tenant-aware RAG pipeline.
 | OpenAI | yes | yes | yes | yes | yes |
 | Gemini | yes | yes | yes | yes | yes |
 | Anthropic | yes | yes | no | prompt-constrained | no |
-| DeepSeek (compatible preset) | yes | no | no | yes | `deepseek-v4-flash`, `deepseek-flash`, `deepseek-v4-pro` |
+| DeepSeek (compatible preset) | yes | no | no | yes | `deepseek-flash`, `deepseek-v4-pro` (and the older `deepseek-v4-flash`) |
 | Ollama (compatible preset) | yes | model-dependent | yes | yes | model-dependent |
 | OpenAI-compatible local/cloud | yes | declared | declared | declared | declared |
 
@@ -41,7 +41,7 @@ protocols use a custom public `AiProvider`, not an arbitrary-HTTP mode.
 
 Two presets configure it for a service and keep that service's name in errors:
 `OpenAiCompatibleProvider::deepseek(api_key)` targets `https://api.deepseek.com`
-with `deepseek-v4-flash` (`try_with_model` selects another model) and declares
+with `deepseek-flash` (`try_with_model` selects another model) and declares
 chat, JSON mode and streaming with usage; its JSON Schema output goes to
 DeepSeek's `/responses`, because DeepSeek's Chat Completions accepts no
 `json_schema` response format, and its JSON mode adds a system instruction,
@@ -231,7 +231,7 @@ instead of asking the model to answer without retrieved evidence.
 
 The bundled `InMemoryRagRetriever` is a bounded tenant-partitioned cosine index for offline tests,
 development, and small ephemeral datasets. It is neither durable nor distributed. A production
-application can implement `RagRetriever` over ORM pgvector or Qdrant, but that adapter must bind the
+application can implement `RagRetriever` over ORM pgvector or Qdrant (the [Qdrant recipe](../recipes/qdrant.md)), but that adapter must bind the
 trusted tenant and ownership predicates in the authoritative datastore. The pipeline's tag check is
 defense in depth, not a replacement for datastore authorization.
 

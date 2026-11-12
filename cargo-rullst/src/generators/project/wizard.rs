@@ -25,8 +25,6 @@ pub enum PolyglotIntegration {
     Turso,
     /// SurrealDB document and graph storage.
     SurrealDb,
-    /// Qdrant bounded dense-vector storage.
-    Qdrant,
 }
 
 impl PolyglotIntegration {
@@ -35,7 +33,6 @@ impl PolyglotIntegration {
         match self {
             Self::Turso => "turso",
             Self::SurrealDb => "surrealdb",
-            Self::Qdrant => "qdrant",
         }
     }
 
@@ -44,7 +41,6 @@ impl PolyglotIntegration {
         match self {
             Self::Turso => "orm-turso",
             Self::SurrealDb => "orm-surrealdb",
-            Self::Qdrant => "orm-qdrant",
         }
     }
 }
@@ -99,7 +95,6 @@ pub(crate) fn requested_integrations(options: &ProjectScaffoldOptions) -> Vec<Po
             PolyglotIntegration::Turso,
         ),
         (options.surrealdb, PolyglotIntegration::SurrealDb),
-        (options.qdrant, PolyglotIntegration::Qdrant),
     ]
     .into_iter()
     .filter_map(|(selected, integration)| selected.then_some(integration))

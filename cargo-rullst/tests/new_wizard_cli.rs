@@ -68,14 +68,7 @@ fn dry_runs_preview_exactly_the_files_a_real_run_writes_and_write_nothing() {
             "--redis",
         ],
         &["--blueprint", "api"],
-        &[
-            "--blueprint",
-            "saas",
-            "--database",
-            "mysql",
-            "--surrealdb",
-            "--qdrant",
-        ],
+        &["--blueprint", "saas", "--database", "mysql", "--surrealdb"],
         &["--docker", "--database", "turso"],
     ];
     for (index, profile) in profiles.iter().enumerate() {

@@ -344,7 +344,7 @@ rules! {
         "If the application uses the ORM or the SQLite queue, list them, for example `default-features = false, features = [\"strict-sqlite\", \"queue-sqlite\"]` (`drivers-all` for all three drivers); a database-free application needs no change.";
     POLYGLOT_FEATURE: "V13-POLYGLOT-FEATURE", MustChange, "13.0.0-alpha.2", "ORM adapter aggregate features",
         "the `orm-polyglot` (`rullst`) and `polyglot` (`rullst-orm`) features were removed; Cargo refuses a manifest that enables them",
-        "Enable only the adapters the application uses: `orm-turso`, `orm-surrealdb` or `orm-qdrant` on `rullst`, or `turso`, `surrealdb` or `qdrant` on `rullst-orm` (13.0.0-alpha.5 removed MongoDB and DuckDB: see `V13-ORM-ADAPTERS-REMOVED`).";
+        "Enable only the adapters the application uses: `orm-turso` or `orm-surrealdb` on `rullst`, or `turso` or `surrealdb` on `rullst-orm` (13.0.0-alpha.5 removed MongoDB, DuckDB and Qdrant: see `V13-ORM-ADAPTERS-REMOVED` and `V13-ORM-QDRANT-REMOVED`).";
     OMNI_REMOVED: "V13-OMNI-REMOVED", Review, "13.0.0-alpha.3", "Omni and offline sync removed",
         "13.0 removed `make:omni` and `cargo rullst omni`; this project has an Omni shell or runs the removed commands",
         "Run `cargo rullst make:pwa` (with `--android` for Google Play), ship the installable PWA, then retire `omni-app/` and the `cargo rullst omni` steps.";
@@ -459,6 +459,9 @@ rules! {
     ACADEMY_REMOVED: "V13-ACADEMY-REMOVED", MustChange, "13.0.0-alpha.5", "Academy production preset removed",
         "`ProductionPreset::academy()`, the `Academy*` production types and `cargo rullst academy:doctor` were removed in 13.0.0-alpha.5; this code no longer compiles, and the command exits with status 1",
         "Keep the application's own production checklist in its tests or CI instead of `ProductionPreset::academy()` and the `AcademyProductionRequirement`, `AcademyCheckStatus`, `AcademyBoundaryAssessment`, `AcademyPresetError` and `AcademyProductionPreset` types, and remove `academy:doctor` steps; `ProductionPreset::middleware_order()` and `ProductionMiddlewareStage` remain.";
+    ORM_QDRANT_REMOVED: "V13-ORM-QDRANT-REMOVED", MustChange, "13.0.0-alpha.5", "Qdrant adapter removed",
+        "13.0.0-alpha.5 removed the Qdrant adapter: Cargo refuses the `orm-qdrant` (`rullst`) and `qdrant` (`rullst-orm`) features, and `QdrantStore`, `QdrantConfig`, `VectorRepository` and the `Vector*` types no longer compile",
+        "Remove the feature and use the official `qdrant-client` crate in the application: one client created at start-up, shared through application state, behind a small trait with an in-memory fake for tests, and every search filtered by tenant and bounded. https://rullst.github.io/Rullst/book/recipes/qdrant.html shows it; for vectors next to the rows they describe, `pgvector` on PostgreSQL stays.";
     AI_PROVIDER_PRESETS: "V13-AI-PROVIDER-PRESETS", MustChange, "13.0.0-alpha.5", "DeepSeek and Ollama as OpenAI-compatible presets",
         "`DeepSeekProvider` and `OllamaProvider` (`rullst_ai::ai::providers::deepseek` and `::ollama`) were removed in 13.0.0-alpha.5; this code no longer compiles",
         "Use the presets of the OpenAI-compatible adapter: `OpenAiCompatibleProvider::deepseek(api_key)?` (`.try_with_model(..)?` instead of `.with_model(..)`) and `OpenAiCompatibleProvider::ollama(host, model)?` (`.try_with_embedding_model(..)?` instead of `.with_embedding_model(..)`), from `rullst::ai::providers::openai_compatible`. Both return a `Result`; Ollama is now reached through its `/v1` API.";
