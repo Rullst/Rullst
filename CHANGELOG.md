@@ -717,6 +717,13 @@ describes each replacement.
 
 ### Fixed
 
+- The `rullst-supervision` observation guide did not say that the
+  `Permissions-Policy: camera=(), microphone=()` header of Rullst's staging and
+  production security baseline makes the browser refuse `getUserMedia`, so a
+  camera-presence page that worked in development failed after deployment. It
+  now explains how to allow only the captured device on the capture page's
+  response, both with `Server`'s baseline and with `SecureHeadersLayer`
+  (found while building an acceptance application).
 - Documentation: the InfinitePay sections of the `rullst-capital` README and
   the payment gateway guide did not say that the merchant must enable external
   checkout ("Checkout externo") in the InfinitePay app first; until then
