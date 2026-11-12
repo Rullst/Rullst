@@ -134,10 +134,10 @@ for you to fix.
   adapters are the application's, and the browser sends statistics, not
   frames or audio. A parental `CoursePolicy` is one absolute UTC window of at
   most 30 days; recurring allowed hours are application code.
-- The InfinitePay adapter stays Experimental: one real Pix payment went
-  through it while this release was tested. Subscriptions, the portal, usage,
-  coupons and trials return `UnsupportedOperation`, and the merchant must
-  enable external checkout ("Checkout externo") in the InfinitePay app first.
+- The InfinitePay adapter stays Experimental, with one real Pix payment
+  validated. Subscriptions, the portal, usage, coupons and trials return
+  `UnsupportedOperation`, and the merchant must enable external checkout
+  ("Checkout externo") in the InfinitePay app first.
 - Generated starters serve their pages and static files uncompressed: the
   generated Dockerfile builds with `cargo build`, without the `.br`/`.zst`
   siblings that `cargo rullst build` writes and the server would serve, and
@@ -214,9 +214,9 @@ for you to fix.
   transports, TLS/DTLS and brokers, other boards, a persistent
   rollback-counter store, flashing, bootloader handoff and power loss are not
   validated. Privacy has no live age provider or verified guardianship.
-  Media's Bunny Stream adapter is used with real accounts in production
-  applications but tested in CI only offline, and its S3/R2 adapter only
-  against the offline mock.
+  Media's Bunny Stream adapter is used with a real library by a production
+  application, but transcoding and CDN edge cases are not covered by Rullst's
+  own tests, which run offline; its S3/R2 adapter is tested offline only.
 - CI runs the commands of the first-hour pages only (the README quickstart,
   getting started, tutorials 01, 02, 03, 05 and 11 and the REST API
   quickstart), without PostgreSQL or MySQL servers or external accounts.
