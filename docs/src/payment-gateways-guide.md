@@ -15,7 +15,7 @@ tax treatment, settlement time, pricing, or regulatory suitability.
 | Adapter | Status | Rullst contract |
 | :--- | :--- | :--- |
 | Stripe | Supported | Owner-bound customer and subscription checkout, bound portal, reconciliation reads, Payment Intents charges, Meter Events, coupons and trials; unsupported methods fail explicitly. |
-| InfinitePay | Experimental | One-off payment links on the public Checkout API (`POST /links`) from a server-side `OneOffCheckoutRequest` (BRL); each unsigned webhook is confirmed with `POST /payment_check` and the server-side amount. No subscriptions, portal or sandbox; an empty or `mock_*` handle runs offline fixtures. Not yet validated against a live account. |
+| InfinitePay | Experimental | One-off payment links on the public Checkout API (`POST /links`) from a server-side `OneOffCheckoutRequest` (BRL); each unsigned webhook is confirmed with `POST /payment_check` and the server-side amount. No subscriptions, portal or sandbox; an empty or `mock_*` handle runs offline fixtures. One real Pix payment validated in the 13.0.0-alpha.5 acceptance run. |
 | Your own adapter | Extension point | Implement `BillingProvider` (and optionally `MeteredBillingProvider`) in the application; see [Writing your own payment provider](capital-custom-provider.md). |
 
 v13 removed the Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago, Alipay,
