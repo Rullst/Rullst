@@ -9,7 +9,7 @@ provider; you review them and run them yourself.
 | :--- | :--- |
 | `Dockerfile` | Multi-stage build with a dependency-cache layer, Brotli/Zstandard copies of the `static/` text files, and a small non-root runtime image. |
 | `compose.yaml` | Your application and Caddy (automatic HTTPS), a private network and volumes. Works with `docker compose` and `podman compose`. |
-| `Caddyfile` | The domain Caddy serves, the proxy to the application and the compression of its pages (`encode zstd gzip`). |
+| `Caddyfile` | The domain Caddy serves and the proxy to the application. |
 
 Step-by-step guides that use these files:
 [Deploy to a Linux VM](../vm-deployment.md), with provider pages for

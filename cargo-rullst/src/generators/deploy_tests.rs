@@ -39,10 +39,15 @@ fn compose_pins_caddy_hardens_both_containers_and_checks_health() {
     );
     assert!(CADDYFILE.contains("\treverse_proxy app:3000 {\n"));
     assert!(CADDYFILE.contains("\t\thealth_uri /health\n"));
-    // Pages are compressed at the proxy; the comment says how a page that
-    // reflects input next to the CSRF token opts out (BREACH).
-    assert!(CADDYFILE.contains("\tencode zstd gzip\n\treverse_proxy"));
-    assert!(CADDYFILE.contains("`Cache-Control: no-transform`"));
+    // Pages carry the unmasked CSRF token, so Caddy does not compress them
+    // (BREACH); the comment says when `encode` may be added.
+    assert!(
+        CADDYFILE
+            .lines()
+            .all(|line| !line.trim_start().starts_with("encode"))
+    );
+    assert!(CADDYFILE.contains("\t# No `encode`: pages carry the CSRF token unmasked"));
+    assert!(CADDYFILE.contains("such as `encode /api/* zstd gzip`.\n"));
 }
 
 // Caddy's first active check runs before the app listens, and with a
@@ -59,7 +64,6 @@ fn caddy_recovers_quickly_and_holds_requests_while_the_app_restarts() {
         directives,
         [
             "{$DOMAIN:localhost} {",
-            "encode zstd gzip",
             "reverse_proxy app:3000 {",
             "health_uri /health",
             "health_interval 5s",

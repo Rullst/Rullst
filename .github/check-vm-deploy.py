@@ -6,7 +6,7 @@ runs `cargo rullst deploy`, copies the project as docs/src/vm-deployment.md
 (step 4A) does, builds the generated Dockerfile and starts compose.yaml and the
 Caddyfile with Docker or rootless Podman. Checks /health over HTTPS through
 Caddy (its local CA), the HTTP redirect, the unpublished app port, the
-hardening, compressed pages and pre-compressed static files, a migrated SQLite database (SaaS: an account) in its volume across
+hardening, uncompressed pages and pre-compressed static files, a migrated SQLite database (SaaS: an account) in its volume across
 `compose restart`, and the logs. The generated deployment files are never
 modified: the unpublished release crates enter the build context as packaged
 archives through `[patch.crates-io]`, as in .github/test-packaged-distribution.sh.

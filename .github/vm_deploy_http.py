@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import gzip
 import http.cookiejar
 import json
 from pathlib import Path
@@ -126,15 +125,16 @@ def varies_on_encoding(headers) -> bool:
 
 
 def check_compression(starter: str, ca: Path) -> None:
-    """Caddy compresses pages; static files come from the image's .br/.zst siblings."""
+    """Pages stay uncompressed (they carry the unmasked CSRF token: BREACH);
+    static files come from the image's .br/.zst siblings."""
     client = Client(ca)
     page = "/" if starter == "blank" else "/login"
-    code, headers, body = client.fetch(f"https://localhost{page}", "gzip")
+    code, headers, body = client.fetch(f"https://localhost{page}", "gzip, zstd, br")
     encoding = headers.get("Content-Encoding")
-    expect(code == 200 and encoding == "gzip" and varies_on_encoding(headers),
-           f"Caddy gzips GET {page} ({code}, {encoding}, Vary {headers.get_all('Vary')})")
-    html = gzip.decompress(body).decode(errors="replace")
-    expect("</html>" in html.lower(), f"the gzipped {page} is the HTML page")
+    html = body.decode(errors="replace")
+    expect(code == 200 and encoding is None and "</html>" in html.lower(),
+           f"GET {page} is sent uncompressed to a client that accepts compression "
+           f"({code}, {encoding})")
 
     code, headers, plain = client.fetch(f"https://localhost{HTMX}", "identity")
     expect(code == 200 and headers.get("Content-Encoding") is None

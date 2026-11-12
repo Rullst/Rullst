@@ -1423,11 +1423,11 @@ written through a link):
 * `Caddyfile`: proxies to the app, checks its `/health` every 5 seconds and
   stops routing to it while that fails, and holds each request for up to 15
   seconds while the app is down (a restart or an update) instead of answering
-  `503` at once. Since 13.0.0-alpha.5 it compresses responses with
-  `encode zstd gzip`; a response that already has a `Content-Encoding` (the
-  pre-compressed static files) or `Cache-Control: no-transform` passes
-  unchanged. Its comment says to mark a response that echoes request input
-  next to a secret such as the CSRF token `no-transform` (BREACH).
+  `503` at once. It has no `encode` directive, and its comment says why:
+  pages carry the CSRF token, which is not masked per response, so
+  compressing them would expose it to BREACH; static files are served
+  pre-compressed. Add `encode` only for routes that never mix secrets with
+  reflected input (`encode /api/* zstd gzip`).
 
 Caddy is pinned to `172.31.250.10` on a `172.31.250.0/24` compose network,
 and the command adds that address to `[security] trusted_proxies` in

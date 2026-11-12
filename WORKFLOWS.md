@@ -111,7 +111,7 @@ follow the [VM guide](docs/src/vm-deployment.md) (`deploy:doctor`, the
 generated `Dockerfile`, `compose.yaml` and `Caddyfile`, unmodified) and check
 `/health` over HTTPS through Caddy, the HTTPS redirect, the unpublished app
 port, the read-only root filesystem, capabilities and `no-new-privileges`,
-Caddy's trusted-proxy address, a page gzipped by Caddy and the htmx client
+Caddy's trusted-proxy address, a page sent uncompressed and the htmx client
 served from the image's `.br`/`.zst` siblings, `db:migrate`, a database-backed page (SaaS:
 sign-up and sign-in with a Secure cookie), SQLite persistence across a
 restart, the guide's backup command and the absence of panics. Podman runs
