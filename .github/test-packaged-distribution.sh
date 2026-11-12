@@ -477,8 +477,8 @@ if [ ! -x "$rullst_bin" ]; then
 fi
 "$rullst_bin" --version
 
-# `green` is part of the installed CLI since 13.0.0-alpha.4.
-"$rullst_bin" green --help > /dev/null
+# `footprint` is part of the installed CLI (`green` in 13.0.0-alpha.4).
+"$rullst_bin" footprint --help > /dev/null
 
 # The CLI's starters since 13.0.0-alpha.4; LMS, Blog, Portfolio and ERP are
 # repository examples, and asking for one fails before anything is written.

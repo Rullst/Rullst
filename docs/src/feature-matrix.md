@@ -460,7 +460,7 @@ These packages have no public optional Cargo features:
 | Package | Always-available scope |
 | --- | --- |
 | `rullst-macros` | Core procedural macros |
-| `cargo-rullst` | CLI commands, generators, auditing, deployment helpers and the Experimental `cargo rullst green`; its internal `maintainer-tools` feature only builds the repository's `sync-badges` tool and is not part of the installed CLI |
+| `cargo-rullst` | CLI commands, generators, auditing, deployment helpers and the Experimental `cargo rullst footprint`; its internal `maintainer-tools` feature only builds the repository's `sync-badges` tool and is not part of the installed CLI |
 
 No optional feature does not mean that a provider is contacted automatically.
 External integrations still require explicit runtime configuration and use the

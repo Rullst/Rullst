@@ -32,6 +32,10 @@ impl Project {
         }
     }
 
+    pub(super) fn root(&self) -> &Path {
+        &self.root
+    }
+
     pub(super) fn write(&self, relative: &str, text: &str) -> &Self {
         let path = self.root.join(relative);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -42,6 +46,7 @@ impl Project {
     pub(super) fn findings(&self, manifest: &str) -> Vec<(String, &'static str, usize)> {
         let plans = vec![plan(self.root.join("Cargo.toml"), manifest)];
         project_findings(&self.root, &plans)
+            .0
             .into_iter()
             .map(|finding| {
                 let relative = finding.path.strip_prefix(&self.root).unwrap();

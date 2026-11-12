@@ -81,9 +81,9 @@ const PROJECT_ENTRIES: [HomeEntry; 12] = [
         HomeAction::ProjectOperations,
     ),
     HomeEntry::new(
-        "🌱  Green Report             ",
-        "(cargo rullst green · experimental)",
-        HomeAction::Command("green"),
+        "📏  Footprint Report         ",
+        "(cargo rullst footprint · experimental)",
+        HomeAction::Command("footprint"),
     ),
     HomeEntry::new(
         "✨  Create New Project       ",

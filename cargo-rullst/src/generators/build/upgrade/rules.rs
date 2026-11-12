@@ -8,7 +8,8 @@
 //! the `html!` → `Markup` rules, which also read `html!` bodies. [`files`]
 //! inspects Cargo manifests and generated project files. Each finding names a
 //! stable rule code, a kind, a location and the first-column title of its
-//! row in `docs/src/migration-v13.md`.
+//! row in `docs/src/migration-v13.md`. A [`reviewed`] marker on or above a
+//! REVIEW finding's line leaves that location out of the plan.
 
 mod alpha5_runtime;
 mod api_cleanups;
@@ -16,6 +17,7 @@ mod catalog;
 mod files;
 mod markup;
 mod removed_adapters;
+mod reviewed;
 mod rust;
 mod tokens;
 
@@ -26,6 +28,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 pub(crate) use catalog::{CATALOG, REMOVED_API_RULES};
+pub(crate) use reviewed::MARKER as REVIEWED_MARKER;
 
 /// Catalog identifier recorded in plans and preparations.
 pub(crate) const RULE_CATALOG_VERSION: &str = "rullst-upgrade-rules-v4";
@@ -113,6 +116,9 @@ pub(crate) struct SourceScan {
     pub unscanned: Vec<PathBuf>,
     /// Which rules the findings come from.
     pub selection: RuleSelection,
+    /// The rule of each review location a `rullst-upgrade: reviewed` marker
+    /// left out.
+    pub reviewed: Vec<&'static Rule>,
 }
 
 /// The rules a plan applies: by default only those introduced after the
@@ -148,6 +154,7 @@ impl SourceScan {
         };
         let found = self.findings.len();
         self.findings.retain(|finding| applies(finding.rule));
+        self.reviewed.retain(|rule| applies(rule));
         self.selection = RuleSelection {
             skipped_rules: CATALOG.iter().filter(|rule| !applies(rule)).count(),
             hidden_findings: found - self.findings.len(),
@@ -172,6 +179,21 @@ struct Collector {
 impl Collector {
     fn add(&mut self, rule: &'static Rule, line: usize) {
         self.lines.entry((rule.code, line.max(1))).or_insert(rule);
+    }
+
+    /// Removes the review locations a marker in `text` covers, before only
+    /// the first location of each rule is kept, and returns their rules.
+    fn drop_reviewed(&mut self, text: &str) -> Vec<&'static Rule> {
+        let lines: Vec<&str> = text.lines().collect();
+        let mut dropped = Vec::new();
+        self.lines.retain(|(_, line), rule| {
+            let covered = reviewed::covers(&lines, *line, rule);
+            if covered {
+                dropped.push(*rule);
+            }
+            !covered
+        });
+        dropped
     }
 
     fn finish(self, path: &Path, findings: &mut Vec<SourceFinding>) {
@@ -214,7 +236,9 @@ pub(super) fn scan_workspace(
     if target_major != TARGET_MAJOR {
         return Ok(scan);
     }
-    let (manifest_findings, facts) = files::manifest_findings(plans);
+    let (mut manifest_findings, facts) = files::manifest_findings(plans);
+    scan.reviewed
+        .extend(reviewed::drop_reviewed(&mut manifest_findings));
     scan.findings.extend(manifest_findings);
     let mut package_roots = plans
         .iter()
@@ -226,7 +250,10 @@ pub(super) fn scan_workspace(
     for package_root in &package_roots {
         scan_package(package_root, &facts, &mut scan)?;
     }
-    scan.findings.extend(files::project_findings(root, plans));
+    let (mut project, marked) = files::project_findings(root, plans);
+    scan.reviewed.extend(marked);
+    scan.reviewed.extend(reviewed::drop_reviewed(&mut project));
+    scan.findings.extend(project);
     if scan.findings.len() > MAX_FINDINGS {
         return Err(
             "migration findings exceed 10,000 entries; review a smaller project first".into(),
@@ -248,7 +275,8 @@ fn scan_package(
     facts: &WorkspaceFacts,
     scan: &mut SourceScan,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut server_start: Option<(PathBuf, usize)> = None;
+    // The first `Server::new` and whether a marker covers its health rule.
+    let mut server_start: Option<(PathBuf, usize, bool)> = None;
     let mut mounts_health = false;
     let mut entries = 0usize;
     for entry in WalkDir::new(package_root)
@@ -291,20 +319,26 @@ fn scan_package(
                 if server_start.is_none()
                     && let Some(line) = summary.server_start
                 {
-                    server_start = Some((path.to_path_buf(), line));
+                    let lines: Vec<&str> = text.lines().collect();
+                    let covered = reviewed::covers(&lines, line, &catalog::HEALTH_PROBES);
+                    server_start = Some((path.to_path_buf(), line, covered));
                 }
                 mounts_health |= summary.mounts_health;
             }
             Err(_) => scan.unscanned.push(path.to_path_buf()),
         }
+        scan.reviewed.extend(collector.drop_reviewed(&text));
         collector.finish(path, &mut scan.findings);
     }
-    if !mounts_health && let Some((path, line)) = server_start {
-        scan.findings.push(SourceFinding {
+    match server_start {
+        Some(_) if mounts_health => {}
+        Some((_, _, true)) => scan.reviewed.push(&catalog::HEALTH_PROBES),
+        Some((path, line, false)) => scan.findings.push(SourceFinding {
             rule: &catalog::HEALTH_PROBES,
             path,
             line,
-        });
+        }),
+        None => {}
     }
     Ok(())
 }

@@ -183,8 +183,8 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "Start interactive Ratatui Dev Dashboard",
                 ),
                 (
-                    "cargo rullst green [--bench] [--json]",
-                    "(experimental) Measured size, memory and CPU; optional SCI estimate",
+                    "cargo rullst footprint [--bench] [--page-weight] [--json]",
+                    "(experimental) Measured size, memory, CPU and page weight; optional SCI estimate",
                 ),
             ],
         ),
