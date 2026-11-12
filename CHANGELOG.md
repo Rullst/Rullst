@@ -927,6 +927,22 @@ describes each replacement.
   fails before anything else starts, naming it (`Studio could not listen:
   127.0.0.1:5556: Address already in use`) (found by the 13.0.0-alpha.5
   acceptance run).
+- Generated applications now serve their static files compressed: before,
+  `cargo rullst build` wrote `.br`/`.zst` siblings of static assets that the
+  server sends, but the generated Dockerfile built with plain `cargo build`,
+  so the image had none and every file went out uncompressed. The
+  Dockerfile that `cargo rullst new --docker`, `dockerize` and `deploy` write
+  now has a `static-assets` stage that writes the siblings with Debian's
+  `brotli` and `zstd` (the file types and levels of `cargo rullst build`, the
+  Tailwind stylesheet included) and that the runtime stage copies; the
+  runtime image still has no shell or package manager, and content-hashed
+  names keep their `immutable` caching. Pages stay uncompressed on purpose:
+  they carry the CSRF token, which is not masked per response, so
+  compressing them next to reflected input would expose it to BREACH. The
+  generated `Caddyfile` has no `encode` directive, and its comment says to
+  add one only for routes that never mix secrets with reflected input.
+  Existing files are kept: the migration guide says what to copy (reported
+  by the 13.0.0-alpha.5 release review).
 - The `rullst-supervision` observation guide did not say that the
   `Permissions-Policy: camera=(), microphone=()` header of Rullst's staging and
   production security baseline makes the browser refuse `getUserMedia`, so a

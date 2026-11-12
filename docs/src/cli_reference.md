@@ -319,7 +319,13 @@ The choices that materially change the generated application:
     stage is `gcr.io/distroless/cc-debian12:nonroot` (glibc, libgcc, libstdc++,
     CA certificates and tzdata; no shell or package manager). It runs as
     UID/GID 10001 with `HOME=/app`, sets the production bind address and copies
-    local static/config assets when present. The builder stage prepares the
+    local static/config assets when present. Since 13.0.0-alpha.5 a
+    `static-assets` stage (the same `rust` image, with Debian's `brotli` and
+    `zstd`) writes the `.br`/`.zst` siblings that `cargo rullst build` writes
+    (the same file types and levels) next to the files in `static/`, and the
+    runtime stage copies that directory, so the server sends them to browsers
+    that accept them; siblings already in `static/` are written again from the
+    files the image serves. The builder stage prepares the
     `/app` tree, so an explicit SQLite selection still uses the writable
     `/app/data` directory. Without a shell the image has no `HEALTHCHECK`;
     let the platform probe `/health` and `/ready` over HTTP. The migration job
@@ -1417,7 +1423,11 @@ written through a link):
 * `Caddyfile`: proxies to the app, checks its `/health` every 5 seconds and
   stops routing to it while that fails, and holds each request for up to 15
   seconds while the app is down (a restart or an update) instead of answering
-  `503` at once.
+  `503` at once. It has no `encode` directive, and its comment says why:
+  pages carry the CSRF token, which is not masked per response, so
+  compressing them would expose it to BREACH; static files are served
+  pre-compressed. Add `encode` only for routes that never mix secrets with
+  reflected input (`encode /api/* zstd gzip`).
 
 Caddy is pinned to `172.31.250.10` on a `172.31.250.0/24` compose network,
 and the command adds that address to `[security] trusted_proxies` in

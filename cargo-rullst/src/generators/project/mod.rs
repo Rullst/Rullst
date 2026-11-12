@@ -5,6 +5,7 @@ pub(crate) mod ci;
 mod command;
 pub(crate) mod create;
 mod docker;
+pub(crate) mod docker_static;
 pub mod env_config;
 mod next_steps;
 mod vcs;

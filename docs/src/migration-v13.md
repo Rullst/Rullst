@@ -579,7 +579,16 @@ documentation. Work through the steps in order.
     - the new `Caddyfile` checks `/health` every 5 seconds and holds requests
       for up to 15 seconds (`lb_try_duration`) while the app restarts. To get
       it, move the old file aside and run `cargo rullst deploy` again, or copy
-      its `reverse_proxy` block.
+      its `reverse_proxy` block;
+    - since 13.0.0-alpha.5 the generated `Dockerfile` has a `static-assets`
+      stage that writes the `.br`/`.zst` siblings of `static/`, which the
+      runtime stage copies. A Dockerfile generated earlier serves static
+      files uncompressed unless `cargo rullst build` ran before
+      `docker build`: copy the stage from a Dockerfile that
+      `cargo rullst dockerize` writes in a scratch copy of the project. No
+      `upgrade` rule reports it. Pages stay uncompressed: do not add
+      `encode` for them to the `Caddyfile` (they carry the CSRF token; see
+      [Compression](vm-deployment.md#6-start-it)).
 
     The alpha.4 CLI reports neither file (the alpha.5 CLI reports both, as
     `V13-DEPLOY-SQLITE-URL` and `V13-DEPLOY-CADDY-HEALTH`); start the stack as the
