@@ -9,8 +9,10 @@ serves the original upload in a private S3, R2 or MinIO bucket instead, without
 transcoding. It is **opt-in**, with its standalone package
 now included in the v13 release inventory. Final release acceptance remains
 outstanding.
-Real Bunny account, transcoding, CDN and player interoperability are **unvalidated**;
-automated acceptance uses local HTTP protocol fixtures and controlled browser media.
+A production application uses the Bunny adapter with a real Bunny Stream library
+(create, browser upload, status, update, deletion and private playback). Rullst's own
+automated acceptance uses local HTTP protocol fixtures and controlled browser media,
+so transcoding, CDN and player edge cases are not covered by it.
 The `s3` adapter is validated against the offline mock only.
 
 **Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):

@@ -200,8 +200,9 @@ shared-local asset/operation state and static-dispatch application orchestration
 PRs #227 and #239 supply hosted source and extracted-package evidence. The
 standalone package now enters the v13 release inventory, without a facade
 dependency. It was first published in the 13.0.0-alpha.1 prerelease; final
-release acceptance remains outstanding. Actual
-Bunny account/CDN interoperability remains explicitly unvalidated.
+release acceptance remains outstanding. A production
+application uses the Bunny adapter with a real Bunny Stream library; transcoding and
+CDN edge cases are not covered by Rullst's own tests.
 
 The host supplies authenticated actor/course membership and current management
 or playback entitlement through a checked authorization trait. Local asset IDs
@@ -3547,7 +3548,7 @@ HTTP on a loopback host for local fixtures, its body is at most one MiB, and no
 Billing adapters implement `BillingProvider`; metered usage adapters implement
 `MeteredBillingProvider` with a provider-specific request type. Rullst ships two
 adapters: Stripe, the supported provider used by the generated billing flow, and
-InfinitePay, which is experimental until it is validated against a live account
+InfinitePay, which is experimental (one real Pix payment validated)
 (section 6.2.2). The trait
 default for webhook verification mode fails closed, so a custom adapter must
 declare its verification mode before Rullst's webhook middleware accepts it.

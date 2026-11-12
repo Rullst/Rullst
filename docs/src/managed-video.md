@@ -33,8 +33,9 @@ Applications supply authenticated tenant/course membership and current entitleme
 Automated acceptance uses actual local HTTP, SQLite and Chromium with controlled
 media. It checks signatures, upload bytes and failure recovery, CSRF and tenant
 denial, media decoding, captions/keyboard interaction, withdrawal and deletion.
-Real Bunny account, transcoding, CDN and iframe interoperability remain unvalidated
-under the owner's no-live-provider-testing instruction. Signed URLs do not imply
+A production application uses the Bunny adapter with a real Bunny Stream library
+(create, browser upload, status, update, deletion and private playback); transcoding,
+CDN and iframe edge cases are not covered by Rullst's own tests. Signed URLs do not imply
 DRM, immediate revocation of existing capabilities or prevention of all copying.
 
 See the [managed-video acceptance roadmap](managed-video-roadmap.md) and the

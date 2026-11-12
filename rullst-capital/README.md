@@ -95,7 +95,7 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 | Provider | Status | Current boundary |
 | :--- | :--- | :--- |
 | **Stripe** | Supported | Typed customer/subscription checkout, customer-ID portal, current-state reads and signed events; generated durable SQLx integration. Immediate Payment Intent charge is separate. |
-| **InfinitePay** | Experimental | One-off payment links on the public Checkout API (`POST /links`), priced from a server-side `OneOffCheckoutRequest` in BRL; the unsigned webhook is confirmed with `POST /payment_check` and the server-side amount ([below](#infinitepay)). No subscriptions, portal or sandbox. Not yet validated against a live account. |
+| **InfinitePay** | Experimental | One-off payment links on the public Checkout API (`POST /links`), priced from a server-side `OneOffCheckoutRequest` in BRL; the unsigned webhook is confirmed with `POST /payment_check` and the server-side amount ([below](#infinitepay)). No subscriptions, portal or sandbox. One real Pix payment validated in the 13.0.0-alpha.5 acceptance run. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
