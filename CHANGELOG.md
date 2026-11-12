@@ -199,11 +199,13 @@ for you to fix.
   traces and the security radar are not available remotely; proxy variables
   are ignored (use an SSH tunnel). Tokens are protected against a leaked
   configuration file, not against malware running as the developer.
-- OAuth providers are tested against offline mocks only, not real Google,
-  GitHub, Microsoft or Apple accounts. Microsoft sign-in needs the optional
-  claims `email` and `xms_edov` to link or create accounts. `make:oauth` needs
-  the account files of `cargo rullst auth` or the SaaS starter, or the
-  functions of the documented authentication contract (`src/auth_contract.rs`).
+- CI tests the OAuth providers against offline mocks only. Google and GitHub
+  sign-in are used with real accounts in production applications; Microsoft,
+  Apple and the other providers are not validated with real accounts.
+  Microsoft sign-in needs the optional claims `email` and `xms_edov` to link
+  or create accounts. `make:oauth` needs the account files of
+  `cargo rullst auth` or the SaaS starter, or the functions of the documented
+  authentication contract (`src/auth_contract.rs`).
 - PWA: the generated icons are placeholders. The Google Play (Bubblewrap) and
   Microsoft Store (PWABuilder) flows are documented, not validated with real
   store submissions; no App Store package is generated.
@@ -211,8 +213,10 @@ for you to fix.
   and its `std` build in a gateway fed by Arduino Uno boards; MQTT and CoAP
   transports, TLS/DTLS and brokers, other boards, a persistent
   rollback-counter store, flashing, bootloader handoff and power loss are not
-  validated. Privacy has no live age provider or verified guardianship;
-  Media is validated only against offline mocks.
+  validated. Privacy has no live age provider or verified guardianship.
+  Media's Bunny Stream adapter is used with real accounts in production
+  applications but tested in CI only offline, and its S3/R2 adapter only
+  against the offline mock.
 - CI runs the commands of the first-hour pages only (the README quickstart,
   getting started, tutorials 01, 02, 03, 05 and 11 and the REST API
   quickstart), without PostgreSQL or MySQL servers or external accounts.
