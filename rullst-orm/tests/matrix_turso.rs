@@ -27,6 +27,13 @@ struct RemoteTag {
     label: String,
 }
 
+#[derive(Debug, Clone, PartialEq, rullst_orm::Orm)]
+#[orm(table = "remote_notes", backend = "turso")]
+struct RemoteNote {
+    id: String,
+    body: String,
+}
+
 fn statement(sql: &str, parameters: Vec<TursoValue>) -> TursoStatement {
     TursoStatement::new(sql, parameters).expect("valid test statement")
 }
@@ -249,8 +256,9 @@ async fn test_matrix_turso_remote_sql_contract() {
         .expect("typed remote update");
     repository.delete(&user).await.expect("typed remote delete");
 
-    // A nullable text key is never generated: an empty one is refused and
-    // nothing is written; a duplicate key or UNIQUE value is a conflict.
+    // An empty text key comes from the column's DEFAULT; without one the
+    // insert is rolled back and nothing is written. A duplicate key or
+    // UNIQUE value is a conflict.
     store
         .execute(statement(
             "CREATE TABLE remote_tags (id TEXT PRIMARY KEY, label TEXT NOT NULL UNIQUE)",
@@ -292,6 +300,28 @@ async fn test_matrix_turso_remote_sql_contract() {
         );
     }
     assert_eq!(tag_count(&store).await, Some(TursoValue::Integer(1)));
+
+    store
+        .execute(statement(
+            "CREATE TABLE remote_notes (id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))), body TEXT NOT NULL)",
+            vec![],
+        ))
+        .await
+        .expect("defaulted text-key table should be created remotely");
+    let notes = store.models::<RemoteNote>();
+    let mut note = RemoteNote {
+        id: String::new(),
+        body: "generated remotely".to_owned(),
+    };
+    notes
+        .save(&mut note)
+        .await
+        .expect("a DEFAULT text key should be generated and returned");
+    assert_eq!(note.id.len(), 32, "{}", note.id);
+    assert_eq!(
+        notes.find(note.id.clone()).await.expect("remote find"),
+        Some(note)
+    );
 }
 
 async fn tag_count(store: &TursoStore) -> Option<TursoValue> {

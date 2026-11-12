@@ -136,11 +136,13 @@ the `TursoConfig` as the starter does.
 
 The typed contract includes CRUD, equality filters, ordering, bounded
 pagination/counts, app-assigned or generated primary keys, checksummed
-migrations, status, and rollback. As with the SQLx models, the database
-generates only integer keys: saving a model whose `String` key is empty fails
-with `PolyglotError::InvalidIdentifier` before anything is written. A UNIQUE or
-PRIMARY KEY violation returns `PolyglotError::Conflict`, on a remote server and
-the offline fallback alike. An equality filter whose value encodes as
+migrations, status, and rollback. An empty `String` key is filled by the
+column's `DEFAULT` (for example `DEFAULT (lower(hex(randomblob(16))))`): the
+insert runs in a transaction with `RETURNING` the key and is committed only
+when the key is not NULL, so a key column without a `DEFAULT` fails with
+`PolyglotError::InvalidIdentifier` and nothing is written. A UNIQUE or PRIMARY
+KEY violation returns `PolyglotError::Conflict`, on a remote server and the
+offline fallback alike. An equality filter whose value encodes as
 `NULL` (such as `Option::None`) matches with `IS NULL`. `#[orm(encrypted)]`
 columns store randomized ciphertext, so filtering or ordering on them returns
 an error instead of silently matching nothing. Generated `make:model` and `make:migration`

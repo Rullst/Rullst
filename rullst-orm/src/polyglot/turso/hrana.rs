@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{PolyglotError, TursoQueryLimit, TursoRow, TursoStatement, TursoValue};
 
+mod stream;
 mod value;
 use value::WireValue;
 
@@ -112,6 +113,29 @@ impl HranaClient {
         &self,
         requests: Vec<StreamRequest>,
     ) -> Result<PipelineResponse, PolyglotError> {
+        self.closing(None, requests).await
+    }
+
+    /// Sends requests that end with `close`; the stream must not stay open.
+    async fn closing(
+        &self,
+        baton: Option<String>,
+        requests: Vec<StreamRequest>,
+    ) -> Result<PipelineResponse, PolyglotError> {
+        let response = self.post(baton, requests).await?;
+        if response.baton.is_some() {
+            return Err(protocol_error("server kept a stream open after close"));
+        }
+        Ok(response)
+    }
+
+    /// Posts one pipeline request to the configured endpoint. A `base_url`
+    /// in the response is not followed, so the token only ever goes there.
+    async fn post(
+        &self,
+        baton: Option<String>,
+        requests: Vec<StreamRequest>,
+    ) -> Result<PipelineResponse, PolyglotError> {
         let mut request = self
             .client
             .post(self.pipeline_url.clone())
@@ -121,10 +145,7 @@ impl HranaClient {
             request = request.bearer_auth(&self.auth_token);
         }
         let response = request
-            .json(&PipelineRequest {
-                baton: None,
-                requests,
-            })
+            .json(&PipelineRequest { baton, requests })
             .send()
             .await
             .map_err(|error| PolyglotError::driver("Turso", error))?;
@@ -149,12 +170,7 @@ impl HranaClient {
             }
             body.extend_from_slice(&chunk);
         }
-        let response: PipelineResponse =
-            serde_json::from_slice(&body).map_err(PolyglotError::serialization)?;
-        if response.baton.is_some() {
-            return Err(protocol_error("server kept a stream open after close"));
-        }
-        Ok(response)
+        serde_json::from_slice(&body).map_err(PolyglotError::serialization)
     }
 }
 
@@ -467,6 +483,9 @@ fn response_too_large() -> PolyglotError {
 #[cfg(test)]
 #[path = "hrana/pipeline_tests.rs"]
 mod pipeline_tests;
+#[cfg(test)]
+#[path = "hrana/stream_tests.rs"]
+mod stream_tests;
 #[cfg(test)]
 #[path = "hrana/tests.rs"]
 mod tests;

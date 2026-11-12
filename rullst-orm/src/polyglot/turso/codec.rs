@@ -67,6 +67,39 @@ pub(super) async fn query_sqlite(
     Ok(materialized)
 }
 
+/// Runs `insert`, an `INSERT ... RETURNING <key_column>`, in a transaction
+/// committed only when the returned key is not NULL; `Ok(None)` otherwise,
+/// with the insert rolled back.
+pub(super) async fn insert_returning_key_sqlite(
+    pool: &sqlx::SqlitePool,
+    insert: TursoStatement,
+    key_column: &str,
+) -> Result<Option<TursoValue>, PolyglotError> {
+    let mut transaction = pool
+        .begin()
+        .await
+        .map_err(|error| PolyglotError::driver("Turso offline", error))?;
+    let row = bind_sqlite(
+        sqlx::query(sqlx::AssertSqlSafe(insert.sql.as_str())),
+        insert.parameters,
+    )
+    .fetch_optional(&mut *transaction)
+    .await
+    .map_err(statement_error)?;
+    let key = match row {
+        Some(row) => from_sqlite_row(&row)?.into_columns().remove(key_column),
+        None => None,
+    }
+    .filter(|key| !matches!(key, TursoValue::Null));
+    let finished = if key.is_some() {
+        transaction.commit().await
+    } else {
+        transaction.rollback().await
+    };
+    finished.map_err(|error| PolyglotError::driver("Turso offline", error))?;
+    Ok(key)
+}
+
 /// A UNIQUE or PRIMARY KEY violation is a conflict, as on the remote server
 /// and in the SQL adapters; SQLite's extended result code identifies it.
 fn statement_error(error: sqlx::Error) -> PolyglotError {
