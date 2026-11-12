@@ -849,7 +849,10 @@ steps in order.
     `AiError::HttpStatus(error)` and `error.status()`; wait
     `error.retry_after()` before retrying, and show `error.message()` (the
     provider's own reason, for example why a model is unavailable). Arms that
-    matched `AiError::ApiError` for HTTP failures no longer see them.
+    matched `AiError::ApiError` for HTTP failures no longer see them, and
+    tests that build `AiError::ApiError("… returned HTTP 429 …")` by hand
+    keep passing although providers no longer return it: build
+    `AiError::HttpStatus(AiHttpError::new("Gemini", 429))` instead.
 11. **Billing in a Turso project.** `make:billing` now refuses a Turso-primary
     project. Billing code an earlier CLI generated there stays and keeps
     working; to generate it again, move the application to a SQLx database
@@ -971,9 +974,12 @@ steps in order.
     `--duckdb` from scripts that run `cargo rullst new`. Replace
     `cargo rullst green` with `cargo rullst footprint`, and `rullst.green.v1`
     with `rullst.footprint.v1` where a script checks the report's schema
-    (`V13-CLI-GREEN-RENAMED`); the flags are unchanged. A benchmark now asks
-    for compressed responses (`Accept-Encoding: zstd, br, gzip`), so compare
-    its CPU per request with alpha.5 runs only. If the application publishes
+    (`V13-CLI-GREEN-RENAMED`); the flags are unchanged. Where a workflow or
+    script installs a pinned CLI
+    (`cargo install cargo-rullst --version =13.0.0-alpha.4`), pin
+    `=13.0.0-alpha.5` too: the alpha.4 CLI has no `footprint`. A benchmark now
+    asks for compressed responses (`Accept-Encoding: zstd, br, gzip`), so
+    compare its CPU per request with alpha.5 runs only. If the application publishes
     these figures, check the wording: the report is a measurement and an
     estimate, not a certification or an environmental claim.
 20. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
