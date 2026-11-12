@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794490014126,
+  "lastUpdate": 1794493403903,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -21520,6 +21520,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "32619c37965c80856732727ce8f4682015a0dd46",
+          "message": "Merge pull request #676 from Rullst/docs/v13-alpha5-tier-promotions\n\ndocs: promote iot, media, labs, privacy and supervision to Extension",
+          "timestamp": "2026-11-12T10:58:06-03:00",
+          "tree_id": "b6b534e71e67900e1b990ce73a845146bf2e7ef7",
+          "url": "https://github.com/Rullst/Rullst/commit/32619c37965c80856732727ce8f4682015a0dd46"
+        },
+        "date": 1794493403077,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5110,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 563,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 15,
             "range": "± 0",
             "unit": "ns/iter"
           }
