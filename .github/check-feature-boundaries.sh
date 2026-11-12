@@ -230,6 +230,7 @@ rullst|capital-mail
 rullst|security
 rullst|security-redis
 rullst|iot
+rullst|iot-ingest
 rullst|telemetry
 rullst|nexus
 rullst|nexus-ai
