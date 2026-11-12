@@ -158,14 +158,6 @@ RULLST_ENV=development
                 "\n# ── Turso / libSQL edge SQL ───────────────────────────────────\nTURSO_DATABASE_URL=mock_local\nTURSO_AUTH_TOKEN=\nTURSO_OFFLINE_PATH=turso-development.db\n",
                 "\n# ── Turso / libSQL edge SQL ───────────────────────────────────\nTURSO_DATABASE_URL=\nTURSO_AUTH_TOKEN=\nTURSO_OFFLINE_PATH=turso-development.db\n",
             ),
-            PolyglotIntegration::MongoDb => (
-                "\n# ── MongoDB document store ─────────────────────────────────────\nMONGODB_URL=mock_local\nMONGODB_DATABASE=rullst_development\n",
-                "\n# ── MongoDB document store ─────────────────────────────────────\nMONGODB_URL=\nMONGODB_DATABASE=\n",
-            ),
-            PolyglotIntegration::DuckDb => (
-                "\n# ── DuckDB analytics ───────────────────────────────────────────\nDUCKDB_PATH=analytics.duckdb\n",
-                "\n# ── DuckDB analytics ───────────────────────────────────────────\nDUCKDB_PATH=analytics.duckdb\n",
-            ),
             PolyglotIntegration::SurrealDb => (
                 "\n# ── SurrealDB document and graph store ─────────────────────────\nSURREALDB_URL=mock_local\nSURREALDB_NAMESPACE=rullst\nSURREALDB_DATABASE=development\nSURREALDB_TOKEN=\n",
                 "\n# ── SurrealDB document and graph store ─────────────────────────\nSURREALDB_URL=\nSURREALDB_NAMESPACE=\nSURREALDB_DATABASE=\nSURREALDB_TOKEN=\n",

@@ -134,7 +134,6 @@ stays on the version line below.
 | `axum` | `0.8` | `rullst::web::axum`, `Router`, handlers and extractors of Core, Auth, Security, Capital, Connect, Nexus and Studio |
 | `chrono` | `0.4` | Core date formatting, `rullst::orm::chrono`, Mail and Capital |
 | `http` | `1` | `rullst::http` and the header, method and status types of the web crates |
-| `mongodb` | `3` | ORM `MongoDbStore` (`orm-mongodb`) |
 | `opentelemetry_sdk` | `0.33` | Core `DistributedTelemetry::layer` (`telemetry`) |
 | `pgvector` | `0.4` | `rullst::orm::Vector` (`orm-pgvector`) |
 | `redis` | `1` | ORM: `Orm::redis_client` and `Orm::redis_manager` (`redis` feature), deliberately: they hand the application the ORM's own Redis client and connection manager |

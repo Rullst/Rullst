@@ -16,8 +16,11 @@
 Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightful, fluent syntax of Active Record frameworks directly to the high-performance Rust ecosystem.
 
 **Maturity: Core** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
-The optional store adapters (MongoDB, DuckDB, Turso, SurrealDB, Qdrant, Scout
-search, Redis structures) document their own validation boundaries below.
+The optional store adapters (Turso, SurrealDB, Qdrant, Scout search, Redis
+structures) document their own validation boundaries below. MongoDB and DuckDB
+have no adapter since 13.0.0-alpha.5: the
+[recipes](https://rullst.github.io/Rullst/book/recipes/index.html) use their
+official crates in application code.
 
 <div align="center">
   <h3>🛡️ Security Engineering</h3>
@@ -28,7 +31,7 @@ search, Redis structures) document their own validation boundaries below.
 | **OpenSSF Scorecard** | <a href="https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard&style=flat-square" alt="OpenSSF Scorecard" /></a> | Current public supply-chain practice score; not a security certification |
 | **Release Provenance** | <a href="https://github.com/Rullst/Rullst/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/release.yml?style=flat-square&label=" alt="Release provenance" /></a> | Provenance attestations for release artifacts; no SLSA level is claimed here |
 | **Codecov** | <a href="https://codecov.io/gh/Rullst/Rullst"><img src="https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg?component=framework_libraries" alt="Framework library coverage" /></a> | Blocking 90% target for the measured framework-library scope; the complete repository aggregate also has its own 90% gate |
-| **Matrix DB Tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=flat-square&label=" alt="Testcontainers" /></a> | Live PostgreSQL, MySQL, MariaDB, MongoDB, SurrealDB and libSQL contracts, plus in-process DuckDB tests |
+| **Matrix DB Tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=flat-square&label=" alt="Testcontainers" /></a> | Live PostgreSQL, MySQL, MariaDB, SurrealDB and libSQL contracts |
 | **OpenSSF** | <a href="https://www.bestpractices.dev/projects/13359"><img src="https://img.shields.io/cii/level/13359?style=flat-square&label=" alt="OpenSSF Best Practices" /></a> | Open source security standards |
 | **Property tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/proptest.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/proptest.yml?branch=main&style=flat-square&label=Proptest" alt="Proptest" /></a> | Scheduled/manual bounded invariant evidence |
 | **Miri research matrix** | <a href="https://github.com/Rullst/Rullst/actions/workflows/miri.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/miri.yml?branch=main&style=flat-square&label=Miri" alt="Miri" /></a> | Manual bounded evidence; the selected privacy scope is strict, while native database FFI remains outside Miri |
@@ -182,13 +185,13 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   their instance `delete()` methods inside `Orm::transaction` instead.
 - **Development lazy-loading diagnostics**: An opt-in development policy can fail loudly when a guarded lazy load would hide an N+1 query.
 - **Explicit Capability Boundaries**: Unsupported replication paths fail closed instead of reporting simulated success.
-- **Optional Polyglot Persistence**: Feature-gated MongoDB document CRUD,
-  DuckDB OLAP queries, Turso/libSQL edge SQL, and SurrealDB document/read-only
-  graph operations live behind explicit capability APIs instead of pretending
+- **Optional Polyglot Persistence**: Feature-gated Turso/libSQL edge SQL and
+  SurrealDB document/read-only graph operations live behind explicit capability APIs instead of pretending
   to be one universal Active Record interface. See the
   [Polyglot guide](https://rullst.github.io/Rullst/book/polyglot-persistence.html).
-- **Authenticated Portable Document Recovery**: MongoDB, SurrealDB and the
-  deterministic store expose stable identifier-preserving inventory. A bounded
+- **Authenticated Portable Document Recovery**: SurrealDB and the
+  deterministic store expose stable identifier-preserving inventory, and an
+  application's own store can implement it too. A bounded
   AES-256-GCM snapshot performs two equal source scans, binds application and
   collection scope, resumes only into an empty or exactly matching subset and
   verifies the final inventory. It is an application-operated recovery

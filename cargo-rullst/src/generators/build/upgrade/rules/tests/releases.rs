@@ -109,6 +109,7 @@ fn rules_carry_the_release_of_their_change() {
             "V13-IOT-CODEC-ERROR-MATCH",
             "V13-IOT-SENSOR-CARD-HTML",
             "V13-CAPITAL-INVOICE-MINOR-UNITS",
+            "V13-ORM-ADAPTERS-REMOVED",
             "V13-MAIL-MESSAGE-REPLY-TO",
             "V13-PRIVACY-CONSENT-CHOICE-MATCH",
             "V13-LABS-NON-EXHAUSTIVE-MATCH",

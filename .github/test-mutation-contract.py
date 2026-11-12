@@ -267,9 +267,8 @@ class OrmPolyglotTests(Fixture):
         cargo = [call for call in calls if call[0] == "cargo"][-1]
         features = cargo[cargo.index("--features") + 1]
         self.assertEqual(features.split(","), [
-            "rullst-orm/drivers-all", "rullst-orm/redis", "rullst-orm/mongodb",
-            "rullst-orm/surrealdb", "rullst-orm/turso", "rullst-orm/scout-http",
-            "rullst-orm/qdrant"])
+            "rullst-orm/drivers-all", "rullst-orm/redis", "rullst-orm/surrealdb",
+            "rullst-orm/turso", "rullst-orm/scout-http", "rullst-orm/qdrant"])
         self.assertEqual(cargo[cargo.index("--shard") + 1], "0/4")
         env = json.loads((self.root / "env.json").read_text())
         self.assertEqual(env["RULLST_TEST_REDIS_URL"], "redis://127.0.0.1:49153")
@@ -342,8 +341,9 @@ class OrmSqlServersTests(Fixture):
         self.assertEqual(result.returncode, 0, result.stderr)
         call = self.recorded()[-1]
         targets = [argument for argument in call if argument.startswith("--cargo-arg=--test=")]
-        self.assertEqual(len(targets), 7)
+        self.assertEqual(len(targets), 6)
         self.assertIn("--cargo-arg=--test=matrix_turso", targets)
+        self.assertIn("--cargo-arg=--test=matrix_document_recovery", targets)
         self.assertIn("rullst-orm/qdrant", call[call.index("--features") + 1])
 
 

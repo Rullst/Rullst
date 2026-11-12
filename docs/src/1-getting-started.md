@@ -237,10 +237,10 @@ The wizard deliberately makes two separate decisions:
    (web page or JSON API) can instead select **Turso/libSQL** as its primary
    database, through a separate adapter that has no Nexus, Studio database
    pages, `Schema` migrations, `artisan!` or SQLx query builder.
-2. Optionally add side stores: **Turso/libSQL** edge SQL, **MongoDB**
-   documents, **DuckDB** analytics, **SurrealDB** documents/graph reads,
-   **Qdrant** vectors or **Redis** structures. They use their own APIs and do
-   not replace the primary pool.
+2. Optionally add side stores: **Turso/libSQL** edge SQL, **SurrealDB**
+   documents/graph reads, **Qdrant** vectors or **Redis** structures. They use
+   their own APIs and do not replace the primary pool. For MongoDB or DuckDB,
+   use the official crate as the [recipes](recipes/index.md) show.
 
 [Database Support](database-support.md) lists what each backend works with;
 read it before you choose.
@@ -257,7 +257,7 @@ The non-interactive flags mirror the second step:
 
 <!-- first-hour: stores new-terminal -->
 ```bash
-cargo rullst new edge_app --default --database mariadb --turso --mongodb \
+cargo rullst new edge_app --default --database mariadb --turso --surrealdb \
   --skip-initial-migration
 ```
 

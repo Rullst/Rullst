@@ -73,7 +73,7 @@ fn dry_runs_preview_exactly_the_files_a_real_run_writes_and_write_nothing() {
             "saas",
             "--database",
             "mysql",
-            "--mongodb",
+            "--surrealdb",
             "--qdrant",
         ],
         &["--docker", "--database", "turso"],

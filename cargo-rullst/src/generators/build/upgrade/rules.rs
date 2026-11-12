@@ -16,6 +16,7 @@ mod api_cleanups;
 mod catalog;
 mod files;
 mod markup;
+mod removed_adapters;
 mod reviewed;
 mod rust;
 mod tokens;

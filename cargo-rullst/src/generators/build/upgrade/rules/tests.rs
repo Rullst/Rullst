@@ -3,6 +3,7 @@
 use super::*;
 
 mod alpha4_orm_nexus;
+mod alpha5_adapters;
 mod alpha5_api;
 mod alpha5_capital_mail;
 mod alpha5_removed_ui;

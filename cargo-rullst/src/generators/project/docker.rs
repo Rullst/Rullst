@@ -4,9 +4,10 @@ use colored::*;
 use std::fs;
 use std::path::Path;
 
-/// Local SQLite and DuckDB databases and their journals, which may hold
-/// personal data. The generated `.gitignore` and `.dockerignore` share this
-/// list so neither Git nor the container build context picks them up.
+/// Local SQLite and DuckDB database files and their journals, which may hold
+/// personal data (the DuckDB recipe keeps its file in the project). The
+/// generated `.gitignore` and `.dockerignore` share this list so neither Git
+/// nor the container build context picks them up.
 pub(super) const LOCAL_DATABASE_IGNORES: &str = "*.db
 *.db-shm
 *.db-wal
@@ -281,7 +282,7 @@ mod tests {
             root.path(),
             false,
             "Sqlite",
-            &[crate::generators::project::PolyglotIntegration::DuckDb],
+            &[],
             crate::blueprints::BLANK_BLUEPRINT_ID,
             "0123456789abcdef0123456789abcdef",
         )
@@ -291,7 +292,7 @@ mod tests {
         let gitignore = fs::read_to_string(root.path().join(".gitignore")).expect("gitignore");
         let dockerignore =
             fs::read_to_string(root.path().join(".dockerignore")).expect("dockerignore");
-        // `--duckdb` writes `DUCKDB_PATH=analytics.duckdb` at the project root.
+        // The DuckDB recipe keeps its database file at the project root.
         for database in ["*.duckdb", "*.duckdb.wal", "*.sqlite-shm", "*.sqlite-wal"] {
             assert!(LOCAL_DATABASE_IGNORES.lines().any(|line| line == database));
         }
