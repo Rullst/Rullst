@@ -17,6 +17,10 @@
 examples/erp/**
 examples/lms/**
 examples/portfolio/**
+# The IoT gateway example's tests need its SQLite ORM driver; under the gate's
+# `--all-features` the strict PostgreSQL driver is compiled and they skip. The
+# IoT workflow runs them with the example's own features.
+examples/iot-gateway/**
 
 # Test-only modules included with `#[cfg(test)] #[path = "..."] mod ...;` or
 # `#[cfg(test)] mod tests;` backed by a `tests/` directory under `src/`.
