@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794437324251,
+  "lastUpdate": 1794443088989,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -18503,6 +18503,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 281,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd6772005334e45e65d3c0dd74bb547e2cbf8dc2",
+          "message": "Merge pull request #643 from Rullst/feat/v13-alpha5-iot-ingest\n\nfeat(iot): authenticated device telemetry receiver and two-board IoT gateway example",
+          "timestamp": "2026-11-11T21:01:19-03:00",
+          "tree_id": "35ee228038fb1591c67c6ce5e4f4f0bb11d40f57",
+          "url": "https://github.com/Rullst/Rullst/commit/bd6772005334e45e65d3c0dd74bb547e2cbf8dc2"
+        },
+        "date": 1794443088013,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1480,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 269,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 324,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
