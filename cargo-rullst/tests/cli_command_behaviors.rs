@@ -247,7 +247,7 @@ fn public_help_inventory_renders_every_command_group() {
         .map(|(command, _)| *command)
         .collect();
     assert!(commands.contains(&"cargo rullst upgrade"));
-    assert!(commands.contains(&"cargo rullst green [--bench] [--json]"));
+    assert!(commands.contains(&"cargo rullst footprint [--bench] [--page-weight] [--json]"));
     // `cargo rullst ai` was removed in 13.0.0-alpha.4 and is not offered.
     assert!(
         !commands

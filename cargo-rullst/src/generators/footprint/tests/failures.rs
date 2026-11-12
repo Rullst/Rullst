@@ -140,7 +140,7 @@ fn a_failed_start_keeps_the_report_shape_with_the_failure_inside() {
             "stage": "build",
             "title": "Release build failed",
             "message": "error: cannot find value `y`",
-            "fix": "Fix the build errors (`cargo build --release`), then run green again.",
+            "fix": "Fix the build errors (`cargo build --release`), then run footprint again.",
         })
     );
     assert_eq!(value["target"]["url"], serde_json::Value::Null);

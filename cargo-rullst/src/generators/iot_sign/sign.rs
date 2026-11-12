@@ -71,6 +71,11 @@ fn check_version(version: &str) -> Result<(), IotSignError> {
 }
 
 fn open(path: &Path) -> Result<File, IotSignError> {
+    // Windows cannot open a directory as a file and reports "access denied",
+    // so a path that names no regular file is refused before it is opened.
+    if std::fs::metadata(path).is_ok_and(|metadata| !metadata.is_file()) {
+        return Err(IotSignError::NotAFile(path.to_path_buf()));
+    }
     let file = File::open(path).map_err(|source| IotSignError::Io {
         path: path.to_path_buf(),
         source,

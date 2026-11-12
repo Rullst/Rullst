@@ -40,7 +40,7 @@ Intentions, not promises; dates follow the evidence gates described below.
   add the test-only checks of the [verification roadmap](#verification-roadmap),
   and prepare an independent review with the
   [external audit kit](docs/src/external-audit-kit.md).
-- **Selected programmes:** the [green software roadmap](docs/src/green-software-roadmap.md)
+- **Selected programmes:** the [resource efficiency roadmap](docs/src/resource-efficiency-roadmap.md)
   and the [legal compliance roadmap](docs/src/legal-compliance-roadmap.md).
 
 ## Status language

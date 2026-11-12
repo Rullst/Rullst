@@ -15,6 +15,7 @@ mod limits;
 mod markup;
 mod rc1_gaps;
 mod releases;
+mod reviewed;
 mod scanner;
 mod syntax;
 

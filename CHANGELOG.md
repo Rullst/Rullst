@@ -51,6 +51,26 @@ A prepared version section does not establish that its tag or crates exist.
   the registry is an ORM model with a migration and a Nexus page, and a
   dashboard shows every device live over Server-Sent Events; it ran with two
   Arduino Uno boards on 2026-11-11.
+- `cargo rullst footprint --check-budget` checks the measured figures
+  against limits in `Rullst.toml` `[footprint.budgets]` (`--budget FILE` reads
+  the table from another file): binary and image size, idle memory,
+  dependency count, CPU and bytes per request, page weight on the first and
+  repeat visit, page requests and third-party origins. An exceeded limit
+  exits with status 1 after the report and is named on stderr with the
+  measured and allowed values; a limit whose figure was not measured is
+  reported as skipped, never as passed; an unknown key or a negative value
+  stops the run before anything is built. The JSON report gains a `budgets`
+  section, and the book shows a CI job.
+- The production monitor (`Server::with_monitor`, `rullst.monitor.v1`)
+  reports the response bytes it sent per route, in the totals and the
+  five-minute window (`bytes_total`, `window.bytes`): the body as sent, after
+  any compression the application applies, counted when a fixed body is
+  recorded or when a streamed one ends, none for `HEAD`, in the same fixed
+  slots as the request counters. `cargo rullst footprint --monitor-url
+  https://app.example` reads them, with the token from `RULLST_MONITOR_TOKEN`
+  (never a command-line argument, sent only over HTTPS or to loopback and
+  never after a redirect), and shows the `--path` route's production bytes
+  per request beside the lab's, in a new `production` section.
 - `cargo rullst iot:keygen` and `cargo rullst iot:sign` (Experimental): sign
   firmware updates for `rullst-iot`'s OTA gate. `iot:keygen --out FILE`
   writes an Ed25519 secret key (mode 0600 on Unix, never printed) and its
@@ -248,6 +268,31 @@ A prepared version section does not establish that its tag or crates exist.
   of `make:pwa` now also stores, when it installs, the `/static/` files its
   offline page links, which have such hashed names; a worker generated before
   stores them the first time a page it controls loads them.
+- `cargo rullst footprint --page-weight` weighs a page as a browser would:
+  the `--path` page and the same-origin stylesheets (with their `url()` and
+  `@import`), scripts, fonts, images, icon and manifest it references, on a
+  first visit and on a repeat visit that honours `Cache-Control` freshness and
+  `ETag`/`Last-Modified` revalidation. It reports bytes as served (compressed
+  when the app compresses), requests, responses from the cache and `304`s,
+  every resource, and the third-party origins the page references, which are
+  listed and never fetched. With `--bench`, every request now sends
+  `Accept-Encoding: zstd, br, gzip` and the report adds the response bytes,
+  bytes per request and the encodings served. `--network-kwh-per-gb` adds a
+  network term (the measured bytes × your energy figure per gigabyte) to the
+  SCI estimate, documented with the sources of typical figures and their
+  limits. Requested by the applications upgraded to 13.0.0-alpha.4.
+- `cargo rullst footprint` measures idle memory and CPU time on macOS
+  (`proc_pidinfo`) and Windows (`GetProcessMemoryInfo`, `GetProcessTimes`),
+  not only on Linux, and finds the app listening on a `--url` port there too
+  (`lsof`, `GetExtendedTcpTable`), with its executable for the binary size.
+- `cargo rullst upgrade` honours a `rullst-upgrade: reviewed V13-…` comment
+  after the code on a review finding's line, or alone on the line above it:
+  the plan leaves that location out, reports the rule's next unmarked
+  location in the file, and counts the marked ones (`Reviewed:` in the plan,
+  `finding_counts.reviewed` in JSON). Must-change findings ignore it.
+  Requested while upgrading an application. The plan of an alpha.4
+  application links the new "Upgrading an alpha.4 application to alpha.5"
+  checklist.
 - CI compares the ORM across databases: the `ORM differential databases` job
   of `ci.yml` runs the same scenarios (`rullst-orm/tests/differential/`:
   `#[derive(Orm)]` CRUD, value round trips, query-builder filters, ordering
@@ -578,6 +623,22 @@ A prepared version section does not establish that its tag or crates exist.
   unchanged (`API error: Gemini returned HTTP 429 Too Many Requests: …`).
   `AiHttpError::new` builds one in custom providers and tests. Reported while
   upgrading an application (`V13-AI-HTTP-STATUS`).
+- **Breaking:** `cargo rullst green` is `cargo rullst footprint`, without an
+  alias, and its JSON report is `rullst.footprint.v1` instead of
+  `rullst.green.v1`; `cargo rullst green` now fails as an unknown command.
+  "Green" read as an environmental claim; the command measures resources and
+  estimates SCI from the operator's figures, and its help, notes and book page
+  now say that the report is a measurement and an estimate, not a
+  certification or an environmental claim, and that an application publishing
+  the numbers is responsible for how it words them. The flags are unchanged;
+  the report keeps its keys and adds `page_weight`, the benchmark's bytes and
+  the SCI's network term. The book page is now `footprint.html` and the green
+  software roadmap the resource efficiency roadmap (the old addresses
+  redirect), and the home screen offers a Footprint Report. `cargo rullst
+  upgrade` reports scripts, CI configuration, Dockerfiles, Makefiles,
+  justfiles and documentation that still run `cargo rullst green` or read
+  `rullst.green.v1` (`V13-CLI-GREEN-RENAMED`), and `V13-CLI-AI-REMOVED` no
+  longer tells alpha.3 applications to use `green`.
 
 ### Removed
 
@@ -655,6 +716,23 @@ describes each replacement.
   namespace and database users sign in through `/signin` and pass the token to
   `SurrealAuth::bearer`, and that the namespace and database must be defined
   before use.
+- The `APP_KEY` comment that `cargo rullst add auth` writes to `.env.example`
+  and the `cargo rullst doctor` fix for an unignored `.rullst_dev_key` still
+  said that development writes the key into the project; since this release it
+  lives in the user state directory (`rullst/dev-keys/`), and an existing
+  `.rullst_dev_key` is only read.
+- `cargo rullst upgrade` decided `V13-LMS-MEDIA-KINDS`,
+  `V13-ORM-TRANSACTION-ERRORS` and `V13-PAGE-BOUNDS` from the raw file text,
+  so a comment or a string could raise them (`captions_url`,
+  `DatabaseError`) or silence one (`MAX_PAGE`). They now read only the code,
+  as `V13-CREDENTIAL-RATE-LIMIT` does; a Nexus field named `"captions_url"`
+  still counts. Reported while upgrading an application.
+- The five upgrade rules for alpha.4 changes added after alpha.4
+  (`V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`,
+  `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS` and
+  `V13-CLI-BLUEPRINTS-REMOVED`) were dated 13.0.0-rc.1 and now ship in
+  13.0.0-alpha.5, the release they are dated with, so an application already
+  on alpha.5 no longer gets them again.
 - `rullst-iot`: `MqttPublish::encode` aborted the program when the allocator
   could not provide the packet buffer, which on a BBC micro:bit V2 with a
   32 KiB heap happened for a 20 KiB payload; it and `CoapRequest::encode`,

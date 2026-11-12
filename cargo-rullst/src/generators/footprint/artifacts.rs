@@ -250,10 +250,10 @@ source = "git+https://example.com/forked#0123abcd"
     /// file; otherwise does nothing. `PATH` holds only the fake engines.
     #[test]
     fn engine_child_fixture() {
-        let Some(report) = std::env::var_os("RULLST_GREEN_ENGINE_REPORT") else {
+        let Some(report) = std::env::var_os("RULLST_FOOTPRINT_ENGINE_REPORT") else {
             return;
         };
-        let outcome = if std::env::var_os("RULLST_GREEN_ENGINE_HANG").is_some() {
+        let outcome = if std::env::var_os("RULLST_FOOTPRINT_ENGINE_HANG").is_some() {
             format!(
                 "{:?}",
                 inspect("docker", "app:1", Duration::from_millis(300))
@@ -267,7 +267,7 @@ source = "git+https://example.com/forked#0123abcd"
     #[cfg(unix)]
     mod engines {
         use super::*;
-        use crate::generators::green::tests::support::{output_within, script, sleep_program};
+        use crate::generators::footprint::tests::support::{output_within, script, sleep_program};
 
         /// `docker` must be asked with `--context default`, `podman` without.
         const DOCKER: &str = r#"[ "$1 $2" = "--context default" ] || exit 64
@@ -300,12 +300,12 @@ echo 777"#;
             command
                 .args([
                     "--exact",
-                    "generators::green::artifacts::tests::engine_child_fixture",
+                    "generators::footprint::artifacts::tests::engine_child_fixture",
                 ])
                 .env("PATH", &bin)
                 .env("FAKE_SLEEP", sleep_program())
                 .env("FAKE_DOCKER", docker.unwrap_or_default())
-                .env("RULLST_GREEN_ENGINE_REPORT", &report)
+                .env("RULLST_FOOTPRINT_ENGINE_REPORT", &report)
                 .env_remove("DOCKER_HOST")
                 .env_remove("CONTAINER_HOST");
             for (name, value) in variables {
@@ -372,7 +372,11 @@ echo 777"#;
 
         #[test]
         fn a_hanging_inspection_is_stopped_at_its_deadline() {
-            let report = engines(Some("hang"), false, &[("RULLST_GREEN_ENGINE_HANG", "1")]);
+            let report = engines(
+                Some("hang"),
+                false,
+                &[("RULLST_FOOTPRINT_ENGINE_HANG", "1")],
+            );
             assert_eq!(report, r#"Err("docker image inspect timed out")"#);
         }
     }

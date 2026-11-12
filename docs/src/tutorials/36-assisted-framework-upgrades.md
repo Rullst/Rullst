@@ -216,7 +216,9 @@ comments and string literals never match an API rule, and macro bodies such as
 parser, and a few generated project files (`.gitignore`, `.dockerignore`,
 `.cargo/config.toml`, `Foundry.toml`, `docker-compose.prod.yml`, Kubernetes
 YAML, an Omni shell under `omni-app/`, `rullst-client.ts`, `Dockerfile`,
-`.env`/`.env.example` keys and release scripts). Files are read without
+`.env`/`.env.example` keys and release scripts, and, for
+`V13-CLI-GREEN-RENAMED`, scripts, CI files, container files, Makefiles and
+documentation up to four directories deep). Files are read without
 following symbolic links; a finding records a rule and a line, never file
 contents. A Rust file that does not parse, is not UTF-8 or is larger than
 2 MiB is listed as `NOT SCANNED`.
@@ -243,7 +245,10 @@ Source findings (rullst-upgrade-rules-v4): 1 must-change, 2 review
 
 A review rule is reported once per file (its first location), except
 `V13-ORM-SKIP-MANAGED-COLUMNS`, which needs a decision per field; a
-must-change rule at every location. The
+must-change rule at every location. A location you reviewed and keep can
+carry a `rullst-upgrade: reviewed` marker (see
+[Fixing the findings](#fixing-the-findings)); the plan then reports the
+rule's next unmarked location. The
 [rule classification](#v12--v13-rule-classification) lists which migration
 rows have rules.
 
@@ -276,8 +281,7 @@ release:
 | 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
-| 13.0.0-alpha.5 | `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-MAIL-MESSAGE-REPLY-TO`, `V13-PRIVACY-CONSENT-CHOICE-MATCH`, `V13-LABS-NON-EXHAUSTIVE-MATCH` |
-| 13.0.0-rc.1 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them) |
+| 13.0.0-alpha.5 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them), `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-MAIL-MESSAGE-REPLY-TO`, `V13-PRIVACY-CONSENT-CHOICE-MATCH`, `V13-LABS-NON-EXHAUSTIVE-MATCH`, `V13-CLI-GREEN-RENAMED` |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -289,10 +293,10 @@ The plan takes the application's Rullst version to be the oldest version that
 a Rullst requirement in the workspace manifests admits (`=13.0.0-alpha.3`,
 or `13.0.0-alpha.1`, a caret requirement) or that `Cargo.lock` holds. When that
 version is a 13.0 prerelease, only the rules introduced after it apply: an
-alpha.4 application gets the alpha.5 and rc.1 rules, an alpha.3 application
-also the alpha.4 rules, an alpha.2 application also the seven alpha.3 rules,
-and an alpha.1 application also the alpha.2 rules, because the earlier
-changes are already in the version it runs. The plan says what it skipped:
+alpha.4 application gets the alpha.5 rules, an alpha.3 application also the
+alpha.4 rules, an alpha.2 application also the seven alpha.3 rules, and an
+alpha.1 application also the alpha.2 rules, because the earlier changes are
+already in the version it runs. The plan says what it skipped:
 
 ```text
 Source findings (rullst-upgrade-rules-v4): 0 must-change, 1 review
@@ -318,10 +322,12 @@ must-change findings gate execution.
 | `migration_row` | First-column title of the row in `migration-v13.md` |
 | `migration_url` | The published table of the v13 migration guide |
 
-The root object adds `finding_counts` (`must_change`, `review`),
-`unscanned_sources` (project-relative paths), `migration_guide` (the
+The root object adds `finding_counts` (`must_change`, `review` and
+`reviewed`, the review locations a `rullst-upgrade: reviewed` marker left
+out), `unscanned_sources` (project-relative paths), `migration_guide` (the
 checklist for the application's version: the alpha.2 one for alpha.2, the
-alpha.3 one for alpha.3 and later 13.0 prereleases, otherwise the table) and
+alpha.3 one for alpha.3, the alpha.4 one for alpha.4 and later 13.0
+prereleases, otherwise the table) and
 `rule_selection`: `current_version` (the application's Rullst version, or
 `null` when it cannot be read), `all_rules` (`--all-rules`, and always `true`
 in project preparations), `skipped_rules` (rules introduced in or before
@@ -350,6 +356,27 @@ A practical order:
    state, and finish with `cargo rullst upgrade` (no further version edits; it
    validates the result).
 4. Run the application-owned gates below.
+
+A `REVIEW` finding that you checked and decided to keep, such as a changelog
+entry that names an old command or code that already bounds its input, can
+carry a marker comment with the rule's code, in any comment syntax, after the
+code on the finding's line or alone on the line directly above it:
+
+```rust,ignore
+// rullst-upgrade: reviewed V13-PAGE-BOUNDS: the extractor caps `page`
+let posts = Post::query().paginate(page, 20).await?;
+```
+
+```yaml
+- run: cargo rullst make:migration:auto # rullst-upgrade: reviewed V13-CLI-MIGRATION-AUTO-STATUS
+```
+
+Several codes can follow one marker (`V13-A, V13-B`), and words after the
+codes are free text. The plan leaves the marked location out, reports the
+rule's next unmarked location in the same file, and counts the marked
+locations (`Reviewed: N review location(s) marked ...`, and
+`finding_counts.reviewed` in JSON). A marker on a `MUST-CHANGE` finding has no
+effect: that code does not build until it changes.
 
 ## Rehearsal on generated starters
 
@@ -449,13 +476,13 @@ is classified for `rullst-upgrade-rules-v4`:
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
   application source (20 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (113 rows);
+  the affected API, feature or configuration, which the rules locate (114 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
   of inputs that previously failed) (105 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 139 rules. A row can map to several rules and a rule to
+has 140 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -562,7 +589,7 @@ the rule together.
 | Blank JSON API starter | (c) none | — | Generator output; existing API projects keep their behaviour |
 | CLI audit lockfile | (c) none | — | CLI |
 | RASP shell signatures | (c) none | — | Request matching; not detectable in source |
-| CLI footprint report | (c) none | — | New CLI command; renamed `green` (CLI `ai` removed, `footprint` renamed `green` row) |
+| CLI footprint report | (c) none | — | New CLI command; renamed `green` in alpha.4 (CLI `ai` removed, `footprint` renamed `green` row) and `footprint` again in alpha.5 (CLI `green` renamed `footprint` row) |
 | CLI `dev`/`dash` shutdown | (c) none | — | CLI |
 | CLI `dev --ts-sync` | (c) none | — | CLI |
 | CLI `dash` live metrics | (c) none | — | CLI |
@@ -658,21 +685,22 @@ the rule together.
 | Connect GitHub email | (b) review | `V13-CONNECT-GITHUB-EMAIL` | `GithubProvider` and `Connect::driver("github", ...)` |
 | Account mail link lifetime | (c) none | — | Only reset lifetimes that previously failed change; the link wording is not located |
 | Generated reset link lifetime | (c) none | — | Generator output; existing projects keep their code |
-| CLI deploy targets removed | (b) review | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-CADDY-HEALTH` | `fly.toml`, `render.yaml`, `railway.json`, `railway.toml`, and `deploy --platform fly\|railway\|render` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4; a root `Caddyfile` with `reverse_proxy app:3000` but without a `health_uri` or `lb_try_duration` line (`V13-DEPLOY-CADDY-HEALTH`, 13.0.0-rc.1) |
-| SQLite database in the deployed image | (b) review | `V13-DEPLOY-SQLITE-URL` | A root `Dockerfile` without `DATABASE_URL` in a project whose `Rullst.toml` `[database] url` (or, without one, `.env.example` `DATABASE_URL`) is SQLite, the check `cargo rullst deploy` warns with, reported at the last `FROM`; introduced in 13.0.0-alpha.4, rule since 13.0.0-rc.1 |
+| CLI deploy targets removed | (b) review | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-CADDY-HEALTH` | `fly.toml`, `render.yaml`, `railway.json`, `railway.toml`, and `deploy --platform fly\|railway\|render` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4; a root `Caddyfile` with `reverse_proxy app:3000` but without a `health_uri` or `lb_try_duration` line (`V13-DEPLOY-CADDY-HEALTH`, 13.0.0-alpha.5) |
+| SQLite database in the deployed image | (b) review | `V13-DEPLOY-SQLITE-URL` | A root `Dockerfile` without `DATABASE_URL` in a project whose `Rullst.toml` `[database] url` (or, without one, `.env.example` `DATABASE_URL`) is SQLite, the check `cargo rullst deploy` warns with, reported at the last `FROM`; introduced in 13.0.0-alpha.4, rule since 13.0.0-alpha.5 |
 | CLI Foundry, Nix, Buildah and gRPC generators removed | (b) review | `V13-DEPLOY-GENERATORS-REMOVED` | `Foundry.toml`, a `nixify` `flake.nix`, `build_buildah.sh`, `src/grpc/mod.rs`, and the removed commands in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 | CLI self-update removed | (b) review | `V13-CLI-SELF-UPDATE-REMOVED` | `rullst update check\|verify\|stage\|install`, or `update guided` with `--scope`/`--root`, in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
 | CLI `ai` removed, `footprint` renamed `green` | (b) review | `V13-CLI-AI-REMOVED` | `rullst ai` or `rullst footprint` in workflows, root scripts, Makefile and justfile; introduced in 13.0.0-alpha.4 |
+| CLI `green` renamed `footprint` | (b) review | `V13-CLI-GREEN-RENAMED` | `cargo rullst green`, `rullst green` or `rullst.green.v1` in CI workflows and configuration, scripts, Dockerfiles and Containerfiles, Makefiles, justfiles and documentation (Markdown and other text formats), up to four directories deep, Rust sources and build output excluded; the first unmarked line per file; introduced in 13.0.0-alpha.5 |
 | Core error console assistant panel | (c) none | — | Development-only page; `handle_autofix` response readers are not located; introduced in 13.0.0-alpha.4 |
-| CLI starters moved to the examples | (b) review | `V13-CLI-BLUEPRINTS-REMOVED` | Workflows, root scripts, Makefile and justfile that pass `--blueprint lms\|blog\|portfolio\|erp` (also `=value`, quoted or on a continuation line); applications generated from the removed starters keep their code; introduced in 13.0.0-alpha.4, rule since 13.0.0-rc.1 |
+| CLI starters moved to the examples | (b) review | `V13-CLI-BLUEPRINTS-REMOVED` | Workflows, root scripts, Makefile and justfile that pass `--blueprint lms\|blog\|portfolio\|erp` (also `=value`, quoted or on a continuation line); applications generated from the removed starters keep their code; introduced in 13.0.0-alpha.4, rule since 13.0.0-alpha.5 |
 | ORM derive dependencies | (c) none | — | Fix of code that previously failed to compile; a `tracing` or `tokio` dependency kept for the derive still works; introduced in 13.0.0-alpha.4 |
 | ORM `FromRow` and SQLx macros | (a) must-change | `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS` | Models deriving `FromRow` beside `Orm` (any path, separate derive attributes included) unless `#[orm(custom_from_row)]`; SQLx derives on other structs and enums and `sqlx::…::query!`-family macros when no manifest enables SQLx's `derive`/`macros` (or its default features); introduced in 13.0.0-alpha.4 |
 | Nexus AI assistant feature | (b) review | `V13-NEXUS-AI-FEATURE` | A `rullst` dependency with `nexus`/`nexus-tz` but not `nexus-ai`, or `rullst-nexus` without default features and without `ai`; introduced in 13.0.0-alpha.4 |
 | Generated starter dependencies | (c) none | — | Generator output for new projects; an unused `tracing-subscriber` in an existing project keeps working; introduced in 13.0.0-alpha.4 |
-| TLS crypto provider | (b) review | `V13-SQLX-TLS-RING`, `V13-SQLX-TLS-NATIVE-ROOTS` | A `sqlx` dependency (any manifest of the workspace, `[workspace.dependencies]` included) or a `[features]` entry that enables `tls-rustls`, `tls-rustls-ring` or `tls-rustls-ring-webpki`, reported once per manifest; `tls-rustls-ring-native-roots` is a separate review (`V13-SQLX-TLS-NATIVE-ROOTS`, 13.0.0-rc.1, also once per manifest), because SQLx 0.9 has no aws-lc-rs feature with native roots and `tls-rustls-aws-lc-rs` trusts the bundled WebPKI roots; the runtime provider defaults need no change; introduced in 13.0.0-alpha.4 |
+| TLS crypto provider | (b) review | `V13-SQLX-TLS-RING`, `V13-SQLX-TLS-NATIVE-ROOTS` | A `sqlx` dependency (any manifest of the workspace, `[workspace.dependencies]` included) or a `[features]` entry that enables `tls-rustls`, `tls-rustls-ring` or `tls-rustls-ring-webpki`, reported once per manifest; `tls-rustls-ring-native-roots` is a separate review (`V13-SQLX-TLS-NATIVE-ROOTS`, 13.0.0-alpha.5, also once per manifest), because SQLx 0.9 has no aws-lc-rs feature with native roots and `tls-rustls-aws-lc-rs` trusts the bundled WebPKI roots; the runtime provider defaults need no change; introduced in 13.0.0-alpha.4 |
 | CLI `auth` on database starters | (c) none | — | CLI behaviour on new runs; earlier generated files are unchanged; introduced in 13.0.0-alpha.4 |
 | CLI `--no-database` files | (c) none | — | Generator output for new projects; an empty `rullst.db` is not located; introduced in 13.0.0-alpha.4 |
-| CLI `make:migration:auto` without a database to compare | (b) review | `V13-CLI-MIGRATION-AUTO-STATUS` | Workflows, root scripts, Makefile and justfile that run `make:migration:auto`, which exits with status 1 when there is no SQLite database to compare; introduced in 13.0.0-alpha.4, rule since 13.0.0-rc.1 |
+| CLI `make:migration:auto` without a database to compare | (b) review | `V13-CLI-MIGRATION-AUTO-STATUS` | Workflows, root scripts, Makefile and justfile that run `make:migration:auto`, which exits with status 1 when there is no SQLite database to compare; introduced in 13.0.0-alpha.4, rule since 13.0.0-alpha.5 |
 | `html!` attribute values and `render_page` | (c) none | — | The compiler's `deprecated` warning locates each `Option` in `name={value}`; the quote escaping and the whole-page htmx answers need no change; introduced in 13.0.0-rc.1 |
 | Internals hidden from the API documentation | (c) none | — | The items still compile in alpha.4; only their documentation and compatibility promise change; introduced in 13.0.0-alpha.4 (alpha.5 makes most private: Hidden internals made private) |
 | Duplicate API paths removed | (a) must-change | `V13-API-ALIAS-PATHS` | `rullst::rullst_orm`, `rullst::security_runtime`, `rullst_mail::mail`, `rullst_mail::drivers::mock` and their `rullst::mail::` forms, in paths and in `use` trees (braced groups included); introduced in 13.0.0-alpha.5 |

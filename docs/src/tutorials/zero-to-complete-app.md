@@ -333,8 +333,8 @@ are revalidated with their `ETag`. Started with the development `.env`, the
 binary answered `200` on `/health`, redirected `/notes` to `/login`, and served
 `/static/rullst.css` Brotli-compressed with `no-cache` and an `ETag`.
 
-Measure the build with `cargo rullst green` (Experimental).
-On its own, `cargo rullst green --path /health` starts the release binary with
+Measure the build with `cargo rullst footprint` (Experimental).
+On its own, `cargo rullst footprint --path /health` starts the release binary with
 `RULLST_ENV=production`, which the SaaS starter refuses until the production
 billing settings exist:
 
@@ -350,19 +350,24 @@ mock billing credentials, or start `./target/release/notes` with the
 development `.env` and measure it from a second terminal:
 
 ```bash
-cargo rullst green --url http://127.0.0.1:3000 --path /health --bench
+cargo rullst footprint --url http://127.0.0.1:3000 --path /health --bench
+cargo rullst footprint --url http://127.0.0.1:3000 --path /login --page-weight
 ```
 
 The report lists what it measured, each with its method: the binary size of
 the running executable, the idle resident memory, the number of third-party
-packages in `Cargo.lock` and, because of `--bench`, the app's CPU time during
-a 10-second loopback load and the CPU time per request. The container image
-size is `NOT MEASURED` until you name an image with `--image`; the idle memory
-and CPU time are measured on Linux only (they read `/proc`). The figures
-describe one run on one machine, with the load generator on the same machine;
-compare runs only on the same setup. green measures no energy: a carbon figure
-appears only as an SCI estimate from your own `--cpu-watts` and
-`--grid-intensity`. See [efficiency figures for an app](../green.md).
+packages in `Cargo.lock` and, because of `--bench`, the app's CPU time and the
+response bytes it served during a 10-second loopback load, each per request.
+With `--page-weight` it loads the sign-in page and the same-origin stylesheet,
+scripts and images it references, and reports their bytes and requests on a
+first visit and on a repeat visit that reuses what the cache headers allow.
+The container image size is `NOT MEASURED` until you name an image with
+`--image`. The figures describe one run on one machine, with the load
+generator on the same machine; compare runs only on the same setup. footprint
+measures no energy: a carbon figure appears only as an SCI estimate from your
+own `--cpu-watts` and `--grid-intensity`, and the report is not a
+certification or an environmental claim. See
+[resource figures for an app](../footprint.md).
 
 Before it serves real users:
 

@@ -308,7 +308,7 @@ const DEV_KEY_FILE: SecretFile = SecretFile {
     name: ".rullst_dev_key",
     tracked: ".rullst_dev_key is tracked by Git; the development key is in the history",
     tracked_fix: "git rm --cached .rullst_dev_key, add it to .gitignore and .dockerignore, and replace the key wherever it was used",
-    unignored_fix: "Add .rullst_dev_key to .gitignore and .dockerignore (rullst::auth::get_app_key() writes it when APP_KEY is not set)",
+    unignored_fix: "Add .rullst_dev_key to .gitignore and .dockerignore (Rullst before 13.0.0-alpha.5 wrote it when APP_KEY was not set and still reads it), or delete it: the development key now lives in the user state directory",
 };
 
 /// `.env` must never be committed; checked only when it exists and Git works.
