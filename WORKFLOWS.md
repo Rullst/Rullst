@@ -280,6 +280,17 @@ acceleration by the hit ratio of a later compatible run, never by weakening
 assertions. SemVer checks fan out from the machine-readable release order, one
 published API per job.
 
+Jobs that keep the setup action's `target/` archive (Swatinem/rust-cache) set
+`cache-on-failure: false`, so a failed or cancelled run never saves one. The
+archive cannot carry libduckdb-sys's shared `target/duckdb-sources` tree: its
+cleanup deletes every file there, including the `.complete` marker, but keeps
+the directories, and a build script that has to run again (for example after
+a lockfile change to one of its build dependencies) cannot publish its sources
+over them (`DirectoryNotEmpty`). Jobs that build with `--all-features` or a
+DuckDB feature therefore run `.github/repair-duckdb-sources.py` after the cache
+is restored; the cached DuckDB library itself is reused. `workflow-lint.yml`
+enforces both rules with `.github/check-rust-cache-policy.py`.
+
 The `Public API snapshot` job of `semver.yml` runs `.github/public-api.py
 --check` (tested by `.github/test-public-api.py`). On the pinned
 `nightly-2026-08-21` it builds the rustdoc JSON of each library package in the

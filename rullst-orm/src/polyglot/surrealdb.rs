@@ -156,7 +156,15 @@ where
                 Some(body),
             )
             .await?;
-        statement_result(envelopes, true).map(|_| ())
+        // SurrealDB answers a CREATE that permissions deny (a VIEWER user, or
+        // `PERMISSIONS FOR create NONE`) with status OK and no record, so an
+        // empty result is not a confirmed write.
+        if result_values(statement_result(envelopes, true)?)?.is_empty() {
+            return Err(invalid_surreal_response(
+                "create returned no record: the statement was denied by permissions, or the record is not readable",
+            ));
+        }
+        Ok(())
     }
 
     async fn find(

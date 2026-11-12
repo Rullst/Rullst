@@ -31,9 +31,38 @@ jobs:
         with:
           rustflags: "-D warnings"
           build-warnings: ""
+          cache-on-failure: false
+
+      - name: Drop incomplete DuckDB sources restored from the Rust cache
+        # Required for cached --all-features builds by
+        # .github/check-rust-cache-policy.py; nothing to do while rullst-iot
+        # does not reach libduckdb-sys.
+        run: python3 .github/repair-duckdb-sources.py
 
       - name: Run helper, simulator-boundary, and signed OTA tests
         run: cargo test -p rullst-iot --all-features
+
+  iot-gateway-example:
+    # The example's registry tests need its SQLite ORM driver, which the
+    # workspace's --all-features run replaces with PostgreSQL (they skip there).
+    name: IoT gateway example (receiver, registry, dashboard)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
+          cache-on-failure: false
+
+      - name: Test the example and the facade receiver
+        run: |
+          cargo test --locked -p rullst-iot-gateway-example
+          cargo test --locked -p rullst --features iot-ingest --test iot_ingest
+          cargo test --locked -p rullst --features iot-ingest --lib iot_ingest
 
   iot-no-std-build:
     name: rullst-iot no_std Cortex-M Target
@@ -48,6 +77,7 @@ jobs:
           rustflags: "-D warnings"
           build-warnings: ""
           target: thumbv7em-none-eabihf
+          cache-on-failure: false
 
       - name: Add ARM target
         run: rustup target add thumbv7em-none-eabihf
@@ -80,6 +110,7 @@ jobs:
           build-warnings: ""
           target: thumbv7em-none-eabihf
           components: llvm-tools-preview
+          cache-on-failure: false
 
       - name: Check the host-generated vectors are current
         run: |
