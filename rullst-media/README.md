@@ -106,7 +106,12 @@ require `MediaError::Unsupported` instead. The kit checks marker validation,
 the create/get/update/delete lifecycle, grant expiry, mode, HTTPS and TTL
 bounds, bounded listing pages and offline determinism, and returns a
 `ConformanceReport`. Run it against the offline mode or a disposable library:
-it creates and deletes videos. See
+it creates and deletes videos. An application-owned adapter creates its own
+grants with `UploadGrant::new(&binding, video, protocol, endpoint, signature,
+expires_at)` and `PlaybackGrant::new(&binding, url, expires_at)`, which take
+the binding's library and mode and refuse non-HTTPS or credential-bearing URLs,
+empty or non-ASCII signatures and impossible expiry times with `InvalidInput`;
+`UploadGrant::with_declaration` adds a declared type and length. See
 [Provider conformance kits](https://github.com/Rullst/Rullst/blob/main/docs/src/provider-conformance.md).
 
 ### Library listing (13.0.0-alpha.5)
