@@ -279,18 +279,33 @@ pub(crate) fn classify(facts: &Facts) -> Friendly {
         return Friendly::new("Cancelled", facts);
     }
     if let Some(moved) = facts.moved {
-        return Friendly::new(
-            format!("The `{}` starter is now an example", moved.name()),
-            facts,
-        )
-        .fix(format!(
-            "Nothing was created. Copy the complete application from {} ({}), or create a \
-             project from a current starter: `cargo rullst new <name> --blueprint blank`, \
-             `api` or `saas`. Projects already generated from it keep working.",
-            moved.directory(),
-            moved.url()
-        ))
-        .docs(MOVED_STARTERS_DOCS);
+        let (title, copy) = if moved.example_removed() {
+            (
+                format!("The `{}` starter was removed", moved.name()),
+                format!(
+                    "Its example was removed in 13.0.0-alpha.5; {} ({}) shows the same CRUD \
+                     with a Nexus back office.",
+                    moved.directory(),
+                    moved.url()
+                ),
+            )
+        } else {
+            (
+                format!("The `{}` starter is now an example", moved.name()),
+                format!(
+                    "Copy the complete application from {} ({}).",
+                    moved.directory(),
+                    moved.url()
+                ),
+            )
+        };
+        return Friendly::new(title, facts)
+            .fix(format!(
+                "Nothing was created. {copy} Or create a project from a current starter: \
+                 `cargo rullst new <name> --blueprint blank`, `api` or `saas`. Projects already \
+                 generated from it keep working."
+            ))
+            .docs(MOVED_STARTERS_DOCS);
     }
     if not_in_project(facts) {
         let mut friendly = Friendly::new("Not inside a Rullst project", facts).docs(START_HERE);

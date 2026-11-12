@@ -162,10 +162,6 @@ RULLST_ENV=development
                 "\n# ── SurrealDB document and graph store ─────────────────────────\nSURREALDB_URL=mock_local\nSURREALDB_NAMESPACE=rullst\nSURREALDB_DATABASE=development\nSURREALDB_TOKEN=\n",
                 "\n# ── SurrealDB document and graph store ─────────────────────────\nSURREALDB_URL=\nSURREALDB_NAMESPACE=\nSURREALDB_DATABASE=\nSURREALDB_TOKEN=\n",
             ),
-            PolyglotIntegration::Qdrant => (
-                "\n# ── Qdrant dense-vector store ──────────────────────────────────\nQDRANT_URL=mock_local\nQDRANT_API_KEY=\n",
-                "\n# ── Qdrant dense-vector store ──────────────────────────────────\nQDRANT_URL=\nQDRANT_API_KEY=\n",
-            ),
         };
         env_content.push_str(development);
         env_example_content.push_str(example);

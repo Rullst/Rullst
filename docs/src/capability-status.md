@@ -77,7 +77,7 @@ homologated.
 | M13 | Audited PQC protocols and sandboxed Wasm extensions | ⏳ Still to implement — not started |
 | M14 | HTMX-first SSR and real Leptos/Dioxus interoperability | 🟡 Still to implement — partial |
 | M15 | Runtime queues/cache/scheduler plus brokered messaging | 🟡 Still to implement — local foundation and admitted standalone Redis profile; other adapters open |
-| M16 | Wasm islands and `#[client_component]` protocol | ⏳ Not implemented — islands (`#[island]`, `make:island`, `build:client`) were removed in 13.0.0-alpha.5; `#[server_function]` and its `wasm32` caller remain |
+| M16 | Wasm islands and `#[client_component]` protocol | ⏳ Not implemented — islands (`#[island]`, `make:island`, `build:client`) were removed in 13.0.0-alpha.5, with the typed browser RPC and `wasm32` caller they used |
 | M17 | Realtime, object storage, media, and packages | 🟡 Still to implement — partial |
 | M18 | LiveView-style server-driven UI | ⏳ Not implemented — Live components and `live::recovery` were removed in 13.0.0-alpha.5; use htmx with `RealtimeSse` or WebSockets |
 | M19 | Radar, agent schemas, spans, and Prometheus | ✅ Implemented — bounded |

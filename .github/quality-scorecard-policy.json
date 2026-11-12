@@ -17,8 +17,8 @@
       "documentation_dx": 15,
       "operations_release": 16,
       "specialist_gate": "none",
-      "finding": "Bounded macro grammar and negative UI diagnostics now include a concrete server-function protocol: versioned typed envelopes, explicit Axum route generation, same-origin Wasm transport, body/correlation/error limits, CSRF composition, two-target Wasm compilation and generated-project evidence; real browser/network ecosystems and host identity policy remain external.",
-      "evidence": ["rullst-macros/Cargo.toml", "rullst-macros/README.md", "rullst-macros/tests", "rullst-core/src/rpc.rs", "rullst/tests/server_function_rpc.rs", "cargo-rullst/src/blueprints/blank/client.rs", "docs/src/tutorials/52-typed-server-functions.md"]
+      "finding": "Bounded macro grammar with negative UI diagnostics: escaped `html!` output with conditional attributes and control flow, role and billing attributes, and compile-time i18n catalogs. The typed browser RPC and its Wasm transport were removed in 13.0.0-alpha.5; host identity policy remains external.",
+      "evidence": ["rullst-macros/Cargo.toml", "rullst-macros/README.md", "rullst-macros/tests"]
     },
     {
       "name": "rullst-orm-macros",
@@ -233,7 +233,7 @@
       "documentation_dx": 15,
       "operations_release": 17,
       "specialist_gate": "none",
-      "finding": "The structural matrix validates 10 supported shapes across the Blank, API and SaaS starters; the former LMS, Blog, Portfolio and ERP blueprints are workspace examples with their own tests. Generated-project and public-CLI suites exercise the distinct database, optional persistence, hot-reload and release boundaries; the earlier 270-profile inventory is historical. Process tests cover v5/v6/v11 upgrade rules, multi-member rollback, retained-failure restore and symlink rejection. Provider accounts, deployment targets and real application acceptance remain external.",
+      "finding": "The structural matrix validates 10 supported shapes across the Blank, API and SaaS starters; the former LMS and Blog blueprints are workspace examples with their own tests. Generated-project and public-CLI suites exercise the distinct database, optional persistence, hot-reload and release boundaries; the earlier 270-profile inventory is historical. Process tests cover v5/v6/v11 upgrade rules, multi-member rollback, retained-failure restore and symlink rejection. Provider accounts, deployment targets and real application acceptance remain external.",
       "evidence": ["cargo-rullst/Cargo.toml", "cargo-rullst/tests/generated_saas_check.rs", "cargo-rullst/tests/generated_cli_profiles.rs", "cargo-rullst/tests/scaffold_contracts.rs", "cargo-rullst/tests/upgrade_cli.rs", "docs/src/cli_reference.md", "docs/src/spec.md"]
     }
   ]

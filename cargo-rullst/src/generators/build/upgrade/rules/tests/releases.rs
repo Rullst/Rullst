@@ -104,6 +104,8 @@ fn rules_carry_the_release_of_their_change() {
             "V13-ISLAND-COMMANDS-REMOVED",
             "V13-LIVE-REMOVED",
             "V13-LIVE-COMMAND-REMOVED",
+            "V13-SERVER-FUNCTIONS-REMOVED",
+            "V13-FRONTEND-ADAPTERS-REMOVED",
             "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE",
             "V13-IOT-OTA-STATE",
             "V13-IOT-CODEC-ERROR-MATCH",
@@ -114,6 +116,9 @@ fn rules_carry_the_release_of_their_change() {
             "V13-PRIVACY-CONSENT-CHOICE-MATCH",
             "V13-LABS-NON-EXHAUSTIVE-MATCH",
             "V13-CLI-GREEN-RENAMED",
+            "V13-ACADEMY-REMOVED",
+            "V13-ORM-QDRANT-REMOVED",
+            "V13-AI-PROVIDER-PRESETS",
         ]
     );
     assert!(codes_introduced_in("13.0.0-rc.1").is_empty());

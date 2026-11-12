@@ -17,8 +17,8 @@ pub use moved::MovedBlueprint;
 
 /// Public blueprint IDs are an on-disk/CLI compatibility contract. Never reorder
 /// them. IDs 1 (LMS), 3 (Blog), 4 (Portfolio) and 5 (ERP) belonged to the
-/// blueprints that moved to the repository's `examples/` in 13.0.0-alpha.4
-/// ([`MovedBlueprint`]); they are never reused.
+/// blueprints that left the CLI in 13.0.0-alpha.4 ([`MovedBlueprint`] names
+/// the repository example that replaces each); they are never reused.
 pub const BLANK_BLUEPRINT_ID: usize = 0;
 pub const SAAS_BLUEPRINT_ID: usize = 2;
 

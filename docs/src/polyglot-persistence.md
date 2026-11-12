@@ -11,11 +11,12 @@
 Rullst keeps explicit relational and specialized persistence contracts. SQLx
 Active Record supports SQLite, PostgreSQL, MySQL and MariaDB. The Blank starter
 can instead use Turso/libSQL as its primary database, through a separate typed
-adapter. SurrealDB is for documents plus bounded read-only graph queries,
-Qdrant for dense vector search and Redis for selected native structures. No
-optional adapter silently changes the application's primary database. MongoDB
-and DuckDB have no adapter since 13.0.0-alpha.5: the
-[recipes](recipes/index.md) use their official crates in application code.
+adapter. SurrealDB is for documents plus bounded read-only graph queries and
+Redis for selected native structures. No optional adapter silently changes the
+application's primary database. MongoDB, DuckDB and Qdrant have no adapter
+since 13.0.0-alpha.5: the [recipes](recipes/index.md) use their official
+crates in application code, and vectors next to their rows stay in PostgreSQL
+with `pgvector`.
 
 Only the SQLx backends work with the `#[derive(Orm)]` query builder, `Schema`,
 `artisan!`, `Server::with_db`, Nexus and Studio's database pages. The
@@ -32,9 +33,9 @@ Using the umbrella crate, next to the primary database profile:
 rullst = { version = "=13.0.0-alpha.4", default-features = false, features = ["strict-postgres", "orm-surrealdb"] }
 ```
 
-Available umbrella features are `orm-turso`, `orm-surrealdb`, `orm-qdrant`
-and `orm-redis`. Direct `rullst-orm` users select `turso`, `surrealdb`,
-`qdrant` or `redis`. There is no
+Available umbrella features are `orm-turso`, `orm-surrealdb` and
+`orm-redis`. Direct `rullst-orm` users select `turso`, `surrealdb` or
+`redis`. There is no
 feature that enables them all: 13.0 removed the `polyglot` and `orm-polyglot`
 aggregates, so list the adapters the application uses.
 
@@ -59,7 +60,7 @@ application, use one or more explicit flags:
 
 ```bash
 cargo rullst new edge_app --default --database mariadb --turso --surrealdb \
-  --qdrant --skip-initial-migration
+  --skip-initial-migration
 ```
 
 MariaDB shares the SQLx MySQL protocol implementation but has its own live
@@ -376,14 +377,14 @@ requires SurrealDB 3.2 or newer and explicit experimental enablement on the
 application: one connection behind a mutex, every query on Tokio's blocking
 pool, prepared parameters and an explicit row limit.
 
-## Specialized Qdrant and Redis stores
+## Specialized Redis store
 
-Qdrant has a separate dense-vector contract rather than a document or Active
-Record facade. See [RAG Systems & Vector Search](tutorials/22-rag-vector-search.md)
-for its bounded collection, upsert, delete and cosine-query API. The project
-wizard and deterministic CLI expose it as the additive `--qdrant` choice.
+For dense vectors, use `pgvector` in PostgreSQL (see
+[RAG Systems & Vector Search](tutorials/22-rag-vector-search.md)) or the
+[Qdrant recipe](recipes/qdrant.md), which replaced the Qdrant adapter in
+13.0.0-alpha.5.
 
-Redis native structures are also explicit and namespaced:
+Redis native structures are explicit and namespaced:
 
 ```rust,no_run
 use rullst_orm::{

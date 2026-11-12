@@ -12,6 +12,7 @@
 //! REVIEW finding's line leaves that location out of the plan.
 
 mod alpha5_runtime;
+mod alpha5_slimming;
 mod api_cleanups;
 mod catalog;
 mod files;

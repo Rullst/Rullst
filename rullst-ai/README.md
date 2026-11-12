@@ -32,14 +32,22 @@ cover the same API with more context.
 | OpenAI | yes | yes | yes | yes | yes |
 | Gemini | yes | yes | yes | yes | yes |
 | Anthropic | yes | yes | no | prompt-constrained | no |
-| DeepSeek | yes | no | no | yes | `deepseek-v4-flash` |
-| Ollama | yes | model-dependent | yes | yes | local API only |
+| DeepSeek (compatible preset) | yes | no | no | yes | `deepseek-flash`, `deepseek-v4-pro` (and the older `deepseek-v4-flash`) |
+| Ollama (compatible preset) | yes | model-dependent | yes | yes | model-dependent |
 | OpenAI-compatible local/cloud | yes | declared | declared | declared | declared |
+
+DeepSeek and Ollama are presets of the OpenAI-compatible adapter:
+`OpenAiCompatibleProvider::deepseek(api_key)` (DeepSeek's API, model
+`deepseek-flash`, `try_with_model` for another; JSON Schema output goes to
+DeepSeek's `/responses`) and `OpenAiCompatibleProvider::ollama(host, model)`
+(the server's `/v1` API, no credential, embeddings with `nomic-embed-text`).
+Both also stream with usage. They replace the `DeepSeekProvider` and
+`OllamaProvider` types of 13.0.0-alpha.4.
 
 Unsupported capabilities return `AiError::UnsupportedCapability`; they do not silently switch to
 an unrelated endpoint or fabricate a live-provider result.
 
-The native OpenAI, Gemini, Anthropic, DeepSeek and Ollama adapters also disable
+The native OpenAI, Gemini and Anthropic adapters and the OpenAI-compatible adapter also disable
 HTTP redirects and ambient proxy settings. Their pooled HTTP transport has a
 five-second connection deadline, the existing configurable whole-request
 deadline (30 seconds by default), and a two-MiB JSON response ceiling enforced
@@ -185,14 +193,15 @@ defense-in-depth design; it is not a proof that arbitrary model output is safe.
 total and cached-input token counts. Built-in providers read only their
 documented response fields: OpenAI and DeepSeek `usage` (`prompt_tokens`,
 `completion_tokens`, `total_tokens`, cached prompt tokens), Anthropic `usage`
-(input includes cache reads and writes), Gemini `usageMetadata` (thinking tokens
-count as output) and Ollama `prompt_eval_count`/`eval_count`; an OpenAI-compatible
-server's `usage` is read when it sends one. Missing counts stay `None`, offline
+(input includes cache reads and writes) and Gemini `usageMetadata` (thinking
+tokens count as output); an OpenAI-compatible server's `usage`, Ollama's
+included, is read when it sends one. Missing counts stay `None`, offline
 mocks report none, and a custom provider reports none until it overrides the
 defaulted trait method. Streams report usage once through `AiStreamSink::usage`
 and `StreamSummary::usage()`. An OpenAI-compatible configuration requests it with
 `OpenAiCompatibleCapabilities::with_stream_usage()` (`stream_options.include_usage`),
-which only endpoints that accept that field (OpenAI, DeepSeek) should declare.
+which only endpoints that accept that field (OpenAI, DeepSeek, Ollama) should
+declare; the DeepSeek and Ollama presets declare it.
 Rullst does not price tokens.
 
 ## Bounded streaming and explicit cancellation
@@ -386,7 +395,7 @@ remote definition `[site-logo]: https://...` in another are.
 `InMemoryRagRetriever` supplies bounded tenant-partitioned cosine retrieval for tests, local
 development, and small ephemeral datasets. It is not durable or distributed. Production
 applications implement the static-dispatch `RagRetriever` boundary over a store such as Rullst ORM
-pgvector or Qdrant and must enforce authoritative tenant/ownership predicates in that store. The
+pgvector or an application's Qdrant client and must enforce authoritative tenant/ownership predicates in that store. The
 pipeline's tenant-tag check is an additional invariant, not datastore authorization.
 
 `DurableRagAuditTrail` and `DurableToolAuditTrail` provide bounded synchronous
@@ -525,9 +534,9 @@ selection, content-type/schema validation and data minimization.
 
 ## Offline mode
 
-OpenAI, Gemini, Anthropic, DeepSeek, and compatible cloud endpoints select
+OpenAI, Gemini, Anthropic, the DeepSeek preset, and compatible cloud endpoints select
 deterministic offline mode when their API key is empty or starts with `mock_`.
-Ollama uses an empty or `mock_*` host; the compatible adapter also exposes an
+The Ollama preset uses an empty or `mock_*` host; the compatible adapter also exposes an
 explicit `mock` constructor. Plain `try_local` is deliberately live because no
 credential is its valid loopback configuration. Offline branches return before
 HTTP dispatch and cover every capability the provider declares. Unsupported
@@ -537,7 +546,7 @@ live capabilities remain typed errors in offline mode.
 `DEEPSEEK_API_KEY`, `GROQ_API_KEY` (with `GROQ_MODEL`), and `OLLAMA_HOST` (with an optional
 `OLLAMA_MODEL`, default `llama3`). If none is configured,
 it selects an offline OpenAI fixture; it never probes localhost implicitly. `OLLAMA_HOST` (and
-the host given to `OllamaProvider::new`) is read the way Ollama reads it: a scheme-less
+the host given to `OpenAiCompatibleProvider::ollama`) is read the way Ollama reads it: a scheme-less
 `127.0.0.1:11434` or `localhost` means `http` and port 11434 unless a port is named.
 
 ## JSON mode versus structured output

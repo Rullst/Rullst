@@ -10,7 +10,7 @@ pin and upgrade for every 13.x release. To keep 13.x maintainable by a small
 team, Rullst documents such integrations as recipes instead: application code
 that uses the official SDK directly and follows the framework's conventions.
 
-13.0.0-alpha.5 removed two adapters this way:
+13.0.0-alpha.5 removed three adapters this way:
 
 - **MongoDB** (`MongoDbStore`, the `orm-mongodb` feature): a thin layer over
   the official `mongodb` driver. An application that uses the driver directly
@@ -20,6 +20,11 @@ that uses the official SDK directly and follows the framework's conventions.
   C++ engine took most of a cold build, it once needed a security-advisory
   exception for the `zip` release its build script used, it broke the CI
   cache, and no application was known to use it.
+- **Qdrant** (`QdrantStore` and the `VectorRepository` API, the `orm-qdrant`
+  feature): four REST operations (create a collection, upsert, delete, search)
+  with no tenant filter. The official `qdrant-client` gives an application
+  filters, payload indexes and the whole API; vectors next to their rows stay
+  in PostgreSQL with `pgvector`.
 
 The [migration guide](../migration-v13.md#upgrading-an-alpha4-application-to-alpha5)
 lists what changed, and `cargo rullst upgrade` reports the removed features and
@@ -59,3 +64,4 @@ names.
 
 - [MongoDB with the official driver](mongodb.md)
 - [DuckDB analytics with the official crate](duckdb.md)
+- [Qdrant vector search with the official client](qdrant.md)

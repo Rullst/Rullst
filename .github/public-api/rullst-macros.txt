@@ -6,4 +6,3 @@ pub macro rullst_macros::i18n_catalog!
 pub attribute #[rullst_macros::memoize]
 pub attribute #[rullst_macros::require_role]
 #[deprecated] pub attribute #[rullst_macros::route]
-pub attribute #[rullst_macros::server_function]

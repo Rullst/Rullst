@@ -68,7 +68,7 @@ SHA-256:
 project's `static/` receives these exact bytes.
 
 HTML scaffolds emit both scripts and the license into `static/`; the standard
-page helper and ERP load the same-origin htmx script. A page that uses
+page helper loads the same-origin htmx script. A page that uses
 `hx-ext="sse"` loads `/static/htmx-ext-sse-1.9.12.js` itself, after htmx and
 with the request's CSP nonce, and connects to a route that returns
 `rullst::realtime::RealtimeSse`. Applications using `render_page` without

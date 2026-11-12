@@ -56,8 +56,8 @@ pub enum Commands {
         /// Adds SurrealDB as a side store (documents and read-only graph queries)
         #[arg(long)]
         surrealdb: bool,
-        /// Adds Qdrant as a side store (dense-vector search)
-        #[arg(long)]
+        /// Removed in 13.0.0-alpha.5; always rejected with the Qdrant recipe
+        #[arg(long, hide = true)]
         qdrant: bool,
     },
     /// Creates a new Controller in the src/controllers/ folder
@@ -317,16 +317,6 @@ pub enum Commands {
         /// Automatically attempt to install missing components or fix environment configurations
         #[arg(long)]
         fix: bool,
-    },
-    /// Evaluates the Academy production-boundary contract without claiming certification
-    #[command(name = "academy:doctor")]
-    AcademyDoctor {
-        /// JSON evidence declarations; omitted requirements remain NOT_EVALUATED
-        #[arg(long)]
-        evidence: Option<PathBuf>,
-        /// Emits the normalized diagnostic as machine-readable JSON
-        #[arg(long)]
-        json: bool,
     },
     /// Writes an inspectable Axum/Tokio-oriented migration entry point
     Eject {

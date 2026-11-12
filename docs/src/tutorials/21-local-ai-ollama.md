@@ -1,6 +1,6 @@
 # Tutorial 21: Explicit Local AI with Ollama 🤖
 
-Use an explicit `OllamaProvider` when a workload must not fall through to a
+Use an explicit Ollama provider when a workload must not fall through to a
 configured cloud provider. `AiClient::auto()` is a convenience fallback chain;
 it is not an isolation policy when cloud API keys are also present.
 
@@ -32,7 +32,7 @@ rather than silently during a request.
 ## Step 2: Construct the provider explicitly
 
 ```rust,no_run
-use rullst::ai::{AiClient, AiError, providers::ollama::OllamaProvider};
+use rullst::ai::{AiClient, AiError, providers::openai_compatible::OpenAiCompatibleProvider};
 
 /// Reads a setting from the process environment, then `.env`.
 fn required_setting(name: &str) -> Result<String, AiError> {
@@ -44,7 +44,7 @@ fn required_setting(name: &str) -> Result<String, AiError> {
 pub async fn summarize_lesson(text: &str) -> Result<String, AiError> {
     let host = required_setting("OLLAMA_HOST")?;
     let model = required_setting("OLLAMA_MODEL")?;
-    let client = AiClient::new(OllamaProvider::new(host, model));
+    let client = AiClient::new(OpenAiCompatibleProvider::ollama(host, model)?);
 
     client
         .prompt(&format!(
@@ -54,8 +54,15 @@ pub async fn summarize_lesson(text: &str) -> Result<String, AiError> {
 }
 ```
 
-A missing setting returns `AiError::ConfigError`, and a server that cannot be
-reached returns `AiError::RequestError`; neither falls back to another provider.
+`OpenAiCompatibleProvider::ollama` sends the requests to Ollama's
+OpenAI-compatible API under `/v1` (Ollama 0.5 or later) without a credential;
+it reads the host the way Ollama reads `OLLAMA_HOST`, so `127.0.0.1:11434`
+without a scheme also works. A missing setting or a malformed host or model
+returns `AiError::ConfigError`, and a server that cannot be reached returns
+`AiError::RequestError`; neither falls back to another provider. The same
+client also streams (`StreamingAiClient`), embeds with `nomic-embed-text`
+(`.try_with_embedding_model(...)` selects another) and accepts images and JSON
+Schema output when the model supports them.
 
 The high-level client applies Rullst's mandatory prompt/PII guardrails before
 dispatch. Model output remains untrusted: escape it for HTML, validate structured

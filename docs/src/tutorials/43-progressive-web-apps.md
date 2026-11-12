@@ -232,17 +232,20 @@ clear the store when the user signs out.
 On the server, accept each key once. Validate it, store it with the result in
 the same transaction as the write (a unique index on the key), answer a
 repeated key with the stored result, and check permissions, ownership and
-revisions again on every replay. `IdempotencyKey` validates the header before
-any work:
+revisions again on every replay. Check the header's shape before any work:
 
 ```rust
-use rullst::client_contract::IdempotencyKey;
 use rullst::http::HeaderMap;
 
-/// The replay key of a queued write, or `None` when it is missing or malformed.
-fn replay_key(headers: &HeaderMap) -> Option<IdempotencyKey> {
+/// The replay key of a queued write, or `None` when it is missing or malformed:
+/// 8 to 128 bytes of ASCII letters, digits, `-`, `_`, `.` or `:`.
+fn replay_key(headers: &HeaderMap) -> Option<String> {
     let value = headers.get("idempotency-key")?.to_str().ok()?;
-    IdempotencyKey::new(value).ok()
+    let valid = (8..=128).contains(&value.len())
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':'));
+    valid.then(|| value.to_owned())
 }
 
 let mut headers = HeaderMap::new();

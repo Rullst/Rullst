@@ -69,11 +69,10 @@ fn every_side_store_says_so_in_full_at_80_columns() {
             "SurrealDB",
             "side store: documents, read-only graph queries",
         ),
-        ("Qdrant", "side store: dense-vector search"),
     ] {
         assert!(row(&rows, label).ends_with(hint), "{label}: {rows:#?}");
     }
-    for removed in ["MongoDB", "DuckDB"] {
+    for removed in ["MongoDB", "DuckDB", "Qdrant"] {
         assert!(
             !options.iter().any(|(name, _)| *name == removed),
             "{removed} is no longer a side store"

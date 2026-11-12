@@ -79,7 +79,7 @@ candidate's release line, including the source policy of reused runs.
   full-matrix run points to the exact candidate tree.
 
 Each operating system runs seven shards: the non-CLI workspace (with the
-Blog, ERP, LMS, Portfolio and WebGPU examples), ordinary CLI targets, three
+Blog, LMS and WebGPU examples), ordinary CLI targets, three
 public-profile groups and two generated-starter groups; the partitions keep
 every case. Hosted CI permits two nested compiler jobs for generated builds,
 and each CLI shard fetches the locked registry inventory before its generated
@@ -176,6 +176,25 @@ starter (no HTML) is covered by the ZAP baseline instead. This is automated
 evidence for the pages exercised, not WCAG conformance or screen-reader
 testing.
 
+`Starter footprint budgets` runs `.github/check-starter-footprint.py`: with
+the CLI built from the checkout, it generates the Blank, SaaS and API starters
+(framework crates resolved from the checkout as above), builds each in release
+mode with its generated `[profile.release]` and the toolchain of
+`rust-toolchain.toml`, applies its migrations and runs `cargo rullst footprint
+--env staging --page-weight --bench --budget .github/starter-footprint/<starter>.toml`.
+Blocking: a limit exceeded (release binary size, idle resident memory,
+dependency count, bytes per request of `GET /`, and that page's first-visit
+and repeat-visit bytes, requests and third-party origins), a limited figure
+that was not measured, or a starter that does not build or start. CPU time
+per request is reported in the job summary, never limited: it varies between
+shared runners. The JSON reports are kept as an artifact. Its triggers follow
+the deployment jobs (pull requests only when they change a framework crate,
+the workspace manifest or lockfile, `rust-toolchain.toml`, the starter
+templates, `footprint` or the check); it is not a required release job. The
+figures describe one GitHub-hosted Linux runner, not users' machines;
+[MAINTAINING.md](MAINTAINING.md#starter-footprint-budgets) says how a limit
+is raised on purpose.
+
 ### Native CLI artifacts and browser checks
 
 Manual all-platform `all` and `cli-standard` selections call
@@ -188,10 +207,11 @@ attests the executables and manifests in build provenance and adds them as
 release assets only after attestation and registry publication.
 
 The Linux `workspace` shard sets `RULLST_UI_BROWSER_TESTS=1` (Node 24,
-Chromium) and runs real Nexus and Portfolio-example HTML through
+Chromium) and runs real Nexus HTML through
 `.github/mobile-ui-browser-smoke.mjs`: drawer dismissal and focus, no-JS
-behaviour, layouts at 320–1440px, long content and reduced motion, with CDN
-resources blocked and the Nexus shell under the default production CSP.
+behaviour, layouts from 390 to 1200px, wide tables, save errors over the
+record dialog and reduced motion, with CDN resources blocked and the Nexus
+shell under the default production CSP.
 Missing browser prerequisites fail the shard. This is not WebKit/Firefox,
 device or WCAG evidence.
 
@@ -566,11 +586,11 @@ mutant, compiled incrementally without sccache.
 | `messaging-redis` | `rullst-messaging/src/redis_streams/**` | the password, TLS, fault, ordering, outbox and bounds contracts and the AOF restart exercise |
 | `connect-sql` | `rullst-connect/src/challenge/sql/postgres.rs`, `sql/mysql.rs` (the wrapper also owns a MySQL server, which each contract resets by dropping its table) | `postgres_challenge_contract`, `mysql_challenge_contract` |
 | `orm-sqlite` | `rullst-orm/src/**` and `rullst-orm-macros/src/**`, test files excluded; select files with `mutants_regex` (for example `^rullst-orm/src/pool/savepoint\.rs:`) | every `rullst-orm` test target, built with `drivers-all` (the SQLx `Any` pool) |
-| `orm-polyglot` | the same files; select the optional-backend modules (`polyglot`, `scout`, `redis_data`, `query_cache`) with `mutants_regex` | every `rullst-orm` test target, built with `drivers-all` and the Redis, SurrealDB, Turso, Scout HTTP and Qdrant features, with an owned Redis server for the `RULLST_TEST_REDIS_URL` contracts |
+| `orm-polyglot` | the same files; select the optional-backend modules (`polyglot`, `scout`, `redis_data`, `query_cache`) with `mutants_regex` | every `rullst-orm` test target, built with `drivers-all` and the Redis, SurrealDB, Turso and Scout HTTP features, with an owned Redis server for the `RULLST_TEST_REDIS_URL` contracts |
 | `orm-sql-servers` | the same files; select the PostgreSQL and MySQL/MariaDB branches with `mutants_regex` | `matrix_postgres`, `matrix_mysql` and `matrix_mariadb`, built with `drivers-all`; their testcontainers start a disposable server per test binary, and a server that cannot start fails the run |
 | `orm-strict-postgres` | the same files | `matrix_postgres`, built with `strict-postgres` only, which also exercises the native enum types and typed binds of that pool |
 | `orm-strict-mysql` | the same files | `matrix_mysql`, built with `strict-mysql` only |
-| `orm-polyglot-servers` | the same files; select the optional backends' live paths with `mutants_regex` | the SurrealDB, document-recovery (SurrealDB), Qdrant, Meilisearch, Redis data and Turso testcontainers matrices, built like `orm-polyglot` |
+| `orm-polyglot-servers` | the same files; select the optional backends' live paths with `mutants_regex` | the SurrealDB, document-recovery (SurrealDB), Meilisearch, Redis data and Turso testcontainers matrices, built like `orm-polyglot` |
 
 `orm-sqlite` owns no server. The all-feature build selects the strict
 PostgreSQL pool and compiles the SQLite behaviour tests of `rullst-orm` out;
@@ -658,7 +678,7 @@ dependency graph make static estimates unreliable.
 | :--- | :--- | :--- | :--- |
 | [`architecture.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/architecture.yml) | main/v12/v13 push and PR, manual | Blocking | Compares Cargo's publishable non-dev internal dependency graph with the reviewed `crate-architecture-policy.json`; unreviewed normal/build edges, removals, or optionality changes fail, while test-only dev-dependencies do not masquerade as production coupling. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, the ORM differential comparison of SQLite, PostgreSQL, MySQL and MariaDB, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), the first-hour documentation path run as written (manual, nightly and pull requests changing a marked page or the CLI), the generated Blank and SaaS starters driven in Chromium, Firefox and WebKit with keyboard, CSP and axe-core checks (manual, nightly and pull requests changing the starters, `html!` or Core's pages, headers or CSRF), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, the ORM differential comparison of SQLite, PostgreSQL, MySQL and MariaDB, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), the first-hour documentation path run as written (manual, nightly and pull requests changing a marked page or the CLI), the generated Blank and SaaS starters driven in Chromium, Firefox and WebKit with keyboard, CSP and axe-core checks (manual, nightly and pull requests changing the starters, `html!` or Core's pages, headers or CSRF), release builds of the Blank, SaaS and API starters checked against their footprint budgets (manual, nightly and pull requests changing a framework crate, the lockfile, the toolchain or the starters), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from full/CLI manual Rust CI or admitted tag release | Blocking caller job; required release evidence | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories before attestation. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation with a pinned, zero-retry, bounded-concurrency nextest scheduler and retained JUnit inventory; a focused default-SQLite pass for ORM/Studio/Nexus/the facade; exact local 90% floors; and blocking OIDC-authenticated Codecov upload. Scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |

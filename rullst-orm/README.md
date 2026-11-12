@@ -16,8 +16,8 @@
 Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightful, fluent syntax of Active Record frameworks directly to the high-performance Rust ecosystem.
 
 **Maturity: Core** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
-The optional store adapters (Turso, SurrealDB, Qdrant, Scout search, Redis
-structures) document their own validation boundaries below. MongoDB and DuckDB
+The optional store adapters (Turso, SurrealDB, Scout search, Redis structures)
+document their own validation boundaries below. MongoDB, DuckDB and Qdrant
 have no adapter since 13.0.0-alpha.5: the
 [recipes](https://rullst.github.io/Rullst/book/recipes/index.html) use their
 official crates in application code.
@@ -125,11 +125,6 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   `save_with_embedding(&rullst_ai::AiClient)` to models with an
   `#[orm(embedding_for = "...")]` vector field. The application must also
   depend on `rullst-ai`, whose client the generated method names.
-- **Bounded Qdrant Search**: `qdrant` exposes validated dense-cosine collection,
-  single-point upsert/delete and bounded nearest-neighbor query operations with
-  deterministic fallback, authenticated protocol fixtures and a digest-pinned
-  live lifecycle. Named/sparse vectors, arbitrary filters and ANN tuning remain
-  explicit provider/application work.
 - **Native Redis Structures**: `redis` adds a separately namespaced Hash, Set
   and Sorted Set datastore with bounded inputs/reads, TLS-required remote
   endpoints, redacted ACL credentials and a deterministic fallback. A pinned
