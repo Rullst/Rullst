@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794489189980,
+  "lastUpdate": 1794492442112,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -33291,6 +33291,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1537,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "32619c37965c80856732727ce8f4682015a0dd46",
+          "message": "Merge pull request #676 from Rullst/docs/v13-alpha5-tier-promotions\n\ndocs: promote iot, media, labs, privacy and supervision to Extension",
+          "timestamp": "2026-11-12T10:58:06-03:00",
+          "tree_id": "b6b534e71e67900e1b990ce73a845146bf2e7ef7",
+          "url": "https://github.com/Rullst/Rullst/commit/32619c37965c80856732727ce8f4682015a0dd46"
+        },
+        "date": 1794492438110,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 671,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 883,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 402,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1975,
+            "range": "± 35",
             "unit": "ns/iter"
           }
         ]
