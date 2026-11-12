@@ -420,12 +420,33 @@ fn expect_close(response: StreamResponse) -> Result<(), PolyglotError> {
 
 fn server_error(error: ServerError) -> PolyglotError {
     let code = error.code.filter(|code| !code.is_empty());
+    if is_unique_violation(code.as_deref(), &error.message) {
+        return PolyglotError::Conflict;
+    }
     PolyglotError::Driver {
         backend: "Turso",
         message: match code {
             Some(code) => format!("Hrana server error {code}: {}", error.message),
             None => format!("Hrana server error: {}", error.message),
         },
+    }
+}
+
+/// Whether a Hrana error is a UNIQUE or PRIMARY KEY violation, which the SQL
+/// adapters report as a conflict.
+///
+/// A Hrana v3 error carries only a message and SQLite's primary result code:
+/// libSQL server sends `SQLITE_CONSTRAINT` for every constraint kind (UNIQUE,
+/// PRIMARY KEY, NOT NULL, CHECK, FOREIGN KEY) and no extended code such as
+/// `SQLITE_CONSTRAINT_UNIQUE`. Under that code, the fixed text SQLite writes
+/// for both unique-index and primary-key violations, `UNIQUE constraint
+/// failed`, is the only discriminator left. An extended code is used directly
+/// when a server sends one.
+fn is_unique_violation(code: Option<&str>, message: &str) -> bool {
+    match code {
+        Some("SQLITE_CONSTRAINT_UNIQUE" | "SQLITE_CONSTRAINT_PRIMARYKEY") => true,
+        Some("SQLITE_CONSTRAINT") => message.contains("UNIQUE constraint failed"),
+        _ => false,
     }
 }
 

@@ -17,7 +17,7 @@ pub(super) async fn execute_sqlite(
         .execute(pool)
         .await
         .map(|result| result.rows_affected())
-        .map_err(|error| PolyglotError::driver("Turso offline", error))
+        .map_err(statement_error)
 }
 
 pub(super) async fn transaction_sqlite(
@@ -37,7 +37,7 @@ pub(super) async fn transaction_sqlite(
         let result = query
             .execute(&mut *transaction)
             .await
-            .map_err(|error| PolyglotError::driver("Turso offline", error))?;
+            .map_err(statement_error)?;
         affected.push(result.rows_affected());
     }
     transaction
@@ -59,16 +59,23 @@ pub(super) async fn query_sqlite(
     .fetch(pool);
     let mut materialized = Vec::new();
     while materialized.len() < limit.get() as usize {
-        let Some(row) = rows
-            .try_next()
-            .await
-            .map_err(|error| PolyglotError::driver("Turso offline", error))?
-        else {
+        let Some(row) = rows.try_next().await.map_err(statement_error)? else {
             break;
         };
         materialized.push(from_sqlite_row(&row)?);
     }
     Ok(materialized)
+}
+
+/// A UNIQUE or PRIMARY KEY violation is a conflict, as on the remote server
+/// and in the SQL adapters; SQLite's extended result code identifies it.
+fn statement_error(error: sqlx::Error) -> PolyglotError {
+    match &error {
+        sqlx::Error::Database(database) if database.is_unique_violation() => {
+            PolyglotError::Conflict
+        }
+        _ => PolyglotError::driver("Turso offline", error),
+    }
 }
 
 fn bind_sqlite<'query>(

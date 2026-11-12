@@ -5,7 +5,8 @@ mod support;
 use std::time::Duration;
 
 use rullst_orm::polyglot::{
-    TursoConfig, TursoMigration, TursoQueryLimit, TursoStatement, TursoStore, TursoValue,
+    PolyglotError, TursoConfig, TursoMigration, TursoQueryLimit, TursoStatement, TursoStore,
+    TursoValue,
 };
 use testcontainers::GenericImage;
 use testcontainers::core::IntoContainerPort;
@@ -17,6 +18,13 @@ struct RemoteUser {
     id: i64,
     name: String,
     active: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, rullst_orm::Orm)]
+#[orm(table = "remote_tags", backend = "turso")]
+struct RemoteTag {
+    id: String,
+    label: String,
 }
 
 fn statement(sql: &str, parameters: Vec<TursoValue>) -> TursoStatement {
@@ -137,7 +145,30 @@ async fn test_matrix_turso_remote_sql_contract() {
             ),
         ])
         .await;
-    assert!(failed.is_err(), "duplicate key transaction must fail");
+    assert!(
+        matches!(failed, Err(PolyglotError::Conflict)),
+        "duplicate key transaction must fail as a conflict: {failed:?}"
+    );
+    let duplicate = store
+        .execute(statement(
+            "INSERT INTO edge_events VALUES (?1, ?2)",
+            vec![TursoValue::Integer(1), TursoValue::Text("again".into())],
+        ))
+        .await;
+    assert!(
+        matches!(duplicate, Err(PolyglotError::Conflict)),
+        "{duplicate:?}"
+    );
+    let missing_label = store
+        .execute(statement(
+            "INSERT INTO edge_events VALUES (?1, NULL)",
+            vec![TursoValue::Integer(3)],
+        ))
+        .await;
+    assert!(
+        matches!(&missing_label, Err(PolyglotError::Driver { message, .. }) if message.contains("NOT NULL constraint failed")),
+        "{missing_label:?}"
+    );
     let rolled_back = store
         .query(
             statement(
@@ -217,4 +248,60 @@ async fn test_matrix_turso_remote_sql_contract() {
         .await
         .expect("typed remote update");
     repository.delete(&user).await.expect("typed remote delete");
+
+    // A nullable text key is never generated: an empty one is refused and
+    // nothing is written; a duplicate key or UNIQUE value is a conflict.
+    store
+        .execute(statement(
+            "CREATE TABLE remote_tags (id TEXT PRIMARY KEY, label TEXT NOT NULL UNIQUE)",
+            vec![],
+        ))
+        .await
+        .expect("text-key table should be created remotely");
+    let tags = store.models::<RemoteTag>();
+    let mut unset = RemoteTag {
+        id: String::new(),
+        label: "no key".to_owned(),
+    };
+    let refused = tags.save(&mut unset).await;
+    assert!(
+        matches!(
+            refused,
+            Err(PolyglotError::InvalidIdentifier {
+                kind: "Turso model primary key",
+                ..
+            })
+        ),
+        "{refused:?}"
+    );
+    assert_eq!(tag_count(&store).await, Some(TursoValue::Integer(0)));
+    let mut rust = RemoteTag {
+        id: "rust".to_owned(),
+        label: "Rust".to_owned(),
+    };
+    tags.create(&mut rust).await.expect("app-assigned text key");
+    for (id, label) in [("rust", "Other"), ("go", "Rust")] {
+        let mut duplicate = RemoteTag {
+            id: id.to_owned(),
+            label: label.to_owned(),
+        };
+        let conflict = tags.create(&mut duplicate).await;
+        assert!(
+            matches!(conflict, Err(PolyglotError::Conflict)),
+            "{id} {label}: {conflict:?}"
+        );
+    }
+    assert_eq!(tag_count(&store).await, Some(TursoValue::Integer(1)));
+}
+
+async fn tag_count(store: &TursoStore) -> Option<TursoValue> {
+    store
+        .query(
+            statement("SELECT COUNT(*) AS c FROM remote_tags", vec![]),
+            TursoQueryLimit::new(1).expect("bounded count"),
+        )
+        .await
+        .expect("remote count")[0]
+        .get("c")
+        .cloned()
 }
