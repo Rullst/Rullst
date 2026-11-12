@@ -1,0 +1,15 @@
+Set `RULLST_PRIVACY_DATABASE` to a new file in an existing private local directory.
+All app processes must use that same file. Initialize it once from the project,
+with the variable exported into the process environment:
+
+```sh
+cargo run --bin privacy-init
+```
+
+Initialization refuses existing files; application startup never repairs or
+recreates consent state. A failed/cancelled bootstrap may leave a partial file
+for explicit operator inspection. Ordinary `cargo run` still selects the main
+application binary. The generated store has a 10,000 subject/tenant/purpose quota;
+plan capacity explicitly before deployment. Expired choices and withdrawals are
+not evicted automatically. This shared-local SQLite profile is not multi-host
+replication and must not use a network filesystem.

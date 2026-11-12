@@ -561,6 +561,21 @@ describes each replacement.
 
 ### Fixed
 
+- `cargo rullst make:age-gate --replay-store postgres` generated no way to
+  create the replay store: `AGE_GATE.md` said to call
+  `PostgresReplayStore::initialize` in a deployment step and application
+  startup only connects, so the app could not start. It now also writes
+  `src/bin/age-init.rs` (`cargo run --bin age-init`, with `default-run` keeping
+  `cargo run` on the application), as `make:privacy` does with `privacy-init`.
+- `cargo rullst make:privacy` always generated the shared-local SQLite consent
+  store, even for a PostgreSQL project, and after an application switched it to
+  `rullst-privacy`'s `consent-postgres` feature, `make:age-gate` (and the other
+  privacy consumers) refused the "unknown privacy feature". `make:privacy` now
+  selects the PostgreSQL store (`PostgresConsentStore`, `consent-postgres`, a
+  `privacy-init` that initializes the schema, and its `PRIVACY.md` setup) when
+  the project's primary database is PostgreSQL, `--consent-store sqlite|postgres`
+  chooses explicitly, and the consumers accept `consent-postgres` (found by the
+  13.0.0-alpha.5 acceptance application).
 - `rullst-orm` SurrealDB adapter: `SurrealDbStore::create` reported a write
   that SurrealDB had refused. SurrealDB 3 answers a CREATE denied by
   permissions (a `VIEWER` database user, or a record user on a table with
