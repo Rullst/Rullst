@@ -173,7 +173,12 @@ mod tests {
         assert!(page.contains("<style nonce=\"nonce-value\">"));
         assert!(page.contains("ABCD EFGH"));
         assert!(page.contains("action=\"/account/security/mfa/confirm\""));
-        assert!(!page.contains("<script"));
+        // No inline script; a same-origin file (`make:pwa` adds
+        // /static/pwa.js to this layout) is allowed by the CSP.
+        assert!(page.match_indices("<script").all(|(at, _)| page[at..]
+            .split('>')
+            .next()
+            .is_some_and(|tag| tag.contains(" src="))));
         assert!(!page.contains(" style=\""));
     }
 }
