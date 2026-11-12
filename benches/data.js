@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794442025643,
+  "lastUpdate": 1794454944040,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -32535,6 +32535,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1572,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a829e57bb4fd66ce78ac7c55efd62554dc18a57d",
+          "message": "Merge pull request #651 from Rullst/fix/v13-alpha5-acc-consumers-after-mfa\n\nfix(cli): consumer generators after make:mfa and readable new files",
+          "timestamp": "2026-11-11T23:28:11-03:00",
+          "tree_id": "42122713e207045a9666d626f83bd9ec61cc2842",
+          "url": "https://github.com/Rullst/Rullst/commit/a829e57bb4fd66ce78ac7c55efd62554dc18a57d"
+        },
+        "date": 1794454940671,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 379,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 558,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 268,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1008,
+            "range": "± 22",
             "unit": "ns/iter"
           }
         ]
