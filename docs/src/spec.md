@@ -510,8 +510,8 @@ defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidenc
 
 ### v13 source-train and adoption preparation
 
-The development train uses one version, currently `13.0.0-alpha.4`, for every
-publishable package, and exact (`=13.0.0-alpha.4`) internal requirements, so
+The development train uses one version, currently `13.0.0-alpha.5`, for every
+publishable package, and exact (`=13.0.0-alpha.5`) internal requirements, so
 Cargo cannot pair packages from different prereleases. This prepares the CLI's
 actual major-version behavior; it is not a publication or stable-release claim.
 The privacy package joins the candidate inventory with explicit optional facade
@@ -1235,7 +1235,7 @@ variants) wait up to 30 seconds for a pooled connection (SQLx's default) and for
 SQLite's lock, with no outer bound, so such a stall only delays them; they are
 not retried. `WebhookOutbox::open`, however, runs inside the outbox's 10-second
 storage deadline, and on a hosted Windows runner a stall made it fail with
-`Timeout` (13.0.0-alpha.4 and earlier). Since 13.0.0-rc.1, `open` tries again
+`Timeout` (13.0.0-alpha.4 and earlier). Since 13.0.0-alpha.5, `open` tries again
 when that deadline expires, three attempts in total (about 30 seconds): each
 attempt opens its own pool, which no other task uses yet, and every opening
 step is idempotent, so an expired attempt either rolled back or left committed
@@ -1729,7 +1729,7 @@ MySQL/MariaDB pool a UTC instant, in a filter, an `Orm::raw` binding or a
 generated write of a `DateTime<Utc>` or `Option<DateTime<Utc>>` field, is sent
 as its UTC wall time in a `DATETIME` parameter (`NaiveDateTime`), because
 MariaDB turns SQLx's `TIMESTAMP` parameter into `NULL` outside 1970–2038
-(since 13.0.0-rc.1).
+(since 13.0.0-alpha.5).
 `soft_deletes()` keeps a `TEXT` `deleted_at` column. The Turso adapter
 (`TursoMigration`, `TursoModel`) writes its own SQL, so none of these builders
 or date/time codecs apply to it; its timestamps stay text.
@@ -1874,7 +1874,7 @@ the same server-authoritative controls.
   enabled, suggests `HOST=127.0.0.1` so a proxy on the same host cannot be
   bypassed; since 13.0.0-alpha.4 the same line says to keep `HOST=0.0.0.0`
   when the proxy reaches the application over a container network, as in the
-  generated compose deployment, and since 13.0.0-rc.1 it says that a
+  generated compose deployment, and since 13.0.0-alpha.5 it says that a
   container sharing the host network (`--network host`, Quadlet
   `Network=host`) behind a proxy on the host still needs `HOST=127.0.0.1`.
   The default bind address is unchanged.
@@ -2126,12 +2126,12 @@ the same server-authoritative controls.
   produced outside `html!`, such as a sanitizer's or renderer's output. It
   is never needed for `html!` output and must never wrap request data.
 * **Attributes:** `name="text"` is author-owned source and written as it
-  is, except that since 13.0.0-rc.1 a `"` in it (a Rust `\"`) is written
+  is, except that since 13.0.0-alpha.5 a `"` in it (a Rust `\"`) is written
   `&quot;`, so `content="{\"a\":1}"` no longer ends the attribute at the
   second quote; character references the author wrote (`&amp;`) are kept.
   `name={value}` is always written with the value escaped: a `bool` as
   `"true"`/`"false"` (what `aria-*` and `data-*` expect) and `None` as an
-  empty value. Since 13.0.0-rc.1 an `Option` (or `&Option`) value in that
+  empty value. Since 13.0.0-alpha.5 an `Option` (or `&Option`) value in that
   form is deprecated: the output is unchanged, but the expansion raises a
   `deprecated` warning at the value, because `name=""` still turns a boolean
   attribute such as `disabled` or `selected` on. `name?={value}` leaves the
@@ -2831,7 +2831,7 @@ while portability and semantic review remain the model author's responsibility.
   `where_between`, `where_not_between`, `where_col`, their `or_where`
   variants and the per-column helpers) write `Null` as the SQL `NULL` literal
   instead, which takes the column's type, so a comparison with `Null` matches
-  no row on every backend (since 13.0.0-rc.1; PostgreSQL rejected it against a
+  no row on every backend (since 13.0.0-alpha.5; PostgreSQL rejected it against a
   non-text column before) and `where_null` expresses that filter. Tenant IDs take the
   same values: an `I64` tenant gets its own audit (`i64:`) and cache keys but
   does not convert to an `i32` tenant field (generated queries fail with
@@ -4992,7 +4992,7 @@ store package of the same site, only installs it.
   `render_page_with_lang` with extra `Markup` at the end of `<head>`; an htmx
   request still receives only the content.
 * 🟢 **`[Implemented / Bounded]` htmx history restores and boosted requests:**
-  since 13.0.0-rc.1, `render_page`, `render_page_with_lang` and
+  since 13.0.0-alpha.5, `render_page`, `render_page_with_lang` and
   `render_page_with_head` answer `HX-History-Restore-Request: true` (htmx
   1.9.12, and htmx 2 with its default `historyRestoreAsHxRequest`, send it
   with `HX-Request: true` after a history cache miss and replace the whole
@@ -5030,7 +5030,7 @@ store package of the same site, only installs it.
   `make:resource`'s views use Tailwind classes only when the project uses
   Tailwind ([frontend guide](frontend.md#components)).
 * 🟢 **`[Implemented / Bounded]` htmx indicators under the strict CSP:** since
-  13.0.0-rc.1, `render_page`, `render_page_with_lang` and
+  13.0.0-alpha.5, `render_page`, `render_page_with_lang` and
   `render_page_with_head` with a request CSP nonce (Rullst's security
   headers) send `<meta name="htmx-config"
   content='{"includeIndicatorStyles":false}'>` and the loaded htmx release's

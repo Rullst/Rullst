@@ -185,7 +185,7 @@ own, so pin it exactly (the v12 line, `rullst-core@12`, reached end of life on
 16 October 2026):
 
 ```bash
-cargo add rullst-core@=13.0.0-alpha.4
+cargo add rullst-core@=13.0.0-alpha.5
 ```
 
 Core is runtime-only by default. Add just the database capabilities the
@@ -193,7 +193,7 @@ application needs:
 
 ```toml
 [dependencies]
-rullst-core = { version = "=13.0.0-alpha.4", features = ["orm", "queue-sqlite"] }
+rullst-core = { version = "=13.0.0-alpha.5", features = ["orm", "queue-sqlite"] }
 ```
 
 Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis` (or `redis` for

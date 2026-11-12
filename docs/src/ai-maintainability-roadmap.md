@@ -207,9 +207,9 @@ unless marked as delivered.
 | D | Continuous regression programme | Scheduled or manual reruns, versioned baselines and reviewed score changes |
 
 The v12 line reached end of life on 16 October 2026, so every phase belongs to
-v13 or later. 13.0.0-alpha.4 is the 13.0 feature freeze and 13.0.0-rc.1 takes
+v13 or later. 13.0.0-alpha.5 is the 13.0 feature freeze and 13.0.0-rc.1 takes
 only fixes and documentation: new generator formats, fixtures and public support
-profiles that are not in alpha.4 come after 13.0 unless a separate release
+profiles that are not in alpha.5 come after 13.0 unless a separate release
 decision says otherwise.
 
 ## Completion criteria

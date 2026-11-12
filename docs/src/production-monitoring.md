@@ -203,7 +203,7 @@ route, and the endpoint's own requests are not counted in its statistics.
   "schema": "rullst.monitor.v1",
   "generated_at": 1792648800,
   "application": { "name": "shop", "version": "1.4.0" },
-  "framework": { "name": "rullst", "version": "13.0.0-alpha.4" },
+  "framework": { "name": "rullst", "version": "13.0.0-alpha.5" },
   "uptime_seconds": 86400,
   "process": {
     "memory_rss_mb": 48.2,
@@ -309,7 +309,7 @@ switcher in the header. It only connects outwards to your projects; nothing
 new is collected or stored on the servers.
 
 ```bash
-cargo install rullst-studio --version =13.0.0-alpha.4 --no-default-features --features remote --locked
+cargo install rullst-studio --version =13.0.0-alpha.5 --no-default-features --features remote --locked
 rullst-studio                  # http://127.0.0.1:5556/studio
 # or, with the CLI installed:
 cargo rullst studio --remote   # --port 7000 for another port

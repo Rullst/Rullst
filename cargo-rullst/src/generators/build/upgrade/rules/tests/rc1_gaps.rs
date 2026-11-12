@@ -1,4 +1,4 @@
-//! Rules added in 13.0.0-rc.1 for changes of 13.0.0-alpha.4 that no rule
+//! Rules added in 13.0.0-alpha.5 for changes of 13.0.0-alpha.4 that no rule
 //! located: SQLx's ring TLS with native roots, the deployment `Dockerfile`'s
 //! SQLite `DATABASE_URL`, the `Caddyfile`'s health checks, and scripts that
 //! run `make:migration:auto` or a removed `--blueprint`.

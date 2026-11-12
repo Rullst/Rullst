@@ -8,9 +8,9 @@ telemetry, and the optional AI assistant.
 optional and supported for its documented scope. The 13.x stability promise
 begins with stable `13.0.0`.
 
-This README describes the v13 prerelease (`13.0.0-alpha.4`). Cargo never
+This README describes the v13 prerelease (`13.0.0-alpha.5`). Cargo never
 selects a prerelease on its own, so pin it exactly, for example
-`rullst = { version = "=13.0.0-alpha.4", features = ["nexus", "strict-postgres"] }`.
+`rullst = { version = "=13.0.0-alpha.5", features = ["nexus", "strict-postgres"] }`.
 
 The AI assistant (`/nexus/chat`) is this crate's `ai` feature, enabled by
 default, and the `rullst` facade's `nexus-ai` feature: since 13.0.0-alpha.4

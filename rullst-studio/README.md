@@ -55,7 +55,7 @@ prerelease; Cargo never selects a prerelease on its own, so pin it exactly
 (the v12 line, `rullst-studio@12`, reached end of life on 16 October 2026):
 
 ```bash
-cargo add rullst-studio@=13.0.0-alpha.4
+cargo add rullst-studio@=13.0.0-alpha.5
 ```
 
 ### Launching the Studio
@@ -90,7 +90,7 @@ return `403`.
 
 ### Remote projects (v13, since 13.0.0-alpha.3)
 
-The `rullst-studio` binary (`cargo install rullst-studio --version =13.0.0-alpha.4 --no-default-features --features remote --locked`, then
+The `rullst-studio` binary (`cargo install rullst-studio --version =13.0.0-alpha.5 --no-default-features --features remote --locked`, then
 `rullst-studio [--port PORT]`, or `cargo rullst studio --remote`; library
 users enable the non-default `remote` feature; `--no-default-features` skips the
 local Studio's `local` feature, which every driver profile enables, so since

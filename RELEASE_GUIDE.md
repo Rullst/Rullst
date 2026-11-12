@@ -315,9 +315,9 @@ git push origin v13.X.Y
 | `rullst` | Check `rullst/Cargo.toml` |
 | `rullst-macros` | Check `rullst-macros/Cargo.toml` |
 | `cargo-rullst` | Check `cargo-rullst/Cargo.toml` |
-| Current `main` line | `13.0.0-alpha.4` prerelease source; only a reviewed tag publishes it, a branch merge does not |
+| Current `main` line | `13.0.0-alpha.5` prerelease source; only a reviewed tag publishes it, a branch merge does not |
 | Former maintenance line | Frozen `v12`; end of life since 16 October 2026 |
 | Legacy source | Immutable `v5.0.0` tag and published archive |
-| Published v13 prereleases | `13.0.0-alpha.1` (October 11, 2026), `13.0.0-alpha.2` (October 17) and `13.0.0-alpha.3` (October 24); check [crates.io](https://crates.io/crates/rullst/versions) for later ones |
+| Published v13 prereleases | `13.0.0-alpha.1` (October 11, 2026), `13.0.0-alpha.2` (October 17), `13.0.0-alpha.3` (October 24) and `13.0.0-alpha.4` (October 31); check [crates.io](https://crates.io/crates/rullst/versions) for later ones |
 | Release path | `13.0.0-alpha.5` (feature freeze), then `13.0.0-rc.1` (fixes and documentation only), then `13.0.0` |
 | Latest published stable | Check [crates.io](https://crates.io/crates/rullst) and the [v12 record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md) |

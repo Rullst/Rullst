@@ -21,9 +21,9 @@ for Humans and AI."**
 Intentions, not promises; dates follow the evidence gates described below.
 
 - **v13:** `13.0.0-alpha.1` to `alpha.3` were published from 11 to 24
-  October 2026 and `13.0.0-alpha.4` on 31 October. `13.0.0-alpha.5` adds what
-  the applications upgraded to alpha.4 asked for and is the 13.0 feature and
-  public API freeze. Then `13.0.0-rc.1` (fixes and documentation only,
+  October 2026 and `13.0.0-alpha.4` on 31 October. `13.0.0-alpha.5`,
+  prepared on 12 November, adds what the applications upgraded to alpha.4
+  asked for and is the 13.0 feature and public API freeze. Then `13.0.0-rc.1` (fixes and documentation only,
   driven by user feedback) and `13.0.0` stable, from which the
   [maturity tiers](docs/src/maturity.md) apply; see the
   [path to 13.0.0](#path-to-1300).
@@ -219,10 +219,11 @@ the 12.1.0 update experience, then v13 product work) is complete; its
 acceptance boundaries remain in the [delivery plan](docs/src/v13-delivery-plan.md)
 and the [priority revision](docs/src/v13-priorities.md).
 
-### Planned after 13.0.0-alpha.4
+### Delivered in 13.0.0-alpha.5
 
-Work items for later prereleases, not shipped features. They add no milestone
-to the counts above.
+Planned after 13.0.0-alpha.4 and prepared on 12 November 2026 as the
+13.0.0-alpha.5 release candidate; the coordinator records publication in the
+table below. They add no milestone to the counts above.
 
 - **13.0.0-alpha.5: the 13.0 feature and public API freeze.** It carries the
   fixes for the defects the applications found in alpha.4 and these
@@ -298,6 +299,22 @@ to the counts above.
     `SecurityStore`'s `dashmap` fields become private, and the duplicate
     module paths are removed. Each breaking change gets a migration-guide
     entry and, where it can be detected, an upgrade rule.
+  - **Also in this release:** the Qdrant adapter became an
+    [application recipe](docs/src/recipes/qdrant.md); the Academy production
+    preset, which described one application, and the ERP and Portfolio
+    examples were removed; DeepSeek and Ollama became presets of the
+    OpenAI-compatible adapter; provider conformance kits for payment, mail
+    and video adapters; a testing kit for generated applications (page smoke
+    tests, CI, browser tests); streaming OTA verification, `iot:keygen`/`iot:sign`
+    and the `iot_ingest` telemetry receiver; and the remaining Labs,
+    Supervision and Privacy API changes (see the
+    [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-13)).
+
+### Planned after 13.0.0-alpha.5
+
+Work items for later prereleases, not shipped features. They add no milestone
+to the counts above.
+
 - **13.0.0-rc.1: fixes and documentation only.** 13.0.0-alpha.5 freezes the
   features and the public API of 13.0. rc.1 adds no feature: it carries fixes
   for defects found in alpha.5 (by its release admission, the first-hour and
@@ -307,6 +324,9 @@ to the counts above.
   [maturity tiers](docs/src/maturity.md) state which packages the 13.x
   promise covers. After rc.1, changes are limited to defects found in the
   release candidate.
+- **Verification in the rc.1 window (test and process only):** changelog
+  fragments ([#668](https://github.com/Rullst/Rullst/pull/668)), a merge
+  queue, and `Generated starters in browsers` as a required check.
 - **Turso/libSQL beyond the blank and API starters**, only if users ask for it
   and the maintenance cost stays low. Turso can be the primary database only
   in those starters and does not work with `#[derive(Orm)]`, `Schema`,
@@ -334,8 +354,8 @@ to the counts above.
 | **v13.0.0-alpha.2** | `[x] Published prerelease` | All twenty packages were published on 17 October 2026 from tag `v13.0.0-alpha.2` at `0daf4941` ([release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)): the fixes from the alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema` date/time and Nexus changes. A first tag at `669befe6` failed release verification before publishing anything and was replaced. |
 | **v13.0.0-alpha.3** | `[x] Published prerelease` | All twenty packages were published on 24 October 2026 from tag `v13.0.0-alpha.3` at `be336833` ([release run 40129821475](https://github.com/Rullst/Rullst/actions/runs/40129821475)) after all 25 required workflows passed on that commit. See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha3---2026-10-23). |
 | **v13.0.0-alpha.4** | `[x] Published prerelease` | All twenty packages were published on 31 October 2026 from tag `v13.0.0-alpha.4` at `2bd3c2ad` ([release run 41233925160](https://github.com/Rullst/Rullst/actions/runs/41233925160)). See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha4---2026-10-31). |
-| **v13.0.0-alpha.5** | `[ ] Planned` | The 13.0 feature and public API freeze: fixes and additions from the applications upgraded to alpha.4. See [Planned after 13.0.0-alpha.4](#planned-after-1300-alpha4). |
-| **v13.0.0-rc.1** | `[ ] Planned` | Fixes and documentation only after the alpha.5 feature and API freeze. See [Planned after 13.0.0-alpha.4](#planned-after-1300-alpha4). |
+| **v13.0.0-alpha.5** | `[ ] Release candidate` | Prepared on 12 November 2026 and not yet published; the coordinator records the tag, release run and publication here. Twenty packages; the 13.0 feature and public API freeze, with the fixes and additions from the applications upgraded to alpha.4. See [Delivered in 13.0.0-alpha.5](#delivered-in-1300-alpha5) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-13). |
+| **v13.0.0-rc.1** | `[ ] Planned` | Fixes and documentation only after the alpha.5 feature and API freeze. See [Planned after 13.0.0-alpha.5](#planned-after-1300-alpha5). |
 | **v13.0.0** | `[ ] Planned stable` | Follows once rc.1 leaves no open defect in the stability scope; the [maturity tiers](docs/src/maturity.md) apply from this release. |
 | **v13.x** | `[ ] After 13.0.0` | Compatible capabilities continue in 13.1 and later minors: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
@@ -353,6 +373,26 @@ none is scheduled, and real user demand orders them.
 - **Production monitor** (13.1 candidate): desktop notifications in the
   standalone Studio, remote traces and security radar, and proxy support.
 - **More i18n locales and currency formats**, added as CLDR data when requested.
+- **Smaller internal dependency graphs** (13.0.x or 13.1, from the starter
+  dependency audit), changing no public path:
+  - Studio and Nexus stop depending on all of `rullst-security`:
+    `SecurityStore` and `LiveSecurityEvent` move to Core and stay available
+    where they are today (about 48 fewer packages).
+  - SQLite-only starters build without a TLS stack (about 43 fewer packages,
+    the largest binary-size gain); the rustls `CryptoProvider` must still be
+    installed wherever TLS is used.
+  - A five-field cron evaluator of Rullst's own replaces the `cron` crate
+    (about 9 fewer), tested differentially against it.
+  - Passkeys without `p256` (about 18 fewer in the SaaS starter), checked with
+    test vectors.
+  - Core's `storage-multipart` recovery records move from `ring`'s AES-256-GCM
+    to the RustCrypto `aes-gcm` crate, with the same stored format and
+    known-answer tests, so `ring` leaves Core entirely.
+- **`cargo rullst footprint` reports the compiled crate count** beside the
+  lockfile count, which includes packages that are never compiled.
+- **htmx 4 as an opt-in for new applications**, once npm's `latest` tag points
+  to 4.x and its Server-Sent Events extension is stable; existing applications
+  keep the htmx they use.
 - **Mask the CSRF token per response (BREACH defence), then compress dynamic
   HTML in the generated Caddyfile.** Since 13.0.0-alpha.5 generated
   deployments serve static files pre-compressed and pages uncompressed.
@@ -432,6 +472,9 @@ None is scheduled; v14 development starts only when they justify it. The four
 clean-ups recorded here before 13.0 (crate-private internals, Rullst error
 types instead of third-party ones, private `SecurityStore` fields, one path per
 item) moved into 13.0.0-alpha.5.
+
+- **Remove `rullst_orm::schema_diff`**, deprecated in 13.0.0-alpha.5. It stays
+  available, unchanged, in every 13.x release.
 
 ---
 

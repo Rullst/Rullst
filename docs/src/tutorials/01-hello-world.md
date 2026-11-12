@@ -8,7 +8,7 @@ you will be able to point to the handler that produced the page in your browser.
 [Next: CLI generators](02-cli-generators.md)
 
 This tutorial takes a new developer from installing Rust to a running Rullst
-web application. It targets the v13 prerelease `13.0.0-alpha.4`. The v12 line
+web application. It targets the v13 prerelease `13.0.0-alpha.5`. The v12 line
 reached end of life on 16 October 2026 (see the [release record](../v12.md));
 existing v12 applications follow the [v13 migration guide](../migration-v13.md).
 
@@ -56,7 +56,7 @@ selects a prerelease on its own, and the v12 line reached end of life on
 
 <!-- first-hour: add -->
 ```bash
-cargo add rullst@=13.0.0-alpha.4
+cargo add rullst@=13.0.0-alpha.5
 cargo add tokio --features full
 ```
 
@@ -129,11 +129,11 @@ prerelease on its own):
 
 <!-- first-hour: cli -->
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.5 --locked
 cargo rullst --version
 ```
 
-The second command prints `rullst 13.0.0-alpha.4`. [Tutorial 02](02-cli-generators.md)
+The second command prints `rullst 13.0.0-alpha.5`. [Tutorial 02](02-cli-generators.md)
 creates a project with it; the hand-written `my_first_app` is not needed there.
 
 The CLI's `new` generator targets the CLI's own framework version. A CLI built
@@ -157,4 +157,4 @@ boundary.
   errors; server startup propagates `ServerError` with `?`.
 - The moving `main` branch is an integration source, not an immutable release
   artifact. For a reproducible application, pin the exact crates.io version
-  (`=13.0.0-alpha.4`) and commit `Cargo.lock`.
+  (`=13.0.0-alpha.5`) and commit `Cargo.lock`.

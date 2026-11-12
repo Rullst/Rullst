@@ -3,7 +3,7 @@
 **Your goal:** generate a small piece of the application, find the resulting
 files and understand what still needs your code. You need the CLI installed in
 [Tutorial 01](01-hello-world.md#6-continue-with-the-cli) (`cargo rullst --version`
-prints `rullst 13.0.0-alpha.4`).
+prints `rullst 13.0.0-alpha.5`).
 
 Rullst provides opinionated code generators (`make:*`) for controllers, models,
 migrations, and resources. The current generators register generated Rust

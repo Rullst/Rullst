@@ -279,7 +279,7 @@ fn htmx_client() -> &'static HtmxClient {
 ///   cached as immutable, so a deploy that changes `static/rullst.css`
 ///   reaches every browser and CDN at once; outside a server (unit tests),
 ///   the plain URLs, with htmx 2. Since
-///   13.0.0-rc.1 that includes the two htmx requests that expect a page: a
+///   13.0.0-alpha.5 that includes the two htmx requests that expect a page: a
 ///   history restore after a cache miss (`HX-History-Restore-Request: true`,
 ///   which replaces the whole `<body>`) and a boosted link or form
 ///   (`HX-Boosted: true`); before, both received the fragment and the page
@@ -289,7 +289,7 @@ fn htmx_client() -> &'static HtmxClient {
 /// responses of the application's routes carry `Vary: HX-Request`, and a
 /// cache keeps the two apart.
 ///
-/// Since 13.0.0-rc.1, under Rullst's security headers (a request CSP nonce),
+/// Since 13.0.0-alpha.5, under Rullst's security headers (a request CSP nonce),
 /// the page also sends `<meta name="htmx-config"
 /// content='{"includeIndicatorStyles":false}'>` and the `.htmx-indicator`
 /// rules of the loaded htmx release in a `<style>` carrying the nonce: htmx's

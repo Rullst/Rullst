@@ -567,7 +567,7 @@ prerelease; Cargo never selects a prerelease on its own, so pin it exactly
 
 ```toml
 [dependencies]
-rullst-capital = "=13.0.0-alpha.4"
+rullst-capital = "=13.0.0-alpha.5"
 ```
 
 The default `axum` feature provides the Axum webhook middleware; everything
@@ -586,8 +586,8 @@ else is opt-in, directly or through the umbrella `rullst` crate, whose
 For example:
 
 ```toml
-rullst = { version = "=13.0.0-alpha.4", features = ["capital-quota-sql"] }
-# Or directly: rullst-capital = { version = "=13.0.0-alpha.4", features = ["quota-sql"] }
+rullst = { version = "=13.0.0-alpha.5", features = ["capital-quota-sql"] }
+# Or directly: rullst-capital = { version = "=13.0.0-alpha.5", features = ["quota-sql"] }
 ```
 
 Applications using the umbrella crate (feature `capital`) can derive the bounded billing facade on

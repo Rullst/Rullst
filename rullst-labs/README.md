@@ -26,7 +26,7 @@ With no feature enabled (the default), the crate provides bounded, versioned
 contracts with no executor or network/runtime dependency. `sqlite` adds a
 dedicated encrypted shared-local job plane; `receipt-signing` belongs to the
 runner's trusted controller. Pin the prerelease exactly, for example
-`rullst-labs = { version = "=13.0.0-alpha.4", features = ["sqlite"] }` in the
+`rullst-labs = { version = "=13.0.0-alpha.5", features = ["sqlite"] }` in the
 application and `features = ["sqlite", "receipt-signing"]` in the controller.
 The application must never spawn learner code or expose a container control socket.
 

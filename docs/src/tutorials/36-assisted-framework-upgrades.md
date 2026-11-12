@@ -9,7 +9,7 @@ to guess about application data or security policy.
 > moves to v13 with the v13 CLI. The v13 source rules and the rule
 > classification are described in
 > [v12 to v13: source findings](#v12-to-v13-source-findings) and belong to
-> the `13.0.0-alpha.4` prerelease. Install the exact release and complete
+> the `13.0.0-alpha.5` prerelease. Install the exact release and complete
 > the application-specific validation below before any production rollout.
 
 ## What the command can guarantee
@@ -48,7 +48,7 @@ For a v12 application, that is the v13 prerelease (Cargo never selects a
 prerelease on its own):
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.4 --locked --force
+cargo install cargo-rullst --version =13.0.0-alpha.5 --locked --force
 ```
 
 The framework command does not update its own executable. This matters for v5:
@@ -86,7 +86,7 @@ ignore keys they do not know.
 Use an explicit target to make the selected published version visible:
 
 ```bash
-cargo rullst upgrade --to 13.0.0-alpha.4 --dry-run
+cargo rullst upgrade --to 13.0.0-alpha.5 --dry-run
 ```
 
 Other targets must exist in the registry and belong to the installed CLI's
@@ -701,7 +701,7 @@ the rule together.
 | CLI `auth` on database starters | (c) none | — | CLI behaviour on new runs; earlier generated files are unchanged; introduced in 13.0.0-alpha.4 |
 | CLI `--no-database` files | (c) none | — | Generator output for new projects; an empty `rullst.db` is not located; introduced in 13.0.0-alpha.4 |
 | CLI `make:migration:auto` without a database to compare | (b) review | `V13-CLI-MIGRATION-AUTO-STATUS` | Workflows, root scripts, Makefile and justfile that run `make:migration:auto`, which exits with status 1 when there is no SQLite database to compare; introduced in 13.0.0-alpha.4, rule since 13.0.0-alpha.5 |
-| `html!` attribute values and `render_page` | (c) none | — | The compiler's `deprecated` warning locates each `Option` in `name={value}`; the quote escaping and the whole-page htmx answers need no change; introduced in 13.0.0-rc.1 |
+| `html!` attribute values and `render_page` | (c) none | — | The compiler's `deprecated` warning locates each `Option` in `name={value}`; the quote escaping and the whole-page htmx answers need no change; introduced in 13.0.0-alpha.5 |
 | Internals hidden from the API documentation | (c) none | — | The items still compile in alpha.4; only their documentation and compatibility promise change; introduced in 13.0.0-alpha.4 (alpha.5 makes most private: Hidden internals made private) |
 | Duplicate API paths removed | (a) must-change | `V13-API-ALIAS-PATHS` | `rullst::rullst_orm`, `rullst::security_runtime`, `rullst_mail::mail`, `rullst_mail::drivers::mock` and their `rullst::mail::` forms, in paths and in `use` trees (braced groups included); introduced in 13.0.0-alpha.5 |
 | Hidden internals made private | (b) review | `V13-HIDDEN-INTERNALS-PRIVATE` | Module paths (`artisan::runner`, `server::dylib_loader`, `tenant::CURRENT_TENANT`, the three `schema::` statics, `passkey::cbor`, `client::DEFAULT_HTTP_CLIENT`, `rullst_connect::macros`) and distinctive names (`redis_cache_namespace`, `impl_standard_redirect_url!`, `get_real_rss_memory_mb`, `field_kind_sql`, the `test-util` helpers `claim_next_at` and `model_hash_key`, …); review because a bare name can be the application's own; a failed gate repeats the guidance; introduced in 13.0.0-alpha.5 |
@@ -778,7 +778,7 @@ File recovery does not replace database backups or application acceptance
 tests, and updating the CLI alone never updates a deployed application.
 
 The 12.1.0 update mechanism does not implement v13 migrations. The
-v13 CLI (13.0.0-alpha.4 prerelease) carries its own rule catalog
+v13 CLI (13.0.0-alpha.5 prerelease) carries its own rule catalog
 ([v12 to v13: source findings](#v12-to-v13-source-findings)); `update guided`
 offers a project update only within the installed CLI's major.
 
