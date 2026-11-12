@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794455822910,
+  "lastUpdate": 1794463348913,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -18598,6 +18598,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 187,
+            "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b2a420ebfc4ec2cae362e08aad604a19a0f240e7",
+          "message": "Merge pull request #648 from Rullst/fix/v13-alpha5-acc-docs\n\ndocs(capital): InfinitePay needs external checkout enabled before links",
+          "timestamp": "2026-11-12T02:40:24-03:00",
+          "tree_id": "f1f349379cd0a294baa69213bb1747bc28869b57",
+          "url": "https://github.com/Rullst/Rullst/commit/b2a420ebfc4ec2cae362e08aad604a19a0f240e7"
+        },
+        "date": 1794463348100,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 915,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 161,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 0,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 186,
             "range": "± 3",
             "unit": "ns/iter"
           }
