@@ -261,6 +261,10 @@ fn scripts_ci_container_files_and_docs_running_green_are_reviewed() {
     assert_eq!(rule.introduced, "13.0.0-alpha.5");
     assert!(rule.guidance.contains("cargo rullst footprint"));
     assert!(rule.guidance.contains("rullst.footprint.v1"));
+    assert!(
+        rule.guidance
+            .contains("cargo install cargo-rullst --version")
+    );
 }
 
 #[test]

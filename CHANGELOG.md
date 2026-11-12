@@ -885,6 +885,15 @@ describes each replacement.
 
 ### Fixed
 
+- The alpha.4 to alpha.5 checklist and the `V13-CLI-GREEN-RENAMED` guidance of
+  `cargo rullst upgrade` said to replace `cargo rullst green` with
+  `cargo rullst footprint`, but not that a workflow which installs a pinned CLI
+  (`cargo install cargo-rullst --version =13.0.0-alpha.4`) must pin alpha.5 as
+  well, since the alpha.4 CLI has no `footprint`; both now say so. The
+  checklist's AI step also warns that tests which build
+  `AiError::ApiError("… returned HTTP 429 …")` by hand keep passing after the
+  upgrade although providers now return `AiError::HttpStatus` (found while
+  upgrading applications from alpha.4).
 - The `rullst-supervision` observation guide did not say that the
   `Permissions-Policy: camera=(), microphone=()` header of Rullst's staging and
   production security baseline makes the browser refuse `getUserMedia`, so a
