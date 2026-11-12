@@ -45,6 +45,10 @@ pub(crate) const KITS: [Kit; 2] = [
                 "cargo rullst build --release",
                 "minifies it before pre-compression",
             ),
+            (
+                "cargo rullst doctor",
+                "warns when static/app.css is older than its sources (plain cargo build/run never rebuilds it)",
+            ),
         ],
     },
     Kit {

@@ -727,6 +727,15 @@ describes each replacement.
   `make:privacy` adds `/privacy` (303) and `make:pwa` adds `/offline` (200),
   once and only to a recognized list (found by the 13.0.0-alpha.5 acceptance
   application).
+- Nothing said that the Tailwind stylesheet of `cargo rullst add tailwind` is
+  rebuilt only by `cargo rullst dev` and `cargo rullst build`: an application
+  started with plain `cargo run`, or a release binary started by a script,
+  served the `static/app.css` built when the kit was added and its pages
+  looked unstyled. `cargo rullst doctor` now warns (`project.tailwind`) when
+  `static/app.css` is missing or older than `assets/css/app.css` or a file its
+  `@source` lines scan, `add tailwind` lists that check in its next steps, and
+  the frontend guide says that plain Cargo builds do not run Tailwind (found by
+  the 13.0.0-alpha.5 acceptance application).
 - `cargo rullst make:privacy` and `cargo rullst make:age-gate` refused a SaaS
   project in which `cargo rullst make:mfa` had already run
   (`src/controllers/auth_controller.rs differs from the starter's`), although

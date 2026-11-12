@@ -179,7 +179,14 @@ the CLI cannot be prepared (offline without a cached copy), `dev` reports it
 and runs the server without rebuilding the stylesheet.
 `cargo rullst build` writes the minified stylesheet before pre-compressing
 `static/`, and fails if the CLI cannot run, so a release never ships a stale
-file.
+file. A plain `cargo build`, `cargo run` or a binary started by a script does
+**not** run Tailwind: classes added to the sources since the last build are
+missing from `static/app.css` and the pages look unstyled. Use `cargo rullst
+dev` or `cargo rullst build`, or run the pinned CLI yourself
+(`tailwindcss -i assets/css/app.css -o static/app.css --minify`) before
+starting the binary; `cargo rullst doctor` warns when `static/app.css` is
+missing or older than `assets/css/app.css` or a file its `@source` lines scan
+(since 13.0.0-alpha.5).
 
 **Updating Tailwind** is a change to one file of the CLI,
 `cargo-rullst/src/generators/frontend/tailwind_release.rs`: the version and

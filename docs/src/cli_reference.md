@@ -2398,7 +2398,11 @@ links with its bundled LLD by default.
 #### Doctor: project
 The enclosing Rullst project (a `Cargo.toml` that depends on `rullst`) and its
 `rullst` requirement compared with the CLI's major version; an older project
-suggests `cargo rullst upgrade --dry-run`.
+suggests `cargo rullst upgrade --dry-run`. With the Tailwind kit of
+`cargo rullst add tailwind`, `project.tailwind` warns when `static/app.css` is
+missing or older than `assets/css/app.css` or a file under its
+`@source "<dir>/**/*.<ext>"` lines: plain `cargo build`/`cargo run` never
+rebuild it, `cargo rullst dev` and `cargo rullst build` do.
 
 #### Doctor: config and .env
 Whether `.env` parses, which keys listed in `.env.example` are set neither in
