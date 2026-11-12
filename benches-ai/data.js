@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794473186550,
+  "lastUpdate": 1794478273609,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -18743,6 +18743,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 195,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3e0f009fe0c3d3c3237f1b638a76d5451abfbcd1",
+          "message": "Merge pull request #672 from Rullst/ci/v13-alpha5-iot-ingest-boundary\n\nci(features): check the iot-ingest umbrella feature in isolation",
+          "timestamp": "2026-11-12T06:45:48-03:00",
+          "tree_id": "2046a88c6cf2a40df792c3f4bb598360b8eda54d",
+          "url": "https://github.com/Rullst/Rullst/commit/3e0f009fe0c3d3c3237f1b638a76d5451abfbcd1"
+        },
+        "date": 1794478272996,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1620,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 323,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 409,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
