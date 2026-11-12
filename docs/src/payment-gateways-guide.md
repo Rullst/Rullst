@@ -111,6 +111,10 @@ read current provider state under a database revision fence and atomically
 commit the scoped event receipt with subscription state. Exact replays do not
 repeat changes; conflicting receipts, foreign customers and obsolete attempts
 are rejected. Unknown provisioning/checkout outcomes require bounded recovery.
+Before InfinitePay creates links, the merchant enables external checkout
+("Checkout externo") for the InfiniteTag in the InfinitePay app; until then,
+and for a tag that does not exist, `POST /links` answers 404
+`external_checkout_not_enabled`, reported as a `ProviderFailure` with HTTP 404.
 InfinitePay's webhook is unsigned (`WebhookVerificationMode::ConfirmedAtSource`):
 the middleware hands the handler a status-free `PaymentNotification`, and only
 `confirm_one_off_payment`, which calls `payment_check` and compares the amount

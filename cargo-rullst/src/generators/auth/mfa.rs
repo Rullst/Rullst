@@ -13,7 +13,7 @@ mod edits;
 mod starter;
 
 use edits::Changes;
-pub(crate) use edits::{has_second_step, oauth_hook_lines};
+pub(crate) use edits::{has_second_step, login_hook, oauth_hook_lines};
 
 const CONTROLLER_TEMPLATE: &str = include_str!("mfa/controller.rs.template");
 const FACTOR_TEMPLATE: &str = include_str!("mfa/factor.rs.template");

@@ -9,7 +9,10 @@ use crate::{
     SignedReceipt, Teardown, WorkerOutcome,
 };
 
+/// A fenced attempt whose teardown the controller must confirm.
+/// `#[non_exhaustive]`: returned by the store, never built by callers.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct CleanupJob {
     pub scope: Scope,
     pub id: Reference,

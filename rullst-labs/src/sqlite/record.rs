@@ -5,7 +5,9 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+/// `#[non_exhaustive]`: render unknown states generically.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum JobState {
     Queued,
     Running,
@@ -31,8 +33,10 @@ impl JobState {
     }
 }
 /// Authorized status projection; no source, hidden tests or runner secrets.
+/// `#[non_exhaustive]`: returned by the store, never built by callers.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct JobView {
     pub id: Reference,
     pub scope: Scope,

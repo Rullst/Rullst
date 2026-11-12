@@ -285,6 +285,9 @@ before that.
 | Mail Reply-To | From 13.0.0-alpha.5, `rullst_mail::Message` has a `reply_to: Option<String>` field and a `reply_to(...)` builder. The delivery pipeline validates it like `from` (no CR/LF, one mailbox, display names allowed), and the Resend, SendPulse, AWS SES (native and proxy) and SMTP drivers send it; the offline mock and memory drivers keep it. **Breaking** only for a struct literal that lists every field without `..`: add `reply_to: None`, or build the message with `Message::new()` and its builders. Messages serialized without it (queued jobs) still decode, and the field is left out of the serialized form when empty. `cargo rullst upgrade` reports such literals (`V13-MAIL-MESSAGE-REPLY-TO`). |
 | Capital InfinitePay adapter | From 13.0.0-alpha.5, `InfinitePayProvider::checkout(handle)` (with `with_api_key("inchk_…")` and `with_webhook_url(...)`) works against InfinitePay's public Checkout API: `create_one_off_checkout` creates a link with `POST /links`, the unsigned webhook is read with `parse_payment_notification`, and `confirm_one_off_payment` calls `POST /payment_check` and reports a payment only when InfinitePay confirms it with the server-side amount. The alpha.4 constructor `new(api_key, webhook_secret)` still compiles: it has no handle, keeps its offline fixtures with `mock_*` credentials and refuses live operations, and its `webhook_verification_mode()` returns the new `ConfirmedAtSource` instead of `Real` for a non-mock secret. `create_customer_portal` and `cancel_subscription` return `UnsupportedOperation` even with `mock_*` credentials, because InfinitePay has no portal or subscriptions. |
 | Capital one-off checkout and unsigned notifications | Opt-in from 13.0.0-alpha.5: `OneOffCheckoutRequest` (server-side reference, unit amount in minor units, currency, description, quantity, success and cancel URLs, optional e-mail), `BillingProvider::create_one_off_checkout`, `parse_payment_notification` and `confirm_one_off_payment` (each defaults to `UnsupportedOperation`, so custom providers keep compiling), `OneOffCheckout`, `PaymentNotification`, `OneOffPayment`, `WebhookVerificationMode::ConfirmedAtSource` (the webhook middleware inserts a `PaymentNotification` instead of a `WebhookEvent` for such a provider) and `providers::ProviderRequest`. Stripe implements the one-off checkout with inline `price_data`; `create_one_time_checkout` with a fixed price is unchanged. `StripeCheckoutRequest` and `StripePaymentCheckoutRequest` now accept `http://localhost`, `127.0.0.1` and `[::1]` redirects for `mock_*` keys; a live key still requires HTTPS and fails with `ConfigurationError` before any request. |
+| Labs outcomes and states | **Breaking**, from 13.0.0-alpha.5 (Experimental `rullst-labs`): `ExecutionProfile`, `WorkerOutcome`, `ExecutionFailure`, `TrapKind`, `CaseOutput`, `CaseGrade`, `JobResult`, `JobState` and `ResultEvidence` are `#[non_exhaustive]`, and so are the store-returned `JobView` and `CleanupJob`. A `match` on one of these enums outside `rullst-labs` needs a wildcard arm. `ExecutionFailure` gains `TimeLimit`: a runner that stops an attempt at the wall limit and confirms its teardown reports `Rejected(TimeLimit)` through `complete`, and the job ends `Failed` instead of `Cancelled`, so a learner can tell a time limit from their own cancellation (step 4 of the [runner contract](labs-runner-contract.md)). An alpha.4 process cannot read a job that ended with `TimeLimit`. The protocol v1 wire types, `ToolIdentity` and `RustSource` are unchanged, so existing stores open as before. `cargo rullst upgrade` reports each `match` on these enums without a catch-all arm in a file that names `rullst_labs` (`V13-LABS-NON-EXHAUSTIVE-MATCH`). |
+| Privacy consent choices | **Breaking**, from 13.0.0-alpha.5 (Experimental `rullst-privacy`): `ConsentChoice` is `#[non_exhaustive]`. A `match` on it outside `rullst-privacy` needs a wildcard arm; treat an unknown choice like `Unset` (no consent). Comparisons such as `record.choice() == ConsentChoice::Granted`, which `make:privacy` generates, keep compiling. `cargo rullst upgrade` reports each `match` on `ConsentChoice` without a catch-all arm in a file that names `rullst_privacy` or `rullst::privacy` (`V13-PRIVACY-CONSENT-CHOICE-MATCH`). |
+| Supervision obscured camera and brightness statistics | Opt-in from 13.0.0-alpha.5 (Experimental `rullst-supervision`): `PresenceObservation::Obscured` (`camera_obscured`) reports a covered, dark or blocked camera view, and `MediaSample::luminance(LuminanceStatistics::new(mean, standard_deviation, samples)?)` (`SampleFormat::LuminanceStatistics`) gives an adapter a frame's brightness statistics without any image. Both enums were already `#[non_exhaustive]`. SQLite stores created from alpha.5 accept the new observation. A store created earlier opens and works unchanged and returns `Configuration` for `Obscured` until `SqliteSupervision::upgrade_event_schema()` rebuilds its events table once; that keeps every row, and the file then no longer opens with alpha.4 or earlier. |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
@@ -612,7 +615,11 @@ name no third-party type, and a typed HTTP status error in `rullst-ai`.
 In Capital, invoices hold integer minor units and print localized
 labels, a provider-neutral one-off checkout confirms payments at the source and
 the InfinitePay adapter works against InfinitePay's Checkout API; Mail messages
-gain `Reply-To`. Applications that use none of them only change versions. Work through the
+gain `Reply-To`. Labs' outcome and state enums become `#[non_exhaustive]`
+with a `TimeLimit` outcome, Privacy's `ConsentChoice` becomes
+`#[non_exhaustive]`, and Supervision gains an obscured-camera
+observation and brightness-statistics samples. Applications that use none of
+them only change versions. Work through the
 steps in order.
 
 1. **Prepare.** Work on a branch with a clean tree and a committed
@@ -647,7 +654,7 @@ steps in order.
      `ClientContractError::EncodeJson` or `TwinSyncError::Serialization`.
    - `V13-AI-HTTP-STATUS` (`REVIEW`, step 10): `AiError::ApiError`.
    - `V13-ISLAND-COMMANDS-REMOVED` and `V13-LIVE-COMMAND-REMOVED` (`REVIEW`,
-     step 17): workflows, root scripts, Makefile and justfile that run
+     step 18): workflows, root scripts, Makefile and justfile that run
      `make:island`, `build:client` or `make:live`.
    - `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE` (`MUST-CHANGE`, step 12): a dynamic
      value in an `x-*` attribute of `html!` (`x-data={state}`).
@@ -662,7 +669,13 @@ steps in order.
      file that names Capital.
    - `V13-MAIL-MESSAGE-REPLY-TO` (`MUST-CHANGE`, step 14): a `Message { .. }`
      literal that lists every field without `..`.
-   - `V13-ORM-ADAPTERS-REMOVED` (`MUST-CHANGE`, step 15): the `orm-mongodb`,
+   - `V13-PRIVACY-CONSENT-CHOICE-MATCH` (`MUST-CHANGE`, step 15): a `match` on
+     `ConsentChoice` without a wildcard arm, in a file that names
+     `rullst_privacy` or `rullst::privacy`.
+   - `V13-LABS-NON-EXHAUSTIVE-MATCH` (`MUST-CHANGE`, step 15): a `match` on a
+     Labs outcome or state enum (`JobState`, `JobResult`, `CaseGrade`, …)
+     without a wildcard arm, in a file that names `rullst_labs`.
+   - `V13-ORM-ADAPTERS-REMOVED` (`MUST-CHANGE`, step 16): the `orm-mongodb`,
      `orm-duckdb`, `mongodb` or `duckdb` feature of a Rullst dependency or
      `[features]` entry, or, in a file that names `polyglot`, `MongoDbStore`,
      `DuckDbStore` and the DuckDB analytics types; also
@@ -678,7 +691,7 @@ steps in order.
    compile against alpha.5. Run `cargo rullst upgrade --keep-on-failure`: it
    pins every Rullst dependency to `=13.0.0-alpha.5`, runs `cargo fix` and
    `cargo check --locked`, and, when they fail, keeps the edited files and
-   names the must-change findings. Fix what steps 5 to 15 name; without a
+   names the must-change findings. Fix what steps 5 to 16 name; without a
    `MUST-CHANGE` finding, a plain `cargo rullst upgrade` is enough, and the
    review findings of steps 8 to 12 still need a look.
 5. **Replace the islands.** Remove `#[island]` and render the component with
@@ -817,7 +830,19 @@ steps in order.
     write `reply_to: None`, or build the message with `Message::new()` and its
     builders. Use `.reply_to(visitor_email)` where replies should reach someone
     other than the sender.
-15. **Move MongoDB and DuckDB into the application** (MongoDB and DuckDB
+15. **Handle the Privacy, Labs and Supervision changes** (Privacy consent
+    choices, Labs outcomes and states and Supervision obscured camera and
+    brightness statistics rows). Add a `_ =>` arm to each `match` on
+    `ConsentChoice` that treats an unknown choice as no consent, and to each
+    `match` on a Labs enum that shows an unknown state or result generically;
+    show `ExecutionFailure::TimeLimit` as the exercise's time limit. A runner controller that stopped attempts at the
+    wall limit through `abandon_attempt` can now report them with
+    `Rejected(TimeLimit)` and `complete` once teardown is confirmed. To record
+    `PresenceObservation::Obscured` in an existing Supervision store, back it
+    up, move every process that opens it to alpha.5, then call
+    `store.upgrade_event_schema().await?` once (it returns `false` when there
+    is nothing to do).
+16. **Move MongoDB and DuckDB into the application** (MongoDB and DuckDB
     adapters removed row). Remove the `orm-mongodb`/`orm-duckdb` (or
     `mongodb`/`duckdb`) feature, add the official crate and follow the
     [MongoDB](recipes/mongodb.md#migrating-from-mongodbstore) or
@@ -829,7 +854,7 @@ steps in order.
     driver reads the same collections and database files. Code that matched
     `PolyglotError::Worker`, `Backend::MongoDb`, `Backend::DuckDb` or
     `Capability::Analytics` drops those arms.
-16. **Review Capital's new one-off checkout and InfinitePay** (Capital
+17. **Review Capital's new one-off checkout and InfinitePay** (Capital
     InfinitePay adapter and Capital one-off checkout rows). An application that
     implemented InfinitePay itself can move to
     `InfinitePayProvider::checkout(handle)` with `create_one_off_checkout`,
@@ -839,13 +864,13 @@ steps in order.
     `UnsupportedOperation`. A Stripe development setup that passed the
     `https://` form of a local URL to a `mock_*` key can pass
     `http://localhost:…` again.
-17. **Update scripts, CI and other tools.** Remove the `make:island`,
+18. **Update scripts, CI and other tools.** Remove the `make:island`,
     `build:client` and `make:live` steps the review rules name; the commands
     exit with status 1 and print what replaces them. Drop `--mongodb` and
     `--duckdb` from scripts that run `cargo rullst new`.
-18. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
+19. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
     edits and checks the result with `cargo fix` and `cargo check --locked`.
-19. **Verify** with the production feature set: `cargo build`, `cargo test`
+20. **Verify** with the production feature set: `cargo build`, `cargo test`
     and `cargo clippy --all-targets -- -D warnings`; then, on staging, every
     page that used an island or a Live component, with the browser's
     developer console open to catch CSP violations, before production.

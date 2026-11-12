@@ -104,6 +104,8 @@ fn rules_carry_the_release_of_their_change() {
             "V13-CAPITAL-INVOICE-MINOR-UNITS",
             "V13-ORM-ADAPTERS-REMOVED",
             "V13-MAIL-MESSAGE-REPLY-TO",
+            "V13-PRIVACY-CONSENT-CHOICE-MATCH",
+            "V13-LABS-NON-EXHAUSTIVE-MATCH",
         ]
     );
     // Rules added after alpha.4 for its changes take the next release, so

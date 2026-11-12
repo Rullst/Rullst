@@ -309,7 +309,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_privacy::age_assurance::Tru
 pub fn rullst_privacy::age_assurance::encode_attestation(issuer: impl core::convert::Into<alloc::string::String>, key_id: impl core::convert::Into<alloc::string::String>, challenge: &rullst_privacy::age_assurance::AgeChallenge, outcome: rullst_privacy::age_assurance::AgeOutcome) -> core::result::Result<alloc::vec::Vec<u8>, rullst_privacy::age_assurance::AgeError>
 pub fn rullst_privacy::age_assurance::signing_message(payload: &[u8]) -> core::result::Result<alloc::vec::Vec<u8>, rullst_privacy::age_assurance::AgeError>
 pub mod rullst_privacy::consent
-pub enum rullst_privacy::consent::ConsentChoice
+#[non_exhaustive] pub enum rullst_privacy::consent::ConsentChoice
 pub rullst_privacy::consent::ConsentChoice::Unset
 pub rullst_privacy::consent::ConsentChoice::Granted
 pub rullst_privacy::consent::ConsentChoice::Declined
