@@ -2,7 +2,13 @@ use super::*;
 
 #[test]
 fn only_the_listed_commands_are_removed() {
-    for name in ["ai", "make:island", "build:client", "make:live"] {
+    for name in [
+        "ai",
+        "make:island",
+        "build:client",
+        "make:live",
+        "academy:doctor",
+    ] {
         assert!(is_removed(name), "{name}");
     }
     for name in [
@@ -14,6 +20,9 @@ fn only_the_listed_commands_are_removed() {
         "make:island:x",
         "build",
         "make:billing",
+        "doctor",
+        "deploy:doctor",
+        "academy",
         "",
     ] {
         assert!(!is_removed(name), "{name}");
@@ -21,7 +30,16 @@ fn only_the_listed_commands_are_removed() {
     let names: Vec<String> = commands()
         .map(|command| command.get_name().to_string())
         .collect();
-    assert_eq!(names, ["ai", "make:island", "build:client", "make:live"]);
+    assert_eq!(
+        names,
+        [
+            "ai",
+            "make:island",
+            "build:client",
+            "make:live",
+            "academy:doctor"
+        ]
+    );
 }
 
 #[test]
@@ -30,6 +48,7 @@ fn the_alpha5_removals_point_to_their_replacement() {
         ("make:island", "htmx"),
         ("build:client", "html!"),
         ("make:live", "RealtimeSse"),
+        ("academy:doctor", "deploy:doctor"),
     ] {
         let report = friendly(find(name).expect("listed"));
         assert_eq!(report.title, format!("`cargo rullst {name}` was removed"));

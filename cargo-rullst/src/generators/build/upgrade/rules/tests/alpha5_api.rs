@@ -131,8 +131,6 @@ fn changed_error_payloads_and_ai_http_statuses_are_reviewed() {
     );
     for source in [
         "fn f(e: AiError) { matches!(e, AiError::SerializationError(_)); }",
-        "fn f(e: ClientContractError) { matches!(e, ClientContractError::InvalidJson(_)); }",
-        "fn f(e: ClientContractError) { matches!(e, ClientContractError::EncodeJson(_)); }",
         "fn f(e: TwinSyncError) { match e { TwinSyncError::Serialization(s) => {}, _ => {} } }",
     ] {
         assert_only(source, &["V13-ERROR-PAYLOADS"]);

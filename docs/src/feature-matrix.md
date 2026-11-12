@@ -104,7 +104,6 @@ the drivers.
 | `orm-surrealdb` | no | `orm` plus SurrealDB HTTP document and bounded graph adapters |
 | `orm-scout` | no | `orm` plus bounded Meilisearch, Elasticsearch and Algolia Scout HTTP adapters |
 | `orm-pgvector` | no | `orm` plus typed pgvector SQLx values; use with `strict-postgres` for the supported live query contract |
-| `orm-qdrant` | no | `orm` plus bounded dense-vector Qdrant HTTP operations and offline fallback |
 | `orm-redis` | no | `orm` plus namespaced Redis Hash, Set and Sorted Set operations |
 | `queue-sqlite` | no | Core's durable SQLite queue backend |
 | `storage-s3` | no | v13 candidate: Core's bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs; see [private object storage](private-object-storage.md) |
@@ -234,10 +233,6 @@ Default features: none.
 
 Core's process-local Radar and span collector do not require `telemetry`.
 That feature is specifically for OpenTelemetry/OTLP integration.
-The `rullst.client` v1 codec and bounded `#[server_function]` transport are
-available without a feature flag; only the explicit generated route exists on
-native targets, while the same annotated function becomes its Wasm caller.
-Identity, authorization and tenant policy remain application layers.
 
 ### `rullst-orm`
 
@@ -256,7 +251,6 @@ or a `strict-*` backend explicitly.
 | `surrealdb` | SurrealDB HTTP document CRUD, identifier inventory, encrypted recovery participation and bounded read-only ISO GQL; no embedded SDK |
 | `scout-http` | Bounded Meilisearch, Elasticsearch and Algolia adapters with deterministic offline fallbacks; Meilisearch also has a live container contract |
 | `pgvector` | Typed pgvector SQLx values and parameterized L2/cosine/inner-product helpers; the live contract also selects `strict-postgres` |
-| `qdrant` | Bounded dense-vector collection/upsert/delete/cosine query operations over HTTP with offline fallback |
 | `ai` | `pgvector` plus the generated `save_with_embedding` for `#[orm(embedding_for = "...")]` models; the application also depends on `rullst-ai` |
 | `strict-postgres` | The PostgreSQL driver plus concrete PostgreSQL pool, database, query-result, and query paths |
 | `strict-mysql` | The MySQL driver plus concrete MySQL paths when PostgreSQL is not also selected |
@@ -275,8 +269,9 @@ snapshot/restore contract; it does not supply online isolation or managed
 backup. Turso can additionally be selected explicitly by
 `#[orm(backend = "turso")]` and the blank/API scaffold. See the
 [Polyglot Persistence guide](polyglot-persistence.md). 13.0.0-alpha.5 removed
-the `mongodb` and `duckdb` features (and `orm-mongodb`/`orm-duckdb` on
-`rullst`); the [recipes](recipes/index.md) use the official crates instead.
+the `mongodb`, `duckdb` and `qdrant` features (and `orm-mongodb`,
+`orm-duckdb` and `orm-qdrant` on `rullst`); the [recipes](recipes/index.md)
+use the official crates instead.
 
 ### `rullst-orm-macros`
 

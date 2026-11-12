@@ -7,9 +7,10 @@
 > for reproducible builds. Use path dependencies only when intentionally
 > testing checkout-local changes.
 
-Rullst provides three deliberately separate vector paths: a deterministic
-in-memory index in `rullst-ai`, parameterized PostgreSQL `pgvector` queries,
-and a bounded Qdrant HTTP adapter in `rullst-orm`. None silently invent tenant authorization, context
+Rullst provides two deliberately separate vector paths: a deterministic
+in-memory index in `rullst-ai` and parameterized PostgreSQL `pgvector`
+queries; a dedicated vector service such as Qdrant is application code (see
+below). None silently invent tenant authorization, context
 budgets, an embedding model, or a production RAG policy.
 
 ## In-memory retrieval
@@ -145,64 +146,13 @@ a digest-pinned `pgvector/pgvector` container.
 ## Qdrant dense-vector store
 
 Use Qdrant when the application deliberately chooses a specialized external
-vector service rather than keeping vectors in PostgreSQL:
-
-```toml
-[dependencies]
-rullst = { version = "=13.0.0-alpha.4", default-features = false, features = [
-  "orm-qdrant",
-  "ai",
-] }
-serde_json = "1.0"
-```
-
-```rust,no_run
-use rullst::orm::{
-    QdrantConfig, QdrantStore, VectorCollectionName, VectorDimensions,
-    VectorPoint, VectorQueryLimit, VectorRepository,
-};
-use serde_json::{Map, Value};
-
-# async fn qdrant_example() -> Result<(), Box<dyn std::error::Error>> {
-let config = QdrantConfig::new(
-    std::env::var("QDRANT_URL").unwrap_or_default(),
-    std::env::var("QDRANT_API_KEY").unwrap_or_default(),
-);
-let vectors = QdrantStore::connect_or_mock(config)?;
-let collection = VectorCollectionName::new("knowledge-v1")?;
-vectors
-    .create_collection(&collection, VectorDimensions::new(3)?)
-    .await?;
-
-let mut payload = Map::new();
-payload.insert("chunk_id".into(), Value::String("chunk-42".into()));
-vectors
-    .upsert(
-        &collection,
-        VectorPoint::new(42, vec![1.0, 0.0, 0.0], payload)?,
-    )
-    .await?;
-let matches = vectors
-    .search(
-        &collection,
-        &[0.9, 0.1, 0.0],
-        VectorQueryLimit::new(5)?,
-    )
-    .await?;
-# let _ = matches;
-# Ok(())
-# }
-```
-
-Empty or `mock_*` endpoint/API-key values select the deterministic in-process
-backend. An explicit `QdrantConfig::unauthenticated_local` is available only
-for loopback self-hosting. The live contract is deliberately limited to one
-unnamed dense cosine vector per numeric point. It bounds identifiers,
-dimensions, finite/non-zero-norm vectors, 1 MiB object payloads, `top-k`, request
-and response memory, deadlines and redirects. It does not claim named, sparse
-or multivectors, arbitrary filters, hosted availability, ANN index tuning or
-tenant authorization. A digest-pinned Qdrant lifecycle proves the supported
-operations.
+vector service rather than keeping vectors in PostgreSQL. Since
+13.0.0-alpha.5 Rullst has no Qdrant adapter: the
+[Qdrant recipe](../recipes/qdrant.md) uses the official `qdrant-client` crate
+in the application, with one client created at start-up, an in-memory fake
+for tests, every search filtered by tenant and capped, and tests against a
+real server. Its `NoteIndex` trait is also a natural place to implement the
+`RagRetriever` below.
 
 ## Orchestrate one bounded RAG operation
 

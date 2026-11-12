@@ -320,7 +320,7 @@ def _attribute(toks, close, start, end, facts) -> None:
 
 
 def _attribute_name(toks: list, start: int, end: int) -> str:
-    """An attribute's written path (`crate::server_function`)."""
+    """An attribute's written path (`crate::require_role`)."""
     parts, index = [], start
     while index < end and toks[index][0] == "i":
         parts.append(toks[index][1])

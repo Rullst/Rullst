@@ -141,7 +141,7 @@ fn summary_reflects_api_database_free_features_and_unavailable_previews() {
     lean.database = Database::None;
     lean.ai = true;
     lean.docker = true;
-    lean.add_ons = vec![PolyglotIntegration::Qdrant];
+    lean.add_ons = vec![PolyglotIntegration::SurrealDb];
     let lines = texts(summary(&lean, None, 8080).lines());
     let text = lines.join("\n");
     assert!(
@@ -156,7 +156,7 @@ fn summary_reflects_api_database_free_features_and_unavailable_previews() {
     );
     assert!(text.contains("Database     none"), "{text}");
     assert!(
-        text.contains("Features     AI features, Dockerfile, Qdrant"),
+        text.contains("Features     AI features, Dockerfile, SurrealDB"),
         "{text}"
     );
     assert!(text.contains("Files        preview unavailable"), "{text}");

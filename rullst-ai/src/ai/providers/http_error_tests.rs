@@ -1,8 +1,8 @@
 //! Loopback checks that every transport keeps the `HTTP {status}` prefix and
 //! adds the provider's bounded, redacted error message.
 use super::{
-    anthropic::AnthropicProvider, deepseek::DeepSeekProvider, gemini::GeminiProvider,
-    ollama::OllamaProvider, openai::OpenAiProvider, openai_compatible::OpenAiCompatibleProvider,
+    anthropic::AnthropicProvider, gemini::GeminiProvider, openai::OpenAiProvider,
+    openai_compatible::OpenAiCompatibleProvider,
 };
 use crate::ai::{AiCancellation, AiError, AiProvider, Message, StreamingAiClient};
 use std::time::Duration;
@@ -97,13 +97,16 @@ async fn native_providers_add_the_provider_message_after_the_status() {
                     .with_request_timeout(timeout),
             ),
             "DeepSeek" => Box::new(
-                DeepSeekProvider::new("fixture-key")
-                    .with_base_url(url)
+                OpenAiCompatibleProvider::deepseek("fixture-key")
+                    .unwrap()
+                    .with_test_base_url(&url)
                     .with_request_timeout(timeout),
             ),
-            "Ollama" => {
-                Box::new(OllamaProvider::new(url, "fixture-model").with_request_timeout(timeout))
-            }
+            "Ollama" => Box::new(
+                OpenAiCompatibleProvider::ollama(url, "fixture-model")
+                    .unwrap()
+                    .with_request_timeout(timeout),
+            ),
             _ => unreachable!("test cases"),
         };
         let message = api_error(provider.prompt("hello").await);

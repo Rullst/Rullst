@@ -2,9 +2,7 @@
 
 use rullst_ai::ai::providers::{
     anthropic::AnthropicProvider,
-    deepseek::DeepSeekProvider,
     gemini::GeminiProvider,
-    ollama::OllamaProvider,
     openai::OpenAiProvider,
     openai_compatible::{OpenAiCompatibleCapabilities, OpenAiCompatibleProvider},
 };
@@ -16,8 +14,8 @@ fn offline_providers() -> Vec<Arc<dyn AiProvider>> {
         Arc::new(OpenAiProvider::new("mock_key").with_base_url("not a URL")),
         Arc::new(AnthropicProvider::new("").with_base_url("not a URL")),
         Arc::new(GeminiProvider::new("mock_key").with_base_url("not a URL")),
-        Arc::new(OllamaProvider::new("mock_offline", "mock-model")),
-        Arc::new(DeepSeekProvider::new("mock_key").with_base_url("not a URL")),
+        Arc::new(OpenAiCompatibleProvider::ollama("mock_offline", "mock-model").unwrap()),
+        Arc::new(OpenAiCompatibleProvider::deepseek("mock_key").unwrap()),
         Arc::new(
             OpenAiCompatibleProvider::mock("mock-model")
                 .unwrap()
@@ -130,7 +128,7 @@ async fn embedding_mocks_use_the_redacted_input() {
     let providers: Vec<Arc<dyn AiProvider>> = vec![
         Arc::new(OpenAiProvider::new("mock_key").with_base_url("not a URL")),
         Arc::new(GeminiProvider::new("").with_base_url("not a URL")),
-        Arc::new(OllamaProvider::new("mock_offline", "mock-model")),
+        Arc::new(OpenAiCompatibleProvider::ollama("mock_offline", "mock-model").unwrap()),
         Arc::new(
             OpenAiCompatibleProvider::mock("mock-model")
                 .unwrap()

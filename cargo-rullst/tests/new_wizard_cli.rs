@@ -68,14 +68,7 @@ fn dry_runs_preview_exactly_the_files_a_real_run_writes_and_write_nothing() {
             "--redis",
         ],
         &["--blueprint", "api"],
-        &[
-            "--blueprint",
-            "saas",
-            "--database",
-            "mysql",
-            "--surrealdb",
-            "--qdrant",
-        ],
+        &["--blueprint", "saas", "--database", "mysql", "--surrealdb"],
         &["--docker", "--database", "turso"],
     ];
     for (index, profile) in profiles.iter().enumerate() {
@@ -140,24 +133,29 @@ fn dry_runs_preview_exactly_the_files_a_real_run_writes_and_write_nothing() {
 #[test]
 fn moved_blueprints_point_to_their_examples_and_write_nothing() {
     let temporary = tempfile::tempdir().unwrap();
-    for name in ["lms", "blog", "portfolio", "erp"] {
+    for (name, example, title) in [
+        ("lms", "lms", "The `lms` starter is now an example"),
+        ("blog", "blog", "The `blog` starter is now an example"),
+        ("portfolio", "blog", "The `portfolio` starter was removed"),
+        ("erp", "blog", "The `erp` starter was removed"),
+    ] {
         for extra in [&["--default"][..], &["--dry-run"], &[]] {
             let mut arguments = vec!["new", "app", "--blueprint", name];
             arguments.extend_from_slice(extra);
             let output = cli(temporary.path(), &arguments);
             let message = text(&output);
             assert_eq!(output.status.code(), Some(1), "{arguments:?}: {message}");
-            assert!(
-                message.contains(&format!("The `{name}` starter is now an example")),
-                "{message}"
-            );
+            assert!(message.contains(title), "{message}");
             assert!(
                 message.contains(&format!(
-                    "https://github.com/Rullst/Rullst/tree/main/examples/{name}"
+                    "https://github.com/Rullst/Rullst/tree/main/examples/{example}"
                 )),
                 "{message}"
             );
-            assert!(message.contains(&format!("examples/{name}")), "{message}");
+            assert!(
+                message.contains(&format!("examples/{example}")),
+                "{message}"
+            );
             assert!(
                 !message.contains("interactive terminal"),
                 "refused before any question: {message}"

@@ -40,11 +40,6 @@ rullst-orm/src/polyglot/turso/model.rs:42:9: replace TursoModel::opaque_columns 
 # differ by 96.
 rullst-orm/src/polyglot/recovery/codec.rs:192:34: replace - with + in base64url_value
 
-# No Qdrant request body can reach 4 MiB: a vector holds at most 65,536 values and a
-# payload at most 1 MiB.
-rullst-orm/src/polyglot/qdrant/mod.rs:242:24: replace > with == in LiveQdrant::send_json
-rullst-orm/src/polyglot/qdrant/mod.rs:242:24: replace > with >= in LiveQdrant::send_json
-
 # The MySQL key-collation conversion is idempotent, so running it on keys that
 # are already ascii_bin only rebuilds the table; the migration lock lives in the
 # connection's session, which dropping the connection ends as closing it does.
@@ -108,9 +103,6 @@ rullst-core/src/radar.rs:310:28: replace / with * in calculate_windows_cpu_perce
 rullst-core/src/radar.rs:310:28: replace / with % in calculate_windows_cpu_percent
 rullst-core/src/radar.rs:310:44: replace * with + in calculate_windows_cpu_percent
 rullst-core/src/radar.rs:310:44: replace * with / in calculate_windows_cpu_percent
-rullst-core/src/rpc.rs:164:13: delete match arm ClientContractError::BodyTooLarge{..} in server::request_contract_failure
-rullst-core/src/rpc.rs:261:67: replace * with + in tests::failure_for
-rullst-core/src/rpc.rs:56:9: replace RpcFailure::from_detail -> Self with Default::default()
 rullst-core/src/server/dylib_loader.rs:9:5: replace is_expected_loaded_library_removal_error -> bool with false
 rullst-core/src/server/dylib_loader.rs:9:5: replace is_expected_loaded_library_removal_error -> bool with true
 rullst-core/src/storage/cloud/multipart/codec.rs:302:31: replace > with == in MultipartStorage::open

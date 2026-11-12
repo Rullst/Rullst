@@ -1,6 +1,6 @@
-//! Procedural macros of the Rullst framework: `html!`, `#[server_function]`,
-//! `#[require_role]`, `#[derive(Billable)]`, the catalog macro behind
-//! `rullst::i18n::catalog!`, and the `#[memoize]` attribute.
+//! Procedural macros of the Rullst framework: `html!`, `#[require_role]`,
+//! `#[derive(Billable)]`, the catalog macro behind `rullst::i18n::catalog!`,
+//! and the `#[memoize]` attribute.
 //!
 //! **Maturity: Core**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). `#[memoize]`
@@ -29,7 +29,6 @@ mod memoize;
 mod memoize_tests;
 #[cfg(test)]
 mod require_role_tests;
-mod server_function;
 
 /// A macro for writing HTML inline in Rust.
 /// It compiles down to highly optimized string concatenations at compile time,
@@ -263,25 +262,6 @@ pub fn route(attr: TokenStream, item: TokenStream) -> TokenStream {
         )
         .into_compile_error()
         .into()
-    }
-}
-
-/// Defines a bounded, dual-target Rullst server function.
-///
-/// The annotated item must be a concrete async free function with at most 16
-/// identifier parameters and a `rullst::rpc::RpcResult<T>` return type. Native
-/// builds retain its body and generate `<name>_rpc_router()`. Wasm builds
-/// serialize the arguments into the versioned `rullst.client` envelope and call
-/// the exact generated endpoint.
-///
-/// `path = "/api/rpc/..."` is optional; otherwise the final path segment is the
-/// function name. Mount the generated router before applying Rullst's
-/// production security and application identity/authorization layers.
-#[proc_macro_attribute]
-pub fn server_function(attr: TokenStream, item: TokenStream) -> TokenStream {
-    match server_function::expand(attr.into(), item.into()) {
-        Ok(expanded) => expanded.into(),
-        Err(error) => error.into_compile_error().into(),
     }
 }
 

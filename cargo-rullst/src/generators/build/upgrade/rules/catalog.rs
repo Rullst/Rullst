@@ -302,7 +302,7 @@ rules! {
         "Page with `paginate` (newest first) or read one row with `query().first()`; return 503 on database errors (see also Blank database status).";
     PROFILE_FIND: "V13-PORTFOLIO-PROFILE", Review, "13.0.0-alpha.1", "Portfolio profile",
         "the Portfolio page hard-codes `Profile::find(1)`",
-        "Show the first profile by id and answer 404 when none exists, as the new controller does.";
+        "Show the first profile by id and answer 404 when none exists.";
     PAGE_CSP_NONCE: "V13-PAGE-CSP-NONCE", Review, "13.0.0-alpha.1", "Blog and Portfolio pages",
         "this page renders without the request's CSP nonce, so the production CSP blocks its inline styles",
         "Pass the request's `CspNonce` into the page, replace `style` attributes with classes and serve assets same-origin.";
@@ -344,7 +344,7 @@ rules! {
         "If the application uses the ORM or the SQLite queue, list them, for example `default-features = false, features = [\"strict-sqlite\", \"queue-sqlite\"]` (`drivers-all` for all three drivers); a database-free application needs no change.";
     POLYGLOT_FEATURE: "V13-POLYGLOT-FEATURE", MustChange, "13.0.0-alpha.2", "ORM adapter aggregate features",
         "the `orm-polyglot` (`rullst`) and `polyglot` (`rullst-orm`) features were removed; Cargo refuses a manifest that enables them",
-        "Enable only the adapters the application uses: `orm-turso`, `orm-surrealdb` or `orm-qdrant` on `rullst`, or `turso`, `surrealdb` or `qdrant` on `rullst-orm` (13.0.0-alpha.5 removed MongoDB and DuckDB: see `V13-ORM-ADAPTERS-REMOVED`).";
+        "Enable only the adapters the application uses: `orm-turso` or `orm-surrealdb` on `rullst`, or `turso` or `surrealdb` on `rullst-orm` (13.0.0-alpha.5 removed MongoDB, DuckDB and Qdrant: see `V13-ORM-ADAPTERS-REMOVED` and `V13-ORM-QDRANT-REMOVED`).";
     OMNI_REMOVED: "V13-OMNI-REMOVED", Review, "13.0.0-alpha.3", "Omni and offline sync removed",
         "13.0 removed `make:omni` and `cargo rullst omni`; this project has an Omni shell or runs the removed commands",
         "Run `cargo rullst make:pwa` (with `--android` for Google Play), ship the installable PWA, then retire `omni-app/` and the `cargo rullst omni` steps.";
@@ -392,7 +392,7 @@ rules! {
         "Run it only where `.env` has a SQLite `DATABASE_URL` (no `.env`, no `DATABASE_URL`, a non-SQLite URL or a Turso primary has nothing to compare), or stop expecting status 0 there; a database already in sync with the models still exits with status 0.";
     BLUEPRINTS_REMOVED: "V13-CLI-BLUEPRINTS-REMOVED", Review, "13.0.0-alpha.5", "CLI starters moved to the examples",
         "this script passes `--blueprint lms|blog|portfolio|erp`, which `cargo rullst new` refuses with status 1 since 13.0.0-alpha.4, before writing anything",
-        "Copy the application from the repository's `examples/lms`, `examples/erp`, `examples/portfolio` or `examples/blog` (https://github.com/Rullst/Rullst/tree/main/examples) instead, or start from `--blueprint api` or `--blueprint saas`.";
+        "Copy the application from the repository's `examples/lms` or `examples/blog` (https://github.com/Rullst/Rullst/tree/main/examples; the blog example also replaces the Portfolio and ERP examples that 13.0.0-alpha.5 removed) instead, or start from `--blueprint api` or `--blueprint saas`.";
     ALIAS_PATHS: "V13-API-ALIAS-PATHS", MustChange, "13.0.0-alpha.5", "Duplicate API paths removed",
         "13.0.0-alpha.5 removed `rullst::rullst_orm`, `rullst::security_runtime`, `rullst_mail::mail` and `rullst_mail::drivers::mock`; this path no longer compiles",
         "Write `rullst::orm` (with `use rullst::orm as rullst_orm;` where code names `rullst_orm`), `rullst::security::runtime`, the `rullst_mail` crate root and `rullst_mail::mock`.";
@@ -403,7 +403,7 @@ rules! {
         "the `banned_ips`, `honeypot_route_hits` and `live_events` fields of `SecurityStore` are private since 13.0.0-alpha.5",
         "Read them with `store.active_bans()`, `store.is_banned(ip)`, `store.honeypot_route_hits()` and `store.live_events()`, which return sorted copies (events newest first).";
     ERROR_PAYLOADS: "V13-ERROR-PAYLOADS", Review, "13.0.0-alpha.5", "Rullst-owned error payloads",
-        "this error variant no longer carries a `reqwest` or `serde_json` value: `AiError::RequestError` holds `AiRequestError`, `AiError::SerializationError` `AiJsonError`, `ClientContractError::InvalidJson`/`EncodeJson` `ContractJsonError` and `TwinSyncError::Serialization` `TwinJsonError`",
+        "this error variant no longer carries a `reqwest` or `serde_json` value: `AiError::RequestError` holds `AiRequestError`, `AiError::SerializationError` `AiJsonError` and `TwinSyncError::Serialization` `TwinJsonError`",
         "Use the payload through `Display`, `source()` or its methods (`is_timeout`, `is_connect`); match `TwinSyncError` with a `_` arm. `?` no longer converts `reqwest`, `serde_json`, `base64` or `jsonwebtoken` errors into `ConnectError`, or `serde_json`/`redis` errors into `rullst_orm::Error`: map them, for example `.map_err(|error| Error::SerializationError(error.to_string()))`.";
     SECURITY_GLOBALS: "V13-SECURITY-GLOBAL-COLLECTIONS", Review, "13.0.0-alpha.5", "Security store collections",
         "`global_deception_routes()` returns `DeceptionRoutes` and `default_deception_traps()` a sorted `Vec<String>` instead of `dashmap` sets, and `global_rate_limit_store()` is private since 13.0.0-alpha.5",
@@ -426,6 +426,12 @@ rules! {
     LIVE_COMMAND_REMOVED: "V13-LIVE-COMMAND-REMOVED", Review, "13.0.0-alpha.5", "Live components removed",
         "this script runs `make:live`, which 13.0.0-alpha.5 removed; it now exits with status 1",
         "Remove the step; write the route and its `html!` fragment by hand, with `cargo rullst make:controller` for the module.";
+    SERVER_FUNCTIONS_REMOVED: "V13-SERVER-FUNCTIONS-REMOVED", MustChange, "13.0.0-alpha.5", "Typed server functions removed",
+        "`#[server_function]`, `rullst::rpc` (`RpcResult`, `RpcFailure`), its `wasm32` caller `rullst::client` and the `rullst::client_contract` envelope were removed in 13.0.0-alpha.5; this code no longer compiles",
+        "Make the function an ordinary handler registered with `routes!` (`post(\"/counter\" => increment)`) inside the CSRF layer: return an `html!` fragment for htmx (`hx-post`, `hx-target`) or `rullst::web::axum::Json` that Alpine.js reads with `fetch`, sending the CSRF token in the `X-CSRF-Token` header. Report failures with HTTP status codes, and remove the `<name>_rpc_router()` calls.";
+    FRONTEND_ADAPTERS_REMOVED: "V13-FRONTEND-ADAPTERS-REMOVED", MustChange, "13.0.0-alpha.5", "Frontend adapters removed",
+        "`rullst::frontend` (`RenderAdapter`, `HtmlAdapter`, `PicoAdapter`, `TopcoatAdapter`, `TemplateAdapter`, `LiveViewAdapter`, `WasmIslandAdapter`, `LeptosAdapter`, `DioxusAdapter`) was removed in 13.0.0-alpha.5; this code no longer compiles",
+        "Return the `Markup` of `html!` from the handler, or wrap HTML rendered elsewhere in `rullst::response::Html(...)`: each adapter only answered its string as `text/html`.";
     HTML_ALPINE_DIRECTIVE: "V13-HTML-DYNAMIC-ALPINE-DIRECTIVE", MustChange, "13.0.0-alpha.5", "`html!` event handlers",
         "a dynamic value in an Alpine.js `x-*` attribute of `html!` no longer compiles: Alpine runs it as JavaScript",
         "Write the directive as a static string and pass the server value through a `data-*` attribute (`data-count={count}` read as `$el.dataset.count`), or render the JSON into a `<script type=\"application/json\">` data block that the component reads.";
@@ -456,6 +462,15 @@ rules! {
     CLI_GREEN_RENAMED: "V13-CLI-GREEN-RENAMED", Review, "13.0.0-alpha.5", "CLI `green` renamed `footprint`",
         "`cargo rullst green` is `cargo rullst footprint` since 13.0.0-alpha.5, without an alias, and its JSON report is `rullst.footprint.v1` instead of `rullst.green.v1`; this file runs or reads the old one",
         "Replace `cargo rullst green` with `cargo rullst footprint` (the same flags, plus `--page-weight` and `--network-kwh-per-gb`) and `rullst.green.v1` with `rullst.footprint.v1`; the report adds `page_weight` and the benchmark's bytes. A line kept on purpose, such as a changelog entry, can carry `rullst-upgrade: reviewed V13-CLI-GREEN-RENAMED`.";
+    ACADEMY_REMOVED: "V13-ACADEMY-REMOVED", MustChange, "13.0.0-alpha.5", "Academy production preset removed",
+        "`ProductionPreset::academy()`, the `Academy*` production types and `cargo rullst academy:doctor` were removed in 13.0.0-alpha.5; this code no longer compiles, and the command exits with status 1",
+        "Keep the application's own production checklist in its tests or CI instead of `ProductionPreset::academy()` and the `AcademyProductionRequirement`, `AcademyCheckStatus`, `AcademyBoundaryAssessment`, `AcademyPresetError` and `AcademyProductionPreset` types, and remove `academy:doctor` steps; `ProductionPreset::middleware_order()` and `ProductionMiddlewareStage` remain.";
+    ORM_QDRANT_REMOVED: "V13-ORM-QDRANT-REMOVED", MustChange, "13.0.0-alpha.5", "Qdrant adapter removed",
+        "13.0.0-alpha.5 removed the Qdrant adapter: Cargo refuses the `orm-qdrant` (`rullst`) and `qdrant` (`rullst-orm`) features, and `QdrantStore`, `QdrantConfig`, `VectorRepository` and the `Vector*` types no longer compile",
+        "Remove the feature and use the official `qdrant-client` crate in the application: one client created at start-up, shared through application state, behind a small trait with an in-memory fake for tests, and every search filtered by tenant and bounded. https://rullst.github.io/Rullst/book/recipes/qdrant.html shows it; for vectors next to the rows they describe, `pgvector` on PostgreSQL stays.";
+    AI_PROVIDER_PRESETS: "V13-AI-PROVIDER-PRESETS", MustChange, "13.0.0-alpha.5", "DeepSeek and Ollama as OpenAI-compatible presets",
+        "`DeepSeekProvider` and `OllamaProvider` (`rullst_ai::ai::providers::deepseek` and `::ollama`) were removed in 13.0.0-alpha.5; this code no longer compiles",
+        "Use the presets of the OpenAI-compatible adapter: `OpenAiCompatibleProvider::deepseek(api_key)?` (`.try_with_model(..)?` instead of `.with_model(..)`) and `OpenAiCompatibleProvider::ollama(host, model)?` (`.try_with_embedding_model(..)?` instead of `.with_embedding_model(..)`), from `rullst::ai::providers::openai_compatible`. Both return a `Result`; Ollama is now reached through its `/v1` API.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

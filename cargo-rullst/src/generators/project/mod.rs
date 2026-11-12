@@ -25,7 +25,6 @@ pub struct ProjectScaffoldOptions {
     pub use_defaults: bool,
     pub turso: bool,
     pub surrealdb: bool,
-    pub qdrant: bool,
     pub database: Option<&'static str>,
     pub no_database: bool,
     pub hot_reload: bool,

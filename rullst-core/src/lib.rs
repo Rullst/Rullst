@@ -42,10 +42,6 @@ pub mod assets;
 pub mod cache;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cache_control;
-/// Browser (`wasm32`) caller of typed server functions.
-pub mod client;
-/// Portable, versioned wire contract shared by web and platform clients.
-pub mod client_contract;
 #[cfg(not(target_arch = "wasm32"))]
 /// Agentic DevOps Engine & Infrastructure Tuning (Milestone 20).
 pub mod devops;
@@ -60,9 +56,6 @@ pub mod error_console;
 #[cfg(not(target_arch = "wasm32"))]
 /// Feature flagging management and drivers.
 pub mod feature;
-#[cfg(not(target_arch = "wasm32"))]
-/// Hybrid Frontend SSR Adapters (Leptos, Dioxus, HTMX).
-pub mod frontend;
 #[cfg(not(target_arch = "wasm32"))]
 /// Kubernetes and Cloud-Native Health Probes.
 pub mod health;
@@ -107,8 +100,6 @@ pub mod resilience;
 #[cfg(not(target_arch = "wasm32"))]
 /// High-performance application routers built on Axum.
 pub mod routing;
-/// Typed, versioned browser-to-server function transport.
-pub mod rpc;
 #[cfg(not(target_arch = "wasm32"))]
 /// Interactive Scalar API documentation UI.
 pub mod scalar;
@@ -156,7 +147,7 @@ macro_rules! artisan {
 }
 
 // Re-export procedural macros
-pub use rullst_macros::{html, memoize, route, server_function};
+pub use rullst_macros::{html, memoize, route};
 
 // Re-export core structs for public consumption
 #[cfg(not(target_arch = "wasm32"))]
@@ -229,10 +220,7 @@ pub use ws::{WebSocket, WsError};
 
 // Re-export Milestone 6 Resilience Features
 #[cfg(not(target_arch = "wasm32"))]
-pub use production::{
-    AcademyBoundaryAssessment, AcademyCheckStatus, AcademyPresetError, AcademyProductionPreset,
-    AcademyProductionRequirement, ProductionMiddlewareStage, ProductionPreset,
-};
+pub use production::{ProductionMiddlewareStage, ProductionPreset};
 #[cfg(not(target_arch = "wasm32"))]
 pub use resilience::{
     RateLimitConfig, RateLimiter, TrafficShield, TrafficShieldConfig, TrafficShieldError,

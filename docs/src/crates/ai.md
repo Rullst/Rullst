@@ -15,8 +15,8 @@ tenant-aware RAG pipeline.
 | OpenAI | yes | yes | yes | yes | yes |
 | Gemini | yes | yes | yes | yes | yes |
 | Anthropic | yes | yes | no | prompt-constrained | no |
-| DeepSeek | yes | no | no | yes | `deepseek-v4-flash` |
-| Ollama | yes | model-dependent | yes | yes | local API only |
+| DeepSeek (compatible preset) | yes | no | no | yes | `deepseek-flash`, `deepseek-v4-pro` (and the older `deepseek-v4-flash`) |
+| Ollama (compatible preset) | yes | model-dependent | yes | yes | model-dependent |
 | OpenAI-compatible local/cloud | yes | declared | declared | declared | declared |
 
 Unsupported capabilities return `AiError::UnsupportedCapability`; the client does not silently
@@ -38,6 +38,20 @@ loopback IP, `try_local_with_bearer` adds explicit local authentication, and
 `try_cloud` requires HTTPS plus a Bearer credential. All three
 disable redirects and environment proxies and bound response bodies. Different
 protocols use a custom public `AiProvider`, not an arbitrary-HTTP mode.
+
+Two presets configure it for a service and keep that service's name in errors:
+`OpenAiCompatibleProvider::deepseek(api_key)` targets `https://api.deepseek.com`
+with `deepseek-flash` (`try_with_model` selects another model) and declares
+chat, JSON mode and streaming with usage; its JSON Schema output goes to
+DeepSeek's `/responses`, because DeepSeek's Chat Completions accepts no
+`json_schema` response format, and its JSON mode adds a system instruction,
+because DeepSeek requires the word "json" in the prompt.
+`OpenAiCompatibleProvider::ollama(host, model)` targets the server's `/v1` API
+without a credential (plain HTTP is accepted for any host, since nothing
+secret is sent) and declares chat, streaming with usage, JSON mode, JSON
+Schema, image input and embeddings (`nomic-embed-text` by default). Until
+13.0.0-alpha.4 these were the separate `DeepSeekProvider` and `OllamaProvider`;
+Ollama then used its native `/api/chat` and `/api/embed`.
 
 ### Default models and provider errors
 
@@ -217,7 +231,7 @@ instead of asking the model to answer without retrieved evidence.
 
 The bundled `InMemoryRagRetriever` is a bounded tenant-partitioned cosine index for offline tests,
 development, and small ephemeral datasets. It is neither durable nor distributed. A production
-application can implement `RagRetriever` over ORM pgvector or Qdrant, but that adapter must bind the
+application can implement `RagRetriever` over ORM pgvector or Qdrant (the [Qdrant recipe](../recipes/qdrant.md)), but that adapter must bind the
 trusted tenant and ownership predicates in the authoritative datastore. The pipeline's tag check is
 defense in depth, not a replacement for datastore authorization.
 
@@ -254,9 +268,9 @@ data minimization remain caller contracts.
 
 ## Offline mode
 
-OpenAI, Gemini, Anthropic, DeepSeek, and compatible cloud endpoints use
+OpenAI, Gemini, Anthropic, the DeepSeek preset, and compatible cloud endpoints use
 deterministic offline mode when their API key is empty or begins with `mock_`.
-Ollama uses an empty or `mock_*` host; the compatible adapter also exposes an
+The Ollama preset uses an empty or `mock_*` host; the compatible adapter also exposes an
 explicit `mock` constructor. Plain `try_local` is deliberately live because no
 credential is its valid loopback configuration. Offline branches return before
 HTTP dispatch and cover each capability the provider declares. Unsupported
@@ -265,7 +279,7 @@ capabilities remain typed errors in offline mode.
 `AiClient::auto()` checks `OPENAI_API_KEY` (with `OPENAI_BASE_URL` and `OPENAI_MODEL` for a
 compatible endpoint), `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `GROQ_API_KEY`
 (with `GROQ_MODEL`) and `OLLAMA_HOST` (with `OLLAMA_MODEL`, default `llama3`). If none is configured, it selects an offline OpenAI fixture;
-it does not probe localhost implicitly. `OLLAMA_HOST` (and the host given to `OllamaProvider::new`)
+it does not probe localhost implicitly. `OLLAMA_HOST` (and the host given to `OpenAiCompatibleProvider::ollama`)
 is read the way Ollama reads it: a scheme-less `127.0.0.1:11434` or `localhost` means `http` and
 port 11434 unless a port is named.
 
@@ -310,8 +324,8 @@ levels, 32 items per array and 4,096 generated values; larger schemas fail with
 
 ## Current boundaries
 
-Streaming for the OpenAI, DeepSeek and Ollama transports (outside the
-compatible adapter), provider-native tool execution loops, first-party external
+Streaming for the native OpenAI transport (outside the compatible adapter),
+provider-native tool execution loops, first-party external
 vector-store `RagRetriever` adapters, maintained domain-specific evaluation
 corpora, and compile-time schema derivation remain roadmap work. The
 SQL memory does not supply raw-text encryption, ownership within a tenant,

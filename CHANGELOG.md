@@ -609,7 +609,22 @@ A prepared version section does not establish that its tag or crates exist.
   `reply_to` field; add `reply_to: None` or build it with `Message::new()`.
   Serialized messages without it still decode. `cargo rullst upgrade` reports
   such literals (`V13-MAIL-MESSAGE-REPLY-TO`).
-
+- **Breaking:** `rullst-ai`'s DeepSeek and Ollama providers are presets of the
+  OpenAI-compatible adapter. Both services implement the OpenAI request
+  shapes, so `DeepSeekProvider` and `OllamaProvider` (with their
+  `providers::deepseek` and `providers::ollama` modules) were removed in favour
+  of `OpenAiCompatibleProvider::deepseek(api_key)` and
+  `OpenAiCompatibleProvider::ollama(host, model)`, plus the new
+  `OpenAiCompatibleProvider::try_with_model`. The presets keep the provider
+  names, offline `mock_*` mode and typed HTTP errors, and add streaming with
+  usage. The DeepSeek default model is `deepseek-flash`, the name DeepSeek now
+  documents, instead of `deepseek-v4-flash`, an older name it still accepts. DeepSeek JSON Schema output still uses DeepSeek's
+  `/responses`, because its Chat Completions accepts no `json_schema` format,
+  now also for `deepseek-flash` and `deepseek-v4-pro`; Ollama is reached
+  through its `/v1` API (Ollama 0.5 or later), whose image input accepts JPEG,
+  PNG and WebP. A malformed key, host or model fails at construction with
+  `AiError::ConfigError`, also in `AiClient::auto()`. `cargo rullst upgrade`
+  reports the removed paths and names (`V13-AI-PROVIDER-PRESETS`).
 - **Breaking:** one path per item: `rullst::rullst_orm` (the same module as
   `rullst::orm`), `rullst::security_runtime` (the same as
   `rullst::security::runtime`), Mail's `rullst_mail::mail` alias of the crate
@@ -657,8 +672,7 @@ A prepared version section does not establish that its tag or crates exist.
   `reqwest`, `jsonwebtoken`, `base64`, `redis` or `serde_json` error any more,
   so those crates are no longer public dependencies through errors.
   `AiError::RequestError` carries the new `AiRequestError` (`is_timeout`,
-  `is_connect`), `AiError::SerializationError` the new `AiJsonError`,
-  `ClientContractError::InvalidJson`/`EncodeJson` the new `ContractJsonError`
+  `is_connect`), `AiError::SerializationError` the new `AiJsonError`
   and `TwinSyncError::Serialization` the new `TwinJsonError` (`TwinSyncError`
   is now `#[non_exhaustive]` and implements `Error`); their texts and
   `source()` chains are unchanged. `ConnectError` lost its `From` impls for
@@ -714,8 +728,7 @@ A prepared version section does not establish that its tag or crates exist.
   Rullst's default CSP has no `'wasm-unsafe-eval'`, which browsers require
   to compile WebAssembly, so islands could not run under the default security
   headers. The removed commands print their replacement and exit with status
-  1. `#[server_function]` keeps its `wasm32` caller, and the `wasm32` checks
-  of the crates are unchanged.
+  1. The `wasm32` checks of the crates are unchanged.
 - **Breaking:** Live components. `rullst::live` was removed: the
   `LiveComponent` trait, `Live::mount`, `live_ws_handler` (the HTMX WebSocket
   protocol, which had no origin check, connection cap or idle timeout), the
@@ -727,6 +740,23 @@ A prepared version section does not establish that its tag or crates exist.
   updates with `RealtimeSse` (above); `BroadcastManager`, `PresenceTracker`,
   the tenant facades and `rullst::ws` stay. The blog example drops its Live
   counter page and the vendored htmx WebSocket extension.
+- **Breaking:** typed server functions. The `#[server_function]` attribute
+  and the `<name>_rpc_router()` it generated, `rullst::rpc` (`RpcResult`,
+  `RpcFailure`), the `wasm32` caller `rullst::client` and
+  `rullst::client_contract` (the `rullst.client` v1 JSON envelope and its
+  types) were removed, with the Blank starter's `src/rpc.rs` counter (its page
+  already used the htmx `/clicked` route, and the RPC answered an empty `{}`
+  body with 400), Tutorial 52 and the RPC tests. The RPC existed so that
+  WebAssembly islands could call the server; with islands removed, htmx calls
+  ordinary routes and Alpine.js can fetch JSON from one, so it was a second
+  way to do the same thing. `cargo rullst upgrade` reports the attribute and
+  the paths (`V13-SERVER-FUNCTIONS-REMOVED`, must-change).
+- **Breaking:** the `rullst_core::frontend` adapters (`RenderAdapter`,
+  `HtmlAdapter`, `PicoAdapter`, `TopcoatAdapter`, `TemplateAdapter`,
+  `LiveViewAdapter`, `WasmIslandAdapter`, `LeptosAdapter`, `DioxusAdapter`).
+  Each only answered its string as `text/html` and nothing used them: return
+  the `Markup` of `html!` or `rullst::response::Html(...)`. `cargo rullst
+  upgrade` reports the paths (`V13-FRONTEND-ADAPTERS-REMOVED`, must-change).
 - **Breaking:** the Turso variant of `cargo rullst make:billing`. Billing is
   generated for SQLx projects only; in a Turso-primary project the command
   refuses before writing anything, because billing needs the SQLx database
@@ -755,6 +785,38 @@ A prepared version section does not establish that its tag or crates exist.
   `new` flags are hidden and stop with status 1, naming the recipe;
   `cargo rullst upgrade` reports the removed features and names
   (`V13-ORM-ADAPTERS-REMOVED`).
+- **Breaking:** the Qdrant adapter of `rullst-orm`: `QdrantStore`,
+  `QdrantConfig`, `VectorRepository`, `VectorCollectionName`,
+  `VectorDimensions`, `VectorPoint`, `VectorMatch`, `VectorQueryLimit`,
+  `Backend::Qdrant`, `Capability::Vectors`, the `qdrant` feature of
+  `rullst-orm`, the `orm-qdrant` feature of `rullst` and
+  `cargo rullst new --qdrant`. It wrapped four operations of Qdrant's REST
+  API; the new [Qdrant recipe](docs/src/recipes/qdrant.md) uses the official
+  `qdrant-client` crate in an application, with one client in state,
+  tenant-filtered and capped searches, an offline fake behind an application
+  trait and tests against a container. `pgvector` and the ORM's `ai` feature
+  stay. `new --qdrant` is hidden and stops with status 1, naming the recipe;
+  `cargo rullst upgrade` reports the removed features and names
+  (`V13-ORM-QDRANT-REMOVED`).
+- **Breaking:** the Academy production preset. `ProductionPreset::academy()`
+  and the `rullst-core` types `AcademyProductionPreset`,
+  `AcademyProductionRequirement`, `AcademyCheckStatus`,
+  `AcademyBoundaryAssessment` and `AcademyPresetError` were removed with
+  `cargo rullst academy:doctor` and its `rullst.academy-evidence.v1` and
+  `rullst.academy-diagnostic.v1` documents. Framework code should not carry
+  one application's types: the twelve requirements described Rullst Academy,
+  an external application, which keeps its own checklist.
+  `ProductionPreset::middleware_order()` and `ProductionMiddlewareStage`
+  remain. `academy:doctor` prints this and exits with status 1, and
+  `cargo rullst upgrade` reports the removed names and scripts that run the
+  command (`V13-ACADEMY-REMOVED`).
+- The `examples/erp` and `examples/portfolio` applications (the former ERP and
+  Portfolio starters). Both showed CRUD with a Nexus back office, which
+  `examples/blog` and the SaaS starter already cover. `cargo rullst new
+  --blueprint erp` or `portfolio` still exits with status 1 before writing
+  anything, and its report now points to `examples/blog`; the CI browser job
+  checks the Nexus shell only. Their last version is in the `v13.0.0-alpha.4`
+  tag.
 
 The [migration guide](docs/src/migration-v13.md#upgrading-an-alpha4-application-to-alpha5)
 describes each replacement.
