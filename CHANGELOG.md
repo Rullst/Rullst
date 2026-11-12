@@ -378,6 +378,24 @@ A prepared version section does not establish that its tag or crates exist.
   it is not a required release job. It found the starter defects and the
   Core CSP violation fixed above; a framework defect that cannot be fixed at
   once is versioned in `.github/starter-browsers/known-defects.json`.
+- CI budgets the footprint of the generated starters: the
+  `Starter footprint budgets` job of `ci.yml`
+  (`.github/check-starter-footprint.py`) builds the Blank, SaaS and API
+  starters in release mode and runs `cargo rullst footprint --env staging
+  --page-weight --bench` against one budget file per starter in
+  `.github/starter-footprint/`. It fails when the release binary, idle memory,
+  dependency count, bytes per request or the home page's bytes, requests or
+  third-party origins grow past their limit, which is the figure measured on
+  a GitHub-hosted Linux runner plus a margin (+15 % binary, +20 % memory,
+  +5 % dependencies, +10 % but at least 1 KiB for bytes, none for requests
+  and origins). CPU time per request is reported in the job summary, never
+  limited. It runs on ready pull requests that change a framework crate, the
+  lockfile, the toolchain or the starter templates, nightly, in full manual
+  runs and as a `starter-footprint` diagnostic shard; it is not a required
+  check. `MAINTAINING.md` says how to raise a limit on purpose. Its runs
+  measured release binaries of 11.2 MB (Blank), 15.8 MB (SaaS) and 11.1 MB
+  (API) and about 10–12 MB of idle memory; the first one found the favicon
+  that made up 448 KB of the Blank home page (see Changed).
 - `miri.yml` also runs `cargo careful test` (cargo-careful 0.4.10 on Miri's
   pinned `nightly-2026-08-21`) over the library unit tests of `rullst-core`,
   `rullst-security` and `rullst-orm`, weekly and on dispatch. It is
@@ -609,6 +627,11 @@ A prepared version section does not establish that its tag or crates exist.
   `reply_to` field; add `reply_to: None` or build it with `Message::new()`.
   Serialized messages without it still decode. `cargo rullst upgrade` reports
   such literals (`V13-MAIL-MESSAGE-REPLY-TO`).
+- The starters' favicon (`static/rullst.png`) is now a 192×192 PNG of 11 KB
+  instead of the 448 KB full-size logo, so the Blank starter's home page
+  weighs 64,422 bytes on a first visit instead of 501,296 (87 % less; SaaS
+  22,881 instead of 459,755). The LMS and IoT gateway examples ship the same
+  file.
 - **Breaking:** `rullst-ai`'s DeepSeek and Ollama providers are presets of the
   OpenAI-compatible adapter. Both services implement the OpenAI request
   shapes, so `DeepSeekProvider` and `OllamaProvider` (with their
