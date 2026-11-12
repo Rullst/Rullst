@@ -406,3 +406,12 @@ async fn sql_store_debug_shows_only_the_backend() {
     assert!(debug.contains("backend: Sqlite"), "{debug}");
     store.pool().close().await;
 }
+
+#[test]
+fn claim_tokens_are_fresh_operating_system_randomness() {
+    let first = random_claim_token().expect("claim token");
+    let second = random_claim_token().expect("claim token");
+    assert_eq!(first.len(), 32);
+    assert!(first.bytes().all(|byte| byte.is_ascii_hexdigit()));
+    assert_ne!(first, second);
+}
