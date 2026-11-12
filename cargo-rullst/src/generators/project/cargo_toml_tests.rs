@@ -213,8 +213,6 @@ fn selected_persistence_integrations_enable_only_their_features() {
         "MariaDB",
         &[
             PolyglotIntegration::Turso,
-            PolyglotIntegration::MongoDb,
-            PolyglotIntegration::DuckDb,
             PolyglotIntegration::SurrealDb,
             PolyglotIntegration::Qdrant,
         ],
@@ -227,17 +225,16 @@ fn selected_persistence_integrations_enable_only_their_features() {
     .expect("polyglot manifest");
     for feature in [
         "orm-turso",
-        "orm-mongodb",
-        "orm-duckdb",
         "orm-surrealdb",
         "orm-qdrant",
         "turso",
-        "mongodb",
-        "duckdb",
         "surrealdb",
         "qdrant",
     ] {
         assert!(manifest.contains(&format!("\"{feature}\"")));
+    }
+    for removed in ["mongodb", "duckdb"] {
+        assert!(!manifest.contains(removed), "{removed} in:\n{manifest}");
     }
     assert!(manifest.contains("\"mysql\""));
 }

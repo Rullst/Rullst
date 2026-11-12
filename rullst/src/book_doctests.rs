@@ -232,6 +232,10 @@ tutorial!(
 );
 tutorial!(managed_video, "../../docs/src/managed-video.md");
 tutorial!(
+    provider_conformance,
+    "../../docs/src/provider-conformance.md"
+);
+tutorial!(
     ai_integration_guide,
     "../../docs/src/6-ai-integration-tutorial.md"
 );
@@ -268,6 +272,8 @@ tutorial!(
 tutorial!(framework_spec, "../../docs/src/spec.md");
 tutorial!(telemetry_guide, "../../docs/src/telemetry-guide.md");
 tutorial!(testing_your_app, "../../docs/src/testing-your-app.md");
+tutorial!(recipe_mongodb, "../../docs/src/recipes/mongodb.md");
+tutorial!(recipe_duckdb, "../../docs/src/recipes/duckdb.md");
 tutorial!(crate_ai, "../../docs/src/crates/ai.md");
 tutorial!(crate_auth, "../../docs/src/crates/auth.md");
 tutorial!(crate_capital, "../../docs/src/crates/capital.md");

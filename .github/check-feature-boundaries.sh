@@ -84,8 +84,6 @@ cargo-rullst|
 
 # Independent infrastructure and adapter boundaries.
 rullst-orm|redis
-rullst-orm|mongodb
-rullst-orm|duckdb
 rullst-orm|turso
 rullst-orm|surrealdb
 rullst-orm|scout-http
@@ -171,8 +169,6 @@ rullst-labs|sqlite,receipt-signing
 
 # Umbrella boundaries exposed to generated applications.
 rullst|orm
-rullst|orm-mongodb
-rullst|orm-duckdb
 rullst|orm-turso
 rullst|orm-surrealdb
 rullst|orm-scout

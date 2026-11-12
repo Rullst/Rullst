@@ -1,7 +1,13 @@
 //! Provider library listing (v13): one page of the videos a library holds,
 //! including videos created outside the application.
 
-use crate::{MediaError as Error, Processing, VideoId};
+use crate::contracts::checked_time;
+use crate::{MediaError as Error, Processing, ProviderMode, VideoId};
+
+/// Longest listed title, in bytes.
+const MAX_TITLE_BYTES: usize = 1_024;
+/// Longest video duration accepted, one week in seconds.
+const MAX_LENGTH_SECONDS: u32 = 604_800;
 
 /// Order of a [`ListQuery`] page.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -100,6 +106,57 @@ pub struct ListedVideo {
     pub thumbnail_url: Option<String>,
 }
 
+impl ListedVideo {
+    /// A listed video read by an application-owned
+    /// [`VideoProvider`](crate::VideoProvider) from its service.
+    /// Since 13.0.0-alpha.5.
+    ///
+    /// `title` is 1 to 1024 bytes (any text: escape it when rendering) and
+    /// `length_seconds` at most one week (604,800); anything else is
+    /// [`MediaError::InvalidInput`](Error::InvalidInput). Add the upload time
+    /// and thumbnail with [`with_created_at`](Self::with_created_at) and
+    /// [`with_thumbnail_url`](Self::with_thumbnail_url).
+    pub fn new(
+        id: VideoId,
+        title: impl Into<String>,
+        length_seconds: u32,
+        processing: Processing,
+    ) -> Result<Self, Error> {
+        let title = title.into();
+        if title.is_empty() || title.len() > MAX_TITLE_BYTES || length_seconds > MAX_LENGTH_SECONDS
+        {
+            return Err(Error::InvalidInput);
+        }
+        Ok(Self {
+            id,
+            title,
+            length_seconds,
+            processing,
+            created_at: None,
+            thumbnail_url: None,
+        })
+    }
+
+    /// The upload time in UTC Unix seconds, between 1970 and 9999.
+    /// Since 13.0.0-alpha.5.
+    pub fn with_created_at(mut self, created_at: i64) -> Result<Self, Error> {
+        self.created_at = Some(checked_time(created_at).map_err(|_| Error::InvalidInput)?);
+        Ok(self)
+    }
+
+    /// The thumbnail's absolute `https://` location: at most 2 KiB, without
+    /// credentials, fragment, spaces or control characters. Since
+    /// 13.0.0-alpha.5.
+    pub fn with_thumbnail_url(mut self, url: impl Into<String>) -> Result<Self, Error> {
+        let url = url.into();
+        if !crate::grant::url_valid(&url, ProviderMode::Offline) {
+            return Err(Error::InvalidInput);
+        }
+        self.thumbnail_url = Some(url);
+        Ok(self)
+    }
+}
+
 /// One page of a provider library.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -112,6 +169,26 @@ pub struct VideoPage {
 }
 
 impl VideoPage {
+    /// The page `query` asked for, built by an application-owned
+    /// [`VideoProvider`](crate::VideoProvider). Since 13.0.0-alpha.5.
+    ///
+    /// The page number and size are the query's. `items` holds at most
+    /// `query.per_page()` videos and `total` (matching videos across all
+    /// pages) is at least their number; anything else is
+    /// [`MediaError::InvalidInput`](Error::InvalidInput).
+    pub fn new(query: &ListQuery, items: Vec<ListedVideo>, total: u64) -> Result<Self, Error> {
+        let count = items.len();
+        if count > query.per_page() as usize || total < count as u64 {
+            return Err(Error::InvalidInput);
+        }
+        Ok(Self {
+            items,
+            page: query.page(),
+            per_page: query.per_page(),
+            total,
+        })
+    }
+
     /// Whether a later page holds more matching videos.
     pub fn has_more(&self) -> bool {
         u64::from(self.page).saturating_mul(u64::from(self.per_page)) < self.total
@@ -140,6 +217,67 @@ mod tests {
         assert!(page(2, 10, 21).has_more());
         assert!(!page(3, 10, 0).has_more());
         assert!(page(u32::MAX, u32::MAX, u64::MAX).has_more());
+    }
+
+    fn listed(title: &str, length: u32) -> Result<ListedVideo, Error> {
+        let id = VideoId::new("12345678-1234-4234-8234-123456789abc").unwrap();
+        ListedVideo::new(id, title, length, Processing::Ready)
+    }
+
+    #[test]
+    fn listed_videos_validate_title_length_time_and_thumbnail() {
+        let video = listed("Lesson", 754).unwrap();
+        assert_eq!(
+            (video.title.as_str(), video.length_seconds, video.processing),
+            ("Lesson", 754, Processing::Ready)
+        );
+        assert_eq!(
+            (video.created_at, video.thumbnail_url.as_deref()),
+            (None, None)
+        );
+        let longest = "t".repeat(MAX_TITLE_BYTES);
+        assert!(listed(&longest, MAX_LENGTH_SECONDS).is_ok());
+        assert_eq!(listed("", 1), Err(Error::InvalidInput));
+        assert_eq!(listed(&format!("{longest}t"), 1), Err(Error::InvalidInput));
+        assert_eq!(
+            listed("Lesson", MAX_LENGTH_SECONDS + 1),
+            Err(Error::InvalidInput)
+        );
+
+        let dated = video.clone().with_created_at(1_793_534_400).unwrap();
+        assert_eq!(dated.created_at, Some(1_793_534_400));
+        assert_eq!(video.clone().with_created_at(0), Err(Error::InvalidInput));
+        let thumb = "https://cdn.example/v/thumbnail.jpg";
+        let shown = video.clone().with_thumbnail_url(thumb).unwrap();
+        assert_eq!(shown.thumbnail_url.as_deref(), Some(thumb));
+        for url in [
+            "http://cdn.example/t.jpg",
+            "https://u:p@cdn.example/t.jpg",
+            "https://cdn.example/t.jpg#x",
+        ] {
+            assert_eq!(
+                video.clone().with_thumbnail_url(url),
+                Err(Error::InvalidInput),
+                "{url}"
+            );
+        }
+    }
+
+    #[test]
+    fn pages_echo_their_query_and_bound_their_items() {
+        let query = ListQuery::new(2, 10).unwrap();
+        let ten = vec![listed("Lesson", 1).unwrap(); 10];
+        let full = VideoPage::new(&query, ten.clone(), 10).unwrap();
+        assert_eq!(
+            (full.page, full.per_page, full.total, full.items.len()),
+            (2, 10, 10, 10)
+        );
+        let mut eleven = ten.clone();
+        eleven.push(listed("Lesson", 1).unwrap());
+        assert_eq!(VideoPage::new(&query, eleven, 20), Err(Error::InvalidInput));
+        assert_eq!(VideoPage::new(&query, ten, 9), Err(Error::InvalidInput));
+        let empty = VideoPage::new(&query, Vec::new(), 0).unwrap();
+        assert!(empty.items.is_empty());
     }
 
     #[test]

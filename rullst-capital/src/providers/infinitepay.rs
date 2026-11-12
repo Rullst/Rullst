@@ -25,7 +25,12 @@ const API_BASE: &str = "https://api.checkout.infinitepay.io";
 ///   R$ 1.00 per unit), the request's reference as `order_nsu`, its success
 ///   URL as `redirect_url` and the configured `webhook_url`. With an
 ///   `inchk_…` API key ([`Self::with_api_key`]) the link also accepts a single
-///   payment. InfinitePay has no cancel URL.
+///   payment. InfinitePay has no cancel URL. Until the merchant enables
+///   external checkout ("Checkout externo") for the InfiniteTag in the
+///   InfinitePay app, and for a tag that does not exist, InfinitePay answers
+///   404 and the [`ProviderFailure`](crate::ProviderFailure)'s
+///   [`reason`](crate::ProviderFailure::reason) is
+///   `external_checkout_not_enabled`.
 /// - The webhook is **unsigned**, so the adapter's mode is
 ///   [`WebhookVerificationMode::ConfirmedAtSource`]:
 ///   [`BillingProvider::parse_payment_notification`] reads only `order_nsu`,

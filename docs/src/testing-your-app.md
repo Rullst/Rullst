@@ -26,6 +26,7 @@ this page says which is which.
 | Monthly grouped dependency updates | Yes | `.github/dependabot.yml` |
 | Every page in Chromium, Firefox and WebKit with axe-core, both colour schemes | With `cargo rullst add browser-tests` | `tests/browser/` and the `browser-tests.yml` workflow |
 | Routes with `{id}` classified with `// rullst-access:` | Checked by `cargo rullst audit --idor` | your CI, see below |
+| Binary size, memory, CPU and page-weight limits | Checked by `cargo rullst footprint --check-budget` | your CI, see [Budgets in CI](footprint.md#budgets-in-ci) |
 | A route × role permission table | No | see below |
 | Restore a backup, test migrations on a copy, monitor the site, OWASP ZAP, published-figure freshness | No | see below |
 
@@ -76,7 +77,9 @@ GET with [`TestApp`](crates/core.md) and checks:
   after a history-cache miss (`HX-Request` and `HX-History-Restore-Request`)
   must answer the whole document too, not a fragment.
 
-**Add each new page to `PAGES`.** Use the path a signed-out visitor opens and
+**Add each new page to `PAGES`.** `make:mfa` (`/account/security`, 303),
+`make:privacy` (`/privacy`, 303) and `make:pwa` (`/offline`, 200) add theirs
+(since 13.0.0-alpha.5). Use the path a signed-out visitor opens and
 the status they receive; pages that need a signed-in user can be checked in
 your own tests by sending the session cookie with `TestApp::get(path)
 .header("cookie", …)`. Routes with parameters (`/posts/{id}`) are not listed:
@@ -112,7 +115,11 @@ edit them freely.
   `cargo test --all-targets`, with a dependency cache.
 - **Dependency advisories:** `cargo audit` on every push and pull request and
   daily at 06:17 UTC, so a new RustSec advisory for a locked crate fails the
-  scheduled run. It reads `Cargo.lock`: commit it.
+  scheduled run. It reads `Cargo.lock`: commit it. It ignores one advisory
+  that Rullst governs and cannot fix yet, `RUSTSEC-2026-0459` (bundled SQLite
+  through `sqlx-sqlite`), until its expiry, 2027-01-28, after which the step
+  audits without it; the comment above the step says when to remove it (see
+  [security advisory exceptions](security-advisory-exceptions.md)).
 - **Secret scan:** TruffleHog, verified findings only, over the commits of the
   push or pull request.
 
@@ -125,6 +132,12 @@ in the repository settings to receive advisory fixes at once.
 The workflow sits at the root of the new project. When the project lives in a
 subdirectory of a larger repository, move the file to that repository's
 `.github/workflows/` and set `working-directory`.
+
+The workflow does not measure resources. To keep the binary size, idle memory,
+CPU per request and page weight under limits, set them in `Rullst.toml`
+`[footprint.budgets]` and add the job that
+[Budgets in CI](footprint.md#budgets-in-ci) shows: it installs the CLI, starts
+the application with `--env staging` and fails when a limit is exceeded.
 
 ## Browser tests
 

@@ -243,6 +243,24 @@ impl core::marker::Sync for rullst_supervision::analysis::Finding
 impl core::marker::Unpin for rullst_supervision::analysis::Finding
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_supervision::analysis::Finding
 impl core::panic::unwind_safe::UnwindSafe for rullst_supervision::analysis::Finding
+#[non_exhaustive] pub struct rullst_supervision::analysis::LoudnessStatistics
+impl rullst_supervision::analysis::LoudnessStatistics
+pub const rullst_supervision::analysis::LoudnessStatistics::MAX_WINDOW_MS: u32
+pub const rullst_supervision::analysis::LoudnessStatistics::MIN_DBFS: f32
+pub fn rullst_supervision::analysis::LoudnessStatistics::active_fraction(self) -> f32
+pub fn rullst_supervision::analysis::LoudnessStatistics::mean_dbfs(self) -> f32
+pub fn rullst_supervision::analysis::LoudnessStatistics::new(mean_dbfs: f32, peak_dbfs: f32, active_fraction: f32, window_ms: u32) -> core::result::Result<Self, rullst_supervision::SupervisionError>
+pub fn rullst_supervision::analysis::LoudnessStatistics::peak_dbfs(self) -> f32
+pub fn rullst_supervision::analysis::LoudnessStatistics::window_ms(self) -> u32
+impl core::clone::Clone for rullst_supervision::analysis::LoudnessStatistics
+impl core::cmp::PartialEq for rullst_supervision::analysis::LoudnessStatistics
+impl core::fmt::Debug for rullst_supervision::analysis::LoudnessStatistics
+impl core::marker::Copy for rullst_supervision::analysis::LoudnessStatistics
+impl core::marker::Send for rullst_supervision::analysis::LoudnessStatistics
+impl core::marker::Sync for rullst_supervision::analysis::LoudnessStatistics
+impl core::marker::Unpin for rullst_supervision::analysis::LoudnessStatistics
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_supervision::analysis::LoudnessStatistics
+impl core::panic::unwind_safe::UnwindSafe for rullst_supervision::analysis::LoudnessStatistics
 #[non_exhaustive] pub struct rullst_supervision::analysis::LuminanceStatistics
 impl rullst_supervision::analysis::LuminanceStatistics
 pub const rullst_supervision::analysis::LuminanceStatistics::MAX_SAMPLES: u32
@@ -261,13 +279,15 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_supervision::analysis::L
 impl core::panic::unwind_safe::UnwindSafe for rullst_supervision::analysis::LuminanceStatistics
 pub struct rullst_supervision::analysis::MediaSample<'a>
 impl rullst_supervision::analysis::MediaSample<'static>
+pub fn rullst_supervision::analysis::MediaSample::loudness(statistics: rullst_supervision::analysis::LoudnessStatistics) -> Self
 pub fn rullst_supervision::analysis::MediaSample::luminance(statistics: rullst_supervision::analysis::LuminanceStatistics) -> Self
 impl<'a> rullst_supervision::analysis::MediaSample<'a>
 pub fn rullst_supervision::analysis::MediaSample::bytes(self) -> &'a [u8]
 pub fn rullst_supervision::analysis::MediaSample::format(self) -> rullst_supervision::analysis::SampleFormat
 pub fn rullst_supervision::analysis::MediaSample::kind(self) -> rullst_supervision::analysis::AnalysisKind
+pub fn rullst_supervision::analysis::MediaSample::loudness_statistics(self) -> core::option::Option<rullst_supervision::analysis::LoudnessStatistics>
+pub fn rullst_supervision::analysis::MediaSample::luminance_statistics(self) -> core::option::Option<rullst_supervision::analysis::LuminanceStatistics>
 pub fn rullst_supervision::analysis::MediaSample::new(format: rullst_supervision::analysis::SampleFormat, bytes: &'a [u8]) -> core::result::Result<Self, rullst_supervision::SupervisionError>
-pub fn rullst_supervision::analysis::MediaSample::statistics(self) -> core::option::Option<rullst_supervision::analysis::LuminanceStatistics>
 impl core::fmt::Debug for rullst_supervision::analysis::MediaSample<'_>
 impl<'a> core::clone::Clone for rullst_supervision::analysis::MediaSample<'a>
 impl<'a> core::marker::Copy for rullst_supervision::analysis::MediaSample<'a>
@@ -281,6 +301,7 @@ pub rullst_supervision::analysis::SampleFormat::JpegFrame
 pub rullst_supervision::analysis::SampleFormat::PngFrame
 pub rullst_supervision::analysis::SampleFormat::Pcm16LeMono16Khz
 pub rullst_supervision::analysis::SampleFormat::LuminanceStatistics
+pub rullst_supervision::analysis::SampleFormat::LoudnessStatistics
 impl core::clone::Clone for rullst_supervision::analysis::SampleFormat
 impl core::cmp::Eq for rullst_supervision::analysis::SampleFormat
 impl core::cmp::PartialEq for rullst_supervision::analysis::SampleFormat

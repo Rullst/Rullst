@@ -217,12 +217,14 @@ route, and the endpoint's own requests are not counted in its statistics.
     "routes_overflowed": false,
     "requests_total": 120345,
     "status_total": { "1xx": 0, "2xx": 118000, "3xx": 1200, "4xx": 1100, "5xx": 45 },
+    "bytes_total": 1052672000,
     "window": {
       "covered_seconds": 271,
       "requests": 1626,
       "requests_per_second": 6.0,
       "status": { "1xx": 0, "2xx": 1600, "3xx": 10, "4xx": 15, "5xx": 1 },
-      "latency_ms": { "p50": 2.5, "p90": 10.0, "p95": 25.0, "p99": 100.0, "max": 412.3 }
+      "latency_ms": { "p50": 2.5, "p90": 10.0, "p95": 25.0, "p99": 100.0, "max": 412.3 },
+      "bytes": 14212000
     },
     "routes": [
       {
@@ -230,9 +232,11 @@ route, and the endpoint's own requests are not counted in its statistics.
         "route": "/orders/{id}",
         "requests_total": 5400,
         "status_total": { "1xx": 0, "2xx": 5300, "3xx": 0, "4xx": 98, "5xx": 2 },
+        "bytes_total": 44236800,
         "window": { "covered_seconds": 271, "requests": 80, "requests_per_second": 0.295,
                     "status": { "1xx": 0, "2xx": 79, "3xx": 0, "4xx": 1, "5xx": 0 },
-                    "latency_ms": { "p50": 5.0, "p90": 10.0, "p95": 10.0, "p99": 25.0, "max": 19.8 } }
+                    "latency_ms": { "p50": 5.0, "p90": 10.0, "p95": 10.0, "p99": 25.0, "max": 19.8 },
+                    "bytes": 655360 }
       }
     ]
   },
@@ -269,6 +273,13 @@ route, and the endpoint's own requests are not counted in its statistics.
   0.1 ms to 10 s): each value is the upper bound of its bucket, capped at the
   window's maximum, and `latency_ms` is `null` without requests in the window.
   Durations run from the outermost framework layer to the response headers.
+- **Bytes** (since 13.0.0-alpha.5) are the response bodies as sent, after any
+  compression the application applies and without headers or TLS, in the
+  same totals and window as the requests: a body of known length counts when
+  the response is recorded, a streamed body (server-sent events, a download)
+  when it ends or the client goes away, and a `HEAD` response counts none.
+  `cargo rullst footprint --monitor-url` reads them per route next to its lab
+  figures ([resource figures](footprint.md#production-bytes-from-the-monitor)).
 - **Database** counts the outermost ORM operations started by requests and
   lists repeated operations as the ORM's static `Model.operation (table)`
   fingerprint, never SQL text or values (at most 64 entries, the least

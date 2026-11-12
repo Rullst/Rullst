@@ -49,14 +49,15 @@ A second multi-select adds zero or more independent capabilities and accepts
 `Enter` with no selection. Capabilities already selected by the primary profile
 or CLI flags are omitted. The same screen also offers AI, Redis and a
 Dockerfile (`--ai`, `--redis`, `--docker`); the side stores have their own
-flags (`--turso`, `--mongodb`, `--duckdb`, `--surrealdb`, `--qdrant`). Turso supplies explicit edge SQL,
-transactions and checked migrations; MongoDB supplies portable document CRUD; DuckDB supplies
-bounded analytics; SurrealDB supplies document CRUD and bounded read-only graph
-queries; Qdrant supplies bounded dense-vector operations. Selecting one adds the
+flags (`--turso`, `--surrealdb`, `--qdrant`). Turso supplies explicit edge SQL,
+transactions and checked migrations; SurrealDB supplies document CRUD and
+bounded read-only graph queries; Qdrant supplies bounded dense-vector
+operations. MongoDB and DuckDB are application [recipes](recipes/index.md)
+since 13.0.0-alpha.5. Selecting one adds the
 precise Cargo features and environment keys, but does not make every model
 portable between different database families.
 
-This split prevents a Turso, MongoDB, analytics, or graph label from generating
+This split prevents a Turso, document, vector, or graph label from generating
 an application whose SQL Active Record migrations cannot run. See the
 [Polyglot Persistence guide](polyglot-persistence.md) for the APIs and limits.
 

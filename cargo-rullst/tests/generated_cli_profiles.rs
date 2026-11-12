@@ -142,8 +142,6 @@ const PROFILE_CASES: [ProfileCase; 7] = [
             "blank",
             "--database",
             "sqlite",
-            "--mongodb",
-            "--duckdb",
             "--surrealdb",
             "--turso",
             "--qdrant",
@@ -151,17 +149,14 @@ const PROFILE_CASES: [ProfileCase; 7] = [
         required_rullst_features: &[
             "orm",
             "strict-sqlite",
-            "orm-mongodb",
-            "orm-duckdb",
             "orm-surrealdb",
             "orm-turso",
             "orm-qdrant",
         ],
         rejected_rullst_features: &["strict-postgres", "strict-mysql"],
         router_returns_result: None,
-        // Runtime behavior for these native adapters is exercised in the ORM
-        // matrices. Rebuilding bundled DuckDB inside this public-CLI proof can
-        // consume several extra GiB without adding a distinct runtime claim.
+        // Runtime behavior for these adapters is exercised in the ORM
+        // matrices; this public-CLI proof checks that the project compiles.
         run_tests: false,
     },
 ];
@@ -318,8 +313,8 @@ fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
             .current_dir(&project.path)
             .args([cargo_operation, "--offline", "--all-targets"])
             .env("CARGO_TARGET_DIR", &target_root)
-            // DuckDB's bundled C++ build can otherwise exhaust small developer
-            // machines when this matrix is run outside the larger CI runners.
+            // Native C/C++ builds (aws-lc-sys, bundled SQLite) can otherwise
+            // exhaust small developer machines outside the larger CI runners.
             .env("CARGO_BUILD_JOBS", generated_build_jobs());
         if case.run_tests {
             cargo

@@ -18,7 +18,8 @@
 //! facade, Resend, SendPulse, Log, Memory and the SES offline fixture and
 //! bearer proxy. Opt-in Cargo features: `mail-smtp` (`SmtpDriver`), `aws-ses`
 //! (native SES v2 through the official SDK), `sqlite` and `postgres` (durable
-//! suppression stores) and `capital-invoice` (payment-bound invoice delivery).
+//! suppression stores), `capital-invoice` (payment-bound invoice delivery) and
+//! `conformance` (a kit that checks an application-owned [`MailDriver`]).
 //! v13 removed the SendGrid, Postmark, Mailjet, Mailtrap and Azure
 //! Communication Services transports.
 //!
@@ -29,6 +30,8 @@
 pub mod account;
 pub mod action;
 pub mod attachment;
+#[cfg(feature = "conformance")]
+pub mod conformance;
 pub mod drivers;
 mod entities;
 pub mod error;

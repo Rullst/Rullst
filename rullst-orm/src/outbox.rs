@@ -428,7 +428,7 @@ impl Outbox {
 
 /// Compares a stored payload with a replayed one as JSON values, so object
 /// key order is not content: with serde_json's `preserve_order` feature
-/// (enabled by feature unification, for example through `mongodb`) a replay
+/// (enabled by feature unification with another dependency) a replay
 /// built from a `HashMap` can serialize the same object in another order.
 fn same_payload(stored: &str, replayed: &str) -> bool {
     stored == replayed

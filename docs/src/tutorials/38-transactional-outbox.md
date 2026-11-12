@@ -35,8 +35,8 @@ its domain schema; do not create tables opportunistically while serving a
 request.
 
 The built-in contract supports the SQLx relational backends: SQLite,
-PostgreSQL, MySQL and MariaDB. It does not span MongoDB, DuckDB, Turso or
-SurrealDB transactions.
+PostgreSQL, MySQL and MariaDB. It does not span Turso or SurrealDB
+transactions, or an application's own MongoDB or DuckDB store.
 
 ## 2. Commit domain state and event together
 

@@ -24,8 +24,9 @@
 //! **Maturity: Extension**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)), with
 //! InfinitePay marked experimental inside it. Cargo features: `axum` (default),
-//! `actix`, `invoice-pdf`, `quota-sql` and `webhook-sql`. v13 removed the other
-//! payment providers, payouts and NFS-e.
+//! `actix`, `invoice-pdf`, `quota-sql`, `webhook-sql` and `conformance` (the
+//! `conformance` module, a kit that checks an application-owned [`BillingProvider`]).
+//! v13 removed the other payment providers, payouts and NFS-e.
 //!
 //! See the [book page](https://rullst.github.io/Rullst/book/crates/capital.html)
 //! and the [README](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md).
@@ -35,6 +36,8 @@ pub mod billable;
 pub mod capital;
 pub mod charge;
 pub mod checkout;
+#[cfg(feature = "conformance")]
+pub mod conformance;
 mod currency;
 pub mod customer;
 pub mod dashboard;

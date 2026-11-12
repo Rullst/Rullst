@@ -24,11 +24,21 @@ const CHECKS: [(&Rule, LineCheck); 9] = [
     (&LIVE_COMMAND_REMOVED, runs_live_command),
 ];
 
-/// Each rule a script matches, at its first matching line.
-pub(super) fn script_findings(text: &str) -> Vec<(&'static Rule, usize)> {
+/// Each rule a script matches, at its first matching line that no
+/// `rullst-upgrade: reviewed` marker covers; the rule of every covered line
+/// is added to `reviewed`.
+pub(super) fn script_findings(
+    text: &str,
+    reviewed: &mut Vec<&'static Rule>,
+) -> Vec<(&'static Rule, usize)> {
+    let lines: Vec<&str> = text.lines().collect();
     CHECKS
         .into_iter()
-        .filter_map(|(rule, matches)| line_of(text, matches).map(|line| (rule, line)))
+        .filter(|(_, matches)| line_of(text, matches).is_some())
+        .filter_map(|(rule, matches)| {
+            super::super::reviewed::first_unreviewed(&lines, rule, matches, reviewed)
+                .map(|line| (rule, line))
+        })
         .collect()
 }
 
@@ -38,7 +48,8 @@ fn runs_omni(line: &str) -> bool {
 }
 
 /// A script line running a command that 13.0.0-alpha.4 removed (`rullst ai`)
-/// or renamed (`rullst footprint`, now `green`), as a whole word.
+/// or changed (`rullst footprint`, `green` in alpha.4 and `footprint` again,
+/// with other flags and report, since alpha.5), as a whole word.
 pub(in super::super) fn runs_removed_cli_command(line: &str) -> bool {
     ["rullst footprint", "rullst ai"].iter().any(|command| {
         line.match_indices(command).any(|(index, _)| {

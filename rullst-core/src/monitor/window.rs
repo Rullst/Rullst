@@ -1,5 +1,6 @@
 //! Fixed-size request statistics: totals since start and a five-minute
-//! window of one-minute slots with a latency histogram.
+//! window of one-minute slots with a latency histogram and the response
+//! bytes sent.
 
 use serde::Serialize;
 use std::time::Duration;
@@ -150,6 +151,7 @@ struct Slot {
     requests: u64,
     status: StatusClasses,
     histogram: Histogram,
+    bytes: u64,
 }
 
 /// What one route (or the whole application) did in the window.
@@ -158,6 +160,8 @@ pub(super) struct WindowCounts {
     pub(super) requests: u64,
     pub(super) status: StatusClasses,
     pub(super) histogram: Histogram,
+    /// Response body bytes sent.
+    pub(super) bytes: u64,
 }
 
 impl WindowCounts {
@@ -165,6 +169,7 @@ impl WindowCounts {
         self.requests = self.requests.saturating_add(other.requests);
         self.status.add(&other.status);
         self.histogram.merge(&other.histogram);
+        self.bytes = self.bytes.saturating_add(other.bytes);
     }
 }
 
@@ -173,29 +178,47 @@ impl WindowCounts {
 pub(super) struct RouteStats {
     pub(super) requests_total: u64,
     pub(super) status_total: StatusClasses,
+    /// Response body bytes sent since start.
+    pub(super) bytes_total: u64,
     slots: [Slot; SLOTS],
 }
 
 impl RouteStats {
-    /// Records one response `elapsed` after start-up of the collector.
-    pub(super) fn record(&mut self, now: Duration, status: u16, latency: Duration) {
-        self.requests_total = self.requests_total.saturating_add(1);
-        self.status_total.count(status);
+    /// The slot of the minute `now` falls in, emptied when it last held an
+    /// older minute.
+    fn slot(&mut self, now: Duration) -> Option<&mut Slot> {
         let minute = now.as_secs() / SLOT_SECONDS;
         let index = usize::try_from(minute % SLOTS as u64).unwrap_or_default();
-        let Some(slot) = self.slots.get_mut(index) else {
-            return;
-        };
+        let slot = self.slots.get_mut(index)?;
         if slot.minute != Some(minute) {
             *slot = Slot {
                 minute: Some(minute),
                 ..Slot::default()
             };
         }
+        Some(slot)
+    }
+
+    /// Records one response `elapsed` after start-up of the collector.
+    pub(super) fn record(&mut self, now: Duration, status: u16, latency: Duration) {
+        self.requests_total = self.requests_total.saturating_add(1);
+        self.status_total.count(status);
+        let Some(slot) = self.slot(now) else {
+            return;
+        };
         slot.requests = slot.requests.saturating_add(1);
         slot.status.count(status);
         slot.histogram
             .record(u64::try_from(latency.as_micros()).unwrap_or(u64::MAX));
+    }
+
+    /// Adds `bytes` of response body sent at `now`: at once for a body of
+    /// known length, when it ends for a streamed one.
+    pub(super) fn add_bytes(&mut self, now: Duration, bytes: u64) {
+        self.bytes_total = self.bytes_total.saturating_add(bytes);
+        if let Some(slot) = self.slot(now) {
+            slot.bytes = slot.bytes.saturating_add(bytes);
+        }
     }
 
     /// The slots of the window ending at `now`.
@@ -212,6 +235,7 @@ impl RouteStats {
                     requests: slot.requests,
                     status: slot.status,
                     histogram: slot.histogram,
+                    bytes: slot.bytes,
                 });
             }
         }
