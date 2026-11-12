@@ -193,6 +193,17 @@ fn plan(
         None => notes.push("Mount the routes inside your CSRF layer (rullst::security::csrf_middleware): add `.merge_axum(controllers::privacy_controller::routes().into_axum())` to your router; the routes require auth_contract::require_account themselves.".to_owned()),
     }
     edits.push(Edit::replace(registry, old_registry, new_registry));
+    // The smoke test of `cargo rullst new` checks the preferences page too
+    // (signed out, the starter's sign-in redirects).
+    let smoke = root.join(crate::generators::smoke_pages::FILE);
+    if accounts == Accounts::Starter && smoke.try_exists()? {
+        let listed = files::read(&smoke)?;
+        if let Some(updated) =
+            crate::generators::smoke_pages::with_pages(&listed, &[("/privacy", 303)])
+        {
+            edits.push(Edit::replace(smoke, listed, updated));
+        }
+    }
     let (controller, proof, profile) = match accounts {
         Accounts::Starter => (
             include_str!("controller.rs.template").to_owned(),
@@ -288,6 +299,8 @@ mod tests {
                 .edits,
         )
         .unwrap();
+        let smoke = std::fs::read_to_string(root.join("src/security_tests.rs")).unwrap();
+        assert!(smoke.contains("(\"/privacy\", 303),"));
         let privacy = root.join("src/controllers/privacy");
         let config = std::fs::read_to_string(privacy.join("config.rs")).unwrap();
         assert!(config.contains("const TENANT_REF: &str = \"tenant-alpha\";"));

@@ -561,6 +561,13 @@ describes each replacement.
 
 ### Fixed
 
+- The generators that add pages left them out of the smoke test that
+  `cargo rullst new` writes (`PAGES` in `src/security_tests.rs`, also read by
+  `cargo rullst add browser-tests`), although that list says to add every
+  page. `make:mfa` now adds `/account/security` (303 when signed out),
+  `make:privacy` adds `/privacy` (303) and `make:pwa` adds `/offline` (200),
+  once and only to a recognized list (found by the 13.0.0-alpha.5 acceptance
+  application).
 - `rullst-orm` SurrealDB adapter: `SurrealDbStore::create` reported a write
   that SurrealDB had refused. SurrealDB 3 answers a CREATE denied by
   permissions (a `VIEWER` database user, or a record user on a table with

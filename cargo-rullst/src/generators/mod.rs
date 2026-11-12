@@ -57,6 +57,7 @@ pub(crate) mod pwa;
 pub mod resource;
 pub mod scalar;
 pub mod schema_diff;
+pub(crate) mod smoke_pages;
 mod source_walk;
 pub mod ts;
 pub mod worker;
