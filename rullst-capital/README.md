@@ -205,6 +205,11 @@ async fn link() -> Result<(), rullst_capital::CapitalError> {
 }
 ```
 
+- Enable external checkout ("Checkout externo") for the InfiniteTag in the
+  InfinitePay app before the first link. Until then `POST /links` answers
+  `404` with `{"error":"external_checkout_not_enabled"}`, which the adapter
+  reports as a `ProviderFailure` (`create payment link` returned HTTP 404);
+  InfinitePay gives the same answer for a tag that does not exist.
 - `create_one_off_checkout` sends `POST https://api.checkout.infinitepay.io/links`
   with the handle, one item priced in cents (BRL only, at least R$ 1.00 per
   unit), the reference as `order_nsu`, the success URL as `redirect_url` and
