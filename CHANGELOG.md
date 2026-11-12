@@ -660,8 +660,7 @@ A prepared version section does not establish that its tag or crates exist.
   and that no Rullst macro expansion or other Rullst crate uses are now
   crate-private: Core `server::dylib_loader` and `artisan::runner`
   (`artisan::check_and_run_artisan` stays); ORM `tenant::CURRENT_TENANT`,
-  `schema::QUERY_LOGGING`, `QUERY_TIMEOUT_SECS`, `MAX_QUERY_LIMIT`,
-  `privacy::encrypt_aes_gcm`/`decrypt_aes_gcm` and
+  `schema::QUERY_LOGGING`, `QUERY_TIMEOUT_SECS`, `MAX_QUERY_LIMIT` and
   `Orm::redis_cache_namespace`; Auth `passkey::cbor`; Connect's
   `impl_standard_redirect_url!`/`impl_standard_refresh_token!` macros, its
   `macros` module, `client::DEFAULT_HTTP_CLIENT` and the `ChallengeDatabase`
@@ -675,6 +674,14 @@ A prepared version section does not establish that its tag or crates exist.
   are now documented. The `#[doc(hidden)]` items that stay public name the
   macro or crate that uses them in a comment.
   `cargo rullst upgrade` reviews the names (`V13-HIDDEN-INTERNALS-PRIVATE`).
+- `rullst_orm::privacy::encrypt_aes_gcm` and `decrypt_aes_gcm` stay public
+  and are now documented API for application-managed keys (they were going
+  to become private in alpha.5). They keep the 13.0.0-alpha.4 behavior and
+  format: the key is exactly 32 bytes, used as-is, the value is a
+  `RULLST:v2` envelope with no table or column context, and
+  `decrypt_aes_gcm` still reads the pre-v12 format, so values an application
+  encrypted under its own key stay readable. Reported while upgrading an
+  application.
 - **Breaking:** the `banned_ips`, `honeypot_route_hits` and `live_events`
   fields of `rullst_security::SecurityStore` are private, so `dashmap` is no
   longer in its API; the new `active_bans`, `is_banned`,

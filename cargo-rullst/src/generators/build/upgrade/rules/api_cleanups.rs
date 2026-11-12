@@ -35,8 +35,6 @@ const HIDDEN_PATHS: &[&[&str]] = &[
 /// Distinctive names of the internals made crate-private or removed.
 const HIDDEN_IDENTS: &[&str] = &[
     "dylib_loader",
-    "encrypt_aes_gcm",
-    "decrypt_aes_gcm",
     "redis_cache_namespace",
     "impl_standard_redirect_url",
     "impl_standard_refresh_token",

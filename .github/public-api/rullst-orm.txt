@@ -1274,9 +1274,11 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::privacy::PrivacyErr
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::privacy::PrivacyError
 pub use rullst_orm::privacy::PrivacyReport = struct rullst_orm::PrivacyReport
 pub use rullst_orm::privacy::SecretString = struct rullst_orm::SecretString
+pub fn rullst_orm::privacy::decrypt_aes_gcm(encrypted: &str, key: &str) -> core::result::Result<alloc::string::String, rullst_orm::privacy::PrivacyError>
 pub fn rullst_orm::privacy::decrypt_model_field(encrypted: &str, table: &str, column: &str) -> core::result::Result<alloc::string::String, rullst_orm::privacy::PrivacyError>
 pub fn rullst_orm::privacy::deserialize_optional_plaintext_secret<'de, D: serde_core::de::Deserializer<'de>>(deserializer: D) -> core::result::Result<core::option::Option<rullst_orm::SecretString>, <D as serde_core::de::Deserializer>::Error>
 pub fn rullst_orm::privacy::deserialize_plaintext_secret<'de, D: serde_core::de::Deserializer<'de>>(deserializer: D) -> core::result::Result<rullst_orm::SecretString, <D as serde_core::de::Deserializer>::Error>
+pub fn rullst_orm::privacy::encrypt_aes_gcm(plaintext: &str, key: &str) -> core::result::Result<alloc::string::String, rullst_orm::privacy::PrivacyError>
 pub fn rullst_orm::privacy::encrypt_model_field(plaintext: &str, table: &str, column: &str) -> core::result::Result<alloc::string::String, rullst_orm::privacy::PrivacyError>
 pub mod rullst_orm::query_cache
 pub async fn rullst_orm::query_cache::invalidate_table(table: &str) -> core::result::Result<usize, rullst_orm::Error>

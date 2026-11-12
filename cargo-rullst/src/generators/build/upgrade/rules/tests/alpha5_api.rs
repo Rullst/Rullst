@@ -77,7 +77,6 @@ use rullst_orm::tenant::CURRENT_TENANT;
 use rullst::artisan::runner::check_and_run_artisan;
 fn f() {
     let _ = rullst_orm::schema::QUERY_LOGGING.load(Ordering::SeqCst);
-    let _ = rullst_orm::privacy::encrypt_aes_gcm("x", "k");
     let _ = rullst_security::get_real_rss_memory_mb();
     let _ = rullst_connect::client::DEFAULT_HTTP_CLIENT.clone();
 }
@@ -90,7 +89,7 @@ fn f() {
     // A review rule reports its first location in a file.
     assert_eq!(rows, vec![&("V13-HIDDEN-INTERNALS-PRIVATE", 2)]);
     for source in [
-        "fn f() { let _ = rullst_orm::privacy::encrypt_aes_gcm(\"x\", \"k\"); }",
+        "fn f() { let _ = rullst_nexus::generate_smart_nexus_ai_response; }",
         "fn f() { let _ = rullst_security::current_timestamp_str(); }",
         "use rullst_connect::client::DEFAULT_HTTP_CLIENT;",
         "use rullst_auth::passkey::cbor::parse_cbor;",
@@ -100,6 +99,20 @@ fn f() {
         assert_only(source, &["V13-HIDDEN-INTERNALS-PRIVATE"]);
     }
     assert_only("fn f() { let _ = CURRENT_TENANT; let _ = runner; }", &[]);
+}
+
+#[test]
+fn the_explicit_key_encryption_helpers_stay_public_and_are_not_reported() {
+    assert_only(
+        r#"
+use rullst::orm::privacy::{decrypt_aes_gcm, encrypt_aes_gcm};
+fn f(key: &str) -> Result<String, rullst_orm::privacy::PrivacyError> {
+    let sealed = rullst_orm::privacy::encrypt_aes_gcm("x", key)?;
+    decrypt_aes_gcm(&sealed, key)
+}
+"#,
+        &[],
+    );
 }
 
 #[test]
