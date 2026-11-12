@@ -304,6 +304,15 @@ async function menuPaths(session) {
   if (last !== count - 1) session.record("keyboard", "menu ArrowUp on the button", `focus is on item ${last}, expected ${count - 1}`);
   await page.keyboard.press("Escape");
   if (await openMenu()) throw new Error("the menu is still open after Escape");
+  // Keys typed without a pause: ArrowDown opens the menu and End must land
+  // on the last item, which the menu's late toggle event must not undo.
+  await page.waitForFunction((selector) => document.activeElement?.matches(selector), MENU_BUTTON);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("End");
+  await page.waitForTimeout(300);
+  const fast = await focusedItem();
+  if (fast !== count - 1) session.record("keyboard", "menu ArrowDown then End at once", `focus is on item ${fast}, expected ${count - 1}`);
+  await page.keyboard.press("Escape");
 }
 
 async function tabPaths(session) {
@@ -353,10 +362,16 @@ async function toastPaths(session) {
   await toast.locator("[data-ui-toast-close]").click();
   if ((await toasts.count()) !== before) session.record("flow", "toast dismiss", "the close button did not remove the toast");
   // A menu item that submits the htmx form shows a toast too.
+  // Each key waits for the focus the previous one gives, so Enter reaches
+  // the "Show a toast" item (a late focus move would make it follow a link).
+  const focusedOn = (label) => page.waitForFunction(
+    ([selector, text]) => document.activeElement?.matches(selector) && document.activeElement.textContent.trim() === text,
+    [ITEMS, label]);
   await session.focusByKeyboard(MENU_BUTTON);
   await page.keyboard.press("ArrowDown");
-  await page.waitForFunction((selector) => document.querySelector(selector).matches(":popover-open"), MENU);
+  await focusedOn("Edit");
   await page.keyboard.press("End");
+  await focusedOn("Show a toast");
   const submitted = page.waitForResponse((response) => new URL(response.url()).pathname === "/toast");
   await page.keyboard.press("Enter");
   await submitted;
