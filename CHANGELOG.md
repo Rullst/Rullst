@@ -622,6 +622,11 @@ describes each replacement.
   now explains how to allow only the captured device on the capture page's
   response, both with `Server`'s baseline and with `SecureHeadersLayer`
   (found while building an acceptance application).
+- Documentation: the InfinitePay sections of the `rullst-capital` README and
+  the payment gateway guide did not say that the merchant must enable external
+  checkout ("Checkout externo") in the InfinitePay app first; until then
+  `POST /links` answers 404 `external_checkout_not_enabled`, also for a tag
+  that does not exist (found by the 13.0.0-alpha.5 acceptance application).
 - `cargo rullst make:privacy` and `cargo rullst make:age-gate` refused a SaaS
   project in which `cargo rullst make:mfa` had already run
   (`src/controllers/auth_controller.rs differs from the starter's`), although
