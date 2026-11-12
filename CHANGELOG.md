@@ -724,6 +724,14 @@ describes each replacement.
   now explains how to allow only the captured device on the capture page's
   response, both with `Server`'s baseline and with `SecureHeadersLayer`
   (found while building an acceptance application).
+- Documentation: the Alpine section of the frontend guide, and the comment
+  at the top of the `static/js/alpine-components.js` that
+  `cargo rullst add alpine` writes, still said that `html!` cannot write
+  attribute names containing `@` or `:`, so events and bindings had to go
+  through an `x-bind` object. Since 13.0.0-alpha.5 `html!` accepts `@click`,
+  `:class`, `x-on:keydown.enter` and the other Alpine names with string-literal
+  values; both now say so (found by the 13.0.0-alpha.5 acceptance
+  application).
 - Documentation: the InfinitePay sections of the `rullst-capital` README and
   the payment gateway guide did not say that the merchant must enable external
   checkout ("Checkout externo") in the InfinitePay app first; until then

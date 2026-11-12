@@ -243,9 +243,18 @@ parses expressions itself instead. The command:
    </div>
    ```
 
-**Events and bindings in `html!`.** `html!` attribute names are identifiers
-joined by `-`, so Alpine's `x-on:click`, `@click`, `x-bind:disabled` and
-`:disabled` cannot be written there. Put them in a directive object of the
+**Events and bindings in `html!`.** Since 13.0.0-alpha.5 `html!` accepts
+Alpine's attribute names, so `@click`, `x-on:keydown.enter.prevent`,
+`:disabled` and `x-bind:class` can be written in the markup
+([text and attribute names](tutorials/06-htmx-zero-bundle.md#text-and-attribute-names)):
+
+```text
+<button type="button" @click="text = ''" :disabled="text.length === 0">"Clear"</button>
+```
+
+Their values run as JavaScript, so they must be string literals; a `{…}`
+value is a compile error (pass server data through a `data-*` attribute).
+To keep several directives together, put them in a directive object of the
 component and bind it with `x-bind="name"`, as `clear` does:
 
 ```javascript
