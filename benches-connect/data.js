@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794517522669,
+  "lastUpdate": 1794568369202,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -13445,6 +13445,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 379,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "68ade8e78018d7d897b29a6200493d86fe96d627",
+          "message": "Merge pull request #687 from Rullst/fix/v13-alpha5-admission-blockers\n\nfix(release): unblock the 13.0.0-alpha.5 admission",
+          "timestamp": "2026-11-13T07:55:07-03:00",
+          "tree_id": "19f52be504dfb2eb2cbcf6425c4e014aef18e494",
+          "url": "https://github.com/Rullst/Rullst/commit/68ade8e78018d7d897b29a6200493d86fe96d627"
+        },
+        "date": 1794568368608,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 553,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
