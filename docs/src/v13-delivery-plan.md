@@ -1,6 +1,6 @@
 # v13 delivery plan and evidence
 
-**13.0.0-alpha.5 prepared on November 12, 2026, for a tag on November 13
+**13.0.0-alpha.5 prepared on November 12, 2026, for a tag on November 14
 (not yet published).** The release commit sets the twenty packages of the
 release order to `13.0.0-alpha.5`; the coordinator records the tag, the
 exact-SHA admission and the release run here after publication. It is the
@@ -21,7 +21,7 @@ CLI's Core tier ([maturity tiers](maturity.md#promotions-in-1300-alpha5)).
 Next come 13.0.0-rc.1 (fixes and documentation only) and then 13.0.0. Work
 planned next is under
 [Planned after 13.0.0-alpha.5](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha5);
-the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-13)
+the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14)
 lists every change and the known limitations.
 
 **13.0.0-alpha.4 published on October 31, 2026.** All twenty packages were
@@ -52,7 +52,7 @@ the code, and a CI job runs the first-hour pages' commands as written. The
 first targeted `cargo-rullst` mutation campaign was merged, and the CLI's
 measured files are in the pull-request mutation gate. The work planned next
 was delivered in
-[13.0.0-alpha.5](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-13).
+[13.0.0-alpha.5](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14).
 
 **13.0.0-alpha.3 published on October 24, 2026.** All twenty packages were
 published from tag `v13.0.0-alpha.3` at `be336833` after the 25 required

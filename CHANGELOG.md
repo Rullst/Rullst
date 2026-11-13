@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
-## [13.0.0-alpha.5] - 2026-11-13
+## [13.0.0-alpha.5] - 2026-11-14
 
 Fifth v13 prerelease, for evaluation, and the 13.0 feature and public API
 freeze: 13.0.0-rc.1 will carry only fixes and documentation. It adds what the
@@ -1766,6 +1766,14 @@ describes each replacement.
   trusted party can write until an `sqlx` release lifts the cap.
   `RUSTSEC-2026-0440` marks `astral-tokio-tar` unmaintained; it is reached only
   through the `testcontainers` dev-dependency of the integration tests.
+- `rullst-security` and `rullst-nexus` require `ammonia` 4.2.5
+  (`RUSTSEC-2026-0533`, published 2026-11-12: mutation XSS through embedded
+  SVG/MathML when an allowlist permits raw-text tags such as `style`,
+  `script` or `textarea`). Rullst's own allowlists (`HtmlSanitizer`, the
+  Nexus chat) permit none of them; the floor keeps applications that build
+  their own `ammonia` allowlist off the affected versions. The lockfiles take
+  `quinn-udp` 0.5.16 (`RUSTSEC-2026-0538`), which `reqwest` locks only for its
+  unstable HTTP/3 support; no Rullst build compiles it.
 
 ## [13.0.0-alpha.4] - 2026-10-31
 

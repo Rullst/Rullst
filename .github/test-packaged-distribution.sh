@@ -364,7 +364,7 @@ mkdir -p "$multipart_dir/tests"
   printf '[package]\nname = "rullst-packaged-multipart"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
   printf '[features]\ndefault = ["storage-s3", "storage-multipart"]\nstorage-s3 = []\nstorage-multipart = []\n\n[dependencies]\n'
   printf 'rullst = { version = "=%s", default-features = false, features = ["storage-multipart"] }\n' "$version"
-  printf 'base64 = "0.23"\nring = "0.17"\nserde_json = "1"\naxum = "0.8"\nreqwest = { version = "0.13", default-features = false, features = ["rustls"] }\n'
+  printf 'base64 = "0.23"\nsha2 = "0.11"\nserde_json = "1"\naxum = "0.8"\nreqwest = { version = "0.13", default-features = false, features = ["rustls"] }\n'
   printf 'tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "time"] }\n'
 } > "$multipart_dir/Cargo.toml"
 for test in storage_multipart storage_multipart_failures storage_multipart_live storage_s3_live; do
