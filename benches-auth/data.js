@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794581875555,
+  "lastUpdate": 1794603370024,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -21815,6 +21815,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2186,
             "range": "± 31",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "034df65e7b046aa1858547ec8021e78ae406556d",
+          "message": "Merge pull request #689 from Rullst/fix/v13-alpha5-packaged-sse-refusal\n\nfix(ci): expect the 200 retry refusal in the packaged SSE fixture",
+          "timestamp": "2026-11-13T12:26:04-03:00",
+          "tree_id": "c06f4ffb411256a1484413641796e37771ffd6f1",
+          "url": "https://github.com/Rullst/Rullst/commit/034df65e7b046aa1858547ec8021e78ae406556d"
+        },
+        "date": 1794603369361,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1024,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 759,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1835,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4312,
+            "range": "± 140",
             "unit": "ns/iter"
           }
         ]
