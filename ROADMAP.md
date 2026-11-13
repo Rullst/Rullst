@@ -308,7 +308,7 @@ table below. They add no milestone to the counts above.
     tests, CI, browser tests); streaming OTA verification, `iot:keygen`/`iot:sign`
     and the `iot_ingest` telemetry receiver; and the remaining Labs,
     Supervision and Privacy API changes (see the
-    [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-13)).
+    [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14)).
 
 ### Planned after 13.0.0-alpha.5
 
@@ -354,7 +354,7 @@ to the counts above.
 | **v13.0.0-alpha.2** | `[x] Published prerelease` | All twenty packages were published on 17 October 2026 from tag `v13.0.0-alpha.2` at `0daf4941` ([release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)): the fixes from the alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema` date/time and Nexus changes. A first tag at `669befe6` failed release verification before publishing anything and was replaced. |
 | **v13.0.0-alpha.3** | `[x] Published prerelease` | All twenty packages were published on 24 October 2026 from tag `v13.0.0-alpha.3` at `be336833` ([release run 40129821475](https://github.com/Rullst/Rullst/actions/runs/40129821475)) after all 25 required workflows passed on that commit. See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha3---2026-10-23). |
 | **v13.0.0-alpha.4** | `[x] Published prerelease` | All twenty packages were published on 31 October 2026 from tag `v13.0.0-alpha.4` at `2bd3c2ad` ([release run 41233925160](https://github.com/Rullst/Rullst/actions/runs/41233925160)). See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha4---2026-10-31). |
-| **v13.0.0-alpha.5** | `[ ] Release candidate` | Prepared on 12 November 2026 and not yet published; the coordinator records the tag, release run and publication here. Twenty packages; the 13.0 feature and public API freeze, with the fixes and additions from the applications upgraded to alpha.4. See [Delivered in 13.0.0-alpha.5](#delivered-in-1300-alpha5) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-13). |
+| **v13.0.0-alpha.5** | `[ ] Release candidate` | Prepared on 12 November 2026 and not yet published; the coordinator records the tag, release run and publication here. Twenty packages; the 13.0 feature and public API freeze, with the fixes and additions from the applications upgraded to alpha.4. See [Delivered in 13.0.0-alpha.5](#delivered-in-1300-alpha5) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14). |
 | **v13.0.0-rc.1** | `[ ] Planned` | Fixes and documentation only after the alpha.5 feature and API freeze. See [Planned after 13.0.0-alpha.5](#planned-after-1300-alpha5). |
 | **v13.0.0** | `[ ] Planned stable` | Follows once rc.1 leaves no open defect in the stability scope; the [maturity tiers](docs/src/maturity.md) apply from this release. |
 | **v13.x** | `[ ] After 13.0.0` | Compatible capabilities continue in 13.1 and later minors: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |

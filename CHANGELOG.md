@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
-## [13.0.0-alpha.5] - 2026-11-13
+## [13.0.0-alpha.5] - 2026-11-14
 
 Fifth v13 prerelease, for evaluation, and the 13.0 feature and public API
 freeze: 13.0.0-rc.1 will carry only fixes and documentation. It adds what the
