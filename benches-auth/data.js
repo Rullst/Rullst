@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794568303900,
+  "lastUpdate": 1794581875555,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -21767,6 +21767,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4096,
             "range": "± 33",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e723aedbf96cf8358ac0d3afc43545d6faea3537",
+          "message": "Merge pull request #688 from Rullst/fix/v13-alpha5-packaged-multipart-sha2\n\nfix(release): unblock the 13.0.0-alpha.5 admission (packaging consumer, two new advisories)",
+          "timestamp": "2026-11-13T11:41:01-03:00",
+          "tree_id": "103ac14f033db62dcfe7df578eba5e3c338705ff",
+          "url": "https://github.com/Rullst/Rullst/commit/e723aedbf96cf8358ac0d3afc43545d6faea3537"
+        },
+        "date": 1794581874641,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 842,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 642,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1537,
+            "range": "± 40",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2186,
+            "range": "± 31",
             "unit": "ns/iter"
           }
         ]
