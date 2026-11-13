@@ -111,6 +111,11 @@ Before releasing, make sure:
   `cargo clippy --workspace --all-features -- -D warnings`, and
   `cargo fmt --all`.
 - [ ] `CHANGELOG.md` has a detailed release section describing all additions and fixes.
+  On the release-preparation branch (`chore/v<major>-release-<version>`),
+  `python3 .github/assemble-changelog.py --release X.Y.Z --date YYYY-MM-DD`
+  merges every fragment of [`changelog.d/`](changelog.d/README.md) into the
+  `[Unreleased]` subsections, opens the dated section and deletes the
+  fragments; then add the section's summary and `### Known limitations`.
 - [ ] The [compatibility and MSRV policy](docs/src/compatibility-policy.md) still
   matches the manifests, supported-version table, and intended release changes.
 - [ ] The [Cargo feature matrix](docs/src/feature-matrix.md) still matches every
@@ -154,7 +159,8 @@ Once everything is stable and verified:
 2. On the release-branch head, run `python3 .github/release-preflight.py vX.Y.Z`
    before dispatching the manual admission workflows. It refuses, in seconds,
    problems that `release.yml` would otherwise find hours later:
-   - packages not at the tagged version, or a missing changelog section;
+   - packages not at the tagged version, a missing changelog section, or
+     changelog fragments not yet merged;
    - a stale head or an existing tag;
    - an unregistered or foreign-owned crate name;
    - a version already on crates.io.
@@ -191,6 +197,7 @@ GitHub Actions will automatically execute the topological crate publish pipeline
 Before publication, the workflow:
 - requires every admission workflow at the tagged SHA, including the full
   `ci.yml` release matrix;
+- refuses a source whose `changelog.d/` still has unmerged fragments;
 - extracts the exact version section from `CHANGELOG.md`;
 - packages and reproduces every archive;
 - writes checksums and the tag-bound evidence bundle;

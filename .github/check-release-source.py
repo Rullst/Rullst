@@ -34,6 +34,19 @@ def validate_source(root: Path, tag: str, sha: str, branch_state: dict) -> None:
         if actual != sha:
             raise ValueError("checked-out source and tag must both match the admitted SHA")
     validate_packages(root, version)
+    require_merged_changelog(root)
+
+
+def require_merged_changelog(root: Path) -> None:
+    """Refuse a release whose changelog.d/ fragments were never merged into CHANGELOG.md."""
+    directory = root / "changelog.d"
+    pending = sorted(entry.name for entry in directory.iterdir()
+                     if entry.name != "README.md") if directory.is_dir() else []
+    if pending:
+        raise ValueError(
+            f"changelog.d/ has {len(pending)} unmerged fragment(s) ({', '.join(pending)}); "
+            "run .github/assemble-changelog.py --release <version> --date <date> first"
+        )
 
 
 def validate_packages(root: Path, version: str) -> list[str]:
