@@ -458,7 +458,7 @@ fn the_dockerfile_stages_pin_both_architectures_and_edit_only_generated_files() 
     assert!(stages.contains("FROM scratch AS tailwind-cli-arm64\n"));
     assert!(stages.contains("FROM tailwind-cli-${BUILDARCH} AS tailwind-cli\n"));
     assert!(
-        stages.contains("FROM --platform=$BUILDPLATFORM rust:1.99.1-slim-bookworm AS tailwind\n")
+        stages.contains("FROM --platform=$BUILDPLATFORM rust:1.100.0-slim-bookworm AS tailwind\n")
     );
     assert!(
         stages.contains(

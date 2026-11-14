@@ -51,7 +51,8 @@ rules come from real failures; follow them on any similar machine.
   the main disk, and never build there.
 - **Disk.** Follow AGENTS.md section 3.8: intervene at 15 GiB available, stop
   at 12 GiB. The usual reclaimable space is `target/debug/incremental` (safe to
-  delete when no Cargo process runs), old `target/debug/deps` artifacts and
+  delete when no Cargo process runs), old artifacts under `target/debug/build`
+  (and `target/debug/deps`, which only Cargo 1.99 and earlier write) and
   worktrees whose branches are merged (`git worktree remove`).
 - **Prefer hosted CI** for cold all-features builds, the generated-project
   suites, Windows and macOS, sanitizers and mutation runs. Locally, run the
