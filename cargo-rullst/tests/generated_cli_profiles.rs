@@ -16,6 +16,9 @@ use std::{
     process::{Command, Output},
 };
 
+#[path = "support/nested_cargo.rs"]
+mod nested_cargo;
+
 struct GeneratedProject {
     path: PathBuf,
 }
@@ -222,13 +225,15 @@ fn clean_generated_package(project: &Path, target_root: &Path) {
     let package_name = parsed["package"]["name"]
         .as_str()
         .expect("generated package name");
-    let output = Command::new(env!("CARGO"))
-        .current_dir(project)
-        .args(["clean", "--package", package_name])
-        .env("CARGO_TARGET_DIR", target_root)
-        .env("CARGO_NET_OFFLINE", "true")
-        .output()
-        .expect("clean generated CLI package");
+    let output = nested_cargo::output(
+        Command::new(env!("CARGO"))
+            .current_dir(project)
+            .args(["clean", "--package", package_name])
+            .env("CARGO_TARGET_DIR", target_root)
+            .env("CARGO_NET_OFFLINE", "true"),
+        target_root,
+    )
+    .expect("clean generated CLI package");
     assert!(
         output.status.success(),
         "generated package cleanup failed\n{}",
@@ -315,7 +320,7 @@ fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
                 .env("CARGO_PROFILE_TEST_DEBUG", "0")
                 .env("CARGO_PROFILE_TEST_INCREMENTAL", "false");
         }
-        let tested = cargo.output().unwrap_or_else(|error| {
+        let tested = nested_cargo::output(&mut cargo, &target_root).unwrap_or_else(|error| {
             panic!(
                 "{}: run generated cargo {cargo_operation}: {error}",
                 case.name
@@ -346,20 +351,22 @@ fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
         if case.run_tests && case.group == ProfileGroup::Basic {
             // The generated .github/workflows/ci.yml runs strict Clippy; a
             // fresh starter must pass it.
-            let clippy = Command::new(env!("CARGO"))
-                .current_dir(&project.path)
-                .args([
-                    "clippy",
-                    "--offline",
-                    "--all-targets",
-                    "--",
-                    "-D",
-                    "warnings",
-                ])
-                .env("CARGO_TARGET_DIR", &target_root)
-                .env("CARGO_BUILD_JOBS", generated_build_jobs())
-                .output()
-                .unwrap_or_else(|error| panic!("{}: run generated Clippy: {error}", case.name));
+            let clippy = nested_cargo::output(
+                Command::new(env!("CARGO"))
+                    .current_dir(&project.path)
+                    .args([
+                        "clippy",
+                        "--offline",
+                        "--all-targets",
+                        "--",
+                        "-D",
+                        "warnings",
+                    ])
+                    .env("CARGO_TARGET_DIR", &target_root)
+                    .env("CARGO_BUILD_JOBS", generated_build_jobs()),
+                &target_root,
+            )
+            .unwrap_or_else(|error| panic!("{}: run generated Clippy: {error}", case.name));
             assert!(
                 clippy.status.success(),
                 "{}: generated profile fails `cargo clippy --all-targets -- -D warnings`\n{}",
@@ -430,13 +437,15 @@ fn blank_sqlite_auth_and_mfa_scaffolds_compile() {
         fs::copy(workspace_lock, project.path.join("Cargo.lock"))
             .expect("copy reproducible workspace lockfile");
     }
-    let checked = Command::new(env!("CARGO"))
-        .current_dir(&project.path)
-        .args(["check", "--offline", "--all-targets"])
-        .env("CARGO_TARGET_DIR", &target_root)
-        .env("CARGO_BUILD_JOBS", generated_build_jobs())
-        .output()
-        .expect("run generated cargo check");
+    let checked = nested_cargo::output(
+        Command::new(env!("CARGO"))
+            .current_dir(&project.path)
+            .args(["check", "--offline", "--all-targets"])
+            .env("CARGO_TARGET_DIR", &target_root)
+            .env("CARGO_BUILD_JOBS", generated_build_jobs()),
+        &target_root,
+    )
+    .expect("run generated cargo check");
     assert!(
         checked.status.success(),
         "generated auth/MFA scaffold cargo check failed\n{}",
