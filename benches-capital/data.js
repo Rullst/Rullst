@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794603629863,
+  "lastUpdate": 1794629472355,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -16757,6 +16757,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/034df65e7b046aa1858547ec8021e78ae406556d"
         },
         "date": 1794603629202,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5feda4ac36274c798c2c14626223df3a88762550",
+          "message": "Merge pull request #690 from Rullst/fix/v13-alpha5-release-audit-exceptions\n\nfix(release): pass the governed advisory exceptions to cargo rullst audit",
+          "timestamp": "2026-11-14T00:48:01-03:00",
+          "tree_id": "1211eb712e75ca94402fcca3afacc445ce9cdb2e",
+          "url": "https://github.com/Rullst/Rullst/commit/5feda4ac36274c798c2c14626223df3a88762550"
+        },
+        "date": 1794629471754,
         "tool": "cargo",
         "benches": [
           {
