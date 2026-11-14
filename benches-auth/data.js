@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794603370024,
+  "lastUpdate": 1794629107898,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -21863,6 +21863,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4312,
             "range": "± 140",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5feda4ac36274c798c2c14626223df3a88762550",
+          "message": "Merge pull request #690 from Rullst/fix/v13-alpha5-release-audit-exceptions\n\nfix(release): pass the governed advisory exceptions to cargo rullst audit",
+          "timestamp": "2026-11-14T00:48:01-03:00",
+          "tree_id": "1211eb712e75ca94402fcca3afacc445ce9cdb2e",
+          "url": "https://github.com/Rullst/Rullst/commit/5feda4ac36274c798c2c14626223df3a88762550"
+        },
+        "date": 1794629107294,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1018,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 753,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1795,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4197,
+            "range": "± 37",
             "unit": "ns/iter"
           }
         ]
