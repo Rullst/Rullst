@@ -13,7 +13,7 @@ const LABS: &str = "V13-LABS-NON-EXHAUSTIVE-MATCH";
 const CONSENT: &str = "V13-PRIVACY-CONSENT-CHOICE-MATCH";
 
 #[test]
-fn ota_manager_field_accesses_are_reviewed_once_per_file() {
+fn ota_manager_field_accesses_are_reviewed_at_every_location() {
     let source = r#"
 use rullst_iot::{BootPartition, OtaManager};
 
@@ -25,8 +25,8 @@ fn boot(mut ota: OtaManager) -> OtaManager {
 }
 "#;
     let found = scan_with(source, "lib.rs", &WorkspaceFacts::default());
-    assert_eq!(found, [(OTA, 5)]);
-    // Inside a macro body too, at its first access.
+    assert_eq!(found, [(OTA, 5), (OTA, 6), (OTA, 7)]);
+    // Inside a macro body too.
     for field in ["current_partition", "status", "firmware_version"] {
         let source = format!(
             "use rullst_iot::OtaManager;\nfn check(ota: &OtaManager) {{\n    assert!(matches!(ota.{field}, _));\n}}\n"
@@ -146,7 +146,7 @@ fn i(e: MqttCodecError) -> bool { matches!(e, MqttCodecError::EmptyTopic) }
 }
 
 #[test]
-fn sensor_card_calls_are_reviewed_once_per_file() {
+fn sensor_card_calls_are_reviewed_at_every_location() {
     let source = r#"
 use rullst_iot::IotDashboard;
 
@@ -158,7 +158,7 @@ fn page(reading: &rullst_iot::SensorTelemetry) -> String {
 "#;
     assert_eq!(
         scan_with(source, "lib.rs", &WorkspaceFacts::default()),
-        [(CARD, 5)]
+        [(CARD, 5), (CARD, 6)]
     );
     // Other renderers and the bare type are not reported.
     assert_only(

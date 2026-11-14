@@ -19,6 +19,16 @@ A prepared version section does not establish that its tag or crates exist.
   new `PolyglotError::CrossOriginEndpoint` before anything, the auth token
   included, is sent there; the insert is not committed. Before, the client
   ignored `base_url` and such an insert failed without writing a row.
+- **`cargo rullst upgrade`:** a rule that matches several lines of one file
+  is reported at each of them. A review rule in Rust sources, a script or
+  workflow rule and the project-file rules (`.env`, `Dockerfile`,
+  `.cargo/config.toml`, `.gitignore`, Kubernetes YAML) reported only the
+  first, so an application's `src/ai.rs` showed one of its three
+  `V13-AI-HTTP-STATUS` uses. The plan and the Markdown report list a rule's
+  lines in one file on one entry in line order (`src/ai.rs:12, 40, 77`);
+  `--json` has one finding per location, sorted by file, line and code, and
+  the counts count locations. A `rullst-upgrade: reviewed` marker still
+  leaves out only its own location.
 
 ## [13.0.0-alpha.5] - 2026-11-14
 

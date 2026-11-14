@@ -743,8 +743,8 @@ steps in order.
    the line above it (`# rullst-upgrade: reviewed V13-CLI-GREEN-RENAMED`,
    `<!-- rullst-upgrade: reviewed V13-CLI-GREEN-RENAMED -->`,
    `// rullst-upgrade: reviewed V13-PAGE-BOUNDS: bounded by the extractor`).
-   The plan then leaves that location out, reports the rule's next unmarked
-   location in the file and counts the marked ones. A `MUST-CHANGE` finding
+   The plan then leaves that location out, still reports the rule's other
+   locations in the file and counts the marked ones. A `MUST-CHANGE` finding
    ignores the marker.
 4. **Apply, keeping a failed state.** Code that uses the removed APIs does not
    compile against alpha.5. Run `cargo rullst upgrade --keep-on-failure`: it
