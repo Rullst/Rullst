@@ -288,7 +288,10 @@ cargo test --workspace --all-features
 Rust CI disables incremental compilation and keeps content-addressed compiler
 outputs in the GitHub Actions cache with the pinned `sccache` Action and
 binary; the `cc` build dependency honours the same wrapper, so bundled C and
-C++ objects are reused. Same-repository pull requests write only their
+C++ objects are reused. The Windows test jobs pin sccache 0.16.0 instead of
+0.17.0: since Cargo 1.100 the rustc command of a large crate is too long for
+Windows and Cargo passes it in an argument file, which sccache 0.17 to 0.19
+expand before starting rustc (os error 206; mozilla/sccache#2787). Same-repository pull requests write only their
 isolated `refs/pull/.../merge` scope, fork pull requests are read-only, pushes
 and manual runs on `main` populate entries for later pull requests, and the
 tag-only verifier reads the cache strictly read-only. The setup action's Cargo
