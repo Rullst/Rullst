@@ -212,10 +212,10 @@ change (invoice amounts in integer minor units) and a frontend toolkit, which
 are cheaper to settle before 13.0 than to add around a frozen API. On
 14 November 2026, the day alpha.5 was published, the maintainer moved the
 freeze again, to 13.0.0-alpha.6. It carries every pending fix and
-improvement: the current toolchain and dependency majors, the removal of the
-APIs deprecated during the prereleases, smaller dependency graphs and several
-items that were 13.x candidates, so that 13.0.0 starts from current versions
-and without deprecated prerelease APIs
+improvement: the current toolchain and dependency majors, the removal of
+every API still deprecated (in 12.x or during the 13.0 prereleases), smaller
+dependency graphs and several items that were 13.x candidates, so that 13.0.0
+starts from current versions and without deprecated APIs
 ([planned scope](#planned-after-1300-alpha5)). The platforms upgraded to
 alpha.6 then report, and 13.0.0-rc.1 carries fixes for the defects found in
 alpha.6 and documentation corrections; it adds no feature. 13.0.0 follows
@@ -337,12 +337,28 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
     and 13.0 starts on current majors. The planned moves are ed25519-dalek 3,
     jsonwebtoken 12 and jsonschema 0.61, which the public API does not expose
     today, and testcontainers 0.28, a dev-dependency.
-  - **No deprecated prerelease APIs in 13.x:** the APIs deprecated during the
-    13.0 prereleases are removed, so 13.x does not carry them. That is
-    `rullst_orm::schema_diff` (`extract_tables_from_ast`, `ParsedTable`,
-    `ParsedField`), deprecated in 13.0.0-alpha.5 and first announced for
-    removal in 14.0. Each removal is listed in the changelog and the
-    [migration guide](docs/src/migration-v13.md).
+  - **No deprecated APIs in 13.x:** every API still marked `#[deprecated]` is
+    removed, so 13.x does not carry them. 13.0 is the major release that
+    removes the 12.x deprecations, and those of the 13.0 prereleases go with
+    them:
+    - Deprecated in 12.0.0: in Mail, `ResendDriver::new`,
+      `AwsSesDriver::new`, `Message::with_open_tracking` and
+      `with_click_tracking`, and `TrackingEngine::generate_open_token`,
+      `generate_click_token`, `inject_open_pixel` and `rewrite_links`; in
+      IoT, `OtaManager::new`, `verify_signature` and `commit_update`; in
+      Nexus, `Nexus::into_router` and `Nexus::build`; in AI,
+      `AiClient::structured_prompt` and `GuardrailReport::is_safe`; in
+      Security, `RateLimiter::with_distributed` and `AuditChain::new`; in
+      Core, `Queue::purge_completed_jobs`; in Connect, the providers'
+      infallible `new` constructors; and the `#[route]` marker attribute of
+      `rullst-macros`. Each deprecation note names its replacement.
+    - Deprecated in 13.0.0-alpha.5: `rullst_orm::schema_diff`
+      (`extract_tables_from_ast`, `ParsedTable`, `ParsedField`), first
+      announced for removal in 14.0.
+
+    Each removal gets a `cargo rullst upgrade` rule and a
+    [migration-guide](docs/src/migration-v13.md) row that names the
+    replacement.
   - **Smaller dependency graphs** (from the starter dependency audit),
     changing no public path:
     - Studio and Nexus stop depending on all of `rullst-security`:
@@ -413,7 +429,7 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
 | **v13.0.0-alpha.3** | `[x] Published prerelease` | All twenty packages were published on 24 October 2026 from tag `v13.0.0-alpha.3` at `be336833` ([release run 40129821475](https://github.com/Rullst/Rullst/actions/runs/40129821475)) after all 25 required workflows passed on that commit. See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha3---2026-10-23). |
 | **v13.0.0-alpha.4** | `[x] Published prerelease` | All twenty packages were published on 31 October 2026 from tag `v13.0.0-alpha.4` at `2bd3c2ad` ([release run 41233925160](https://github.com/Rullst/Rullst/actions/runs/41233925160)). See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha4---2026-10-31). |
 | **v13.0.0-alpha.5** | `[x] Published prerelease` | All twenty packages were published on 14 November 2026 from tag `v13.0.0-alpha.5` at `5feda4ac` ([release run 43631881119](https://github.com/Rullst/Rullst/actions/runs/43631881119)) after all 23 required workflows passed on that commit. A first tag at `034df65e` stopped in release verification before publishing anything (`cargo rullst audit` lacked the governed advisory exceptions, #690) and was replaced with the maintainer's approval. The fixes and additions from the applications upgraded to alpha.4; planned as the 13.0 feature and public API freeze, which moved to alpha.6 the same day. See [Delivered in 13.0.0-alpha.5](#delivered-in-1300-alpha5) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14). |
-| **v13.0.0-alpha.6** | `[ ] Planned` | The 13.0 feature and public API freeze: every pending fix and improvement, the Rust 1.100 toolchain and current dependency majors, the removal of the APIs deprecated during the prereleases and smaller dependency graphs. See [Planned after 13.0.0-alpha.5](#planned-after-1300-alpha5). |
+| **v13.0.0-alpha.6** | `[ ] Planned` | The 13.0 feature and public API freeze: every pending fix and improvement, the Rust 1.100 toolchain and current dependency majors, the removal of every API still deprecated (in 12.x or during the 13.0 prereleases) and smaller dependency graphs. See [Planned after 13.0.0-alpha.5](#planned-after-1300-alpha5). |
 | **v13.0.0-rc.1** | `[ ] Planned` | Fixes and documentation only after the alpha.6 feature and API freeze. See [Planned after 13.0.0-alpha.5](#planned-after-1300-alpha5). |
 | **v13.0.0** | `[ ] Planned stable` | Follows once rc.1 leaves no open defect in the stability scope; the [maturity tiers](docs/src/maturity.md) apply from this release. |
 | **v13.x** | `[ ] After 13.0.0` | Compatible capabilities continue in 13.1 and later minors: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |

@@ -23,9 +23,10 @@ InfinitePay adapter supported and moved `cargo rullst footprint` into the
 CLI's Core tier ([maturity tiers](maturity.md#promotions-in-1300-alpha5)).
 Next comes 13.0.0-alpha.6, the freeze, which carries every pending fix and
 improvement: the Rust 1.100 toolchain and current dependency majors, the
-removal of the APIs deprecated during the prereleases, smaller dependency
-graphs and several former 13.x candidates. Then come 13.0.0-rc.1 (fixes and
-documentation only) and 13.0.0. Work planned next is under
+removal of every API still deprecated (in 12.x or during the 13.0
+prereleases), smaller dependency graphs and several former 13.x candidates.
+Then come 13.0.0-rc.1 (fixes and documentation only) and 13.0.0. Work planned
+next is under
 [Planned after 13.0.0-alpha.5](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha5);
 the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14)
 lists every change and the known limitations.
