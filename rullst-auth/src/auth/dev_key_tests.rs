@@ -83,3 +83,48 @@ fn only_binaries_in_a_cargo_deps_directory_are_test_harnesses() {
     }
     assert!(!is_test_harness(None));
 }
+
+#[test]
+fn cargo_1_100_unit_outputs_named_after_their_hash_are_test_harnesses() {
+    for (exe, harness) in [
+        (
+            "/app/target/debug/build/app/3118568949efac95/out/app-3118568949efac95",
+            true,
+        ),
+        (
+            "/app/target/x86_64-unknown-linux-gnu/release/build/api/26bf57fd586e43e4/out/api_test-26bf57fd586e43e4",
+            true,
+        ),
+        (
+            "C:/app/target/debug/build/app/3826049d58c6b36d/out/app-3826049d58c6b36d.exe",
+            true,
+        ),
+        // The executable must sit in the unit's `out` directory,
+        (
+            "/app/target/debug/build/app/3118568949efac95/bin/app-3118568949efac95",
+            false,
+        ),
+        // under `build/<package>`,
+        (
+            "/app/target/debug/other/app/3118568949efac95/out/app-3118568949efac95",
+            false,
+        ),
+        // and be named `<name>-<hash>` after that unit.
+        (
+            "/app/target/debug/build/app/3118568949efac95/out/app",
+            false,
+        ),
+        (
+            "/app/target/debug/build/app/3118568949efac95/out/app3118568949efac95",
+            false,
+        ),
+        (
+            "/app/target/debug/build/app/3118568949efac95/out/app-8c88e79794d4d2b1",
+            false,
+        ),
+        ("/opt/app/out/app", false),
+        ("out/app", false),
+    ] {
+        assert_eq!(is_test_harness(Some(Path::new(exe))), harness, "{exe}");
+    }
+}

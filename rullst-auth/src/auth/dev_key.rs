@@ -16,13 +16,15 @@
 //!    so that sessions survive restarts, or keeps it in memory when no state
 //!    directory is available.
 //!
-//! A test harness is an executable in a directory named `deps`: Cargo places
-//! unit, integration-test and benchmark binaries in `target/<profile>/deps`
-//! (also under cargo-nextest), while `cargo run` and installed binaries live
-//! elsewhere. `cfg(test)` cannot decide this, because it is set only for the
-//! crate under test, never for `rullst-auth` as a dependency. So `cargo test`
-//! never writes a key, and a key in memory makes every test process use its
-//! own: tests that need a stable key across processes set `APP_KEY`.
+//! A test harness is an executable where Cargo places unit, integration-test
+//! and benchmark binaries (also under cargo-nextest): `target/<profile>/deps`
+//! up to Cargo 1.99, and `target/<profile>/build/<package>/<hash>/out`, with
+//! a file name ending in `-<hash>`, since Cargo 1.100. `cargo run` and
+//! installed binaries live elsewhere. `cfg(test)` cannot decide this, because
+//! it is set only for the crate under test, never for `rullst-auth` as a
+//! dependency. So `cargo test` never writes a key, and a key in memory makes
+//! every test process use its own: tests that need a stable key across
+//! processes set `APP_KEY`.
 
 use base64::{Engine as _, engine::general_purpose};
 use sha2::{Digest, Sha256};
@@ -115,11 +117,32 @@ pub(super) fn key_file(directory: &Path, project: &Path) -> PathBuf {
     directory.join(format!("{name}.key"))
 }
 
-/// Whether `exe` sits in a Cargo `deps` directory (a test or bench binary).
+/// Whether `exe` is a Cargo test or bench binary: one in a `deps` directory
+/// (Cargo 1.99 and earlier), or `build/<package>/<hash>/out/<name>-<hash>`
+/// (the build-directory layout of Cargo 1.100 and later).
 pub(super) fn is_test_harness(exe: Option<&Path>) -> bool {
-    exe.and_then(Path::parent)
-        .and_then(Path::file_name)
-        .is_some_and(|name| name == "deps")
+    let Some(exe) = exe else {
+        return false;
+    };
+    let mut directories = exe.ancestors().skip(1).map(Path::file_name);
+    match directories.next().flatten() {
+        Some(name) if name == "deps" => true,
+        Some(name) if name == "out" => {
+            let hash = directories.next().flatten().and_then(|name| name.to_str());
+            // `nth(1)` skips the package directory.
+            let built = directories
+                .nth(1)
+                .flatten()
+                .is_some_and(|name| name == "build");
+            let stem = exe.file_stem().and_then(|stem| stem.to_str());
+            built
+                && hash.zip(stem).is_some_and(|(hash, stem)| {
+                    stem.strip_suffix(hash)
+                        .is_some_and(|name| name.ends_with('-'))
+                })
+        }
+        _ => false,
+    }
 }
 
 fn read_key(path: &Path) -> Option<Vec<u8>> {
