@@ -54,7 +54,15 @@ candidate's release line, including the source policy of reused runs.
 
 `ci.yml` treats the expensive operating-system matrix differently by event:
 
-- **Draft pull requests** get Format and Clippy feedback.
+- **Draft pull requests** get Format and Clippy feedback. The `Verification
+  scope` job reads whether the pull request is a draft from the API when the
+  run starts (`.github/pull-request-draft.sh`), and the jobs that wait for a
+  ready pull request use that state, not the event payload's: when a push and
+  `ready_for_review` arrive together, the concurrency group can keep the
+  push's run, whose payload still says draft, and the required `Run Tests`
+  checks would never report. An unreadable state counts as ready. The
+  SemVer workflow's `Pull request draft state` job does the same for its
+  jobs.
 - **Ready pull requests to `main`** run the fast Linux gate: the `workspace`
   and `cli-standard` shards, MSRV, strict database features, Redis/S3
   contracts, generated access, facade composition and AI evals; the ORM
