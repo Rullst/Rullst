@@ -174,10 +174,16 @@ and fails on any surviving mutant.
   feature.
 - **Advisories.** Every exception must appear in `deny.toml`, the ledger
   [`docs/src/security-advisory-exceptions.md`](docs/src/security-advisory-exceptions.md)
-  and the `--ignore`/`--audit-ignore` flags of every workflow that scans
-  advisories (`supply-chain.yml`, `crypto-containment.yml`, `release.yml` and
-  `pr-security-evidence.yml`), with an expiry; the governance job in
-  `supply-chain.yml` compares the three. Prefer an upgrade; an exception is
+  and the `--ignore`/`--audit-ignore` flags of every scanner: `supply-chain.yml`,
+  `crypto-containment.yml` and
+  [`.github/release-evidence-audit.sh`](.github/release-evidence-audit.sh), the
+  release evidence audits that `release.yml` runs, with an expiry; the
+  governance job in `supply-chain.yml` compares the three. The `Release
+  evidence audit` job of `supply-chain.yml` runs that script on pull requests
+  that change it, `release.yml`, `deny.toml`, the ledger, the CLI's audit code
+  or `Cargo.lock`, so a missing flag fails there rather than on the tag.
+  (`pr-security-evidence.yml` installs no cargo-audit, so its dependency check
+  reports NOT CHECKED and takes no flags.) Prefer an upgrade; an exception is
   temporary and time-bounded.
 - **CodeQL.** Rust results go through
   `.github/filter-codeql-test-fixtures.py` before upload, which drops the

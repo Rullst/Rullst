@@ -4,6 +4,8 @@ name: Supply Chain
 # its own job. Until 13.0.0-alpha.4 they were cargo-deny.yml, audit.yml and
 # security-audit.yml. The main ruleset requires the Cargo Deny job by its name,
 # "Check Dependencies (Licenses, Vulnerabilities)": keep that name unchanged.
+# A fourth job runs release.yml's evidence audit on the pull requests that
+# can change it.
 
 on:
   push:
@@ -75,6 +77,75 @@ jobs:
             find ./.github/fixtures -name Cargo.lock -print
           } | sort)
 
+  release-evidence-audit:
+    name: Release evidence audit (governed exceptions)
+    # The audits of release.yml's evidence step (.github/release-evidence-audit.sh)
+    # with cargo-audit installed, so an exception missing from them fails on
+    # the pull request instead of on the tag, as 13.0.0-alpha.5 did. Pull
+    # requests run it only when they change the release workflow, this
+    # workflow, the script, deny.toml, the exception ledger, the CLI's audit
+    # code or Cargo.lock (a first step decides); manual runs always run it.
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+      # Read-only reuse of the compiler outputs ci.yml seeds on main, as the
+      # release's verify job does.
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: "true"
+      SCCACHE_GHA_VERSION: rullst-ci-v1
+      SCCACHE_GHA_RW_MODE: READ_ONLY
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The pull-request merge commit and its base parent.
+          fetch-depth: 2
+
+      - name: Select the pull requests that change the release evidence audit
+        id: selection
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" != pull_request ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only HEAD^1 HEAD)"
+          if grep -Eq '^(\.github/workflows/(release|supply-chain)\.yml|\.github/release-evidence-audit\.sh|deny\.toml|docs/src/security-advisory-exceptions\.md|Cargo\.lock|cargo-rullst/src/generators/audit[^/]*\.rs|cargo-rullst/src/cli/(commands|dispatch|runtime)\.rs)$' <<< "$changed"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No change to the release evidence audit or its exceptions; release.yml runs it on the tag."
+          fi
+
+      - name: Set up content-addressed compiler cache
+        if: steps.selection.outputs.run == 'true'
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up Rust toolchain
+        if: steps.selection.outputs.run == 'true'
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
+          cache: false
+
+      - name: Install cargo-audit
+        if: steps.selection.outputs.run == 'true'
+        uses: taiki-e/install-action@3a3daafd3b7f23b8f65d9f5ba2db203fb59b79e2 # v2.90.2
+        with:
+          tool: cargo-audit
+
+      - name: Run the release evidence audit with its governed exceptions
+        if: steps.selection.outputs.run == 'true'
+        run: bash .github/release-evidence-audit.sh "$RUNNER_TEMP/release-evidence"
+
   advisory-exceptions:
     name: Advisory exception governance
     runs-on: ubuntu-latest
@@ -96,12 +167,13 @@ jobs:
             sed -n '/^\[advisories\]/,/^\[/p' deny.toml |
               grep -oE 'RUSTSEC-[0-9-]+' | sort -u || true
           )"
-          # Read every workflow, so an ignore added to any scanner (this
-          # file, the release evidence bundle, the IoT crypto check or a new
+          # Read every workflow and the release evidence audit script that
+          # release.yml runs, so an ignore added to any scanner (this file,
+          # the release evidence bundle, the IoT crypto check or a new
           # workflow) must also be in the ledger.
           workflow_ids="$(
             grep -h -oE -- '--(audit-)?ignore RUSTSEC-[0-9-]+' \
-              .github/workflows/*.yml |
+              .github/workflows/*.yml .github/release-evidence-audit.sh |
               awk '{print $2}' | sort -u || true
           )"
 
