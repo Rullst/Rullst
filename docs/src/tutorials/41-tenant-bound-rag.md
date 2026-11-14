@@ -1,7 +1,7 @@
 # 41. Tenant-Bound RAG in One Typed Operation
 
 > [!IMPORTANT]
-> Dependency examples pin the v13 prerelease `=13.0.0-alpha.4` exactly: Cargo
+> Dependency examples pin the v13 prerelease `=13.0.0-alpha.5` exactly: Cargo
 > never selects a prerelease on its own, and the v12 line reached end of life
 > on 16 October 2026 (see the [release record](../v12.md)). Commit Cargo.lock
 > for reproducible builds. Use path dependencies only when intentionally
@@ -20,7 +20,7 @@ dimensions define an index.
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.4", default-features = false, features = ["ai"] }
+rullst = { version = "=13.0.0-alpha.5", default-features = false, features = ["ai"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
@@ -116,8 +116,9 @@ tests, development, and small ephemeral datasets.
 Production applications implement the public async `RagRetriever` trait over
 their chosen store. A PostgreSQL implementation should put the tenant predicate
 inside the same parameterized pgvector query that performs similarity ordering.
-A Qdrant implementation should apply the deployment's reviewed tenant filter
-or separate-collection policy. It then creates each `RagDocument` from the same
+A Qdrant implementation (see the [Qdrant recipe](../recipes/qdrant.md))
+should apply the deployment's reviewed tenant filter or separate-collection
+policy. It then creates each `RagDocument` from the same
 trusted context passed to `retrieve`.
 
 The essential shape is:

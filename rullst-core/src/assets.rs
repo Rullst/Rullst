@@ -92,6 +92,16 @@ pub fn url(path: impl AsRef<str>) -> String {
     }
 }
 
+/// Whether the `static/` directory a server mounted holds `path` as a file
+/// [`url`] links with a content hash; `false` when no server mounted one.
+pub(crate) fn is_served(path: &str) -> bool {
+    let active = ACTIVE
+        .read()
+        .unwrap_or_else(PoisonError::into_inner)
+        .clone();
+    active.is_some_and(|manifest| manifest.contains(path.trim_start_matches('/')))
+}
+
 /// Makes `manifest` the one [`url`] reads, replacing an earlier one.
 pub(crate) fn activate(manifest: Arc<Manifest>) {
     *ACTIVE.write().unwrap_or_else(PoisonError::into_inner) = Some(manifest);

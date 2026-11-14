@@ -164,19 +164,46 @@ pub(crate) async fn state(
 }
 
 /// Serves the remote Studio on `127.0.0.1:<port>` until the process stops.
+///
+/// The port is taken first, so a port in use fails before anything else
+/// starts, with an error naming the address. Once it listens, the Studio
+/// address and the project list's path are printed to standard output.
 pub async fn run_remote_studio(options: RemoteStudioOptions) -> Result<(), RemoteStudioError> {
+    let listener = listen(options.port).await?;
     let state = Arc::new(state(&options).await?);
     if let Some(history) = state.history.clone() {
         tokio::spawn(poller::run(state.clone(), history, state.poll_interval));
     }
     let app = router::router(state);
-    let listener = tokio::net::TcpListener::bind(("127.0.0.1", options.port))
-        .await
-        .map_err(RemoteStudioError::Io)?;
+    announce(options.port, &options.paths.projects);
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
     )
     .await
     .map_err(RemoteStudioError::Io)
+}
+
+/// Takes `127.0.0.1:<port>`; the error of a port in use names it.
+async fn listen(port: u16) -> Result<tokio::net::TcpListener, RemoteStudioError> {
+    tokio::net::TcpListener::bind(("127.0.0.1", port))
+        .await
+        .map_err(|error| {
+            RemoteStudioError::Io(std::io::Error::new(
+                error.kind(),
+                format!("127.0.0.1:{port}: {error}"),
+            ))
+        })
+}
+
+/// Prints where the Studio listens. A closed standard output is ignored
+/// rather than stopping a Studio that is already serving.
+fn announce(port: u16, projects: &std::path::Path) {
+    use std::io::Write;
+    let mut stdout = std::io::stdout().lock();
+    let _ = writeln!(
+        stdout,
+        "Rullst Studio (remote projects) on http://127.0.0.1:{port}/studio"
+    );
+    let _ = writeln!(stdout, "Project list: {}", projects.display());
 }

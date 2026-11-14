@@ -8,7 +8,8 @@
 Rullst Capital simplifies the billing and subscription complexities of building a SaaS application in Rust.
 
 > **v13 scope (2026-10):** Capital keeps the provider-neutral base, the
-> supported Stripe adapter and the experimental InfinitePay adapter. The
+> supported Stripe adapter and the InfinitePay adapter (supported since
+> 13.0.0-alpha.5). The
 > Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago, Alipay, Coinbase
 > Commerce and PicPay adapters, the Wise payout adapter with its payout
 > contracts, and the NFS-e/fiscal preparation module were removed. NFS-e may
@@ -18,7 +19,7 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 > and the [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md).
 
 ## Phase 1: Payment Gateways Integration
-- [x] **Unified Payment Drivers**: A standard Rust trait interface with a supported Stripe adapter; InfinitePay remains experimental until validated against a live account.
+- [x] **Unified Payment Drivers**: A standard Rust trait interface with supported Stripe and InfinitePay adapters; InfinitePay covers one-off payment links only.
 - [x] **Bounded Gateway Failure Contract**: Reviewed live adapter methods share
   finite connect/request timeouts, disabled redirects and ambient proxies,
   one-MiB JSON parsing, validated HTTPS checkout locations, and redacted typed
@@ -48,10 +49,12 @@ Rullst Capital simplifies the billing and subscription complexities of building 
   (Stripe inline `price_data`, InfinitePay `POST /links` and `payment_check`),
   and `WebhookVerificationMode::ConfirmedAtSource` for unsigned notifications
   that never mark a payment paid by themselves.
-- [ ] **InfinitePay live validation**: The adapter implements the public
-  Checkout API since 13.0.0-alpha.5 against local fixtures; validate link
-  creation, the webhook body and `payment_check` against a live account before
-  removing the experimental label.
+- [x] **InfinitePay live validation**: The adapter implements the public
+  Checkout API since 13.0.0-alpha.5. In the 13.0.0-alpha.5 acceptance run a
+  real Pix payment was confirmed through link creation, the webhook and
+  `payment_check`, forged webhooks and a wrong amount were refused, and
+  replays were idempotent; the experimental label was removed in the same
+  release.
 - [~] **Payment-Bound Invoicing**: Integer minor-unit invoices (13.0.0-alpha.5)
   with English, Brazilian Portuguese and Spanish ("Recibo") or custom labels;
   renders escaped HTML and opt-in bounded native PDF, and binds a

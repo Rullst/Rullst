@@ -33,6 +33,7 @@ async fn hrana(headers: HeaderMap, Json(request): Json<Value>) -> Response {
         == Some("Bearer token");
     let sql = request
         .pointer("/requests/0/stmt/sql")
+        .or_else(|| request.pointer("/requests/0/batch/steps/1/stmt/sql"))
         .and_then(Value::as_str)
         .unwrap_or("BATCH");
     match sql {
@@ -81,6 +82,26 @@ async fn hrana(headers: HeaderMap, Json(request): Json<Value>) -> Response {
         ]),
         "UNCODED" => pipeline(vec![
             json!({ "type": "error", "error": { "message": "boom", "code": "" } }),
+        ]),
+        "DUPLICATE" => pipeline(vec![
+            json!({ "type": "error", "error": {
+                "message": "SQLite error: UNIQUE constraint failed: users.email",
+                "code": "SQLITE_CONSTRAINT"
+            } }),
+            close(),
+        ]),
+        "BATCH_DUPLICATE" => pipeline(vec![
+            ok(json!({
+                "type": "batch",
+                "result": {
+                    "step_results": [{ "affected_row_count": 0 }, null, null, { "affected_row_count": 0 }],
+                    "step_errors": [null, {
+                        "message": "SQLite error: UNIQUE constraint failed: users.email",
+                        "code": "SQLITE_CONSTRAINT"
+                    }, null, null]
+                }
+            })),
+            close(),
         ]),
         _ => pipeline(vec![
             ok(json!({
@@ -171,5 +192,25 @@ async fn malformed_pipelines_fail_closed() {
         driver_message(client.execute(statement("UNCODED")).await.unwrap_err()),
         "Hrana server error: boom"
     );
+    server.abort();
+}
+
+#[tokio::test]
+async fn unique_violations_are_conflicts_in_statements_and_batches() {
+    let (client, server) = client("token").await;
+    assert!(matches!(
+        client.execute(statement("DUPLICATE")).await,
+        Err(PolyglotError::Conflict)
+    ));
+    assert!(matches!(
+        client
+            .query(statement("DUPLICATE"), TursoQueryLimit::new(1).unwrap())
+            .await,
+        Err(PolyglotError::Conflict)
+    ));
+    assert!(matches!(
+        client.transaction(vec![statement("BATCH_DUPLICATE")]).await,
+        Err(PolyglotError::Conflict)
+    ));
     server.abort();
 }

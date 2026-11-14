@@ -35,8 +35,8 @@ its domain schema; do not create tables opportunistically while serving a
 request.
 
 The built-in contract supports the SQLx relational backends: SQLite,
-PostgreSQL, MySQL and MariaDB. It does not span MongoDB, DuckDB, Turso or
-SurrealDB transactions.
+PostgreSQL, MySQL and MariaDB. It does not span Turso or SurrealDB
+transactions, or an application's own MongoDB or DuckDB store.
 
 ## 2. Commit domain state and event together
 
@@ -148,6 +148,13 @@ Claims, acknowledgements and failures commit on their own. Calling them inside
 `Orm::transaction` returns a validation error, because an acknowledgement there
 would already be durable if the handler's transaction later rolled back. Commit
 the handler's database work first, then acknowledge.
+
+Start the worker after the ORM pool exists. `Server::run` opens the pool while
+it starts, so a worker spawned before it (for example at the top of `main`)
+fails its first claim with "Orm is not initialized". Call
+`Orm::init(&database_url).await?` in `main` before you spawn the worker;
+`Server` then keeps that pool instead of opening another one. Tasks
+registered with `Server::schedule` start after the pool is open.
 
 ## 4. Understand the guarantee
 

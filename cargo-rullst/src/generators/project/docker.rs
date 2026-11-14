@@ -4,9 +4,10 @@ use colored::*;
 use std::fs;
 use std::path::Path;
 
-/// Local SQLite and DuckDB databases and their journals, which may hold
-/// personal data. The generated `.gitignore` and `.dockerignore` share this
-/// list so neither Git nor the container build context picks them up.
+/// Local SQLite and DuckDB database files and their journals, which may hold
+/// personal data (the DuckDB recipe keeps its file in the project). The
+/// generated `.gitignore` and `.dockerignore` share this list so neither Git
+/// nor the container build context picks them up.
 pub(super) const LOCAL_DATABASE_IGNORES: &str = "*.db
 *.db-shm
 *.db-wal
@@ -106,10 +107,13 @@ pub(crate) fn write_docker_files(
     let db_provider = db_provider_arg;
     let _wants_redis = redis_arg.unwrap_or(false);
 
-    let copy_static = if project_path.join("static").is_dir() {
-        "COPY --chown=10001:10001 static /app/static\n"
+    let (static_stage, copy_static) = if project_path.join("static").is_dir() {
+        (
+            super::docker_static::stage(),
+            super::docker_static::RUNTIME_COPY,
+        )
     } else {
-        ""
+        (String::new(), "")
     };
     let copy_config = if project_path.join("Rullst.toml").is_file() {
         "COPY --chown=10001:10001 Rullst.toml /app/Rullst.toml\n"
@@ -160,7 +164,7 @@ RUN find . -path ./target -prune -o -type f -name '*.rs' -exec touch {{}} + \
 # The runtime image has no shell, so its directory tree is prepared here.
 RUN install --directory --owner=10001 --group=10001 /runtime/app /runtime/app/data
 
-# Debian 12 glibc runtime (libgcc, libstdc++, CA certificates, tzdata) without
+{static_stage}# Debian 12 glibc runtime (libgcc, libstdc++, CA certificates, tzdata) without
 # a shell or package manager: probe `/health` and `/ready` over HTTP from the
 # platform instead of a shell HEALTHCHECK.
 FROM gcr.io/distroless/cc-debian12:nonroot
@@ -235,7 +239,18 @@ mod tests {
             .expect("distroless runtime stage")
             .1;
         assert!(!runtime.contains("RUN "), "{runtime}");
-        assert!(!dockerfile.contains("apt-get"));
+        // A package manager runs only in the stage that pre-compresses
+        // static/, whose directory the runtime stage copies.
+        let static_stage = dockerfile
+            .split_once("FROM rust:1.99.1-slim-bookworm AS static-assets\n")
+            .and_then(|(_, rest)| rest.split_once("\nFROM "))
+            .expect("static stage")
+            .0;
+        assert!(static_stage.contains("apt-get install --yes --no-install-recommends brotli zstd"));
+        assert_eq!(dockerfile.matches("apt-get").count(), 2);
+        assert_eq!(static_stage.matches("apt-get").count(), 2);
+        assert!(runtime.contains(super::super::docker_static::RUNTIME_COPY));
+        assert!(!runtime.contains("COPY --chown=10001:10001 static "));
         assert!(dockerfile.contains(
             "install --directory --owner=10001 --group=10001 /runtime/app /runtime/app/data"
         ));
@@ -247,7 +262,6 @@ mod tests {
         assert!(dockerfile.contains("ENV HOST=0.0.0.0"));
         assert!(dockerfile.contains("USER 10001:10001"));
         assert!(dockerfile.contains("sqlite:///app/data/rullst.db?mode=rwc"));
-        assert!(dockerfile.contains("static /app/static"));
         assert!(dockerfile.contains("Rullst.toml /app/Rullst.toml"));
         assert!(dockerfile.contains("db:migrate"));
         assert!(!dockerfile.contains("APP_KEY="));
@@ -281,7 +295,7 @@ mod tests {
             root.path(),
             false,
             "Sqlite",
-            &[crate::generators::project::PolyglotIntegration::DuckDb],
+            &[],
             crate::blueprints::BLANK_BLUEPRINT_ID,
             "0123456789abcdef0123456789abcdef",
         )
@@ -291,7 +305,7 @@ mod tests {
         let gitignore = fs::read_to_string(root.path().join(".gitignore")).expect("gitignore");
         let dockerignore =
             fs::read_to_string(root.path().join(".dockerignore")).expect("dockerignore");
-        // `--duckdb` writes `DUCKDB_PATH=analytics.duckdb` at the project root.
+        // The DuckDB recipe keeps its database file at the project root.
         for database in ["*.duckdb", "*.duckdb.wal", "*.sqlite-shm", "*.sqlite-wal"] {
             assert!(LOCAL_DATABASE_IGNORES.lines().any(|line| line == database));
         }
@@ -462,5 +476,8 @@ mod tests {
         let dockerfile =
             fs::read_to_string(root.path().join("Dockerfile")).expect("generated Dockerfile");
         assert!(!dockerfile.contains("ENV DATABASE_URL="));
+        // Without static/ there is nothing to copy or pre-compress.
+        assert!(!dockerfile.contains("static"), "{dockerfile}");
+        assert!(!dockerfile.contains("apt-get"));
     }
 }

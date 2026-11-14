@@ -1,4 +1,4 @@
-use ring::hmac;
+use hmac::{KeyInit, Mac};
 use rullst_capital::{BillingProvider, CapitalError, StripeProvider, SubscriptionStatus};
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -21,10 +21,13 @@ fn snapshot() -> Value {
 fn signed(value: &Value) -> Result<rullst_capital::WebhookEvent, CapitalError> {
     let bytes = serde_json::to_vec(value).unwrap();
     let timestamp = chrono::Utc::now().timestamp();
-    let mut context = hmac::Context::with_key(&hmac::Key::new(hmac::HMAC_SHA256, b"whsec_fixture"));
+    let mut context = hmac::Hmac::<sha2::Sha256>::new_from_slice(b"whsec_fixture").unwrap();
     context.update(format!("{timestamp}.").as_bytes());
     context.update(&bytes);
-    let signature = format!("t={timestamp},v1={}", hex::encode(context.sign()));
+    let signature = format!(
+        "t={timestamp},v1={}",
+        hex::encode(context.finalize().into_bytes())
+    );
     StripeProvider::new("sk_test_fixture", "whsec_fixture").handle_webhook(
         &bytes,
         &HashMap::from([("stripe-signature".into(), signature)]),

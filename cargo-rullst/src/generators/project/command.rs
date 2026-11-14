@@ -63,6 +63,32 @@ pub(crate) fn new_command(command: Command) -> Command {
         )
 }
 
+/// `--mongodb`, `--duckdb` and `--qdrant` added a side store until
+/// 13.0.0-alpha.5, which removed those adapters. The flags stay hidden so that
+/// a script that still passes one learns which recipe replaces it, instead of
+/// clap's unknown argument error.
+pub(crate) fn reject_removed_side_stores(
+    mongodb: bool,
+    duckdb: bool,
+    qdrant: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let removed = [
+        (mongodb, "mongodb", "MongoDB", "mongodb"),
+        (duckdb, "duckdb", "DuckDB", "duckdb"),
+        (qdrant, "qdrant", "Qdrant", "qdrant-client"),
+    ];
+    match removed.into_iter().find(|(selected, ..)| *selected) {
+        Some((_, flag, name, krate)) => Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!(
+                "--{flag} was removed in 13.0.0-alpha.5: Rullst no longer ships a {name} adapter. Generate the project without it and use the official `{krate}` crate in your application, as https://rullst.github.io/Rullst/book/recipes/{flag}.html shows"
+            ),
+        )
+        .into()),
+        None => Ok(()),
+    }
+}
+
 const fn provider(choice: DatabaseChoice) -> &'static str {
     match choice {
         DatabaseChoice::Sqlite => "Sqlite",
@@ -118,7 +144,8 @@ pub(crate) fn run_new_command(
     else {
         return Err("--dry-run and --vcs apply only to `cargo rullst new`".into());
     };
-    // A removed blueprint fails here, before the wizard or any file write.
+    // A removed flag or blueprint fails here, before the wizard or any file write.
+    reject_removed_side_stores(*mongodb, *duckdb, *qdrant)?;
     let starter = blueprint.map(BlueprintChoice::starter).transpose()?;
     let request = NewProjectRequest {
         name: name.as_deref(),
@@ -127,10 +154,7 @@ pub(crate) fn run_new_command(
             docker: *docker,
             use_defaults: *default,
             turso: *turso,
-            mongodb: *mongodb,
-            duckdb: *duckdb,
             surrealdb: *surrealdb,
-            qdrant: *qdrant,
             database: database.map(provider),
             no_database: *no_database,
             hot_reload: *hot_reload,
@@ -254,13 +278,82 @@ mod tests {
             "turso: Turso/libSQL (Blank/API only; no Nexus, Studio, Schema or SQLx ORM)",
             "Enables Redis queues, cache and the Redis-structures side store; the wizard skips that question",
             "--turso Adds Turso/libSQL as a side store (edge SQL) beside the primary database",
-            "--mongodb Adds MongoDB as a side store (document CRUD)",
-            "--duckdb Adds DuckDB as a side store (in-process analytics; longer first build)",
             "--surrealdb Adds SurrealDB as a side store (documents and read-only graph queries)",
-            "--qdrant Adds Qdrant as a side store (dense-vector search)",
         ] {
             assert!(help.contains(expected), "missing {expected:?} in:\n{help}");
         }
+    }
+
+    #[test]
+    fn removed_side_store_flags_are_hidden_and_name_their_recipe() {
+        let help = long_help();
+        for removed in [
+            "--mongodb",
+            "--duckdb",
+            "--qdrant",
+            "MongoDB",
+            "DuckDB",
+            "Qdrant",
+        ] {
+            assert!(!help.contains(removed), "{removed} in:\n{help}");
+        }
+        assert!(reject_removed_side_stores(false, false, false).is_ok());
+        for (mongodb, duckdb, qdrant, flag, name, krate) in [
+            (true, false, false, "mongodb", "MongoDB", "mongodb"),
+            (false, true, false, "duckdb", "DuckDB", "duckdb"),
+            (false, false, true, "qdrant", "Qdrant", "qdrant-client"),
+            (true, true, true, "mongodb", "MongoDB", "mongodb"),
+            (false, true, true, "duckdb", "DuckDB", "duckdb"),
+        ] {
+            let message = reject_removed_side_stores(mongodb, duckdb, qdrant)
+                .expect_err("a removed flag is refused")
+                .to_string();
+            assert!(
+                message.starts_with(&format!("--{flag} was removed in 13.0.0-alpha.5: ")),
+                "{message}"
+            );
+            assert!(
+                message.contains(&format!("no longer ships a {name} adapter")),
+                "{message}"
+            );
+            assert!(
+                message.contains(&format!("the official `{krate}` crate")),
+                "{message}"
+            );
+            assert!(
+                message.ends_with(&format!(
+                    "https://rullst.github.io/Rullst/book/recipes/{flag}.html shows"
+                )),
+                "{message}"
+            );
+        }
+        let matches = parse(&[
+            "rullst",
+            "new",
+            "shop",
+            "--default",
+            "--mongodb",
+            "--duckdb",
+            "--qdrant",
+        ])
+        .expect("the hidden flags still parse");
+        let cli = crate::cli::Cli::from_arg_matches(&matches).expect("derive reads them");
+        assert!(matches!(
+            cli.command,
+            Commands::New {
+                mongodb: true,
+                duckdb: true,
+                qdrant: true,
+                ..
+            }
+        ));
+        let new = matches.subcommand_matches("new").expect("new matches");
+        let error = run_new_command(&cli.command, new)
+            .expect_err("`new --mongodb` stops before the wizard or any file write");
+        assert!(
+            error.to_string().starts_with("--mongodb was removed"),
+            "{error}"
+        );
     }
 
     #[test]

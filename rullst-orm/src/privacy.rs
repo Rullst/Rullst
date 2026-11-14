@@ -19,6 +19,9 @@ const KEY_ENV: &str = "RULLST_ENCRYPTION_KEY";
 const KEY_ID_ENV: &str = "RULLST_ENCRYPTION_KEY_ID";
 const KEYRING_ENV: &str = "RULLST_ENCRYPTION_KEYRING";
 
+mod explicit_key;
+pub use explicit_key::{decrypt_aes_gcm, encrypt_aes_gcm};
+
 mod secret_serde;
 // Used by `#[derive(Orm)]`.
 #[doc(hidden)]
@@ -401,25 +404,6 @@ pub fn decrypt_model_field(
     let envelope = parse_envelope(encrypted)?;
     let key = configured_key(envelope.key_id)?;
     decrypt_envelope(&envelope, &key, &model_context(table, column))
-}
-
-// Unbound-envelope helpers for the format tests; no ORM path encrypts without
-// a model context.
-#[cfg(test)]
-pub(crate) fn encrypt_aes_gcm(plaintext: &str, key: &str) -> Result<String, PrivacyError> {
-    encrypt_with_context(plaintext, key.as_bytes(), DEFAULT_KEY_ID, b"")
-}
-
-#[cfg(test)]
-pub(crate) fn decrypt_aes_gcm(encrypted: &str, key: &str) -> Result<String, PrivacyError> {
-    let key_bytes = key.as_bytes();
-    validate_key(key_bytes)?;
-    if encrypted.starts_with(&format!("{ENVELOPE_PREFIX}:")) {
-        let envelope = parse_envelope(encrypted)?;
-        return decrypt_envelope(&envelope, key_bytes, b"");
-    }
-
-    decrypt_legacy_aes_gcm(encrypted, key_bytes)
 }
 
 fn decrypt_legacy_aes_gcm(encrypted: &str, key: &[u8]) -> Result<String, PrivacyError> {

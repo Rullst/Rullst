@@ -36,7 +36,7 @@ feature) and construct the adapter explicitly:
 
 ```toml
 [dependencies]
-rullst-core = { version = "=13.0.0-alpha.4", features = ["cache-redis"] }
+rullst-core = { version = "=13.0.0-alpha.5", features = ["cache-redis"] }
 ```
 
 ```rust,no_run
@@ -70,7 +70,7 @@ The ORM has a separate opt-in query-cache contract behind its `redis` feature:
 
 ```toml
 [dependencies]
-rullst-orm = { version = "=13.0.0-alpha.4", features = ["redis"] }
+rullst-orm = { version = "=13.0.0-alpha.5", features = ["redis"] }
 ```
 
 The generated `.remember(...)`, cache invalidation, `orm:events:*` publications
@@ -125,6 +125,11 @@ The failure and consistency rules are explicit:
   outside a transaction.
 - Redis command failures or corrupt JSON fall back to the authoritative
   database; a successful read is returned even if cache population fails.
+  While Redis is unreachable each command makes one reconnection attempt
+  before it fails (about 0.15 s against a refused port), so an outage slows
+  remembered reads by that much rather than by redis-rs's default six
+  backed-off retries; an unresponsive server still costs the 500 ms response
+  timeout per command.
 - Explicit and task-scoped ORM transactions always bypass query cache.
 - Generated model saves/deletes invalidate the table's global entries and, for
   a tenant-scoped model, those of the tenant active at the write, only after
@@ -170,7 +175,7 @@ Rullst provides explicit SQLite and Redis queue constructors:
 
 ```toml
 [dependencies]
-rullst-core = { version = "=13.0.0-alpha.4", features = ["queue-sqlite"] }
+rullst-core = { version = "=13.0.0-alpha.5", features = ["queue-sqlite"] }
 serde_json = "1"
 ```
 

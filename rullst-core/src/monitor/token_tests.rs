@@ -2,7 +2,7 @@
 
 use super::MonitorError;
 use super::test_support::{BASE64_TOKEN, BASE64URL_TOKEN, HEX_TOKEN, ROTATED_TOKEN};
-use super::token::{Presented, TokenSet, presented, validate};
+use super::token::{Presented, TokenSet, digest, presented, validate};
 use axum::http::{HeaderMap, HeaderValue, header};
 
 #[test]
@@ -183,4 +183,23 @@ fn a_token_configured_twice_still_matches() {
     ])
     .unwrap();
     assert!(three.matches(BASE64_TOKEN));
+}
+
+#[test]
+fn token_digests_are_sha256_known_answers() {
+    // FIPS 180-2 appendix B.1 and B.2 vectors.
+    assert_eq!(
+        hex(&digest("abc")),
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    );
+    assert_eq!(
+        hex(&digest(
+            "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+        )),
+        "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1"
+    );
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }

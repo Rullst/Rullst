@@ -10,11 +10,6 @@ Server-Sent Events, i18n and process telemetry. The `rullst` facade re-exports i
 ## ✨ Features
 
 - **Typed Axum Integration:** Wraps Axum routing while retaining access to the underlying router and middleware ecosystem.
-- **Bounded Server Functions:** `#[server_function]` shares the versioned
-  `rullst.client` v1 envelope between native Axum routes and Wasm callers, with
-  a 256 KiB body ceiling, correlation checks, same-origin paths, CSRF header
-  forwarding, and message-free typed failures. Identity and domain policy stay
-  server-owned.
 - **Translations and Locales (v13):** `rullst::i18n::catalog!` loads one
   TOML catalog per locale at compile time and fails the build on missing keys
   or mismatched placeholders; the generated `t!` returns text that `html!`
@@ -41,9 +36,10 @@ Server-Sent Events, i18n and process telemetry. The `rullst` facade re-exports i
   5–10 s), a maximum connection lifetime, a 64 KiB event bound and a
   `shutdown()` that ends every stream before the graceful drain. A connection
   that falls behind its channel's fixed queue ends instead of growing a
-  buffer; the browser reconnects. HTML scaffolds ship the htmx 1.9.12 SSE
-  extension (`/static/htmx-ext-sse-1.9.12.js`, patched so its reconnect
-  backoff grows) for `hx-ext="sse"` under the strict CSP. Delivery is process-local and best effort.
+  buffer; the browser reconnects. HTML scaffolds ship htmx 2.0.11 and its
+  SSE extension 2.2.4 (`/static/htmx-ext-sse-2.2.4.js`, whose reconnect
+  backoff doubles up to 64 s) for `hx-ext="sse"` under the strict CSP.
+  Delivery is process-local and best effort.
 - **Lifecycle-aware Readiness:** An opt-in process lifecycle gates new requests
   during startup, dependency unavailability, and graceful drain. It accepts at
   most 32 immutable component labels and exposes counts—not labels or errors—on
@@ -61,7 +57,8 @@ Server-Sent Events, i18n and process telemetry. The `rullst` facade re-exports i
   the proxy address; list only your real proxy networks.
 - **Production Monitoring Endpoint (v13, 13.0.0-alpha.3):** opt-in
   `Server::with_monitor` serves a read-only `GET /_rullst/monitor/v1` JSON
-  document (request rate, latency and status classes per route pattern,
+  document (request rate, latency, status classes and response bytes per
+  route pattern,
   queues, N+1 fingerprints, process radar) to a bearer token from
   `RULLST_MONITOR_TOKENS` or to the application's own sign-in, with TLS
   evidence required in staging and production. Nothing is mounted without a
@@ -188,7 +185,7 @@ own, so pin it exactly (the v12 line, `rullst-core@12`, reached end of life on
 16 October 2026):
 
 ```bash
-cargo add rullst-core@=13.0.0-alpha.4
+cargo add rullst-core@=13.0.0-alpha.5
 ```
 
 Core is runtime-only by default. Add just the database capabilities the
@@ -196,7 +193,7 @@ application needs:
 
 ```toml
 [dependencies]
-rullst-core = { version = "=13.0.0-alpha.4", features = ["orm", "queue-sqlite"] }
+rullst-core = { version = "=13.0.0-alpha.5", features = ["orm", "queue-sqlite"] }
 ```
 
 Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis` (or `redis` for

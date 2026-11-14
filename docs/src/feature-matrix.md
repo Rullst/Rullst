@@ -2,8 +2,8 @@
 
 > [!IMPORTANT]
 > This page describes the v13 prerelease source, and its dependency examples
-> pin the published `13.0.0-alpha.4` exactly: Cargo never selects a prerelease
-> on its own, and a plain `"13.0.0-alpha.4"` would also accept later alphas
+> pin the published `13.0.0-alpha.5` exactly: Cargo never selects a prerelease
+> on its own, and a plain `"13.0.0-alpha.5"` would also accept later alphas
 > (see the [v13 migration guide](migration-v13.md)). The v12 line reached end
 > of life on 16 October 2026; see the [release record](v12.md). Commit
 > Cargo.lock for reproducible builds, and use path dependencies only when
@@ -85,7 +85,7 @@ Select what the application uses:
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.4", default-features = false, features = ["strict-sqlite", "queue-sqlite"] }
+rullst = { version = "=13.0.0-alpha.5", default-features = false, features = ["strict-sqlite", "queue-sqlite"] }
 ```
 
 Each `strict-*` backend enables `orm`; `drivers-all` enables `orm` with all
@@ -100,13 +100,10 @@ the drivers.
 | --- | :---: | --- |
 | `orm` | no | `rullst-orm` and Core's ORM integration, without a SQLx driver; pair it with `drivers-all` or one `strict-*` backend |
 | `drivers-all` | no | `orm` plus the SQLite, PostgreSQL and MySQL/MariaDB SQLx drivers in the ORM and Core, and in Studio and Nexus when `studio` or `nexus` is enabled |
-| `orm-mongodb` | no | `orm` plus the MongoDB document adapter |
-| `orm-duckdb` | no | `orm` plus the in-process DuckDB analytics adapter |
 | `orm-turso` | no | `orm` plus typed Turso-primary CRUD/query, parameterized remote libSQL SQL over Hrana HTTP v3, transactions, reversible checked migrations, and a persistent offline fallback |
 | `orm-surrealdb` | no | `orm` plus SurrealDB HTTP document and bounded graph adapters |
 | `orm-scout` | no | `orm` plus bounded Meilisearch, Elasticsearch and Algolia Scout HTTP adapters |
 | `orm-pgvector` | no | `orm` plus typed pgvector SQLx values; use with `strict-postgres` for the supported live query contract |
-| `orm-qdrant` | no | `orm` plus bounded dense-vector Qdrant HTTP operations and offline fallback |
 | `orm-redis` | no | `orm` plus namespaced Redis Hash, Set and Sorted Set operations |
 | `queue-sqlite` | no | Core's durable SQLite queue backend |
 | `storage-s3` | no | v13 candidate: Core's bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs; see [private object storage](private-object-storage.md) |
@@ -158,7 +155,7 @@ the drivers.
 | `oauth-mock` | no | v13: `oauth` plus `rullst-connect/mock`, so empty or `mock_*` provider credentials build an offline mock provider that signs in a fixed mock user; enable it only in development and test builds |
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
 | `ai-sql-memory` | no | `ai` plus tenant-aware durable chat memory for SQLite, PostgreSQL, MySQL, and MariaDB |
-| `capital` | no | Provider-neutral billing contracts, the Stripe and experimental InfinitePay adapters, webhooks and analytics from `rullst-capital` |
+| `capital` | no | Provider-neutral billing contracts, the Stripe and InfinitePay adapters, webhooks and analytics from `rullst-capital` |
 | `capital-actix` | no | `capital` plus the Actix Web adapter for the canonical signed-webhook verifier |
 | `capital-quota-sql` | no | `capital` and `orm` plus atomic shared resource quotas for SQLite, PostgreSQL, MySQL, and MariaDB |
 | `capital-webhook-sql` | no | `capital` and `orm` plus bounded durable webhook replay/event claims for SQLite, PostgreSQL, MySQL, and MariaDB |
@@ -167,7 +164,7 @@ the drivers.
 | `security` | no | RASP/WAF and application-security primitives from `rullst-security` |
 | `security-redis` | no | `security` plus the atomic Redis rate limiter |
 | `iot` | no | IoT models, frame helpers, and signed OTA verification from `rullst-iot` |
-| `iot-ingest` | no | `iot` plus `rullst::iot_ingest` (Experimental): the authenticated device telemetry receiver, its `DeviceDirectory` contract and an in-memory directory |
+| `iot-ingest` | no | `iot` plus `rullst::iot_ingest`: the authenticated device telemetry receiver, its `DeviceDirectory` contract and an in-memory directory |
 | `telemetry` | no | OpenTelemetry dependencies and Core's OTLP integration |
 | `strict-postgres` | no | `orm` with the concrete PostgreSQL pool/backend selected |
 | `strict-mysql` | no | `orm` with the concrete MySQL pool/backend selected when PostgreSQL is not also selected |
@@ -187,7 +184,7 @@ over one file-backed SQLite URL:
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.4", default-features = false, features = [
+rullst = { version = "=13.0.0-alpha.5", default-features = false, features = [
   "auth-sqlite",
   "capital-quota-sql",
   "mail-sqlite",
@@ -236,10 +233,6 @@ Default features: none.
 
 Core's process-local Radar and span collector do not require `telemetry`.
 That feature is specifically for OpenTelemetry/OTLP integration.
-The `rullst.client` v1 codec and bounded `#[server_function]` transport are
-available without a feature flag; only the explicit generated route exists on
-native targets, while the same annotated function becomes its Wasm caller.
-Identity, authorization and tenant policy remain application layers.
 
 ### `rullst-orm`
 
@@ -254,17 +247,15 @@ or a `strict-*` backend explicitly.
 | --- | --- |
 | `drivers-all` | The SQLite, PostgreSQL and MySQL/MariaDB SQLx drivers |
 | `redis` | Redis query cache plus bounded namespaced Hash, Set and Sorted Set datastore operations |
-| `mongodb` | Official MongoDB driver plus typed document CRUD, identifier inventory, encrypted recovery participation and offline fallback |
-| `duckdb` | Bundled DuckDB client plus parameterized, bounded analytics queries |
 | `turso` | Direct official Hrana HTTP v3 transport, typed primary CRUD/query facade, parameterized SQL, atomic batches, reversible checksummed migrations, and a persistent SQLite-compatible offline fallback |
 | `surrealdb` | SurrealDB HTTP document CRUD, identifier inventory, encrypted recovery participation and bounded read-only ISO GQL; no embedded SDK |
 | `scout-http` | Bounded Meilisearch, Elasticsearch and Algolia adapters with deterministic offline fallbacks; Meilisearch also has a live container contract |
 | `pgvector` | Typed pgvector SQLx values and parameterized L2/cosine/inner-product helpers; the live contract also selects `strict-postgres` |
-| `qdrant` | Bounded dense-vector collection/upsert/delete/cosine query operations over HTTP with offline fallback |
 | `ai` | `pgvector` plus the generated `save_with_embedding` for `#[orm(embedding_for = "...")]` models; the application also depends on `rullst-ai` |
 | `strict-postgres` | The PostgreSQL driver plus concrete PostgreSQL pool, database, query-result, and query paths |
 | `strict-mysql` | The MySQL driver plus concrete MySQL paths when PostgreSQL is not also selected |
 | `strict-sqlite` | The SQLite driver plus concrete SQLite paths when PostgreSQL and MySQL are not also selected |
+| `test-util` | Test-only helpers for Rullst's own test suites (`Outbox::claim_next_at`, `query_cache::model_hash_key`); not for applications and outside the 13.x stability promise |
 
 The strict backend selection rules and precedence are the same as the umbrella
 crate. Each `strict-*` feature enables its own SQLx driver and selects concrete
@@ -273,12 +264,15 @@ defaults to keep the other drivers out of the graph.
 
 The Polyglot features expose capability-specific APIs under
 `rullst_orm::polyglot`; they do not participate in a shared cross-backend
-transaction. The base deterministic document store and the MongoDB/SurrealDB
-adapters implement `DocumentInventory` for an application-operated bounded
+transaction. The base deterministic document store and the SurrealDB adapter
+implement `DocumentInventory` for an application-operated bounded
 snapshot/restore contract; it does not supply online isolation or managed
 backup. Turso can additionally be selected explicitly by
 `#[orm(backend = "turso")]` and the blank/API scaffold. See the
-[Polyglot Persistence guide](polyglot-persistence.md).
+[Polyglot Persistence guide](polyglot-persistence.md). 13.0.0-alpha.5 removed
+the `mongodb`, `duckdb` and `qdrant` features (and `orm-mongodb`,
+`orm-duckdb` and `orm-qdrant` on `rullst`); the [recipes](recipes/index.md)
+use the official crates instead.
 
 ### `rullst-orm-macros`
 
@@ -354,6 +348,7 @@ Default feature: `axum`.
 | `quota-sql` | Durable idempotent shared quota accounting over SQLite, PostgreSQL, MySQL, and MariaDB; schema setup/migrations and authoritative membership/tier state remain application-owned |
 | `webhook-sql` | Bounded durable provider-scoped payload/event claims over SQLite, PostgreSQL, MySQL, and MariaDB, including a caller-owned transaction path; cross-system effects and reconciliation remain application-owned |
 | `invoice-pdf` | Bounded paginated A4 invoice PDF with embedded WinAnsi or a validated caller-supplied TTF/OTF; payment/mail orchestration is separate |
+| `conformance` | v13: the test kit `conformance::check_billing_provider`, which runs Capital's provider contract against your own `BillingProvider`; enable it in development dependencies only (see [provider conformance kits](provider-conformance.md)) |
 
 ### `rullst-mail`
 
@@ -366,6 +361,7 @@ Default features: none. HTTP mail providers remain available without SMTP.
 | `capital-invoice` | Capital's native invoice PDF plus the final-payment-bound delivery bridge; durable outbox claiming remains application-owned |
 | `sqlite` | File-backed shared-local suppression state with exact provider-event replay binding and immutable quotas; webhook authentication, encryption and multi-host replication remain application-owned |
 | `postgres` | v13 candidate: namespaced suppression on one authoritative writable PostgreSQL database; independent of SQLite. See [shared mail suppression](shared-mail-suppression.md) for initialization, runtime grants, retention and pending admission |
+| `conformance` | v13: the test kit `conformance::check_mail_driver`, which runs the built-in drivers' contract against your own `MailDriver`; enable it in development dependencies only (see [provider conformance kits](provider-conformance.md)) |
 
 ### `rullst-auth`
 
@@ -428,6 +424,7 @@ backend (and, for Nexus, to leave out the AI assistant and `rullst-ai`):
 | `rullst-nexus` | `strict-sqlite` | SQLite selection in Core and ORM |
 | `rullst-nexus` | `ai` | The AI assistant at `/nexus/chat` and `rullst-ai` (default); the `rullst` facade enables it only with `nexus-ai` |
 | `rullst-nexus` | `tz` | v13: `NexusTimeZone::named` for `DateTimeUtc` form values in a named IANA time zone (system zoneinfo, bundled `jiff` database as fallback) |
+| `rullst-studio` | `local` | The local Studio (`Studio`, `run_studio` and its pages), which reads the application's database through the ORM and adds the ORM, Capital and Security crates; every driver feature below enables it, and so does the `rullst` facade's `studio` |
 | `rullst-studio` | `drivers-all` | All three SQLx drivers in Core and ORM (default) |
 | `rullst-studio` | `queue-sqlite` | Core's durable SQLite queue backend (default) |
 | `rullst-studio` | `strict-postgres` | PostgreSQL selection in Core and ORM |
@@ -452,6 +449,7 @@ no umbrella features; depend on them directly. None has default features.
 | `rullst-media` | `bunny` | Bunny Stream adapter, signatures, bounded HTTP and the browser upload module |
 | `rullst-media` | `sqlite` | Shared-local durable assets, leased operations and the application service |
 | `rullst-media` | `s3` | Experimental S3-compatible object storage (AWS S3, Cloudflare R2, MinIO): presigned upload and playback of the original, no transcoding |
+| `rullst-media` | `conformance` | The test kit `conformance::check_video_provider`, which runs the Bunny adapter's contract against your own `VideoProvider`; enable it in development dependencies only (see [provider conformance kits](provider-conformance.md)) |
 | `rullst-labs` | `sqlite` | Encrypted shared-local exercise and job storage with leases, cancellation and retention |
 | `rullst-labs` | `receipt-signing` | Receipt signing for the application-owned runner controller |
 
@@ -462,7 +460,7 @@ These packages have no public optional Cargo features:
 | Package | Always-available scope |
 | --- | --- |
 | `rullst-macros` | Core procedural macros |
-| `cargo-rullst` | CLI commands, generators, auditing, deployment helpers and the Experimental `cargo rullst green`; its internal `maintainer-tools` feature only builds the repository's `sync-badges` tool and is not part of the installed CLI |
+| `cargo-rullst` | CLI commands, generators, auditing, deployment helpers and `cargo rullst footprint`; its internal `maintainer-tools` feature only builds the repository's `sync-badges` tool and is not part of the installed CLI |
 
 No optional feature does not mean that a provider is contacted automatically.
 External integrations still require explicit runtime configuration and use the
@@ -474,21 +472,21 @@ Minimal HTTP runtime (from 13.0.0-alpha.3 the defaults are empty, so
 `default-features = false` changes nothing there):
 
 ```toml
-rullst = { version = "=13.0.0-alpha.4", default-features = false }
+rullst = { version = "=13.0.0-alpha.5", default-features = false }
 ```
 
 SQLite application with the ORM, every SQLx driver and the SQLite queue,
 which were the defaults up to 13.0.0-alpha.2 and must be named since alpha.3:
 
 ```toml
-rullst = { version = "=13.0.0-alpha.4", features = ["orm", "drivers-all", "queue-sqlite"] }
+rullst = { version = "=13.0.0-alpha.5", features = ["orm", "drivers-all", "queue-sqlite"] }
 ```
 
 PostgreSQL application with explicit domain integrations:
 
 ```toml
 rullst = {
-    version = "=13.0.0-alpha.4",
+    version = "=13.0.0-alpha.5",
     default-features = false,
     features = ["strict-postgres", "auth", "security", "telemetry"]
 }
@@ -497,14 +495,14 @@ rullst = {
 Embedded IoT model without the standard library:
 
 ```toml
-rullst-iot = { version = "=13.0.0-alpha.4", default-features = false }
+rullst-iot = { version = "=13.0.0-alpha.5", default-features = false }
 ```
 
 Experimental IoT fixtures are deliberately separate:
 
 ```toml
 rullst-iot = {
-    version = "=13.0.0-alpha.4",
+    version = "=13.0.0-alpha.5",
     default-features = false,
     features = ["experimental-simulators"]
 }

@@ -1,6 +1,6 @@
 //! Active Record models, a typed query builder, schema migrations and managed
 //! transactions on SQLx for SQLite, PostgreSQL and MySQL/MariaDB, with opt-in
-//! Redis, search, vector and document stores.
+//! Redis, search, pgvector and document stores.
 //!
 //! **Maturity: Core**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). The optional
@@ -11,10 +11,10 @@
 //! `drivers-all` for all three on SQLx's `Any` pool; without one,
 //! [`Orm::init`] returns an error that names the feature to enable. Other
 //! features add integrations: `redis`, `scout-http`, `pgvector`, `ai`,
-//! `qdrant`, `mongodb`, `duckdb`, `turso` and `surrealdb`. docs.rs builds this
-//! page with `drivers-all` and every integration except `duckdb`, and labels
-//! each item with the features it needs; a `strict-*` profile changes the
-//! pool and database type aliases to that backend's SQLx types.
+//! `turso` and `surrealdb`. docs.rs builds this page with
+//! `drivers-all` and every integration, and labels each item with the features
+//! it needs; a `strict-*` profile changes the pool and database type aliases to
+//! that backend's SQLx types.
 //!
 //! Start with the [`Orm`](struct@Orm) pool, `#[derive(Orm)]`,
 //! [`schema::Schema`] and [`Orm::transaction`]. `#[derive(Orm)]` also
@@ -114,7 +114,6 @@ pub mod intent;
     feature = "redis",
     feature = "turso",
     feature = "scout-http",
-    feature = "qdrant",
     feature = "surrealdb"
 ))]
 mod loopback;
@@ -135,6 +134,22 @@ pub mod replica;
 pub mod repository;
 pub mod resource;
 pub mod schema;
+/// Reads the `#[derive(Orm)]` models under `./src` with `syn`.
+///
+/// Deprecated: use `cargo rullst make:migration:auto` (a migration from the
+/// difference between the models and the database) or `cargo rullst inspect
+/// schema --json` (the models' tables and columns). Nothing in Rullst calls it,
+/// and its `syn` and `walkdir` dependencies are built by every application
+/// that uses the ORM.
+// Not under `cfg(test)`: the test harness names this module's unit tests
+// through its path, which would raise the warning in Rullst's own tests.
+#[cfg_attr(
+    not(test),
+    deprecated(
+        since = "13.0.0-alpha.5",
+        note = "use `cargo rullst make:migration:auto` or `cargo rullst inspect schema --json`; removed in 14.0"
+    )
+)]
 pub mod schema_diff;
 pub mod scout;
 pub mod snapshot;
@@ -170,11 +185,6 @@ pub use polyglot::{
     DocumentRecoveryKey, DocumentRecoveryPolicy, DocumentRecoveryReport, DocumentRepository,
     EncryptedDocumentSnapshot, MockDocumentStore, PolyglotError, export_document_snapshot,
     restore_document_snapshot,
-};
-#[cfg(feature = "qdrant")]
-pub use polyglot::{
-    QdrantConfig, QdrantStore, VectorCollectionName, VectorDimensions, VectorMatch, VectorPoint,
-    VectorQueryLimit, VectorRepository,
 };
 // Used by `#[derive(Orm)]`.
 #[doc(hidden)]

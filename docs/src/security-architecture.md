@@ -98,42 +98,6 @@ outer to any middleware that buffers content.
 Webhook routes may bypass browser CSRF only by exact path and only when their
 provider signature middleware is mandatory.
 
-### Academy production-boundary diagnostic
-
-`ProductionPreset::academy()` layers twelve Academy-specific integration
-requirements over the canonical middleware order. Missing observations become
-`NOT_EVALUATED`, duplicate observations are rejected, and validation succeeds
-only when every requirement has one explicit `PASS`. The contract covers
-identity, school membership, entitlements, object authorization, tenant
-isolation, assessments, score events, durable automation/audit, content safety,
-privacy and distributed abuse controls. It cannot inspect or certify a deployed
-topology by itself.
-
-`cargo rullst academy:doctor` emits the normalized contract in text or JSON and
-returns a failing exit status until all requirements pass. An evidence document
-uses the versioned `rullst.academy-evidence.v1` schema:
-
-```json
-{
-  "schema_version": "rullst.academy-evidence.v1",
-  "checks": [
-    {
-      "requirement": "authenticated_identity",
-      "status": "PASS",
-      "evidence": ["test:session_rejects_forged_identity"]
-    }
-  ]
-}
-```
-
-Run it with `cargo rullst academy:doctor --evidence academy-evidence.json
---json`. Omitted checks remain `NOT_EVALUATED`, and a `PASS` without a non-empty
-evidence reference is invalid. Evidence strings are caller declarations rather
-than independently verified proof. The output therefore always includes
-`certification: false`; satisfying this contract is not an audit, grade or
-production-readiness claim. Process-level CLI tests cover both the incomplete
-failing report and a complete declared-evidence report.
-
 ### Parameterized-route access contract
 
 `cargo rullst audit --idor` requires every recognized parameterized route to
@@ -251,13 +215,14 @@ therefore end detection early.
 
 ## Cryptography providers
 
-Rullst uses two cryptography libraries, each with one role (since
-13.0.0-alpha.4):
+Rullst uses these cryptography libraries, each with one role (since
+13.0.0-alpha.4; the RustCrypto row since 13.0.0-alpha.5):
 
 | Component | Library | Why |
 | --- | --- | --- |
-| Every TLS connection Rullst makes: outbound HTTPS (reqwest: AI and payment providers, OAuth, webhooks, S3 storage, Studio's remote poller), SQLx (PostgreSQL and MySQL), Redis (Redis Streams messaging, ORM Redis data and cache), SMTP (`mail-smtp`), MongoDB (`orm-mongodb`) and OTLP telemetry | `aws-lc-rs`, as the rustls crypto provider | Post-quantum hybrid key exchange (`X25519MLKEM768`, offered first) and a FIPS-capable build |
-| HMAC, digests, randomness and signatures in `rullst-auth`, `rullst-capital`, `rullst-core`, `rullst-labs`, `rullst-media`, `rullst-privacy`, `rullst-studio` and `rullst-supervision` | `ring`, used directly | Portable to wasm and edge targets, where `aws-lc-rs` is not available |
+| Every TLS connection Rullst makes: outbound HTTPS (reqwest: AI and payment providers, OAuth, webhooks, S3 storage, Studio's remote poller), SQLx (PostgreSQL and MySQL), Redis (Redis Streams messaging, ORM Redis data and cache), SMTP (`mail-smtp`) and OTLP telemetry | `aws-lc-rs`, as the rustls crypto provider | Post-quantum hybrid key exchange (`X25519MLKEM768`, offered first) and a FIPS-capable build |
+| SHA-256 and HMAC-SHA256 in `rullst-core` and `rullst-capital` (since 13.0.0-alpha.5) | RustCrypto `sha2` and `hmac` | Pure Rust, portable to wasm and edge targets; signatures are checked with `Mac::verify_slice` (constant time) |
+| HMAC, digests, randomness and signatures in `rullst-auth`, `rullst-labs`, `rullst-media`, `rullst-privacy`, `rullst-studio` and `rullst-supervision`, and the AES-256-GCM recovery records of Core's `storage-multipart` | `ring`, used directly | Portable to wasm and edge targets, where `aws-lc-rs` is not available |
 
 `ring` is not a rustls provider in Rullst: no Rullst crate enables rustls' `ring`
 feature. JWT signing (`rullst-auth` `jwt`) uses `jsonwebtoken`'s `aws_lc_rs`
@@ -265,8 +230,7 @@ backend.
 
 How each client chooses its provider:
 
-- SQLx and MongoDB select aws-lc-rs at compile time (`tls-rustls-aws-lc-rs`,
-  `rustls-tls-aws-lc`). SQLx switches to ring as soon as any crate in the
+- SQLx selects aws-lc-rs at compile time (`tls-rustls-aws-lc-rs`). SQLx switches to ring as soon as any crate in the
   application enables one of its ring TLS features (`tls-rustls`,
   `tls-rustls-ring` and the `tls-rustls-ring-*` variants), so an application's
   own `sqlx` dependency should use `tls-rustls-aws-lc-rs`, as generated

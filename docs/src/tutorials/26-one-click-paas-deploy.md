@@ -7,7 +7,7 @@ provider; you review them and run them yourself.
 
 | File | Purpose |
 | :--- | :--- |
-| `Dockerfile` | Multi-stage build with a dependency-cache layer and a small non-root runtime image. |
+| `Dockerfile` | Multi-stage build with a dependency-cache layer, Brotli/Zstandard copies of the `static/` text files, and a small non-root runtime image. |
 | `compose.yaml` | Your application and Caddy (automatic HTTPS), a private network and volumes. Works with `docker compose` and `podman compose`. |
 | `Caddyfile` | The domain Caddy serves and the proxy to the application. |
 

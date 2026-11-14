@@ -33,12 +33,6 @@ jobs:
           build-warnings: ""
           cache-on-failure: false
 
-      - name: Drop incomplete DuckDB sources restored from the Rust cache
-        # Required for cached --all-features builds by
-        # .github/check-rust-cache-policy.py; nothing to do while rullst-iot
-        # does not reach libduckdb-sys.
-        run: python3 .github/repair-duckdb-sources.py
-
       - name: Run helper, simulator-boundary, and signed OTA tests
         run: cargo test -p rullst-iot --all-features
 

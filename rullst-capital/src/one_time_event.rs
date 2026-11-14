@@ -4,6 +4,7 @@
 
 use crate::{BillingProvider, CapitalError, StripeProvider, WebhookVerificationMode};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
 /// Cryptographically verified event identity and provider reconciliation keys.
@@ -38,21 +39,19 @@ impl StripeOneTimeEvent {
     }
     /// Bind this digest and event ID inside the application's account/mode inbox.
     pub fn mutation_digest(&self) -> [u8; 32] {
-        let mut hash = ring::digest::Context::new(&ring::digest::SHA256);
+        let mut hash = Sha256::new();
         hash.update(b"rullst.stripe.one-time-event.v1\0");
-        hash.update(&[u8::from(self.livemode)]);
+        hash.update([u8::from(self.livemode)]);
         for value in [
             self.event_id(),
             self.event_type(),
             self.session_id().unwrap_or(""),
             self.payment_intent_id().unwrap_or(""),
         ] {
-            hash.update(&(value.len() as u64).to_be_bytes());
+            hash.update((value.len() as u64).to_be_bytes());
             hash.update(value.as_bytes());
         }
-        let mut result = [0; 32];
-        result.copy_from_slice(hash.finish().as_ref());
-        result
+        hash.finalize().into()
     }
 }
 
@@ -138,7 +137,7 @@ impl StripeProvider {
             _ => return Err(invalid()),
         };
         let mut digest = [0; 32];
-        digest.copy_from_slice(ring::digest::digest(&ring::digest::SHA256, payload).as_ref());
+        digest.copy_from_slice(&Sha256::digest(payload));
         Ok(StripeOneTimeEvent {
             id: reference(&root["id"], "evt_")?,
             kind: kind.into(),

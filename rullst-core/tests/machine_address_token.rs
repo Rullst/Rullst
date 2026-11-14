@@ -20,9 +20,10 @@ use tower::ServiceExt;
 const KEY: &[u8] = b"application-key-for-callback-addresses-0123456789";
 
 fn token(reference: &str) -> String {
-    let key = ring::hmac::Key::new(ring::hmac::HMAC_SHA256, KEY);
-    ring::hmac::sign(&key, reference.as_bytes())
-        .as_ref()
+    let mut mac = <hmac::Hmac<sha2::Sha256> as hmac::KeyInit>::new_from_slice(KEY).unwrap();
+    hmac::Mac::update(&mut mac, reference.as_bytes());
+    hmac::Mac::finalize(mac)
+        .into_bytes()
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()

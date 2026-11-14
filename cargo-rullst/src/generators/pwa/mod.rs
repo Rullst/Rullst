@@ -326,6 +326,18 @@ fn plan(root: &Path, flags: &PwaFlags) -> Result<Plan, Box<dyn Error>> {
         }
     }
 
+    // The smoke test of `cargo rullst new` (a test source, so not a layout
+    // above) checks the offline page too.
+    let smoke = root.join(crate::generators::smoke_pages::FILE);
+    if smoke.try_exists()? {
+        let listed = writes::read(&smoke)?;
+        if let Some(updated) =
+            crate::generators::smoke_pages::with_pages(&listed, &[("/offline", 200)])
+        {
+            change(&mut plan, root, smoke, listed, updated);
+        }
+    }
+
     create(
         &mut plan,
         root,

@@ -327,7 +327,7 @@ mod tests {
             "update",
             "deploy:doctor",
             "ai",
-            "green",
+            "footprint",
             "iot:keygen",
             "iot:sign",
         ] {

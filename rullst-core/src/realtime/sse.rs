@@ -170,7 +170,7 @@ impl RealtimeSseConfig {
 /// }
 ///
 /// // The page subscribes with `<div hx-ext="sse" sse-connect="/events"
-/// // sse-swap="stats">`, after loading `/static/htmx-ext-sse-1.9.12.js`.
+/// // sse-swap="stats">`, after loading `/static/htmx-ext-sse-2.2.4.js`.
 /// async fn events(State(state): State<AppState>) -> Response {
 ///     state.sse.channel(&state.channels, "dashboard")
 /// }

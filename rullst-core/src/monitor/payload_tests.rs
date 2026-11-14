@@ -103,6 +103,7 @@ fn the_document_has_exactly_the_v1_fields() {
     let mut found = BTreeSet::new();
     paths(&document(None), "", &mut found);
     let window = [
+        "bytes",
         "covered_seconds",
         "latency_ms",
         "latency_ms.max",
@@ -143,10 +144,12 @@ fn the_document_has_exactly_the_v1_fields() {
         "framework.version",
         "generated_at",
         "http",
+        "http.bytes_total",
         "http.requests_total",
         "http.route_limit",
         "http.routes",
         "http.routes[]",
+        "http.routes[].bytes_total",
         "http.routes[].method",
         "http.routes[].requests_total",
         "http.routes[].route",
@@ -291,6 +294,7 @@ fn http_reports_totals_window_rate_and_percentiles() {
         "requests_per_second": 0.1,
         "status": {"1xx": 0, "2xx": 2, "3xx": 0, "4xx": 0, "5xx": 1},
         "latency_ms": {"p50": 5.0, "p90": 40.0, "p95": 40.0, "p99": 40.0, "max": 40.0},
+        "bytes": 0,
     });
     let status = json!({"1xx": 0, "2xx": 2, "3xx": 0, "4xx": 0, "5xx": 1});
     assert_eq!(
@@ -301,12 +305,14 @@ fn http_reports_totals_window_rate_and_percentiles() {
             "routes_overflowed": false,
             "requests_total": 3,
             "status_total": status,
+            "bytes_total": 0,
             "window": window,
             "routes": [{
                 "method": "GET",
                 "route": "/orders",
                 "requests_total": 3,
                 "status_total": status,
+                "bytes_total": 0,
                 "window": window,
             }],
         })
@@ -337,4 +343,50 @@ fn the_rate_is_rounded_to_thousandths() {
     // 2 requests over 3 seconds.
     let report = serde_json::to_value(http(&collector, Duration::from_secs(3))).unwrap();
     assert_eq!(report["window"]["requests_per_second"], 0.667);
+}
+
+#[test]
+fn bytes_count_per_route_in_totals_and_the_window() {
+    let collector = Collector::new();
+    let none = RequestQueries::default();
+    let page = collector.observe(
+        &Method::GET,
+        Some("/orders"),
+        200,
+        Duration::from_millis(2),
+        &none,
+        Some(1_500),
+    );
+    collector.observe(
+        &Method::GET,
+        Some("/orders"),
+        200,
+        Duration::from_millis(2),
+        &none,
+        Some(500),
+    );
+    // A streamed body adds its bytes when it ends.
+    collector.add_bytes(&page, 250);
+    collector.observe(
+        &Method::POST,
+        Some("/orders"),
+        201,
+        Duration::from_millis(2),
+        &none,
+        None,
+    );
+    let report = serde_json::to_value(http(&collector, collector.elapsed())).unwrap();
+    assert_eq!(report["bytes_total"], 2_250);
+    assert_eq!(report["window"]["bytes"], 2_250);
+    let routes = report["routes"].as_array().unwrap();
+    assert_eq!(routes[0]["method"], "GET");
+    assert_eq!(routes[0]["bytes_total"], 2_250);
+    assert_eq!(routes[0]["window"]["bytes"], 2_250);
+    assert_eq!(routes[1]["method"], "POST");
+    assert_eq!(routes[1]["bytes_total"], 0);
+
+    // Ten minutes later the window holds no bytes; the totals remain.
+    let later = serde_json::to_value(http(&collector, Duration::from_secs(610))).unwrap();
+    assert_eq!(later["bytes_total"], 2_250);
+    assert_eq!(later["window"]["bytes"], 0);
 }

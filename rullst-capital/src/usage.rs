@@ -1,6 +1,6 @@
 use crate::CapitalError;
 use async_trait::async_trait;
-use ring::digest::{SHA256, digest};
+use sha2::{Digest, Sha256};
 
 /// Largest quantity accepted by one usage event.
 pub const MAX_USAGE_QUANTITY: u64 = i64::MAX as u64;
@@ -273,7 +273,7 @@ pub(crate) fn mock_usage_receipt(
         material.push(0);
     }
     material.extend_from_slice(&quantity.to_be_bytes());
-    let encoded = hex::encode(digest(&SHA256, &material));
+    let encoded = hex::encode(Sha256::digest(material));
     let fingerprint = encoded.get(..24).ok_or_else(|| {
         CapitalError::ProviderRequestFailed(
             "failed to construct deterministic mock usage ID".to_string(),

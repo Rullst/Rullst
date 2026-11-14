@@ -70,7 +70,7 @@ RESET_TOKENS_SUFFIX = "_create_password_reset_tokens_table.rs"
 # routes before the CSRF layer.
 ROUTER_ANCHOR = """        post("/clicked" => clicked),
     ]
-    .merge_axum(rpc::increment_counter_rpc_router().into_axum())
+    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
 """
 ROUTER_WITH_SIGNUP = """        post("/clicked" => clicked),
         get("/register" => controllers::auth_controller::register_view),
@@ -81,7 +81,7 @@ ROUTER_WITH_SIGNUP = """        post("/clicked" => clicked),
         .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
     .route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
-    .merge_axum(rpc::increment_counter_rpc_router().into_axum())
+    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
 """
 TIMINGS: list[tuple[str, float]] = []
 

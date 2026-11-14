@@ -70,9 +70,9 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "ammonia"
-version = "4.2.4"
+version = "4.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f45dfa685e1ec33b1bf1a3b93b8047cbdbef41b6040deebbe6bea7720a45574"
+checksum = "b34ca49e407c06daac53f0c4debe8ff5df9cc2a4e9369d164a5d86ef8c219319"
 dependencies = [
  "cssparser",
  "html5ever",
@@ -2142,9 +2142,9 @@ dependencies = [
 
 [[package]]
 name = "quinn-udp"
-version = "0.5.15"
+version = "0.5.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35a133f956daabe89a61a685c2649f13d82d5aa4bd5d12d1277e1072a21c0694"
+checksum = "af66907df18639dcf4db56ca65490cabc4b27a97dbadd96f2926cca73298f016"
 dependencies = [
  "cfg_aliases",
  "libc",
@@ -2386,7 +2386,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-ai"
-version = "13.0.0-alpha.4"
+version = "13.0.0-alpha.5"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -2405,7 +2405,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-auth"
-version = "13.0.0-alpha.4"
+version = "13.0.0-alpha.5"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -2431,7 +2431,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-core"
-version = "13.0.0-alpha.4"
+version = "13.0.0-alpha.5"
 dependencies = [
  "async-trait",
  "axum",
@@ -2441,19 +2441,17 @@ dependencies = [
  "dashmap",
  "dotenvy",
  "futures-util",
- "getrandom 0.4.3",
  "http",
  "http-body",
- "js-sys",
  "libloading",
  "rand 0.10.3",
- "ring",
  "rullst-macros",
  "rullst-orm",
  "rustls",
  "serde",
  "serde_json",
  "serde_urlencoded",
+ "sha2 0.11.1",
  "sqlx",
  "subtle",
  "thiserror",
@@ -2468,7 +2466,6 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "validator",
- "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
  "windows-sys 0.61.2",
@@ -2476,7 +2473,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "13.0.0-alpha.4"
+version = "13.0.0-alpha.5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2486,7 +2483,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-nexus"
-version = "13.0.0-alpha.4"
+version = "13.0.0-alpha.5"
 dependencies = [
  "ammonia",
  "axum",
@@ -2515,7 +2512,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm"
-version = "13.0.0-alpha.4"
+version = "13.0.0-alpha.5"
 dependencies = [
  "aes-gcm",
  "async-stream",
@@ -2542,7 +2539,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm-macros"
-version = "13.0.0-alpha.4"
+version = "13.0.0-alpha.5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2551,7 +2548,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-security"
-version = "13.0.0-alpha.4"
+version = "13.0.0-alpha.5"
 dependencies = [
  "aes-gcm",
  "ammonia",

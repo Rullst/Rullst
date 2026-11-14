@@ -1,4 +1,4 @@
-use ring::hmac;
+use hmac::{KeyInit, Mac};
 use rullst_capital::{
     CapitalError, StripeProvider, StripeSubscriptionEvent, SubscriptionStatus,
     WebhookVerificationMode,
@@ -25,13 +25,15 @@ fn snapshot() -> Value {
 
 fn headers(payload: &[u8]) -> HashMap<String, String> {
     let now = chrono::Utc::now().timestamp();
-    let mut context =
-        hmac::Context::with_key(&hmac::Key::new(hmac::HMAC_SHA256, b"whsec_envelope"));
+    let mut context = hmac::Hmac::<sha2::Sha256>::new_from_slice(b"whsec_envelope").unwrap();
     context.update(format!("{now}.").as_bytes());
     context.update(payload);
     HashMap::from([(
         "stripe-signature".into(),
-        format!("t={now},v1={}", hex::encode(context.sign())),
+        format!(
+            "t={now},v1={}",
+            hex::encode(context.finalize().into_bytes())
+        ),
     )])
 }
 

@@ -529,7 +529,7 @@ checksum = "76afc826de14238e6e8c374ddcc1fa19e374fd8dd986b0d2af0d02377261d83c"
 
 [[package]]
 name = "rullst-iot"
-version = "13.0.0-alpha.4"
+version = "13.0.0-alpha.5"
 dependencies = [
  "ed25519-dalek",
  "serde",

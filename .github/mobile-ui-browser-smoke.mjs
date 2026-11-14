@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 
 const kind = process.argv[2];
-assert(["nexus", "portfolio"].includes(kind), "expected nexus or portfolio");
+assert.equal(kind, "nexus", "expected nexus");
 const cspTemplate = process.argv[3] || "";
 const assetDirectory = process.argv[4] || "";
 const assetTypes = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
@@ -151,117 +151,101 @@ try {
   };
   await resize(390);
   await navigate();
-  if (kind === "nexus") {
-    if (assetDirectory) {
-      assert.equal(await evaluate("typeof window.htmx"), "object", "same-origin htmx loaded");
-      assert.equal(await evaluate("getComputedStyle(document.body).display"), "flex", "same-origin stylesheet applied");
-    }
-    const closed = async () => {
-      assert.equal(await evaluate("document.querySelector('.nexus-topbar-toggle').getAttribute('aria-expanded')"), "false");
-      assert(await evaluate("document.querySelector('#nexus-sidebar').inert"), "closed offscreen links must not remain keyboard-focusable");
-      assert.equal(await evaluate("document.querySelector('.nexus-main').inert"), false);
-    };
-    const opened = async () => {
-      assert.equal(await evaluate("document.querySelector('.nexus-topbar-toggle').getAttribute('aria-expanded')"), "true");
-      assert(await evaluate("document.querySelector('.nexus-main').inert"));
-      assert.equal(await evaluate("document.activeElement.id"), "nexus-sidebar-close");
-    };
-    await closed();
-    await click(".nexus-topbar-toggle");
-    await opened();
-    await click("#nexus-sidebar-close");
-    await closed();
-    assert(await evaluate("document.activeElement.classList.contains('nexus-topbar-toggle')"));
-    await key("Enter", "Enter", 13);
-    await settle();
-    await opened();
-    await key("Tab", "Tab", 9, 8);
-    assert(await evaluate("document.activeElement.classList.contains('nexus-nav-home')"), "Shift+Tab wraps inside drawer");
-    await key("Tab", "Tab", 9);
-    assert.equal(await evaluate("document.activeElement.id"), "nexus-sidebar-close");
-    await key("Escape", "Escape", 27);
-    await closed();
-    await click(".nexus-topbar-toggle");
-    // A real touch outside the 240px drawer hits the backdrop, not the main page.
-    await send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 360, y: 400 }] });
-    await send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-    await settle();
-    await closed();
-    await click(".nexus-topbar-toggle");
-    await evaluate("document.querySelector('#nexus-sidebar').addEventListener('click', e => e.preventDefault()); document.querySelector('.nexus-nav-link').click()");
-    await closed();
-    await click(".nexus-topbar-toggle");
-    await resize(1200);
-    assert.equal(await evaluate("document.querySelector('.nexus-main').inert || document.querySelector('#nexus-sidebar').inert"), false);
-    assert.equal(await evaluate("getComputedStyle(document.querySelector('#nexus-sidebar-backdrop')).display"), "none");
-    await resize(900);
-    await closed();
-    await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
-    assert.equal(await evaluate("getComputedStyle(document.querySelector('#nexus-sidebar')).transitionDuration"), "0s");
-    // A wide table scrolls sideways inside its rounded wrapper.
-    await resize(1200);
-    assert.deepEqual(await evaluate(`(() => {
-      const wrap = document.querySelector('.nexus-table-wrap');
-      const style = getComputedStyle(wrap);
-      return {overflowX: style.overflowX, wider: wrap.scrollWidth > wrap.clientWidth, rounded: style.borderTopLeftRadius !== '0px'};
-    })()`), { overflowX: "auto", wider: true, rounded: true }, "wide Nexus table");
-    // A failed save while the record dialog is open: the browser draws the
-    // modal dialog above the page, so the message must move into it.
-    await evaluate("document.getElementById('nexus-modal').showModal()");
-    await click("#nexus-modal [data-nexus-save]");
-    await evaluate(`new Promise((resolve, reject) => {
-      const deadline = Date.now() + 5000;
-      (function poll() {
-        if (document.querySelector('#nexus-toast .nexus-toast')) return resolve();
-        if (Date.now() > deadline) return reject(new Error('no toast after a failed save'));
-        setTimeout(poll, 50);
-      })();
-    })`);
-    assert.deepEqual(await evaluate(`(() => {
-      const dialog = document.getElementById('nexus-modal');
-      const toast = document.querySelector('#nexus-toast .nexus-toast');
-      const box = toast.getBoundingClientRect();
-      const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-      const frame = dialog.getBoundingClientRect();
-      return {
-        inDialog: toast.closest('dialog') === dialog,
-        onTop: toast.contains(hit),
-        inViewport: box.width > 0 && box.right <= innerWidth && box.bottom <= innerHeight,
-        centred: Math.abs(frame.left + frame.width / 2 - innerWidth / 2) < 2,
-        text: toast.textContent,
-      };
-    })()`), { inDialog: true, onTop: true, inViewport: true, centred: true, text: "❌ Save failed: not found" }, "save error above the dialog");
-    await click("#nexus-modal .nexus-modal-close");
-    assert.deepEqual(await evaluate(`(() => ({
-      open: document.getElementById('nexus-modal').open,
-      home: document.querySelector('.nexus-main').lastElementChild?.id,
-    }))()`), { open: false, home: "nexus-toast" }, "toast host back in the page");
-    assert.deepEqual(await evaluate("window.__cspViolations"), [], "Content-Security-Policy violations");
-    // Disabled JavaScript must leave ordinary navigation visible, not trapped.
-    await send("Emulation.setScriptExecutionDisabled", { value: true });
-    await navigate(false);
-    await send("Emulation.setScriptExecutionDisabled", { value: false });
-    assert.equal(await evaluate("getComputedStyle(document.querySelector('#nexus-sidebar')).position"), "static");
-    assert.equal(await evaluate("getComputedStyle(document.querySelector('.nexus-topbar-toggle')).display"), "none");
-  } else {
-    for (const width of [320, 360, 390, 420, 640, 900, 901, 1200, 1440]) {
-      await resize(width);
-      assert(await evaluate("document.documentElement.scrollWidth <= innerWidth"), `page overflow at ${width}`);
-      const overflow = await evaluate(`Array.from(document.querySelectorAll('.layout, .sidebar, .content, .project-card, .contact-item a, .cms-btn, h1, h2, .tag'), el => {
-        const r = el.getBoundingClientRect();
-        return {name:el.className || el.tagName, left:r.left, right:r.right, clipped:el.scrollWidth > el.clientWidth + 1};
-      }).filter(r => r.left < -1 || r.right > innerWidth + 1 || r.clipped)`);
-      assert.deepEqual(overflow, [], `content overflow/clipping at ${width}`);
-      assert.equal(await evaluate("getComputedStyle(document.querySelector('.layout')).flexDirection"), width <= 900 ? "column" : "row");
-      assert.equal(await evaluate("getComputedStyle(document.querySelector('.sidebar')).position"), width <= 900 ? "static" : "sticky");
-    }
-    await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
-    assert.equal(await evaluate("document.getAnimations().length"), 0, "reduced-motion preference");
+  if (assetDirectory) {
+    assert.equal(await evaluate("typeof window.htmx"), "object", "same-origin htmx loaded");
+    assert.equal(await evaluate("getComputedStyle(document.body).display"), "flex", "same-origin stylesheet applied");
   }
+  const closed = async () => {
+    assert.equal(await evaluate("document.querySelector('.nexus-topbar-toggle').getAttribute('aria-expanded')"), "false");
+    assert(await evaluate("document.querySelector('#nexus-sidebar').inert"), "closed offscreen links must not remain keyboard-focusable");
+    assert.equal(await evaluate("document.querySelector('.nexus-main').inert"), false);
+  };
+  const opened = async () => {
+    assert.equal(await evaluate("document.querySelector('.nexus-topbar-toggle').getAttribute('aria-expanded')"), "true");
+    assert(await evaluate("document.querySelector('.nexus-main').inert"));
+    assert.equal(await evaluate("document.activeElement.id"), "nexus-sidebar-close");
+  };
+  await closed();
+  await click(".nexus-topbar-toggle");
+  await opened();
+  await click("#nexus-sidebar-close");
+  await closed();
+  assert(await evaluate("document.activeElement.classList.contains('nexus-topbar-toggle')"));
+  await key("Enter", "Enter", 13);
+  await settle();
+  await opened();
+  await key("Tab", "Tab", 9, 8);
+  assert(await evaluate("document.activeElement.classList.contains('nexus-nav-home')"), "Shift+Tab wraps inside drawer");
+  await key("Tab", "Tab", 9);
+  assert.equal(await evaluate("document.activeElement.id"), "nexus-sidebar-close");
+  await key("Escape", "Escape", 27);
+  await closed();
+  await click(".nexus-topbar-toggle");
+  // A real touch outside the 240px drawer hits the backdrop, not the main page.
+  await send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 360, y: 400 }] });
+  await send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await settle();
+  await closed();
+  await click(".nexus-topbar-toggle");
+  await evaluate("document.querySelector('#nexus-sidebar').addEventListener('click', e => e.preventDefault()); document.querySelector('.nexus-nav-link').click()");
+  await closed();
+  await click(".nexus-topbar-toggle");
+  await resize(1200);
+  assert.equal(await evaluate("document.querySelector('.nexus-main').inert || document.querySelector('#nexus-sidebar').inert"), false);
+  assert.equal(await evaluate("getComputedStyle(document.querySelector('#nexus-sidebar-backdrop')).display"), "none");
+  await resize(900);
+  await closed();
+  await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+  assert.equal(await evaluate("getComputedStyle(document.querySelector('#nexus-sidebar')).transitionDuration"), "0s");
+  // A wide table scrolls sideways inside its rounded wrapper.
+  await resize(1200);
+  assert.deepEqual(await evaluate(`(() => {
+    const wrap = document.querySelector('.nexus-table-wrap');
+    const style = getComputedStyle(wrap);
+    return {overflowX: style.overflowX, wider: wrap.scrollWidth > wrap.clientWidth, rounded: style.borderTopLeftRadius !== '0px'};
+  })()`), { overflowX: "auto", wider: true, rounded: true }, "wide Nexus table");
+  // A failed save while the record dialog is open: the browser draws the
+  // modal dialog above the page, so the message must move into it.
+  await evaluate("document.getElementById('nexus-modal').showModal()");
+  await click("#nexus-modal [data-nexus-save]");
+  await evaluate(`new Promise((resolve, reject) => {
+    const deadline = Date.now() + 5000;
+    (function poll() {
+      if (document.querySelector('#nexus-toast .nexus-toast')) return resolve();
+      if (Date.now() > deadline) return reject(new Error('no toast after a failed save'));
+      setTimeout(poll, 50);
+    })();
+  })`);
+  assert.deepEqual(await evaluate(`(() => {
+    const dialog = document.getElementById('nexus-modal');
+    const toast = document.querySelector('#nexus-toast .nexus-toast');
+    const box = toast.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+    const frame = dialog.getBoundingClientRect();
+    return {
+      inDialog: toast.closest('dialog') === dialog,
+      onTop: toast.contains(hit),
+      inViewport: box.width > 0 && box.right <= innerWidth && box.bottom <= innerHeight,
+      centred: Math.abs(frame.left + frame.width / 2 - innerWidth / 2) < 2,
+      text: toast.textContent,
+    };
+  })()`), { inDialog: true, onTop: true, inViewport: true, centred: true, text: "❌ Save failed: not found" }, "save error above the dialog");
+  await click("#nexus-modal .nexus-modal-close");
+  assert.deepEqual(await evaluate(`(() => ({
+    open: document.getElementById('nexus-modal').open,
+    home: document.querySelector('.nexus-main').lastElementChild?.id,
+  }))()`), { open: false, home: "nexus-toast" }, "toast host back in the page");
+  assert.deepEqual(await evaluate("window.__cspViolations"), [], "Content-Security-Policy violations");
+  // Disabled JavaScript must leave ordinary navigation visible, not trapped.
+  await send("Emulation.setScriptExecutionDisabled", { value: true });
+  await navigate(false);
+  await send("Emulation.setScriptExecutionDisabled", { value: false });
+  assert.equal(await evaluate("getComputedStyle(document.querySelector('#nexus-sidebar')).position"), "static");
+  assert.equal(await evaluate("getComputedStyle(document.querySelector('.nexus-topbar-toggle')).display"), "none");
   if (process.env.RULLST_UI_SCREENSHOT_DIR) {
     await resize(390);
     await navigate();
-    if (kind === "nexus") await click(".nexus-topbar-toggle");
+    await click(".nexus-topbar-toggle");
     const { data } = await send("Page.captureScreenshot", { format: "png" });
     await writeFile(join(process.env.RULLST_UI_SCREENSHOT_DIR, `${kind}-390.png`), Buffer.from(data, "base64"));
   }

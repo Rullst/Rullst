@@ -191,6 +191,16 @@ fn plan(
             parsed["dependencies"][name] = toml_edit::value(version);
         }
     }
+    if profile == "postgres" {
+        // `connect` never creates the schema: generate the deployment step.
+        consumer_support::default_run(&mut parsed)?;
+        let init = include_str!("init_postgres.rs.template");
+        syn::parse_file(init)?;
+        edits.push(Edit::create(
+            root.join("src/bin/age-init.rs"),
+            consumer_support::formatted(init)?,
+        )?);
+    }
     edits.push(Edit::replace(manifest_path, manifest, parsed.to_string()));
     edits.push(Edit::create(
         root.join("AGE_GATE.md"),
@@ -267,6 +277,8 @@ mod tests {
         let page = std::fs::read_to_string(controllers.join("age_gate/page.rs")).unwrap();
         assert!(page.contains("action=\"/dashboard\""));
         assert!(!controllers.join("age_gate/selection.rs").exists());
+        // SQLite opens its own file: no initialization binary.
+        assert!(!root.join("src/bin/age-init.rs").exists());
         for name in [
             "age_controller.rs",
             "age_gate/config.rs",
@@ -277,5 +289,52 @@ mod tests {
                 assert!(!source.contains(removed), "{name} still contains {removed}");
             }
         }
+    }
+
+    #[test]
+    fn a_postgres_replay_store_gets_its_initialization_binary() {
+        let temporary = tempfile::tempdir().unwrap();
+        let root = &temporary.path().canonicalize().unwrap();
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname = \"consumer\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = \"13\"\n",
+        )
+        .unwrap();
+        crate::blueprints::apply(
+            crate::blueprints::SAAS_BLUEPRINT_ID,
+            root,
+            "consumer",
+            "consumer",
+            false,
+            false,
+            true,
+            "Active Record",
+            "Zero-Bundle HTMX",
+        )
+        .unwrap();
+        let edits = plan(
+            root,
+            None,
+            18,
+            "dashboard-v1",
+            "tenant-alpha",
+            "postgres",
+            "saas",
+        )
+        .unwrap();
+        writes::apply(&edits).unwrap();
+        let init = std::fs::read_to_string(root.join("src/bin/age-init.rs")).unwrap();
+        assert!(init.contains("PostgresReplayStore::initialize(database, 10_000)"));
+        assert!(init.contains("RULLST_AGE_REPLAY_DATABASE"));
+        let config =
+            std::fs::read_to_string(root.join("src/controllers/age_gate/config.rs")).unwrap();
+        assert!(config.contains("PostgresReplayStore::connect(database, 10_000)"));
+        let manifest = std::fs::read_to_string(root.join("Cargo.toml")).unwrap();
+        assert!(
+            manifest.contains("default-run = \"consumer\""),
+            "{manifest}"
+        );
+        let guide = std::fs::read_to_string(root.join("AGE_GATE.md")).unwrap();
+        assert!(guide.contains("cargo run --bin age-init"));
     }
 }

@@ -17,8 +17,8 @@ pub use moved::MovedBlueprint;
 
 /// Public blueprint IDs are an on-disk/CLI compatibility contract. Never reorder
 /// them. IDs 1 (LMS), 3 (Blog), 4 (Portfolio) and 5 (ERP) belonged to the
-/// blueprints that moved to the repository's `examples/` in 13.0.0-alpha.4
-/// ([`MovedBlueprint`]); they are never reused.
+/// blueprints that left the CLI in 13.0.0-alpha.4 ([`MovedBlueprint`] names
+/// the repository example that replaces each); they are never reused.
 pub const BLANK_BLUEPRINT_ID: usize = 0;
 pub const SAAS_BLUEPRINT_ID: usize = 2;
 
@@ -426,13 +426,15 @@ mod tests {
                 fs::read(root.path().join("static/rullst.png")).expect("blueprint favicon");
             assert_eq!(favicon, blank::BLANK_FAVICON);
             assert!(favicon.starts_with(&[0x89, b'P', b'N', b'G']));
-            let script = fs::read(root.path().join("static/htmx-1.9.12.min.js"))
+            let script = fs::read(root.path().join("static/htmx-2.0.11.min.js"))
                 .expect("offline HTMX client must be materialized");
-            assert_eq!(script, include_bytes!("assets/htmx-1.9.12.min.js"));
-            let sse = fs::read(root.path().join("static/htmx-ext-sse-1.9.12.js"))
+            assert_eq!(script, include_bytes!("assets/htmx-2.0.11.min.js"));
+            let sse = fs::read(root.path().join("static/htmx-ext-sse-2.2.4.js"))
                 .expect("the htmx SSE extension must be materialized");
             assert_eq!(sse, browser_assets::HTMX_SSE);
             assert!(root.path().join("static/HTMX-LICENSE").is_file());
+            assert!(root.path().join("static/HTMX-EXT-SSE-LICENSE").is_file());
+            assert!(!root.path().join("static/htmx-1.9.12.min.js").exists());
         }
     }
 }

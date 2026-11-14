@@ -1,7 +1,7 @@
 //! Real loopback protocol checks; every server and client wait is bounded.
 use super::{
-    anthropic::AnthropicProvider, deepseek::DeepSeekProvider, gemini::GeminiProvider,
-    ollama::OllamaProvider, openai::OpenAiProvider,
+    anthropic::AnthropicProvider, gemini::GeminiProvider, openai::OpenAiProvider,
+    openai_compatible::OpenAiCompatibleProvider,
 };
 use crate::ai::AiProvider;
 use std::time::Duration;
@@ -95,12 +95,14 @@ async fn custom_header_credentials_and_prompts_do_not_follow_cross_origin_redire
                     .with_request_timeout(Duration::from_secs(3)),
             ),
             "deepseek" => Box::new(
-                DeepSeekProvider::new("fixture-api-secret")
-                    .with_base_url(origin)
+                OpenAiCompatibleProvider::deepseek("fixture-api-secret")
+                    .unwrap()
+                    .with_test_base_url(&origin)
                     .with_request_timeout(Duration::from_secs(3)),
             ),
             "ollama" => Box::new(
-                OllamaProvider::new(origin, "fixture-model")
+                OpenAiCompatibleProvider::ollama(origin, "fixture-model")
+                    .unwrap()
                     .with_request_timeout(Duration::from_secs(3)),
             ),
             _ => unreachable!("test cases"),
@@ -221,22 +223,6 @@ async fn anthropic_reports_an_incomplete_reply_instead_of_returning_it() {
     assert_eq!(answer, "complete");
     let request = server.await.unwrap().unwrap();
     assert!(String::from_utf8_lossy(&request).contains(r#""max_tokens":16000"#));
-}
-
-#[tokio::test]
-async fn ollama_accepts_its_own_scheme_less_host_form() {
-    let body = r#"{"message":{"role":"assistant","content":"ok"}}"#;
-    let (endpoint, server) = serve(success(body)).await;
-    // OLLAMA_HOST is commonly `127.0.0.1:11434`, without a scheme.
-    let host = endpoint.trim_start_matches("http://").to_string();
-    let answer = OllamaProvider::new(host, "fixture-model")
-        .with_request_timeout(Duration::from_secs(3))
-        .prompt("hello")
-        .await
-        .unwrap();
-    assert_eq!(answer, "ok");
-    let request = server.await.unwrap().unwrap();
-    assert!(String::from_utf8_lossy(&request).starts_with("POST /api/chat "));
 }
 
 #[tokio::test]

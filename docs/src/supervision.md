@@ -5,7 +5,11 @@ prerelease.** The implemented contract and observation extension passed combined
 source/archive acceptance in PR #239. The package is included in the release
 inventory, pending final release acceptance. It supplies no verified guardianship, device-wide
 control or legal-compliance certification. Its
-[maturity tier](maturity.md) is **Experimental**.
+[maturity tier](maturity.md) is **Extension** (since 13.0.0-alpha.5): it was
+exercised on a real phone in the 13.0.0-alpha.5 acceptance application
+(camera presence, a covered camera, page hidden and visible, loudness
+statistics from the microphone and parental time windows). Supported does not
+mean suitable for every purpose: read Responsible use first.
 
 ## Responsible use
 
@@ -116,7 +120,12 @@ and human review; the framework includes no detector or automatic penalty.
 An operator enrolls a learner and a server-selected access-policy resource into
 parental management. Enrolled learners are denied while no valid policy exists.
 An explicitly authorized manager can set a bounded course allowlist and one
-absolute UTC access window, using the current revision. Missing/expired policy,
+absolute UTC access window, using the current revision. The window
+(`CoursePolicy::new(courses, not_before, expires_at)`) is a single period of
+at most 30 days, not a recurring schedule. Daily allowed hours, such as
+16:00–18:00 on school days, belong to the host: it keeps the schedule and
+replaces the window each day with `set_course_policy` and the current
+revision. Missing/expired policy,
 clock failure and storage failure deny protected operations. Unmanaged learners
 retain the existing learning authorization. These restrictions cannot grant
 enrollment, unpublished lessons or assessment permissions.

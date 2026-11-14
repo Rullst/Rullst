@@ -5,9 +5,9 @@
 //! plus the API, database, hot-reload and release-build boundaries. Generated
 //! projects use Active Record plus `html!` SSR/HTMX. Every materialized case
 //! runs its generated tests, so template-only runtime and authorization
-//! regressions cannot hide behind a successful `cargo check`. The former LMS,
-//! Blog, Portfolio and ERP starters are workspace examples (`examples/`) whose
-//! tests run in the workspace suite.
+//! regressions cannot hide behind a successful `cargo check`. The former LMS
+//! and Blog starters are workspace examples (`examples/`) whose tests run in
+//! the workspace suite.
 
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
 

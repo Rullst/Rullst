@@ -1,7 +1,7 @@
 # 49. Bounded Brokered Messaging
 
 > [!IMPORTANT]
-> Dependency examples pin the v13 prerelease `=13.0.0-alpha.4` exactly: Cargo
+> Dependency examples pin the v13 prerelease `=13.0.0-alpha.5` exactly: Cargo
 > never selects a prerelease on its own, and the v12 line reached end of life
 > on 16 October 2026 (see the [release record](../v12.md)). Commit Cargo.lock
 > for reproducible builds. Use path dependencies only when intentionally
@@ -15,11 +15,11 @@ Remote broker protocols remain separate adapters.
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.4", features = ["messaging"] }
+rullst = { version = "=13.0.0-alpha.5", features = ["messaging"] }
 ```
 
 Use `messaging-sqlite` instead of `messaging` for durable local state. A direct
-dependency uses `rullst-messaging = { version = "=13.0.0-alpha.4", features =
+dependency uses `rullst-messaging = { version = "=13.0.0-alpha.5", features =
 ["sqlite"] }`.
 
 ## 2. Create a bounded broker
@@ -315,3 +315,9 @@ SHA-256 of the stream, `/`, then the event key), so relays of different streams
 can share one topic. This is at-least-once relay with bounded idempotency, not
 an atomic transaction across two systems. Keep the worker supervised and make
 the final consumer idempotent too.
+
+Start that worker after the ORM pool exists: `Server::run` opens the pool
+while it starts, so a relay spawned before it gets "Orm is not initialized".
+Call `Orm::init` in `main` first, as the
+[outbox tutorial](38-transactional-outbox.md#3-claim-deliver-and-acknowledge)
+shows; `Server` keeps the existing pool.

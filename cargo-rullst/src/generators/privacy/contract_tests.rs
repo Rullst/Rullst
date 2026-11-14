@@ -40,10 +40,18 @@ fn an_application_with_its_own_sign_in_uses_the_contract() {
         format!("{middleware}\nfn other() {{}}\n"),
     )
     .unwrap();
-    let error = plan(&root, None, "saas", "greeting-v1", 3600, "tenant-alpha")
-        .err()
-        .unwrap()
-        .to_string();
+    let error = plan(
+        &root,
+        None,
+        "saas",
+        "greeting-v1",
+        3600,
+        "tenant-alpha",
+        None,
+    )
+    .err()
+    .unwrap()
+    .to_string();
     assert!(
         error.ends_with(&format!(
             "differs from the starter's. An application with its own sign-in can use the authentication contract in src/auth_contract.rs instead ({})",
@@ -54,7 +62,16 @@ fn an_application_with_its_own_sign_in_uses_the_contract() {
     fs::write(root.join("src/middlewares/auth_middleware.rs"), middleware).unwrap();
 
     auth_contract::own_sign_in(&root);
-    let planned = plan(&root, None, "saas", "greeting-v1", 3600, "tenant-alpha").unwrap();
+    let planned = plan(
+        &root,
+        None,
+        "saas",
+        "greeting-v1",
+        3600,
+        "tenant-alpha",
+        None,
+    )
+    .unwrap();
     assert!(planned.notes.is_empty(), "{:?}", planned.notes);
     files::apply(&planned.edits).unwrap();
     let controller = read(&root, "src/controllers/privacy_controller.rs");
@@ -79,7 +96,16 @@ fn a_router_without_the_csrf_boundary_is_left_to_the_application() {
         ".layer(from_fn(rullst::security::csrf_middleware))",
     );
     fs::write(root.join("src/main.rs"), &main).unwrap();
-    let planned = plan(&root, None, "saas", "greeting-v1", 3600, "tenant-alpha").unwrap();
+    let planned = plan(
+        &root,
+        None,
+        "saas",
+        "greeting-v1",
+        3600,
+        "tenant-alpha",
+        None,
+    )
+    .unwrap();
     assert_eq!(planned.notes.len(), 1);
     assert!(planned.notes[0].starts_with("Mount the routes inside your CSRF layer"));
     files::apply(&planned.edits).unwrap();
@@ -91,9 +117,17 @@ fn a_router_without_the_csrf_boundary_is_left_to_the_application() {
     let contract = read(&root, "src/auth_contract.rs")
         .replace("pub fn session_binding(", "fn session_binding(");
     fs::write(root.join("src/auth_contract.rs"), contract).unwrap();
-    let error = plan(&root, None, "saas", "greeting-v1", 3600, "tenant-alpha")
-        .err()
-        .unwrap()
-        .to_string();
+    let error = plan(
+        &root,
+        None,
+        "saas",
+        "greeting-v1",
+        3600,
+        "tenant-alpha",
+        None,
+    )
+    .err()
+    .unwrap()
+    .to_string();
     assert!(error.contains("lacks `pub fn session_binding`"), "{error}");
 }

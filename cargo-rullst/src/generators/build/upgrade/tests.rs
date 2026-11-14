@@ -76,7 +76,7 @@ fn a_failed_gate_repeats_the_guidance_of_removed_api_findings() {
     assert!(!hint.contains(".env.example"), "{hint}");
     assert!(hint.contains("`StripeProvider`"), "{hint}");
     assert!(
-        hint.contains("`InfinitePayProvider` is experimental"),
+        hint.contains("`InfinitePayProvider` covers one-off payment links only"),
         "{hint}"
     );
     assert!(hint.contains("V13-MAIL-REMOVED at src/mail.rs:3"), "{hint}");
@@ -168,6 +168,57 @@ fn the_plan_says_which_earlier_rules_it_skipped() {
         let markdown = report::render_report(root, &target, &[], &scan);
         assert!(!markdown.contains("Rules:"), "{markdown}");
     }
+}
+
+/// Review locations left out by a `rullst-upgrade: reviewed` marker are
+/// counted in every rendering; rules the selection skips are not.
+#[test]
+fn the_plan_counts_the_locations_marked_reviewed() {
+    let root = Path::new("/project");
+    let target = Version::parse("13.0.0-alpha.5").unwrap();
+    let rule = |code: &str| {
+        rules::CATALOG
+            .iter()
+            .copied()
+            .find(|rule| rule.code == code)
+            .unwrap()
+    };
+    let mut scan = selected_scan(None, false);
+    let text = report::plan_text(root, &target, &[], &scan);
+    assert!(!text.contains("Reviewed:"), "{text}");
+    let markdown = report::render_report(root, &target, &[], &scan);
+    assert!(!markdown.contains("Reviewed:"), "{markdown}");
+    let json: serde_json::Value =
+        serde_json::from_str(&report::render_json_report(root, &target, &[], &scan).unwrap())
+            .unwrap();
+    assert_eq!(json["finding_counts"]["reviewed"], 0);
+
+    scan.reviewed = vec![rule("V13-PAGE-BOUNDS")];
+    let text = report::plan_text(root, &target, &[], &scan);
+    assert!(
+        text.contains(
+            "\n  Reviewed: 1 review location(s) marked `rullst-upgrade: reviewed` left out\n"
+        ),
+        "{text}"
+    );
+    scan.reviewed.push(rule("V13-CLI-GREEN-RENAMED"));
+    let markdown = report::render_report(root, &target, &[], &scan);
+    assert!(
+        markdown.contains(
+            "Reviewed: 2 review location(s) marked `rullst-upgrade: reviewed` left out.\n\n"
+        ),
+        "{markdown}"
+    );
+    let json: serde_json::Value =
+        serde_json::from_str(&report::render_json_report(root, &target, &[], &scan).unwrap())
+            .unwrap();
+    assert_eq!(json["finding_counts"]["reviewed"], 2);
+
+    // An alpha.4 application skips the alpha.1 rule's marked location.
+    scan.select(Some(Version::parse("13.0.0-alpha.4").unwrap()), false);
+    assert_eq!(scan.reviewed, [rule("V13-CLI-GREEN-RENAMED")]);
+    scan.select(Some(Version::parse("13.0.0-alpha.5").unwrap()), false);
+    assert!(scan.reviewed.is_empty());
 }
 
 /// Only a plan with findings links the guide; nothing points at the removed

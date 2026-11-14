@@ -70,10 +70,10 @@ pub fn all_gateways() -> Vec<GatewayInfo> {
         GatewayInfo {
             id: "infinitepay",
             name: "InfinitePay",
-            archetype: "Experimental billing adapter",
+            archetype: "One-off payment adapter",
             archetype_badge_class: "badge-emerald",
             flag: "🇧🇷",
-            current_boundary: "Experimental: one-off payment links priced on the server (POST /links); the unsigned webhook is confirmed with payment_check. No subscriptions, portal or sandbox.",
+            current_boundary: "One-off payment links priced on the server (POST /links); the unsigned webhook is confirmed with payment_check. No subscriptions, portal or sandbox.",
             env_example: "INFINITEPAY_HANDLE=\"your-infinitetag\"\nINFINITEPAY_API_KEY=\"inchk_...\"  # optional: single-payment links",
             rust_init_code: "use rullst_capital::{init_provider, InfinitePayProvider};\n\ninit_provider(Box::new(\n    InfinitePayProvider::checkout(std::env::var(\"INFINITEPAY_HANDLE\")?)?\n        .with_webhook_url(\"https://app.example/webhooks/infinitepay\")?,\n));",
         },

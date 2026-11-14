@@ -79,6 +79,10 @@ pub rullst_media::ListedVideo::length_seconds: u32
 pub rullst_media::ListedVideo::processing: rullst_media::Processing
 pub rullst_media::ListedVideo::created_at: core::option::Option<i64>
 pub rullst_media::ListedVideo::thumbnail_url: core::option::Option<alloc::string::String>
+impl rullst_media::ListedVideo
+pub fn rullst_media::ListedVideo::new(id: rullst_media::VideoId, title: impl core::convert::Into<alloc::string::String>, length_seconds: u32, processing: rullst_media::Processing) -> core::result::Result<Self, rullst_media::MediaError>
+pub fn rullst_media::ListedVideo::with_created_at(self, created_at: i64) -> core::result::Result<Self, rullst_media::MediaError>
+pub fn rullst_media::ListedVideo::with_thumbnail_url(self, url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_media::MediaError>
 impl core::clone::Clone for rullst_media::ListedVideo
 impl core::cmp::Eq for rullst_media::ListedVideo
 impl core::cmp::PartialEq for rullst_media::ListedVideo
@@ -150,6 +154,7 @@ pub rullst_media::PlaybackGrant::expires_at: i64
 pub rullst_media::PlaybackGrant::mode: rullst_media::ProviderMode
 impl rullst_media::PlaybackGrant
 pub fn rullst_media::PlaybackGrant::expose_url(&self) -> &str
+pub fn rullst_media::PlaybackGrant::new(binding: &rullst_media::ProviderBinding, url: impl core::convert::Into<alloc::string::String>, expires_at: i64) -> core::result::Result<Self, rullst_media::MediaError>
 impl core::clone::Clone for rullst_media::PlaybackGrant
 impl core::fmt::Debug for rullst_media::PlaybackGrant
 impl serde_core::ser::Serialize for rullst_media::PlaybackGrant
@@ -311,6 +316,8 @@ pub rullst_media::UploadGrant::content_type: core::option::Option<alloc::string:
 pub rullst_media::UploadGrant::content_length: core::option::Option<u64>
 impl rullst_media::UploadGrant
 pub fn rullst_media::UploadGrant::expose_signature(&self) -> &str
+pub fn rullst_media::UploadGrant::new(binding: &rullst_media::ProviderBinding, video: rullst_media::VideoId, protocol: rullst_media::UploadProtocol, endpoint: impl core::convert::Into<alloc::string::String>, signature: impl core::convert::Into<alloc::string::String>, expires_at: i64) -> core::result::Result<Self, rullst_media::MediaError>
+pub fn rullst_media::UploadGrant::with_declaration(self, declaration: &rullst_media::UploadDeclaration) -> Self
 impl core::clone::Clone for rullst_media::UploadGrant
 impl core::fmt::Debug for rullst_media::UploadGrant
 impl serde_core::ser::Serialize for rullst_media::UploadGrant
@@ -373,6 +380,7 @@ pub rullst_media::VideoPage::per_page: u32
 pub rullst_media::VideoPage::total: u64
 impl rullst_media::VideoPage
 pub fn rullst_media::VideoPage::has_more(&self) -> bool
+pub fn rullst_media::VideoPage::new(query: &rullst_media::ListQuery, items: alloc::vec::Vec<rullst_media::ListedVideo>, total: u64) -> core::result::Result<Self, rullst_media::MediaError>
 impl core::clone::Clone for rullst_media::VideoPage
 impl core::cmp::Eq for rullst_media::VideoPage
 impl core::cmp::PartialEq for rullst_media::VideoPage
@@ -448,6 +456,70 @@ impl core::marker::Sync for rullst_media::bunny::PrivateDelivery
 impl core::marker::Unpin for rullst_media::bunny::PrivateDelivery
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::bunny::PrivateDelivery
 impl core::panic::unwind_safe::UnwindSafe for rullst_media::bunny::PrivateDelivery
+pub mod rullst_media::conformance
+#[non_exhaustive] pub enum rullst_media::conformance::CaseOutcome
+pub rullst_media::conformance::CaseOutcome::Passed
+pub rullst_media::conformance::CaseOutcome::Failed
+pub rullst_media::conformance::CaseOutcome::Skipped
+impl core::clone::Clone for rullst_media::conformance::CaseOutcome
+impl core::cmp::Eq for rullst_media::conformance::CaseOutcome
+impl core::cmp::PartialEq for rullst_media::conformance::CaseOutcome
+impl core::fmt::Debug for rullst_media::conformance::CaseOutcome
+impl core::marker::Copy for rullst_media::conformance::CaseOutcome
+impl core::marker::Send for rullst_media::conformance::CaseOutcome
+impl core::marker::Sync for rullst_media::conformance::CaseOutcome
+impl core::marker::Unpin for rullst_media::conformance::CaseOutcome
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::conformance::CaseOutcome
+impl core::panic::unwind_safe::UnwindSafe for rullst_media::conformance::CaseOutcome
+#[non_exhaustive] pub struct rullst_media::conformance::ConformanceCase
+impl rullst_media::conformance::ConformanceCase
+pub fn rullst_media::conformance::ConformanceCase::detail(&self) -> &str
+pub fn rullst_media::conformance::ConformanceCase::id(&self) -> &'static str
+pub fn rullst_media::conformance::ConformanceCase::outcome(&self) -> rullst_media::conformance::CaseOutcome
+impl core::clone::Clone for rullst_media::conformance::ConformanceCase
+impl core::cmp::Eq for rullst_media::conformance::ConformanceCase
+impl core::cmp::PartialEq for rullst_media::conformance::ConformanceCase
+impl core::fmt::Debug for rullst_media::conformance::ConformanceCase
+impl core::marker::Send for rullst_media::conformance::ConformanceCase
+impl core::marker::Sync for rullst_media::conformance::ConformanceCase
+impl core::marker::Unpin for rullst_media::conformance::ConformanceCase
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::conformance::ConformanceCase
+impl core::panic::unwind_safe::UnwindSafe for rullst_media::conformance::ConformanceCase
+#[non_exhaustive] pub struct rullst_media::conformance::ConformanceReport
+impl rullst_media::conformance::ConformanceReport
+pub fn rullst_media::conformance::ConformanceReport::assert_passed(&self)
+pub fn rullst_media::conformance::ConformanceReport::case(&self, id: &str) -> core::option::Option<&rullst_media::conformance::ConformanceCase>
+pub fn rullst_media::conformance::ConformanceReport::cases(&self) -> &[rullst_media::conformance::ConformanceCase]
+pub fn rullst_media::conformance::ConformanceReport::failures(&self) -> impl core::iter::traits::iterator::Iterator<Item = &rullst_media::conformance::ConformanceCase>
+pub fn rullst_media::conformance::ConformanceReport::passed(&self) -> bool
+pub fn rullst_media::conformance::ConformanceReport::provider(&self) -> &str
+impl core::clone::Clone for rullst_media::conformance::ConformanceReport
+impl core::cmp::Eq for rullst_media::conformance::ConformanceReport
+impl core::cmp::PartialEq for rullst_media::conformance::ConformanceReport
+impl core::fmt::Debug for rullst_media::conformance::ConformanceReport
+impl core::fmt::Display for rullst_media::conformance::ConformanceReport
+impl core::marker::Send for rullst_media::conformance::ConformanceReport
+impl core::marker::Sync for rullst_media::conformance::ConformanceReport
+impl core::marker::Unpin for rullst_media::conformance::ConformanceReport
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::conformance::ConformanceReport
+impl core::panic::unwind_safe::UnwindSafe for rullst_media::conformance::ConformanceReport
+#[non_exhaustive] pub struct rullst_media::conformance::VideoExpectations
+impl rullst_media::conformance::VideoExpectations
+pub fn rullst_media::conformance::VideoExpectations::new(now: i64) -> Self
+pub fn rullst_media::conformance::VideoExpectations::without_listing(self) -> Self
+pub fn rullst_media::conformance::VideoExpectations::without_playback(self) -> Self
+pub fn rullst_media::conformance::VideoExpectations::without_upload(self) -> Self
+impl core::clone::Clone for rullst_media::conformance::VideoExpectations
+impl core::cmp::Eq for rullst_media::conformance::VideoExpectations
+impl core::cmp::PartialEq for rullst_media::conformance::VideoExpectations
+impl core::fmt::Debug for rullst_media::conformance::VideoExpectations
+impl core::marker::Copy for rullst_media::conformance::VideoExpectations
+impl core::marker::Send for rullst_media::conformance::VideoExpectations
+impl core::marker::Sync for rullst_media::conformance::VideoExpectations
+impl core::marker::Unpin for rullst_media::conformance::VideoExpectations
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::conformance::VideoExpectations
+impl core::panic::unwind_safe::UnwindSafe for rullst_media::conformance::VideoExpectations
+pub async fn rullst_media::conformance::check_video_provider<P: rullst_media::VideoProvider>(name: impl core::convert::Into<alloc::string::String>, provider: &P, expect: rullst_media::conformance::VideoExpectations) -> rullst_media::conformance::ConformanceReport
 pub mod rullst_media::s3
 pub const rullst_media::s3::MAX_GRANT_SECONDS: u32
 pub struct rullst_media::s3::S3Config

@@ -312,15 +312,16 @@ fn program(project: &Path, name: &str, body: &str) {
 }
 
 /// `cargo audit` and `cargo geiger` answer with the exit statuses in
-/// `FAKE_AUDIT`, `FAKE_GEIGER` and `FAKE_GEIGER_VERSION`; `FAKE_VANISH`
-/// removes the program after the geiger version check.
+/// `FAKE_AUDIT`, `FAKE_GEIGER` and `FAKE_GEIGER_VERSION`, and `cargo audit`
+/// prints `FAKE_AUDIT_JSON` as its report; `FAKE_VANISH` removes the program
+/// after the geiger version check.
 #[cfg(unix)]
 const CARGO: &str = r#"case "$1 $2" in
   "audit --version") exit 0 ;;
   "geiger --version") [ -n "$FAKE_VANISH" ] && /bin/rm -f "$0"; exit "${FAKE_GEIGER_VERSION:-0}" ;;
 esac
 case "$1" in
-  audit) exit "${FAKE_AUDIT:-0}" ;;
+  audit) printf '%s' "$FAKE_AUDIT_JSON"; exit "${FAKE_AUDIT:-0}" ;;
   geiger) exit "${FAKE_GEIGER:-0}" ;;
 esac
 exit 1"#;
@@ -343,6 +344,26 @@ fn cargo_audit_outcomes_are_reported_and_counted() {
         assert_eq!(audit.result, outcome, "{modes} {status}");
         assert_eq!(audit.summary()["checks"][1]["status"], expected);
     }
+    // Advisories in cargo-audit's report are findings, each one counted.
+    let project = project_with("");
+    program(project.path(), "cargo", CARGO);
+    let report = r#"{"vulnerabilities":{"found":true,"count":2,"list":[]}}"#;
+    let audit = audit_with(
+        project.path(),
+        "",
+        &[("FAKE_AUDIT", "1"), ("FAKE_AUDIT_JSON", report)],
+    );
+    assert_eq!(
+        audit.result,
+        "err security audit reported 2 finding(s) or incomplete requested check(s)"
+    );
+    assert_eq!(audit.summary()["checks"][1]["status"], "findings");
+    assert_eq!(audit.summary()["checks"][1]["count"], 2);
+    let printed = format!("{}{}", audit.stdout, audit.stderr);
+    assert!(
+        printed.contains("[FINDINGS] cargo-audit reported 2"),
+        "{printed}"
+    );
 }
 
 #[cfg(unix)]

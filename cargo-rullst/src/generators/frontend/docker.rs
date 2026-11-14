@@ -3,13 +3,20 @@
 
 use super::tailwind::Platform;
 use super::tailwind_release::download_url;
+use crate::generators::project::docker_static;
 
 /// Starts the stages, so an edited Dockerfile is recognised as having them.
 pub(crate) const STAGES_MARKER: &str = "AS tailwind-cli-amd64";
 
-/// The line the runtime stage gains after `COPY … static /app/static`.
+/// The line the runtime stage gains after `COPY … static /app/static` in a
+/// Dockerfile generated before 13.0.0-alpha.5.
 pub(crate) const COPY_LINE: &str =
     "COPY --from=tailwind --chown=10001:10001 /css/app.css /app/static/app.css\n";
+
+/// The line the `static-assets` stage (13.0.0-alpha.5) gains after its copy
+/// of `static/`, so the built stylesheet gets its pre-compressed siblings.
+pub(crate) const STATIC_STAGE_COPY_LINE: &str =
+    "COPY --from=tailwind /css/app.css /static/app.css\n";
 
 /// The stages placed before the runtime stage. BuildKit (`ADD --checksum`)
 /// downloads the CLI for the build machine's architecture and refuses it
@@ -56,6 +63,9 @@ pub(crate) fn add_to(dockerfile: &str) -> Option<String> {
     if dockerfile.contains(STAGES_MARKER) {
         return None;
     }
+    if let Some(stage) = docker_static::stage_start(dockerfile) {
+        return add_before_static_stage(dockerfile, stage);
+    }
     let runtime = dockerfile
         .find("# Debian 12 glibc runtime")
         .or_else(|| dockerfile.find("FROM gcr.io/distroless/cc-debian12:nonroot"))?;
@@ -70,6 +80,28 @@ pub(crate) fn add_to(dockerfile: &str) -> Option<String> {
     out.push_str(&stages());
     out.push_str(&dockerfile[runtime..copy_at]);
     out.push_str(COPY_LINE);
+    out.push_str(&dockerfile[copy_at..]);
+    Some(out)
+}
+
+/// [`add_to`] for a Dockerfile with the `static-assets` stage starting at
+/// `stage`: the Tailwind stages go before it and the stylesheet into it, so
+/// it is compressed with the other static files.
+fn add_before_static_stage(dockerfile: &str, stage: usize) -> Option<String> {
+    let body = stage
+        + dockerfile[stage..].find(docker_static::STAGE_MARKER)?
+        + docker_static::STAGE_MARKER.len();
+    let end = dockerfile[body..]
+        .find("\nFROM ")
+        .map_or(dockerfile.len(), |at| body + at);
+    let copy_at = body
+        + dockerfile[body..end].find(docker_static::STATIC_COPY)?
+        + docker_static::STATIC_COPY.len();
+    let mut out = String::with_capacity(dockerfile.len() + 1024);
+    out.push_str(&dockerfile[..stage]);
+    out.push_str(&stages());
+    out.push_str(&dockerfile[stage..copy_at]);
+    out.push_str(STATIC_STAGE_COPY_LINE);
     out.push_str(&dockerfile[copy_at..]);
     Some(out)
 }

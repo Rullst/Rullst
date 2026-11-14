@@ -9,6 +9,8 @@ const MAX_API_KEY_BYTES: usize = 8 * 1_024;
 pub(super) enum EndpointScope {
     Loopback,
     Cloud,
+    /// HTTP(S) to any host, for a server that receives no credential (Ollama).
+    AnyHost,
 }
 
 pub(super) fn validate_base_url(base_url: String, scope: EndpointScope) -> Result<String, AiError> {
@@ -53,7 +55,10 @@ pub(super) fn validate_base_url(base_url: String, scope: EndpointScope) -> Resul
         EndpointScope::Cloud if parsed.scheme() != "https" => {
             return Err(configuration_error("cloud base URL must use HTTPS"));
         }
-        EndpointScope::Cloud => {}
+        EndpointScope::AnyHost if !matches!(parsed.scheme(), "http" | "https") => {
+            return Err(configuration_error("base URL must use HTTP(S)"));
+        }
+        EndpointScope::Cloud | EndpointScope::AnyHost => {}
     }
     Ok(parsed.as_str().trim_end_matches('/').to_string())
 }

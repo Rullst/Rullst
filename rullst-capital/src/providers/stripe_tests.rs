@@ -2,17 +2,33 @@ use super::*;
 use crate::SubscriptionStatus;
 
 #[test]
+fn signed_payload_mac_matches_rfc_4231_test_case_7() {
+    // RFC 4231 section 4.8: the data split at its first "." into Stripe's
+    // timestamp and payload.
+    let mac = signed_payload_mac(
+        &[0xaa; 131],
+        "This is a test using a larger than block-size key and a larger than block-size data",
+        b" The key needs to be hashed before being used by the HMAC algorithm.",
+    )
+    .unwrap();
+    assert_eq!(
+        hex::encode(mac.finalize().into_bytes()),
+        "9b09ffa71b942fcb27635fbcd5b0e944bfdc63644f0713938a7f51535c3a35e2"
+    );
+}
+
+#[test]
 fn stripe_rotation_accepts_any_bounded_v1_and_rejects_ambiguous_timestamps() {
     let provider = StripeProvider::new("mock_key", "rotation-secret");
     let payload = b"exact raw webhook bytes";
     let now = 1_800_000_000;
-    let key = hmac::Key::new(hmac::HMAC_SHA256, b"rotation-secret");
-    let mut context = hmac::Context::with_key(&key);
-    context.update(format!("{now}.").as_bytes());
-    context.update(payload);
-    let signature = hex::encode(context.sign().as_ref());
+    // HMAC-SHA256("rotation-secret", "1800000000.exact raw webhook bytes"),
+    // computed independently.
+    let signature = "d5ba82d18fa78bebde51762cefb8b3449e341c0ee83c5c1664fdff7ab6aab5c3";
     let invalid = "00".repeat(32);
     for candidates in [
+        format!("v1={signature}"),
+        format!("v1={signature},v1={signature}"),
         format!("v1={signature},v1={invalid},v1=malformed"),
         format!("v1={invalid},v1={signature},v1=malformed"),
         format!("v1=malformed,v1={invalid},v1={signature}"),
@@ -94,12 +110,8 @@ async fn test_stripe_provider_methods() {
     let timestamp = now.to_string();
     let payload = br#"{"type":"customer.subscription.updated","data":{"object":{"object":"subscription","id":"sub_str_100","customer":"cus_123","customer_email":"user@stripe.com","status":"active","items":{"has_more":false,"data":[{"price":{"id":"price_pro"}}]}}}}"#;
 
-    let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
-    let mut ctx = hmac::Context::with_key(&key);
-    ctx.update(timestamp.as_bytes());
-    ctx.update(b".");
-    ctx.update(payload);
-    let sig_hex = hex::encode(ctx.sign().as_ref());
+    let mac = signed_payload_mac(secret.as_bytes(), &timestamp, payload).unwrap();
+    let sig_hex = hex::encode(mac.finalize().into_bytes());
     let valid_header = format!("t={timestamp},v1={sig_hex}");
 
     assert!(
@@ -222,11 +234,11 @@ fn signature_header_of_exactly_4096_bytes_is_parsed() {
     let provider = StripeProvider::new("mock_key", "header-secret");
     let payload = b"bounded header";
     let now = 1_800_000_000;
-    let key = hmac::Key::new(hmac::HMAC_SHA256, b"header-secret");
-    let mut context = hmac::Context::with_key(&key);
-    context.update(format!("{now}.").as_bytes());
-    context.update(payload);
-    let prefix = format!("t={now},v1={},v0=", hex::encode(context.sign().as_ref()));
+    let mac = signed_payload_mac(b"header-secret", &now.to_string(), payload).unwrap();
+    let prefix = format!(
+        "t={now},v1={},v0=",
+        hex::encode(mac.finalize().into_bytes())
+    );
     let header = format!("{prefix}{}", "x".repeat(4096 - prefix.len()));
     assert_eq!(header.len(), 4096);
     provider.verify_signature_at(payload, &header, now).unwrap();

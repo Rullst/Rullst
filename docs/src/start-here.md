@@ -4,7 +4,7 @@ You do not need to understand every Rullst crate before writing your first
 application. Start small, make one thing work, and learn what each layer does
 as your product needs it.
 
-> **This guide targets the v13 prerelease, 13.0.0-alpha.4.** The v12 line
+> **This guide targets the v13 prerelease, 13.0.0-alpha.5.** The v12 line
 > reached end of life on 16 October 2026 and a new 12.x project no longer
 > resolves its dependencies, so install the CLI and pin the framework with the
 > exact version, as [Getting Started](1-getting-started.md) shows: Cargo never
@@ -23,7 +23,7 @@ as your product needs it.
 
 For the simplest first experiment, choose **Blank + SQLite**, or Blank with
 `--no-database` if you do not need persistence yet. The larger SaaS starter,
-and the LMS, ERP, Portfolio and Blog [examples](examples.md), have more moving parts
+and the LMS and Blog [examples](examples.md), have more moving parts
 and longer first builds. You can explore them after your toolchain and local
 workflow are working.
 
@@ -58,7 +58,7 @@ versioned Rust documentation.
 | How do requests reach my handlers? | [Routes and middleware](tutorials/08-routing-and-middlewares.md) |
 | Who is allowed to access a record? | [Ownership, RBAC and IDOR](tutorials/13-rbac-authorization.md) |
 | How do I update the framework later? | [Assisted upgrades](tutorials/36-assisted-framework-upgrades.md) |
-| Which crates are stable, and which are experimental? | [Maturity tiers](maturity.md) |
+| Which crates are supported, and what does each tier promise? | [Maturity tiers](maturity.md) |
 
 You can use an AI assistant while learning. Ask it to explain the generated
 files, point to the exact APIs and show a failing test before a bug fix. Treat
@@ -90,7 +90,7 @@ authentication, ownership, secrets, database backups and migrations, external
 provider setup and release status. Start with the
 [security architecture](security-architecture.md), choose features using the
 [capability status](capability-status.md), check each crate's
-[maturity tier](maturity.md) (Core, Extension or Experimental), and measure your
+[maturity tier](maturity.md) (Core or Extension), and measure your
 own workload.
 
 **Ready? [Create your first application →](1-getting-started.md)**

@@ -54,7 +54,7 @@ pub fn render_pricing_page(
                                 "🧪 Every action on this page stays offline"
                             </span>
                             <span class="stat-badge">
-                                "🇧🇷 InfinitePay is experimental until validated live"
+                                "🇧🇷 InfinitePay covers one-off payment links only"
                             </span>
                             <span class="stat-badge">
                                 "🧾 Provider tax features vary by contract"
@@ -119,7 +119,7 @@ pub fn render_pricing_page(
                             <div>
                                 <label for="checkout-provider" class="field-label">"Payment Adapter Fixture:"</label>
                                 <select id="checkout-provider" name="provider" class="field-control">
-                                    <option value="infinitepay">"🇧🇷 InfinitePay (experimental offline fixture)"</option>
+                                    <option value="infinitepay">"🇧🇷 InfinitePay (offline one-off fixture)"</option>
                                     <option value="stripe">"🌐 Stripe (offline billing fixture)"</option>
                                 </select>
                             </div>

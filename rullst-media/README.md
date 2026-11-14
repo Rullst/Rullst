@@ -9,13 +9,16 @@ serves the original upload in a private S3, R2 or MinIO bucket instead, without
 transcoding. It is **opt-in**, with its standalone package
 now included in the v13 release inventory. Final release acceptance remains
 outstanding.
-Real Bunny account, transcoding, CDN and player interoperability are **unvalidated**;
-automated acceptance uses local HTTP protocol fixtures and controlled browser media.
+A production application uses the Bunny adapter with a real Bunny Stream library
+(create, browser upload, status, update, deletion and private playback). Rullst's own
+automated acceptance uses local HTTP protocol fixtures and controlled browser media,
+so transcoding, CDN and player edge cases are not covered by it.
 The `s3` adapter is validated against the offline mock only.
 
-**Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):
-the API may change between 13.x releases and not every real-world scenario is
-validated yet. Experimental does not mean broken.
+**Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)),
+since 13.0.0-alpha.5: optional, and supported for the scope documented here.
+The opt-in `s3` adapter stays experimental: it may change between 13.x
+releases and is validated against the offline mock only.
 
 [PR #227](https://github.com/Rullst/Rullst/pull/227) passed hosted workspace,
 platform and installed-archive source admission at `b21d52e7`. The final release
@@ -40,8 +43,8 @@ Its mock grants are deliberately unusable for browser playback/upload.
 
 There is no default Core/Auth/ORM dependency, framework facade feature or automatic
 blueprint modification. Applications opt in explicitly with
-`rullst-media = { version = "=13.0.0-alpha.4", features = ["bunny", "sqlite"] }`.
-`13.0.0-alpha.4` is a prerelease, not a stable crates.io release.
+`rullst-media = { version = "=13.0.0-alpha.5", features = ["bunny", "sqlite"] }`.
+`13.0.0-alpha.5` is a prerelease, not a stable crates.io release.
 
 ## Server composition
 
@@ -94,6 +97,29 @@ so the adapter still creates it with the random marker title and then updates
 it (two requests): the marker stays the identity that `find_created` searches
 after an ambiguous creation. If the metadata step fails, the created video is
 returned with its marker title; retry `update` with its id.
+
+### Conformance kit (13.0.0-alpha.5)
+
+The `conformance` feature adds `conformance::check_video_provider`, the
+contract the offline Bunny adapter passes, for an application's own
+`VideoProvider` or a wrapper around a built-in one. `VideoExpectations::new(now)`
+expects upload grants, playback grants and listing; `without_playback()` (as
+with upload-only credentials), `without_upload()` and `without_listing()`
+require `MediaError::Unsupported` instead. The kit checks marker validation,
+the create/get/update/delete lifecycle, grant expiry, mode, HTTPS and TTL
+bounds, bounded listing pages and offline determinism, and returns a
+`ConformanceReport`. Run it against the offline mode or a disposable library:
+it creates and deletes videos. An application-owned adapter creates its own
+grants with `UploadGrant::new(&binding, video, protocol, endpoint, signature,
+expires_at)` and `PlaybackGrant::new(&binding, url, expires_at)`, which take
+the binding's library and mode and refuse non-HTTPS or credential-bearing URLs,
+empty or non-ASCII signatures and impossible expiry times with `InvalidInput`;
+`UploadGrant::with_declaration` adds a declared type and length. Its `list`
+builds pages with `ListedVideo::new(id, title, length_seconds, processing)`
+(optional `with_created_at` and HTTPS `with_thumbnail_url`) and
+`VideoPage::new(&query, items, total)`, which echoes the query and refuses
+more than `per_page` items. See
+[Provider conformance kits](https://github.com/Rullst/Rullst/blob/main/docs/src/provider-conformance.md).
 
 ### Library listing (13.0.0-alpha.5)
 

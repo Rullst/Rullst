@@ -2,7 +2,7 @@
 
 use crate::CapitalError;
 use crate::providers::stripe_contract::{API_VERSION, valid_reference};
-use ring::digest::{Context, SHA256};
+use sha2::{Digest, Sha256};
 
 /// Immutable provisioning input; persist it under an authorized account/owner before HTTP.
 #[derive(Clone, PartialEq, Eq)]
@@ -73,21 +73,19 @@ impl StripeCustomerRequest {
     ///
     /// Hashing is not encryption of optional contact data or durable deduplication.
     pub fn request_digest(&self) -> [u8; 32] {
-        let mut hash = Context::new(&SHA256);
+        let mut hash = Sha256::new();
         hash.update(b"rullst.stripe.customer-create.v1\0");
         hash.update(API_VERSION.as_bytes());
-        hash.update(&[0, u8::from(self.email.is_some())]);
+        hash.update([0, u8::from(self.email.is_some())]);
         for field in [
             self.owner_reference(),
             self.idempotency_key(),
             self.email().unwrap_or(""),
         ] {
-            hash.update(&(field.len() as u64).to_be_bytes());
+            hash.update((field.len() as u64).to_be_bytes());
             hash.update(field.as_bytes());
         }
-        let mut digest = [0; 32];
-        digest.copy_from_slice(hash.finish().as_ref());
-        digest
+        hash.finalize().into()
     }
 }
 

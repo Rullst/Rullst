@@ -6,7 +6,7 @@ runs `cargo rullst deploy`, copies the project as docs/src/vm-deployment.md
 (step 4A) does, builds the generated Dockerfile and starts compose.yaml and the
 Caddyfile with Docker or rootless Podman. Checks /health over HTTPS through
 Caddy (its local CA), the HTTP redirect, the unpublished app port, the
-hardening, a migrated SQLite database (SaaS: an account) in its volume across
+hardening, uncompressed pages and pre-compressed static files, a migrated SQLite database (SaaS: an account) in its volume across
 `compose restart`, and the logs. The generated deployment files are never
 modified: the unpublished release crates enter the build context as packaged
 archives through `[patch.crates-io]`, as in .github/test-packaged-distribution.sh.
@@ -31,7 +31,8 @@ import tempfile
 import time
 import tomllib
 
-from vm_deploy_http import Failure, check_application, check_https, expect, log
+from vm_deploy_http import (Failure, check_application, check_compression, check_https, expect,
+                            log)
 
 ROOT = Path(__file__).resolve().parent.parent
 STARTERS = ("blank", "saas")
@@ -394,6 +395,7 @@ def deploy(engine: Engine, starter: str, vm: Path, work: Path) -> None:
     with step(f"{starter}: migrate once, restart, and check the database volume"):
         check_database(engine, vm, app, binary, "db:migrate")
         check_application(starter, ca, password, registered=False)
+        check_compression(starter, ca)
         restart(engine, vm)
         app_id, _ = wait_until_healthy(engine, first_start=False)
         check_https(ca)

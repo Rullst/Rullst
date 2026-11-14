@@ -89,3 +89,23 @@ fn make_pwa_reads_the_choice_from_the_project() {
         "{module}"
     );
 }
+
+#[test]
+fn the_worker_stores_the_htmx_client_the_project_ships() {
+    // A project created before 13.0.0-alpha.5 vendors htmx 1.9.12, a newer
+    // one htmx 2.0.11; the worker lists only the file that exists.
+    for (client, other) in [
+        ("htmx-1.9.12.min.js", "htmx-2.0.11.min.js"),
+        ("htmx-2.0.11.min.js", "htmx-1.9.12.min.js"),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        fs::create_dir_all(root.path().join("static")).unwrap();
+        fs::write(root.path().join("static").join(client), "/* htmx */").unwrap();
+        let worker = files::service_worker(root.path());
+        assert!(
+            worker.contains(&format!("  '/static/{client}',\n")),
+            "{worker}"
+        );
+        assert!(!worker.contains(other), "{worker}");
+    }
+}

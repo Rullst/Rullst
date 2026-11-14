@@ -366,7 +366,7 @@ fn a_missing_static_directory_is_named_in_the_startup_warning() {
         warning.contains("no static directory at /srv/app/static,"),
         "{warning}"
     );
-    assert!(warning.contains("/static/htmx-1.9.12.min.js"), "{warning}");
+    assert!(warning.contains("/static/htmx-2.0.11.min.js"), "{warning}");
     assert!(
         warning.contains("start the server in the directory"),
         "{warning}"

@@ -1,7 +1,8 @@
 # Rullst Labs roadmap: bring your own runner
 
-> **Status:** `rullst-labs` is an Experimental v13 package, published since
-> 13.0.0-alpha.1 (see [maturity tiers](maturity.md)); final release admission
+> **Status:** `rullst-labs` is a v13 package in the Extension tier since
+> 13.0.0-alpha.5, published since 13.0.0-alpha.1 (see
+> [maturity tiers](maturity.md#promotions-in-1300-alpha5)); final release admission
 > remains outstanding. The separately deployed `rullst-labs-runner`
 > candidate passed [source admission in PR #228](labs-first-profile.md#recorded-linux-acceptance)
 > and was then **removed from the workspace for 13.0** (maintainer decision of

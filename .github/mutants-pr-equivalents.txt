@@ -40,11 +40,6 @@ rullst-orm/src/polyglot/turso/model.rs:42:9: replace TursoModel::opaque_columns 
 # differ by 96.
 rullst-orm/src/polyglot/recovery/codec.rs:192:34: replace - with + in base64url_value
 
-# No Qdrant request body can reach 4 MiB: a vector holds at most 65,536 values and a
-# payload at most 1 MiB.
-rullst-orm/src/polyglot/qdrant/mod.rs:242:24: replace > with == in LiveQdrant::send_json
-rullst-orm/src/polyglot/qdrant/mod.rs:242:24: replace > with >= in LiveQdrant::send_json
-
 # The MySQL key-collation conversion is idempotent, so running it on keys that
 # are already ascii_bin only rebuilds the table; the migration lock lives in the
 # connection's session, which dropping the connection ends as closing it does.
@@ -108,9 +103,6 @@ rullst-core/src/radar.rs:310:28: replace / with * in calculate_windows_cpu_perce
 rullst-core/src/radar.rs:310:28: replace / with % in calculate_windows_cpu_percent
 rullst-core/src/radar.rs:310:44: replace * with + in calculate_windows_cpu_percent
 rullst-core/src/radar.rs:310:44: replace * with / in calculate_windows_cpu_percent
-rullst-core/src/rpc.rs:164:13: delete match arm ClientContractError::BodyTooLarge{..} in server::request_contract_failure
-rullst-core/src/rpc.rs:261:67: replace * with + in tests::failure_for
-rullst-core/src/rpc.rs:56:9: replace RpcFailure::from_detail -> Self with Default::default()
 rullst-core/src/server/dylib_loader.rs:9:5: replace is_expected_loaded_library_removal_error -> bool with false
 rullst-core/src/server/dylib_loader.rs:9:5: replace is_expected_loaded_library_removal_error -> bool with true
 rullst-core/src/storage/cloud/multipart/codec.rs:302:31: replace > with == in MultipartStorage::open
@@ -170,16 +162,15 @@ cargo-rullst/src/update/project/snapshot.rs:159:26: replace || with && in read
 cargo-rullst/src/update/project/snapshot.rs:159:45: replace || with && in read
 cargo-rullst/src/update/project/snapshot.rs:163:24: replace + with * in read
 
-# cargo-rullst (alpha.4 campaign: the green command, generators/deploy.rs and
-# update/guided.rs, targeted runs with the CLI's library unit tests): each name
-# below has a row in docs/src/mutation-testing.md "Accepted equivalent mutants".
-cargo-rullst/src/generators/green/artifacts.rs:86:40: replace < with <= in inspect
-cargo-rullst/src/generators/green/load.rs:34:26: replace < with <= in worker
-cargo-rullst/src/generators/green/procfs.rs:31:73: replace > with >= in ticks_per_second
-cargo-rullst/src/generators/green/procfs.rs:36:5: replace ticks_per_second -> Option<u64> with Some(0)
-cargo-rullst/src/generators/green/procfs.rs:36:5: replace ticks_per_second -> Option<u64> with Some(1)
-cargo-rullst/src/generators/green/target.rs:235:30: replace < with <= in OwnedApp::wait_ready
-cargo-rullst/src/generators/green/target.rs:279:79: replace < with <= in OwnedApp::stop
+# cargo-rullst (alpha.4 campaign: the footprint command, then called green,
+# generators/deploy.rs and update/guided.rs, targeted runs with the CLI's
+# library unit tests): each name below has a row in
+# docs/src/mutation-testing.md "Accepted equivalent mutants".
+cargo-rullst/src/generators/footprint/artifacts.rs:86:40: replace < with <= in inspect
+cargo-rullst/src/generators/footprint/load.rs:58:26: replace < with <= in worker
+cargo-rullst/src/generators/footprint/procfs.rs:30:73: replace > with >= in ticks_per_second
+cargo-rullst/src/generators/footprint/target.rs:170:30: replace < with <= in OwnedApp::wait_ready
+cargo-rullst/src/generators/footprint/target.rs:214:79: replace < with <= in OwnedApp::stop
 
 # rullst-studio remote mode (alpha.3 campaign, targeted runs with the package's
 # tests): see docs/src/mutation-testing.md "Accepted equivalent mutants".

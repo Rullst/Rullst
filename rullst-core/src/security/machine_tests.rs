@@ -159,3 +159,18 @@ async fn machine_bodies_are_buffered_up_to_one_mebibyte() {
         .await;
     assert_eq!(rejected.err(), Some(StatusCode::PAYLOAD_TOO_LARGE));
 }
+
+#[test]
+fn bearer_digests_are_sha256_known_answers() {
+    // FIPS 180-2 appendix B.1 vector and the empty message.
+    let hex =
+        |bytes: [u8; 32]| -> String { bytes.iter().map(|byte| format!("{byte:02x}")).collect() };
+    assert_eq!(
+        hex(digest(b"abc")),
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    );
+    assert_eq!(
+        hex(digest(b"")),
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    );
+}

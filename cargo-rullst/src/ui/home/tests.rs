@@ -393,7 +393,7 @@ fn home_entries_lead_with_the_context_and_run_real_commands() {
         HomeAction::Command("doctor"),
         HomeAction::Deploy,
         HomeAction::ProjectOperations,
-        HomeAction::Command("green"),
+        HomeAction::Command("footprint"),
         HomeAction::NewProject,
         HomeAction::Palette,
         HomeAction::Help,

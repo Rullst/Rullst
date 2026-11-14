@@ -3,9 +3,12 @@
 The Blank and SaaS starters render HTML on the server and use HTMX attributes
 for targeted requests and fragment swaps. It does not require a project-local
 SPA bundle, but HTMX itself is browser JavaScript. The CLI's HTML starters write
-a pinned copy to `static/htmx-1.9.12.min.js`, which `rullst::htmx::render_page`
-loads from the same origin; an application without those generated assets must
-serve that file itself. The application's CSP must permit it.
+a pinned copy of htmx 2.0.11 to `static/htmx-2.0.11.min.js`, which
+`rullst::htmx::render_page` loads from the same origin; an application without
+those generated assets must serve that file itself. The application's CSP must
+permit it. An application created before 13.0.0-alpha.5 vendors
+`static/htmx-1.9.12.min.js` instead, which `render_page` keeps loading until
+the application moves to htmx 2 ([frontend guide](../frontend.md#the-htmx-client)).
 
 Rullst's strict CSP has no `'unsafe-inline'` for styles, so htmx may not insert
 its own `<style>` for `hx-indicator`. Under Rullst's security headers,
@@ -148,7 +151,7 @@ Values of `x-*`, `@*`, `:*` and `hx-on*` attributes run as JavaScript, so
 they must be static strings; pass server data through a `data-*` attribute.
 
 `render_page` and its variants answer an htmx request (`HX-Request: true`)
-with the content alone, for the swap. Since 13.0.0-rc.1 two htmx requests
+with the content alone, for the swap. Since 13.0.0-alpha.5 two htmx requests
 receive the whole page instead: the request htmx sends to restore a page that
 is not in its history cache (`HX-History-Restore-Request: true`, so a link with
 `hx-push-url` keeps its layout after Back) and a boosted link or form

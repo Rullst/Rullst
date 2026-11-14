@@ -4,16 +4,10 @@
 pub enum Backend {
     /// Deterministic, in-process document backend for tests and local work.
     Mock,
-    /// MongoDB document database.
-    MongoDb,
-    /// DuckDB in-process analytics database.
-    DuckDb,
     /// Turso/libSQL edge database through its remote protocol.
     Turso,
     /// SurrealDB multi-model database through its HTTP protocol.
     SurrealDb,
-    /// Qdrant dense-vector database through its HTTP protocol.
-    Qdrant,
     /// Redis native data structures through its RESP protocol.
     Redis,
 }
@@ -24,16 +18,12 @@ pub enum Backend {
 pub enum Capability {
     /// Typed document CRUD and bounded listing.
     Documents,
-    /// Parameterized analytical statements and bounded result sets.
-    Analytics,
     /// Explicit, bounded graph queries.
     Graph,
     /// Parameterized SQL over an edge-native remote protocol.
     EdgeSql,
     /// Typed relational model CRUD and bounded queries.
     RelationalModels,
-    /// Dense-vector collection lifecycle and bounded nearest-neighbor queries.
-    Vectors,
     /// Explicit hash, set, and sorted-set operations.
     KeyValueStructures,
 }

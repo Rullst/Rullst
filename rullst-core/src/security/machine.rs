@@ -262,10 +262,7 @@ fn overlaps(first: &str, second: &str) -> bool {
 }
 
 fn digest(value: &[u8]) -> [u8; 32] {
-    let hash = ring::digest::digest(&ring::digest::SHA256, value);
-    let mut result = [0; 32];
-    result.copy_from_slice(hash.as_ref());
-    result
+    <sha2::Sha256 as sha2::Digest>::digest(value).into()
 }
 
 /// Immutable bounded policy installed through `Server::with_machine_endpoints`

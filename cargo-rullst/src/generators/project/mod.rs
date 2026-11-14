@@ -5,6 +5,7 @@ pub(crate) mod ci;
 mod command;
 pub(crate) mod create;
 mod docker;
+pub(crate) mod docker_static;
 pub mod env_config;
 mod next_steps;
 mod vcs;
@@ -13,7 +14,7 @@ pub mod wizard;
 use std::io::{Error as IoError, ErrorKind};
 use std::path::{Path, PathBuf};
 
-pub(crate) use command::{new_command, run_new_command};
+pub(crate) use command::{new_command, reject_removed_side_stores, run_new_command};
 pub use docker::generate_docker_files;
 pub(crate) use docker::{database_provider, project_database_provider};
 pub use wizard::{PolyglotIntegration, ProjectWizardOptions, run_project_wizard};
@@ -24,10 +25,7 @@ pub struct ProjectScaffoldOptions {
     pub docker: bool,
     pub use_defaults: bool,
     pub turso: bool,
-    pub mongodb: bool,
-    pub duckdb: bool,
     pub surrealdb: bool,
-    pub qdrant: bool,
     pub database: Option<&'static str>,
     pub no_database: bool,
     pub hot_reload: bool,

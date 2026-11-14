@@ -104,8 +104,9 @@ fn env_files_must_be_ignored_and_untracked() {
     assert_eq!(env_git_check(root, true).unwrap().status, Status::Fail);
 }
 
-/// `rullst::auth::get_app_key()` writes `.rullst_dev_key` in the working
-/// directory, so `cargo test` leaves a secret where `git add .` finds it.
+/// `rullst::auth::get_app_key()` before 13.0.0-alpha.5 wrote
+/// `.rullst_dev_key` in the working directory, where `git add .` finds it;
+/// it still reads such a file.
 #[test]
 fn the_development_key_must_be_ignored_and_untracked() {
     let project = tempfile::tempdir().unwrap();

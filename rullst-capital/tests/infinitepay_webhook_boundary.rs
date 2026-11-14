@@ -1,4 +1,3 @@
-use ring::hmac;
 use rullst_capital::{BillingProvider, CapitalError, InfinitePayProvider};
 use std::collections::HashMap;
 
@@ -10,7 +9,7 @@ fn real_infinitepay_callbacks_cannot_establish_the_unreviewed_body_contract() {
         br#"{"invoice_slug":"abc123","amount":1000,"paid_amount":1000,"transaction_nsu":"tx","order_nsu":"order"}"#.as_slice(),
         br#"{"id":"tx","customer_id":"customer","plan_id":"plan","status":"paid"}"#.as_slice(),
     ] {
-        let signature = hex::encode(hmac::sign(&hmac::Key::new(hmac::HMAC_SHA256, b"fixture-secret"), body));
+        let signature = hex::encode(hmac_sha256(b"fixture-secret", body));
         assert!(matches!(provider.verify_signature(body, &signature), Err(CapitalError::UnsupportedOperation(_))));
         for headers in [HashMap::new(), HashMap::from([("x-infinitepay-signature".into(), signature)])] {
             assert!(matches!(provider.handle_webhook(body, &headers), Err(CapitalError::UnsupportedOperation(_))));
@@ -38,4 +37,11 @@ fn infinitepay_local_fixtures_require_explicit_mock_verification() {
         InfinitePayProvider::new("", "").handle_webhook(body, &headers),
         Err(CapitalError::ConfigurationError(_))
     ));
+}
+
+/// HMAC-SHA256 of `message` under `key`.
+fn hmac_sha256(key: &[u8], message: &[u8]) -> Vec<u8> {
+    let mut mac = <hmac::Hmac<sha2::Sha256> as hmac::KeyInit>::new_from_slice(key).unwrap();
+    hmac::Mac::update(&mut mac, message);
+    hmac::Mac::finalize(mac).into_bytes().to_vec()
 }

@@ -388,9 +388,16 @@ impl Orm {
         crate::query_cache::validate_namespace(&cache_namespace)?;
         let client = crate::_redis::Client::open(redis_url).map_err(crate::Error::redis)?;
         crate::redis_tls::install_provider_for(client.get_connection_info());
-        let manager = crate::_redis::aio::ConnectionManager::new(client.clone())
-            .await
-            .map_err(crate::Error::redis)?;
+        // While Redis is down, every command waits for the manager's
+        // reconnection before a remembered read falls back to the database
+        // or a write reports its failed invalidation. The redis-rs default of
+        // six backed-off retries made that about 9.5 s per call (and per
+        // failed initialization); one retry keeps the cache optional.
+        let config = crate::_redis::aio::ConnectionManagerConfig::new().set_number_of_retries(1);
+        let manager =
+            crate::_redis::aio::ConnectionManager::new_with_config(client.clone(), config)
+                .await
+                .map_err(crate::Error::redis)?;
         REDIS_STATE
             .set(RedisState {
                 client,

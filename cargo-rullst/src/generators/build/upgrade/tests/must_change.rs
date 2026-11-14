@@ -91,6 +91,7 @@ fn the_guide_link_follows_the_project_version() {
     assert!(table.starts_with(&format!("{}#", report::GUIDE)), "{table}");
     let alpha2 = format!("{}#{}", report::GUIDE, report::ALPHA2_CHECKLIST);
     let alpha3 = format!("{}#{}", report::GUIDE, report::ALPHA3_CHECKLIST);
+    let alpha4 = format!("{}#{}", report::GUIDE, report::ALPHA4_CHECKLIST);
     for (current, expected) in [
         (None, table.to_string()),
         (Some("12.3.0"), table.to_string()),
@@ -100,9 +101,10 @@ fn the_guide_link_follows_the_project_version() {
         (Some("13.0.0-alpha.x"), table.to_string()),
         (Some("13.0.0-alpha.2"), alpha2.clone()),
         (Some("13.0.0-alpha.3"), alpha3.clone()),
-        (Some("13.0.0-alpha.4"), alpha3.clone()),
-        (Some("13.0.0-beta.1"), alpha3.clone()),
-        (Some("13.0.0-rc.1"), alpha3.clone()),
+        (Some("13.0.0-alpha.4"), alpha4.clone()),
+        (Some("13.0.0-alpha.5"), alpha4.clone()),
+        (Some("13.0.0-beta.1"), alpha4.clone()),
+        (Some("13.0.0-rc.1"), alpha4.clone()),
         (Some("13.0.0"), table.to_string()),
         (Some("13.1.0-rc.1"), table.to_string()),
         (Some("13.0.1-rc.1"), table.to_string()),
@@ -182,6 +184,10 @@ fn the_linked_sections_exist_in_the_migration_guide() {
         anchor("Upgrading an alpha.3 application to alpha.4"),
         "upgrading-an-alpha3-application-to-alpha4"
     );
+    assert_eq!(
+        anchor("Upgrading an alpha.4 application to alpha.5"),
+        report::ALPHA4_CHECKLIST
+    );
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../docs/src/migration-v13.md");
     // Packaged crates do not ship the repository documentation.
     let Ok(guide) = std::fs::read_to_string(path) else {
@@ -196,7 +202,12 @@ fn the_linked_sections_exist_in_the_migration_guide() {
         .rsplit_once('#')
         .map(|(_, anchor)| anchor)
         .unwrap();
-    for expected in [table, report::ALPHA2_CHECKLIST, report::ALPHA3_CHECKLIST] {
+    for expected in [
+        table,
+        report::ALPHA2_CHECKLIST,
+        report::ALPHA3_CHECKLIST,
+        report::ALPHA4_CHECKLIST,
+    ] {
         assert!(
             anchors.iter().any(|anchor| anchor == expected),
             "#{expected} is not a section of migration-v13.md: {anchors:?}"

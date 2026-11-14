@@ -13,7 +13,7 @@
 //! [`BillingProvider::confirm_one_off_payment`]: crate::BillingProvider::confirm_one_off_payment
 
 use crate::error::CapitalError;
-use ring::digest::{Context, SHA256};
+use sha2::{Digest, Sha256};
 
 mod payment;
 pub use payment::{OneOffPayment, OneOffPaymentState, PaymentNotification};
@@ -196,10 +196,10 @@ impl OneOffCheckoutRequest {
     /// Versioned SHA-256 digest of every field, to compare a persisted
     /// attempt with the request that confirms it.
     pub fn request_digest(&self) -> [u8; 32] {
-        let mut hash = Context::new(&SHA256);
+        let mut hash = Sha256::new();
         hash.update(b"rullst.one-off-checkout.v1\0");
-        hash.update(&self.unit_amount_minor.to_be_bytes());
-        hash.update(&self.quantity.to_be_bytes());
+        hash.update(self.unit_amount_minor.to_be_bytes());
+        hash.update(self.quantity.to_be_bytes());
         for field in [
             self.reference.as_str(),
             self.currency.as_str(),
@@ -208,12 +208,10 @@ impl OneOffCheckoutRequest {
             self.cancel_url.as_str(),
             self.customer_email.as_deref().unwrap_or(""),
         ] {
-            hash.update(&(field.len() as u64).to_be_bytes());
+            hash.update((field.len() as u64).to_be_bytes());
             hash.update(field.as_bytes());
         }
-        let mut digest = [0; 32];
-        digest.copy_from_slice(hash.finish().as_ref());
-        digest
+        hash.finalize().into()
     }
 
     /// Provider idempotency key: a retry of the same request reuses it.

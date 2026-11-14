@@ -18,8 +18,9 @@ async fn htmx_request(headers: &[(&str, &str)]) -> HtmxRequest {
 #[tokio::test]
 async fn history_restores_and_boosted_requests_receive_the_whole_page() {
     let content = || crate::html! { <p>"fragment"</p> };
-    // htmx 1.9.12 sends both headers when its history cache misses and
-    // replaces the whole <body> with the response.
+    // htmx 1.9.12 and htmx 2 (its default `historyRestoreAsHxRequest`) send
+    // both headers when the history cache misses and replace the whole
+    // <body> with the response.
     let restore = htmx_request(&[
         ("HX-Request", "true"),
         ("HX-History-Restore-Request", "true"),

@@ -131,15 +131,6 @@ fn deploy_doctor_prints_one_document() {
 }
 
 #[test]
-fn academy_doctor_prints_one_document() {
-    let document = Project::new().json(
-        &["academy:doctor", "--json"],
-        "rullst.academy-diagnostic.v1",
-    );
-    assert_eq!(document["certification"], false);
-}
-
-#[test]
 fn upgrade_dry_run_prints_one_document() {
     let project = Project::new();
     let root = project.dir.path();

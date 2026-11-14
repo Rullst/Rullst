@@ -170,11 +170,6 @@ remains separate.
 - **Axum-compatible routing:** `rullst::Router` wraps and converts to/from
   `axum::Router`; application latency depends on handlers, middleware, build
   profile, and deployment.
-- **Typed server functions:** concrete async `#[server_function]` items share
-  owned Serde arguments/results through the versioned `rullst.client` v1
-  envelope. The generated native router and Wasm caller enforce same-origin
-  paths, bounded bodies, correlation and redacted errors; hosts still own
-  identity, tenant, authorization, idempotency and rate-limit policy.
 - **Rullst Radar (`rullst::radar`):** Collects process RSS/CPU where an OS probe
   is supported, Tokio task/yield observations when a runtime is available, and
   process uptime. Unsupported probes return `None`: RSS and CPU have probes
@@ -255,7 +250,8 @@ remains separate.
   `GET /_rullst/monitor/v1` once `RULLST_MONITOR_TOKENS` (or
   `Monitor::with_token`, or an application `MonitorAuthorizer`) provides a
   credential; without one nothing is mounted. It reports request rate,
-  latency and status classes per route pattern, registered queues, N+1
+  latency, status classes and response bytes per route pattern, registered
+  queues, N+1
   fingerprints and the radar, never request data or configuration, and
   requires TLS evidence in staging and production. See the
   [production monitoring guide](../production-monitoring.md).
@@ -579,8 +575,9 @@ logs a `warn` event with the rule and path of each request it would refuse.
 not inspect, for routes that accept text such as code samples (see
 [seeing and accepting WAF false positives](../security-layers.md#seeing-and-accepting-waf-false-positives)).
 
-TLS connections use `aws-lc-rs` as the rustls crypto provider; `ring` is only
-a primitives library (HMAC, digests, randomness, signatures). With the `orm`,
+TLS connections use `aws-lc-rs` as the rustls crypto provider. Core hashes
+with the pure-Rust `sha2` crate and needs `ring` only for the AES-256-GCM
+recovery records of `storage-multipart`. With the `orm`,
 `storage-s3` or `telemetry` feature, `Server` start-up installs aws-lc-rs as the
 rustls process default before telemetry and the database pool build TLS
 clients, and so does the OTLP exporter before it builds its HTTP client. An

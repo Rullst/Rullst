@@ -5,8 +5,9 @@ from the root [ROADMAP](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md); 
 [capability ledger](capability-ledger.md) retain the evidence and limitations.
 The labels here deliberately do not turn partial foundations into completed
 features. Package stability is a separate question: the
-[maturity tiers](maturity.md) classify every crate as Core, Extension or
-Experimental and state what each tier promises within 13.x.
+[maturity tiers](maturity.md) classify every crate as Core or Extension (none
+has been Experimental since 13.0.0-alpha.5) and state what each tier promises
+within 13.x.
 
 ## v12 stable snapshot — 15 September 2026
 
@@ -44,7 +45,7 @@ future source changes.
 | Package | Role | Typical user choice |
 | :--- | :--- | :--- |
 | `rullst-core` | Low-level runtime engine: HTTP server, routes, lifecycle, queue/realtime, storage/cache and the default browser-security baseline. It deliberately does not aggregate every domain crate. | Use directly when a library/application wants only the runtime primitives and explicit dependencies. |
-| `rullst` | Ergonomic umbrella facade. Cargo features re-export Core plus selected ORM, Auth, Connect, Security, AI, Mail, Capital, Studio, Nexus, Messaging and IoT APIs (and, from the 13.0.0-alpha.1 prerelease, Privacy) through one dependency. It also exposes the browser/WASM surface used by web-first applications; PWA packaging (`make:pwa`) is a CLI workflow, not a re-exported crate. Its maturity cannot exceed the crates selected underneath it. | Use for most Rullst applications and enable only the required features. |
+| `rullst` | Ergonomic umbrella facade. Cargo features re-export Core plus selected ORM, Auth, Connect, Security, AI, Mail, Capital, Studio, Nexus, Messaging and IoT APIs (and, from the 13.0.0-alpha.1 prerelease, Privacy) through one dependency. It also compiles for `wasm32` (Core's edge runtime); PWA packaging (`make:pwa`) is a CLI workflow, not a re-exported crate. Its maturity cannot exceed the crates selected underneath it. | Use for most Rullst applications and enable only the required features. |
 
 ## Documentation maintenance gate
 
@@ -77,7 +78,7 @@ homologated.
 | M13 | Audited PQC protocols and sandboxed Wasm extensions | ⏳ Still to implement — not started |
 | M14 | HTMX-first SSR and real Leptos/Dioxus interoperability | 🟡 Still to implement — partial |
 | M15 | Runtime queues/cache/scheduler plus brokered messaging | 🟡 Still to implement — local foundation and admitted standalone Redis profile; other adapters open |
-| M16 | Wasm islands and `#[client_component]` protocol | ⏳ Not implemented — islands (`#[island]`, `make:island`, `build:client`) were removed in 13.0.0-alpha.5; `#[server_function]` and its `wasm32` caller remain |
+| M16 | Wasm islands and `#[client_component]` protocol | ⏳ Not implemented — islands (`#[island]`, `make:island`, `build:client`) were removed in 13.0.0-alpha.5, with the typed browser RPC and `wasm32` caller they used |
 | M17 | Realtime, object storage, media, and packages | 🟡 Still to implement — partial |
 | M18 | LiveView-style server-driven UI | ⏳ Not implemented — Live components and `live::recovery` were removed in 13.0.0-alpha.5; use htmx with `RealtimeSse` or WebSockets |
 | M19 | Radar, agent schemas, spans, and Prometheus | ✅ Implemented — bounded |

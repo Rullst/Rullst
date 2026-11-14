@@ -129,11 +129,8 @@ import tomllib
 from pathlib import Path
 
 manifest = tomllib.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-# This consumer resolves its graph fresh, as a new application does. crates.io
-# yanked every zip release before 9.0.3, and libduckdb-sys still requires zip 6,
-# so `orm-duckdb` cannot resolve without an existing lockfile (CHANGELOG known
-# limitation). The workspace's locked builds keep compiling DuckDB.
-unresolvable = {"default", "orm-duckdb"}
+# This consumer resolves its graph fresh, as a new application does.
+unresolvable = {"default"}
 features = sorted(name for name in manifest.get("features", {}) if name not in unresolvable)
 if not features:
     raise SystemExit("packaged rullst manifest has no public features")
@@ -367,7 +364,7 @@ mkdir -p "$multipart_dir/tests"
   printf '[package]\nname = "rullst-packaged-multipart"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
   printf '[features]\ndefault = ["storage-s3", "storage-multipart"]\nstorage-s3 = []\nstorage-multipart = []\n\n[dependencies]\n'
   printf 'rullst = { version = "=%s", default-features = false, features = ["storage-multipart"] }\n' "$version"
-  printf 'base64 = "0.23"\nring = "0.17"\nserde_json = "1"\naxum = "0.8"\nreqwest = { version = "0.13", default-features = false, features = ["rustls"] }\n'
+  printf 'base64 = "0.23"\nsha2 = "0.11"\nserde_json = "1"\naxum = "0.8"\nreqwest = { version = "0.13", default-features = false, features = ["rustls"] }\n'
   printf 'tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "time"] }\n'
 } > "$multipart_dir/Cargo.toml"
 for test in storage_multipart storage_multipart_failures storage_multipart_live storage_s3_live; do
@@ -480,11 +477,12 @@ if [ ! -x "$rullst_bin" ]; then
 fi
 "$rullst_bin" --version
 
-# `green` is part of the installed CLI since 13.0.0-alpha.4.
-"$rullst_bin" green --help > /dev/null
+# `footprint` is part of the installed CLI (`green` in 13.0.0-alpha.4).
+"$rullst_bin" footprint --help > /dev/null
 
-# The CLI's starters since 13.0.0-alpha.4; LMS, Blog, Portfolio and ERP are
-# repository examples, and asking for one fails before anything is written.
+# The CLI's starters since 13.0.0-alpha.4; LMS and Blog are repository
+# examples (Portfolio and ERP point to the blog example), and asking for one
+# fails before anything is written.
 blueprints=(blank api saas)
 if (cd "$projects_dir" && "$rullst_bin" new packaged-lms --default --blueprint lms \
   --skip-initial-migration > /dev/null 2>&1); then
@@ -510,7 +508,7 @@ for blueprint in "${blueprints[@]}"; do
     echo "Generated $blueprint manifest unexpectedly references a source path."
     exit 1
   fi
-  # Prereleases are pinned exactly (`=13.0.0-alpha.4`) so Cargo cannot move a
+  # Prereleases are pinned exactly (`=13.0.0-alpha.5`) so Cargo cannot move a
   # generated project to a later, incompatible alpha; stable versions are not.
   if ! grep -Fq "rullst = { version = \"$version\"" "$manifest" \
     && ! grep -Fq "rullst = { version = \"=$version\"" "$manifest"; then

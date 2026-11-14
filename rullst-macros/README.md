@@ -19,13 +19,12 @@ carries its own, weaker promise.
 | `i18n_catalog!` | Re-exported as `rullst::i18n::catalog!`. Reads `<dir>/<tag>.toml` catalogs at compile time and fails on keys missing from a locale, placeholder or plural-shape mismatches, malformed templates and plural forms the locale's rule does not use; defines `LOCALES` and a `t!` macro whose unknown keys and missing, unexpected or repeated arguments are compile errors. | `t!` returns plain text that `html!` escapes; only `*_html` keys are trusted catalog HTML (arguments still escaped). Plural forms follow CLDR's cardinal rules for 19 languages; catalogs are compiled in; a `build.rs` printing `cargo::rerun-if-changed=locales` rebuilds the crate when a locale file is added or removed (edits are tracked by the macro). |
 | `#[require_role("Role")]` | Requires an async handler binding named `user`, checks `HasRole` before the body, and returns HTTP 403 on denial. | Authentication, user extraction, role persistence, tenant policy, and ownership checks remain application responsibilities. |
 | `#[derive(Billable)]` | Implements the bounded Capital `Billable` facade for a named-field struct containing `email: String`; optional subscription, tier, and paired grace-period fields are recognized. | It does not charge by itself or invent provider/payment/authorization data. |
-| `#[server_function]` | Takes a concrete async free function with at most 16 parameters and generates one `RpcResult<T>` function for native and Wasm targets and, on native targets, a matching `<name>_rpc_router()`. Arguments and results use the bounded, versioned `rullst.client` v1 JSON envelope. | Parameters and output must be owned Serde types. The generated router supplies transport, not identity: mount it inside the production security, authentication, tenant, authorization, rate-limit, and application idempotency policies. |
 | `#[route]` | Deprecated compatibility marker that preserves an argument-free annotation. | It never registers a route. Use `rullst::routes!`. |
 
 ## Experimental compatibility surface
 
-`#[island]`, `#[live_component]` and `#[live_event]` were removed in
-13.0.0-alpha.5; see the
+`#[island]`, `#[live_component]`, `#[live_event]` and the typed browser RPC
+attribute were removed in 13.0.0-alpha.5; see the
 [migration guide](https://rullst.github.io/Rullst/book/migration-v13.html#upgrading-an-alpha4-application-to-alpha5).
 
 - `#[memoize]` uses Rullst's process-local memory cache. Keys combine the
@@ -47,17 +46,10 @@ The UI test suite checks malformed HTML, dynamic event-handler attributes
 unquoted text with `>`, a `//`-cut URL or `if` without `@`, conditional
 attributes without a
 braced expression, unsupported or malformed `@` control flow and a
-non-exhaustive `@match`, unknown/duplicate `server_function`
-options, unsafe RPC paths, synchronous/generic/method server functions,
-borrowed and destructured RPC parameters, invalid return types, missing role
-identity bindings, invalid legacy route arguments, invalid `Billable`
-shapes, translation catalogs with a missing key, mismatched placeholders or a
-missing plural form, and `t!` calls with an unknown key or wrong arguments.
-Native facade tests exercise parameter/result transport, correlation,
-redacted application failures, media-type/schema/body-limit rejection, and the
-production CSRF layer. Both supported Wasm targets compile the client
-expansion; browser-engine/network interoperability beyond CI remains external
-evidence.
+non-exhaustive `@match`, missing role identity bindings, invalid legacy
+route arguments, invalid `Billable` shapes, translation catalogs with a
+missing key, mismatched placeholders or a missing plural form, and `t!` calls
+with an unknown key or wrong arguments.
 
 ```console
 cargo test -p rullst-macros

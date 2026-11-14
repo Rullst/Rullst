@@ -1,5 +1,5 @@
 use crate::error::CapitalError;
-use ring::digest::{SHA256, digest};
+use sha2::{Digest, Sha256};
 
 /// Maximum amount accepted by the portable direct-charge contract.
 ///
@@ -263,7 +263,7 @@ pub(crate) fn mock_charge_receipt(
         material.push(0);
     }
     material.extend_from_slice(&request.amount_minor().to_be_bytes());
-    let fingerprint = hex::encode(digest(&SHA256, &material));
+    let fingerprint = hex::encode(Sha256::digest(material));
     let fingerprint = fingerprint.get(..24).ok_or_else(|| {
         CapitalError::ProviderRequestFailed(
             "failed to construct deterministic mock charge ID".to_string(),
@@ -368,6 +368,9 @@ mod tests {
         let first = mock_charge_receipt("stripe", &request).expect("mock receipt");
         let second = mock_charge_receipt("stripe", &request).expect("mock receipt");
         assert_eq!(first, second);
+        // The first 12 bytes of SHA-256 over the NUL-terminated identity
+        // fields and the big-endian amount, computed independently.
+        assert_eq!(first.charge_id(), "ch_mock_b0eb5404370ac39fe4fb6b7e");
         assert_eq!(first.status(), ChargeStatus::Mock);
         assert!(!first.is_succeeded());
         assert_eq!(first.provider(), "stripe");

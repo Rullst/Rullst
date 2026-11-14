@@ -1,6 +1,7 @@
 //! Explicit one-time hosted checkout, separate from recurring subscriptions.
 
 use crate::{CapitalError, StripeCheckoutRequest};
+use sha2::{Digest, Sha256};
 
 /// Server-owned fixed one-time price and the amount/currency shown to the buyer.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -97,14 +98,12 @@ impl StripePaymentCheckoutRequest {
     }
     /// Domain-separated from recurring checkout and bound to displayed price data.
     pub fn request_digest(&self) -> [u8; 32] {
-        let mut hash = ring::digest::Context::new(&ring::digest::SHA256);
+        let mut hash = Sha256::new();
         hash.update(b"rullst.stripe.payment-checkout.v1\0");
-        hash.update(&self.checkout.request_digest());
-        hash.update(&self.price.amount_minor.to_be_bytes());
+        hash.update(self.checkout.request_digest());
+        hash.update(self.price.amount_minor.to_be_bytes());
         hash.update(self.price.currency.as_bytes());
-        let mut result = [0; 32];
-        result.copy_from_slice(hash.finish().as_ref());
-        result
+        hash.finalize().into()
     }
 }
 

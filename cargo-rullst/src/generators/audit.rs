@@ -185,6 +185,15 @@ pub(crate) fn run_audit(options: AuditOptions<'_>) -> Result<(), Box<dyn std::er
             "  {} cargo-audit not installed. Run 'cargo install cargo-audit' for deep dependency scanning.",
             "[NOTE]".yellow()
         ),
+        EvidenceStatus::Findings(count) => {
+            say!(
+                json,
+                "  {} cargo-audit reported {} vulnerable dependency advisory(ies); run `cargo audit` for the list.",
+                "[FINDINGS]".red().bold(),
+                count
+            );
+            issues_found += count;
+        }
         _ => {
             say!(
                 json,

@@ -21,7 +21,9 @@ impl Analyzer for Brightness {
             sample.bytes().is_empty(),
             "no image travels with statistics"
         );
-        let stats = sample.statistics().ok_or(Error::AnalysisUnavailable)?;
+        let stats = sample
+            .luminance_statistics()
+            .ok_or(Error::AnalysisUnavailable)?;
         Ok(Finding::Camera(
             if stats.mean() < 24.0 || stats.standard_deviation() < 6.0 {
                 PresenceObservation::Obscured
@@ -115,13 +117,15 @@ fn luminance_statistics_are_bounded_and_carry_no_bytes() {
     assert_eq!(sample.format(), SampleFormat::LuminanceStatistics);
     assert_eq!(sample.kind(), AnalysisKind::CameraPresence);
     assert!(sample.bytes().is_empty());
-    assert_eq!(sample.statistics(), Some(stats));
+    assert_eq!(sample.luminance_statistics(), Some(stats));
+    assert_eq!(sample.loudness_statistics(), None);
     assert!(matches!(
         MediaSample::new(SampleFormat::LuminanceStatistics, b"12"),
         Err(Error::InvalidInput)
     ));
     let frame = MediaSample::new(SampleFormat::PngFrame, b"\x89PNG\r\n\x1a\nx").unwrap();
-    assert_eq!(frame.statistics(), None);
+    assert_eq!(frame.luminance_statistics(), None);
+    assert_eq!(frame.loudness_statistics(), None);
 }
 
 #[tokio::test]

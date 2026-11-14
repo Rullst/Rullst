@@ -1,5 +1,0 @@
-error: unsupported #[server_function] option; expected `path = "/api/rpc/..."`
- --> tests/ui/server_function_arguments.rs:3:19
-  |
-3 | #[server_function(timeout_ms = 100)]
-  |                   ^^^^^^^^^^^^^^^^

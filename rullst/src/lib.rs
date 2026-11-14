@@ -18,15 +18,15 @@
 //! | `messaging` | `rullst::messaging` | `rullst-messaging` | Extension |
 //! | `nexus` | `rullst::nexus` | `rullst-nexus` | Extension |
 //! | `studio` | `rullst::studio` | `rullst-studio` | Extension |
-//! | `iot` | `rullst::iot` | `rullst-iot` | Experimental |
-//! | `privacy` | `rullst::privacy` | `rullst-privacy` | Experimental |
+//! | `iot` | `rullst::iot` | `rullst-iot` | Extension |
+//! | `privacy` | `rullst::privacy` | `rullst-privacy` | Extension |
 //!
 //! There is no default feature, so a database-free application compiles no
 //! database code. Pin the exact version with `=` and name the features you use,
 //! for example `features = ["strict-postgres", "auth"]`; `cargo rullst new`
-//! writes this for you. docs.rs builds this page with every feature except
-//! `orm-duckdb` and the `strict-*` profiles, and labels each item with the
-//! features it needs; the ORM is shown with `drivers-all`.
+//! writes this for you. docs.rs builds this page with every feature except the
+//! `strict-*` profiles, and labels each item with the features it needs; the
+//! ORM is shown with `drivers-all`.
 //!
 //! Guides, tutorials and the maturity tiers are in the
 //! [Rullst book](https://rullst.github.io/Rullst/book/).
@@ -36,9 +36,6 @@ extern crate self as rullst;
 
 pub use rullst_core::*;
 pub use rullst_macros::{Billable, require_role};
-
-#[cfg(target_arch = "wasm32")]
-mod server_function_wasm_contract;
 
 /// Security facade for the lightweight Core middleware and, when the
 /// `security` feature is enabled, the extended `rullst-security` suite.

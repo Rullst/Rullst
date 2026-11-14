@@ -21,9 +21,9 @@ for Humans and AI."**
 Intentions, not promises; dates follow the evidence gates described below.
 
 - **v13:** `13.0.0-alpha.1` to `alpha.3` were published from 11 to 24
-  October 2026 and `13.0.0-alpha.4` on 31 October. `13.0.0-alpha.5` adds what
-  the applications upgraded to alpha.4 asked for and is the 13.0 feature and
-  public API freeze. Then `13.0.0-rc.1` (fixes and documentation only,
+  October 2026 and `13.0.0-alpha.4` on 31 October. `13.0.0-alpha.5`,
+  prepared on 12 November, adds what the applications upgraded to alpha.4
+  asked for and is the 13.0 feature and public API freeze. Then `13.0.0-rc.1` (fixes and documentation only,
   driven by user feedback) and `13.0.0` stable, from which the
   [maturity tiers](docs/src/maturity.md) apply; see the
   [path to 13.0.0](#path-to-1300).
@@ -40,7 +40,7 @@ Intentions, not promises; dates follow the evidence gates described below.
   add the test-only checks of the [verification roadmap](#verification-roadmap),
   and prepare an independent review with the
   [external audit kit](docs/src/external-audit-kit.md).
-- **Selected programmes:** the [green software roadmap](docs/src/green-software-roadmap.md)
+- **Selected programmes:** the [resource efficiency roadmap](docs/src/resource-efficiency-roadmap.md)
   and the [legal compliance roadmap](docs/src/legal-compliance-roadmap.md).
 
 ## Status language
@@ -84,14 +84,14 @@ neither release readiness nor remaining effort.
 | **M11** | SaaS: hardened Nexus, Omni vision, billing, and entitlements | `[~] Partial` *(worth building in bounded modules — Nexus and billing foundations exist, but Omni, uniform live gateway coverage, and declarative entitlements are not complete)* | v13+ |
 | **M12** | Defense in depth: RASP/WAF, Vault, honeypots, HMAC audit, secure headers, Login Jail, DLP, TOTP, fingerprinting, CLI inspection, and Threat Radar | `[~] Partial` *(worth continuous hardening — concrete controls exist, but they do not prove universal OWASP coverage, zero leakage, external intelligence, or certification)* | Continuous |
 | **M13** | Post-quantum web architecture, `rullst-quantum`, NIST PQC, and sandboxed Wasm plugins | `[ ] Not implemented` *(worth later only for a concrete protocol and threat model, using audited primitives; home-grown “quantum-safe” crypto is not worth implementing)* | v13 research |
-| **M14** | Frontend: HTMX-first SSR and Leptos/Dioxus interoperability | `[~] Partial` *(worth improving — HTMX/HTML support is real, while the current Leptos/Dioxus types are compatibility wrappers rather than full framework integrations; “zero bundle” is a selectable architecture, not a universal guarantee)* | v13 |
+| **M14** | Frontend: HTMX-first SSR and Leptos/Dioxus interoperability | `[~] Partial` *(worth improving — HTMX/HTML support is real; 13.0.0-alpha.5 removed the `rullst_core::frontend` Leptos/Dioxus wrappers, which only returned HTML and were not framework integrations; “zero bundle” is a selectable architecture, not a universal guarantee)* | v13 |
 | **M15** | Runtime: queues, cache, scheduler, multi-stage Docker, and brokered messaging | `[~] Partial` *(bounded Core Memory/SQLite/Redis foundations plus `rullst-messaging` envelopes, idempotency, groups, leases, retry/DLQ, deterministic broker, contract suite and durable local SQLite state exist; the Redis Streams profile passed source admission in PR #236 and ships in the 13.0.0-alpha.1 prerelease; replication and RabbitMQ, Kafka, NATS, SQS/SNS, GCP Pub/Sub and Pulsar adapters remain future work)* | Foundation v12; remote adapters v13+ |
-| **M16** | Wasm islands and `#[client_component]` | `[ ] Not implemented — removed` *(13.0.0-alpha.5 removed `#[island]`, `make:island` and `build:client`: the default CSP has no `'wasm-unsafe-eval'`, so browsers could not compile the islands under the default security headers. The bounded `#[server_function]` transport stays, over `rullst.client` v1 with a generated Axum route, a `wasm32` caller, compile diagnostics and native/Wasm evidence. See [the migration notes](docs/src/migration-v13.md#upgrading-an-alpha4-application-to-alpha5))* | v13 |
+| **M16** | Wasm islands and `#[client_component]` | `[ ] Not implemented — removed` *(13.0.0-alpha.5 removed `#[island]`, `make:island` and `build:client`: the default CSP has no `'wasm-unsafe-eval'`, so browsers could not compile the islands under the default security headers. The same release removed the typed browser RPC, its `wasm32` caller and the shared client envelope, which existed so islands could call the server; htmx and Alpine use ordinary routes. See [the migration notes](docs/src/migration-v13.md#upgrading-an-alpha4-application-to-alpha5))* | v13 |
 | **M17** | Real-time, object storage, media, and `cargo rullst pkg` | `[~] Partial` *(WebSocket/SSE and local storage foundations exist. The Bunny Stream lifecycle, first published in the 13.0.0-alpha.1 prerelease, passed hosted/browser/archive source acceptance in PR #227; real provider/CDN interoperability remains unvalidated. Optional S3/R2 private operations passed source/package admission in PR #236; final release and provider interoperability remain unvalidated; image processing and a production package-registry contract remain open)* | v13+ |
 | **M18** | LiveView-style server-driven UI and `make:live` | `[ ] Not implemented — removed` *(13.0.0-alpha.5 removed `LiveComponent`, `#[live_component]`, `live_ws_handler`, `make:live` and the `live::recovery` candidate. Server-driven updates use htmx with `rullst::realtime::RealtimeSse` (bounded Server-Sent Events) or `rullst::ws` WebSockets. See [the migration notes](docs/src/migration-v13.md#upgrading-an-alpha4-application-to-alpha5))* | v13 |
 | **M19** | AI/telemetry: Radar, agent tool schemas, spans, and Prometheus `/metrics` | `[x] Implemented (bounded)` — local telemetry and export surfaces exist; unavailable sources must remain unavailable rather than becoming invented values | v12 hardening |
 | **M20** | Persistence: zero-copy event streaming and immutable ledger engine | `[ ] Not implemented` *(interesting but lower priority — worth implementing only after defining persistence, consistency, recovery, and verification semantics; the HMAC audit chain is not a distributed ledger)* | v13 research |
-| **M21** | Omni-frontend protocol and mobile hypermedia bridge | `[~] Partial` *(the shared `rullst.client` v1 envelope exists; 13.0.0-alpha.3 retires the Tauri shells and the native offline-state foundation in favour of installable PWAs: `make:pwa`, a Google Play Trusted Web Activity with Digital Asset Links, and Microsoft Store packaging with PWABuilder. Native capabilities, physical-device evidence and store publication remain open)* | v13 research |
+| **M21** | Omni-frontend protocol and mobile hypermedia bridge | `[~] Partial` *(13.0.0-alpha.3 retires the Tauri shells and the native offline-state foundation in favour of installable PWAs: `make:pwa`, a Google Play Trusted Web Activity with Digital Asset Links, and Microsoft Store packaging with PWABuilder; 13.0.0-alpha.5 removed the shared client envelope with the typed browser RPC. Native capabilities, physical-device evidence and store publication remain open)* | v13 research |
 | **M22** | Agentic DevOps and autonomous infrastructure provisioning | `[~] Partial` *(worth keeping as human-reviewed recommendations — telemetry advice exists; unattended infrastructure mutation is not worth enabling by default without preview, scoped credentials, audit, rollback, and policy)* | v13 |
 | **M23** | Polymorphic core and auto-healing runtime/database | `[~] Partial` *(worth keeping as diagnostics — a schema-error suggestion helper exists; automatic code/schema mutation is not worth enabling by default without validated plans, approval, and rollback)* | v13 |
 | **M24** | Embedded IoT: `no_std` frames and an Ed25519 OTA manifest gate | `[~] Partial` *(the frame/MQTT-PUBLISH/CoAP-request encoders, verification foundation and durable-counter CAS adapter contract exist; download, a hardware-backed store, flashing, boot slots, HSM/PQC, and transport interoperability do not)* | v12 foundation / v13 integrations |
@@ -110,7 +110,7 @@ neither release readiness nor remaining effort.
 | **M37** | One-click AI error-console autofix | `[~] Partial` *(the development error page no longer edits files and makes no network request. The server keeps a bounded, expiring, header- and body-free panic context that only a direct loopback request can read. The terminal assistant that fixed it (`cargo rullst ai fix`) was removed in 13.0.0-alpha.4; the page's "Ask your AI assistant" panel now gives a copyable prompt and the recorded-context path to the developer's own assistant, and the dead `/_rullst/autofix` endpoint (`410 Gone`) points there. Still open: a one-click flow, an edit audit trail beyond the checkpoint ref, evidence of fix quality with live providers, and the hot-reload server, which does not record errors)* | v13 |
 | **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
 | **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented — abandoned` *(decided on 8 October 2026: not worth building. A Rullst-owned `rullst-gateway` crate/binary will not be developed. Self-hosted deployments use an established reverse proxy configured by generated files instead: `cargo rullst deploy` writes a Caddyfile and the [two-replica deployment contract](docs/src/deployment-acceptance.md) exercises Caddy; generated nginx configuration is planned. Readiness/drain signals stay in `rullst-core` for any proxy to consume. Parity with a managed global cloud load balancer remains external infrastructure. The idea stays recorded here and in the `[ ]` count.)* | Abandoned (replaced by generated proxy configuration) |
-| **M40** | Isolated programming labs and learning-game execution | `[~] Experimental implementation — bring your own runner` *(experimental `rullst-labs` contracts, in the 13.0 release inventory, provide durable submissions, exact grading, cancellation, recovery and retention, plus a documented [controller contract](docs/src/labs-runner-contract.md) and a non-executing example controller. The separately deployed Linux Rust/Wasmi `rullst-labs-runner` candidate passed 26 isolated checks and source admission in PRs #228 and #239, but was removed from the 13.0 workspace on 30 September 2026; its source remains in git history. Applications deploy and review their own runner; final release acceptance of `rullst-labs` remains pending. The web process never executes learner code or receives a container control socket. Broader language packs and offensive CTF infrastructure remain separate; see the dedicated roadmap.)* | v13 research/foundation |
+| **M40** | Isolated programming labs and learning-game execution | `[~] Contracts implemented — bring your own runner` *(`rullst-labs` contracts, in the 13.0 release inventory and the Extension tier since 13.0.0-alpha.5, provide durable submissions, exact grading, cancellation, recovery and retention, plus a documented [controller contract](docs/src/labs-runner-contract.md) and a non-executing example controller. The separately deployed Linux Rust/Wasmi `rullst-labs-runner` candidate passed 26 isolated checks and source admission in PRs #228 and #239, but was removed from the 13.0 workspace on 30 September 2026; its source remains in git history. Applications deploy and review their own runner; final release acceptance of `rullst-labs` remains pending. The web process never executes learner code or receives a container control socket. Broader language packs and offensive CTF infrastructure remain separate; see the dedicated roadmap.)* | v13 research/foundation |
 | **M41** | Privacy defaults and proportional age assurance | `[~] Initial foundation` *(opt-in `rullst-privacy` (first published in the 13.0.0-alpha.1 prerelease) age policies, signed evidence, asynchronous replay claims, trusted-clock rechecks, shared-local SQLite and optional PostgreSQL storage across application hosts with focused real-database tests; native declarations, versioned optional consent and generated SaaS preference/profile-export journeys have focused evidence (the LMS consumers were retired with the complete Academy scaffold). The package candidate adds optional facade features and passed hosted/archive source acceptance in PR #221; final release admission, live age providers, guardian verification, broader rights/retention and reviewed regional profiles remain open. See the [privacy roadmap](docs/src/privacy-age-assurance-roadmap.md). No automatic worldwide compliance claim.)* | v13 P0 |
 
 ## Audit of the detailed crate roadmaps
@@ -219,10 +219,11 @@ the 12.1.0 update experience, then v13 product work) is complete; its
 acceptance boundaries remain in the [delivery plan](docs/src/v13-delivery-plan.md)
 and the [priority revision](docs/src/v13-priorities.md).
 
-### Planned after 13.0.0-alpha.4
+### Delivered in 13.0.0-alpha.5
 
-Work items for later prereleases, not shipped features. They add no milestone
-to the counts above.
+Planned after 13.0.0-alpha.4 and prepared on 12 November 2026 as the
+13.0.0-alpha.5 release candidate; the coordinator records publication in the
+table below. They add no milestone to the counts above.
 
 - **13.0.0-alpha.5: the 13.0 feature and public API freeze.** It carries the
   fixes for the defects the applications found in alpha.4 and these
@@ -268,13 +269,27 @@ to the counts above.
     segments in the access log; an application stylesheet for Nexus; the
     remote Studio without database drivers or Capital; no development key
     written to the project root by tests.
+  - **Maturity** (decided 12 November 2026): `rullst-iot`, `rullst-media`,
+    `rullst-labs`, `rullst-privacy` and `rullst-supervision` move from
+    Experimental to Extension, the InfinitePay adapter becomes supported and
+    `cargo rullst footprint` takes the CLI's Core tier, on the evidence the
+    [maturity tiers](docs/src/maturity.md#promotions-in-1300-alpha5) page
+    records.
   - **Removed to keep 13.0 lean** (decided 10 November 2026; no application
     used them): WebAssembly islands (`#[island]`, `make:island`, the client
     build), which the default CSP could not run without `'wasm-unsafe-eval'`;
     both Live stacks (`#[live_component]`/`make:live` and
     `rullst::live::recovery`), replaced for server push by Server-Sent Events
     from the realtime channels with the htmx SSE extension; and the Turso
-    variants of the billing generator.
+    variants of the billing generator. Decided 11 November 2026: the MongoDB
+    and DuckDB adapters of `rullst-orm`, replaced by
+    [application recipes](docs/src/recipes/index.md). Rullst keeps an
+    integration where it adds real value (security checks, verification,
+    offline modes, typed errors, bounds) and documents a thin wrapper over an
+    official SDK as a recipe instead, which keeps 13.x maintainable: MongoDB
+    was a thin layer over its driver, and DuckDB the heaviest dependency (a
+    bundled C++ engine, a past `zip` advisory exception, CI cache breakage)
+    with no known user.
   - **Brought forward from the 13.x and v14 lists:** unquoted text in `html!`
     (quoted literals keep working); `OtaManager` fields private behind getters
     of the same names; and the four breaking clean-ups of the v14 list below,
@@ -284,6 +299,22 @@ to the counts above.
     `SecurityStore`'s `dashmap` fields become private, and the duplicate
     module paths are removed. Each breaking change gets a migration-guide
     entry and, where it can be detected, an upgrade rule.
+  - **Also in this release:** the Qdrant adapter became an
+    [application recipe](docs/src/recipes/qdrant.md); the Academy production
+    preset, which described one application, and the ERP and Portfolio
+    examples were removed; DeepSeek and Ollama became presets of the
+    OpenAI-compatible adapter; provider conformance kits for payment, mail
+    and video adapters; a testing kit for generated applications (page smoke
+    tests, CI, browser tests); streaming OTA verification, `iot:keygen`/`iot:sign`
+    and the `iot_ingest` telemetry receiver; and the remaining Labs,
+    Supervision and Privacy API changes (see the
+    [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14)).
+
+### Planned after 13.0.0-alpha.5
+
+Work items for later prereleases, not shipped features. They add no milestone
+to the counts above.
+
 - **13.0.0-rc.1: fixes and documentation only.** 13.0.0-alpha.5 freezes the
   features and the public API of 13.0. rc.1 adds no feature: it carries fixes
   for defects found in alpha.5 (by its release admission, the first-hour and
@@ -293,6 +324,9 @@ to the counts above.
   [maturity tiers](docs/src/maturity.md) state which packages the 13.x
   promise covers. After rc.1, changes are limited to defects found in the
   release candidate.
+- **Verification in the rc.1 window (test and process only):** changelog
+  fragments ([#668](https://github.com/Rullst/Rullst/pull/668)), a merge
+  queue, and `Generated starters in browsers` as a required check.
 - **Turso/libSQL beyond the blank and API starters**, only if users ask for it
   and the maintenance cost stays low. Turso can be the primary database only
   in those starters and does not work with `#[derive(Orm)]`, `Schema`,
@@ -320,8 +354,8 @@ to the counts above.
 | **v13.0.0-alpha.2** | `[x] Published prerelease` | All twenty packages were published on 17 October 2026 from tag `v13.0.0-alpha.2` at `0daf4941` ([release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)): the fixes from the alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema` date/time and Nexus changes. A first tag at `669befe6` failed release verification before publishing anything and was replaced. |
 | **v13.0.0-alpha.3** | `[x] Published prerelease` | All twenty packages were published on 24 October 2026 from tag `v13.0.0-alpha.3` at `be336833` ([release run 40129821475](https://github.com/Rullst/Rullst/actions/runs/40129821475)) after all 25 required workflows passed on that commit. See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha3---2026-10-23). |
 | **v13.0.0-alpha.4** | `[x] Published prerelease` | All twenty packages were published on 31 October 2026 from tag `v13.0.0-alpha.4` at `2bd3c2ad` ([release run 41233925160](https://github.com/Rullst/Rullst/actions/runs/41233925160)). See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha4---2026-10-31). |
-| **v13.0.0-alpha.5** | `[ ] Planned` | The 13.0 feature and public API freeze: fixes and additions from the applications upgraded to alpha.4. See [Planned after 13.0.0-alpha.4](#planned-after-1300-alpha4). |
-| **v13.0.0-rc.1** | `[ ] Planned` | Fixes and documentation only after the alpha.5 feature and API freeze. See [Planned after 13.0.0-alpha.4](#planned-after-1300-alpha4). |
+| **v13.0.0-alpha.5** | `[ ] Release candidate` | Prepared on 12 November 2026 and not yet published; the coordinator records the tag, release run and publication here. Twenty packages; the 13.0 feature and public API freeze, with the fixes and additions from the applications upgraded to alpha.4. See [Delivered in 13.0.0-alpha.5](#delivered-in-1300-alpha5) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14). |
+| **v13.0.0-rc.1** | `[ ] Planned` | Fixes and documentation only after the alpha.5 feature and API freeze. See [Planned after 13.0.0-alpha.5](#planned-after-1300-alpha5). |
 | **v13.0.0** | `[ ] Planned stable` | Follows once rc.1 leaves no open defect in the stability scope; the [maturity tiers](docs/src/maturity.md) apply from this release. |
 | **v13.x** | `[ ] After 13.0.0` | Compatible capabilities continue in 13.1 and later minors: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
@@ -339,6 +373,29 @@ none is scheduled, and real user demand orders them.
 - **Production monitor** (13.1 candidate): desktop notifications in the
   standalone Studio, remote traces and security radar, and proxy support.
 - **More i18n locales and currency formats**, added as CLDR data when requested.
+- **Smaller internal dependency graphs** (13.0.x or 13.1, from the starter
+  dependency audit), changing no public path:
+  - Studio and Nexus stop depending on all of `rullst-security`:
+    `SecurityStore` and `LiveSecurityEvent` move to Core and stay available
+    where they are today (about 48 fewer packages).
+  - SQLite-only starters build without a TLS stack (about 43 fewer packages,
+    the largest binary-size gain); the rustls `CryptoProvider` must still be
+    installed wherever TLS is used.
+  - A five-field cron evaluator of Rullst's own replaces the `cron` crate
+    (about 9 fewer), tested differentially against it.
+  - Passkeys without `p256` (about 18 fewer in the SaaS starter), checked with
+    test vectors.
+  - Core's `storage-multipart` recovery records move from `ring`'s AES-256-GCM
+    to the RustCrypto `aes-gcm` crate, with the same stored format and
+    known-answer tests, so `ring` leaves Core entirely.
+- **`cargo rullst footprint` reports the compiled crate count** beside the
+  lockfile count, which includes packages that are never compiled.
+- **htmx 4 as an opt-in for new applications**, once npm's `latest` tag points
+  to 4.x and its Server-Sent Events extension is stable; existing applications
+  keep the htmx they use.
+- **Mask the CSRF token per response (BREACH defence), then compress dynamic
+  HTML in the generated Caddyfile.** Since 13.0.0-alpha.5 generated
+  deployments serve static files pre-compressed and pages uncompressed.
 
 Decided non-goals (not planned, so they are documented as scope rather than as
 pending work):
@@ -395,7 +452,7 @@ A green book build does not prove reference coverage.
 Recorded on 8 October 2026; ideas, not commitments.
 
 - **Offline IoT/health example:** sensor readings stored in SQLite and shown on
-  a dashboard without internet, built on the experimental `rullst-iot`
+  a dashboard without internet, built on `rullst-iot`
   (`SensorTelemetry`, `AnomalyDetector`) and a maintained transport crate such
   as `rumqttc`. A health variant treats readings as sensitive personal data
   and is not a medical device.
@@ -415,6 +472,9 @@ None is scheduled; v14 development starts only when they justify it. The four
 clean-ups recorded here before 13.0 (crate-private internals, Rullst error
 types instead of third-party ones, private `SecurityStore` fields, one path per
 item) moved into 13.0.0-alpha.5.
+
+- **Remove `rullst_orm::schema_diff`**, deprecated in 13.0.0-alpha.5. It stays
+  available, unchanged, in every 13.x release.
 
 ---
 

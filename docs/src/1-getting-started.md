@@ -32,10 +32,10 @@ prerelease on its own, so neither a plain `cargo install cargo-rullst` nor
 
 <!-- first-hour: install -->
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.5 --locked
 ```
 
-Pin the framework the same way in `Cargo.toml` (`"=13.0.0-alpha.4"`); the
+Pin the framework the same way in `Cargo.toml` (`"=13.0.0-alpha.5"`); the
 [v13 migration guide](migration-v13.md) explains why and what changed.
 
 Source reviewers who intentionally need checkout-local changes can instead
@@ -141,8 +141,8 @@ this learning project at a production database.
 > 
 > The CLI deliberately generates one audited application profile: Active
 > Record with server-rendered `html!` views and HTMX enhancement. The framework
-> still exposes lower-level repository and client-runtime foundations for
-> application-owned integration. See the [Architecture Choices Guide](architecture-decisions.md).
+> still exposes lower-level repository foundations for application-owned
+> integration. See the [Architecture Choices Guide](architecture-decisions.md).
 
 
 ## 3. Rullst Starters
@@ -156,9 +156,8 @@ depend on the generated page and runtime.
 **Use Case:** Custom, from-scratch development.
 This is the minimal template powered by server-rendered `html!` views and HTMX
 without a project-local JavaScript bundle. It includes a simple reactive counter
-to demonstrate server-driven communication. Other frontend foundations remain
-available as application APIs, but are not advertised as equivalent generated
-starters.
+to demonstrate server-driven communication. Other frontend stacks are
+application code, not generated starters.
 
 ### API
 **Use Case:** Headless JSON services.
@@ -179,13 +178,13 @@ An opinionated SaaS starting point, pre-wired with:
 ### Larger example applications
 
 Up to 13.0.0-alpha.3 the CLI also generated LMS, Blog, Portfolio and ERP
-starters. Since 13.0.0-alpha.4 they are complete applications in the repository's
-[`examples/`](examples.md) directory — `examples/lms` (courses, lessons, an
-accessible player, enrollment and owner-bound progress), `examples/erp`
-(products, stock and orders), `examples/portfolio` (a developer showcase edited
-in Nexus) and the `examples/blog` showcase — tested in the workspace. Copy one
-to start a bigger application; `cargo rullst new --blueprint lms` (or `erp`,
-`portfolio`, `blog`) creates nothing and names the example instead.
+starters. The repository's [`examples/`](examples.md) directory holds the
+complete applications that replace them — `examples/lms` (courses, lessons, an
+accessible player, enrollment and owner-bound progress) and the `examples/blog`
+showcase, whose CRUD with Nexus also replaces the Portfolio and ERP examples
+removed in 13.0.0-alpha.5 — tested in the workspace. Copy one to start a bigger
+application; `cargo rullst new --blueprint lms` (or `blog`, `portfolio`, `erp`)
+creates nothing and names the example instead.
 
 ---
 
@@ -196,7 +195,7 @@ to start a bigger application; `cargo rullst new --blueprint lms` (or `erp`,
 
 ### Local Studio and Nexus access
 
-The SaaS starter (and the LMS, ERP, Portfolio and Blog examples) expose
+The SaaS starter (and the LMS and Blog examples) expose
 visible buttons for both control surfaces during local development:
 
 - **Nexus** is mounted at `/nexus` and accepts only a verified loopback peer in a
@@ -215,13 +214,11 @@ real sign-in:
   (`UPDATE users SET is_admin = TRUE WHERE email = 'you@example.com';`); that
   administrator can grant others from the Users model in Nexus. See
   [using the application's sign-in](4-rullst-nexus.md#using-the-applications-sign-in).
-- **The Portfolio and ERP examples** require unique `NEXUS_ADMIN_USERNAME` and
-  `NEXUS_ADMIN_PASSWORD` values (Basic Auth behind verified TLS). Without them
-  the application starts without `/nexus` (the ERP without its back office)
-  and prints one line naming the missing variable; see
+- **The blog example** requires unique `NEXUS_ADMIN_USERNAME` and
+  `NEXUS_ADMIN_PASSWORD` values (Basic Auth behind verified TLS) in a release
+  build and does not start without them; an application can instead start
+  without `/nexus` and print one line naming the missing variable, see
   [serving the application without Nexus](4-rullst-nexus.md#serving-the-application-without-nexus).
-  The blog example needs the same variables in a release build and does not
-  start without them.
 
 Put production Nexus behind a verified TLS boundary; do not expose Studio
 publicly. Studio has no
@@ -237,10 +234,10 @@ The wizard deliberately makes two separate decisions:
    (web page or JSON API) can instead select **Turso/libSQL** as its primary
    database, through a separate adapter that has no Nexus, Studio database
    pages, `Schema` migrations, `artisan!` or SQLx query builder.
-2. Optionally add side stores: **Turso/libSQL** edge SQL, **MongoDB**
-   documents, **DuckDB** analytics, **SurrealDB** documents/graph reads,
-   **Qdrant** vectors or **Redis** structures. They use their own APIs and do
-   not replace the primary pool.
+2. Optionally add side stores: **Turso/libSQL** edge SQL, **SurrealDB**
+   documents/graph reads or **Redis** structures. They use their own APIs and
+   do not replace the primary pool. For MongoDB, DuckDB or Qdrant, use the
+   official crate as the [recipes](recipes/index.md) show.
 
 [Database Support](database-support.md) lists what each backend works with;
 read it before you choose.
@@ -257,7 +254,7 @@ The non-interactive flags mirror the second step:
 
 <!-- first-hour: stores new-terminal -->
 ```bash
-cargo rullst new edge_app --default --database mariadb --turso --mongodb \
+cargo rullst new edge_app --default --database mariadb --turso --surrealdb \
   --skip-initial-migration
 ```
 

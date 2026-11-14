@@ -10,11 +10,12 @@ resource authorization and independent guardian/reviewer verification.
 observations. `parental` provides course/window policies. `sqlite` selects both
 and the shared-local durable adapter. Optional `analysis` defines bounded camera
 presence/audio activity adapters (frames, audio or, since 13.0.0-alpha.5,
-brightness statistics with no image; camera findings include `Obscured`);
+brightness statistics with no image and loudness statistics with no audio;
+camera findings include `Obscured`);
 combining it with `sqlite` adds authorization, concurrency leases and deadline
 checks around invocation. There are no default
 features or Core dependencies. Pin the prerelease exactly, for example
-`rullst-supervision = { version = "=13.0.0-alpha.4", features = ["sqlite"] }`.
+`rullst-supervision = { version = "=13.0.0-alpha.5", features = ["sqlite"] }`.
 
 An application can opt into visibility, focus, clipboard occurrence and
 fullscreen events. No clipboard contents, camera/audio model, media capture,
@@ -31,7 +32,8 @@ cargo run -p rullst-supervision --example observation_adapter --features sqlite,
 
 ## Responsible use
 
-**Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
+**Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)),
+since 13.0.0-alpha.5: optional, and supported for the scope documented here.
 This crate is designed for consented, transparent scenarios such as online
 exams and parental controls over a learning application.
 
@@ -62,5 +64,5 @@ repaired retrospectively, as recorded in the
 and package-admission requirements remain separate.
 The standalone package is now included in the v13 release inventory and was
 first published on crates.io as `13.0.0-alpha.1`. Final release acceptance
-remains outstanding; `13.0.0-alpha.4` is a prerelease, not a stable release. Applications
+remains outstanding; `13.0.0-alpha.5` is a prerelease, not a stable release. Applications
 opt in explicitly; no default framework dependency is added.

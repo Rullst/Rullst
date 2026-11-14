@@ -98,10 +98,10 @@ pub(super) fn bounded_bucket_key(key: &str) -> Cow<'_, str> {
     if key.len() <= MAX_VERBATIM_KEY_BYTES && !key.starts_with('\0') {
         return Cow::Borrowed(key);
     }
-    let digest = ring::digest::digest(&ring::digest::SHA256, key.as_bytes());
+    let digest = <sha2::Sha256 as sha2::Digest>::digest(key.as_bytes());
     let mut bounded = String::with_capacity(8 + 64);
     bounded.push_str("\0sha256:");
-    for byte in digest.as_ref() {
+    for byte in digest.iter() {
         bounded.push(char::from(b"0123456789abcdef"[usize::from(byte >> 4)]));
         bounded.push(char::from(b"0123456789abcdef"[usize::from(byte & 0x0f)]));
     }

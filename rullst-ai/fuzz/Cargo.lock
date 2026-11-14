@@ -456,7 +456,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1259,16 +1259,16 @@ dependencies = [
 
 [[package]]
 name = "quinn-udp"
-version = "0.5.15"
+version = "0.5.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35a133f956daabe89a61a685c2649f13d82d5aa4bd5d12d1277e1072a21c0694"
+checksum = "af66907df18639dcf4db56ca65490cabc4b27a97dbadd96f2926cca73298f016"
 dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1456,7 +1456,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-ai"
-version = "13.0.0-alpha.4"
+version = "13.0.0-alpha.5"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -1484,7 +1484,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-core"
-version = "13.0.0-alpha.4"
+version = "13.0.0-alpha.5"
 dependencies = [
  "async-trait",
  "axum",
@@ -1494,17 +1494,15 @@ dependencies = [
  "dashmap",
  "dotenvy",
  "futures-util",
- "getrandom 0.4.3",
  "http",
  "http-body",
- "js-sys",
  "libloading",
  "rand 0.10.3",
- "ring",
  "rullst-macros",
  "serde",
  "serde_json",
  "serde_urlencoded",
+ "sha2",
  "subtle",
  "thiserror",
  "tokio",
@@ -1518,7 +1516,6 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "validator",
- "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
  "windows-sys 0.61.2",
@@ -1526,7 +1523,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "13.0.0-alpha.4"
+version = "13.0.0-alpha.5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1603,7 +1600,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2455,7 +2452,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

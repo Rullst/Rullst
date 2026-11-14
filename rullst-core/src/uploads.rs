@@ -143,13 +143,13 @@ impl UploadPolicy {
         }
         let object_id = uuid::Uuid::new_v4();
         let quarantine_key = format!("quarantine/{tenant_id}/{object_id}.{}", kind.extension());
-        let digest = ring::digest::digest(&ring::digest::SHA256, bytes);
+        let digest = <sha2::Sha256 as sha2::Digest>::digest(bytes);
         Ok(QuarantinedUpload {
             quarantine_key,
             display_name: file_name.to_string(),
             kind,
             byte_len: bytes.len(),
-            sha256_hex: encode_hex(digest.as_ref()),
+            sha256_hex: encode_hex(&digest),
         })
     }
 }
@@ -259,8 +259,8 @@ impl UploadScanner for OfflineMockScanner {
         if bytes.len() != upload.byte_len {
             return Err(UploadError::InvalidSize);
         }
-        let digest = ring::digest::digest(&ring::digest::SHA256, bytes);
-        if encode_hex(digest.as_ref()) != upload.sha256_hex {
+        let digest = <sha2::Sha256 as sha2::Digest>::digest(bytes);
+        if encode_hex(&digest) != upload.sha256_hex {
             return Err(UploadError::ScanUnavailable);
         }
         if bytes.windows(5).any(|window| window == b"EICAR") {

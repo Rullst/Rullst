@@ -114,7 +114,7 @@ async fn page(
     let (cards, history) = dashboard.fragments(&devices);
     let nonce = nonce.map(|Extension(nonce)| nonce.as_str().to_owned());
     let head = html! {
-        <script nonce?={nonce} src="/static/htmx-ext-sse-1.9.12.js"></script>
+        <script nonce?={nonce} src="/static/htmx-ext-sse-2.2.4.js"></script>
     };
     let content = html! {
         <main class="wrap" hx-ext="sse" sse-connect="/events">

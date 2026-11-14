@@ -30,13 +30,7 @@ fn turso_and_database_free_profiles_are_offered_only_for_the_blank_starter() {
 
 #[test]
 fn deterministic_wizard_preserves_requested_persistence_features() {
-    let selected = [
-        PolyglotIntegration::Turso,
-        PolyglotIntegration::MongoDb,
-        PolyglotIntegration::DuckDb,
-        PolyglotIntegration::SurrealDb,
-        PolyglotIntegration::Qdrant,
-    ];
+    let selected = [PolyglotIntegration::Turso, PolyglotIntegration::SurrealDb];
     let options = run_project_wizard_with_blueprint(
         Some("polyglot-app"),
         ProjectScaffoldOptions {
@@ -289,18 +283,13 @@ fn typed_names_not_starting_with_a_letter_get_that_reason() {
 #[test]
 fn requested_integrations_keep_the_manifest_order() {
     let options = ProjectScaffoldOptions {
-        qdrant: true,
-        mongodb: true,
+        surrealdb: true,
         database: Some("Turso"),
         ..ProjectScaffoldOptions::default()
     };
     assert_eq!(
         requested_integrations(&options),
-        [
-            PolyglotIntegration::Turso,
-            PolyglotIntegration::MongoDb,
-            PolyglotIntegration::Qdrant
-        ]
+        [PolyglotIntegration::Turso, PolyglotIntegration::SurrealDb]
     );
     assert!(requested_integrations(&ProjectScaffoldOptions::default()).is_empty());
 }

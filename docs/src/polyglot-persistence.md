@@ -2,8 +2,8 @@
 
 > [!IMPORTANT]
 > This page describes the v13 prerelease source, and its dependency examples
-> pin the published `13.0.0-alpha.4` exactly: Cargo never selects a prerelease
-> on its own, and a plain `"13.0.0-alpha.4"` would also accept later alphas
+> pin the published `13.0.0-alpha.5` exactly: Cargo never selects a prerelease
+> on its own, and a plain `"13.0.0-alpha.5"` would also accept later alphas
 > (see the [v13 migration guide](migration-v13.md)). The v12 line (`rullst@12`)
 > reached end of life on 16 October 2026; see the [release record](v12.md). Commit `Cargo.lock` for
 > reproducible builds, and use path dependencies only for checkout-local review.
@@ -11,10 +11,12 @@
 Rullst keeps explicit relational and specialized persistence contracts. SQLx
 Active Record supports SQLite, PostgreSQL, MySQL and MariaDB. The Blank starter
 can instead use Turso/libSQL as its primary database, through a separate typed
-adapter. MongoDB is for documents, DuckDB for embedded OLAP/analytics,
-SurrealDB for documents plus bounded read-only graph queries, Qdrant for dense
-vector search and Redis for selected native structures. No optional adapter
-silently changes the application's primary database.
+adapter. SurrealDB is for documents plus bounded read-only graph queries and
+Redis for selected native structures. No optional adapter silently changes the
+application's primary database. MongoDB, DuckDB and Qdrant have no adapter
+since 13.0.0-alpha.5: the [recipes](recipes/index.md) use their official
+crates in application code, and vectors next to their rows stay in PostgreSQL
+with `pgvector`.
 
 Only the SQLx backends work with the `#[derive(Orm)]` query builder, `Schema`,
 `artisan!`, `Server::with_db`, Nexus and Studio's database pages. The
@@ -28,12 +30,12 @@ Using the umbrella crate, next to the primary database profile:
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.4", default-features = false, features = ["strict-postgres", "orm-mongodb"] }
+rullst = { version = "=13.0.0-alpha.5", default-features = false, features = ["strict-postgres", "orm-surrealdb"] }
 ```
 
-Available umbrella features are `orm-turso`, `orm-mongodb`, `orm-duckdb`,
-`orm-surrealdb`, `orm-qdrant` and `orm-redis`. Direct `rullst-orm` users select
-`turso`, `mongodb`, `duckdb`, `surrealdb`, `qdrant` or `redis`. There is no
+Available umbrella features are `orm-turso`, `orm-surrealdb` and
+`orm-redis`. Direct `rullst-orm` users select `turso`, `surrealdb` or
+`redis`. There is no
 feature that enables them all: 13.0 removed the `polyglot` and `orm-polyglot`
 aggregates, so list the adapters the application uses.
 
@@ -57,8 +59,8 @@ wizard then offers the side stores, each described as one. For a hybrid SQLx
 application, use one or more explicit flags:
 
 ```bash
-cargo rullst new edge_app --default --database mariadb --turso --mongodb \
-  --qdrant --skip-initial-migration
+cargo rullst new edge_app --default --database mariadb --turso --surrealdb \
+  --skip-initial-migration
 ```
 
 MariaDB shares the SQLx MySQL protocol implementation but has its own live
@@ -126,11 +128,21 @@ let current = Event::find(event.id).await?;
 `rullst::config::project_setting`, which falls back to `./.env` without loading
 it into the process, and passes them to `TursoConfig::new` and
 `with_offline_path`; since 13.0.0-alpha.2 it no longer calls
-`dotenvy::dotenv()` or depends on `dotenvy`.
+`dotenvy::dotenv()` or depends on `dotenvy`. The starter also calls
+`allow_insecure_loopback()`, so `TURSO_DATABASE_URL=http://127.0.0.1:8080`
+reaches a local `turso dev` or `sqld` server; any other `http://` endpoint is
+still refused. `init_from_env` does not opt in, so for a local server build
+the `TursoConfig` as the starter does.
 
 The typed contract includes CRUD, equality filters, ordering, bounded
 pagination/counts, app-assigned or generated primary keys, checksummed
-migrations, status, and rollback. An equality filter whose value encodes as
+migrations, status, and rollback. An empty `String` key is filled by the
+column's `DEFAULT` (for example `DEFAULT (lower(hex(randomblob(16))))`): the
+insert runs in a transaction with `RETURNING` the key and is committed only
+when the key is not NULL, so a key column without a `DEFAULT` fails with
+`PolyglotError::InvalidIdentifier` and nothing is written. A UNIQUE or PRIMARY
+KEY violation returns `PolyglotError::Conflict`, on a remote server and the
+offline fallback alike. An equality filter whose value encodes as
 `NULL` (such as `Option::None`) matches with `IS NULL`. `#[orm(encrypted)]`
 columns store randomized ciphertext, so filtering or ordering on them returns
 an error instead of silently matching nothing. Generated `make:model` and `make:migration`
@@ -200,8 +212,9 @@ and proves that a failed multi-statement batch rolls back its earlier writes.
 
 ## The portable document contract
 
-MongoDB, SurrealDB, and the deterministic offline store implement the same
-bounded document operations:
+SurrealDB and the deterministic offline store implement the same bounded
+document operations, and an application can implement them for a store of its
+own (the [MongoDB recipe](recipes/mongodb.md) does):
 
 ```rust
 use rullst_orm::polyglot::{
@@ -219,13 +232,13 @@ let page = DocumentPage::new(0, 50)?;
 
 Collection names use a portable ASCII identifier grammar, IDs are bounded to
 letters, digits, `_` and `-`, and every list requires a 1–500 row page. Models
-must serialize as objects and must not own the driver ID field (`_id` for
-MongoDB, `id` for SurrealDB); the portable `DocumentId` owns that concern.
+must serialize as objects and must not own the driver ID field (`id` for
+SurrealDB, `_id` for MongoDB); the portable `DocumentId` owns that concern.
 
 ### Encrypted export and crash-resumable restore
 
-MongoDB, SurrealDB and the deterministic store also implement
-`DocumentInventory<T>`, which retains each validated identifier. That enables
+SurrealDB and the deterministic store also implement `DocumentInventory<T>`,
+which retains each validated identifier (so can an application's own store). That enables
 one deliberately conservative recovery path without pretending the engines
 share transactions:
 
@@ -286,43 +299,17 @@ destination database, namespace and collection/table must already be
 provisioned where the engine requires them; schema or permission failures stay
 visible and are never reclassified as an empty destination.
 
-The live release matrix exercises MongoDB → SurrealDB → MongoDB. It proves the
-bounded adapter contract on that runner, not backup retention, key custody,
+The live release matrix exercises SurrealDB → deterministic store → SurrealDB.
+It proves the bounded adapter contract on that runner, not backup retention, key custody,
 replication, point-in-time recovery, topology failover or vendor operations.
 
 ### MongoDB
 
-```rust,no_run
-use rullst_orm::polyglot::{
-    CollectionName, DocumentId, DocumentRepository, MongoDbStore,
-};
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize)]
-struct AuditEvent {
-    action: String,
-}
-
-async fn store_audit_event() -> Result<(), Box<dyn std::error::Error>> {
-let store = MongoDbStore::<AuditEvent>::connect_or_mock(
-    std::env::var("MONGODB_URL").unwrap_or_default(),
-    "my_application",
-).await?;
-
-store.create(
-    &CollectionName::new("audit_events")?,
-    &DocumentId::new("event-1")?,
-    &AuditEvent { action: "login".into() },
-).await?;
-Ok(())
-}
-```
-
-An empty URL or one beginning with `mock_`/`mock://` selects an in-process,
-deterministic `BTreeMap` store. A non-mock URL uses the official MongoDB Rust
-driver. The release contract includes an optional Testcontainers CRUD suite;
-availability, backups, indexes, topology and authorization remain deployment
-responsibilities.
+13.0.0-alpha.5 removed `MongoDbStore`, a thin layer over the official driver.
+The [MongoDB recipe](recipes/mongodb.md) uses the `mongodb` crate directly,
+with one client shared through application state and an offline fake for
+tests, and sketches a `DocumentRepository` and `DocumentInventory`
+implementation for it, so the encrypted recovery above keeps working.
 
 ### SurrealDB documents and graph reads
 
@@ -355,7 +342,8 @@ The adapter uses SurrealDB's documented HTTP `/key`, `/sql`, `/rpc` and `/gql`
 protocol instead of embedding its BSL-licensed SDK. `replace` runs a typed
 `UPDATE type::record($table, $id)` through `/rpc` rather than `PUT /key`,
 which upserts: replacing a missing (for example concurrently deleted) document
-returns `PolyglotError::NotFound` instead of recreating it, as on MongoDB. This
+returns `PolyglotError::NotFound` instead of recreating it, as the
+`DocumentRepository` contract requires. This
 statement uses SurrealDB 3 function naming. It disables redirects,
 requires HTTPS outside loopback unless cleartext is explicitly enabled, redacts
 authentication in `Debug`, streams through a configurable 1 KiB–8 MiB memory
@@ -363,7 +351,10 @@ ceiling, and sends namespace/database headers on every scoped request.
 
 SurrealDB 3 requires the namespace and database to exist (`DEFINE NAMESPACE`,
 `DEFINE DATABASE`); against an undefined one every call fails with
-`statement returned status ERR`. `SurrealAuth::basic` authenticates root-level
+`statement returned status ERR: The database '<name>' does not exist`. A failed
+statement, HTTP request or RPC call ends its `PolyglotError::Driver` message
+with SurrealDB's own reason, kept to one line of at most 240 characters with
+URLs and the configured password or token redacted. `SurrealAuth::basic` authenticates root-level
 users only: SurrealDB authenticates namespace and database users over HTTP with
 extra `Surreal-Auth-NS`/`Surreal-Auth-DB` headers that the adapter does not
 send, so sign those users in through SurrealDB's `/signin` endpoint and pass the
@@ -375,7 +366,8 @@ table the user may write but not read back.
 Every `DocumentId` is stored as a string record key, including all-digit IDs
 such as `9` (sent as a quoted key; SurrealDB would otherwise parse them as
 numbers). Inventory pages therefore follow the portable string order, `10`
-before `9`, on SurrealDB as on MongoDB. Records written by earlier versions
+before `9`, on SurrealDB as in the deterministic store. Records written by
+earlier versions
 under an ID that SurrealDB parsed as a number, `NULL` or an exponent (for
 example `9`, `null` or `1e5`) keep that non-string key and are not found by
 these string IDs; rewrite them under their string key when upgrading.
@@ -389,49 +381,19 @@ requires SurrealDB 3.2 or newer and explicit experimental enablement on the
 
 ## DuckDB analytics
 
-```rust,no_run
-use rullst_orm::polyglot::{
-    AnalyticsRepository, AnalyticsValue, DuckDbStore, QueryLimit,
-};
+13.0.0-alpha.5 removed `DuckDbStore` and its analytics types. The
+[DuckDB recipe](recipes/duckdb.md) runs the official `duckdb` crate in the
+application: one connection behind a mutex, every query on Tokio's blocking
+pool, prepared parameters and an explicit row limit.
 
-async fn analyze_events() -> Result<(), Box<dyn std::error::Error>> {
-let analytics = DuckDbStore::in_memory().await?;
-analytics.execute(
-    "CREATE TABLE events (sequence BIGINT, label VARCHAR)",
-    vec![],
-).await?;
-analytics.execute(
-    "INSERT INTO events VALUES (?, ?)",
-    vec![
-        AnalyticsValue::Signed(1),
-        AnalyticsValue::Text("started".into()),
-    ],
-).await?;
-let rows = analytics.query(
-    "SELECT sequence, label FROM events WHERE sequence >= ?",
-    vec![AnalyticsValue::Signed(1)],
-    QueryLimit::new(500)?,
-).await?;
-let _ = rows;
-Ok(())
-}
-```
+## Specialized Redis store
 
-DuckDB is bundled for a predictable optional build. Its connection is guarded
-and every native operation runs through Tokio's blocking worker pool. Dynamic
-values are prepared parameters; SQL text remains trusted application structure.
-Results must declare a 1–10,000 row materialization limit. Scalar, decimal,
-temporal, interval, geometry and binary values are preserved; unsupported
-complex result types fail with a typed error instead of being guessed.
+For dense vectors, use `pgvector` in PostgreSQL (see
+[RAG Systems & Vector Search](tutorials/22-rag-vector-search.md)) or the
+[Qdrant recipe](recipes/qdrant.md), which replaced the Qdrant adapter in
+13.0.0-alpha.5.
 
-## Specialized Qdrant and Redis stores
-
-Qdrant has a separate dense-vector contract rather than a document or Active
-Record facade. See [RAG Systems & Vector Search](tutorials/22-rag-vector-search.md)
-for its bounded collection, upsert, delete and cosine-query API. The project
-wizard and deterministic CLI expose it as the additive `--qdrant` choice.
-
-Redis native structures are also explicit and namespaced:
+Redis native structures are explicit and namespaced:
 
 ```rust,no_run
 use rullst_orm::{

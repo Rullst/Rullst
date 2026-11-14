@@ -6,7 +6,7 @@ claim must always point to the GitHub Actions run, commit SHA, logs, and produce
 artifacts.
 
 Last source-level review: **2026-09-20 UTC**, with later workflow changes
-recorded through 13.0.0-alpha.4.
+recorded through 13.0.0-alpha.5.
 
 ## Status language
 
@@ -79,7 +79,7 @@ candidate's release line, including the source policy of reused runs.
   full-matrix run points to the exact candidate tree.
 
 Each operating system runs seven shards: the non-CLI workspace (with the
-Blog, ERP, LMS, Portfolio and WebGPU examples), ordinary CLI targets, three
+Blog, LMS and WebGPU examples), ordinary CLI targets, three
 public-profile groups and two generated-starter groups; the partitions keep
 every case. Hosted CI permits two nested compiler jobs for generated builds,
 and each CLI shard fetches the locked registry inventory before its generated
@@ -111,14 +111,15 @@ follow the [VM guide](docs/src/vm-deployment.md) (`deploy:doctor`, the
 generated `Dockerfile`, `compose.yaml` and `Caddyfile`, unmodified) and check
 `/health` over HTTPS through Caddy, the HTTPS redirect, the unpublished app
 port, the read-only root filesystem, capabilities and `no-new-privileges`,
-Caddy's trusted-proxy address, `db:migrate`, a database-backed page (SaaS:
+Caddy's trusted-proxy address, a page sent uncompressed and the htmx client
+served from the image's `.br`/`.zst` siblings, `db:migrate`, a database-backed page (SaaS:
 sign-up and sign-in with a Secure cookie), SQLite persistence across a
 restart, the guide's backup command and the absence of panics. Podman runs
 rootless with the unprivileged-port setting the guide documents. Full manual
 runs, the nightly run and the `vm-deployment` diagnostic run both jobs; a
 ready pull request runs them only when it changes
 `cargo-rullst/src/generators/deploy.rs`, `generators/project/docker.rs`,
-`blueprints/deploy.rs` or the check. They are not required release jobs, but a
+`generators/project/docker_static.rs`, `blueprints/deploy.rs` or the check. They are not required release jobs, but a
 failure fails the full manual run that admission requires. Real DNS, Let's
 Encrypt, provider accounts, Arm images and reboots are not covered.
 
@@ -176,6 +177,25 @@ starter (no HTML) is covered by the ZAP baseline instead. This is automated
 evidence for the pages exercised, not WCAG conformance or screen-reader
 testing.
 
+`Starter footprint budgets` runs `.github/check-starter-footprint.py`: with
+the CLI built from the checkout, it generates the Blank, SaaS and API starters
+(framework crates resolved from the checkout as above), builds each in release
+mode with its generated `[profile.release]` and the toolchain of
+`rust-toolchain.toml`, applies its migrations and runs `cargo rullst footprint
+--env staging --page-weight --bench --budget .github/starter-footprint/<starter>.toml`.
+Blocking: a limit exceeded (release binary size, idle resident memory,
+dependency count, bytes per request of `GET /`, and that page's first-visit
+and repeat-visit bytes, requests and third-party origins), a limited figure
+that was not measured, or a starter that does not build or start. CPU time
+per request is reported in the job summary, never limited: it varies between
+shared runners. The JSON reports are kept as an artifact. Its triggers follow
+the deployment jobs (pull requests only when they change a framework crate,
+the workspace manifest or lockfile, `rust-toolchain.toml`, the starter
+templates, `footprint` or the check); it is not a required release job. The
+figures describe one GitHub-hosted Linux runner, not users' machines;
+[MAINTAINING.md](MAINTAINING.md#starter-footprint-budgets) says how a limit
+is raised on purpose.
+
 ### Native CLI artifacts and browser checks
 
 Manual all-platform `all` and `cli-standard` selections call
@@ -188,10 +208,11 @@ attests the executables and manifests in build provenance and adds them as
 release assets only after attestation and registry publication.
 
 The Linux `workspace` shard sets `RULLST_UI_BROWSER_TESTS=1` (Node 24,
-Chromium) and runs real Nexus and Portfolio-example HTML through
+Chromium) and runs real Nexus HTML through
 `.github/mobile-ui-browser-smoke.mjs`: drawer dismissal and focus, no-JS
-behaviour, layouts at 320–1440px, long content and reduced motion, with CDN
-resources blocked and the Nexus shell under the default production CSP.
+behaviour, layouts from 390 to 1200px, wide tables, save errors over the
+record dialog and reduced motion, with CDN resources blocked and the Nexus
+shell under the default production CSP.
 Missing browser prerequisites fail the shard. This is not WebKit/Firefox,
 device or WCAG evidence.
 
@@ -266,7 +287,7 @@ cargo test --workspace --all-features
 
 Rust CI disables incremental compilation and keeps content-addressed compiler
 outputs in the GitHub Actions cache with the pinned `sccache` Action and
-binary; the `cc` build dependency honours the same wrapper, so bundled DuckDB
+binary; the `cc` build dependency honours the same wrapper, so bundled C and
 C++ objects are reused. Same-repository pull requests write only their
 isolated `refs/pull/.../merge` scope, fork pull requests are read-only, pushes
 and manual runs on `main` populate entries for later pull requests, and the
@@ -281,15 +302,9 @@ assertions. SemVer checks fan out from the machine-readable release order, one
 published API per job.
 
 Jobs that keep the setup action's `target/` archive (Swatinem/rust-cache) set
-`cache-on-failure: false`, so a failed or cancelled run never saves one. The
-archive cannot carry libduckdb-sys's shared `target/duckdb-sources` tree: its
-cleanup deletes every file there, including the `.complete` marker, but keeps
-the directories, and a build script that has to run again (for example after
-a lockfile change to one of its build dependencies) cannot publish its sources
-over them (`DirectoryNotEmpty`). Jobs that build with `--all-features` or a
-DuckDB feature therefore run `.github/repair-duckdb-sources.py` after the cache
-is restored; the cached DuckDB library itself is reused. `workflow-lint.yml`
-enforces both rules with `.github/check-rust-cache-policy.py`.
+`cache-on-failure: false`, so a failed or cancelled run never saves one (an
+interrupted build script or a half-written output directory).
+`workflow-lint.yml` enforces this with `.github/check-rust-cache-policy.py`.
 
 The `Public API snapshot` job of `semver.yml` runs `.github/public-api.py
 --check` (tested by `.github/test-public-api.py`). On the pinned
@@ -572,11 +587,11 @@ mutant, compiled incrementally without sccache.
 | `messaging-redis` | `rullst-messaging/src/redis_streams/**` | the password, TLS, fault, ordering, outbox and bounds contracts and the AOF restart exercise |
 | `connect-sql` | `rullst-connect/src/challenge/sql/postgres.rs`, `sql/mysql.rs` (the wrapper also owns a MySQL server, which each contract resets by dropping its table) | `postgres_challenge_contract`, `mysql_challenge_contract` |
 | `orm-sqlite` | `rullst-orm/src/**` and `rullst-orm-macros/src/**`, test files excluded; select files with `mutants_regex` (for example `^rullst-orm/src/pool/savepoint\.rs:`) | every `rullst-orm` test target, built with `drivers-all` (the SQLx `Any` pool) |
-| `orm-polyglot` | the same files; select the optional-backend modules (`polyglot`, `scout`, `redis_data`, `query_cache`) with `mutants_regex` | every `rullst-orm` test target, built with `drivers-all` and the Redis, MongoDB, SurrealDB, Turso, Scout HTTP and Qdrant features, with an owned Redis server for the `RULLST_TEST_REDIS_URL` contracts |
+| `orm-polyglot` | the same files; select the optional-backend modules (`polyglot`, `scout`, `redis_data`, `query_cache`) with `mutants_regex` | every `rullst-orm` test target, built with `drivers-all` and the Redis, SurrealDB, Turso and Scout HTTP features, with an owned Redis server for the `RULLST_TEST_REDIS_URL` contracts |
 | `orm-sql-servers` | the same files; select the PostgreSQL and MySQL/MariaDB branches with `mutants_regex` | `matrix_postgres`, `matrix_mysql` and `matrix_mariadb`, built with `drivers-all`; their testcontainers start a disposable server per test binary, and a server that cannot start fails the run |
 | `orm-strict-postgres` | the same files | `matrix_postgres`, built with `strict-postgres` only, which also exercises the native enum types and typed binds of that pool |
 | `orm-strict-mysql` | the same files | `matrix_mysql`, built with `strict-mysql` only |
-| `orm-polyglot-servers` | the same files; select the optional backends' live paths with `mutants_regex` | the MongoDB, SurrealDB, document-recovery, Qdrant, Meilisearch, Redis data and Turso testcontainers matrices, built like `orm-polyglot` |
+| `orm-polyglot-servers` | the same files; select the optional backends' live paths with `mutants_regex` | the SurrealDB, document-recovery (SurrealDB), Meilisearch, Redis data and Turso testcontainers matrices, built like `orm-polyglot` |
 
 `orm-sqlite` owns no server. The all-feature build selects the strict
 PostgreSQL pool and compiles the SQLite behaviour tests of `rullst-orm` out;
@@ -584,8 +599,7 @@ this contract builds the ORM with `drivers-all` and runs its whole suite on
 SQLite for every mutant, including the code `#[derive(Orm)]` generates.
 PostgreSQL-only branches stay with targeted runs. `orm-polyglot` adds the
 optional backends (mocks and loopback servers) and runs the query-cache and
-Redis hash-scope contracts against its own Redis; DuckDB stays with targeted
-runs. `orm-sql-servers` measures dialect branches (placeholders, migration
+Redis hash-scope contracts against its own Redis. `orm-sql-servers` measures dialect branches (placeholders, migration
 locks, collations, payload types) against three real servers, so select only
 those branches. `orm-strict-postgres` and `orm-strict-mysql` cover code that
 the `Any` pool does not compile.
@@ -665,7 +679,7 @@ dependency graph make static estimates unreliable.
 | :--- | :--- | :--- | :--- |
 | [`architecture.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/architecture.yml) | main/v12/v13 push and PR, manual | Blocking | Compares Cargo's publishable non-dev internal dependency graph with the reviewed `crate-architecture-policy.json`; unreviewed normal/build edges, removals, or optionality changes fail, while test-only dev-dependencies do not masquerade as production coupling. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, the ORM differential comparison of SQLite, PostgreSQL, MySQL and MariaDB, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), the first-hour documentation path run as written (manual, nightly and pull requests changing a marked page or the CLI), the generated Blank and SaaS starters driven in Chromium, Firefox and WebKit with keyboard, CSP and axe-core checks (manual, nightly and pull requests changing the starters, `html!` or Core's pages, headers or CSRF), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main; full OS matrix with the `full-matrix` label), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, seven-shard multi-OS tests including Cargo-aware doctests sourced from all 48 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, the ORM differential comparison of SQLite, PostgreSQL, MySQL and MariaDB, isolated strict-DB/feature boundaries, MSRV, the generated VM deployment built and started with Docker and rootless Podman (manual, nightly and deploy-changing pull requests), the first-hour documentation path run as written (manual, nightly and pull requests changing a marked page or the CLI), the generated Blank and SaaS starters driven in Chromium, Firefox and WebKit with keyboard, CSP and axe-core checks (manual, nightly and pull requests changing the starters, `html!` or Core's pages, headers or CSRF), release builds of the Blank, SaaS and API starters checked against their footprint budgets (manual, nightly and pull requests changing a framework crate, the lockfile, the toolchain or the starters), and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from full/CLI manual Rust CI or admitted tag release | Blocking caller job; required release evidence | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories before attestation. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation with a pinned, zero-retry, bounded-concurrency nextest scheduler and retained JUnit inventory; a focused default-SQLite pass for ORM/Studio/Nexus/the facade; exact local 90% floors; and blocking OIDC-authenticated Codecov upload. Scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |

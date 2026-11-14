@@ -31,7 +31,7 @@ pub enum AttributePresence<'a> {
 ///
 /// `name={value}` is unchanged: it always writes the attribute, a `bool` as
 /// `"true"`/`"false"` (what `aria-*` and `data-*` attributes expect) and
-/// `None` as an empty value. Since 13.0.0-rc.1 an `Option` in that form raises
+/// `None` as an empty value. Since 13.0.0-alpha.5 an `Option` in that form raises
 /// a deprecation warning that points here, because the empty value still
 /// turns a boolean attribute on. Added in v13.
 ///

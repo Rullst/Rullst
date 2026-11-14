@@ -4,7 +4,6 @@
 // snippets under `blank/fragments/` are spliced into them.
 use super::common;
 
-mod client;
 mod turso;
 
 const BLANK_STYLES: &str = include_str!("blank/styles.css");
@@ -81,13 +80,9 @@ pub fn file_manifest(
     } else {
         ""
     };
-    let client_modules = if !api { "pub mod rpc;\n" } else { "" };
-    let rpc_module = if !api { "mod rpc;\n" } else { "" };
     let fill = |template: &str| {
         template
             .replace("__MIGRATIONS_MOD_DECLARATION__", migrations_mod_declaration)
-            .replace("__CLIENT_MODULES__", client_modules)
-            .replace("__RPC_MODULE__", rpc_module)
             .replace("__DB_MODEL_CODE__", db_model_code)
             .replace("__DB_STATUS_CODE__", db_status_code)
             .replace("__ARTISAN_CALL__", artisan_call)
@@ -132,7 +127,6 @@ pub fn file_manifest(
 
     if !api {
         manifest.push(("static/rullst.css", BLANK_STYLES.to_string()));
-        manifest.push(("src/rpc.rs", client::rpc_source()));
     }
 
     if turso_primary {

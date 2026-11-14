@@ -64,6 +64,18 @@ fn every_html_starter_is_wired_once_and_a_second_run_changes_nothing() {
             assert!(root.join(created).is_file(), "{created}");
         }
         syn::parse_file(&read(&root, "src/pwa.rs")).unwrap();
+        // The generated smoke test now checks the offline page.
+        if !hot {
+            assert!(
+                planned
+                    .changed
+                    .contains(&"src/security_tests.rs".to_owned()),
+                "{:?}",
+                planned.changed
+            );
+            let smoke = read(&root, "src/security_tests.rs");
+            assert_eq!(smoke.matches("(\"/offline\", 200),").count(), 1, "{smoke}");
+        }
         for path in planned.changed {
             syn::parse_file(&read(&root, &path)).unwrap();
         }
@@ -99,10 +111,13 @@ fn the_blank_starter_gets_the_core_layout_and_its_own_files() {
             "PWA.md",
         ]
     );
-    assert_eq!(planned.changed, ["src/main.rs"]);
+    // The smoke test that `cargo rullst new` wrote now lists /offline.
+    assert_eq!(planned.changed, ["src/main.rs", "src/security_tests.rs"]);
     let report = planned.report();
     assert!(report.starts_with("Progressive Web App added.\n  created  src/pwa.rs\n"));
-    assert!(report.contains("  updated  src/main.rs\n1 page layout(s) now register /sw.js.\n"));
+    assert!(report.contains(
+        "  updated  src/main.rs\n  updated  src/security_tests.rs\n1 page layout(s) now register /sw.js.\n"
+    ));
     assert!(!report.contains("To do:"), "{report}");
     writes::apply(&planned.edits).unwrap();
 
@@ -116,7 +131,7 @@ fn the_blank_starter_gets_the_core_layout_and_its_own_files() {
     ));
     // The blank starter ships its stylesheet, htmx and logo, so the worker stores them.
     let worker = read(&root, "src/pwa/sw.js");
-    assert!(worker.contains("const PRECACHE = [\n  '/offline',\n  '/static/manifest.webmanifest',\n  '/static/pwa.js',\n  '/static/icons/icon-192.png', // placeholder icon (the Rullst logo): replace it\n  '/static/icons/icon-512.png', // placeholder icon (the Rullst logo): replace it\n  '/static/rullst.css',\n  '/static/htmx-1.9.12.min.js',\n  '/static/rullst.png', // the starter's Rullst logo, the icon of Core's page\n];"));
+    assert!(worker.contains("const PRECACHE = [\n  '/offline',\n  '/static/manifest.webmanifest',\n  '/static/pwa.js',\n  '/static/icons/icon-192.png', // placeholder icon (the Rullst logo): replace it\n  '/static/icons/icon-512.png', // placeholder icon (the Rullst logo): replace it\n  '/static/rullst.css',\n  '/static/htmx-2.0.11.min.js',\n  '/static/rullst.png', // the starter's Rullst logo, the icon of Core's page\n];"));
     assert_eq!(
         fs::read(root.join("static/icons/icon-512.png")).unwrap(),
         include_bytes!("icons/icon-512.png")

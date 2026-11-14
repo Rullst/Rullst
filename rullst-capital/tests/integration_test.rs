@@ -30,7 +30,7 @@ async fn test_kept_payment_providers_use_offline_fixtures() {
     assert!(stripe.apply_coupon("sub_123", "SAVE20").await.is_ok());
     assert!(stripe.extend_trial("sub_123", 1798761600).await.is_ok());
 
-    // 2. InfinitePay (experimental)
+    // 2. InfinitePay
     let ip = InfinitePayProvider::new("mock_ip_client".to_string(), "mock_ip_sec".to_string());
     assert_eq!(ip.name(), "infinitepay");
     let url = ip

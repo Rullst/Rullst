@@ -205,57 +205,8 @@ fn auth_resource_and_service_scaffolds_compose_in_one_project() {
 }
 
 #[test]
-fn academy_evidence_and_forced_ejection_cover_success_and_failure_boundaries() {
+fn forced_ejection_backs_up_once_and_refuses_to_overwrite_the_backup() {
     let project = Project::new();
-
-    let absent = project.run(&["academy:doctor", "--evidence", "missing-evidence.json"]);
-    assert!(!absent.status.success());
-    fs::write(project.root.join("invalid-evidence.json"), "not-json")
-        .expect("invalid evidence fixture");
-    let invalid = project.run(&["academy:doctor", "--evidence", "invalid-evidence.json"]);
-    assert!(!invalid.status.success());
-    assert!(!project.run(&["academy:doctor", "--json"]).status.success());
-
-    let requirements = [
-        "authenticated_identity",
-        "school_membership",
-        "active_entitlement",
-        "object_authorization",
-        "tenant_isolation",
-        "server_validated_assessment",
-        "idempotent_score_events",
-        "durable_automation",
-        "durable_admin_audit",
-        "safe_content_pipeline",
-        "privacy_lifecycle",
-        "distributed_abuse_control",
-    ];
-    let checks = requirements
-        .into_iter()
-        .map(|requirement| {
-            serde_json::json!({
-                "requirement": requirement,
-                "status": "PASS",
-                "evidence": [format!("test:{requirement}")]
-            })
-        })
-        .collect::<Vec<_>>();
-    let evidence = serde_json::json!({
-        "schema_version": "rullst.academy-evidence.v1",
-        "checks": checks
-    });
-    fs::write(
-        project.root.join("academy-evidence.json"),
-        serde_json::to_vec_pretty(&evidence).expect("serialize evidence"),
-    )
-    .expect("Academy evidence fixture");
-    project.succeeds(&[
-        "academy:doctor",
-        "--evidence",
-        "academy-evidence.json",
-        "--json",
-    ]);
-    project.succeeds(&["academy:doctor", "--evidence", "academy-evidence.json"]);
 
     project.succeeds(&["eject", "--force"]);
     assert!(project.root.join("src/main.rs.rullst-backup").is_file());

@@ -66,8 +66,8 @@ async fn handler(State(state): State<Shared>, request: Request<Body>) -> Respons
         let mut state = state.lock().unwrap();
         state.calls += 1;
         assert!(parts.headers.contains_key("authorization"));
-        let digest = ring::digest::digest(&ring::digest::SHA256, &body);
-        let expected: String = digest.as_ref().iter().map(|v| format!("{v:02x}")).collect();
+        let digest = <sha2::Sha256 as sha2::Digest>::digest(&body);
+        let expected: String = digest.iter().map(|v| format!("{v:02x}")).collect();
         assert_eq!(
             parts.headers.get("x-amz-content-sha256").unwrap(),
             expected.as_str()
@@ -152,10 +152,7 @@ fn init() -> Reply {
     )
 }
 fn sha() -> [u8; 32] {
-    ring::digest::digest(&ring::digest::SHA256, b"hello")
-        .as_ref()
-        .try_into()
-        .unwrap()
+    <sha2::Sha256 as sha2::Digest>::digest(b"hello").into()
 }
 
 #[tokio::test]

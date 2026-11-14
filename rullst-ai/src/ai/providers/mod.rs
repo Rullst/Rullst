@@ -1,14 +1,11 @@
 /// Anthropic AI client provider.
 pub mod anthropic;
-/// DeepSeek OpenAI-compatible client provider.
-pub mod deepseek;
 /// Google Gemini client provider.
 pub mod gemini;
-/// Ollama local client provider.
-pub mod ollama;
 /// OpenAI client provider.
 pub mod openai;
-/// Capability-declared OpenAI-compatible local/cloud provider.
+/// Capability-declared OpenAI-compatible local/cloud provider, with the
+/// DeepSeek and Ollama presets.
 pub mod openai_compatible;
 
 mod http_error;
@@ -26,9 +23,7 @@ mod transport_tests;
 mod capability_tests {
     use super::{
         anthropic::AnthropicProvider,
-        deepseek::DeepSeekProvider,
         gemini::GeminiProvider,
-        ollama::OllamaProvider,
         openai::OpenAiProvider,
         openai_compatible::{OpenAiCompatibleCapabilities, OpenAiCompatibleProvider},
     };
@@ -60,9 +55,16 @@ mod capability_tests {
                 ..FULL_GENERATION
             }
         );
+        // The presets stream with usage and an explicit cancellation.
         assert_eq!(
-            OllamaProvider::new("", "mock-model").capabilities(),
-            FULL_GENERATION
+            OpenAiCompatibleProvider::ollama("", "mock-model")
+                .expect("offline Ollama preset")
+                .capabilities(),
+            ProviderCapabilities {
+                streaming: true,
+                explicit_cancellation: true,
+                ..FULL_GENERATION
+            }
         );
         assert_eq!(
             OpenAiCompatibleProvider::mock("mock-model")
@@ -88,17 +90,21 @@ mod capability_tests {
                 ..FULL_GENERATION
             }
         );
+        let deepseek = OpenAiCompatibleProvider::deepseek("").expect("offline DeepSeek preset");
         assert_eq!(
-            DeepSeekProvider::new("").capabilities(),
+            deepseek.capabilities(),
             ProviderCapabilities {
                 embeddings: false,
                 vision: false,
+                streaming: true,
+                explicit_cancellation: true,
                 ..FULL_GENERATION
             }
         );
         assert!(
-            !DeepSeekProvider::new("")
-                .with_model("deepseek-chat")
+            !deepseek
+                .try_with_model("deepseek-chat")
+                .expect("valid model")
                 .capabilities()
                 .json_schema
         );

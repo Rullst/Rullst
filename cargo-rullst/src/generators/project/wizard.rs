@@ -23,14 +23,8 @@ type WizardResult<T> = Result<T, Box<dyn std::error::Error>>;
 pub enum PolyglotIntegration {
     /// Turso/libSQL edge SQL.
     Turso,
-    /// MongoDB document storage.
-    MongoDb,
-    /// DuckDB OLAP and analytics.
-    DuckDb,
     /// SurrealDB document and graph storage.
     SurrealDb,
-    /// Qdrant bounded dense-vector storage.
-    Qdrant,
 }
 
 impl PolyglotIntegration {
@@ -38,10 +32,7 @@ impl PolyglotIntegration {
     pub const fn orm_feature(self) -> &'static str {
         match self {
             Self::Turso => "turso",
-            Self::MongoDb => "mongodb",
-            Self::DuckDb => "duckdb",
             Self::SurrealDb => "surrealdb",
-            Self::Qdrant => "qdrant",
         }
     }
 
@@ -49,10 +40,7 @@ impl PolyglotIntegration {
     pub const fn rullst_feature(self) -> &'static str {
         match self {
             Self::Turso => "orm-turso",
-            Self::MongoDb => "orm-mongodb",
-            Self::DuckDb => "orm-duckdb",
             Self::SurrealDb => "orm-surrealdb",
-            Self::Qdrant => "orm-qdrant",
         }
     }
 }
@@ -106,10 +94,7 @@ pub(crate) fn requested_integrations(options: &ProjectScaffoldOptions) -> Vec<Po
             options.turso || options.database == Some("Turso"),
             PolyglotIntegration::Turso,
         ),
-        (options.mongodb, PolyglotIntegration::MongoDb),
-        (options.duckdb, PolyglotIntegration::DuckDb),
         (options.surrealdb, PolyglotIntegration::SurrealDb),
-        (options.qdrant, PolyglotIntegration::Qdrant),
     ]
     .into_iter()
     .filter_map(|(selected, integration)| selected.then_some(integration))

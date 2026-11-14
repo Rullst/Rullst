@@ -152,12 +152,18 @@ fn a_project_without_sources_is_not_checked_instead_of_clean() {
 
 #[cfg(unix)]
 fn fake_cargo(directory: &Path, audit_exit: u8) -> PathBuf {
+    fake_cargo_reporting(directory, audit_exit, "")
+}
+
+/// A fake `cargo` whose `cargo audit` prints `report` (its `--json` output).
+#[cfg(unix)]
+fn fake_cargo_reporting(directory: &Path, audit_exit: u8, report: &str) -> PathBuf {
     use std::os::unix::fs::PermissionsExt as _;
-    let path = directory.join(format!("cargo-{audit_exit}"));
+    let path = directory.join(format!("cargo-{audit_exit}-{}", report.len()));
     fs::write(
         &path,
         format!(
-            "#!/bin/sh\nif [ \"$2\" = --version ]; then exit 0; fi\nif [ {audit_exit} -ne 0 ]; then echo 'error: 1 vulnerability found!' >&2; fi\nexit {audit_exit}\n"
+            "#!/bin/sh\nif [ \"$2\" = --version ]; then exit 0; fi\nprintf '%s' '{report}'\nif [ {audit_exit} -ne 0 ]; then echo 'error: 1 vulnerability found!' >&2; fi\nexit {audit_exit}\n"
         ),
     )
     .expect("fake cargo");
@@ -201,6 +207,22 @@ fn dependency_check_reuses_cargo_audit_and_its_exceptions() {
         check
             .detail
             .ends_with("Last error: error: 1 vulnerability found!")
+    );
+    assert!(check.status.fails());
+    // An advisory found is a finding, not a run that failed.
+    let advisory = fake_cargo_reporting(
+        tools.path(),
+        1,
+        r#"{"vulnerabilities":{"found":true,"count":1,"list":[]}}"#,
+    );
+    let check = dependency_check(root.path(), advisory.as_os_str(), &[]);
+    assert_eq!(check.status, EvidenceStatus::Findings(1));
+    assert!(
+        check
+            .detail
+            .starts_with("cargo-audit reported 1 vulnerable dependency advisory(ies)"),
+        "{}",
+        check.detail
     );
     assert!(check.status.fails());
     let check = dependency_check(root.path(), OsStr::new("rullst-missing-cargo"), &[]);

@@ -128,8 +128,9 @@ pub(crate) const CAPABILITIES: [Capability; 5] = [
             "APP_KEY",
             "REPLACE_WITH_YOUR_32_CHAR_RANDOM_KEY",
             &[
-                "Encrypts sessions and cookies. Development falls back to a local",
-                "key in .rullst_dev_key; staging and production require a unique value.",
+                "Encrypts sessions and cookies. Development falls back to a per-project",
+                "key in your user state directory (rullst/dev-keys/, outside the project);",
+                "staging and production require a unique value.",
             ],
         )],
         snippet: Snippet {

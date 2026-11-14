@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-fn serve_once(
+pub(super) fn serve_once(
     response_body: &'static str,
     declared_length: Option<usize>,
 ) -> (String, mpsc::Receiver<String>) {

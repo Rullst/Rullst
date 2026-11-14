@@ -265,3 +265,13 @@ fn a_paid_confirmation_must_match_the_server_side_total_and_currency() {
         Err(CapitalError::PayloadParseError(_))
     ));
 }
+
+#[test]
+fn request_digest_is_a_sha256_known_answer() {
+    // SHA-256 of the v1 tag, the big-endian amount (u64) and quantity (u32),
+    // then each length-prefixed field, computed independently.
+    assert_eq!(
+        hex::encode(request().request_digest()),
+        "4d5c56d95de660d8096c8543f8f6d455a605f2da2b56ae0c5d1c3926b08141f7"
+    );
+}

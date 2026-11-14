@@ -1,7 +1,7 @@
 //! One resolver for automatic clients and their configuration indicators.
 use super::providers::{
-    anthropic::AnthropicProvider, deepseek::DeepSeekProvider, gemini::GeminiProvider,
-    ollama::OllamaProvider, openai::OpenAiProvider, openai_compatible::OpenAiCompatibleProvider,
+    anthropic::AnthropicProvider, gemini::GeminiProvider, openai::OpenAiProvider,
+    openai_compatible::OpenAiCompatibleProvider,
 };
 use super::{AiClient, AiError, AiProvider, FallbackProvider, mock::ProviderMode};
 use std::sync::Arc;
@@ -117,7 +117,7 @@ impl AutoAiConfig {
             } else {
                 "DeepSeek"
             };
-            config.push(DeepSeekProvider::new(key), name);
+            config.push(OpenAiCompatibleProvider::deepseek(key)?, name);
         }
         if let Some(key) = get("GROQ_API_KEY") {
             let name = if offline_credential(&key) {
@@ -142,7 +142,7 @@ impl AutoAiConfig {
                 "Ollama Local"
             };
             let model = get("OLLAMA_MODEL").unwrap_or_else(|| "llama3".into());
-            config.push(OllamaProvider::new(host, model), name);
+            config.push(OpenAiCompatibleProvider::ollama(host, model)?, name);
         }
         Ok(config)
     }

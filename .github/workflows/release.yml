@@ -139,8 +139,9 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
           # Package verification builds each extracted crate outside the
-          # workspace profiles. Keep bundled DuckDB DWARF and parallel C++
-          # compilation bounded without reducing the all-feature surface.
+          # workspace profiles. Keep DWARF and parallel C/C++ compilation
+          # (aws-lc-sys, bundled SQLite) bounded without reducing the
+          # all-feature surface.
           CARGO_PROFILE_DEV_DEBUG: "0"
           CARGO_BUILD_JOBS: "2"
         run: |
@@ -178,9 +179,11 @@ jobs:
           cargo audit --json --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440 > "$evidence_dir/cargo-audit.json"
 
           # This command intentionally emits NOT CHECKED / NOT EVALUATED for
-          # controls that a bounded source audit cannot establish.
+          # controls that a bounded source audit cannot establish. It runs
+          # cargo-audit again, so it takes the same governed exceptions.
           cargo run --locked -p cargo-rullst --bin rullst -- \
-            audit --idor --compliance --sbom
+            audit --idor --compliance --sbom \
+            --audit-ignore RUSTSEC-2026-0459 --audit-ignore RUSTSEC-2026-0440
           mv SECURITY_COMPLIANCE.md \
             "$evidence_dir/security-evidence.md"
           mv sbom-cyclonedx.json \

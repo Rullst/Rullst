@@ -173,16 +173,6 @@ impl TokenUsage {
         }
         .reported()
     }
-
-    /// Ollama `/api/chat` final response: `prompt_eval_count` and
-    /// `eval_count` (<https://github.com/ollama/ollama/blob/main/docs/api.md>).
-    pub(crate) fn from_ollama(response: &Value) -> Option<Self> {
-        Self::new(
-            response["prompt_eval_count"].as_u64(),
-            response["eval_count"].as_u64(),
-        )
-        .reported()
-    }
 }
 
 /// A complete chat answer with the usage the provider reported, if any.
@@ -279,11 +269,11 @@ mod tests {
     }
 
     #[test]
-    fn ollama_counts_and_absent_fields() {
-        let usage = TokenUsage::from_ollama(&json!({"prompt_eval_count": 26, "eval_count": 290}))
-            .expect("usage");
-        assert_eq!(usage.total_tokens(), Some(316));
-        assert_eq!(TokenUsage::from_ollama(&json!({"done": true})), None);
+    fn partial_or_overflowing_counts_have_no_total() {
+        assert_eq!(
+            TokenUsage::new(Some(26), Some(290)).total_tokens(),
+            Some(316)
+        );
         assert_eq!(TokenUsage::new(Some(1), None).total_tokens(), None);
         assert_eq!(
             TokenUsage::new(Some(u64::MAX), Some(1)).total_tokens(),

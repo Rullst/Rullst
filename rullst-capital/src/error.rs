@@ -43,7 +43,11 @@ pub struct ProviderFailure {
     kind: ProviderFailureKind,
     status: Option<u16>,
     retry_after: Option<Duration>,
+    reason: Option<String>,
 }
+
+/// Longest provider error code kept by [`ProviderFailure::reason`].
+const MAX_REASON_BYTES: usize = 64;
 
 impl ProviderFailure {
     pub(crate) fn request_build(provider: &'static str, operation: &'static str) -> Self {
@@ -124,7 +128,27 @@ impl ProviderFailure {
             kind,
             status,
             retry_after,
+            reason: None,
         }
+    }
+
+    /// Keeps the provider's machine-readable error code when it is a short
+    /// token (lowercase ASCII letters, digits, `_`, `-` or `.`, at most 64
+    /// bytes); anything else is dropped, so no provider message, identifier or
+    /// personal data reaches the error.
+    pub(crate) fn with_reason(mut self, reason: Option<&str>) -> Self {
+        self.reason = reason
+            .filter(|code| {
+                !code.is_empty()
+                    && code.len() <= MAX_REASON_BYTES
+                    && code.bytes().all(|byte| {
+                        byte.is_ascii_lowercase()
+                            || byte.is_ascii_digit()
+                            || matches!(byte, b'_' | b'-' | b'.')
+                    })
+            })
+            .map(str::to_owned);
+        self
     }
 
     /// Adapter label without account, customer, or credential material.
@@ -150,6 +174,16 @@ impl ProviderFailure {
     /// Bounded numeric `Retry-After` delay supplied by the provider, when present.
     pub fn retry_after(&self) -> Option<Duration> {
         self.retry_after
+    }
+
+    /// The provider's error code from the body of an unsuccessful HTTP
+    /// response, such as InfinitePay's `external_checkout_not_enabled` (the
+    /// merchant has not enabled "Checkout externo" for the InfiniteTag, or the
+    /// tag does not exist) or Stripe's `error.code` (else `error.type`).
+    /// `None` when the provider sent none or it was not a short token.
+    /// Since 13.0.0-alpha.5.
+    pub fn reason(&self) -> Option<&str> {
+        self.reason.as_deref()
     }
 
     /// Deterministic failure class for caller-owned retry and alerting policy.
@@ -188,11 +222,18 @@ impl std::fmt::Display for ProviderFailure {
                     self.provider, self.operation
                 )
             }
-            (ProviderFailureKind::HttpResponse, Some(status)) => write!(
-                formatter,
-                "{} {} returned HTTP {}",
-                self.provider, self.operation, status
-            ),
+            (ProviderFailureKind::HttpResponse, Some(status)) => match &self.reason {
+                Some(reason) => write!(
+                    formatter,
+                    "{} {} returned HTTP {} ({})",
+                    self.provider, self.operation, status, reason
+                ),
+                None => write!(
+                    formatter,
+                    "{} {} returned HTTP {}",
+                    self.provider, self.operation, status
+                ),
+            },
             (ProviderFailureKind::HttpResponse, None) => write!(
                 formatter,
                 "{} {} returned an unsuccessful response",
@@ -408,6 +449,27 @@ mod tests {
         assert_eq!(limited.to_string(), "stripe checkout returned HTTP 429");
         assert!(!limited.to_string().contains("secret"));
 
+        let refused =
+            ProviderFailure::http_response("infinitepay", "create payment link", 404, None)
+                .with_reason(Some("external_checkout_not_enabled"));
+        assert_eq!(refused.reason(), Some("external_checkout_not_enabled"));
+        assert_eq!(
+            refused.to_string(),
+            "infinitepay create payment link returned HTTP 404 (external_checkout_not_enabled)"
+        );
+        for unsafe_reason in ["", "Has Spaces", "<script>", "UPPER", &"a".repeat(65)] {
+            let failure = ProviderFailure::http_response("stripe", "checkout", 400, None)
+                .with_reason(Some(unsafe_reason));
+            assert_eq!(failure.reason(), None, "{unsafe_reason}");
+            assert_eq!(failure.to_string(), "stripe checkout returned HTTP 400");
+        }
+        assert_eq!(
+            ProviderFailure::http_response("stripe", "checkout", 400, None)
+                .with_reason(Some(&"a".repeat(64)))
+                .reason()
+                .map(str::len),
+            Some(64)
+        );
         let unavailable = ProviderFailure::http_response("infinitepay", "checkout", 503, None);
         assert_eq!(unavailable.class(), ProviderFailureClass::Transient);
         let rejected = ProviderFailure::http_response("infinitepay", "checkout", 422, None);

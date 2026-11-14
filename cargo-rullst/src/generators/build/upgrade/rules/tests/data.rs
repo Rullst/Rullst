@@ -194,7 +194,7 @@ fn boot() {
 use rullst::capital::{InfinitePayProvider, StripeProvider};
 fn boot() {
     rullst::capital::init_provider(Box::new(StripeProvider::new("key", "secret")));
-    let experimental = InfinitePayProvider::new("key", "secret");
+    let one_off = InfinitePayProvider::new("key", "secret");
 }
 "#,
         &[],

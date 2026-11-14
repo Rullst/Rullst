@@ -7,9 +7,7 @@ members = [
     "rullst-orm-macros",
     "rullst-connect",
     "examples/blog",
-    "examples/erp",
     "examples/lms",
-    "examples/portfolio",
     "examples/iot-gateway",
     "examples/webgpu",
     "rullst-core",
@@ -27,38 +25,27 @@ members = [
     "rullst-media",
     "rullst-labs",
 ]
-exclude = [
-    "benchmark/rullst",
-    "benchmark/axum",
-    "benchmark/actix",
-    "benchmark/loco",
-
-    "benchmark/leptos",
-    "benchmark/poem",
-    "benchmark/warp",
-    "benchmark/dioxus",
-]
 resolver = "2"
 
 [workspace.dependencies]
 # Internal workspace crates
-rullst = { version = "=13.0.0-alpha.4", path = "rullst" }
-rullst-core = { version = "=13.0.0-alpha.4", path = "rullst-core", default-features = false }
-rullst-orm = { version = "=13.0.0-alpha.4", path = "rullst-orm", default-features = false }
-rullst-orm-macros = { version = "=13.0.0-alpha.4", path = "rullst-orm-macros" }
-rullst-macros = { version = "=13.0.0-alpha.4", path = "rullst-macros" }
-rullst-auth = { version = "=13.0.0-alpha.4", path = "rullst-auth" }
-rullst-security = { version = "=13.0.0-alpha.4", path = "rullst-security" }
-rullst-capital = { version = "=13.0.0-alpha.4", path = "rullst-capital" }
-rullst-studio = { version = "=13.0.0-alpha.4", path = "rullst-studio", default-features = false }
-rullst-nexus = { version = "=13.0.0-alpha.4", path = "rullst-nexus", default-features = false }
-rullst-mail = { version = "=13.0.0-alpha.4", path = "rullst-mail" }
-rullst-messaging = { version = "=13.0.0-alpha.4", path = "rullst-messaging" }
-rullst-privacy = { version = "=13.0.0-alpha.4", path = "rullst-privacy", default-features = false }
-rullst-ai = { version = "=13.0.0-alpha.4", path = "rullst-ai" }
-rullst-connect = { version = "=13.0.0-alpha.4", path = "rullst-connect" }
-rullst-iot = { version = "=13.0.0-alpha.4", path = "rullst-iot" }
-cargo-rullst = { version = "=13.0.0-alpha.4", path = "cargo-rullst" }
+rullst = { version = "=13.0.0-alpha.5", path = "rullst" }
+rullst-core = { version = "=13.0.0-alpha.5", path = "rullst-core", default-features = false }
+rullst-orm = { version = "=13.0.0-alpha.5", path = "rullst-orm", default-features = false }
+rullst-orm-macros = { version = "=13.0.0-alpha.5", path = "rullst-orm-macros" }
+rullst-macros = { version = "=13.0.0-alpha.5", path = "rullst-macros" }
+rullst-auth = { version = "=13.0.0-alpha.5", path = "rullst-auth" }
+rullst-security = { version = "=13.0.0-alpha.5", path = "rullst-security" }
+rullst-capital = { version = "=13.0.0-alpha.5", path = "rullst-capital" }
+rullst-studio = { version = "=13.0.0-alpha.5", path = "rullst-studio", default-features = false }
+rullst-nexus = { version = "=13.0.0-alpha.5", path = "rullst-nexus", default-features = false }
+rullst-mail = { version = "=13.0.0-alpha.5", path = "rullst-mail" }
+rullst-messaging = { version = "=13.0.0-alpha.5", path = "rullst-messaging" }
+rullst-privacy = { version = "=13.0.0-alpha.5", path = "rullst-privacy", default-features = false }
+rullst-ai = { version = "=13.0.0-alpha.5", path = "rullst-ai" }
+rullst-connect = { version = "=13.0.0-alpha.5", path = "rullst-connect" }
+rullst-iot = { version = "=13.0.0-alpha.5", path = "rullst-iot" }
+cargo-rullst = { version = "=13.0.0-alpha.5", path = "cargo-rullst" }
 
 # Shared external dependencies
 tokio = { version = "1.52.3", default-features = false }
@@ -114,17 +101,9 @@ printpdf = { version = "=0.12.8", default-features = false }
 [workspace.metadata.cargo-machete]
 ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]
 
-# DuckDB's bundled C++ archive is portable, but DWARF for the engine consumes
-# several GiB and is not useful when debugging the Rust adapter boundary.
-[profile.dev.package.libduckdb-sys]
-debug = 0
-
 [profile.test]
-# The all-feature workspace gate links many integration-test binaries against
-# DuckDB. Keeping full DWARF in every binary can exhaust both local and CI
-# runners without improving test diagnostics; backtraces still retain symbols.
+# The all-feature workspace gate links many integration-test binaries. Keeping
+# full DWARF in every binary can exhaust both local and CI runners without
+# improving test diagnostics; backtraces still retain symbols.
 debug = 0
 incremental = false
-
-[profile.test.package.libduckdb-sys]
-debug = 0

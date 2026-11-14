@@ -1,6 +1,6 @@
 use super::{Invoice, invalid_invoice};
 use crate::{ChargeReceipt, ChargeStatus};
-use ring::digest::{SHA256, digest};
+use sha2::{Digest, Sha256};
 
 /// An immutable invoice bound to one final successful charge receipt.
 ///
@@ -98,7 +98,7 @@ fn delivery_key(invoice: &Invoice, receipt: &ChargeReceipt) -> String {
         material.push(0);
     }
     material.extend_from_slice(&receipt.amount_minor().to_be_bytes());
-    format!("paid_invoice_{}", hex::encode(digest(&SHA256, &material)))
+    format!("paid_invoice_{}", hex::encode(Sha256::digest(material)))
 }
 
 #[cfg(test)]

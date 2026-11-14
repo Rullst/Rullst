@@ -2,9 +2,9 @@
 //! later releases removed or changed. Each predicate reads one line.
 
 use super::super::catalog::{
-    BLUEPRINTS_REMOVED, CLI_AI_REMOVED, CLI_SELF_UPDATE, DEPLOY_GENERATORS_REMOVED,
-    DEPLOY_TARGETS_REMOVED, ISLAND_COMMANDS_REMOVED, LIVE_COMMAND_REMOVED, MIGRATION_AUTO_STATUS,
-    OMNI_REMOVED,
+    ACADEMY_REMOVED, BLUEPRINTS_REMOVED, CLI_AI_REMOVED, CLI_SELF_UPDATE,
+    DEPLOY_GENERATORS_REMOVED, DEPLOY_TARGETS_REMOVED, ISLAND_COMMANDS_REMOVED,
+    LIVE_COMMAND_REMOVED, MIGRATION_AUTO_STATUS, OMNI_REMOVED,
 };
 use super::{Rule, line_of};
 
@@ -12,7 +12,7 @@ use super::{Rule, line_of};
 type LineCheck = fn(&str) -> bool;
 
 /// Each script rule with the line predicate that locates it.
-const CHECKS: [(&Rule, LineCheck); 9] = [
+const CHECKS: [(&Rule, LineCheck); 10] = [
     (&OMNI_REMOVED, runs_omni),
     (&CLI_AI_REMOVED, runs_removed_cli_command),
     (&CLI_SELF_UPDATE, runs_removed_update_command),
@@ -22,13 +22,24 @@ const CHECKS: [(&Rule, LineCheck); 9] = [
     (&BLUEPRINTS_REMOVED, passes_removed_blueprint),
     (&ISLAND_COMMANDS_REMOVED, runs_island_command),
     (&LIVE_COMMAND_REMOVED, runs_live_command),
+    (&ACADEMY_REMOVED, runs_academy_doctor),
 ];
 
-/// Each rule a script matches, at its first matching line.
-pub(super) fn script_findings(text: &str) -> Vec<(&'static Rule, usize)> {
+/// Each rule a script matches, at its first matching line that no
+/// `rullst-upgrade: reviewed` marker covers; the rule of every covered line
+/// is added to `reviewed`.
+pub(super) fn script_findings(
+    text: &str,
+    reviewed: &mut Vec<&'static Rule>,
+) -> Vec<(&'static Rule, usize)> {
+    let lines: Vec<&str> = text.lines().collect();
     CHECKS
         .into_iter()
-        .filter_map(|(rule, matches)| line_of(text, matches).map(|line| (rule, line)))
+        .filter(|(_, matches)| line_of(text, matches).is_some())
+        .filter_map(|(rule, matches)| {
+            super::super::reviewed::first_unreviewed(&lines, rule, matches, reviewed)
+                .map(|line| (rule, line))
+        })
         .collect()
 }
 
@@ -38,7 +49,8 @@ fn runs_omni(line: &str) -> bool {
 }
 
 /// A script line running a command that 13.0.0-alpha.4 removed (`rullst ai`)
-/// or renamed (`rullst footprint`, now `green`), as a whole word.
+/// or changed (`rullst footprint`, `green` in alpha.4 and `footprint` again,
+/// with other flags and report, since alpha.5), as a whole word.
 pub(in super::super) fn runs_removed_cli_command(line: &str) -> bool {
     ["rullst footprint", "rullst ai"].iter().any(|command| {
         line.match_indices(command).any(|(index, _)| {
@@ -141,4 +153,9 @@ pub(in super::super) fn runs_island_command(line: &str) -> bool {
 /// A script line running `make:live`, removed in 13.0.0-alpha.5.
 pub(in super::super) fn runs_live_command(line: &str) -> bool {
     runs_command(line, "make:live")
+}
+
+/// A script line running `academy:doctor`, removed in 13.0.0-alpha.5.
+pub(in super::super) fn runs_academy_doctor(line: &str) -> bool {
+    runs_command(line, "academy:doctor")
 }

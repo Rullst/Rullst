@@ -64,11 +64,16 @@ fn every_public_reference_with_rust_is_included_in_the_doctest_aggregator() {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let docs_dir = manifest_dir.join("../docs/src");
     let crates_dir = docs_dir.join("crates");
+    let recipes_dir = docs_dir.join("recipes");
     let aggregator = fs::read_to_string(manifest_dir.join("src/book_doctests.rs"))
         .expect("the public-guide doctest aggregator must be readable");
 
     let mut expected = BTreeSet::new();
-    for (directory, prefix) in [(&docs_dir, ""), (&crates_dir, "crates/")] {
+    for (directory, prefix) in [
+        (&docs_dir, ""),
+        (&crates_dir, "crates/"),
+        (&recipes_dir, "recipes/"),
+    ] {
         for entry in fs::read_dir(directory)
             .expect("the public-guide directory must be readable")
             .map(|entry| entry.expect("public-guide entries must be readable"))

@@ -49,7 +49,7 @@ With Rust installed ([rustup.rs](https://rustup.rs/)):
 
 <!-- first-hour: quickstart -->
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.5 --locked
 cargo rullst new my_app    # choose the Blank, API or SaaS starter
 cd my_app
 cargo rullst dev           # rebuilds and restarts every time you save
@@ -62,7 +62,7 @@ and can take a few minutes; later rebuilds are much faster
 version is named because 13.0 is still a prerelease ([why](#versions)).
 Want a bigger starting point? Copy an application from
 [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples): a complete
-LMS, ERP or portfolio, or the blog showcase
+LMS or the blog showcase
 ([where the examples live](#where-the-examples-live)).
 
 [Installation and prerequisites](https://rullst.github.io/Rullst/book/1-getting-started.html)
@@ -164,7 +164,7 @@ curl http://127.0.0.1:3000/api/health
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/features-dark.webp">
     <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/features-light.webp">
-    <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/features-dark.webp" alt="One framework, the whole product. Secure by default: Argon2id, sessions, passkeys, OAuth2/OIDC, CSRF, strict headers, WAF and login jail. Data that stays correct: Active Record, transactions, migrations and an outbox on SQLite, PostgreSQL and MySQL. Starters and examples: Blank, API and SaaS starters, plus LMS, ERP, Portfolio and blog examples, all ordinary Rust you own. Made for AI coding: explicit APIs, compile-time macros, typed errors, no runtime reflection. Payments and email: Stripe billing with signed webhooks; Resend, AWS SES, SendPulse and SMTP. AI built in: OpenAI, Claude, Gemini, DeepSeek and Ollama with prompt-injection filtering and PII masking. See inside your app: Studio telemetry and the Nexus admin with a security radar. Web first, installable: HTMX, JSON APIs, and installable PWAs for Google Play and the Microsoft Store." width="100%">
+    <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/features-dark.webp" alt="One framework, the whole product. Secure by default: Argon2id, sessions, passkeys, OAuth2/OIDC, CSRF, strict headers, WAF and login jail. Data that stays correct: Active Record, transactions, migrations and an outbox on SQLite, PostgreSQL and MySQL. Starters and examples: Blank, API and SaaS starters, plus LMS and blog examples, all ordinary Rust you own. Made for AI coding: explicit APIs, compile-time macros, typed errors, no runtime reflection. Payments and email: Stripe billing with signed webhooks; Resend, AWS SES, SendPulse and SMTP. AI built in: OpenAI, Claude, Gemini, DeepSeek and Ollama with prompt-injection filtering and PII masking. See inside your app: Studio telemetry and the Nexus admin with a security radar. Web first, installable: HTMX, JSON APIs, and installable PWAs for Google Play and the Microsoft Store." width="100%">
   </picture>
 </p>
 
@@ -174,6 +174,47 @@ replace your authorization rules, and databases are not interchangeable. See the
 · [Why Rullst?](https://rullst.github.io/Rullst/book/why-Rullst.html)
 · [An AI assistant's candid evaluation](https://rullst.github.io/Rullst/book/ai-evaluation.html)
 · [Axum & SQLx escape hatches](https://rullst.github.io/Rullst/book/axum-sqlx-migration.html)
+
+<a id="highlights"></a>
+
+## 🔎 Highlights
+
+**Software has an environmental cost:** the energy of the servers that run it, of the networks that carry its pages and of the devices that open them. Rullst takes that cost seriously, which is why it ships `cargo rullst footprint`. It measures what your application uses (binary size, memory, CPU time per request and page weight) and estimates its carbon with the SCI method. You can see the numbers, set budgets that fail CI when they grow, and publish them. The report is a measurement and an estimate, not a certification.
+Rullst's own CI holds the Blank, API and SaaS starters to such budgets
+([how](https://rullst.github.io/Rullst/book/footprint.html#budgets-in-ci)).
+[Footprint guide](https://rullst.github.io/Rullst/book/footprint.html).
+
+**Tests from the first commit:** every project that `cargo rullst new`
+creates has a smoke test of each page (status, security headers, HTML
+hygiene and htmx history restores) and, unless you pass `--no-ci`, a CI
+workflow with Clippy, tests, `cargo audit` and a secret scan. `make:mfa`, `make:privacy` and `make:pwa`
+add their pages to that test, `cargo rullst add browser-tests` opens every
+page in Chromium, Firefox and WebKit with axe-core, and `rullst::testing`
+gives your own tests the same HTML and header checks.
+[Testing your application](https://rullst.github.io/Rullst/book/testing-your-app.html).
+
+**Frontend without a bundler:** pages are rendered on the server and use
+htmx, under a strict Content-Security-Policy with a nonce per request.
+Tailwind CSS (through its pinned standalone CLI, no Node.js), Alpine.js's
+CSP build and accessible components from `cargo rullst ui add` are opt-in.
+[Frontend guide](https://rullst.github.io/Rullst/book/frontend.html).
+
+<a id="integrations"></a>
+
+## 🔌 Integrations
+
+How far each built-in integration has been tested:
+
+| Status | Integrations |
+| :--- | :--- |
+| **Validated with real accounts** | Stripe (real payments); InfinitePay (a real Pix payment); Bunny Stream, Resend, SMTP mail, Google Gemini, Google sign-in and GitHub sign-in (used in production applications); PostgreSQL and SQLite (in production in the maintainer's applications, besides CI); the OpenAI-compatible AI adapter (validated with Groq, an OpenAI-compatible provider, not with OpenAI) |
+| **Tested in CI against servers in local containers** | MySQL and MariaDB; Redis (cache, queues, rate limits, ORM data structures and Redis Streams messaging); SurrealDB; Turso/libSQL (the `libsql-server` image, which is `sqld`); Meilisearch search; pgvector; S3-compatible storage (a Garage server) |
+| **Offline only: mock mode, local fixtures or a [conformance kit](https://rullst.github.io/Rullst/book/provider-conformance.html)** | AWS SES and SendPulse mail; OpenAI and Anthropic Claude, and the DeepSeek and Ollama presets of the OpenAI-compatible adapter; Microsoft, Apple, Auth0, AWS Cognito, Facebook, X (Twitter), Discord, LinkedIn and generic OpenID Connect sign-in; the S3/R2 adapter of `rullst-media` |
+
+Other services are application code: write an adapter on the provider trait
+(payments, mail, video) or follow a
+[recipe](https://rullst.github.io/Rullst/book/recipes/index.html) such as the
+MongoDB, DuckDB and Qdrant ones.
 
 <a id="live-examples"></a>
 
@@ -222,10 +263,8 @@ Rullst's examples have two homes:
   than the one this page describes.
 - **[`examples/`](https://github.com/Rullst/Rullst/tree/main/examples) in this
   repository** — applications built and tested with the current framework
-  source: complete [LMS](https://github.com/Rullst/Rullst/tree/main/examples/lms),
-  [ERP](https://github.com/Rullst/Rullst/tree/main/examples/erp) and
-  [Portfolio](https://github.com/Rullst/Rullst/tree/main/examples/portfolio)
-  applications (the former starters of `cargo rullst new`), the
+  source: the complete [LMS](https://github.com/Rullst/Rullst/tree/main/examples/lms)
+  application (a former starter of `cargo rullst new`), the
   [blog showcase](https://github.com/Rullst/Rullst/tree/main/examples/blog) and
   a [WebGPU wave demo](https://github.com/Rullst/Rullst/tree/main/examples/webgpu).
   The [SaaS recipe](https://github.com/Rullst/Rullst/tree/main/examples/saas)
@@ -242,16 +281,17 @@ Rullst's examples have two homes:
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/architecture-dark.webp">
     <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/architecture-light.webp">
-    <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/architecture-dark.webp" alt="Rullst architecture. Your app, from the Blank, API or SaaS starter or copied from an example (LMS, ERP, Portfolio, Blog), sits on four layers: Product (rullst-capital payments, rullst-mail email, rullst-ai AI and RAG, rullst-messaging queues, rullst-connect OAuth2/OIDC); Trust (rullst-auth identity and sessions, rullst-security WAF, headers, CSRF and RASP); Data (rullst-orm Active Record, migrations and transactions, rullst-orm-macros); Runtime (rullst-core HTTP runtime and routing, rullst-macros html!). Everything runs on Axum, Tokio, Tower and SQLx. Tools: cargo-rullst CLI, rullst-studio control room, rullst-nexus admin. One facade crate, rullst, enables only the features you need." width="100%">
+    <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/architecture-dark.webp" alt="Rullst architecture. Your app, from the Blank, API or SaaS starter or copied from an example (LMS, Blog), sits on four layers: Product (rullst-capital payments, rullst-mail email, rullst-ai AI and RAG, rullst-messaging queues, rullst-connect OAuth2/OIDC); Trust (rullst-auth identity and sessions, rullst-security WAF, headers, CSRF and RASP); Data (rullst-orm Active Record, migrations and transactions, rullst-orm-macros); Runtime (rullst-core HTTP runtime and routing, rullst-macros html!). Everything runs on Axum, Tokio, Tower and SQLx. Tools: cargo-rullst CLI, rullst-studio control room, rullst-nexus admin. One facade crate, rullst, enables only the features you need." width="100%">
   </picture>
 </p>
 
 Rullst is a family of focused crates in one versioned workspace: v13 publishes
 20 packages with the same version, and the `rullst` facade compiles only the
 features you select. Each package has a maturity tier. *Core* packages are
-needed by every application. *Extensions* are optional and supported.
-*Experimental* packages are optional, may change between 13.x releases and are
-not validated in every scenario — experimental does not mean broken. The
+needed by every application. *Extensions* are optional and supported. Since
+13.0.0-alpha.5 no package is *Experimental* (optional, may change between 13.x
+releases); a few parts of supported packages still are, such as the S3/R2
+adapter of `rullst-media`. The
 [maturity tiers](https://rullst.github.io/Rullst/book/maturity.html) page
 defines each promise, and the
 [specification](https://rullst.github.io/Rullst/book/spec.html) records the
@@ -272,16 +312,16 @@ detailed feature and provider boundaries.
 | [rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth) | Passwords, sessions, passkeys and authorization helpers | Extension |
 | [rullst-connect](https://github.com/Rullst/Rullst/tree/main/rullst-connect) | OAuth2/OIDC identity integrations | Extension |
 | [rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai) | Guarded local/cloud clients and tenant-aware retrieval | Extension |
-| [rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital) | Billing contracts, Stripe and experimental InfinitePay adapters, webhooks | Extension |
+| [rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital) | Billing contracts, Stripe and InfinitePay adapters, webhooks | Extension |
 | [rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail) | Transactional email with Resend, AWS SES, SendPulse and SMTP transports, and delivery controls | Extension |
 | [rullst-messaging](https://github.com/Rullst/Rullst/tree/main/rullst-messaging) | Broker-neutral contracts and durable local messaging | Extension |
 | [rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio) | Local developer control room | Extension |
 | [rullst-nexus](https://github.com/Rullst/Rullst/tree/main/rullst-nexus) | Registered-model admin with explicit access policy | Extension |
-| [rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot) | Bounded no_std helpers and signed OTA verification, not device integration | Experimental |
-| [rullst-privacy](https://github.com/Rullst/Rullst/tree/main/rullst-privacy) | Proportional age-assurance policies and optional consent records | Experimental |
-| [rullst-supervision](https://github.com/Rullst/Rullst/tree/main/rullst-supervision) | Transparent exam and parental supervision contracts | Experimental |
-| [rullst-media](https://github.com/Rullst/Rullst/tree/main/rullst-media) | Private course video with Bunny Stream and an optional S3/R2 adapter | Experimental |
-| [rullst-labs](https://github.com/Rullst/Rullst/tree/main/rullst-labs) | Programming-exercise contracts; you bring the runner | Experimental |
+| [rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot) | Bounded no_std helpers and signed OTA verification, not device integration | Extension |
+| [rullst-privacy](https://github.com/Rullst/Rullst/tree/main/rullst-privacy) | Proportional age-assurance policies and optional consent records | Extension |
+| [rullst-supervision](https://github.com/Rullst/Rullst/tree/main/rullst-supervision) | Transparent exam and parental supervision contracts | Extension |
+| [rullst-media](https://github.com/Rullst/Rullst/tree/main/rullst-media) | Private course video with Bunny Stream and an optional S3/R2 adapter | Extension |
+| [rullst-labs](https://github.com/Rullst/Rullst/tree/main/rullst-labs) | Programming-exercise contracts; you bring the runner | Extension |
 
 </details>
 
@@ -418,27 +458,26 @@ production data. [Assisted upgrade tutorial](https://rullst.github.io/Rullst/boo
 
 ## 🚀 Versions: v13 is a prerelease
 
-`13.0.0-alpha.4` is the latest v13 prerelease. `13.0.0-alpha.5`, the 13.0
-feature freeze, then `13.0.0-rc.1` (fixes and documentation only) and
-`13.0.0` follow. Cargo
+`13.0.0-alpha.5` is the latest v13 prerelease and the 13.0 feature freeze;
+`13.0.0-rc.1` (fixes and documentation only) and `13.0.0` follow. Cargo
 never selects a prerelease on its own, so `cargo install cargo-rullst` and
 `cargo add rullst` without a version still pick the end-of-life 12.x. Until
 13.0.0 is released, name the exact version:
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.4 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.5 --locked
 ```
 
 Projects generated by `cargo rullst new` already pin the framework with
-`=13.0.0-alpha.4`. In a hand-written `Cargo.toml`, use `=` too: a plain
-`"13.0.0-alpha.4"` also accepts later prereleases, whose API may change.
+`=13.0.0-alpha.5`. In a hand-written `Cargo.toml`, use `=` too: a plain
+`"13.0.0-alpha.5"` also accepts later prereleases, whose API may change.
 `rullst` has no default features, so name the database profile you use and
 capabilities such as `auth` or `nexus`
 ([feature matrix](https://rullst.github.io/Rullst/book/feature-matrix.html)):
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.4", features = ["strict-postgres"] }
+rullst = { version = "=13.0.0-alpha.5", features = ["strict-postgres"] }
 ```
 
 **The v12 line reached end of life on 16 October 2026**: 12.3.0 is its last
@@ -458,9 +497,9 @@ list every change.
 - **Three starters and complete examples:** `cargo rullst new` offers Blank,
   API and SaaS through a wizard that previews the files and commands before
   writing anything (`--dry-run` without prompts) and initializes a Git
-  repository (`--vcs none` skips it). The LMS, ERP, Portfolio and blog
-  applications are in [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples)
-  to copy from.
+  repository (`--vcs none` skips it). The LMS and blog applications are in
+  [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples) to copy
+  from.
 - **A friendlier CLI:** `cargo rullst tour` (a guided walkthrough of the main
   commands), a searchable command list on the `cargo rullst` home screen, live
   request metrics in `cargo rullst dash`, toolchain, project, database,
@@ -476,11 +515,12 @@ list every change.
   Markdown, HTML or JSON report mapped to OWASP ASVS 5.0 Level 1, with a
   personal-data inventory and accessibility checks — evidence for a reviewer,
   not a certification ([guide](https://rullst.github.io/Rullst/book/security-report.html)).
-- **Efficiency figures (Experimental):** `cargo rullst green` reports measured
-  binary and image size, idle memory, dependency count and CPU time per
-  request (idle memory and CPU time on Linux only, since they read `/proc`),
-  each with its method, and a carbon figure only as a labelled SCI
-  estimate from your own inputs ([guide](https://rullst.github.io/Rullst/book/green.html)).
+- **Resource figures:** `cargo rullst footprint` reports
+  measured binary and image size, idle memory, dependency count, CPU time and
+  bytes per request, and a page's weight on a first and a repeat visit (on
+  Linux, macOS and Windows), each with its method, and a carbon figure only as
+  a labelled SCI estimate from your own inputs: a measurement and an estimate,
+  not a certification or an environmental claim ([guide](https://rullst.github.io/Rullst/book/footprint.html)).
 - **For AI assistants:** every `--json` output follows one contract with a
   `schema` id, the site publishes `llms.txt` and `llms-full.txt`, and the
   development error page gives your own assistant a ready prompt.
@@ -491,7 +531,7 @@ list every change.
   ([build times](https://rullst.github.io/Rullst/book/build-times.html)).
 - **A stable 13.x API:** each crate's documented API is recorded and checked
   in CI, and the compatibility policy names the third-party crates the API
-  exposes and the 13.x support window
+  exposes and the intended 13.x support window
   ([compatibility policy](https://rullst.github.io/Rullst/book/compatibility-policy.html)).
 - **One TLS provider:** aws-lc-rs is the rustls crypto provider for every TLS
   connection Rullst makes, with post-quantum hybrid key exchange; ring remains
@@ -542,13 +582,16 @@ list every change.
 <summary><strong>What v13 removed from 12.x</strong></summary>
 
 - The Omni Tauri shells (`make:omni`, `omni`) and `offline-sync`: use a PWA.
-- `rullst-capital` providers other than Stripe and the experimental
-  InfinitePay, payouts and NFS-e: use those or an application-owned adapter on
+- `rullst-capital` providers other than Stripe and InfinitePay, payouts and
+  NFS-e: use those or an application-owned adapter on
   the provider traits.
 - `rullst-mail` providers other than Resend, AWS SES, SendPulse and SMTP: write
   a `MailDriver` in your application.
 - The `orm-polyglot` and `polyglot` features, which enabled every storage
   adapter at once: name the adapters you use.
+- The MongoDB, DuckDB and Qdrant adapters of `rullst-orm` (`orm-mongodb`,
+  `orm-duckdb`, `orm-qdrant`): use the official client as the
+  [recipes](https://rullst.github.io/Rullst/book/recipes/index.html) show.
 - The CLI's Foundry (`foundry:init`, `foundry:deploy`), Nix (`nixify`,
   `new --nix`), Buildah (`generate:buildah`, `new --buildah`) and gRPC
   (`make:grpc`) generators: files they wrote stay yours, and the
@@ -561,11 +604,20 @@ list every change.
   `update verify`, `update stage`, `update install`): install a newer CLI with
   `cargo install cargo-rullst --version =<version> --locked`, which a daily
   notice prints.
-- The LMS, Blog, Portfolio and ERP starters of `cargo rullst new`: they are
-  applications in [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples).
+- The LMS, Blog, Portfolio and ERP starters of `cargo rullst new`: LMS and
+  Blog are applications in [`examples/`](https://github.com/Rullst/Rullst/tree/main/examples);
+  the Portfolio and ERP examples were removed in 13.0.0-alpha.5, and the blog
+  example shows the same CRUD with Nexus.
 - WebAssembly islands (`#[island]`, `make:island`, `build:client`): the
   default CSP does not allow browsers to compile WebAssembly. Use htmx and
-  native HTML; `#[server_function]` and its `wasm32` caller remain.
+  native HTML.
+- The typed browser RPC (its attribute, the `rpc` module, the versioned
+  client envelope and its `wasm32` caller): it existed so islands could call
+  the server. Use an ordinary route registered with `routes!`, returning an
+  HTML fragment for htmx or JSON for Alpine.
+- The unused `rullst_core::frontend` response wrappers (`HtmlAdapter`,
+  `PicoAdapter`, `LiveViewAdapter`, `WasmIslandAdapter` and the rest): return
+  `Markup` or `Html` from the handler.
 - Live components (`LiveComponent`, `#[live_component]`, `make:live`,
   `rullst::live::recovery`): use htmx with `rullst::realtime::RealtimeSse`
   (Server-Sent Events) or `rullst::ws` WebSockets.
@@ -598,6 +650,7 @@ matter as much as new features.
 
 [Contributing](https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md)
 · [Issues](https://github.com/Rullst/Rullst/issues)
+· [Good first issues](https://github.com/Rullst/Rullst/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22)
 · [Discord](https://discord.com/invite/2ntKFtsSjw)
 · [Community links](https://rullst.github.io/Rullst/#community)
 · [Our story and philosophy](https://rullst.github.io/Rullst/book/philosophy.html)

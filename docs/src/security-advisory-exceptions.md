@@ -25,7 +25,10 @@ and the opt-in local state stores of the queue, messaging, labs, media,
 supervision and privacy crates), creates them itself and never opens a
 database supplied by a request. An application that accepts uploaded or
 replaced SQLite files must not open them with the SQLite driver until the exit
-condition is met. The 13.0 release notes list the advisory under Known
+condition is met. The CI workflow `cargo rullst new` writes (since
+13.0.0-alpha.5) ignores this advisory only until the same expiry, with a comment
+that names the exposure and says to remove the exception when the application
+upgrades to a Rullst release that updates `sqlx`. The 13.0 release notes list the advisory under Known
 limitations.
 
 **`RUSTSEC-2026-0440`** (unmaintained, no known vulnerability; published

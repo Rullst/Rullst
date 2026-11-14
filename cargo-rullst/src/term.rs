@@ -1,5 +1,5 @@
 //! Terminal policy shared by `cargo rullst add` previews and the
-//! `cargo rullst green` report: colour and how untrusted text is made safe to
+//! `cargo rullst footprint` report: colour and how untrusted text is made safe to
 //! print.
 //!
 //! The rules match the CLI home screen (`NO_COLOR`, `CI`, `TERM=dumb` and

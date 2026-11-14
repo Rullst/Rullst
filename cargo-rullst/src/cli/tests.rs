@@ -37,10 +37,7 @@ fn parses_deterministic_persistence_flags_independently() {
         "--database",
         "mariadb",
         "--turso",
-        "--mongodb",
-        "--duckdb",
         "--surrealdb",
-        "--qdrant",
         "--skip-initial-migration",
     ])
     .expect("persistence CLI flags");
@@ -49,10 +46,10 @@ fn parses_deterministic_persistence_flags_independently() {
         cli.command,
         Commands::New {
             turso: true,
-            mongodb: true,
-            duckdb: true,
+            mongodb: false,
+            duckdb: false,
             surrealdb: true,
-            qdrant: true,
+            qdrant: false,
             database: Some(DatabaseChoice::Mariadb),
             ..
         }
@@ -115,7 +112,7 @@ fn only_the_three_starters_are_listed_and_moved_blueprints_still_parse() {
         .collect();
     assert_eq!(listed, ["blank", "api", "saas"]);
 
-    for (value, choice, example) in [
+    for (value, choice, name) in [
         ("lms", BlueprintChoice::Lms, "lms"),
         ("blog", BlueprintChoice::Blog, "blog"),
         ("portfolio", BlueprintChoice::Portfolio, "portfolio"),
@@ -129,7 +126,7 @@ fn only_the_three_starters_are_listed_and_moved_blueprints_still_parse() {
         let moved = choice
             .starter()
             .expect_err("a moved blueprint has no starter");
-        assert_eq!(moved.name(), example);
+        assert_eq!(moved.name(), name);
         assert!(!choice.is_api());
     }
     assert_eq!(

@@ -5,6 +5,7 @@ use super::sniff::Sniffer;
 use super::sweep::{TEMP_PREFIX, TEMP_SUFFIX};
 use super::{MultipartError, MultipartPolicy};
 use crate::uploads::UploadKind;
+use sha2::{Digest, Sha256};
 use std::fmt;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
@@ -43,7 +44,7 @@ pub(super) struct FileSink {
     spill: Option<tokio::fs::File>,
     temp: Option<TempPath>,
     len: u64,
-    digest: ring::digest::Context,
+    digest: Sha256,
     sniffer: Sniffer,
 }
 
@@ -57,7 +58,7 @@ impl FileSink {
             spill: None,
             temp: None,
             len: 0,
-            digest: ring::digest::Context::new(&ring::digest::SHA256),
+            digest: Sha256::new(),
             sniffer: Sniffer::default(),
         }
     }
@@ -140,7 +141,7 @@ impl FileSink {
         };
         Ok(Some(UploadedFile {
             kind: self.sniffer.kind(),
-            sha256_hex: crate::uploads::encode_hex(self.digest.finish().as_ref()),
+            sha256_hex: crate::uploads::encode_hex(&self.digest.finalize()),
             field_name: self.field_name,
             display_name: self.meta.display_name,
             declared_content_type: self.meta.content_type,

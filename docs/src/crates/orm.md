@@ -13,8 +13,8 @@
 
 > [!IMPORTANT]
 > This page describes the v13 prerelease source, and its dependency examples
-> pin the published `13.0.0-alpha.4` exactly: Cargo never selects a prerelease
-> on its own, and a plain `"13.0.0-alpha.4"` would also accept later alphas
+> pin the published `13.0.0-alpha.5` exactly: Cargo never selects a prerelease
+> on its own, and a plain `"13.0.0-alpha.5"` would also accept later alphas
 > (see the [v13 migration guide](../migration-v13.md)). The v12 line
 > (`rullst-orm@12`) reached end of life on 16 October 2026; see the
 > [release record](../v12.md). Use a path dependency only for checkout-local
@@ -33,7 +33,7 @@ Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightf
 | **OpenSSF Scorecard** | <a href="https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard&style=flat-square" alt="OpenSSF Scorecard" /></a> | Current public supply-chain practice score; not a security certification |
 | **Release Provenance** | <a href="https://github.com/Rullst/Rullst/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/release.yml?style=flat-square&label=" alt="Release provenance" /></a> | Provenance attestations for release artifacts; no SLSA level is claimed here |
 | **Codecov** | <a href="https://codecov.io/gh/Rullst/Rullst"><img src="https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg?component=framework_libraries" alt="Framework library coverage" /></a> | Blocking 90% target for the measured framework-library scope; the complete repository aggregate now also has its own 90% gate |
-| **Matrix DB Tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=flat-square&label=" alt="Testcontainers" /></a> | Live PostgreSQL, MySQL, MariaDB, MongoDB, SurrealDB and libSQL contracts, plus in-process DuckDB tests |
+| **Matrix DB Tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=flat-square&label=" alt="Testcontainers" /></a> | Live PostgreSQL, MySQL, MariaDB, SurrealDB and libSQL contracts |
 | **OpenSSF** | <a href="https://www.bestpractices.dev/projects/13359"><img src="https://img.shields.io/cii/level/13359?style=flat-square&label=" alt="OpenSSF Best Practices" /></a> | Open source security standards |
 | **Property tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/proptest.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/proptest.yml?branch=main&style=flat-square&label=Proptest" alt="Proptest" /></a> | Scheduled/manual bounded invariant evidence |
 | **Miri research matrix** | <a href="https://github.com/Rullst/Rullst/actions/workflows/miri.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/miri.yml?branch=main&style=flat-square&label=Miri" alt="Miri" /></a> | Manual bounded evidence; the selected pure-Rust privacy scope is strict, while native database FFI remains outside Miri |
@@ -109,15 +109,15 @@ and the side stores have their own APIs, as
   `save_with_embedding(&rullst_ai::AiClient)` to models with an
   `#[orm(embedding_for = "...")]` field; the application must also depend on
   `rullst-ai`.
-- **Bounded Qdrant vectors:** `qdrant` keeps specialized dense-cosine
-  collection/upsert/delete/query semantics separate from SQL Active Record,
-  with resource/transport bounds, deterministic fallback, authenticated
-  protocol fixtures and a pinned live lifecycle.
+- **Qdrant:** the adapter was removed in 13.0.0-alpha.5; the
+  [Qdrant recipe](../recipes/qdrant.md) uses the official `qdrant-client`
+  crate in the application.
 - **Native Redis structures:** `redis` adds an immutable namespace and bounded
   Hash, Set and Sorted Set operations in addition to `.remember`; remote
   endpoints require TLS and live evidence covers isolation and native commands.
-- **Portable document recovery:** MongoDB, SurrealDB and the deterministic
-  store expose identifier-preserving inventory. An application-operated,
+- **Portable document recovery:** SurrealDB and the deterministic store
+  expose identifier-preserving inventory (an application's own store, such as
+  the [MongoDB recipe](../recipes/mongodb.md)'s, can too). An application-operated,
   AES-256-GCM snapshot binds application/collection scope, compares two bounded
   source observations, resumes only into an exact destination subset and
   verifies the final inventory. Writers, schema provisioning, key custody and
@@ -179,7 +179,7 @@ and the side stores have their own APIs, as
 Install the v13 prerelease with an exact pin:
 
 ```bash
-cargo add rullst-orm@=13.0.0-alpha.4 -F strict-sqlite
+cargo add rullst-orm@=13.0.0-alpha.5 -F strict-sqlite
 cargo add tokio -F full
 ```
 
@@ -328,7 +328,7 @@ async fn rename(id: i32, name: String) -> Result<(), rullst_orm::Error> {
   `generate:models` (with `#[serde(skip)]`; a table with its own `snapshot`
   column keeps full-row saves), `auth`, `make:billing`,
   `make:chat-session` and the models of every `cargo rullst new` starter
-  (Blank, API and SaaS) and of the LMS, ERP and Portfolio examples. Their struct literals set
+  (Blank, API and SaaS) and of the LMS example. Their struct literals set
   `snapshot: RowSnapshot::default()`. Turso models have no dirty tracking.
   Projects generated earlier keep their models until you add the field.
 
@@ -491,7 +491,7 @@ native enums specifically require `strict-postgres`, because SQLx's dynamic
 `Any` driver cannot decode custom PostgreSQL types:
 
 ```toml
-rullst-orm = { version = "=13.0.0-alpha.4", features = ["strict-postgres"] }
+rullst-orm = { version = "=13.0.0-alpha.5", features = ["strict-postgres"] }
 ```
 
 Derive one label contract and use it in schema code:

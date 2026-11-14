@@ -5,13 +5,13 @@ published in the 13.0.0-alpha.1 prerelease. The package is in the v13
 distribution inventory. It is not part of v12 or the default `rullst`
 dependency graph.
 
-**Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):
-the API may change between 13.x releases and not every real-world scenario is
-validated yet. Experimental does not mean broken.
+**Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)),
+since 13.0.0-alpha.5: optional, and supported for the scope documented here.
+Live age providers and verified guardianship are not part of it.
 
 Enable `age-assurance` for age checks or `consent` for independent purpose-bound
 choices. No feature is enabled by default. Pin the prerelease exactly, for
-example `rullst-privacy = { version = "=13.0.0-alpha.4", features = ["consent-sqlite"] }`,
+example `rullst-privacy = { version = "=13.0.0-alpha.5", features = ["consent-sqlite"] }`,
 or use the umbrella features below. Broader rights-request, retention and regional-policy support
 is tracked in the [privacy roadmap](https://github.com/Rullst/Rullst/blob/main/docs/src/privacy-age-assurance-roadmap.md).
 
@@ -126,9 +126,11 @@ remains separate.
   promotion can revive old grants. Quiesce optional processing, reconcile
   withdrawals and change purpose versions before resuming after rollback.
 
-The CLI's `make:privacy` consumer still selects shared-local SQLite. An
-application can select this PostgreSQL adapter explicitly without changing its
-ordinary authentication, tenant authorization or CSRF boundary:
+The CLI's `make:privacy` consumer selects this PostgreSQL adapter for a
+PostgreSQL project (or with `--consent-store postgres`, since 13.0.0-alpha.5)
+and shared-local SQLite otherwise. An application can also select it explicitly
+without changing its ordinary authentication, tenant authorization or CSRF
+boundary:
 
 ```rust,no_run
 # #[cfg(feature = "consent-postgres")]

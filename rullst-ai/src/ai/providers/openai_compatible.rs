@@ -1,4 +1,5 @@
-//! Capability-declared transport for OpenAI-compatible local and cloud APIs.
+//! Capability-declared transport for OpenAI-compatible local and cloud APIs,
+//! with presets for DeepSeek and Ollama.
 
 use super::support::{DEFAULT_REQUEST_TIMEOUT, embedding_values, endpoint, image_mime_type};
 use crate::ai::{
@@ -15,12 +16,25 @@ use zeroize::Zeroizing;
 
 mod capabilities;
 mod config;
+mod deepseek;
+mod ollama;
 mod stream;
 pub use capabilities::OpenAiCompatibleCapabilities;
 use config::{EndpointScope, validate_api_key, validate_base_url, validate_model};
 
 const MAX_IMAGE_BYTES: usize = 10 * 1_024 * 1_024;
 const MAX_RESPONSE_BYTES: usize = 2 * 1_024 * 1_024;
+/// Where offline providers point; mock mode never sends a request.
+const OFFLINE_BASE_URL: &str = "https://offline.invalid/v1";
+
+/// The service a preset constructor configured. It names the provider and
+/// selects the few requests that service shapes differently.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Preset {
+    Generic,
+    DeepSeek,
+    Ollama,
+}
 
 enum CompatibleAuthentication {
     None,
@@ -30,10 +44,12 @@ enum CompatibleAuthentication {
 /// Explicit adapter for servers implementing the bounded OpenAI-compatible
 /// request/response shapes documented by Rullst.
 ///
-/// It is not an arbitrary-HTTP adapter. APIs with different authentication,
-/// paths, streaming, message, tool, or response semantics should implement
-/// [`AiProvider`] directly.
+/// [`Self::deepseek`] and [`Self::ollama`] configure it for DeepSeek's API
+/// and for an Ollama server. It is not an arbitrary-HTTP adapter. APIs with
+/// different authentication, paths, streaming, message, tool, or response
+/// semantics should implement [`AiProvider`] directly.
 pub struct OpenAiCompatibleProvider {
+    preset: Preset,
     base_url: String,
     model: String,
     embedding_model: String,
@@ -107,7 +123,7 @@ impl OpenAiCompatibleProvider {
     /// Creates an explicit deterministic offline fixture.
     pub fn mock(model: impl Into<String>) -> Result<Self, AiError> {
         Self::try_build(
-            "https://offline.invalid/v1".to_string(),
+            OFFLINE_BASE_URL.to_string(),
             model.into(),
             CompatibleAuthentication::Bearer(Zeroizing::new("mock_compatible".to_string())),
             ProviderMode::Mock,
@@ -123,12 +139,30 @@ impl OpenAiCompatibleProvider {
         self
     }
 
+    /// Selects the generation model, for example `deepseek-v4-pro` on the
+    /// [`Self::deepseek`] preset. The embedding model is unchanged.
+    pub fn try_with_model(mut self, model: impl Into<String>) -> Result<Self, AiError> {
+        let model = model.into();
+        validate_model("generation model", &model)?;
+        self.model = model;
+        Ok(self)
+    }
+
     /// Selects the model sent to the `/embeddings` endpoint.
     pub fn try_with_embedding_model(mut self, model: impl Into<String>) -> Result<Self, AiError> {
         let model = model.into();
         validate_model("embedding model", &model)?;
         self.embedding_model = model;
         Ok(self)
+    }
+
+    /// Points a preset at a local fixture server, skipping the scope check.
+    #[cfg(test)]
+    pub(in crate::ai::providers) fn with_test_base_url(mut self, base_url: &str) -> Self {
+        base_url
+            .trim_end_matches('/')
+            .clone_into(&mut self.base_url);
+        self
     }
 
     /// Sets the deadline applied to every live transport request.
@@ -153,6 +187,7 @@ impl OpenAiCompatibleProvider {
             .build()
             .map_err(AiError::request)?;
         Ok(Self {
+            preset: Preset::Generic,
             base_url,
             embedding_model: model.clone(),
             model,
@@ -233,12 +268,20 @@ impl OpenAiCompatibleProvider {
             capability,
         }
     }
+
+    /// Whether structured output is declared and, on DeepSeek, available for
+    /// the configured model.
+    fn json_schema_supported(&self) -> bool {
+        self.capabilities.json_schema
+            && (self.preset != Preset::DeepSeek || deepseek::schema_model(&self.model))
+    }
 }
 
 impl fmt::Debug for OpenAiCompatibleProvider {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("OpenAiCompatibleProvider")
+            .field("preset", &self.preset)
             .field("base_url", &"[CONFIGURED]")
             .field("model", &self.model)
             .field("embedding_model", &self.embedding_model)
@@ -253,11 +296,18 @@ impl fmt::Debug for OpenAiCompatibleProvider {
 #[async_trait]
 impl AiProvider for OpenAiCompatibleProvider {
     fn provider_name(&self) -> &'static str {
-        "OpenAI-compatible"
+        match self.preset {
+            Preset::Generic => "OpenAI-compatible",
+            Preset::DeepSeek => "DeepSeek",
+            Preset::Ollama => "Ollama",
+        }
     }
 
     fn capabilities(&self) -> ProviderCapabilities {
-        self.capabilities.provider_capabilities()
+        ProviderCapabilities {
+            json_schema: self.json_schema_supported(),
+            ..self.capabilities.provider_capabilities()
+        }
     }
 
     async fn prompt(&self, text: &str) -> Result<String, AiError> {
@@ -355,9 +405,18 @@ impl AiProvider for OpenAiCompatibleProvider {
                 &text,
             ));
         }
+        // DeepSeek's JSON mode requires the word "json" in the prompt.
+        let messages = if self.preset == Preset::DeepSeek {
+            serde_json::json!([
+                {"role": "system", "content": "Return only one valid JSON value."},
+                {"role": "user", "content": text}
+            ])
+        } else {
+            serde_json::json!([{"role": "user", "content": text}])
+        };
         self.send_chat_body(serde_json::json!({
             "model": self.model,
-            "messages": [{"role": "user", "content": text}],
+            "messages": messages,
             "response_format": {"type": "json_object"},
             "stream": false,
         }))
@@ -370,11 +429,18 @@ impl AiProvider for OpenAiCompatibleProvider {
         schema: &StructuredOutputSchema,
     ) -> Result<String, AiError> {
         let text = AiGuardrails::prepare(text)?;
-        if !self.capabilities.json_schema {
-            return Err(self.unsupported("native JSON Schema structured output"));
+        if !self.json_schema_supported() {
+            return Err(self.unsupported(if self.capabilities.json_schema {
+                "JSON Schema output for this DeepSeek model"
+            } else {
+                "native JSON Schema structured output"
+            }));
         }
         if self.mode.is_mock() {
             return mock::structured_response(schema);
+        }
+        if self.preset == Preset::DeepSeek {
+            return deepseek::structured_output(self, &text, schema).await;
         }
         self.send_chat_body(serde_json::json!({
             "model": self.model,
@@ -409,3 +475,7 @@ fn redacted_transport_error(error: reqwest::Error) -> AiError {
 #[cfg(test)]
 #[path = "openai_compatible_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "openai_compatible/presets_tests.rs"]
+mod presets_tests;

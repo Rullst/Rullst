@@ -150,7 +150,7 @@ async fn two_devices_stream_and_a_revoked_token_is_refused() {
         r#"hx-ext="sse""#,
         r#"sse-connect="/events""#,
         r#"sse-swap="devices""#,
-        r#"src="/static/htmx-ext-sse-1.9.12.js""#,
+        r#"src="/static/htmx-ext-sse-2.2.4.js""#,
         r#"data-device="uno-a""#,
         r#"data-device="uno-b""#,
     ] {

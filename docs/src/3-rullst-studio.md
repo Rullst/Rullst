@@ -9,9 +9,9 @@ loopback peers. It is not a shared-environment authentication system; do not
 expose raw subrouters publicly without application-level authentication,
 authorization, TLS, and network policy.
 
-Projects generated from the Blank, API and SaaS starters (and the LMS, ERP,
-Portfolio and Blog examples in `examples/`) start the standalone server only in
-debug builds and link to `http://127.0.0.1:5555`.
+Projects generated from the Blank, API and SaaS starters (and the LMS and Blog
+examples in `examples/`) start the standalone server only in debug builds and
+link to `http://127.0.0.1:5555`.
 Release builds do not start it; runtime `RULLST_ENV` or legacy `APP_ENV` values
 cannot override that compile-time boundary.
 
@@ -20,7 +20,7 @@ To watch a deployed application, mount the read-only
 v13): it reports request rates, latency, errors, queues and N+1
 findings behind a token or the application's own sign-in. The standalone
 `rullst-studio` binary
-(`cargo install rullst-studio --version =13.0.0-alpha.4 --no-default-features --features remote --locked`,
+(`cargo install rullst-studio --version =13.0.0-alpha.5 --no-default-features --features remote --locked`,
 then `rullst-studio` or `cargo rullst studio --remote`) reads it for several projects from your
 machine, with a project switcher and encrypted local tokens; see
 [Watch your projects from Studio](production-monitoring.md#watch-your-projects-from-studio).

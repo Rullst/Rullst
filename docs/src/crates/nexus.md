@@ -47,8 +47,7 @@ shared state with `.layer(Extension(state))`). A release build without the
 credentials makes `local_development_or_basic_from_env()` return
 `NexusBuildError::MissingCredential`; the
 [Nexus guide](../4-rullst-nexus.md#serving-the-application-without-nexus)
-shows how to start the application without Nexus in that case, as the
-Portfolio and ERP examples do.
+shows how to start the application without Nexus in that case.
 
 An application with its own login can instead select
 `NexusAuthPolicy::application(authorizer)`: its `NexusAuthorizer` sees each
@@ -69,8 +68,8 @@ proxy its own lockout bucket. Never derive either from an untrusted forwarded
 header.
 
 `NexusAuthPolicy::protect_router` can apply the same administrator boundary to
-application-owned operational routes, as the ERP example does for its whole
-back office: the dashboard and the inventory mutations.
+application-owned operational routes, for example a whole back office: its
+dashboard and its mutations.
 
 ## Capability boundary
 

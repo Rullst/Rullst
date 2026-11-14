@@ -2,6 +2,24 @@ use super::*;
 use crate::{ProviderFailureClass, ProviderFailureKind};
 
 #[test]
+fn error_codes_come_only_from_the_error_field() {
+    let infinitepay = br#"{"success":false,"error":"external_checkout_not_enabled","message":"External checkout is not enabled for this merchant."}"#;
+    assert_eq!(
+        error_code(infinitepay).as_deref(),
+        Some("external_checkout_not_enabled")
+    );
+    let stripe = br#"{"error":{"code":"resource_missing","type":"invalid_request_error","message":"No such customer: cus_1"}}"#;
+    assert_eq!(error_code(stripe).as_deref(), Some("resource_missing"));
+    assert_eq!(
+        error_code(br#"{"error":{"type":"api_error"}}"#).as_deref(),
+        Some("api_error")
+    );
+    assert_eq!(error_code(br#"{"message":"no error field"}"#), None);
+    assert_eq!(error_code(br#"{"error":42}"#), None);
+    assert_eq!(error_code(b"<html>Not Found</html>"), None);
+}
+
+#[test]
 fn retry_after_accepts_only_bounded_delta_seconds() {
     assert_eq!(parse_retry_after(" 30 "), Some(Duration::from_secs(30)));
     assert_eq!(

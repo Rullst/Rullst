@@ -1,19 +1,16 @@
-#![cfg(all(feature = "mongodb", feature = "surrealdb"))]
+#![cfg(feature = "surrealdb")]
 
 mod support;
 
 use rullst_orm::polyglot::{
     CollectionName, DocumentEntry, DocumentId, DocumentInventory, DocumentPage,
     DocumentRecoveryBinding, DocumentRecoveryKey, DocumentRecoveryPolicy, DocumentRepository,
-    MongoDbStore, SurrealAuth, SurrealConfig, SurrealDbStore, export_document_snapshot,
+    MockDocumentStore, SurrealAuth, SurrealConfig, SurrealDbStore, export_document_snapshot,
     restore_document_snapshot,
 };
 use serde::{Deserialize, Serialize};
 use testcontainers::{ImageExt, runners::AsyncRunner};
-use testcontainers_modules::{
-    mongo::Mongo,
-    surrealdb::{SURREALDB_PORT, SurrealDb},
-};
+use testcontainers_modules::surrealdb::{SURREALDB_PORT, SurrealDb};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct Event {
@@ -28,15 +25,23 @@ fn event(sequence: u64) -> Event {
     }
 }
 
+fn surreal_store(endpoint: &str, database: &str) -> SurrealDbStore<Event> {
+    let store = SurrealDbStore::<Event>::connect_or_mock(SurrealConfig::new(
+        endpoint,
+        "recovery",
+        database,
+        SurrealAuth::basic("root", "root"),
+    ))
+    .expect("SurrealDB recovery store should initialize");
+    assert!(!store.is_mock());
+    store
+}
+
+/// A snapshot exported from a live SurrealDB database restores into the
+/// deterministic store, and that store's snapshot restores into another live
+/// database: export and restore cross a backend boundary in both directions.
 #[tokio::test]
-async fn test_matrix_document_recovery_mongodb_surrealdb_round_trip() {
-    let mongo = match Mongo::default().start().await {
-        Ok(container) => container,
-        Err(error) => {
-            support::handle_container_start_error("MongoDB recovery", error);
-            return;
-        }
-    };
+async fn test_matrix_document_recovery_surrealdb_deterministic_round_trip() {
     let surreal = match SurrealDb::default().with_tag("v3.2.4").start().await {
         Ok(container) => container,
         Err(error) => {
@@ -44,41 +49,25 @@ async fn test_matrix_document_recovery_mongodb_surrealdb_round_trip() {
             return;
         }
     };
-
-    let mongo_host = mongo
-        .get_host()
-        .await
-        .expect("MongoDB recovery host should be available");
-    let mongo_port = mongo
-        .get_host_port_ipv4(27017)
-        .await
-        .expect("MongoDB recovery port should be available");
-    let mongo_uri = format!("mongodb://{mongo_host}:{mongo_port}");
-    let mongo_source = MongoDbStore::<Event>::connect_or_mock(&mongo_uri, "rullst_recovery_source")
-        .await
-        .expect("MongoDB source should initialize");
-    let mongo_destination =
-        MongoDbStore::<Event>::connect_or_mock(&mongo_uri, "rullst_recovery_destination")
-            .await
-            .expect("MongoDB destination should initialize");
-
-    let surreal_host = surreal
+    let host = surreal
         .get_host()
         .await
         .expect("SurrealDB recovery host should be available");
-    let surreal_port = surreal
+    let port = surreal
         .get_host_port_ipv4(SURREALDB_PORT)
         .await
         .expect("SurrealDB recovery port should be available");
-    let surreal_endpoint = format!("http://{surreal_host}:{surreal_port}");
+    let endpoint = format!("http://{host}:{port}");
     let bootstrap = reqwest::Client::new()
-        .post(format!("{surreal_endpoint}/sql"))
+        .post(format!("{endpoint}/sql"))
         .basic_auth("root", Some("root"))
         .header(reqwest::header::ACCEPT, "application/json")
         .header(reqwest::header::CONTENT_TYPE, "text/plain")
         .body(
-            "DEFINE NAMESPACE recovery; USE NS recovery; DEFINE DATABASE matrix; \
-             USE NS recovery DB matrix; DEFINE TABLE portable_events SCHEMALESS;",
+            "DEFINE NAMESPACE recovery; USE NS recovery; \
+             DEFINE DATABASE source; DEFINE DATABASE destination; \
+             USE NS recovery DB source; DEFINE TABLE portable_events SCHEMALESS; \
+             USE NS recovery DB destination; DEFINE TABLE portable_events SCHEMALESS;",
         )
         .send()
         .await
@@ -89,24 +78,20 @@ async fn test_matrix_document_recovery_mongodb_surrealdb_round_trip() {
         .await
         .expect("SurrealDB recovery bootstrap should return JSON");
     assert!(bootstrap.iter().all(|result| result["status"] == "OK"));
-    let surreal_destination = SurrealDbStore::<Event>::connect_or_mock(SurrealConfig::new(
-        surreal_endpoint,
-        "recovery",
-        "matrix",
-        SurrealAuth::basic("root", "root"),
-    ))
-    .expect("SurrealDB destination should initialize");
+    let source = surreal_store(&endpoint, "source");
+    let destination = surreal_store(&endpoint, "destination");
+    let deterministic = MockDocumentStore::<Event>::new();
 
     let collection = CollectionName::new("portable_events").expect("valid collection");
     for sequence in [3, 1, 2] {
-        mongo_source
+        source
             .create(
                 &collection,
                 &DocumentId::new(format!("event-{sequence:02}")).expect("valid document ID"),
                 &event(sequence),
             )
             .await
-            .expect("seed MongoDB source");
+            .expect("seed SurrealDB source");
     }
     let binding = DocumentRecoveryBinding::try_new("matrix.production", collection.clone())
         .expect("valid recovery binding");
@@ -114,40 +99,35 @@ async fn test_matrix_document_recovery_mongodb_surrealdb_round_trip() {
     let policy =
         DocumentRecoveryPolicy::try_new(2, 10, 64 * 1024).expect("bounded recovery policy");
 
-    let mongo_snapshot = export_document_snapshot(&mongo_source, &binding, &key, policy)
+    let surreal_snapshot = export_document_snapshot(&source, &binding, &key, policy)
         .await
-        .expect("MongoDB export should stabilize");
+        .expect("SurrealDB export should stabilize");
+    let to_deterministic =
+        restore_document_snapshot(&deterministic, &surreal_snapshot, &binding, &key, policy)
+            .await
+            .expect("SurrealDB snapshot should restore into the deterministic store");
+    assert_eq!(to_deterministic.inserted(), 3);
+    assert_eq!(to_deterministic.verified(), 3);
+
+    let deterministic_snapshot = export_document_snapshot(&deterministic, &binding, &key, policy)
+        .await
+        .expect("deterministic export should stabilize");
     let to_surreal = restore_document_snapshot(
-        &surreal_destination,
-        &mongo_snapshot,
+        &destination,
+        &deterministic_snapshot,
         &binding,
         &key,
         policy,
     )
     .await
-    .expect("MongoDB snapshot should restore into SurrealDB");
+    .expect("deterministic snapshot should restore into SurrealDB");
     assert_eq!(to_surreal.inserted(), 3);
     assert_eq!(to_surreal.verified(), 3);
 
-    let surreal_snapshot = export_document_snapshot(&surreal_destination, &binding, &key, policy)
-        .await
-        .expect("SurrealDB export should stabilize");
-    let to_mongo = restore_document_snapshot(
-        &mongo_destination,
-        &surreal_snapshot,
-        &binding,
-        &key,
-        policy,
-    )
-    .await
-    .expect("SurrealDB snapshot should restore into MongoDB");
-    assert_eq!(to_mongo.inserted(), 3);
-    assert_eq!(to_mongo.verified(), 3);
-
-    let entries: Vec<DocumentEntry<Event>> = mongo_destination
+    let entries: Vec<DocumentEntry<Event>> = destination
         .list_entries(&collection, DocumentPage::new(0, 10).expect("bounded page"))
         .await
-        .expect("MongoDB destination inventory");
+        .expect("SurrealDB destination inventory");
     assert_eq!(
         entries
             .iter()

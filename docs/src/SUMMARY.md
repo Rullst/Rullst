@@ -68,7 +68,6 @@
 - [49. Bounded Brokered Messaging](tutorials/49-brokered-messaging.md)
 - [50. Auditable Revisions](tutorials/50-auditable-revisions.md)
 - [51. Supervised Development Auto-Reload](tutorials/51-authenticated-hot-reload.md)
-- [52. Typed Server Functions](tutorials/52-typed-server-functions.md)
 
 # Guides
 
@@ -86,6 +85,7 @@
 - [💳 Payment Gateways & Financial Infrastructure](payment-gateways-guide.md)
 - [Writing Your Own Payment Provider](capital-custom-provider.md)
 - [Writing Your Own Mail Transport](mail-custom-transport.md)
+- [Provider Conformance Kits](provider-conformance.md)
 - [🧪 Monorepo Examples & Reference Apps](examples.md)
 - [Axum/SQLx Interoperability](axum-sqlx-migration.md)
 - [GitHub CLI Installation & Safe Login](gh-install.md)
@@ -122,6 +122,13 @@
   - [Exam observation integration](supervision-observations.md)
 - [Private Course Video Integration Candidate](managed-video.md)
 
+# Recipes
+
+- [Application-owned integrations](recipes/index.md)
+  - [MongoDB with the official driver](recipes/mongodb.md)
+  - [DuckDB analytics with the official crate](recipes/duckdb.md)
+  - [Qdrant vector search with the official client](recipes/qdrant.md)
+
 # Reference
 
 - [📜 Framework Spec](spec.md)
@@ -149,6 +156,7 @@
 - [🧾 Security Advisory Exceptions](security-advisory-exceptions.md)
 - [🛡️ CI/CD & Security Workflows](workflows.md)
   - [Mutation Testing Record](mutation-testing.md)
+  - [Fuzz Evidence Reuse](fuzz-evidence.md)
 - [Reproducible Crate Archives](reproducible-builds.md)
 
 # 📦 Crates Ecosystem
@@ -179,8 +187,8 @@
 - [Nexus Application Integration Plan](nexus-integration-plan.md)
 - [AI Maintainability & Project-Building Roadmap](ai-maintainability-roadmap.md)
 - [Legal & Regulatory Compliance Roadmap](legal-compliance-roadmap.md)
-- [Green Software Roadmap](green-software-roadmap.md)
-  - [Efficiency Figures for an App (`green`)](green.md)
+- [Resource Efficiency Roadmap](resource-efficiency-roadmap.md)
+  - [Resource Figures for an App (`footprint`)](footprint.md)
 - [Rullst Labs Roadmap](rullst-labs-roadmap.md)
 - [Labs Runner Contract: Bring Your Own Runner](labs-runner-contract.md)
 - [Labs First Profile Decision & Threat Model (Removed Runner)](labs-first-profile.md)

@@ -368,7 +368,7 @@ fn project_home_offers_quick_actions_and_every_submenu() {
         (vec![4], "doctor"),
         (vec![5], "deploy"),
         (vec![6, 6], "dockerize"),
-        (vec![7], "green"),
+        (vec![7], "footprint"),
         (vec![8], "new"),
     ] {
         let mut ui = FakeUi::with_selections(selections.clone());

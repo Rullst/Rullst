@@ -1,10 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use rullst_ai::ai::providers::anthropic::AnthropicProvider;
-use rullst_ai::ai::providers::deepseek::DeepSeekProvider;
 use rullst_ai::ai::providers::gemini::GeminiProvider;
-use rullst_ai::ai::providers::ollama::OllamaProvider;
 use rullst_ai::ai::providers::openai::OpenAiProvider;
+use rullst_ai::ai::providers::openai_compatible::OpenAiCompatibleProvider;
 use rullst_ai::ai::rag::build_rag_prompt;
 use rullst_ai::ai::tools::{
     AiTool, InMemoryToolAuditTrail, ToolExecutionContext, ToolExecutionPolicy, ToolParam,
@@ -59,12 +58,12 @@ async fn test_ai_provider_offline_mock_fallbacks() {
     assert!(res.is_ok());
 
     // 4. Ollama
-    let ollama = OllamaProvider::new("mock_ollama", "llama3");
+    let ollama = OpenAiCompatibleProvider::ollama("mock_ollama", "llama3").unwrap();
     let res = ollama.prompt("Hello").await;
     assert!(res.is_ok());
 
     // 5. DeepSeek
-    let deepseek = DeepSeekProvider::new("mock_key");
+    let deepseek = OpenAiCompatibleProvider::deepseek("mock_key").unwrap();
     let res = deepseek.prompt("Hello").await;
     assert!(res.is_ok());
 }

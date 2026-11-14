@@ -6,10 +6,12 @@ private-video lifecycle: authorized creation and resumable upload, processing
 refresh, explicit publication, current-entitlement playback, withdrawal, metadata
 updates, deletion and durable reconciliation. Its standalone package is in the
 v13 release inventory, pending final release acceptance; it is not part of the framework facade. Existing starters are not
-changed.
+changed. Its [maturity tier](maturity.md) has been Extension since
+13.0.0-alpha.5; the `s3` adapter [below](#s3-compatible-object-storage-s3-r2-minio)
+stays experimental.
 
 The [crate integration guide](../../rullst-media/README.md) describes installation
-(`rullst-media = { version = "=13.0.0-alpha.4", features = ["bunny", "sqlite"] }`),
+(`rullst-media = { version = "=13.0.0-alpha.5", features = ["bunny", "sqlite"] }`),
 separate provider keys, required embed/CDN/direct-file
 protection, HTTP security composition, browser uploads, captions/transcripts,
 typed failure handling, SQLite retention and backup responsibilities.
@@ -33,8 +35,9 @@ Applications supply authenticated tenant/course membership and current entitleme
 Automated acceptance uses actual local HTTP, SQLite and Chromium with controlled
 media. It checks signatures, upload bytes and failure recovery, CSRF and tenant
 denial, media decoding, captions/keyboard interaction, withdrawal and deletion.
-Real Bunny account, transcoding, CDN and iframe interoperability remain unvalidated
-under the owner's no-live-provider-testing instruction. Signed URLs do not imply
+A production application uses the Bunny adapter with a real Bunny Stream library
+(create, browser upload, status, update, deletion and private playback); transcoding,
+CDN and iframe edge cases are not covered by Rullst's own tests. Signed URLs do not imply
 DRM, immediate revocation of existing capabilities or prevention of all copying.
 
 See the [managed-video acceptance roadmap](managed-video-roadmap.md) and the

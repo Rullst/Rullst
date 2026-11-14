@@ -84,14 +84,11 @@ cargo-rullst|
 
 # Independent infrastructure and adapter boundaries.
 rullst-orm|redis
-rullst-orm|mongodb
-rullst-orm|duckdb
 rullst-orm|turso
 rullst-orm|surrealdb
 rullst-orm|scout-http
 rullst-orm|pgvector
 rullst-orm|ai
-rullst-orm|qdrant
 rullst-core|orm
 rullst-core|drivers-all
 rullst-core|queue-sqlite
@@ -171,13 +168,10 @@ rullst-labs|sqlite,receipt-signing
 
 # Umbrella boundaries exposed to generated applications.
 rullst|orm
-rullst|orm-mongodb
-rullst|orm-duckdb
 rullst|orm-turso
 rullst|orm-surrealdb
 rullst|orm-scout
 rullst|orm-pgvector
-rullst|orm-qdrant
 rullst|orm-redis
 rullst|queue-sqlite
 rullst|queue-redis
@@ -234,6 +228,7 @@ rullst|capital-mail
 rullst|security
 rullst|security-redis
 rullst|iot
+rullst|iot-ingest
 rullst|telemetry
 rullst|nexus
 rullst|nexus-ai

@@ -14,9 +14,7 @@
 # Example applications to copy from, moved in 13.0.0-alpha.4 from the CLI
 # blueprints (excluded above with cargo-rullst/**); their own tests run in the
 # workspace suite.
-examples/erp/**
 examples/lms/**
-examples/portfolio/**
 # The IoT gateway example's tests need its SQLite ORM driver; under the gate's
 # `--all-features` the strict PostgreSQL driver is compiled and they skip. The
 # IoT workflow runs them with the example's own features.

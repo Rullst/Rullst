@@ -16,8 +16,11 @@
 Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightful, fluent syntax of Active Record frameworks directly to the high-performance Rust ecosystem.
 
 **Maturity: Core** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
-The optional store adapters (MongoDB, DuckDB, Turso, SurrealDB, Qdrant, Scout
-search, Redis structures) document their own validation boundaries below.
+The optional store adapters (Turso, SurrealDB, Scout search, Redis structures)
+document their own validation boundaries below. MongoDB, DuckDB and Qdrant
+have no adapter since 13.0.0-alpha.5: the
+[recipes](https://rullst.github.io/Rullst/book/recipes/index.html) use their
+official crates in application code.
 
 <div align="center">
   <h3>🛡️ Security Engineering</h3>
@@ -28,7 +31,7 @@ search, Redis structures) document their own validation boundaries below.
 | **OpenSSF Scorecard** | <a href="https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard&style=flat-square" alt="OpenSSF Scorecard" /></a> | Current public supply-chain practice score; not a security certification |
 | **Release Provenance** | <a href="https://github.com/Rullst/Rullst/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/release.yml?style=flat-square&label=" alt="Release provenance" /></a> | Provenance attestations for release artifacts; no SLSA level is claimed here |
 | **Codecov** | <a href="https://codecov.io/gh/Rullst/Rullst"><img src="https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg?component=framework_libraries" alt="Framework library coverage" /></a> | Blocking 90% target for the measured framework-library scope; the complete repository aggregate also has its own 90% gate |
-| **Matrix DB Tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=flat-square&label=" alt="Testcontainers" /></a> | Live PostgreSQL, MySQL, MariaDB, MongoDB, SurrealDB and libSQL contracts, plus in-process DuckDB tests |
+| **Matrix DB Tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=flat-square&label=" alt="Testcontainers" /></a> | Live PostgreSQL, MySQL, MariaDB, SurrealDB and libSQL contracts |
 | **OpenSSF** | <a href="https://www.bestpractices.dev/projects/13359"><img src="https://img.shields.io/cii/level/13359?style=flat-square&label=" alt="OpenSSF Best Practices" /></a> | Open source security standards |
 | **Property tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/proptest.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/proptest.yml?branch=main&style=flat-square&label=Proptest" alt="Proptest" /></a> | Scheduled/manual bounded invariant evidence |
 | **Miri research matrix** | <a href="https://github.com/Rullst/Rullst/actions/workflows/miri.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/miri.yml?branch=main&style=flat-square&label=Miri" alt="Miri" /></a> | Manual bounded evidence; the selected privacy scope is strict, while native database FFI remains outside Miri |
@@ -103,7 +106,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   which rejects envelopes instead of decrypting them. The key settings
   (`RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID`,
   `RULLST_ENCRYPTION_KEYRING`) are read from the process environment, then
-  from `./.env`, which is never loaded into the process environment.
+  from `./.env`, which is never loaded into the process environment. For
+  values under a key the application manages itself (for example one derived
+  from `APP_KEY`), `privacy::encrypt_aes_gcm` and `privacy::decrypt_aes_gcm`
+  take the 32-byte key explicitly and bind no table or column.
 - **Scout Search Providers**: `scout-http` adds bounded Meilisearch,
   Elasticsearch and Algolia update/delete/search adapters with deterministic
   offline fallbacks. Generated projections run after commit; guaranteed crash
@@ -119,11 +125,6 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   `save_with_embedding(&rullst_ai::AiClient)` to models with an
   `#[orm(embedding_for = "...")]` vector field. The application must also
   depend on `rullst-ai`, whose client the generated method names.
-- **Bounded Qdrant Search**: `qdrant` exposes validated dense-cosine collection,
-  single-point upsert/delete and bounded nearest-neighbor query operations with
-  deterministic fallback, authenticated protocol fixtures and a digest-pinned
-  live lifecycle. Named/sparse vectors, arbitrary filters and ANN tuning remain
-  explicit provider/application work.
 - **Native Redis Structures**: `redis` adds a separately namespaced Hash, Set
   and Sorted Set datastore with bounded inputs/reads, TLS-required remote
   endpoints, redacted ACL credentials and a deterministic fallback. A pinned
@@ -182,13 +183,13 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   their instance `delete()` methods inside `Orm::transaction` instead.
 - **Development lazy-loading diagnostics**: An opt-in development policy can fail loudly when a guarded lazy load would hide an N+1 query.
 - **Explicit Capability Boundaries**: Unsupported replication paths fail closed instead of reporting simulated success.
-- **Optional Polyglot Persistence**: Feature-gated MongoDB document CRUD,
-  DuckDB OLAP queries, Turso/libSQL edge SQL, and SurrealDB document/read-only
-  graph operations live behind explicit capability APIs instead of pretending
+- **Optional Polyglot Persistence**: Feature-gated Turso/libSQL edge SQL and
+  SurrealDB document/read-only graph operations live behind explicit capability APIs instead of pretending
   to be one universal Active Record interface. See the
   [Polyglot guide](https://rullst.github.io/Rullst/book/polyglot-persistence.html).
-- **Authenticated Portable Document Recovery**: MongoDB, SurrealDB and the
-  deterministic store expose stable identifier-preserving inventory. A bounded
+- **Authenticated Portable Document Recovery**: SurrealDB and the
+  deterministic store expose stable identifier-preserving inventory, and an
+  application's own store can implement it too. A bounded
   AES-256-GCM snapshot performs two equal source scans, binds application and
   collection scope, resumes only into an empty or exactly matching subset and
   verifies the final inventory. It is an application-operated recovery
@@ -369,7 +370,7 @@ prerelease on its own). The v12 line (`rullst-orm@12`) reached end of life on
 16 October 2026:
 
 ```bash
-cargo add rullst-orm@=13.0.0-alpha.4 -F strict-sqlite
+cargo add rullst-orm@=13.0.0-alpha.5 -F strict-sqlite
 cargo add tokio -F full
 ```
 
@@ -641,7 +642,7 @@ async fn for_lesson(lesson_id: Option<i64>) -> Result<Vec<Progress>, rullst_orm:
 A standalone ORM dependency compiles only the SQLx drivers it selects:
 
 ```toml
-rullst-orm = { version = "=13.0.0-alpha.4", default-features = false, features = ["strict-postgres"] }
+rullst-orm = { version = "=13.0.0-alpha.5", default-features = false, features = ["strict-postgres"] }
 ```
 
 `strict-mysql` and `strict-sqlite` select their respective backends, and
@@ -674,7 +675,7 @@ enums specifically require `strict-postgres`, because SQLx's dynamic `Any`
 driver cannot decode custom PostgreSQL types:
 
 ```toml
-rullst-orm = { version = "=13.0.0-alpha.4", features = ["strict-postgres"] }
+rullst-orm = { version = "=13.0.0-alpha.5", features = ["strict-postgres"] }
 ```
 
 Then derive one label contract and use it in schema code:

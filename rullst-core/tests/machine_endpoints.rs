@@ -458,8 +458,14 @@ enum Rewrite {
     Uri,
 }
 
+type FixtureMac = hmac::Hmac<sha2::Sha256>;
+
+fn fixture_mac(key: &[u8]) -> FixtureMac {
+    <FixtureMac as hmac::KeyInit>::new_from_slice(key).unwrap()
+}
+
 struct SignedFixture {
-    key: ring::hmac::Key,
+    key: Vec<u8>,
     rewrite: Rewrite,
     calls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
 }
@@ -479,8 +485,9 @@ impl MachineRequestVerifier for SignedFixture {
             .and_then(|value| value.to_str().ok())
             .and_then(|value| STANDARD.decode(value).ok())
             .ok_or(MachineEndpointError::Unauthorized)?;
-        ring::hmac::verify(&self.key, &bytes, &signature)
-            .map_err(|_| MachineEndpointError::Unauthorized)?;
+        let mut mac = fixture_mac(&self.key);
+        hmac::Mac::update(&mut mac, &bytes);
+        hmac::Mac::verify_slice(mac, &signature).map_err(|_| MachineEndpointError::Unauthorized)?;
         match self.rewrite {
             Rewrite::None => {}
             Rewrite::Method => parts.method = Method::DELETE,
@@ -492,10 +499,11 @@ impl MachineRequestVerifier for SignedFixture {
 
 #[tokio::test]
 async fn webhook_verification_is_idempotent_and_cannot_rewrite_the_request() {
-    let key = ring::hmac::Key::generate(ring::hmac::HMAC_SHA256, &ring::rand::SystemRandom::new())
-        .unwrap();
+    let key = b"fixture-webhook-signing-key-0123456789abcdef".to_vec();
     let payload = "event payload";
-    let signature = STANDARD.encode(ring::hmac::sign(&key, payload.as_bytes()));
+    let mut mac = fixture_mac(&key);
+    hmac::Mac::update(&mut mac, payload.as_bytes());
+    let signature = STANDARD.encode(hmac::Mac::finalize(mac).into_bytes());
     for rewrite in [Rewrite::None, Rewrite::Method, Rewrite::Uri] {
         let calls = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let endpoint = MachineEndpoint::signed_webhook(

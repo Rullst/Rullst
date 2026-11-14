@@ -54,8 +54,12 @@ an asset edited after the last build would keep reaching browsers that accept
 `.br`/`.zst` sibling that is not newer than its source when it starts and before
 each rebuild, and reports how many it removed. A sibling without a source file
 is kept, because it may be hand-made. Outside `cargo rullst dev`, rerun
-`cargo rullst build` after editing assets and before `docker build` copies
-`static/` into an image.
+`cargo rullst build` after editing assets and before a hand-written Dockerfile
+copies `static/` into an image. The Dockerfile that `cargo rullst new
+--docker`, `dockerize` and `deploy` write since 13.0.0-alpha.5 does not need
+it: its `static-assets` stage writes the siblings with Debian's `brotli` and
+`zstd` (the same types and levels) from the files the image serves, the
+Tailwind stylesheet included.
 
 The Zstandard middleware serves `name.zst` only when `Accept-Encoding` lists
 `zstd` with a quality above zero (`zstd;q=0` is a refusal) and the path below

@@ -5,13 +5,14 @@
 //! PUBLISH and CoAP request encoders. Deterministic fixtures resembling other
 //! capabilities require the explicit `experimental-simulators` feature.
 //!
-//! **Maturity: Experimental**
-//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). The API may
-//! change between 13.x releases. On 2026-11-10 a BBC micro:bit V2 (nRF52833)
-//! ran the encoders, the OTA gate and the counter-store contract, and the
-//! `std` telemetry, MQTT encoder and anomaly path ran end to end with an
-//! Arduino Uno sensor and a Rullst gateway and dashboard, with no broker; no
-//! other board or live broker has been tested. The default `std` feature can be
+//! **Maturity: Extension**
+//! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)) since
+//! 13.0.0-alpha.5: optional, and supported for its documented scope. On
+//! 2026-11-10 a BBC micro:bit V2 (nRF52833) ran the encoders, the OTA gate
+//! (also streamed and with `cargo rullst iot:sign` output) and the
+//! counter-store contract, and on 2026-11-11 two Arduino Uno boards sent
+//! telemetry through a Rullst gateway with no broker. Network transports, HSM,
+//! flashing and bootloaders are the application's. The default `std` feature can be
 //! disabled for `no_std` targets, which need `alloc` with a
 //! `#[global_allocator]` and about 8 KiB of stack for the Ed25519 check in
 //! [`OtaManager::begin_update`]; its [`OtaImageVerifier`] hashes an image in

@@ -2,9 +2,7 @@
 //! and OpenAI-compatible streams.
 use super::{
     anthropic::AnthropicProvider,
-    deepseek::DeepSeekProvider,
     gemini::GeminiProvider,
-    ollama::OllamaProvider,
     openai::OpenAiProvider,
     openai_compatible::{OpenAiCompatibleCapabilities, OpenAiCompatibleProvider},
 };
@@ -93,8 +91,9 @@ async fn chat_with_usage_reads_each_providers_documented_fields() {
         r#"{"choices":[{"message":{"content":"ok"}}],"usage":{"prompt_tokens":9,"completion_tokens":1,"prompt_cache_hit_tokens":8}}"#,
         JSON,
     );
-    let usage = DeepSeekProvider::new("sk-test")
-        .with_base_url(url)
+    let usage = OpenAiCompatibleProvider::deepseek("sk-test")
+        .expect("DeepSeek preset")
+        .with_test_base_url(&url)
         .chat_with_usage(&[Message::user("hi")])
         .await
         .expect("DeepSeek answer")
@@ -135,10 +134,11 @@ async fn chat_with_usage_reads_each_providers_documented_fields() {
     assert_eq!(usage.total_tokens(), Some(8));
 
     let (url, _request) = serve_once(
-        r#"{"message":{"content":"ok"},"done":true,"prompt_eval_count":3,"eval_count":4}"#,
+        r#"{"choices":[{"message":{"content":"ok"}}],"usage":{"prompt_tokens":3,"completion_tokens":4,"total_tokens":7}}"#,
         JSON,
     );
-    let usage = OllamaProvider::new(url, "llama3")
+    let usage = OpenAiCompatibleProvider::ollama(url, "llama3")
+        .expect("Ollama preset")
         .chat_with_usage(&[Message::user("hi")])
         .await
         .expect("Ollama answer")

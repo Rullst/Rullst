@@ -966,6 +966,69 @@ pub use rullst_mail::attachment::MAX_TOTAL_ATTACHMENT_BYTES = constant rullst_ma
 pub mod rullst_mail::aws_ses
 pub use rullst_mail::aws_ses::AwsSesDriver = struct rullst_mail::AwsSesDriver
 pub use rullst_mail::aws_ses_sdk = module aws_sdk_sesv2
+pub mod rullst_mail::conformance
+#[non_exhaustive] pub enum rullst_mail::conformance::CaseOutcome
+pub rullst_mail::conformance::CaseOutcome::Passed
+pub rullst_mail::conformance::CaseOutcome::Failed
+pub rullst_mail::conformance::CaseOutcome::Skipped
+impl core::clone::Clone for rullst_mail::conformance::CaseOutcome
+impl core::cmp::Eq for rullst_mail::conformance::CaseOutcome
+impl core::cmp::PartialEq for rullst_mail::conformance::CaseOutcome
+impl core::fmt::Debug for rullst_mail::conformance::CaseOutcome
+impl core::marker::Copy for rullst_mail::conformance::CaseOutcome
+impl core::marker::Send for rullst_mail::conformance::CaseOutcome
+impl core::marker::Sync for rullst_mail::conformance::CaseOutcome
+impl core::marker::Unpin for rullst_mail::conformance::CaseOutcome
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_mail::conformance::CaseOutcome
+impl core::panic::unwind_safe::UnwindSafe for rullst_mail::conformance::CaseOutcome
+#[non_exhaustive] pub struct rullst_mail::conformance::ConformanceCase
+impl rullst_mail::conformance::ConformanceCase
+pub fn rullst_mail::conformance::ConformanceCase::detail(&self) -> &str
+pub fn rullst_mail::conformance::ConformanceCase::id(&self) -> &'static str
+pub fn rullst_mail::conformance::ConformanceCase::outcome(&self) -> rullst_mail::conformance::CaseOutcome
+impl core::clone::Clone for rullst_mail::conformance::ConformanceCase
+impl core::cmp::Eq for rullst_mail::conformance::ConformanceCase
+impl core::cmp::PartialEq for rullst_mail::conformance::ConformanceCase
+impl core::fmt::Debug for rullst_mail::conformance::ConformanceCase
+impl core::marker::Send for rullst_mail::conformance::ConformanceCase
+impl core::marker::Sync for rullst_mail::conformance::ConformanceCase
+impl core::marker::Unpin for rullst_mail::conformance::ConformanceCase
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_mail::conformance::ConformanceCase
+impl core::panic::unwind_safe::UnwindSafe for rullst_mail::conformance::ConformanceCase
+#[non_exhaustive] pub struct rullst_mail::conformance::ConformanceReport
+impl rullst_mail::conformance::ConformanceReport
+pub fn rullst_mail::conformance::ConformanceReport::assert_passed(&self)
+pub fn rullst_mail::conformance::ConformanceReport::case(&self, id: &str) -> core::option::Option<&rullst_mail::conformance::ConformanceCase>
+pub fn rullst_mail::conformance::ConformanceReport::cases(&self) -> &[rullst_mail::conformance::ConformanceCase]
+pub fn rullst_mail::conformance::ConformanceReport::failures(&self) -> impl core::iter::traits::iterator::Iterator<Item = &rullst_mail::conformance::ConformanceCase>
+pub fn rullst_mail::conformance::ConformanceReport::passed(&self) -> bool
+pub fn rullst_mail::conformance::ConformanceReport::provider(&self) -> &str
+impl core::clone::Clone for rullst_mail::conformance::ConformanceReport
+impl core::cmp::Eq for rullst_mail::conformance::ConformanceReport
+impl core::cmp::PartialEq for rullst_mail::conformance::ConformanceReport
+impl core::fmt::Debug for rullst_mail::conformance::ConformanceReport
+impl core::fmt::Display for rullst_mail::conformance::ConformanceReport
+impl core::marker::Send for rullst_mail::conformance::ConformanceReport
+impl core::marker::Sync for rullst_mail::conformance::ConformanceReport
+impl core::marker::Unpin for rullst_mail::conformance::ConformanceReport
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_mail::conformance::ConformanceReport
+impl core::panic::unwind_safe::UnwindSafe for rullst_mail::conformance::ConformanceReport
+pub trait rullst_mail::conformance::DeliveryCapture: core::marker::Send + core::marker::Sync
+pub fn rullst_mail::conformance::DeliveryCapture::captured(&self) -> core::result::Result<alloc::vec::Vec<rullst_mail::Message>, rullst_mail::MailError>
+pub struct rullst_mail::conformance::OfflineMockCapture
+impl rullst_mail::conformance::OfflineMockCapture
+pub fn rullst_mail::conformance::OfflineMockCapture::new(provider: impl core::convert::Into<alloc::string::String>) -> Self
+impl core::clone::Clone for rullst_mail::conformance::OfflineMockCapture
+impl core::cmp::Eq for rullst_mail::conformance::OfflineMockCapture
+impl core::cmp::PartialEq for rullst_mail::conformance::OfflineMockCapture
+impl core::fmt::Debug for rullst_mail::conformance::OfflineMockCapture
+impl rullst_mail::conformance::DeliveryCapture for rullst_mail::conformance::OfflineMockCapture
+impl core::marker::Send for rullst_mail::conformance::OfflineMockCapture
+impl core::marker::Sync for rullst_mail::conformance::OfflineMockCapture
+impl core::marker::Unpin for rullst_mail::conformance::OfflineMockCapture
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_mail::conformance::OfflineMockCapture
+impl core::panic::unwind_safe::UnwindSafe for rullst_mail::conformance::OfflineMockCapture
+pub async fn rullst_mail::conformance::check_mail_driver<D, C>(name: impl core::convert::Into<alloc::string::String>, driver: &D, capture: &C) -> rullst_mail::conformance::ConformanceReport where D: rullst_mail::MailDriver + ?core::marker::Sized, C: rullst_mail::conformance::DeliveryCapture + ?core::marker::Sized
 pub fn rullst_mail::credential_mode(credential: &str) -> rullst_mail::DeliveryMode
 pub mod rullst_mail::drivers
 pub use rullst_mail::drivers::AwsSesDriver = struct rullst_mail::AwsSesDriver

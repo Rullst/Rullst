@@ -1,5 +1,6 @@
 use crate::{BillingProvider, CapitalError, StripeSubscriptionEvent};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
 impl super::StripeProvider {
@@ -54,8 +55,7 @@ impl super::StripeProvider {
             .transpose()?;
         let provider_status = data["status"].as_str().ok_or_else(invalid)?.to_owned();
         let mut payload_digest = [0; 32];
-        payload_digest
-            .copy_from_slice(ring::digest::digest(&ring::digest::SHA256, payload).as_ref());
+        payload_digest.copy_from_slice(&Sha256::digest(payload));
         Ok(StripeSubscriptionEvent {
             event_id: event_id.to_owned(),
             event_type: event_type.to_owned(),

@@ -19,7 +19,9 @@ use crate::generators::{
     model::create_new_model,
     openapi::generate_openapi_spec,
     output_guard::{reject_existing, reject_symlink},
-    project::{ProjectScaffoldOptions, create_new_project_with_cli_options},
+    project::{
+        ProjectScaffoldOptions, create_new_project_with_cli_options, reject_removed_side_stores,
+    },
     resource::create_new_resource,
     worker::create_new_worker,
 };
@@ -48,6 +50,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             surrealdb,
             qdrant,
         } => {
+            reject_removed_side_stores(*mongodb, *duckdb, *qdrant)?;
             let starter = blueprint.map(BlueprintChoice::starter).transpose()?;
             create_new_project_with_cli_options(
                 name.as_deref(),
@@ -56,10 +59,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                     docker: *docker,
                     use_defaults: *default,
                     turso: *turso,
-                    mongodb: *mongodb,
-                    duckdb: *duckdb,
                     surrealdb: *surrealdb,
-                    qdrant: *qdrant,
                     database: database.map(DatabaseChoice::provider),
                     no_database: *no_database,
                     hot_reload: *hot_reload,
@@ -288,9 +288,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::Doctor { fix } => {
             crate::generators::doctor::run_doctor(*fix)?;
-        }
-        Commands::AcademyDoctor { evidence, json } => {
-            crate::generators::academy_doctor::run_academy_doctor(evidence.as_deref(), *json)?;
         }
         Commands::Eject { force, output } => {
             crate::generators::eject::run_eject_project(*force, output.as_deref())?;

@@ -10,7 +10,7 @@ const MAX_TRANSACTION_STATEMENTS: usize = 1_024;
 const MAX_TRANSACTION_BYTES: usize = 16 * 1024 * 1024;
 
 mod codec;
-use codec::{execute_sqlite, query_sqlite, transaction_sqlite};
+use codec::{execute_sqlite, insert_returning_key_sqlite, query_sqlite, transaction_sqlite};
 mod hrana;
 use hrana::HranaClient;
 mod migration;
@@ -343,6 +343,22 @@ impl TursoStore {
         match &self.inner {
             TursoInner::Remote(client) => client.transaction(statements).await,
             TursoInner::Offline(pool) => transaction_sqlite(pool, statements).await,
+        }
+    }
+
+    /// Runs `insert`, an `INSERT ... RETURNING <key_column>`, in a
+    /// transaction kept only when the returned key is not NULL. `Ok(None)`
+    /// means the key was NULL and the insert was rolled back.
+    pub(super) async fn insert_returning_key(
+        &self,
+        insert: TursoStatement,
+        key_column: &str,
+    ) -> Result<Option<TursoValue>, PolyglotError> {
+        match &self.inner {
+            TursoInner::Remote(client) => client.insert_returning_key(insert, key_column).await,
+            TursoInner::Offline(pool) => {
+                insert_returning_key_sqlite(pool, insert, key_column).await
+            }
         }
     }
 

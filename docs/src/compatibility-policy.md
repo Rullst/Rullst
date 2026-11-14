@@ -85,8 +85,10 @@ Extension packages are supported and follow the contract above for the whole
 13.x line. Experimental packages, experimental CLI generators and facade
 features that re-export an experimental crate are the exception: their public
 APIs, features, schemas and generated output may change between 13.x releases.
-Every such break is still listed in the changelog and migration guide. Security
-handling is the same for every tier.
+Since 13.0.0-alpha.5 no package or CLI generator is Experimental; the exception
+covers the parts of a package that its documentation marks experimental, such
+as the `s3` adapter of `rullst-media`. Every such break is still listed in the
+changelog and migration guide. Security handling is the same for every tier.
 
 ## Minimum Supported Rust Version
 
@@ -134,7 +136,6 @@ stays on the version line below.
 | `axum` | `0.8` | `rullst::web::axum`, `Router`, handlers and extractors of Core, Auth, Security, Capital, Connect, Nexus and Studio |
 | `chrono` | `0.4` | Core date formatting, `rullst::orm::chrono`, Mail and Capital |
 | `http` | `1` | `rullst::http` and the header, method and status types of the web crates |
-| `mongodb` | `3` | ORM `MongoDbStore` (`orm-mongodb`) |
 | `opentelemetry_sdk` | `0.33` | Core `DistributedTelemetry::layer` (`telemetry`) |
 | `pgvector` | `0.4` | `rullst::orm::Vector` (`orm-pgvector`) |
 | `redis` | `1` | ORM: `Orm::redis_client` and `Orm::redis_manager` (`redis` feature), deliberately: they hand the application the ORM's own Redis client and connection manager |
@@ -201,12 +202,18 @@ and fixes ship in a new prerelease. From 13.0.0:
   performance improvements, new opt-in features and compatible dependency
   updates.
 - **14.0** carries only breaking changes.
-- 13.x stays the active line for at least 12 months after 13.0.0. Meanwhile
-  breaking ideas go to the [v14 candidates](../../ROADMAP.md#v14-candidates)
-  list, and a 13.x release may mark a future change with `#[deprecated]`.
-- v14 development starts only when breaking changes justify it, and never
-  before that minimum.
-- After 14.0.0 is published, 13.x receives security fixes for 12 more months.
+- The maintainer intends to keep 13.x the active line for 12 months after
+  13.0.0. Meanwhile breaking ideas go to the
+  [v14 candidates](../../ROADMAP.md#v14-candidates) list, and a 13.x release
+  may mark a future change with `#[deprecated]`.
+- v14 development starts only when breaking changes justify it, and is not
+  planned before those 12 months end.
+- After 14.0.0 is published, the maintainer intends to give 13.x security
+  fixes for 12 more months.
+
+These periods are an intention, not a guarantee, and they may change for
+reasons nobody can foresee today. Any change will be announced in advance in
+the CHANGELOG, the README and on GitHub.
 
 There is no LTS or multi-minor backport program: fixes ship in the newest
 minor. The exact versions receiving security triage are listed in

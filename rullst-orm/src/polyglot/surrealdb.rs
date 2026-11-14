@@ -14,9 +14,13 @@ use serde_json::Value;
 use super::{
     Backend, BackendCapabilities, Capability, CollectionName, DocumentEntry, DocumentId,
     DocumentInventory, DocumentPage, DocumentRepository, MockDocumentStore, PolyglotError,
+    server_detail,
 };
 
 mod config;
+#[cfg(test)]
+#[path = "surrealdb/error_tests.rs"]
+mod error_tests;
 mod graph;
 mod live;
 #[cfg(test)]
@@ -300,20 +304,27 @@ fn statement_result(
     }
     let envelope = envelopes.remove(0);
     if envelope.status != "OK" {
-        let detail = envelope
-            .result
-            .as_str()
-            .unwrap_or_default()
-            .to_ascii_lowercase();
-        if conflict_on_duplicate && detail.contains("already exists") {
+        let detail = envelope.result.as_str().unwrap_or_default();
+        if conflict_on_duplicate && detail.to_ascii_lowercase().contains("already exists") {
             return Err(PolyglotError::Conflict);
         }
         return Err(PolyglotError::Driver {
             backend: "SurrealDB",
-            message: format!("statement returned status {}", envelope.status),
+            message: with_detail(
+                format!("statement returned status {}", envelope.status),
+                server_detail(detail),
+            ),
         });
     }
     Ok(envelope.result)
+}
+
+/// Appends the server's own reason, when it gave one, to a failure.
+fn with_detail(failure: String, detail: Option<String>) -> String {
+    match detail {
+        Some(detail) => format!("{failure}: {detail}"),
+        None => failure,
+    }
 }
 
 fn result_values(result: Value) -> Result<Vec<Value>, PolyglotError> {

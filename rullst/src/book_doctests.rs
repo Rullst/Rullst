@@ -214,10 +214,6 @@ tutorial!(
     "../../docs/src/tutorials/51-authenticated-hot-reload.md"
 );
 tutorial!(
-    tutorial_52_typed_server_functions,
-    "../../docs/src/tutorials/52-typed-server-functions.md"
-);
-tutorial!(
     rest_api_quickstart,
     "../../docs/src/tutorials/rest-api-quickstart.md"
 );
@@ -235,6 +231,10 @@ tutorial!(
     "../../docs/src/mail-custom-transport.md"
 );
 tutorial!(managed_video, "../../docs/src/managed-video.md");
+tutorial!(
+    provider_conformance,
+    "../../docs/src/provider-conformance.md"
+);
 tutorial!(
     ai_integration_guide,
     "../../docs/src/6-ai-integration-tutorial.md"
@@ -272,6 +272,9 @@ tutorial!(
 tutorial!(framework_spec, "../../docs/src/spec.md");
 tutorial!(telemetry_guide, "../../docs/src/telemetry-guide.md");
 tutorial!(testing_your_app, "../../docs/src/testing-your-app.md");
+tutorial!(recipe_mongodb, "../../docs/src/recipes/mongodb.md");
+tutorial!(recipe_duckdb, "../../docs/src/recipes/duckdb.md");
+tutorial!(recipe_qdrant, "../../docs/src/recipes/qdrant.md");
 tutorial!(crate_ai, "../../docs/src/crates/ai.md");
 tutorial!(crate_auth, "../../docs/src/crates/auth.md");
 tutorial!(crate_capital, "../../docs/src/crates/capital.md");

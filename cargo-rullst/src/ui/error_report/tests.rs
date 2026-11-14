@@ -169,13 +169,13 @@ fn not_in_project_points_to_an_enclosing_root_when_one_exists() {
 #[test]
 fn the_generic_fallback_names_the_failed_command() {
     let friendly = classify(&Facts {
-        command: Some("academy:doctor".to_string()),
-        ..facts("Academy production-boundary contract is not satisfied")
+        command: Some("deploy:doctor".to_string()),
+        ..facts("deployment preflight reported 2 blocking checks")
     });
-    assert_eq!(friendly.title, "`cargo rullst academy:doctor` failed");
+    assert_eq!(friendly.title, "`cargo rullst deploy:doctor` failed");
     assert_eq!(
         friendly.happened,
-        "Academy production-boundary contract is not satisfied"
+        "deployment preflight reported 2 blocking checks"
     );
     assert!(friendly.fix.unwrap_or_default().contains("-v"));
     assert_eq!(classify(&facts("boom")).title, "Command failed");
@@ -210,16 +210,16 @@ fn interrupted_prompts_render_as_cancelled() {
 
 #[test]
 fn a_moved_starter_names_its_example_and_the_current_starters() {
-    let error = boxed(crate::blueprints::MovedBlueprint::ERP);
+    let error = boxed(crate::blueprints::MovedBlueprint::LMS);
     let facts = Facts::from_error(error.as_ref(), Some("new".into()), None);
-    assert_eq!(facts.moved, Some(crate::blueprints::MovedBlueprint::ERP));
+    assert_eq!(facts.moved, Some(crate::blueprints::MovedBlueprint::LMS));
     let friendly = classify(&facts);
-    assert_eq!(friendly.title, "The `erp` starter is now an example");
+    assert_eq!(friendly.title, "The `lms` starter is now an example");
     assert_eq!(
         friendly.fix.as_deref(),
         Some(
-            "Nothing was created. Copy the complete application from examples/erp \
-             (https://github.com/Rullst/Rullst/tree/main/examples/erp), or create a project \
+            "Nothing was created. Copy the complete application from examples/lms \
+             (https://github.com/Rullst/Rullst/tree/main/examples/lms). Or create a project \
              from a current starter: `cargo rullst new <name> --blueprint blank`, `api` or \
              `saas`. Projects already generated from it keep working."
         )
@@ -232,7 +232,37 @@ fn a_moved_starter_names_its_example_and_the_current_starters() {
     );
     let text = render(&friendly, &[], None, false, Style::PLAIN);
     assert!(
-        text.starts_with("error: The `erp` starter is now an example\n"),
+        text.starts_with("error: The `lms` starter is now an example\n"),
+        "{text}"
+    );
+}
+
+#[test]
+fn a_starter_whose_example_was_removed_points_to_the_blog_example() {
+    let error = boxed(crate::blueprints::MovedBlueprint::ERP);
+    let facts = Facts::from_error(error.as_ref(), Some("new".into()), None);
+    assert_eq!(facts.moved, Some(crate::blueprints::MovedBlueprint::ERP));
+    let friendly = classify(&facts);
+    assert_eq!(friendly.title, "The `erp` starter was removed");
+    assert_eq!(
+        friendly.fix.as_deref(),
+        Some(
+            "Nothing was created. Its example was removed in 13.0.0-alpha.5; examples/blog \
+             (https://github.com/Rullst/Rullst/tree/main/examples/blog) shows the same CRUD with \
+             a Nexus back office. Or create a project from a current starter: \
+             `cargo rullst new <name> --blueprint blank`, `api` or `saas`. Projects already \
+             generated from it keep working."
+        )
+    );
+    assert_eq!(
+        friendly.docs,
+        Some(
+            "https://rullst.github.io/Rullst/book/cli_reference.html#starters-that-moved-to-the-examples"
+        )
+    );
+    let text = render(&friendly, &[], None, false, Style::PLAIN);
+    assert!(
+        text.starts_with("error: The `erp` starter was removed\n"),
         "{text}"
     );
 }

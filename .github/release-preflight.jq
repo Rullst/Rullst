@@ -1,5 +1,10 @@
 def fail($message): error("release preflight: " + $message);
 
+# A path-only dev-dependency (no version requirement) is stripped by
+# `cargo publish`, so it is not part of the published manifest. rullst-orm
+# uses one on itself to enable `test-util` for its own integration tests.
+def is_published_edge: ((.kind == "dev" and .req == "*") | not);
+
 ($release_order[0]) as $order
 | (.packages | map(select(.publish != []))) as $publishable
 | ($publishable | map(.name)) as $actual_names
@@ -24,6 +29,7 @@ def fail($message): error("release preflight: " + $message);
     $publishable[] as $package
     | $package.dependencies[]
     | select($positions[.name] != null)
+    | select(is_published_edge)
     | {package: $package, dependency: .};
     .dependency.path == null
   ) then
@@ -32,6 +38,7 @@ def fail($message): error("release preflight: " + $message);
     $publishable[] as $package
     | $package.dependencies[]
     | select($positions[.name] != null)
+    | select(is_published_edge)
     | {package: $package, dependency: .};
     .dependency.req != ("=" + $version)
   ) then
@@ -40,6 +47,7 @@ def fail($message): error("release preflight: " + $message);
     $publishable[] as $package
     | $package.dependencies[]
     | select($positions[.name] != null)
+    | select(is_published_edge)
     | {package: $package, dependency: .};
     $positions[.dependency.name] >= $positions[.package.name]
   ) then

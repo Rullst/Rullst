@@ -5,9 +5,11 @@ use std::time::Duration;
 use async_trait::async_trait;
 use redis::{IntoConnectionInfo, aio::ConnectionManagerConfig};
 
-use crate::polyglot::{Backend, BackendCapabilities, Capability, PolyglotError};
+use crate::polyglot::{Backend, BackendCapabilities, Capability, PolyglotError, server_detail};
 
 mod config;
+#[cfg(test)]
+mod error_tests;
 mod mock;
 #[cfg(test)]
 mod tests;
@@ -152,7 +154,7 @@ impl RedisStructuresRepository for RedisDataStore {
             .arg(value.as_str())
             .query_async(&mut live.manager.clone())
             .await
-            .map_err(|_| redis_error())?;
+            .map_err(redis_error)?;
         Ok(inserted == 1)
     }
 
@@ -169,7 +171,7 @@ impl RedisStructuresRepository for RedisDataStore {
             .arg(field.as_str())
             .query_async(&mut live.manager.clone())
             .await
-            .map_err(|_| redis_error())?;
+            .map_err(redis_error)?;
         value.map(RedisValue::new).transpose()
     }
 
@@ -188,7 +190,7 @@ impl RedisStructuresRepository for RedisDataStore {
             .arg(amount)
             .query_async(&mut live.manager.clone())
             .await
-            .map_err(|_| redis_error())
+            .map_err(redis_error)
     }
 
     async fn set_add(
@@ -204,7 +206,7 @@ impl RedisStructuresRepository for RedisDataStore {
             .arg(member.as_str())
             .query_async(&mut live.manager.clone())
             .await
-            .map_err(|_| redis_error())?;
+            .map_err(redis_error)?;
         Ok(inserted == 1)
     }
 
@@ -221,7 +223,7 @@ impl RedisStructuresRepository for RedisDataStore {
             .arg(member.as_str())
             .query_async(&mut live.manager.clone())
             .await
-            .map_err(|_| redis_error())
+            .map_err(redis_error)
     }
 
     async fn set_scan(
@@ -251,7 +253,7 @@ impl RedisStructuresRepository for RedisDataStore {
             .arg(member.as_str())
             .query_async(&mut live.manager.clone())
             .await
-            .map_err(|_| redis_error())?;
+            .map_err(redis_error)?;
         Ok(inserted == 1)
     }
 
@@ -271,9 +273,9 @@ impl RedisStructuresRepository for RedisDataStore {
             .arg("WITHSCORES")
             .query_async(&mut live.manager.clone())
             .await
-            .map_err(|_| redis_error())?;
+            .map_err(redis_error)?;
         if rows.len() > usize::from(limit.get()) {
-            return Err(redis_error());
+            return Err(redis_failure("ZREVRANGE returned more rows than requested"));
         }
         rows.into_iter()
             .map(|(member, score)| ScoredRedisMember::new(RedisMember::new(member)?, score))
@@ -292,7 +294,7 @@ impl RedisStructuresRepository for RedisDataStore {
             .arg(live.key(structure, key))
             .query_async(&mut live.manager.clone())
             .await
-            .map_err(|_| redis_error())?;
+            .map_err(redis_error)?;
         Ok(deleted == 1)
     }
 }
@@ -313,14 +315,14 @@ impl LiveRedisData {
             connection = connection.set_redis_settings(settings);
         }
         crate::redis_tls::install_provider_for(&connection);
-        let client = redis::Client::open(connection).map_err(|_| redis_error())?;
+        let client = redis::Client::open(connection).map_err(redis_error)?;
         let manager_config = ConnectionManagerConfig::new()
             .set_number_of_retries(1)
             .set_connection_timeout(Some(Duration::from_secs(5)))
             .set_response_timeout(Some(Duration::from_secs(5)));
         let manager = redis::aio::ConnectionManager::new_with_config(client, manager_config)
             .await
-            .map_err(|_| redis_error())?;
+            .map_err(redis_error)?;
         Ok(Self {
             manager,
             namespace: config.namespace,
@@ -355,7 +357,7 @@ impl LiveRedisData {
                 .arg(limit.get())
                 .query_async(&mut self.manager.clone())
                 .await
-                .map_err(|_| redis_error())?;
+                .map_err(redis_error)?;
             for member in chunk {
                 members.push(RedisMember::new(member)?);
                 if members.len() == usize::from(limit.get()) {
@@ -367,22 +369,35 @@ impl LiveRedisData {
             }
             cursor = next;
         }
-        Err(redis_error())
+        Err(redis_failure("SSCAN did not finish within 128 rounds"))
     }
 }
 
 fn redis_mock(store: &RedisDataStore) -> Result<&MockRedisData, PolyglotError> {
     match &store.inner {
         RedisDataInner::Mock(mock) => Ok(mock),
-        RedisDataInner::Live(_) => Err(redis_error()),
+        RedisDataInner::Live(_) => Err(redis_failure("adapter state changed during operation")),
     }
 }
 
-pub(super) fn redis_error() -> PolyglotError {
+/// A failure the adapter itself detected. The error's text already starts
+/// with "Redis operation failed", so `message` says only what went wrong.
+pub(super) fn redis_failure(message: impl Into<String>) -> PolyglotError {
     PolyglotError::Driver {
         backend: "Redis",
-        message: "Redis operation failed".to_owned(),
+        message: message.into(),
     }
+}
+
+/// A failure the driver reported: the server's code and reason as Redis
+/// writes them (`WRONGPASS invalid username-password pair ...`), otherwise
+/// the driver's own text, kept to one bounded line without URLs.
+fn redis_error(error: redis::RedisError) -> PolyglotError {
+    let text = match (error.code(), error.detail()) {
+        (Some(code), Some(detail)) => format!("{code} {detail}"),
+        _ => error.to_string(),
+    };
+    redis_failure(server_detail(&text).unwrap_or_default())
 }
 
 fn invalid_config(reason: &'static str) -> PolyglotError {

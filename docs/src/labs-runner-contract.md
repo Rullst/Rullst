@@ -1,7 +1,8 @@
 # Labs runner contract: bring your own runner
 
-> **Status:** `rullst-labs` is a v13 candidate, first published in the
-> 13.0.0-alpha.1 prerelease. The experimental
+> **Status:** `rullst-labs` is a v13 package, first published in the
+> 13.0.0-alpha.1 prerelease and in the Extension
+> [maturity tier](maturity.md) since 13.0.0-alpha.5. The experimental
 > `rullst-labs-runner` candidate (a Linux Rust-to-Wasm/Wasmi executor) was
 > removed from the workspace for 13.0. Its source remains in git history, for
 > example at `main` revision `f7909033`. Rullst no longer ships an executor.

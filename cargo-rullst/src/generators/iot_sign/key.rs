@@ -125,6 +125,7 @@ pub(super) fn read_signing_key(path: &Path) -> Result<SigningKey, IotSignError> 
 }
 
 /// Whether Unix permission bits let a group or other users read or write.
+#[cfg_attr(not(unix), allow(dead_code))]
 pub(super) fn is_shared(mode: u32) -> bool {
     mode & 0o077 != 0
 }

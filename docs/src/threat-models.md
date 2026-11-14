@@ -161,8 +161,8 @@ mounts with `Server::with_monitor`. The standalone Studio that reads it for
 several projects from the developer's machine (phases 2 and 3) is modelled in
 `TM-STUDIO-3`.
 
-**Assets:** operational metrics of a production process (request counts, rates
-and latency per route pattern, status classes, queue depth and worker
+**Assets:** operational metrics of a production process (request counts, rates,
+latency and response bytes per route pattern, status classes, queue depth and worker
 activity, possible N+1 query fingerprints, process radar); the monitor tokens;
 the availability of the application that serves the endpoint.
 
@@ -265,7 +265,7 @@ snapshot contents ↔ destination repository.
 | Abuse case | Required disposition | Repository evidence or remaining work |
 | --- | --- | --- |
 | `ORM-01` copied, tampered or cross-scope snapshot discloses or substitutes documents | Encrypt and authenticate the complete versioned payload with a fresh nonce, explicit rotation key ID, length-delimited application/collection binding and fixed decode limits; authenticate before JSON decoding. | The exact negative changes ciphertext, key material and application binding and proves all three fail closed. Key bytes are consumed through a zeroizing temporary, opaque snapshot/key `Debug` output is redacted and plaintext labels are absent from the envelope. Key generation/custody/rotation, external snapshot permissions and deletion remain operator responsibilities. |
-| `ORM-02` partial retry overwrites conflicting destination data or silently accepts extras | Accept only an empty destination or an exact matching subset, insert without replacement, treat only an exact raced duplicate as replay and verify the final complete inventory. Never delete an extra row or claim transactionality across stores. | The exact negative proves a differing row and an extra row fail before mutation. Deterministic tests cover partial resume and idempotent replay; the live matrix exports MongoDB→SurrealDB→MongoDB and checks ordered IDs. Export performs two equal observations, but formal consistency still requires the application to quiesce writers; a failed restore can retain prior successful inserts for the documented retry path. |
+| `ORM-02` partial retry overwrites conflicting destination data or silently accepts extras | Accept only an empty destination or an exact matching subset, insert without replacement, treat only an exact raced duplicate as replay and verify the final complete inventory. Never delete an extra row or claim transactionality across stores. | The exact negative proves a differing row and an extra row fail before mutation. Deterministic tests cover partial resume and idempotent replay; the live matrix exports SurrealDB→deterministic store→SurrealDB and checks ordered IDs. Export performs two equal observations, but formal consistency still requires the application to quiesce writers; a failed restore can retain prior successful inserts for the documented retry path. |
 
 **Release-negative minimum:** ciphertext/key/scope substitution and conflicting
 or extra destination state.
@@ -312,14 +312,13 @@ rotation ring and filesystem state ↔ restart verifier.
 **Assets:** provider secrets, event IDs, subscription state, amount/currency,
 invoice identity and replay state.
 
-v13 keeps the provider-neutral base, Stripe and the experimental InfinitePay
-adapter. Payout and NFS-e fiscal code left the framework, so their cases below
+v13 keeps the provider-neutral base, Stripe and the InfinitePay adapter. Payout and NFS-e fiscal code left the framework, so their cases below
 are retired and claim no current evidence; applications that add custom
 gateways, payouts or fiscal integrations own those threat models.
 
 | Abuse case | Required disposition | Repository evidence or remaining work |
 | --- | --- | --- |
-| `PAY-01` forged webhook | Verify the provider's exact signed bytes and algorithm cryptographically before parsing side effects. | Axum and Actix call the same verifier; Stripe signature negatives plus Actix body/event preservation prove the bounded adapters. The experimental InfinitePay adapter has no signed webhook: its mode is `ConfirmedAtSource`, the middleware hands the handler a status-free `PaymentNotification`, and only `confirm_one_off_payment` (`payment_check` plus an exact server-side amount and currency match) reports a payment; unit tests prove a provider in that mode never reaches `handle_webhook`. Custom adapters must declare their verification mode, and the trait default fails closed. |
+| `PAY-01` forged webhook | Verify the provider's exact signed bytes and algorithm cryptographically before parsing side effects. | Axum and Actix call the same verifier; Stripe signature negatives plus Actix body/event preservation prove the bounded adapters. The InfinitePay adapter has no signed webhook: its mode is `ConfirmedAtSource`, the middleware hands the handler a status-free `PaymentNotification`, and only `confirm_one_off_payment` (`payment_check` plus an exact server-side amount and currency match) reports a payment; unit tests prove a provider in that mode never reaches `handle_webhook`. Custom adapters must declare their verification mode, and the trait default fails closed. |
 | `PAY-02` replay/stale event | Enforce timestamp window and unique event ID in durable shared state before effects. | Freshness and bounded local replay are enforced before dispatch. The opt-in SQL ledger persists provider-scoped payload/event claims across SQLite/PostgreSQL/MySQL/MariaDB processes, fails closed on capacity/storage/profile errors and has restart/contention/four-protocol live evidence. Middleware claims before dispatch and is not exactly-once delivery; stable event IDs can instead share the caller's relational domain transaction, and a live MySQL/MariaDB/PostgreSQL case proves a caller transaction whose snapshot predates a concurrently committed claim is rejected. A custom adapter for a provider that signs only the body checks no delivery timestamp, so an exact captured body verifies again once its replay claim expires (24 hours by default, at most 30 days) or, with the process-local store, after a restart; hosts must order and deduplicate their state changes durably. |
 | `PAY-03` amount/owner substitution | Derive product/currency/owner from authenticated server state, never arbitrary client values. | Materialized SQLx billing scaffolds bind checkout to authenticated identity and deny cross-owner subscription reuse before customer binding; route/plan/provider review remains open. `OneOffCheckoutRequest` is built from server state, and `OneOffPayment::paid` rejects a provider confirmation whose charged amount or currency differs from it, so a paid link of another price that reuses the order reference never counts. |
 | `PAY-04` duplicate/partial transition | Use a transactional idempotent state machine and reconcile with the provider. | `check_and_record_event_key_with_transaction` can bind one stable provider event ID to one mutation in the same supported relational database. Cross-system atomicity, provider reconciliation, automatic state-machine policy, and middleware crash recovery remain open. |

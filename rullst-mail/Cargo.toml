@@ -1,6 +1,6 @@
 [package]
 name = "rullst-mail"
-version = "13.0.0-alpha.4"
+version = "13.0.0-alpha.5"
 authors = ["Rullst Core Team"]
 edition = "2024"
 rust-version = "1.96.0"
@@ -31,6 +31,8 @@ aws-ses = ["dep:aws-sdk-sesv2", "dep:aws-smithy-types"]
 capital-invoice = ["dep:rullst-capital", "rullst-capital/invoice-pdf"]
 sqlite = ["dep:sqlx", "sqlx/sqlite", "dep:url"]
 postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "dep:url"]
+# Test kit that checks a `MailDriver` against the built-in drivers' contract.
+conformance = []
 
 [dependencies]
 rullst-core = { workspace = true }

@@ -8,6 +8,7 @@
 mod context;
 mod database;
 mod disk;
+mod frontend;
 mod linker;
 pub(crate) mod probe;
 mod project;
@@ -102,12 +103,9 @@ fn collect(
     let audit = toolchain::cargo_audit_check(&probes.cargo_audit);
     match project {
         Some(project) => {
-            groups.push(Group::new(
-                "project",
-                "Project",
-                "project",
-                project::project_checks(project),
-            ));
+            let mut checks = project::project_checks(project);
+            checks.extend(frontend::tailwind_check(&project.root));
+            groups.push(Group::new("project", "Project", "project", checks));
             groups.push(Group::new(
                 "config",
                 "Config & .env",

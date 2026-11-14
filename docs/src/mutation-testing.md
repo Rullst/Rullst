@@ -46,12 +46,16 @@ received a test or is listed under
   to 250,000 files): upgrade snapshot 6, upgrade source walk 3, project
   snapshot 13, replacement and verification totals 2 and 2, and the 64 MiB
   preparation report 4.
-- **`green`, `deploy` and guided update** (13.0.0-alpha.4): the nine `green`
-  files, `generators/deploy.rs` and `update/guided.rs` gave 337 mutants, 93
+- **`green` (now `footprint`), `deploy` and guided update** (13.0.0-alpha.4):
+  the nine `green` files, `generators/deploy.rs` and `update/guided.rs` gave 337 mutants, 93
   missed and no timeout. New library tests (a loopback test server, fake app
   and container-engine scripts, child test processes for commands that use
   the working directory or the terminal) killed 86; the other 7 are accepted
-  equivalents. The 11 files are in `.github/mutants-pr-cli.txt`.
+  equivalents. The 11 files are in `.github/mutants-pr-cli.txt`. In
+  13.0.0-alpha.5 the command became `footprint` (`generators/footprint/`), its
+  Linux process lookup moved to `process/linux.rs` and its start-up to
+  `subject.rs`, both listed; the new page-weight, macOS and Windows files are
+  not listed yet.
 - **Studio remote mode** (20 files, measured with the `cargo-rullst` campaign):
   no survivor left.
 - **`rullst-capital`**: 29 mutants that only a live Stripe response reaches
@@ -103,7 +107,7 @@ measure the guard, and runs without it skip the test unless
 `RULLST_REQUIRE_TESTCONTAINERS=true`), the `cargo-rullst` campaign (targeted
 runs, with the CLI's library unit tests, of the self-update, audit, `add` and
 consumer-file, doctor, deploy and `upgrade` files, and before 13.0.0-alpha.4
-of the `green` command, `generators/deploy.rs` and `update/guided.rs`; it
+of the `green` command (now `footprint`), `generators/deploy.rs` and `update/guided.rs`; it
 covers the files `.github/mutants-pr-cli.txt` lists, and the campaign status above names the
 survivors left in the others) and the Studio remote-mode campaign (targeted runs of every
 `rullst-studio/src/remote` file and of the `rullst-studio` binary with the
@@ -123,9 +127,8 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-mail/src/facade/driver.rs`: `DigestHasher::finish` with `1` | `finish` is never called; the digest is read from the SHA-256 state. |
 | `rullst-mail/src/facade/driver.rs`: delete the `(Some(_), Some(_))` arm of `ses_credentials` | That arm exists only without the `aws-ses` feature, which the all-feature build does not compile. |
 | `cargo-rullst/src/generators/audit_report/a11y.rs`: `attributes`, the end `index + 1` after `>` with `index - 1` or `index * 1` | The tag scanner resumes at the next `<`; the byte before a closing `>` cannot open a tag, because a tag name never starts with `>`. |
-| `cargo-rullst/src/generators/green/procfs.rs`: `ticks_per_second`, `> 0` with `>= 0` | The clock tick rate is always positive. |
-| `cargo-rullst/src/generators/green/procfs.rs`: the non-Unix `ticks_per_second` with `Some(0)` or `Some(1)` | Not compiled on Linux. |
-| `cargo-rullst/src/generators/green/load.rs`: `worker`, `green/artifacts.rs`: `inspect`, and `green/target.rs`: `OwnedApp::wait_ready` and `OwnedApp::stop`, the deadline test `Instant::now() < deadline` with `<=` | An `Instant` reading would have to equal the deadline to the nanosecond, and the loop would then take one more short step. |
+| `cargo-rullst/src/generators/footprint/procfs.rs`: `ticks_per_second`, `> 0` with `>= 0` | The clock tick rate is always positive. |
+| `cargo-rullst/src/generators/footprint/load.rs`: `worker`, `footprint/artifacts.rs`: `inspect`, and `footprint/target.rs`: `OwnedApp::wait_ready` and `OwnedApp::stop`, the deadline test `Instant::now() < deadline` with `<=` | An `Instant` reading would have to equal the deadline to the nanosecond, and the loop would then take one more short step. |
 | `cargo-rullst/src/generators/doctor/probe.rs`: `run`, `stdout.len() > OUTPUT_LIMIT` with `>=` | An output of exactly `OUTPUT_LIMIT` bytes is cut at its own length, which leaves it unchanged. |
 | `cargo-rullst/src/generators/doctor/database.rs`: `tcp_reachable`, delete the `TimedOut \| WouldBlock` arm | `TcpStream::connect_timeout` reports its timeout as a `TimedOut` error whose text is `connection timed out`, which the catch-all arm passes through unchanged, and never returns `WouldBlock` on Linux. |
 | `cargo-rullst/src/generators/output_guard.rs`: `write_output`, the `NotFound` guard of `fs::metadata` with `true` | `reject_symlink` has already returned every other `lstat` error, and for a path that is not a symlink `stat` fails exactly when `lstat` does. |
@@ -192,9 +195,6 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-core/src/storage/cloud/multipart/codec.rs`: `MultipartStorage::open`, `checkpoint.0.len() > MAX_TOKEN` with `==` or `>=`, and `bytes.len() < 28` with `<=` | No authentic checkpoint reaches 256 KiB (256 receipts and a 2,048-byte upload id stay under 180 KiB), and a 28-byte token has an empty plaintext; both fail with the same `InvalidCheckpoint`. |
 | `rullst-core/src/testing/snapshot.rs`: `line_diff`, the deletion test's `table[i * width + j + 1]` with `j * 1` | Without a match, `table[i][j]` is the larger of `table[i + 1][j]` and `table[i][j + 1]`, so `table[i + 1][j] >= table[i][j]` holds exactly when `table[i + 1][j] >= table[i][j + 1]`. |
 | `rullst-core/src/queue/deferral/planner.rs`: `lowest_intensity`, the tie-break `overlap_start < best_start` with `<=` | A tie at the same start stores the same start and value again. |
-| `rullst-core/src/rpc.rs`: `request_contract_failure`, delete the `BodyTooLarge` arm | `to_bytes` already refuses a body over the same limit with the same 413 and code, so decoding never reports it. |
-| `rullst-core/src/rpc.rs`: `RpcFailure::from_detail` with `Default::default()` | Compiled only for `wasm32`. |
-| `rullst-core/src/rpc.rs`: the test helper `failure_for`, `64 * 1024` with `+` | Test code: every failure envelope it reads is far below 1,088 bytes. |
 | `rullst-core/src/storage/cloud/multipart/protocol.rs`: `parse`, delete the `allow_dtd` field | roxmltree's default `ParsingOptions` already rejects a DTD. |
 | `rullst-core/src/cache/memory/exact_json.rs`: `Display for Inexact` with `Ok(Default::default())` | `is_exact_json` only checks whether serialization succeeds; the error text is never formatted. |
 | `rullst-core/src/radar.rs`: `get_windows_memory_mb`, `get_windows_process_cpu_usage`, `filetime_100ns`, `calculate_windows_cpu_percent`, and the Windows and other-platform `get_process_cpu_usage` | Not compiled on Linux. |
@@ -215,7 +215,6 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-orm/src/polyglot/turso/model.rs`: the default `TursoModel::opaque_columns` with `Vec::leak(Vec::new())` | The default already returns an empty slice. |
 | `rullst-orm-macros/src/feature_gates.rs`: `redis` and `ai` with `Default::default()` | With every feature the runtime gates are on and the feature is enabled, so both return an empty token stream, which is the default. |
 | `rullst-orm/src/polyglot/recovery/codec.rs`: `base64url_value`, the digit arm's `byte - b'0'` with `+` | The value is read only for its low four padding bits, and the two results differ by 96, a multiple of 16. |
-| `rullst-orm/src/polyglot/qdrant/mod.rs`: `LiveQdrant::send_json`, `bytes.len() > MAX_REQUEST_BYTES` with `==` or `>=` | No request reaches 4 MiB: vectors hold at most 65,536 values and payloads at most 1 MiB, so the body stays near 2 MiB; a test still sends a 1 MiB payload. |
 | `rullst-orm/src/outbox.rs`: `Outbox::install`, `case_insensitive_keys > 0` with `>=` | The MySQL key-collation conversion is idempotent: run on keys that are already `ascii_bin` it leaves the same columns and only costs a table rebuild. The MySQL matrix converts a legacy table, which kills the `==` and `<` mutants. |
 | `rullst-orm/src/schema/migration_lock.rs`: `MigrationLock::release` with `()` | The lock lives in the dedicated connection's session. The replaced body still drops `self`, which closes the socket and ends the session, freeing the lock as the graceful close does. |
 | `rullst-messaging/src/webhooks/signature.rs`: `WebhookSignature::from_headers`, the `\|\|` before `kind.len() > 128`, `timestamp.len() > 12` or `signature.len() != 46`, and `tag.len() != 32 \|\| …`, each with `&&` | `MessageId::from_stored`, `EventKind`, the canonical timestamp parse and the strict `v1=` decode repeat each length check with the same `InvalidSignature`, and 43 strict base64url characters always decode to 32 canonical bytes. |
