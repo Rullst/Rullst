@@ -155,7 +155,10 @@ Once everything is stable and verified:
    before dispatching the manual admission workflows. It refuses, in seconds,
    problems that `release.yml` would otherwise find hours later:
    - packages not at the tagged version, or a missing changelog section;
-   - a stale head or an existing tag;
+   - a stale head or an existing tag (for a tag whose release published
+     nothing, it prints the delete-and-recreate commands that
+     [MAINTAINING.md](MAINTAINING.md) section 7.5 allows only with the
+     maintainer's approval; it never deletes a tag);
    - an unregistered or foreign-owned crate name;
    - a version already on crates.io.
 

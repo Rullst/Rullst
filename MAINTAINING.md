@@ -308,7 +308,9 @@ testing.
 5. Never bypass a failing gate to publish. Fix the cause and admit the new
    commit. A tag whose release published nothing may be deleted and recreated
    only with the maintainer's approval; a published version is never
-   reused — release the next version instead.
+   reused — release the next version instead. While the tag exists,
+   `release-preflight.py` refuses; when no package has that version on
+   crates.io, it prints the commands for this case. It never deletes a tag.
 6. Record the publication in `ROADMAP.md` (release lines) and
    `docs/src/v13-delivery-plan.md`.
 
