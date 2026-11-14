@@ -1,9 +1,11 @@
 # v13 delivery plan and evidence
 
-**13.0.0-alpha.5 prepared on November 12, 2026, for a tag on November 14
-(not yet published).** The release commit sets the twenty packages of the
-release order to `13.0.0-alpha.5`; the coordinator records the tag, the
-exact-SHA admission and the release run here after publication. It is the
+**13.0.0-alpha.5 published on November 14, 2026.** All twenty packages were
+published from tag `v13.0.0-alpha.5` at `5feda4ac`
+([release run 43631881119](https://github.com/Rullst/Rullst/actions/runs/43631881119))
+after the 23 required workflows passed on that exact commit. A first tag at
+`034df65e` stopped in release verification before publishing anything and
+was replaced with the maintainer's approval. It is the
 13.0 feature and public API freeze: it adds what the three applications
 upgraded to alpha.4 asked for (the `footprint` report with page weight and
 budgets, a frontend toolkit, a testing kit for generated applications,

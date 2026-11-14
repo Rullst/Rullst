@@ -21,9 +21,9 @@ for Humans and AI."**
 Intentions, not promises; dates follow the evidence gates described below.
 
 - **v13:** `13.0.0-alpha.1` to `alpha.3` were published from 11 to 24
-  October 2026 and `13.0.0-alpha.4` on 31 October. `13.0.0-alpha.5`,
-  prepared on 12 November, adds what the applications upgraded to alpha.4
-  asked for and is the 13.0 feature and public API freeze. Then `13.0.0-rc.1` (fixes and documentation only,
+  October 2026, `13.0.0-alpha.4` on 31 October and `13.0.0-alpha.5` on
+  14 November; alpha.5 adds what the applications upgraded to alpha.4 asked
+  for and is the 13.0 feature and public API freeze. Then `13.0.0-rc.1` (fixes and documentation only,
   driven by user feedback) and `13.0.0` stable, from which the
   [maturity tiers](docs/src/maturity.md) apply; see the
   [path to 13.0.0](#path-to-1300).
@@ -221,9 +221,8 @@ and the [priority revision](docs/src/v13-priorities.md).
 
 ### Delivered in 13.0.0-alpha.5
 
-Planned after 13.0.0-alpha.4 and prepared on 12 November 2026 as the
-13.0.0-alpha.5 release candidate; the coordinator records publication in the
-table below. They add no milestone to the counts above.
+Planned after 13.0.0-alpha.4, prepared on 12 November 2026 and published on
+14 November (see the table below). They add no milestone to the counts above.
 
 - **13.0.0-alpha.5: the 13.0 feature and public API freeze.** It carries the
   fixes for the defects the applications found in alpha.4 and these
@@ -354,7 +353,7 @@ to the counts above.
 | **v13.0.0-alpha.2** | `[x] Published prerelease` | All twenty packages were published on 17 October 2026 from tag `v13.0.0-alpha.2` at `0daf4941` ([release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)): the fixes from the alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema` date/time and Nexus changes. A first tag at `669befe6` failed release verification before publishing anything and was replaced. |
 | **v13.0.0-alpha.3** | `[x] Published prerelease` | All twenty packages were published on 24 October 2026 from tag `v13.0.0-alpha.3` at `be336833` ([release run 40129821475](https://github.com/Rullst/Rullst/actions/runs/40129821475)) after all 25 required workflows passed on that commit. See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha3---2026-10-23). |
 | **v13.0.0-alpha.4** | `[x] Published prerelease` | All twenty packages were published on 31 October 2026 from tag `v13.0.0-alpha.4` at `2bd3c2ad` ([release run 41233925160](https://github.com/Rullst/Rullst/actions/runs/41233925160)). See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha4---2026-10-31). |
-| **v13.0.0-alpha.5** | `[ ] Release candidate` | Prepared on 12 November 2026 and not yet published; the coordinator records the tag, release run and publication here. Twenty packages; the 13.0 feature and public API freeze, with the fixes and additions from the applications upgraded to alpha.4. See [Delivered in 13.0.0-alpha.5](#delivered-in-1300-alpha5) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14). |
+| **v13.0.0-alpha.5** | `[x] Published prerelease` | All twenty packages were published on 14 November 2026 from tag `v13.0.0-alpha.5` at `5feda4ac` ([release run 43631881119](https://github.com/Rullst/Rullst/actions/runs/43631881119)) after all 23 required workflows passed on that commit. A first tag at `034df65e` stopped in release verification before publishing anything (`cargo rullst audit` lacked the governed advisory exceptions, #690) and was replaced with the maintainer's approval. The 13.0 feature and public API freeze, with the fixes and additions from the applications upgraded to alpha.4. See [Delivered in 13.0.0-alpha.5](#delivered-in-1300-alpha5) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14). |
 | **v13.0.0-rc.1** | `[ ] Planned` | Fixes and documentation only after the alpha.5 feature and API freeze. See [Planned after 13.0.0-alpha.5](#planned-after-1300-alpha5). |
 | **v13.0.0** | `[ ] Planned stable` | Follows once rc.1 leaves no open defect in the stability scope; the [maturity tiers](docs/src/maturity.md) apply from this release. |
 | **v13.x** | `[ ] After 13.0.0` | Compatible capabilities continue in 13.1 and later minors: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
