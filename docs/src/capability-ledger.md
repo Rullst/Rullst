@@ -243,8 +243,9 @@ provider or hardware environment and operational semantics exist.
 
 ## Suggested sequencing
 
-1. **Finish 13.0:** fixes and documentation only in 13.0.0-rc.1, then the
-   13.0.0 release evidence (version 12 reached end of life on 16 October 2026).
+1. **Finish 13.0:** the 13.0.0-alpha.6 freeze, fixes and documentation only
+   in 13.0.0-rc.1, then the 13.0.0 release evidence (version 12 reached end
+   of life on 16 October 2026).
 2. **Architecture cycle:** preserve the new Core/ORM and umbrella feature gates,
    consolidate Security, and evolve the bounded `rullst-messaging` and
    remote-storage boundaries through provider-specific conformance evidence.
