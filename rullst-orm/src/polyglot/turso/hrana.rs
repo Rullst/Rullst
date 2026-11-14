@@ -6,8 +6,10 @@ use serde::{Deserialize, Serialize};
 
 use super::{PolyglotError, TursoQueryLimit, TursoRow, TursoStatement, TursoValue};
 
+mod endpoint;
 mod stream;
 mod value;
+use endpoint::pipeline_url;
 use value::WireValue;
 
 const MAX_RESPONSE_BYTES: usize = 16 * 1024 * 1024;
@@ -113,32 +115,36 @@ impl HranaClient {
         &self,
         requests: Vec<StreamRequest>,
     ) -> Result<PipelineResponse, PolyglotError> {
-        self.closing(None, requests).await
+        self.closing(&self.pipeline_url, None, requests).await
     }
 
     /// Sends requests that end with `close`; the stream must not stay open.
     async fn closing(
         &self,
+        url: &Url,
         baton: Option<String>,
         requests: Vec<StreamRequest>,
     ) -> Result<PipelineResponse, PolyglotError> {
-        let response = self.post(baton, requests).await?;
+        let response = self.post(url, baton, requests).await?;
         if response.baton.is_some() {
             return Err(protocol_error("server kept a stream open after close"));
         }
         Ok(response)
     }
 
-    /// Posts one pipeline request to the configured endpoint. A `base_url`
-    /// in the response is not followed, so the token only ever goes there.
+    /// Posts one pipeline request to `url`: the configured pipeline URL, or
+    /// for the rest of a stream the same-origin URL its server named with
+    /// `base_url` (see `endpoint::continued_pipeline_url`), so the token
+    /// only ever goes to the configured origin.
     async fn post(
         &self,
+        url: &Url,
         baton: Option<String>,
         requests: Vec<StreamRequest>,
     ) -> Result<PipelineResponse, PolyglotError> {
         let mut request = self
             .client
-            .post(self.pipeline_url.clone())
+            .post(url.clone())
             .header(reqwest::header::ACCEPT, "application/json")
             .header("x-libsql-client-version", "rullst-orm-12");
         if !self.auth_token.is_empty() {
@@ -172,38 +178,6 @@ impl HranaClient {
         }
         serde_json::from_slice(&body).map_err(PolyglotError::serialization)
     }
-}
-
-fn pipeline_url(endpoint: &str) -> Result<Url, PolyglotError> {
-    let mut url = Url::parse(endpoint).map_err(|_| PolyglotError::InvalidConfiguration {
-        backend: "Turso",
-        reason: "endpoint is not a valid URL",
-    })?;
-    if url.scheme() == "libsql" {
-        let suffix =
-            url.as_str()
-                .strip_prefix("libsql:")
-                .ok_or(PolyglotError::InvalidConfiguration {
-                    backend: "Turso",
-                    reason: "libsql endpoint cannot be converted to HTTPS",
-                })?;
-        url = Url::parse(&format!("https:{suffix}")).map_err(|_| {
-            PolyglotError::InvalidConfiguration {
-                backend: "Turso",
-                reason: "libsql endpoint cannot be converted to HTTPS",
-            }
-        })?;
-    }
-    let mut path = url
-        .path_segments_mut()
-        .map_err(|_| PolyglotError::InvalidConfiguration {
-            backend: "Turso",
-            reason: "endpoint cannot be used as an HTTP base URL",
-        })?;
-    path.pop_if_empty();
-    path.push("v3").push("pipeline");
-    drop(path);
-    Ok(url)
 }
 
 fn transactional_batch(statements: Vec<TursoStatement>) -> Result<Batch, PolyglotError> {
@@ -289,6 +263,9 @@ struct PipelineRequest {
 #[derive(Deserialize)]
 struct PipelineResponse {
     baton: Option<String>,
+    /// Where the rest of the stream continues; `None` keeps the current URL.
+    #[serde(default)]
+    base_url: Option<String>,
     results: Vec<StreamResult>,
 }
 
@@ -480,6 +457,9 @@ fn response_too_large() -> PolyglotError {
     }
 }
 
+#[cfg(test)]
+#[path = "hrana/base_url_tests.rs"]
+mod base_url_tests;
 #[cfg(test)]
 #[path = "hrana/pipeline_tests.rs"]
 mod pipeline_tests;

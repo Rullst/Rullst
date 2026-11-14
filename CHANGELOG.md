@@ -9,6 +9,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Fixed
+
+- **Turso/libSQL:** saving a model whose text primary key a database
+  `DEFAULT` fills now works on a multi-instance server (such as Turso Cloud)
+  that answers the insert's interactive Hrana stream with a `base_url`: the
+  commit or rollback goes to that URL when it has the configured endpoint's
+  scheme, host and port. A `base_url` at another origin is refused with the
+  new `PolyglotError::CrossOriginEndpoint` before anything, the auth token
+  included, is sent there; the insert is not committed. Before, the client
+  ignored `base_url` and such an insert failed without writing a row.
+
 ## [13.0.0-alpha.5] - 2026-11-14
 
 Fifth v13 prerelease, for evaluation, and the 13.0 feature and public API
