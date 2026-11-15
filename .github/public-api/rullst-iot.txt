@@ -385,8 +385,6 @@ pub rullst_iot::OtaError::RollbackDetected::current: u64
 pub rullst_iot::OtaError::RollbackDetected::proposed: u64
 pub rullst_iot::OtaError::RollbackCounterStore(rullst_iot::RollbackCounterError)
 pub rullst_iot::OtaError::NoVerifiedUpdate
-pub rullst_iot::OtaError::LegacyApiUnsupported { .. }
-pub rullst_iot::OtaError::LegacyApiUnsupported::replacement: &'static str
 pub rullst_iot::OtaError::AllocationFailed
 pub rullst_iot::OtaError::MalformedManifest
 impl core::clone::Clone for rullst_iot::OtaError
@@ -416,9 +414,6 @@ impl<'a> core::marker::Unpin for rullst_iot::OtaImageVerifier<'a>
 impl<'a> core::panic::unwind_safe::RefUnwindSafe for rullst_iot::OtaImageVerifier<'a>
 #[non_exhaustive] pub struct rullst_iot::OtaManager
 impl rullst_iot::OtaManager
-#[deprecated] pub fn rullst_iot::OtaManager::commit_update(&mut self, _new_version: impl core::convert::Into<alloc::string::String>) -> core::result::Result<rullst_iot::OtaCommit, rullst_iot::OtaError>
-#[deprecated] pub fn rullst_iot::OtaManager::new(_version: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_iot::OtaError>
-#[deprecated] pub fn rullst_iot::OtaManager::verify_signature(&self, _payload: &[u8], _signature: &[u8]) -> core::result::Result<(), rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::begin_update(&mut self, manifest: &rullst_iot::OtaManifest, signature: &[u8]) -> core::result::Result<rullst_iot::OtaImageVerifier<'_>, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::commit_verified_update(&mut self) -> core::result::Result<rullst_iot::OtaCommit, rullst_iot::OtaError>
 pub fn rullst_iot::OtaManager::commit_verified_update_with_store<S: rullst_iot::RollbackCounterStore>(&mut self, counter_store: &mut S) -> core::result::Result<rullst_iot::OtaCommit, rullst_iot::OtaError>

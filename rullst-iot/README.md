@@ -229,10 +229,12 @@ same for an image held as one slice (for example memory-mapped internal
 flash). `OtaManifest::from_firmware` hashes the image; it is for the
 publisher.
 
-`OtaManager::new`, `verify_signature`, and `commit_update` are deprecated
-migration APIs. All three always return `OtaError` because keyless construction,
-payload-only verification, and unconditional commit cannot provide the required
-guarantees.
+13.0.0-alpha.6 removed `OtaManager::new`, `verify_signature` and
+`commit_update` (deprecated since 12.0.0), which always failed with
+`OtaError::LegacyApiUnsupported` because keyless construction, payload-only
+verification and an unconditional commit cannot provide these guarantees. Use
+`new_with_trusted_key`, `begin_update` or `verify_update`, and
+`commit_verified_update`.
 
 ## `no_std` use
 
