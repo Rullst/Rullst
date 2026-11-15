@@ -298,7 +298,9 @@ async fn policies_for(csp: &str, coep: &str) -> (String, String, String) {
     let app = Router::new()
         .route(
             "/",
-            get(|Extension(nonce): Extension<CspNonce>| async move { nonce.to_string() }),
+            get(|Extension(nonce): Extension<CspNonce>| async move {
+                axum::response::Html(nonce.to_string())
+            }),
         )
         .layer(axum::middleware::from_fn(headers_middleware))
         .layer(Extension(security));
@@ -369,4 +371,80 @@ fn a_plan_cache_lends_the_plan_of_its_first_configuration() {
             "change {index}"
         );
     }
+}
+
+/// The CSP the baseline sends for a response of `content_type` (none: no
+/// `Content-Type`) under the `csp` template, and the request's nonce.
+async fn csp_of(csp: &str, content_type: Option<&'static str>) -> (String, String) {
+    let mut security = crate::config::SecurityConfig::default();
+    security.csp = csp.to_string();
+    let app = Router::new()
+        .route(
+            "/",
+            get(move |Extension(nonce): Extension<CspNonce>| async move {
+                let mut response = Response::new(Body::from(nonce.to_string()));
+                if let Some(content_type) = content_type {
+                    response
+                        .headers_mut()
+                        .insert(header::CONTENT_TYPE, HeaderValue::from_static(content_type));
+                }
+                response
+            }),
+        )
+        .layer(axum::middleware::from_fn(headers_middleware))
+        .layer(Extension(security));
+    let response = app
+        .oneshot(Request::get("/").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let csp = response.headers()[header::CONTENT_SECURITY_POLICY]
+        .to_str()
+        .unwrap()
+        .to_string();
+    let body = axum::body::to_bytes(response.into_body(), 1024)
+        .await
+        .unwrap();
+    (csp, String::from_utf8(body.to_vec()).unwrap())
+}
+
+#[tokio::test]
+async fn only_responses_that_can_be_documents_get_the_nonce_policy() {
+    use super::headers::{DEFAULT_CSP_TEMPLATE, render_csp_policy};
+
+    let static_policy = render_csp_policy(None, None);
+    for content_type in [
+        Some("text/html"),
+        Some("text/html; charset=utf-8"),
+        Some("TEXT/HTML"),
+        Some("application/xhtml+xml"),
+        None,
+    ] {
+        let (csp, nonce) = csp_of(DEFAULT_CSP_TEMPLATE, content_type).await;
+        assert_eq!(
+            csp,
+            DEFAULT_CSP_TEMPLATE.replace("{NONCE}", &nonce),
+            "{content_type:?}"
+        );
+    }
+    for content_type in [
+        "application/json",
+        "text/plain; charset=utf-8",
+        "image/svg+xml",
+        "text/htmlx",
+    ] {
+        let (csp, _) = csp_of(DEFAULT_CSP_TEMPLATE, Some(content_type)).await;
+        assert_eq!(csp, static_policy, "{content_type}");
+    }
+    // A template without a placeholder is the policy of every response.
+    let fixed = "default-src 'none'; frame-ancestors 'none'";
+    assert_eq!(csp_of(fixed, Some("application/json")).await.0, fixed);
+    assert_eq!(csp_of(fixed, Some("text/html")).await.0, fixed);
+    // A custom template with one gives other responses the static policy.
+    let custom = "script-src 'nonce-{NONCE}'";
+    let (csp, nonce) = csp_of(custom, Some("text/html")).await;
+    assert_eq!(csp, format!("script-src 'nonce-{nonce}'"));
+    assert_eq!(
+        csp_of(custom, Some("application/json")).await.0,
+        static_policy
+    );
 }

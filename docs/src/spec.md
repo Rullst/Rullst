@@ -303,6 +303,11 @@ it leaves every security header alone on a response that an inner
 `SecureHeadersLayer` marked with `SecurityHeadersApplied` (omitted headers stay
 absent; `Cache-Control: no-store` and the shared `CspNonce` are unchanged).
 This narrow rule does not attempt to order every Referrer-Policy value.
+Since 13.0.0-alpha.6 its Content-Security-Policy carries the request nonce
+only on a response that can be an HTML document (`text/html`,
+`application/xhtml+xml` or no `Content-Type`); other responses get the policy
+without a nonce, derived once from `[security] csp` like
+`render_csp_policy(template, None)`.
 
 `rullst-privacy` is an opt-in v13 release candidate, first published in the
 13.0.0-alpha.1 prerelease. Its initial

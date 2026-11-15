@@ -152,6 +152,10 @@ pub(crate) struct HeaderPlan {
     /// [`DEFAULT_CSP_TEMPLATE`] when that is blank or holds a byte a header
     /// value cannot carry.
     csp_parts: Vec<String>,
+    /// The policy of a response that cannot be an HTML document: the
+    /// template when it has no `{NONCE}`, else [`DEFAULT_STATIC_CSP`]
+    /// ([`render_csp_policy`] without a nonce).
+    static_csp: HeaderValue,
     coep: HeaderValue,
     hsts: Option<HeaderValue>,
 }
@@ -166,8 +170,15 @@ impl HeaderPlan {
         } else {
             DEFAULT_CSP_TEMPLATE
         };
+        let static_csp = if template.contains("{NONCE}") {
+            DEFAULT_STATIC_CSP
+        } else {
+            template
+        };
         Self {
             csp_parts: template.split("{NONCE}").map(str::to_owned).collect(),
+            static_csp: HeaderValue::from_str(static_csp)
+                .unwrap_or_else(|_| HeaderValue::from_static(DEFAULT_STATIC_CSP)),
             coep: HeaderValue::from_str(&config.coep)
                 .unwrap_or_else(|_| HeaderValue::from_static("require-corp")),
             hsts: HeaderValue::from_str(&strict_transport_security(config)).ok(),
@@ -204,9 +215,32 @@ impl HeaderPlan {
         headers
             .entry(CROSS_ORIGIN_EMBEDDER_POLICY)
             .or_insert_with(|| self.coep.clone());
+        // Only a document can run the inline scripts and styles a nonce
+        // admits; any other response gets the fixed policy without one.
+        let document = may_be_html(headers);
         headers
             .entry(header::CONTENT_SECURITY_POLICY)
-            .or_insert_with(|| self.csp(nonce));
+            .or_insert_with(|| {
+                if document {
+                    self.csp(nonce)
+                } else {
+                    self.static_csp.clone()
+                }
+            });
+    }
+}
+
+/// Whether a response with `headers` can be an HTML document: its
+/// `Content-Type` is `text/html` or `application/xhtml+xml`, or it has no
+/// readable one, which a browser may sniff.
+fn may_be_html(headers: &HeaderMap) -> bool {
+    match headers.get(header::CONTENT_TYPE).map(HeaderValue::to_str) {
+        Some(Ok(content_type)) => {
+            let media_type = super::media_type::essence(content_type);
+            media_type.eq_ignore_ascii_case("text/html")
+                || media_type.eq_ignore_ascii_case("application/xhtml+xml")
+        }
+        _ => true,
     }
 }
 

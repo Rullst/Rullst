@@ -248,9 +248,9 @@ async fn test_headers_middleware_injects_security_headers() {
     let app = axum::Router::new()
         .route(
             "/",
-            axum::routing::get(
-                |Extension(nonce): Extension<CspNonce>| async move { nonce.to_string() },
-            ),
+            axum::routing::get(|Extension(nonce): Extension<CspNonce>| async move {
+                axum::response::Html(nonce.to_string())
+            }),
         )
         .route_layer(axum::middleware::from_fn(headers_middleware));
 

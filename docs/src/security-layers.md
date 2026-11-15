@@ -145,10 +145,16 @@ Leave these out unless you have a specific reason:
 | Headers | HSTS (one year with `includeSubDomains`, no `preload`, by default), `X-Frame-Options: DENY`, `nosniff`, `X-XSS-Protection: 0`, `Referrer-Policy`, `Permissions-Policy`, COOP, CORP, COEP, CSP | The same set, from the config; the default HSTS value is the same |
 | Existing values | Adds each header only when the response has none; leaves all of them alone after an inner `SecureHeadersLayer` | Replaces the handler's values with its configured ones |
 | `Cache-Control` | Adds `no-store` when the handler set none | Not touched |
-| CSP nonce | `CspNonce` request extension | Same `CspNonce`, reused when one already exists |
+| CSP nonce | `CspNonce` request extension; the header carries it only for a response that can be an HTML document (since 13.0.0-alpha.6) | Same `CspNonce`, reused when one already exists |
 
 Both layers reuse one `CspNonce` per request, so templates render a nonce that
-matches the final header. The Core baseline is a fallback: it fills in a
+matches the final header. Since 13.0.0-alpha.6 the Core baseline renders the
+nonce into the policy only for a response whose `Content-Type` is `text/html`
+or `application/xhtml+xml`, or that has none (a browser may sniff it); any
+other response (JSON, plain text, images, files) gets the same policy without
+a nonce, computed once: the configured `csp` when it has no `{NONCE}`,
+otherwise the default directives with `script-src 'self'` and
+`style-src 'self'`, which no inline script or style can satisfy. The Core baseline is a fallback: it fills in a
 security header only when the handler or an inner layer has not set it, so an
 **explicit value set by the application wins over the baseline**.
 `SecureHeadersLayer` marks its responses with

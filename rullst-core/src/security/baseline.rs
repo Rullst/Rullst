@@ -235,12 +235,13 @@ mod tests {
                     |Extension(nonce): Extension<CspNonce>,
                      Extension(csrf): Extension<CsrfToken>,
                      Extension(config): Extension<SecurityConfig>| async move {
-                        format!(
+                        // A page: only a document's policy carries the nonce.
+                        axum::response::Html(format!(
                             "{}|{}|{}",
                             nonce.as_str(),
                             csrf.as_str(),
                             config.csrf_same_site
-                        )
+                        ))
                     },
                 ),
             )
@@ -350,12 +351,12 @@ mod tests {
                      Extension(csrf): Extension<CsrfToken>,
                      Extension(config): Extension<SecurityConfig>,
                      Extension(environment): Extension<Environment>| async move {
-                        format!(
+                        axum::response::Html(format!(
                             "{}|{}|{}|{environment:?}",
                             nonce.as_str(),
                             csrf.as_str(),
                             config.csrf_same_site
-                        )
+                        ))
                     },
                 ),
             )

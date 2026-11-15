@@ -485,7 +485,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (121 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (110 rows).
+  of inputs that previously failed) (111 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
 has 161 rules. A row can map to several rules and a rule to
@@ -692,6 +692,7 @@ the rule together.
 | Account mail language and product name | (c) none | — | Generator output; existing projects keep their code |
 | Production log defaults | (c) none | — | Runtime defaults; not detectable in source |
 | Access log writer | (c) none | — | Runtime behaviour; not detectable in source |
+| Core CSP without a nonce outside HTML | (c) none | — | Runtime behaviour; the `Content-Type` of a response is not located |
 | Connect GitHub email | (b) review | `V13-CONNECT-GITHUB-EMAIL` | `GithubProvider` and `Connect::driver("github", ...)` |
 | Account mail link lifetime | (c) none | — | Only reset lifetimes that previously failed change; the link wording is not located |
 | Generated reset link lifetime | (c) none | — | Generator output; existing projects keep their code |
