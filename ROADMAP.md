@@ -376,7 +376,11 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
       with test vectors.
     - Core's `storage-multipart` recovery records move from `ring`'s
       AES-256-GCM to the RustCrypto `aes-gcm` crate, with the same stored
-      format and known-answer tests, so `ring` leaves Core entirely.
+      format and known-answer tests, so `ring` leaves Core entirely. Done in
+      the 13.0.0-alpha.6 source: `cargo tree -p rullst-core --all-features -i
+      ring` is empty, and Core with all features compiles 284 packages
+      instead of 295 with the cron change; the starters never compiled
+      `ring`.
     - `cargo rullst footprint` reports the compiled crate count beside the
       lockfile count, which includes packages that are never compiled.
   - **Production monitor:** desktop notifications in the standalone Studio,

@@ -4100,9 +4100,11 @@ provider](capital-custom-provider.md)); the
   crate enables rustls' `ring` feature or a ring TLS feature of SQLx,
   lettre or testcontainers.
 * **Primitives:** `rullst-core` and `rullst-capital` hash and sign with the
-  pure-Rust RustCrypto `sha2` and `hmac` crates (since 13.0.0-alpha.5); Core
-  keeps `ring` only for the AES-256-GCM recovery records of its
-  `storage-multipart` feature. In the other crates `ring` stays a direct
+  pure-Rust RustCrypto `sha2` and `hmac` crates (since 13.0.0-alpha.5), and
+  since 13.0.0-alpha.6 Core encrypts the recovery records of its
+  `storage-multipart` feature with RustCrypto `aes-gcm` in the same `mp1.`
+  format, so `rullst-core` no longer depends on `ring` with any feature. In
+  the other crates `ring` stays a direct
   dependency for HMAC, digests, randomness and signatures, because it builds
   for wasm and edge targets.
 * **Process default:** `Server` start-up (Core `orm`, `storage-s3` or

@@ -72,7 +72,11 @@ Checkpoints use versioned AES-256-GCM with a fresh nonce, authenticated before
 JSON decoding. Encoded checkpoints are capped at 256 KiB. The associated data
 binds endpoint, bucket, region, mock/live profile, exact object and policy, plus
 the ephemeral store instance in mock mode. Changing a tenant, object, endpoint, policy,
-key or ciphertext denies the operation. The host maintains a disciplined clock;
+key or ciphertext denies the operation. Since 13.0.0-alpha.6 the RustCrypto
+`aes-gcm` crate encrypts them instead of `ring`; the `mp1.` format (unpadded
+base64url of the 12-byte nonce, the ciphertext and the 16-byte tag) and the
+associated data are unchanged, so checkpoints written by earlier releases
+still open with the same key. The host maintains a disciplined clock;
 expiry does not substitute for current membership/object authorization or a
 durable application revocation record.
 

@@ -583,8 +583,9 @@ not inspect, for routes that accept text such as code samples (see
 [seeing and accepting WAF false positives](../security-layers.md#seeing-and-accepting-waf-false-positives)).
 
 TLS connections use `aws-lc-rs` as the rustls crypto provider. Core hashes
-with the pure-Rust `sha2` crate and needs `ring` only for the AES-256-GCM
-recovery records of `storage-multipart`. With the `orm`,
+with the pure-Rust `sha2` crate and, since 13.0.0-alpha.6, encrypts the
+recovery records of `storage-multipart` with the pure-Rust `aes-gcm` crate in
+an unchanged format; it does not depend on `ring`. With the `orm`,
 `storage-s3` or `telemetry` feature, `Server` start-up installs aws-lc-rs as the
 rustls process default before telemetry and the database pool build TLS
 clients, and so does the OTLP exporter before it builds its HTTP client. An

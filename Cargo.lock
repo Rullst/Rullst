@@ -5726,6 +5726,7 @@ dependencies = [
 name = "rullst-core"
 version = "13.0.0-alpha.5"
 dependencies = [
+ "aes-gcm",
  "async-trait",
  "aws-credential-types",
  "aws-sigv4",
@@ -5752,7 +5753,6 @@ dependencies = [
  "rand 0.10.3",
  "redis",
  "reqwest",
- "ring",
  "roxmltree",
  "rullst-macros",
  "rullst-orm",
