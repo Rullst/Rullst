@@ -107,6 +107,19 @@ class SourceTests(unittest.TestCase):
         self.assertEqual(len(failures), 1)
         self.assertIn("expected exactly one dated CHANGELOG section", failures[0])
 
+    def test_unmerged_changelog_fragments_are_refused(self):
+        self.assertEqual(MODULE.fragment_failures(self.root), [])
+        fragments = self.root / "changelog.d"
+        fragments.mkdir()
+        (fragments / "README.md").write_text("# Changelog fragments\n")
+        self.assertEqual(MODULE.fragment_failures(self.root), [])
+        (fragments / "b.md").write_text("### Fixed\n\n- B.\n")
+        (fragments / "a.md").write_text("### Added\n\n- A.\n")
+        failures = MODULE.fragment_failures(self.root)
+        self.assertEqual(len(failures), 1)
+        self.assertIn("changelog.d/ has 2 unmerged fragment(s) (a.md, b.md)", failures[0])
+        self.assertIn("assemble-changelog.py --release", failures[0])
+
 
 if __name__ == "__main__":
     unittest.main()

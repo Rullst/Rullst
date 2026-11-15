@@ -10,7 +10,8 @@ It only reads Git, the source tree and public crates.io endpoints. Each check
 mirrors a refusal that release.yml would otherwise reach after the full
 admission and two hours of packaging:
 - every release package is publishable at the tagged version;
-- CHANGELOG.md renders release notes for that version;
+- CHANGELOG.md renders release notes for that version, and changelog.d/ has
+  no fragment left to merge;
 - the tag does not exist yet and HEAD is the release branch head;
 - every package name is registered and owned by the reviewed owner
   (release.yml refuses first publications);
@@ -119,6 +120,14 @@ def notes_failures(root: Path, version: str) -> list[str]:
     return []
 
 
+def fragment_failures(root: Path) -> list[str]:
+    try:
+        load("check-release-source").require_merged_changelog(root)
+    except (OSError, ValueError) as error:
+        return [str(error)]
+    return []
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("tag", help="the tag to create, for example v13.0.0-alpha.2")
@@ -137,7 +146,7 @@ def main() -> int:
         print(f"release preflight: {error}", file=sys.stderr)
         return 1
 
-    failures = notes_failures(root, version)
+    failures = notes_failures(root, version) + fragment_failures(root)
     try:
         failures += git_failures(root, args.tag, branch)
     except subprocess.CalledProcessError as error:
