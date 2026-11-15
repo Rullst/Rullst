@@ -265,3 +265,40 @@ fn match_blocks_resolve_caller_bindings_named_like_the_buffer() {
         "many:text:3"
     );
 }
+
+#[test]
+fn a_spaced_colon_starts_the_next_attribute_name() {
+    // With the compiler's positions, `x-on:click` is one name and
+    // `required :value` two.
+    assert_eq!(
+        html! { <input required :value="v" x-on:click="go" /> },
+        "<input required :value=\"v\" x-on:click=\"go\" />"
+    );
+}
+
+#[test]
+fn unquoted_text_keeps_the_source_spacing() {
+    let name = "caller";
+    assert_eq!(
+        html! { <p>Hello, {name}! Version 2.5 ({name}) is out.</p> },
+        "<p>Hello, text:caller! Version 2.5 (text:caller) is out.</p>"
+    );
+    assert_eq!(
+        html! { <p>Hi <b>{name}</b>, welcome</p> },
+        "<p>Hi <b>text:caller</b>, welcome</p>"
+    );
+}
+
+#[test]
+fn only_the_first_matching_branch_of_an_if_chain_renders() {
+    let s = 3;
+    assert_eq!(
+        html! { @if s > 0 { "positive" } @else if s > -5 { "small" } @else { "negative" } },
+        "positive"
+    );
+    let s = -2;
+    assert_eq!(
+        html! { @if s > 0 { "positive" } @else if s > -5 { "small" } @else { "negative" } },
+        "small"
+    );
+}

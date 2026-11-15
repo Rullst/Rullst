@@ -384,3 +384,17 @@ fn list(names: &BTreeSet<String>) -> String {
     let names: Vec<String> = names.iter().map(|name| format!("{{{name}}}")).collect();
     names.join(", ")
 }
+
+#[cfg(test)]
+mod and_list_tests {
+    #[test]
+    fn lists_join_with_commas_and_a_final_and() {
+        assert_eq!(super::and_list(&[]), "");
+        assert_eq!(super::and_list(&["one"]), "`one`");
+        assert_eq!(super::and_list(&["one", "other"]), "`one` and `other`");
+        assert_eq!(
+            super::and_list(&["one", "few", "other"]),
+            "`one`, `few` and `other`"
+        );
+    }
+}
