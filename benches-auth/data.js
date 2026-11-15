@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794707883264,
+  "lastUpdate": 1794709679320,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -22055,6 +22055,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1974,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cdc7831bd8038d417e17c55dd2dd26d9e6ce664c",
+          "message": "Merge pull request #695 from Rullst/fix/v13-alpha6-defects\n\nfix: Turso same-origin base_url, every upgrade rule location, serialized nested Cargo in CLI tests",
+          "timestamp": "2026-11-14T23:07:42-03:00",
+          "tree_id": "f3bb6f9535e25aa26f72b4ab2e1e1b51d1ca71b4",
+          "url": "https://github.com/Rullst/Rullst/commit/cdc7831bd8038d417e17c55dd2dd26d9e6ce664c"
+        },
+        "date": 1794709678697,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1014,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 734,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1762,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4229,
+            "range": "± 18",
             "unit": "ns/iter"
           }
         ]
