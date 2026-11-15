@@ -45,6 +45,14 @@ pub(crate) fn router_with_cache(
     trace_store: crate::distributed_traces::DistributedTraceStore,
     cache_router: Router,
 ) -> Router {
+    // The revenue JSON exists only with the `capital` feature.
+    #[cfg(feature = "capital")]
+    let revenue = Router::new().route(
+        "/api/revenue",
+        axum::routing::get(crate::revenue_dashboard::api_revenue_handler),
+    );
+    #[cfg(not(feature = "capital"))]
+    let revenue = Router::new();
     Router::new()
         // Dashboard
         .route("/", axum::routing::get(handle_dashboard))
@@ -123,14 +131,11 @@ pub(crate) fn router_with_cache(
             axum::routing::get(rullst_core::radar::prometheus_metrics_handler),
         )
         .route(
-            "/api/revenue",
-            axum::routing::get(crate::revenue_dashboard::api_revenue_handler),
-        )
-        .route(
             "/api/traces",
             axum::routing::get(handle_studio_traces_with_store),
         )
         .with_state(trace_store)
+        .merge(revenue)
         // Axum strips /studio when callers nest the raw browser. Keep both
         // path forms, matching the existing browser page aliases.
         .nest("/assets", crate::assets::router())

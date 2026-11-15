@@ -33,7 +33,7 @@ features = [
     "oauth-sqlite", "oauth-postgres", "oauth-mysql", "oauth-mock", "ai",
     "ai-sql-memory", "capital", "capital-actix", "capital-quota-sql",
     "capital-webhook-sql", "capital-pdf", "capital-mail", "security",
-    "security-redis", "iot", "iot-ingest",
+    "security-redis", "iot", "iot-ingest", "tls",
 ]
 rustdoc-args = ["--cfg", "docsrs"]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -44,11 +44,15 @@ targets = ["x86_64-unknown-linux-gnu"]
 default = []
 drivers-all = ["orm", "rullst-core/drivers-all", "rullst-studio?/drivers-all"]
 orm = ["dep:rullst-orm", "rullst-core/orm"]
-orm-turso = ["orm", "rullst-orm/turso"]
-orm-surrealdb = ["orm", "rullst-orm/surrealdb"]
-orm-scout = ["orm", "rullst-orm/scout-http"]
-orm-pgvector = ["orm", "rullst-orm/pgvector"]
-orm-redis = ["orm", "rullst-orm/redis"]
+# `tls` (below): Core installs aws-lc-rs as the rustls process default at
+# `Server` start-up wherever a feature makes TLS connections (HTTPS, a TLS
+# database, Redis over TLS). Crates that depend on Core (AI, Capital, Mail,
+# Auth) enable Core's `tls` themselves; these features enable it for the others.
+orm-turso = ["orm", "tls", "rullst-orm/turso"]
+orm-surrealdb = ["orm", "tls", "rullst-orm/surrealdb"]
+orm-scout = ["orm", "tls", "rullst-orm/scout-http"]
+orm-pgvector = ["orm", "tls", "rullst-orm/pgvector"]
+orm-redis = ["orm", "tls", "rullst-orm/redis"]
 queue-sqlite = ["rullst-core/queue-sqlite", "rullst-studio?/queue-sqlite"]
 # Nexus reads the backend `rullst-core` and `rullst-orm` already get from
 # `drivers-all` or `strict-*`; forwarding those features to `rullst-nexus`
@@ -84,27 +88,28 @@ storage-multipart = ["storage-s3", "rullst-core/storage-multipart"]
 mail-smtp = ["mail", "rullst-mail/mail-smtp"]
 mail-aws-ses = ["mail", "rullst-mail/aws-ses"]
 messaging = ["dep:rullst-messaging"]
-messaging-schedules-postgres = ["messaging", "rullst-messaging/schedules-postgres"]
-messaging-webhooks = ["messaging", "rullst-messaging/webhooks"]
+messaging-schedules-postgres = ["messaging", "tls", "rullst-messaging/schedules-postgres"]
+messaging-webhooks = ["messaging", "tls", "rullst-messaging/webhooks"]
 messaging-sqlite = ["messaging", "rullst-messaging/sqlite"]
-messaging-redis = ["messaging", "rullst-messaging/redis-streams"]
-messaging-orm-outbox = ["messaging", "orm", "rullst-messaging/orm-outbox"]
+messaging-redis = ["messaging", "tls", "rullst-messaging/redis-streams"]
+messaging-orm-outbox = ["messaging", "orm", "tls", "rullst-messaging/orm-outbox"]
 privacy = ["dep:rullst-privacy"]
 privacy-age = ["privacy", "rullst-privacy/age-assurance"]
 privacy-challenge-tokens = ["privacy-age", "rullst-privacy/challenge-tokens"]
 privacy-sqlite = ["privacy-age", "rullst-privacy/sqlite"]
-privacy-postgres = ["privacy-age", "rullst-privacy/postgres"]
+privacy-postgres = ["privacy-age", "tls", "rullst-privacy/postgres"]
 privacy-consent = ["privacy", "rullst-privacy/consent"]
 privacy-consent-sqlite = ["privacy-consent", "rullst-privacy/consent-sqlite"]
-privacy-consent-postgres = ["privacy-consent", "rullst-privacy/consent-postgres"]
-oauth = ["dep:rullst-connect", "rullst-connect/rullst"]
+privacy-consent-postgres = ["privacy-consent", "tls", "rullst-privacy/consent-postgres"]
+oauth = ["dep:rullst-connect", "tls", "rullst-connect/rullst"]
 oauth-sqlite = ["oauth", "rullst-connect/sqlite"]
 oauth-postgres = ["oauth", "rullst-connect/postgres"]
 oauth-mysql = ["oauth", "rullst-connect/mysql"]
 oauth-mock = ["oauth", "rullst-connect/mock"]
 ai = ["dep:rullst-ai"]
 ai-sql-memory = ["ai", "rullst-ai/sql-memory"]
-capital = ["dep:rullst-capital"]
+# Also Studio's revenue dashboard (`/studio/capital`) when `studio` is on.
+capital = ["dep:rullst-capital", "rullst-studio?/capital"]
 capital-actix = ["capital", "rullst-capital/actix"]
 capital-quota-sql = ["capital", "orm", "rullst-capital/quota-sql"]
 capital-webhook-sql = ["capital", "orm", "rullst-capital/webhook-sql"]
@@ -116,6 +121,11 @@ iot = ["dep:rullst-iot"]
 # v13 (13.0.0-alpha.5), Extension like `rullst-iot`: `rullst::iot_ingest`, the authenticated
 # device telemetry receiver.
 iot-ingest = ["iot", "dep:sha2"]
+# v13 (13.0.0-alpha.6): rustls with aws-lc-rs, installed as the rustls process
+# default at `Server` start-up. Every feature that makes TLS connections
+# enables it; enable it yourself when the application's own code makes rustls
+# connections and relies on that default (SQLite-only builds have no TLS stack).
+tls = ["rullst-core/tls"]
 telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "rullst-core/telemetry"]
 strict-postgres = ["orm", "rullst-core/strict-postgres", "rullst-studio?/strict-postgres"]
 strict-mysql = ["orm", "rullst-core/strict-mysql", "rullst-studio?/strict-mysql"]

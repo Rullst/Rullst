@@ -33,8 +33,8 @@ axum-session = ["axum", "dep:tower-sessions"]
 # `sqlite`, `postgres` and `mysql` add the SQL login-challenge store for that
 # database; `sqlite` also adds the encrypted token snapshot store.
 sqlite = ["dep:hex", "dep:sqlx", "sqlx/sqlite"]
-postgres = ["dep:sqlx", "sqlx/postgres"]
-mysql = ["dep:sqlx", "sqlx/mysql"]
+postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs"]
+mysql = ["dep:sqlx", "sqlx/mysql", "sqlx/tls-rustls-aws-lc-rs"]
 mock = []
 
 [dependencies]

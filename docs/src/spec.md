@@ -4098,11 +4098,14 @@ provider](capital-custom-provider.md)); the
   `storage-multipart` feature. In the other crates `ring` stays a direct
   dependency for HMAC, digests, randomness and signatures, because it builds
   for wasm and edge targets.
-* **Process default:** `Server` start-up (Core `orm`, `storage-s3` or
-  `telemetry`), the OTLP exporter, Redis TLS connections and the standalone
-  `rullst-studio` binary install aws-lc-rs as the rustls process default only
-  when none is installed; an application's provider installed first is kept.
-  Installation never panics. See
+* **Process default:** `Server` start-up (Core `tls`, which every feature
+  that makes TLS connections enables), the OTLP exporter, Redis TLS
+  connections and the standalone `rullst-studio` binary install aws-lc-rs as
+  the rustls process default only when none is installed; an application's
+  provider installed first is kept. Installation never panics. Since
+  13.0.0-alpha.6 SQLite-only and database-free feature selections compile no
+  TLS stack, and Studio's revenue dashboard needs its `capital` feature (the
+  facade's `capital`). See
   [cryptography providers](security-architecture.md#cryptography-providers).
 
 ---

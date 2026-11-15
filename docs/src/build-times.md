@@ -118,10 +118,13 @@ so it is paid again only after `cargo clean`, a toolchain update or a change
 of features or profile.
 
 Rullst keeps `aws-lc-rs` as the TLS crypto provider, for rustls'
-post-quantum hybrid key exchange, so the `aws-lc-sys` build script stays in a
-project's first build. Since 13.0.0-alpha.4 SQLx shares it
-(`tls-rustls-aws-lc-rs`, also in generated projects) instead of compiling
-rustls' ring backend as a second provider. Later builds reuse it, and the
+post-quantum hybrid key exchange, so the `aws-lc-sys` build script stays in
+the first build of a project that makes TLS connections. Since 13.0.0-alpha.4
+SQLx shares it (`tls-rustls-aws-lc-rs`, also in generated PostgreSQL and MySQL
+projects) instead of compiling rustls' ring backend as a second provider.
+Since 13.0.0-alpha.6 a project that makes no TLS connection, such as the Blank
+and API starters with SQLite, compiles no TLS stack, so neither `aws-lc-sys`
+nor rustls is in its build. Later builds reuse it, and the
 dependency layer of the generated Dockerfile (the cargo-chef approach) caches
 it in images; moving TLS to `ring` is not planned. `ring` remains a small
 primitives library (HMAC, digests, randomness, signatures) that the crates

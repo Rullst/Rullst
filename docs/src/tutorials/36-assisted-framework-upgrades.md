@@ -484,7 +484,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (115 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (107 rows).
+  of inputs that previously failed) (108 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
 has 147 rules. A row can map to several rules and a rule to
@@ -703,6 +703,7 @@ the rule together.
 | Nexus AI assistant feature | (b) review | `V13-NEXUS-AI-FEATURE` | A `rullst` dependency with `nexus`/`nexus-tz` but not `nexus-ai`, or `rullst-nexus` without default features and without `ai`; introduced in 13.0.0-alpha.4 |
 | Generated starter dependencies | (c) none | — | Generator output for new projects; an unused `tracing-subscriber` in an existing project keeps working; introduced in 13.0.0-alpha.4 |
 | TLS crypto provider | (b) review | `V13-SQLX-TLS-RING`, `V13-SQLX-TLS-NATIVE-ROOTS` | A `sqlx` dependency (any manifest of the workspace, `[workspace.dependencies]` included) or a `[features]` entry that enables `tls-rustls`, `tls-rustls-ring` or `tls-rustls-ring-webpki`, reported once per manifest; `tls-rustls-ring-native-roots` is a separate review (`V13-SQLX-TLS-NATIVE-ROOTS`, 13.0.0-alpha.5, also once per manifest), because SQLx 0.9 has no aws-lc-rs feature with native roots and `tls-rustls-aws-lc-rs` trusts the bundled WebPKI roots; the runtime provider defaults need no change; introduced in 13.0.0-alpha.4 |
+| TLS stack of SQLite-only builds | (c) none | — | Dependency graph and generator output for new projects; an existing project keeps its `sqlx` TLS feature, and the rare uses of the old graph (Studio's revenue dashboard without `capital`, the application's own rustls clients relying on `orm`) are not located; introduced in 13.0.0-alpha.6 |
 | CLI `auth` on database starters | (c) none | — | CLI behaviour on new runs; earlier generated files are unchanged; introduced in 13.0.0-alpha.4 |
 | CLI `--no-database` files | (c) none | — | Generator output for new projects; an empty `rullst.db` is not located; introduced in 13.0.0-alpha.4 |
 | CLI `make:migration:auto` without a database to compare | (b) review | `V13-CLI-MIGRATION-AUTO-STATUS` | Workflows, root scripts, Makefile and justfile that run `make:migration:auto`, which exits with status 1 when there is no SQLite database to compare; introduced in 13.0.0-alpha.4, rule since 13.0.0-alpha.5 |

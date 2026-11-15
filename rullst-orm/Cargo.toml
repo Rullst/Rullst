@@ -23,7 +23,9 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 rullst-orm-macros = { workspace = true, features = ["runtime-driver-codecs", "runtime-feature-gates"] }
-sqlx = { workspace = true, features = ["any", "runtime-tokio", "json", "tls-rustls-aws-lc-rs", "chrono"] }
+# TLS (`tls-rustls-aws-lc-rs`) comes with the PostgreSQL and MySQL drivers
+# below: SQLite needs none, so a SQLite-only build compiles no TLS stack.
+sqlx = { workspace = true, features = ["any", "runtime-tokio", "json", "chrono"] }
 # `TransactionManager` lets a nested `Orm::transaction` open, release and roll
 # back a savepoint on the task-scoped transaction with SQLx's own depth
 # tracking. The `sqlx` facade does not re-export that trait; sqlx pins this
@@ -65,7 +67,7 @@ walkdir = "2.5.0"
 # No default driver: select `strict-sqlite`, `strict-postgres`, `strict-mysql`
 # or `drivers-all`. Without one, `Orm::init` reports the missing feature.
 default = []
-drivers-all = ["sqlx/sqlite", "sqlx/postgres", "sqlx/mysql"]
+drivers-all = ["sqlx/sqlite", "sqlx/postgres", "sqlx/mysql", "sqlx/tls-rustls-aws-lc-rs"]
 # Test helpers for Rullst's own test suites, outside the 13.x stability
 # promise: `Outbox::claim_next_at` and `query_cache::model_hash_key`.
 test-util = []
@@ -73,13 +75,14 @@ redis = ["dep:redis", "dep:rustls", "dep:sha2", "dep:url", "rullst-orm-macros/re
 turso = ["dep:reqwest", "dep:url", "dep:sha2", "sqlx/sqlite"]
 surrealdb = ["dep:reqwest"]
 scout-http = ["dep:reqwest", "dep:url"]
-pgvector = ["dep:pgvector"]
+# `pgvector`'s SQLx support enables SQLx's PostgreSQL driver, hence TLS.
+pgvector = ["dep:pgvector", "sqlx/tls-rustls-aws-lc-rs"]
 # Generates `save_with_embedding` for `#[orm(embedding_for = "...")]` models.
 # The generated method takes `&rullst_ai::AiClient`, so the application must
 # also depend on `rullst-ai`.
 ai = ["pgvector", "rullst-orm-macros/ai"]
-strict-postgres = ["sqlx/postgres"]
-strict-mysql = ["sqlx/mysql"]
+strict-postgres = ["sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs"]
+strict-mysql = ["sqlx/mysql", "sqlx/tls-rustls-aws-lc-rs"]
 strict-sqlite = ["sqlx/sqlite"]
 
 [dev-dependencies]
