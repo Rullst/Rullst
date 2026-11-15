@@ -4629,6 +4629,16 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
   (at most 64 URLs) that the project serves version 1 only; any other version
   2 failure is reported, not downgraded. It follows no redirect, validates
   certificates, and bounds each read to 1 MiB, 5 s total and 3 s to connect.
+  Since 13.0.0-alpha.6 the Settings page's proxy choice (`settings.proxy` in
+  the project list: `direct` by default, `environment` for
+  `HTTPS_PROXY`/`https_proxy` and `NO_PROXY`/`no_proxy`, or `explicit` with an
+  `http`/`https` URL without user information, path, query or fragment and a
+  `NO_PROXY`-syntax exception list of at most 4,096 characters) applies to
+  project reads and webhooks through reqwest's own proxy support: only
+  `https` requests to non-loopback hosts outside the exceptions go through
+  the proxy, as a `CONNECT` tunnel; an unusable proxy makes every request
+  fail with a fixed status instead of connecting directly. Saving rebuilds
+  both HTTP clients.
   It accepts only `200`, a JSON content type and the schema of the path read
   (`rullst.monitor.v2` needs its `traces` and `security` sections) with
   bounded lists (512 routes, 128 findings, 32 queues; 64 request summaries,
@@ -4650,7 +4660,8 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
   alerts. A webhook URL must be `https://` without user information or
   fragment, is sealed like a token and is never displayed; each alert is
   posted once as JSON (`source`, `project`, `rule`, `message`, `at`) without
-  redirects or proxies within 5 s, and the fixed outcome is stored on the
+  redirects within 5 s (through the proxy setting since 13.0.0-alpha.6),
+  and the fixed outcome is stored on the
   alert. Since 13.0.0-alpha.6 the samples also keep p99 latency and the
   version 2 `security.events_total` (new nullable columns added to an older
   database when it opens), with matching rules (p99; security events between

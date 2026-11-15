@@ -6,6 +6,7 @@ use super::crypto::{Secret, SecretKey};
 use super::notify::NotificationSettings;
 use super::paths::StudioPaths;
 use super::preferences::StudioSettings;
+use super::proxy::ProxySettings;
 use super::secure_file;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -56,6 +57,10 @@ pub enum ProjectError {
     /// A Studio setting is out of range, such as a quiet period outside 1 to
     /// 1,440 minutes.
     InvalidSettings,
+    /// A proxy URL is not `http://` or `https://` with a host and without
+    /// user information, path, query or fragment, or the exceptions exceed
+    /// 4,096 characters.
+    InvalidProxy,
 }
 
 impl fmt::Display for ProjectError {
@@ -80,6 +85,9 @@ impl fmt::Display for ProjectError {
                 "thresholds must be positive (a 5xx rate up to 100%, p95 and p99 up to 600000 ms) and the cool-down 1 to 1440 minutes"
             }
             Self::InvalidSettings => "the quiet period must be 1 to 1440 minutes",
+            Self::InvalidProxy => {
+                "the proxy must be an http:// or https:// URL with a host and no user, path, query or fragment, and the exceptions at most 4096 characters"
+            }
         })
     }
 }
@@ -382,6 +390,17 @@ impl ProjectStore {
         let _guard = self.write.lock().unwrap_or_else(|error| error.into_inner());
         let mut file = self.read_file()?;
         file.settings.notifications = notifications;
+        self.write_file(&file)
+    }
+
+    /// Saves the proxy settings.
+    pub(crate) fn update_proxy(&self, proxy: ProxySettings) -> Result<(), ProjectError> {
+        if !proxy.valid() {
+            return Err(ProjectError::InvalidProxy);
+        }
+        let _guard = self.write.lock().unwrap_or_else(|error| error.into_inner());
+        let mut file = self.read_file()?;
+        file.settings.proxy = proxy;
         self.write_file(&file)
     }
 

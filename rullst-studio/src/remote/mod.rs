@@ -33,6 +33,7 @@ mod paths;
 mod poller;
 mod preferences;
 mod projects;
+mod proxy;
 mod router;
 mod secure_file;
 mod settings;
@@ -52,6 +53,8 @@ mod notify_tests;
 mod poller_tests;
 #[cfg(test)]
 mod preferences_tests;
+#[cfg(test)]
+mod proxy_tests;
 #[cfg(test)]
 mod router_tests;
 #[cfg(test)]
@@ -160,14 +163,23 @@ pub(crate) async fn state(
     if let Some(history) = &history {
         monitoring.set_open_alerts(history.unacknowledged().await.unwrap_or(0));
     }
+    let store = projects::ProjectStore::new(options.paths.clone());
+    let proxy = store
+        .settings()
+        .map(|settings| settings.proxy)
+        .unwrap_or_default();
+    let plan = proxy::ProxyPlan::from_settings(&proxy);
     Ok(router::RemoteState {
-        store: projects::ProjectStore::new(options.paths.clone()),
-        client: client::MonitorClient::new(options.limits)
-            .map_err(|_| RemoteStudioError::Client)?,
+        store,
+        client: std::sync::RwLock::new(
+            client::MonitorClient::with_proxy(options.limits, &plan)
+                .map_err(|_| RemoteStudioError::Client)?,
+        ),
+        limits: options.limits,
         form_token: random_hex(32)?,
         monitoring,
         history,
-        webhooks: webhook::WebhookClient::new(),
+        webhooks: std::sync::RwLock::new(webhook::WebhookClient::new(&plan)),
         poll_interval: clamp_interval(options.poll_interval),
         notifier: notify::Notifier::new(random_hex(8)?),
     })

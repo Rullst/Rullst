@@ -106,7 +106,8 @@ browser, `.env` viewer, AI and API playgrounds and migration pages are not
 mounted. Projects are stored owner-only in the user's configuration
 directory, with each token AES-256-GCM encrypted under a key in the data
 directory and bound to its name and base URL. Requests require `https://`
-(or `http://` to loopback), follow no redirects, ignore proxy variables and
+(or `http://` to loopback), follow no redirects, use a proxy only when the
+Settings page selects one (`HTTPS_PROXY`/`NO_PROXY` or an explicit URL) and
 read at most 1 MiB in 5 seconds. See the
 [production monitoring guide](https://github.com/Rullst/Rullst/blob/main/docs/src/production-monitoring.md#watch-your-projects-from-studio).
 

@@ -441,6 +441,7 @@ pub rullst_studio::remote::FetchError::Status(u16)
 pub rullst_studio::remote::FetchError::TooLarge
 pub rullst_studio::remote::FetchError::NotJson
 pub rullst_studio::remote::FetchError::Invalid
+pub rullst_studio::remote::FetchError::ProxyUnusable
 impl rullst_studio::remote::FetchError
 pub fn rullst_studio::remote::FetchError::message(&self) -> alloc::string::String
 impl core::clone::Clone for rullst_studio::remote::FetchError
@@ -483,6 +484,7 @@ pub rullst_studio::remote::ProjectError::NotFound
 pub rullst_studio::remote::ProjectError::InvalidWebhook
 pub rullst_studio::remote::ProjectError::InvalidRules
 pub rullst_studio::remote::ProjectError::InvalidSettings
+pub rullst_studio::remote::ProjectError::InvalidProxy
 impl core::clone::Clone for rullst_studio::remote::ProjectError
 impl core::cmp::Eq for rullst_studio::remote::ProjectError
 impl core::cmp::PartialEq for rullst_studio::remote::ProjectError

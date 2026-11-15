@@ -33,8 +33,10 @@ pub(crate) async fn poll_round(state: &RemoteState, history: &History, now: u64)
         .map(|settings| settings.notifications)
         .unwrap_or_default();
     let mut reads = tokio::task::JoinSet::new();
+    let reader = state.client();
+    let webhooks = state.webhooks();
     for project in projects.into_iter().filter(|project| project.watch) {
-        let client = state.client.clone();
+        let client = reader.clone();
         reads.spawn(async move {
             let outcome = client.fetch(&project).await;
             (project, outcome)
@@ -84,7 +86,7 @@ pub(crate) async fn poll_round(state: &RemoteState, history: &History, now: u64)
             state
                 .notifier
                 .offer(&notifications, &project.name, &firing.message, now);
-            if let (Some(webhook), Some(client)) = (&project.webhook, &state.webhooks) {
+            if let (Some(webhook), Some(client)) = (&project.webhook, &webhooks) {
                 let payload = WebhookPayload {
                     source: "rullst-studio",
                     project: &project.name,

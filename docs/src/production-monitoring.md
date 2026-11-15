@@ -411,8 +411,9 @@ serves version 1 only.
   `http://127.0.0.1:9000` (an SSH tunnel). User information, query strings and
   fragments are refused. Certificates are always validated.
 - The token is sent only as `Authorization: Bearer` to that origin. Studio
-  follows no redirect (a redirect is shown as a status), ignores
-  `HTTP_PROXY`/`HTTPS_PROXY`, and reads at most 1 MiB within 5 seconds.
+  follows no redirect (a redirect is shown as a status), connects directly
+  unless you [choose a proxy](#through-a-proxy), and reads at most 1 MiB
+  within 5 seconds.
   Anything else (an unreachable host, `401`, `426`, an invalid document) is a
   status on the page, never the remote body.
 - Every value from a project is HTML-escaped: a hostile or compromised
@@ -472,7 +473,7 @@ configure (Slack, Teams, a chat bot, your own receiver):
 
 The webhook URL is a secret like a token: it is encrypted in the project list
 and never shown again. It must be `https://` without user information. The
-post follows no redirect, ignores proxy variables and gives up after five
+post follows no redirect, uses the [proxy setting](#through-a-proxy) and gives up after five
 seconds; the outcome (`delivered`, `failed: HTTP 500`, `failed: timeout`…) is
 recorded on the alert, and it is not retried. Alert text is Studio's own
 wording with the project name and numbers, never labels from the remote
@@ -522,6 +523,38 @@ Studio does not open tunnels itself. Use the tool you already trust:
   production, so put the application's reverse proxy (with HTTPS) on the VPN
   address, or use `tailscale serve` to publish it over HTTPS, and add that
   `https://` URL. Restrict `/_rullst/monitor/` to the VPN range in the proxy.
+
+### Through a proxy
+
+Since 13.0.0-alpha.6, the **Proxy** section of the Settings page decides how
+Studio reaches your projects and webhooks:
+
+| Choice | Behaviour |
+| --- | --- |
+| Connect directly (default) | Proxy variables are ignored, as before. |
+| Use `HTTPS_PROXY` and `NO_PROXY` | The proxy of `HTTPS_PROXY` (or `https_proxy`) in the environment that started `rullst-studio`, except for the hosts of `NO_PROXY` (or `no_proxy`). Without `HTTPS_PROXY`, connections are direct. `HTTP_PROXY` is never used. |
+| Use this proxy | An `http://` or `https://` proxy URL saved in the project list, without a user name or password, and an optional exception list. |
+
+- Only `https://` connections use a proxy, as an HTTP `CONNECT` tunnel: the
+  proxy relays the TLS stream and sees the host and port, never the token,
+  the path or the document. Certificates are still validated against the
+  monitored host.
+- Plain `http://` connections, which Studio makes only to loopback (an SSH
+  tunnel), and connections to a loopback host (`localhost`, `127.0.0.0/8`,
+  `::1`) are always direct.
+- Exceptions use the `NO_PROXY` syntax: host names, which also match their
+  subdomains (a leading dot is optional), IP addresses, CIDR ranges such as
+  `10.0.0.0/8`, or `*` for every host, separated by commas or spaces (at
+  most 4,096 characters).
+- A proxy that needs a password can only come from `HTTPS_PROXY`
+  (`http://user:password@proxy:3128`); Studio never stores it, and the
+  Settings page shows only the proxy's scheme, host and port. SOCKS proxies
+  are not supported.
+- When the chosen proxy cannot be used (an invalid `HTTPS_PROXY`, for
+  example), Studio connects to nothing and every project shows "the proxy
+  setting cannot be used", instead of quietly connecting directly.
+- A change applies to the next read, without restarting Studio; a change of
+  `HTTPS_PROXY` needs a restart of `rullst-studio`.
 
 ## Limits
 

@@ -2,11 +2,12 @@
 //!
 //! The URL is a secret (it usually embeds the receiver's credential): it is
 //! stored sealed like tokens and never shown. Only `https://` URLs are
-//! accepted. Delivery posts a small JSON body, follows no redirect, ignores
-//! proxy variables, is bounded to 5 seconds and is not retried; the outcome
-//! is a fixed status recorded on the alert.
+//! accepted. Delivery posts a small JSON body, follows no redirect, uses a
+//! proxy only as the Settings page chooses, is bounded to 5 seconds and is not
+//! retried; the outcome is a fixed status recorded on the alert.
 
 use super::projects::ProjectError;
+use super::proxy::ProxyPlan;
 use reqwest::Url;
 use serde::Serialize;
 use std::time::Duration;
@@ -43,27 +44,32 @@ pub(crate) struct WebhookPayload<'a> {
 #[derive(Clone)]
 pub(crate) struct WebhookClient {
     client: reqwest::Client,
+    /// Set when the proxy plan is [`ProxyPlan::Invalid`].
+    blocked: bool,
 }
 
 impl WebhookClient {
-    pub(crate) fn new() -> Option<Self> {
-        Self::with_timeout(TIMEOUT)
+    pub(crate) fn new(plan: &ProxyPlan) -> Option<Self> {
+        Self::with_timeout(TIMEOUT, plan)
     }
 
-    pub(crate) fn with_timeout(timeout: Duration) -> Option<Self> {
-        reqwest::Client::builder()
+    pub(crate) fn with_timeout(timeout: Duration, plan: &ProxyPlan) -> Option<Self> {
+        let builder = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
-            .no_proxy()
             .timeout(timeout)
             .connect_timeout(Duration::from_secs(3))
-            .user_agent(concat!("rullst-studio/", env!("CARGO_PKG_VERSION")))
-            .build()
-            .ok()
-            .map(|client| Self { client })
+            .user_agent(concat!("rullst-studio/", env!("CARGO_PKG_VERSION")));
+        plan.apply(builder).build().ok().map(|client| Self {
+            client,
+            blocked: *plan == ProxyPlan::Invalid,
+        })
     }
 
     /// Delivers `payload` once; the result is a fixed status.
     pub(crate) async fn deliver(&self, url: &str, payload: &WebhookPayload<'_>) -> String {
+        if self.blocked {
+            return "failed: the proxy setting cannot be used".to_string();
+        }
         let Ok(body) = serde_json::to_vec(payload) else {
             return "failed: could not encode the alert".to_string();
         };
