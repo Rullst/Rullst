@@ -24,7 +24,7 @@
 //! revocable server-side sessions, with the `email-login-*` and
 //! `api-tokens-*` features on top; `session-registry-sqlite`,
 //! `session-registry-postgres` or `session-registry-mysql` adds the
-//! [`session_registry`](auth::session_registry) of revocable
+//! `session_registry` of revocable
 //! `rullst_session` logins over the application's own pool; `oauth`
 //! re-exports `rullst-connect` as `connect`. In a Rullst application, enable
 //! the `auth` feature of `rullst`.

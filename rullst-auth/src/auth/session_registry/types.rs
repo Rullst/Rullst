@@ -257,7 +257,7 @@ impl SessionInfo {
 
     /// The start of the hour in which the session was last used, as Unix
     /// time in seconds (see
-    /// [`LAST_SEEN_GRANULARITY`](super::LAST_SEEN_GRANULARITY)).
+    /// [`LAST_SEEN_GRANULARITY_SECONDS`](super::LAST_SEEN_GRANULARITY_SECONDS)).
     pub fn last_seen_at(&self) -> u64 {
         self.last_seen_at
     }

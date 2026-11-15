@@ -8,8 +8,6 @@ mod reset_token;
 mod session;
 mod session_claims;
 
-/// Server-side registry of login sessions: `rullst_session` cookies that a
-/// sign-out, a device list or a password reset can revoke one by one.
 #[cfg(any(
     feature = "session-registry-sqlite",
     feature = "session-registry-postgres",
