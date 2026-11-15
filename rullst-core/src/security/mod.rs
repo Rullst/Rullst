@@ -78,7 +78,6 @@ pub use headers::{
     CspNonce, DEFAULT_CSP_TEMPLATE, SecurityHeadersApplied, apply_referrer_policy,
     headers_middleware, render_csp_policy,
 };
-pub(crate) use machine::require_machine_authentication;
 pub use machine::{
     MachineAuthentication, MachineEndpoint, MachineEndpointError, MachineEndpointPolicy,
     MachineRequestVerifier,

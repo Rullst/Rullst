@@ -42,9 +42,14 @@ fn waf_app() -> Router {
         .layer(axum::Extension(security()))
 }
 
+/// A CSRF token the baseline accepts, which it requires in every environment.
+const CSRF: &str = "exemption-tests-csrf-token";
+
 fn text_post(path: &str, body: impl Into<Body>) -> Request<Body> {
     Request::post(path)
         .header(header::CONTENT_TYPE, "text/plain")
+        .header(header::COOKIE, format!("rullst_csrf={CSRF}"))
+        .header("x-csrf-token", CSRF)
         .body(body.into())
         .unwrap()
 }
@@ -97,11 +102,11 @@ async fn only_the_body_of_an_exact_exempt_path_skips_inspection() {
 #[tokio::test]
 async fn production_baseline_honours_the_exemption_and_keeps_the_rest() {
     let app = baseline_app(Environment::Production);
-    let response = app
-        .clone()
-        .oneshot(text_post(EXEMPT, CODE_SAMPLE))
-        .await
+    let cookieless = Request::post(EXEMPT)
+        .header(header::CONTENT_TYPE, "text/plain")
+        .body(Body::from(CODE_SAMPLE))
         .unwrap();
+    let response = app.clone().oneshot(cookieless).await.unwrap();
     // The WAF passed the body; CSRF still refuses the cookie-less write.
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
     let body = to_bytes(response.into_body(), 1024).await.unwrap();
@@ -187,6 +192,8 @@ async fn development_logs_what_production_would_refuse_without_refusing_it() {
     let request = Request::post("/items")
         .header(header::CONTENT_TYPE, "text/plain")
         .header(header::CONTENT_ENCODING, "br")
+        .header(header::COOKIE, format!("rullst_csrf={CSRF}"))
+        .header("x-csrf-token", CSRF)
         .body(Body::from("fine"))
         .unwrap();
     let (status, _, logs) = logged(app.clone(), request).await;
@@ -217,6 +224,8 @@ async fn development_replays_bodies_over_the_inspection_limit() {
     let declared = Request::post("/items")
         .header(header::CONTENT_TYPE, "text/plain")
         .header(header::CONTENT_LENGTH, "1048577")
+        .header(header::COOKIE, format!("rullst_csrf={CSRF}"))
+        .header("x-csrf-token", CSRF)
         .body(Body::from(vec![b'a'; 1_048_577]))
         .unwrap();
     let (status, body, logs) = logged(app, declared).await;

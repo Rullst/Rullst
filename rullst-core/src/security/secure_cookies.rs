@@ -9,7 +9,6 @@
 use axum::{
     extract::Request,
     http::{Extensions, HeaderMap, HeaderValue, Uri, header, uri::Scheme},
-    middleware::Next,
     response::Response,
 };
 
@@ -29,12 +28,8 @@ pub(crate) fn request_is_https(uri: &Uri, extensions: &Extensions) -> bool {
 /// Adds `Secure` to the response's `rullst_*` cookies that lack it when the
 /// request arrived over HTTPS ([`request_is_https`]). Other cookies, and
 /// every cookie of a plain-HTTP request, are left as they are; `Secure` is
-/// never removed.
-pub(crate) async fn secure_framework_cookies(req: Request, next: Next) -> Response {
-    with_secure_framework_cookies(req, |req| next.run(req)).await
-}
-
-/// [`secure_framework_cookies`] around `next`.
+/// never removed. The security baseline runs it around `next` in every
+/// environment.
 pub(crate) async fn with_secure_framework_cookies<F, Fut>(req: Request, next: F) -> Response
 where
     F: FnOnce(Request) -> Fut,

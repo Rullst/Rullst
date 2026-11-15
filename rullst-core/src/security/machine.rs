@@ -370,33 +370,6 @@ impl MachineEndpointPolicy {
     }
 }
 
-/// Authenticates the policy's exact routes in front of `app` and installs the
-/// policy for any inner CSRF layer. Used where the browser baseline is not
-/// composed, such as the development hot-reload server.
-pub(crate) fn require_machine_authentication(
-    app: axum::Router,
-    policy: MachineEndpointPolicy,
-) -> axum::Router {
-    app.layer(axum::middleware::from_fn(authenticate_machine_request))
-        .layer(axum::Extension(policy))
-}
-
-pub(crate) async fn authenticate_machine_request(
-    request: Request,
-    next: axum::middleware::Next,
-) -> axum::response::Response {
-    use axum::response::IntoResponse;
-    if let Some(policy) = request.extensions().get::<MachineEndpointPolicy>().cloned()
-        && policy.matches(&request)
-    {
-        return match policy.authenticate(request).await {
-            Ok(request) => next.run(request).await,
-            Err(status) => (status, "Machine request rejected").into_response(),
-        };
-    }
-    next.run(request).await
-}
-
 #[cfg(test)]
 #[path = "machine_tests.rs"]
 mod tests;

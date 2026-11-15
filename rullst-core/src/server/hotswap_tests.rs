@@ -27,6 +27,7 @@ fn service(router: axum::Router) -> HotSwapService {
         machine_endpoints: None,
         access_log_route_paths: false,
         access_log_recording: crate::server::console::Recording::All,
+        security: crate::config::SecurityConfig::default(),
     }
 }
 
@@ -358,4 +359,49 @@ async fn access_log_off_leaves_the_access_log_out_of_hot_swapped_routes() {
         assert_eq!(response.status(), StatusCode::OK, "{recording:?}");
         assert_eq!(queued() - before, lines, "{recording:?}");
     }
+}
+
+#[tokio::test]
+async fn hot_swapped_routes_run_behind_the_development_security_baseline() {
+    let router = axum::Router::new()
+        .route(
+            "/page",
+            axum::routing::get(|| async { axum::response::Html("page") }),
+        )
+        .route("/write", axum::routing::post(|| async { "written" }));
+    let mut service = service(router);
+    let page = service
+        .call(Request::builder().uri("/page").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(page.status(), StatusCode::OK);
+    assert!(
+        page.headers()["content-security-policy"]
+            .to_str()
+            .unwrap()
+            .contains("'nonce-")
+    );
+    assert!(
+        page.headers()["set-cookie"]
+            .to_str()
+            .unwrap()
+            .starts_with("rullst_csrf=")
+    );
+    assert!(!page.headers().contains_key("strict-transport-security"));
+    let refused = service
+        .call(Request::post("/write").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(refused.status(), StatusCode::FORBIDDEN);
+    let accepted = service
+        .call(
+            Request::post("/write")
+                .header("cookie", "rullst_csrf=hotswaptesttoken")
+                .header("x-csrf-token", "hotswaptesttoken")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(accepted.status(), StatusCode::OK);
 }

@@ -61,6 +61,7 @@ async fn test_hot_swap_service_call() {
         machine_endpoints: None,
         access_log_route_paths: false,
         access_log_recording: crate::server::console::Recording::All,
+        security: crate::config::SecurityConfig::default(),
     };
 
     use tower_service::Service;
@@ -98,6 +99,7 @@ async fn test_hot_swap_service_panic() {
         machine_endpoints: None,
         access_log_route_paths: false,
         access_log_recording: crate::server::console::Recording::All,
+        security: crate::config::SecurityConfig::default(),
     };
 
     use tower_service::Service;
@@ -139,6 +141,7 @@ async fn test_hot_swap_service_poisoned_lock() {
         machine_endpoints: None,
         access_log_route_paths: false,
         access_log_recording: crate::server::console::Recording::All,
+        security: crate::config::SecurityConfig::default(),
     };
 
     use tower_service::Service;
@@ -174,6 +177,7 @@ async fn test_hot_swap_service_reload_route() {
         machine_endpoints: None,
         access_log_route_paths: false,
         access_log_recording: crate::server::console::Recording::All,
+        security: crate::config::SecurityConfig::default(),
     };
 
     use tower_service::Service;

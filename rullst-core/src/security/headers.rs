@@ -185,6 +185,14 @@ impl HeaderPlan {
         }
     }
 
+    /// This plan without `Strict-Transport-Security`.
+    pub(crate) fn without_hsts(&self) -> Self {
+        Self {
+            hsts: None,
+            ..self.clone()
+        }
+    }
+
     /// The `Content-Security-Policy` value for one request's nonce.
     fn csp(&self, nonce: &CspNonce) -> HeaderValue {
         let policy = self.csp_parts.join(nonce.as_str());
