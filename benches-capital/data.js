@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794738650618,
+  "lastUpdate": 1794745750359,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -17152,6 +17152,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4c3b392a2bdead1b23d08e1f789cb578ea7cbc5b",
+          "message": "Merge pull request #706 from Rullst/fix/v13-alpha6-orm-explicit-save\n\nfix(orm)!: require an explicit save mode on every model",
+          "timestamp": "2026-11-15T09:12:15-03:00",
+          "tree_id": "afa54e4a3576267b8ba2ec19f0da58059ae62b14",
+          "url": "https://github.com/Rullst/Rullst/commit/4c3b392a2bdead1b23d08e1f789cb578ea7cbc5b"
+        },
+        "date": 1794745749401,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 3,
             "range": "± 0",
             "unit": "ns/iter"
           }
