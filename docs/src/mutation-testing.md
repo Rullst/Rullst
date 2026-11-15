@@ -25,10 +25,11 @@ received a test or is listed under
   modes reach.
 - **`rullst-orm-macros`**: 542 mutants, 514 caught, 26 unviable and 2 accepted
   equivalents.
-- **`rullst-macros`** (13.0.0-alpha.6, PR_LINK): until this
-  campaign a file-level `mutants::skip` kept the `html!` files and the crate
-  root out of every mutation run and of the pull-request gate; only the Kani
-  proofs keep one. Targeted runs of the 13 files with mutants (`i18n/mod.rs`
+- **`rullst-macros`** (13.0.0-alpha.6,
+  [PR #698](https://github.com/Rullst/Rullst/pull/698)): until this campaign a
+  file-level `mutants::skip` kept the `html!` files and the crate root out of
+  every mutation run and of the pull-request gate; only the Kani proofs keep
+  one. Targeted runs of the 13 files with mutants (`i18n/mod.rs`
   has none) first gave 456 mutants: 294 caught, 94 unviable, 1 timeout and 67
   missed, 23 of them in the Kani proofs. New unit tests and stand-in
   integration tests (`tests/html_url_guard.rs`, `tests/memoize_expansion.rs`
