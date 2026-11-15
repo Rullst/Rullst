@@ -9,6 +9,7 @@ const RELEASES: &[&str] = &[
     "13.0.0-alpha.3",
     "13.0.0-alpha.4",
     "13.0.0-alpha.5",
+    "13.0.0-alpha.6",
     "13.0.0-rc.1",
 ];
 
@@ -122,6 +123,7 @@ fn rules_carry_the_release_of_their_change() {
             "V13-HTMX-2",
         ]
     );
+    assert_eq!(codes_introduced_in("13.0.0-alpha.6"), ["V13-ORM-SAVE-MODE"]);
     assert!(codes_introduced_in("13.0.0-rc.1").is_empty());
     let alpha4 = version("13.0.0-alpha.4");
     let alpha5 = version("13.0.0-alpha.5");

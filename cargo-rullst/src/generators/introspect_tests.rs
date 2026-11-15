@@ -259,7 +259,7 @@ async fn metadata_rows_with_unexpected_labels_or_types_are_errors_not_panics() {
 }
 
 #[test]
-fn generated_models_track_dirty_columns_unless_a_column_is_named_snapshot() {
+fn generated_models_track_dirty_columns_or_declare_full_row_saves() {
     let table = TablePlan {
         database_name: "notes".to_string(),
         module_name: "notes".to_string(),
@@ -277,8 +277,25 @@ fn generated_models_track_dirty_columns_unless_a_column_is_named_snapshot() {
     ));
     syn::parse_file(&code).expect("tracked model must parse");
 
+    // A `snapshot` column moves the field to `row_snapshot`.
     let named = generate_struct(&table, &[column("id"), column("snapshot")]).expect("model");
-    assert!(named.starts_with("use rullst_orm::Orm;\n"));
-    assert!(named.ends_with("    pub snapshot: String,\n}\n"));
-    assert!(!named.contains("RowSnapshot"));
+    assert!(named.starts_with("use rullst_orm::{Orm, RowSnapshot};\n"));
+    assert!(named.contains("#[orm(table = \"notes\")]\n"));
+    assert!(named.ends_with(
+        "    pub snapshot: String,\n    // Remembers the loaded values, so `save()` writes only the columns this\n    // record changed. Build new records with `row_snapshot: RowSnapshot::default()`.\n    #[serde(skip)]\n    #[sqlx(skip)]\n    pub row_snapshot: RowSnapshot,\n}\n"
+    ));
+    syn::parse_file(&named).expect("renamed tracked model must parse");
+
+    // With both names taken, the model declares its full-row saves.
+    let full = generate_struct(
+        &table,
+        &[column("id"), column("snapshot"), column("row_snapshot")],
+    )
+    .expect("model");
+    assert!(full.starts_with("use rullst_orm::Orm;\n"));
+    assert!(full.contains("// Columns named `snapshot` and `row_snapshot` leave no name"));
+    assert!(full.contains("#[orm(table = \"notes\", full_row_save)]\npub struct Note {\n"));
+    assert!(full.ends_with("    pub row_snapshot: String,\n}\n"));
+    assert!(!full.contains(": RowSnapshot"));
+    syn::parse_file(&full).expect("full-row model must parse");
 }

@@ -215,7 +215,8 @@ fn the_linked_sections_exist_in_the_migration_guide() {
     }
 }
 
-const FROM_ROW_MODEL: &str = "#[derive(FromRow, Orm)]\nstruct User { id: i32 }\nfn main() {}\n";
+const FROM_ROW_MODEL: &str =
+    "#[derive(FromRow, Orm)] #[orm(full_row_save)]\nstruct User { id: i32 }\nfn main() {}\n";
 
 /// A project on 12.3 whose only source has a must-change finding.
 fn blocked_project() -> tempfile::TempDir {

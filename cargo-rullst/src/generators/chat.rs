@@ -237,8 +237,10 @@ pub fn unix_timestamp() -> i64 {
 
 const TURSO_MODELS: &str = r#"use rullst::orm::polyglot::TursoOrder;
 
+// Turso-primary models write every column on `save()`, overwriting
+// concurrent changes to other columns; `full_row_save` records that choice.
 #[derive(Debug, Clone, rullst::orm::Orm)]
-#[orm(table = "chat_sessions", backend = "turso")]
+#[orm(table = "chat_sessions", backend = "turso", full_row_save)]
 pub struct ChatSession {
     pub id: i64,
     pub title: String,
@@ -246,7 +248,7 @@ pub struct ChatSession {
 }
 
 #[derive(Debug, Clone, rullst::orm::Orm)]
-#[orm(table = "chat_messages", backend = "turso")]
+#[orm(table = "chat_messages", backend = "turso", full_row_save)]
 pub struct ChatMessage {
     pub id: i64,
     pub session_id: i64,

@@ -474,6 +474,9 @@ rules! {
     HTMX_2_CLIENT: "V13-HTMX-2", Review, "13.0.0-alpha.5", "htmx 2 client",
         "new applications load htmx 2.0.11 since 13.0.0-alpha.5; this one vendors htmx 1.9.12, which `render_page*` keep loading while it is the only htmx file in `static/`",
         "Nothing breaks if you wait. To move to htmx 2 (the SSE extension `hx-ext=\"sse\"` needs it), copy `htmx-2.0.11.min.js`, `htmx-ext-sse-2.2.4.js`, `HTMX-LICENSE` and `HTMX-EXT-SSE-LICENSE` from a new project's `static/`, point your own layouts at them and delete `static/htmx-1.9.12.min.js`; write `hx-on=\"click: …\"` as `hx-on:click`, and send the CSRF token of `hx-delete` in the `X-CSRF-Token` header (`hx-headers`), because htmx 2 puts DELETE parameters in the query string.";
+    ORM_SAVE_MODE: "V13-ORM-SAVE-MODE", MustChange, "13.0.0-alpha.6", "ORM explicit save mode",
+        "since 13.0.0-alpha.6 a model declares exactly one save mode, a `#[sqlx(skip)]` `RowSnapshot` field or `#[orm(full_row_save)]` (a Turso-primary model only the attribute); this one does not, so it no longer compiles",
+        "Add `#[sqlx(skip)] pub snapshot: RowSnapshot,` (`rullst::orm::RowSnapshot`) so `save()` writes only the columns the record changed and concurrent edits of other columns persist; set `snapshot: RowSnapshot::default()` in the model's struct literals and add `#[serde(skip)]` when it derives Serde. Or add `full_row_save` to its `#[orm(...)]` to keep writing every column, which overwrites a change that another request made to another column since the record was read. Keep one of the two; a Turso-primary model takes `full_row_save` and no `RowSnapshot` field.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer
