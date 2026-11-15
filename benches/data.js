@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794773927989,
+  "lastUpdate": 1794775264282,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -34695,6 +34695,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1019,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bdce72abd5df339e3c94cd971d4a277babe62bb8",
+          "message": "Merge pull request #715 from Rullst/docs/site-benchmark-ratios\n\ndocs(site): show benchmark ratios to Axum, the run note and its link",
+          "timestamp": "2026-11-15T17:36:39-03:00",
+          "tree_id": "a3456dc8175305c896adb3598eec533edd5965ac",
+          "url": "https://github.com/Rullst/Rullst/commit/bdce72abd5df339e3c94cd971d4a277babe62bb8"
+        },
+        "date": 1794775261040,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 433,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 614,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 306,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1122,
+            "range": "± 26",
             "unit": "ns/iter"
           }
         ]
