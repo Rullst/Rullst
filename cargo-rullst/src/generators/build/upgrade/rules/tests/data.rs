@@ -17,7 +17,7 @@ async fn boot(queue: Queue, worker: &mut Worker) -> Result<(), Error> {
     rullst_orm::Outbox::install().await?;
     let memory = SqlChatMemory::connect(url).await?;
     rullst_orm::audit::create_audit_table().await?;
-    let chain = AuditChain::new(Arc::new(StdoutAuditLogger));
+    let chain = AuditChain::try_new(&key, Arc::new(StdoutAuditLogger))?;
     Ok(())
 }
 "#,
@@ -76,7 +76,7 @@ async fn send(cache: Cache) {
 fn audited_models_and_protected_values_are_reviewed() {
     let audited = r#"
 #[derive(Orm)]
-#[orm(table = "projects", auditable)]
+#[orm(table = "projects", auditable, full_row_save)]
 pub struct Project {
     pub id: i32,
     #[orm(masked)]
@@ -97,7 +97,7 @@ pub struct Project {
     assert_only(
         r#"
 #[derive(Orm)]
-#[orm(table = "projects")]
+#[orm(table = "projects", full_row_save)]
 pub struct Project {
     pub id: i32,
     #[orm(hidden)]
@@ -118,7 +118,7 @@ pub struct Holder {
 fn text_timestamps_of_sqlx_models_are_reviewed() {
     let source = r#"
 #[derive(Debug, Orm)]
-#[orm(table = "posts")]
+#[orm(table = "posts", full_row_save)]
 pub struct Post {
     pub id: i32,
     pub created_at: String,
@@ -131,7 +131,7 @@ pub struct Post {
     );
     assert_only(
         r#"
-#[derive(Debug, Orm)]
+#[derive(Debug, Orm)] #[orm(full_row_save)]
 pub struct Post {
     pub id: i32,
     pub created_at: DateTime<Utc>,
@@ -141,12 +141,12 @@ pub struct Post {
     pub deleted_at: Option<String>,
 }
 #[derive(Debug, rullst_orm::Orm)]
-#[orm(table = "notes", backend = "turso")]
+#[orm(table = "notes", backend = "turso", full_row_save)]
 pub struct Note {
     pub id: i64,
     pub created_at: String,
 }
-#[derive(Debug, TursoModel)]
+#[derive(Debug, TursoModel)] #[orm(full_row_save)]
 pub struct Event {
     pub id: i64,
     pub updated_at: String,
@@ -256,7 +256,7 @@ fn boot() {
 fn skipped_managed_user_columns_are_reviewed() {
     let source = r#"
 #[derive(Debug, Clone, Default, Orm)]
-#[orm(table = "users")]
+#[orm(table = "users", full_row_save)]
 pub struct User {
     pub id: i32,
     #[orm(skip)]
@@ -285,7 +285,7 @@ pub struct User {
     assert_only(
         r#"
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "users")]
+#[orm(table = "users", full_row_save)]
 pub struct User {
     pub id: i32,
     #[orm(db_default)]
@@ -298,12 +298,12 @@ pub struct User {
     pub nickname: String,
 }
 #[derive(Orm)]
-#[orm(table = "own_rows", custom_from_row)]
+#[orm(table = "own_rows", custom_from_row, full_row_save)]
 pub struct OwnRows {
     #[orm(skip)]
     pub computed: i64,
 }
-#[derive(Orm)]
+#[derive(Orm)] #[orm(full_row_save)]
 #[sqlx(default)]
 pub struct Defaults {
     #[orm(skip)]

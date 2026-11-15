@@ -895,7 +895,14 @@ jobs:
       - name: Check workspace compiles on MSRV
         # Use `cargo check` (no linking) to validate the MSRV without full build time.
         # If any crate uses a stabilized API newer than 1.96.0, this will fail.
-        run: cargo check --workspace --all-features
+        # rust-toolchain.toml pins the development compiler and takes precedence
+        # over `rustup default`; RUSTUP_TOOLCHAIN takes precedence over the file.
+        # msrv-tests.yml runs the central crates' tests on this compiler.
+        env:
+          RUSTUP_TOOLCHAIN: "1.96.0"
+        run: |
+          rustc --version | grep '^rustc 1\.96\.0 '
+          cargo check --workspace --all-features
 
   native-cli-artifacts:
     name: Native CLI distribution

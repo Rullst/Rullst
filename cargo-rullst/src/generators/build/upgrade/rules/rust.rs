@@ -16,6 +16,8 @@ mod capital_mail;
 mod functions;
 #[path = "rust/removed_ui.rs"]
 mod removed_ui;
+#[path = "rust/save_mode.rs"]
+mod save_mode;
 #[path = "rust/sqlx_macros.rs"]
 mod sqlx_macros;
 
@@ -184,6 +186,9 @@ impl Visitor<'_, '_> {
             || model
                 .iter()
                 .any(|(key, value, _)| key == "backend" && value.as_deref() == Some("turso"));
+        if let Some((rule, at)) = save_mode::finding(item, turso) {
+            self.hit(rule, at);
+        }
         for field in &item.fields {
             let options = entries(&field.attrs, "orm");
             let at = field_line(field);
@@ -316,6 +321,11 @@ impl Visitor<'_, '_> {
 
     fn function(&mut self, attributes: &[Attribute], signature: &syn::Signature) {
         for attribute in attributes {
+            if let Some(rule) =
+                super::alpha6_deprecated::attribute_rule(attribute, self.context.text)
+            {
+                self.hit(rule, line(attribute.span()));
+            }
             let segments: Vec<String> = attribute
                 .path()
                 .segments
@@ -425,6 +435,13 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
                 self.hit(rule, at);
             }
             if let Some(rule) = super::removed_adapters::path_rule(&path, self.context.text) {
+                self.hit(rule, at);
+            }
+            if let Some(rule) = super::alpha6_deprecated::path_rule(&path, self.context.text) {
+                self.hit(rule, at);
+            }
+            let facts = self.context.facts;
+            if let Some(rule) = super::alpha6_passkeys::path_rule(&path, self.context.text, facts) {
                 self.hit(rule, at);
             }
         }

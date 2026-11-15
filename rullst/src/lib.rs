@@ -11,6 +11,7 @@
 //! | `orm` with `drivers-all` or one `strict-*` profile | `rullst::orm` (also in `rullst::db`) | `rullst-orm` | Core |
 //! | `security` | `rullst::security::runtime` | `rullst-security` | Core |
 //! | `auth` | `rullst::auth` | `rullst-auth` | Extension |
+//! | `auth-passkeys` | `rullst::auth::passkey` | `rullst-auth` | Extension |
 //! | `oauth` | `rullst::connect` | `rullst-connect` | Extension |
 //! | `mail` | `rullst::mail` | `rullst-mail` | Extension |
 //! | `capital` | `rullst::capital` | `rullst-capital` | Extension |

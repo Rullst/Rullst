@@ -5574,6 +5574,7 @@ dependencies = [
  "aes-gcm",
  "argon2",
  "async-trait",
+ "aws-lc-rs",
  "axum",
  "base64 0.23.1",
  "criterion",
@@ -5945,7 +5946,6 @@ dependencies = [
  "sha2 0.11.1",
  "sqlx",
  "sqlx-core",
- "syn 3.0.9",
  "testcontainers",
  "testcontainers-modules",
  "thiserror 2.0.21",
@@ -5955,7 +5955,6 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
- "walkdir",
  "zeroize",
 ]
 

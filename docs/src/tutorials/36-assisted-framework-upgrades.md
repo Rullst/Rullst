@@ -287,7 +287,7 @@ release:
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
 | 13.0.0-alpha.5 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them), `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-SERVER-FUNCTIONS-REMOVED`, `V13-FRONTEND-ADAPTERS-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-ORM-ADAPTERS-REMOVED`, `V13-MAIL-MESSAGE-REPLY-TO`, `V13-PRIVACY-CONSENT-CHOICE-MATCH`, `V13-LABS-NON-EXHAUSTIVE-MATCH`, `V13-CLI-GREEN-RENAMED`, `V13-ACADEMY-REMOVED`, `V13-ORM-QDRANT-REMOVED`, `V13-AI-PROVIDER-PRESETS` |
-| 13.0.0-alpha.6 | `V13-HEALTH-FRAMEWORK-VERSION`, `V13-HEALTH-PROBE-VERSION-FIELD`, `V13-CSRF-STATIC-PREFIXES` (the default changes of the 13.0 freeze) |
+| 13.0.0-alpha.6 | `V13-HEALTH-FRAMEWORK-VERSION`, `V13-HEALTH-PROBE-VERSION-FIELD`, `V13-CSRF-STATIC-PREFIXES` (the default changes of the 13.0 freeze), `V13-MAIL-DEPRECATED-REMOVED`, `V13-IOT-OTA-LEGACY-REMOVED`, `V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, `V13-AI-DEPRECATED-REMOVED`, `V13-SECURITY-DEPRECATED-REMOVED`, `V13-QUEUE-PURGE-COMPLETED-REMOVED`, `V13-CONNECT-INFALLIBLE-NEW-REMOVED`, `V13-ROUTE-MARKER-REMOVED`, `V13-ORM-SCHEMA-DIFF-REMOVED` (the removal of every API still deprecated), `V13-ORM-SAVE-MODE`, `V13-AUTH-PASSKEYS-FEATURE` |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -299,10 +299,10 @@ The plan takes the application's Rullst version to be the oldest version that
 a Rullst requirement in the workspace manifests admits (`=13.0.0-alpha.3`,
 or `13.0.0-alpha.1`, a caret requirement) or that `Cargo.lock` holds. When that
 version is a 13.0 prerelease, only the rules introduced after it apply: an
-alpha.4 application gets the alpha.5 rules, an alpha.3 application also the
-alpha.4 rules, an alpha.2 application also the seven alpha.3 rules, and an
-alpha.1 application also the alpha.2 rules, because the earlier changes are
-already in the version it runs. The plan says what it skipped:
+alpha.5 application gets the alpha.6 rules, an alpha.4 application also the
+alpha.5 rules, an alpha.3 application also the alpha.4 rules, an alpha.2
+application also the seven alpha.3 rules, and an alpha.1 application also the
+alpha.2 rules, because the earlier changes are already in the version it runs. The plan says what it skipped:
 
 ```text
 Source findings (rullst-upgrade-rules-v4): 0 must-change, 1 review
@@ -480,15 +480,15 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (27 rows);
+  application source (34 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (117 rows);
+  the affected API, feature or configuration, which the rules locate (121 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (108 rows).
+  of inputs that previously failed) (107 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 150 rules. A row can map to several rules and a rule to
+has 161 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -538,7 +538,7 @@ the rule together.
 | CLI generator output | (b) review | `V13-TS-CLIENT-REGENERATE` | Other generator changes affect new output only |
 | CLI generator robustness | (b) review | `V13-TS-CLIENT-REGENERATE`, `V13-GITIGNORE-DATABASES` | Other generator changes affect new output only |
 | ORM database-managed columns | (b) review | `V13-ORM-SKIP-MANAGED-COLUMNS` | Reports each `#[orm(skip)]` field that the model's `FromRow` reads (no `#[sqlx(skip)]` or `#[sqlx(default)]`, no `custom_from_row` or struct-level `#[sqlx(default)]`), such as the alpha.2 starters' `is_admin`/`session_epoch` |
-| ORM dirty tracking | (c) none | — | Opt-in `RowSnapshot` field |
+| ORM dirty tracking | (c) none | — | The `RowSnapshot` field was opt-in until 13.0.0-alpha.6; a model with neither it nor `full_row_save` is reported under ORM explicit save mode |
 | ORM partial updates | (b) review | `V13-ORM-PARTIAL-UPDATE` |  |
 | ORM derive checks | (a) must-change | `V13-ORM-BELONGS-TO-KEY`, `V13-ORM-IGNORED-RELATION-KEY`, `V13-ORM-SEARCHABLE-TABLE` |  |
 | ORM queries and cache | (b) review | `V13-ORM-SQLX-JSON-SERIALIZE`, `V13-ORM-QUERY-CACHE-KEY` | Count, chunk-order and stream changes are not located |
@@ -724,7 +724,6 @@ the rule together.
 | htmx 2 client | (b) review | `V13-HTMX-2` | `static/htmx-1.9.12.min.js` as a regular file at the workspace root without `static/htmx-2.0.11.min.js`; nothing breaks, because Core's pages keep loading the vendored htmx 1.9.12; layouts of the application's own that name the file, `hx-delete` forms and `hx-on` attributes are not located; introduced in 13.0.0-alpha.5 |
 | MongoDB and DuckDB adapters removed | (a) must-change | `V13-ORM-ADAPTERS-REMOVED` | The `orm-mongodb`/`orm-duckdb` (`rullst`) and `mongodb`/`duckdb` (`rullst-orm`) features in dependency declarations, renamed ones included, and in `[features]` entries; `MongoDbStore`, `DuckDbStore`, `AnalyticsRepository`, `AnalyticsRow`, `AnalyticsValue`, `AnalyticsTimeUnit` and `QueryLimit` only in files that name `polyglot`, so an application's own types with these names are left alone; `polyglot::mongodb`, `polyglot::duckdb` and `PolyglotError::Worker` paths, and `Backend::MongoDb`, `Backend::DuckDb` and `Capability::Analytics` in files that name the ORM, also in `use` groups and macro bodies, at every location; `cargo rullst new --mongodb`/`--duckdb` in scripts is not located (the command stops and names the recipe); introduced in 13.0.0-alpha.5 |
 | Qdrant adapter removed | (a) must-change | `V13-ORM-QDRANT-REMOVED` | The `orm-qdrant` (`rullst`) and `qdrant` (`rullst-orm`) features in dependency declarations and `[features]` entries; `QdrantStore`, `QdrantConfig`, `VectorRepository`, `VectorCollectionName`, `VectorDimensions`, `VectorPoint`, `VectorMatch` and `VectorQueryLimit`, and `Backend::Qdrant`/`Capability::Vectors`, in files that name `rullst_orm`, `orm::` or `polyglot` (an application's own type of such a name elsewhere is left alone), at every location; introduced in 13.0.0-alpha.5 |
-| ORM `schema_diff` deprecated | (c) none | — | The compiler's `deprecated` warning locates each use of `rullst_orm::schema_diff`; it still compiles in 13.0.0-alpha.5, and its removal is planned for 13.0.0-alpha.6; introduced in 13.0.0-alpha.5 |
 | Billing generator on Turso projects | (c) none | — | CLI behaviour on new runs; billing code generated earlier is unchanged; introduced in 13.0.0-alpha.5 |
 | Academy production preset removed | (a) must-change | `V13-ACADEMY-REMOVED` | The five distinctive `Academy*` type names and `ProductionPreset::academy`, also in `use` groups, at every location; `academy:doctor` in workflows, root scripts, Makefile and justfile, also must-change because the command exits with status 1; introduced in 13.0.0-alpha.5 |
 | ERP and Portfolio examples removed | (c) none | — | Repository examples, not framework API; copied applications keep their code; introduced in 13.0.0-alpha.5 |
@@ -742,6 +741,17 @@ the rule together.
 | Privacy consent choices | (a) must-change | `V13-PRIVACY-CONSENT-CHOICE-MATCH` | A `match` whose arm patterns name `ConsentChoice` and that has no catch-all arm, in a file that names `rullst_privacy` or `rullst::privacy`; comparisons keep compiling; introduced in 13.0.0-alpha.5 |
 | Supervision obscured camera and brightness statistics | (c) none | — | Opt-in additions to enums that were already `#[non_exhaustive]`; recording `Obscured` in an older store needs `upgrade_event_schema`, which the application calls at run time; introduced in 13.0.0-alpha.5 |
 | Core scheduler cron fields | (c) none | — | Registration fails with `SchedulerError::InvalidCron` before the task runs, and the expressions it rejects had an unintended meaning; introduced in 13.0.0-alpha.6 |
+| Mail deprecated constructors and tracking helpers removed | (a) must-change | `V13-MAIL-DEPRECATED-REMOVED` | `ResendDriver::new`, `AwsSesDriver::new` and the four `TrackingEngine::` helpers as paths, and `with_open_tracking`/`with_click_tracking` in files that name Mail (`rullst_mail` or `mail::`), at every location; introduced in 13.0.0-alpha.6 |
+| IoT legacy OTA methods removed | (b) review | `V13-IOT-OTA-LEGACY-REMOVED` | `OtaManager::new` and `OtaError::LegacyApiUnsupported` paths (the variant alone in files that name `OtaError` or `rullst_iot`) and `.verify_signature(..)`/`.commit_update(..)` calls in files that name `OtaManager`, at every location; review because another type can have such a method, so a failed Cargo gate repeats its guidance; introduced in 13.0.0-alpha.6 |
+| Nexus `build` and `into_router` removed | (b) review | `V13-NEXUS-INFALLIBLE-BUILD-REMOVED` | `.build()` and `.into_router()` calls without arguments in files that name `Nexus`, and `Nexus::build`/`Nexus::into_router` paths, at every location; review because another builder in the file can end in `.build()`; introduced in 13.0.0-alpha.6 |
+| AI `structured_prompt` and `is_safe` removed | (b) review | `V13-AI-DEPRECATED-REMOVED` | `structured_prompt` in files that name `rullst_ai`, `ai::` or `AiClient`, and `.is_safe()` calls in files that name a `Guardrail` type, at every location; review because `is_safe` is a common method name; introduced in 13.0.0-alpha.6 |
+| Security `with_distributed` and `AuditChain::new` removed | (a) must-change | `V13-SECURITY-DEPRECATED-REMOVED` | `AuditChain::new` paths and `.with_distributed()` calls in files that name `RateLimiter`, at every location; introduced in 13.0.0-alpha.6 |
+| Queue `purge_completed_jobs` removed | (b) review | `V13-QUEUE-PURGE-COMPLETED-REMOVED` | `.purge_completed_jobs(..)` calls in files that name `Queue` and `Queue::purge_completed_jobs` paths, at every location; review because a `QueueDriver` keeps that method; `fn` definitions are not reported; introduced in 13.0.0-alpha.6 |
+| Connect infallible `new` constructors removed | (a) must-change | `V13-CONNECT-INFALLIBLE-NEW-REMOVED` | `new` of the ten built-in providers (`GithubProvider::new`, …) in files that name Connect (`rullst_connect` or `connect::`), and `CredentialMode::Invalid`, at every location; `is_invalid()` calls and the `new` of a `define_provider!` type are not located, the compiler names them; introduced in 13.0.0-alpha.6 |
+| `#[route]` marker removed | (a) must-change | `V13-ROUTE-MARKER-REMOVED` | `#[rullst::route]`, `#[rullst_core::route]` and `#[rullst_macros::route]`, a bare `#[route]` without arguments in a file that names Rullst, and those paths in `use` trees, at every location; `#[route(...)]` of other frameworks is left alone; introduced in 13.0.0-alpha.6 |
+| ORM `schema_diff` removed | (a) must-change | `V13-ORM-SCHEMA-DIFF-REMOVED` | `rullst_orm::schema_diff` and `rullst::orm::schema_diff` paths, also in `use` trees, and `extract_tables_from_ast`, `ParsedTable` and `ParsedField` in files that name `schema_diff`, at every location; introduced in 13.0.0-alpha.6 (deprecated in 13.0.0-alpha.5) |
+| ORM explicit save mode | (a) must-change | `V13-ORM-SAVE-MODE` | Each `#[derive(Orm)]` or `#[derive(TursoModel)]` struct with neither or both of a `RowSnapshot` field and `#[orm(full_row_save)]`, and each Turso-primary one with a `RowSnapshot` field or without `full_row_save`, at its name; introduced in 13.0.0-alpha.6 |
+| Passkeys feature | (a) must-change | `V13-AUTH-PASSKEYS-FEATURE` | `rullst::auth::passkey` and `rullst_auth::passkey` paths (also through `auth::auth`, and `auth::passkey` in a file that names `rullst::auth` or `rullst_auth`) in `use` items, groups and code, at every location, when no workspace manifest enables `auth-passkeys`, `auth-sqlite` or `auth-passkey-postgres` on `rullst`, or `passkeys`, `sqlite` or `passkey-postgres` on `rullst-auth`, in a dependency or a `[features]` entry; introduced in 13.0.0-alpha.6 |
 
 ## Planned simpler update experience
 

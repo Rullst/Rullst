@@ -1,0 +1,5 @@
+error: `Note` is a Turso-primary model: its `save()` writes every column, so a change that another request made to another column is lost. Declare `#[orm(full_row_save)]` on the struct to accept that
+ --> tests/ui/turso_missing_full_row_save.rs:5:8
+  |
+5 | struct Note {
+  |        ^^^^

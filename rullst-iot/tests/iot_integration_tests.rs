@@ -174,39 +174,6 @@ fn test_ota_rejects_signature_hash_target_and_rollback_failures() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn test_legacy_ota_apis_are_typed_and_fail_closed() {
-    assert!(matches!(
-        OtaManager::new("1.0.0"),
-        Err(OtaError::LegacyApiUnsupported {
-            replacement: "OtaManager::new_with_trusted_key",
-        })
-    ));
-    let signing_key = SigningKey::from_bytes(&[23_u8; 32]);
-    let mut manager = OtaManager::new_with_trusted_key(
-        "legacy-test-board",
-        "1.0.0",
-        1,
-        signing_key.verifying_key().to_bytes(),
-    )
-    .unwrap();
-    assert_eq!(
-        manager.verify_signature(b"firmware", &[0_u8; 64]),
-        Err(OtaError::LegacyApiUnsupported {
-            replacement: "OtaManager::verify_update",
-        })
-    );
-    assert_eq!(
-        manager.commit_update("2.0.0"),
-        Err(OtaError::LegacyApiUnsupported {
-            replacement: "OtaManager::commit_verified_update",
-        })
-    );
-    assert_eq!(manager.current_partition(), BootPartition::PartitionA);
-    assert_eq!(manager.firmware_version(), "1.0.0");
-}
-
-#[test]
 fn test_ota_rejects_invalid_trust_configuration() {
     let mut weak_identity_key = [0_u8; 32];
     weak_identity_key[0] = 1;

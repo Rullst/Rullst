@@ -6,7 +6,7 @@
 use rullst_orm::{Error, Orm, RullstValue, with_tenant};
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "raw_orders", tenant_column = "organization_id")]
+#[orm(table = "raw_orders", tenant_column = "organization_id", full_row_save)]
 struct RawOrder {
     id: i32,
     organization_id: String,

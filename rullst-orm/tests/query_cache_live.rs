@@ -8,14 +8,14 @@ use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "query_cache_live_records")]
+#[orm(table = "query_cache_live_records", full_row_save)]
 struct QueryCacheLiveRecord {
     pub id: i32,
     pub name: String,
 }
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "query_cache_live_secrets")]
+#[orm(table = "query_cache_live_secrets", full_row_save)]
 struct QueryCacheLiveSecret {
     pub id: i32,
     pub name: String,
@@ -23,7 +23,11 @@ struct QueryCacheLiveSecret {
 }
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "query_cache_live_tenant_records", tenant_column = "tenant_id")]
+#[orm(
+    table = "query_cache_live_tenant_records",
+    tenant_column = "tenant_id",
+    full_row_save
+)]
 struct QueryCacheLiveTenantRecord {
     pub id: i32,
     pub tenant_id: String,
@@ -31,7 +35,7 @@ struct QueryCacheLiveTenantRecord {
 }
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "query_cache_live_vault")]
+#[orm(table = "query_cache_live_vault", full_row_save)]
 struct QueryCacheLiveVault {
     pub id: i32,
     #[orm(encrypted)]

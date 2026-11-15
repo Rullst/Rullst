@@ -12,6 +12,9 @@ mod alpha5_removed_ui;
 mod alpha5_runtime;
 mod alpha5_slimming;
 mod alpha6_defaults;
+mod alpha6_deprecated;
+mod alpha6_orm_save_mode;
+mod alpha6_passkeys;
 mod data;
 mod docs;
 mod files;
@@ -299,7 +302,7 @@ fn orm_derives_report_relation_and_sqlx_changes() {
         r#"
 #[derive(Orm, Deserialize)]
 #[sqlx(rename_all = "camelCase")]
-#[orm(table = "BlogPosts", searchable)]
+#[orm(table = "BlogPosts", searchable, full_row_save)]
 pub struct Post {
     pub id: i32,
     #[orm(belongs_to = "User")]
@@ -329,7 +332,7 @@ pub struct Post {
         r#"
 #[derive(Orm)]
 #[sqlx(default)]
-#[orm(table = "posts", searchable)]
+#[orm(table = "posts", searchable, full_row_save)]
 pub struct Post {
     pub id: i32,
     #[orm(belongs_to = "User", foreign_key = "post_id")]

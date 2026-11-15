@@ -119,6 +119,7 @@ pub(crate) const CAPABILITIES: [Capability; 5] = [
             "auth-email-login-sqlite",
             "auth-jwt",
             "auth-passkey-postgres",
+            "auth-passkeys",
             "auth-sessions-postgres",
             "auth-sessions-sqlite",
             "auth-sqlite",

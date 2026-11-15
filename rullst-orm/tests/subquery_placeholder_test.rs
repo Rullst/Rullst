@@ -10,7 +10,7 @@ use rullst_orm::schema::SubqueryBuilder;
 use rullst_orm::{Error, RullstValue, replace_placeholders, with_tenant};
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "subquery_posts", tenant_column = "tenant_id")]
+#[orm(table = "subquery_posts", tenant_column = "tenant_id", full_row_save)]
 struct SubqueryPost {
     id: i32,
     tenant_id: String,
@@ -19,7 +19,11 @@ struct SubqueryPost {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "subquery_comments", tenant_column = "tenant_id")]
+#[orm(
+    table = "subquery_comments",
+    tenant_column = "tenant_id",
+    full_row_save
+)]
 struct SubqueryComment {
     id: i32,
     tenant_id: String,

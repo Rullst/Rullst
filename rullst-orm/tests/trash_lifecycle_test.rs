@@ -14,6 +14,7 @@ static BEFORE_DELETE: AtomicUsize = AtomicUsize::new(0);
 static AFTER_DELETE: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
+#[orm(full_row_save)]
 #[orm(
     table = "trash_customers",
     auditable,

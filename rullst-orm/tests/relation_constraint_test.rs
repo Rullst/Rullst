@@ -7,7 +7,7 @@ use std::sync::Arc;
 use rullst_orm::Orm;
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "constraint_accounts")]
+#[orm(table = "constraint_accounts", full_row_save)]
 struct ConstraintAccount {
     id: i32,
     name: String,
@@ -25,14 +25,14 @@ struct ConstraintAccount {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "constraint_tags")]
+#[orm(table = "constraint_tags", full_row_save)]
 struct ConstraintTag {
     id: i32,
     label: String,
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "constraint_documents")]
+#[orm(table = "constraint_documents", full_row_save)]
 struct ConstraintDocument {
     id: i32,
     account_id: i32,
@@ -41,7 +41,7 @@ struct ConstraintDocument {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "constraint_owners")]
+#[orm(table = "constraint_owners", full_row_save)]
 struct Owner {
     id: i32,
     name: String,
@@ -50,7 +50,7 @@ struct Owner {
 /// `belongs_to` without `foreign_key` reads `<related model>_id` from this
 /// model (`owner_id`), not `<this model>_id`.
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "constraint_pets")]
+#[orm(table = "constraint_pets", full_row_save)]
 struct ConstraintPet {
     id: i32,
     owner_id: i32,

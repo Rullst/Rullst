@@ -1,6 +1,5 @@
 use crate::error::AuthError;
 use base64::Engine as _;
-use ring::signature;
 use serde::Deserialize;
 use sha2::Digest;
 use std::time::Duration;
@@ -10,6 +9,7 @@ use url::{Host, Url};
 use super::cbor::{CborKey, CborValue, parse_cbor};
 use super::ceremony::{Ceremony, ChallengeStore};
 use super::config::PasskeyConfig;
+use super::es256;
 use super::types::{
     AllowCredential, AuthenticatorSelection, CreationChallengeResponse, Passkey, PubKeyCredParam,
     PublicKeyCredential, PublicKeyCredentialCreationOptions, PublicKeyCredentialRequestOptions,

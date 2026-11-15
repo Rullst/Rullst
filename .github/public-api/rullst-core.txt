@@ -384,7 +384,6 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::QuarantinedUpload
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::QuarantinedUpload
 pub struct rullst_core::Queue
 impl rullst_core::Queue
-#[deprecated] pub async fn rullst_core::Queue::purge_completed_jobs(&self) -> core::result::Result<(), rullst_core::queue::QueueError>
 pub async fn rullst_core::Queue::dispatch(&self, job_name: &str, payload: serde_json::value::Value) -> core::result::Result<alloc::string::String, rullst_core::queue::QueueError>
 pub async fn rullst_core::Queue::dispatch_at(&self, job_name: &str, payload: serde_json::value::Value, available_at: std::time::SystemTime) -> core::result::Result<alloc::string::String, rullst_core::queue::QueueError>
 pub async fn rullst_core::Queue::dispatch_deferred(&self, job_name: &str, payload: serde_json::value::Value, deferral: &rullst_core::queue::Deferral) -> core::result::Result<rullst_core::queue::DeferredJob, rullst_core::queue::QueueError>
@@ -2507,7 +2506,6 @@ pub use rullst_core::response::Html = struct axum::response::Html
 pub use rullst_core::response::IntoResponse = trait axum_core::response::into_response::IntoResponse
 pub use rullst_core::response::Redirect = struct axum::response::redirect::Redirect
 pub use rullst_core::response::Response = type_alias axum_core::response::Response
-pub use rullst_core::route = proc_attribute rullst_macros::route
 pub macro rullst_core::routes!
 pub mod rullst_core::routing
 pub use rullst_core::routing::Router = struct rullst_core::Router

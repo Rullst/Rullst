@@ -1,0 +1,5 @@
+error: Turso-primary models do not track changed columns: their `save()` writes every column. Remove this `RowSnapshot` field and declare `#[orm(full_row_save)]` on the struct
+  --> tests/ui/turso_row_snapshot.rs:12:5
+   |
+12 |     snapshot: RowSnapshot,
+   |     ^^^^^^^^

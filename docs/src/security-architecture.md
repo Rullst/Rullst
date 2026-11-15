@@ -218,13 +218,14 @@ therefore end detection early.
 Rullst uses these cryptography libraries, each with one role (since
 13.0.0-alpha.4; the RustCrypto row since 13.0.0-alpha.5, with Core's
 AES-256-GCM since 13.0.0-alpha.6, when `rullst-core` stopped depending on
-`ring`):
+`ring`; the passkey row since 13.0.0-alpha.6):
 
 | Component | Library | Why |
 | --- | --- | --- |
 | Every TLS connection Rullst makes: outbound HTTPS (reqwest: AI and payment providers, OAuth, webhooks, S3 storage, Studio's remote poller), SQLx (PostgreSQL and MySQL), Redis (Redis Streams messaging, ORM Redis data and cache), SMTP (`mail-smtp`) and OTLP telemetry | `aws-lc-rs`, as the rustls crypto provider | Post-quantum hybrid key exchange (`X25519MLKEM768`, offered first) and a FIPS-capable build |
 | SHA-256 and HMAC-SHA256 in `rullst-core` and `rullst-capital` (since 13.0.0-alpha.5), and the AES-256-GCM recovery records of Core's `storage-multipart` (since 13.0.0-alpha.6) | RustCrypto `sha2`, `hmac` and `aes-gcm` | Pure Rust, portable to wasm and edge targets; signatures are checked with `Mac::verify_slice` (constant time) |
-| HMAC, digests, randomness and signatures in `rullst-auth`, `rullst-labs`, `rullst-media`, `rullst-privacy`, `rullst-studio` and `rullst-supervision` | `ring`, used directly | Portable to wasm and edge targets, where `aws-lc-rs` is not available |
+| ES256 passkeys in `rullst-auth`: the credential public key at registration and in the passkey stores, and the assertion signature (ASN.1 DER, high-S accepted as WebAuthn allows) | `aws-lc-rs`, used directly, only with the `passkeys` feature (`auth-passkeys` in `rullst`) | The library behind TLS, so an application with passkeys usually builds it already, and one without them compiles it for neither; `rullst-auth` is native-only in the facade. It replaced `p256` and `ring` here with the same decisions, on differential tests and on the Wycheproof ECDSA P-256 vectors |
+| HMAC, digests, randomness and the other signatures in `rullst-auth`, `rullst-labs`, `rullst-media`, `rullst-privacy`, `rullst-studio` and `rullst-supervision` | `ring`, used directly | Portable to wasm and edge targets, where `aws-lc-rs` is not available |
 
 `ring` is not a rustls provider in Rullst: no Rullst crate enables rustls' `ring`
 feature. JWT signing (`rullst-auth` `jwt`) uses `jsonwebtoken`'s `aws_lc_rs`

@@ -294,37 +294,6 @@ impl Message {
         Ok(self)
     }
 
-    /// Legacy infallible tracking builder. Invalid configuration leaves the body untracked.
-    #[deprecated(since = "12.0.0", note = "use Message::try_with_open_tracking")]
-    pub fn with_open_tracking(
-        mut self,
-        base_tracker_url: &str,
-        secret: &[u8],
-        campaign_id: &str,
-    ) -> Self {
-        if let Some(ref html) = self.body_html {
-            let token = crate::tracking::TrackingEngine::try_generate_open_token(
-                secret,
-                self.tracking_recipient(),
-                campaign_id,
-                chrono::Utc::now().timestamp() as u64,
-            );
-            if let Ok(token) = token {
-                let pixel_url = format!(
-                    "{}/track/open/{}",
-                    base_tracker_url.trim_end_matches('/'),
-                    token
-                );
-                if let Ok(tracked) =
-                    crate::tracking::TrackingEngine::try_inject_open_pixel(html, &pixel_url)
-                {
-                    self.body_html = Some(tracked);
-                }
-            }
-        }
-        self
-    }
-
     /// Rewrites HTML links through a validated, HMAC-authenticated click tracker.
     ///
     /// The token signs the bare recipient address, so set `to` first.
@@ -343,23 +312,6 @@ impl Message {
             )?);
         }
         Ok(self)
-    }
-
-    /// Legacy infallible tracking builder. Invalid configuration leaves links unchanged.
-    #[deprecated(since = "12.0.0", note = "use Message::try_with_click_tracking")]
-    pub fn with_click_tracking(mut self, base_tracker_url: &str, secret: &[u8]) -> Self {
-        if let Some(ref html) = self.body_html
-            && let Ok(tracked) = crate::tracking::TrackingEngine::try_rewrite_links(
-                html,
-                base_tracker_url,
-                secret,
-                self.tracking_recipient(),
-                chrono::Utc::now().timestamp() as u64,
-            )
-        {
-            self.body_html = Some(tracked);
-        }
-        self
     }
 }
 

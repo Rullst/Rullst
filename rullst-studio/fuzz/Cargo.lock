@@ -1798,13 +1798,11 @@ dependencies = [
  "serde_json",
  "sqlx",
  "sqlx-core",
- "syn 3.0.9",
  "thiserror",
  "tinyvec",
  "tokio",
  "tracing",
  "uuid",
- "walkdir",
  "zeroize",
 ]
 

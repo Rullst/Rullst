@@ -9,7 +9,7 @@ use super::{create_table, in_order};
 use crate::transcript::Scenario;
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "diff_ledger")]
+#[orm(table = "diff_ledger", full_row_save)]
 struct Entry {
     id: i32,
     name: String,

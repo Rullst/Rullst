@@ -17,7 +17,7 @@ rejected), floating-point numbers, dates (`chrono` `NaiveDate`; `DateTime<Utc>` 
 semantic widgets that Rust's type alone cannot reveal are selected explicitly:
 
 ```rust
-use rullst::db::{Nexus, Orm};
+use rullst::db::{Nexus, Orm, RowSnapshot};
 
 #[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "users")]
@@ -32,6 +32,8 @@ pub struct User {
     #[nexus(kind = "enum", options = "invited, active, suspended")]
     pub status: String,
     pub is_active: bool,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 ```
 
@@ -136,6 +138,8 @@ pub struct LessonProgress {
     pub user_id: i32,
     pub lesson_id: i32,
     pub percent: i32,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 ```
 
@@ -382,7 +386,7 @@ rows. The column must be a text, non-primary-key field. The derive makes it
 hidden and read-only so browser form data cannot choose the tenant:
 
 ```rust
-use rullst::db::{Nexus, Orm};
+use rullst::db::{Nexus, Orm, RowSnapshot};
 
 #[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "projects", tenant = "organization_id")]
@@ -391,6 +395,8 @@ pub struct Project {
     pub organization_id: String,
     pub name: String,
     pub active: bool,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 ```
 
@@ -448,7 +454,7 @@ single-row or multi-row site configuration settings (such as developer name,
 title, bio, email, personal website, avatar photo, and social links).
 
 ```rust
-use rullst::db::{Orm, Nexus};
+use rullst::db::{Orm, Nexus, RowSnapshot};
 
 #[derive(Debug, Clone, Orm, Nexus)]
 #[orm(table = "profile")]
@@ -462,6 +468,8 @@ pub struct Profile {
     pub avatar_url: String,
     pub github_url: String,
     pub linkedin_url: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 ```
 

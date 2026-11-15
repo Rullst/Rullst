@@ -1,6 +1,6 @@
 //! Static ORM model extraction shared by `make:migration:auto` and
-//! `inspect schema`. It mirrors `rullst_orm::schema_diff`; keep the two parsers
-//! in step (the CLI does not depend on `rullst-orm`).
+//! `inspect schema`. It replaces `rullst_orm::schema_diff`, which
+//! 13.0.0-alpha.6 removed (the CLI does not depend on `rullst-orm`).
 
 use std::fs;
 use std::path::Path;

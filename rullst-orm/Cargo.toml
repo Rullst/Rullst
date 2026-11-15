@@ -49,7 +49,6 @@ rand = { workspace = true }
 async-stream = "0.3.5"
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
-syn = { version = "3.0.5", features = ["full", "extra-traits"] }
 thiserror = { workspace = true }
 # Reads `RULLST_ENCRYPTION_KEY*` from `./.env` when the process lacks them.
 dotenvy = { workspace = true }
@@ -58,8 +57,6 @@ zeroize = { workspace = true }
 # Resolution guard for the SQLx -> unicode-normalization graph. Keep this
 # dependency pinned so published consumers resolve the version verified by CI.
 tinyvec = { version = "=1.13.3", default-features = false }
-
-walkdir = "2.5.0"
 
 [features]
 # No default driver: select `strict-sqlite`, `strict-postgres`, `strict-mysql`

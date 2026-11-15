@@ -66,7 +66,7 @@ fn malformed_or_missing_rullst_dependency_fails_closed() {
 }
 
 #[test]
-fn sqlx_chat_models_track_dirty_columns_and_turso_models_do_not() {
+fn sqlx_chat_models_track_dirty_columns_and_turso_models_declare_full_row_saves() {
     let model = render_chat_models(ProjectOrmBackend::Sqlx);
     assert!(model.starts_with("use rullst::db::{Orm, RowSnapshot};\n"));
     assert_eq!(
@@ -83,6 +83,13 @@ fn sqlx_chat_models_track_dirty_columns_and_turso_models_do_not() {
             .count(),
         2
     );
-    assert!(!render_chat_models(ProjectOrmBackend::Turso).contains("RowSnapshot"));
+    let turso = render_chat_models(ProjectOrmBackend::Turso);
+    assert!(!turso.contains("RowSnapshot"));
+    assert_eq!(
+        turso
+            .matches(", backend = \"turso\", full_row_save)]")
+            .count(),
+        2
+    );
     assert!(!render_chat_service(ProjectOrmBackend::Turso).contains("RowSnapshot"));
 }

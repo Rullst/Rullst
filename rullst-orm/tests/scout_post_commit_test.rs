@@ -7,7 +7,7 @@ use rullst_orm::{Error, Orm, SearchEngine, set_search_engine};
 use serde_json::Value;
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "scout_post_commit_models", searchable)]
+#[orm(table = "scout_post_commit_models", searchable, full_row_save)]
 struct ScoutPostCommitModel {
     pub id: i32,
     pub name: String,

@@ -1,6 +1,4 @@
 #![cfg(not(miri))]
-// This suite also exercises the deprecated infallible constructor for compatibility.
-#![allow(deprecated)]
 use async_trait::async_trait;
 use rullst_connect::client::{HttpClient, HttpRequest, HttpResponse};
 use rullst_connect::error::ConnectError;
@@ -74,29 +72,6 @@ async fn mock_credentials_are_rejected_at_construction_without_mock_feature() {
     assert_mock_feature_error(error);
 }
 
-#[cfg(not(feature = "mock"))]
-#[tokio::test]
-async fn deprecated_constructor_disables_mock_credentials_without_mock_feature() {
-    use rullst_connect::configuration::CredentialMode;
-
-    let provider = GithubProvider::new(
-        "",
-        secrecy::SecretString::from("".to_string()),
-        "https://app.example/callback",
-    );
-    assert_eq!(provider.credential_mode(), CredentialMode::Invalid);
-    assert_eq!(provider.redirect_url(), "about:blank");
-
-    let error = provider
-        .get_user(rullst_connect::provider::ExchangeParams::default())
-        .await
-        .expect_err("mock identities require an explicit feature outside unit tests");
-    match error {
-        ConnectError::Offline(reason) => assert!(reason.contains("`mock` feature"), "{reason}"),
-        other => panic!("unexpected error: {other:?}"),
-    }
-}
-
 #[cfg(feature = "mock")]
 #[tokio::test]
 async fn mock_feature_serves_offline_identities() {
@@ -166,11 +141,12 @@ async fn test_github_get_user_success() {
 
     // 3. Create Provider with our intercepted Mock Client
     let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
-    let provider = GithubProvider::new(
+    let provider = GithubProvider::try_new(
         "test_client_id".to_string(),
         secrecy::SecretString::from("test_client_secret".to_string()),
         "http://localhost/callback".to_string(),
     )
+    .unwrap()
     .with_http_client(intercept_client);
 
     // 4. Perform the full get_user flow!
@@ -215,11 +191,12 @@ async fn test_github_token_error() {
         .await;
 
     let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
-    let provider = GithubProvider::new(
+    let provider = GithubProvider::try_new(
         "test_client_id".to_string(),
         secrecy::SecretString::from("test_client_secret".to_string()),
         "http://localhost/callback".to_string(),
     )
+    .unwrap()
     .with_http_client(intercept_client);
 
     let params = rullst_connect::provider::ExchangeParams {
@@ -253,11 +230,12 @@ async fn test_github_request_device_code_success() {
         .await;
 
     let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
-    let provider = GithubProvider::new(
+    let provider = GithubProvider::try_new(
         "test_client_id".to_string(),
         secrecy::SecretString::from("test_client_secret".to_string()),
         "http://localhost/callback".to_string(),
     )
+    .unwrap()
     .with_http_client(intercept_client);
 
     let res = provider.request_device_code().await.unwrap();
@@ -282,11 +260,12 @@ async fn test_github_refresh_token_error() {
         .await;
 
     let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
-    let provider = GithubProvider::new(
+    let provider = GithubProvider::try_new(
         "test_client_id".to_string(),
         secrecy::SecretString::from("test_client_secret".to_string()),
         "http://localhost/callback".to_string(),
     )
+    .unwrap()
     .with_http_client(intercept_client);
 
     let err = provider
@@ -313,11 +292,12 @@ async fn test_github_get_user_missing_access_token() {
         .await;
 
     let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
-    let provider = GithubProvider::new(
+    let provider = GithubProvider::try_new(
         "test_client_id".to_string(),
         secrecy::SecretString::from("test_client_secret".to_string()),
         "http://localhost/callback".to_string(),
     )
+    .unwrap()
     .with_http_client(intercept_client);
 
     let params = rullst_connect::provider::ExchangeParams {
@@ -356,11 +336,12 @@ async fn test_github_get_user_missing_id() {
         .await;
 
     let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
-    let provider = GithubProvider::new(
+    let provider = GithubProvider::try_new(
         "test_client_id".to_string(),
         secrecy::SecretString::from("test_client_secret".to_string()),
         "http://localhost/callback".to_string(),
     )
+    .unwrap()
     .with_http_client(intercept_client);
 
     let params = rullst_connect::provider::ExchangeParams {
@@ -388,70 +369,79 @@ fn test_providers_initialization() {
     use rullst_connect::provider::Provider;
     use rullst_connect::providers::*;
 
-    let gh = GithubProvider::new(
+    let gh = GithubProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
-    );
+    )
+    .unwrap();
     assert!(gh.redirect_url().contains("github.com"));
     assert!(gh.redirect_url_with_state("xyz").contains("state=xyz"));
 
-    let google = GoogleProvider::new(
+    let google = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
-    );
+    )
+    .unwrap();
     assert!(google.redirect_url().contains("google.com"));
 
-    let discord = DiscordProvider::new(
+    let discord = DiscordProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
-    );
+    )
+    .unwrap();
     assert!(discord.redirect_url().contains("discord.com"));
 
-    let ms = MicrosoftProvider::new(
+    let ms = MicrosoftProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
-    );
+    )
+    .unwrap();
     assert!(ms.redirect_url().contains("microsoftonline.com"));
 
-    let fb = FacebookProvider::new(
+    let fb = FacebookProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
-    );
+    )
+    .unwrap();
     assert!(fb.redirect_url().contains("facebook.com"));
 
-    let li = LinkedinProvider::new(
+    let li = LinkedinProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
-    );
+    )
+    .unwrap();
     assert!(li.redirect_url().contains("linkedin.com"));
 
-    let x = XProvider::new(
+    let x = XProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
-    );
+    )
+    .unwrap();
     assert!(x.redirect_url().contains("twitter.com") || x.redirect_url().contains("x.com"));
 
-    let auth0 = Auth0Provider::new(
+    let auth0 = Auth0Provider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
         "dev-domain.auth0.com".to_string(),
-    );
+    )
+    .unwrap();
     assert!(auth0.redirect_url().contains("dev-domain.auth0.com"));
 
-    let cognito = CognitoProvider::new(
+    let cognito = CognitoProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
         "https://auth.us-east-1.amazoncognito.com".to_string(),
-    );
+    )
+    .unwrap();
     assert!(cognito.redirect_url().contains("amazoncognito.com"));
 }
 
@@ -484,11 +474,12 @@ async fn test_google_get_user_wiremock() {
         .await;
 
     let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
-    let provider = GoogleProvider::new(
+    let provider = GoogleProvider::try_new(
         "test_client_id".to_string(),
         secrecy::SecretString::from("test_client_secret".to_string()),
         "http://localhost/callback".to_string(),
     )
+    .unwrap()
     .with_http_client(intercept_client);
 
     let params = rullst_connect::provider::ExchangeParams {
@@ -531,11 +522,12 @@ async fn test_discord_get_user_wiremock() {
         .await;
 
     let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
-    let provider = DiscordProvider::new(
+    let provider = DiscordProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
     )
+    .unwrap()
     .with_http_client(intercept_client);
 
     let params = rullst_connect::provider::ExchangeParams {
@@ -573,11 +565,12 @@ async fn test_facebook_get_user_wiremock() {
         .await;
 
     let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
-    let provider = FacebookProvider::new(
+    let provider = FacebookProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
     )
+    .unwrap()
     .with_http_client(intercept_client);
 
     let params = rullst_connect::provider::ExchangeParams {
@@ -615,11 +608,12 @@ async fn test_microsoft_get_user_wiremock() {
         .await;
 
     let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
-    let provider = MicrosoftProvider::new(
+    let provider = MicrosoftProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
     )
+    .unwrap()
     .with_http_client(intercept_client);
 
     let params = rullst_connect::provider::ExchangeParams {
@@ -657,11 +651,12 @@ async fn test_linkedin_get_user_wiremock() {
         .await;
 
     let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
-    let provider = LinkedinProvider::new(
+    let provider = LinkedinProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
     )
+    .unwrap()
     .with_http_client(intercept_client);
 
     let params = rullst_connect::provider::ExchangeParams {
@@ -701,11 +696,12 @@ async fn test_x_get_user_wiremock() {
         .await;
 
     let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
-    let provider = XProvider::new(
+    let provider = XProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
     )
+    .unwrap()
     .with_http_client(intercept_client);
 
     let params = rullst_connect::provider::ExchangeParams {
@@ -745,12 +741,13 @@ async fn test_auth0_get_user_wiremock() {
         .await;
 
     let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
-    let provider = Auth0Provider::new(
+    let provider = Auth0Provider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("secret".to_string()),
         "http://localhost/callback".to_string(),
         "test-tenant.auth0.com".to_string(),
     )
+    .unwrap()
     .with_http_client(intercept_client);
 
     let params = rullst_connect::provider::ExchangeParams {

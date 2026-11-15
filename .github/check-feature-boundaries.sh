@@ -124,6 +124,7 @@ rullst-capital|webhook-sql
 rullst-mail|mail-smtp
 rullst-mail|sqlite
 rullst-mail|postgres
+rullst-auth|passkeys
 rullst-auth|jwt
 rullst-auth|sqlite
 rullst-auth|passkey-postgres
@@ -207,6 +208,7 @@ rullst|privacy-postgres
 rullst|privacy-consent
 rullst|privacy-consent-sqlite
 rullst|privacy-consent-postgres
+rullst|auth-passkeys
 rullst|auth-jwt
 rullst|auth-sqlite
 rullst|auth-passkey-postgres

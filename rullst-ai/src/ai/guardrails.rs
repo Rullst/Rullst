@@ -77,15 +77,6 @@ impl GuardrailReport {
     pub const fn passed_heuristics(&self) -> bool {
         self.threat.is_none()
     }
-
-    /// Compatibility alias for [`GuardrailReport::passed_heuristics`].
-    #[deprecated(
-        since = "12.0.0",
-        note = "use passed_heuristics; no heuristic filter can prove a prompt safe"
-    )]
-    pub const fn is_safe(&self) -> bool {
-        self.passed_heuristics()
-    }
 }
 
 /// Stateless mandatory prompt-injection and PII guardrail pipeline.
