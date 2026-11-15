@@ -270,7 +270,8 @@ def wire_routes(session, block) -> None:
     """"Put its `use` lines at the top of `src/main.rs` ... and the `let`
     statements in `router()`", then "Add each group to the starter's router in
     `router()` (`src/main.rs`) with `.merge_axum(public_auth.into_axum())` and
-    so on, before its `.layer(rullst::server::from_fn(rullst::security::csrf_middleware))` line"."""
+    so on, before the comments above its
+    `.merge_axum(rullst::health::health_router())` line"."""
     main = session.cwd / "src/main.rs"
     lines = main.read_text().splitlines()
     code = block.code.splitlines()
@@ -285,10 +286,12 @@ def wire_routes(session, block) -> None:
     body = next(i for i in range(start, len(lines)) if lines[i].strip() == "routes![")
     lines[body:body] = ["    " + line if line.strip() else "" for line in statements]
     groups = re.findall(r"^let (\w+) =", block.code, re.M)
-    csrf = next(i for i in range(start, len(lines)) if "security::csrf_middleware" in lines[i])
-    lines[csrf:csrf] = [f"    .merge_axum({group}.into_axum())" for group in groups]
+    health = next(i for i in range(start, len(lines)) if "rullst::health::health_router()" in lines[i])
+    while lines[health - 1].strip().startswith("//"):
+        health -= 1
+    lines[health:health] = [f"    .merge_axum({group}.into_axum())" for group in groups]
     main.write_text("\n".join(lines) + "\n")
-    log(f"imported {len(imports)} paths and mounted {', '.join(groups)} in router() before the CSRF layer")
+    log(f"imported {len(imports)} paths and mounted {', '.join(groups)} in router() before the health probes")
 
 
 def shop_with_accounts(session, block) -> None:
