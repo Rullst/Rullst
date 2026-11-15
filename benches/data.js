@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794702778939,
+  "lastUpdate": 1794703702433,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -33831,6 +33831,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1337,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "34df54c321012155ed85a7caca5d9fc038231c10",
+          "message": "Merge pull request #693 from Rullst/chore/v13-alpha6-rust-1-100\n\nbuild(toolchain): move the stable pin to Rust 1.100.0",
+          "timestamp": "2026-11-14T21:42:48-03:00",
+          "tree_id": "c891b7ec067c8b5910fbaf5715d7ab275a68e257",
+          "url": "https://github.com/Rullst/Rullst/commit/34df54c321012155ed85a7caca5d9fc038231c10"
+        },
+        "date": 1794703698799,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 667,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 921,
+            "range": "± 47",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 396,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2028,
+            "range": "± 29",
             "unit": "ns/iter"
           }
         ]
