@@ -188,3 +188,25 @@ rullst-messaging/src/webhooks/signature.rs:169:13: replace || with && in Webhook
 rullst-messaging/src/webhooks/signature.rs:170:13: replace || with && in WebhookSignature::from_headers
 rullst-messaging/src/webhooks/signature.rs:171:13: replace || with && in WebhookSignature::from_headers
 rullst-messaging/src/webhooks/signature.rs:190:28: replace || with && in WebhookSignature::from_headers
+rullst-messaging/src/schedules/crypto.rs:52:20: replace > with == in open
+rullst-messaging/src/schedules/crypto.rs:52:20: replace > with >= in open
+rullst-messaging/src/schedules/crypto.rs:52:40: replace + with * in open
+rullst-messaging/src/schedules/crypto.rs:53:9: replace || with && in open
+rullst-messaging/src/schedules/crypto.rs:53:28: replace + with * in open
+rullst-messaging/src/schedules/crypto.rs:53:28: replace + with - in open
+rullst-messaging/src/schedules/crypto.rs:53:32: replace + with * in open
+rullst-messaging/src/schedules/crypto.rs:53:32: replace + with - in open
+rullst-messaging/src/schedules/crypto.rs:53:36: replace + with * in open
+rullst-messaging/src/schedules/crypto.rs:53:41: replace + with - in open
+rullst-messaging/src/sqlite/storage/crypto.rs:55:31: replace + with * in open
+rullst-messaging/src/sqlite/storage/crypto.rs:55:31: replace + with - in open
+rullst-messaging/src/sqlite/storage/crypto.rs:55:35: replace + with * in open
+rullst-messaging/src/sqlite/storage/crypto.rs:55:49: replace + with - in open
+rullst-messaging/src/sqlite/storage/crypto.rs:56:23: replace < with <= in open
+rullst-messaging/src/sqlite/storage/crypto.rs:56:23: replace < with == in open
+rullst-messaging/src/wire.rs:16:59: replace + with *
+rullst-messaging/src/wire.rs:16:63: replace + with *
+rullst-messaging/src/wire.rs:16:67: replace + with *
+rullst-messaging/src/wire.rs:16:71: replace + with *
+rullst-messaging/src/wire.rs:16:75: replace + with *
+rullst-messaging/src/wire.rs:247:9: replace Reader<'a>::is_finished -> bool with true
