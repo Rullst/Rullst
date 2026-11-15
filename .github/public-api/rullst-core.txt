@@ -2503,7 +2503,6 @@ pub use rullst_core::response::Html = struct axum::response::Html
 pub use rullst_core::response::IntoResponse = trait axum_core::response::into_response::IntoResponse
 pub use rullst_core::response::Redirect = struct axum::response::redirect::Redirect
 pub use rullst_core::response::Response = type_alias axum_core::response::Response
-pub use rullst_core::route = proc_attribute rullst_macros::route
 pub macro rullst_core::routes!
 pub mod rullst_core::routing
 pub use rullst_core::routing::Router = struct rullst_core::Router
