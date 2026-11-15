@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794759749108,
+  "lastUpdate": 1794764537951,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -17362,6 +17362,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f71231910ab0a300685a11f585e35567a485db65",
+          "message": "Merge pull request #705 from Rullst/perf/v13-alpha6-sqlite-without-tls\n\nperf(cli): SQLite-only starters without a TLS stack; footprint compiled crate count",
+          "timestamp": "2026-11-15T14:17:53-03:00",
+          "tree_id": "192d5536f409ee703e520a4daab54cf5271756fa",
+          "url": "https://github.com/Rullst/Rullst/commit/f71231910ab0a300685a11f585e35567a485db65"
+        },
+        "date": 1794764537136,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
