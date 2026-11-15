@@ -1,0 +1,19 @@
+# Throughput budget of .github/check-stack-throughput.py (the "Generated stack
+# throughput" job of .github/workflows/bench.yml).
+#
+# min_ratio is the lowest accepted ratio of requests per second, generated
+# production stack over minimal (no layer), for GET /json at 125 connections
+# on a GitHub-hosted ubuntu-latest runner, the server on two CPUs and
+# bombardier 2.0.2 on two others: the median ratio measured, less 15 %,
+# rounded down.
+#
+# Measured by run 43734791237 on 2026-11-15, two passes each: 0.459 and 0.446
+# with the one-layer baseline and background access log of 13.0.0-alpha.6;
+# 0.256 and 0.257 for origin/main 075f5a276 before them (about 29 300 against
+# 114 800 requests per second), which this limit fails.
+#
+# Raise it in the pull request that makes the stack faster; never lower it to
+# pass a slowdown nobody can explain.
+
+[throughput]
+min_ratio = 0.38

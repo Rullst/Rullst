@@ -1,0 +1,21 @@
+# The application of .github/check-stack-throughput.py: the router, layers
+# and release profile of a `cargo rullst new` application (Blank starter,
+# PostgreSQL features) with Rullst/Benchmarks' endpoints, built against this
+# checkout. Not a workspace member; the check copies the root Cargo.lock.
+[package]
+name = "rullst-stack-throughput"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+rullst = { path = "../../rullst", default-features = false, features = ["orm", "strict-postgres", "studio"] }
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+
+[workspace]

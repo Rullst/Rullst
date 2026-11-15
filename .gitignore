@@ -82,3 +82,5 @@ migration_suite_*
 /SECURITY_REPORT.md
 /SECURITY_REPORT.html
 /SECURITY_REPORT.json
+# Copied from the root by .github/check-stack-throughput.py
+.github/stack-throughput/Cargo.lock
