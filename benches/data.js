@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794707247564,
+  "lastUpdate": 1794708918278,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -33939,6 +33939,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1121,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cdc7831bd8038d417e17c55dd2dd26d9e6ce664c",
+          "message": "Merge pull request #695 from Rullst/fix/v13-alpha6-defects\n\nfix: Turso same-origin base_url, every upgrade rule location, serialized nested Cargo in CLI tests",
+          "timestamp": "2026-11-14T23:07:42-03:00",
+          "tree_id": "f3bb6f9535e25aa26f72b4ab2e1e1b51d1ca71b4",
+          "url": "https://github.com/Rullst/Rullst/commit/cdc7831bd8038d417e17c55dd2dd26d9e6ce664c"
+        },
+        "date": 1794708914630,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 707,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 913,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 411,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2076,
+            "range": "± 33",
             "unit": "ns/iter"
           }
         ]
