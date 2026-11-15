@@ -21,6 +21,12 @@
 # store moved to rullst-core): 325 packages in this starter's Cargo.lock,
 # measured as the job does, from the repository Cargo.lock, on 2026-11-14.
 #
+# dependency_count was lowered from 342 (measured 325) and
+# compiled_dependency_count added when SQLite-only starters stopped
+# building a TLS stack (13.0.0-alpha.6): 269 packages in this starter's
+# Cargo.lock, 223 of them compiled, measured as the job does, from
+# the repository Cargo.lock, on 2026-11-15.
+#
 # To raise a limit on purpose, copy the "Suggested limit" of the job summary
 # into this file in the pull request that causes the increase, update the
 # measured value beside it and say why in the pull request (MAINTAINING.md,
@@ -29,7 +35,8 @@
 [footprint.budgets]
 binary_size_bytes = 12_752_912   # measured 11_089_488
 idle_rss_bytes = 11_865_293      # measured 9_887_744
-dependency_count = 342           # measured 325
+dependency_count = 283           # measured 269
+compiled_dependency_count = 235  # measured 223
 bytes_per_request = 1_112        # measured 88
 page_first_visit_bytes = 1_112   # measured 88
 page_repeat_visit_bytes = 1_112  # measured 88

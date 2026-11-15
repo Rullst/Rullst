@@ -2161,7 +2161,9 @@ different report.
 Reports figures it measured for the app, each with its method: the release
 binary size, a local container image's size (`--image`, through `docker` or
 `podman image inspect`), the app's idle resident memory, the third-party
-dependency count from `Cargo.lock`; with `--bench`, the app process's CPU time
+dependency count from `Cargo.lock` and, since 13.0.0-alpha.6, how many of those
+packages Cargo compiles for the project (`cargo tree --edges normal,build`, the
+host platform and the default features); with `--bench`, the app process's CPU time
 and the response bytes it served during a bounded closed-loop loopback load,
 and both per request; with `--page-weight`, the bytes and requests of the
 `--path` page and its same-origin resources on a first and a repeat visit

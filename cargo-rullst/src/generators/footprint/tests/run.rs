@@ -215,6 +215,11 @@ fn an_unreachable_app_still_reports_the_static_figures_and_the_failure() {
     let report: serde_json::Value = serde_json::from_str(&shown).unwrap();
     assert_eq!(report["schema"], "rullst.footprint.v1");
     assert_eq!(report["measured"]["dependency_count"]["value"], 1);
+    // The project directory holds only a Cargo.lock: cargo is never asked.
+    assert_eq!(
+        report["measured"]["compiled_dependency_count"]["reason"],
+        "no Cargo.toml in this directory; run footprint from the project directory"
+    );
     assert_eq!(report["failure"]["stage"], "reach");
     assert_eq!(report["failure"]["title"], "App not reachable");
     assert_eq!(report["target"]["url"], format!("{url}/"));
