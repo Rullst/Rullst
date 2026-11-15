@@ -10,3 +10,6 @@
   `style-src 'self'`. That policy is stricter, since no inline script or style
   can match it. `Extension<CspNonce>` is unchanged; a page served with another
   `Content-Type` loses its nonce-carrying inline scripts and styles.
+  Nexus now answers an edit form that cannot be loaded with an HTML fragment
+  (`text/html`) instead of plain text, like the form itself, so it keeps the
+  nonce policy.
