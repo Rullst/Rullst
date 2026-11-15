@@ -224,7 +224,8 @@ copy of the configuration file (backup, dotfile sync, screen share).
 **Trust boundaries:** browser ↔ Studio's loopback listener; Studio ↔ the
 configuration file and its separate key file; Studio ↔ each monitored origin
 over the network; Studio ↔ its local history database (phase 3); Studio ↔ the
-developer's webhook receiver (phase 3).
+developer's webhook receiver (phase 3); Studio ↔ an optional HTTP(S) proxy
+and the browser's notification permission (13.0.0-alpha.6).
 
 Test files named below are under `rullst-studio/src/`.
 
