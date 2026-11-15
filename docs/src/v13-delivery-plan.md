@@ -5,8 +5,9 @@ published from tag `v13.0.0-alpha.5` at `5feda4ac`
 ([release run 43631881119](https://github.com/Rullst/Rullst/actions/runs/43631881119))
 after the 23 required workflows passed on that exact commit. A first tag at
 `034df65e` stopped in release verification before publishing anything and
-was replaced with the maintainer's approval. It is the
-13.0 feature and public API freeze: it adds what the three applications
+was replaced with the maintainer's approval. It was planned as the
+13.0 feature and public API freeze; the same day the maintainer moved the
+freeze to 13.0.0-alpha.6. It adds what the three applications
 upgraded to alpha.4 asked for (the `footprint` report with page weight and
 budgets, a frontend toolkit, a testing kit for generated applications,
 provider conformance kits, Capital's one-off checkout and InfinitePay
@@ -20,8 +21,12 @@ On the evidence of its acceptance runs, the maintainer promoted `rullst-iot`,
 `rullst-privacy` and `rullst-supervision` to the Extension tier, made the
 InfinitePay adapter supported and moved `cargo rullst footprint` into the
 CLI's Core tier ([maturity tiers](maturity.md#promotions-in-1300-alpha5)).
-Next come 13.0.0-rc.1 (fixes and documentation only) and then 13.0.0. Work
-planned next is under
+Next comes 13.0.0-alpha.6, the freeze, which carries every pending fix and
+improvement: the Rust 1.100 toolchain and current dependency majors, the
+removal of every API still deprecated (in 12.x or during the 13.0
+prereleases), smaller dependency graphs and several former 13.x candidates.
+Then come 13.0.0-rc.1 (fixes and documentation only) and 13.0.0. Work planned
+next is under
 [Planned after 13.0.0-alpha.5](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha5);
 the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14)
 lists every change and the known limitations.

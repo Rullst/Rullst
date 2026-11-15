@@ -8,7 +8,7 @@
 
 Status: **planned (recorded 2026-10-01)**. Nothing on this page is a shipped
 capability unless it links to existing documentation. The planned
-work below is not part of 13.0, whose feature freeze is 13.0.0-alpha.5.
+work below is not part of 13.0, whose feature freeze is 13.0.0-alpha.6.
 
 ## Goal and honest boundary
 

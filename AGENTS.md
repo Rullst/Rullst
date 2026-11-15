@@ -91,7 +91,7 @@ re-exports. Update both places when a tier changes.
 - Smaller files improve compile times, IDE performance, and AI context tracking precision.
 
 ### 3.8. Cross-Platform Build Hygiene & Windows File Locks
-- On Windows systems, procedural macro dynamic libraries (`.dll` files in `target/debug/deps/`) remain locked by running processes.
+- On Windows systems, procedural macro dynamic libraries (`.dll` files under `target/debug/build/`, or `target/debug/deps/` before Cargo 1.100) remain locked by running processes.
 - Always ensure active background compiler or test processes are terminated before executing destructive workspace operations like `cargo clean`.
 
 #### Local disk-space safety
@@ -172,3 +172,7 @@ release workflow validates it against `cargo metadata` before packaging.
 
 ### 4.3. CLI Scaffolding First
 - Prefer CLI scaffolding generators (`cargo rullst make:*`) when adding new entities, controllers, or migrations to ensure architectural consistency.
+
+### 4.4. Changelog Fragments
+- Never add lines under `## [Unreleased]` in `CHANGELOG.md`. Describe each user-visible change in its own file, `changelog.d/<slug>.md` (lowercase letters, digits and hyphens): the first line is `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed` or `### Security`, followed by the bullet(s) written exactly as `CHANGELOG.md` entries. See [`changelog.d/README.md`](changelog.d/README.md).
+- Validate with `python3 .github/assemble-changelog.py --check`. Only release preparation (`--release <version> --date <YYYY-MM-DD>`, on a `chore/v<major>-release-<version>` branch) merges fragments into `CHANGELOG.md`.

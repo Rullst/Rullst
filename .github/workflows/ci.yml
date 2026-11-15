@@ -225,7 +225,13 @@ jobs:
       - name: Set up content-addressed compiler cache
         uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
         with:
-          version: v0.17.0
+          # Cargo 1.100 passes one `-L dependency=` path per dependency, so a
+          # large crate's rustc command exceeds Windows' 32,767-character limit
+          # and Cargo hands it over in an argument file. sccache 0.17 to 0.19
+          # expand that file and start rustc with the whole command line
+          # (os error 206, mozilla/sccache#2787, fixed upstream after 0.19);
+          # 0.16 passes the file to rustc unchanged.
+          version: ${{ matrix.os == 'windows-latest' && 'v0.16.0' || 'v0.17.0' }}
 
       - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1

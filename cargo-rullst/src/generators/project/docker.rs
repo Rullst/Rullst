@@ -131,7 +131,7 @@ pub(crate) fn write_docker_files(
 # toolchain file, with `fn main() {{}}` standing in for each target and build
 # script, so the dependency layer of the builder is rebuilt only when those
 # files, or the set of targets, change.
-FROM rust:1.99.1-slim-bookworm AS planner
+FROM rust:1.100.0-slim-bookworm AS planner
 WORKDIR /app
 COPY . .
 RUN set -eu; out=/skeleton; \
@@ -151,7 +151,7 @@ RUN set -eu; out=/skeleton; \
         done; \
     done
 
-FROM rust:1.99.1-slim-bookworm AS builder
+FROM rust:1.100.0-slim-bookworm AS builder
 WORKDIR /app
 COPY --from=planner /skeleton/ ./
 # Generate and commit Cargo.lock before building this application image.
@@ -209,11 +209,11 @@ mod tests {
             .expect("Docker files");
         let dockerfile =
             fs::read_to_string(root.path().join("Dockerfile")).expect("generated Dockerfile");
-        assert!(dockerfile.contains("FROM rust:1.99.1-slim-bookworm AS builder"));
+        assert!(dockerfile.contains("FROM rust:1.100.0-slim-bookworm AS builder"));
         // Dependencies build from the planner's skeleton before the sources
         // are copied, and every build keeps `--locked`.
         let builder = dockerfile
-            .split_once("FROM rust:1.99.1-slim-bookworm AS builder\n")
+            .split_once("FROM rust:1.100.0-slim-bookworm AS builder\n")
             .expect("builder stage")
             .1;
         assert!(
@@ -226,7 +226,7 @@ mod tests {
             "RUN find . -path ./target -prune -o -type f -name '*.rs' -exec touch {} + \\\n    && cargo build --release --locked\n"
         ));
         assert!(dockerfile.starts_with("# Dependency cache:"));
-        assert!(dockerfile.contains("FROM rust:1.99.1-slim-bookworm AS planner\nWORKDIR /app\nCOPY . .\nRUN set -eu; out=/skeleton;"));
+        assert!(dockerfile.contains("FROM rust:1.100.0-slim-bookworm AS planner\nWORKDIR /app\nCOPY . .\nRUN set -eu; out=/skeleton;"));
         assert_eq!(dockerfile.matches("cargo build").count(), 2);
         assert_eq!(
             dockerfile.matches("cargo build --release --locked").count(),
@@ -242,7 +242,7 @@ mod tests {
         // A package manager runs only in the stage that pre-compresses
         // static/, whose directory the runtime stage copies.
         let static_stage = dockerfile
-            .split_once("FROM rust:1.99.1-slim-bookworm AS static-assets\n")
+            .split_once("FROM rust:1.100.0-slim-bookworm AS static-assets\n")
             .and_then(|(_, rest)| rest.split_once("\nFROM "))
             .expect("static stage")
             .0;

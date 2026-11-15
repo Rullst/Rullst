@@ -58,8 +58,8 @@ fn run_isolated_case(case: &str, setup: impl FnOnce(&Path)) {
 }
 
 /// Runs `case` in a child process. With `application`, the child is a copy
-/// of this test binary outside Cargo's `deps` directory, which `rullst-auth`
-/// treats as an application rather than a test harness.
+/// of this test binary outside the directory where Cargo writes it, which
+/// `rullst-auth` treats as an application rather than a test harness.
 fn run_child(case: &str, directory: &IsolatedDirectory, application: bool) {
     let mut executable = std::env::current_exe().expect("test executable should exist");
     if application {
