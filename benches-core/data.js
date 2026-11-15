@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794756431096,
+  "lastUpdate": 1794759353040,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -35830,6 +35830,78 @@ window.BENCHMARK_DATA = {
           {
             "name": "generate_csrf_token_32_chars",
             "value": 102,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "075f5a2760e1ef4179934e0781223ba8d53ccc6f",
+          "message": "Merge pull request #708 from Rullst/feat/v13-alpha6-revocable-sessions\n\nfeat(auth): revocable server-side login sessions and a devices page",
+          "timestamp": "2026-11-15T13:01:23-03:00",
+          "tree_id": "cbae8a4ac4bf32be99bbf0674f248f41373bdd73",
+          "url": "https://github.com/Rullst/Rullst/commit/075f5a2760e1ef4179934e0781223ba8d53ccc6f"
+        },
+        "date": 1794759352127,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 153,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 47,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 177,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 148,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 136,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 159,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 115,
             "range": "± 1",
             "unit": "ns/iter"
           }
