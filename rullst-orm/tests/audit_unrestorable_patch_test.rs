@@ -5,7 +5,7 @@ use rullst_orm::audit::{AuditContext, create_audit_table, with_audit_context};
 use rullst_orm::schema::{Blueprint, Schema};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "audit_large_documents", auditable)]
+#[orm(table = "audit_large_documents", auditable, full_row_save)]
 struct Document {
     pub id: i32,
     pub body: String,

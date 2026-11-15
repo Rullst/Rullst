@@ -515,7 +515,7 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
-The v13 CLI's `rullst-upgrade-rules-v4` catalog (159 rules) parses Rust sources
+The v13 CLI's `rullst-upgrade-rules-v4` catalog (161 rules) parses Rust sources
 (with `syn`; comments, doc comments and strings never match an API rule), Cargo
 manifests and generated project files, and reports each finding as
 `MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed
@@ -965,8 +965,9 @@ receive `#[derive(Debug, Clone, Orm)]`, which also implements `FromRow` (since
 13.0.0-alpha.4), and import only what it uses (`use rullst::db::{Orm,
 RowSnapshot};`), so the new file compiles without warnings;
 Turso-primary projects receive
-`#[derive(rullst_orm::Orm)] #[orm(backend = "turso")]` and an `i64` primary
-key. Backend detection reads the generated manifest and does not treat an
+`#[derive(rullst_orm::Orm)] #[orm(backend = "turso", full_row_save)]` (Turso
+models write every column on `save()`, which every model must declare since
+13.0.0-alpha.6) and an `i64` primary key. Backend detection reads the generated manifest and does not treat an
 additive `--turso` integration as the primary ORM. Like `make:resource`, it
 rejects a name whose module or type would not be a non-keyword Rust identifier
 (for example `Match`, which would declare `pub mod match;`) before writing.
@@ -1877,7 +1878,11 @@ written. Existing model files are never replaced: if any `<table>.rs` target
 already exists, the command fails before writing anything. An existing
 `mod.rs` keeps its content and receives only missing `pub mod` declarations.
 The bounded type mapping falls back to `String`; review keys, relations, custom
-types, schema selection and generated files before compiling them.
+types, schema selection and generated files before compiling them. Each model
+declares a `#[serde(skip)] #[sqlx(skip)] pub snapshot: RowSnapshot` field, so
+`save()` writes only the columns a loaded record changed; for a table with a
+`snapshot` column the field is `row_snapshot`, and a table with both columns
+gets `#[orm(full_row_save)]` with a comment instead.
 * **Required Flags:**
   * `--driver`: `postgres`, `mysql`, or `sqlite`.
   * `--url`: The complete connection string.

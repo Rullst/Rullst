@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::task::JoinHandle;
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "stress_users")]
+#[orm(table = "stress_users", full_row_save)]
 struct StressUser {
     pub id: i32,
     pub name: String,

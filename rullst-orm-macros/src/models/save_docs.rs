@@ -1,12 +1,13 @@
 //! Rustdoc of the generated `save()`.
 
-/// Rustdoc of the generated `save()` of a model without a `RowSnapshot`
-/// field: a full-row write, and what to use for concurrent edits instead.
+/// Rustdoc of the generated `save()` of a model with `#[orm(full_row_save)]`:
+/// a full-row write, and what to use for concurrent edits instead.
 pub(super) const SAVE_DOC: &str = "Inserts this model when `id` is `0`, otherwise updates its row.
 
-An update writes every persisted column of this handle, so the last writer wins: \
-a change made to the row since this handle was loaded is overwritten, even in a \
-column this code never touched. Declare a `#[sqlx(skip)]` field of type \
+This model declares `#[orm(full_row_save)]`: an update writes every persisted \
+column of this handle, so the last writer wins: a change made to the row since \
+this handle was loaded is overwritten, even in a column this code never touched. \
+Replace the attribute with a `#[sqlx(skip)]` field of type \
 `rullst_orm::RowSnapshot` to make `save()` write only the columns this handle \
 changed. To change some fields of a row that other requests \
 may edit at the same time, use `update_partial()`, which merges the selected fields \

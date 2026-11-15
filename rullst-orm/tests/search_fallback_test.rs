@@ -6,7 +6,7 @@
 use rullst_orm::{Error, Orm, SecretString};
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "fallback_accounts", searchable)]
+#[orm(table = "fallback_accounts", searchable, full_row_save)]
 struct FallbackAccount {
     id: i32,
     name: String,

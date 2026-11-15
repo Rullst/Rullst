@@ -3,21 +3,21 @@
 use rullst_orm::Orm;
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "morph_posts")]
+#[orm(table = "morph_posts", full_row_save)]
 struct MorphPost {
     id: i32,
     title: String,
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "morph_videos")]
+#[orm(table = "morph_videos", full_row_save)]
 struct MorphVideo {
     id: i32,
     title: String,
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "morph_comments")]
+#[orm(table = "morph_comments", full_row_save)]
 struct MorphComment {
     id: i32,
     body: String,

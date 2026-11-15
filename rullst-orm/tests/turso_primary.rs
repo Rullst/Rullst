@@ -6,7 +6,7 @@ use rullst_orm::polyglot::{
 };
 
 #[derive(Debug, Clone, PartialEq, rullst_orm::Orm)]
-#[orm(table = "users", backend = "turso")]
+#[orm(table = "users", backend = "turso", full_row_save)]
 struct User {
     id: i64,
     name: String,
@@ -15,7 +15,7 @@ struct User {
 }
 
 #[derive(Debug, Clone, PartialEq, rullst_orm::Orm)]
-#[orm(table = "members", backend = "turso")]
+#[orm(table = "members", backend = "turso", full_row_save)]
 struct Member {
     id: i64,
     #[orm(encrypted)]

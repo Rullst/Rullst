@@ -174,8 +174,9 @@ impl PasskeyAuth {
         public_key.push(0x04);
         public_key.extend_from_slice(&x);
         public_key.extend_from_slice(&y);
-        p256::PublicKey::from_sec1_bytes(&public_key)
-            .map_err(|_| passkey_error("ES256 public key is not a valid P-256 point"))?;
+        if !es256::is_valid_public_key(&public_key) {
+            return Err(passkey_error("ES256 public key is not a valid P-256 point"));
+        }
 
         Ok(Passkey {
             credential_id: credential_id.to_vec(),
@@ -211,9 +212,11 @@ impl PasskeyAuth {
         let mut signed_message = Vec::with_capacity(auth_data.len() + client_hash.len());
         signed_message.extend_from_slice(&auth_data);
         signed_message.extend_from_slice(&client_hash);
-        signature::UnparsedPublicKey::new(&signature::ECDSA_P256_SHA256_ASN1, &passkey.public_key)
-            .verify(&signed_message, &signature_bytes)
-            .map_err(|_| passkey_error("ES256 assertion signature verification failed"))?;
+        if !es256::verify(&passkey.public_key, &signed_message, &signature_bytes) {
+            return Err(passkey_error(
+                "ES256 assertion signature verification failed",
+            ));
+        }
 
         if (passkey.sign_count != 0 || new_sign_count != 0) && new_sign_count <= passkey.sign_count
         {

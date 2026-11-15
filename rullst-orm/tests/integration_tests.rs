@@ -24,7 +24,7 @@ struct Payload {
 
 // ── model: users ──────────────────────────────────────────────────────────
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "it_users")]
+#[orm(table = "it_users", full_row_save)]
 struct User {
     pub id: i32,
     pub name: String,
@@ -33,7 +33,7 @@ struct User {
 
 // ── model: posts (belongs_to User) ────────────────────────────────────────
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "it_posts")]
+#[orm(table = "it_posts", full_row_save)]
 struct Post {
     pub id: i32,
     pub user_id: i32,
@@ -42,7 +42,7 @@ struct Post {
 
 // ── model: json carrier ───────────────────────────────────────────────────
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "it_json_records")]
+#[orm(table = "it_json_records", full_row_save)]
 struct JsonRecord {
     pub id: i32,
     pub data: Json<Payload>,
@@ -155,7 +155,7 @@ async fn scenario_crud() {
 }
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "it_parent")]
+#[orm(table = "it_parent", full_row_save)]
 struct Parent {
     pub id: i32,
     #[sqlx(skip)]
@@ -165,7 +165,7 @@ struct Parent {
 }
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "it_child")]
+#[orm(table = "it_child", full_row_save)]
 struct Child {
     pub id: i32,
     pub parent_id: i32,
@@ -268,7 +268,7 @@ async fn scenario_cascade_soft_delete() {
 
 // ── Scenario 2: soft deletes ──────────────────────────────────────────────
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "it_soft_users")]
+#[orm(table = "it_soft_users", full_row_save)]
 struct SoftUser {
     pub id: i32,
     pub name: String,
@@ -345,6 +345,7 @@ async fn scenario_soft_delete() {
 // configuration produces the correct SQL fragments for SELECT filters,
 // DELETE statements, and restore on every supported driver.
 #[derive(Debug, Clone, rullst_orm::Orm)]
+#[orm(full_row_save)]
 #[orm(
     table = "it_int_soft",
     soft_delete(field = "is_deleted", value = "0", delval = "1")
@@ -356,6 +357,7 @@ struct IntSoftUser {
 }
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
+#[orm(full_row_save)]
 #[orm(
     table = "it_ts_soft",
     soft_delete(field = "deleted_at", value = "null", delval = "CURRENT_TIMESTAMP")
@@ -485,7 +487,7 @@ async fn scenario_configurable_soft_delete() {
 // alias) are excluded from generated INSERT / UPDATE statements and the
 // `*Column` enum, but remain on the struct itself.
 #[derive(Debug, Clone, Default, rullst_orm::Orm)]
-#[orm(table = "it_skipped")]
+#[orm(table = "it_skipped", full_row_save)]
 struct SkippedFieldUser {
     pub id: i32,
     pub name: String,
@@ -627,7 +629,7 @@ async fn scenario_skipped_field() {
 
 // ── Scenario 3: transactions ──────────────────────────────────────────────
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "it_tx_accounts")]
+#[orm(table = "it_tx_accounts", full_row_save)]
 struct Account {
     pub id: i32,
     pub balance: i32,
@@ -730,7 +732,7 @@ async fn scenario_json_column() {
 
 // ── Scenario 5: bulk operations ───────────────────────────────────────────
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "it_bulk_items")]
+#[orm(table = "it_bulk_items", full_row_save)]
 struct BulkItem {
     pub id: i32,
     pub label: String,

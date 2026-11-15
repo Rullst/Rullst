@@ -21,8 +21,8 @@ features = [
     "drivers-all", "orm", "orm-turso", "orm-surrealdb", "orm-scout",
     "orm-pgvector", "orm-redis", "queue-sqlite", "queue-redis",
     "cache-redis", "redis", "scheduler-tz", "storage-s3", "storage-multipart",
-    "telemetry", "nexus", "nexus-ai", "nexus-tz", "studio", "auth", "auth-jwt",
-    "auth-sqlite", "auth-passkey-postgres", "auth-sessions-sqlite", "auth-sessions-postgres",
+    "telemetry", "nexus", "nexus-ai", "nexus-tz", "studio", "auth", "auth-passkeys",
+    "auth-jwt", "auth-sqlite", "auth-passkey-postgres", "auth-sessions-sqlite", "auth-sessions-postgres",
     "auth-email-login-sqlite", "auth-email-login-postgres", "auth-api-tokens-sqlite",
     "auth-api-tokens-postgres", "account-mail-sqlite", "account-mail-postgres",
     "mail", "mail-sqlite", "mail-postgres", "mailer", "mail-smtp", "mail-aws-ses",
@@ -60,9 +60,12 @@ nexus-ai = ["nexus", "rullst-nexus/ai"]
 nexus-tz = ["nexus", "rullst-nexus/tz"]
 studio = ["dep:rullst-studio", "rullst-studio/local", "rullst-core/studio"]
 auth = ["dep:rullst-auth"]
+# v13 (13.0.0-alpha.6): WebAuthn passkeys (`rullst::auth::passkey`), which
+# `auth` alone no longer enables; it adds aws-lc-rs to `rullst-auth`.
+auth-passkeys = ["auth", "rullst-auth/passkeys"]
 auth-jwt = ["auth", "rullst-auth/jwt"]
-auth-sqlite = ["auth-jwt", "rullst-auth/sqlite"]
-auth-passkey-postgres = ["auth", "rullst-auth/passkey-postgres"]
+auth-sqlite = ["auth-jwt", "auth-passkeys", "rullst-auth/sqlite"]
+auth-passkey-postgres = ["auth-passkeys", "rullst-auth/passkey-postgres"]
 auth-sessions-sqlite = ["auth", "rullst-auth/recovery-sqlite"]
 auth-sessions-postgres = ["auth", "rullst-auth/recovery-postgres"]
 auth-email-login-sqlite = ["auth", "rullst-auth/email-login-sqlite"]

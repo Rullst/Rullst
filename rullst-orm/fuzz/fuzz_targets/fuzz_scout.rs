@@ -4,7 +4,7 @@ use rullst_orm::Orm;
 use std::sync::Once;
 
 #[derive(Debug, Clone, Orm)]
-#[orm(searchable)]
+#[orm(searchable, full_row_save)]
 pub struct ScoutUser {
     pub id: i32,
     pub name: String,

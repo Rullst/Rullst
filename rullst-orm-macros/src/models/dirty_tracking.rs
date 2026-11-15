@@ -1,7 +1,7 @@
 //! Dirty tracking for models that declare a `#[sqlx(skip)]` field of type
 //! `rullst_orm::RowSnapshot`: reads remember a fingerprint of every column
 //! `save()` updates, and `save()` writes only the columns whose value changed.
-//! Models without the field keep the full-row update.
+//! Models with `#[orm(full_row_save)]` instead keep the full-row update.
 
 use crate::parser::ParsedModel;
 use proc_macro2::TokenStream;

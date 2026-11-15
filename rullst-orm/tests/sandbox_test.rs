@@ -6,7 +6,7 @@ use std::sync::Once;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(rullst_orm::Orm, Debug, Clone, PartialEq)]
-#[orm(table = "sandbox_users")]
+#[orm(table = "sandbox_users", full_row_save)]
 pub struct SandboxUser {
     pub id: i32,
     pub name: String,
@@ -102,7 +102,7 @@ fn sandboxed_errors_reach_the_test_harness() {
 }
 
 #[derive(rullst_orm::Orm, Debug, Clone, PartialEq)]
-#[orm(table = "sandbox_events")]
+#[orm(table = "sandbox_events", full_row_save)]
 pub struct SandboxEvent {
     pub id: i32,
     pub name: String,

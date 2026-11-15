@@ -7,7 +7,11 @@ use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::{Orm, with_tenant};
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_scoped_posts", tenant_column = "organization_id")]
+#[orm(
+    table = "contract_scoped_posts",
+    tenant_column = "organization_id",
+    full_row_save
+)]
 struct ContractScopedPost {
     id: i32,
     organization_id: String,
@@ -24,7 +28,11 @@ struct ContractScopedPost {
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_scoped_tags", tenant_column = "organization_id")]
+#[orm(
+    table = "contract_scoped_tags",
+    tenant_column = "organization_id",
+    full_row_save
+)]
 struct ContractScopedTag {
     id: i32,
     organization_id: String,

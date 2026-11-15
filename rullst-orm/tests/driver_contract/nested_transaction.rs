@@ -10,7 +10,7 @@ use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::{Error, Orm, after_commit};
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_nested_rows")]
+#[orm(table = "contract_nested_rows", full_row_save)]
 struct ContractNestedRow {
     id: i32,
     name: String,

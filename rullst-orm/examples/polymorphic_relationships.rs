@@ -1,5 +1,5 @@
 use rullst_orm::schema::Schema;
-use rullst_orm::{Orm, RullstModel};
+use rullst_orm::{Orm, RowSnapshot, RullstModel};
 
 // The Comment model represents a polymorphic child.
 // It can belong to either a Post or a Video.
@@ -10,6 +10,8 @@ pub struct Comment {
     pub body: String,
     pub commentable_id: i32,
     pub commentable_type: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 // A Post can have many Comments
@@ -23,6 +25,8 @@ pub struct Post {
     #[orm(morph_many = "Comment", name = "commentable")]
     #[sqlx(skip)]
     pub comments: Option<Vec<Comment>>,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 // A Video can ALSO have many Comments!
@@ -35,6 +39,8 @@ pub struct Video {
     #[orm(morph_many = "Comment", name = "commentable")]
     #[sqlx(skip)]
     pub comments: Option<Vec<Comment>>,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -68,6 +74,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         id: 0,
         title: "Rust ORM Guide".to_string(),
         comments: None,
+        snapshot: RowSnapshot::default(),
     };
     post.save().await?;
 
@@ -75,6 +82,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         id: 0,
         url: "https://youtube.com/rust".to_string(),
         comments: None,
+        snapshot: RowSnapshot::default(),
     };
     video.save().await?;
 
@@ -84,6 +92,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         body: "Great post!".to_string(),
         commentable_id: post.id,
         commentable_type: Post::table_name().to_string(),
+        snapshot: RowSnapshot::default(),
     };
     c1.save().await?;
 
@@ -93,6 +102,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         body: "Awesome video!".to_string(),
         commentable_id: video.id,
         commentable_type: Video::table_name().to_string(),
+        snapshot: RowSnapshot::default(),
     };
     c2.save().await?;
 
