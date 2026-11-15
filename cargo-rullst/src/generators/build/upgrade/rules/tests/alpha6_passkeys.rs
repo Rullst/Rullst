@@ -12,9 +12,9 @@ const SOURCE: &str = r#"
 use rullst::auth::passkey::{PasskeyAuth, PasskeyConfig};
 use rullst_auth::passkey::shared::SharedPasskeyAuth;
 use rullst::auth::hash_password;
-fn auth() -> rullst::auth::passkey::PasskeyAuth {
+fn auth() -> Result<rullst::auth::passkey::PasskeyAuth, rullst::auth::AuthError> {
     let config = rullst_auth::auth::passkey::PasskeyConfig::new("App", "a.example", "https://a.example");
-    PasskeyAuth::new(&config).unwrap()
+    PasskeyAuth::new(&config)
 }
 fn handle(_: &rullst::auth::auth::passkey::Passkey) {}
 "#;
