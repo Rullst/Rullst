@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794744928441,
+  "lastUpdate": 1794748387700,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -34371,6 +34371,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 928,
             "range": "± 55",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c83e401880a998039d0cb9f64e020fca7353f9e2",
+          "message": "Merge pull request #697 from Rullst/refactor/v13-alpha6-passkeys-without-p256\n\nfeat(auth)!: put passkeys behind a feature and check them with aws-lc-rs",
+          "timestamp": "2026-11-15T10:01:22-03:00",
+          "tree_id": "f48e56c96b31ab74bb332a0ed86af8a64e776a89",
+          "url": "https://github.com/Rullst/Rullst/commit/c83e401880a998039d0cb9f64e020fca7353f9e2"
+        },
+        "date": 1794748383141,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 724,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 948,
+            "range": "± 57",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 440,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1877,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
