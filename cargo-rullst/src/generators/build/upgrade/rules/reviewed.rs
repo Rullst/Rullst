@@ -1,10 +1,10 @@
 //! The `rullst-upgrade: reviewed <CODE>` marker. A comment naming a REVIEW
 //! rule after the code on a finding's line, or alone on the line directly
 //! above it, records that the location was reviewed: the plan leaves that
-//! finding out and reports the next unmarked location of the rule in the
-//! file, if any. Any comment syntax works (`//`, `#`, `<!-- -->`, `--`),
-//! several codes may follow one marker (`V13-A, V13-B`), and words after the
-//! codes are free text. MUST-CHANGE findings ignore the marker: their code
+//! location out and still reports the rule's other locations in the file.
+//! Any comment syntax works (`//`, `#`, `<!-- -->`, `--`), several codes may
+//! follow one marker (`V13-A, V13-B`), and words after the codes are free
+//! text. MUST-CHANGE findings ignore the marker: their code
 //! does not build until it changes.
 
 use super::{FindingKind, Rule, SourceFinding};
@@ -56,26 +56,26 @@ pub(super) fn covers(lines: &[&str], line: usize, rule: &Rule) -> bool {
     own.is_some_and(marks) || above.filter(|text| alone(text)).is_some_and(marks)
 }
 
-/// The first line of `lines` satisfying `matches` that no marker covers for
-/// `rule`, and the rule once for every covered matching line.
-pub(super) fn first_unreviewed(
+/// Every 1-based line of `lines` satisfying `matches` that no marker covers
+/// for `rule`, ascending, and the rule once for every covered matching line.
+pub(super) fn unreviewed_lines(
     lines: &[&str],
     rule: &'static Rule,
     matches: impl Fn(&str) -> bool,
     reviewed: &mut Vec<&'static Rule>,
-) -> Option<usize> {
-    let mut first = None;
+) -> Vec<usize> {
+    let mut found = Vec::new();
     for (index, line) in lines.iter().enumerate() {
         if !matches(line.trim()) {
             continue;
         }
         if covers(lines, index + 1, rule) {
             reviewed.push(rule);
-        } else if first.is_none() {
-            first = Some(index + 1);
+        } else {
+            found.push(index + 1);
         }
     }
-    first
+    found
 }
 
 /// A regular, bounded UTF-8 file; `None` for anything else.

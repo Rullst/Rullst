@@ -1,9 +1,13 @@
 # Security event schema v1
 
-`rullst-security::LiveSecurityEvent` is the bounded event contract rendered by
-Studio/Nexus and accepted by the process-local security store. Its current
-schema version is exported as `SECURITY_EVENT_SCHEMA_VERSION = 1`.
-The package also embeds and exports the JSON Schema 2020-12 document as
+`LiveSecurityEvent` is the bounded event contract rendered by Studio/Nexus and
+accepted by the process-local security store (`SecurityStore`). Since
+13.0.0-alpha.6 both are defined in `rullst_core::security`, so Studio and Nexus
+read them without depending on `rullst-security`, which re-exports them at
+their earlier paths (`rullst_security::LiveSecurityEvent`,
+`rullst_security::SecurityStore`). Its current schema version is exported as
+`SECURITY_EVENT_SCHEMA_VERSION = 1`.
+`rullst-security` also embeds and exports the JSON Schema 2020-12 document as
 `LIVE_SECURITY_EVENT_V1_JSON_SCHEMA`; its packaged source is
 [`security-event-v1.schema.json`](../../rullst-security/schema/security-event-v1.schema.json).
 

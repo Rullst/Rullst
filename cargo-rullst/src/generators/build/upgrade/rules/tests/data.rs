@@ -127,7 +127,7 @@ pub struct Post {
 "#;
     assert_eq!(
         scan_with(source, "post.rs", &WorkspaceFacts::default()),
-        [("V13-TEXT-TIMESTAMPS", 6)]
+        [("V13-TEXT-TIMESTAMPS", 6), ("V13-TEXT-TIMESTAMPS", 7)]
     );
     assert_only(
         r#"
@@ -174,10 +174,10 @@ fn boot() {
     let dps = invoice.to_dps("01.07.01", "3550308", 0.05);
 }
 "#;
-    // A review rule reports its first location in each file.
+    // A review rule reports every location in each file.
     assert_eq!(
         scan_with(source, "billing.rs", &WorkspaceFacts::default()),
-        vec![("V13-CAPITAL-REMOVED", 2)]
+        [2, 3, 5, 6, 7].map(|line| ("V13-CAPITAL-REMOVED", line))
     );
     for removed in [
         "use rullst::capital::fiscal::NfseNationalClient;",
@@ -211,10 +211,14 @@ fn boot() -> Result<Box<dyn MailDriver>, MailError> {
     Ok(Box::new(SendGridDriver::try_new("key")?))
 }
 "#;
-    // A review rule reports its first location in each file.
+    // A review rule reports every location in each file.
     assert_eq!(
         scan_with(source, "mail.rs", &WorkspaceFacts::default()),
-        vec![("V13-MAIL-REMOVED", 2), ("V13-MAIL-RESEND-SCHEDULE", 2)]
+        vec![
+            ("V13-MAIL-REMOVED", 2),
+            ("V13-MAIL-RESEND-SCHEDULE", 2),
+            ("V13-MAIL-REMOVED", 4)
+        ]
     );
     for removed in [
         "use rullst::mail::drivers::azure::AzureManagedIdentity;",

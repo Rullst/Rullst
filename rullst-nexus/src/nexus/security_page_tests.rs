@@ -2,7 +2,7 @@
 
 use super::*;
 use axum::http::{HeaderMap, HeaderValue};
-use rullst_security::SecurityStore;
+use rullst_core::security::SecurityStore;
 
 fn state() -> Arc<NexusState> {
     Arc::new(NexusState {

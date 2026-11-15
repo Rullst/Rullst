@@ -522,6 +522,8 @@ pub rullst_orm::PolyglotError::Driver::message: alloc::string::String
 pub rullst_orm::PolyglotError::ResponseTooLarge { .. }
 pub rullst_orm::PolyglotError::ResponseTooLarge::backend: &'static str
 pub rullst_orm::PolyglotError::ResponseTooLarge::limit_bytes: usize
+pub rullst_orm::PolyglotError::CrossOriginEndpoint { .. }
+pub rullst_orm::PolyglotError::CrossOriginEndpoint::backend: &'static str
 pub rullst_orm::PolyglotError::UnsupportedValue { .. }
 pub rullst_orm::PolyglotError::UnsupportedValue::backend: &'static str
 pub rullst_orm::PolyglotError::UnsupportedValue::kind: alloc::string::String
