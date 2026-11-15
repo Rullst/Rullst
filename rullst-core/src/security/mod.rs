@@ -1,7 +1,10 @@
 //! Security middlewares and utilities for `rullst-core`.
 //!
 //! Provides CSRF protection, OWASP secure headers, WAF intrusion prevention,
-//! zero-alloc PII data masking and explicit trusted-proxy client resolution.
+//! zero-alloc PII data masking, explicit trusted-proxy client resolution and
+//! the process-local security telemetry
+//! ([`SecurityStore`](crate::security::SecurityStore)) that the
+//! `rullst-security` layers record into and Studio and Nexus display.
 
 mod baseline;
 mod csrf;
@@ -11,6 +14,7 @@ mod machine;
 mod media_type;
 mod pii;
 mod secure_cookies;
+mod telemetry;
 mod tenant_guard;
 mod trusted_proxy;
 mod waf;
@@ -46,6 +50,10 @@ pub use machine::{
     MachineRequestVerifier,
 };
 pub use pii::{mask_pii, pii_masking_middleware};
+pub use telemetry::{
+    BannedIpRecord, LiveSecurityEvent, SECURITY_EVENT_SCHEMA_VERSION, SecurityStore,
+    TelemetrySnapshot, normalize_ip,
+};
 pub use tenant_guard::{
     TenantContext, TenantContextError, TenantMembership, strict_tenant_guard_middleware,
     tenant_guard_middleware,

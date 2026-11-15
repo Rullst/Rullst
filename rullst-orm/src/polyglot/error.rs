@@ -45,6 +45,14 @@ pub enum PolyglotError {
         /// Maximum accepted response size.
         limit_bytes: usize,
     },
+    /// A server asked the client to continue at another origin (scheme, host
+    /// or port) than the configured endpoint. The request was not sent, so
+    /// the credentials never reach that origin.
+    #[error("{backend} server asked to continue at another origin; refused")]
+    CrossOriginEndpoint {
+        /// Backend whose server answered.
+        backend: &'static str,
+    },
     /// The backend cannot represent a value through the portable API.
     #[error("{backend} value type is unsupported: {kind}")]
     UnsupportedValue {

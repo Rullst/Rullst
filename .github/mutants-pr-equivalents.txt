@@ -103,6 +103,11 @@ rullst-core/src/radar.rs:310:28: replace / with * in calculate_windows_cpu_perce
 rullst-core/src/radar.rs:310:28: replace / with % in calculate_windows_cpu_percent
 rullst-core/src/radar.rs:310:44: replace * with + in calculate_windows_cpu_percent
 rullst-core/src/radar.rs:310:44: replace * with / in calculate_windows_cpu_percent
+# The security store moved here from rullst-security in 13.0.0-alpha.6; the
+# rows keep their justification.
+rullst-core/src/security/telemetry.rs:326:29: replace > with >= in SecurityStore::push_live_event
+rullst-core/src/security/telemetry/event.rs:74:5: replace security_event_schema_version -> u16 with 1
+rullst-core/src/security/telemetry/event.rs:90:20: replace > with >= in truncate_utf8
 rullst-core/src/server/dylib_loader.rs:9:5: replace is_expected_loaded_library_removal_error -> bool with false
 rullst-core/src/server/dylib_loader.rs:9:5: replace is_expected_loaded_library_removal_error -> bool with true
 rullst-core/src/storage/cloud/multipart/codec.rs:302:31: replace > with == in MultipartStorage::open

@@ -1,6 +1,5 @@
-//! Edges of the syntax rules, one fixture per case: review rules report only
-//! their first location in a file, so a combined fixture hides a case that
-//! stopped matching.
+//! Edges of the syntax rules, one fixture per case, so each case's own
+//! finding is asserted rather than one of a combined fixture's locations.
 
 use super::*;
 

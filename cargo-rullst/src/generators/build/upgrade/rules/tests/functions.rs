@@ -56,10 +56,10 @@ pub async fn register(form: Form<Register>) -> Response {
 }
 pub async fn later() { rullst_auth::hash_password_async(password).await; }
 "#;
-    // A review rule reports its first location in a file.
+    // A review rule reports every location in a file.
     assert_eq!(
         lines_at(unbounded, "src/controllers/auth_controller.rs", CREDENTIAL),
-        [4]
+        [4, 6]
     );
     let async_only = "pub async fn r(p: String) { rullst::auth::hash_password_async(p).await; }";
     assert_eq!(lines_at(async_only, "src/lib.rs", CREDENTIAL), [1]);

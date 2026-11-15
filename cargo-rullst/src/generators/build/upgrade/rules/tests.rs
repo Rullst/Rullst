@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::*;
+use std::collections::BTreeSet;
 
 mod alpha4_orm_nexus;
 mod alpha5_adapters;
@@ -119,13 +120,14 @@ async fn submit(rullst::ValidatedJson(form): rullst::ValidatedJson<Form>) {
 }
 
 #[test]
-fn review_rules_report_the_first_location_and_must_change_every_one() {
+fn every_rule_reports_every_location_in_a_file() {
     let source = "fn a() { User::all().await; }\nfn b() { User::all().await; }\nfn c() -> String { html! { <a onclick={x}></a> } }\nfn d() -> String { html! { <a onclick={y}></a> } }\n";
     let found = scan_with(source, "lib.rs", &WorkspaceFacts::default());
     assert_eq!(
         found,
         vec![
             ("V13-MODEL-ALL", 1),
+            ("V13-MODEL-ALL", 2),
             ("V13-HTML-DYNAMIC-EVENT-HANDLER", 3),
             ("V13-HTML-MARKUP-RETURN", 3),
             ("V13-HTML-DYNAMIC-EVENT-HANDLER", 4),

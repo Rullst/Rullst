@@ -86,8 +86,9 @@ fn f() {
         .iter()
         .filter(|(code, _)| *code == "V13-HIDDEN-INTERNALS-PRIVATE")
         .collect();
-    // A review rule reports its first location in a file.
-    assert_eq!(rows, vec![&("V13-HIDDEN-INTERNALS-PRIVATE", 2)]);
+    // A review rule reports every location in a file.
+    let lines: Vec<usize> = rows.iter().map(|(_, line)| *line).collect();
+    assert_eq!(lines, [2, 3, 5, 6, 7]);
     for source in [
         "fn f() { let _ = rullst_nexus::generate_smart_nexus_ai_response; }",
         "fn f() { let _ = rullst_security::current_timestamp_str(); }",
