@@ -3,7 +3,7 @@
 use secrecy::{ExposeSecret, SecretString};
 use url::{Host, Url};
 
-use crate::client::{DisabledHttpClient, HttpClient, OfflineHttpClient};
+use crate::client::{HttpClient, OfflineHttpClient};
 use crate::error::ConnectError;
 
 /// Describes how a provider obtains responses.
@@ -16,22 +16,14 @@ pub enum CredentialMode {
     ///
     /// Outside this crate's own unit tests the fallback needs the `mock` feature;
     /// without it, `try_new` rejects such credentials with
-    /// [`ConnectError::InvalidConfiguration`] for the field `credentials`, and the
-    /// deprecated `new` constructors return a disabled ([`Self::Invalid`]) provider.
+    /// [`ConnectError::InvalidConfiguration`] for the field `credentials`.
     Mock,
-    /// A deprecated infallible constructor received invalid configuration.
-    Invalid,
 }
 
 impl CredentialMode {
     /// Returns `true` only for the deterministic network-free fallback.
     pub fn is_mock(self) -> bool {
         matches!(self, Self::Mock)
-    }
-
-    /// Returns `true` when a deprecated constructor failed closed.
-    pub fn is_invalid(self) -> bool {
-        matches!(self, Self::Invalid)
     }
 }
 
@@ -86,44 +78,13 @@ pub(crate) fn checked_credential_mode_for_values(
     require_mock_support(credential_mode_for_values(values), MOCK_IDENTITIES)
 }
 
-/// The credential mode for a deprecated infallible constructor, plus the
-/// reason when the provider is disabled.
-pub(crate) fn legacy_credential_mode(
-    client_id: &str,
-    client_secret: &SecretString,
-) -> (CredentialMode, Option<String>) {
-    disable_unsupported_mock(credential_mode(client_id, client_secret), MOCK_IDENTITIES)
-}
-
-/// [`legacy_credential_mode`] for several credential values.
-pub(crate) fn legacy_credential_mode_for_values(
-    values: &[&str],
-) -> (CredentialMode, Option<String>) {
-    disable_unsupported_mock(credential_mode_for_values(values), MOCK_IDENTITIES)
-}
-
-/// Turns a mock mode this build cannot serve into a disabled provider.
-pub(crate) fn disable_unsupported_mock(
-    mode: CredentialMode,
-    mock_identities: bool,
-) -> (CredentialMode, Option<String>) {
-    match require_mock_support(mode, mock_identities) {
-        Ok(mode) => (mode, None),
-        Err(error) => (CredentialMode::Invalid, Some(error.to_string())),
-    }
-}
-
 pub(crate) fn provider_http_client(
     mode: CredentialMode,
     provider: &'static str,
-    invalid_reason: Option<String>,
 ) -> std::sync::Arc<dyn HttpClient> {
     match mode {
         CredentialMode::Live => crate::client::DEFAULT_HTTP_CLIENT.clone(),
         CredentialMode::Mock => std::sync::Arc::new(OfflineHttpClient::new(provider)),
-        CredentialMode::Invalid => std::sync::Arc::new(DisabledHttpClient::new(
-            invalid_reason.unwrap_or_else(|| "invalid provider configuration".to_string()),
-        )),
     }
 }
 
@@ -419,23 +380,6 @@ mod tests {
     }
 
     #[test]
-    fn legacy_constructors_disable_an_unsupported_mock() {
-        assert_eq!(
-            disable_unsupported_mock(CredentialMode::Mock, true),
-            (CredentialMode::Mock, None)
-        );
-        assert_eq!(
-            disable_unsupported_mock(CredentialMode::Live, false),
-            (CredentialMode::Live, None)
-        );
-        let (mode, reason) = disable_unsupported_mock(CredentialMode::Mock, false);
-        assert_eq!(mode, CredentialMode::Invalid);
-        assert!(reason.unwrap().starts_with(
-            "Invalid provider configuration for 'credentials': empty or `mock_*` credentials"
-        ));
-    }
-
-    #[test]
     fn unit_tests_serve_mock_identities() {
         let secret = SecretString::from(String::new());
         assert_eq!(
@@ -443,16 +387,8 @@ mod tests {
             CredentialMode::Mock
         );
         assert_eq!(
-            legacy_credential_mode("", &secret),
-            (CredentialMode::Mock, None)
-        );
-        assert_eq!(
             checked_credential_mode_for_values(&["client", "secret"]).unwrap(),
             CredentialMode::Live
-        );
-        assert_eq!(
-            legacy_credential_mode_for_values(&["client", "secret"]),
-            (CredentialMode::Live, None)
         );
     }
 }

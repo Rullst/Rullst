@@ -71,18 +71,6 @@ impl AuditChain {
         Ok(Self::new_inner(secret_key, logger))
     }
 
-    /// Compatibility constructor. Prefer [`AuditChain::try_new`] for startup-time validation.
-    ///
-    /// A chain built with an invalid key is inert: [`AuditChain::record_event`] returns a typed
-    /// error and verification always fails. It never signs data with a weak or empty key.
-    #[deprecated(
-        since = "12.0.0",
-        note = "use `AuditChain::try_new` to reject weak HMAC keys during startup"
-    )]
-    pub fn new(secret_key: &[u8], logger: Arc<dyn AuditLogger>) -> Self {
-        Self::new_inner(secret_key, logger)
-    }
-
     /// Continues a persisted chain after its newest durable record.
     ///
     /// Every constructor otherwise starts at sequence 1 from the genesis

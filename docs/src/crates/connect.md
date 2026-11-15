@@ -276,10 +276,9 @@ mock user. That mode needs the Cargo feature `mock` (or `oauth-mock` on the
 `rullst` facade). Without it, `try_new`, `Connect::driver` and
 `OidcProvider::discover` return `ConnectError::InvalidConfiguration` for the
 field `credentials` when they receive such a value, so a missing production
-secret fails when the provider is built instead of at the login callback; the
-deprecated `new` constructors return a disabled provider. Enable the feature
-only in development and test builds, because it turns mock credentials into a
-working sign-in. In a facade application, run `cargo run --features dev-oauth`
+secret fails when the provider is built instead of at the login callback.
+Enable the feature only in development and test builds, because it turns mock
+credentials into a working sign-in. In a facade application, run `cargo run --features dev-oauth`
 with:
 
 ```toml

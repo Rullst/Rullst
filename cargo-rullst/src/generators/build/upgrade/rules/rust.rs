@@ -316,6 +316,11 @@ impl Visitor<'_, '_> {
 
     fn function(&mut self, attributes: &[Attribute], signature: &syn::Signature) {
         for attribute in attributes {
+            if let Some(rule) =
+                super::alpha6_deprecated::attribute_rule(attribute, self.context.text)
+            {
+                self.hit(rule, line(attribute.span()));
+            }
             let segments: Vec<String> = attribute
                 .path()
                 .segments
@@ -425,6 +430,9 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
                 self.hit(rule, at);
             }
             if let Some(rule) = super::removed_adapters::path_rule(&path, self.context.text) {
+                self.hit(rule, at);
+            }
+            if let Some(rule) = super::alpha6_deprecated::path_rule(&path, self.context.text) {
                 self.hit(rule, at);
             }
         }

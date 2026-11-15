@@ -38,11 +38,12 @@ impl HttpClient for MockGithubClient {
 
 #[tokio::test]
 async fn test_github_get_user() {
-    let provider = GithubProvider::new(
+    let provider = GithubProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockGithubClient {
         token_status: 200,
         token_body: json!({
@@ -79,11 +80,12 @@ async fn test_github_get_user() {
 
 #[tokio::test]
 async fn test_github_token_error() {
-    let provider = GithubProvider::new(
+    let provider = GithubProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockGithubClient {
         token_status: 400,
         token_body: json!({"error": "invalid_grant"}),
@@ -109,11 +111,12 @@ async fn test_github_token_error() {
 
 #[tokio::test]
 async fn test_github_request_device_code_success() {
-    let provider = GithubProvider::new(
+    let provider = GithubProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockGithubClient {
         token_status: 200,
         token_body: json!({}),
@@ -137,11 +140,12 @@ async fn test_github_request_device_code_success() {
 
 #[tokio::test]
 async fn test_github_poll_device_token_success() {
-    let provider = GithubProvider::new(
+    let provider = GithubProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockGithubClient {
         token_status: 200,
         token_body: json!({
@@ -167,11 +171,12 @@ async fn test_github_poll_device_token_success() {
 
 #[tokio::test]
 async fn test_github_poll_device_token_error() {
-    let provider = GithubProvider::new(
+    let provider = GithubProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockGithubClient {
         token_status: 200, // Github returns 200 for authorization_pending
         token_body: json!({
@@ -194,11 +199,12 @@ async fn test_github_poll_device_token_error() {
 
 #[tokio::test]
 async fn test_github_poll_device_token_missing_token() {
-    let provider = GithubProvider::new(
+    let provider = GithubProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockGithubClient {
         token_status: 200,
         token_body: json!({}), // No access_token and no error
@@ -251,20 +257,22 @@ async fn test_github_request_device_code_scopes() {
         }
     }
 
-    let provider_with_scope = GithubProvider::new(
+    let provider_with_scope = GithubProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_scopes(&["read:user"])
     .with_http_client(Arc::new(MockScopeClient { expect_scope: true }));
     provider_with_scope.request_device_code().await.unwrap();
 
-    let provider_no_scope = GithubProvider::new(
+    let provider_no_scope = GithubProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_scopes(&[])
     .with_http_client(Arc::new(MockScopeClient {
         expect_scope: false,

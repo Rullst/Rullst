@@ -114,11 +114,10 @@ release. Documentation must name the replacement when one exists.
 13.0 is the major release that removes the 12.x deprecations. Every API
 still marked `#[deprecated]`, whether it was deprecated in 12.x or during the
 13.0 prereleases (`rullst_orm::schema_diff`, deprecated in 13.0.0-alpha.5),
-is planned for removal in 13.0.0-alpha.6, the 13.0 feature and public API
-freeze, so 13.x does not carry it. Each removal gets a `cargo rullst upgrade`
-rule and a row in the [migration guide](migration-v13.md) that names the
-replacement. The period above applies to the deprecations made from 13.0.0
-on.
+was removed in 13.0.0-alpha.6, the 13.0 feature and public API freeze, so
+13.x does not carry it. Each removal has a `cargo rullst upgrade` rule and a
+row in the [migration guide](migration-v13.md) that names the replacement.
+The period above applies to the deprecations made from 13.0.0 on.
 
 An API that is unsound, enables a security bypass, or cannot be made safe may be
 disabled or removed sooner. Such an exception requires a security advisory or

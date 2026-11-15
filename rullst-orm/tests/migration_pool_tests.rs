@@ -359,10 +359,3 @@ fn test_pool_helpers_and_placeholders() {
     Orm::set_max_query_limit(500);
     Orm::set_query_timeout(30);
 }
-
-#[test]
-#[allow(deprecated)]
-fn test_schema_diff_ast_extraction() {
-    let tables = rullst_orm::schema_diff::extract_tables_from_ast();
-    assert!(!tables.is_empty() || tables.is_empty());
-}

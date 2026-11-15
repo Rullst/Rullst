@@ -139,11 +139,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_facebook_get_user_success() {
-        let provider = FacebookProvider::new(
+        let provider = FacebookProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect.url".to_string(),
         )
+        .unwrap()
         .with_http_client(Arc::new(MockFacebookClient {
             token_status: 200,
             token_body: json!({
@@ -179,11 +180,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_facebook_token_error() {
-        let provider = FacebookProvider::new(
+        let provider = FacebookProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect.url".to_string(),
         )
+        .unwrap()
         .with_http_client(Arc::new(MockFacebookClient {
             token_status: 400,
             token_body: json!({"error": {"message": "invalid_grant"}}),
@@ -207,11 +209,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_facebook_missing_id() {
-        let provider = FacebookProvider::new(
+        let provider = FacebookProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect.url".to_string(),
         )
+        .unwrap()
         .with_http_client(Arc::new(MockFacebookClient {
             token_status: 200,
             token_body: json!({"access_token": "mock_access_token"}),
@@ -232,11 +235,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_facebook_refresh_token_success() {
-        let provider = FacebookProvider::new(
+        let provider = FacebookProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect.url".to_string(),
         )
+        .unwrap()
         .with_http_client(Arc::new(MockFacebookClient {
             token_status: 200,
             token_body: json!({
