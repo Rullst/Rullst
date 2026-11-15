@@ -45,7 +45,6 @@ rullst-privacy = { version = "=13.0.0-alpha.5", path = "rullst-privacy", default
 rullst-ai = { version = "=13.0.0-alpha.5", path = "rullst-ai" }
 rullst-connect = { version = "=13.0.0-alpha.5", path = "rullst-connect" }
 rullst-iot = { version = "=13.0.0-alpha.5", path = "rullst-iot" }
-cargo-rullst = { version = "=13.0.0-alpha.5", path = "cargo-rullst" }
 
 # Shared external dependencies
 tokio = { version = "1.52.3", default-features = false }
