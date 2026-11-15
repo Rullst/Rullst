@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794727833783,
+  "lastUpdate": 1794737730623,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -34155,6 +34155,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1337,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a9044a5a0808a81ecfe39a8e3c7f8d35700ccdd4",
+          "message": "Merge pull request #694 from Rullst/ci/v13-alpha6-release-process\n\nci: live draft state, release evidence audit on PRs, existing-tag preflight guidance",
+          "timestamp": "2026-11-15T07:12:28-03:00",
+          "tree_id": "6e159e26c6ae3a4c85dba6d25f3505419d5de3ff",
+          "url": "https://github.com/Rullst/Rullst/commit/a9044a5a0808a81ecfe39a8e3c7f8d35700ccdd4"
+        },
+        "date": 1794737726790,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 420,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 589,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 277,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 984,
+            "range": "± 26",
             "unit": "ns/iter"
           }
         ]
