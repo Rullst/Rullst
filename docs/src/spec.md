@@ -303,6 +303,11 @@ it leaves every security header alone on a response that an inner
 `SecureHeadersLayer` marked with `SecurityHeadersApplied` (omitted headers stay
 absent; `Cache-Control: no-store` and the shared `CspNonce` are unchanged).
 This narrow rule does not attempt to order every Referrer-Policy value.
+Since 13.0.0-alpha.6 its Content-Security-Policy carries the request nonce
+only on a response that can be an HTML document (`text/html`,
+`application/xhtml+xml` or no `Content-Type`); other responses get the policy
+without a nonce, derived once from `[security] csp` like
+`render_csp_policy(template, None)`.
 
 `rullst-privacy` is an opt-in v13 release candidate, first published in the
 13.0.0-alpha.1 prerelease. Its initial
@@ -1884,7 +1889,16 @@ the same server-authoritative controls.
   authorization and the deployment termination deadline remain host contracts.
 * **Access log and default log filter:** `Server` prints one `[HTTP] METHOD
   path -> status (ms)` line per request on stdout, never with the query
-  string. Since 13.0.0-alpha.5 the path is chosen by
+  string. Since 13.0.0-alpha.6 a background thread writes the lines: a
+  request queues its line (at most 8192 lines and 2 MiB) and never waits for
+  stdout; when the queue is full the line is dropped and the next batch
+  reports the count (`[HTTP] access log: N lines dropped because stdout did
+  not keep up`), and a graceful shutdown waits up to one second for queued
+  lines. `RULLST_ACCESS_LOG` (process environment, then `.env`) chooses the
+  requests: `on` (the default) and `off` (the layer is not installed), with
+  the switch values of `RULLST_LOG_HEALTH_PROBES` below, `errors` (status 400
+  and above) or `1/N` (those and one in `N` of the others, `N` from 1 to
+  1000000); any other value stops startup with `ServerError::Configuration`. Since 13.0.0-alpha.5 the path is chosen by
   `config::AccessLogPaths` (`[app] access_log_paths` in `Rullst.toml`,
   replaced by `Server::access_log_paths`): `auto` (the default) writes the
   route template that matched (axum's `MatchedPath`, such as

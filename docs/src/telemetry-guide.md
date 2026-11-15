@@ -133,6 +133,37 @@ Set `RULLST_LOG_HEALTH_PROBES=true` in the process environment or `.env` to
 print every probe again, or `false` to skip successful probes in development
 too.
 
+### Turning the access log down or off
+
+`RULLST_ACCESS_LOG`, in the process environment or `.env`, chooses which
+requests get a line (since 13.0.0-alpha.6):
+
+| Value | Lines |
+| :--- | :--- |
+| `on` (the default; also `true`, `1`, `yes`) | every request |
+| `errors` | responses with a status of 400 or above |
+| `1/N`, `N` from 1 to 1000000 (for example `1/100`) | every response of 400 or above, and one in `N` of the others |
+| `off` (also `false`, `0`, `no`) | none: `Server` does not install the access log |
+
+The health-probe and path rules above apply to the lines that remain. Any
+other value stops startup with `ServerError::Configuration`.
+
+Lines are written by a background thread, not by the request: each request
+hands its line to a bounded queue (8192 lines, 2 MiB) and never waits for
+stdout, and the thread writes what is queued in batches, at most a couple of
+milliseconds later. When stdout cannot keep up (a slow pipe or log driver)
+and the queue is full, the line is dropped instead of slowing the server, and
+the next batch reports how many were lost:
+
+```text
+[HTTP] access log: 1250 lines dropped because stdout did not keep up
+```
+
+On a graceful shutdown `Server` waits up to one second for the queued lines.
+Until 13.0.0-alpha.6 each request wrote its line to stdout itself, holding the
+stdout lock, which cost a large share of the throughput of a generated
+application under load.
+
 ### Paths in the access log
 
 A request path can carry a secret, such as the token of a booking or sign-in

@@ -61,15 +61,21 @@ impl Server {
         // Mounted after the reload layer, which would otherwise wrap it.
         app = super::dev_telemetry::mount(app, is_dev, generation, self.dev_queue);
 
-        app = app.layer(axum::middleware::from_fn_with_state(
-            super::console::AccessLog {
-                log_health_probes: self.log_health_probes,
-                route_paths: self.access_log_route_paths,
-            },
-            super::console::access_log_middleware,
-        ));
-        // A page and the htmx fragment of the same URL are cached apart.
-        app = app.layer(axum::middleware::from_fn(crate::htmx::vary_on_htmx_request));
+        // A page and the htmx fragment of the same URL are cached apart
+        // (`Vary: HX-Request`); one layer also writes the access log, which
+        // `RULLST_ACCESS_LOG=off` leaves out.
+        app = if self.access_log_recording == super::console::Recording::Off {
+            app.layer(axum::middleware::from_fn(crate::htmx::vary_on_htmx_request))
+        } else {
+            app.layer(axum::middleware::from_fn_with_state(
+                super::console::AccessLog {
+                    log_health_probes: self.log_health_probes,
+                    route_paths: self.access_log_route_paths,
+                    recording: self.access_log_recording,
+                },
+                super::console::access_log_and_vary_middleware,
+            ))
+        };
 
         let static_mounted = Path::new("static").exists();
         if static_mounted {

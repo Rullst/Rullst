@@ -54,12 +54,15 @@ impl RecordFormError {
 }
 
 impl IntoResponse for RecordFormError {
+    /// The edit form's htmx fragment for this error: `text/html` like the
+    /// form itself, so it keeps the page's nonce CSP. The messages hold no
+    /// markup.
     fn into_response(self) -> Response {
         let status = match self {
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::Unavailable => StatusCode::INTERNAL_SERVER_ERROR,
         };
-        (status, self.message()).into_response()
+        (status, axum::response::Html(self.message())).into_response()
     }
 }
 

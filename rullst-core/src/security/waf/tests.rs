@@ -266,3 +266,90 @@ fn structural_detection_is_linear_on_adversarial_input() {
         );
     }
 }
+
+#[tokio::test]
+async fn plain_traversal_in_the_path_is_blocked_in_any_case() {
+    let app = Router::new()
+        .fallback(|| async { "file" })
+        .layer(axum::middleware::from_fn(waf_middleware));
+    for (path, expected) in [
+        ("/files/../secret", StatusCode::FORBIDDEN),
+        ("/files/ETC/PASSWD", StatusCode::FORBIDDEN),
+        ("/files/Windows/WIN.INI", StatusCode::FORBIDDEN),
+        ("/files/a+b/../c", StatusCode::FORBIDDEN),
+        ("/files/etc/passwd-backup", StatusCode::FORBIDDEN),
+        ("/files/etc/pass", StatusCode::OK),
+        ("/files/win-ini", StatusCode::OK),
+        ("/files/v1.2/notes", StatusCode::OK),
+    ] {
+        let request = Request::get(path).body(Body::empty()).unwrap();
+        assert_eq!(
+            app.clone().oneshot(request).await.unwrap().status(),
+            expected,
+            "{path}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn user_agent_entries_match_in_any_case() {
+    let security = crate::config::SecurityConfig {
+        user_agent_blocklist: vec!["BadBot".to_string(), "\u{212A}de".to_string()],
+        ..Default::default()
+    };
+    let app = Router::new()
+        .route("/", axum::routing::get(|| async { "page" }))
+        .layer(axum::middleware::from_fn(waf_middleware))
+        .layer(axum::Extension(security));
+    for (agent, expected) in [
+        ("my-badbot/2.0", StatusCode::FORBIDDEN),
+        ("MY-BADBOT/2.0", StatusCode::FORBIDDEN),
+        // The Kelvin sign lowercases to `k`.
+        ("KDE Konqueror", StatusCode::FORBIDDEN),
+        ("Mozilla/5.0 (X11; Linux)", StatusCode::OK),
+        ("badbo", StatusCode::OK),
+    ] {
+        let request = Request::get("/")
+            .header(header::USER_AGENT, agent)
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(
+            app.clone().oneshot(request).await.unwrap().status(),
+            expected,
+            "{agent}"
+        );
+    }
+    let default = Router::new()
+        .route("/", axum::routing::get(|| async { "page" }))
+        .layer(axum::middleware::from_fn(waf_middleware));
+    let request = Request::get("/")
+        .header(header::USER_AGENT, "Mozilla/5.0 (compatible; GPTBot/1.2)")
+        .body(Body::empty())
+        .unwrap();
+    assert_eq!(
+        default.oneshot(request).await.unwrap().status(),
+        StatusCode::FORBIDDEN
+    );
+}
+
+#[test]
+fn ascii_case_insensitive_containment() {
+    assert!(contains_ignore_ascii_case("anything", ""));
+    assert!(contains_ignore_ascii_case("", ""));
+    assert!(!contains_ignore_ascii_case("", "a"));
+    assert!(contains_ignore_ascii_case("GPTBot/1.0", "gptbot"));
+    assert!(contains_ignore_ascii_case("x/GPTBOT", "GptBot"));
+    assert!(!contains_ignore_ascii_case("gptbo", "gptbot"));
+    assert!(!contains_ignore_ascii_case("chatgpt-usr", "chatgpt-user"));
+    assert!(user_agent_is_blocked(
+        "Mozilla CLAUDE-WEB",
+        &["claude-web".to_string()]
+    ));
+    assert!(!user_agent_is_blocked(
+        "Mozilla",
+        &["claude-web".to_string()]
+    ));
+    // A non-ASCII agent is lowercased as Unicode text.
+    assert!(user_agent_is_blocked("ÉTÉ GPTBOT", &["gptbot".to_string()]));
+    assert!(!user_agent_is_blocked("ÉTÉ", &["gptbot".to_string()]));
+}

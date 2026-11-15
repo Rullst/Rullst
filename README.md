@@ -410,7 +410,7 @@ green main gates:
 
 | Deep evidence | Trigger and enforcement |
 | :--- | :--- |
-| [Benchmark regression](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Weekly, `main` push, or manual; eight published groups backed by nine Criterion benchmark binaries emit non-blocking alerts at a 20% regression. |
+| [Benchmark regression](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Weekly, `main` push, or manual; eight published groups backed by nine Criterion benchmark binaries emit non-blocking alerts at a 20% regression, and the generated application's production stack must keep its throughput ratio to the same routes without layers. |
 | [Property testing](https://github.com/Rullst/Rullst/actions/workflows/proptest.yml) | Weekly/manual release-mode invariant testing with 10,000 configured cases. |
 | [TSan and ASan](https://github.com/Rullst/Rullst/actions/workflows/sanitizers.yml) | Daily/manual package matrices on a pinned verifier-only nightly. |
 | [MSRV tests](https://github.com/Rullst/Rullst/actions/workflows/msrv-tests.yml) | Daily/manual informational run of the Core, ORM (SQLite), Security, Auth, macro and facade tests on Rust 1.96.0. |

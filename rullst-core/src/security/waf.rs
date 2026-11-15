@@ -246,10 +246,55 @@ fn body_is_json(headers: &HeaderMap) -> bool {
 /// a `{name}` handler as `../../etc/passwd`. Only the traversal group applies
 /// to the path: SQL and command words are ordinary in slugs and file names.
 fn path_contains_traversal(path: &str) -> bool {
+    if is_plain_ascii(path) {
+        // Nothing to decode, and ASCII lowercases byte by byte.
+        return PATH_TRAVERSAL_PATTERNS
+            .iter()
+            .any(|pattern| contains_ignore_ascii_case(path, pattern));
+    }
     let decoded = url_decode(path).to_lowercase();
     PATH_TRAVERSAL_PATTERNS
         .iter()
         .any(|pattern| decoded.contains(pattern))
+}
+
+/// Whether `text` is ASCII without `%` or `+`, so [`url_decode`] returns it
+/// unchanged and lowercasing changes only ASCII letters. It only chooses
+/// between two ways of computing the same answer.
+#[cfg_attr(mutants, mutants::skip)]
+fn is_plain_ascii(text: &str) -> bool {
+    text.bytes()
+        .all(|byte| byte.is_ascii() && byte != b'%' && byte != b'+')
+}
+
+/// Whether `haystack` contains `needle` when ASCII letters are compared
+/// without case. An empty `needle` is contained, as in [`str::contains`].
+fn contains_ignore_ascii_case(haystack: &str, needle: &str) -> bool {
+    needle.is_empty()
+        || haystack
+            .as_bytes()
+            .windows(needle.len())
+            .any(|window| window.eq_ignore_ascii_case(needle.as_bytes()))
+}
+
+/// Whether the `User-Agent` `agent` contains a blocklist entry, both
+/// lowercased.
+fn user_agent_is_blocked(agent: &str, blocklist: &[String]) -> bool {
+    if agent.is_ascii() {
+        // An ASCII agent lowercases byte by byte, and so does an ASCII entry;
+        // another entry can lowercase to ASCII (the Kelvin sign to `k`).
+        return blocklist.iter().any(|entry| {
+            if entry.is_ascii() {
+                contains_ignore_ascii_case(agent, entry)
+            } else {
+                contains_ignore_ascii_case(agent, &entry.to_lowercase())
+            }
+        });
+    }
+    let agent = agent.to_lowercase();
+    blocklist
+        .iter()
+        .any(|entry| agent.contains(&entry.to_lowercase()))
 }
 
 /// Whether `waf_body_exempt_paths` lists this request's exact path.
@@ -351,15 +396,9 @@ fn screen_head(req: &Request) -> Option<Rule> {
         .headers()
         .get(header::USER_AGENT)
         .map(|value| String::from_utf8_lossy(value.as_bytes()))
+        && user_agent_is_blocked(&ua, &security_config(req).user_agent_blocklist)
     {
-        let ua_lower = ua.to_lowercase();
-        if security_config(req)
-            .user_agent_blocklist
-            .iter()
-            .any(|agent| ua_lower.contains(&agent.to_lowercase()))
-        {
-            return Some(Rule::UserAgent);
-        }
+        return Some(Rule::UserAgent);
     }
 
     if path_contains_traversal(req.uri().path()) {
@@ -426,13 +465,22 @@ async fn inspect_and_restore_body(req: Request) -> Result<Request, Rule> {
 /// `waf_body_exempt_paths` does not list, [`crate::uploads::Multipart`]
 /// applies the same signatures to each text field it reads and refuses the
 /// request with the same `403`.
-pub async fn waf_middleware(mut req: Request, next: Next) -> Response {
+pub async fn waf_middleware(req: Request, next: Next) -> Response {
+    with_waf(req, |req| next.run(req)).await
+}
+
+/// [`waf_middleware`] around `next`.
+pub(crate) async fn with_waf<F, Fut>(mut req: Request, next: F) -> Response
+where
+    F: FnOnce(Request) -> Fut,
+    Fut: std::future::Future<Output = Response>,
+{
     mark_multipart_fields(&mut req, MultipartFieldInspection::Enforce);
     if let Some(rule) = screen_head(&req) {
         return rule.refusal();
     }
     match inspect_and_restore_body(req).await {
-        Ok(req) => next.run(req).await,
+        Ok(req) => next(req).await,
         Err(rule) => rule.refusal(),
     }
 }

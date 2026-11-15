@@ -52,6 +52,10 @@ impl Server {
             read_optional_environment_variable(crate::server::console::LOG_HEALTH_PROBES_VARIABLE)?,
             &dotenv,
         )?;
+        self.access_log_recording = crate::server::console::access_log_recording(
+            read_optional_environment_variable(crate::server::console::ACCESS_LOG_VARIABLE)?,
+            &dotenv,
+        )?;
         self.access_log_route_paths = self
             .access_log_paths
             .unwrap_or(app_config.app.access_log_paths)
@@ -282,6 +286,7 @@ impl Server {
             trusted_proxy: self.trusted_proxy_layer(),
             machine_endpoints: self.machine_endpoints.clone(),
             access_log_route_paths: self.access_log_route_paths,
+            access_log_recording: self.access_log_recording,
         };
 
         println!(
@@ -301,6 +306,7 @@ impl Server {
             .await
             .map_err(ServerError::from);
         mark_lifecycle_stopped(lifecycle.as_ref());
+        flush_access_log().await;
         result
     }
 
@@ -338,6 +344,17 @@ impl Server {
         .await
         .map_err(ServerError::from);
         mark_lifecycle_stopped(lifecycle.as_ref());
+        flush_access_log().await;
         result
     }
+}
+
+/// Gives the access log's writer thread up to a second to write the lines of
+/// the requests served before shutdown.
+#[cfg_attr(mutants, mutants::skip)]
+async fn flush_access_log() {
+    let _ = tokio::task::spawn_blocking(|| {
+        crate::server::access_log_writer::flush(std::time::Duration::from_secs(1))
+    })
+    .await;
 }

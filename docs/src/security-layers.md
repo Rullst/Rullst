@@ -39,7 +39,7 @@ contracts, and both crates are in the Core [maturity tier](maturity.md).
 
 | Starter | Mounted for you | Not mounted |
 | :--- | :--- | :--- |
-| Every starter | `Server` applies the Core baseline in **staging and production**: secure headers, CORS (only when `cors_allow_origins` is set), WAF and CSRF. PII masking stays off unless `enable_pii_masking = true`. In **development** the baseline adds only CORS (and machine-endpoint authentication when configured) and a report-only WAF that logs what it would refuse. | No `rullst-security` middleware layer (RASP, DLP, `SecureHeadersLayer`, honeypot, CSWSH, schema guard) is mounted by any starter. No global rate limit or Traffic Shield is configured. Trusted proxies are configured only when `cargo rullst deploy` adds its Caddy proxy address to `[security] trusted_proxies`. |
+| Every starter | `Server` applies the Core baseline in **staging and production**: secure headers, CORS (only when `cors_allow_origins` is set), WAF and CSRF. PII masking stays off unless `enable_pii_masking = true`. Since 13.0.0-alpha.6 these run as one middleware (two when CORS is set), in the same order. In **development** the baseline adds only CORS (and machine-endpoint authentication when configured) and a report-only WAF that logs what it would refuse. | No `rullst-security` middleware layer (RASP, DLP, `SecureHeadersLayer`, honeypot, CSWSH, schema guard) is mounted by any starter. No global rate limit or Traffic Shield is configured. Trusted proxies are configured only when `cargo rullst deploy` adds its Caddy proxy address to `[security] trusted_proxies`. |
 | Blank (full stack), SaaS (and the LMS and Blog examples) | Core `csrf_middleware` and `headers_middleware` on the router too, so development behaves like production. | — |
 | API (Blank JSON API) | Core `headers_middleware` on the router. The example write route `POST /api/messages` is an exact machine endpoint (`Server::with_machine_endpoints`): clients send `Authorization: Bearer <API_TOKEN>` (a random value in the generated `.env`), requests with cookies are refused, and startup fails without `API_TOKEN`. | No CSRF layer on the router. In staging and production the `Server` baseline requires CSRF on every other write route, so add each new JSON write route to `machine_endpoints()` in `src/main.rs` (a `{id}` segment covers routes such as `PUT /api/posts/{id}`), or send the double-submit token from a browser. `make:controller --api` prints these lines. |
 | SaaS (and the LMS example) | A Core token-bucket limit on the credential routes; the SaaS `[security]` section exempts the exact signed billing webhook path from CSRF. The LMS example uses `rullst_security::{UserContext, RbacGuard}`. | Login jail, MFA (add it with `make:mfa`), audit chain. |
@@ -145,10 +145,16 @@ Leave these out unless you have a specific reason:
 | Headers | HSTS (one year with `includeSubDomains`, no `preload`, by default), `X-Frame-Options: DENY`, `nosniff`, `X-XSS-Protection: 0`, `Referrer-Policy`, `Permissions-Policy`, COOP, CORP, COEP, CSP | The same set, from the config; the default HSTS value is the same |
 | Existing values | Adds each header only when the response has none; leaves all of them alone after an inner `SecureHeadersLayer` | Replaces the handler's values with its configured ones |
 | `Cache-Control` | Adds `no-store` when the handler set none | Not touched |
-| CSP nonce | `CspNonce` request extension | Same `CspNonce`, reused when one already exists |
+| CSP nonce | `CspNonce` request extension; the header carries it only for a response that can be an HTML document (since 13.0.0-alpha.6) | Same `CspNonce`, reused when one already exists |
 
 Both layers reuse one `CspNonce` per request, so templates render a nonce that
-matches the final header. The Core baseline is a fallback: it fills in a
+matches the final header. Since 13.0.0-alpha.6 the Core baseline renders the
+nonce into the policy only for a response whose `Content-Type` is `text/html`
+or `application/xhtml+xml`, or that has none (a browser may sniff it); any
+other response (JSON, plain text, images, files) gets the same policy without
+a nonce, computed once: the configured `csp` when it has no `{NONCE}`,
+otherwise the default directives with `script-src 'self'` and
+`style-src 'self'`, which no inline script or style can satisfy. The Core baseline is a fallback: it fills in a
 security header only when the handler or an inner layer has not set it, so an
 **explicit value set by the application wins over the baseline**.
 `SecureHeadersLayer` marks its responses with

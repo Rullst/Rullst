@@ -24,6 +24,47 @@ env:
   SCCACHE_GHA_VERSION: rullst-ci-v1
 
 jobs:
+  # The production stack of a generated application against the same routes
+  # without layers, on one runner (.github/check-stack-throughput.py): a
+  # throughput regression of the stack fails this job.
+  stack-throughput:
+    name: Generated stack throughput
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RUSTC_WRAPPER: ""
+    steps:
+      - name: Checkout Rullst
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          rustflags: ""
+          cache: false
+
+      - name: Install bombardier 2.0.2 (the load generator of Rullst/Benchmarks)
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 3 -o "$RUNNER_TEMP/bombardier" \
+            https://github.com/codesenberg/bombardier/releases/download/v2.0.2/bombardier-linux-amd64
+          echo "d3dc4a9ecec3f8bd43f8c196ad533cb4b79ca55b11fc74c3184231e00a95bc0b  $RUNNER_TEMP/bombardier" | sha256sum --check
+          chmod +x "$RUNNER_TEMP/bombardier"
+
+      - name: Compare the generated stack with the minimal one
+        run: python3 .github/check-stack-throughput.py --bombardier "$RUNNER_TEMP/bombardier" --out stack-throughput-results
+
+      - name: Upload the load generator results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: stack-throughput-results
+          path: stack-throughput-results
+          if-no-files-found: ignore
+          retention-days: 14
+
   benchmark:
     name: Run Benchmarks
     runs-on: ubuntu-latest

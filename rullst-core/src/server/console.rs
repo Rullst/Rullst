@@ -7,7 +7,7 @@
 //! helpers drop the diagnostic line instead.
 
 use super::ServerError;
-pub(crate) use super::access_log::AccessLog;
+pub(crate) use super::access_log::{AccessLog, Recording};
 use crate::config::Environment;
 use axum::extract::{Request, State};
 use axum::middleware::Next;
@@ -62,6 +62,48 @@ pub(super) fn log_health_probes(
     }
 }
 
+/// Variable that chooses which requests the access log writes
+/// ([`Recording`]), from the process environment and then `.env`.
+pub(super) const ACCESS_LOG_VARIABLE: &str = "RULLST_ACCESS_LOG";
+
+/// The access log's [`Recording`]: `RULLST_ACCESS_LOG` (the process value,
+/// else the `.env` value) when set, otherwise [`Recording::All`]. It accepts
+/// the on/off values of `RULLST_LOG_HEALTH_PROBES`, `errors`, and `1/N` for
+/// one in `N` requests below status 400 (`N` from 1 to 1000000).
+pub(super) fn access_log_recording(
+    process: Option<String>,
+    dotenv: &HashMap<String, String>,
+) -> Result<Recording, ServerError> {
+    let Some(value) = process.or_else(|| dotenv.get(ACCESS_LOG_VARIABLE).cloned()) else {
+        return Ok(Recording::All);
+    };
+    let value = value.trim().to_ascii_lowercase();
+    if value == "errors" {
+        return Ok(Recording::Errors);
+    }
+    if let Some(interval) = value.strip_prefix("1/") {
+        return match interval.parse::<std::num::NonZeroU32>() {
+            Ok(interval) if interval.get() == 1 => Ok(Recording::All),
+            Ok(interval) if interval.get() <= super::access_log::MAX_SAMPLE_INTERVAL => {
+                Ok(Recording::Sample(interval))
+            }
+            _ => Err(recording_error()),
+        };
+    }
+    match super::builder::parse_switch(ACCESS_LOG_VARIABLE, &value) {
+        Ok(true) => Ok(Recording::All),
+        Ok(false) => Ok(Recording::Off),
+        Err(_) => Err(recording_error()),
+    }
+}
+
+fn recording_error() -> ServerError {
+    ServerError::Configuration(format!(
+        "{ACCESS_LOG_VARIABLE} must be on, off, errors or 1/N with N from 1 to {}",
+        super::access_log::MAX_SAMPLE_INTERVAL
+    ))
+}
+
 /// Whether a completed request is access-logged: never the development HMR
 /// channel and polls, and a `/health` or `/ready` request below status 400
 /// only when `log_health_probes` is set.
@@ -69,20 +111,21 @@ pub(super) fn should_log(path: &str, status: u16, log_health_probes: bool) -> bo
     is_logged(path) && (log_health_probes || status >= 400 || !HEALTH_PROBE_PATHS.contains(&path))
 }
 
-/// Prints one completed request to `path` that [`should_log`] admits, showing
-/// `shown_path` ([`AccessLog::shown_path`]). The development telemetry
-/// recorder is fed by its own outermost layer
+/// Queues one completed request to `path` that [`should_log`] and
+/// `recording` admit, showing `shown_path` ([`AccessLog::shown_path`]), for
+/// the access log's writer thread ([`super::access_log_writer`]). The
+/// development telemetry recorder is fed by its own outermost layer
 /// (`dev_telemetry::record_responses`), not from here.
 pub(crate) fn log_request(
     method: &str,
     (path, shown_path): (&str, &str),
     status: u16,
     elapsed: std::time::Duration,
-    log_health_probes: bool,
+    (log_health_probes, recording): (bool, Recording),
 ) {
-    if should_log(path, status, log_health_probes) {
+    if should_log(path, status, log_health_probes) && recording.records(status) {
         let elapsed_ms = elapsed.as_secs_f64() * 1000.0;
-        stdout_line(format_args!(
+        super::access_log_writer::write_line(format!(
             "[HTTP] {method} {shown_path} -> {status} ({elapsed_ms:.2} ms)"
         ));
     }
@@ -101,345 +144,49 @@ pub(crate) async fn access_log_middleware(
     request: Request,
     next: Next,
 ) -> Response {
+    with_access_log(log, request, |request| next.run(request)).await
+}
+
+/// [`access_log_middleware`] and [`crate::htmx::vary_on_htmx_request`] as
+/// one layer, as the static server installs them.
+pub(crate) async fn access_log_and_vary_middleware(
+    State(log): State<AccessLog>,
+    request: Request,
+    next: Next,
+) -> Response {
+    with_access_log(log, request, |request| async move {
+        let mut response = next.run(request).await;
+        crate::htmx::vary_html_on_htmx_request(response.headers_mut());
+        response
+    })
+    .await
+}
+
+/// [`access_log_middleware`] around `next`.
+async fn with_access_log<F, Fut>(log: AccessLog, request: Request, next: F) -> Response
+where
+    F: FnOnce(Request) -> Fut,
+    Fut: std::future::Future<Output = Response>,
+{
+    if !is_logged(request.uri().path()) {
+        return next(request).await;
+    }
     let method = request.method().clone();
-    let path = request.uri().path().to_string();
-    let shown_path = log.shown_path(&path, request.extensions());
+    // A clone shares the request's bytes.
+    let uri = request.uri().clone();
+    let shown_path = log.shown_path(uri.path(), request.extensions());
     let start = std::time::Instant::now();
-    let response = next.run(request).await;
+    let response = next(request).await;
     log_request(
         method.as_str(),
-        (&path, &shown_path),
+        (uri.path(), shown_path.as_str()),
         response.status().as_u16(),
         start.elapsed(),
-        log.log_health_probes,
+        (log.log_health_probes, log.recording),
     );
     response
 }
 
 #[cfg(test)]
-#[test]
-fn development_polls_are_not_access_logged() {
-    assert!(!is_logged("/_rullst/dev-generation"));
-    assert!(!is_logged("/_rullst/dev-reload.js"));
-    assert!(!is_logged("/_rullst/dev-telemetry"));
-    assert!(!is_logged("/_rullst_hmr"));
-    assert!(is_logged("/orders"));
-    assert!(is_logged("/_rullst/dev-generation/extra"));
-}
-
-#[cfg(test)]
-#[test]
-fn quiet_health_probes_still_log_failures_and_other_paths() {
-    for path in ["/health", "/ready"] {
-        assert!(!should_log(path, 200, false), "{path}");
-        assert!(!should_log(path, 399, false), "{path}");
-        assert!(should_log(path, 400, false), "{path}");
-        assert!(should_log(path, 503, false), "{path}");
-        assert!(should_log(path, 200, true), "{path}");
-    }
-    assert!(should_log("/health/details", 200, false));
-    assert!(should_log("/orders", 200, false));
-    assert!(!should_log("/_rullst/dev-generation", 500, true));
-}
-
-#[cfg(test)]
-#[test]
-#[allow(clippy::unwrap_used)]
-fn health_probe_logging_follows_the_environment_unless_configured() {
-    let none = HashMap::new();
-    let dotenv =
-        |value: &str| HashMap::from([("RULLST_LOG_HEALTH_PROBES".to_string(), value.to_string())]);
-    assert_eq!(LOG_HEALTH_PROBES_VARIABLE, "RULLST_LOG_HEALTH_PROBES");
-    for (environment, logged) in [
-        (Environment::Development, true),
-        (Environment::Test, true),
-        (Environment::Staging, false),
-        (Environment::Production, false),
-    ] {
-        assert_eq!(log_health_probes(environment, None, &none).unwrap(), logged);
-    }
-    let production = Environment::Production;
-    assert!(log_health_probes(production, Some("true".into()), &none).unwrap());
-    assert!(log_health_probes(production, None, &dotenv("on")).unwrap());
-    assert!(!log_health_probes(production, Some("0".into()), &dotenv("1")).unwrap());
-    assert!(!log_health_probes(Environment::Development, None, &dotenv("false")).unwrap());
-    match log_health_probes(production, Some("sometimes".into()), &none) {
-        Err(ServerError::Configuration(message)) => {
-            assert_eq!(message, "RULLST_LOG_HEALTH_PROBES must be true or false");
-        }
-        other => panic!("unexpected result: {other:?}"),
-    }
-}
-
-#[cfg(all(test, unix))]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::*;
-    use std::io::{BufRead, BufReader, Read};
-    use std::process::{Command, Stdio};
-
-    const CHILD_ENV: &str = "RULLST_CLOSED_STDOUT_CHILD";
-    const CHILD_TEST: &str = "server::console::tests::closed_stdout_child";
-    const SURVIVED: &str = "rullst-access-log-survived-closed-stdout";
-
-    /// Runs only inside the child spawned by the parent test below.
-    #[tokio::test]
-    async fn closed_stdout_child() {
-        if std::env::var_os(CHILD_ENV).is_none() {
-            return;
-        }
-        // The parent closes the read end of stdout before sending this line.
-        let mut go = String::new();
-        std::io::stdin().read_line(&mut go).unwrap();
-
-        use tower::ServiceExt;
-        let router = axum::Router::new()
-            .route("/orders", axum::routing::post(|| async { "created" }))
-            .layer(axum::middleware::from_fn_with_state(
-                AccessLog {
-                    log_health_probes: true,
-                    route_paths: false,
-                },
-                access_log_middleware,
-            ));
-        let response = router
-            .oneshot(
-                axum::http::Request::post("/orders")
-                    .body(axum::body::Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
-        stderr_line(format_args!("{SURVIVED}"));
-    }
-
-    #[test]
-    fn access_log_survives_a_closed_stdout() {
-        if std::env::var_os(CHILD_ENV).is_some() {
-            return;
-        }
-        let mut child = Command::new(std::env::current_exe().unwrap())
-            .args(["--exact", CHILD_TEST, "--nocapture", "--test-threads=2"])
-            .env(CHILD_ENV, "1")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap();
-
-        // Wait for the harness header so its own output is already written,
-        // then close the pipe the access log will write to.
-        let mut stdout = BufReader::new(child.stdout.take().unwrap());
-        let mut line = String::new();
-        while !line.starts_with("running 1 test") {
-            line.clear();
-            assert!(
-                stdout.read_line(&mut line).unwrap() > 0,
-                "child exited early"
-            );
-        }
-        drop(stdout);
-        let mut stdin = child.stdin.take().unwrap();
-        stdin.write_all(b"go\n").unwrap();
-        drop(stdin);
-
-        let mut child_stderr = child.stderr.take().unwrap();
-        let reader = std::thread::spawn(move || {
-            let mut stderr = String::new();
-            let _ = child_stderr.read_to_string(&mut stderr);
-            stderr
-        });
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
-        while child.try_wait().unwrap().is_none() {
-            if std::time::Instant::now() >= deadline {
-                child.kill().unwrap();
-                let _ = child.wait();
-                panic!("the closed-stdout child exceeded its deadline");
-            }
-            std::thread::sleep(std::time::Duration::from_millis(20));
-        }
-        let stderr = reader.join().unwrap();
-        assert!(
-            !stderr.contains("failed printing to stdout"),
-            "the access log panicked: {stderr}"
-        );
-        assert!(
-            stderr.contains(SURVIVED),
-            "the request did not complete: {stderr}"
-        );
-    }
-
-    #[test]
-    fn write_errors_are_ignored() {
-        struct Broken;
-        impl Write for Broken {
-            fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
-                Err(std::io::ErrorKind::BrokenPipe.into())
-            }
-            fn flush(&mut self) -> std::io::Result<()> {
-                Err(std::io::ErrorKind::BrokenPipe.into())
-            }
-        }
-        write_line(&mut Broken, format_args!("[HTTP] GET / -> 200"));
-    }
-
-    const ELAPSED_CHILD_ENV: &str = "RULLST_ACCESS_LOG_ELAPSED_CHILD";
-    const ELAPSED_CHILD_TEST: &str = "server::console::tests::elapsed_access_log_child";
-
-    /// Runs only inside the child spawned by the parent test below.
-    #[test]
-    fn elapsed_access_log_child() {
-        if std::env::var_os(ELAPSED_CHILD_ENV).is_none() {
-            return;
-        }
-        let elapsed = std::time::Duration::from_micros(1_500_250);
-        log_request("POST", ("/courses", "/courses"), 201, elapsed, true);
-    }
-
-    /// Runs the test `name` of this binary in a child process with `env` set
-    /// and returns its standard output, where the access log writes.
-    fn child_stdout(name: &str, env: &str) -> String {
-        let mut child = Command::new(std::env::current_exe().unwrap())
-            .args(["--exact", name, "--nocapture", "--test-threads=1"])
-            .env(env, "1")
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .unwrap();
-        let mut child_stdout = child.stdout.take().unwrap();
-        let reader = std::thread::spawn(move || {
-            let mut stdout = String::new();
-            let _ = child_stdout.read_to_string(&mut stdout);
-            stdout
-        });
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
-        while child.try_wait().unwrap().is_none() {
-            if std::time::Instant::now() >= deadline {
-                child.kill().unwrap();
-                let _ = child.wait();
-                panic!("the access-log child exceeded its deadline");
-            }
-            std::thread::sleep(std::time::Duration::from_millis(20));
-        }
-        reader.join().unwrap()
-    }
-
-    #[test]
-    fn access_log_lines_report_the_elapsed_milliseconds() {
-        if std::env::var_os(ELAPSED_CHILD_ENV).is_some() {
-            return;
-        }
-        let stdout = child_stdout(ELAPSED_CHILD_TEST, ELAPSED_CHILD_ENV);
-        assert!(
-            stdout.contains("[HTTP] POST /courses -> 201 (1500.25 ms)\n"),
-            "{stdout}"
-        );
-    }
-
-    const LOG_CHILD_ENV: &str = "RULLST_ACCESS_LOG_CHILD";
-    const LOG_CHILD_TEST: &str = "server::console::tests::quiet_probe_access_log_child";
-
-    /// Runs only inside the child spawned by the parent test below, whose
-    /// stdout the access log writes to.
-    #[tokio::test]
-    async fn quiet_probe_access_log_child() {
-        if std::env::var_os(LOG_CHILD_ENV).is_none() {
-            return;
-        }
-        use tower::ServiceExt;
-        let router = axum::Router::new()
-            .route("/orders", axum::routing::get(|| async { "orders" }))
-            .route("/health", axum::routing::get(|| async { "ok" }))
-            .route(
-                "/ready",
-                axum::routing::get(|| async { axum::http::StatusCode::SERVICE_UNAVAILABLE }),
-            )
-            .layer(axum::middleware::from_fn_with_state(
-                AccessLog {
-                    log_health_probes: false,
-                    route_paths: false,
-                },
-                access_log_middleware,
-            ));
-        for (path, status) in [("/orders", 200), ("/health", 200), ("/ready", 503)] {
-            let response = router
-                .clone()
-                .oneshot(
-                    axum::http::Request::get(path)
-                        .body(axum::body::Body::empty())
-                        .unwrap(),
-                )
-                .await
-                .unwrap();
-            assert_eq!(response.status().as_u16(), status, "{path}");
-        }
-    }
-
-    #[test]
-    fn quiet_probe_access_log_prints_requests_and_failing_probes() {
-        if std::env::var_os(LOG_CHILD_ENV).is_some() {
-            return;
-        }
-        let stdout = child_stdout(LOG_CHILD_TEST, LOG_CHILD_ENV);
-        assert!(stdout.contains("test result: ok. 1 passed"), "{stdout}");
-        assert!(stdout.contains("[HTTP] GET /orders -> 200 ("), "{stdout}");
-        assert!(stdout.contains("[HTTP] GET /ready -> 503 ("), "{stdout}");
-        assert!(!stdout.contains("/health"), "{stdout}");
-    }
-
-    const ROUTE_CHILD_ENV: &str = "RULLST_ACCESS_LOG_ROUTE_CHILD";
-    const ROUTE_CHILD_TEST: &str = "server::console::tests::route_access_log_child";
-
-    /// Runs only inside the child spawned by the parent test below.
-    #[tokio::test]
-    async fn route_access_log_child() {
-        if std::env::var_os(ROUTE_CHILD_ENV).is_none() {
-            return;
-        }
-        use tower::ServiceExt;
-        let router = axum::Router::new()
-            // rullst-access: public — test fixture; the token is the link's capability.
-            .route("/booking/{token}", axum::routing::get(|| async { "ok" }))
-            .layer(axum::middleware::from_fn_with_state(
-                AccessLog {
-                    log_health_probes: true,
-                    route_paths: true,
-                },
-                access_log_middleware,
-            ));
-        for (uri, status) in [("/booking/s3cr3t?ref=x", 200), ("/missing/k3y", 404)] {
-            let response = router
-                .clone()
-                .oneshot(
-                    axum::http::Request::get(uri)
-                        .body(axum::body::Body::empty())
-                        .unwrap(),
-                )
-                .await
-                .unwrap();
-            assert_eq!(response.status().as_u16(), status, "{uri}");
-        }
-    }
-
-    #[test]
-    fn route_access_log_writes_templates_instead_of_request_paths() {
-        if std::env::var_os(ROUTE_CHILD_ENV).is_some() {
-            return;
-        }
-        let stdout = child_stdout(ROUTE_CHILD_TEST, ROUTE_CHILD_ENV);
-        assert!(stdout.contains("test result: ok. 1 passed"), "{stdout}");
-        assert!(
-            stdout.contains("[HTTP] GET /booking/{token} -> 200 ("),
-            "{stdout}"
-        );
-        assert!(
-            stdout.contains("[HTTP] GET /missing/k3y -> 404 ("),
-            "{stdout}"
-        );
-        assert!(
-            !stdout.contains("s3cr3t") && !stdout.contains("ref="),
-            "{stdout}"
-        );
-    }
-}
+#[path = "console_tests.rs"]
+mod tests;

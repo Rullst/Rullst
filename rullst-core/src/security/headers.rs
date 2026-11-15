@@ -108,6 +108,215 @@ fn strict_transport_security(config: &crate::config::SecurityConfig) -> String {
     value
 }
 
+/// The fixed headers of the baseline, each added when the response has none.
+const DEFAULT_HEADERS: [(HeaderName, HeaderValue); 6] = [
+    (header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY")),
+    (
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    ),
+    // The legacy XSS auditor has caused response mutation vulnerabilities in old browsers.
+    (
+        HeaderName::from_static("x-xss-protection"),
+        HeaderValue::from_static("0"),
+    ),
+    (
+        HeaderName::from_static("permissions-policy"),
+        HeaderValue::from_static("camera=(), microphone=(), geolocation=(), payment=(), usb=()"),
+    ),
+    (
+        HeaderName::from_static("cross-origin-opener-policy"),
+        HeaderValue::from_static("same-origin"),
+    ),
+    (
+        HeaderName::from_static("cross-origin-resource-policy"),
+        HeaderValue::from_static("same-origin"),
+    ),
+];
+const CROSS_ORIGIN_EMBEDDER_POLICY: HeaderName =
+    HeaderName::from_static("cross-origin-embedder-policy");
+const NO_STORE: HeaderValue = HeaderValue::from_static("no-store");
+/// The headers [`HeaderPlan::apply`] can add: the defaults, HSTS,
+/// `Referrer-Policy`, COEP and CSP.
+const PLANNED_HEADERS: usize = 10;
+const STRICT_ORIGIN_WHEN_CROSS_ORIGIN: HeaderValue =
+    HeaderValue::from_static("strict-origin-when-cross-origin");
+
+/// The header values [`headers_middleware`] derives from a
+/// [`crate::config::SecurityConfig`], built once per configuration instead of
+/// for every response.
+#[derive(Clone, Debug)]
+pub(crate) struct HeaderPlan {
+    /// The template each response's policy is rendered from, split at its
+    /// `{NONCE}` placeholders: the configured `csp`, or
+    /// [`DEFAULT_CSP_TEMPLATE`] when that is blank or holds a byte a header
+    /// value cannot carry.
+    csp_parts: Vec<String>,
+    /// The policy of a response that cannot be an HTML document: the
+    /// template when it has no `{NONCE}`, else [`DEFAULT_STATIC_CSP`]
+    /// ([`render_csp_policy`] without a nonce).
+    static_csp: HeaderValue,
+    coep: HeaderValue,
+    hsts: Option<HeaderValue>,
+}
+
+impl HeaderPlan {
+    pub(crate) fn new(config: &crate::config::SecurityConfig) -> Self {
+        // A nonce is base64 text, so the rendered policy is a valid header
+        // value exactly when the template is.
+        let usable = !config.csp.trim().is_empty() && HeaderValue::from_str(&config.csp).is_ok();
+        let template = if usable {
+            config.csp.as_str()
+        } else {
+            DEFAULT_CSP_TEMPLATE
+        };
+        let static_csp = if template.contains("{NONCE}") {
+            DEFAULT_STATIC_CSP
+        } else {
+            template
+        };
+        Self {
+            csp_parts: template.split("{NONCE}").map(str::to_owned).collect(),
+            static_csp: HeaderValue::from_str(static_csp)
+                .unwrap_or_else(|_| HeaderValue::from_static(DEFAULT_STATIC_CSP)),
+            coep: HeaderValue::from_str(&config.coep)
+                .unwrap_or_else(|_| HeaderValue::from_static("require-corp")),
+            hsts: HeaderValue::from_str(&strict_transport_security(config)).ok(),
+        }
+    }
+
+    /// The `Content-Security-Policy` value for one request's nonce.
+    fn csp(&self, nonce: &CspNonce) -> HeaderValue {
+        let policy = self.csp_parts.join(nonce.as_str());
+        HeaderValue::from_maybe_shared(axum::body::Bytes::from(policy))
+            .unwrap_or_else(|_| HeaderValue::from_static("default-src 'none'"))
+    }
+
+    /// Adds every header of the plan that `headers` lacks.
+    fn apply(&self, headers: &mut HeaderMap, nonce: &CspNonce) {
+        make_room(headers);
+        for (name, value) in DEFAULT_HEADERS {
+            headers.entry(name).or_insert(value);
+        }
+        if let Some(hsts) = &self.hsts {
+            headers
+                .entry(header::STRICT_TRANSPORT_SECURITY)
+                .or_insert_with(|| hsts.clone());
+        }
+        // An explicit policy wins, but an exact `no-referrer` among several values is still
+        // normalized to that single restriction.
+        let explicit_no_referrer = headers
+            .get_all(header::REFERRER_POLICY)
+            .iter()
+            .any(|value| value == "no-referrer");
+        if explicit_no_referrer || !headers.contains_key(header::REFERRER_POLICY) {
+            apply_referrer_policy(headers, STRICT_ORIGIN_WHEN_CROSS_ORIGIN);
+        }
+        headers
+            .entry(CROSS_ORIGIN_EMBEDDER_POLICY)
+            .or_insert_with(|| self.coep.clone());
+        // Only a document can run the inline scripts and styles a nonce
+        // admits; any other response gets the fixed policy without one.
+        let document = may_be_html(headers);
+        headers
+            .entry(header::CONTENT_SECURITY_POLICY)
+            .or_insert_with(|| {
+                if document {
+                    self.csp(nonce)
+                } else {
+                    self.static_csp.clone()
+                }
+            });
+    }
+}
+
+/// Whether a response with `headers` can be an HTML document: its
+/// `Content-Type` is `text/html` or `application/xhtml+xml`, or it has no
+/// readable one, which a browser may sniff.
+fn may_be_html(headers: &HeaderMap) -> bool {
+    match headers.get(header::CONTENT_TYPE).map(HeaderValue::to_str) {
+        Some(Ok(content_type)) => {
+            let media_type = super::media_type::essence(content_type);
+            media_type.eq_ignore_ascii_case("text/html")
+                || media_type.eq_ignore_ascii_case("application/xhtml+xml")
+        }
+        _ => true,
+    }
+}
+
+/// Grows `headers` once for every header of a plan, instead of several
+/// times while they are added. Capacity only: a map that cannot grow keeps
+/// its size, and the headers are the same either way.
+#[cfg_attr(mutants, mutants::skip)]
+fn make_room(headers: &mut HeaderMap) {
+    if headers.capacity() < headers.len() + PLANNED_HEADERS {
+        let _ = headers.try_reserve(PLANNED_HEADERS);
+    }
+}
+
+/// The configuration a [`PlanCache`] holds the plan of.
+#[derive(Debug)]
+struct PlanSource {
+    csp: String,
+    coep: String,
+    hsts: (u64, bool, bool),
+}
+
+impl PlanSource {
+    fn of(config: &crate::config::SecurityConfig) -> Self {
+        Self {
+            csp: config.csp.clone(),
+            coep: config.coep.clone(),
+            hsts: hsts_settings(config),
+        }
+    }
+
+    fn matches(&self, config: &crate::config::SecurityConfig) -> bool {
+        (self.csp.as_str(), self.coep.as_str(), self.hsts)
+            == (
+                config.csp.as_str(),
+                config.coep.as_str(),
+                hsts_settings(config),
+            )
+    }
+}
+
+fn hsts_settings(config: &crate::config::SecurityConfig) -> (u64, bool, bool) {
+    (
+        config.hsts_max_age_seconds,
+        config.hsts_include_subdomains,
+        config.hsts_preload,
+    )
+}
+
+/// The plan of the first configuration it sees. An application has one
+/// security configuration, so every later request borrows that plan; another
+/// configuration gets a plan of its own for each request.
+#[derive(Debug)]
+pub(crate) struct PlanCache(std::sync::OnceLock<(PlanSource, HeaderPlan)>);
+
+impl PlanCache {
+    pub(crate) const fn new() -> Self {
+        Self(std::sync::OnceLock::new())
+    }
+
+    pub(super) fn plan(
+        &self,
+        config: &crate::config::SecurityConfig,
+    ) -> std::borrow::Cow<'_, HeaderPlan> {
+        let (source, plan) = self
+            .0
+            .get_or_init(|| (PlanSource::of(config), HeaderPlan::new(config)));
+        if source.matches(config) {
+            std::borrow::Cow::Borrowed(plan)
+        } else {
+            std::borrow::Cow::Owned(HeaderPlan::new(config))
+        }
+    }
+}
+
+static PLANS: PlanCache = PlanCache::new();
+
 /// Middleware that adds strict security headers and exposes a matching CSP nonce to handlers.
 ///
 /// Each header is added only when the response has none, so an explicit value from a handler
@@ -118,28 +327,27 @@ fn strict_transport_security(config: &crate::config::SecurityConfig) -> String {
 /// `hsts_include_subdomains` and `hsts_preload` settings of
 /// [`crate::config::SecurityConfig`] (`[security]` in `Rullst.toml`); the
 /// default is `max-age=31536000; includeSubDomains`, without `preload`.
-pub async fn headers_middleware(mut req: Request, next: Next) -> Response {
-    let configured_csp = req
-        .extensions()
-        .get::<crate::config::SecurityConfig>()
-        .map(|config| config.csp.clone())
-        .unwrap_or_else(|| crate::config::RullstConfig::global().security.csp.clone());
-    let configured_coep = req
-        .extensions()
-        .get::<crate::config::SecurityConfig>()
-        .map(|config| config.coep.clone())
-        .unwrap_or_else(|| crate::config::RullstConfig::global().security.coep.clone());
-    let configured_hsts = strict_transport_security(
-        req.extensions()
-            .get::<crate::config::SecurityConfig>()
-            .unwrap_or(&crate::config::RullstConfig::global().security),
-    );
+pub async fn headers_middleware(req: Request, next: Next) -> Response {
+    let plan = PLANS.plan(super::waf::security_config(&req));
+    with_security_headers(req, &plan, |req| next.run(req)).await
+}
+
+/// [`headers_middleware`] with the header values of `plan`, around `next`.
+pub(crate) async fn with_security_headers<F, Fut>(
+    mut req: Request,
+    plan: &HeaderPlan,
+    next: F,
+) -> Response
+where
+    F: FnOnce(Request) -> Fut,
+    Fut: std::future::Future<Output = Response>,
+{
     // Reuse a nonce installed by an outer security layer. Generated applications and
     // integrations may compose more than one header layer; replacing the request nonce here
     // would make the renderer use a different value from the final CSP response header.
     let nonce = CspNonce::get_or_insert(req.extensions_mut());
 
-    let mut response = next.run(req).await;
+    let mut response = next(req).await;
     let inner_layer_applied = response
         .extensions()
         .get::<SecurityHeadersApplied>()
@@ -148,68 +356,9 @@ pub async fn headers_middleware(mut req: Request, next: Next) -> Response {
 
     // Dynamic responses are private by default. A handler can still opt into an explicit,
     // reviewed cache policy for public/static content before this middleware runs.
-    headers
-        .entry(header::CACHE_CONTROL)
-        .or_insert(HeaderValue::from_static("no-store"));
-    if inner_layer_applied {
-        return response;
+    headers.entry(header::CACHE_CONTROL).or_insert(NO_STORE);
+    if !inner_layer_applied {
+        plan.apply(headers, &nonce);
     }
-
-    let defaults = [
-        (header::X_FRAME_OPTIONS, "DENY"),
-        (header::X_CONTENT_TYPE_OPTIONS, "nosniff"),
-        // The legacy XSS auditor has caused response mutation vulnerabilities in old browsers.
-        (HeaderName::from_static("x-xss-protection"), "0"),
-        (
-            HeaderName::from_static("permissions-policy"),
-            "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
-        ),
-        (
-            HeaderName::from_static("cross-origin-opener-policy"),
-            "same-origin",
-        ),
-        (
-            HeaderName::from_static("cross-origin-resource-policy"),
-            "same-origin",
-        ),
-    ];
-    for (name, value) in defaults {
-        headers
-            .entry(name)
-            .or_insert(HeaderValue::from_static(value));
-    }
-    if let Ok(hsts) = HeaderValue::from_str(&configured_hsts) {
-        headers
-            .entry(header::STRICT_TRANSPORT_SECURITY)
-            .or_insert(hsts);
-    }
-    // An explicit policy wins, but an exact `no-referrer` among several values is still
-    // normalized to that single restriction.
-    let explicit_no_referrer = headers
-        .get_all(header::REFERRER_POLICY)
-        .iter()
-        .any(|value| value == "no-referrer");
-    if explicit_no_referrer || !headers.contains_key(header::REFERRER_POLICY) {
-        apply_referrer_policy(
-            headers,
-            HeaderValue::from_static("strict-origin-when-cross-origin"),
-        );
-    }
-    headers
-        .entry(HeaderName::from_static("cross-origin-embedder-policy"))
-        .or_insert_with(|| {
-            HeaderValue::from_str(&configured_coep)
-                .unwrap_or_else(|_| HeaderValue::from_static("require-corp"))
-        });
-    headers
-        .entry(header::CONTENT_SECURITY_POLICY)
-        .or_insert_with(|| {
-            let csp = render_csp_policy(Some(&configured_csp), Some(&nonce));
-            HeaderValue::from_str(&csp).unwrap_or_else(|_| {
-                HeaderValue::from_str(&render_csp_policy(None, Some(&nonce)))
-                    .unwrap_or_else(|_| HeaderValue::from_static("default-src 'none'"))
-            })
-        });
-
     response
 }
