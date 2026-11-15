@@ -107,6 +107,9 @@ pub struct Server {
     /// Whether access-log lines show the matched route; resolved from
     /// `access_log_paths` and the environment when the server starts.
     pub(crate) access_log_route_paths: bool,
+    /// Which requests the access log writes; resolved from
+    /// `RULLST_ACCESS_LOG` when the server starts.
+    pub(crate) access_log_recording: super::console::Recording,
     pub(crate) monitor: Option<crate::monitor::Monitor>,
     #[cfg(feature = "orm")]
     pub(crate) migrations: Option<Vec<Box<dyn rullst_orm::schema::Migration>>>,
@@ -131,6 +134,7 @@ impl Server {
             log_health_probes: true,
             access_log_paths: None,
             access_log_route_paths: false,
+            access_log_recording: super::console::Recording::All,
             monitor: None,
             #[cfg(feature = "orm")]
             migrations: None,
@@ -156,6 +160,7 @@ impl Server {
             log_health_probes: true,
             access_log_paths: None,
             access_log_route_paths: false,
+            access_log_recording: super::console::Recording::All,
             monitor: None,
             #[cfg(feature = "orm")]
             migrations: None,

@@ -30,6 +30,8 @@ pub struct HotSwapService {
     pub(crate) machine_endpoints: Option<crate::security::MachineEndpointPolicy>,
     /// Whether access-log lines show the matched route (`Server::access_log_paths`).
     pub(crate) access_log_route_paths: bool,
+    /// Which requests the access log writes (`RULLST_ACCESS_LOG`).
+    pub(crate) access_log_recording: super::console::Recording,
 }
 
 impl HotSwapService {
@@ -239,13 +241,16 @@ impl Service<axum::extract::Request> for HotSwapService {
 
         // Innermost, after routing, as in the static server stack. Hot reload
         // runs only in development, which logs every probe.
-        router = router.layer(axum::middleware::from_fn_with_state(
-            super::console::AccessLog {
-                log_health_probes: true,
-                route_paths: self.access_log_route_paths,
-            },
-            super::console::access_log_middleware,
-        ));
+        if self.access_log_recording != super::console::Recording::Off {
+            router = router.layer(axum::middleware::from_fn_with_state(
+                super::console::AccessLog {
+                    log_health_probes: true,
+                    route_paths: self.access_log_route_paths,
+                    recording: self.access_log_recording,
+                },
+                super::console::access_log_middleware,
+            ));
+        }
         router = super::traffic::apply_traffic_controls(
             router,
             self.limiter.clone(),

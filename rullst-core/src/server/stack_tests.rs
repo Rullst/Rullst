@@ -177,6 +177,7 @@ async fn hot_reload_service_resolves_clients_behind_trusted_proxies() {
         )),
         machine_endpoints: None,
         access_log_route_paths: false,
+        access_log_recording: crate::server::console::Recording::All,
     };
     let mut connection = ConnectedHotSwap {
         inner,
@@ -329,9 +330,20 @@ async fn html_pages_of_the_server_vary_on_hx_request() {
     async fn page(htmx: crate::HtmxRequest) -> axum::response::Html<String> {
         crate::render_page(&htmx, "T", crate::html! { <p>"x"</p> })
     }
-    let app = Server::new(Router::new().route("/page", axum::routing::get(page)))
-        .into_static_app(SecurityConfig::default(), Environment::Production)
-        .unwrap();
+    for recording in [
+        crate::server::console::Recording::All,
+        crate::server::console::Recording::Off,
+    ] {
+        let mut server = Server::new(Router::new().route("/page", axum::routing::get(page)));
+        server.access_log_recording = recording;
+        let app = server
+            .into_static_app(SecurityConfig::default(), Environment::Production)
+            .unwrap();
+        vary_on_hx_request(&app).await;
+    }
+}
+
+async fn vary_on_hx_request(app: &axum::Router) {
     for htmx in [false, true] {
         let mut request = Request::builder().uri("/page");
         if htmx {
@@ -371,4 +383,33 @@ fn a_missing_static_directory_is_named_in_the_startup_warning() {
         warning.contains("start the server in the directory"),
         "{warning}"
     );
+}
+
+/// Lines this test's thread handed to the access log so far.
+fn queued_here() -> u64 {
+    crate::server::access_log_writer::QUEUED_HERE.with(std::cell::Cell::get)
+}
+
+#[tokio::test]
+async fn access_log_off_leaves_the_access_log_out_of_the_stack() {
+    use crate::server::console::Recording;
+    for (recording, lines) in [
+        (Recording::All, 1),
+        (Recording::Errors, 0),
+        (Recording::Off, 0),
+    ] {
+        let mut server =
+            Server::new(Router::new().route("/plain", axum::routing::get(|| async { "ok" })));
+        server.access_log_recording = recording;
+        let app = server
+            .into_static_app(SecurityConfig::default(), Environment::Production)
+            .unwrap();
+        let before = queued_here();
+        let response = app
+            .oneshot(Request::get("/plain").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK, "{recording:?}");
+        assert_eq!(queued_here() - before, lines, "{recording:?}");
+    }
 }

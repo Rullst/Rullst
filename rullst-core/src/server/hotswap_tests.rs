@@ -26,6 +26,7 @@ fn service(router: axum::Router) -> HotSwapService {
         trusted_proxy: None,
         machine_endpoints: None,
         access_log_route_paths: false,
+        access_log_recording: crate::server::console::Recording::All,
     }
 }
 
@@ -339,4 +340,22 @@ async fn hmr_websocket_forwards_reload_messages_to_the_browser() {
         "{message:?}"
     );
     server.abort();
+}
+
+#[tokio::test]
+async fn access_log_off_leaves_the_access_log_out_of_hot_swapped_routes() {
+    use crate::server::console::Recording;
+    let queued = || crate::server::access_log_writer::QUEUED_HERE.with(std::cell::Cell::get);
+    for (recording, lines) in [(Recording::All, 1), (Recording::Off, 0)] {
+        let router = axum::Router::new().route("/ok", axum::routing::get(|| async { "ready" }));
+        let mut service = service(router);
+        service.access_log_recording = recording;
+        let before = queued();
+        let response = service
+            .call(Request::builder().uri("/ok").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK, "{recording:?}");
+        assert_eq!(queued() - before, lines, "{recording:?}");
+    }
 }
