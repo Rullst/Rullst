@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794781219982,
+  "lastUpdate": 1794784630205,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -34803,6 +34803,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1505,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cb30a27548713f5922a84ff120f9033760d3899f",
+          "message": "Merge pull request #716 from Rullst/feat/v13-alpha6-server-dev-baseline\n\nfeat(core): apply CSRF and secure headers in every environment",
+          "timestamp": "2026-11-15T20:12:04-03:00",
+          "tree_id": "9378f76398bebeb53df7304c281b2d4129bc4ebd",
+          "url": "https://github.com/Rullst/Rullst/commit/cb30a27548713f5922a84ff120f9033760d3899f"
+        },
+        "date": 1794784625916,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 555,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 789,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 402,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1350,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
