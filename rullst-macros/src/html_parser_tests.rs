@@ -388,3 +388,25 @@ fn malformed_match_blocks_are_rejected() {
     assert!(syn::parse_str::<HtmlDocument>(r#"@match x"#).is_err());
     assert!(syn::parse_str::<HtmlDocument>(r#"@match { _ => {} }"#).is_err());
 }
+
+#[test]
+fn capacity_hints_add_tags_attributes_children_and_text() {
+    let document = parse_ok(r#"<div class="a" hidden>"hi"{x}<br /></div>"#);
+    let [div @ HtmlNode::Element(element)] = &document.nodes[..] else {
+        panic!("expected one <div>");
+    };
+    // `<div></div>` 11, ` class="a"` 10, ` hidden` 7, `hi` 2, `<br></br>` 9
+    // and nothing for `{x}`.
+    assert_eq!(element.static_size(), 39);
+    assert_eq!(div.static_size(), 39);
+    let tokens = div.to_tokens().to_string();
+    assert!(tokens.contains("String :: with_capacity (39usize)"), "{tokens}");
+
+    // A fragment reserves the sum of its nodes.
+    let document = parse_ok(r#""abc" {x} <p></p>"#);
+    let sizes: Vec<usize> = document.nodes.iter().map(HtmlNode::static_size).collect();
+    assert_eq!(sizes, [3, 0, 7]);
+    let tokens = document.to_tokens().to_string();
+    assert!(tokens.contains("String :: with_capacity (10usize)"), "{tokens}");
+}
+
