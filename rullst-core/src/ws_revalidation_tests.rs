@@ -122,12 +122,17 @@ async fn a_sending_connection_checks_once_per_interval_and_then_closes() {
     let made = flag.checks.load(Ordering::SeqCst);
     assert!((1..=3).contains(&made), "{made} checks");
     flag.revoked.store(true, Ordering::SeqCst);
-    let closed = loop {
-        match tokio::time::timeout(DEADLINE, client.next()).await.unwrap() {
-            Some(Ok(Message::Text(_))) => continue,
-            other => break other,
+    // Within one interval and a few ticks, never later.
+    let closed = tokio::time::timeout(DEADLINE, async {
+        loop {
+            match client.next().await {
+                Some(Ok(Message::Text(_))) => continue,
+                other => break other,
+            }
         }
-    };
+    })
+    .await
+    .expect("the connection closes within the deadline");
     assert!(matches!(closed, Some(Ok(Message::Close(_)))), "{closed:?}");
     let error = tokio::time::timeout(DEADLINE, results.recv())
         .await
