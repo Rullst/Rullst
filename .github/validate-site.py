@@ -12,7 +12,10 @@ same section ids, external links and integration names.
 
 from __future__ import annotations
 
+from contextlib import redirect_stderr
 from html import unescape
+import io
+import os
 from html.parser import HTMLParser
 from hashlib import sha256
 import importlib.util
@@ -331,9 +334,7 @@ LANGUAGES = {
 }
 
 
-def validate_language_links(
-    path: Path, source: str, document: "Document", page: str, lang: str, pt_page: str | None = None
-) -> None:
+def validate_language_links(path: Path, source: str, page: str, lang: str, pt_page: str | None = None) -> None:
     """Language attribute, hreflang alternates and the flag switcher.
 
     PAGE is the English path below the site root; PT_PAGE the Portuguese one
@@ -355,12 +356,12 @@ def validate_language_links(
     assert current == [lang], f"{path.name}: aria-current must mark only the {lang} entry"
 
 
-def validate_landing(lang: str, readme: str) -> tuple[Document, str]:
+def validate_landing(lang: str) -> tuple[Document, str]:
     facts = LANGUAGES[lang]
     path = facts["home"]
     home, source = parse(path)
     validate_document(path, home)
-    validate_language_links(path, source, home, "", lang)
+    validate_language_links(path, source, "", lang)
     assert home.has_main and home.has_nav and home.has_footer, f"{path.name}: needs nav, main and footer"
     assert source.count(facts["dedication"]) == 1, f"{path.name}: needs the footer dedication"
     assert facts["status"] in source, f"{path.name}: must identify the v13 prerelease line"
@@ -416,10 +417,9 @@ def validate_privacy(lang: str, home: Document) -> tuple[Document, str]:
 
 def validate_static_page(path: Path, lang: str, page: str, pt_page: str | None, home: Document) -> tuple[Document, str]:
     """Checks shared by the script-free pages (privacy notice, comparison)."""
-    facts = LANGUAGES[lang]
     privacy, source = parse(path)
     validate_document(path, privacy)
-    validate_language_links(path, source, privacy, page, lang, pt_page)
+    validate_language_links(path, source, page, lang, pt_page)
     assert privacy.has_main and privacy.has_nav and privacy.has_footer, f"{path.name}: needs nav, main and footer"
     assert "script-src 'none'" in source, f"{path.name}: must forbid scripts"
     assert not privacy.scripts and not privacy.inline_behavior and not privacy.embeds, f"{path.name}: must stay static"
@@ -472,9 +472,12 @@ def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
             assert 'class="benchmark-pending"' not in rendered, f"{page}: benchmark rows were not rendered"
             assert all(text in rendered for text in expected), f"{page}: unexpected benchmark rendering"
             assert "Actix" not in rendered, f"{page}: renders a framework outside the comparison"
+    # The assembler reads results only from inside the working directory.
+    with tempfile.TemporaryDirectory(prefix=".validate-site-", dir=ROOT) as temp, redirect_stderr(io.StringIO()) as warnings:
         bad = Path(temp) / "bad.json"
         bad.write_text('{"schema": "rullst.benchmarks.latest.v1", "measured_on": "2026-11-20", "results": [{"framework": "Rullst", "version": "<b>", "json_rps": 1}]}')
         assembler.assemble(Path(temp) / "bad", benchmarks=bad)
+        assert "unexpected version" in warnings.getvalue(), "invalid benchmark data must be reported"
         assert 'class="benchmark-pending"' in (Path(temp) / "bad" / "compare/index.html").read_text(encoding="utf-8"), (
             "invalid benchmark data must keep the pending text"
         )
@@ -501,9 +504,10 @@ SOCIAL_LINKS = {
 
 
 def main() -> None:
+    os.chdir(ROOT)
     readme = README.read_text(encoding="utf-8")
-    home, source = validate_landing("en", readme)
-    home_pt, source_pt = validate_landing("pt-BR", readme)
+    home, source = validate_landing("en")
+    home_pt, source_pt = validate_landing("pt-BR")
     validate_translation(home, source, home_pt, source_pt, HOME_PT_BR.name)
     interface_text = set(re.findall(r"ui\.ui([A-Z]\w+)", (DOCS / "site.js").read_text(encoding="utf-8")))
     translated_text = {

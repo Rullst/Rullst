@@ -9,8 +9,8 @@ for the comparison) and the shared assets (stylesheet, script and
 language-switcher flags) under assets/ into DIRECTORY, which must be missing
 or empty.
 
---benchmarks names a downloaded copy of the Rullst/Benchmarks latest-results
-JSON (schema "rullst.benchmarks.latest.v1", described in
+--benchmarks names a downloaded copy (inside the working directory, at most
+1 MiB) of the Rullst/Benchmarks latest-results JSON (schema "rullst.benchmarks.latest.v1", described in
 docs/src/website-maintenance.md). Its Rullst, Loco and Topcoat rows are
 rendered into the comparison pages; without the file, or when it is invalid,
 the pages keep their "first measurement in progress" text and the script
@@ -31,6 +31,7 @@ from hashlib import sha256
 from html import escape
 import json
 import math
+import os
 from pathlib import Path
 import re
 import sys
@@ -102,6 +103,43 @@ class AssemblyError(Exception):
     """The sources cannot produce a consistent root site."""
 
 
+BENCHMARK_LIMIT = 1024 * 1024
+
+
+def read_benchmark_file(path: Path) -> object:
+    """Parse a downloaded results file; it must be a small regular file in the working directory."""
+    base = os.path.realpath(os.getcwd())
+    resolved = os.path.realpath(path)
+    if os.path.commonpath([base, resolved]) != base:
+        raise ValueError("the results file must be inside the working directory")
+    if not os.path.isfile(resolved) or os.path.getsize(resolved) > BENCHMARK_LIMIT:
+        raise ValueError("the results file must be a regular file of at most 1 MiB")
+    with open(resolved, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def checked_metric(name: str, key: str, raw: object) -> float:
+    value = float(raw)  # type: ignore[arg-type]
+    if not math.isfinite(value) or value < 0:
+        raise ValueError(f"{name}: {key} is not a finite, non-negative number")
+    return value
+
+
+def benchmark_row(result: dict) -> tuple[str, dict] | None:
+    """The compared framework a result belongs to and its checked values, or None."""
+    name = str(result["framework"])
+    match = next((known for known in COMPARED if known.lower() == name.lower()), None)
+    if match is None:
+        return None
+    version = str(result["version"])
+    if not VERSION.fullmatch(version):
+        raise ValueError(f"unexpected version for {name}: {version!r}")
+    metrics = {key: checked_metric(name, key, result[key]) for key in METRICS if result.get(key) is not None}
+    if not metrics:
+        raise ValueError(f"{name}: no known metric")
+    return match, {"version": version, "metrics": metrics}
+
+
 def load_benchmarks(path: Path) -> dict | None:
     """Return the measured date and the compared frameworks' rows, or None.
 
@@ -110,29 +148,11 @@ def load_benchmarks(path: Path) -> dict | None:
     discards the whole file.
     """
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = read_benchmark_file(path)
         if not isinstance(data, dict) or data.get("schema") != BENCHMARK_SCHEMA:
             raise ValueError(f"schema is not {BENCHMARK_SCHEMA}")
         measured_on = date.fromisoformat(str(data["measured_on"]))
-        rows = {}
-        for result in data["results"]:
-            name = str(result["framework"])
-            match = next((known for known in COMPARED if known.lower() == name.lower()), None)
-            if match is None:
-                continue
-            version = str(result["version"])
-            if not VERSION.fullmatch(version):
-                raise ValueError(f"unexpected version for {name}: {version!r}")
-            metrics = {}
-            for key in METRICS:
-                if key in result and result[key] is not None:
-                    value = float(result[key])
-                    if not math.isfinite(value) or value < 0:
-                        raise ValueError(f"{name}: {key} is not a finite, non-negative number")
-                    metrics[key] = value
-            if not metrics:
-                raise ValueError(f"{name}: no known metric")
-            rows[match] = {"version": version, "metrics": metrics}
+        rows = dict(row for row in map(benchmark_row, data["results"]) if row is not None)
     except (OSError, ValueError, KeyError, TypeError) as error:
         print(f"warning: benchmark results not used ({error})", file=sys.stderr)
         return None
@@ -171,6 +191,33 @@ def render_benchmarks(results: dict, lang: str) -> str:
     return "\n".join(lines)
 
 
+def check_page(page: str, text: str, digests: dict[str, str]) -> None:
+    """One page's canonical URL, CSP and asset references."""
+    source = FILES[page]
+    if f'<link rel="canonical" href="{CANONICAL[page]}">' not in text:
+        raise AssemblyError(f"{source} must declare the canonical URL {CANONICAL[page]}")
+    if "Content-Security-Policy" not in text:
+        raise AssemblyError(f"{source} must declare a Content-Security-Policy")
+    unpublished = [asset for asset in LOCAL_ASSET.findall(text) if asset not in FILES]
+    if unpublished:
+        raise AssemblyError(f"{source} references /{unpublished[0]}, which the root site does not publish")
+    references = ASSET_REFERENCE.findall(text)
+    if not references:
+        raise AssemblyError(f"{source} references no content-versioned asset")
+    stale = [(name, version) for name, version in references if version != digests[name]]
+    if stale:
+        name, version = stale[0]
+        raise AssemblyError(f"{source} references {name}?v={version}; the current content version is {digests[name]}")
+    required = ("site.css", "site.js") if page in LANDINGS else ()
+    missing = [name for name in required if f"/assets/{name}?v={digests[name]}" not in text]
+    if missing:
+        raise AssemblyError(f"{source} must load /assets/{missing[0]}?v={digests[missing[0]]}")
+    if page in COMPARE_PAGES and not (
+        text.count(BENCHMARK_START) == 1 == text.count(BENCHMARK_END) and text.index(BENCHMARK_START) < text.index(BENCHMARK_END)
+    ):
+        raise AssemblyError(f"{source} needs one benchmark-results block")
+
+
 def check_sources(root: Path = ROOT) -> dict[str, bytes]:
     """Read every source and check the references the deployment relies on."""
     contents = {}
@@ -179,36 +226,9 @@ def check_sources(root: Path = ROOT) -> dict[str, bytes]:
         if not path.is_file() or path.is_symlink():
             raise AssemblyError(f"missing regular source file: {source}")
         contents[published] = path.read_bytes()
-    digests = {
-        name: sha256(contents[f"assets/{name}"]).hexdigest()[:16]
-        for name in ("site.css", "site.js")
-    }
-    for page, canonical in CANONICAL.items():
-        text = contents[page].decode("utf-8")
-        if f'<link rel="canonical" href="{canonical}">' not in text:
-            raise AssemblyError(f"{FILES[page]} must declare the canonical URL {canonical}")
-        if "Content-Security-Policy" not in text:
-            raise AssemblyError(f"{FILES[page]} must declare a Content-Security-Policy")
-        for asset in LOCAL_ASSET.findall(text):
-            if asset not in FILES:
-                raise AssemblyError(f"{FILES[page]} references /{asset}, which the root site does not publish")
-        references = ASSET_REFERENCE.findall(text)
-        if not references:
-            raise AssemblyError(f"{FILES[page]} references no content-versioned asset")
-        for name, version in references:
-            if version != digests[name]:
-                raise AssemblyError(
-                    f"{FILES[page]} references {name}?v={version}; the current content version is {digests[name]}"
-                )
-    for page in COMPARE_PAGES:
-        text = contents[page].decode("utf-8")
-        if text.count(BENCHMARK_START) != 1 or text.count(BENCHMARK_END) != 1 or text.index(BENCHMARK_START) > text.index(BENCHMARK_END):
-            raise AssemblyError(f"{FILES[page]} needs one benchmark-results block")
-    for page in LANDINGS:
-        landing = contents[page].decode("utf-8")
-        for name in ("site.css", "site.js"):
-            if f"/assets/{name}?v={digests[name]}" not in landing:
-                raise AssemblyError(f"{FILES[page]} must load /assets/{name}?v={digests[name]}")
+    digests = {name: sha256(contents[f"assets/{name}"]).hexdigest()[:16] for name in ("site.css", "site.js")}
+    for page in CANONICAL:
+        check_page(page, contents[page].decode("utf-8"), digests)
     return contents
 
 
