@@ -7,12 +7,16 @@ monitoring endpoint to the application itself:
 
 ```text
 GET /_rullst/monitor/v1
+GET /_rullst/monitor/v2   # since 13.0.0-alpha.6
 ```
 
 It answers a JSON document, versioned as `rullst.monitor.v1`, with request
 rates and latency per route pattern, status classes, queue depth and worker
-activity, possible N+1 queries and the process radar. It never contains
-database rows, request data or configuration. It is phase 1 of the Studio
+activity, possible N+1 queries and the process radar. Since 13.0.0-alpha.6,
+`/_rullst/monitor/v2` answers `rullst.monitor.v2`: the same fields plus
+[sampled request traces and the security radar](#version-2-traces-and-the-security-radar).
+Both paths are mounted together and share the credentials and limits below.
+Neither contains database rows, request data or configuration. It is phase 1 of the Studio
 production monitor delivered in
 [13.0.0-alpha.3](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha3---2026-10-23);
 phase 2 is the [standalone Studio](#watch-your-projects-from-studio) on your
@@ -305,12 +309,70 @@ values, error messages, environment variables or configuration values. Route
 patterns and queue names are chosen by your code, so keep personal data out of
 them.
 
+### Version 2: traces and the security radar
+
+`GET /_rullst/monitor/v2` (since 13.0.0-alpha.6) answers every field above
+with `"schema": "rullst.monitor.v2"`, plus two sections:
+
+```json
+{
+  "traces": {
+    "sample_limit": 50,
+    "sampled_total": 1834,
+    "requests": [
+      { "at": 1792648790, "method": "GET", "route": "/orders/{id}", "status": 503,
+        "duration_ms": 1250.5, "db_operations": 4, "n_plus_one": true }
+    ],
+    "spans": {
+      "kept": 120,
+      "kinds": [ { "kind": "sql", "count": 96, "total_us": 48210, "max_us": 2100, "last_at": 1792648788 } ]
+    }
+  },
+  "security": {
+    "events_total": 17,
+    "active_bans": 2,
+    "counters": { "rate_limit_blocks": 40, "login_jail_bans": 3, "honeypot_traps": 2, "…": 0 },
+    "events": [ { "type": "LOGIN_JAIL_TRIGGERED", "at": 1792648795 } ]
+  }
+}
+```
+
+- **Request traces** are summaries of single requests, newest first, at most
+  50: the time, the normalized method and matched route pattern (the same
+  labels as `http.routes`), the status, the duration to the response headers
+  in milliseconds (rounded to thousandths), the outermost ORM operations the
+  request started and whether it repeated one at least the N+1 threshold. They
+  are sampled: at most one ordinary request every 100 ms, and separately at
+  most one outlier (a `5xx` or a request taking at least one second) every
+  10 ms, so slow and failing requests stay visible under load.
+  `sampled_total` counts the summaries kept since start.
+- **Span totals** summarize the process's
+  [`SpanCollector`](https://docs.rs/rullst-core/latest/rullst_core/telemetry_spans/)
+  (records your code submits): count, total and longest duration and latest
+  time per kind (`http`, `sql`, `ai`, `job`, everything else as `other`).
+  Span names are free text that may contain SQL or paths, so they are never
+  sent.
+- **Security radar** reads the process's
+  [`SecurityStore`](https://docs.rs/rullst-core/latest/rullst_core/security/struct.SecurityStore.html),
+  which the `rullst-security` layers record into: every counter (rate-limit
+  and lockout refusals, Login Jail lockouts, honeypot and deception hits,
+  RBAC denials, refused cross-site WebSockets, schema violations, blocked
+  prompt injections and the rest), the number of active honeypot bans, the
+  events recorded since start (`events_total`, which keeps counting after the
+  buffer of 50 drops the oldest) and the type and time of each kept event
+  (`RASP_PAYLOAD_INTERCEPTED`, `LOGIN_JAIL_TRIGGERED`, …). An event's
+  details and client address stay on the server, like the banned addresses.
+
+Version 1 is unchanged, so existing clients keep working; read version 2
+when you want the new sections.
+
 ## Watch your projects from Studio
 
 The standalone Studio runs on your machine, without an application process,
 and shows the document of each project you add: overview (radar, request
-rate, error rate, latency), routes, queues and N+1 findings, with a project
-switcher in the header. It only connects outwards to your projects; nothing
+rate, error rate, latency), routes, queues, N+1 findings and, from an
+application on 13.0.0-alpha.6 or later, request traces and the security
+radar, with a project switcher in the header. It only connects outwards to your projects; nothing
 new is collected or stored on the servers.
 
 ```bash
@@ -339,7 +401,11 @@ AI and API playgrounds and migration pages do not exist in this mode.
 
 On the **Projects** page, enter a name, the project's base URL and one of the
 tokens of its `RULLST_MONITOR_TOKENS`; give each machine its own token, so you
-can revoke it alone. Studio reads `<base URL>_rullst/monitor/v1`.
+can revoke it alone. Studio reads `<base URL>_rullst/monitor/v2`; when the
+application answers `404` there (Rullst before 13.0.0-alpha.6), it reads
+`<base URL>_rullst/monitor/v1` instead and tries version 2 again after ten
+minutes. The **Traces** and **Security** pages then say that the application
+serves version 1 only.
 
 - The base URL must use `https://`, or `http://` to a loopback address such as
   `http://127.0.0.1:9000` (an SSH tunnel). User information, query strings and
@@ -440,7 +506,9 @@ Studio does not open tunnels itself. Use the tool you already trust:
 Collection runs on every request once the monitor is mounted: it reads the
 matched route, takes a read lock on the route table, updates that route's
 counters under its own lock, and gives the request a scope in which ORM
-operations are counted. Measured on an 8-thread Linux machine in a release
+operations are counted. Trace sampling adds one atomic read per request; the
+summary buffer's lock is taken only for a kept request, at most about 110
+times a second. Measured on an 8-thread Linux machine in a release
 build (`cargo test --release -p rullst-core --lib monitor::overhead_tests --
 --ignored --nocapture --test-threads=1`, from a clone of the Rullst
 repository): a trivial Axum route took 0.72 µs per request without

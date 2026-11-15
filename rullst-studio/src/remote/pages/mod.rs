@@ -7,8 +7,10 @@ pub(crate) mod alerts;
 pub(crate) mod history;
 pub(crate) mod monitor;
 pub(crate) mod projects;
+pub(crate) mod security;
 #[cfg(test)]
 mod tests;
+pub(crate) mod traces;
 
 /// The page being shown, for the navigation highlight.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,6 +20,8 @@ pub(crate) enum Page {
     Routes,
     Queues,
     Queries,
+    Traces,
+    Security,
     History,
     Alerts,
 }
@@ -30,6 +34,8 @@ impl Page {
             Self::Routes => "/studio/routes",
             Self::Queues => "/studio/queues",
             Self::Queries => "/studio/queries",
+            Self::Traces => "/studio/traces",
+            Self::Security => "/studio/security",
             Self::History => "/studio/history",
             Self::Alerts => "/studio/alerts",
         }
@@ -42,6 +48,8 @@ impl Page {
             Self::Routes => "🛣️ Routes",
             Self::Queues => "📬 Queues",
             Self::Queries => "🔁 N+1 Queries",
+            Self::Traces => "🧵 Traces",
+            Self::Security => "🛡️ Security",
             Self::History => "📈 History",
             Self::Alerts => "🚨 Alerts",
         }
@@ -49,11 +57,13 @@ impl Page {
 }
 
 /// Pages shown in the navigation for a selected project.
-const PROJECT_PAGES: [Page; 5] = [
+const PROJECT_PAGES: [Page; 7] = [
     Page::Overview,
     Page::Routes,
     Page::Queues,
     Page::Queries,
+    Page::Traces,
+    Page::Security,
     Page::History,
 ];
 

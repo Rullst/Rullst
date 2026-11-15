@@ -863,7 +863,7 @@ impl core::marker::Sync for rullst_security::StdoutAuditLogger
 impl core::marker::Unpin for rullst_security::StdoutAuditLogger
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::StdoutAuditLogger
 impl core::panic::unwind_safe::UnwindSafe for rullst_security::StdoutAuditLogger
-pub use rullst_security::TelemetrySnapshot = struct rullst_core::security::telemetry::TelemetrySnapshot
+pub use rullst_security::TelemetrySnapshot = struct rullst_core::security::telemetry::snapshot::TelemetrySnapshot
 #[non_exhaustive] pub struct rullst_security::ThreatClassifier
 impl rullst_security::ThreatClassifier
 pub fn rullst_security::ThreatClassifier::assess(&self, observation: rullst_security::SentinelObservation) -> rullst_security::SentinelAssessment
@@ -1202,7 +1202,7 @@ pub use rullst_security::telemetry::LiveSecurityEvent = struct rullst_core::secu
 pub use rullst_security::telemetry::SECURITY_EVENT_SCHEMA_VERSION = constant rullst_core::security::telemetry::event::SECURITY_EVENT_SCHEMA_VERSION
 pub use rullst_security::telemetry::SecurityStore = struct rullst_core::security::telemetry::SecurityStore
 pub use rullst_security::telemetry::SecurityTelemetry = type_alias rullst_security::SecurityTelemetry
-pub use rullst_security::telemetry::TelemetrySnapshot = struct rullst_core::security::telemetry::TelemetrySnapshot
+pub use rullst_security::telemetry::TelemetrySnapshot = struct rullst_core::security::telemetry::snapshot::TelemetrySnapshot
 pub use rullst_security::telemetry::normalize_ip = function rullst_core::security::telemetry::normalize_ip
 pub mod rullst_security::timing_guard
 pub use rullst_security::timing_guard::TimingGuardConfig = struct rullst_security::TimingGuardConfig

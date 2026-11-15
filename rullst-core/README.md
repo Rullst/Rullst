@@ -59,7 +59,9 @@ Server-Sent Events, i18n and process telemetry. The `rullst` facade re-exports i
   `Server::with_monitor` serves a read-only `GET /_rullst/monitor/v1` JSON
   document (request rate, latency, status classes and response bytes per
   route pattern,
-  queues, N+1 fingerprints, process radar) to a bearer token from
+  queues, N+1 fingerprints, process radar; since 13.0.0-alpha.6 also
+  `GET /_rullst/monitor/v2` with sampled request traces and the security
+  radar, without span names, event details or client addresses) to a bearer token from
   `RULLST_MONITOR_TOKENS` or to the application's own sign-in, with TLS
   evidence required in staging and production. Nothing is mounted without a
   credential. See [the guide](https://github.com/Rullst/Rullst/blob/main/docs/src/production-monitoring.md).

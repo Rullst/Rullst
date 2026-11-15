@@ -41,6 +41,8 @@ pub(crate) fn router(state: Arc<RemoteState>) -> Router {
         .route("/studio/routes", get(routes_page))
         .route("/studio/queues", get(queues_page))
         .route("/studio/queries", get(queries_page))
+        .route("/studio/traces", get(traces_page))
+        .route("/studio/security", get(security_page))
         .route("/studio/history", get(super::settings::history_page))
         .route("/studio/alerts", get(super::settings::alerts_page))
         .route(
@@ -352,6 +354,27 @@ async fn queries_page(
         Page::Queries,
         "N+1 queries",
         pages::monitor::queries,
+    )
+    .await
+}
+
+async fn traces_page(
+    State(state): State<Arc<RemoteState>>,
+    Query(query): Query<ProjectQuery>,
+) -> Response {
+    monitor_page(state, query, Page::Traces, "Traces", pages::traces::traces).await
+}
+
+async fn security_page(
+    State(state): State<Arc<RemoteState>>,
+    Query(query): Query<ProjectQuery>,
+) -> Response {
+    monitor_page(
+        state,
+        query,
+        Page::Security,
+        "Security",
+        pages::security::security,
     )
     .await
 }

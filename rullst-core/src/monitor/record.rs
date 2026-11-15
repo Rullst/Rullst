@@ -7,8 +7,8 @@
 //! recorded; a streamed one when it ends or the client goes away. `HEAD`
 //! responses send no body and count none.
 
-use super::MONITOR_PATH;
 use super::collector::{Collector, RouteHandle};
+use super::{MONITOR_PATH, MONITOR_V2_PATH};
 use crate::server::dev_telemetry::request_scope::observe_shared;
 use axum::body::{Body, Bytes};
 use axum::extract::{MatchedPath, Request};
@@ -23,7 +23,8 @@ use std::time::Instant;
 
 /// Wraps every route of `router` (and its fallback) with the recorder. Add
 /// it after the framework layers, so their refusals (`403`, `429`, `503`)
-/// are counted too. Requests to [`MONITOR_PATH`] itself are not counted.
+/// are counted too. Requests to [`MONITOR_PATH`] and [`MONITOR_V2_PATH`]
+/// themselves are not counted.
 pub(crate) fn record_requests(router: axum::Router, collector: Arc<Collector>) -> axum::Router {
     router.layer(axum::middleware::from_fn(
         move |request: Request, next: Next| {
@@ -34,7 +35,8 @@ pub(crate) fn record_requests(router: axum::Router, collector: Arc<Collector>) -
 }
 
 async fn record(collector: Arc<Collector>, request: Request, next: Next) -> Response {
-    if request.uri().path() == MONITOR_PATH {
+    let path = request.uri().path();
+    if path == MONITOR_PATH || path == MONITOR_V2_PATH {
         return next.run(request).await;
     }
     let method = request.method().clone();

@@ -6,8 +6,10 @@
 //! [`run_remote_studio`] (the `rullst-studio` binary) serves Studio on
 //! `127.0.0.1` without an application process. It keeps a list of projects
 //! (name, base URL, monitor token) and renders each project's read-only
-//! `rullst.monitor.v1` document, which an application serves with
-//! `rullst_core::Server::with_monitor`. Studio only connects outwards; the
+//! monitoring document, which an application serves with
+//! `rullst_core::Server::with_monitor`: `rullst.monitor.v2` (with request
+//! traces and the security radar) when the application serves it, else
+//! `rullst.monitor.v1`. Studio only connects outwards; the
 //! data browser, `.env` viewer, AI and API playgrounds and migration pages are
 //! not part of this mode.
 //!
@@ -22,6 +24,7 @@ mod alerts;
 mod client;
 mod crypto;
 mod document;
+mod document_v2;
 mod history;
 mod monitoring;
 mod pages;

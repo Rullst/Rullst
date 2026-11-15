@@ -83,8 +83,9 @@ local Studio's `local` feature, which every driver profile enables, so since
 13.0.0-alpha.5 the binary builds no ORM, database driver, Capital or Security
 crate, only the SQLite store of its own history) serves
 Studio on `127.0.0.1:5556` without an application process and reads the
-read-only `/_rullst/monitor/v1` document of the projects you add: overview,
-routes, queues and N+1 pages with a project switcher. It keeps the loopback
+read-only `/_rullst/monitor/v2` document (`/_rullst/monitor/v1` from an
+application before 13.0.0-alpha.6) of the projects you add: overview, routes,
+queues, N+1, traces and security pages with a project switcher. It keeps the loopback
 `Host`, same-origin and marker checks above, adds a per-process form token,
 and runs in release builds because it serves no local data: the data
 browser, `.env` viewer, AI and API playgrounds and migration pages are not

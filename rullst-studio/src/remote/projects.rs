@@ -17,8 +17,11 @@ const MAX_FILE_BYTES: u64 = 256 * 1024;
 const MAX_NAME_CHARS: usize = 48;
 const MAX_URL_CHARS: usize = 512;
 const MAX_TOKEN_CHARS: usize = 512;
-/// The phase 1 monitoring document, relative to a project's base URL.
+/// The version 1 monitoring document, relative to a project's base URL.
 const MONITOR_PATH: &str = "_rullst/monitor/v1";
+/// The version 2 document (traces and the security radar), relative to a
+/// project's base URL.
+const MONITOR_V2_PATH: &str = "_rullst/monitor/v2";
 
 /// Why the project list could not be read or changed. Messages never contain
 /// a token, a URL or file contents.
@@ -98,9 +101,14 @@ pub struct Project {
 }
 
 impl Project {
-    /// The URL of the project's monitoring document.
+    /// The URL of the project's version 1 monitoring document.
     pub fn monitor_url(&self) -> Option<Url> {
         self.base_url.join(MONITOR_PATH).ok()
+    }
+
+    /// The URL of the project's version 2 monitoring document.
+    pub fn monitor_v2_url(&self) -> Option<Url> {
+        self.base_url.join(MONITOR_V2_PATH).ok()
     }
 }
 

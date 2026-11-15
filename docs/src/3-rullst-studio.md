@@ -17,8 +17,9 @@ cannot override that compile-time boundary.
 
 To watch a deployed application, mount the read-only
 [production monitoring endpoint](production-monitoring.md) instead (new in
-v13): it reports request rates, latency, errors, queues and N+1
-findings behind a token or the application's own sign-in. The standalone
+v13): it reports request rates, latency, errors, queues, N+1
+findings and (since 13.0.0-alpha.6) sampled request traces and the security
+radar behind a token or the application's own sign-in. The standalone
 `rullst-studio` binary
 (`cargo install rullst-studio --version =13.0.0-alpha.5 --no-default-features --features remote --locked`,
 then `rullst-studio` or `cargo rullst studio --remote`) reads it for several projects from your

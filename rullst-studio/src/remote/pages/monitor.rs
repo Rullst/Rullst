@@ -30,7 +30,7 @@ fn classes(status: &StatusClasses) -> String {
 }
 
 /// The header shared by the monitoring pages.
-fn project_heading(project: &str, document: &MonitorDocument, title: &str) -> String {
+pub(super) fn project_heading(project: &str, document: &MonitorDocument, title: &str) -> String {
     let application = document
         .application
         .as_ref()
