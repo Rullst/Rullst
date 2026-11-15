@@ -160,6 +160,10 @@ fn crafted_envelope(length: usize) -> String {
 
 #[test]
 fn stored_envelopes_hold_at_most_192_kib_in_five_fields() {
+    assert_eq!(
+        EncryptedTokenSnapshot::try_from_envelope(""),
+        Err(TokenSnapshotError::InvalidEnvelope)
+    );
     let longest = crafted_envelope(MAX_ENVELOPE_BYTES);
     assert_eq!(longest.len(), 196_608);
     assert!(EncryptedTokenSnapshot::try_from_envelope(longest).is_ok());
