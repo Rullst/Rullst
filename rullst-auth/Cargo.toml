@@ -57,7 +57,7 @@ p256 = "0.14.0"
 tower = { workspace = true }
 futures-util = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["rt", "time"] }
+tokio = { workspace = true, features = ["rt", "sync", "time"] }
 dotenvy = { workspace = true }
 url = "2.5.8"
 jsonwebtoken = { workspace = true, optional = true }

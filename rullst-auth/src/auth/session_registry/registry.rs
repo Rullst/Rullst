@@ -3,6 +3,7 @@
 use super::super::app_key::{detect_environment, get_app_key};
 use super::super::session::{derive_cipher, extract_session_cookie};
 use super::super::session_claims::{SessionClaims, max_age_seconds};
+use super::revalidation::{Revoked, announce};
 use super::sql::{NewRow, StoredRow};
 use super::token::{self, SessionSecret};
 use super::types::{
@@ -108,10 +109,34 @@ impl Stored {
 }
 
 impl<DB: SessionDatabase> SessionRegistry<DB> {
+    pub(super) fn pool(&self) -> &Pool<DB> {
+        &self.pool
+    }
+
     /// Creates the table `rullst_auth_sessions` and its indexes on `pool`
-    /// when they are missing, and returns the registry.
+    /// when they are missing, then [`connect`](Self::connect)s: the
+    /// create-on-first-use path for an application whose migrations do not
+    /// own the table (the generated applications use a migration that calls
+    /// [`create_table`](Self::create_table), and `connect`).
     pub async fn open(pool: Pool<DB>) -> Result<Self, SessionRegistryError> {
-        bounded(DB::prepare(&pool)).await?;
+        Self::create_table(&pool).await?;
+        Self::connect(pool).await
+    }
+
+    /// Creates the table `rullst_auth_sessions` and its indexes when they
+    /// are missing; existing ones are kept. Call it from a migration whose
+    /// rollback drops the table (`DROP TABLE rullst_auth_sessions` drops its
+    /// indexes too). On PostgreSQL, concurrent calls serialize on an
+    /// advisory lock.
+    pub async fn create_table(pool: &Pool<DB>) -> Result<(), SessionRegistryError> {
+        bounded(DB::prepare(pool)).await
+    }
+
+    /// The registry over `pool`, whose table must exist: nothing is
+    /// created. Fails with [`Unavailable`](SessionRegistryError::Unavailable)
+    /// when the table is missing or the database does not answer.
+    pub async fn connect(pool: Pool<DB>) -> Result<Self, SessionRegistryError> {
+        bounded(DB::probe(&pool)).await?;
         Ok(Self { pool })
     }
 
@@ -251,6 +276,10 @@ impl<DB: SessionDatabase> SessionRegistry<DB> {
             &current.token_hash,
         ))
         .await?;
+        announce(Revoked::One {
+            user_id: current.user_id,
+            reference: current.reference.clone(),
+        });
         Ok(deleted > 0)
     }
 
@@ -273,6 +302,10 @@ impl<DB: SessionDatabase> SessionRegistry<DB> {
             &secret.lookup_hash(),
         ))
         .await?;
+        announce(Revoked::One {
+            user_id: claims.user_id,
+            reference: secret.reference(),
+        });
         Ok(deleted > 0)
     }
 
@@ -326,6 +359,10 @@ impl<DB: SessionDatabase> SessionRegistry<DB> {
         session: &SessionRef,
     ) -> Result<bool, SessionRegistryError> {
         let deleted = bounded(DB::delete_reference(&self.pool, user_id, session.as_str())).await?;
+        announce(Revoked::One {
+            user_id,
+            reference: session.clone(),
+        });
         Ok(deleted > 0)
     }
 
@@ -335,19 +372,41 @@ impl<DB: SessionDatabase> SessionRegistry<DB> {
         &self,
         current: &CurrentSession,
     ) -> Result<u64, SessionRegistryError> {
-        bounded(DB::delete_others(
+        let deleted = bounded(DB::delete_others(
             &self.pool,
             current.user_id,
             &current.token_hash,
         ))
-        .await
+        .await?;
+        announce(Revoked::Others {
+            user_id: current.user_id,
+            kept: current.reference.clone(),
+        });
+        Ok(deleted)
     }
 
     /// Signs out every session of `user_id`: call it on a password reset,
     /// on "sign out everywhere" and when the account is deactivated or
     /// deleted. Returns how many were revoked.
     pub async fn revoke_all_sessions(&self, user_id: i32) -> Result<u64, SessionRegistryError> {
-        bounded(DB::delete_user(&self.pool, user_id)).await
+        let deleted = bounded(DB::delete_user(&self.pool, user_id)).await?;
+        announce(Revoked::All { user_id });
+        Ok(deleted)
+    }
+
+    /// [`revoke_all_sessions`](Self::revoke_all_sessions) inside the
+    /// caller's transaction (`&mut *transaction` of an SQLx transaction on
+    /// the registry's database), so the revocation commits or rolls back
+    /// with the rest of it, for example with a password removal. Returns how
+    /// many were deleted.
+    pub async fn revoke_all_sessions_on(
+        connection: &mut DB::Connection,
+        user_id: i32,
+    ) -> Result<u64, SessionRegistryError> {
+        let deleted = bounded(DB::delete_user_on(connection, user_id)).await?;
+        // A notice before the commit only makes open checks look again.
+        announce(Revoked::All { user_id });
+        Ok(deleted)
     }
 
     /// Deletes at most `limit` (1 to [`MAX_PURGE_BATCH`]) sessions that

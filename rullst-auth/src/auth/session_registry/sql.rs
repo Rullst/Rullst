@@ -13,6 +13,8 @@ pub(crate) struct Statements {
     pub(crate) begin: &'static str,
     /// Creates the table and its indexes when they are missing.
     pub(crate) schema: &'static [&'static str],
+    /// Reads nothing; fails when the table is missing.
+    pub(crate) probe: &'static str,
     /// `user_id`, `now`: deletes the account's expired sessions.
     pub(crate) prune_user: &'static str,
     /// `user_id`: the account's session count.
@@ -71,6 +73,15 @@ pub(crate) mod sealed {
         fn prepare(
             pool: &Pool<Self>,
         ) -> impl Future<Output = Result<(), SessionRegistryError>> + Send;
+
+        fn probe(
+            pool: &Pool<Self>,
+        ) -> impl Future<Output = Result<(), SessionRegistryError>> + Send;
+
+        fn delete_user_on(
+            connection: &mut <Self as sqlx::Database>::Connection,
+            user_id: i32,
+        ) -> impl Future<Output = Result<u64, SessionRegistryError>> + Send;
 
         fn insert(
             pool: &Pool<Self>,
@@ -169,6 +180,26 @@ where
                 .map_err(unavailable)?;
         }
         transaction.commit().await.map_err(unavailable)
+    }
+
+    pub(crate) async fn probe(pool: &Pool<DB>) -> Result<(), SessionRegistryError> {
+        sqlx::query_as::<DB, (i64,)>(Self::SQL.probe)
+            .fetch_one(pool)
+            .await
+            .map(|_| ())
+            .map_err(unavailable)
+    }
+
+    pub(crate) async fn delete_user_on(
+        connection: &mut <DB as Database>::Connection,
+        user_id: i32,
+    ) -> Result<u64, SessionRegistryError> {
+        let result = sqlx::query::<DB>(Self::SQL.delete_user)
+            .bind(user_id)
+            .execute(&mut *connection)
+            .await
+            .map_err(unavailable)?;
+        Ok(DB::rows_affected(&result))
     }
 
     /// Prunes the account's expired sessions, evicts its least recently
@@ -352,6 +383,22 @@ macro_rules! backend {
                 pool: &sqlx::Pool<Self>,
             ) -> Result<(), $crate::auth::session_registry::SessionRegistryError> {
                 $crate::auth::session_registry::sql::Ops::<Self>::prepare(pool).await
+            }
+
+            async fn probe(
+                pool: &sqlx::Pool<Self>,
+            ) -> Result<(), $crate::auth::session_registry::SessionRegistryError> {
+                $crate::auth::session_registry::sql::Ops::<Self>::probe(pool).await
+            }
+
+            async fn delete_user_on(
+                connection: &mut <Self as sqlx::Database>::Connection,
+                user_id: i32,
+            ) -> Result<u64, $crate::auth::session_registry::SessionRegistryError> {
+                $crate::auth::session_registry::sql::Ops::<Self>::delete_user_on(
+                    connection, user_id,
+                )
+                .await
             }
 
             async fn insert(

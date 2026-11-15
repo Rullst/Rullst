@@ -71,6 +71,7 @@
 
 mod device;
 mod registry;
+mod revalidation;
 pub(crate) mod sql;
 mod token;
 mod types;
@@ -84,6 +85,7 @@ mod sqlite;
 
 pub use device::{Browser, DeviceSummary, Platform};
 pub use registry::{SessionRegistry, unix_now};
+pub use revalidation::SessionRevalidation;
 pub use sql::SessionDatabase;
 pub use types::{
     AuthenticatedSession, CurrentSession, IssuedSession, NewSession, SessionInfo, SessionRef,

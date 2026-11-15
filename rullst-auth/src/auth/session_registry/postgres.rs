@@ -18,6 +18,7 @@ impl Dialect for Postgres {
             "CREATE INDEX IF NOT EXISTS rullst_auth_sessions_user ON rullst_auth_sessions (user_id, last_seen_at)",
             "CREATE INDEX IF NOT EXISTS rullst_auth_sessions_expiry ON rullst_auth_sessions (expires_at)",
         ],
+        probe: "SELECT COUNT(*) FROM rullst_auth_sessions WHERE 1 = 0",
         prune_user: "DELETE FROM rullst_auth_sessions WHERE user_id = $1 AND expires_at < $2",
         count_user: "SELECT COUNT(*) FROM rullst_auth_sessions WHERE user_id = $1",
         oldest_user: "SELECT token_hash FROM rullst_auth_sessions WHERE user_id = $1 ORDER BY last_seen_at, created_at, token_hash LIMIT $2",

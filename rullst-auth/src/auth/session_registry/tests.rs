@@ -455,3 +455,5 @@ async fn values_print_without_secrets() {
     let clone = registry.clone();
     assert!(clone.authenticate(issued.token(), KEY, NOW).await.is_ok());
 }
+
+mod ownership;

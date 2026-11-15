@@ -11,6 +11,7 @@ impl Dialect for Sqlite {
             "CREATE INDEX IF NOT EXISTS rullst_auth_sessions_user ON rullst_auth_sessions (user_id, last_seen_at)",
             "CREATE INDEX IF NOT EXISTS rullst_auth_sessions_expiry ON rullst_auth_sessions (expires_at)",
         ],
+        probe: "SELECT COUNT(*) FROM rullst_auth_sessions WHERE 1 = 0",
         prune_user: "DELETE FROM rullst_auth_sessions WHERE user_id = ? AND expires_at < ?",
         count_user: "SELECT COUNT(*) FROM rullst_auth_sessions WHERE user_id = ?",
         oldest_user: "SELECT token_hash FROM rullst_auth_sessions WHERE user_id = ? ORDER BY last_seen_at, created_at, token_hash LIMIT ?",

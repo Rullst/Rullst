@@ -15,6 +15,7 @@ impl Dialect for MySql {
         schema: &[
             "CREATE TABLE IF NOT EXISTS rullst_auth_sessions (token_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL PRIMARY KEY, public_id CHAR(22) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, user_id INT NOT NULL, created_at BIGINT NOT NULL, last_seen_at BIGINT NOT NULL, expires_at BIGINT NOT NULL, browser VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, platform VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, INDEX rullst_auth_sessions_user (user_id, last_seen_at), INDEX rullst_auth_sessions_expiry (expires_at))",
         ],
+        probe: "SELECT COUNT(*) FROM rullst_auth_sessions WHERE 1 = 0",
         prune_user: "DELETE FROM rullst_auth_sessions WHERE user_id = ? AND expires_at < ?",
         count_user: "SELECT COUNT(*) FROM rullst_auth_sessions WHERE user_id = ?",
         oldest_user: "SELECT token_hash FROM rullst_auth_sessions WHERE user_id = ? ORDER BY last_seen_at, created_at, token_hash LIMIT ?",
