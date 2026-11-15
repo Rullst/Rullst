@@ -1,5 +1,5 @@
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{Orm, RullstCollection};
+use rullst_orm::{Orm, RowSnapshot, RullstCollection};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "products")]
@@ -8,6 +8,8 @@ pub struct Product {
     pub name: String,
     pub price: f64,
     pub category: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -32,24 +34,28 @@ async fn main() -> Result<(), rullst_orm::Error> {
             name: "Laptop".to_string(),
             price: 1200.50,
             category: "Tech".to_string(),
+            snapshot: RowSnapshot::default(),
         },
         Product {
             id: 0,
             name: "Mouse".to_string(),
             price: 45.00,
             category: "Tech".to_string(),
+            snapshot: RowSnapshot::default(),
         },
         Product {
             id: 0,
             name: "Desk".to_string(),
             price: 250.00,
             category: "Furniture".to_string(),
+            snapshot: RowSnapshot::default(),
         },
         Product {
             id: 0,
             name: "Chair".to_string(),
             price: 150.00,
             category: "Furniture".to_string(),
+            snapshot: RowSnapshot::default(),
         },
     ];
 

@@ -74,13 +74,23 @@ pub fn derive_nexus(input: TokenStream) -> TokenStream {
 /// second, conflicting implementation (E0119). A model that implements
 /// `FromRow` itself, by hand or with SQLx's derive (SQLx's `derive` feature),
 /// declares `#[orm(custom_from_row)]`.
+///
+/// Since 13.0.0-alpha.6 every model chooses what `save()` writes to a stored
+/// row, or does not compile: a `#[sqlx(skip)]` field of type
+/// `rullst_orm::RowSnapshot` writes only the columns the record changed, and
+/// `#[orm(full_row_save)]` writes every column, overwriting a change that
+/// another request made to another column. Turso-primary models write full
+/// rows and declare `#[orm(full_row_save)]`.
 #[cfg_attr(test, mutants::skip)]
 #[proc_macro_derive(Orm, attributes(orm, sqlx))]
 pub fn rullst_macro(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
-    // Parse the input
-    let parsed = match parser::parse(&input) {
+    // Parse the input, then require an explicit save mode
+    let parsed = match parser::parse(&input).and_then(|parsed| {
+        parser::check_save_mode(&parsed, parsed.backend == "turso")?;
+        Ok(parsed)
+    }) {
         Ok(p) => p,
         Err(e) => return TokenStream::from(e.to_compile_error()),
     };
@@ -125,11 +135,16 @@ pub fn rullst_macro(input: TokenStream) -> TokenStream {
 }
 
 /// Derives the typed Turso/libSQL model contract without generating SQLx code.
+/// Its `save()` writes every column, so the model declares
+/// `#[orm(full_row_save)]` (since 13.0.0-alpha.6).
 #[cfg_attr(test, mutants::skip)]
 #[proc_macro_derive(TursoModel, attributes(orm, sqlx))]
 pub fn derive_turso_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let parsed = match parser::parse(&input) {
+    let parsed = match parser::parse(&input).and_then(|parsed| {
+        parser::check_save_mode(&parsed, true)?;
+        Ok(parsed)
+    }) {
         Ok(parsed) => parsed,
         Err(error) => return error.to_compile_error().into(),
     };

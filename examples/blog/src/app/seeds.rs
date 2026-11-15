@@ -38,6 +38,7 @@ pub async fn seed_showcase_posts() -> Result<(), rullst_orm::Error> {
                     tenant_id: SEED_TENANT.to_string(),
                     title: title.to_string(),
                     body: body.to_string(),
+                    snapshot: rullst_orm::RowSnapshot::default(),
                 };
                 post.save().await?;
             }

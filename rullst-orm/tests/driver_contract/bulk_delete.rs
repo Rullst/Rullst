@@ -5,7 +5,11 @@ use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::{Orm, with_tenant};
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_bulk_items", tenant_column = "tenant_id")]
+#[orm(
+    table = "contract_bulk_items",
+    tenant_column = "tenant_id",
+    full_row_save
+)]
 struct ContractBulkItem {
     id: i32,
     tenant_id: String,
@@ -13,7 +17,7 @@ struct ContractBulkItem {
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_bulk_posts")]
+#[orm(table = "contract_bulk_posts", full_row_save)]
 struct ContractBulkPost {
     id: i32,
     title: String,
@@ -28,7 +32,7 @@ struct ContractBulkPost {
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_bulk_comments")]
+#[orm(table = "contract_bulk_comments", full_row_save)]
 struct ContractBulkComment {
     id: i32,
     post_id: i32,

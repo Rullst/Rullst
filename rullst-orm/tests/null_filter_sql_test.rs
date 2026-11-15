@@ -8,7 +8,7 @@
 use rullst_orm::Orm;
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "null_filter_rows")]
+#[orm(table = "null_filter_rows", full_row_save)]
 struct NullFilterRow {
     id: i32,
     tier: Option<i64>,

@@ -8,7 +8,7 @@ use rullst_orm::schema::{Blueprint, Schema};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "cache_transaction_records")]
+#[orm(table = "cache_transaction_records", full_row_save)]
 struct CacheTransactionRecord {
     pub id: i32,
     pub name: String,

@@ -4,7 +4,7 @@ use rullst_orm::Orm;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, Orm, PartialEq, Default)]
-#[orm(table = "redis_test_docs")]
+#[orm(table = "redis_test_docs", full_row_save)]
 pub struct RedisDoc {
     pub id: i32,
     pub title: String,

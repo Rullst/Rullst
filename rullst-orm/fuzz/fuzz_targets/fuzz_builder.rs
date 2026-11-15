@@ -4,6 +4,7 @@ use rullst_orm::Orm;
 use std::sync::Once;
 
 #[derive(Debug, Clone, Orm)]
+#[orm(full_row_save)]
 pub struct FuzzUser {
     pub id: i32,
     pub name: String,

@@ -1,4 +1,4 @@
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(
@@ -10,6 +10,8 @@ pub struct User {
     pub id: i32,
     pub name: String,
     pub password: Option<String>,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 impl User {
@@ -56,6 +58,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         id: 0,
         name: "John Doe".to_string(),
         password: Some(format!("sample_pw_{:04x}", 42)),
+        snapshot: RowSnapshot::default(),
     };
 
     println!("Saving user...");

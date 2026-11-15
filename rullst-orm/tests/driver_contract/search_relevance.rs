@@ -8,7 +8,7 @@ use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::{Error, Orm, SearchEngine, set_search_engine};
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_articles", searchable)]
+#[orm(table = "contract_articles", searchable, full_row_save)]
 struct ContractArticle {
     id: i32,
     title: String,

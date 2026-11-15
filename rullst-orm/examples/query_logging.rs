@@ -1,4 +1,4 @@
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "products")]
@@ -6,6 +6,8 @@ pub struct Product {
     pub id: i32,
     pub name: String,
     pub price: f64,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -32,6 +34,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         id: 0,
         name: "Premium Mechanical Keyboard".to_string(),
         price: 149.99,
+        snapshot: RowSnapshot::default(),
     };
     p1.save().await?;
 
@@ -46,6 +49,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         id: 0,
         name: "Ergonomic Office Chair".to_string(),
         price: 349.50,
+        snapshot: RowSnapshot::default(),
     };
     p2.save().await?; // This will print debug info
 

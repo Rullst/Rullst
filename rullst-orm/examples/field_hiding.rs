@@ -1,3 +1,4 @@
+use rullst_orm::RowSnapshot;
 #[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "users")]
 pub struct User {
@@ -6,6 +7,8 @@ pub struct User {
     pub email: String,
     #[orm(hidden)]
     pub password: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -18,6 +21,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         name: "Arthur Dent".to_string(),
         email: "arthur@galaxy.guide".to_string(),
         password: "super_secret_password_123".to_string(),
+        snapshot: RowSnapshot::default(),
     };
 
     println!("\nOriginal Struct representation (Debug):");

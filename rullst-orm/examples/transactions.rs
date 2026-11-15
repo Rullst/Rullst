@@ -1,5 +1,5 @@
-use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "accounts")]
@@ -7,6 +7,8 @@ pub struct Account {
     pub id: i32,
     pub owner: String,
     pub balance: i32,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -29,12 +31,14 @@ async fn main() -> Result<(), rullst_orm::Error> {
         id: 0,
         owner: "Alice".to_string(),
         balance: 100,
+        snapshot: RowSnapshot::default(),
     };
     a.save().await?;
     let mut b = Account {
         id: 0,
         owner: "Bob".to_string(),
         balance: 100,
+        snapshot: RowSnapshot::default(),
     };
     b.save().await?;
 

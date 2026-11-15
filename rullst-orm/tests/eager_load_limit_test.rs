@@ -8,7 +8,7 @@ use rullst_orm::{Error, Orm};
 const CAP: usize = 5;
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "eager_posts")]
+#[orm(table = "eager_posts", full_row_save)]
 struct EagerPost {
     id: i32,
     title: String,
@@ -32,7 +32,7 @@ struct EagerPost {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "eager_comments")]
+#[orm(table = "eager_comments", full_row_save)]
 struct EagerComment {
     id: i32,
     post_id: i32,
@@ -40,7 +40,7 @@ struct EagerComment {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "eager_images")]
+#[orm(table = "eager_images", full_row_save)]
 struct EagerImage {
     id: i32,
     imageable_id: i32,
@@ -49,7 +49,7 @@ struct EagerImage {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "eager_tags")]
+#[orm(table = "eager_tags", full_row_save)]
 struct EagerTag {
     id: i32,
     name: String,

@@ -15,7 +15,7 @@ use tracing::{Event, Level, Subscriber, span};
 use tracing_subscriber::{Layer, layer::Context, prelude::*, registry::LookupSpan};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "span_shape_probe")]
+#[orm(table = "span_shape_probe", full_row_save)]
 struct SpanShapeProbe {
     id: i32,
     label: String,
