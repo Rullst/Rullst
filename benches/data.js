@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794737730623,
+  "lastUpdate": 1794742990697,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -34209,6 +34209,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 984,
             "range": "± 26",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1e723efe4ebf6456ddf8681de8805a5325cd2f6",
+          "message": "Merge pull request #709 from Rullst/ci/v13-alpha6-msrv-tests\n\nci(msrv): run tests on Rust 1.96.0 and bound MSRV raises in 13.x",
+          "timestamp": "2026-11-15T08:31:43-03:00",
+          "tree_id": "82f247539fa4456897b2dd7b72791a8444e7efa8",
+          "url": "https://github.com/Rullst/Rullst/commit/b1e723efe4ebf6456ddf8681de8805a5325cd2f6"
+        },
+        "date": 1794742987397,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 380,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 534,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 254,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 911,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
