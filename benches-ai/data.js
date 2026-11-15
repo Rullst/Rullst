@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794688066182,
+  "lastUpdate": 1794704759840,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -19463,6 +19463,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 279,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "34df54c321012155ed85a7caca5d9fc038231c10",
+          "message": "Merge pull request #693 from Rullst/chore/v13-alpha6-rust-1-100\n\nbuild(toolchain): move the stable pin to Rust 1.100.0",
+          "timestamp": "2026-11-14T21:42:48-03:00",
+          "tree_id": "c891b7ec067c8b5910fbaf5715d7ab275a68e257",
+          "url": "https://github.com/Rullst/Rullst/commit/34df54c321012155ed85a7caca5d9fc038231c10"
+        },
+        "date": 1794704759235,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1619,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 380,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 400,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
