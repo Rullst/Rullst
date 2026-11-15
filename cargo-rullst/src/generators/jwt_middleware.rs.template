@@ -112,11 +112,11 @@ pub async fn jwt_middleware(mut request: Request, next: Next) -> Response {
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
-    match decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(config.secret.as_bytes()),
-        &config.validation(),
-    ) {
+    let Ok(key) = DecodingKey::from_secret(config.secret.as_bytes()) else {
+        eprintln!("JWT configuration error: JWT_SECRET is not a usable HMAC key");
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+    match decode::<Claims>(token, &key, &config.validation()) {
         Ok(token_data) => {
             request.extensions_mut().insert(token_data.claims);
             next.run(request).await
@@ -140,10 +140,8 @@ pub fn generate_token(user_id: impl Into<String>) -> Result<String, JwtConfigErr
         exp: expires_at,
     };
 
-    encode(
-        &Header::new(Algorithm::HS256),
-        &claims,
-        &EncodingKey::from_secret(config.secret.as_bytes()),
-    )
-    .map_err(|error| JwtConfigError::Encode(error.to_string()))
+    let key = EncodingKey::from_secret(config.secret.as_bytes())
+        .map_err(|error| JwtConfigError::Encode(error.to_string()))?;
+    encode(&Header::new(Algorithm::HS256), &claims, &key)
+        .map_err(|error| JwtConfigError::Encode(error.to_string()))
 }

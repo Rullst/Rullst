@@ -91,7 +91,9 @@ fn signed(claims: &Value, algorithm: jsonwebtoken::Algorithm, kid: Option<&str>)
     let mut header = jsonwebtoken::Header::new(algorithm);
     header.kid = kid.map(str::to_owned);
     let key = match algorithm {
-        jsonwebtoken::Algorithm::HS256 => jsonwebtoken::EncodingKey::from_secret(b"shared"),
+        jsonwebtoken::Algorithm::HS256 => {
+            jsonwebtoken::EncodingKey::from_secret(b"shared").unwrap()
+        }
         _ => jsonwebtoken::EncodingKey::from_rsa_pem(RSA_KEY).unwrap(),
     };
     jsonwebtoken::encode(&header, claims, &key).unwrap()

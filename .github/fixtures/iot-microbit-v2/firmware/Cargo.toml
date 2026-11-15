@@ -19,7 +19,7 @@ critical-section = "=1.2.0"
 serde_json = { version = "=1.0.154", default-features = false, features = ["alloc"] }
 # `--features ed25519-fast` measures curve25519-dalek's precomputed tables:
 # Cargo feature unification turns them on for rullst-iot's ed25519-dalek.
-ed25519-dalek = { version = "=2.2.0", default-features = false, features = ["fast"], optional = true }
+ed25519-dalek = { version = "=3.0.0", default-features = false, features = ["fast"], optional = true }
 
 [features]
 ed25519-fast = ["dep:ed25519-dalek"]
