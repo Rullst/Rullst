@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794743638432,
+  "lastUpdate": 1794744707738,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -13835,6 +13835,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 265,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aa6d430b10ec504081bf348913e06a39e53bb5be",
+          "message": "Merge pull request #710 from Rullst/docs/v13-agents-route-marker\n\ndocs(agents): drop the removed #[route] marker from the macros row",
+          "timestamp": "2026-11-15T08:57:18-03:00",
+          "tree_id": "5639560e83bfb1c5296fd4c5149f5728efda2d77",
+          "url": "https://github.com/Rullst/Rullst/commit/aa6d430b10ec504081bf348913e06a39e53bb5be"
+        },
+        "date": 1794744707430,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 333,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
