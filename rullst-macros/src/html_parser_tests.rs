@@ -425,3 +425,17 @@ fn capacity_hints_add_tags_attributes_children_and_text() {
         "{tokens}"
     );
 }
+
+#[test]
+fn a_comment_ends_only_at_dash_dash_greater_than() {
+    // `->` and `--` inside the comment do not end it.
+    let document = parse_ok("<!-- a -> b -- c --><p></p>");
+    let [HtmlNode::Element(paragraph)] = &document.nodes[..] else {
+        panic!("expected only <p>");
+    };
+    assert_eq!(paragraph.tag_name.to_string(), "p");
+    assert_eq!(
+        parse_error("<!-- a -> b"),
+        "unterminated HTML comment; expected -->"
+    );
+}
