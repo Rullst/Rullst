@@ -73,14 +73,16 @@ fn a_manifest_feature_that_builds_passkeys_suppresses_the_rule() {
 
 #[test]
 fn a_manifest_may_enable_the_passkeys_more_than_once() {
-    let manifest = format!(
-        "{PACKAGE}[dependencies]\nrullst = {{ version = \"=13.0.0-alpha.6\", features = [\"auth-passkeys\"] }}\nrullst-auth = {{ version = \"=13.0.0-alpha.6\", features = [\"passkeys\"] }}\n\n[features]\nlogin = [\"rullst/auth-passkeys\"]\n"
+    // Two dependencies, then a dependency and a `[features]` entry: a second
+    // enabling never turns the fact off again.
+    let two_dependencies = format!(
+        "{PACKAGE}[dependencies]\nrullst = {{ version = \"=13.0.0-alpha.6\", features = [\"auth-passkeys\"] }}\nrullst-auth = {{ version = \"=13.0.0-alpha.6\", features = [\"passkeys\"] }}\n"
     );
-    assert!(facts(&manifest).passkeys);
-    let twice = format!(
+    assert!(facts(&two_dependencies).passkeys);
+    let dependency_and_feature = format!(
         "{PACKAGE}[dependencies]\nrullst = {{ version = \"=13.0.0-alpha.6\", features = [\"auth-passkeys\"] }}\n\n[features]\nlogin = [\"rullst/auth-passkeys\"]\n"
     );
-    assert!(facts(&twice).passkeys);
+    assert!(facts(&dependency_and_feature).passkeys);
 }
 
 #[test]
