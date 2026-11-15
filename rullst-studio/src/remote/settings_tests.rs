@@ -22,7 +22,7 @@ async fn settings_are_saved_through_the_protected_form() {
     let token = studio.state.form_token.clone();
     let body = settings(
         &token,
-        "watch=on&unreachable=on&error_rate_percent=5&p95_ms=250&queue_pending=&queue_failures=3&cooldown_minutes=30&webhook=https%3A%2F%2Fhooks.example%2Fsecret-part",
+        "watch=on&unreachable=on&error_rate_percent=5&p95_ms=250&p99_ms=900&queue_pending=&queue_failures=3&security_events=12&cooldown_minutes=30&webhook=https%3A%2F%2Fhooks.example%2Fsecret-part",
     );
     assert_eq!(
         post(&studio, "/studio/alerts/settings", Some(ORIGIN), &body).await,
@@ -35,6 +35,8 @@ async fn settings_are_saved_through_the_protected_form() {
     assert_eq!(project.rules.p95_ms, Some(250.0));
     assert_eq!(project.rules.queue_pending, None);
     assert_eq!(project.rules.queue_failures, Some(3));
+    assert_eq!(project.rules.p99_ms, Some(900.0));
+    assert_eq!(project.rules.security_events, Some(12));
     assert_eq!(project.rules.cooldown_minutes, 30);
     assert!(project.webhook.is_some());
 
@@ -108,8 +110,10 @@ async fn history_and_alerts_render_escaped_and_alerts_can_be_acknowledged() {
                     window_requests: reachable.then_some(30),
                     error_rate_percent: reachable.then_some(2.0),
                     p95_ms: reachable.then_some(40.0),
+                    p99_ms: reachable.then_some(90.0),
                     queue_pending: reachable.then_some(4),
                     queue_failed_total: reachable.then_some(1),
+                    security_events_total: None,
                 },
             )
             .await

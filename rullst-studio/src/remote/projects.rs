@@ -3,7 +3,10 @@
 
 use super::alerts::AlertRules;
 use super::crypto::{Secret, SecretKey};
+use super::notify::NotificationSettings;
 use super::paths::StudioPaths;
+use super::preferences::StudioSettings;
+use super::proxy::ProxySettings;
 use super::secure_file;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -17,8 +20,11 @@ const MAX_FILE_BYTES: u64 = 256 * 1024;
 const MAX_NAME_CHARS: usize = 48;
 const MAX_URL_CHARS: usize = 512;
 const MAX_TOKEN_CHARS: usize = 512;
-/// The phase 1 monitoring document, relative to a project's base URL.
+/// The version 1 monitoring document, relative to a project's base URL.
 const MONITOR_PATH: &str = "_rullst/monitor/v1";
+/// The version 2 document (traces and the security radar), relative to a
+/// project's base URL.
+const MONITOR_V2_PATH: &str = "_rullst/monitor/v2";
 
 /// Why the project list could not be read or changed. Messages never contain
 /// a token, a URL or file contents.
@@ -48,6 +54,13 @@ pub enum ProjectError {
     InvalidWebhook,
     /// An alert threshold is out of range.
     InvalidRules,
+    /// A Studio setting is out of range, such as a quiet period outside 1 to
+    /// 1,440 minutes.
+    InvalidSettings,
+    /// A proxy URL is not `http://` or `https://` with a host and without
+    /// user information, path, query or fragment, or the exceptions exceed
+    /// 4,096 characters.
+    InvalidProxy,
 }
 
 impl fmt::Display for ProjectError {
@@ -69,7 +82,11 @@ impl fmt::Display for ProjectError {
                 "the webhook must be an https:// URL without user information or fragment"
             }
             Self::InvalidRules => {
-                "thresholds must be positive (a 5xx rate up to 100%, p95 up to 600000 ms) and the cool-down 1 to 1440 minutes"
+                "thresholds must be positive (a 5xx rate up to 100%, p95 and p99 up to 600000 ms) and the cool-down 1 to 1440 minutes"
+            }
+            Self::InvalidSettings => "the quiet period must be 1 to 1440 minutes",
+            Self::InvalidProxy => {
+                "the proxy must be an http:// or https:// URL with a host and no user, path, query or fragment, and the exceptions at most 4096 characters"
             }
         })
     }
@@ -98,9 +115,14 @@ pub struct Project {
 }
 
 impl Project {
-    /// The URL of the project's monitoring document.
+    /// The URL of the project's version 1 monitoring document.
     pub fn monitor_url(&self) -> Option<Url> {
         self.base_url.join(MONITOR_PATH).ok()
+    }
+
+    /// The URL of the project's version 2 monitoring document.
+    pub fn monitor_v2_url(&self) -> Option<Url> {
+        self.base_url.join(MONITOR_V2_PATH).ok()
     }
 }
 
@@ -109,6 +131,10 @@ impl Project {
 struct StoredFile {
     version: u32,
     projects: Vec<StoredProject>,
+    /// Absent until a setting differs from its default, so older Studios
+    /// keep reading the file.
+    #[serde(default, skip_serializing_if = "StudioSettings::is_default")]
+    settings: StudioSettings,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -226,6 +252,7 @@ impl ProjectStore {
             return Ok(StoredFile {
                 version: 1,
                 projects: Vec::new(),
+                settings: StudioSettings::default(),
             });
         };
         let file: StoredFile =
@@ -347,6 +374,36 @@ impl ProjectStore {
         self.write_file(&file)
     }
 
+    /// The Studio settings (defaults when none are stored).
+    pub(crate) fn settings(&self) -> Result<StudioSettings, ProjectError> {
+        Ok(self.read_file()?.settings)
+    }
+
+    /// Saves the desktop notification settings.
+    pub(crate) fn update_notifications(
+        &self,
+        notifications: NotificationSettings,
+    ) -> Result<(), ProjectError> {
+        if !notifications.valid() {
+            return Err(ProjectError::InvalidSettings);
+        }
+        let _guard = self.write.lock().unwrap_or_else(|error| error.into_inner());
+        let mut file = self.read_file()?;
+        file.settings.notifications = notifications;
+        self.write_file(&file)
+    }
+
+    /// Saves the proxy settings.
+    pub(crate) fn update_proxy(&self, proxy: ProxySettings) -> Result<(), ProjectError> {
+        if !proxy.valid() {
+            return Err(ProjectError::InvalidProxy);
+        }
+        let _guard = self.write.lock().unwrap_or_else(|error| error.into_inner());
+        let mut file = self.read_file()?;
+        file.settings.proxy = proxy;
+        self.write_file(&file)
+    }
+
     /// Removes the project called `name`.
     pub fn remove(&self, name: &str) -> Result<(), ProjectError> {
         let _guard = self.write.lock().unwrap_or_else(|error| error.into_inner());
@@ -357,6 +414,11 @@ impl ProjectStore {
             return Err(ProjectError::NotFound);
         }
         self.write_file(&file)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn paths(&self) -> &StudioPaths {
+        &self.paths
     }
 
     /// Whether the project list or its key can be read by other users.

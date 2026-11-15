@@ -397,7 +397,14 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
     - `cargo rullst footprint` reports the compiled crate count beside the
       lockfile count, which includes packages that are never compiled.
   - **Production monitor:** desktop notifications in the standalone Studio,
-    remote traces and security radar, and proxy support.
+    remote traces and security radar, and proxy support. Done in the
+    13.0.0-alpha.6 source: applications serve `rullst.monitor.v2` next to v1
+    (sampled request traces, span totals, the security radar without event
+    details or addresses), and the standalone Studio shows them on its
+    Traces and Security pages, turns alerts into debounced desktop
+    notifications through the browser's Notifications API, adds p99 and
+    security-event rules, and reaches projects and webhooks through an
+    `HTTPS_PROXY`/`NO_PROXY` or explicit proxy chosen on its Settings page.
   - **Compressed pages:** the CSRF token is masked per response (BREACH
     defence), then the generated Caddyfile compresses dynamic HTML. Since
     13.0.0-alpha.5 generated deployments serve static files pre-compressed

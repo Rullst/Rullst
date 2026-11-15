@@ -5,6 +5,7 @@
 //! the [`OTHER_ROUTE`] key. N+1 findings keep the ORM's static label
 //! fingerprint and at most [`MAX_FINDINGS`] entries.
 
+use super::traces::{RequestTrace, Sampler, is_outlier};
 use super::window::{RouteStats, WindowCounts};
 use crate::query_patterns::{N_PLUS_ONE_THRESHOLD, repeated_operations};
 use crate::server::dev_telemetry::request_scope::RequestQueries;
@@ -138,6 +139,7 @@ pub(crate) struct Collector {
     routes: RwLock<Routes>,
     queries: AtomicU64,
     findings: Mutex<Findings>,
+    traces: Sampler,
 }
 
 impl Collector {
@@ -147,6 +149,7 @@ impl Collector {
             routes: RwLock::new(Routes::default()),
             queries: AtomicU64::new(0),
             findings: Mutex::new(Findings::default()),
+            traces: Sampler::default(),
         }
     }
 
@@ -226,6 +229,17 @@ impl Collector {
         self.queries
             .fetch_add(queries.operations, Ordering::Relaxed);
         let repeated = repeated_operations(&queries.fingerprints, N_PLUS_ONE_THRESHOLD);
+        if self.traces.admit(now, is_outlier(status, latency)) {
+            self.traces.keep(RequestTrace {
+                at: unix_seconds(),
+                method: key.0,
+                route: Arc::clone(&key.1),
+                status,
+                latency,
+                db_operations: queries.operations,
+                n_plus_one: !repeated.is_empty(),
+            });
+        }
         if !repeated.is_empty() {
             let mut findings = self.findings.lock().unwrap_or_else(PoisonError::into_inner);
             for operation in repeated {
@@ -333,6 +347,11 @@ impl Collector {
     /// Outermost ORM operations started by recorded requests.
     pub(super) fn queries(&self) -> u64 {
         self.queries.load(Ordering::Relaxed)
+    }
+
+    /// Request summaries kept since start, and the kept ones, newest first.
+    pub(super) fn traces(&self) -> (u64, Vec<RequestTrace>) {
+        self.traces.snapshot()
     }
 
     /// N+1 findings since start (one per fingerprint and request) and the

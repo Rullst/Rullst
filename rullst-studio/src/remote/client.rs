@@ -1,15 +1,28 @@
 //! Reads a project's monitoring document over the network, within bounds.
 //!
 //! The token goes only to the configured origin, as `Authorization: Bearer`,
-//! on the fixed monitor path. Redirects are never followed, proxy settings
-//! from the environment are ignored, certificates are always validated, and
-//! the response is limited in size and time. Errors are fixed statuses; the
+//! on the fixed monitor paths: `rullst.monitor.v2` first, and
+//! `rullst.monitor.v1` when the application answers `404` there (Rullst
+//! before 13.0.0-alpha.6), which is then remembered for
+//! [`LEGACY_RECHECK`]. Redirects are never followed, a proxy is used only as
+//! the Settings page chooses ([`ProxyPlan`]), certificates are always
+//! validated, and the response is limited in size and time. Errors are fixed statuses; the
 //! remote body is never shown.
 
-use super::document::MonitorDocument;
+use super::document::{MONITOR_SCHEMA, MonitorDocument};
+use super::document_v2::MONITOR_V2_SCHEMA;
 use super::projects::Project;
-use reqwest::{StatusCode, header};
-use std::time::Duration;
+use super::proxy::ProxyPlan;
+use reqwest::{StatusCode, Url, header};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, PoisonError};
+use std::time::{Duration, Instant};
+
+/// How long a project that answered `404` for version 2 is read with
+/// version 1 only, before version 2 is tried again.
+pub(crate) const LEGACY_RECHECK: Duration = Duration::from_secs(600);
+/// Projects remembered as version 1 only; the list is cleared when full.
+const MAX_LEGACY_PROJECTS: usize = 64;
 
 /// Size and time bounds for one read.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,8 +75,11 @@ pub enum FetchError {
     TooLarge,
     /// The response is not JSON.
     NotJson,
-    /// The body is not a valid `rullst.monitor.v1` document.
+    /// The body is not a valid `rullst.monitor.v1` or `rullst.monitor.v2`
+    /// document.
     Invalid,
+    /// The configured proxy cannot be used, so nothing is sent.
+    ProxyUnusable,
 }
 
 impl FetchError {
@@ -94,8 +110,46 @@ impl FetchError {
             Self::Status(status) => format!("unexpected HTTP status {status}"),
             Self::TooLarge => "the response exceeded the size limit".to_string(),
             Self::NotJson => "the response is not JSON".to_string(),
-            Self::Invalid => "the response is not a valid rullst.monitor.v1 document".to_string(),
+            Self::Invalid => "the response is not a valid rullst.monitor document".to_string(),
+            Self::ProxyUnusable => {
+                "the proxy setting cannot be used; fix it on the Settings page".to_string()
+            }
         }
+    }
+}
+
+/// Monitor URLs that answered `404` for version 2, until when they are read
+/// with version 1 only.
+#[derive(Debug, Default)]
+pub(crate) struct LegacyProjects {
+    until: Mutex<HashMap<String, Instant>>,
+}
+
+impl LegacyProjects {
+    /// Remembers `key` as version 1 only from `now`.
+    pub(crate) fn mark_at(&self, key: &str, now: Instant) {
+        let mut until = self.until.lock().unwrap_or_else(PoisonError::into_inner);
+        if until.len() >= MAX_LEGACY_PROJECTS {
+            until.clear();
+        }
+        until.insert(key.to_string(), now + LEGACY_RECHECK);
+    }
+
+    /// Whether `key` is read with version 1 only at `now`.
+    pub(crate) fn is_legacy_at(&self, key: &str, now: Instant) -> bool {
+        self.until
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(key)
+            .is_some_and(|until| now < *until)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn len(&self) -> usize {
+        self.until
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .len()
     }
 }
 
@@ -104,30 +158,72 @@ impl FetchError {
 pub struct MonitorClient {
     client: reqwest::Client,
     limits: FetchLimits,
+    legacy: Arc<LegacyProjects>,
+    /// Set when the proxy plan is [`ProxyPlan::Invalid`].
+    blocked: bool,
 }
 
 impl MonitorClient {
-    /// A client with `limits`. Fails only when the TLS stack cannot start.
-    pub fn new(limits: FetchLimits) -> Result<Self, FetchError> {
-        let client = reqwest::Client::builder()
-            .redirect(reqwest::redirect::Policy::none())
-            .no_proxy()
-            .timeout(limits.timeout)
-            .connect_timeout(limits.connect_timeout)
-            .user_agent(concat!("rullst-studio/", env!("CARGO_PKG_VERSION")))
-            .build()
-            .map_err(|_| FetchError::Unreachable)?;
-        Ok(Self { client, limits })
+    /// A direct client with `limits`.
+    #[cfg(test)]
+    pub(crate) fn new(limits: FetchLimits) -> Result<Self, FetchError> {
+        Self::with_proxy(limits, &ProxyPlan::Direct)
     }
 
-    /// Reads and validates `project`'s document.
+    /// A client with `limits` that connects as `plan` says. Fails only when
+    /// the TLS stack cannot start.
+    pub(crate) fn with_proxy(limits: FetchLimits, plan: &ProxyPlan) -> Result<Self, FetchError> {
+        let builder = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .timeout(limits.timeout)
+            .connect_timeout(limits.connect_timeout)
+            .user_agent(concat!("rullst-studio/", env!("CARGO_PKG_VERSION")));
+        let client = plan
+            .apply(builder)
+            .build()
+            .map_err(|_| FetchError::Unreachable)?;
+        Ok(Self {
+            client,
+            limits,
+            legacy: Arc::default(),
+            blocked: *plan == ProxyPlan::Invalid,
+        })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn legacy(&self) -> &LegacyProjects {
+        &self.legacy
+    }
+
+    /// Reads and validates `project`'s document: version 2, or version 1
+    /// when the project does not serve version 2.
     pub async fn fetch(&self, project: &Project) -> Result<MonitorDocument, FetchError> {
+        if self.blocked {
+            return Err(FetchError::ProxyUnusable);
+        }
         let token = project.token.as_ref().ok_or(FetchError::TokenUnreadable)?;
-        let url = project.monitor_url().ok_or(FetchError::InvalidUrl)?;
+        let v1 = project.monitor_url().ok_or(FetchError::InvalidUrl)?;
+        let v2 = project.monitor_v2_url().ok_or(FetchError::InvalidUrl)?;
+        if !self.legacy.is_legacy_at(v1.as_str(), Instant::now()) {
+            match self.read(v2, token.expose(), MONITOR_V2_SCHEMA).await {
+                Err(FetchError::NotMounted) => self.legacy.mark_at(v1.as_str(), Instant::now()),
+                outcome => return outcome,
+            }
+        }
+        self.read(v1, token.expose(), MONITOR_SCHEMA).await
+    }
+
+    /// Reads the document at `url` and checks that it is `schema`.
+    async fn read(
+        &self,
+        url: Url,
+        token: &str,
+        schema: &str,
+    ) -> Result<MonitorDocument, FetchError> {
         let request = self
             .client
             .get(url)
-            .bearer_auth(token.expose())
+            .bearer_auth(token)
             .header(header::ACCEPT, "application/json")
             .send();
         let body = tokio::time::timeout(self.limits.timeout, async {
@@ -153,7 +249,7 @@ impl MonitorClient {
         .map_err(|_| FetchError::Timeout)??;
         let document: MonitorDocument =
             serde_json::from_slice(&body).map_err(|_| FetchError::Invalid)?;
-        document.validate().map_err(|_| FetchError::Invalid)?;
+        document.validate(schema).map_err(|_| FetchError::Invalid)?;
         Ok(document)
     }
 }
