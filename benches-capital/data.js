@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794710055984,
+  "lastUpdate": 1794720784020,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -16984,6 +16984,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3e7adcd5c446adb7e9ac4c6bf448666c923f8fd0",
+          "message": "Merge pull request #700 from Rullst/refactor/v13-alpha6-security-store-core\n\nrefactor(core): move SecurityStore and LiveSecurityEvent from rullst-security",
+          "timestamp": "2026-11-15T02:12:13-03:00",
+          "tree_id": "3e366578da2603e1c711af62b5b82ec373d4f3ef",
+          "url": "https://github.com/Rullst/Rullst/commit/3e7adcd5c446adb7e9ac4c6bf448666c923f8fd0"
+        },
+        "date": 1794720782937,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 15,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
