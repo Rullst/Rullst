@@ -139,6 +139,32 @@ async fn the_last_seen_hour_moves_forward_once_an_hour() {
 }
 
 #[tokio::test]
+async fn a_request_in_the_same_hour_writes_nothing() {
+    let (registry, pool) = registry().await;
+    let issued = login(&registry, 1, NOW).await;
+    // The pool's one connection now refuses every write statement, even
+    // an UPDATE that would match no row.
+    execute(&pool, "PRAGMA query_only = ON").await;
+    // The last-seen hour is current: authentication only reads.
+    for now in [HOUR, NOW, HOUR + 3_599] {
+        assert!(
+            registry
+                .authenticate(issued.token(), KEY, now)
+                .await
+                .is_ok()
+        );
+    }
+    // A new hour needs the write, and a failed write never authenticates.
+    assert_eq!(
+        registry
+            .authenticate(issued.token(), KEY, HOUR + 3_600)
+            .await
+            .err(),
+        Some(SessionRegistryError::Unavailable)
+    );
+}
+
+#[tokio::test]
 async fn a_sign_in_beyond_the_limit_signs_out_the_least_recently_used_session() {
     let (registry, pool) = registry().await;
     let mut sessions = Vec::new();
