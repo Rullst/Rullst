@@ -287,6 +287,15 @@ fn suggestions_are_limited_to_small_edit_distances() {
     assert_eq!(suggest("ab", ["xy"].into_iter()), Some("xy"));
     assert_eq!(suggest("abc", ["xyz"].into_iter()), None);
     assert_eq!(suggest("profile", keys.into_iter()), None);
+    // An extra character, at the end or inside, is one edit.
+    assert_eq!(
+        suggest("nav.homes", ["nav.home"].into_iter()),
+        Some("nav.home")
+    );
+    assert_eq!(
+        suggest("nav.hoome", ["nav.home"].into_iter()),
+        Some("nav.home")
+    );
     // Every inserted or deleted character counts.
     assert_eq!(
         suggest("nav.home.extra.long", ["nav.home"].into_iter()),
