@@ -131,9 +131,16 @@ day-of-month month day-of-week`) evaluated in UTC. Day-of-week accepts 0-7
 (0 and 7 are Sunday, 1 is Monday) and names, so `0 9 * * 1-5` runs Monday to
 Friday. When both day fields are restricted, a day matching either one runs
 the task (`0 0 1 * 1` is the 1st plus every Monday); a field starting with `*`
-keeps the intersection. Earlier releases passed the fields to the `cron`
-crate unchanged, where 1 was Sunday and 0 was rejected. Messaging's durable
-recurring publications keep their documented `cron`-crate projection.
+or `?` keeps the intersection. The other fields take numbers, `*`, ranges
+(`9-17`), lists (`0,30`) and steps (`*/15`, `1-30/2`, and `5/15`, from 5 to the
+field's maximum); month also takes names (`jan`, `JAN-MAR`) and day-of-month
+takes `?` as `*`. Each field must be valid on its own, occurrences are whole
+minutes from 1970 through 2100, and there are no seconds, years or
+`@daily`-style aliases. Since 13.0.0-alpha.6 Core evaluates the fields itself;
+earlier releases used the `cron` crate (12.x passed the fields to it
+unchanged, so 1 was Sunday and 0 was rejected), and Core's tests still compare
+the two. Messaging's durable recurring publications keep their documented
+`cron`-crate projection.
 See [time zones for scheduled tasks](#time-zones-for-scheduled-tasks) to
 match the fields against a local clock instead of UTC.
 `WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors. Once

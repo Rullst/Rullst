@@ -23,6 +23,10 @@ pub(crate) enum TaskSchedule {
     /// Fields matched against a time zone's wall clock.
     #[cfg(feature = "scheduler-tz")]
     Zoned(ZonedCron),
+    /// Every whole second, for scheduler-loop tests that cannot wait for a
+    /// whole cron minute.
+    #[cfg(test)]
+    EverySecond,
 }
 
 impl From<CronSchedule> for TaskSchedule {
@@ -38,6 +42,9 @@ impl TaskSchedule {
             Self::Utc(schedule) => schedule.next_after(after),
             #[cfg(feature = "scheduler-tz")]
             Self::Zoned(schedule) => schedule.next_after(after),
+            #[cfg(test)]
+            Self::EverySecond => chrono::Timelike::with_nanosecond(after, 0)?
+                .checked_add_signed(chrono::TimeDelta::seconds(1)),
         }
     }
 }

@@ -484,7 +484,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (115 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (107 rows).
+  of inputs that previously failed) (108 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
 has 147 rules. A row can map to several rules and a rule to
@@ -738,6 +738,7 @@ the rule together.
 | Labs outcomes and states | (a) must-change | `V13-LABS-NON-EXHAUSTIVE-MATCH` | A `match` whose arm patterns name `JobState`, `JobResult`, `CaseGrade`, `CaseOutput`, `TrapKind`, `WorkerOutcome`, `ExecutionFailure`, `ResultEvidence` or `ExecutionProfile` and that has no catch-all arm, in a file that names `rullst_labs`; reporting the wall limit as `TimeLimit` is a runner choice no rule locates; introduced in 13.0.0-alpha.5 |
 | Privacy consent choices | (a) must-change | `V13-PRIVACY-CONSENT-CHOICE-MATCH` | A `match` whose arm patterns name `ConsentChoice` and that has no catch-all arm, in a file that names `rullst_privacy` or `rullst::privacy`; comparisons keep compiling; introduced in 13.0.0-alpha.5 |
 | Supervision obscured camera and brightness statistics | (c) none | — | Opt-in additions to enums that were already `#[non_exhaustive]`; recording `Obscured` in an older store needs `upgrade_event_schema`, which the application calls at run time; introduced in 13.0.0-alpha.5 |
+| Core scheduler cron fields | (c) none | — | Registration fails with `SchedulerError::InvalidCron` before the task runs, and the expressions it rejects had an unintended meaning; introduced in 13.0.0-alpha.6 |
 
 ## Planned simpler update experience
 

@@ -368,7 +368,10 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
       the largest binary-size gain); the rustls `CryptoProvider` must still be
       installed wherever TLS is used.
     - A five-field cron evaluator of Rullst's own replaces the `cron` crate
-      (about 9 fewer), tested differentially against it.
+      (about 9 fewer), tested differentially against it. Done in the
+      13.0.0-alpha.6 source: 8 fewer packages in the Blank and API starters
+      (lockfile 374 to 366, compiled 306 to 298); each field must now be valid
+      on its own.
     - Passkeys without `p256` (about 18 fewer in the SaaS starter), checked
       with test vectors.
     - Core's `storage-multipart` recovery records move from `ring`'s

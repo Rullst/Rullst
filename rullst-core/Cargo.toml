@@ -81,7 +81,6 @@ serde_urlencoded = "0.7"
 base64 = { workspace = true }
 uuid = { workspace = true, features = ["v4", "rng-getrandom"] }
 dashmap = { workspace = true }
-cron = "0.17.0"
 # IANA time zones for `Scheduler::task_in_tz`: the system zoneinfo database,
 # with the bundled copy as a fallback for images without one.
 jiff = { version = "0.2.35", optional = true, default-features = false, features = ["std", "tzdb-zoneinfo", "tzdb-bundle-always"] }
@@ -109,6 +108,10 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Syste
 ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "base64", "ring", "rullst-auth", "windows-sys"]
 
 [dev-dependencies]
+# Differential tests of the scheduler's cron evaluator against the `cron`
+# crate, which evaluated the fields until 13.0.0-alpha.5.
+cron = "0.17.0"
+proptest = "1.11.0"
 hmac = { workspace = true }
 criterion = { workspace = true, features = ["async_tokio"] }
 futures-util = { workspace = true, features = ["sink"] }

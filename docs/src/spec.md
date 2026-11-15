@@ -2407,7 +2407,14 @@ the same server-authoritative controls.
   `dispatch_at`, so stored rows and keys are unchanged; Core ships no network
   source and makes no emissions claim. `Scheduler::deferrable_task` applies the
   window rule to each tick within a maximum delay.
-* `Scheduler::task` matches POSIX five-field cron against UTC. The v13 opt-in
+* `Scheduler::task` matches POSIX five-field cron against UTC. Since
+  13.0.0-alpha.6 Core evaluates the fields itself instead of with the `cron`
+  crate, which stays a dev-dependency for differential tests: the same syntax
+  (numbers, `*`, lists, ranges, steps, month and weekday names, `?` as `*` in
+  the day fields, weekdays 0-7), the same day-of-month or day-of-week rule and
+  whole-minute occurrences from 1970 through 2100, except that each field must
+  be valid on its own (the crate joined a field that starts or ends with `,`,
+  `-` or `/` with its neighbour). The v13 opt-in
   `scheduler-tz` Core/facade feature adds
   `Scheduler::task_in_tz(expression, zone, handler)`, which matches the same
   fields, day fields included, against the wall clock of an IANA time zone.

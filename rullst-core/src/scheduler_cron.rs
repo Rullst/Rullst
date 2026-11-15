@@ -1,18 +1,32 @@
 //! POSIX five-field cron expressions evaluated in UTC.
 //!
-//! The `cron` crate numbers weekdays 1 (Sunday) through 7 (Saturday), rejects
-//! 0 and always intersects day-of-month with day-of-week. POSIX cron numbers
-//! weekdays 0 through 7 (0 and 7 are Sunday) and, when both day fields are
-//! restricted, runs on a day matching *either*. This module translates the
-//! day-of-week field and implements that rule over two crate schedules.
+//! The fields are `minute hour day-of-month month day-of-week`. Day-of-week
+//! numbers weekdays 0 through 7 (0 and 7 are Sunday) and, when both day fields
+//! are restricted (neither starts with `*` or `?`), a day matching *either*
+//! runs the task; otherwise both must match. The other four fields follow the
+//! grammar in [`field`]. Rullst evaluated these fields with the `cron` crate
+//! until 13.0.0-alpha.5; this evaluator keeps its accepted syntax, except that
+//! each field must now be valid on its own, and its search bounds.
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeDelta, Timelike, Utc};
+use field::{DAY_OF_MONTH, HOUR, MINUTE, MONTH, Values};
+
+#[path = "scheduler_cron_field.rs"]
+mod field;
+
+/// The last year searched, as the `cron` crate did.
+const LAST_YEAR: i32 = 2100;
 
 /// A validated POSIX five-field schedule.
 pub(crate) struct CronSchedule {
-    day_of_month_or_all: cron::Schedule,
-    /// Present only when both day fields are restricted (POSIX OR rule).
-    day_of_week: Option<cron::Schedule>,
+    minutes: Values,
+    hours: Values,
+    days_of_month: Values,
+    months: Values,
+    /// 0 (Sunday) through 6 (Saturday).
+    days_of_week: Values,
+    /// Both day fields are restricted, so a day matching either one runs.
+    either_day: bool,
 }
 
 impl CronSchedule {
@@ -24,63 +38,86 @@ impl CronSchedule {
                 "expected five fields: minute hour day-of-month month day-of-week".to_string(),
             );
         };
-        let weekdays = crate_day_of_week(day_of_week)?;
+        let days_of_week = weekdays(day_of_week)?;
         let unrestricted = |field: &str| field.starts_with(['*', '?']);
-        let parse = |day_of_month: &str, day_of_week: &str| {
-            format!("0 {minute} {hour} {day_of_month} {month} {day_of_week} *")
-                .parse::<cron::Schedule>()
-                .map_err(|error| error.to_string())
-        };
-
-        if unrestricted(day_of_month) || unrestricted(day_of_week) {
-            // One day field is unrestricted, so the intersection that the
-            // crate computes is exactly the POSIX meaning.
-            return Ok(Self {
-                day_of_month_or_all: parse(day_of_month, &weekdays)?,
-                day_of_week: None,
-            });
-        }
         Ok(Self {
-            day_of_month_or_all: parse(day_of_month, "*")?,
-            day_of_week: Some(parse("*", &weekdays)?),
+            minutes: MINUTE.parse(minute)?,
+            hours: HOUR.parse(hour)?,
+            days_of_month: DAY_OF_MONTH.parse(day_of_month)?,
+            months: MONTH.parse(month)?,
+            days_of_week,
+            either_day: !unrestricted(day_of_month) && !unrestricted(day_of_week),
         })
     }
 
-    /// Returns the first occurrence strictly after `after`.
+    /// Returns the first occurrence strictly after `after`: the first
+    /// matching whole minute after it, from 1970 through 2100. As with the
+    /// `cron` crate, there is none when the second after `after` falls
+    /// before year 0, and an earlier `after` starts the search in 1970.
     pub(crate) fn next_after(&self, after: &DateTime<Utc>) -> Option<DateTime<Utc>> {
-        let first = self.day_of_month_or_all.after(after).next();
-        let second = self
-            .day_of_week
-            .as_ref()
-            .and_then(|schedule| schedule.after(after).next());
-        match (first, second) {
-            (Some(first), Some(second)) => Some(first.min(second)),
-            (first, second) => first.or(second),
+        let next_second = after.checked_add_signed(TimeDelta::seconds(1))?;
+        if next_second.year() < 0 {
+            return None;
+        }
+        let first = after
+            .with_second(0)?
+            .with_nanosecond(0)?
+            .checked_add_signed(TimeDelta::minutes(1))?
+            .max(DateTime::UNIX_EPOCH);
+        self.first_from(first.naive_utc())
+    }
+
+    /// The first matching minute at or after `from`, a whole minute.
+    fn first_from(&self, from: NaiveDateTime) -> Option<DateTime<Utc>> {
+        let mut date = from.date();
+        let mut earliest = from.time();
+        while date.year() <= LAST_YEAR {
+            if self.months.contains(date.month()) && self.runs_on(date) {
+                if let Some(time) = self.first_time_from(earliest) {
+                    return Some(date.and_time(time).and_utc());
+                }
+            }
+            date = date.succ_opt()?;
+            earliest = NaiveTime::MIN;
+        }
+        None
+    }
+
+    /// Whether the day fields select `date`.
+    fn runs_on(&self, date: NaiveDate) -> bool {
+        let day_of_month = self.days_of_month.contains(date.day());
+        let day_of_week = self
+            .days_of_week
+            .contains(date.weekday().num_days_from_sunday());
+        if self.either_day {
+            day_of_month || day_of_week
+        } else {
+            day_of_month && day_of_week
         }
     }
 
-    /// Every second, for deterministic scheduler-loop tests.
-    #[cfg(test)]
-    pub(crate) fn every_second() -> Self {
-        Self {
-            day_of_month_or_all: "* * * * * * *"
-                .parse()
-                .unwrap_or_else(|error| panic!("valid test schedule: {error}")),
-            day_of_week: None,
+    /// The first matching time of day at or after `earliest`.
+    fn first_time_from(&self, earliest: NaiveTime) -> Option<NaiveTime> {
+        let hour = earliest.hour();
+        if self.hours.contains(hour) {
+            if let Some(minute) = self.minutes.first_from(earliest.minute()) {
+                return NaiveTime::from_hms_opt(hour, minute, 0);
+            }
         }
+        let hour = self.hours.first_from(hour + 1)?;
+        NaiveTime::from_hms_opt(hour, self.minutes.first_from(0)?, 0)
     }
 }
 
-/// Translates a POSIX day-of-week field into the crate's 1 (Sunday) to
-/// 7 (Saturday) numbering as an explicit list.
-fn crate_day_of_week(field: &str) -> Result<String, String> {
+/// Parses a POSIX day-of-week field into days 0 (Sunday) to 6.
+fn weekdays(field: &str) -> Result<Values, String> {
     if field.starts_with(['*', '?']) && !field.contains(',') {
         let step = match field.get(1..) {
             Some("") => 1,
             Some(rest) => parse_step(rest.strip_prefix('/').ok_or_else(|| invalid(field))?)?,
             None => return Err(invalid(field)),
         };
-        return Ok(join((0..=6).step_by(step)));
+        return Ok(weekday_set((0..=6).step_by(step)));
     }
 
     let mut days = [false; 7];
@@ -116,7 +153,7 @@ fn crate_day_of_week(field: &str) -> Result<String, String> {
             days[usize::from(day % 7)] = true;
         }
     }
-    Ok(join(
+    Ok(weekday_set(
         days.iter()
             .enumerate()
             .filter_map(|(day, selected)| selected.then_some(day)),
@@ -158,115 +195,15 @@ fn invalid(value: &str) -> String {
     format!("day-of-week `{value}` is not a POSIX weekday, list, range or step")
 }
 
-/// Emits POSIX days 0 (Sunday) to 6 as crate ordinals 1 to 7.
-fn join(days: impl Iterator<Item = usize>) -> String {
-    days.map(|day| (day + 1).to_string())
-        .collect::<Vec<_>>()
-        .join(",")
+/// The set of the distinct days 0 (Sunday) to 6 in `days`.
+fn weekday_set(days: impl Iterator<Item = usize>) -> Values {
+    Values::from_bits(days.map(|day| 1_u64 << day).sum())
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::*;
-    use chrono::{Datelike, TimeZone, Weekday};
+#[path = "scheduler_cron_tests.rs"]
+mod tests;
 
-    fn next_days(expression: &str, count: usize) -> Vec<(Weekday, u32)> {
-        let schedule = CronSchedule::parse(expression).unwrap();
-        // Wednesday 2026-09-30 00:00 UTC.
-        let mut cursor = Utc.with_ymd_and_hms(2026, 9, 30, 0, 0, 0).unwrap();
-        let mut days = Vec::new();
-        for _ in 0..count {
-            cursor = schedule.next_after(&cursor).unwrap();
-            days.push((cursor.weekday(), cursor.day()));
-        }
-        days
-    }
-
-    fn weekdays(expression: &str, count: usize) -> Vec<Weekday> {
-        next_days(expression, count)
-            .into_iter()
-            .map(|(weekday, _)| weekday)
-            .collect()
-    }
-
-    #[test]
-    fn numeric_weekdays_follow_posix_numbering() {
-        use Weekday::*;
-        assert_eq!(
-            weekdays("0 9 * * 1-5", 7),
-            [Wed, Thu, Fri, Mon, Tue, Wed, Thu]
-        );
-        assert_eq!(weekdays("0 3 * * 0", 2), [Sun, Sun]);
-        assert_eq!(weekdays("0 3 * * 7", 2), [Sun, Sun]);
-        assert_eq!(weekdays("0 3 * * 6", 1), [Sat]);
-        assert_eq!(weekdays("0 3 * * 5-7", 3), [Fri, Sat, Sun]);
-        assert_eq!(weekdays("0 3 * * FRI-SUN", 3), [Fri, Sat, Sun]);
-        assert_eq!(weekdays("0 3 * * 1,3,sat", 4), [Wed, Sat, Mon, Wed]);
-        assert_eq!(weekdays("0 3 * * 1-5/2", 4), [Wed, Fri, Mon, Wed]);
-        assert_eq!(weekdays("0 3 * * */3", 3), [Wed, Sat, Sun]);
-        assert_eq!(weekdays("0 3 * * mon-fri", 3), [Wed, Thu, Fri]);
-    }
-
-    #[test]
-    fn restricted_day_fields_match_either_day() {
-        // POSIX: the 1st of the month OR every Monday.
-        let days = next_days("0 0 1 * 1", 4);
-        assert_eq!(
-            days,
-            [
-                (Weekday::Thu, 1),
-                (Weekday::Mon, 5),
-                (Weekday::Mon, 12),
-                (Weekday::Mon, 19)
-            ]
-        );
-        // A star-prefixed day field keeps the intersection (Vixie cron).
-        let days = next_days("0 0 */2 * 1", 2);
-        assert!(
-            days.iter()
-                .all(|(weekday, day)| *weekday == Weekday::Mon && day % 2 == 1)
-        );
-    }
-
-    #[test]
-    fn schedules_are_evaluated_in_utc() {
-        let schedule = CronSchedule::parse("30 23 * * *").unwrap();
-        let start = Utc.with_ymd_and_hms(2026, 9, 30, 12, 0, 0).unwrap();
-        assert_eq!(
-            schedule.next_after(&start).unwrap(),
-            Utc.with_ymd_and_hms(2026, 9, 30, 23, 30, 0).unwrap()
-        );
-    }
-
-    #[test]
-    fn malformed_expressions_are_rejected() {
-        for expression in [
-            "* * * *",
-            "* * * * * *",
-            "* * * * 8",
-            "* * * * 5-1",
-            "* * * * 1/2",
-            "* * * * */0",
-            "* * * * funday",
-            "* * * * 1-",
-            "61 * * * *",
-        ] {
-            assert!(
-                CronSchedule::parse(expression).is_err(),
-                "accepted `{expression}`"
-            );
-        }
-    }
-
-    #[test]
-    fn every_weekday_name_and_single_day_ranges_parse() {
-        use Weekday::*;
-        assert_eq!(weekdays("0 3 * * tue,wednesday,thurs", 3), [Wed, Thu, Tue]);
-        assert_eq!(weekdays("0 3 * * TUES", 1), [Tue]);
-        assert_eq!(weekdays("0 3 * * 3-3", 2), [Wed, Wed]);
-        assert_eq!(weekdays("0 3 * * 0-0", 2), [Sun, Sun]);
-        let error = CronSchedule::parse("0 3 * * funday").err().unwrap();
-        assert!(error.contains("`funday` is not a POSIX weekday"), "{error}");
-    }
-}
+#[cfg(test)]
+#[path = "scheduler_cron_differential_tests.rs"]
+mod differential_tests;
