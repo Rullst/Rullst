@@ -203,6 +203,14 @@ fn alpine_and_htmx_names_parse_with_colons_at_signs_and_dots() {
 }
 
 #[test]
+fn numeric_name_segments_keep_their_digit_separators() {
+    assert_eq!(
+        names(r#"<div @click.debounce.1_000ms="go" x-transition.duration.2_0="t"></div>"#),
+        ["@click.debounce.1_000ms", "x-transition.duration.2_0"]
+    );
+}
+
+#[test]
 fn malformed_names_and_dynamic_script_values_are_rejected() {
     for source in [
         r#"<div x-on:="x"></div>"#,

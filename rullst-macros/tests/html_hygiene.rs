@@ -265,3 +265,13 @@ fn match_blocks_resolve_caller_bindings_named_like_the_buffer() {
         "many:text:3"
     );
 }
+
+#[test]
+fn a_spaced_colon_starts_the_next_attribute_name() {
+    // With the compiler's positions, `x-on:click` is one name and
+    // `required :value` two.
+    assert_eq!(
+        html! { <input required :value="v" x-on:click="go" /> },
+        "<input required :value=\"v\" x-on:click=\"go\" />"
+    );
+}

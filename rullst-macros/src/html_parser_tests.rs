@@ -187,6 +187,21 @@ fn static_attribute_values_escape_double_quotes_only() {
 }
 
 #[test]
+fn capacity_hints_count_bare_and_valued_attribute_names() {
+    let document = parse_ok(r#"<input required title={note} checked?={done} />"#);
+    let [HtmlNode::Element(element)] = &document.nodes[..] else {
+        panic!("expected one <input>");
+    };
+    let sizes: Vec<usize> = element
+        .attributes
+        .iter()
+        .map(super::attributes::HtmlAttribute::static_size)
+        .collect();
+    // ` required`, ` title=""` and ` checked=""`.
+    assert_eq!(sizes, [9, 9, 11]);
+}
+
+#[test]
 fn only_elements_with_dynamic_attributes_carry_the_option_probe() {
     let probed = parse_ok("<p title={note} data-x?={flag}></p>")
         .to_tokens()
