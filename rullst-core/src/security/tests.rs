@@ -360,7 +360,7 @@ fn test_generate_csrf_token() {
 }
 
 #[tokio::test]
-async fn csrf_get_exposes_the_exact_cookie_token_to_form_handlers() {
+async fn csrf_get_exposes_the_cookie_token_masked_to_form_handlers() {
     use axum::{Extension, body::Body, http::Request, routing::get};
     use tower::ServiceExt;
 
@@ -393,8 +393,16 @@ async fn csrf_get_exposes_the_exact_cookie_token_to_form_handlers() {
     let first_body = axum::body::to_bytes(first.into_body(), 128)
         .await
         .expect("first body");
-    let first_token = std::str::from_utf8(&first_body).expect("UTF-8 token");
-    assert!(cookie.starts_with(&format!("rullst_csrf={first_token};")));
+    let first_masked = std::str::from_utf8(&first_body).expect("UTF-8 token");
+    let first_token = cookie
+        .strip_prefix("rullst_csrf=")
+        .and_then(|rest| rest.split(';').next())
+        .expect("cookie token");
+    let unmasks = |masked: &[u8]| -> bool {
+        super::csrf_mask::csrf_proof_matches(masked, first_token).into()
+    };
+    assert_ne!(first_masked, first_token);
+    assert!(unmasks(first_masked.as_bytes()));
 
     let second = app
         .clone()
@@ -419,7 +427,8 @@ async fn csrf_get_exposes_the_exact_cookie_token_to_form_handlers() {
     let second_body = axum::body::to_bytes(second.into_body(), 128)
         .await
         .expect("second body");
-    assert_eq!(second_body.as_ref(), first_token.as_bytes());
+    assert_ne!(second_body.as_ref(), first_masked.as_bytes());
+    assert!(unmasks(&second_body));
 
     let posted = app
         .oneshot(
@@ -432,7 +441,7 @@ async fn csrf_get_exposes_the_exact_cookie_token_to_form_handlers() {
                     axum::http::header::COOKIE,
                     format!("rullst_csrf={first_token}"),
                 )
-                .body(Body::from(format!("_token={first_token}")))
+                .body(Body::from(format!("_token={first_masked}")))
                 .expect("valid POST request"),
         )
         .await
@@ -440,7 +449,7 @@ async fn csrf_get_exposes_the_exact_cookie_token_to_form_handlers() {
     let posted_body = axum::body::to_bytes(posted.into_body(), 128)
         .await
         .expect("POST body");
-    assert_eq!(posted_body.as_ref(), first_token.as_bytes());
+    assert!(unmasks(&posted_body));
 }
 
 #[test]

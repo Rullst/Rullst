@@ -115,6 +115,15 @@ async fn honeypot_button_hits_the_real_deception_middleware() {
     }));
 }
 
+/// The first `_token` field value of `html`.
+fn form_token(html: &str) -> String {
+    html.split("name=\"_token\" value=\"")
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .expect("form token")
+        .to_owned()
+}
+
 #[tokio::test]
 async fn showcase_forms_render_and_enforce_the_double_submit_csrf_token() {
     if !database().await {
@@ -152,7 +161,9 @@ async fn showcase_forms_render_and_enforce_the_double_submit_csrf_token() {
             .await
             .expect("HTML body");
         let html = std::str::from_utf8(&body).expect("UTF-8 HTML");
-        assert!(html.contains(&format!("name=\"_token\" value=\"{token}\"")));
+        // The form carries the cookie token masked for this response.
+        assert_eq!(form_token(html).len(), 86, "{path}");
+        assert!(!html.contains(&token), "{path}");
     }
 
     let rejected = app
@@ -207,7 +218,8 @@ async fn showcase_forms_render_and_enforce_the_double_submit_csrf_token() {
         .await
         .expect("pricing HTML body");
     let pricing_html = std::str::from_utf8(&pricing_body).expect("pricing UTF-8 HTML");
-    assert!(pricing_html.contains(&format!("name=\"_token\" value=\"{token}\"")));
+    let form = form_token(pricing_html);
+    assert!(!pricing_html.contains(&token));
 
     let checkout = app
         .oneshot(
@@ -215,7 +227,7 @@ async fn showcase_forms_render_and_enforce_the_double_submit_csrf_token() {
                 .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .header(header::COOKIE, format!("rullst_csrf={token}"))
                 .body(Body::from(format!(
-                    "provider=stripe&plan=pro_plan&email=fixture%40example.invalid&_token={token}"
+                    "provider=stripe&plan=pro_plan&email=fixture%40example.invalid&_token={form}"
                 )))
                 .expect("offline checkout fixture request"),
         )

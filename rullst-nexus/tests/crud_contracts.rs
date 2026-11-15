@@ -257,7 +257,7 @@ async fn browser_forms_carry_the_csrf_body_token(app: &axum::Router, pool: &Rull
         .and_then(|value| value.split(';').next())
         .expect("CSRF cookie issued to a new browser")
         .to_owned();
-    let token = cookie
+    let cookie_token = cookie
         .strip_prefix("rullst_csrf=")
         .expect("rullst_csrf cookie")
         .to_owned();
@@ -267,12 +267,16 @@ async fn browser_forms_carry_the_csrf_body_token(app: &axum::Router, pool: &Rull
         .nth(1)
         .and_then(|rest| rest.split("</form>").next())
         .expect("bulk-action form");
-    assert!(
-        form.contains(&format!(
-            "<input type=\"hidden\" name=\"_token\" value=\"{token}\" />"
-        )),
-        "the bulk form must carry the request's CSRF token"
-    );
+    // The bulk form carries the request's CSRF token, masked for this
+    // response (BREACH): never the cookie value itself.
+    let token = form
+        .split("<input type=\"hidden\" name=\"_token\" value=\"")
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .expect("the bulk form must carry the request's CSRF token")
+        .to_owned();
+    assert_eq!((cookie_token.len(), token.len()), (32, 86));
+    assert!(!html.contains(&cookie_token));
 
     let browser_post = |uri: &'static str, body: String| {
         local_request()
