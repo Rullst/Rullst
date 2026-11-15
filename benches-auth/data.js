@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794759429445,
+  "lastUpdate": 1794764137212,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -22631,6 +22631,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3738,
             "range": "± 74",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f71231910ab0a300685a11f585e35567a485db65",
+          "message": "Merge pull request #705 from Rullst/perf/v13-alpha6-sqlite-without-tls\n\nperf(cli): SQLite-only starters without a TLS stack; footprint compiled crate count",
+          "timestamp": "2026-11-15T14:17:53-03:00",
+          "tree_id": "192d5536f409ee703e520a4daab54cf5271756fa",
+          "url": "https://github.com/Rullst/Rullst/commit/f71231910ab0a300685a11f585e35567a485db65"
+        },
+        "date": 1794764136387,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1005,
+            "range": "± 60",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 741,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1763,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4252,
+            "range": "± 148",
             "unit": "ns/iter"
           }
         ]
