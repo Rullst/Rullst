@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794781935806,
+  "lastUpdate": 1794785427875,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -14135,6 +14135,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 373,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cb30a27548713f5922a84ff120f9033760d3899f",
+          "message": "Merge pull request #716 from Rullst/feat/v13-alpha6-server-dev-baseline\n\nfeat(core): apply CSRF and secure headers in every environment",
+          "timestamp": "2026-11-15T20:12:04-03:00",
+          "tree_id": "9378f76398bebeb53df7304c281b2d4129bc4ebd",
+          "url": "https://github.com/Rullst/Rullst/commit/cb30a27548713f5922a84ff120f9033760d3899f"
+        },
+        "date": 1794785426945,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 439,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
