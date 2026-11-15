@@ -73,6 +73,7 @@ on:
           - recurring-postgres
           - messaging-redis
           - connect-sql
+          - auth-session-registry
           - orm-sqlite
           - orm-polyglot
           - orm-sql-servers
@@ -264,7 +265,7 @@ jobs:
                 exit 2
               fi
               case "$contract" in
-                passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql|orm-sqlite|orm-polyglot|orm-sql-servers|orm-strict-postgres|orm-strict-mysql|orm-polyglot-servers)
+                passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql|auth-session-registry|orm-sqlite|orm-polyglot|orm-sql-servers|orm-strict-postgres|orm-strict-mysql|orm-polyglot-servers)
                   ;;
                 *)
                   echo "Contract mode requires one of the owned-server wrappers." >&2
@@ -626,7 +627,7 @@ jobs:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: prlimit --as=8589934592 --
         run: |
           case "$CONTRACT" in
-            passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql|orm-sqlite|orm-polyglot|orm-sql-servers|orm-strict-postgres|orm-strict-mysql|orm-polyglot-servers)
+            passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis|connect-sql|auth-session-registry|orm-sqlite|orm-polyglot|orm-sql-servers|orm-strict-postgres|orm-strict-mysql|orm-polyglot-servers)
               ;;
             *)
               echo "Unknown owned-server contract: $CONTRACT" >&2

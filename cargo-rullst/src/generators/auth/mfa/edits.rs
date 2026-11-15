@@ -235,7 +235,9 @@ pub(crate) fn login_hook(source: &str) -> Result<Option<String>> {
     insert_before(
         source,
         "login_submit",
-        "match login_cookie(&user) {",
+        // `match login_cookie(&user, &headers).await {` since the session
+        // registry; `match login_cookie(&user) {` in earlier starters.
+        "match login_cookie(&user",
         &["auth::login_page(&token", "nonce"],
         "mfa::second_step",
         &LOGIN_HOOK,
@@ -271,7 +273,8 @@ pub(super) fn oauth_hook(source: &str) -> Result<Option<String>> {
     insert_before(
         source,
         "complete",
-        "let session = match session_cookie(&user)",
+        // `session_cookie(&user, headers)` since the session registry.
+        "let session = match session_cookie(&user",
         &[
             "return_to",
             "DEFAULT_RETURN_PATH",

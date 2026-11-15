@@ -123,6 +123,9 @@ the drivers.
 | `auth-email-login-postgres` | no | v13 candidate: `auth` plus email login over the PostgreSQL recovery accounts and sessions |
 | `auth-api-tokens-sqlite` | no | v13 candidate: `auth` plus scoped API tokens over the SQLite recovery backend; see [the API-token contract](api-tokens.md) |
 | `auth-api-tokens-postgres` | no | v13 candidate: `auth` plus scoped API tokens over the PostgreSQL recovery backend |
+| `auth-session-registry-sqlite` | no | v13: `auth` plus the server-side login-session registry (`rullst::auth::session_registry`) over the application's SQLite pool: revocable `rullst_session` cookies, a device list and per-session sign-out; see [session management](session-management.md#server-side-login-sessions) |
+| `auth-session-registry-postgres` | no | v13: the session registry over the application's PostgreSQL pool |
+| `auth-session-registry-mysql` | no | v13: the session registry over the application's MySQL or MariaDB pool |
 | `account-mail-sqlite` | no | `auth` and `mail` plus the SQLite recovery store and the `account_mail` delivery bridge; see [account mail](account-mail-v12-1.md) |
 | `account-mail-postgres` | no | `auth` and `mail` plus the PostgreSQL recovery store and the `account_mail` delivery bridge |
 | `mail` | no | `rullst-mail` with HTTP/offline transports and no SMTP dependency |

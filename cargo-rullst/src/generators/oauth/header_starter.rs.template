@@ -24,4 +24,3 @@ use crate::controllers::auth_controller::{
 use crate::models::oauth_identity::{self, OAuthIdentity};
 use crate::models::user::User;
 use crate::pages::auth;
-use rullst::auth as rullst_auth;

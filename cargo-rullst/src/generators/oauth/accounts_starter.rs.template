@@ -19,17 +19,7 @@ pub enum ExistingAccountPolicy {
 /// by verified email.
 pub const EXISTING_ACCOUNT_POLICY: ExistingAccountPolicy = ExistingAccountPolicy::Refuse;
 
-/// The password login's 30-day `rullst_session` cookie for `user`, carrying
-/// its current session epoch. Both sign-in paths refuse an account whose
-/// `current_session_epoch()` is `None`; if you add an account status (for
-/// example blocked or inactive), check it here and in `login_submit`.
-pub(crate) async fn session_cookie(user: &User) -> Result<String, rullst_auth::AuthError> {
-    let epoch = user
-        .current_session_epoch()
-        .ok_or(rullst_auth::AuthError::SessionRevoked)?;
-    rullst_auth::make_login_cookie_with_epoch(user.id, epoch, rullst_auth::DEFAULT_SESSION_MAX_AGE)
-}
-
+__RULLST_SESSION_COOKIE__
 /// Why a provider identity found no account to sign in.
 #[derive(Debug)]
 pub enum AccountError {

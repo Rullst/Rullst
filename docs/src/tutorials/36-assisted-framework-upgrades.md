@@ -485,7 +485,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (121 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (107 rows).
+  of inputs that previously failed) (108 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
 has 161 rules. A row can map to several rules and a rule to
@@ -496,6 +496,7 @@ the rule together.
 | :--- | :--- | :--- | :--- |
 | Existing runtime APIs | (c) none | — | General statement; the session-schema migration is the next row |
 | Account/session registry | (b) review | `V13-AUTH-RECOVERY-MIGRATE` |  |
+| Server-side login sessions | (c) none | — | Opt-in registry; generator output for new projects |
 | Private object storage | (c) none | — | Opt-in `storage-s3` candidate |
 | R2 public URLs | (b) review | `V13-R2-PUBLIC-URL` |  |
 | Tenant local storage | (c) none | — | Only a tenant directory below a regular file changes the error; not located |

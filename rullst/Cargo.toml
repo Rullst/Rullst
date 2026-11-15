@@ -24,7 +24,9 @@ features = [
     "telemetry", "nexus", "nexus-ai", "nexus-tz", "studio", "auth", "auth-passkeys",
     "auth-jwt", "auth-sqlite", "auth-passkey-postgres", "auth-sessions-sqlite", "auth-sessions-postgres",
     "auth-email-login-sqlite", "auth-email-login-postgres", "auth-api-tokens-sqlite",
-    "auth-api-tokens-postgres", "account-mail-sqlite", "account-mail-postgres",
+    "auth-api-tokens-postgres", "auth-session-registry-sqlite",
+    "auth-session-registry-postgres", "auth-session-registry-mysql",
+    "account-mail-sqlite", "account-mail-postgres",
     "mail", "mail-sqlite", "mail-postgres", "mailer", "mail-smtp", "mail-aws-ses",
     "messaging", "messaging-schedules-postgres", "messaging-webhooks",
     "messaging-sqlite", "messaging-redis", "messaging-orm-outbox", "privacy",
@@ -72,6 +74,12 @@ auth-email-login-sqlite = ["auth", "rullst-auth/email-login-sqlite"]
 auth-email-login-postgres = ["auth", "rullst-auth/email-login-postgres"]
 auth-api-tokens-sqlite = ["auth", "rullst-auth/api-tokens-sqlite"]
 auth-api-tokens-postgres = ["auth", "rullst-auth/api-tokens-postgres"]
+# Server-side login sessions (`rullst::auth::session_registry`) over the
+# application's own pool; `cargo rullst auth` and the SaaS starter enable the
+# one of their database.
+auth-session-registry-sqlite = ["auth", "rullst-auth/session-registry-sqlite"]
+auth-session-registry-postgres = ["auth", "rullst-auth/session-registry-postgres"]
+auth-session-registry-mysql = ["auth", "rullst-auth/session-registry-mysql"]
 account-mail-sqlite = ["auth", "mail", "rullst-auth/recovery-sqlite"]
 account-mail-postgres = ["auth", "mail", "rullst-auth/recovery-postgres"]
 mail = ["dep:rullst-mail"]
