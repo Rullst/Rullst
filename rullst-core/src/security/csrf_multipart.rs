@@ -19,8 +19,9 @@ pub(crate) const MAX_TOKEN_PREFIX_BYTES: usize = 64 * 1024;
 /// can read. [`crate::uploads::Multipart`] answers a form whose `_token`
 /// arrives too late with the same text in every environment.
 pub(crate) const MULTIPART_TOKEN_ORDER_MESSAGE: &str = "Missing CSRF token: a multipart/form-data form must send its _token field before any file field (the CSRF check reads only the first 64 KiB of the body), or send the X-CSRF-Token header";
-/// Longest accepted `_token` value, matching the CSRF cookie bound.
-const MAX_TOKEN_BYTES: usize = 128;
+/// Longest accepted `_token` value: a masked value of the longest CSRF
+/// cookie token.
+const MAX_TOKEN_BYTES: usize = super::csrf_mask::MAX_MASKED_TOKEN_BYTES;
 
 /// Returns the boundary of a `multipart/form-data` content type.
 ///
@@ -334,7 +335,13 @@ mod tests {
         assert_eq!(scan(file.as_bytes(), b"XyZ"), Scan::Missing);
         let empty = format!("{}--XyZ--", part("_token", ""));
         assert_eq!(scan(empty.as_bytes(), b"XyZ"), Scan::Missing);
-        let oversized = format!("{}--XyZ--", part("_token", &"t".repeat(129)));
+        // The longest masked token, 342 bytes, is read; one byte more is not.
+        let longest = format!("{}--XyZ--", part("_token", &"t".repeat(342)));
+        assert_eq!(
+            scan(longest.as_bytes(), b"XyZ"),
+            Scan::Token(b"t".repeat(342))
+        );
+        let oversized = format!("{}--XyZ--", part("_token", &"t".repeat(343)));
         assert_eq!(scan(oversized.as_bytes(), b"XyZ"), Scan::Missing);
         let duplicate_disposition = "--XyZ\r\nContent-Disposition: form-data; name=\"_token\"\r\ncontent-disposition: form-data; name=\"x\"\r\n\r\nabc\r\n--XyZ--";
         assert_eq!(

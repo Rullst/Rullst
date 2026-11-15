@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import http.cookiejar
 import json
 from pathlib import Path
@@ -15,6 +16,8 @@ ACCOUNT_NAME = "Deploy Smoke"
 # Every starter ships the htmx client; the Blank page links its hashed name.
 HTMX = "/static/htmx-2.0.11.min.js"
 HASHED_HTMX = re.compile(r"/static/htmx-2\.0\.11\.min\.[0-9a-f]{16}\.js")
+# A form's CSRF field: the cookie token masked for that response.
+TOKEN_FIELD = re.compile(r'name="_token" value="([A-Za-z0-9_-]{86})"')
 
 
 class Failure(Exception):
@@ -125,16 +128,35 @@ def varies_on_encoding(headers) -> bool:
 
 
 def check_compression(starter: str, ca: Path) -> None:
-    """Pages stay uncompressed (they carry the unmasked CSRF token: BREACH);
-    static files come from the image's .br/.zst siblings."""
+    """Pages are compressed by Caddy (zstd or gzip) and embed the CSRF token
+    masked per response (BREACH); static files come from the image's
+    .br/.zst siblings."""
     client = Client(ca)
     page = "/" if starter == "blank" else "/login"
-    code, headers, body = client.fetch(f"https://localhost{page}", "gzip, zstd, br")
-    encoding = headers.get("Content-Encoding")
-    html = body.decode(errors="replace")
-    expect(code == 200 and encoding is None and "</html>" in html.lower(),
-           f"GET {page} is sent uncompressed to a client that accepts compression "
-           f"({code}, {encoding})")
+    code, headers, plain = client.fetch(f"https://localhost{page}", "identity")
+    html = plain.decode(errors="replace")
+    expect(code == 200 and headers.get("Content-Encoding") is None
+           and "</html>" in html.lower(),
+           f"GET {page} is sent uncompressed to a client that accepts no compression ({code})")
+    # The client kept the cookie, so the second page masks the same token.
+    code, _, again = client.fetch(f"https://localhost{page}", "identity")
+    cookie = client.cookie("rullst_csrf")
+    tokens = [TOKEN_FIELD.findall(body.decode(errors="replace")) for body in (plain, again)]
+    expect(code == 200 and len(cookie) == 32 and tokens[0] and tokens[1]
+           and not set(tokens[0]) & set(tokens[1])
+           and cookie.encode() not in plain + again,
+           f"GET {page} embeds the CSRF token masked differently in every response "
+           f"({len(tokens[0])} and {len(tokens[1])} fields)")
+    for coding in ("zstd", "gzip"):
+        code, headers, body = client.fetch(f"https://localhost{page}", coding)
+        served = headers.get("Content-Encoding")
+        expect(code == 200 and served == coding and varies_on_encoding(headers)
+               and 0 < len(body) < len(plain),
+               f"GET {page} with {coding} is compressed by Caddy "
+               f"({code}, {served}, {len(body)} of {len(plain)} bytes)")
+        if coding == "gzip":
+            expect("</html>" in gzip.decompress(body).decode(errors="replace").lower(),
+                   f"GET {page} with gzip decompresses to the page")
 
     code, headers, plain = client.fetch(f"https://localhost{HTMX}", "identity")
     expect(code == 200 and headers.get("Content-Encoding") is None

@@ -134,6 +134,9 @@ pub(crate) fn utc_timestamp() -> rullst::orm::chrono::DateTime<rullst::orm::chro
     rullst::orm::chrono::Utc::now()
 }
 
+/// The `rullst_csrf` cookie's token, masked for this response so that a
+/// compressed page never repeats it (BREACH), for a handler without the CSRF
+/// middleware's `CsrfToken`; empty without a valid cookie.
 pub(crate) fn get_csrf_token(headers: &HeaderMap) -> String {
     headers
         .get(rullst::server::header::COOKIE)
@@ -143,7 +146,7 @@ pub(crate) fn get_csrf_token(headers: &HeaderMap) -> String {
                 cookie
                     .trim()
                     .strip_prefix("rullst_csrf=")
-                    .map(ToOwned::to_owned)
+                    .and_then(rullst::security::mask_csrf_token)
             })
         })
         .unwrap_or_default()

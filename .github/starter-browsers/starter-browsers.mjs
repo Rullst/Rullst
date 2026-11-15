@@ -273,7 +273,10 @@ async function fillByKeyboard(session, path, fields) {
   }
   const token = await session.page.locator("input[name=_token]").first().inputValue();
   const cookie = (await session.context.cookies(base.href)).find(item => item.name === "rullst_csrf");
-  if (!token || cookie?.value !== token) throw new Error(`${path}: the form token does not match the rullst_csrf cookie`);
+  // The form carries the cookie's token masked for this response (BREACH).
+  if (!cookie?.value || !/^[A-Za-z0-9_-]{86}$/.test(token) || token === cookie.value) {
+    throw new Error(`${path}: the form token is not the rullst_csrf cookie's token masked for this response`);
+  }
 }
 
 async function signOutByKeyboard(session) {

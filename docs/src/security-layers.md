@@ -291,7 +291,7 @@ in the first place.
 
 | Control | Owner | Reduces | Mechanism | Does not protect against |
 | :--- | :--- | :--- | :--- | :--- |
-| Double-submit CSRF | Core | Cross-site form and fetch writes using ambient cookies | `rullst_csrf` cookie must match `X-CSRF-Token` or the `_token` form field, compared in constant time. A `GET` for a static file never mints the token; it only reuses an existing cookie's. Static files are the paths below `[security]` `csrf_static_prefixes` (default `/static/`, `/.well-known/`) and the exact `csrf_static_paths` (default `/favicon.ico`, `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest`, `/sw.js`); since 13.0.0-alpha.6 a file extension no longer counts, so a dynamic `/report.json` page gets a token ([static files and the CSRF token](#static-files-and-the-csrf-token)) | State changes in `GET` handlers; a sibling subdomain that can set cookies; an XSS bug that reads the token; WebSocket upgrades |
+| Double-submit CSRF | Core | Cross-site form and fetch writes using ambient cookies; since 13.0.0-alpha.6 BREACH recovery of the token from compressed pages ([compressed pages](#compressed-pages-and-breach)) | `rullst_csrf` cookie must match `X-CSRF-Token` or the `_token` form field, which carry the token masked per response (`CsrfToken::as_str()`) or the cookie value itself, compared in constant time. A `GET` for a static file never mints the token; it only reuses an existing cookie's. Static files are the paths below `[security]` `csrf_static_prefixes` (default `/static/`, `/.well-known/`) and the exact `csrf_static_paths` (default `/favicon.ico`, `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest`, `/sw.js`); since 13.0.0-alpha.6 a file extension no longer counts, so a dynamic `/report.json` page gets a token ([static files and the CSRF token](#static-files-and-the-csrf-token)) | State changes in `GET` handlers; a sibling subdomain that can set cookies; an XSS bug that reads the token; WebSocket upgrades |
 | Exact machine endpoints | Core | Webhook and API routes that must skip browser CSRF | Exact method and path, authenticated (bearer digest, signed-webhook, per-resource address-token or mTLS verifier) before the CSRF exemption applies | A weak verifier you supply; replay unless your verifier checks freshness; an unsigned address-token body, which the handler must confirm at the source |
 | Trusted-proxy resolution | Core | Spoofed `X-Forwarded-For` choosing the client identity | Forwarded headers read only from listed proxy networks, right to left | A listed proxy that forwards client headers unchanged; any host inside a listed network |
 | Tenant context | Core | Client-chosen tenant headers | Only tenant context inserted by your authentication middleware is used | Missing ownership checks in handlers |
@@ -348,6 +348,38 @@ paths now gets the `rullst_csrf` cookie when the visitor has none, unless
 its response may be stored by shared caches (`Cache-Control: public`), which
 never carries the cookie. The settings change only token issuance:
 `POST`, `PUT`, `PATCH` and `DELETE` need the token on every path.
+
+### Compressed pages and BREACH
+
+BREACH recovers a secret from a compressed HTTPS response when the same
+response also shows text the attacker chooses (a search term, a form value
+sent back with an error): the attacker makes the victim's browser send
+guesses and watches how many bytes each compressed response takes, because
+a guess that matches the secret compresses better. It needs the secret to be
+the same in every response.
+
+Since 13.0.0-alpha.6 the CSRF token is never the same twice in a page.
+`CsrfToken::as_str()` returns `mask || (token XOR mask)` in URL-safe base64,
+with a fresh random mask from the operating system for every request, so two
+responses embed different values (86 characters for the generated
+32-character token) that both unmask to the `rullst_csrf` cookie. The
+middleware unmasks a `_token` field or `X-CSRF-Token` header and compares it
+with the cookie in constant time; it still accepts the cookie value itself,
+for clients that read the cookie and send it in the header, and nothing
+else. The cookie is unchanged. Code that reads the cookie to render a form
+(the `get_csrf_token` helper that `make:auth` generated before alpha.6)
+should pass the value through `rullst::security::mask_csrf_token`;
+`cargo rullst upgrade` reports it (`V13-CSRF-COOKIE-IN-PAGE`).
+
+That is why the `Caddyfile` that `cargo rullst deploy` writes compresses
+pages (`encode zstd gzip`) since 13.0.0-alpha.6. Masking covers the CSRF
+token only. Any other secret an application puts in a compressed page next
+to attacker-controlled input stays exposed: an API key or session value
+printed into a page, a reset or invitation token shown on a page that also
+echoes a query parameter, a personal value reflected beside a search box.
+Do not put such secrets in pages; when one must be there, serve that route
+uncompressed (exclude it from `encode` with a path matcher), mask it per
+response the same way, or keep attacker-chosen text out of the response.
 
 ## What none of these layers do
 

@@ -2954,6 +2954,7 @@ pub fn rullst_core::security::apply_security_baseline_with_machine_endpoints(app
 pub async fn rullst_core::security::csrf_middleware(req: axum_core::extract::Request, next: axum::middleware::from_fn::Next) -> axum_core::response::Response
 pub fn rullst_core::security::generate_csrf_token() -> alloc::string::String
 pub async fn rullst_core::security::headers_middleware(req: axum_core::extract::Request, next: axum::middleware::from_fn::Next) -> axum_core::response::Response
+pub fn rullst_core::security::mask_csrf_token(token: &str) -> core::option::Option<alloc::string::String>
 pub fn rullst_core::security::mask_pii(text: &str) -> alloc::string::String
 pub fn rullst_core::security::normalize_ip(value: &str) -> alloc::string::String
 pub async fn rullst_core::security::pii_masking_middleware(req: axum_core::extract::Request, next: axum::middleware::from_fn::Next) -> axum_core::response::Response

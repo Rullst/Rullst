@@ -7,8 +7,8 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use rand::distr::{Alphanumeric, SampleString};
-use subtle::ConstantTimeEq;
 
+use super::csrf_mask::{csrf_proof_matches, mask_csrf_token, valid_cookie_token};
 use super::waf::security_config;
 
 /// Generates a cryptographically secure 32-character random alphanumeric string.
@@ -18,19 +18,35 @@ pub fn generate_csrf_token() -> String {
 
 /// Request-scoped CSRF token made available to handlers rendering forms.
 ///
-/// On the first `GET` or `HEAD` request this is the same token that the
-/// middleware writes to the response cookie. Exposing it through request extensions avoids
-/// rendering an empty hidden field before the browser has received that cookie.
+/// It is the `rullst_csrf` cookie's token masked for this response (see
+/// [`mask_csrf_token`]): on the first `GET` or `HEAD` request, the token
+/// that the middleware writes to the response cookie. Exposing it through
+/// request extensions avoids rendering an empty hidden field before the
+/// browser has received that cookie.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CsrfToken(String);
 
 impl CsrfToken {
-    /// Returns the token that must be echoed in an `X-CSRF-Token` header or
-    /// `_token` form field.
+    /// Masks the cookie's `token` for one response, or `None` when the
+    /// operating system's random source fails.
+    fn for_response(token: &str) -> Option<Self> {
+        mask_csrf_token(token).map(Self)
+    }
+
+    /// Returns the value to embed in a page and echo in an `X-CSRF-Token`
+    /// header or `_token` form field. Since 13.0.0-alpha.6 it is masked
+    /// with a fresh random mask in every request, so it differs from the
+    /// cookie value and between responses (a defence against BREACH in
+    /// compressed pages); the middleware accepts it, and the cookie value
+    /// itself, for the request's cookie.
     pub fn as_str(&self) -> &str {
         &self.0
     }
 }
+
+/// The `500` answer when the operating system's random source cannot mask
+/// the token.
+const MASK_UNAVAILABLE: &str = "CSRF token unavailable";
 
 /// Private request marker preventing nested framework/application composition
 /// from applying the double-submit protocol twice.
@@ -55,7 +71,11 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 /// route extracting `Extension<CsrfToken>` also answers HEAD. `OPTIONS` and
 /// `TRACE` pass through, while state-changing requests must match the
 /// `rullst_csrf` cookie token with either the `X-CSRF-Token` header or form
-/// `_token` field. The cookie carries `Secure` in staging and production, and
+/// `_token` field. That value is the masked [`CsrfToken`] a page embedded,
+/// which unmasks to the cookie token, or the cookie value itself (a client
+/// that reads the cookie); the token bytes are compared in constant time.
+/// Each request's [`CsrfToken`] carries a fresh mask, so a compressed page
+/// never repeats the secret (BREACH). The cookie carries `Secure` in staging and production, and
 /// in any environment when the request arrived over HTTPS (an `https`
 /// request URI, or `https` reported by a trusted proxy through
 /// [`super::TrustedProxyLayer`] with `trust_forwarded_proto`).
@@ -143,7 +163,10 @@ async fn handle_csrf_get(mut req: Request, next: impl super::Run) -> Response {
     let cookie_token = csrf_token_from_cookies(req.headers());
 
     if let Some(token) = cookie_token {
-        req.extensions_mut().insert(CsrfToken(token));
+        let Some(csrf) = CsrfToken::for_response(&token) else {
+            return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
+        };
+        req.extensions_mut().insert(csrf);
         return next.run(req).await;
     }
 
@@ -155,7 +178,10 @@ async fn handle_csrf_get(mut req: Request, next: impl super::Run) -> Response {
     let same_site = security.csrf_same_site.clone();
 
     let token = generate_csrf_token();
-    req.extensions_mut().insert(CsrfToken(token.clone()));
+    let Some(csrf) = CsrfToken::for_response(&token) else {
+        return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
+    };
+    req.extensions_mut().insert(csrf);
     {
         // `Secure` in staging and production, and over HTTPS everywhere.
         let secure_cookie = req
@@ -202,12 +228,7 @@ fn csrf_token_from_cookies(headers: &header::HeaderMap) -> Option<String> {
             let Some(token) = cookie.trim_ascii().strip_prefix(b"rullst_csrf=") else {
                 continue;
             };
-            if found.is_some()
-                || !(1..=128).contains(&token.len())
-                || !token
-                    .iter()
-                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
-            {
+            if found.is_some() || !valid_cookie_token(token) {
                 return None;
             }
             let Ok(token) = std::str::from_utf8(token) else {
@@ -235,10 +256,11 @@ async fn handle_csrf_state_modifying(mut req: Request, next: impl super::Run) ->
     }
 
     if let Some(token) = header_token {
-        if token.as_bytes().len() == cookie_token.len()
-            && token.as_bytes().ct_eq(cookie_token.as_bytes()).into()
-        {
-            req.extensions_mut().insert(CsrfToken(cookie_token.clone()));
+        if csrf_proof_matches(token.as_bytes(), &cookie_token).into() {
+            let Some(csrf) = CsrfToken::for_response(&cookie_token) else {
+                return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
+            };
+            req.extensions_mut().insert(csrf);
             return next.run(req).await;
         }
         return (StatusCode::FORBIDDEN, "Invalid CSRF token").into_response();
@@ -269,10 +291,11 @@ async fn handle_csrf_state_modifying(mut req: Request, next: impl super::Run) ->
         let body_token = extract_token_from_body(&bytes);
 
         if let Some(token) = body_token {
-            if token.len() == cookie_token.len()
-                && token.as_bytes().ct_eq(cookie_token.as_bytes()).into()
-            {
-                parts.extensions.insert(CsrfToken(cookie_token));
+            if csrf_proof_matches(token.as_bytes(), &cookie_token).into() {
+                let Some(csrf) = CsrfToken::for_response(&cookie_token) else {
+                    return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
+                };
+                parts.extensions.insert(csrf);
                 // Reconstruct the request so it can be parsed by subsequent handlers.
                 let reconstructed_req = Request::from_parts(parts, axum::body::Body::from(bytes));
                 return next.run(reconstructed_req).await;
@@ -293,8 +316,11 @@ async fn handle_csrf_state_modifying(mut req: Request, next: impl super::Run) ->
             )
                 .into_response();
         };
-        if token.len() == cookie_token.len() && token.ct_eq(cookie_token.as_bytes()).into() {
-            parts.extensions.insert(CsrfToken(cookie_token));
+        if csrf_proof_matches(&token, &cookie_token).into() {
+            let Some(csrf) = CsrfToken::for_response(&cookie_token) else {
+                return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
+            };
+            parts.extensions.insert(csrf);
             return next.run(Request::from_parts(parts, body)).await;
         }
     }

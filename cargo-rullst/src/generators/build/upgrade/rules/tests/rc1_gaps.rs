@@ -149,12 +149,11 @@ fn dockerfiles_with_database_url_or_without_sqlite_are_not_reviewed() {
 
 #[test]
 fn a_caddyfile_without_health_checks_is_reviewed_at_its_proxy() {
-    let earlier = "{$DOMAIN:localhost} {\n    reverse_proxy app:3000\n}\n";
-    let only_health =
-        "{$DOMAIN:localhost} {\n\treverse_proxy app:3000 {\n\t\thealth_uri /health\n\t}\n}\n";
-    let only_hold =
-        "{$DOMAIN:localhost} {\n\treverse_proxy app:3000 {\n\t\tlb_try_duration 15s\n\t}\n}\n";
-    let commented = "{$DOMAIN:localhost} {\n\treverse_proxy app:3000 {\n\t\t# health_uri /health\n\t\t# lb_try_duration 15s\n\t}\n}\n";
+    // Each compresses (`encode`), so only the health checks are reported.
+    let earlier = "{$DOMAIN:localhost} {\n    reverse_proxy app:3000\n    encode zstd gzip\n}\n";
+    let only_health = "{$DOMAIN:localhost} {\n\treverse_proxy app:3000 {\n\t\thealth_uri /health\n\t}\n\tencode gzip\n}\n";
+    let only_hold = "{$DOMAIN:localhost} {\n\treverse_proxy app:3000 {\n\t\tlb_try_duration 15s\n\t}\n\tencode zstd\n}\n";
+    let commented = "{$DOMAIN:localhost} {\n\treverse_proxy app:3000 {\n\t\t# health_uri /health\n\t\t# lb_try_duration 15s\n\t}\n\tencode zstd gzip\n}\n";
     for caddyfile in [earlier, only_health, only_hold, commented] {
         let project = Project::new();
         project.write("Caddyfile", caddyfile);
