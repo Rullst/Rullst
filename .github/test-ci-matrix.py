@@ -15,7 +15,8 @@ import re
 import unittest
 
 
-WORKFLOW = Path(__file__).resolve().parent / "workflows" / "ci.yml"
+WORKFLOWS = Path(__file__).resolve().parent / "workflows"
+WORKFLOW = WORKFLOWS / "ci.yml"
 LINUX = ["ubuntu-latest"]
 ALL_PLATFORMS = ["ubuntu-latest", "macos-latest", "windows-latest"]
 PR_GATE_SHARDS = ["workspace", "cli-standard"]
@@ -245,8 +246,8 @@ def evaluate(template: str, context: dict):
     return re.sub(r"\$\{\{(.*?)\}\}", render, template)
 
 
-def jobs() -> dict[str, str]:
-    text = WORKFLOW.read_text(encoding="utf-8").split("\njobs:\n", 1)[1]
+def jobs(workflow: Path = WORKFLOW) -> dict[str, str]:
+    text = workflow.read_text(encoding="utf-8").split("\njobs:\n", 1)[1]
     entries = re.split(r"(?m)^  ([a-z][a-z0-9-]+):\n", text)
     return dict(zip(entries[1::2], entries[2::2]))
 
@@ -271,7 +272,8 @@ def field(body: str, name: str, indent: int = 4) -> str | None:
 
 def context(event: str, *, base: str | None = None, labels: tuple[str, ...] = (), draft: bool = False,
             ref: str | None = None, platform: str | None = None, shard: str | None = None,
-            label: str | None = None, number_: int = 7) -> dict:
+            label: str | None = None, number_: int = 7, live_draft: bool | None = None) -> dict:
+    """`draft` is the event payload's; `live_draft` what the scope job read (default: the same)."""
     payload: dict = {}
     if event == "pull_request":
         payload = {"action": "labeled" if label else "synchronize", "number": number_,
@@ -282,8 +284,11 @@ def context(event: str, *, base: str | None = None, labels: tuple[str, ...] = ()
     github = {"event_name": event, "workflow": "Rust CI", "event": payload,
               "base_ref": base or "", "ref": ref or (f"refs/pull/{number_}/merge" if base else "refs/heads/main")}
     inputs = {"platform": platform, "shard": shard} if event == "workflow_dispatch" else {}
+    live = draft if live_draft is None else live_draft
+    pr_draft = ("true" if live else "false") if event == "pull_request" else "false"
     return {"github": github, "inputs": inputs,
-            "needs": {"scope": {"result": "success", "outputs": {"runtime_required": "true"}}}}
+            "needs": {"scope": {"result": "success",
+                                "outputs": {"runtime_required": "true", "pr_draft": pr_draft}}}}
 
 
 def test_matrix(ctx: dict) -> tuple[list[str], list[str]]:
@@ -357,6 +362,64 @@ class MatrixTests(unittest.TestCase):
                     "Evidence quality scorecard (observational)"):
             self.assertNotIn(job, labeled)
         self.assertIn("Public feature boundaries (3/4)", reported_contexts(context("push", ref="refs/heads/main")))
+
+    def test_the_newest_run_decides_with_the_live_draft_state(self):
+        # PR #668: a push and `ready_for_review` in the same second; the
+        # surviving push run's payload still said draft.
+        stale = reported_contexts(context("pull_request", base="main", draft=True, live_draft=False))
+        self.assertLessEqual(REQUIRED_CI_CONTEXTS, stale)
+        self.assertIn("Generated VM deployment (docker)", stale)
+        self.assertIn("Starter footprint budgets", stale)
+        # A pull request that is a draft now skips the expensive jobs even
+        # when its payload said ready, and keeps Format and Clippy.
+        now_draft = reported_contexts(context("pull_request", base="main", draft=False, live_draft=True))
+        self.assertIn("Code Quality & Format", now_draft)
+        for name in ("Run Tests (ubuntu-latest / workspace)", "Run Tests (ubuntu-latest / cli-standard)",
+                     "Generated VM deployment (docker)", "First-hour documentation",
+                     "Generated starters in browsers", "Starter footprint budgets"):
+            self.assertNotIn(name, now_draft)
+        self.assertNotIn("Evidence quality scorecard (observational)",
+                         reported_contexts(context("pull_request", base="v12", live_draft=True)))
+        self.assertIn("Evidence quality scorecard (observational)",
+                      reported_contexts(context("pull_request", base="v12", draft=True, live_draft=False)))
+        # A scope job that wrote no state (it failed) runs the ready jobs.
+        for outputs in ({"runtime_required": "true"}, {}):
+            with self.subTest(outputs=outputs):
+                failed = context("pull_request", base="main", draft=True)
+                failed["needs"]["scope"] = {"result": "failure", "outputs": outputs}
+                self.assertLessEqual(REQUIRED_CI_CONTEXTS, reported_contexts(failed))
+
+    def test_no_pull_request_to_main_waits_on_the_payload_draft_state(self):
+        # Every workflow that runs on pull requests to main reads the draft
+        # state from pull-request-draft.sh. codeql.yml and coverage.yml run
+        # only on pull requests to v12 (frozen) and v13 (retired).
+        to_main = set()
+        for workflow in sorted(WORKFLOWS.glob("*.yml")):
+            text = workflow.read_text(encoding="utf-8")
+            trigger = re.search(r"(?m)^  pull_request:\n((?:    .*\n|\s*\n)*)", text)
+            branches = re.search(r"(?m)^    branches: \[([^\]]*)\]", trigger.group(1)) if trigger else None
+            if trigger is not None and (branches is None or "main" in branches.group(1).split(", ")):
+                to_main.add(workflow.name)
+                with self.subTest(workflow=workflow.name):
+                    self.assertNotIn("github.event.pull_request.draft ==", text)
+                    self.assertNotIn("github.event.pull_request.draft !=", text)
+        self.assertLessEqual({"ci.yml", "semver.yml", "pr-security-evidence.yml"}, to_main)
+        self.assertFalse({"codeql.yml", "coverage.yml"} & to_main)
+        semver = jobs(WORKFLOWS / "semver.yml")
+        self.assertIn("run: bash .github/pull-request-draft.sh", semver["draft"])
+        self.assertIn("      pull-requests: read\n", semver["draft"])
+        for name in ("public-api", "semver"):
+            guard = field(semver[name], "if")
+            for event, payload, live, expected in (("pull_request", True, "false", True),
+                                                   ("pull_request", False, "true", False),
+                                                   ("pull_request", True, None, True),
+                                                   ("push", False, None, True)):
+                with self.subTest(job=name, event=event, payload=payload, live=live):
+                    ctx = context(event, base="v12" if name == "semver" else "main", draft=payload)
+                    ctx["needs"] = {"plan": {"result": "success"},
+                                    "draft": {"result": "success" if live else "skipped",
+                                              "outputs": {"draft": live} if live else {}}}
+                    self.assertEqual(truthy(Expression(guard, ctx).evaluate()), expected)
 
     def test_labeled_runs_share_the_pull_request_group_and_schedules_do_not(self):
         text = WORKFLOW.read_text(encoding="utf-8")
