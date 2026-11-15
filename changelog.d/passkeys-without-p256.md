@@ -10,7 +10,7 @@
   enable it. Code that names `rullst::auth::passkey` without one of these
   features fails to compile (E0432/E0433); `cargo rullst upgrade` locates it
   (`V13-AUTH-PASSKEYS-FEATURE`). See the
-  [migration guide](docs/src/migration-v13.md).
+  [migration guide](https://rullst.github.io/Rullst/book/migration-v13.html).
 - Passkey public keys and assertion signatures are checked with aws-lc-rs
   instead of `p256` (the point check at registration and in the passkey
   stores) and `ring` (the signature check), and aws-lc-rs is compiled into
