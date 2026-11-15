@@ -34,8 +34,8 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::AuditRecord
 impl core::panic::unwind_safe::UnwindSafe for rullst_security::AuditRecord
 pub struct rullst_security::AuthenticatedSiemSpool
 impl rullst_security::AuthenticatedSiemSpool
-pub fn rullst_security::AuthenticatedSiemSpool::append_local(&self, event: rullst_security::LiveSecurityEvent) -> core::result::Result<rullst_security::AuthenticatedSiemSpoolReceipt, rullst_security::AuthenticatedSiemSpoolError>
-pub fn rullst_security::AuthenticatedSiemSpool::read_verified(&self) -> core::result::Result<alloc::vec::Vec<rullst_security::LiveSecurityEvent>, rullst_security::AuthenticatedSiemSpoolError>
+pub fn rullst_security::AuthenticatedSiemSpool::append_local(&self, event: rullst_core::security::telemetry::event::LiveSecurityEvent) -> core::result::Result<rullst_security::AuthenticatedSiemSpoolReceipt, rullst_security::AuthenticatedSiemSpoolError>
+pub fn rullst_security::AuthenticatedSiemSpool::read_verified(&self) -> core::result::Result<alloc::vec::Vec<rullst_core::security::telemetry::event::LiveSecurityEvent>, rullst_security::AuthenticatedSiemSpoolError>
 pub fn rullst_security::AuthenticatedSiemSpool::snapshot(&self) -> core::result::Result<rullst_security::AuthenticatedSiemSpoolSnapshot, rullst_security::AuthenticatedSiemSpoolError>
 pub fn rullst_security::AuthenticatedSiemSpool::try_open(path: impl core::convert::Into<std::path::PathBuf>, keys: rullst_security::SiemKeyRing) -> core::result::Result<Self, rullst_security::AuthenticatedSiemSpoolError>
 pub fn rullst_security::AuthenticatedSiemSpool::try_open_with_max_bytes(path: impl core::convert::Into<std::path::PathBuf>, keys: rullst_security::SiemKeyRing, max_bytes: u64) -> core::result::Result<Self, rullst_security::AuthenticatedSiemSpoolError>
@@ -182,8 +182,8 @@ impl<S> core::panic::unwind_safe::UnwindSafe for rullst_security::DlpResponseSer
 pub type rullst_security::DlpService<S> = rullst_security::DlpResponseService<S>
 pub struct rullst_security::DurableSiemSpool
 impl rullst_security::DurableSiemSpool
-pub fn rullst_security::DurableSiemSpool::append_local(&self, event: rullst_security::LiveSecurityEvent) -> core::result::Result<rullst_security::SiemSpoolReceipt, rullst_security::SiemSpoolError>
-pub fn rullst_security::DurableSiemSpool::read_local(&self) -> core::result::Result<alloc::vec::Vec<rullst_security::LiveSecurityEvent>, rullst_security::SiemSpoolError>
+pub fn rullst_security::DurableSiemSpool::append_local(&self, event: rullst_core::security::telemetry::event::LiveSecurityEvent) -> core::result::Result<rullst_security::SiemSpoolReceipt, rullst_security::SiemSpoolError>
+pub fn rullst_security::DurableSiemSpool::read_local(&self) -> core::result::Result<alloc::vec::Vec<rullst_core::security::telemetry::event::LiveSecurityEvent>, rullst_security::SiemSpoolError>
 pub fn rullst_security::DurableSiemSpool::snapshot(&self) -> core::result::Result<rullst_security::SiemSpoolSnapshot, rullst_security::SiemSpoolError>
 pub fn rullst_security::DurableSiemSpool::try_open(path: impl core::convert::Into<std::path::PathBuf>) -> core::result::Result<Self, rullst_security::SiemSpoolError>
 pub fn rullst_security::DurableSiemSpool::try_open_with_max_bytes(path: impl core::convert::Into<std::path::PathBuf>, max_bytes: u64) -> core::result::Result<Self, rullst_security::SiemSpoolError>
@@ -276,26 +276,7 @@ impl core::marker::Send for rullst_security::JsonSchemaPolicy
 impl core::marker::Sync for rullst_security::JsonSchemaPolicy
 impl core::marker::Unpin for rullst_security::JsonSchemaPolicy
 pub const rullst_security::LIVE_SECURITY_EVENT_V1_JSON_SCHEMA: &str
-pub struct rullst_security::LiveSecurityEvent
-pub rullst_security::LiveSecurityEvent::schema_version: u16
-pub rullst_security::LiveSecurityEvent::event_type: alloc::string::String
-pub rullst_security::LiveSecurityEvent::details: alloc::string::String
-pub rullst_security::LiveSecurityEvent::client_ip: alloc::string::String
-pub rullst_security::LiveSecurityEvent::timestamp_str: alloc::string::String
-pub rullst_security::LiveSecurityEvent::verified_hmac: bool
-impl rullst_security::LiveSecurityEvent
-pub fn rullst_security::LiveSecurityEvent::local(event_type: impl core::convert::Into<alloc::string::String>, details: impl core::convert::Into<alloc::string::String>, client_ip: impl core::convert::Into<alloc::string::String>) -> Self
-impl core::clone::Clone for rullst_security::LiveSecurityEvent
-impl core::cmp::Eq for rullst_security::LiveSecurityEvent
-impl core::cmp::PartialEq for rullst_security::LiveSecurityEvent
-impl core::fmt::Debug for rullst_security::LiveSecurityEvent
-impl serde_core::ser::Serialize for rullst_security::LiveSecurityEvent
-impl<'de> serde_core::de::Deserialize<'de> for rullst_security::LiveSecurityEvent
-impl core::marker::Send for rullst_security::LiveSecurityEvent
-impl core::marker::Sync for rullst_security::LiveSecurityEvent
-impl core::marker::Unpin for rullst_security::LiveSecurityEvent
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::LiveSecurityEvent
-impl core::panic::unwind_safe::UnwindSafe for rullst_security::LiveSecurityEvent
+pub use rullst_security::LiveSecurityEvent = struct rullst_core::security::telemetry::event::LiveSecurityEvent
 pub struct rullst_security::LlmFirewall;
 impl rullst_security::LlmFirewall
 pub fn rullst_security::LlmFirewall::inspect_prompt(raw_prompt: &str) -> rullst_security::PromptSafetyReport
@@ -568,7 +549,7 @@ impl !core::panic::unwind_safe::UnwindSafe for rullst_security::RedisRateLimiter
 impl core::marker::Send for rullst_security::RedisRateLimiter
 impl core::marker::Sync for rullst_security::RedisRateLimiter
 impl core::marker::Unpin for rullst_security::RedisRateLimiter
-pub const rullst_security::SECURITY_EVENT_SCHEMA_VERSION: u16
+pub use rullst_security::SECURITY_EVENT_SCHEMA_VERSION = constant rullst_core::security::telemetry::event::SECURITY_EVENT_SCHEMA_VERSION
 #[non_exhaustive] pub enum rullst_security::SchemaPolicyError
 pub rullst_security::SchemaPolicyError::TooLarge
 pub rullst_security::SchemaPolicyError::TooManyNodes
@@ -654,71 +635,8 @@ impl core::marker::Sync for rullst_security::SecurityError
 impl core::marker::Unpin for rullst_security::SecurityError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::SecurityError
 impl core::panic::unwind_safe::UnwindSafe for rullst_security::SecurityError
-pub struct rullst_security::SecurityStore
-pub rullst_security::SecurityStore::sanitizations_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::honeypot_traps_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::rbac_denials_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::prompt_injections_blocked_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::prompts_inspected_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::pii_masked_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::log_redactions_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::zero_trust_mismatches_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::schema_violations_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::sri_signed_assets_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::mfa_verifications_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::deception_hits_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::cswsh_blocks_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::rate_limit_blocks_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::siem_dispatches_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::login_jail_bans_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::dlp_secrets_masked_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::secure_headers_applied_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::idor_warnings_count: core::sync::atomic::AtomicU64
-pub rullst_security::SecurityStore::timing_guard_protected_count: core::sync::atomic::AtomicU64
-impl rullst_security::SecurityStore
-pub fn rullst_security::SecurityStore::active_banned_count(&self) -> usize
-pub fn rullst_security::SecurityStore::active_bans(&self) -> alloc::vec::Vec<rullst_security::telemetry::BannedIpRecord>
-pub fn rullst_security::SecurityStore::global() -> &'static rullst_security::SecurityStore
-pub fn rullst_security::SecurityStore::honeypot_route_hits(&self) -> alloc::vec::Vec<(alloc::string::String, u64)>
-pub fn rullst_security::SecurityStore::inc_cswsh_blocks(&self)
-pub fn rullst_security::SecurityStore::inc_deception_hits(&self)
-pub fn rullst_security::SecurityStore::inc_dlp_masked(&self)
-pub fn rullst_security::SecurityStore::inc_honeypot_traps(&self)
-pub fn rullst_security::SecurityStore::inc_idor_warnings(&self)
-pub fn rullst_security::SecurityStore::inc_log_redactions(&self)
-pub fn rullst_security::SecurityStore::inc_login_jail_bans(&self)
-pub fn rullst_security::SecurityStore::inc_mfa_verifications(&self)
-pub fn rullst_security::SecurityStore::inc_rate_limit_blocks(&self)
-pub fn rullst_security::SecurityStore::inc_rbac_denials(&self)
-pub fn rullst_security::SecurityStore::inc_sanitizations(&self)
-pub fn rullst_security::SecurityStore::inc_schema_violations(&self)
-pub fn rullst_security::SecurityStore::inc_secure_headers(&self)
-pub fn rullst_security::SecurityStore::inc_siem_dispatches(&self)
-pub fn rullst_security::SecurityStore::inc_sri_signed_assets(&self)
-pub fn rullst_security::SecurityStore::inc_timing_guard_protected(&self)
-pub fn rullst_security::SecurityStore::inc_zero_trust_mismatches(&self)
-pub fn rullst_security::SecurityStore::is_banned(&self, ip: &str) -> bool
-pub fn rullst_security::SecurityStore::live_events(&self) -> alloc::vec::Vec<rullst_security::LiveSecurityEvent>
-pub fn rullst_security::SecurityStore::new() -> Self
-pub fn rullst_security::SecurityStore::prune_expired_bans(&self)
-pub fn rullst_security::SecurityStore::push_local_event(&self, event: rullst_security::LiveSecurityEvent)
-pub fn rullst_security::SecurityStore::record_honeypot_observation(&self, ip: &str, path: &str)
-pub fn rullst_security::SecurityStore::record_honeypot_trap(&self, ip: &str, path: &str)
-pub fn rullst_security::SecurityStore::record_honeypot_trap_with_ttl(&self, ip: &str, path: &str, ban_ttl: core::time::Duration)
-pub fn rullst_security::SecurityStore::record_pii_masked(&self, count: usize)
-pub fn rullst_security::SecurityStore::record_prompt_injection_blocked(&self, ip: &str, prompt_snippet: &str)
-pub fn rullst_security::SecurityStore::record_prompt_inspected(&self)
-pub fn rullst_security::SecurityStore::record_rasp_interception(&self, uri_bad: bool, headers_bad: bool, body_bad: bool)
-pub fn rullst_security::SecurityStore::record_rbac_denial(&self, actor: &str, resource: &str)
-pub fn rullst_security::SecurityStore::record_sanitization(&self, details: &str)
-pub fn rullst_security::SecurityStore::snapshot(&self) -> rullst_security::TelemetrySnapshot
-impl core::default::Default for rullst_security::SecurityStore
-impl !core::panic::unwind_safe::RefUnwindSafe for rullst_security::SecurityStore
-impl core::marker::Send for rullst_security::SecurityStore
-impl core::marker::Sync for rullst_security::SecurityStore
-impl core::marker::Unpin for rullst_security::SecurityStore
-impl core::panic::unwind_safe::UnwindSafe for rullst_security::SecurityStore
-pub type rullst_security::SecurityTelemetry = rullst_security::SecurityStore
+pub use rullst_security::SecurityStore = struct rullst_core::security::telemetry::SecurityStore
+pub type rullst_security::SecurityTelemetry = rullst_core::security::telemetry::SecurityStore
 #[non_exhaustive] pub enum rullst_security::SentinelAction
 pub rullst_security::SentinelAction::Observe
 pub rullst_security::SentinelAction::ProofOfWork
@@ -945,34 +863,7 @@ impl core::marker::Sync for rullst_security::StdoutAuditLogger
 impl core::marker::Unpin for rullst_security::StdoutAuditLogger
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::StdoutAuditLogger
 impl core::panic::unwind_safe::UnwindSafe for rullst_security::StdoutAuditLogger
-pub struct rullst_security::TelemetrySnapshot
-pub rullst_security::TelemetrySnapshot::sanitizations: u64
-pub rullst_security::TelemetrySnapshot::honeypot_traps: u64
-pub rullst_security::TelemetrySnapshot::rbac_denials: u64
-pub rullst_security::TelemetrySnapshot::log_redactions: u64
-pub rullst_security::TelemetrySnapshot::zero_trust_mismatches: u64
-pub rullst_security::TelemetrySnapshot::schema_violations: u64
-pub rullst_security::TelemetrySnapshot::sri_signed_assets: u64
-pub rullst_security::TelemetrySnapshot::mfa_verifications: u64
-pub rullst_security::TelemetrySnapshot::deception_hits: u64
-pub rullst_security::TelemetrySnapshot::cswsh_blocks: u64
-pub rullst_security::TelemetrySnapshot::rate_limit_blocks: u64
-pub rullst_security::TelemetrySnapshot::siem_dispatches: u64
-pub rullst_security::TelemetrySnapshot::login_jail_bans: u64
-pub rullst_security::TelemetrySnapshot::dlp_secrets_masked: u64
-pub rullst_security::TelemetrySnapshot::secure_headers_applied: u64
-pub rullst_security::TelemetrySnapshot::idor_warnings: u64
-pub rullst_security::TelemetrySnapshot::timing_guard_protected: u64
-pub rullst_security::TelemetrySnapshot::prompt_injections_blocked: u64
-impl core::clone::Clone for rullst_security::TelemetrySnapshot
-impl core::fmt::Debug for rullst_security::TelemetrySnapshot
-impl serde_core::ser::Serialize for rullst_security::TelemetrySnapshot
-impl<'de> serde_core::de::Deserialize<'de> for rullst_security::TelemetrySnapshot
-impl core::marker::Send for rullst_security::TelemetrySnapshot
-impl core::marker::Sync for rullst_security::TelemetrySnapshot
-impl core::marker::Unpin for rullst_security::TelemetrySnapshot
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::TelemetrySnapshot
-impl core::panic::unwind_safe::UnwindSafe for rullst_security::TelemetrySnapshot
+pub use rullst_security::TelemetrySnapshot = struct rullst_core::security::telemetry::TelemetrySnapshot
 #[non_exhaustive] pub struct rullst_security::ThreatClassifier
 impl rullst_security::ThreatClassifier
 pub fn rullst_security::ThreatClassifier::assess(&self, observation: rullst_security::SentinelObservation) -> rullst_security::SentinelAssessment
@@ -1164,7 +1055,7 @@ pub use rullst_security::dlp::mask_response_payload = function rullst_security::
 pub async fn rullst_security::equalize_response_time<F, Fut, T>(config: rullst_security::TimingGuardConfig, action: F) -> T where F: core::ops::function::FnOnce() -> Fut, Fut: core::future::future::Future<Output = T>
 pub mod rullst_security::error
 pub use rullst_security::error::SecurityError = enum rullst_security::SecurityError
-pub fn rullst_security::format_cef_event(event: &rullst_security::LiveSecurityEvent) -> alloc::string::String
+pub fn rullst_security::format_cef_event(event: &rullst_core::security::telemetry::event::LiveSecurityEvent) -> alloc::string::String
 pub fn rullst_security::generate_fingerprint(secret_key: &[u8], user_agent: core::option::Option<&str>, client_ip: core::option::Option<&str>, accept_language: core::option::Option<&str>) -> alloc::string::String
 pub fn rullst_security::generate_mfa_secret() -> alloc::string::String
 pub fn rullst_security::generate_recovery_codes(subject: impl core::convert::Into<alloc::string::String>, count: usize, pepper: &[u8]) -> core::result::Result<rullst_security::GeneratedRecoveryCodes, rullst_security::RecoveryCodeError>
@@ -1208,7 +1099,7 @@ pub use rullst_security::mfa::try_generate_mfa_secret = function rullst_security
 pub use rullst_security::mfa::verify_totp_code = function rullst_security::verify_totp_code
 pub use rullst_security::mfa::verify_totp_step = function rullst_security::verify_totp_step
 pub use rullst_security::mfa::verify_totp_step_after = function rullst_security::verify_totp_step_after
-pub fn rullst_security::normalize_ip(value: &str) -> alloc::string::String
+pub use rullst_security::normalize_ip = function rullst_core::security::telemetry::normalize_ip
 pub mod rullst_security::rasp
 pub use rullst_security::rasp::RaspInspector = struct rullst_security::RaspInspector
 pub use rullst_security::rasp::RaspSecurityLayer = struct rullst_security::RaspSecurityLayer
@@ -1305,27 +1196,14 @@ pub fn rullst_security::sri_script_tag(url: &str, content: &[u8]) -> alloc::stri
 pub fn rullst_security::sri_script_tag_from_file(url: &str, path: impl core::convert::AsRef<std::path::Path>) -> core::result::Result<alloc::string::String, rullst_security::SriError>
 pub fn rullst_security::synthetic_argon2_cpu_work()
 pub mod rullst_security::telemetry
-pub struct rullst_security::telemetry::BannedIpRecord
-pub rullst_security::telemetry::BannedIpRecord::ip: alloc::string::String
-pub rullst_security::telemetry::BannedIpRecord::reason: alloc::string::String
-pub rullst_security::telemetry::BannedIpRecord::timestamp_str: alloc::string::String
-pub rullst_security::telemetry::BannedIpRecord::expires_at_unix_secs: u64
-impl core::clone::Clone for rullst_security::telemetry::BannedIpRecord
-impl core::fmt::Debug for rullst_security::telemetry::BannedIpRecord
-impl serde_core::ser::Serialize for rullst_security::telemetry::BannedIpRecord
-impl<'de> serde_core::de::Deserialize<'de> for rullst_security::telemetry::BannedIpRecord
-impl core::marker::Send for rullst_security::telemetry::BannedIpRecord
-impl core::marker::Sync for rullst_security::telemetry::BannedIpRecord
-impl core::marker::Unpin for rullst_security::telemetry::BannedIpRecord
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::telemetry::BannedIpRecord
-impl core::panic::unwind_safe::UnwindSafe for rullst_security::telemetry::BannedIpRecord
+pub use rullst_security::telemetry::BannedIpRecord = struct rullst_core::security::telemetry::BannedIpRecord
 pub use rullst_security::telemetry::LIVE_SECURITY_EVENT_V1_JSON_SCHEMA = constant rullst_security::LIVE_SECURITY_EVENT_V1_JSON_SCHEMA
-pub use rullst_security::telemetry::LiveSecurityEvent = struct rullst_security::LiveSecurityEvent
-pub use rullst_security::telemetry::SECURITY_EVENT_SCHEMA_VERSION = constant rullst_security::SECURITY_EVENT_SCHEMA_VERSION
-pub use rullst_security::telemetry::SecurityStore = struct rullst_security::SecurityStore
+pub use rullst_security::telemetry::LiveSecurityEvent = struct rullst_core::security::telemetry::event::LiveSecurityEvent
+pub use rullst_security::telemetry::SECURITY_EVENT_SCHEMA_VERSION = constant rullst_core::security::telemetry::event::SECURITY_EVENT_SCHEMA_VERSION
+pub use rullst_security::telemetry::SecurityStore = struct rullst_core::security::telemetry::SecurityStore
 pub use rullst_security::telemetry::SecurityTelemetry = type_alias rullst_security::SecurityTelemetry
-pub use rullst_security::telemetry::TelemetrySnapshot = struct rullst_security::TelemetrySnapshot
-pub use rullst_security::telemetry::normalize_ip = function rullst_security::normalize_ip
+pub use rullst_security::telemetry::TelemetrySnapshot = struct rullst_core::security::telemetry::TelemetrySnapshot
+pub use rullst_security::telemetry::normalize_ip = function rullst_core::security::telemetry::normalize_ip
 pub mod rullst_security::timing_guard
 pub use rullst_security::timing_guard::TimingGuardConfig = struct rullst_security::TimingGuardConfig
 pub use rullst_security::timing_guard::TimingScope = struct rullst_security::TimingScope
