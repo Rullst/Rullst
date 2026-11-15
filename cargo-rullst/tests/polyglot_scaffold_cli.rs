@@ -2,6 +2,9 @@
 
 use std::{fs, process::Command};
 
+#[path = "support/nested_cargo.rs"]
+mod nested_cargo;
+
 fn install_workspace_lock(project: &std::path::Path, workspace: &std::path::Path) {
     fs::copy(workspace.join("Cargo.lock"), project.join("Cargo.lock"))
         .expect("copy workspace lockfile into generated Turso project");
@@ -13,13 +16,15 @@ fn clean_generated_package(project: &std::path::Path, workspace: &std::path::Pat
     let package_name = parsed["package"]["name"]
         .as_str()
         .expect("generated package name");
-    let output = Command::new("cargo")
-        .current_dir(project)
-        .args(["clean", "--package", package_name])
-        .env("CARGO_TARGET_DIR", workspace.join("target"))
-        .env("CARGO_NET_OFFLINE", "true")
-        .output()
-        .expect("clean generated Turso package");
+    let output = nested_cargo::output(
+        Command::new("cargo")
+            .current_dir(project)
+            .args(["clean", "--package", package_name])
+            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("CARGO_NET_OFFLINE", "true"),
+        &workspace.join("target"),
+    )
+    .expect("clean generated Turso package");
     assert!(
         output.status.success(),
         "generated Turso package cleanup failed:\nstdout:\n{}\nstderr:\n{}",
@@ -150,12 +155,14 @@ fn turso_primary_scaffold_compiles_and_runs_its_real_migration() {
     );
     install_workspace_lock(&project, workspace);
 
-    let checked = Command::new("cargo")
-        .current_dir(&project)
-        .arg("check")
-        .env("CARGO_TARGET_DIR", workspace.join("target"))
-        .output()
-        .expect("check generated Turso-primary project");
+    let checked = nested_cargo::output(
+        Command::new("cargo")
+            .current_dir(&project)
+            .arg("check")
+            .env("CARGO_TARGET_DIR", workspace.join("target")),
+        &workspace.join("target"),
+    )
+    .expect("check generated Turso-primary project");
     assert!(
         checked.status.success(),
         "generated Turso-primary project did not compile:\nstdout:\n{}\nstderr:\n{}",
@@ -163,12 +170,14 @@ fn turso_primary_scaffold_compiles_and_runs_its_real_migration() {
         String::from_utf8_lossy(&checked.stderr)
     );
 
-    let migrated = Command::new("cargo")
-        .current_dir(&project)
-        .args(["run", "--quiet", "--", "db:migrate"])
-        .env("CARGO_TARGET_DIR", workspace.join("target"))
-        .output()
-        .expect("run generated Turso migration");
+    let migrated = nested_cargo::output(
+        Command::new("cargo")
+            .current_dir(&project)
+            .args(["run", "--quiet", "--", "db:migrate"])
+            .env("CARGO_TARGET_DIR", workspace.join("target")),
+        &workspace.join("target"),
+    )
+    .expect("run generated Turso migration");
     assert!(
         migrated.status.success(),
         "generated Turso migration failed:\nstdout:\n{}\nstderr:\n{}",
@@ -177,24 +186,28 @@ fn turso_primary_scaffold_compiles_and_runs_its_real_migration() {
     );
     assert!(project.join("turso-development.db").exists());
 
-    let status = Command::new("cargo")
-        .current_dir(&project)
-        .args(["run", "--quiet", "--", "db:status"])
-        .env("CARGO_TARGET_DIR", workspace.join("target"))
-        .output()
-        .expect("read generated Turso migration status");
+    let status = nested_cargo::output(
+        Command::new("cargo")
+            .current_dir(&project)
+            .args(["run", "--quiet", "--", "db:status"])
+            .env("CARGO_TARGET_DIR", workspace.join("target")),
+        &workspace.join("target"),
+    )
+    .expect("read generated Turso migration status");
     assert!(status.status.success());
     assert!(
         String::from_utf8_lossy(&status.stdout)
             .contains("[applied] m20260829000000_create_users_table")
     );
 
-    let rollback = Command::new("cargo")
-        .current_dir(&project)
-        .args(["run", "--quiet", "--", "db:rollback"])
-        .env("CARGO_TARGET_DIR", workspace.join("target"))
-        .output()
-        .expect("roll back generated Turso migration");
+    let rollback = nested_cargo::output(
+        Command::new("cargo")
+            .current_dir(&project)
+            .args(["run", "--quiet", "--", "db:rollback"])
+            .env("CARGO_TARGET_DIR", workspace.join("target")),
+        &workspace.join("target"),
+    )
+    .expect("roll back generated Turso migration");
     assert!(
         rollback.status.success(),
         "generated Turso rollback failed:\nstdout:\n{}\nstderr:\n{}",
@@ -261,12 +274,14 @@ fn turso_primary_make_model_and_migration_remain_on_the_libsql_backend() {
     assert!(migrations_mod.contains("::migration()?"));
     install_workspace_lock(&project, workspace);
 
-    let checked = Command::new("cargo")
-        .current_dir(&project)
-        .arg("check")
-        .env("CARGO_TARGET_DIR", workspace.join("target"))
-        .output()
-        .expect("check Turso project after generators");
+    let checked = nested_cargo::output(
+        Command::new("cargo")
+            .current_dir(&project)
+            .arg("check")
+            .env("CARGO_TARGET_DIR", workspace.join("target")),
+        &workspace.join("target"),
+    )
+    .expect("check Turso project after generators");
     assert!(
         checked.status.success(),
         "generated Turso additions did not compile:\nstdout:\n{}\nstderr:\n{}",
@@ -274,12 +289,14 @@ fn turso_primary_make_model_and_migration_remain_on_the_libsql_backend() {
         String::from_utf8_lossy(&checked.stderr)
     );
 
-    let migrated = Command::new("cargo")
-        .current_dir(&project)
-        .args(["run", "--quiet", "--", "db:migrate"])
-        .env("CARGO_TARGET_DIR", workspace.join("target"))
-        .output()
-        .expect("run all generated Turso migrations");
+    let migrated = nested_cargo::output(
+        Command::new("cargo")
+            .current_dir(&project)
+            .args(["run", "--quiet", "--", "db:migrate"])
+            .env("CARGO_TARGET_DIR", workspace.join("target")),
+        &workspace.join("target"),
+    )
+    .expect("run all generated Turso migrations");
     assert!(
         migrated.status.success(),
         "generated Turso migrations failed:\nstdout:\n{}\nstderr:\n{}",

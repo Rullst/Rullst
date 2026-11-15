@@ -17,6 +17,11 @@
 # in this starter's Cargo.lock although none of them is compiled (374
 # measured by run 43234888928 on 2026-11-12).
 #
+# dependency_count was lowered from 393 (measured 374) when Studio and
+# Nexus stopped depending on rullst-security (13.0.0-alpha.6: the security
+# store moved to rullst-core): 325 packages in this starter's Cargo.lock,
+# measured as the job does, from the repository Cargo.lock, on 2026-11-14.
+#
 # To raise a limit on purpose, copy the "Suggested limit" of the job summary
 # into this file in the pull request that causes the increase, update the
 # measured value beside it and say why in the pull request (MAINTAINING.md,
@@ -25,7 +30,7 @@
 [footprint.budgets]
 binary_size_bytes = 12_873_726    # measured 11_194_544
 idle_rss_bytes = 12_273_255       # measured 10_227_712
-dependency_count = 393            # measured 374
+dependency_count = 342            # measured 325
 bytes_per_request = 3_424         # measured 2_400
 page_first_visit_bytes = 70_865   # measured 64_422
 page_repeat_visit_bytes = 3_424   # measured 2_400

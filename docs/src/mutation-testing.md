@@ -181,9 +181,9 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-auth/src/recovery/email_login/delivery.rs`: `<impl Drop for WireNotice>::drop` with `()` | Zeroizing a buffer that is being freed has no effect safe code can observe. |
 | `rullst-auth/src/recovery/email_login/types.rs`: `safe_path`, `part == "." \|\| part == ".."` with `&&` | The byte allowlist that follows already rejects every `.`. |
 | `rullst-auth/src/recovery/store.rs`: `SqlRecoveryStore::connect`, the `\|\|` before the `recovery-postgres` clause with `&&` | With every feature enabled both feature clauses are always false, so joining them with `&&` changes nothing. |
-| `rullst-security/src/telemetry.rs`: `SecurityStore::push_live_event`, `events.len() > MAX_LIVE_EVENTS` with `>=` | Truncating a buffer that holds exactly 50 events to 50 changes nothing. |
-| `rullst-security/src/telemetry/event.rs`: `security_event_schema_version` with `1` | `SECURITY_EVENT_SCHEMA_VERSION` is 1. |
-| `rullst-security/src/telemetry/event.rs`: `truncate_utf8`, `boundary > 0` with `>=` | `is_char_boundary(0)` is always true, so the loop stops at 0 either way. |
+| `rullst-core/src/security/telemetry.rs`: `SecurityStore::push_live_event`, `events.len() > MAX_LIVE_EVENTS` with `>=` | Truncating a buffer that holds exactly 50 events to 50 changes nothing. |
+| `rullst-core/src/security/telemetry/event.rs`: `security_event_schema_version` with `1` | `SECURITY_EVENT_SCHEMA_VERSION` is 1. |
+| `rullst-core/src/security/telemetry/event.rs`: `truncate_utf8`, `boundary > 0` with `>=` | `is_char_boundary(0)` is always true, so the loop stops at 0 either way. |
 | `rullst-security/src/sentinel/pow/codec.rs`: `decode_token`, `token.is_empty() \|\| token.len() > 128` with `&&`, and `>` with `==` or `>=` | Decoding rejects every token that does not decode to exactly 82 bytes with the same `InvalidToken`. |
 | `rullst-security/src/siem/spool.rs`: `decode_file`, and `rullst-security/src/siem/authenticated/codec.rs`: `read_and_verify`, `events.len() + 1` in the `invalid frame offset` error of `cursor.checked_add(relative_end)` with `-` or `*` | A line end found inside the buffer cannot overflow `usize`, so the closure never runs. |
 | `rullst-security/src/recovery_codes.rs`: `GeneratedRecoveryCodes::drop` with `()` | Zeroizing the plaintext codes changes only memory that is freed right after; safe code cannot read it. |

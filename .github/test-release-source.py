@@ -106,6 +106,16 @@ class ReleaseSourceTests(unittest.TestCase):
             with self.subTest(extra=extra), self.assertRaises(ValueError):
                 self.validate()
 
+    def test_unmerged_changelog_fragments_are_rejected(self):
+        fragments = self.root / "changelog.d"
+        fragments.mkdir()
+        (fragments / "README.md").write_text("# Changelog fragments\n")
+        self.validate()
+        (fragments / "orm-fix.md").write_text("### Fixed\n\n- A fix.\n")
+        with self.assertRaises(ValueError) as refused:
+            self.validate()
+        self.assertIn("changelog.d/ has 1 unmerged fragment(s) (orm-fix.md)", str(refused.exception))
+
     def test_canonical_tags_and_prereleases_match_only_their_major(self):
         self.assertEqual(tagged_version("v13.0.0-rc.1", self.policy), "13.0.0-rc.1")
         for tag in ("13.0.0", "v12.1.0", "v14.0.0", "v013.0.0", "v13.01.0",

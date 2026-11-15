@@ -24,7 +24,7 @@ mod tokens;
 
 use super::manifest::ManifestUpgradePlan;
 use semver::Version;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -165,13 +165,9 @@ impl SourceScan {
     }
 }
 
-/// Review rules reported at every location, because each one needs its own
-/// decision: a `#[orm(skip)]` field may or may not be a column.
-const EVERY_LOCATION: &[&str] = &["V13-ORM-SKIP-MANAGED-COLUMNS"];
-
-/// Collects findings for one file: every must-change location, but only the
-/// first location of a review rule (except [`EVERY_LOCATION`]), which keeps
-/// the plan readable.
+/// Collects findings for one file: every location of every rule, one finding
+/// per rule and line, so a rule used three times in a file is reported three
+/// times. The plan lists a rule's lines in one file on one entry.
 #[derive(Default)]
 struct Collector {
     lines: BTreeMap<(&'static str, usize), &'static Rule>,
@@ -182,8 +178,8 @@ impl Collector {
         self.lines.entry((rule.code, line.max(1))).or_insert(rule);
     }
 
-    /// Removes the review locations a marker in `text` covers, before only
-    /// the first location of each rule is kept, and returns their rules.
+    /// Removes the review locations a marker in `text` covers and returns
+    /// their rules; the rule's other locations stay.
     fn drop_reviewed(&mut self, text: &str) -> Vec<&'static Rule> {
         let lines: Vec<&str> = text.lines().collect();
         let mut dropped = Vec::new();
@@ -197,23 +193,15 @@ impl Collector {
         dropped
     }
 
+    /// Appends the findings by line, then code.
     fn finish(self, path: &Path, findings: &mut Vec<SourceFinding>) {
-        let mut reviewed = BTreeSet::new();
         let mut hits: Vec<_> = self.lines.into_iter().collect();
         hits.sort_by_key(|((code, line), _)| (*line, *code));
-        for ((_, line), rule) in hits {
-            if rule.kind == FindingKind::Review
-                && !EVERY_LOCATION.contains(&rule.code)
-                && !reviewed.insert(rule.code)
-            {
-                continue;
-            }
-            findings.push(SourceFinding {
-                rule,
-                path: path.to_path_buf(),
-                line,
-            });
-        }
+        findings.extend(hits.into_iter().map(|((_, line), rule)| SourceFinding {
+            rule,
+            path: path.to_path_buf(),
+            line,
+        }));
     }
 }
 
