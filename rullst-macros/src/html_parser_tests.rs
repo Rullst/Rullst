@@ -187,6 +187,21 @@ fn static_attribute_values_escape_double_quotes_only() {
 }
 
 #[test]
+fn capacity_hints_count_bare_and_valued_attribute_names() {
+    let document = parse_ok(r#"<input required title={note} checked?={done} />"#);
+    let [HtmlNode::Element(element)] = &document.nodes[..] else {
+        panic!("expected one <input>");
+    };
+    let sizes: Vec<usize> = element
+        .attributes
+        .iter()
+        .map(super::attributes::HtmlAttribute::static_size)
+        .collect();
+    // ` required`, ` title=""` and ` checked=""`.
+    assert_eq!(sizes, [9, 9, 11]);
+}
+
+#[test]
 fn only_elements_with_dynamic_attributes_carry_the_option_probe() {
     let probed = parse_ok("<p title={note} data-x?={flag}></p>")
         .to_tokens()
@@ -285,6 +300,16 @@ fn control_blocks_parse_with_else_chains_and_patterns() {
 }
 
 #[test]
+fn an_if_block_ends_before_the_next_control_block() {
+    let document = parse_ok(r#"@if a { "x" } @for item in items { "y" } @match z { _ => {} }"#);
+    let [HtmlNode::If(chain), HtmlNode::For(_), HtmlNode::Match(_)] = &document.nodes[..] else {
+        panic!("expected @if, @for and @match nodes");
+    };
+    assert_eq!(chain.branches.len(), 1);
+    assert!(chain.otherwise.is_none());
+}
+
+#[test]
 fn malformed_control_blocks_are_rejected() {
     assert_eq!(
         parse_error(r#"@if a { "x" } else { "y" }"#),
@@ -372,4 +397,45 @@ fn malformed_match_blocks_are_rejected() {
     );
     assert!(syn::parse_str::<HtmlDocument>(r#"@match x"#).is_err());
     assert!(syn::parse_str::<HtmlDocument>(r#"@match { _ => {} }"#).is_err());
+}
+
+#[test]
+fn capacity_hints_add_tags_attributes_children_and_text() {
+    let document = parse_ok(r#"<div class="a" hidden>"hi"{x}<br /></div>"#);
+    let [div @ HtmlNode::Element(element)] = &document.nodes[..] else {
+        panic!("expected one <div>");
+    };
+    // `<div></div>` 11, ` class="a"` 10, ` hidden` 7, `hi` 2, `<br></br>` 9
+    // and nothing for `{x}`.
+    assert_eq!(element.static_size(), 39);
+    assert_eq!(div.static_size(), 39);
+    let tokens = div.to_tokens().to_string();
+    assert!(
+        tokens.contains("String :: with_capacity (39usize)"),
+        "{tokens}"
+    );
+
+    // A fragment reserves the sum of its nodes.
+    let document = parse_ok(r#""abc" {x} <p></p>"#);
+    let sizes: Vec<usize> = document.nodes.iter().map(HtmlNode::static_size).collect();
+    assert_eq!(sizes, [3, 0, 7]);
+    let tokens = document.to_tokens().to_string();
+    assert!(
+        tokens.contains("String :: with_capacity (10usize)"),
+        "{tokens}"
+    );
+}
+
+#[test]
+fn a_comment_ends_only_at_dash_dash_greater_than() {
+    // `->` and `--` inside the comment do not end it.
+    let document = parse_ok("<!-- a -> b -- c --><p></p>");
+    let [HtmlNode::Element(paragraph)] = &document.nodes[..] else {
+        panic!("expected only <p>");
+    };
+    assert_eq!(paragraph.tag_name.to_string(), "p");
+    assert_eq!(
+        parse_error("<!-- a -> b"),
+        "unterminated HTML comment; expected -->"
+    );
 }

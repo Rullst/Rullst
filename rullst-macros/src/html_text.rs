@@ -1,4 +1,3 @@
-#![cfg_attr(mutants, mutants::skip)]
 //! Unquoted text inside `html!`: `<p>Hello, world!</p>`.
 //!
 //! Rust hands a macro tokens, not characters, so the text is rebuilt from

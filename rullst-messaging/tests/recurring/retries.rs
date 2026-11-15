@@ -119,6 +119,17 @@ pub async fn run(url: &str) {
         ))
     );
     assert!(started.elapsed() < Duration::from_secs(5));
+    store.close().await;
+
+    // A broker that answers well within the lease publishes, however slowly.
+    let clock = ManualClock::new();
+    let (namespace, store) = ticked(url, &clock).await;
+    let lease = store.claim(1).await.unwrap().remove(0);
+    let patient = FixtureBroker::new(&namespace, &clock, false, Duration::from_millis(250));
+    let receipt = store.relay(&lease, &patient).await.unwrap();
+    assert!(receipt.occurrence_acknowledged());
+    let rows = store.occurrences(None, 10).await.unwrap();
+    assert_eq!(rows[0].state(), OccurrenceState::Published);
 
     // Closing one handle closes the pool its clones share.
     let clone = store.clone();

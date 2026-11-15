@@ -133,8 +133,8 @@ pub(crate) fn expand(prepared: &Prepared, call: Call) -> syn::Result<TokenStream
         let mut plural = Vec::new();
         for (category, form) in locale_forms {
             let form = segments(form, &placeholder_index);
-            match category_variant(category) {
-                Some("Other") | None => other = form.collect(),
+            match plural_variant(category) {
+                None => other = form.collect(),
                 Some(variant) => {
                     let variant = format_ident!("{variant}");
                     plural.push(quote! {
@@ -198,15 +198,15 @@ pub(crate) fn expand(prepared: &Prepared, call: Call) -> syn::Result<TokenStream
     })
 }
 
-/// The `rullst::i18n::PluralCategory` variant of a CLDR category.
-fn category_variant(category: &str) -> Option<&'static str> {
+/// The `rullst::i18n::PluralCategory` variant of a CLDR category, or `None`
+/// for `other`, whose form is the fallback.
+fn plural_variant(category: &str) -> Option<&'static str> {
     Some(match category {
         "zero" => "Zero",
         "one" => "One",
         "two" => "Two",
         "few" => "Few",
         "many" => "Many",
-        "other" => "Other",
         _ => return None,
     })
 }
