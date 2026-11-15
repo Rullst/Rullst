@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794743754978,
+  "lastUpdate": 1794745619724,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -22433,6 +22433,60 @@ window.BENCHMARK_DATA = {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 7,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4c3b392a2bdead1b23d08e1f789cb578ea7cbc5b",
+          "message": "Merge pull request #706 from Rullst/fix/v13-alpha6-orm-explicit-save\n\nfix(orm)!: require an explicit save mode on every model",
+          "timestamp": "2026-11-15T09:12:15-03:00",
+          "tree_id": "afa54e4a3576267b8ba2ec19f0da58059ae62b14",
+          "url": "https://github.com/Rullst/Rullst/commit/4c3b392a2bdead1b23d08e1f789cb578ea7cbc5b"
+        },
+        "date": 1794745618527,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 2798,
+            "range": "± 55",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 272,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 9,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 7,
+            "range": "± 2",
             "unit": "ns/iter"
           },
           {
