@@ -123,7 +123,17 @@ fn rules_carry_the_release_of_their_change() {
             "V13-HTMX-2",
         ]
     );
-    assert_eq!(codes_introduced_in("13.0.0-alpha.6"), ["V13-ORM-SAVE-MODE"]);
+    // The default changes of the 13.0 freeze: the health probes' framework
+    // version, CSRF static files by path and the explicit ORM save mode.
+    assert_eq!(
+        codes_introduced_in("13.0.0-alpha.6"),
+        [
+            "V13-HEALTH-FRAMEWORK-VERSION",
+            "V13-HEALTH-PROBE-VERSION-FIELD",
+            "V13-CSRF-STATIC-PREFIXES",
+            "V13-ORM-SAVE-MODE",
+        ]
+    );
     assert!(codes_introduced_in("13.0.0-rc.1").is_empty());
     let alpha4 = version("13.0.0-alpha.4");
     let alpha5 = version("13.0.0-alpha.5");

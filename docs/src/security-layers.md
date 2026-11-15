@@ -285,7 +285,7 @@ in the first place.
 
 | Control | Owner | Reduces | Mechanism | Does not protect against |
 | :--- | :--- | :--- | :--- | :--- |
-| Double-submit CSRF | Core | Cross-site form and fetch writes using ambient cookies | `rullst_csrf` cookie must match `X-CSRF-Token` or the `_token` form field, compared in constant time. A `GET` for a static-looking path (`/robots.txt`, `/sitemap.xml`, `/favicon.ico`, `/static/*`, or a `.txt`, `.xml`, `.ico`, `.json`, `.css`, `.js`, `.png`, `.jpg`, `.jpeg`, `.svg`, `.webp` or `.wasm` suffix) never mints the token; it only reuses an existing cookie's | State changes in `GET` handlers; a sibling subdomain that can set cookies; an XSS bug that reads the token; WebSocket upgrades |
+| Double-submit CSRF | Core | Cross-site form and fetch writes using ambient cookies | `rullst_csrf` cookie must match `X-CSRF-Token` or the `_token` form field, compared in constant time. A `GET` for a static file never mints the token; it only reuses an existing cookie's. Static files are the paths below `[security]` `csrf_static_prefixes` (default `/static/`, `/.well-known/`) and the exact `csrf_static_paths` (default `/favicon.ico`, `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest`, `/sw.js`); since 13.0.0-alpha.6 a file extension no longer counts, so a dynamic `/report.json` page gets a token ([static files and the CSRF token](#static-files-and-the-csrf-token)) | State changes in `GET` handlers; a sibling subdomain that can set cookies; an XSS bug that reads the token; WebSocket upgrades |
 | Exact machine endpoints | Core | Webhook and API routes that must skip browser CSRF | Exact method and path, authenticated (bearer digest, signed-webhook, per-resource address-token or mTLS verifier) before the CSRF exemption applies | A weak verifier you supply; replay unless your verifier checks freshness; an unsigned address-token body, which the handler must confirm at the source |
 | Trusted-proxy resolution | Core | Spoofed `X-Forwarded-For` choosing the client identity | Forwarded headers read only from listed proxy networks, right to left | A listed proxy that forwards client headers unchanged; any host inside a listed network |
 | Tenant context | Core | Client-chosen tenant headers | Only tenant context inserted by your authentication middleware is used | Missing ownership checks in handlers |
@@ -301,6 +301,47 @@ in the first place.
 | `FieldEncryptor` | `rullst-security` | Readable sensitive columns in a stolen database copy | AES-256-GCM with AAD and key IDs | An attacker with the key or with application access; key custody is yours |
 | SRI tags | `rullst-security` | A compromised CDN serving altered JS or CSS | SHA-384 `integrity` attributes | Assets that legitimately change without regenerating the tag |
 | JSON schema guard | `rullst-security` | Oversized, deep, duplicate-key or off-schema JSON | Size (2 MiB) and depth (32) limits, duplicate-key rejection, optional JSON Schema 2020-12 policy | Business-rule validation; the global guard passes non-JSON content types through |
+
+### Static files and the CSRF token
+
+The CSRF middleware gives every `GET` or `HEAD` without a valid
+`rullst_csrf` cookie a new token (in the response cookie and as
+`CsrfToken` for the handler), except for static files, which never mint
+one. Since 13.0.0-alpha.6 a static file is decided by where the
+application serves it, not by its extension:
+
+| Setting | Default | Matches |
+| :--- | :--- | :--- |
+| `csrf_static_prefixes` | `["/static/", "/.well-known/"]` | Any path that starts with an entry |
+| `csrf_static_paths` | `["/favicon.ico", "/robots.txt", "/sitemap.xml", "/manifest.webmanifest", "/sw.js"]` | Exactly an entry |
+
+The defaults are what `Server` (`static/` under `/static/`) and the CLI
+(`make:pwa` adds `/sw.js` and `/.well-known/assetlinks.json`) serve. A list
+in `Rullst.toml` replaces its default, so repeat the defaults you still use:
+
+```toml
+[security]
+csrf_static_prefixes = ["/static/", "/.well-known/", "/assets/"]
+csrf_static_paths = ["/favicon.ico", "/robots.txt", "/humans.txt"]
+```
+
+In code, `SecurityConfig::default().with_csrf_static_prefix("/assets/")`
+and `.with_csrf_static_path("/humans.txt")` add to the defaults (for
+`apply_security_baseline` or an `Extension(SecurityConfig)`), and
+`SecurityConfig::is_csrf_static_path(path)` answers for one path. A prefix
+starts and ends with `/` (so `/static/` never matches `/statics`); `/`,
+wildcards, route parameters, dot segments and duplicates fail validation and
+the server refuses to start.
+
+Every other path gets a token on its first visit whatever its extension, so
+a dynamic `/report.json` page can render a form. Until 13.0.0-alpha.5 any
+path ending in `.txt`, `.xml`, `.ico`, `.json`, `.css`, `.js`, `.png`,
+`.jpg`, `.jpeg`, `.svg`, `.webp` or `.wasm` counted as static, which left
+such pages without a token on a first visit. A file you serve outside these
+paths now gets the `rullst_csrf` cookie when the visitor has none, unless
+its response may be stored by shared caches (`Cache-Control: public`), which
+never carries the cookie. The settings change only token issuance:
+`POST`, `PUT`, `PATCH` and `DELETE` need the token on every path.
 
 ## What none of these layers do
 

@@ -1,12 +1,13 @@
 //! Validation of the `[security]` table: browser policy, CSRF webhook and
-//! WAF body exemptions, HSTS and the trusted-proxy settings.
+//! WAF body exemptions, CSRF static-file paths, HSTS and the trusted-proxy
+//! settings.
 
 use super::{ConfigError, SecurityConfig};
 
 impl SecurityConfig {
     /// Validates browser security policy, exact-path CSRF webhook and WAF
-    /// body exemptions, the HSTS preload requirements and the trusted-proxy
-    /// settings.
+    /// body exemptions, the CSRF static-file prefixes and paths, the HSTS
+    /// preload requirements and the trusted-proxy settings.
     pub fn validate(&self) -> Result<(), ConfigError> {
         if !matches!(self.csrf_same_site.as_str(), "Lax" | "Strict" | "None") {
             return Err(ConfigError::InvalidSecurityConfiguration(format!(
@@ -77,6 +78,8 @@ impl SecurityConfig {
             "CSRF signed-webhook exemption",
         )?;
         validate_exact_paths(&self.waf_body_exempt_paths, "WAF body exemption")?;
+        validate_static_prefixes(&self.csrf_static_prefixes)?;
+        validate_exact_paths(&self.csrf_static_paths, "CSRF static path")?;
         // The browsers' preload list only accepts `includeSubDomains` with a
         // max-age of at least one year.
         if self.hsts_preload
@@ -99,13 +102,7 @@ impl SecurityConfig {
 fn validate_exact_paths(paths: &[String], kind: &str) -> Result<(), ConfigError> {
     let mut unique_paths = std::collections::HashSet::new();
     for path in paths {
-        let is_exact_absolute_path = path.starts_with('/')
-            && path.len() > 1
-            && !path.contains(['?', '#', '*', '{', '}', ':'])
-            && !path
-                .split('/')
-                .any(|segment| segment == ".." || segment == ".");
-        if !is_exact_absolute_path {
+        if !is_exact_absolute_path(path) {
             return Err(ConfigError::InvalidSecurityConfiguration(format!(
                 "{kind} `{path}` must be an exact absolute path"
             )));
@@ -113,6 +110,37 @@ fn validate_exact_paths(paths: &[String], kind: &str) -> Result<(), ConfigError>
         if !unique_paths.insert(path) {
             return Err(ConfigError::InvalidSecurityConfiguration(format!(
                 "duplicate {kind} `{path}`"
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// One absolute path other than `/`, without query, fragment, wildcard,
+/// route parameter or dot segment.
+fn is_exact_absolute_path(path: &str) -> bool {
+    path.starts_with('/')
+        && path.len() > 1
+        && !path.contains(['?', '#', '*', '{', '}', ':'])
+        && !path
+            .split('/')
+            .any(|segment| segment == ".." || segment == ".")
+}
+
+/// Rejects a CSRF static prefix that is not an exact absolute path followed
+/// by `/` (so `/static/` never matches `/statics`, and `/` alone, which would
+/// exempt every page, is refused) and duplicates.
+fn validate_static_prefixes(prefixes: &[String]) -> Result<(), ConfigError> {
+    let mut unique = std::collections::HashSet::new();
+    for prefix in prefixes {
+        if !prefix.strip_suffix('/').is_some_and(is_exact_absolute_path) {
+            return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                "CSRF static prefix `{prefix}` must be an absolute path that ends with `/`, such as `/assets/`"
+            )));
+        }
+        if !unique.insert(prefix) {
+            return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                "duplicate CSRF static prefix `{prefix}`"
             )));
         }
     }

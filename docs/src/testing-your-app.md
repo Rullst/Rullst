@@ -112,7 +112,22 @@ edit them freely.
   rustfmt-formatted yet, so run `cargo fmt --all` once and commit before the
   first push.
 - **Clippy and tests:** `cargo clippy --all-targets -- -D warnings` and
-  `cargo test --all-targets`, with a dependency cache.
+  `cargo test --all-targets`, with a dependency cache. Cargo warnings fail
+  this job too: `setup-rust-toolchain` sets `CARGO_BUILD_WARNINGS=deny` by
+  default, and the workflow keeps it. Since Cargo 1.100 a dependency in
+  `[dependencies]` that no target uses is such a warning
+  (`cargo::unused_dependencies`), so a crate you added and no longer use
+  fails CI. Remove it from `Cargo.toml`, or, when it is there on purpose (for
+  example only to turn on a feature of a crate another dependency brings in),
+  allow the lint for the package:
+
+  ```toml
+  [lints.cargo]
+  unused_dependencies = "allow"
+  ```
+
+  Cargo before 1.100 prints a warning that the `[lints.cargo]` table needs
+  `-Zcargo-lints`, and builds.
 - **Dependency advisories:** `cargo audit` on every push and pull request and
   daily at 06:17 UTC, so a new RustSec advisory for a locked crate fails the
   scheduled run. It reads `Cargo.lock`: commit it. It ignores one advisory

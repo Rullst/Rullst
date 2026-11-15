@@ -492,6 +492,11 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
 
     fn visit_expr_struct(&mut self, expr: &'ast syn::ExprStruct) {
         self.capital_mail_literal(expr);
+        if let Some(last) = expr.path.segments.last()
+            && let Some(rule) = super::alpha6_defaults::struct_rule(&last.ident.to_string())
+        {
+            self.hit(rule, line(last.ident.span()));
+        }
         for field in &expr.fields {
             if let syn::Member::Named(name) = &field.member
                 && (name == "created_at" || name == "updated_at")
