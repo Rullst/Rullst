@@ -118,3 +118,26 @@ async fn hsts_is_sent_over_https_in_every_environment_and_always_in_production()
         assert_eq!(hsts(&plain), expected, "{environment:?}");
     }
 }
+
+#[tokio::test]
+async fn pii_masking_runs_only_where_enabled_in_staging_and_production() {
+    const PAGE: &str = "contact ada.lovelace@example.com or 123.456.789-09";
+    let masked = crate::security::mask_pii(PAGE);
+    assert_ne!(masked, PAGE);
+    let body = |environment: Environment, enabled: bool| async move {
+        let security = SecurityConfig {
+            enable_pii_masking: enabled,
+            ..SecurityConfig::default()
+        };
+        let app = Router::new().route("/", get(|| async { PAGE }));
+        let app = apply_security_baseline(app, security, environment).unwrap();
+        let response = send(&app, Request::get("/").body(Body::empty()).unwrap()).await;
+        let bytes = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .unwrap();
+        String::from_utf8(bytes.to_vec()).unwrap()
+    };
+    assert_eq!(body(Environment::Production, true).await, masked);
+    assert_eq!(body(Environment::Production, false).await, PAGE);
+    assert_eq!(body(Environment::Development, true).await, PAGE);
+}
