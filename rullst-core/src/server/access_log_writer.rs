@@ -17,8 +17,8 @@ use std::time::{Duration, Instant};
 
 /// Lines the queue holds.
 const QUEUED_LINES: usize = 8192;
-/// Bytes the queued and not yet written lines may hold together.
-const QUEUED_BYTES: usize = 2 * 1024 * 1024;
+/// Bytes the queued and not yet written lines may hold together: 2 MiB.
+const QUEUED_BYTES: usize = 2_097_152;
 /// Pause after each batch, so a busy server hands over its lines in batches
 /// instead of waking the writer for every line. It bounds how late a line
 /// appears.

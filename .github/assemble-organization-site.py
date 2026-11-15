@@ -87,15 +87,23 @@ MONTHS = {
 TEXT = {
     "en": {
         "measured": "Measured on {date} with the Rullst/Benchmarks suite. The rows update automatically after each new Rullst release; this page is rebuilt daily.",
+        "ratio": "Each value is first given relative to Axum measured on the same machine in the same round (requests per second: above 1× is faster than Axum; latency and memory: below 1× is lower). The measurements ran on different GitHub-hosted machines, so the absolute number in parentheses, the median across them, is less comparable between frameworks than the ratio.",
+        "run": "Measurement run",
         "missing": "Not in this measurement run.",
         "version": "version",
     },
     "pt-BR": {
         "measured": "Medido em {date} com a suíte Rullst/Benchmarks. As linhas se atualizam automaticamente a cada nova versão do Rullst; esta página é reconstruída diariamente.",
+        "ratio": "Cada valor vem primeiro em relação ao Axum medido na mesma máquina e na mesma rodada (requisições por segundo: acima de 1× é mais rápido que o Axum; latência e memória: abaixo de 1× é menor). As medições rodaram em máquinas diferentes do GitHub, então o número absoluto entre parênteses, a mediana entre elas, é menos comparável entre frameworks do que a razão.",
+        "run": "Execução da medição",
         "missing": "Fora desta rodada de medição.",
         "version": "versão",
     },
 }
+# The data's note, by page language; a page without its own note shows the English one.
+NOTE_KEYS = {"en": "note", "pt-BR": "note_pt_br"}
+NOTE_LIMIT = 1000
+RUN_URL = re.compile(r"https://github\.com/Rullst/Benchmarks/actions/runs/[0-9]{1,20}")
 VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+-]{0,39}")
 
 
@@ -139,7 +147,17 @@ def benchmark_row(result: dict) -> tuple[str, dict] | None:
     metrics = {key: checked_metric(name, key, result[key]) for key in METRICS if result.get(key) is not None}
     if not metrics:
         raise ValueError(f"{name}: no known metric")
-    return match, {"version": version, "metrics": metrics}
+    paired = result.get("vs_axum") or {}
+    if not isinstance(paired, dict):
+        raise ValueError(f"{name}: vs_axum is not an object")
+    ratios = {key: checked_metric(name, f"vs_axum.{key}", paired[key]) for key in metrics if paired.get(key) is not None}
+    return match, {"version": version, "metrics": metrics, "ratios": ratios}
+
+
+def checked_text(key: str, raw: object) -> str:
+    if not isinstance(raw, str) or len(raw) > NOTE_LIMIT:
+        raise ValueError(f"{key} is not a string of at most {NOTE_LIMIT} characters")
+    return raw.strip()
 
 
 def load_benchmarks(path: Path) -> dict | None:
@@ -155,18 +173,31 @@ def load_benchmarks(path: Path) -> dict | None:
             raise ValueError(f"schema is not {BENCHMARK_SCHEMA}")
         measured_on = date.fromisoformat(str(data["measured_on"]))
         rows = dict(row for row in map(benchmark_row, data["results"]) if row is not None)
+        notes = {lang: checked_text(key, data[key]) for lang, key in NOTE_KEYS.items() if data.get(key)}
+        run = data.get("run") or {}
+        run_url = str(run.get("url", "")) if isinstance(run, dict) else ""
+        if run_url and not RUN_URL.fullmatch(run_url):
+            raise ValueError(f"unexpected run url: {run_url!r}")
     except (OSError, ValueError, KeyError, TypeError) as error:
         print(f"warning: benchmark results not used ({error})", file=sys.stderr)
         return None
     if not rows:
         print("warning: benchmark results name none of the compared frameworks", file=sys.stderr)
         return None
-    return {"measured_on": measured_on, "rows": rows}
+    return {"measured_on": measured_on, "rows": rows, "notes": notes, "run_url": run_url}
 
 
 def format_number(value: float, decimals: int, lang: str) -> str:
     text = f"{value:,.{decimals}f}"
     return text.translate(str.maketrans(",.", ".,")) if lang == "pt-BR" else text
+
+
+def metric_value(key: str, value: float, ratio: float | None, lang: str) -> str:
+    """The paired ratio to Axum first, when the data has one, then the absolute median."""
+    absolute = f"{format_number(value, METRICS[key][3], lang)}{METRICS[key][2]}"
+    if ratio is None:
+        return absolute
+    return f'{format_number(ratio, 2, lang)}× Axum <span class="benchmark-absolute">({absolute})</span>'
 
 
 def render_benchmarks(results: dict, lang: str) -> str:
@@ -175,7 +206,19 @@ def render_benchmarks(results: dict, lang: str) -> str:
     month = MONTHS[lang][measured.month - 1]
     day = f"{measured.day} de {month} de {measured.year}" if lang == "pt-BR" else f"{measured.day} {month} {measured.year}"
     when = f'<time datetime="{measured.isoformat()}">{escape(day)}</time>'
-    lines = [f'<p class="benchmark-meta">{TEXT[lang]["measured"].format(date=when)}</p>', '<ul class="benchmark-rows">']
+    meta = TEXT[lang]["measured"].format(date=when)
+    if results.get("run_url"):
+        meta += f' <a href="{escape(results["run_url"])}">{TEXT[lang]["run"]}</a>.'
+    lines = [f'<p class="benchmark-meta">{meta}</p>']
+    note, note_lang = results.get("notes", {}).get(lang), lang
+    if note is None and results.get("notes", {}).get("en"):
+        note, note_lang = results["notes"]["en"], "en"
+    if note:
+        attribute = "" if note_lang == lang else ' lang="en"'
+        lines.append(f'<p class="benchmark-note"{attribute}>{escape(note)}</p>')
+    if any(row.get("ratios") for row in results["rows"].values()):
+        lines.append(f'<p class="benchmark-meta">{TEXT[lang]["ratio"]}</p>')
+    lines.append('<ul class="benchmark-rows">')
     for name in COMPARED:
         row = results["rows"].get(name)
         if row is None:
@@ -183,7 +226,7 @@ def render_benchmarks(results: dict, lang: str) -> str:
             continue
         metrics = "".join(
             f'<div><dt>{escape(METRICS[key][0 if lang == "en" else 1])}</dt>'
-            f'<dd>{format_number(value, METRICS[key][3], lang)}{METRICS[key][2]}</dd></div>'
+            f'<dd>{metric_value(key, value, row.get("ratios", {}).get(key), lang)}</dd></div>'
             for key, value in row["metrics"].items()
         )
         lines.append(

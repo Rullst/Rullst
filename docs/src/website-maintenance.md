@@ -129,19 +129,31 @@ its CSP keeps `connect-src 'none'`. The file must be JSON of this shape:
 {
   "schema": "rullst.benchmarks.latest.v1",
   "measured_on": "2026-11-20",
+  "note": "Optional note about this run.",
+  "note_pt_br": "Nota opcional sobre esta rodada.",
+  "run": {"url": "https://github.com/Rullst/Benchmarks/actions/runs/1"},
   "results": [
     {"framework": "Rullst", "version": "13.0.0-alpha.6",
      "json_rps": 90485.67, "db_single_rps": 16186.7,
-     "avg_latency_ms": 3.14, "peak_ram_mib": 20.83}
+     "avg_latency_ms": 3.14, "peak_ram_mib": 20.83,
+     "vs_axum": {"json_rps": 0.48, "db_single_rps": 0.81,
+                 "avg_latency_ms": 2.1, "peak_ram_mib": 1.9}}
   ]
 }
 ```
 
 `framework` is matched without regard to case; at least one of the four
-metrics is required per row and other frameworks are ignored. An unknown
-schema, a bad date, a negative or non-finite number or an unexpected version
-string discards the whole file: the page then keeps its "first measurement in
-progress" text and the deployment continues. `.github/fixtures/site-benchmarks.json`
+metrics is required per row and other frameworks are ignored. When a row has
+`vs_axum` (each metric divided by Axum's, measured on the same machine in the
+same round), the page shows that ratio first and the absolute median in
+parentheses: the runs use different GitHub-hosted machines, so the ratio is
+the comparable number. `note` is shown on the English page and `note_pt_br`
+on the Portuguese one (the English note, marked `lang="en"`, when there is no
+Portuguese note); `run.url` must be a `Rullst/Benchmarks` Actions run and is
+linked as the measurement run. An unknown schema, a bad date, a negative or
+non-finite number, an unexpected version string, a note longer than 1,000
+characters or another run URL discards the whole file: the page then keeps
+its "first measurement in progress" text and the deployment continues. `.github/fixtures/site-benchmarks.json`
 is the test fixture (its numbers are not measurements).
 
 ## How the root site is deployed

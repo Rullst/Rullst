@@ -466,8 +466,11 @@ def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
     assert "/compare/" in home.links and "/pt-br/comparar/" in home_pt.links, "landing pages must link the comparison"
     with tempfile.TemporaryDirectory(prefix="rullst-root-site-") as temp:
         assembler.assemble(Path(temp) / "data", benchmarks=BENCHMARK_FIXTURE)
-        for page, expected in (("compare/index.html", ("90,486", "version 13.0.0-alpha.6", "Not in this measurement run.")),
-                               ("pt-br/comparar/index.html", ("90.486", "versão 13.0.0-alpha.6", "Fora desta rodada de medição."))):
+        run_link = '<a href="https://github.com/Rullst/Benchmarks/actions/runs/1">'
+        for page, expected in (("compare/index.html", ("0.48× Axum", "(90,486)", "3.50 ms", "version 13.0.0-alpha.6", "Not in this measurement run.",
+                                                        "Fixture note: these numbers", "relative to Axum measured on the same machine", run_link)),
+                               ("pt-br/comparar/index.html", ("0,48× Axum", "(90.486)", "3,50 ms", "versão 13.0.0-alpha.6", "Fora desta rodada de medição.",
+                                                              "Nota do fixture: estes números", "em relação ao Axum medido na mesma máquina", run_link))):
             rendered = (Path(temp) / "data" / page).read_text(encoding="utf-8")
             assert 'class="benchmark-pending"' not in rendered, f"{page}: benchmark rows were not rendered"
             assert all(text in rendered for text in expected), f"{page}: unexpected benchmark rendering"
@@ -478,6 +481,9 @@ def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
         bad.write_text('{"schema": "rullst.benchmarks.latest.v1", "measured_on": "2026-11-20", "results": [{"framework": "Rullst", "version": "<b>", "json_rps": 1}]}')
         assembler.assemble(Path(temp) / "bad", benchmarks=bad)
         assert "unexpected version" in warnings.getvalue(), "invalid benchmark data must be reported"
+        bad.write_text('{"schema": "rullst.benchmarks.latest.v1", "measured_on": "2026-11-20", "run": {"url": "javascript:alert(1)"}, "results": [{"framework": "Rullst", "version": "1.0.0", "json_rps": 1}]}')
+        assembler.assemble(Path(temp) / "bad-run", benchmarks=bad)
+        assert "unexpected run url" in warnings.getvalue(), "a run link outside Rullst/Benchmarks must be rejected"
         assert 'class="benchmark-pending"' in (Path(temp) / "bad" / "compare/index.html").read_text(encoding="utf-8"), (
             "invalid benchmark data must keep the pending text"
         )
