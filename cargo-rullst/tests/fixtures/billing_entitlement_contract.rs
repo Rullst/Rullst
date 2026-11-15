@@ -88,11 +88,11 @@ async fn generated_entitlement_http_and_revision_contract() {
     let key = rullst::auth::get_app_key().unwrap();
     // Registered sessions at epoch 0, as sign-ins create them (account 4 has none).
     let registry = crate::middlewares::auth_middleware::sessions().await.unwrap();
-    let now = rullst::auth::session_registry::unix_now().unwrap();
+    let signed_in_at = rullst::auth::session_registry::unix_now().unwrap();
     let mut sessions = Vec::new();
     for id in 1..=4 {
         let login = rullst::auth::session_registry::NewSession::new(id, 0);
-        sessions.push(registry.create_session(&login, &key, now).await.unwrap().token().to_owned());
+        sessions.push(registry.create_session(&login, &key, signed_in_at).await.unwrap().token().to_owned());
     }
     let production_router = crate::router().unwrap();
     assert_eq!(request(production_router.as_axum(), None, "").await.status(), StatusCode::SEE_OTHER);
