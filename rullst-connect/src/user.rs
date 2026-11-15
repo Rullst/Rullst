@@ -257,6 +257,30 @@ mod tests {
         let _debug_device = format!("{:?}", device);
     }
 
+    #[test]
+    fn connect_user_reads_tokens_present_in_its_input() {
+        use secrecy::ExposeSecret;
+
+        let user: ConnectUser = serde_json::from_value(json!({
+            "id": "123",
+            "name": "Test User",
+            "email": null,
+            "email_verified": null,
+            "avatar_url": null,
+            "raw_data": {},
+            "access_token": "access-from-store",
+            "refresh_token": "refresh-from-store",
+            "expires_in": 60
+        }))
+        .unwrap();
+        assert_eq!(user.access_token.expose_secret(), "access-from-store");
+        assert_eq!(
+            user.refresh_token.as_ref().map(ExposeSecret::expose_secret),
+            Some("refresh-from-store")
+        );
+        assert_eq!(user.expires_in, Some(60));
+    }
+
     #[derive(Debug, serde::Deserialize)]
     struct TestOptSecret {
         #[serde(deserialize_with = "crate::user::opt_secret_serde::deserialize")]
