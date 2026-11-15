@@ -129,18 +129,6 @@ impl AwsSesDriver {
         })
     }
 
-    /// Creates a mock/proxy driver without returning configuration errors.
-    ///
-    /// Prefer [`Self::try_new`]. Invalid configuration still fails closed in `send`.
-    #[deprecated(since = "12.0.0", note = "use AwsSesDriver::try_new")]
-    pub fn new(region: impl Into<String>, auth_token: impl Into<String>) -> Self {
-        Self {
-            region: region.into(),
-            transport: AwsSesTransport::FixtureOrProxy(SecretString::from(auth_token.into())),
-            endpoint_override: None,
-        }
-    }
-
     /// Sets a custom endpoint.
     ///
     /// Proxy mode expects the complete send URL. Native mode expects an SDK

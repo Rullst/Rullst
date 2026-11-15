@@ -42,19 +42,6 @@ fn compatibility_verifiers_accept_tokens_for_thirty_days() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn legacy_generators_return_verifiable_tokens() {
-    let ttl = Duration::from_secs(60);
-    let open = TrackingEngine::generate_open_token(SECRET, "user@example.com", "campaign", NOW);
-    let event = TrackingEngine::verify_open_token_at(SECRET, &open, NOW, ttl).expect("open");
-    assert_eq!(event.campaign_id, "campaign");
-    let click =
-        TrackingEngine::generate_click_token(SECRET, "user@example.com", "https://rullst.dev", NOW);
-    let event = TrackingEngine::verify_click_token_at(SECRET, &click, NOW, ttl).expect("click");
-    assert_eq!(event.target_url, "https://rullst.dev");
-}
-
-#[test]
 fn a_signed_token_with_an_extra_segment_is_malformed() {
     let token = format!("{}.extra", open_token(NOW));
     assert_eq!(

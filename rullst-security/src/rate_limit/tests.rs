@@ -172,10 +172,9 @@ fn test_rate_limiter_builder() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn distributed_compatibility_builder_fails_closed() {
-    let limiter = RateLimiter::new(10, Duration::from_secs(1)).with_distributed();
-    assert_eq!(limiter.backend, RateLimitBackend::Distributed);
+fn the_reserved_distributed_backend_fails_closed() {
+    let mut limiter = RateLimiter::new(10, Duration::from_secs(1));
+    limiter.backend = RateLimitBackend::Distributed;
     assert!(limiter.check("distributed-client"));
 }
 

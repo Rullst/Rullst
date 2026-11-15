@@ -85,8 +85,6 @@ pub const rullst_nexus::NEXUS_BASIC_AUTH_MAX_PEERS: usize
 pub const rullst_nexus::NEXUS_CSS: &str
 pub struct rullst_nexus::Nexus
 impl rullst_nexus::Nexus
-#[deprecated] pub fn rullst_nexus::Nexus::build(self) -> axum::routing::Router
-#[deprecated] pub fn rullst_nexus::Nexus::into_router(self) -> axum::routing::Router
 pub fn rullst_nexus::Nexus::new() -> Self
 pub fn rullst_nexus::Nexus::register<M: rullst_nexus::NexusModel>(self) -> Self
 pub fn rullst_nexus::Nexus::try_build(self) -> core::result::Result<axum::routing::Router, rullst_nexus::NexusBuildError>
