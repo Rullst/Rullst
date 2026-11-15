@@ -111,6 +111,11 @@ Before releasing, make sure:
   `cargo clippy --workspace --all-features -- -D warnings`, and
   `cargo fmt --all`.
 - [ ] `CHANGELOG.md` has a detailed release section describing all additions and fixes.
+  On the release-preparation branch (`chore/v<major>-release-<version>`),
+  `python3 .github/assemble-changelog.py --release X.Y.Z --date YYYY-MM-DD`
+  merges every fragment of [`changelog.d/`](changelog.d/README.md) into the
+  `[Unreleased]` subsections, opens the dated section and deletes the
+  fragments; then add the section's summary and `### Known limitations`.
 - [ ] The [compatibility and MSRV policy](docs/src/compatibility-policy.md) still
   matches the manifests, supported-version table, and intended release changes.
 - [ ] The [Cargo feature matrix](docs/src/feature-matrix.md) still matches every
@@ -154,7 +159,8 @@ Once everything is stable and verified:
 2. On the release-branch head, run `python3 .github/release-preflight.py vX.Y.Z`
    before dispatching the manual admission workflows. It refuses, in seconds,
    problems that `release.yml` would otherwise find hours later:
-   - packages not at the tagged version, or a missing changelog section;
+   - packages not at the tagged version, a missing changelog section, or
+     changelog fragments not yet merged;
    - a stale head or an existing tag (for a tag whose release published
      nothing, it prints the delete-and-recreate commands that
      [MAINTAINING.md](MAINTAINING.md) section 7.5 allows only with the
@@ -194,6 +200,7 @@ GitHub Actions will automatically execute the topological crate publish pipeline
 Before publication, the workflow:
 - requires every admission workflow at the tagged SHA, including the full
   `ci.yml` release matrix;
+- refuses a source whose `changelog.d/` still has unmerged fragments;
 - extracts the exact version section from `CHANGELOG.md`;
 - packages and reproduces every archive;
 - writes checksums and the tag-bound evidence bundle;
@@ -228,9 +235,9 @@ Dependabot proposes dependency updates only for `main`. A dependency's major
 version does not by itself prove that Rullst's public API must break.
 
 Version 12.3.0, the last 12.x release, is the latest published stable release.
-13.0.0-alpha.5 is the 13.0 feature freeze; 13.0.0-rc.1 takes only fixes and
-documentation, and 13.0.0 follows. Synchronize package versions only when the
-candidate is accepted for release.
+13.0.0-alpha.6 is planned as the 13.0 feature freeze; 13.0.0-rc.1 then takes
+only fixes and documentation, and 13.0.0 follows. Synchronize package versions
+only when the candidate is accepted for release.
 A major upgrade needs its own tested migration rules, not just an updated
 installer. Follow the [v13 delivery plan](docs/src/v13-delivery-plan.md) for
 current priorities. This plan does not itself authorize publication.
@@ -318,9 +325,9 @@ git push origin v13.X.Y
 | `rullst` | Check `rullst/Cargo.toml` |
 | `rullst-macros` | Check `rullst-macros/Cargo.toml` |
 | `cargo-rullst` | Check `cargo-rullst/Cargo.toml` |
-| Current `main` line | `13.0.0-alpha.5` source, published; `13.0.0-rc.1` is next, and only a reviewed tag publishes it, a branch merge does not |
+| Current `main` line | `13.0.0-alpha.5` source, published; `13.0.0-alpha.6` is next, and only a reviewed tag publishes it, a branch merge does not |
 | Former maintenance line | Frozen `v12`; end of life since 16 October 2026 |
 | Legacy source | Immutable `v5.0.0` tag and published archive |
 | Published v13 prereleases | `13.0.0-alpha.1` (October 11, 2026), `13.0.0-alpha.2` (October 17), `13.0.0-alpha.3` (October 24), `13.0.0-alpha.4` (October 31) and `13.0.0-alpha.5` (November 14); check [crates.io](https://crates.io/crates/rullst/versions) for later ones |
-| Release path | `13.0.0-alpha.5` (feature freeze, published), then `13.0.0-rc.1` (fixes and documentation only), then `13.0.0` |
+| Release path | `13.0.0-alpha.5` (published), then `13.0.0-alpha.6` (feature freeze), `13.0.0-rc.1` (fixes and documentation only) and `13.0.0` |
 | Latest published stable | Check [crates.io](https://crates.io/crates/rullst) and the [v12 record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md) |

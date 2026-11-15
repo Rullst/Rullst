@@ -7,7 +7,7 @@
 
 use super::super::Rule;
 use super::super::catalog::CLI_GREEN_RENAMED;
-use super::super::reviewed::first_unreviewed;
+use super::super::reviewed::unreviewed_lines;
 use super::read_small;
 use walkdir::WalkDir;
 
@@ -68,7 +68,7 @@ fn readable(name: &str, in_workflows: bool) -> bool {
     })
 }
 
-/// The relative path and first unmarked line of each file that mentions the
+/// The relative path and every unmarked line of each file that mentions the
 /// old command; covered lines add the rule to `reviewed`.
 pub(in super::super) fn green_mentions(
     root: &std::path::Path,
@@ -108,8 +108,8 @@ pub(in super::super) fn green_mentions(
             continue;
         }
         let lines: Vec<&str> = text.lines().collect();
-        if let Some(line) = first_unreviewed(&lines, &CLI_GREEN_RENAMED, mentions_green, reviewed) {
-            found.push((relative, line));
+        for line in unreviewed_lines(&lines, &CLI_GREEN_RENAMED, mentions_green, reviewed) {
+            found.push((relative.clone(), line));
         }
     }
     found

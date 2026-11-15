@@ -36,7 +36,7 @@ pub(crate) fn stage() -> String {
 # `cargo rullst build` writes (same file types and levels): the server sends a
 # sibling to each client that accepts its encoding. Siblings already in static/
 # are written again from the files this image serves.
-FROM rust:1.99.1-slim-bookworm{STAGE_MARKER}RUN apt-get update \\
+FROM rust:1.100.0-slim-bookworm{STAGE_MARKER}RUN apt-get update \\
     && apt-get install --yes --no-install-recommends brotli zstd \\
     && rm -rf /var/lib/apt/lists/*
 {STATIC_COPY}RUN find /static -type f \\( {names} \\) \\
@@ -77,7 +77,7 @@ mod tests {
                 "{stage}"
             );
         }
-        assert!(stage.contains("FROM rust:1.99.1-slim-bookworm AS static-assets\n"));
+        assert!(stage.contains("FROM rust:1.100.0-slim-bookworm AS static-assets\n"));
         assert!(stage.contains("brotli --force --quality=11 --lgwin=22 {} +"));
         assert!(stage.contains("zstd --force --quiet -19 {} +"));
         assert!(stage.find(STATIC_COPY) < stage.find("RUN find"));

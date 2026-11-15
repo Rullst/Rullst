@@ -47,7 +47,7 @@ pub(crate) fn stages() -> String {
     }
     out.push_str(
         "FROM tailwind-cli-${BUILDARCH} AS tailwind-cli\n\n\
-         FROM --platform=$BUILDPLATFORM rust:1.99.1-slim-bookworm AS tailwind\n\
+         FROM --platform=$BUILDPLATFORM rust:1.100.0-slim-bookworm AS tailwind\n\
          WORKDIR /app\n\
          COPY --from=tailwind-cli /tailwindcss /usr/local/bin/tailwindcss\n\
          COPY . .\n\

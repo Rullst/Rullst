@@ -40,9 +40,9 @@ pub fn configure_di() -> Result<Arc<Container>, std::env::VarError> {
 }
 ```
 
-`rullst::security::runtime` requires the umbrella `security` feature. The generated
-starters depend on `rullst-security` directly, so they can use
-`rullst_security::VaultSecret` instead. `std::env::var` reads only the process
+`rullst::security::runtime` requires the umbrella `security` feature; with a
+direct `rullst-security` dependency instead, use `rullst_security::VaultSecret`.
+The generated starters have neither until you add one. `std::env::var` reads only the process
 environment (Rullst never loads `.env` into it); use
 `rullst::config::project_setting` to fall back to `.env` in development. A
 secret manager should inject the real value in production; `VaultSecret`

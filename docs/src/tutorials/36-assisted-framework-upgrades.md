@@ -243,12 +243,17 @@ Source findings (rullst-upgrade-rules-v4): 1 must-change, 2 review
   changed (for example `Model::all()`, `ValidatedJson`, the `Mail` facade,
   `render_page`, a generated `.gitignore` without the SQLite journal files).
 
-A review rule is reported once per file (its first location), except
-`V13-ORM-SKIP-MANAGED-COLUMNS`, which needs a decision per field; a
-must-change rule at every location. A location you reviewed and keep can
-carry a `rullst-upgrade: reviewed` marker (see
-[Fixing the findings](#fixing-the-findings)); the plan then reports the
-rule's next unmarked location. The
+A rule is reported at every line it matches in Rust sources, scripts and
+project files (since 13.0.0-alpha.6; earlier CLIs reported a review rule
+only at its first location in each file, and the manifest rules whose rows
+say so stay once per manifest). The plan and the Markdown report list a rule's
+locations in one file on one entry, in line order
+(`REVIEW src/ai.rs:12, 40, 77 [V13-AI-HTTP-STATUS] ...`); the JSON document
+has one finding per location, sorted by file, line and code, and the counts
+count locations. A location you reviewed and keep can carry a
+`rullst-upgrade: reviewed` marker (see
+[Fixing the findings](#fixing-the-findings)); the plan then leaves that
+location out and still reports the rule's other locations. The
 [rule classification](#v12--v13-rule-classification) lists which migration
 rows have rules.
 
@@ -372,8 +377,8 @@ let posts = Post::query().paginate(page, 20).await?;
 ```
 
 Several codes can follow one marker (`V13-A, V13-B`), and words after the
-codes are free text. The plan leaves the marked location out, reports the
-rule's next unmarked location in the same file, and counts the marked
+codes are free text. The plan leaves the marked location out, still
+reports the rule's other locations in the same file, and counts the marked
 locations (`Reviewed: N review location(s) marked ...`, and
 `finding_counts.reviewed` in JSON). A marker on a `MUST-CHANGE` finding has no
 effect: that code does not build until it changes.
@@ -716,14 +721,14 @@ the rule together.
 | htmx 2 client | (b) review | `V13-HTMX-2` | `static/htmx-1.9.12.min.js` as a regular file at the workspace root without `static/htmx-2.0.11.min.js`; nothing breaks, because Core's pages keep loading the vendored htmx 1.9.12; layouts of the application's own that name the file, `hx-delete` forms and `hx-on` attributes are not located; introduced in 13.0.0-alpha.5 |
 | MongoDB and DuckDB adapters removed | (a) must-change | `V13-ORM-ADAPTERS-REMOVED` | The `orm-mongodb`/`orm-duckdb` (`rullst`) and `mongodb`/`duckdb` (`rullst-orm`) features in dependency declarations, renamed ones included, and in `[features]` entries; `MongoDbStore`, `DuckDbStore`, `AnalyticsRepository`, `AnalyticsRow`, `AnalyticsValue`, `AnalyticsTimeUnit` and `QueryLimit` only in files that name `polyglot`, so an application's own types with these names are left alone; `polyglot::mongodb`, `polyglot::duckdb` and `PolyglotError::Worker` paths, and `Backend::MongoDb`, `Backend::DuckDb` and `Capability::Analytics` in files that name the ORM, also in `use` groups and macro bodies, at every location; `cargo rullst new --mongodb`/`--duckdb` in scripts is not located (the command stops and names the recipe); introduced in 13.0.0-alpha.5 |
 | Qdrant adapter removed | (a) must-change | `V13-ORM-QDRANT-REMOVED` | The `orm-qdrant` (`rullst`) and `qdrant` (`rullst-orm`) features in dependency declarations and `[features]` entries; `QdrantStore`, `QdrantConfig`, `VectorRepository`, `VectorCollectionName`, `VectorDimensions`, `VectorPoint`, `VectorMatch` and `VectorQueryLimit`, and `Backend::Qdrant`/`Capability::Vectors`, in files that name `rullst_orm`, `orm::` or `polyglot` (an application's own type of such a name elsewhere is left alone), at every location; introduced in 13.0.0-alpha.5 |
-| ORM `schema_diff` deprecated | (c) none | — | The compiler's `deprecated` warning locates each use of `rullst_orm::schema_diff`; it still compiles until 14.0; introduced in 13.0.0-alpha.5 |
+| ORM `schema_diff` deprecated | (c) none | — | The compiler's `deprecated` warning locates each use of `rullst_orm::schema_diff`; it still compiles in 13.0.0-alpha.5, and its removal is planned for 13.0.0-alpha.6; introduced in 13.0.0-alpha.5 |
 | Billing generator on Turso projects | (c) none | — | CLI behaviour on new runs; billing code generated earlier is unchanged; introduced in 13.0.0-alpha.5 |
 | Academy production preset removed | (a) must-change | `V13-ACADEMY-REMOVED` | The five distinctive `Academy*` type names and `ProductionPreset::academy`, also in `use` groups, at every location; `academy:doctor` in workflows, root scripts, Makefile and justfile, also must-change because the command exits with status 1; introduced in 13.0.0-alpha.5 |
 | ERP and Portfolio examples removed | (c) none | — | Repository examples, not framework API; copied applications keep their code; introduced in 13.0.0-alpha.5 |
 | DeepSeek and Ollama as OpenAI-compatible presets | (a) must-change | `V13-AI-PROVIDER-PRESETS` | `providers::deepseek` and `providers::ollama` paths, also in `use` groups, and the names `DeepSeekProvider` and `OllamaProvider` in files that name `rullst_ai` or `ai::providers` (an application's own type of that name elsewhere is left alone), at every location; the new construction errors and the Ollama `/v1` switch are not located; introduced in 13.0.0-alpha.5 |
-| IoT OTA manager state | (b) review | `V13-IOT-OTA-STATE` | `.current_partition`, `.status` or `.firmware_version` read or assigned (not called) in a file that names `OtaManager`, reported once per file; introduced in 13.0.0-alpha.5 |
+| IoT OTA manager state | (b) review | `V13-IOT-OTA-STATE` | `.current_partition`, `.status` or `.firmware_version` read or assigned (not called) in a file that names `OtaManager`, at every location; introduced in 13.0.0-alpha.5 |
 | IoT encoder errors | (a) must-change | `V13-IOT-CODEC-ERROR-MATCH` | A `match` whose arm patterns name `MqttCodecError` or `CoapCodecError` and that has no catch-all arm, at every location; the new `OtaError::AllocationFailed` and the verification order need no change, because `OtaError` was already `#[non_exhaustive]`; introduced in 13.0.0-alpha.5 |
-| IoT sensor card HTML | (b) review | `V13-IOT-SENSOR-CARD-HTML` | `render_sensor_card` named in Rust source, reported once per file; introduced in 13.0.0-alpha.5 |
+| IoT sensor card HTML | (b) review | `V13-IOT-SENSOR-CARD-HTML` | `render_sensor_card` named in Rust source, at every location; introduced in 13.0.0-alpha.5 |
 | Studio `local` feature | (c) none | — | Only direct `rullst-studio` dependencies without default features and without a driver profile, which the compiler reports; introduced in 13.0.0-alpha.5 |
 | Access-log paths | (c) none | — | Log output in staging and production, not application source; introduced in 13.0.0-alpha.5 |
 | Capital invoice minor units | (a) must-change | `V13-CAPITAL-INVOICE-MINOR-UNITS` | `Invoice { .. }` literals naming `total` and `InvoiceItem { .. }` literals naming `amount`, in files that name Capital (`rullst_capital` or `capital::`), so an application's own `Invoice` type is left alone; reads of `.total` and `.amount` are not located, the compiler names them; introduced in 13.0.0-alpha.5 |

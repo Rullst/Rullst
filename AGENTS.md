@@ -27,10 +27,10 @@ re-exports. Update both places when a tier changes.
 | Crate | Tier | Responsibilities |
 | :--- | :--- | :--- |
 | **`rullst`** | Core | Umbrella facade: re-exports Core and, behind Cargo features, the ORM and domain crates (`rullst::orm`, `rullst::auth`, `rullst::mail`, …); it has no default feature (since 13.0.0-alpha.3): `orm` with `drivers-all` or a `strict-*` backend, and `queue-sqlite`, are opt-in. |
-| **`rullst-core`** | Core | Runtime-only-by-default server, Tokio integration, `routes!`, queues, in-process realtime with SSE (`RealtimeSse`), `RadarSnapshot`, and `SpanCollector`; ORM/SQLite queue support is feature-gated. |
+| **`rullst-core`** | Core | Runtime-only-by-default server, Tokio integration, `routes!`, queues, in-process realtime with SSE (`RealtimeSse`), `RadarSnapshot`, `SpanCollector`, and the process-local security telemetry store (`security::SecurityStore`, `LiveSecurityEvent`; since 13.0.0-alpha.6, so Studio and Nexus read it without depending on `rullst-security`); ORM/SQLite queue support is feature-gated. |
 | **`rullst-orm`** | Core | Parameterized SQLx database pool, Active Record & Repository patterns, dynamic schema inspector, and a v13 transactional partial-update candidate admitted in PR #236; see the SST for full-row persistence and rollback semantics. Optional non-SQL adapters: Turso/libSQL, SurrealDB, Redis data structures, Scout HTTP search (Meilisearch) and pgvector. Since 13.0.0-alpha.5 MongoDB, DuckDB and Qdrant are application recipes (`docs/src/recipes/`), not adapters. |
 | **`rullst-auth`** | Extension | Argon2 password hashing, encrypted session management, passkeys and an optional v13 shared PostgreSQL ceremony candidate, RBAC helpers, and OAuth2/OIDC re-exports. |
-| **`rullst-security`** | Core | RASP/WAF defense-in-depth, strict secure headers, Login Jail, DLP, honeypots, RBAC, and security telemetry. |
+| **`rullst-security`** | Core | RASP/WAF defense-in-depth, strict secure headers, Login Jail, DLP, honeypots, RBAC, and security telemetry recorded into Core's `SecurityStore` (re-exported here at its earlier paths). |
 | **`rullst-ai`** | Extension | Provider-agnostic LLM client (Gemini, OpenAI, Claude and OpenAI-compatible endpoints; DeepSeek and Ollama are presets of the compatible adapter since 13.0.0-alpha.5: `OpenAiCompatibleProvider::deepseek`/`::ollama`), prompt injection filter, PII masking. |
 | **`rullst-capital`** | Extension | Provider-neutral billing contracts, Stripe and InfinitePay adapters (InfinitePay, supported since 13.0.0-alpha.5: one-off links on its public Checkout API, unsigned webhooks confirmed with `payment_check`; one real Pix payment validated in the 13.0.0-alpha.5 acceptance run), a provider-neutral one-off checkout confirmed at the source, webhook verification and replay protection, quotas, entitlements, minor-unit localized invoices and SaaS analytics. Other gateways are application-owned adapters on the provider traits (`providers::ProviderRequest` applies Capital's HTTP rules); v13 removed the other providers, payouts and NFS-e. |
 | **`rullst-connect`** | Extension | OAuth2/OIDC and social-login providers; brokered messaging is deliberately outside this identity-focused crate. |
@@ -91,7 +91,7 @@ re-exports. Update both places when a tier changes.
 - Smaller files improve compile times, IDE performance, and AI context tracking precision.
 
 ### 3.8. Cross-Platform Build Hygiene & Windows File Locks
-- On Windows systems, procedural macro dynamic libraries (`.dll` files in `target/debug/deps/`) remain locked by running processes.
+- On Windows systems, procedural macro dynamic libraries (`.dll` files under `target/debug/build/`, or `target/debug/deps/` before Cargo 1.100) remain locked by running processes.
 - Always ensure active background compiler or test processes are terminated before executing destructive workspace operations like `cargo clean`.
 
 #### Local disk-space safety
@@ -172,3 +172,7 @@ release workflow validates it against `cargo metadata` before packaging.
 
 ### 4.3. CLI Scaffolding First
 - Prefer CLI scaffolding generators (`cargo rullst make:*`) when adding new entities, controllers, or migrations to ensure architectural consistency.
+
+### 4.4. Changelog Fragments
+- Never add lines under `## [Unreleased]` in `CHANGELOG.md`. Describe each user-visible change in its own file, `changelog.d/<slug>.md` (lowercase letters, digits and hyphens): the first line is `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed` or `### Security`, followed by the bullet(s) written exactly as `CHANGELOG.md` entries. See [`changelog.d/README.md`](changelog.d/README.md).
+- Validate with `python3 .github/assemble-changelog.py --check`. Only release preparation (`--release <version> --date <YYYY-MM-DD>`, on a `chore/v<major>-release-<version>` branch) merges fragments into `CHANGELOG.md`.
