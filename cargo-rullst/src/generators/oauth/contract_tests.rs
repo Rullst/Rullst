@@ -170,13 +170,24 @@ fn the_starter_flow_keeps_its_accounts_after_the_split() {
         assert!(!contract.contains("__"), "unresolved placeholder");
         assert_eq!(contract.contains("mfa::second_step"), second_step);
     }
-    let (identity, migration) = render_identity(Accounts::Starter, "m1");
+    // A starter that registers its sessions deletes them with the password,
+    // in the same transaction; an earlier one only bumps the epoch.
+    let (registered, _) = render_identity(Accounts::Starter, true, "m1");
+    syn::parse_file(&registered).unwrap();
+    assert!(!registered.contains("__RULLST"));
+    assert!(registered.contains(
+        "        .await?;\n    crate::middlewares::auth_middleware::Sessions::revoke_all_sessions_on(&mut **transaction, user_id)\n        .await\n        .map_err(|error| rullst::orm::Error::DatabaseError(error.to_string()))?;\n    Ok(())"
+    ));
+    assert!(registered.contains("so they also leave \"Your devices\"."));
+    let (identity, migration) = render_identity(Accounts::Starter, false, "m1");
+    assert!(!identity.contains("revoke_all_sessions_on"));
+    assert!(!identity.contains("__RULLST"));
     assert!(identity.contains("pub async fn remove_password_and_sessions_with_tx("));
     assert!(migration.contains(".foreign_id(\"user_id\", \"users\")"));
     assert!(migration.contains("use rullst::db::schema::{ForeignKeyAction, Migration, Schema};"));
     syn::parse_file(&identity).unwrap();
     syn::parse_file(&migration).unwrap();
-    let (identity, migration) = render_identity(Accounts::Contract, "m1");
+    let (identity, migration) = render_identity(Accounts::Contract, false, "m1");
     syn::parse_file(&identity).unwrap();
     syn::parse_file(&migration).unwrap();
     assert!(!migration.contains("__"));

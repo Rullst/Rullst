@@ -49,14 +49,25 @@ end every session of an account at once. The registry closes that gap.
   Revocation deletes the row. A sign-in deletes its account's expired rows,
   and `purge_expired(now, limit)` deletes up to 1,000 expired rows per call:
   schedule it. Every database call has a five-second deadline.
-- **Stores.** The registry uses the application's SQLx pool:
-  `session-registry-sqlite` (the facade's `auth-session-registry-sqlite`),
-  `-postgres` and `-mysql` (MySQL and MariaDB). `SessionRegistry::open(pool)`
-  creates the table and its indexes when they are missing, so the runtime
-  database role needs `CREATE` once; on PostgreSQL concurrent openings
-  serialize on an advisory lock. SQLite is shared-local: processes on one host
-  using the same file. `SessionRegistryFor<rullst::orm::RullstPool>` names the
-  registry of the ORM's strict backend.
+- **Stores and table ownership.** The registry uses the application's SQLx
+  pool: `session-registry-sqlite` (the facade's
+  `auth-session-registry-sqlite`), `-postgres` and `-mysql` (MySQL and
+  MariaDB). A migration should own the table: its `up` calls
+  `SessionRegistry::create_table(pool)` (the table and its indexes, kept when
+  they exist; on PostgreSQL concurrent calls serialize on an advisory lock),
+  its `down` drops `rullst_auth_sessions`, and the application calls
+  `SessionRegistry::connect(pool)`, which creates nothing and fails with
+  `Unavailable` while the table is missing. `SessionRegistry::open(pool)`
+  creates the table on first use and then connects: the fallback for an
+  application without such a migration, whose runtime database role then
+  needs `CREATE` once and whose `db:rollback` leaves the table. SQLite is
+  shared-local: processes on one host using the same file.
+  `SessionRegistryFor<rullst::orm::RullstPool>` names the registry of the
+  ORM's strict backend.
+- **What a revocation does not reach.** Each request is authenticated when
+  it starts, so a request already running when its session is revoked
+  completes normally; the next one is refused. Long-lived responses are
+  covered below.
 
 ```rust,no_run
 # #[cfg(feature = "auth-session-registry-sqlite")]
@@ -65,6 +76,8 @@ use rullst::auth::session_registry::{DeviceSummary, NewSession, SessionRegistry}
 
 let pool = rullst::db::sqlx::SqlitePool::connect("sqlite://app.db").await
     .map_err(|_| rullst::auth::session_registry::SessionRegistryError::Unavailable)?;
+// `open` creates the table on first use; with a migration that calls
+// `SessionRegistry::create_table`, call `SessionRegistry::connect` instead.
 let sessions = SessionRegistry::open(pool).await?;
 // After the password check, at the account's session epoch (0 without one):
 let set_cookie = sessions
@@ -84,16 +97,51 @@ sessions.revoke_other_sessions(session.current()).await?;
 `cargo rullst auth` and the SaaS starter enable the registry feature of their
 strict database profile (`auth-session-registry-sqlite`, `-postgres` or
 `-mysql`; `cargo rullst auth` now refuses a project without exactly one strict
-profile). `src/middlewares/auth_middleware.rs` opens the registry over
-`Orm::pool()` on first use, registers every sign-in (`start_session`) and
-inserts the signed-in account's `AuthenticatedSession` next to its id. Sign-out
+profile) and write a `*_create_rullst_auth_sessions_table` migration, which
+creates the table on `db:migrate` and drops it on `db:rollback`.
+`src/middlewares/auth_middleware.rs` connects to it over `Orm::pool()` on
+first use, registers every sign-in (`start_session`) and inserts the
+signed-in account's `AuthenticatedSession` next to its id. Sign-out
 deletes the session, `/sessions` lists the account's devices with a "Sign out"
 button each and "Sign out of all other devices", a password change deletes the
 account's sessions and gives the asking browser a new one, a password reset
 deletes them all, and `User::revoke_sessions` ("sign out everywhere") bumps the
 epoch and deletes them. `make:mfa` and `make:oauth` register their sign-ins the
-same way in such a starter; in a starter generated before 13.0.0-alpha.6 they
-keep issuing epoch cookies.
+same way in such a starter, and `make:oauth`'s `LinkAndResetPassword` policy
+deletes the account's sessions in the transaction that removes its password
+(`SessionRegistry::revoke_all_sessions_on`), so they also leave "Your
+devices"; in a starter generated before 13.0.0-alpha.6 they keep issuing epoch
+cookies. The middleware's `revalidation(&session)` returns the check for
+long-lived responses below.
+
+### Long-lived connections
+
+A Server-Sent Events stream or a WebSocket outlives the request that
+authorized it. Rullst's helpers revalidate it: `RealtimeSse::channel_revalidated`
+(and `subscribe_revalidated`) and `WebSocket::with_revalidation` take a
+`rullst::realtime::Revalidate` check, run it every revalidation interval
+(15 seconds by default, `RealtimeSseConfig::with_revalidation_interval` or the
+WebSocket's interval argument, 1 second to 5 minutes) and when the check's
+change signal fires, and end the connection when it answers `false` or takes
+longer than 5 seconds. A WebSocket checks while it waits for the client and
+before sending when a check is due.
+
+`SessionRegistry::revalidation(&current)` is that check for a registered
+session: it answers whether the session's row still exists and has not
+expired, and every revocation through a registry of the same process
+(sign-out, revoking one, the other or every session, also inside a
+transaction) signals the checks of the sessions it ends. So a stream of a
+session revoked in the same process ends at once, and one revoked by another
+process or host ends within one revalidation interval. The registry check
+looks at the session row only; an application that revokes by its session
+epoch alone should check the epoch in its own `Revalidate` (the generated
+applications delete the rows whenever they bump the epoch).
+
+```rust,ignore
+// In a route behind auth_middleware, with `Extension(session): Extension<AuthenticatedSession>`:
+let check = crate::middlewares::auth_middleware::revalidation(&session).await?;
+Ok(state.sse.channel_revalidated(&state.channels, "dashboard", check))
+```
 
 Cookies issued before an application adopts the registry are refused, so every
 user signs in once more; see the [migration guide](migration-v13.md#changes-from-the-published-1210-source).

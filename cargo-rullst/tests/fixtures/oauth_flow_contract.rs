@@ -341,6 +341,16 @@ async fn generated_oauth_flow_contract() {
         ..User::default()
     };
     owner.save().await.unwrap();
+    // The owner's two signed-in devices.
+    let registry = crate::middlewares::auth_middleware::sessions().await.unwrap();
+    let key = rullst::auth::get_app_key().unwrap();
+    let now = rullst::auth::session_registry::unix_now().unwrap();
+    let mut devices = Vec::new();
+    for _ in 0..2 {
+        let login = rullst::auth::session_registry::NewSession::new(owner.id, 0);
+        devices.push(registry.create_session(&login, &key, now).await.unwrap().token().to_owned());
+    }
+    assert_eq!(registry.list_sessions(owner.id, now).await.unwrap().len(), 2);
     let verified = profile("sub-owner", "Owner@Example.test", Some(true));
     assert!(matches!(
         resolve_account("google", &verified, ExistingAccountPolicy::Refuse).await,
@@ -357,6 +367,17 @@ async fn generated_oauth_flow_contract() {
         OAuthIdentity::user_id("google", "sub-owner").await.unwrap(),
         Some(owner.id)
     );
+    // Its sessions were deleted with the password: revoked and gone from
+    // "Your devices".
+    assert!(registry.list_sessions(owner.id, now).await.unwrap().is_empty());
+    for device in &devices {
+        assert_eq!(
+            registry.authenticate(device, &key, now).await.err(),
+            Some(rullst::auth::session_registry::SessionRegistryError::Revoked)
+        );
+        let session = format!("rullst_session={device}");
+        assert_eq!(get(app, "/dashboard", &[&session]).await.status(), StatusCode::SEE_OTHER);
+    }
 }
 
 #[test]

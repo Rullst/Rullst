@@ -117,6 +117,26 @@ async fn generated_session_registry_contract() {
     assert_eq!(references(&page.body).len(), 1);
     assert_eq!(call(app, "GET", "/sessions", None, "", FIREFOX).await.status, StatusCode::SEE_OTHER);
 
+    // A Server-Sent Events stream of a session ends once the session signs
+    // out in this process, without waiting for the revalidation interval.
+    let streaming = sign_in(app, FIREFOX).await;
+    let now = rullst::auth::session_registry::unix_now().unwrap();
+    let session = sessions().await.unwrap().authenticate(&streaming, &key, now).await.unwrap();
+    let channels = rullst::realtime::BroadcastManager::new();
+    let sse = rullst::realtime::RealtimeSse::new(rullst::realtime::RealtimeSseConfig::new());
+    let stream = sse.channel_revalidated(&channels, "dashboard", revalidation(&session).await.unwrap());
+    let ended = call(app, "POST", "/logout", Some(&streaming), &format!("_token={CSRF}"), FIREFOX).await;
+    assert_eq!(ended.status, StatusCode::SEE_OTHER);
+    let body = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        rullst::web::axum::body::to_bytes(stream.into_body(), 1 << 16),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(&body[..], b"retry: 1000\n\n");
+    assert_eq!(sse.open_connections(), 0);
+
     // Signing out ends every copy of the cookie, not only this browser's.
     let copied = phone.clone();
     let signed_out = call(app, "POST", "/logout", Some(&phone), &format!("_token={CSRF}"), SAFARI).await;

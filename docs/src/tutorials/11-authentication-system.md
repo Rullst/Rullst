@@ -36,7 +36,9 @@ The current command creates:
   starter, `src/migrations/m<timestamp>_add_account_columns_to_users_table.rs`
   (the `email`, `password_hash`, `oauth_provider`, `oauth_id`, `is_admin` and
   `session_epoch` columns and the unique index on `email`; rolling it back
-  drops only those), `src/migrations/m<timestamp>_create_password_reset_tokens_table.rs`
+  drops only those), `src/migrations/m<timestamp>_create_password_reset_tokens_table.rs`,
+  `src/migrations/m<timestamp>_create_rullst_auth_sessions_table.rs` (the
+  login sessions; rolling it back drops the table, which signs everyone out)
   and the migrations module;
 - `src/controllers/auth_controller.rs`,
   `src/controllers/password_controller.rs` and
@@ -195,14 +197,18 @@ edge.
 - Login performs a dummy password verification for unknown users to reduce the
   obvious account-enumeration timing difference.
 - Every sign-in is a server-side session: a row of `rullst_auth_sessions`
-  (created on first use in the application's database) that keeps only a
+  (created by its migration in the application's database) that keeps only a
   digest of the random secret in the encrypted `rullst_session` cookie, the
   account id, the sign-in time, the hour of last use and the browser and
   platform family ("Firefox on Linux"), never the IP address or the raw
   `User-Agent`. `auth_middleware` checks that row on every request.
   **Log out** deletes it, so a copy of the cookie (from a shared computer or a
   stolen device) stops working too. **Your devices** (`/sessions`) lists the
-  account's sessions and signs out one of them or every other one. See
+  account's sessions and signs out one of them or every other one. A request
+  is checked when it starts, so one already running when its session is
+  revoked completes. A Server-Sent Events stream or WebSocket you add can end
+  with its session: pass `auth_middleware::revalidation(&session)` to
+  `RealtimeSse::channel_revalidated` or `WebSocket::with_revalidation`. See
   [session management](../session-management.md#server-side-login-sessions).
 - The `users.session_epoch` column (0 for a new account) goes into every login
   cookie, and `auth_middleware` refuses a cookie whose epoch differs.

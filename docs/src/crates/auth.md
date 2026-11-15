@@ -166,7 +166,9 @@ database, over its SQLx pool:
 # -> Result<(), rullst_auth::session_registry::SessionRegistryError> {
 use rullst_auth::session_registry::{DeviceSummary, NewSession, SessionRegistry, unix_now};
 
-let sessions = SessionRegistry::open(pool).await?; // creates the table when missing
+// `open` creates the table on first use; with a migration that calls
+// `SessionRegistry::create_table`, use `SessionRegistry::connect(pool)`.
+let sessions = SessionRegistry::open(pool).await?;
 // Sign-in: the `Set-Cookie` value of a new registered session.
 let login = NewSession::new(42, stored_epoch).with_device(DeviceSummary::from_headers(&headers));
 let set_cookie = sessions.sign_in(&login).await?;
@@ -204,9 +206,17 @@ sessions.revoke_all_sessions(42).await?;
 - An account keeps at most 50 sessions (`MAX_SESSIONS_PER_USER`); the next
   sign-in signs out the least recently used. Schedule
   `purge_expired(now, limit)` (1 to 1,000 rows) to delete expired rows.
+- Requests are checked when they start: one already running when its session
+  is revoked completes. For Server-Sent Events and WebSockets, pass
+  `sessions.revalidation(session.current())` to
+  `RealtimeSse::channel_revalidated` or `WebSocket::with_revalidation`: the
+  connection ends at once when this process revokes the session and within
+  the revalidation interval (15 seconds by default) when another one does.
+- `revoke_all_sessions_on(&mut *transaction, user_id)` revokes inside the
+  caller's transaction, for example with a password removal.
 
-`cargo rullst auth` and the SaaS starter generate the wiring: registration and
-sign-in register a session, `auth_middleware` inserts the
+`cargo rullst auth` and the SaaS starter generate the wiring: a migration owns
+the table, registration and sign-in register a session, `auth_middleware` inserts the
 `AuthenticatedSession`, `/logout` deletes the session, `/sessions` lists the
 devices with "Sign out" and "Sign out of all other devices", and password
 changes and resets delete the account's sessions. See

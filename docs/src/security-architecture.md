@@ -91,7 +91,12 @@ object-level ownership check. For session validation, a stateless
 opt-in `rullst_auth::session_registry`, which `cargo rullst auth` and the SaaS
 starter use, checks a server-side record on every request, so sign-out ends
 every copy of the cookie and an account can sign out its other devices
-(threat `AUTH-08` in the [threat models](threat-models.md)).
+(threat `AUTH-08` in the [threat models](threat-models.md)). Sessions are
+checked when a request starts: a request already running when its session is
+revoked completes, and the next one is refused. Long-lived responses
+(`RealtimeSse::channel_revalidated`, `WebSocket::with_revalidation`) check
+again every 15 seconds by default and at once after a revocation in the same
+process.
 
 The direct socket peer is the default network identity. A deployment must not
 accept `Forwarded` or `X-Forwarded-For` until its exact proxy hops are configured

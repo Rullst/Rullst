@@ -338,6 +338,23 @@ mod tests {
                 file(&manifest, "src/controllers/mod.rs")
                     .contains("pub mod sessions_controller;\n")
             );
+            // A migration owns the sessions table, after the users table.
+            assert_eq!(
+                file(
+                    &manifest,
+                    "src/migrations/m20260601000003_create_rullst_auth_sessions_table.rs"
+                ),
+                crate::generators::auth::sessions::render_sessions_migration(
+                    "m20260601000003_create_rullst_auth_sessions_table"
+                )
+            );
+            let migrations = file(&manifest, "src/migrations/mod.rs");
+            assert!(
+                migrations.contains("pub mod m20260601000003_create_rullst_auth_sessions_table;\n")
+            );
+            assert!(migrations.contains(
+                "        Box::new(m20260601000003_create_rullst_auth_sessions_table::MigrationImpl),\n    ]"
+            ));
 
             let migration = manifest
                 .iter()

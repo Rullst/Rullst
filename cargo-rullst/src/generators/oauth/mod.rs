@@ -106,11 +106,25 @@ pub(crate) fn render_controller(provider: &str, database: &str, second_step: boo
     render_flow(provider, database, Accounts::Starter, true, second_step)
 }
 
-/// The identity model and migration for `accounts`.
-fn render_identity(accounts: Accounts, migration: &str) -> (String, String) {
+/// In a starter that registers its sessions, the password removal also
+/// deletes the account's sessions, in the same transaction.
+const REGISTERED_DOC: &str = " The same transaction deletes\n/// its registered sessions, so they also leave \"Your devices\".";
+const REVOKE_REGISTERED_SESSIONS: &str = "    crate::middlewares::auth_middleware::Sessions::revoke_all_sessions_on(&mut **transaction, user_id)\n        .await\n        .map_err(|error| rullst::orm::Error::DatabaseError(error.to_string()))?;\n";
+
+/// The identity model and migration for `accounts` (`registered` when the
+/// starter registers its sessions).
+fn render_identity(accounts: Accounts, registered: bool, migration: &str) -> (String, String) {
+    let (doc, revoke) = if registered {
+        (REGISTERED_DOC, REVOKE_REGISTERED_SESSIONS)
+    } else {
+        ("", "")
+    };
+    let password = IDENTITY_PASSWORD_TEMPLATE
+        .replace("__RULLST_REGISTERED_DOC__", doc)
+        .replace("__RULLST_REVOKE_REGISTERED_SESSIONS__", revoke);
     let (identity, imports, column) = match accounts {
         Accounts::Starter => (
-            format!("{IDENTITY_TEMPLATE}{IDENTITY_PASSWORD_TEMPLATE}"),
+            format!("{IDENTITY_TEMPLATE}{password}"),
             "ForeignKeyAction, Migration, Schema",
             "            table\n                .foreign_id(\"user_id\", \"users\")\n                .on_delete(ForeignKeyAction::Cascade);\n",
         ),
@@ -199,7 +213,7 @@ fn plan(root: &Path, name: &str, timestamp: &str) -> Result<Plan, Box<dyn std::e
             );
         }
         let migration = format!("m{timestamp}{}", MIGRATION_SUFFIX.trim_end_matches(".rs"));
-        let (identity, source) = render_identity(accounts, &migration);
+        let (identity, source) = render_identity(accounts, registered, &migration);
         edits.push(Edit::create(
             root.join("src/models/oauth_identity.rs"),
             rust(&identity)?,

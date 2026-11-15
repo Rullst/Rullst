@@ -923,9 +923,13 @@ From 13.0.0-alpha.6, `rullst_auth::session_registry` (features
 `session-registry-sqlite`, `session-registry-postgres`,
 `session-registry-mysql`; facade `auth-session-registry-*`) keeps one row per
 `rullst_session` login in the table `rullst_auth_sessions` of the
-application's SQLx pool, which `SessionRegistry::open` creates when missing
-(on PostgreSQL under an advisory lock). Applications that do not enable it are
-unchanged.
+application's SQLx pool. `SessionRegistry::create_table` creates the table and
+its indexes (kept when present; on PostgreSQL under an advisory lock) for a
+migration whose rollback drops it, `connect` uses an existing table and
+creates nothing, and `open` creates it on first use and connects, the
+fallback for applications without such a migration. The generated
+applications own it by a `*_create_rullst_auth_sessions_table` migration.
+Applications that do not enable the registry are unchanged.
 
 - `create_session`/`sign_in` issue `v3.` tokens: AES-256-GCM under `APP_KEY`
   with their own associated data around `user_id|epoch|expires_at|secret`,
@@ -943,8 +947,19 @@ unchanged.
 - `sign_out`, `revoke` and `revoke_token` delete the current row;
   `revoke_session(user_id, reference)` deletes one row of that account only;
   `revoke_other_sessions` keeps the current row; `revoke_all_sessions` deletes
-  every row of the account. `list_sessions` returns at most 50 live rows,
-  most recently used first.
+  every row of the account, and `revoke_all_sessions_on` does so on the
+  caller's connection or transaction. `list_sessions` returns at most 50 live
+  rows, most recently used first. A request is authenticated when it starts,
+  so one already running when its session is revoked completes.
+- Long-lived responses: `SessionRegistry::revalidation(&current)` is the
+  `rullst_core::realtime::Revalidate` check of a session for
+  `RealtimeSse::channel_revalidated`/`subscribe_revalidated` and
+  `WebSocket::with_revalidation`, which check every revalidation interval
+  (15 seconds by default, 1 second to 5 minutes, 5-second deadline, failing
+  closed) and when the check signals a change. Every revocation through a
+  registry of the same process signals the checks of the sessions it ends,
+  so their responses end at once; a revocation by another process is seen
+  within one interval.
 - A row holds the account id, the creation time, the last-seen hour, the
   expiry and a browser and platform family from the sign-in's `User-Agent`;
   no IP address, raw header or request history. An account keeps at most 50
@@ -956,7 +971,8 @@ unchanged.
 - Unit and SQLite contracts run in the workspace; the PostgreSQL and MySQL
   contracts run against owned servers (`.github/check-auth-session-registry.py`),
   and generated-SaaS contracts cover sign-out of a copied cookie, the device
-  page, revoking the others, the epoch and the password flows.
+  page, revoking the others, the epoch, the password flows, an SSE stream
+  ending at sign-out and the OAuth `LinkAndResetPassword` revocation.
 
 ### v13 active-session management (source admitted, prerelease)
 

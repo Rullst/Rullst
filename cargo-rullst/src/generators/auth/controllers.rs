@@ -152,7 +152,13 @@ mod tests {
             assert!(middleware.contains(
                 "pub type Sessions = rullst::auth::session_registry::SessionRegistryFor<rullst::orm::RullstPool>;"
             ));
-            assert!(middleware.contains("Sessions::open(pool.clone()).await"));
+            // The migration owns the table: the application only connects.
+            assert!(middleware.contains("Sessions::connect(pool.clone()).await"));
+            assert!(!middleware.contains("Sessions::open("));
+            // Long-lived responses of a session end when it is revoked.
+            assert!(middleware.contains(
+                ") -> Result<impl rullst::realtime::Revalidate, SessionRegistryError> {\n    Ok(sessions().await?.revalidation(session.current()))\n}"
+            ));
             assert!(middleware.contains("sessions().await?.sign_in(&login).await"));
             assert!(middleware.contains(
                 "NewSession::new(user.id, epoch).with_device(DeviceSummary::from_headers(headers))"

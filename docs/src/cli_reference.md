@@ -1466,9 +1466,11 @@ Creates an authentication starting point in your codebase, including:
 - Auth Controllers (Login, Registration, Logout, and `logout_everywhere`, which
   increments the account's session epoch to end its session on every device).
 - Server-side sessions (since 13.0.0-alpha.6): every sign-in is a row of
-  `rullst_auth_sessions` in the application's database, created on first use
-  by `rullst::auth::session_registry` over `Orm::pool()`, which stores only a
-  digest of the random secret in the encrypted cookie. The middleware
+  `rullst_auth_sessions` in the application's database, created by a
+  `m<timestamp>_create_rullst_auth_sessions_table.rs` migration (its rollback
+  drops it), through `rullst::auth::session_registry` over `Orm::pool()`. A
+  row stores only a digest of the random secret in the encrypted cookie. The
+  middleware
   (`src/middlewares/auth_middleware.rs`) checks that row on every request,
   inserts the signed-in user's id as `Extension<i32>` and the
   `AuthenticatedSession`, and refuses a cookie whose session epoch is no longer

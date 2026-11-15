@@ -1,10 +1,12 @@
 //! Login sessions: each sign-in is a record in the table
-//! `rullst_auth_sessions` of the application's database, and the
-//! `rullst_session` cookie names it. Signing out deletes the record, so a
-//! copy of the cookie stops working too; `/sessions` lists the account's
-//! devices and signs out any of them. A cookie also counts only while it
-//! carries the account's current `session_epoch`, so `User::revoke_sessions`
-//! (and a password change or reset) signs out every device.
+//! `rullst_auth_sessions` of the application's database (created by its
+//! `*_create_rullst_auth_sessions_table` migration), and the `rullst_session`
+//! cookie names it. Signing out deletes the record, so a copy of the cookie
+//! stops working too; `/sessions` lists the account's devices and signs out
+//! any of them. A cookie also counts only while it carries the account's
+//! current `session_epoch`, so `User::revoke_sessions` (and a password change
+//! or reset) signs out every device. Each request is checked when it starts:
+//! one already running when its session is revoked still completes.
 use crate::models::user::User;
 __RULLST_MIDDLEWARE_IMPORTS__use rullst::async_runtime::tokio::sync::OnceCell;
 use rullst::auth::session_registry::{
@@ -18,15 +20,27 @@ pub type Sessions = rullst::auth::session_registry::SessionRegistryFor<rullst::o
 
 static SESSIONS: OnceCell<Sessions> = OnceCell::const_new();
 
-/// The session registry, opened on first use; opening creates its table
-/// when it is missing.
+/// The session registry, connected on first use to the table its migration
+/// created (without the migration it fails, and no request authenticates).
 pub async fn sessions() -> Result<&'static Sessions, SessionRegistryError> {
     SESSIONS
         .get_or_try_init(|| async {
             let pool = rullst::db::Orm::pool().map_err(|_| SessionRegistryError::Unavailable)?;
-            Sessions::open(pool.clone()).await
+            Sessions::connect(pool.clone()).await
         })
         .await
+}
+
+/// The check that ends a long-lived response of this session once it is
+/// signed out or revoked: pass it to `RealtimeSse::channel_revalidated`
+/// (Server-Sent Events) or `WebSocket::with_revalidation`. A revocation in
+/// this process ends the response at once; one made by another process (or
+/// host) at the next check, every 15 seconds by default
+/// (`RealtimeSseConfig::with_revalidation_interval`).
+pub async fn revalidation(
+    session: &AuthenticatedSession,
+) -> Result<impl rullst::realtime::Revalidate, SessionRegistryError> {
+    Ok(sessions().await?.revalidation(session.current()))
 }
 
 /// Registers a sign-in of `user` at its current session epoch and returns
