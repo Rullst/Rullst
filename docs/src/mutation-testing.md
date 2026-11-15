@@ -30,6 +30,17 @@ received a test or is listed under
   [PR #532](https://github.com/Rullst/Rullst/pull/532): 78 files and 2,435
   mutants, 72 missed at the end. 71 are accepted equivalents; the last one
   needs an open PostgreSQL pool.
+- **`rullst-messaging`** (re-measured for 13.0.0-alpha.6, PR_LINK): targeted
+  runs of the 48 files outside `redis_streams/` (7 have no mutants) gave 1,377
+  mutants: 1,078 caught, 208 unviable, no timeout and 91 missed. 65 of the
+  misses are in the six `PostgresRecurringStore` files of `schedules/`, which
+  only `check-recurring-postgres.py` reaches; its contract run (301 mutants of
+  `schedules/`, 158 caught and 50 unviable by the contract tests alone) left
+  two of them: the accepted `verify` equivalent and the relay's publication
+  timeout `expires - now` with `/`, which a slow-broker relay test now kills.
+  The other 26 are the accepted equivalents of the signature, storage and
+  schedule encryption bounds and the wire size, now also listed for the
+  pull-request gate. Those six files left the gate for their contract run.
 - **`rullst-nexus`**: first measured in PR #532 (26 files, 876 mutants). New
   tests killed 170 of the 171 first misses, one is an accepted equivalent, and
   one real defect was fixed.
