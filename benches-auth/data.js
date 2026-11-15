@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794726197678,
+  "lastUpdate": 1794728450062,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -22199,6 +22199,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1996,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "851b1bff4b0aa2201661ce8729f4dd5dd741a89e",
+          "message": "Merge pull request #703 from Rullst/docs/v13-site-compare\n\ndocs(site): compare Rullst, Loco and Topcoat in both languages",
+          "timestamp": "2026-11-15T04:23:16-03:00",
+          "tree_id": "2e20f230f7d3f696a6c5aa817a12e7026753b2d6",
+          "url": "https://github.com/Rullst/Rullst/commit/851b1bff4b0aa2201661ce8729f4dd5dd741a89e"
+        },
+        "date": 1794728449058,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 917,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 718,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1670,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3816,
+            "range": "± 102",
             "unit": "ns/iter"
           }
         ]
