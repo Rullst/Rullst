@@ -1,6 +1,8 @@
 // Primary Turso/libSQL model. The familiar Orm derive targets libSQL explicitly.
+// Turso-primary models write every column on `save()`, overwriting concurrent
+// changes to other columns; `full_row_save` records that choice.
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "users", backend = "turso")]
+#[orm(table = "users", backend = "turso", full_row_save)]
 pub struct User {
     pub id: i64,
     pub name: String,

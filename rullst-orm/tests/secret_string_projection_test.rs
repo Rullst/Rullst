@@ -8,7 +8,7 @@ const CPF: &str = "123.456.789-00";
 const BACKUP_CODE: &str = "backup-4471-9920";
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "secret_customers", auditable, searchable)]
+#[orm(table = "secret_customers", auditable, searchable, full_row_save)]
 struct SecretCustomer {
     id: i32,
     name: String,

@@ -7,7 +7,7 @@ use super::{create_table, in_order, sorted};
 use crate::transcript::Scenario;
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "diff_people")]
+#[orm(table = "diff_people", full_row_save)]
 struct Person {
     id: i32,
     /// 1: names that only differ in case or accents; 2: names that differ

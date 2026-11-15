@@ -456,16 +456,6 @@ impl Queue {
         self.driver.purge_completed_history().await
     }
 
-    /// Legacy compatibility name for [`Self::purge_failed_jobs`].
-    #[deprecated(
-        since = "12.0.0",
-        note = "use purge_failed_jobs; this method has always targeted failed rows"
-    )]
-    #[cfg_attr(mutants, mutants::skip)]
-    pub async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
-        self.purge_failed_jobs().await
-    }
-
     /// Get an `Arc` reference to the internal driver (for sharing with `Worker`).
     pub(crate) fn driver_ref(&self) -> Arc<Box<dyn QueueDriver>> {
         Arc::clone(&self.driver)

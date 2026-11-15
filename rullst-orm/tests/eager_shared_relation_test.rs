@@ -5,14 +5,14 @@
 use rullst_orm::{Error, Orm};
 
 #[derive(Clone, Debug, PartialEq, rullst_orm::Orm)]
-#[orm(table = "shared_users")]
+#[orm(table = "shared_users", full_row_save)]
 struct SharedUser {
     id: i32,
     name: String,
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "shared_posts")]
+#[orm(table = "shared_posts", full_row_save)]
 struct SharedPost {
     id: i32,
     user_id: i32,
@@ -23,7 +23,7 @@ struct SharedPost {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "shared_members")]
+#[orm(table = "shared_members", full_row_save)]
 struct SharedMember {
     id: i32,
     organization_id: i32,
@@ -38,7 +38,7 @@ struct SharedMember {
 }
 
 #[derive(Clone, Debug, PartialEq, rullst_orm::Orm)]
-#[orm(table = "shared_notices")]
+#[orm(table = "shared_notices", full_row_save)]
 struct SharedNotice {
     id: i32,
     organization_id: i32,
@@ -47,14 +47,14 @@ struct SharedNotice {
 
 /// Deliberately not `Clone`: sharing it among parents must fail closed.
 #[derive(Debug, rullst_orm::Orm)]
-#[orm(table = "shared_badges")]
+#[orm(table = "shared_badges", full_row_save)]
 struct SharedBadge {
     id: i32,
     label: String,
 }
 
 #[derive(Debug, rullst_orm::Orm)]
-#[orm(table = "shared_holders")]
+#[orm(table = "shared_holders", full_row_save)]
 struct SharedHolder {
     id: i32,
     badge_id: i32,

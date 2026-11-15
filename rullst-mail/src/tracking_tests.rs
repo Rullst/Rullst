@@ -232,30 +232,6 @@ fn pixel_and_link_helpers_preserve_non_http_content() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn compatibility_helpers_fail_closed_for_invalid_configuration() {
-    assert!(TrackingEngine::generate_open_token(b"weak", "u@example.com", "c", NOW).is_empty());
-    assert!(
-        TrackingEngine::generate_click_token(b"weak", "u@example.com", "https://rullst.dev", NOW)
-            .is_empty()
-    );
-    assert_eq!(
-        TrackingEngine::inject_open_pixel("<p>safe</p>", "javascript:alert(1)"),
-        "<p>safe</p>"
-    );
-    assert_eq!(
-        TrackingEngine::rewrite_links(
-            r#"<a href="https://rullst.dev">safe</a>"#,
-            "not a URL",
-            SECRET,
-            "u@example.com",
-            NOW
-        ),
-        r#"<a href="https://rullst.dev">safe</a>"#
-    );
-}
-
-#[test]
 fn tracking_errors_have_stable_non_secret_messages() {
     let errors = [
         TrackingError::WeakSecret,

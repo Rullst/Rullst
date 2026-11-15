@@ -194,8 +194,10 @@ pub struct {pascal_name} {{
 "#
         ),
         ProjectOrmBackend::Turso => format!(
-            r#"#[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "{plural_name}", backend = "turso")]
+            r#"// Turso-primary models write every column on `save()`, overwriting
+// concurrent changes to other columns; `full_row_save` records that choice.
+#[derive(Debug, Clone, rullst_orm::Orm)]
+#[orm(table = "{plural_name}", backend = "turso", full_row_save)]
 pub struct {pascal_name} {{
     pub id: i64,
     // Add fields supported by TursoCodec (e.g. pub name: String).
@@ -262,6 +264,8 @@ mod tests {
 
         let turso = render_model(ProjectOrmBackend::Turso, "blog_posts", "BlogPost");
         assert!(!turso.contains("use "), "{turso}");
-        assert!(turso.contains("backend = \"turso\""));
+        assert!(
+            turso.contains("#[orm(table = \"blog_posts\", backend = \"turso\", full_row_save)]")
+        );
     }
 }

@@ -9,7 +9,7 @@
 use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "members")]
+#[orm(table = "members", full_row_save)]
 struct Member {
     id: i32,
     name: String,

@@ -71,17 +71,6 @@ pub struct OtaManager {
 }
 
 impl OtaManager {
-    /// Legacy construction without a trusted key is permanently fail-closed.
-    #[deprecated(
-        since = "12.0.0",
-        note = "use OtaManager::new_with_trusted_key with a provisioned public key"
-    )]
-    pub fn new(_version: impl Into<String>) -> Result<Self, OtaError> {
-        Err(OtaError::LegacyApiUnsupported {
-            replacement: "OtaManager::new_with_trusted_key",
-        })
-    }
-
     /// Creates a verifier from a provisioned Ed25519 public key and the last
     /// durably committed rollback counter.
     pub fn new_with_trusted_key(
@@ -383,28 +372,6 @@ impl OtaManager {
             version: manifest.version,
             rollback_counter: manifest.rollback_counter,
         }
-    }
-
-    /// Legacy payload-only verification cannot bind target, hash, or anti-rollback
-    /// metadata and is therefore permanently fail-closed.
-    #[deprecated(since = "12.0.0", note = "use OtaManager::verify_update")]
-    pub fn verify_signature(&self, _payload: &[u8], _signature: &[u8]) -> Result<(), OtaError> {
-        Err(OtaError::LegacyApiUnsupported {
-            replacement: "OtaManager::verify_update",
-        })
-    }
-
-    /// Legacy unconditional commits are permanently fail-closed.
-    #[deprecated(since = "12.0.0", note = "use OtaManager::commit_verified_update")]
-    pub fn commit_update(
-        &mut self,
-        _new_version: impl Into<String>,
-    ) -> Result<OtaCommit, OtaError> {
-        self.status = OtaStatus::Failed;
-        self.pending_manifest = None;
-        Err(OtaError::LegacyApiUnsupported {
-            replacement: "OtaManager::commit_verified_update",
-        })
     }
 }
 

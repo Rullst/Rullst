@@ -8,7 +8,7 @@ use super::{create_table, sorted};
 use crate::transcript::Scenario;
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "diff_values")]
+#[orm(table = "diff_values", full_row_save)]
 struct Sample {
     id: i32,
     label: String,

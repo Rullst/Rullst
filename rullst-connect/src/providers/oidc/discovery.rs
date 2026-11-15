@@ -120,7 +120,7 @@ impl OidcProvider {
         let client_authentication = token_endpoint_authentication(&metadata);
 
         let http_client = if credential_mode.is_mock() {
-            crate::configuration::provider_http_client(credential_mode, "oidc", None)
+            crate::configuration::provider_http_client(credential_mode, "oidc")
         } else {
             client
         };

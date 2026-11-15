@@ -1,10 +1,12 @@
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
 pub struct User {
     pub id: i32,
     pub name: String,
     pub email: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]

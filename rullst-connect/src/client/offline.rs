@@ -125,23 +125,3 @@ impl HttpClient for OfflineHttpClient {
         Ok(HttpResponse { status: 200, body })
     }
 }
-
-/// Transport used by deprecated infallible constructors after validation fails.
-pub(crate) struct DisabledHttpClient {
-    reason: String,
-}
-
-impl DisabledHttpClient {
-    pub(crate) fn new(reason: impl Into<String>) -> Self {
-        Self {
-            reason: reason.into(),
-        }
-    }
-}
-
-#[async_trait]
-impl HttpClient for DisabledHttpClient {
-    async fn execute(&self, _req: HttpRequest) -> Result<HttpResponse, ConnectError> {
-        Err(ConnectError::Offline(self.reason.clone()))
-    }
-}

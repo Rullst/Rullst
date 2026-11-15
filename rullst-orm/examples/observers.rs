@@ -1,4 +1,4 @@
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -7,6 +7,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 pub struct User {
     pub id: i32,
     pub name: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 // Global atomic counters to track observer callback executions
@@ -99,6 +101,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
     let mut u = User {
         id: 0,
         name: "Observer User".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     u.save().await?;
 

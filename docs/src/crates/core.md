@@ -14,9 +14,9 @@ domain crates opt in only when they actually use them.
 Queue monitoring capabilities are driver-specific. The trait defaults for
 listing all jobs, retrying failures and purging failures return
 `QueueError::Unsupported`; they never fabricate an empty snapshot or successful
-mutation. `purge_failed_jobs` is the canonical facade method. The deprecated
-`purge_completed_jobs` name is retained only as a source-compatibility alias for
-the historical operation, which actually removed failed jobs. The Redis driver
+mutation. `Queue::purge_failed_jobs` removes failed jobs. Its misnamed
+deprecated alias `Queue::purge_completed_jobs`, which also removed failed
+jobs, was removed in 13.0.0-alpha.6. The Redis driver
 implements all three: `list_all_jobs` returns at most 1,000 rows (failed jobs
 and dead letters newest first, then processing, pending and scheduled jobs, read
 without one atomic snapshot; `created_at` is empty because Redis does not record

@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "products")]
+#[orm(table = "products", full_row_save)]
 pub struct Product {
     pub id: i32,
     pub name: String,

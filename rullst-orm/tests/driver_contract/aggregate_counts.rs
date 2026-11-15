@@ -5,7 +5,7 @@ use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_count_orders")]
+#[orm(table = "contract_count_orders", full_row_save)]
 struct ContractCountOrder {
     id: i32,
     status: String,

@@ -342,6 +342,9 @@ impl Scanner<'_, '_> {
         if let Some(rule) = super::removed_adapters::ident_rule(name, self.context.text) {
             self.hit(rule, at);
         }
+        if let Some(rule) = super::alpha6_deprecated::ident_rule(name, self.context.text) {
+            self.hit(rule, at);
+        }
         match name {
             "health_router"
             | "health_router_with_lifecycle"
@@ -368,6 +371,9 @@ impl Scanner<'_, '_> {
             self.hit(rule, at);
         }
         if let Some(rule) = super::removed_adapters::path_rule(segments, self.context.text) {
+            self.hit(rule, at);
+        }
+        if let Some(rule) = super::alpha6_deprecated::path_rule(segments, self.context.text) {
             self.hit(rule, at);
         }
         let facts = self.context.facts;
@@ -457,6 +463,11 @@ impl Scanner<'_, '_> {
 
     fn method(&mut self, name: &str, chain: &[String], args: TokenStream, at: usize) {
         if let Some(rule) = super::alpha6_defaults::method_rule(name, &args, self.context.text) {
+            self.hit(rule, at);
+        }
+        if let Some(rule) =
+            super::alpha6_deprecated::method_rule(name, args.is_empty(), self.context.text)
+        {
             self.hit(rule, at);
         }
         let has = |names: &[&str]| chain.iter().any(|link| names.contains(&link.as_str()));

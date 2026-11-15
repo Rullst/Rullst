@@ -171,21 +171,6 @@ impl AiClient {
         let response = self.provider.structured_output(&text, schema).await?;
         serde_json::from_str(clean_json_markdown(&response)).map_err(AiError::json)
     }
-
-    /// The old method did not accept a schema and therefore could not provide structured output.
-    #[deprecated(
-        since = "12.0.0",
-        note = "use json_prompt for parseable JSON or structured_prompt_with_schema for native schema enforcement"
-    )]
-    pub async fn structured_prompt<T>(&self, _text: &str) -> Result<T, AiError>
-    where
-        T: serde::de::DeserializeOwned,
-    {
-        Err(AiError::UnsupportedCapability {
-            provider: "high-level client",
-            capability: "schema-less structured output",
-        })
-    }
 }
 
 #[cfg(test)]
@@ -399,14 +384,5 @@ mod tests {
             ))
         ));
         assert!(seen_images.lock().expect("test mutex").is_empty());
-    }
-
-    #[tokio::test]
-    #[allow(deprecated)]
-    async fn client_structured_prompt_unsupported() {
-        let seen = Arc::new(Mutex::new(Vec::new()));
-        let client = AiClient::new(SpyProvider { seen });
-        let res: Result<serde_json::Value, _> = client.structured_prompt("test").await;
-        assert!(matches!(res, Err(AiError::UnsupportedCapability { .. })));
     }
 }

@@ -147,7 +147,7 @@ macro_rules! artisan {
 }
 
 // Re-export procedural macros
-pub use rullst_macros::{html, memoize, route};
+pub use rullst_macros::{html, memoize};
 
 // Re-export core structs for public consumption
 #[cfg(not(target_arch = "wasm32"))]

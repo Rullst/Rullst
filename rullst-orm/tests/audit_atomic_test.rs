@@ -6,14 +6,14 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "audit_atomic_accounts", auditable)]
+#[orm(table = "audit_atomic_accounts", auditable, full_row_save)]
 struct AuditedAccount {
     pub id: i32,
     pub name: String,
 }
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "audit_revision_accounts", auditable)]
+#[orm(table = "audit_revision_accounts", auditable, full_row_save)]
 struct RevisionAccount {
     pub id: i32,
     pub name: String,
@@ -22,6 +22,7 @@ struct RevisionAccount {
 }
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
+#[orm(full_row_save)]
 #[orm(
     table = "audit_tenant_revision_accounts",
     auditable,

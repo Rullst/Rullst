@@ -11,7 +11,7 @@ authorization boundary has validated them.
 ## 1. Mark the model and install the table
 
 ```rust,no_run
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "projects", auditable, tenant_column = "account_id")]
@@ -21,6 +21,8 @@ struct Project {
     name: String,
     #[orm(masked)]
     api_token: String,
+    #[sqlx(skip)]
+    snapshot: RowSnapshot,
 }
 
 # async fn install() -> Result<(), rullst_orm::Error> {
@@ -63,7 +65,7 @@ change is visible without its value, and that revision cannot be restored.
 # use rullst_orm::Orm;
 # #[derive(Debug, Clone, rullst_orm::Orm)]
 # #[orm(table = "projects", auditable, tenant_column = "account_id")]
-# struct Project { id: i32, account_id: String, name: String, #[orm(masked)] api_token: String }
+# struct Project { id: i32, account_id: String, name: String, #[orm(masked)] api_token: String, #[sqlx(skip)] snapshot: rullst_orm::RowSnapshot }
 use rullst_orm::audit::{AuditContext, with_audit_context};
 use rullst_orm::with_tenant;
 
@@ -91,7 +93,7 @@ auditable mutation without an active context also fails closed.
 # use rullst_orm::Orm;
 # #[derive(Debug, Clone, rullst_orm::Orm)]
 # #[orm(table = "projects", auditable, tenant_column = "account_id")]
-# struct Project { id: i32, account_id: String, name: String, #[orm(masked)] api_token: String }
+# struct Project { id: i32, account_id: String, name: String, #[orm(masked)] api_token: String, #[sqlx(skip)] snapshot: rullst_orm::RowSnapshot }
 # use rullst_orm::audit::{AuditContext, with_audit_context};
 # use rullst_orm::with_tenant;
 # async fn restore(project: Project, audit_id: i32) -> Result<Project, rullst_orm::Error> {

@@ -12,7 +12,7 @@ use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::postgres::Postgres;
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "pg_users", auditable)]
+#[orm(table = "pg_users", auditable, full_row_save)]
 struct User {
     pub id: i32,
     pub name: String,
@@ -20,7 +20,7 @@ struct User {
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "pg_tenant_posts", tenant_column = "tenant_id")]
+#[orm(table = "pg_tenant_posts", tenant_column = "tenant_id", full_row_save)]
 struct TenantPost {
     pub id: i32,
     pub tenant_id: String,
@@ -28,7 +28,11 @@ struct TenantPost {
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "pg_tenant_comments", tenant_column = "tenant_id")]
+#[orm(
+    table = "pg_tenant_comments",
+    tenant_column = "tenant_id",
+    full_row_save
+)]
 struct TenantComment {
     pub id: i32,
     pub tenant_id: String,
@@ -39,14 +43,14 @@ struct TenantComment {
 /// Generated SQL names the table unquoted, which PostgreSQL folds to lower
 /// case; `Schema::create` must create the folded relation.
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "PgMixedCaseRecords")]
+#[orm(table = "PgMixedCaseRecords", full_row_save)]
 struct MixedCaseRecord {
     pub id: i32,
     pub name: String,
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "pg_flags")]
+#[orm(table = "pg_flags", full_row_save)]
 struct Flag {
     pub id: i32,
     pub active: bool,
@@ -62,7 +66,7 @@ enum AccountStatus {
 /// An ORM model whose column is a named PostgreSQL enum.
 #[cfg(feature = "strict-postgres")]
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "pg_native_enum_accounts")]
+#[orm(table = "pg_native_enum_accounts", full_row_save)]
 struct NativeEnumAccount {
     pub id: i32,
     pub status: AccountStatus,

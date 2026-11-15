@@ -11,7 +11,11 @@ use rullst_orm::{Error, Orm, RullstValue, with_tenant};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "redis_scope_invoices", tenant_column = "organization_id")]
+#[orm(
+    table = "redis_scope_invoices",
+    tenant_column = "organization_id",
+    full_row_save
+)]
 struct ScopedInvoice {
     id: i32,
     organization_id: String,

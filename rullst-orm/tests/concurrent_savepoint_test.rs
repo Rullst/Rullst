@@ -12,7 +12,7 @@ use std::time::Duration;
 use rullst_orm::{Error, Orm};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "savepoint_records")]
+#[orm(table = "savepoint_records", full_row_save)]
 struct SavepointRecord {
     id: i32,
     name: String,

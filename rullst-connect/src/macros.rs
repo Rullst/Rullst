@@ -1,6 +1,6 @@
 /// Defines a standard OAuth2 provider struct and its builder methods.
 ///
-/// This macro generates the boilerplate struct definition, the `new` constructor,
+/// This macro generates the boilerplate struct definition, the `try_new` constructor,
 /// and the `with_scopes` / `with_state` builder methods.
 #[macro_export]
 macro_rules! define_provider {
@@ -33,11 +33,8 @@ macro_rules! define_provider {
                 $crate::configuration::validate_redirect_url(&redirect_url)?;
                 let credential_mode =
                     $crate::configuration::checked_credential_mode(&client_id, &client_secret)?;
-                let http_client = $crate::configuration::provider_http_client(
-                    credential_mode,
-                    stringify!($name),
-                    None,
-                );
+                let http_client =
+                    $crate::configuration::provider_http_client(credential_mode, stringify!($name));
 
                 Ok(Self {
                     client_id,
@@ -51,47 +48,7 @@ macro_rules! define_provider {
                 })
             }
 
-            /// Deprecated infallible constructor retained for source compatibility.
-            /// Invalid URLs produce a disabled provider whose redirect is `about:blank`
-            /// and whose network operations return a typed error.
-            #[cfg_attr(
-                not(test),
-                deprecated(since = "12.0.0", note = "use try_new and handle ConnectError")
-            )]
-            pub fn new(
-                client_id: impl Into<String>,
-                client_secret: secrecy::SecretString,
-                redirect_url: impl Into<String>,
-            ) -> Self {
-                let client_id = client_id.into();
-                let mut redirect_url = redirect_url.into();
-                let validation = $crate::configuration::validate_redirect_url(&redirect_url);
-                let (credential_mode, invalid_reason) = match validation {
-                    Ok(_) => $crate::configuration::legacy_credential_mode(&client_id, &client_secret),
-                    Err(error) => {
-                        redirect_url = "about:blank".to_string();
-                        ($crate::configuration::CredentialMode::Invalid, Some(error.to_string()))
-                    }
-                };
-                let http_client = $crate::configuration::provider_http_client(
-                    credential_mode,
-                    stringify!($name),
-                    invalid_reason,
-                );
-
-                Self {
-                    client_id,
-                    client_secret,
-                    redirect_url,
-                    http_client,
-                    scopes: concat!($($default_scope, " "),*).trim_end().to_string(),
-                    state: None,
-                    pkce_challenge: None,
-                    credential_mode,
-                }
-            }
-
-            /// Returns whether this instance uses live, mock, or disabled credentials.
+            /// Returns whether this instance uses live or mock credentials.
             pub fn credential_mode(&self) -> $crate::configuration::CredentialMode {
                 self.credential_mode
             }
@@ -145,9 +102,6 @@ macro_rules! define_provider {
 macro_rules! impl_standard_redirect_url {
     ($url:expr) => {
         fn redirect_url(&self) -> String {
-            if self.credential_mode.is_invalid() {
-                return "about:blank".to_string();
-            }
             if self.credential_mode.is_mock() {
                 return $crate::configuration::mock_redirect_url(
                     &self.redirect_url,
@@ -210,12 +164,13 @@ mod tests {
     define_provider!(DummyProvider, "default_scope1", "default_scope2");
 
     #[test]
-    fn test_macro_generated_struct_new() {
-        let provider = DummyProvider::new(
+    fn test_macro_generated_struct_try_new() {
+        let provider = DummyProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect_url".to_string(),
-        );
+        )
+        .unwrap();
 
         use secrecy::ExposeSecret;
         assert_eq!(provider.client_id, "client_id");
@@ -272,26 +227,13 @@ mod tests {
     }
 
     #[test]
-    fn test_legacy_constructor_fails_closed() {
-        let provider = DummyProvider::new(
-            "client_id",
-            secrecy::SecretString::from("client_secret".to_string()),
-            "http://example.com/callback",
-        );
-        assert_eq!(
-            provider.credential_mode(),
-            crate::configuration::CredentialMode::Invalid
-        );
-        assert_eq!(provider.redirect_url, "about:blank");
-    }
-
-    #[test]
     fn test_macro_generated_struct_with_scopes() {
-        let provider = DummyProvider::new(
+        let provider = DummyProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect_url".to_string(),
         )
+        .unwrap()
         .with_scopes(&["new_scope1", "new_scope2"]);
 
         assert_eq!(provider.scopes, "new_scope1 new_scope2".to_string());
@@ -299,11 +241,12 @@ mod tests {
 
     #[test]
     fn test_macro_generated_struct_with_state() {
-        let provider = DummyProvider::new(
+        let provider = DummyProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect_url".to_string(),
         )
+        .unwrap()
         .with_state("my_state");
 
         assert_eq!(provider.state, Some("my_state".to_string()));
@@ -311,11 +254,12 @@ mod tests {
 
     #[test]
     fn test_macro_generated_struct_with_pkce() {
-        let provider = DummyProvider::new(
+        let provider = DummyProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect_url".to_string(),
         )
+        .unwrap()
         .with_pkce("my_pkce_challenge");
 
         assert_eq!(
@@ -327,11 +271,12 @@ mod tests {
     #[test]
     fn test_macro_generated_struct_with_http_client() {
         let client = std::sync::Arc::new(crate::client::ReqwestClient::new());
-        let provider = DummyProvider::new(
+        let provider = DummyProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect_url".to_string(),
         )
+        .unwrap()
         .with_http_client(client);
 
         // We can't directly check the client, but we can verify the builder method chain works
@@ -341,11 +286,12 @@ mod tests {
     #[test]
     #[cfg(feature = "retry")]
     fn test_macro_generated_struct_with_retry() {
-        let provider = DummyProvider::new(
+        let provider = DummyProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect_url".to_string(),
         )
+        .unwrap()
         .with_retry(3);
 
         // Verifying builder method works

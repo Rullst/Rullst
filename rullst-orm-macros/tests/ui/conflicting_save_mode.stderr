@@ -1,0 +1,5 @@
+error: `Profile` declares both a `RowSnapshot` field and `#[orm(full_row_save)]`; keep one: the field makes `save()` write only the changed columns, the attribute every column
+  --> tests/ui/conflicting_save_mode.rs:12:5
+   |
+12 |     snapshot: RowSnapshot,
+   |     ^^^^^^^^

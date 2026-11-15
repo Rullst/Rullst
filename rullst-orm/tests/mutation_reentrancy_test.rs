@@ -3,14 +3,18 @@
 use rullst_orm::{Error, Orm, Policy};
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "mutation_callback_records")]
+#[orm(table = "mutation_callback_records", full_row_save)]
 struct PlainRecord {
     id: i32,
     name: String,
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "mutation_callback_records", policy = "QueriesDatabase")]
+#[orm(
+    table = "mutation_callback_records",
+    policy = "QueriesDatabase",
+    full_row_save
+)]
 struct PolicyRecord {
     id: i32,
     name: String,
@@ -30,7 +34,11 @@ impl Policy<PolicyRecord> for QueriesDatabase {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "mutation_callback_records", after_save = "query_database")]
+#[orm(
+    table = "mutation_callback_records",
+    after_save = "query_database",
+    full_row_save
+)]
 struct HookRecord {
     id: i32,
     name: String,
@@ -46,7 +54,11 @@ impl HookRecord {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "mutation_callback_records", after_save = "reject_marked_name")]
+#[orm(
+    table = "mutation_callback_records",
+    after_save = "reject_marked_name",
+    full_row_save
+)]
 struct RejectingHookRecord {
     id: i32,
     name: String,

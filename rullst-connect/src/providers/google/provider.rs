@@ -33,8 +33,7 @@ impl GoogleProvider {
         crate::configuration::validate_redirect_url(&redirect_url)?;
         let credential_mode =
             crate::configuration::checked_credential_mode(&client_id, &client_secret)?;
-        let http_client =
-            crate::configuration::provider_http_client(credential_mode, "google", None);
+        let http_client = crate::configuration::provider_http_client(credential_mode, "google");
 
         Ok(Self {
             client_id,
@@ -48,46 +47,6 @@ impl GoogleProvider {
             jwks_cache: crate::provider::JwksCache::default(),
             authorized_presenters: Vec::new(),
         })
-    }
-
-    /// Deprecated infallible constructor. Invalid configuration is disabled.
-    #[cfg_attr(
-        not(test),
-        deprecated(since = "12.0.0", note = "use try_new and handle ConnectError")
-    )]
-    pub fn new(
-        client_id: impl Into<String>,
-        client_secret: secrecy::SecretString,
-        redirect_url: impl Into<String>,
-    ) -> Self {
-        let client_id = client_id.into();
-        let mut redirect_url = redirect_url.into();
-        let (credential_mode, invalid_reason) =
-            match crate::configuration::validate_redirect_url(&redirect_url) {
-                Ok(_) => crate::configuration::legacy_credential_mode(&client_id, &client_secret),
-                Err(error) => {
-                    redirect_url = "about:blank".to_string();
-                    (
-                        crate::configuration::CredentialMode::Invalid,
-                        Some(error.to_string()),
-                    )
-                }
-            };
-        let http_client =
-            crate::configuration::provider_http_client(credential_mode, "google", invalid_reason);
-
-        Self {
-            client_id,
-            client_secret,
-            redirect_url,
-            http_client,
-            scopes: "openid profile email".to_string(),
-            state: None,
-            pkce_challenge: None,
-            credential_mode,
-            jwks_cache: crate::provider::JwksCache::default(),
-            authorized_presenters: Vec::new(),
-        }
     }
 
     /// Returns the selected credential mode.

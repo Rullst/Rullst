@@ -9,9 +9,6 @@ use async_trait::async_trait;
 #[async_trait]
 impl Provider for AppleProvider {
     fn redirect_url(&self) -> String {
-        if self.credential_mode.is_invalid() {
-            return "about:blank".to_string();
-        }
         if self.credential_mode.is_mock() {
             return crate::configuration::mock_redirect_url(
                 &self.redirect_url,
