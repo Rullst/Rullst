@@ -57,7 +57,8 @@ received a test or is listed under
   `redis_streams/` (excluded from the gate) was measured with targeted runs
   and the `messaging-redis` contract run: 202 mutants, of which only the
   accepted `Remote::decode` arm survives both.
-- **`rullst-connect`** (13.0.0-alpha.6, PR_LINK): targeted runs of the 61
+- **`rullst-connect`** (13.0.0-alpha.6,
+  [PR #718](https://github.com/Rullst/Rullst/pull/718)): targeted runs of the 61
   files outside the PostgreSQL and MySQL login-challenge stores (11 have no
   mutants) gave 1,163 mutants: 772 caught, 262 unviable, no timeout and 129
   missed; the `connect-sql` contract run caught the 23 viable mutants of those
