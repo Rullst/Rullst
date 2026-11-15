@@ -191,6 +191,9 @@ jobs:
       - name: Verify all fuzz dependency locks before expensive checks
         run: bash .github/check-fuzz-locks.sh
 
+      - name: Check the rustls provider of every TLS feature and TLS-free SQLite starters
+        run: python3 .github/check-tls-provider.py
+
       - name: Run Clippy (Workspace)
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 

@@ -459,6 +459,32 @@ async fn test_studio_api_json_endpoints() {
     for ep in endpoints {
         let req = Request::builder().uri(ep).body(Body::empty()).unwrap();
         let res = app.clone().oneshot(req).await.unwrap();
-        assert_eq!(res.status(), StatusCode::OK);
+        // The revenue JSON needs the `capital` feature (on by default).
+        let expected = if ep == "/api/revenue" && cfg!(not(feature = "capital")) {
+            StatusCode::NOT_FOUND
+        } else {
+            StatusCode::OK
+        };
+        assert_eq!(res.status(), expected, "{ep}");
     }
+}
+
+/// Without `capital`, Studio builds no `rullst-capital` and its revenue page
+/// says how to enable it.
+#[cfg(not(feature = "capital"))]
+#[tokio::test]
+async fn the_capital_page_explains_how_to_enable_the_revenue_dashboard() {
+    let app = local_studio(Studio::new());
+    let req = Request::builder()
+        .uri("/studio/capital")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(res.into_body(), 1 << 20)
+        .await
+        .unwrap();
+    let page = String::from_utf8(body.to_vec()).unwrap();
+    assert!(page.contains("Rullst Capital is not enabled"), "{page}");
+    assert!(page.contains("<code>capital</code> feature"), "{page}");
 }

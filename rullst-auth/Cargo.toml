@@ -22,7 +22,10 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
 default = []
-oauth = ["dep:rullst-connect"]
+# `rullst-core/tls`: the OAuth and PostgreSQL features make TLS connections
+# (OAuth over HTTPS, PostgreSQL), so Core installs aws-lc-rs as the rustls
+# process default.
+oauth = ["dep:rullst-connect", "rullst-core/tls"]
 # WebAuthn ES256 passkeys (`auth::passkey`); the only feature that compiles
 # aws-lc-rs into this crate. `jwt` reaches aws-lc-rs through jsonwebtoken, so
 # `sqlite` (JWT revocation and the passkey device registry) includes it.
@@ -30,8 +33,8 @@ passkeys = ["dep:aws-lc-rs"]
 jwt = ["dep:hex", "dep:jsonwebtoken"]
 sqlite = ["jwt", "passkeys", "dep:sqlx", "sqlx/sqlite"]
 recovery-sqlite = ["dep:sqlx", "sqlx/any", "sqlx/sqlite"]
-passkey-postgres = ["passkeys", "dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs"]
-recovery-postgres = ["dep:sqlx", "sqlx/any", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs"]
+passkey-postgres = ["passkeys", "dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "rullst-core/tls"]
+recovery-postgres = ["dep:sqlx", "sqlx/any", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "rullst-core/tls"]
 email-login-sqlite = ["recovery-sqlite"]
 email-login-postgres = ["recovery-postgres"]
 api-tokens-sqlite = ["recovery-sqlite"]
@@ -39,8 +42,8 @@ api-tokens-postgres = ["recovery-postgres"]
 # Server-side registry of `rullst_session` logins (`session_registry`) over
 # the application's own SQLx pool, one feature per database.
 session-registry-sqlite = ["dep:sqlx", "sqlx/sqlite"]
-session-registry-postgres = ["dep:sqlx", "sqlx/postgres"]
-session-registry-mysql = ["dep:sqlx", "sqlx/mysql"]
+session-registry-postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "rullst-core/tls"]
+session-registry-mysql = ["dep:sqlx", "sqlx/mysql", "sqlx/tls-rustls-aws-lc-rs", "rullst-core/tls"]
 
 [dependencies]
 rullst-core = { workspace = true }

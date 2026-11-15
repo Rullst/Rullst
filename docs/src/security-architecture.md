@@ -257,12 +257,20 @@ How each client chooses its provider:
 
 Rullst installs aws-lc-rs as the rustls process default when none is
 installed: at `Server` start-up, before telemetry and the database pool, when
-Core's `orm`, `storage-s3` or `telemetry` feature is enabled (the Core features
-that build rustls clients); when the OTLP exporter builds its HTTP client; before
-a Redis TLS connection; and in the standalone `rullst-studio` binary. It never
-replaces an installed provider, so an application chooses its own by installing
-it first, at the top of `main`, before `Server::run` and before it builds any
-client:
+Core's `tls` feature is enabled; when the OTLP exporter builds its HTTP client;
+before a Redis TLS connection; and in the standalone `rullst-studio` binary.
+Since 13.0.0-alpha.6 every feature that makes TLS connections enables Core's
+`tls`: Core's `strict-postgres`, `strict-mysql`, `drivers-all`, `storage-s3`
+and `telemetry`; the `rullst-ai`, `rullst-capital` and `rullst-mail` crates;
+the OAuth and PostgreSQL features of `rullst-auth`; and the facade's other
+HTTPS, Redis and PostgreSQL features. CI checks every facade feature
+(`.github/check-tls-provider.py`). A SQLite-only or database-free selection
+compiles no TLS stack at all (no rustls, aws-lc-rs or webpki roots), so there
+is nothing to install; an application whose own code makes rustls connections
+and relies on that process default enables the facade's `tls` feature. The
+installation never replaces an installed provider, so an application chooses
+its own by installing it first, at the top of `main`, before `Server::run` and
+before it builds any client:
 
 ```rust,ignore
 #[rullst::runtime::main]

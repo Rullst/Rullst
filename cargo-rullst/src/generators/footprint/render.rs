@@ -125,6 +125,11 @@ fn measured_rows(report: &Report) -> Vec<Row> {
         metric("Dependencies", &measured.dependency_count, |count| {
             count.to_string()
         }),
+        metric(
+            "Compiled deps",
+            &measured.compiled_dependency_count,
+            |count| count.to_string(),
+        ),
     ]
 }
 

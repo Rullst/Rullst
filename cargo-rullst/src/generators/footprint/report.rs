@@ -114,7 +114,11 @@ pub(crate) struct Measured {
     pub binary_size_bytes: Metric<u64>,
     pub image_size_bytes: Metric<u64>,
     pub idle_rss_bytes: Metric<u64>,
+    /// Packages with a `Cargo.lock` source.
     pub dependency_count: Metric<u64>,
+    /// The packages of `dependency_count` that Cargo compiles (v13,
+    /// 13.0.0-alpha.6).
+    pub compiled_dependency_count: Metric<u64>,
 }
 
 /// The optional bounded load and the app's CPU time during it.

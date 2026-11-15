@@ -371,7 +371,8 @@ fn primary_relational_choice_selects_one_strict_profile() {
                 );
             }
         }
-        // SQLx TLS uses aws-lc-rs, the framework's rustls provider.
+        // PostgreSQL and MySQL TLS uses aws-lc-rs, the framework's rustls
+        // provider; SQLite needs no TLS, so a SQLite project builds none.
         let sqlx = parsed["dependencies"]["sqlx"]["features"]
             .as_array()
             .expect("generated SQLx feature array")
@@ -379,7 +380,12 @@ fn primary_relational_choice_selects_one_strict_profile() {
             .filter_map(toml::Value::as_str)
             .filter(|feature| feature.starts_with("tls-"))
             .collect::<Vec<_>>();
-        assert_eq!(sqlx, ["tls-rustls-aws-lc-rs"], "{provider}");
+        let tls: &[&str] = if provider == "Sqlite" {
+            &[]
+        } else {
+            &["tls-rustls-aws-lc-rs"]
+        };
+        assert_eq!(sqlx, tls, "{provider}");
         assert_eq!(
             parsed["dependencies"]["rullst"]["default-features"].as_bool(),
             Some(false),

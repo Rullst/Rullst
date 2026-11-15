@@ -200,7 +200,10 @@ Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis` (or `redis` for
 both), `scheduler-tz`, `storage-s3`, `storage-multipart` or `telemetry` only
 when that integration is required. `orm` adds no SQLx driver:
 pair it with `drivers-all` or one `strict-*` backend (`queue-sqlite` adds only
-SQLite). Since 13.0.0-alpha.3 the primary `rullst` crate has no default
+SQLite). `tls` (rustls with aws-lc-rs, installed as the rustls process default
+at `Server` start-up) comes with `strict-postgres`, `strict-mysql`,
+`drivers-all`, `storage-s3` and `telemetry`; since 13.0.0-alpha.6 a
+SQLite-only build has no TLS stack. Since 13.0.0-alpha.3 the primary `rullst` crate has no default
 feature either: an application that uses the ORM or the SQLite queue enables
 `orm` with `drivers-all` or a `strict-*` backend, and `queue-sqlite`, itself.
 

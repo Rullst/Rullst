@@ -81,7 +81,9 @@ pub mod migration_manager;
 pub mod radar_visualizer;
 #[cfg(feature = "remote")]
 pub mod remote;
-#[cfg(feature = "local")]
+/// The revenue dashboard (feature `capital`, on by default; the `rullst`
+/// facade enables it with its own `capital` feature).
+#[cfg(feature = "capital")]
 #[cfg_attr(mutants, mutants::skip)]
 pub mod revenue_dashboard;
 #[cfg(feature = "local")]
