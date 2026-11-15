@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794749514526,
+  "lastUpdate": 1794751665304,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -17236,6 +17236,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5e6b65c53be508c6f3dd24086a776b2862a8c9c9",
+          "message": "Merge pull request #701 from Rullst/refactor/v13-alpha6-core-deps\n\nrefactor(core)!: drop the cron and ring dependencies of rullst-core",
+          "timestamp": "2026-11-15T10:49:42-03:00",
+          "tree_id": "c1c0081908cdadfe63776038cbe6cca1c9e64283",
+          "url": "https://github.com/Rullst/Rullst/commit/5e6b65c53be508c6f3dd24086a776b2862a8c9c9"
+        },
+        "date": 1794751665005,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
