@@ -1,5 +1,19 @@
 document.documentElement.classList.add("js");
 
+// Interface text: English unless the page translates it with data-ui-*
+// attributes on <body> (docs/home_template.pt-BR.html does).
+const ui = document.body.dataset;
+const text = {
+  copied: ui.uiCopied ?? "Command copied.",
+  copiedButton: ui.uiCopiedButton ?? "Copied",
+  copyFailed: ui.uiCopyFailed ?? "Clipboard unavailable. Select and copy the displayed command.",
+  copyFailedButton: ui.uiCopyFailedButton ?? "Select text",
+  replayIntro: ui.uiReplayIntro ?? "Replay intro",
+  stopIntro: ui.uiStopIntro ?? "Stop intro",
+  sayHello: ui.uiSayHello ?? "Say hello ↗",
+  stopWaving: ui.uiStopWaving ?? "Stop waving",
+};
+
 const toggle = document.querySelector("[data-nav-toggle]");
 const navigation = document.querySelector("[data-navigation]");
 
@@ -32,11 +46,11 @@ document.querySelectorAll("[data-copy-command]").forEach((button) => {
     let message;
     try {
       await navigator.clipboard.writeText(command.textContent.trim());
-      message = "Command copied.";
-      button.textContent = "Copied";
+      message = text.copied;
+      button.textContent = text.copiedButton;
     } catch (_error) {
-      message = "Clipboard unavailable. Select and copy the displayed command.";
-      button.textContent = "Select text";
+      message = text.copyFailed;
+      button.textContent = text.copyFailedButton;
     }
     if (copyStatus) copyStatus.textContent = message;
   });
@@ -55,7 +69,7 @@ const stopIntro = () => {
   clearTimeout(introTimer);
   document.documentElement.classList.remove("intro-playing");
   if (introButton) {
-    introButton.textContent = "Replay intro";
+    introButton.textContent = text.replayIntro;
     introButton.setAttribute("aria-pressed", "false");
   }
 };
@@ -63,7 +77,7 @@ const playIntro = () => {
   if (motionPreference.matches || document.hidden || !introButton) return;
   stopIntro();
   document.documentElement.classList.add("intro-playing");
-  introButton.textContent = "Stop intro";
+  introButton.textContent = text.stopIntro;
   introButton.setAttribute("aria-pressed", "true");
   introTimer = setTimeout(stopIntro, 4800);
 };
@@ -83,6 +97,56 @@ if (introButton) {
   });
   window.addEventListener("pagehide", stopIntro);
   playIntro();
+}
+
+// Greet once when the Academy comes into view. Further waves are requested
+// explicitly; motion stays bounded and never overrides the OS preference.
+const academy = document.querySelector("#academy");
+const academyWaveButton = document.querySelector("[data-academy-wave]");
+if (academy && academyWaveButton) {
+  let academyWaveTimer;
+  const stopAcademyWave = () => {
+    clearTimeout(academyWaveTimer);
+    academy.classList.remove("academy-is-waving");
+    academyWaveButton.textContent = text.sayHello;
+    academyWaveButton.setAttribute("aria-pressed", "false");
+  };
+  const playAcademyWave = () => {
+    if (motionPreference.matches || document.hidden || academy.classList.contains("academy-is-waving")) return;
+    academy.classList.add("academy-is-waving");
+    academyWaveButton.textContent = text.stopWaving;
+    academyWaveButton.setAttribute("aria-pressed", "true");
+    academyWaveTimer = setTimeout(stopAcademyWave, 4400);
+  };
+  academyWaveButton.hidden = motionPreference.matches;
+  academyWaveButton.addEventListener("click", () => {
+    if (academy.classList.contains("academy-is-waving")) stopAcademyWave();
+    else playAcademyWave();
+  });
+  motionPreference.addEventListener("change", () => {
+    academyWaveButton.hidden = motionPreference.matches;
+    stopAcademyWave();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopAcademyWave();
+  });
+  window.addEventListener("pagehide", stopAcademyWave);
+  if ("IntersectionObserver" in window) {
+    let academyGreeted = false;
+    const academyObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) {
+          stopAcademyWave();
+        } else if (!academyGreeted) {
+          academyGreeted = true;
+          playAcademyWave();
+        }
+      });
+    }, { threshold: 0.25 });
+    // Observe the mascot itself so the greeting is still visible on tall
+    // mobile layouts, where the copy reaches the viewport first.
+    academyObserver.observe(academy.querySelector(".academy-companion"));
+  }
 }
 
 if (reducedMotion || !("IntersectionObserver" in window)) {

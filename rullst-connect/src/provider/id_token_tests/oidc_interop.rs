@@ -298,7 +298,7 @@ async fn kidless_id_tokens_still_need_a_valid_signature_and_asymmetric_alg() {
     let symmetric = jsonwebtoken::encode(
         &jsonwebtoken::Header::new(jsonwebtoken::Algorithm::HS256),
         &claims("oidc"),
-        &jsonwebtoken::EncodingKey::from_secret(b"guessable-shared-secret"),
+        &jsonwebtoken::EncodingKey::from_secret(b"guessable-shared-secret").unwrap(),
     )
     .unwrap();
     let issuer = client(Some(symmetric), json!({}), jwks);

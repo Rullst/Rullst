@@ -177,7 +177,9 @@ that list can choose the client address. Background:
 
 **Health checks.** Starters created by `cargo rullst new` answer `GET /health`
 (the process is alive) and `GET /ready` (the application is ready for
-traffic). Use them for monitoring:
+traffic). Anyone can request them, so their JSON names no Rullst version;
+`health_router_with_version` adds your application's version as
+`app_version`. Use them for monitoring:
 
 ```bash
 curl -fsS https://your-domain.example/health

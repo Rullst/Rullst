@@ -2,6 +2,7 @@ use serde::Deserialize;
 use std::{fmt, str::FromStr};
 
 mod access_log;
+mod csrf_static;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod project_setting;
 mod security_validation;
@@ -234,6 +235,25 @@ pub struct SecurityConfig {
     /// webhook middleware authenticates them. Wildcards and route parameters are rejected.
     #[serde(default)]
     pub csrf_signed_webhook_paths: Vec<String>,
+    /// Path prefixes under which the application serves static files. A
+    /// `GET` or `HEAD` below one of them never mints a CSRF token or sets the
+    /// `rullst_csrf` cookie (it still receives the `CsrfToken` of a
+    /// valid cookie the browser sends); every other page does, whatever
+    /// its extension. Each entry starts and ends with `/`. Default
+    /// `["/static/", "/.well-known/"]`; a list in `Rullst.toml` replaces it,
+    /// and [`SecurityConfig::with_csrf_static_prefix`] adds one. State-changing
+    /// requests need the token on every path. Added in 13.0.0-alpha.6, which
+    /// replaced the file-extension rule (`.json`, `.js`, `.png`, …).
+    #[serde(default = "csrf_static::default_prefixes")]
+    pub csrf_static_prefixes: Vec<String>,
+    /// Exact paths of static files served outside `csrf_static_prefixes`,
+    /// treated the same way. Default `["/favicon.ico", "/robots.txt",
+    /// "/sitemap.xml", "/manifest.webmanifest", "/sw.js"]`; a list in
+    /// `Rullst.toml` replaces it, and [`SecurityConfig::with_csrf_static_path`]
+    /// adds one. Wildcards and route parameters are rejected, as in
+    /// `csrf_signed_webhook_paths`. Added in 13.0.0-alpha.6.
+    #[serde(default = "csrf_static::default_paths")]
+    pub csrf_static_paths: Vec<String>,
     /// Exact request paths whose bodies the WAF neither reads nor inspects,
     /// for routes that must accept free text its signatures refuse, such as
     /// code samples. Each entry is a deliberate risk acceptance for that
@@ -332,6 +352,8 @@ impl Default for SecurityConfig {
             user_agent_blocklist: default_user_agent_blocklist(),
             enable_pii_masking: false,
             csrf_signed_webhook_paths: Vec::new(),
+            csrf_static_prefixes: csrf_static::default_prefixes(),
+            csrf_static_paths: csrf_static::default_paths(),
             waf_body_exempt_paths: Vec::new(),
             trusted_proxies: Vec::new(),
             trusted_proxy_header: default_trusted_proxy_header(),

@@ -534,7 +534,7 @@ k/Tz7c8S43tqF0VK/mNC462881k2cryVtuV5FkH1XoPACJzJUQ5igUZV\n\
 #[tokio::test]
 async fn test_apple_id_token_invalid_algorithm() {
     let secret = b"super_secret_key_123456789012345";
-    let priv_key = jsonwebtoken::EncodingKey::from_secret(secret);
+    let priv_key = jsonwebtoken::EncodingKey::from_secret(secret).unwrap();
     let mut header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::HS256);
     header.kid = Some("valid_kid".to_string());
 

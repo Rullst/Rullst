@@ -16,6 +16,11 @@ admission and two hours of packaging:
 - every package name is registered and owned by the reviewed owner
   (release.yml refuses first publications);
 - no package already has that version on crates.io.
+
+When the tag already exists, it checks crates.io for that version. If no
+package has it, the release published nothing, and the refusal prints the
+commands that delete and recreate the tag, which MAINTAINING.md section 7.5
+allows only with the maintainer's approval. It never deletes a tag itself.
 """
 
 from __future__ import annotations
@@ -35,6 +40,7 @@ from release_line import policy_line, tagged_version
 
 HERE = Path(__file__).resolve().parent
 RECOVERY = "docs/src/release-recovery.md#v13-package-registration"
+TAG_RULE = "MAINTAINING.md §7.5"
 
 Fetch = Callable[[str], tuple[int, Any]]
 
@@ -106,9 +112,78 @@ def git_failures(root: Path, tag: str, branch: str) -> list[str]:
         failures.append(
             f"HEAD {head[:12]} is not the head of origin/{branch}; the admission and tag must use it"
         )
-    if git(root, "ls-remote", "--tags", "origin", f"refs/tags/{tag}"):
-        failures.append(f"tag {tag} already exists on origin")
     return failures
+
+
+def remote_tag_commit(root: Path, tag: str) -> str | None:
+    """The commit `tag` names on origin (peeled when annotated), or None."""
+    listing = git(root, "ls-remote", "--tags", "origin", f"refs/tags/{tag}", f"refs/tags/{tag}^{{}}")
+    refs = {}
+    for line in listing.splitlines():
+        sha, _, name = line.partition("\t")
+        refs[name] = sha
+    return refs.get(f"refs/tags/{tag}^{{}}") or refs.get(f"refs/tags/{tag}")
+
+
+def publication_status(
+    packages: list[str], version: str, fetch: Fetch, pause: float = 0.0
+) -> tuple[list[str], list[str]]:
+    """The packages that have `version` on crates.io, and the lookups that failed."""
+    published: list[str] = []
+    unknown: list[str] = []
+    for name in packages:
+        status, _ = fetch(f"https://crates.io/api/v1/crates/{name}/{version}")
+        if status == 200:
+            published.append(name)
+        elif status != 404:
+            unknown.append(f"{name} (HTTP {status})")
+        if pause:
+            time.sleep(pause)
+    return published, unknown
+
+
+def existing_tag_failures(
+    root: Path, tag: str, branch: str, version: str, packages: list[str], fetch: Fetch,
+    pause: float = 0.0,
+) -> list[str]:
+    """Refuse an existing tag and say what MAINTAINING.md §7.5 allows for it.
+
+    Only reads: deleting a tag needs the maintainer's approval every time.
+    """
+    commit = remote_tag_commit(root, tag)
+    if commit is None:
+        return []
+    published, unknown = publication_status(packages, version, fetch, pause)
+    if published:
+        return [
+            f"tag {tag} already exists on origin and {len(published)} of {len(packages)} packages "
+            f"have {version} on crates.io ({', '.join(published)}). A published version is never "
+            f"reused ({TAG_RULE}): release the next version, or resume an interrupted publication "
+            "from the same tag (docs/src/release-recovery.md)."
+        ]
+    if unknown:
+        return [
+            f"tag {tag} already exists on origin, and crates.io could not confirm that {version} is "
+            f"unpublished: {', '.join(unknown)}. Rerun the preflight before deciding anything about the tag."
+        ]
+    return ["\n".join((
+        f"tag {tag} already exists on origin (commit {commit[:12]}), and no release package has "
+        f"{version} on crates.io: that release published nothing.",
+        f"  {TAG_RULE}: such a tag may be deleted and recreated only with the maintainer's "
+        "explicit approval. This preflight never deletes it.",
+        f"  First check that no release.yml run for {tag} is still running or waiting for the "
+        "crates-io approval:",
+        f"    gh run list --workflow release.yml --branch {tag}",
+        "  With the maintainer's approval, delete the tag on origin and any local copy:",
+        f"    git push origin --delete refs/tags/{tag}",
+        f"    git tag --delete {tag}",
+        f"  Then rerun this preflight on the corrected head of origin/{branch}, admit that commit",
+        "  and tag it again (RELEASE_GUIDE.md, Phase 3):",
+        f"    git switch {branch}",
+        f"    git pull --ff-only origin {branch}",
+        f"    git tag {tag}",
+        f"    git push origin {tag}",
+    ))]
 
 
 def notes_failures(root: Path, version: str) -> list[str]:
@@ -149,6 +224,8 @@ def main() -> int:
     failures = notes_failures(root, version) + fragment_failures(root)
     try:
         failures += git_failures(root, args.tag, branch)
+        failures += existing_tag_failures(root, args.tag, branch, version, packages, fetch_json,
+                                          pause=0.2)
     except subprocess.CalledProcessError as error:
         failures.append(f"git failed: {(error.stderr or '').strip()}")
     failures += registry_failures(packages, version, owner, fetch_json, pause=0.2)
