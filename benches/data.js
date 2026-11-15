@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794784630205,
+  "lastUpdate": 1794786815760,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -34857,6 +34857,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1350,
             "range": "± 17",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "654944c445e464c2b55d4720e6dd70105a07e44d",
+          "message": "Merge pull request #717 from Rullst/fix/v13-alpha6-scalar-docs-csp\n\nfix(core): serve the Scalar docs page with its own nonce CSP",
+          "timestamp": "2026-11-15T20:48:47-03:00",
+          "tree_id": "b5f32c7fa8f2faaa71374b796e3899da67dd210d",
+          "url": "https://github.com/Rullst/Rullst/commit/654944c445e464c2b55d4720e6dd70105a07e44d"
+        },
+        "date": 1794786811694,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 657,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 909,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 414,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1635,
+            "range": "± 157",
             "unit": "ns/iter"
           }
         ]
