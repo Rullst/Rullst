@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794774582015,
+  "lastUpdate": 1794775957117,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -14075,6 +14075,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 272,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bdce72abd5df339e3c94cd971d4a277babe62bb8",
+          "message": "Merge pull request #715 from Rullst/docs/site-benchmark-ratios\n\ndocs(site): show benchmark ratios to Axum, the run note and its link",
+          "timestamp": "2026-11-15T17:36:39-03:00",
+          "tree_id": "a3456dc8175305c896adb3598eec533edd5965ac",
+          "url": "https://github.com/Rullst/Rullst/commit/bdce72abd5df339e3c94cd971d4a277babe62bb8"
+        },
+        "date": 1794775956577,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 330,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
