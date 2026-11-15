@@ -302,4 +302,3 @@ fn only_the_first_matching_branch_of_an_if_chain_renders() {
         "small"
     );
 }
-

@@ -410,13 +410,18 @@ fn capacity_hints_add_tags_attributes_children_and_text() {
     assert_eq!(element.static_size(), 39);
     assert_eq!(div.static_size(), 39);
     let tokens = div.to_tokens().to_string();
-    assert!(tokens.contains("String :: with_capacity (39usize)"), "{tokens}");
+    assert!(
+        tokens.contains("String :: with_capacity (39usize)"),
+        "{tokens}"
+    );
 
     // A fragment reserves the sum of its nodes.
     let document = parse_ok(r#""abc" {x} <p></p>"#);
     let sizes: Vec<usize> = document.nodes.iter().map(HtmlNode::static_size).collect();
     assert_eq!(sizes, [3, 0, 7]);
     let tokens = document.to_tokens().to_string();
-    assert!(tokens.contains("String :: with_capacity (10usize)"), "{tokens}");
+    assert!(
+        tokens.contains("String :: with_capacity (10usize)"),
+        "{tokens}"
+    );
 }
-
