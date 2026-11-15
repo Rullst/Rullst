@@ -63,12 +63,22 @@ and `to_json()` but leaves it out of the generated `INSERT` (so the column
 `DEFAULT` applies) and of every `UPDATE` of `save()`; `update_partial()`
 gets no setter for it and `#[derive(Nexus)]` shows it read-only. It is rejected
 on `id`, the tenant column, relations, skipped and encrypted fields, and by
-Turso-primary models, whose codec writes every field. One `#[sqlx(skip)]`
-field of type `RowSnapshot` (v13) turns on dirty tracking: rows read through
-the ORM remember a fingerprint of each column, and `save()` updates only the
-columns that changed (`dirty_columns()`, `is_dirty()`, `mark_all_dirty()`).
-A `RowSnapshot` field without `#[sqlx(skip)]`, or a second one, fails
-compilation. `chrono`
+Turso-primary models, whose codec writes every field.
+
+Every model chooses what `save()` writes to a stored row (since
+13.0.0-alpha.6); a model with neither choice, or with both, fails compilation
+with a message that shows the two one-line fixes:
+
+| Choice | `save()` of a loaded record |
+| --- | --- |
+| `#[sqlx(skip)] pub snapshot: RowSnapshot` (a field) | updates only the columns that changed (`dirty_columns()`, `is_dirty()`, `mark_all_dirty()`), so concurrent edits of other columns persist |
+| `#[orm(full_row_save)]` (on the struct) | updates every column, so it overwrites a change that another request made to another column since this record was read |
+
+With the field, rows read through the ORM remember a fingerprint of each
+column. A `RowSnapshot` field without `#[sqlx(skip)]`, or a second one, fails
+compilation. Turso-primary models always write every column: they declare
+`#[orm(full_row_save)]`, and a `RowSnapshot` field on them fails compilation.
+`chrono`
 date/time fields (`DateTime<Utc>`, `NaiveDateTime`, `NaiveDate`, `NaiveTime`)
 bind through SQLx's codecs, which exist only for the strict driver features.
 A `#[sqlx(json)]` field is decoded through SQLx `Json`

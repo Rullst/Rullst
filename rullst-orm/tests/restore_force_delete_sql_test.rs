@@ -5,7 +5,7 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "archived_notes", tenant_column = "tenant_id")]
+#[orm(table = "archived_notes", tenant_column = "tenant_id", full_row_save)]
 struct ArchivedNote {
     id: i32,
     tenant_id: String,
@@ -13,6 +13,7 @@ struct ArchivedNote {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
+#[orm(full_row_save)]
 #[orm(
     table = "flagged_notes",
     soft_delete(column = "archived", value = "0", delval = "1")
@@ -23,7 +24,7 @@ struct FlaggedNote {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "plain_notes")]
+#[orm(table = "plain_notes", full_row_save)]
 struct PlainNote {
     id: i32,
 }

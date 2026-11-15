@@ -393,7 +393,11 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
     application-owned mail transport examples for more providers
     ([#638](https://github.com/Rullst/Rullst/issues/638)) and a Portuguese
     first-hour guide ([#639](https://github.com/Rullst/Rullst/issues/639)).
-  - **Fixes:** the Turso Hrana client follows a same-origin `base_url` that a
+  - **Fixes:** every `#[derive(Orm)]` model declares what `save()` writes
+    (the changed columns, with a `RowSnapshot` field, or every column, with
+    `#[orm(full_row_save)]`), so a full-row save that loses a concurrent change
+    to another column is never the silent default; the Turso Hrana client
+    follows a same-origin `base_url` that a
     multi-instance server returns, so an insert whose text primary key a
     database `DEFAULT` fills no longer fails there; `cargo rullst upgrade`
     lists every location of a rule; generated CLI profile builds no longer

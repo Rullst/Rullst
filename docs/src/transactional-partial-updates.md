@@ -21,7 +21,7 @@ records a compiled dependency profile (`rullst` with `strict-sqlite`, plus
 # #[cfg(feature = "orm")]
 # mod example {
 use rullst::orm as rullst_orm;
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, Orm)]
 #[orm(table = "lessons", tenant_column = "tenant_id", auditable)]
@@ -30,6 +30,8 @@ pub struct Lesson {
     pub tenant_id: String,
     pub title: String,
     pub note: Option<String>,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 // The host first authenticates the editor and authorizes this lesson.

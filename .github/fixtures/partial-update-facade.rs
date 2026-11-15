@@ -2,7 +2,7 @@ use rullst::orm as rullst_orm;
 use rullst_orm::{Error, Orm};
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "facade_lessons", tenant_column = "tenant_id", auditable)]
+#[orm(table = "facade_lessons", tenant_column = "tenant_id", auditable, full_row_save)]
 struct Lesson {
     id: i32,
     tenant_id: String,

@@ -6,6 +6,8 @@ mod field_types;
 mod relation_checks;
 #[path = "parser/row_fields.rs"]
 mod row_fields;
+#[path = "parser/save_mode.rs"]
+mod save_mode;
 
 use attributes::{FieldAttributes, ModelAttributes};
 #[cfg(test)]
@@ -13,6 +15,7 @@ use attributes::{split_top_level, strip_outer_call, validate_relation_attribute}
 use field_types::{encrypted_field_kind, is_row_snapshot_type};
 pub(crate) use field_types::{is_json_document_type, is_secret_string_type};
 pub use row_fields::{RowField, RowRead};
+pub use save_mode::check_save_mode;
 use syn::{Data, DeriveInput, Fields};
 
 pub struct ParsedModel {
@@ -65,6 +68,9 @@ pub struct ParsedModel {
     /// The `#[sqlx(skip)]` field of type `RowSnapshot` that opts the model
     /// into dirty tracking. It is also listed in `skipped_fields`.
     pub snapshot_field: Option<syn::Ident>,
+    /// `#[orm(full_row_save)]`: the model chose full-row updates instead of a
+    /// `RowSnapshot` field (see [`check_save_mode`]).
+    pub full_row_save: bool,
     pub relations: Vec<ParsedRelation>,
     pub has_soft_deletes: bool,
     pub rag_context_fields: Vec<syn::Ident>,
@@ -426,6 +432,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         db_default_fields,
         skipped_fields,
         snapshot_field,
+        full_row_save: model_attributes.full_row_save,
         relations,
         has_soft_deletes,
         rag_context_fields,

@@ -5,14 +5,14 @@ use rullst_orm::schema::Schema;
 use rullst_orm::{Error, Orm};
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_accounts")]
+#[orm(table = "contract_accounts", full_row_save)]
 struct ContractAccount {
     id: i32,
     email: String,
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_memberships")]
+#[orm(table = "contract_memberships", full_row_save)]
 struct ContractMembership {
     id: i32,
     account_id: i32,

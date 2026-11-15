@@ -67,3 +67,33 @@ fn every_starter_sqlx_model_declares_a_row_snapshot() {
         assert_eq!(models, expected, "{starter}");
     }
 }
+
+/// Turso-primary models cannot track columns, so the Turso starter's model
+/// declares its full-row saves (which `#[derive(Orm)]` requires).
+#[test]
+fn the_turso_starter_model_declares_full_row_saves() {
+    let manifest = blank::file_manifest(
+        "demo",
+        "demo",
+        false,
+        false,
+        true,
+        "Turso Active Record",
+        "Zero-Bundle HTMX",
+    );
+    let mut models = Vec::new();
+    for (path, source) in &manifest {
+        if !path.ends_with(".rs") {
+            continue;
+        }
+        for (name, tracked) in orm_models(source) {
+            assert!(!tracked, "{path} {name} declares a RowSnapshot");
+            assert!(
+                source.contains("#[orm(table = \"users\", backend = \"turso\", full_row_save)]"),
+                "{path} {name} does not declare full_row_save"
+            );
+            models.push(name);
+        }
+    }
+    assert_eq!(models, ["User"]);
+}

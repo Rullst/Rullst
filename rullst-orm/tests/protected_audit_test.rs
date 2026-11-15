@@ -14,7 +14,7 @@ const CPF: &str = "123.456.789-00";
 const NEW_CPF: &str = "987.654.321-00";
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "audited_patients", auditable, searchable)]
+#[orm(table = "audited_patients", auditable, searchable, full_row_save)]
 struct AuditedPatient {
     id: i32,
     name: String,

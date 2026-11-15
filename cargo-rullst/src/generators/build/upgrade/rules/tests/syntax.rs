@@ -28,7 +28,7 @@ fn tuple_and_or_catch_all_arms_cover_new_field_kinds() {
 fn optional_text_timestamps_count_and_other_containers_do_not() {
     let model = |field: &str| {
         format!(
-            "#[derive(Debug, Orm)]\npub struct Post {{\n    pub id: i32,\n    pub {field},\n}}\n"
+            "#[derive(Debug, Orm)] #[orm(full_row_save)]\npub struct Post {{\n    pub id: i32,\n    pub {field},\n}}\n"
         )
     };
     assert_eq!(
@@ -95,7 +95,7 @@ fn methods_in_impl_blocks_are_scanned() {
 fn searchable_tables_must_be_lowercase_identifiers() {
     let model = |table: &str| {
         format!(
-            "#[derive(Orm)]\n#[orm(searchable, table = \"{table}\")]\npub struct Post {{\n    pub id: i32,\n}}\n"
+            "#[derive(Orm)]\n#[orm(searchable, table = \"{table}\", full_row_save)]\npub struct Post {{\n    pub id: i32,\n}}\n"
         )
     };
     for table in ["posts", "post_tags", "posts2"] {
@@ -114,7 +114,7 @@ fn searchable_tables_must_be_lowercase_identifiers() {
 fn only_the_turso_backend_keeps_text_timestamps() {
     let model = |backend: &str| {
         format!(
-            "#[derive(Orm)]\n#[orm(table = \"posts\", backend = \"{backend}\")]\npub struct Post {{\n    pub created_at: String,\n}}\n"
+            "#[derive(Orm)]\n#[orm(table = \"posts\", backend = \"{backend}\", full_row_save)]\npub struct Post {{\n    pub created_at: String,\n}}\n"
         )
     };
     assert_eq!(found(&model("turso")), []);
@@ -125,7 +125,7 @@ fn only_the_turso_backend_keeps_text_timestamps() {
 fn relation_keys_that_the_relation_ignores_must_change() {
     let field = |options: &str| {
         format!(
-            "#[derive(Orm)]\npub struct Post {{\n    #[orm({options})]\n    pub author: i64,\n}}\n"
+            "#[derive(Orm)] #[orm(full_row_save)]\npub struct Post {{\n    #[orm({options})]\n    pub author: i64,\n}}\n"
         )
     };
     for options in [

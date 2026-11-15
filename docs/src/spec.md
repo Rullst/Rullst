@@ -2580,7 +2580,7 @@ isolation, response failures and extracted consumers are required evidence.
 
 ### 5.1. Model Definition & CRUD
 ```rust,no_run
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, Orm)]
 #[orm(table = "users")]
@@ -2590,6 +2590,9 @@ pub struct User {
     pub email: String,
     #[orm(encrypted)]
     pub secret_token: Option<String>,
+    // `save()` of a loaded user writes only the columns it changed.
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 async fn use_users() -> Result<(), rullst_orm::Error> {
@@ -2598,7 +2601,7 @@ let all_users: Vec<User> = User::all().await?;
 let user: Option<User> = User::find(1).await?;
 
 // Mutations
-let mut new_user = User { id: 0, name: "Alice".into(), email: "alice@example.com".into(), secret_token: None };
+let mut new_user = User { id: 0, name: "Alice".into(), email: "alice@example.com".into(), secret_token: None, snapshot: RowSnapshot::default() };
 new_user.save().await?; // Auto-executes parameterized INSERT or UPDATE
 new_user.delete().await?;
 let _ = (all_users, user);
@@ -2606,7 +2609,29 @@ Ok(())
 }
 ```
 
-`save()` of a persisted model without a `RowSnapshot` field is a full-row
+**Save mode (required since 13.0.0-alpha.6).** Every `#[derive(Orm)]` and
+`#[derive(TursoModel)]` model declares what `save()` of a persisted record
+writes, and the derive rejects a model with neither or both choices with an
+error that shows the two one-line fixes:
+
+| Choice | `save()` of a persisted record |
+| :--- | :--- |
+| a `#[sqlx(skip)]` field of type `RowSnapshot` | `UPDATE` of the columns whose value changed since the handle was read or last saved (dirty tracking, below); concurrent edits of other columns persist |
+| `#[orm(full_row_save)]` on the struct | `UPDATE` of every persisted column except the soft-delete marker and `#[orm(db_default)]` fields |
+
+A full-row save is last-writer-wins and loses updates: when two requests read
+the same row and change different columns, the later `save()` writes the
+earlier request's column back with the value it read (a profile edit erases
+an XP award saved meanwhile). The CLI's SQLx models, its starters and the
+repository's examples use the field; `full_row_save` is the documented opt-out
+for code that relies on overwriting the whole row. Turso-primary models
+(`#[orm(backend = "turso")]`, `#[derive(TursoModel)]`) always write every
+column: they require `#[orm(full_row_save)]`, and a `RowSnapshot` field on them
+fails compilation. The check runs after the grammar checks below, so other
+errors in the model are reported first. Until 13.0.0-alpha.5 a model without
+the field silently got full-row saves.
+
+`save()` of a persisted model with `#[orm(full_row_save)]` is a full-row
 `UPDATE` of every persisted column except the soft-delete marker, so the last
 writer wins: a column another writer changed after the handle was loaded is
 overwritten with the handle's value. An
@@ -2627,7 +2652,7 @@ model lifecycle (tenant scope, policy, hooks, audit, cache). The driver
 contract runs that counter and the stale-handle overwrite on SQLite,
 PostgreSQL, MySQL and MariaDB.
 
-**Dirty tracking (v13).** A SQLx model opts in with exactly one field of type
+**Dirty tracking (v13).** A SQLx model chooses it with exactly one field of type
 `RowSnapshot` (`rullst_orm::RowSnapshot`, matched by its last path segment)
 marked `#[sqlx(skip)]`; a `RowSnapshot` field without `#[sqlx(skip)]`, or a
 second one, fails compilation. The tracked columns are the columns of the
@@ -2662,12 +2687,24 @@ handle. A record built in code, one from a Redis hash, or after
 models also get `dirty_columns()` and `is_dirty()`. `RowSnapshot` is
 bookkeeping: any two compare equal, hash alike and order equal; `Debug` shows
 only whether it is tracked; it implements no Serde trait. Turso-primary
-models do not track. Models without the field keep the full-row `UPDATE`.
+models do not track. Models with `#[orm(full_row_save)]` keep the full-row
+`UPDATE`. Partial saves are covered on every SQL backend: the SQLite
+integration tests record, with `UPDATE OF <column>` triggers, exactly which
+columns each statement wrote and run two concurrent saves of different fields
+of one row; the driver contract runs the tracked save on SQLite, PostgreSQL,
+MySQL and MariaDB; and the `ORM differential databases` CI job runs the same
+dirty-tracking scenario (two handles that change different columns, an
+unchanged save, `mark_all_dirty()`, `update_partial()`, refreshed
+database-managed timestamps, a deleted row) on PostgreSQL 15, MySQL 8.4 and
+MariaDB 11.4 and compares each transcript with SQLite's.
 Since 13.0.0-alpha.3 every SQLx model the CLI writes (`make:model`,
 `generate:models`, `auth`, `make:billing`, `make:chat-session` and the
 `cargo rullst new` starters) declares `#[sqlx(skip)] pub snapshot: RowSnapshot`
 and builds new records with `RowSnapshot::default()`; `generate:models` adds
-`#[serde(skip)]` and omits the field for a table with a `snapshot` column.
+`#[serde(skip)]` and, since 13.0.0-alpha.6, names the field `row_snapshot` for a
+table with a `snapshot` column (and declares `full_row_save` when the table
+also has a `row_snapshot` column). The CLI's Turso models declare
+`#[orm(full_row_save)]`.
 
 `From<sqlx::Error> for rullst_orm::Error` maps `RowNotFound` to
 `RecordNotFound`, a unique or primary-key violation to

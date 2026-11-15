@@ -1,4 +1,4 @@
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "users")]
@@ -6,6 +6,8 @@ pub struct User {
     pub id: i32,
     pub name: String,
     pub email: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -49,6 +51,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
             id: 0,
             name: format!("User {}", i),
             email: format!("user{}@cosmos.com", i),
+            snapshot: RowSnapshot::default(),
         });
     }
 

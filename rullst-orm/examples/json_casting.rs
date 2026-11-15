@@ -1,5 +1,5 @@
-use rullst_orm::Orm;
 use rullst_orm::schema::Schema;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct UserPreferences {
@@ -16,6 +16,8 @@ pub struct User {
     // The magic JSON column!
     #[orm(json)]
     pub preferences: rullst_orm::Json<UserPreferences>,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -39,6 +41,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
             theme: "dark".to_string(),
             notifications_enabled: true,
         }),
+        snapshot: RowSnapshot::default(),
     };
 
     // It should automatically serialize the preferences struct to JSON string

@@ -9,7 +9,7 @@ use rullst_orm::polyglot::{
 
 /// The primary key is not the first column.
 #[derive(Debug, Clone, PartialEq, rullst_orm::Orm)]
-#[orm(table = "pets", backend = "turso")]
+#[orm(table = "pets", backend = "turso", full_row_save)]
 struct Pet {
     name: String,
     id: i64,
@@ -17,7 +17,7 @@ struct Pet {
 
 /// A text primary key without a DEFAULT: the application assigns it.
 #[derive(Debug, Clone, PartialEq, rullst_orm::Orm)]
-#[orm(table = "tags", backend = "turso")]
+#[orm(table = "tags", backend = "turso", full_row_save)]
 struct Tag {
     id: String,
     label: String,
@@ -25,7 +25,7 @@ struct Tag {
 
 /// A text primary key filled by the column's DEFAULT.
 #[derive(Debug, Clone, PartialEq, rullst_orm::Orm)]
-#[orm(table = "notes", backend = "turso")]
+#[orm(table = "notes", backend = "turso", full_row_save)]
 struct Note {
     id: String,
     body: String,

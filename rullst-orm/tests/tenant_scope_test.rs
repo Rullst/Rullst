@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "tenant_records", tenant_column = "tenant_id")]
+#[orm(table = "tenant_records", tenant_column = "tenant_id", full_row_save)]
 struct TenantRecord {
     id: i32,
     tenant_id: String,

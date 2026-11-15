@@ -6,7 +6,7 @@
 use rullst_orm::{Error, Orm, with_tenant};
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "typed_tenant_orders", tenant_column = "org")]
+#[orm(table = "typed_tenant_orders", tenant_column = "org", full_row_save)]
 struct TypedTenantOrder {
     id: i32,
     org: String,

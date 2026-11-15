@@ -8,7 +8,7 @@ use rullst_orm::{
 use std::fs;
 
 #[derive(rullst_orm::Orm, Debug, Clone, PartialEq)]
-#[orm(table = "stream_test_users")]
+#[orm(table = "stream_test_users", full_row_save)]
 pub struct StreamUser {
     pub id: i32,
     pub name: String,

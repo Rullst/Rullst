@@ -1,5 +1,5 @@
-use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
+use rullst_orm::{Orm, RowSnapshot};
 
 // When we derive Orm, it will generate a `UserColumn` enum automatically
 // because our struct is named `User`!
@@ -9,6 +9,8 @@ pub struct User {
     pub id: i32,
     pub full_name: String,
     pub age: i32,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -30,12 +32,14 @@ async fn main() -> Result<(), rullst_orm::Error> {
         id: 0,
         full_name: "Alice Smith".to_string(),
         age: 25,
+        snapshot: RowSnapshot::default(),
     };
     u1.save().await?;
     let mut u2 = User {
         id: 0,
         full_name: "Bob Jones".to_string(),
         age: 30,
+        snapshot: RowSnapshot::default(),
     };
     u2.save().await?;
 

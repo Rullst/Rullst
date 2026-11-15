@@ -12,7 +12,7 @@ use rullst_orm::Orm;
 use rullst_orm::schema::{Blueprint, Schema};
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "matrix_sqlite_users")]
+#[orm(table = "matrix_sqlite_users", full_row_save)]
 struct User {
     pub id: i32,
     pub name: String,

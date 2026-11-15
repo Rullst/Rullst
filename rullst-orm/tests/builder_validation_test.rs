@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "validation_records")]
+#[orm(table = "validation_records", full_row_save)]
 struct ValidationRecord {
     id: i32,
     name: String,
@@ -12,7 +12,7 @@ struct ValidationRecord {
 // `where_column`, `where_col`, `where_similar`, `order_by_desc` and the
 // update builder's `save`.
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "chat_logs")]
+#[orm(table = "chat_logs", full_row_save)]
 struct ChatLog {
     id: i32,
     model: String,
@@ -87,7 +87,7 @@ fn joins_and_vector_helpers_reject_dynamic_sql_fragments_that_are_not_safe() {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "secret_customers")]
+#[orm(table = "secret_customers", full_row_save)]
 struct SecretCustomer {
     id: i32,
     name: String,
@@ -96,7 +96,7 @@ struct SecretCustomer {
 
 /// Columns the database manages: read and filtered, never written by the ORM.
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "managed_accounts")]
+#[orm(table = "managed_accounts", full_row_save)]
 struct ManagedAccount {
     id: i32,
     #[orm(db_default)]
@@ -121,7 +121,7 @@ fn database_managed_columns_stay_filterable() {
 }
 
 #[derive(Clone, Debug, Default, rullst_orm::Orm)]
-#[orm(table = "cached_records")]
+#[orm(table = "cached_records", full_row_save)]
 struct CachedRecord {
     id: i32,
     #[allow(dead_code)]

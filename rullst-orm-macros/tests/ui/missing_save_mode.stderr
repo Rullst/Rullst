@@ -1,0 +1,9 @@
+error: `Profile` must choose what `save()` writes to a stored row. Add one of these lines:
+           #[sqlx(skip)] pub snapshot: rullst_orm::RowSnapshot,
+               as a field: only the columns this record changed (recommended)
+           #[orm(full_row_save)]
+               on the struct: every column, so a change that another request made to another column is lost
+ --> tests/ui/missing_save_mode.rs:5:8
+  |
+5 | struct Profile {
+  |        ^^^^^^^

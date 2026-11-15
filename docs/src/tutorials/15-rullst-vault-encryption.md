@@ -33,6 +33,7 @@ environment in production.
 ## 2. Mark model fields
 
 ```rust
+use rullst_orm::RowSnapshot;
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
 #[orm(table = "users")]
@@ -43,6 +44,8 @@ pub struct User {
     pub tax_id: String,
     #[orm(encrypted)]
     pub recovery_note: Option<String>,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 ```
 

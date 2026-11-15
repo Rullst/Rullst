@@ -287,7 +287,7 @@ release:
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
 | 13.0.0-alpha.5 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them), `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-SERVER-FUNCTIONS-REMOVED`, `V13-FRONTEND-ADAPTERS-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-ORM-ADAPTERS-REMOVED`, `V13-MAIL-MESSAGE-REPLY-TO`, `V13-PRIVACY-CONSENT-CHOICE-MATCH`, `V13-LABS-NON-EXHAUSTIVE-MATCH`, `V13-CLI-GREEN-RENAMED`, `V13-ACADEMY-REMOVED`, `V13-ORM-QDRANT-REMOVED`, `V13-AI-PROVIDER-PRESETS` |
-| 13.0.0-alpha.6 | `V13-HEALTH-FRAMEWORK-VERSION`, `V13-HEALTH-PROBE-VERSION-FIELD`, `V13-CSRF-STATIC-PREFIXES` (the default changes of the 13.0 freeze), `V13-MAIL-DEPRECATED-REMOVED`, `V13-IOT-OTA-LEGACY-REMOVED`, `V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, `V13-AI-DEPRECATED-REMOVED`, `V13-SECURITY-DEPRECATED-REMOVED`, `V13-QUEUE-PURGE-COMPLETED-REMOVED`, `V13-CONNECT-INFALLIBLE-NEW-REMOVED`, `V13-ROUTE-MARKER-REMOVED`, `V13-ORM-SCHEMA-DIFF-REMOVED` (the removal of every API still deprecated) |
+| 13.0.0-alpha.6 | `V13-HEALTH-FRAMEWORK-VERSION`, `V13-HEALTH-PROBE-VERSION-FIELD`, `V13-CSRF-STATIC-PREFIXES` (the default changes of the 13.0 freeze), `V13-MAIL-DEPRECATED-REMOVED`, `V13-IOT-OTA-LEGACY-REMOVED`, `V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, `V13-AI-DEPRECATED-REMOVED`, `V13-SECURITY-DEPRECATED-REMOVED`, `V13-QUEUE-PURGE-COMPLETED-REMOVED`, `V13-CONNECT-INFALLIBLE-NEW-REMOVED`, `V13-ROUTE-MARKER-REMOVED`, `V13-ORM-SCHEMA-DIFF-REMOVED` (the removal of every API still deprecated), `V13-ORM-SAVE-MODE` |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -481,7 +481,7 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (32 rows);
+  application source (33 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
   the affected API, feature or configuration, which the rules locate (121 rows);
 - **(c) none**: no application impact, or not detectable in the application
@@ -489,7 +489,7 @@ is classified for `rullst-upgrade-rules-v4`:
   of inputs that previously failed) (106 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 159 rules. A row can map to several rules and a rule to
+has 160 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -539,7 +539,7 @@ the rule together.
 | CLI generator output | (b) review | `V13-TS-CLIENT-REGENERATE` | Other generator changes affect new output only |
 | CLI generator robustness | (b) review | `V13-TS-CLIENT-REGENERATE`, `V13-GITIGNORE-DATABASES` | Other generator changes affect new output only |
 | ORM database-managed columns | (b) review | `V13-ORM-SKIP-MANAGED-COLUMNS` | Reports each `#[orm(skip)]` field that the model's `FromRow` reads (no `#[sqlx(skip)]` or `#[sqlx(default)]`, no `custom_from_row` or struct-level `#[sqlx(default)]`), such as the alpha.2 starters' `is_admin`/`session_epoch` |
-| ORM dirty tracking | (c) none | — | Opt-in `RowSnapshot` field |
+| ORM dirty tracking | (c) none | — | The `RowSnapshot` field was opt-in until 13.0.0-alpha.6; a model with neither it nor `full_row_save` is reported under ORM explicit save mode |
 | ORM partial updates | (b) review | `V13-ORM-PARTIAL-UPDATE` |  |
 | ORM derive checks | (a) must-change | `V13-ORM-BELONGS-TO-KEY`, `V13-ORM-IGNORED-RELATION-KEY`, `V13-ORM-SEARCHABLE-TABLE` |  |
 | ORM queries and cache | (b) review | `V13-ORM-SQLX-JSON-SERIALIZE`, `V13-ORM-QUERY-CACHE-KEY` | Count, chunk-order and stream changes are not located |
@@ -750,6 +750,7 @@ the rule together.
 | Connect infallible `new` constructors removed | (a) must-change | `V13-CONNECT-INFALLIBLE-NEW-REMOVED` | `new` of the ten built-in providers (`GithubProvider::new`, …) in files that name Connect (`rullst_connect` or `connect::`), and `CredentialMode::Invalid`, at every location; `is_invalid()` calls and the `new` of a `define_provider!` type are not located, the compiler names them; introduced in 13.0.0-alpha.6 |
 | `#[route]` marker removed | (a) must-change | `V13-ROUTE-MARKER-REMOVED` | `#[rullst::route]`, `#[rullst_core::route]` and `#[rullst_macros::route]`, a bare `#[route]` without arguments in a file that names Rullst, and those paths in `use` trees, at every location; `#[route(...)]` of other frameworks is left alone; introduced in 13.0.0-alpha.6 |
 | ORM `schema_diff` removed | (a) must-change | `V13-ORM-SCHEMA-DIFF-REMOVED` | `rullst_orm::schema_diff` and `rullst::orm::schema_diff` paths, also in `use` trees, and `extract_tables_from_ast`, `ParsedTable` and `ParsedField` in files that name `schema_diff`, at every location; introduced in 13.0.0-alpha.6 (deprecated in 13.0.0-alpha.5) |
+| ORM explicit save mode | (a) must-change | `V13-ORM-SAVE-MODE` | Each `#[derive(Orm)]` or `#[derive(TursoModel)]` struct with neither or both of a `RowSnapshot` field and `#[orm(full_row_save)]`, and each Turso-primary one with a `RowSnapshot` field or without `full_row_save`, at its name; introduced in 13.0.0-alpha.6 |
 
 ## Planned simpler update experience
 

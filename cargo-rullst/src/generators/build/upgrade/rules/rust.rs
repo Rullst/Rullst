@@ -16,6 +16,8 @@ mod capital_mail;
 mod functions;
 #[path = "rust/removed_ui.rs"]
 mod removed_ui;
+#[path = "rust/save_mode.rs"]
+mod save_mode;
 #[path = "rust/sqlx_macros.rs"]
 mod sqlx_macros;
 
@@ -184,6 +186,9 @@ impl Visitor<'_, '_> {
             || model
                 .iter()
                 .any(|(key, value, _)| key == "backend" && value.as_deref() == Some("turso"));
+        if let Some((rule, at)) = save_mode::finding(item, turso) {
+            self.hit(rule, at);
+        }
         for field in &item.fields {
             let options = entries(&field.attrs, "orm");
             let at = field_line(field);

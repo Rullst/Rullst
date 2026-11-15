@@ -1,4 +1,4 @@
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 #[cfg(feature = "redis")]
 use std::time::Duration;
 #[derive(Debug, Clone, rullst_orm::Orm)]
@@ -7,6 +7,8 @@ pub struct Product {
     pub id: i32,
     pub name: String,
     pub price: f64,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -73,6 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             id: 0,
             name: "Super Quantum Laptop".to_string(),
             price: 2499.99,
+            snapshot: RowSnapshot::default(),
         };
         p.save().await?;
         println!("✅ Product saved with ID: {}", p.id);

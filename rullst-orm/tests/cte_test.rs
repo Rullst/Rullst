@@ -4,7 +4,7 @@ use rullst_orm::Orm;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Orm, Serialize, Deserialize, PartialEq)]
-#[orm(table = "cte_categories")]
+#[orm(table = "cte_categories", full_row_save)]
 pub struct Category {
     pub id: i32,
     pub parent_id: Option<i32>,

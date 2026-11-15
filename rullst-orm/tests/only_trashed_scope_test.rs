@@ -7,7 +7,7 @@
 use rullst_orm::{Error, Orm};
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "trashless_line_items")]
+#[orm(table = "trashless_line_items", full_row_save)]
 struct TrashlessLineItem {
     id: i32,
     sku: String,

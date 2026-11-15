@@ -7,7 +7,12 @@ use rullst_orm::scout::MAX_SEARCH_HITS;
 use rullst_orm::{Error, Orm, SearchEngine, set_search_engine, with_tenant};
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "truncated_invoices", searchable, tenant_column = "tenant_id")]
+#[orm(
+    table = "truncated_invoices",
+    searchable,
+    tenant_column = "tenant_id",
+    full_row_save
+)]
 struct TruncatedInvoice {
     id: i32,
     tenant_id: String,

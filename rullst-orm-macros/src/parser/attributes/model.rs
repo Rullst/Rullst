@@ -24,6 +24,8 @@ pub(in crate::parser) struct ModelAttributes {
     /// `#[orm(custom_from_row)]`: the model implements `FromRow` itself
     /// (by hand, or with SQLx's own derive), so the derive does not.
     pub custom_from_row: bool,
+    /// `#[orm(full_row_save)]`: `save()` writes every column of a stored row.
+    pub full_row_save: bool,
 }
 
 impl ModelAttributes {
@@ -69,6 +71,7 @@ impl ModelAttributes {
             soft_delete: None,
             sqlx_default: false,
             custom_from_row: false,
+            full_row_save: false,
         }
     }
 
@@ -90,6 +93,11 @@ impl ModelAttributes {
         if meta.path.is_ident("custom_from_row") {
             mark_once(seen, "custom_from_row", &meta)?;
             self.custom_from_row = true;
+            return Ok(());
+        }
+        if meta.path.is_ident("full_row_save") {
+            mark_once(seen, "full_row_save", &meta)?;
+            self.full_row_save = true;
             return Ok(());
         }
         if meta.path.is_ident("soft_delete") {
