@@ -6,18 +6,17 @@
 # on a GitHub-hosted ubuntu-latest runner, the server on two CPUs and
 # bombardier 2.0.2 on two others (medians of three rounds).
 #
-# The ratio depends on the runner model, which the job summary names: on
-# 2026-11-15 the stack before 13.0.0-alpha.6's changes measured 0.256 on a
-# slower runner (run 43734791237, minimal 114 800 requests/s) and 0.385 on a
-# faster one (run 43753004781, minimal 231 000 requests/s, with the CSRF
-# masking of #712). With the one-layer baseline and the background access
-# log it measured 0.446-0.459 on the slower runner; with the document-only CSP
-# nonce and the CSRF masking too, 0.530-0.532 on the faster one. The limit
-# fails the earlier stack on both runner models and stays about 10 % below the
-# slower runner's figure.
+# The ratio depends on the runner model, which the job summary names. With
+# the CSRF masking of #712, origin/main 7e6416083 measured 0.253-0.256 on an
+# AMD EPYC 7763 runner (run 43757170678, minimal about 117 000 requests/s) and
+# 0.382-0.387 on a faster runner (run 43753004781, minimal about 231 000);
+# with the one-layer baseline, the background access log and the
+# document-only CSP nonce, 0.434-0.452 and 0.530-0.532. The limit fails the
+# earlier stack on both models and stays about 10 % below the EPYC 7763
+# figure.
 #
 # Raise it in the pull request that makes the stack faster; never lower it to
 # pass a slowdown nobody can explain.
 
 [throughput]
-min_ratio = 0.40
+min_ratio = 0.39
