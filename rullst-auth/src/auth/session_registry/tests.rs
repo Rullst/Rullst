@@ -403,15 +403,29 @@ async fn values_print_without_secrets() {
         .authenticate(issued.token(), KEY, NOW)
         .await
         .unwrap();
-    let printed = format!("{issued:?} {session:?} {registry:?}");
+    let reference = issued.reference().as_str();
+    assert_eq!(
+        format!("{registry:?}"),
+        "SessionRegistry { database: \"[REDACTED]\" }"
+    );
+    assert_eq!(
+        format!("{issued:?}"),
+        format!(
+            "IssuedSession {{ token: \"[REDACTED]\", reference: SessionRef(\"{reference}\"), expires_at: {} }}",
+            NOW + 2_592_000
+        )
+    );
+    assert_eq!(
+        format!("{:?}", session.current()),
+        format!(
+            "CurrentSession {{ user_id: 1, reference: SessionRef(\"{reference}\"), expires_at: {}, .. }}",
+            NOW + 2_592_000
+        )
+    );
+    let printed = format!("{session:?}");
     assert!(!printed.contains(issued.token()));
     assert!(!printed.contains(&session.current().token_hash));
-    assert!(printed.contains("[REDACTED]"));
-    assert!(printed.contains(issued.reference().as_str()));
-    assert_eq!(
-        format!("{}", issued.reference()),
-        issued.reference().as_str()
-    );
+    assert_eq!(format!("{}", issued.reference()), reference);
     let clone = registry.clone();
     assert!(clone.authenticate(issued.token(), KEY, NOW).await.is_ok());
 }
