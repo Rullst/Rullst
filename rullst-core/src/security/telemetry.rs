@@ -16,7 +16,9 @@ use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 mod event;
+mod snapshot;
 pub use event::{LiveSecurityEvent, SECURITY_EVENT_SCHEMA_VERSION};
+pub use snapshot::TelemetrySnapshot;
 
 static GLOBAL_SECURITY_STORE: OnceLock<SecurityStore> = OnceLock::new();
 
@@ -90,6 +92,7 @@ pub struct SecurityStore {
     banned_ips: DashMap<String, BannedIpRecord>,
     honeypot_route_hits: DashMap<String, AtomicU64>,
     live_events: Mutex<Vec<LiveSecurityEvent>>,
+    live_events_total: AtomicU64,
 }
 
 impl Default for SecurityStore {
@@ -125,6 +128,7 @@ impl SecurityStore {
             banned_ips: DashMap::new(),
             honeypot_route_hits: DashMap::new(),
             live_events: Mutex::new(Vec::new()),
+            live_events_total: AtomicU64::new(0),
         }
     }
 
@@ -303,6 +307,11 @@ impl SecurityStore {
         }
     }
 
+    /// Live events recorded since start, including those no longer kept.
+    pub(crate) fn live_events_total(&self) -> u64 {
+        self.live_events_total.load(Ordering::Relaxed)
+    }
+
     /// Removes expired honeypot ban records from telemetry dashboards.
     pub fn prune_expired_bans(&self) {
         self.prune_expired_bans_at(unix_timestamp_secs());
@@ -321,6 +330,7 @@ impl SecurityStore {
     }
 
     fn push_live_event(&self, event: LiveSecurityEvent) {
+        self.live_events_total.fetch_add(1, Ordering::Relaxed);
         if let Ok(mut events) = self.live_events.lock() {
             events.insert(0, event.normalized());
             if events.len() > MAX_LIVE_EVENTS {
@@ -447,47 +457,6 @@ pub fn normalize_ip(value: &str) -> String {
         .parse::<IpAddr>()
         .map(|ip| ip.to_string())
         .unwrap_or_else(|_| "unknown".to_string())
-}
-
-/// The counter values of a [`SecurityStore`] at one moment.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TelemetrySnapshot {
-    /// [`SecurityStore::sanitizations_count`].
-    pub sanitizations: u64,
-    /// [`SecurityStore::honeypot_traps_count`].
-    pub honeypot_traps: u64,
-    /// [`SecurityStore::rbac_denials_count`].
-    pub rbac_denials: u64,
-    /// [`SecurityStore::log_redactions_count`].
-    pub log_redactions: u64,
-    /// [`SecurityStore::zero_trust_mismatches_count`].
-    pub zero_trust_mismatches: u64,
-    /// [`SecurityStore::schema_violations_count`].
-    pub schema_violations: u64,
-    /// [`SecurityStore::sri_signed_assets_count`].
-    pub sri_signed_assets: u64,
-    /// [`SecurityStore::mfa_verifications_count`].
-    pub mfa_verifications: u64,
-    /// [`SecurityStore::deception_hits_count`].
-    pub deception_hits: u64,
-    /// [`SecurityStore::cswsh_blocks_count`].
-    pub cswsh_blocks: u64,
-    /// [`SecurityStore::rate_limit_blocks_count`].
-    pub rate_limit_blocks: u64,
-    /// [`SecurityStore::siem_dispatches_count`].
-    pub siem_dispatches: u64,
-    /// [`SecurityStore::login_jail_bans_count`].
-    pub login_jail_bans: u64,
-    /// [`SecurityStore::dlp_secrets_masked_count`].
-    pub dlp_secrets_masked: u64,
-    /// [`SecurityStore::secure_headers_applied_count`].
-    pub secure_headers_applied: u64,
-    /// [`SecurityStore::idor_warnings_count`].
-    pub idor_warnings: u64,
-    /// [`SecurityStore::timing_guard_protected_count`].
-    pub timing_guard_protected: u64,
-    /// [`SecurityStore::prompt_injections_blocked_count`].
-    pub prompt_injections_blocked: u64,
 }
 
 #[cfg(test)]

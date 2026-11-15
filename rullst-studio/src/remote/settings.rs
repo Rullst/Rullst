@@ -115,9 +115,13 @@ pub(crate) struct SettingsForm {
     #[serde(default)]
     p95_ms: String,
     #[serde(default)]
+    p99_ms: String,
+    #[serde(default)]
     queue_pending: String,
     #[serde(default)]
     queue_failures: String,
+    #[serde(default)]
+    security_events: String,
     #[serde(default)]
     cooldown_minutes: String,
     #[serde(default)]
@@ -142,8 +146,10 @@ pub(crate) fn parse_rules(form: &SettingsForm) -> Result<AlertRules, ProjectErro
         unreachable: form.unreachable.is_some(),
         error_rate_percent: field(&form.error_rate_percent)?,
         p95_ms: field(&form.p95_ms)?,
+        p99_ms: field(&form.p99_ms)?,
         queue_pending: field(&form.queue_pending)?,
         queue_failures: field(&form.queue_failures)?,
+        security_events: field(&form.security_events)?,
         cooldown_minutes: field(&form.cooldown_minutes)?
             .unwrap_or(AlertRules::default().cooldown_minutes),
     };

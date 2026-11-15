@@ -15,8 +15,10 @@ fn sample(at: u64) -> Sample {
         window_requests: Some(30),
         error_rate_percent: Some(2.0),
         p95_ms: Some(25.0),
+        p99_ms: Some(80.0),
         queue_pending: Some(3),
         queue_failed_total: Some(4),
+        security_events_total: Some(9),
     }
 }
 
@@ -147,7 +149,9 @@ async fn only_numeric_aggregates_are_stored() {
             "error_rate_percent",
             "p95_ms",
             "queue_pending",
-            "queue_failed_total"
+            "queue_failed_total",
+            "p99_ms",
+            "security_events_total"
         ]
     );
 }
@@ -169,8 +173,10 @@ fn a_sample_takes_the_documents_aggregates_or_marks_the_project_unreachable() {
             window_requests: Some(40),
             error_rate_percent: Some(5.0),
             p95_ms: Some(25.0),
+            p99_ms: Some(50.0),
             queue_pending: Some(3),
             queue_failed_total: Some(4),
+            security_events_total: None,
         }
     );
     let mut idle = document("/orders/{id}");
@@ -196,4 +202,49 @@ async fn the_database_is_private_to_its_owner() {
         |path: &std::path::Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
     assert_eq!(mode(&path), 0o600);
     assert_eq!(mode(path.parent().unwrap()), 0o700);
+}
+
+// A history written by 13.0.0-alpha.5 gains the p99 and security columns.
+#[tokio::test]
+async fn an_earlier_history_database_gains_the_new_columns() {
+    let directory = TempDir::new("history-migration");
+    let path = directory.paths().history;
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let options = sqlx::sqlite::SqliteConnectOptions::new()
+        .filename(&path)
+        .create_if_missing(true);
+    let pool = sqlx::SqlitePool::connect_with(options).await.unwrap();
+    sqlx::query(
+        "CREATE TABLE samples (project TEXT NOT NULL, at INTEGER NOT NULL,
+            reachable INTEGER NOT NULL, requests_per_second REAL, window_requests INTEGER,
+            error_rate_percent REAL, p95_ms REAL, queue_pending INTEGER,
+            queue_failed_total INTEGER, PRIMARY KEY (project, at))",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query("INSERT INTO samples VALUES ('shop', 100, 1, 1.5, 30, 2.0, 25.0, 3, 4)")
+        .execute(&pool)
+        .await
+        .unwrap();
+    pool.close().await;
+
+    let history = open(&directory, Retention::default()).await;
+    history.record("shop", &sample(200)).await.unwrap();
+    let samples = history.samples("shop", 0).await.unwrap();
+    assert_eq!(
+        samples,
+        [
+            Sample {
+                p99_ms: None,
+                security_events_total: None,
+                ..sample(100)
+            },
+            sample(200)
+        ]
+    );
+    // Opening it again changes nothing.
+    drop(history);
+    let reopened = open(&directory, Retention::default()).await;
+    assert_eq!(reopened.samples("shop", 0).await.unwrap().len(), 2);
 }

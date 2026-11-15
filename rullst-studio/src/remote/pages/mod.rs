@@ -6,9 +6,12 @@
 pub(crate) mod alerts;
 pub(crate) mod history;
 pub(crate) mod monitor;
+pub(crate) mod preferences;
 pub(crate) mod projects;
+pub(crate) mod security;
 #[cfg(test)]
 mod tests;
+pub(crate) mod traces;
 
 /// The page being shown, for the navigation highlight.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,8 +21,11 @@ pub(crate) enum Page {
     Routes,
     Queues,
     Queries,
+    Traces,
+    Security,
     History,
     Alerts,
+    Settings,
 }
 
 impl Page {
@@ -30,8 +36,11 @@ impl Page {
             Self::Routes => "/studio/routes",
             Self::Queues => "/studio/queues",
             Self::Queries => "/studio/queries",
+            Self::Traces => "/studio/traces",
+            Self::Security => "/studio/security",
             Self::History => "/studio/history",
             Self::Alerts => "/studio/alerts",
+            Self::Settings => "/studio/settings",
         }
     }
 
@@ -42,18 +51,23 @@ impl Page {
             Self::Routes => "🛣️ Routes",
             Self::Queues => "📬 Queues",
             Self::Queries => "🔁 N+1 Queries",
+            Self::Traces => "🧵 Traces",
+            Self::Security => "🛡️ Security",
             Self::History => "📈 History",
             Self::Alerts => "🚨 Alerts",
+            Self::Settings => "⚙️ Settings",
         }
     }
 }
 
 /// Pages shown in the navigation for a selected project.
-const PROJECT_PAGES: [Page; 5] = [
+const PROJECT_PAGES: [Page; 7] = [
     Page::Overview,
     Page::Routes,
     Page::Queues,
     Page::Queries,
+    Page::Traces,
+    Page::Security,
     Page::History,
 ];
 
@@ -70,7 +84,7 @@ pub(crate) fn query_value(value: &str) -> String {
 /// The link to `page` for `project`.
 pub(crate) fn page_link(page: Page, project: Option<&str>) -> String {
     match project {
-        Some(project) if page != Page::Projects && page != Page::Alerts => {
+        Some(project) if PROJECT_PAGES.contains(&page) => {
             format!("{}?project={}", page.path(), query_value(project))
         }
         _ => page.path().to_string(),
@@ -115,6 +129,7 @@ pub(crate) fn layout(chrome: &Chrome<'_>, title: &str, content: &str) -> String 
         }
     }
     nav.push_str(&nav_item(Page::Alerts));
+    nav.push_str(&nav_item(Page::Settings));
 
     let switcher = if chrome.projects.is_empty() {
         String::new()
@@ -146,7 +161,7 @@ pub(crate) fn layout(chrome: &Chrome<'_>, title: &str, content: &str) -> String 
     };
 
     format!(
-        r#"<!DOCTYPE html><html lang="en" class="min-h-full bg-slate-950"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>{title} · Rullst Studio</title><link href="/studio/assets/studio.css" rel="stylesheet" /></head>
+        r#"<!DOCTYPE html><html lang="en" class="min-h-full bg-slate-950"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>{title} · Rullst Studio</title><link href="/studio/assets/studio.css" rel="stylesheet" /><script src="/studio/assets/notifications.js" defer></script></head>
 <body class="min-h-screen text-slate-100 flex flex-col antialiased">
 <header class="sticky top-0 z-50 flex-shrink-0 bg-slate-900 border-b border-slate-800 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between shadow-lg gap-3 lg:gap-4">
   <a href="/studio" class="flex items-center gap-2 group">

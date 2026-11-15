@@ -1968,6 +1968,8 @@ pub const rullst_core::monitor::MAX_MONITOR_TOKENS: usize
 pub const rullst_core::monitor::MONITOR_PATH: &str
 pub const rullst_core::monitor::MONITOR_SCHEMA: &str
 pub const rullst_core::monitor::MONITOR_TOKENS_ENV: &str
+pub const rullst_core::monitor::MONITOR_V2_PATH: &str
+pub const rullst_core::monitor::MONITOR_V2_SCHEMA: &str
 pub struct rullst_core::monitor::Monitor
 impl rullst_core::monitor::Monitor
 pub fn rullst_core::monitor::Monitor::allow_loopback_plaintext(self, allowed: bool) -> Self

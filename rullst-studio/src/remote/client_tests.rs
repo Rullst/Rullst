@@ -176,3 +176,89 @@ async fn a_document_may_fill_the_byte_limit_exactly() {
         assert_eq!(outcome.is_ok(), fits, "{max_bytes}: {outcome:?}");
     }
 }
+
+#[tokio::test]
+async fn version_2_is_read_first_with_its_traces_and_security_radar() {
+    let (base, seen) = start(None).await;
+    let directory = TempDir::new("client-v2");
+    let client = MonitorClient::new(limits()).unwrap();
+    let document = client
+        .fetch(&project(&directory, &base, "v2", TOKEN))
+        .await
+        .unwrap();
+    assert_eq!(document.schema, "rullst.monitor.v2");
+    let traces = document.traces.unwrap();
+    assert_eq!(traces.sampled_total, 321);
+    assert_eq!(traces.requests[0].status, 503);
+    assert_eq!(traces.spans.kinds[0].kind, "sql");
+    let security = document.security.unwrap();
+    assert_eq!(security.events_total, 17);
+    assert_eq!(security.counters["rate_limit_blocks"], 40);
+    assert_eq!(security.events[0].event_type, "LOGIN_JAIL_TRIGGERED");
+    assert_eq!(seen.v2_misses(), 0);
+    assert_eq!(client.legacy().len(), 0);
+}
+
+// Applications before 13.0.0-alpha.6 serve version 1 only.
+#[tokio::test]
+async fn an_older_application_is_read_with_version_1_and_remembered() {
+    let (base, seen) = start(None).await;
+    let directory = TempDir::new("client-v1");
+    let client = MonitorClient::new(limits()).unwrap();
+    let older = project(&directory, &base, "ok", TOKEN);
+    for _ in 0..3 {
+        let document = client.fetch(&older).await.unwrap();
+        assert_eq!(document.schema, "rullst.monitor.v1");
+        assert!(document.traces.is_none() && document.security.is_none());
+    }
+    // Only the first read asked for version 2.
+    assert_eq!(seen.v2_misses(), 1);
+    assert_eq!(seen.authorizations.lock().unwrap().len(), 3);
+}
+
+#[tokio::test]
+async fn version_2_failures_other_than_404_are_reported_not_downgraded() {
+    let (base, seen) = start(None).await;
+    let directory = TempDir::new("client-v2-errors");
+    let client = MonitorClient::new(limits()).unwrap();
+    for (variant, expected) in [
+        ("v2error", FetchError::Status(500)),
+        ("v2bare", FetchError::Invalid),
+    ] {
+        let outcome = client
+            .fetch(&project(&directory, &base, variant, TOKEN))
+            .await;
+        assert_eq!(outcome.unwrap_err(), expected, "{variant}");
+    }
+    assert_eq!(seen.v2_misses(), 0);
+    assert_eq!(client.legacy().len(), 0);
+}
+
+#[test]
+fn a_version_1_project_is_rechecked_after_ten_minutes() {
+    let legacy = super::client::LegacyProjects::default();
+    let now = Instant::now();
+    legacy.mark_at("https://a.example/_rullst/monitor/v1", now);
+    let ten_minutes = Duration::from_secs(600);
+    assert!(legacy.is_legacy_at("https://a.example/_rullst/monitor/v1", now));
+    assert!(legacy.is_legacy_at(
+        "https://a.example/_rullst/monitor/v1",
+        now + ten_minutes - Duration::from_nanos(1)
+    ));
+    assert!(!legacy.is_legacy_at("https://a.example/_rullst/monitor/v1", now + ten_minutes));
+    assert!(!legacy.is_legacy_at("https://b.example/_rullst/monitor/v1", now));
+}
+
+#[test]
+fn the_version_1_list_is_cleared_when_full() {
+    let legacy = super::client::LegacyProjects::default();
+    let now = Instant::now();
+    for index in 0..64 {
+        legacy.mark_at(&format!("https://{index}.example/"), now);
+    }
+    assert_eq!(legacy.len(), 64);
+    legacy.mark_at("https://64.example/", now);
+    assert_eq!(legacy.len(), 1);
+    assert!(legacy.is_legacy_at("https://64.example/", now));
+    assert!(!legacy.is_legacy_at("https://0.example/", now));
+}

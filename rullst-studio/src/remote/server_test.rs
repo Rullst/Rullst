@@ -1,15 +1,16 @@
-//! A local server speaking `rullst.monitor.v1`, with hostile variants, and a
-//! private temporary directory for the project list.
+//! A local server speaking `rullst.monitor.v1` and `rullst.monitor.v2`, with
+//! hostile variants, and a private temporary directory for the project list.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use axum::Router;
 use axum::body::Body;
 use axum::extract::State;
-use axum::http::{HeaderMap, StatusCode, header};
+use axum::http::{HeaderMap, StatusCode, Uri, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -64,10 +65,61 @@ pub(super) fn document(label: &str) -> Value {
     })
 }
 
+/// A valid version 2 document: [`document`] plus traces and the security
+/// radar, whose route, span kind, counter and event labels are `label`.
+pub(super) fn document_v2(label: &str) -> Value {
+    let mut value = document(label);
+    value["schema"] = json!("rullst.monitor.v2");
+    value["traces"] = json!({
+        "sample_limit": 50,
+        "sampled_total": 321,
+        "requests": [
+            {"at": 1_792_648_790_u64, "method": "GET", "route": label, "status": 503,
+             "duration_ms": 1_250.5, "db_operations": 4, "n_plus_one": true},
+            {"at": 1_792_648_700_u64, "method": "POST", "route": "/orders", "status": 201,
+             "duration_ms": 12.25, "db_operations": 1, "n_plus_one": false}
+        ],
+        "spans": {"kept": 7, "kinds": [
+            {"kind": "sql", "count": 5, "total_us": 4_500, "max_us": 2_000, "last_at": 1_792_648_780_u64},
+            {"kind": label, "count": 2, "total_us": 30, "max_us": 20, "last_at": 1_792_648_000_u64}
+        ]}
+    });
+    value["security"] = json!({
+        "events_total": 17,
+        "active_bans": 2,
+        "counters": {"rate_limit_blocks": 40, "login_jail_bans": 3, "honeypot_traps": 2},
+        "events": [
+            {"type": "LOGIN_JAIL_TRIGGERED", "at": 1_792_648_795_u64},
+            {"type": label, "at": 1_792_648_600_u64}
+        ]
+    });
+    value["security"]["counters"][label] = json!(9);
+    value
+}
+
 /// What the server saw.
 #[derive(Default)]
 pub(super) struct Seen {
     pub(super) authorizations: Mutex<Vec<String>>,
+    /// Requests for a version 2 document that this server does not serve.
+    pub(super) v2_misses: AtomicUsize,
+}
+
+impl Seen {
+    pub(super) fn v2_misses(&self) -> usize {
+        self.v2_misses.load(Ordering::SeqCst)
+    }
+}
+
+async fn v2_ok() -> Response {
+    json_response(document_v2("/orders/{id}").to_string())
+}
+
+async fn missing(State(seen): State<Arc<Seen>>, uri: Uri) -> StatusCode {
+    if uri.path().ends_with("/_rullst/monitor/v2") {
+        seen.v2_misses.fetch_add(1, Ordering::SeqCst);
+    }
+    StatusCode::NOT_FOUND
 }
 
 fn json_response(body: impl Into<Body>) -> Response {
@@ -92,12 +144,33 @@ async fn ok(State(seen): State<Arc<Seen>>, headers: HeaderMap) -> Response {
 
 /// Starts the server; variants are path prefixes before `_rullst/monitor/v1`:
 /// `ok`, `xss`, `huge`, `stream`, `malformed`, `schema`, `slow`, `html`,
-/// `redirect` (to `redirect_to`) and `status`.
+/// `redirect` (to `redirect_to`) and `status`; and before
+/// `_rullst/monitor/v2`: `v2`, `v2xss`, `v2bare` (no version 2 sections) and
+/// `v2error` (`500`). Other version 2 paths answer `404`.
 pub(super) async fn start(redirect_to: Option<String>) -> (String, Arc<Seen>) {
     let seen = Arc::new(Seen::default());
     let redirect_to = redirect_to.unwrap_or_default();
     let app = Router::new()
         .route("/ok/_rullst/monitor/v1", get(ok))
+        .route("/v2/_rullst/monitor/v2", get(v2_ok))
+        .route(
+            "/v2xss/_rullst/monitor/v2",
+            get(|| async {
+                json_response(document_v2("<script>alert('xss')</script>").to_string())
+            }),
+        )
+        .route(
+            "/v2bare/_rullst/monitor/v2",
+            get(|| async {
+                let mut value = document("/");
+                value["schema"] = json!("rullst.monitor.v2");
+                json_response(value.to_string())
+            }),
+        )
+        .route(
+            "/v2error/_rullst/monitor/v2",
+            get(|| async { StatusCode::INTERNAL_SERVER_ERROR.into_response() }),
+        )
         .route(
             "/xss/_rullst/monitor/v1",
             get(|| async {
@@ -154,6 +227,7 @@ pub(super) async fn start(redirect_to: Option<String>) -> (String, Arc<Seen>) {
             "/status/_rullst/monitor/v1",
             get(|| async { StatusCode::UPGRADE_REQUIRED.into_response() }),
         )
+        .fallback(missing)
         .with_state(seen.clone());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();

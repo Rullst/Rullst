@@ -1,12 +1,14 @@
-//! The `rullst.monitor.v1` document as Studio reads it from a remote project.
+//! The `rullst.monitor.v1` and `rullst.monitor.v2` documents as Studio reads
+//! them from a remote project.
 //!
 //! The document comes from another machine, so it is untrusted: unknown
 //! fields are ignored (later minor additions), every list and label is
 //! bounded by [`MonitorDocument::validate`], and pages escape every string.
 
+use super::document_v2::{MONITOR_V2_SCHEMA, Security, Traces};
 use serde::Deserialize;
 
-/// The only schema this Studio reads.
+/// The version 1 schema, which every Rullst 13 monitor serves.
 pub const MONITOR_SCHEMA: &str = "rullst.monitor.v1";
 const MAX_ROUTES: usize = 512;
 const MAX_FINDINGS: usize = 128;
@@ -34,6 +36,12 @@ pub struct MonitorDocument {
     pub database: Database,
     /// Registered queues.
     pub queues: Vec<Queue>,
+    /// Sampled request traces (version 2 only).
+    #[serde(default)]
+    pub traces: Option<Traces>,
+    /// The security radar (version 2 only).
+    #[serde(default)]
+    pub security: Option<Security>,
 }
 
 /// Application name and version.
@@ -233,15 +241,23 @@ pub enum Pending {
 }
 
 impl MonitorDocument {
-    /// Checks the schema and the bounds of every list and label.
-    pub fn validate(&self) -> Result<(), &'static str> {
-        if self.schema != MONITOR_SCHEMA {
+    /// Checks that the schema is `expected` (a version 2 document needs its
+    /// traces and security sections) and the bounds of every list and label.
+    pub fn validate(&self, expected: &str) -> Result<(), &'static str> {
+        if self.schema != expected {
             return Err("unsupported schema");
         }
         if self.http.routes.len() > MAX_ROUTES || self.queues.len() > MAX_QUEUES {
             return Err("too many entries");
         }
         let mut labels: Vec<&str> = vec![&self.framework.name, &self.framework.version];
+        if expected == MONITOR_V2_SCHEMA {
+            let (Some(traces), Some(security)) = (&self.traces, &self.security) else {
+                return Err("missing version 2 section");
+            };
+            traces.validate(&mut labels)?;
+            security.validate(&mut labels)?;
+        }
         if let Some(application) = &self.application {
             labels.extend([application.name.as_str(), application.version.as_str()]);
         }

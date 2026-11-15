@@ -1,4 +1,5 @@
-//! Opt-in, read-only production monitoring endpoint (`GET /_rullst/monitor/v1`).
+//! Opt-in, read-only production monitoring endpoint (`GET /_rullst/monitor/v1`
+//! and, since 13.0.0-alpha.6, `GET /_rullst/monitor/v2`).
 //!
 //! [`Server::with_monitor`](crate::Server::with_monitor) mounts a JSON
 //! document, versioned as [`MONITOR_SCHEMA`], that a monitoring client (the
@@ -9,6 +10,14 @@
 //! fingerprints. It never carries raw paths, query strings, headers,
 //! cookies, client addresses, user identifiers, bodies, SQL text or values,
 //! error messages, environment or configuration values.
+//!
+//! The version 2 document ([`MONITOR_V2_PATH`]) has every version 1 field
+//! plus sampled summaries of recent requests (route pattern, status,
+//! duration, ORM operation count), per-kind totals of the process's
+//! [`SpanCollector`](crate::telemetry_spans::SpanCollector) without span
+//! names, and the security radar: the
+//! [`SecurityStore`](crate::security::SecurityStore) counters and the type and
+//! time of its recent events, without their details or client addresses.
 //!
 //! The endpoint is off by default. It is mounted only when the application
 //! calls `Server::with_monitor` **and** a credential is configured: a
@@ -43,8 +52,10 @@ mod auth;
 mod collector;
 mod endpoint;
 mod payload;
+mod payload_v2;
 mod record;
 mod token;
+mod traces;
 mod window;
 
 #[cfg(test)]
@@ -58,11 +69,15 @@ mod overhead_tests;
 #[cfg(test)]
 mod payload_tests;
 #[cfg(test)]
+mod payload_v2_tests;
+#[cfg(test)]
 mod record_tests;
 #[cfg(test)]
 mod test_support;
 #[cfg(test)]
 mod token_tests;
+#[cfg(test)]
+mod traces_tests;
 #[cfg(test)]
 mod window_tests;
 
@@ -80,6 +95,12 @@ use std::sync::Arc;
 pub const MONITOR_PATH: &str = "/_rullst/monitor/v1";
 /// Value of the document's `schema` field.
 pub const MONITOR_SCHEMA: &str = "rullst.monitor.v1";
+/// Path of the version 2 document, served next to [`MONITOR_PATH`] with the
+/// same credentials and limits: the version 1 fields plus sampled request
+/// traces and the security radar. Added in 13.0.0-alpha.6.
+pub const MONITOR_V2_PATH: &str = "/_rullst/monitor/v2";
+/// Value of the version 2 document's `schema` field.
+pub const MONITOR_V2_SCHEMA: &str = "rullst.monitor.v2";
 /// Environment variable (process environment first, then `.env`) holding
 /// the accepted monitor tokens, separated by commas. Several tokens let you
 /// rotate without downtime.

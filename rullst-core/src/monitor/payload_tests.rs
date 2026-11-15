@@ -12,7 +12,7 @@ use std::collections::BTreeSet;
 use std::time::Duration;
 
 /// Every field path of `value`; array elements appear as `[]`.
-fn paths(value: &Value, prefix: &str, out: &mut BTreeSet<String>) {
+pub(super) fn paths(value: &Value, prefix: &str, out: &mut BTreeSet<String>) {
     match value {
         Value::Object(map) => {
             for (key, child) in map {
@@ -36,7 +36,7 @@ fn paths(value: &Value, prefix: &str, out: &mut BTreeSet<String>) {
     }
 }
 
-fn populated_collector() -> Collector {
+pub(super) fn populated_collector() -> Collector {
     let collector = Collector::new();
     let queries = RequestQueries {
         operations: 4,
@@ -53,7 +53,7 @@ fn populated_collector() -> Collector {
     collector
 }
 
-fn radar() -> RadarSnapshot {
+pub(super) fn radar() -> RadarSnapshot {
     RadarSnapshot {
         uptime_seconds: 42,
         memory_rss_mb: Some(12.5),
@@ -64,7 +64,7 @@ fn radar() -> RadarSnapshot {
     }
 }
 
-fn queues() -> Vec<QueueReport> {
+pub(super) fn queues() -> Vec<QueueReport> {
     let activity = QueueActivitySnapshot {
         in_flight: 1,
         completed: 2,

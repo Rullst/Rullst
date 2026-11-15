@@ -5,7 +5,7 @@ use super::history::{self, Range};
 use super::{Chrome, Page, duration, layout, notice, page_link, query_value};
 use crate::remote::document::MonitorDocument;
 use crate::remote::history::Sample;
-use crate::remote::server_test::document;
+use crate::remote::server_test::{document, document_v2};
 
 #[test]
 fn pages_have_fixed_paths_and_project_links() {
@@ -15,8 +15,11 @@ fn pages_have_fixed_paths_and_project_links() {
         (Page::Routes, "/studio/routes"),
         (Page::Queues, "/studio/queues"),
         (Page::Queries, "/studio/queries"),
+        (Page::Traces, "/studio/traces"),
+        (Page::Security, "/studio/security"),
         (Page::History, "/studio/history"),
         (Page::Alerts, "/studio/alerts"),
+        (Page::Settings, "/studio/settings"),
     ] {
         assert_eq!(page.path(), path);
         assert_eq!(page_link(page, None), path);
@@ -28,6 +31,11 @@ fn pages_have_fixed_paths_and_project_links() {
     );
     assert_eq!(page_link(Page::Projects, Some("shop")), "/studio");
     assert_eq!(page_link(Page::Alerts, Some("shop")), "/studio/alerts");
+    assert_eq!(page_link(Page::Settings, Some("shop")), "/studio/settings");
+    assert_eq!(
+        page_link(Page::Security, Some("shop")),
+        "/studio/security?project=shop"
+    );
 }
 
 fn chrome(projects: &[String], active: Page, open_alerts: u64) -> String {
@@ -57,8 +65,11 @@ fn the_navigation_marks_the_active_page_and_counts_open_alerts() {
         "🛣️ Routes",
         "📬 Queues",
         "🔁 N+1 Queries",
+        "🧵 Traces",
+        "🛡️ Security",
         "📈 History",
         "🚨 Alerts",
+        "⚙️ Settings",
     ] {
         assert!(page.contains(&format!("<span>{label}</span>")), "{label}");
     }
@@ -117,8 +128,10 @@ fn sample(at: u64, p95_ms: Option<f64>) -> Sample {
         window_requests: Some(10),
         error_rate_percent: Some(1.0),
         p95_ms,
+        p99_ms: None,
         queue_pending: Some(4),
         queue_failed_total: Some(0),
+        security_events_total: None,
     }
 }
 
@@ -224,4 +237,133 @@ fn queue_failures_and_n_plus_one_findings_set_the_tone() {
     let queries = super::monitor::queries("shop", &monitor_document());
     assert!(!queries.contains("No repeated operations"));
     assert!(queries.contains("LineItem.find (line_items)"), "{queries}");
+}
+
+fn v2_document(edit: impl FnOnce(&mut serde_json::Value)) -> MonitorDocument {
+    let mut value = document_v2("/orders/{id}");
+    edit(&mut value);
+    serde_json::from_value(value).unwrap()
+}
+
+fn card_value(html: &str, value: &str, hint: &str) -> bool {
+    html.contains(&format!(
+        r#">{value}</div><div class="text-xs text-slate-400 mt-1">{hint}</div>"#
+    ))
+}
+
+#[test]
+fn the_traces_page_lists_sampled_requests_and_span_totals() {
+    let document = v2_document(|value| {
+        let requests = &mut value["traces"]["requests"];
+        let mut error = requests[0].clone();
+        error["status"] = serde_json::json!(500);
+        error["duration_ms"] = serde_json::json!(3.5);
+        requests.as_array_mut().unwrap().push(error);
+    });
+    let html = super::traces::traces("shop", &document);
+    assert!(html.contains("Traces · shop"));
+    assert!(card_value(
+        &html,
+        "321",
+        "at most one ordinary request per 100 ms"
+    ));
+    assert!(card_value(&html, "3", "the newest 50 kept"));
+    assert!(
+        card_value(&html, "2", "5xx among the shown requests"),
+        "{html}"
+    );
+    assert!(card_value(
+        &html,
+        "1250.5 ms",
+        "duration to the response headers"
+    ));
+    for cell in [
+        "0m 10s ago",
+        "/orders/{id}",
+        "503",
+        "1250.500 ms",
+        "possible",
+        "12.250 ms",
+        "4.500 ms",
+        "2.000 ms",
+        "0m 20s ago",
+    ] {
+        assert!(
+            html.contains(&format!(r#"<td class="px-3 py-2 break-all">{cell}</td>"#)),
+            "{cell}: {html}"
+        );
+    }
+    assert!(html.contains("7 spans in the application"));
+    assert!(!html.contains("serves rullst.monitor.v1 only"));
+
+    let quiet = v2_document(|value| {
+        value["traces"]["requests"] = serde_json::json!([]);
+        value["traces"]["spans"]["kinds"] = serde_json::json!([]);
+    });
+    let html = super::traces::traces("shop", &quiet);
+    assert!(html.contains("No requests sampled yet"));
+    assert!(card_value(&html, "—", "duration to the response headers"));
+    assert!(!html.contains("<th class=\"px-3 py-2 text-left\">Kind</th>"));
+}
+
+#[test]
+fn the_security_page_names_known_counters_and_lists_event_types() {
+    let html = super::security::security("shop", &v2_document(|_| {}));
+    assert!(html.contains("Security · shop"));
+    assert!(card_value(
+        &html,
+        "17",
+        "recorded since the process started"
+    ));
+    assert!(card_value(&html, "2", "peers banned by a honeypot"));
+    assert!(card_value(&html, "40", "rate limits and lockouts"));
+    assert!(card_value(
+        &html,
+        "3",
+        "peers locked out after failed sign-ins"
+    ));
+    let refusals = html.find("Rate-limit and lockout refusals").unwrap();
+    let jail = html.find("Login Jail lockouts").unwrap();
+    // An unknown counter keeps its own row, after the named ones.
+    let unknown = html
+        .find(r#"break-all">/orders/{id}</td><td class="px-3 py-2 break-all">9</td>"#)
+        .unwrap();
+    assert!(refusals < jail && jail < unknown, "{html}");
+    // Known counters appear by label only, absent ones not at all.
+    assert!(!html.contains("rate_limit_blocks"));
+    assert!(!html.contains("Deception trap hits"));
+    assert!(html.contains("LOGIN_JAIL_TRIGGERED"));
+    assert!(html.contains(r#"break-all">0m 5s ago</td>"#));
+
+    let quiet = v2_document(|value| {
+        value["security"]["events"] = serde_json::json!([]);
+        value["security"]["counters"] = serde_json::json!({});
+    });
+    let html = super::security::security("shop", &quiet);
+    assert!(html.contains("No security events kept"));
+    assert!(card_value(&html, "0", "rate limits and lockouts"));
+}
+
+#[test]
+fn version_1_documents_explain_why_traces_and_security_are_missing() {
+    let document = monitor_document();
+    for html in [
+        super::traces::traces("shop", &document),
+        super::security::security("shop", &document),
+    ] {
+        assert!(html.contains("It serves rullst.monitor.v1 only."), "{html}");
+        assert!(!html.contains("<table"));
+    }
+}
+
+#[test]
+fn the_settings_page_marks_an_unusable_proxy() {
+    use crate::remote::preferences::StudioSettings;
+    use crate::remote::proxy::ProxyPlan;
+    let settings = StudioSettings::default();
+    let direct = super::preferences::page(&settings, &ProxyPlan::Direct, "t0k3n", None);
+    assert!(direct.contains(r#"<p class="text-xs text-slate-300">Connections are direct.</p>"#));
+    assert!(direct.contains(r#"name="form_token" value="t0k3n""#));
+    let invalid = super::preferences::page(&settings, &ProxyPlan::Invalid, "t0k3n", None);
+    assert!(invalid.contains(r#"<p class="text-xs text-red-300">The proxy cannot be used"#));
 }

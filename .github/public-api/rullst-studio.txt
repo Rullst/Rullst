@@ -407,8 +407,10 @@ pub struct rullst_studio::remote::AlertRules
 pub rullst_studio::remote::AlertRules::unreachable: bool
 pub rullst_studio::remote::AlertRules::error_rate_percent: core::option::Option<f64>
 pub rullst_studio::remote::AlertRules::p95_ms: core::option::Option<f64>
+pub rullst_studio::remote::AlertRules::p99_ms: core::option::Option<f64>
 pub rullst_studio::remote::AlertRules::queue_pending: core::option::Option<u64>
 pub rullst_studio::remote::AlertRules::queue_failures: core::option::Option<u64>
+pub rullst_studio::remote::AlertRules::security_events: core::option::Option<u64>
 pub rullst_studio::remote::AlertRules::cooldown_minutes: u32
 impl core::clone::Clone for rullst_studio::remote::AlertRules
 impl core::cmp::PartialEq for rullst_studio::remote::AlertRules
@@ -439,6 +441,7 @@ pub rullst_studio::remote::FetchError::Status(u16)
 pub rullst_studio::remote::FetchError::TooLarge
 pub rullst_studio::remote::FetchError::NotJson
 pub rullst_studio::remote::FetchError::Invalid
+pub rullst_studio::remote::FetchError::ProxyUnusable
 impl rullst_studio::remote::FetchError
 pub fn rullst_studio::remote::FetchError::message(&self) -> alloc::string::String
 impl core::clone::Clone for rullst_studio::remote::FetchError
@@ -480,6 +483,8 @@ pub rullst_studio::remote::ProjectError::TooMany
 pub rullst_studio::remote::ProjectError::NotFound
 pub rullst_studio::remote::ProjectError::InvalidWebhook
 pub rullst_studio::remote::ProjectError::InvalidRules
+pub rullst_studio::remote::ProjectError::InvalidSettings
+pub rullst_studio::remote::ProjectError::InvalidProxy
 impl core::clone::Clone for rullst_studio::remote::ProjectError
 impl core::cmp::Eq for rullst_studio::remote::ProjectError
 impl core::cmp::PartialEq for rullst_studio::remote::ProjectError

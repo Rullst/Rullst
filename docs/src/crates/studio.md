@@ -83,23 +83,28 @@ local Studio's `local` feature, which every driver profile enables, so since
 13.0.0-alpha.5 the binary builds no ORM, database driver, Capital or Security
 crate, only the SQLite store of its own history) serves
 Studio on `127.0.0.1:5556` without an application process and reads the
-read-only `/_rullst/monitor/v1` document of the projects you add: overview,
-routes, queues and N+1 pages with a project switcher. It keeps the loopback
+read-only `/_rullst/monitor/v2` document (`/_rullst/monitor/v1` from an
+application before 13.0.0-alpha.6) of the projects you add: overview, routes,
+queues, N+1, traces and security pages with a project switcher. It keeps the loopback
 `Host`, same-origin and marker checks above, adds a per-process form token,
 and runs in release builds because it serves no local data: the data
 browser, `.env` viewer, AI and API playgrounds and migration pages are not
 mounted. Projects are stored owner-only in the user's configuration
 directory, with each token AES-256-GCM encrypted under a key in the data
 directory and bound to its name and base URL. Requests require `https://`
-(or `http://` to loopback), follow no redirects, ignore proxy variables and
+(or `http://` to loopback), follow no redirects, use a proxy only when the
+Settings page selects one (`HTTPS_PROXY`/`NO_PROXY` or an explicit URL) and
 read at most 1 MiB in 5 seconds. See the
 [production monitoring guide](../production-monitoring.md#watch-your-projects-from-studio).
 
 History and alerts: projects marked as watched are polled every 60 s while
 the binary runs; their aggregates go to a bounded owner-only SQLite file
 (seven days) charted on `/studio/history`, and per-project rules (unreachable,
-5xx rate, p95, pending jobs, queue failures) fire with a cool-down on
-`/studio/alerts`, optionally posted once to an encrypted `https://` webhook.
+5xx rate, p95, p99, pending jobs, queue failures, security events) fire with a
+cool-down on `/studio/alerts`, optionally posted once to an encrypted
+`https://` webhook and, once enabled on `/studio/settings` and allowed in the
+browser, shown as desktop notifications (at most one per project per quiet
+period).
 
 Studio uses the ORM pool that the application initialized. When none exists,
 its first database view initializes one from the resolver shared by `Server`

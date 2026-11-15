@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 pub(crate) const MIN_REQUESTS_FOR_ERROR_RATE: u64 = 20;
 const DEFAULT_COOLDOWN_MINUTES: u32 = 15;
 const MAX_COOLDOWN_MINUTES: u32 = 1_440;
-const MAX_P95_MS: f64 = 600_000.0;
+const MAX_LATENCY_MS: f64 = 600_000.0;
 const MAX_QUEUE_THRESHOLD: u64 = 1_000_000_000;
 
 /// The thresholds of one project; `None` disables a rule.
@@ -27,12 +27,21 @@ pub struct AlertRules {
     /// Fire when the window's p95 latency reaches this many milliseconds.
     #[serde(default)]
     pub p95_ms: Option<f64>,
+    /// Fire when the window's p99 latency reaches this many milliseconds
+    /// (since 13.0.0-alpha.6).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub p99_ms: Option<f64>,
     /// Fire when the pending jobs of all queues reach this count.
     #[serde(default)]
     pub queue_pending: Option<u64>,
     /// Fire when this many queue failures happen between two polls.
     #[serde(default)]
     pub queue_failures: Option<u64>,
+    /// Fire when the application records this many security events between
+    /// two polls (a `rullst.monitor.v2` document is needed; since
+    /// 13.0.0-alpha.6).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub security_events: Option<u64>,
     /// Minutes before the same rule fires again for the project.
     #[serde(default = "default_cooldown")]
     pub cooldown_minutes: u32,
@@ -48,8 +57,10 @@ impl Default for AlertRules {
             unreachable: false,
             error_rate_percent: None,
             p95_ms: None,
+            p99_ms: None,
             queue_pending: None,
             queue_failures: None,
+            security_events: None,
             cooldown_minutes: DEFAULT_COOLDOWN_MINUTES,
         }
     }
@@ -61,16 +72,18 @@ impl AlertRules {
         let percent = self
             .error_rate_percent
             .is_none_or(|value| value.is_finite() && value > 0.0 && value <= 100.0);
-        let p95 = self
-            .p95_ms
-            .is_none_or(|value| value.is_finite() && value > 0.0 && value <= MAX_P95_MS);
-        let queue = |value: Option<u64>| {
+        let latency = |value: Option<f64>| {
+            value.is_none_or(|value| value.is_finite() && value > 0.0 && value <= MAX_LATENCY_MS)
+        };
+        let count = |value: Option<u64>| {
             value.is_none_or(|value| (1..=MAX_QUEUE_THRESHOLD).contains(&value))
         };
         percent
-            && p95
-            && queue(self.queue_pending)
-            && queue(self.queue_failures)
+            && latency(self.p95_ms)
+            && latency(self.p99_ms)
+            && count(self.queue_pending)
+            && count(self.queue_failures)
+            && count(self.security_events)
             && (1..=MAX_COOLDOWN_MINUTES).contains(&self.cooldown_minutes)
     }
 }
@@ -81,8 +94,10 @@ pub(crate) enum RuleKind {
     Unreachable,
     ErrorRate,
     P95,
+    P99,
     QueuePending,
     QueueFailures,
+    SecurityEvents,
 }
 
 impl RuleKind {
@@ -91,8 +106,10 @@ impl RuleKind {
             Self::Unreachable => "unreachable",
             Self::ErrorRate => "error_rate",
             Self::P95 => "p95_latency",
+            Self::P99 => "p99_latency",
             Self::QueuePending => "queue_pending",
             Self::QueueFailures => "queue_failures",
+            Self::SecurityEvents => "security_events",
         }
     }
 }
@@ -148,6 +165,14 @@ pub(crate) fn evaluate(
             format!("{project}: p95 latency {p95:.1} ms (threshold {threshold} ms)"),
         );
     }
+    if let (Some(threshold), Some(p99)) = (rules.p99_ms, current.p99_ms)
+        && p99 >= threshold
+    {
+        fire(
+            RuleKind::P99,
+            format!("{project}: p99 latency {p99:.1} ms (threshold {threshold} ms)"),
+        );
+    }
     if let (Some(threshold), Some(pending)) = (rules.queue_pending, current.queue_pending)
         && pending >= threshold
     {
@@ -168,6 +193,20 @@ pub(crate) fn evaluate(
             RuleKind::QueueFailures,
             format!(
                 "{project}: {failures} queue failures since the previous poll (threshold {threshold})"
+            ),
+        );
+    }
+    let events = previous
+        .and_then(|previous| previous.security_events_total)
+        .zip(current.security_events_total)
+        .and_then(|(before, after)| after.checked_sub(before));
+    if let (Some(threshold), Some(events)) = (rules.security_events, events)
+        && events >= threshold
+    {
+        fire(
+            RuleKind::SecurityEvents,
+            format!(
+                "{project}: {events} security events since the previous poll (threshold {threshold})"
             ),
         );
     }

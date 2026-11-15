@@ -37,7 +37,7 @@ fn settings_form(project: &Project, form_token: &str) -> String {
   <div class="flex flex-wrap items-center gap-4"><span class="text-lg font-bold text-sky-300">{name}</span>
     <label class="text-xs text-slate-300 flex items-center gap-2"><input type="checkbox" name="watch" value="on"{watch} /> Watch (poll and keep history)</label>
     <label class="text-xs text-slate-300 flex items-center gap-2"><input type="checkbox" name="unreachable" value="on"{unreachable} /> Alert when unreachable</label></div>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">{error_rate}{p95}{pending}{failures}{cooldown}
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">{error_rate}{p95}{p99}{pending}{failures}{security}{cooldown}
     <label class="text-xs text-slate-400 font-semibold space-y-1"><span class="block">Webhook (https://, {webhook})</span><input name="webhook" type="password" maxlength="2048" class="{INPUT}" /></label></div>
   <div class="flex items-center gap-4"><label class="text-xs text-slate-300 flex items-center gap-2"><input type="checkbox" name="clear_webhook" value="on" /> Remove the webhook</label>
     <button type="submit" class="px-4 py-1 rounded-lg border border-sky-700 bg-sky-950 text-sky-300 text-xs font-bold hover:border-sky-500 transition">Save</button></div>
@@ -52,6 +52,7 @@ fn settings_form(project: &Project, form_token: &str) -> String {
             optional(rules.error_rate_percent)
         ),
         p95 = number_input("p95_ms", "p95 latency ≥ (ms)", optional(rules.p95_ms)),
+        p99 = number_input("p99_ms", "p99 latency ≥ (ms)", optional(rules.p99_ms)),
         pending = number_input(
             "queue_pending",
             "Pending jobs ≥",
@@ -61,6 +62,11 @@ fn settings_form(project: &Project, form_token: &str) -> String {
             "queue_failures",
             "Queue failures per poll ≥",
             optional(rules.queue_failures)
+        ),
+        security = number_input(
+            "security_events",
+            "Security events per poll ≥",
+            optional(rules.security_events)
         ),
         cooldown = number_input(
             "cooldown_minutes",

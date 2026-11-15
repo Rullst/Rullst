@@ -4665,6 +4665,24 @@ by the application, which a later Studio "remote projects" mode reads. Guide:
   workers. Raw paths, query strings, headers, cookies, addresses, user
   identifiers, bodies, SQL text or values, error messages, environment and
   configuration values are never recorded.
+* **Document (`rullst.monitor.v2`, 13.0.0-alpha.6).** `GET /_rullst/monitor/v2`
+  is mounted with version 1, with the same admission, limits and headers, and
+  neither path is counted in the statistics. It carries every version 1 field
+  plus `traces` (`sample_limit`, `sampled_total`, `requests` and `spans`) and
+  `security` (`events_total`, `active_bans`, `counters`, `events`); a test pins
+  the field set. `requests` are at most 50 summaries, newest first, of
+  sampled requests: Unix time, the statistics' method and route labels,
+  status, duration in milliseconds rounded to thousandths, outermost ORM
+  operations and whether one repeated at the N+1 threshold. At most one
+  ordinary request per 100 ms and one outlier (`5xx` or at least 1 s) per
+  10 ms is kept, through one atomic gate each. `spans` totals the global
+  `SpanCollector` per kind (`http`, `sql`, `ai`, `job`, else `other`: count,
+  total and longest microseconds, latest time) and never sends span names.
+  `security` reads `SecurityStore::global()`: every `TelemetrySnapshot`
+  counter, the active honeypot ban count, the events recorded since start and
+  the type and Unix time of each kept event (at most 50); event details,
+  client addresses, banned addresses and honeypot paths are never sent.
+  Version 1 is unchanged.
 * **Cost and scope.** State is process-local and resets with the process. The
   passive ORM query layer is part of the framework subscriber in every build
   and attributes operations only inside a recording scope. A release-build
@@ -4684,7 +4702,9 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
   router applies Studio's loopback boundary (loopback peer and `Host`,
   same-origin `Origin` on unsafe methods, crate-private marker) in release
   builds too, and mounts only `/studio` (projects), `/studio/radar`,
-  `/studio/routes`, `/studio/queues`, `/studio/queries` and the assets; local
+  `/studio/routes`, `/studio/queues`, `/studio/queries`, `/studio/traces`
+  and `/studio/security` (13.0.0-alpha.6), the history, alerts and settings
+  pages and the assets; local
   surfaces (data browser, `.env`, AI, API, migrations, jobs, cache,
   features, requests) answer `404`. Add and remove forms also require a
   random per-process form token compared in constant time.
@@ -4699,12 +4719,26 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
   does not decrypt is reported and never sent.
 * **Requests.** Base URLs are `https://`, or `http://` to a loopback host,
   without user information, query or fragment. Studio sends
-  `GET <base>_rullst/monitor/v1` with `Authorization: Bearer`, follows no
-  redirect, ignores proxy variables, validates certificates, and bounds each
-  read to 1 MiB, 5 s total and 3 s to connect. It accepts only `200`, a JSON
-  content type and `schema: "rullst.monitor.v1"` with bounded lists (512
-  routes, 128 findings, 32 queues) and labels (512 characters); unknown fields
-  are ignored. Failures are fixed statuses; every remote value is
+  `GET <base>_rullst/monitor/v2` with `Authorization: Bearer` and, when that
+  answers `404`, `GET <base>_rullst/monitor/v1`, remembering for ten minutes
+  (at most 64 URLs) that the project serves version 1 only; any other version
+  2 failure is reported, not downgraded. It follows no redirect, validates
+  certificates, and bounds each read to 1 MiB, 5 s total and 3 s to connect.
+  Since 13.0.0-alpha.6 the Settings page's proxy choice (`settings.proxy` in
+  the project list: `direct` by default, `environment` for
+  `HTTPS_PROXY`/`https_proxy` and `NO_PROXY`/`no_proxy`, or `explicit` with an
+  `http`/`https` URL without user information, path, query or fragment and a
+  `NO_PROXY`-syntax exception list of at most 4,096 characters) applies to
+  project reads and webhooks through reqwest's own proxy support: only
+  `https` requests to non-loopback hosts outside the exceptions go through
+  the proxy, as a `CONNECT` tunnel; an unusable proxy makes every request
+  fail with a fixed status instead of connecting directly. Saving rebuilds
+  both HTTP clients.
+  It accepts only `200`, a JSON content type and the schema of the path read
+  (`rullst.monitor.v2` needs its `traces` and `security` sections) with
+  bounded lists (512 routes, 128 findings, 32 queues; 64 request summaries,
+  8 span kinds, 64 counters, 64 events) and labels (512 characters); unknown
+  fields are ignored. Failures are fixed statuses; every remote value is
   HTML-escaped.
 * **History and alerts (phase 3).** Projects marked *watched* are read every
   60 s (clamped to 15 s–1 h) while the process runs. Each read stores one row
@@ -4721,8 +4755,26 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
   alerts. A webhook URL must be `https://` without user information or
   fragment, is sealed like a token and is never displayed; each alert is
   posted once as JSON (`source`, `project`, `rule`, `message`, `at`) without
-  redirects or proxies within 5 s, and the fixed outcome is stored on the
-  alert.
+  redirects within 5 s (through the proxy setting since 13.0.0-alpha.6),
+  and the fixed outcome is stored on the
+  alert. Since 13.0.0-alpha.6 the samples also keep p99 latency and the
+  version 2 `security.events_total` (new nullable columns added to an older
+  database when it opens), with matching rules (p99; security events between
+  two polls, ignoring counter resets), stored only when set.
+* **Desktop notifications (13.0.0-alpha.6).** `/studio/settings` (same
+  form token) enables them and sets a quiet period (10 minutes, 1–1,440),
+  stored in the project list's `settings` object, which is written only when
+  it differs from the defaults. Each recorded alert is offered to a
+  per-process notifier with the poll's clock: a project gets at most one
+  notification per quiet period, alerts in between are counted into its next
+  notification or, at the end of the period, a summary. At most 32
+  notifications are queued in memory with increasing ids. Every page loads
+  the same-origin `/studio/assets/notifications.js`, which polls
+  `GET /studio/notifications?session=…&after=…` (loopback boundary; JSON with
+  `enabled`, a random per-process `session`, `cursor` and the newer
+  notifications; another session or none starts at the cursor) every 15 s
+  and, once the browser's permission is granted, shows each with the
+  Notifications API under a unique tag.
 
 ### 10.2. Rullst Nexus (`/nexus`)
 * Auto-generated CMS with dynamic CRUD operations and AI Admin Assistant.
