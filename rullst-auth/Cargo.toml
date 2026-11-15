@@ -42,8 +42,8 @@ api-tokens-postgres = ["recovery-postgres"]
 # Server-side registry of `rullst_session` logins (`session_registry`) over
 # the application's own SQLx pool, one feature per database.
 session-registry-sqlite = ["dep:sqlx", "sqlx/sqlite"]
-session-registry-postgres = ["dep:sqlx", "sqlx/postgres"]
-session-registry-mysql = ["dep:sqlx", "sqlx/mysql"]
+session-registry-postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "rullst-core/tls"]
+session-registry-mysql = ["dep:sqlx", "sqlx/mysql", "sqlx/tls-rustls-aws-lc-rs", "rullst-core/tls"]
 
 [dependencies]
 rullst-core = { workspace = true }

@@ -18,8 +18,9 @@
   HTTPS, Redis and PostgreSQL features enable it, and CI checks every facade
   feature. The facade's new `tls` feature enables it for an application whose
   own code makes rustls connections and relied on `orm` installing that
-  default. `rullst-connect`'s `postgres` and `mysql` features now enable
-  SQLx's TLS themselves.
+  default. `rullst-connect`'s `postgres` and `mysql` features and
+  `rullst-auth`'s `session-registry-postgres` and `session-registry-mysql`
+  now enable SQLx's TLS themselves.
 - Studio's revenue dashboard (`/studio/capital`, `/api/revenue`,
   `rullst_studio::revenue_dashboard`) and its `rullst-capital` dependency are
   behind Studio's new `capital` feature, on by default in `rullst-studio` and
