@@ -264,7 +264,7 @@ These workflows are **periodic and manually runnable**:
 
 | Cadence | Workflows | Mode |
 | :--- | :--- | :--- |
-| Daily | `ci.yml`, `sanitizers.yml`, `supply-chain.yml` | Supply Chain (Cargo Audit of the production and fuzz locks, Cargo Deny and the advisory-exception check) is blocking; the nightly `ci.yml` run executes the complete Linux/macOS/Windows matrix on `main`; TSan/ASan are blocking when executed. |
+| Daily | `ci.yml`, `msrv-tests.yml`, `sanitizers.yml`, `supply-chain.yml` | Supply Chain (Cargo Audit of the production and fuzz locks, Cargo Deny and the advisory-exception check) is blocking; the nightly `ci.yml` run executes the complete Linux/macOS/Windows matrix on `main`; TSan/ASan are blocking when executed; the [MSRV tests](#msrv-checks-and-tests) are informational. |
 | Weekly | `bench.yml`, `codeql.yml`, `coverage.yml`, `crypto-containment.yml`, `documentation.yml`, `kani.yml`, `miri.yml`, `proptest.yml`, `scorecards.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. Miri (Wednesday 01:17 UTC) and Kani (Thursday 01:47 UTC) run their full strict matrices so that a regression shows up within a week rather than at release admission. The Miri run also runs the informational `cargo careful test` jobs. |
 
 All remaining workflows run on their push, pull-request or path filters and
@@ -345,7 +345,8 @@ and recording contextual fragments as ignored. Further contracts: the pinned
 live Redis job (Core scheduling and cache inspection, ORM cache, invalidation,
 rollback, post-commit observers and Scout ordering); the SQLite outbox
 contract on all three systems, with the lifecycle repeated against
-PostgreSQL, MySQL, MariaDB and strict SQLite; the Rust 1.96.0 MSRV job; and the
+PostgreSQL, MySQL, MariaDB and strict SQLite; the
+[Rust 1.96.0 MSRV job](#msrv-checks-and-tests); and the
 Linux provider matrix (Scout against a digest-pinned Meilisearch image,
 pgvector L2 and cosine queries, Nexus's default Any/SQLite HTTP contract;
 Algolia and Elasticsearch use local protocol fixtures).
@@ -409,10 +410,10 @@ Do not configure a path-filtered, scheduled, manual, deployment or tag-only
 workflow as a universal required check: an intentionally skipped workflow may
 never create the check context (IoT and Vault Crypto Containment, for example,
 blocks only when relevant paths change). Pages, benchmarks, fuzzing,
-sanitizers, Kani, Miri, mutation testing, udeps, ZAP, Scorecard and release
-provenance belong to deeper evidence or release policy. GitHub repository
-rulesets remain the enforcement source; on 29 October 2026 they matched this
-profile: the
+sanitizers, the MSRV tests, Kani, Miri, mutation testing, udeps, ZAP, Scorecard
+and release provenance belong to deeper evidence or release policy. GitHub
+repository rulesets remain the enforcement source; on 29 October 2026 they
+matched this profile: the
 [development-branch ruleset](https://github.com/Rullst/Rullst/rules/24175738)
 on `main` and the
 [maintained-branch ruleset](https://github.com/Rullst/Rullst/rules/24080901)
@@ -457,6 +458,32 @@ pointer and handle ownership and lifetime: Windows descriptors are installed
 atomically through owned handles, and ACE pointers and SID lengths are checked
 before use; the macOS module only inspects an ACL. This is an enforced
 boundary, not a claim that dependencies contain no unsafe Rust.
+
+### MSRV checks and tests
+
+The required `Check MSRV (Rust 1.96.0)` job of `ci.yml` runs `cargo check
+--workspace --all-features` with `RUSTUP_TOOLCHAIN=1.96.0` and fails unless
+`rustc` reports 1.96.0. `rust-toolchain.toml` pins the development compiler and
+takes precedence over `rustup default`, so until 13.0.0-alpha.6 the job, which
+selected 1.96.0 only as the default, compiled with the pinned compiler (Rust
+1.97.1 to 1.100.0 since July 2026). The job compiles; it runs no test.
+
+`msrv-tests.yml` (daily at 02:41 UTC, manual, and on pull requests to `main`
+that change it) runs tests on Rust 1.96.0: the library unit and integration
+tests of `rullst-core`, `rullst-security`, `rullst-auth`, `rullst-macros`,
+`rullst-orm-macros` and the `rullst` facade with every feature, the facade's
+doctests (the tutorial and guide examples), and the `rullst-orm` and facade
+SQLite suites (`drivers-all`, `orm`, `queue-sqlite`, the default profile of
+`coverage.yml`). It uses the compiler cache and environment of the Rust CI test
+jobs. `DOCKER_HOST` points nowhere, so the testcontainers contracts skip as
+they do without Docker, and the live-server contracts skip without their URLs;
+they run on the pinned compiler in `ci.yml`. The compile-fail UI tests run with
+`TRYBUILD=overwrite`, because their `.stderr` files record the pinned
+compiler's diagnostics: a case that compiles still fails, and other wording is
+accepted and listed in the job summary. The workflow is informational, not a
+required check or release evidence. A failure means the tested crates no longer
+work on the declared MSRV: fix the code, or raise the MSRV under the
+[compatibility policy](docs/src/compatibility-policy.md#minimum-supported-rust-version).
 
 ### Coverage
 
@@ -683,7 +710,7 @@ compiler flags and compiler-cache inputs, and Clippy keeps its explicit
 `latest` scanner image, so the workflow also pins the reviewed 3.97.4 image
 digest; a scanner update must change that digest.
 
-## Workflow inventory (34 definitions)
+## Workflow inventory (35 definitions)
 
 Durations are intentionally omitted because runner load, cache state, and the
 dependency graph make static estimates unreliable.
@@ -705,6 +732,7 @@ dependency graph make static estimates unreliable.
 | [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | weekly (Thursday 01:47 UTC), manual | Blocking release scope; bounded evidence | Builds an immutable reviewed Kani snapshot with the verifier-only `nightly-2026-08-01` compiler, while Rullst stays on stable Rust 1.100.0 with a Rust 1.96 MSRV. It verifies twenty named bounded harnesses in isolated jobs across ten supported packages. Proof failures fail their matrix jobs; the proc-macro-only crate remains outside Kani's supported targets. |
 | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main/v12/v13 push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
 | [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | weekly (Wednesday 01:17 UTC), manual | Blocking release scope; bounded evidence | Pinned nightly-only Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts without changing Rullst's stable toolchain or MSRV. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. Informational `cargo careful test` jobs (Core, Security, ORM library unit tests) run alongside with `continue-on-error` and never change the conclusion. |
+| [`msrv-tests.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/msrv-tests.yml) | daily (02:41 UTC), manual, pull requests to main that change it | Informational | Runs on Rust 1.96.0 the library unit and integration tests of Core, Security, Auth, the two macro crates and the facade with every feature, the facade's doctests, and the ORM and facade SQLite suites, with the Rust CI compiler cache and Docker unavailable (container contracts skip). Compile-fail UI tests accept other diagnostic wording but still fail a case that compiles. Not a required check or release evidence; see [MSRV checks and tests](#msrv-checks-and-tests). |
 | [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | A source-bound inventory preflight followed by eighty lossless pinned cargo-mutants 27.1.0 shards with four concurrent jobs over that source's all-feature workspace, each shard with a pinned Redis service for the `RULLST_TEST_REDIS_URL` contracts, one validated production-file diagnostic, one owned-server contract (`mode=contract`: a PostgreSQL or Redis wrapper's adapter mutants against the server it owns, or the ORM crates against the `rullst-orm` SQLite suite), or policy-bound exact-SHA recovery of reviewed failed fragments. Successful immutable artifacts may be reused, but the content-addressed aggregate still requires every reviewed candidate exactly once and carries source/run/branch/tool/inventory provenance. Findings stay informational, while baseline/tool/invocation failures, missing artifacts, incomplete classification and reviewed-inventory drift fail the run. The completed v12 receipt is run `34761010296`: 14,391/14,391 classified and a conservative 70.57% caught. |
 | [`mutants-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants-pr.yml) | pull requests to main that change Rust | Blocking by policy; not a required check | Lists the pinned cargo-mutants 27.1.0 all-feature mutants on the Rust lines the pull request changes, skipping the globs in `.github/mutants-pr-exclude.txt` and every CLI file not listed in `.github/mutants-pr-cli.txt` (listed CLI files run against the CLI's library tests), and tests them in at most eight shards with a Redis service and the targeted-run timeouts and memory cap. A missed mutant fails the run; unviable and timed-out mutants do not. See [Pull-request mutation gate](#pull-request-mutation-gate). |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main/v12/v13 push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |

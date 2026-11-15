@@ -1,0 +1,110 @@
+name: MSRV Tests
+
+# Runs tests on the declared MSRV. The required `Check MSRV (Rust 1.96.0)` job
+# of ci.yml only compiles the workspace. This workflow is informational: it is
+# not a required check and not release evidence (WORKFLOWS.md).
+on:
+  schedule:
+    # Daily at 02:41 UTC, before the 05:30 nightly Rust CI matrix.
+    - cron: '41 2 * * *'
+  workflow_dispatch:
+  # A pull request that changes this workflow runs it before merge.
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/msrv-tests.yml
+
+concurrency:
+  # A scheduled run must not cancel, or be cancelled by, a dispatched run.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'schedule' && '-nightly' || '' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CARGO_NET_RETRY: 10
+  # The compiler cache of ci.yml; Rust 1.96.0 outputs have their own keys.
+  CARGO_INCREMENTAL: "0"
+  RUSTC_WRAPPER: sccache
+  SCCACHE_GHA_ENABLED: "true"
+  SCCACHE_GHA_VERSION: rullst-ci-v1
+  SCCACHE_GHA_RW_MODE: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'READ_WRITE' || 'READ_ONLY' }}
+
+jobs:
+  test:
+    name: Tests on Rust 1.96.0
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # rust-toolchain.toml pins the development compiler and takes precedence
+      # over `rustup default`; RUSTUP_TOOLCHAIN takes precedence over the file.
+      RUSTUP_TOOLCHAIN: "1.96.0"
+      # No service runs here: testcontainers fails at once, so the PostgreSQL,
+      # MySQL and Redis container contracts skip as they do without Docker.
+      DOCKER_HOST: unix:///nonexistent
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Install Rust 1.96.0 (declared MSRV)
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # stable
+        with:
+          toolchain: "1.96.0"
+
+      - name: Confirm that Cargo and rustc are 1.96.0
+        id: toolchain
+        run: |
+          cargo --version | grep '^cargo 1\.96\.0 '
+          rustc --version | grep '^rustc 1\.96\.0 '
+
+      # Each suite runs even when an earlier one failed, never on another compiler.
+      - name: Core, Security, Auth, macros and facade with every feature
+        if: (success() || failure()) && steps.toolchain.outcome == 'success'
+        env:
+          # The UI tests' `.stderr` files record the diagnostics of the pinned
+          # development compiler. With `overwrite`, a case that compiles still
+          # fails; different wording is accepted and listed in the summary.
+          TRYBUILD: overwrite
+        run: >-
+          cargo test --locked --no-fail-fast --all-features
+          -p rullst-core -p rullst-security -p rullst-auth
+          -p rullst-macros -p rullst-orm-macros -p rullst
+          --lib --tests
+
+      - name: Facade doctests (tutorials and guides) with every feature
+        if: (success() || failure()) && steps.toolchain.outcome == 'success'
+        run: cargo test --locked --no-fail-fast --all-features -p rullst --doc
+
+      - name: ORM and facade on SQLite
+        if: (success() || failure()) && steps.toolchain.outcome == 'success'
+        # The all-feature graph selects the strict PostgreSQL pool and leaves
+        # out the SQLite suites; this is the default profile of coverage.yml.
+        run: >-
+          cargo test --locked --no-fail-fast -p rullst-orm -p rullst
+          --features rullst-orm/drivers-all,rullst/orm,rullst/drivers-all,rullst/queue-sqlite
+          --lib --tests
+
+      - name: List compile-fail diagnostics that differ on Rust 1.96.0
+        if: always()
+        run: |
+          if ! git diff --quiet -- rullst-macros/tests/ui rullst-orm-macros/tests/ui; then
+            {
+              echo '### Compile-fail diagnostics that differ on Rust 1.96.0'
+              echo 'These UI cases failed to compile, as expected, with other wording:'
+              echo '```'
+              git diff --stat -- rullst-macros/tests/ui rullst-orm-macros/tests/ui
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
