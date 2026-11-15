@@ -42,6 +42,21 @@ received a test or is listed under
   [PR #532](https://github.com/Rullst/Rullst/pull/532): 78 files and 2,435
   mutants, 72 missed at the end. 71 are accepted equivalents; the last one
   needs an open PostgreSQL pool.
+- **`rullst-messaging`** (re-measured for 13.0.0-alpha.6,
+  [PR #711](https://github.com/Rullst/Rullst/pull/711)): targeted
+  runs of the 48 files outside `redis_streams/` (7 have no mutants) gave 1,377
+  mutants: 1,078 caught, 208 unviable, no timeout and 91 missed. 65 of the
+  misses are in the six `PostgresRecurringStore` files of `schedules/`, which
+  only `check-recurring-postgres.py` reaches; its contract run (301 mutants of
+  `schedules/`, 158 caught and 50 unviable by the contract tests alone) left
+  two of them: the accepted `verify` equivalent and the relay's publication
+  timeout `expires - now` with `/`, which a slow-broker relay test now kills.
+  The other 26 are the accepted equivalents of the signature, storage and
+  schedule encryption bounds and the wire size, now also listed for the
+  pull-request gate. Those six files left the gate for their contract run.
+  `redis_streams/` (excluded from the gate) was measured with targeted runs
+  and the `messaging-redis` contract run: 202 mutants, of which only the
+  accepted `Remote::decode` arm survives both.
 - **`rullst-nexus`**: first measured in PR #532 (26 files, 876 mutants). New
   tests killed 170 of the 171 first misses, one is an accepted equivalent, and
   one real defect was fixed.
@@ -233,7 +248,7 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-messaging/src/sqlite/storage/crypto.rs`: `open`, the `minimum` sum with a `+` replaced so that it shrinks, and `envelope.len() < minimum` with `<=` or `==` | The shortest authentic envelope is 38 bytes; a shorter one fails the key-ID, nonce or tag parse with the same `StorageAuthenticationFailed`. |
 | `rullst-messaging/src/schedules/crypto.rs`: `open`, `value.len() > MAX_CONTENT_BYTES + 128` with `==` or `>=` or its `+` with `*`, the `\|\|` after it with `&&`, and a `+` in `8 + 1 + 1 + 12 + 16` replaced so that the sum shrinks | Sealed values span 38 to 131,173 bytes, so each change only moves which later parse or authentication step rejects a value, with the same `Encryption`. |
 | `rullst-messaging/src/schedules/delivery.rs`: `verify`, `lease.namespace != … \|\| now >= lease.expires` with `&&` | Occurrence IDs digest their namespace, so another namespace's lease is not found by its ID, and an expired lease fails the commit deadline; both return the same `InvalidLease`. |
-| `rullst-messaging/src/wire.rs`: `FIXED_BYTES`, a `2 + 2` with `2 * 2`, and `Reader::is_finished` with `true` | `2 * 2` equals `2 + 2`; `decode` re-encodes the envelope and compares it with the frame, which rejects trailing bytes with the same `InvalidWireEnvelope`. |
+| `rullst-messaging/src/wire.rs`: `FIXED_BYTES`, each `+` between two of its `2`s with `*`, and `Reader::is_finished` with `true` | `2 * 2` equals `2 + 2`; `decode` re-encodes the envelope and compares it with the frame, which rejects trailing bytes with the same `InvalidWireEnvelope`. |
 | `rullst-messaging/src/redis_streams/transport.rs`: `Remote::decode`, delete the `"missing" \| "corrupt"` arm | The catch-all arm returns the same `CorruptStorage`. |
 | `rullst-connect/src/provider/id_token.rs`: `validate_claims_with_presenters`, the `\|\|` before `nonce.is_empty()` with `&&` | `verify_nonce` compares SHA-256 digests, so a nonce empty on one side only already fails it, and two empty nonces still satisfy the joined condition. |
 | `rullst-mail/src/security.rs`: `redact_labelled_private_keys`, `MAX_PEM_LABEL_BYTES + 1` with `*` | Reading at most 64 label bytes cuts a longer label inside its run of label bytes, so the `-----` check that follows fails as the length check would. |
