@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794742990697,
+  "lastUpdate": 1794744063387,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -34263,6 +34263,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 911,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aa6d430b10ec504081bf348913e06a39e53bb5be",
+          "message": "Merge pull request #710 from Rullst/docs/v13-agents-route-marker\n\ndocs(agents): drop the removed #[route] marker from the macros row",
+          "timestamp": "2026-11-15T08:57:18-03:00",
+          "tree_id": "5639560e83bfb1c5296fd4c5149f5728efda2d77",
+          "url": "https://github.com/Rullst/Rullst/commit/aa6d430b10ec504081bf348913e06a39e53bb5be"
+        },
+        "date": 1794744060790,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 442,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 636,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 289,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1035,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
