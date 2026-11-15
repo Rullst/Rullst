@@ -4651,7 +4651,24 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
   fragment, is sealed like a token and is never displayed; each alert is
   posted once as JSON (`source`, `project`, `rule`, `message`, `at`) without
   redirects or proxies within 5 s, and the fixed outcome is stored on the
-  alert.
+  alert. Since 13.0.0-alpha.6 the samples also keep p99 latency and the
+  version 2 `security.events_total` (new nullable columns added to an older
+  database when it opens), with matching rules (p99; security events between
+  two polls, ignoring counter resets), stored only when set.
+* **Desktop notifications (13.0.0-alpha.6).** `/studio/settings` (same
+  form token) enables them and sets a quiet period (10 minutes, 1–1,440),
+  stored in the project list's `settings` object, which is written only when
+  it differs from the defaults. Each recorded alert is offered to a
+  per-process notifier with the poll's clock: a project gets at most one
+  notification per quiet period, alerts in between are counted into its next
+  notification or, at the end of the period, a summary. At most 32
+  notifications are queued in memory with increasing ids. Every page loads
+  the same-origin `/studio/assets/notifications.js`, which polls
+  `GET /studio/notifications?session=…&after=…` (loopback boundary; JSON with
+  `enabled`, a random per-process `session`, `cursor` and the newer
+  notifications; another session or none starts at the cursor) every 15 s
+  and, once the browser's permission is granted, shows each with the
+  Notifications API under a unique tag.
 
 ### 10.2. Rullst Nexus (`/nexus`)
 * Auto-generated CMS with dynamic CRUD operations and AI Admin Assistant.

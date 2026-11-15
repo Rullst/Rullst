@@ -29,6 +29,8 @@ pub(crate) struct RemoteState {
     pub(crate) webhooks: Option<super::webhook::WebhookClient>,
     /// How often watched projects are read.
     pub(crate) poll_interval: std::time::Duration,
+    /// Desktop notifications waiting for an open page.
+    pub(crate) notifier: super::notify::Notifier,
 }
 
 pub(crate) fn router(state: Arc<RemoteState>) -> Router {
@@ -52,6 +54,15 @@ pub(crate) fn router(state: Arc<RemoteState>) -> Router {
         .route(
             "/studio/alerts/acknowledge",
             post(super::settings::acknowledge),
+        )
+        .route("/studio/settings", get(super::preferences::settings_page))
+        .route(
+            "/studio/settings/notifications",
+            post(super::preferences::save_notifications),
+        )
+        .route(
+            "/studio/notifications",
+            get(super::preferences::notifications_feed),
         )
         .layer(DefaultBodyLimit::max(MAX_FORM_BYTES))
         .with_state(state)
@@ -231,6 +242,7 @@ async fn remove_project(
     match state.store.remove(&form.name) {
         Ok(()) => {
             state.monitoring.forget(&form.name);
+            state.notifier.forget(&form.name);
             if let Some(history) = &state.history {
                 let _ = history.forget(&form.name).await;
             }

@@ -422,7 +422,7 @@ serves version 1 only.
 
 | File | Location (Linux and macOS / Windows) | Contents |
 | --- | --- | --- |
-| Project list | `$XDG_CONFIG_HOME/rullst/studio/projects.json` (default `~/.config/…`) / `%APPDATA%\rullst\studio\projects.json` | Names, base URLs, encrypted tokens |
+| Project list | `$XDG_CONFIG_HOME/rullst/studio/projects.json` (default `~/.config/…`) / `%APPDATA%\rullst\studio\projects.json` | Names, base URLs, encrypted tokens, Studio settings |
 | Key | `$XDG_DATA_HOME/rullst/studio/projects.key` (default `~/.local/share/…`) / `%LOCALAPPDATA%\rullst\studio\projects.key` | 32 random bytes |
 | History | `$XDG_DATA_HOME/rullst/studio/history.sqlite` / `%LOCALAPPDATA%\rullst\studio\history.sqlite` | Aggregates of watched projects and fired alerts |
 
@@ -440,8 +440,9 @@ both files; the operating system keychain is not used.
 On the **Alerts** page, tick **Watch** for a project: while Studio runs, it
 reads that project every 60 seconds and keeps, per poll, only aggregates the
 document already contains: whether it answered, requests per second, window
-requests, 5xx rate, p95 latency, and the pending and failed totals of its
-queues. Routes, queue names and other labels are not stored. The **History**
+requests, 5xx rate, p95 and p99 latency, the pending and failed totals of its
+queues and, from a version 2 document, the security events recorded since
+start. Routes, queue names and other labels are not stored. The **History**
 page charts them for the last hour, day or week. Samples older than seven
 days, beyond 10,080 per project (a week at one per minute) and alerts beyond
 the newest 500 are deleted on every write; removing a project deletes its
@@ -454,8 +455,10 @@ Each project has alert rules, all off by default:
 | Unreachable | the project cannot be read (any status on the overview page) |
 | 5xx rate | the window's 5xx share reaches the percentage, with at least 20 requests in the window |
 | p95 latency | the window's p95 reaches the milliseconds |
+| p99 latency | the window's p99 reaches the milliseconds (since 13.0.0-alpha.6) |
 | Pending jobs | the pending jobs of all its queues reach the count |
 | Queue failures | this many jobs failed between two polls (a server restart, which resets the counters, never fires it) |
+| Security events | the application recorded this many security events between two polls (a version 2 document is needed; a restart never fires it; since 13.0.0-alpha.6) |
 
 A rule fires again for the same project only after its cool-down (15 minutes
 by default, 1 to 1,440). Alerts appear on the Alerts page, with a badge until
@@ -476,6 +479,36 @@ wording with the project name and numbers, never labels from the remote
 document. Polling stops when Studio stops; for alerts around the clock, run
 `rullst-studio` on an always-on machine or keep using your existing uptime
 monitoring.
+
+### Desktop notifications
+
+Since 13.0.0-alpha.6, alerts can also appear as notifications of your
+operating system. On the **Settings** page (`/studio/settings`), tick
+**Show alerts as desktop notifications**, save, and press **Allow in this
+browser** once; the browser asks for permission for Studio's own origin
+(`http://127.0.0.1:5556`, which browsers treat as a secure context). Every
+Studio page then asks Studio for new notifications every 15 seconds and shows
+them through the browser's Notifications API; clicking one opens the Alerts
+page.
+
+- **What fires them:** the alert rules above, for watched projects. The text
+  is the alert's own (Studio's wording with the project name and numbers).
+- **Debounce:** a project is notified at most once per quiet period (10
+  minutes by default, 1 to 1,440). Alerts in between are held and counted:
+  the project's next notification mentions them, and when the period ends
+  without one, a summary notification does. This comes on top of each rule's
+  cool-down.
+- **Where it works:** a Studio page must be open in a browser (a background
+  tab is enough; browsers may then check about once a minute). Studio keeps
+  at most the newest 32 notifications, a page that opens later shows none of
+  the older ones, and several tabs show each notification once. The setting
+  is kept in the project list; the permission belongs to the browser and can
+  be revoked in its site settings.
+
+Studio uses the browser instead of a native notification library: it already
+serves its pages to your browser, the browser's permission prompt is the
+consent, and it works the same on Linux, macOS and Windows without system
+libraries or a background service.
 
 ### Reaching private servers
 

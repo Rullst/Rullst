@@ -27,9 +27,11 @@ mod document;
 mod document_v2;
 mod history;
 mod monitoring;
+mod notify;
 mod pages;
 mod paths;
 mod poller;
+mod preferences;
 mod projects;
 mod router;
 mod secure_file;
@@ -45,7 +47,11 @@ mod document_tests;
 #[cfg(test)]
 mod history_tests;
 #[cfg(test)]
+mod notify_tests;
+#[cfg(test)]
 mod poller_tests;
+#[cfg(test)]
+mod preferences_tests;
 #[cfg(test)]
 mod router_tests;
 #[cfg(test)]
@@ -163,6 +169,7 @@ pub(crate) async fn state(
         history,
         webhooks: webhook::WebhookClient::new(),
         poll_interval: clamp_interval(options.poll_interval),
+        notifier: notify::Notifier::new(random_hex(8)?),
     })
 }
 

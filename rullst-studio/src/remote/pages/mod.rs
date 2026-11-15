@@ -6,6 +6,7 @@
 pub(crate) mod alerts;
 pub(crate) mod history;
 pub(crate) mod monitor;
+pub(crate) mod preferences;
 pub(crate) mod projects;
 pub(crate) mod security;
 #[cfg(test)]
@@ -24,6 +25,7 @@ pub(crate) enum Page {
     Security,
     History,
     Alerts,
+    Settings,
 }
 
 impl Page {
@@ -38,6 +40,7 @@ impl Page {
             Self::Security => "/studio/security",
             Self::History => "/studio/history",
             Self::Alerts => "/studio/alerts",
+            Self::Settings => "/studio/settings",
         }
     }
 
@@ -52,6 +55,7 @@ impl Page {
             Self::Security => "🛡️ Security",
             Self::History => "📈 History",
             Self::Alerts => "🚨 Alerts",
+            Self::Settings => "⚙️ Settings",
         }
     }
 }
@@ -80,7 +84,7 @@ pub(crate) fn query_value(value: &str) -> String {
 /// The link to `page` for `project`.
 pub(crate) fn page_link(page: Page, project: Option<&str>) -> String {
     match project {
-        Some(project) if page != Page::Projects && page != Page::Alerts => {
+        Some(project) if PROJECT_PAGES.contains(&page) => {
             format!("{}?project={}", page.path(), query_value(project))
         }
         _ => page.path().to_string(),
@@ -125,6 +129,7 @@ pub(crate) fn layout(chrome: &Chrome<'_>, title: &str, content: &str) -> String 
         }
     }
     nav.push_str(&nav_item(Page::Alerts));
+    nav.push_str(&nav_item(Page::Settings));
 
     let switcher = if chrome.projects.is_empty() {
         String::new()
@@ -156,7 +161,7 @@ pub(crate) fn layout(chrome: &Chrome<'_>, title: &str, content: &str) -> String 
     };
 
     format!(
-        r#"<!DOCTYPE html><html lang="en" class="min-h-full bg-slate-950"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>{title} · Rullst Studio</title><link href="/studio/assets/studio.css" rel="stylesheet" /></head>
+        r#"<!DOCTYPE html><html lang="en" class="min-h-full bg-slate-950"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>{title} · Rullst Studio</title><link href="/studio/assets/studio.css" rel="stylesheet" /><script src="/studio/assets/notifications.js" defer></script></head>
 <body class="min-h-screen text-slate-100 flex flex-col antialiased">
 <header class="sticky top-0 z-50 flex-shrink-0 bg-slate-900 border-b border-slate-800 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between shadow-lg gap-3 lg:gap-4">
   <a href="/studio" class="flex items-center gap-2 group">

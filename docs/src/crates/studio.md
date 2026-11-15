@@ -99,8 +99,11 @@ read at most 1 MiB in 5 seconds. See the
 History and alerts: projects marked as watched are polled every 60 s while
 the binary runs; their aggregates go to a bounded owner-only SQLite file
 (seven days) charted on `/studio/history`, and per-project rules (unreachable,
-5xx rate, p95, pending jobs, queue failures) fire with a cool-down on
-`/studio/alerts`, optionally posted once to an encrypted `https://` webhook.
+5xx rate, p95, p99, pending jobs, queue failures, security events) fire with a
+cool-down on `/studio/alerts`, optionally posted once to an encrypted
+`https://` webhook and, once enabled on `/studio/settings` and allowed in the
+browser, shown as desktop notifications (at most one per project per quiet
+period).
 
 Studio uses the ORM pool that the application initialized. When none exists,
 its first database view initializes one from the resolver shared by `Server`

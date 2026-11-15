@@ -19,6 +19,7 @@ fn pages_have_fixed_paths_and_project_links() {
         (Page::Security, "/studio/security"),
         (Page::History, "/studio/history"),
         (Page::Alerts, "/studio/alerts"),
+        (Page::Settings, "/studio/settings"),
     ] {
         assert_eq!(page.path(), path);
         assert_eq!(page_link(page, None), path);
@@ -30,6 +31,11 @@ fn pages_have_fixed_paths_and_project_links() {
     );
     assert_eq!(page_link(Page::Projects, Some("shop")), "/studio");
     assert_eq!(page_link(Page::Alerts, Some("shop")), "/studio/alerts");
+    assert_eq!(page_link(Page::Settings, Some("shop")), "/studio/settings");
+    assert_eq!(
+        page_link(Page::Security, Some("shop")),
+        "/studio/security?project=shop"
+    );
 }
 
 fn chrome(projects: &[String], active: Page, open_alerts: u64) -> String {
@@ -63,6 +69,7 @@ fn the_navigation_marks_the_active_page_and_counts_open_alerts() {
         "🛡️ Security",
         "📈 History",
         "🚨 Alerts",
+        "⚙️ Settings",
     ] {
         assert!(page.contains(&format!("<span>{label}</span>")), "{label}");
     }
@@ -121,8 +128,10 @@ fn sample(at: u64, p95_ms: Option<f64>) -> Sample {
         window_requests: Some(10),
         error_rate_percent: Some(1.0),
         p95_ms,
+        p99_ms: None,
         queue_pending: Some(4),
         queue_failed_total: Some(0),
+        security_events_total: None,
     }
 }
 

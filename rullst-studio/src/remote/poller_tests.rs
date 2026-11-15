@@ -3,6 +3,7 @@
 
 use super::alerts::AlertRules;
 use super::client::FetchLimits;
+use super::notify::NotificationSettings;
 use super::poller::{clamp_interval, poll_round, run};
 use super::projects::WebhookChange;
 use super::router::RemoteState;
@@ -120,4 +121,56 @@ async fn the_poller_runs_a_round_every_interval() {
     }
     task.abort();
     assert_eq!(state.monitoring.open_alerts(), 0);
+}
+
+#[tokio::test]
+async fn alerts_become_debounced_desktop_notifications_once_enabled() {
+    let directory = TempDir::new("poller-notify");
+    let state = remote_state(&directory).await;
+    let refused = RefusedPort::new();
+    let base = format!("http://127.0.0.1:{}/", refused.port);
+    state.store.add("down", &base, TOKEN).unwrap();
+    let rules = AlertRules {
+        unreachable: true,
+        cooldown_minutes: 10,
+        ..AlertRules::default()
+    };
+    state
+        .store
+        .update_settings("down", true, rules, WebhookChange::Keep)
+        .unwrap();
+    let history = state.history.clone().unwrap();
+    let session = state.notifier.session().to_string();
+    let bodies = || -> Vec<String> {
+        let (_, pending) = state.notifier.since(Some(&session), Some(0));
+        pending.into_iter().map(|item| item.body).collect()
+    };
+
+    // Off by default: the alert is recorded, nothing is notified.
+    poll_round(&state, &history, 10_000).await;
+    assert_eq!(history.alerts(10).await.unwrap().len(), 1);
+    assert!(bodies().is_empty());
+
+    state
+        .store
+        .update_notifications(NotificationSettings {
+            enabled: true,
+            quiet_minutes: 15,
+        })
+        .unwrap();
+    poll_round(&state, &history, 10_600).await;
+    // The next alert falls in the quiet period and is held...
+    poll_round(&state, &history, 11_200).await;
+    assert_eq!(history.alerts(10).await.unwrap().len(), 3);
+    assert_eq!(bodies(), ["down could not be read"]);
+    // ...and summarized when it ends, although no rule fires then.
+    poll_round(&state, &history, 11_500).await;
+    assert_eq!(history.alerts(10).await.unwrap().len(), 3);
+    assert_eq!(
+        bodies(),
+        [
+            "down could not be read",
+            "1 more alerts since the previous notification; see the Alerts page"
+        ]
+    );
 }

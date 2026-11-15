@@ -27,6 +27,11 @@ pub(crate) async fn poll_round(state: &RemoteState, history: &History, now: u64)
     let Ok(projects) = state.store.load() else {
         return 0;
     };
+    let notifications = state
+        .store
+        .settings()
+        .map(|settings| settings.notifications)
+        .unwrap_or_default();
     let mut reads = tokio::task::JoinSet::new();
     for project in projects.into_iter().filter(|project| project.watch) {
         let client = state.client.clone();
@@ -76,6 +81,9 @@ pub(crate) async fn poll_round(state: &RemoteState, history: &History, now: u64)
             else {
                 continue;
             };
+            state
+                .notifier
+                .offer(&notifications, &project.name, &firing.message, now);
             if let (Some(webhook), Some(client)) = (&project.webhook, &state.webhooks) {
                 let payload = WebhookPayload {
                     source: "rullst-studio",
@@ -89,6 +97,7 @@ pub(crate) async fn poll_round(state: &RemoteState, history: &History, now: u64)
             }
         }
     }
+    state.notifier.flush(&notifications, now);
     state
         .monitoring
         .set_open_alerts(history.unacknowledged().await.unwrap_or(0));

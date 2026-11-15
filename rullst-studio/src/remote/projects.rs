@@ -3,7 +3,9 @@
 
 use super::alerts::AlertRules;
 use super::crypto::{Secret, SecretKey};
+use super::notify::NotificationSettings;
 use super::paths::StudioPaths;
+use super::preferences::StudioSettings;
 use super::secure_file;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -51,6 +53,9 @@ pub enum ProjectError {
     InvalidWebhook,
     /// An alert threshold is out of range.
     InvalidRules,
+    /// A Studio setting is out of range, such as a quiet period outside 1 to
+    /// 1,440 minutes.
+    InvalidSettings,
 }
 
 impl fmt::Display for ProjectError {
@@ -72,8 +77,9 @@ impl fmt::Display for ProjectError {
                 "the webhook must be an https:// URL without user information or fragment"
             }
             Self::InvalidRules => {
-                "thresholds must be positive (a 5xx rate up to 100%, p95 up to 600000 ms) and the cool-down 1 to 1440 minutes"
+                "thresholds must be positive (a 5xx rate up to 100%, p95 and p99 up to 600000 ms) and the cool-down 1 to 1440 minutes"
             }
+            Self::InvalidSettings => "the quiet period must be 1 to 1440 minutes",
         })
     }
 }
@@ -117,6 +123,10 @@ impl Project {
 struct StoredFile {
     version: u32,
     projects: Vec<StoredProject>,
+    /// Absent until a setting differs from its default, so older Studios
+    /// keep reading the file.
+    #[serde(default, skip_serializing_if = "StudioSettings::is_default")]
+    settings: StudioSettings,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -234,6 +244,7 @@ impl ProjectStore {
             return Ok(StoredFile {
                 version: 1,
                 projects: Vec::new(),
+                settings: StudioSettings::default(),
             });
         };
         let file: StoredFile =
@@ -355,6 +366,25 @@ impl ProjectStore {
         self.write_file(&file)
     }
 
+    /// The Studio settings (defaults when none are stored).
+    pub(crate) fn settings(&self) -> Result<StudioSettings, ProjectError> {
+        Ok(self.read_file()?.settings)
+    }
+
+    /// Saves the desktop notification settings.
+    pub(crate) fn update_notifications(
+        &self,
+        notifications: NotificationSettings,
+    ) -> Result<(), ProjectError> {
+        if !notifications.valid() {
+            return Err(ProjectError::InvalidSettings);
+        }
+        let _guard = self.write.lock().unwrap_or_else(|error| error.into_inner());
+        let mut file = self.read_file()?;
+        file.settings.notifications = notifications;
+        self.write_file(&file)
+    }
+
     /// Removes the project called `name`.
     pub fn remove(&self, name: &str) -> Result<(), ProjectError> {
         let _guard = self.write.lock().unwrap_or_else(|error| error.into_inner());
@@ -365,6 +395,11 @@ impl ProjectStore {
             return Err(ProjectError::NotFound);
         }
         self.write_file(&file)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn paths(&self) -> &StudioPaths {
+        &self.paths
     }
 
     /// Whether the project list or its key can be read by other users.
