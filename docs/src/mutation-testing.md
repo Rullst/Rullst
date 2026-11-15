@@ -41,6 +41,9 @@ received a test or is listed under
   The other 26 are the accepted equivalents of the signature, storage and
   schedule encryption bounds and the wire size, now also listed for the
   pull-request gate. Those six files left the gate for their contract run.
+  `redis_streams/` (excluded from the gate) was measured with targeted runs
+  and the `messaging-redis` contract run: 202 mutants, of which only the
+  accepted `Remote::decode` arm survives both.
 - **`rullst-nexus`**: first measured in PR #532 (26 files, 876 mutants). New
   tests killed 170 of the 171 first misses, one is an accepted equivalent, and
   one real defect was fixed.
