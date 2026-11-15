@@ -165,8 +165,14 @@ async fn generated_oauth_flow_contract() {
     for migration in crate::migrations::get_migrations() {
         migration.up().await.unwrap();
     }
-    let router = crate::router().unwrap();
-    let app = router.as_axum();
+    // `Server` adds CSRF and the secure headers to the router; so does this.
+    let router = rullst::security::apply_security_baseline(
+        crate::router().unwrap().into_axum(),
+        rullst::config::RullstConfig::global().security.clone(),
+        rullst::config::Environment::Test,
+    )
+    .unwrap();
+    let app = &router;
     let login = get(app, "/login", &[]).await;
     let page = String::from_utf8(
         rullst::web::axum::body::to_bytes(login.into_body(), 1 << 20).await.unwrap().to_vec(),

@@ -92,6 +92,14 @@ async fn cookies(app: &Router, request: Request) -> Vec<String> {
         .collect()
 }
 
+/// The cookies of the response other than the CSRF cookie, which the
+/// baseline mints on a first visit in every environment.
+async fn session_cookies(app: &Router, request: Request) -> Vec<String> {
+    let mut cookies = cookies(app, request).await;
+    cookies.retain(|cookie| !cookie.starts_with("rullst_csrf="));
+    cookies
+}
+
 fn login_app(environment: Environment, trust_forwarded_proto: bool) -> Router {
     let router = Router::new().route(
         "/",
@@ -110,12 +118,12 @@ async fn the_baseline_marks_session_cookies_secure_over_https_in_every_environme
         let app = login_app(environment, true);
         // A trusted proxy reporting HTTPS.
         assert_eq!(
-            cookies(&app, request("/", "10.0.0.1:443", true)).await,
+            session_cookies(&app, request("/", "10.0.0.1:443", true)).await,
             vec![secure.clone()]
         );
         // An HTTPS request URI (HTTP/2 over TLS).
         assert_eq!(
-            cookies(
+            session_cookies(
                 &app,
                 request("https://app.example/", "192.0.2.1:5000", false)
             )
@@ -128,12 +136,15 @@ async fn the_baseline_marks_session_cookies_secure_over_https_in_every_environme
             request("/", "192.0.2.1:5000", true),
             request("http://app.example/", "192.0.2.1:5000", false),
         ] {
-            assert_eq!(cookies(&app, request).await, vec![SESSION.to_string()]);
+            assert_eq!(
+                session_cookies(&app, request).await,
+                vec![SESSION.to_string()]
+            );
         }
         // A trusted proxy whose scheme is not trusted.
         let untrusted_scheme = login_app(environment, false);
         assert_eq!(
-            cookies(&untrusted_scheme, request("/", "10.0.0.1:443", true)).await,
+            session_cookies(&untrusted_scheme, request("/", "10.0.0.1:443", true)).await,
             vec![SESSION.to_string()]
         );
     }

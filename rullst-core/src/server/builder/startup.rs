@@ -69,7 +69,7 @@ impl Server {
 
         let server = async move {
             if let Some(lib_path) = self.hot_reload_lib.take() {
-                self.run_hot_reload(lib_path, addr, environment, shutdown)
+                self.run_hot_reload(lib_path, addr, (environment, app_config.security), shutdown)
                     .await
             } else {
                 self.run_static(app_config, addr, environment, shutdown)
@@ -240,7 +240,7 @@ impl Server {
         self,
         lib_path: String,
         addr: SocketAddr,
-        environment: crate::config::Environment,
+        (environment, security): (crate::config::Environment, crate::config::SecurityConfig),
         shutdown: F,
     ) -> Result<(), ServerError>
     where
@@ -287,6 +287,7 @@ impl Server {
             machine_endpoints: self.machine_endpoints.clone(),
             access_log_route_paths: self.access_log_route_paths,
             access_log_recording: self.access_log_recording,
+            security,
         };
 
         println!(

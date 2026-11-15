@@ -178,13 +178,13 @@ defaults you still use:
 csrf_static_prefixes = ["/static/", "/.well-known/", "/assets/"]
 ```
 
-The development server does not automatically apply the production CSRF/WAF
-stack; its WAF only logs the requests production would refuse. For this
-extractor in development, explicitly compose
-`rullst::server::from_fn(rullst::security::csrf_middleware)` on the application
-router, as the generated form-enabled starters do. Nested CSRF composition with
-the production server is request-idempotent. Do not make the extractor optional
-and silently render an empty token. Exercise the production baseline over HTTPS
+Since 13.0.0-alpha.6 `Server` applies the CSRF middleware in every
+environment, development included, so the extractor finds the token there too;
+the development WAF only logs the requests production would refuse. A router
+served without `Server` composes
+`rullst::server::from_fn(rullst::security::csrf_middleware)` itself; nested CSRF
+composition is request-idempotent. Do not make the extractor optional and
+silently render an empty token. Exercise the production baseline over HTTPS
 before deployment; do not remove `Secure` to accommodate a production HTTP URL.
 
 ### Show failures instead of a silent spinner

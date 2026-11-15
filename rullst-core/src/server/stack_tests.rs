@@ -178,6 +178,7 @@ async fn hot_reload_service_resolves_clients_behind_trusted_proxies() {
         machine_endpoints: None,
         access_log_route_paths: false,
         access_log_recording: crate::server::console::Recording::All,
+        security: crate::config::SecurityConfig::default(),
     };
     let mut connection = ConnectedHotSwap {
         inner,

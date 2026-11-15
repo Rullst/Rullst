@@ -17,7 +17,7 @@ use axum::{
 mod detect;
 mod report;
 
-pub(super) use report::waf_report_middleware;
+pub(super) use report::with_waf_report;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]

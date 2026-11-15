@@ -9,7 +9,6 @@ use axum::{
     body::{Body, Bytes},
     extract::Request,
     http::StatusCode,
-    middleware::Next,
     response::{IntoResponse, Response},
 };
 use http_body::{Body as HttpBody, Frame};
@@ -26,7 +25,7 @@ use std::pin::Pin;
 /// in full. A body that fails to arrive gets `400`, as the handler could not
 /// read it either. [`crate::uploads::Multipart`] logs multipart text fields
 /// the same way.
-pub(crate) async fn waf_report_middleware(mut req: Request, next: Next) -> Response {
+pub(crate) async fn with_waf_report(mut req: Request, next: impl crate::security::Run) -> Response {
     mark_multipart_fields(&mut req, MultipartFieldInspection::Report);
     if let Some(rule) = screen_head(&req) {
         would_refuse(rule, req.uri().path());

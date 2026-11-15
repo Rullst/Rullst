@@ -12,6 +12,7 @@ const FIELD: &str = "V13-HEALTH-PROBE-VERSION-FIELD";
 const STATIC: &str = "V13-CSRF-STATIC-PREFIXES";
 const COOKIE: &str = "V13-CSRF-COOKIE-IN-PAGE";
 const ENCODE: &str = "V13-DEPLOY-CADDY-ENCODE";
+const LAYERS: &str = "V13-ROUTER-BASELINE-LAYERS";
 const PACKAGE: &str = "[package]\nname = \"app\"\n";
 
 fn found(source: &str) -> Vec<(&'static str, usize)> {
@@ -261,4 +262,27 @@ fn the_alpha6_default_rules_name_their_rows_kinds_and_release() {
         assert!(rule.introduced_after(&alpha5), "{}", rule.code);
         assert!(!rule.introduced_after(&alpha6), "{}", rule.code);
     }
+}
+
+#[test]
+fn router_layers_that_server_now_applies_are_reviewed() {
+    let source = r#"
+pub fn router() -> Router {
+    routes![get("/" => home)]
+        .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+        .merge_axum(rullst::health::health_router())
+        .layer(from_fn(headers_middleware))
+        .route_layer(axum::middleware::from_fn(rullst_core::security::csrf_middleware))
+}
+"#;
+    assert_eq!(found(source), [(LAYERS, 4), (LAYERS, 6), (LAYERS, 7)]);
+    // Other layers, the names outside a layer call and the baseline itself.
+    assert_only(
+        "fn r(x: Router) -> Router {\n    x.layer(from_fn(auth_middleware)).route(\"/\", get(headers_middleware_docs))\n}\n",
+        &[],
+    );
+    assert_only(
+        "fn r(x: axum::Router) -> Result<axum::Router, Error> {\n    Ok(rullst::security::apply_security_baseline(x, config(), Environment::Test)?)\n}\n",
+        &[],
+    );
 }

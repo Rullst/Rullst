@@ -124,8 +124,8 @@ header.
 Every page is served with Rullst's production header baseline: the nonce-based
 Content Security Policy, `X-Frame-Options: DENY` and
 `Cross-Origin-Embedder-Policy: require-corp`. The router mounts
-`headers_middleware` itself, so local development shows the policy that
-`Server` enforces in staging and production. The stylesheet, behavior module,
+`headers_middleware` itself, so it serves the same policy without `Server`;
+since 13.0.0-alpha.6 `Server` sends it in every environment too. The stylesheet, behavior module,
 logo, HTMX 1.9.12 with its WebSocket extension and Pico.css 2.1.1 are
 same-origin files embedded from `assets/` (provenance and digests are in
 `assets/vendor/README.md`). Pages use classes instead of inline `style`

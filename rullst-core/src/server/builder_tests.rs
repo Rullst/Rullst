@@ -194,7 +194,10 @@ async fn scheduler_shield_and_missing_hot_library_have_typed_lifecycles() {
         .run_hot_reload(
             "/definitely/missing/rullst-app".to_string(),
             "127.0.0.1:0".parse().unwrap(),
-            Environment::Development,
+            (
+                Environment::Development,
+                crate::config::SecurityConfig::default(),
+            ),
             std::future::ready(()),
         )
         .await

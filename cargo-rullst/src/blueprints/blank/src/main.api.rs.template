@@ -38,9 +38,9 @@ fn router() -> Router {
         get("/" => home),
         post("/api/messages" => create_message),
     ]
+    // `Server` adds CSRF, the secure headers and the WAF in every environment.
     // `/health` and `/ready` for container, Kubernetes and PaaS probes.
     .merge_axum(rullst::health::health_router())
-    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
 }
 
 /// Write routes that API clients call with `Authorization: Bearer <API_TOKEN>`.

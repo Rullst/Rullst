@@ -98,7 +98,8 @@ fn the_saas_starter_gets_routes_link_store_identities_and_features() {
         .find("controllers::oauth::google::initialize()?;")
         .unwrap();
     assert!(router.find("fn router()").unwrap() < initialize && initialize < login);
-    assert!(router.find("csrf_middleware").unwrap() > callback);
+    // `Server` applies CSRF to every route; the router has no CSRF layer.
+    assert!(!router.contains("csrf_middleware"));
 
     let page = read(&root, "src/pages/auth.rs");
     let link = page

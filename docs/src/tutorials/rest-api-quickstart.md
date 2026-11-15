@@ -55,19 +55,17 @@ async fn health() -> Json<HealthResponse> {
 async fn main() -> Result<(), ServerError> {
     let app = routes![
         get("/api/health" => health),
-    ]
-    .layer(rullst::server::from_fn(
-        rullst::security::headers_middleware,
-    ));
+    ];
 
     Server::new(app).run(3000).await
 }
 ```
 
-The response is serialized from a typed Rust value. The secure-header layer is
-included explicitly because transport, proxy, authentication, authorization,
-CSRF, and application-specific input policy remain deployment responsibilities;
-a JSON response alone is not a production security boundary.
+The response is serialized from a typed Rust value. `Server` adds the secure
+headers and the CSRF check in every environment; transport, proxy,
+authentication, authorization and application-specific input policy remain
+deployment responsibilities, so a JSON response alone is not a production
+security boundary.
 
 ## 3. Run and verify it
 

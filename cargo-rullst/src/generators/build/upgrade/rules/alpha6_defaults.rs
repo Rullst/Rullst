@@ -1,15 +1,17 @@
 //! The 13.0.0-alpha.6 default changes that application code can name: the
 //! health probes no longer report the framework version, the CSRF
 //! middleware decides static files by path (`csrf_static_prefixes` and
-//! `csrf_static_paths`) instead of by extension, and the CSRF token a page
-//! embeds is masked per response. [`super::tokens`] calls the field, string
+//! `csrf_static_paths`) instead of by extension, the CSRF token a page
+//! embeds is masked per response, and `Server` applies the CSRF check and the
+//! secure headers in every environment. [`super::tokens`] calls the field, string
 //! and method rules with what it reads, [`super::rust`] the struct rule with
 //! each struct literal and [`super::files`] the script rule with each script
 //! line.
 
 use super::Rule;
 use super::catalog::{
-    CSRF_COOKIE_IN_PAGE, CSRF_STATIC_PREFIXES, HEALTH_FRAMEWORK_VERSION, HEALTH_PROBE_VERSION_FIELD,
+    CSRF_COOKIE_IN_PAGE, CSRF_STATIC_PREFIXES, HEALTH_FRAMEWORK_VERSION,
+    HEALTH_PROBE_VERSION_FIELD, ROUTER_BASELINE_LAYERS,
 };
 use proc_macro2::TokenStream;
 use std::path::{Component, Path};
@@ -61,6 +63,30 @@ pub(super) fn method_rule(name: &str, args: &TokenStream, text: &str) -> Option<
     }
     let path = super::tokens::string_value(args.clone().into_iter().next().as_ref())?;
     (path.starts_with('/') && !default_static(&path)).then_some(&CSRF_STATIC_PREFIXES)
+}
+
+/// The rule for a method call with `args`: `.layer(..)` or `.route_layer(..)`
+/// whose argument names Core's `csrf_middleware` or `headers_middleware`,
+/// which `Server` applies in every environment since 13.0.0-alpha.6.
+pub(super) fn layer_rule(name: &str, args: &TokenStream) -> Option<&'static Rule> {
+    if !matches!(name, "layer" | "route_layer") {
+        return None;
+    }
+    let mut pending = vec![args.clone()];
+    while let Some(tokens) = pending.pop() {
+        for token in tokens {
+            match token {
+                proc_macro2::TokenTree::Group(group) => pending.push(group.stream()),
+                proc_macro2::TokenTree::Ident(ident)
+                    if ident == "csrf_middleware" || ident == "headers_middleware" =>
+                {
+                    return Some(&ROUTER_BASELINE_LAYERS);
+                }
+                _ => {}
+            }
+        }
+    }
+    None
 }
 
 /// Whether `path`, relative to its package root, is test code: below a

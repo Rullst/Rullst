@@ -1,9 +1,10 @@
 //! The application of `.github/check-stack-throughput.py`.
 //!
 //! `STACK=generated` (the default) serves the router as a generated
-//! application does: `Server::new(router()).run(port)`, with the generated
-//! router's CSRF and security-header layers, so `RULLST_ENV=production` adds
-//! the production baseline and the access log. `STACK=minimal` serves the
+//! application does: `Server::new(router()).run(port)`, so
+//! `RULLST_ENV=production` adds the production baseline and the access log;
+//! since 13.0.0-alpha.6 the generated router adds no CSRF or header layer of
+//! its own. `STACK=minimal` serves the
 //! same routes without any layer through `axum::serve`, as Rullst/Benchmarks'
 //! `rullst-minimal` does. The check compares the two on one machine.
 
@@ -44,10 +45,7 @@ fn routes() -> Router {
 
 /// The router of the generated `src/lib.rs`.
 fn generated() -> Router {
-    routes()
-        .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
-        .merge_axum(rullst::health::health_router())
-        .layer(rullst::server::from_fn(rullst::security::headers_middleware))
+    routes().merge_axum(rullst::health::health_router())
 }
 
 #[rullst::runtime::main]

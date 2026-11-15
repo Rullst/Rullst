@@ -1661,8 +1661,9 @@ identities when you delete the account); a verified provider e-mail that
 already belongs to an account is always refused, because the contract cannot
 remove that account's password. `make:privacy` exports the contract's
 `find_account` and mounts its routes inside the router's single
-`rullst::server::from_fn(rullst::security::csrf_middleware)` layer, or prints
-the line to add. `make:age-gate` stays a SaaS consumer: it replaces the
+`rullst::server::from_fn(rullst::security::csrf_middleware)` layer, or, in a
+router without one (`Server` applies CSRF), before its single
+`.merge_axum(rullst::health::health_router())`, or prints the line to add. `make:age-gate` stays a SaaS consumer: it replaces the
 starter's `/dashboard` route and renders that handler after an allowed
 declaration, which an application's own pages do not have.
 

@@ -449,7 +449,9 @@ fn state_changing_html_blueprints_emit_and_enforce_csrf_tokens() {
         .map(|(_, source)| source)
         .collect::<Vec<_>>()
         .join("\n");
-        assert!(blank.contains("rullst::security::csrf_middleware"));
+        // `Server` applies CSRF and the secure headers; the router adds none.
+        assert!(!blank.contains("rullst::security::csrf_middleware"));
+        assert!(!blank.contains("rullst::security::headers_middleware"));
         assert!(blank.contains("Extension<rullst::security::CsrfToken>"));
         assert!(blank.contains("name=\"_token\""));
         // The counter is an ordinary htmx route; there is no RPC module.

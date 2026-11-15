@@ -287,7 +287,7 @@ release:
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
 | 13.0.0-alpha.5 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them), `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-SERVER-FUNCTIONS-REMOVED`, `V13-FRONTEND-ADAPTERS-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-ORM-ADAPTERS-REMOVED`, `V13-MAIL-MESSAGE-REPLY-TO`, `V13-PRIVACY-CONSENT-CHOICE-MATCH`, `V13-LABS-NON-EXHAUSTIVE-MATCH`, `V13-CLI-GREEN-RENAMED`, `V13-ACADEMY-REMOVED`, `V13-ORM-QDRANT-REMOVED`, `V13-AI-PROVIDER-PRESETS` |
-| 13.0.0-alpha.6 | `V13-HEALTH-FRAMEWORK-VERSION`, `V13-HEALTH-PROBE-VERSION-FIELD`, `V13-CSRF-STATIC-PREFIXES` (the default changes of the 13.0 freeze), `V13-CSRF-COOKIE-IN-PAGE`, `V13-DEPLOY-CADDY-ENCODE` (the masked CSRF token and compressed pages), `V13-MAIL-DEPRECATED-REMOVED`, `V13-IOT-OTA-LEGACY-REMOVED`, `V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, `V13-AI-DEPRECATED-REMOVED`, `V13-SECURITY-DEPRECATED-REMOVED`, `V13-QUEUE-PURGE-COMPLETED-REMOVED`, `V13-CONNECT-INFALLIBLE-NEW-REMOVED`, `V13-ROUTE-MARKER-REMOVED`, `V13-ORM-SCHEMA-DIFF-REMOVED` (the removal of every API still deprecated), `V13-ORM-SAVE-MODE`, `V13-AUTH-PASSKEYS-FEATURE` |
+| 13.0.0-alpha.6 | `V13-HEALTH-FRAMEWORK-VERSION`, `V13-HEALTH-PROBE-VERSION-FIELD`, `V13-CSRF-STATIC-PREFIXES` (the default changes of the 13.0 freeze), `V13-CSRF-COOKIE-IN-PAGE`, `V13-DEPLOY-CADDY-ENCODE` (the masked CSRF token and compressed pages), `V13-ROUTER-BASELINE-LAYERS` (the baseline in every environment), `V13-MAIL-DEPRECATED-REMOVED`, `V13-IOT-OTA-LEGACY-REMOVED`, `V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, `V13-AI-DEPRECATED-REMOVED`, `V13-SECURITY-DEPRECATED-REMOVED`, `V13-QUEUE-PURGE-COMPLETED-REMOVED`, `V13-CONNECT-INFALLIBLE-NEW-REMOVED`, `V13-ROUTE-MARKER-REMOVED`, `V13-ORM-SCHEMA-DIFF-REMOVED` (the removal of every API still deprecated), `V13-ORM-SAVE-MODE`, `V13-AUTH-PASSKEYS-FEATURE` |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -482,13 +482,13 @@ is classified for `rullst-upgrade-rules-v4`:
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
   application source (34 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (123 rows);
+  the affected API, feature or configuration, which the rules locate (124 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
   of inputs that previously failed) (111 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 163 rules. A row can map to several rules and a rule to
+has 164 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -693,6 +693,7 @@ the rule together.
 | Connect mock authorization URL | (c) none | — | Mock mode only |
 | Account mail language and product name | (c) none | — | Generator output; existing projects keep their code |
 | Production log defaults | (c) none | — | Runtime defaults; not detectable in source |
+| Security baseline in development | (b) review | `V13-ROUTER-BASELINE-LAYERS` | `.layer(..)` and `.route_layer(..)` calls whose argument names `csrf_middleware` or `headers_middleware`, at every location; the development requests that now need the CSRF token are not located; introduced in 13.0.0-alpha.6 |
 | Access log writer | (c) none | — | Runtime behaviour; not detectable in source |
 | Core CSP without a nonce outside HTML | (c) none | — | Runtime behaviour; the `Content-Type` of a response is not located |
 | Connect GitHub email | (b) review | `V13-CONNECT-GITHUB-EMAIL` | `GithubProvider` and `Connect::driver("github", ...)` |

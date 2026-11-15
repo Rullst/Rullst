@@ -70,21 +70,21 @@ ACCOUNT_COLUMNS_SUFFIX = "_add_account_columns_to_users_table.rs"
 RESET_TOKENS_SUFFIX = "_create_password_reset_tokens_table.rs"
 SESSIONS_SUFFIX = "_create_rullst_auth_sessions_table.rs"
 # The Blank starter's router, and the same lines with Tutorial 11's sign-up
-# routes before the CSRF layer.
+# routes before its health probes (`Server` applies CSRF to every route).
 ROUTER_ANCHOR = """        post("/clicked" => clicked),
     ]
-    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    // `Server` adds CSRF, the secure headers and the WAF in every environment.
 """
 ROUTER_WITH_SIGNUP = """        post("/clicked" => clicked),
         get("/register" => controllers::auth_controller::register_view),
     ]
     // Mounted by .github/check-auth-starter-sql.py as Tutorial 11 (Step 2)
-    // describes, before the CSRF layer.
+    // describes, before the health probes.
     .route("/register", rullst::routing::post(controllers::auth_controller::register_submit)
         .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
     .route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
-    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    // `Server` adds CSRF, the secure headers and the WAF in every environment.
 """
 TIMINGS: list[tuple[str, float]] = []
 
