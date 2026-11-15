@@ -300,6 +300,16 @@ fn control_blocks_parse_with_else_chains_and_patterns() {
 }
 
 #[test]
+fn an_if_block_ends_before_the_next_control_block() {
+    let document = parse_ok(r#"@if a { "x" } @for item in items { "y" } @match z { _ => {} }"#);
+    let [HtmlNode::If(chain), HtmlNode::For(_), HtmlNode::Match(_)] = &document.nodes[..] else {
+        panic!("expected @if, @for and @match nodes");
+    };
+    assert_eq!(chain.branches.len(), 1);
+    assert!(chain.otherwise.is_none());
+}
+
+#[test]
 fn malformed_control_blocks_are_rejected() {
     assert_eq!(
         parse_error(r#"@if a { "x" } else { "y" }"#),
