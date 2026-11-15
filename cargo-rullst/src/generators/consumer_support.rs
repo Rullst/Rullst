@@ -97,6 +97,25 @@ pub(super) fn recognized_auth(
     Ok(())
 }
 
+/// Whether the starter registers its login sessions: its
+/// `src/middlewares/auth_middleware.rs` declares `pub async fn
+/// start_session` (since 13.0.0-alpha.6). Starters made before issue
+/// stateless session-epoch cookies, and consumers that sign accounts in
+/// follow what the project has.
+pub(super) fn registers_sessions(root: &Path) -> bool {
+    consumer_files::read(&root.join("src/middlewares/auth_middleware.rs"))
+        .ok()
+        .and_then(|source| syn::parse_file(&source).ok())
+        .is_some_and(|file| {
+            file.items.iter().any(|item| {
+                matches!(item, syn::Item::Fn(function)
+                    if function.sig.ident == "start_session"
+                        && function.sig.asyncness.is_some()
+                        && matches!(function.vis, syn::Visibility::Public(_)))
+            })
+        })
+}
+
 pub(super) fn privacy_source(
     source: Option<&Path>,
     module: &str,
@@ -265,6 +284,32 @@ mod tests {
     use super::*;
 
     const REMEDY: &str = "Review a custom authentication separately.";
+
+    #[test]
+    fn registered_sessions_are_recognized_by_their_public_async_start() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        assert!(!registers_sessions(root));
+        let middleware = root.join("src/middlewares/auth_middleware.rs");
+        fs::create_dir_all(middleware.parent().unwrap()).unwrap();
+        for (source, registered) in [
+            ("pub async fn start_session() {}", true),
+            ("async fn start_session() {}", false),
+            ("pub fn start_session() {}", false),
+            ("pub async fn start() {}", false),
+            ("pub const start_session: () = ();", false),
+            ("not rust {", false),
+        ] {
+            fs::write(&middleware, source).unwrap();
+            assert_eq!(registers_sessions(root), registered, "{source}");
+        }
+        fs::write(
+            &middleware,
+            crate::generators::auth::controllers::render_auth_middleware(true),
+        )
+        .unwrap();
+        assert!(registers_sessions(root));
+    }
 
     #[test]
     fn only_the_recognized_saas_authentication_is_accepted() {

@@ -25,6 +25,9 @@ fn auth_starters_admit_their_own_administrators_to_nexus() {
         syn::parse_file(&access).unwrap_or_else(|error| panic!("{blueprint}: {error}"));
         assert!(access.contains("impl NexusAuthorizer for NexusAdmins {"));
         assert!(access.contains("NexusAccess::allow(format!(\"user:{}\", user.id))"));
+        // The registered session, as for every other private route.
+        assert!(access.contains("match signed_in(&request.headers).await {"));
+        assert!(!access.contains("decrypt_session"));
         assert!(file(&manifest, "src/middlewares/mod.rs").contains("pub mod nexus_access;"));
         // Hot-reload starters build the router in `src/lib.rs`.
         let main = manifest

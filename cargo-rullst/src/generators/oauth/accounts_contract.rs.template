@@ -15,7 +15,10 @@ pub enum ExistingAccountPolicy {
 pub const EXISTING_ACCOUNT_POLICY: ExistingAccountPolicy = ExistingAccountPolicy::Refuse;
 
 /// The session of a provider sign-in: `auth_contract::sign_in_cookie`.
-pub(crate) async fn session_cookie(user: &ContractAccount) -> Result<String, String> {
+pub(crate) async fn session_cookie(
+    user: &ContractAccount,
+    _headers: &HeaderMap,
+) -> Result<String, String> {
     auth_contract::sign_in_cookie(user.id)
         .await
         .map_err(|error| error.to_string())

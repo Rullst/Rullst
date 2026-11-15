@@ -19,7 +19,8 @@ impl Project {
         fs::create_dir_all(root.join("src")).expect("project source");
         fs::write(
             root.join("Cargo.toml"),
-            "[package]\nname = \"overwrite-fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = \"13\"\n",
+            // A strict database profile: `auth` keeps login sessions in it.
+            "[package]\nname = \"overwrite-fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = { version = \"13\", features = [\"strict-sqlite\"] }\n",
         )
         .expect("project manifest");
         fs::write(root.join("src/main.rs"), "fn main() {}\n").expect("project entry point");

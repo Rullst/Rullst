@@ -37,9 +37,22 @@ rullst-privacy/src/age_assurance/postgres.rs
 rullst-privacy/src/consent/postgres.rs
 rullst-mail/src/suppression/postgres/**
 
+# PostgreSQL recurring schedules: .github/check-recurring-postgres.py. The
+# other schedules files are unit-tested and stay in the gate.
+rullst-messaging/src/schedules/delivery.rs
+rullst-messaging/src/schedules/inspection.rs
+rullst-messaging/src/schedules/management.rs
+rullst-messaging/src/schedules/relay.rs
+rullst-messaging/src/schedules/storage.rs
+rullst-messaging/src/schedules/tick.rs
+
 # PostgreSQL and MySQL login challenges: .github/check-connect-sql.py.
 rullst-connect/src/challenge/sql/postgres.rs
 rullst-connect/src/challenge/sql/mysql.rs
+
+# PostgreSQL and MySQL login sessions: .github/check-auth-session-registry.py.
+rullst-auth/src/auth/session_registry/postgres.rs
+rullst-auth/src/auth/session_registry/mysql.rs
 
 # MySQL/MariaDB live matrices in ci.yml.
 rullst-ai/src/ai/memory/sql/mysql.rs

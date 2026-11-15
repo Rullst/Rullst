@@ -1,4 +1,3 @@
-#![cfg_attr(mutants, mutants::skip)]
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::ext::IdentExt;
@@ -300,6 +299,7 @@ mod text_tests;
 
 #[allow(unexpected_cfgs)]
 #[cfg(kani)]
+#[cfg_attr(mutants, mutants::skip)]
 mod kani_proofs {
     use super::*;
 

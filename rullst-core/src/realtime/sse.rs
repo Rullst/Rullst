@@ -14,10 +14,8 @@
 //! `EventSource` honours (it ignores `Retry-After` and gives up on an error
 //! status).
 
-use super::{
-    BroadcastManager, MAX_EVENT_BYTES, MAX_PAYLOAD_BYTES, RealtimeError, RealtimeMessage,
-    validate_name,
-};
+use super::revalidation::{self, NoRevalidation, Revalidate, Revalidator};
+use super::{BroadcastManager, MAX_PAYLOAD_BYTES, RealtimeMessage};
 use axum::http::{HeaderName, HeaderValue};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
@@ -50,6 +48,7 @@ pub struct RealtimeSseConfig {
     max_lifetime: Duration,
     max_connections: usize,
     max_payload_bytes: usize,
+    revalidation_interval: Duration,
 }
 
 impl Default for RealtimeSseConfig {
@@ -60,6 +59,7 @@ impl Default for RealtimeSseConfig {
             max_lifetime: Duration::from_secs(30 * 60),
             max_connections: 1_024,
             max_payload_bytes: MAX_PAYLOAD_BYTES,
+            revalidation_interval: revalidation::DEFAULT_REVALIDATION_INTERVAL,
         }
     }
 }
@@ -113,6 +113,23 @@ impl RealtimeSseConfig {
     pub fn with_max_payload_bytes(mut self, bytes: usize) -> Self {
         self.max_payload_bytes = bytes.clamp(1, MAX_PAYLOAD_BYTES);
         self
+    }
+
+    /// How often a stream opened with [`RealtimeSse::channel_revalidated`]
+    /// or [`RealtimeSse::subscribe_revalidated`] checks that its request may
+    /// still receive it, clamped to 1 second–5 minutes (15 seconds by
+    /// default). This bounds how long a revoked session keeps a stream that
+    /// another process revoked.
+    ///
+    /// Added in v13.0.0-alpha.6.
+    pub fn with_revalidation_interval(mut self, interval: Duration) -> Self {
+        self.revalidation_interval = revalidation::clamp_interval(interval);
+        self
+    }
+
+    /// Interval between revalidations of a revalidated stream.
+    pub fn revalidation_interval(&self) -> Duration {
+        self.revalidation_interval
     }
 
     /// Interval between keep-alive comments.
@@ -227,7 +244,36 @@ impl RealtimeSse {
     /// The caller authorizes the channel for the request.
     pub fn channel(&self, manager: &BroadcastManager, channel: &str) -> Response {
         match self.admit() {
-            Ok(permit) => self.respond(permit, manager.get_or_create(channel).subscribe()),
+            Ok(permit) => self.respond(
+                permit,
+                manager.get_or_create(channel).subscribe(),
+                None::<Revalidator<NoRevalidation>>,
+            ),
+            Err(reason) => self.refuse(reason),
+        }
+    }
+
+    /// [`Self::channel`] for a request whose authorization can end while the
+    /// stream is open, such as a signed-in session: `check` runs every
+    /// [`RealtimeSseConfig::revalidation_interval`] and whenever its
+    /// [`Revalidate::changed`] signal fires, and the stream ends when it
+    /// answers `false` or takes longer than
+    /// [`super::REVALIDATION_DEADLINE`]. The browser then reconnects and the
+    /// route authenticates it again.
+    ///
+    /// Added in v13.0.0-alpha.6.
+    pub fn channel_revalidated<R: Revalidate>(
+        &self,
+        manager: &BroadcastManager,
+        channel: &str,
+        check: R,
+    ) -> Response {
+        match self.admit() {
+            Ok(permit) => self.respond(
+                permit,
+                manager.get_or_create(channel).subscribe(),
+                Some(Revalidator::new(check, self.config.revalidation_interval)),
+            ),
             Err(reason) => self.refuse(reason),
         }
     }
@@ -237,7 +283,25 @@ impl RealtimeSse {
     /// [`Self::channel`].
     pub fn subscribe(&self, receiver: broadcast::Receiver<RealtimeMessage>) -> Response {
         match self.admit() {
-            Ok(permit) => self.respond(permit, receiver),
+            Ok(permit) => self.respond(permit, receiver, None::<Revalidator<NoRevalidation>>),
+            Err(reason) => self.refuse(reason),
+        }
+    }
+
+    /// [`Self::subscribe`] revalidated like [`Self::channel_revalidated`].
+    ///
+    /// Added in v13.0.0-alpha.6.
+    pub fn subscribe_revalidated<R: Revalidate>(
+        &self,
+        receiver: broadcast::Receiver<RealtimeMessage>,
+        check: R,
+    ) -> Response {
+        match self.admit() {
+            Ok(permit) => self.respond(
+                permit,
+                receiver,
+                Some(Revalidator::new(check, self.config.revalidation_interval)),
+            ),
             Err(reason) => self.refuse(reason),
         }
     }
@@ -288,13 +352,15 @@ impl RealtimeSse {
         with_unbuffered_proxy(Sse::new(stream).into_response())
     }
 
-    fn respond(
+    fn respond<R: Revalidate>(
         &self,
         permit: OwnedSemaphorePermit,
         receiver: broadcast::Receiver<RealtimeMessage>,
+        revalidator: Option<Revalidator<R>>,
     ) -> Response {
         let connection = Connection {
             receiver,
+            revalidator,
             shutdown: self.shutdown.subscribe(),
             _shutdown_sender: Arc::clone(&self.shutdown),
             deadline: Instant::now() + self.config.max_lifetime,
@@ -340,6 +406,10 @@ fn whole_millis(duration: Duration) -> u64 {
     u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
 }
 
+#[path = "sse_connection.rs"]
+mod connection;
+use connection::{Connection, next_event};
+
 /// Asks buffering reverse proxies (nginx) to forward each event at once.
 fn with_unbuffered_proxy(mut response: Response) -> Response {
     response.headers_mut().insert(
@@ -347,67 +417,6 @@ fn with_unbuffered_proxy(mut response: Response) -> Response {
         HeaderValue::from_static("no"),
     );
     response
-}
-
-/// The state of one open stream; dropping it releases the connection slot.
-struct Connection {
-    receiver: broadcast::Receiver<RealtimeMessage>,
-    shutdown: watch::Receiver<bool>,
-    /// Keeps the signal alive after every [`RealtimeSse`] clone is dropped,
-    /// so that only [`RealtimeSse::shutdown`] ends the stream.
-    _shutdown_sender: Arc<watch::Sender<bool>>,
-    deadline: Instant,
-    max_payload_bytes: usize,
-    _permit: OwnedSemaphorePermit,
-}
-
-async fn next_event(mut connection: Connection) -> Option<(Result<Event, Infallible>, Connection)> {
-    loop {
-        let received = tokio::select! {
-            biased;
-            _ = connection.shutdown.wait_for(|stopped| *stopped) => return None,
-            () = tokio::time::sleep_until(connection.deadline) => return None,
-            received = connection.receiver.recv() => received,
-        };
-        match received {
-            Ok(message) => {
-                if let Some(event) = event_for(&message, connection.max_payload_bytes) {
-                    return Some((Ok(event), connection));
-                }
-                tracing::debug!(
-                    target: "rullst::realtime",
-                    payload_bytes = message.payload.len(),
-                    "skipped a realtime message that cannot be sent as a server-sent event"
-                );
-            }
-            Err(broadcast::error::RecvError::Lagged(missed)) => {
-                tracing::debug!(
-                    target: "rullst::realtime",
-                    missed,
-                    "ended a server-sent event stream that fell behind its channel"
-                );
-                return None;
-            }
-            Err(broadcast::error::RecvError::Closed) => return None,
-        }
-    }
-}
-
-/// The event for one message, or `None` when SSE cannot carry it within the
-/// limits.
-fn event_for(message: &RealtimeMessage, max_payload_bytes: usize) -> Option<Event> {
-    if message.payload.len() > max_payload_bytes
-        || validate_name(&message.event, MAX_EVENT_BYTES, RealtimeError::InvalidEvent).is_err()
-    {
-        return None;
-    }
-    // The validated name has no line break, which `Event::event` rejects;
-    // `data` splits the payload's line breaks into `data:` lines itself.
-    Some(
-        Event::default()
-            .event(&message.event)
-            .data(&message.payload),
-    )
 }
 
 #[cfg(test)]

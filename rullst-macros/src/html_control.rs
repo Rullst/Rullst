@@ -1,4 +1,3 @@
-#![cfg_attr(mutants, mutants::skip)]
 //! `@if`/`@else if`/`@else`, `@for` and `@match` blocks inside `html!`.
 //!
 //! A node cannot start with `@` otherwise, so the syntax is unambiguous. The

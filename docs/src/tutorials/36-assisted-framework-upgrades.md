@@ -496,6 +496,7 @@ the rule together.
 | :--- | :--- | :--- | :--- |
 | Existing runtime APIs | (c) none | — | General statement; the session-schema migration is the next row |
 | Account/session registry | (b) review | `V13-AUTH-RECOVERY-MIGRATE` |  |
+| Server-side login sessions | (c) none | — | Opt-in registry; generator output for new projects |
 | Private object storage | (c) none | — | Opt-in `storage-s3` candidate |
 | R2 public URLs | (b) review | `V13-R2-PUBLIC-URL` |  |
 | Tenant local storage | (c) none | — | Only a tenant directory below a regular file changes the error; not located |

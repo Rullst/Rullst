@@ -123,6 +123,10 @@ pub fn build_cargo_toml(
     if blueprint_selection == SAAS_BLUEPRINT_ID {
         // `mail` sends the password reset links and password-changed notices.
         rullst_features.extend(["auth", "mail", "capital"]);
+        // Login sessions live in the application's database.
+        if db_needed && let Some(registry) = session_registry_feature(db_provider) {
+            rullst_features.push(registry);
+        }
     }
 
     let rullst_line = if rullst_features.is_empty() {
@@ -274,6 +278,17 @@ fn sqlx_driver(db_provider: &str) -> &'static str {
         "Postgres" => "postgres",
         "MySQL" | "MariaDB" => "mysql",
         _ => "sqlite",
+    }
+}
+
+/// The `rullst` feature of the login-session registry over a database's
+/// strict profile.
+pub(crate) fn session_registry_feature(db_provider: &str) -> Option<&'static str> {
+    match db_provider {
+        "Postgres" => Some("auth-session-registry-postgres"),
+        "MySQL" | "MariaDB" => Some("auth-session-registry-mysql"),
+        "Sqlite" => Some("auth-session-registry-sqlite"),
+        _ => None,
     }
 }
 

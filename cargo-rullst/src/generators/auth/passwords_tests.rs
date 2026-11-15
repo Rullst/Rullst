@@ -168,7 +168,7 @@ fn account_mail_uses_the_request_language_and_an_editable_product_name() {
             .contains("match reset_password(payload, mail_locale(&headers, &locale)).await {")
     );
     assert!(controller.contains(
-        "Some(epoch) => change_password(user_id, epoch, payload, mail_locale(&headers, &locale)).await,"
+        "let changed = change_password(&session, &headers, payload, mail_locale(&headers, &locale)).await;"
     ));
     assert_eq!(
         controller
@@ -193,16 +193,39 @@ fn password_change_checks_the_current_password_and_keeps_this_session() {
     assert!(
         controller.contains("Self::WrongCurrentPassword => \"The current password is incorrect\",")
     );
-    // The cookie's own epoch guards the update, and only this browser gets
-    // a cookie at the new epoch.
-    assert!(controller.contains("(claims.user_id == user_id).then_some(claims.epoch)"));
+    // The registered session's own epoch guards the update; the account's
+    // sessions are deleted and only this browser gets a new one, at the new
+    // epoch.
+    assert!(
+        controller.contains(
+            "Extension(session): Extension<AuthenticatedSession>,\n    headers: HeaderMap,"
+        )
+    );
+    assert!(
+        controller.contains("let (user_id, epoch) = (session.user_id(), session.claims().epoch);")
+    );
     assert!(
         controller
             .contains("User::change_password(user_id, epoch, &password_hash, utc_timestamp())")
     );
-    assert!(controller.contains(
-        "rullst_auth::make_login_cookie_with_epoch(user_id, next_epoch, rullst_auth::DEFAULT_SESSION_MAX_AGE)"
-    ));
+    let renewed = controller
+        .find("let login = NewSession::new(user_id, next_epoch).with_device(DeviceSummary::from_headers(headers));")
+        .unwrap();
+    let cleared = controller
+        .find("registry.revoke_all_sessions(user_id).await")
+        .unwrap();
+    assert!(cleared < renewed);
+    assert!(controller.contains("registry.sign_in(&login).await.map_err(|error| {"));
+    assert!(!controller.contains("make_login_cookie"));
+    assert!(!controller.contains("decrypt_session"));
+    // A reset deletes every session of the account after the epoch moved on.
+    assert_eq!(
+        controller
+            .matches(".revoke_all_sessions(user_id).await")
+            .count(),
+        2
+    );
+    assert!(controller.contains("eprintln!(\"Session cleanup after the reset failed: {error}\");"));
     assert!(
         controller.contains(
             "Ok(cookie) => redirect_with_cookie(\"/password/change?changed=1\", &cookie),"

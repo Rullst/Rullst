@@ -173,10 +173,59 @@ pub fn change_password_page(
     })
 }
 
+/// One signed-in device on the "Your devices" page.
+pub struct DeviceRow {
+    /// The session reference its "Sign out" form submits.
+    pub reference: String,
+    /// "Firefox on Linux": the browser and platform at sign-in.
+    pub device: String,
+    pub signed_in: String,
+    /// The hour of its last use.
+    pub last_active: String,
+    /// Whether it is this browser.
+    pub current: bool,
+}
+
+pub fn sessions_page(
+    csrf_token: &str,
+    devices: &[DeviceRow],
+    notice: Option<&str>,
+    error: Option<&str>,
+    _csp_nonce: &str,
+) -> Markup {
+    page("Your devices", html! {
+        <h1>"Your devices"</h1>
+        { status(notice) }
+        { alert(error) }
+        <ul class="devices">
+            @for device in devices {
+                <li>
+                    <strong>{&device.device}</strong>
+                    @if device.current { " " <span class="badge">"This device"</span> }
+                    <p>"Signed in " {&device.signed_in} ", last active " {&device.last_active}</p>
+                    @if !device.current {
+                        <form method="post" action="/sessions/revoke">
+                            <input type="hidden" name="_token" value={csrf_token} />
+                            <input type="hidden" name="session" value={&device.reference} />
+                            <button type="submit">"Sign out"</button>
+                        </form>
+                    }
+                </li>
+            }
+        </ul>
+        <form method="post" action="/sessions/revoke-others">
+            <input type="hidden" name="_token" value={csrf_token} />
+            <button type="submit">"Sign out of all other devices"</button>
+        </form>
+        <p><a href="/dashboard">"Back to dashboard"</a></p>
+    })
+}
+
 pub fn dashboard_page(user_name: &str, csrf_token: &str, _csp_nonce: &str) -> Markup {
     page("Dashboard", html! {
         <h1>"Hello, " {user_name} "!"</h1>
         <p><a href="/password/change">"Change password"</a></p>
+        <p><a href="/sessions">"Your devices"</a></p>
         <form method="post" action="/logout">
             <input type="hidden" name="_token" value={csrf_token} />
             <button type="submit">"Sign Out"</button>

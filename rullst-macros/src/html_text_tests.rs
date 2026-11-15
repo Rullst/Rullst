@@ -151,6 +151,23 @@ fn text_that_rust_or_html_syntax_owns_is_rejected_with_its_fix() {
     assert_eq!(texts("<p>if {ok}</p>"), ["if ", "{…}"]);
 }
 
+#[test]
+fn numbers_are_text_and_a_url_cut_mid_text_is_rejected() {
+    assert_eq!(
+        texts("<p>Order 66 costs 9.99 today</p>"),
+        ["Order 66 costs 9.99 today"]
+    );
+    // The comment ends at the line end, so the text goes on after `http:`.
+    assert!(
+        error("<p>see http://example.com\n more</p>").starts_with("`//` starts a Rust comment")
+    );
+    // `#[…]` is text unless it is a doc attribute.
+    assert_eq!(
+        texts("<p>tag #[note] and #[1]</p>"),
+        ["tag # [note] and # [1]"]
+    );
+}
+
 /// The attribute names of the first element.
 fn names(source: &str) -> Vec<String> {
     let document = parse(source);
@@ -199,6 +216,14 @@ fn alpine_and_htmx_names_parse_with_colons_at_signs_and_dots() {
     assert_eq!(
         names(r#"<p :type="t" @click.self="s"></p>"#),
         [":type", "@click.self"]
+    );
+}
+
+#[test]
+fn numeric_name_segments_keep_their_digit_separators() {
+    assert_eq!(
+        names(r#"<div @click.debounce.1_000ms="go" x-transition.duration.2_0="t"></div>"#),
+        ["@click.debounce.1_000ms", "x-transition.duration.2_0"]
     );
 }
 

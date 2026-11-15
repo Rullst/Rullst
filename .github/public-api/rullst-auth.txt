@@ -304,6 +304,29 @@ pub use rullst_auth::auth::passkey::types::RequestChallengeResponse = struct rul
 pub use rullst_auth::auth::passkey::types::UserInfo = struct rullst_auth::passkey::UserInfo
 pub use rullst_auth::auth::password_reset_digests_match = function rullst_auth::password_reset_digests_match
 pub use rullst_auth::auth::password_reset_token_digest = function rullst_auth::password_reset_token_digest
+pub use rullst_auth::auth::session_registry = module rullst_auth::session_registry
+pub use rullst_auth::auth::session_registry::AuthenticatedSession = struct rullst_auth::session_registry::AuthenticatedSession
+pub use rullst_auth::auth::session_registry::Browser = enum rullst_auth::session_registry::Browser
+pub use rullst_auth::auth::session_registry::CurrentSession = struct rullst_auth::session_registry::CurrentSession
+pub use rullst_auth::auth::session_registry::DeviceSummary = struct rullst_auth::session_registry::DeviceSummary
+pub use rullst_auth::auth::session_registry::IssuedSession = struct rullst_auth::session_registry::IssuedSession
+pub use rullst_auth::auth::session_registry::LAST_SEEN_GRANULARITY_SECONDS = constant rullst_auth::session_registry::LAST_SEEN_GRANULARITY_SECONDS
+pub use rullst_auth::auth::session_registry::MAX_PURGE_BATCH = constant rullst_auth::session_registry::MAX_PURGE_BATCH
+pub use rullst_auth::auth::session_registry::MAX_SESSIONS_PER_USER = constant rullst_auth::session_registry::MAX_SESSIONS_PER_USER
+pub use rullst_auth::auth::session_registry::MySqlSessionRegistry = type_alias rullst_auth::session_registry::MySqlSessionRegistry
+pub use rullst_auth::auth::session_registry::NewSession = struct rullst_auth::session_registry::NewSession
+pub use rullst_auth::auth::session_registry::Platform = enum rullst_auth::session_registry::Platform
+pub use rullst_auth::auth::session_registry::PostgresSessionRegistry = type_alias rullst_auth::session_registry::PostgresSessionRegistry
+pub use rullst_auth::auth::session_registry::RegistryPool = trait rullst_auth::session_registry::RegistryPool
+pub use rullst_auth::auth::session_registry::SessionDatabase = trait rullst_auth::session_registry::SessionDatabase
+pub use rullst_auth::auth::session_registry::SessionInfo = struct rullst_auth::session_registry::SessionInfo
+pub use rullst_auth::auth::session_registry::SessionRef = struct rullst_auth::session_registry::SessionRef
+pub use rullst_auth::auth::session_registry::SessionRegistry = struct rullst_auth::session_registry::SessionRegistry
+pub use rullst_auth::auth::session_registry::SessionRegistryError = enum rullst_auth::session_registry::SessionRegistryError
+pub use rullst_auth::auth::session_registry::SessionRegistryFor = type_alias rullst_auth::session_registry::SessionRegistryFor
+pub use rullst_auth::auth::session_registry::SessionRevalidation = struct rullst_auth::session_registry::SessionRevalidation
+pub use rullst_auth::auth::session_registry::SqliteSessionRegistry = type_alias rullst_auth::session_registry::SqliteSessionRegistry
+pub use rullst_auth::auth::session_registry::unix_now = function rullst_auth::session_registry::unix_now
 pub use rullst_auth::auth::validate_app_key = function rullst_auth::validate_app_key
 pub use rullst_auth::auth::verify_password = function rullst_auth::verify_password
 pub use rullst_auth::auth::verify_password_async = function rullst_auth::verify_password_async
@@ -1193,6 +1216,228 @@ impl core::marker::Unpin for rullst_auth::recovery::email_login::LoginRequestAcc
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_auth::recovery::email_login::LoginRequestAccepted
 impl core::panic::unwind_safe::UnwindSafe for rullst_auth::recovery::email_login::LoginRequestAccepted
 pub use rullst_auth::recovery::email_login::SystemEmailLoginClock = struct rullst_auth::recovery::SystemAuthClock
+pub mod rullst_auth::session_registry
+pub struct rullst_auth::session_registry::AuthenticatedSession
+impl rullst_auth::session_registry::AuthenticatedSession
+pub fn rullst_auth::session_registry::AuthenticatedSession::claims(&self) -> rullst_auth::SessionClaims
+pub fn rullst_auth::session_registry::AuthenticatedSession::current(&self) -> &rullst_auth::session_registry::CurrentSession
+pub fn rullst_auth::session_registry::AuthenticatedSession::into_current(self) -> rullst_auth::session_registry::CurrentSession
+pub fn rullst_auth::session_registry::AuthenticatedSession::user_id(&self) -> i32
+impl core::clone::Clone for rullst_auth::session_registry::AuthenticatedSession
+impl core::cmp::Eq for rullst_auth::session_registry::AuthenticatedSession
+impl core::cmp::PartialEq for rullst_auth::session_registry::AuthenticatedSession
+impl core::fmt::Debug for rullst_auth::session_registry::AuthenticatedSession
+impl core::marker::Send for rullst_auth::session_registry::AuthenticatedSession
+impl core::marker::Sync for rullst_auth::session_registry::AuthenticatedSession
+impl core::marker::Unpin for rullst_auth::session_registry::AuthenticatedSession
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::AuthenticatedSession
+impl core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::AuthenticatedSession
+#[non_exhaustive] pub enum rullst_auth::session_registry::Browser
+pub rullst_auth::session_registry::Browser::Chrome
+pub rullst_auth::session_registry::Browser::Edge
+pub rullst_auth::session_registry::Browser::Firefox
+pub rullst_auth::session_registry::Browser::Safari
+pub rullst_auth::session_registry::Browser::Opera
+pub rullst_auth::session_registry::Browser::SamsungInternet
+pub rullst_auth::session_registry::Browser::Unknown
+impl rullst_auth::session_registry::Browser
+pub fn rullst_auth::session_registry::Browser::name(self) -> &'static str
+impl core::clone::Clone for rullst_auth::session_registry::Browser
+impl core::cmp::Eq for rullst_auth::session_registry::Browser
+impl core::cmp::PartialEq for rullst_auth::session_registry::Browser
+impl core::fmt::Debug for rullst_auth::session_registry::Browser
+impl core::hash::Hash for rullst_auth::session_registry::Browser
+impl core::marker::Copy for rullst_auth::session_registry::Browser
+impl core::marker::Send for rullst_auth::session_registry::Browser
+impl core::marker::Sync for rullst_auth::session_registry::Browser
+impl core::marker::Unpin for rullst_auth::session_registry::Browser
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::Browser
+impl core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::Browser
+pub struct rullst_auth::session_registry::CurrentSession
+impl rullst_auth::session_registry::CurrentSession
+pub fn rullst_auth::session_registry::CurrentSession::created_at(&self) -> u64
+pub fn rullst_auth::session_registry::CurrentSession::expires_at(&self) -> u64
+pub fn rullst_auth::session_registry::CurrentSession::reference(&self) -> &rullst_auth::session_registry::SessionRef
+pub fn rullst_auth::session_registry::CurrentSession::user_id(&self) -> i32
+impl core::clone::Clone for rullst_auth::session_registry::CurrentSession
+impl core::cmp::Eq for rullst_auth::session_registry::CurrentSession
+impl core::cmp::PartialEq for rullst_auth::session_registry::CurrentSession
+impl core::fmt::Debug for rullst_auth::session_registry::CurrentSession
+impl core::marker::Send for rullst_auth::session_registry::CurrentSession
+impl core::marker::Sync for rullst_auth::session_registry::CurrentSession
+impl core::marker::Unpin for rullst_auth::session_registry::CurrentSession
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::CurrentSession
+impl core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::CurrentSession
+pub struct rullst_auth::session_registry::DeviceSummary
+impl rullst_auth::session_registry::DeviceSummary
+pub const fn rullst_auth::session_registry::DeviceSummary::new(browser: rullst_auth::session_registry::Browser, platform: rullst_auth::session_registry::Platform) -> Self
+pub const fn rullst_auth::session_registry::DeviceSummary::unknown() -> Self
+pub fn rullst_auth::session_registry::DeviceSummary::browser(&self) -> rullst_auth::session_registry::Browser
+pub fn rullst_auth::session_registry::DeviceSummary::from_headers(headers: &http::header::map::HeaderMap) -> Self
+pub fn rullst_auth::session_registry::DeviceSummary::from_user_agent(user_agent: &str) -> Self
+pub fn rullst_auth::session_registry::DeviceSummary::platform(&self) -> rullst_auth::session_registry::Platform
+impl core::clone::Clone for rullst_auth::session_registry::DeviceSummary
+impl core::cmp::Eq for rullst_auth::session_registry::DeviceSummary
+impl core::cmp::PartialEq for rullst_auth::session_registry::DeviceSummary
+impl core::fmt::Debug for rullst_auth::session_registry::DeviceSummary
+impl core::fmt::Display for rullst_auth::session_registry::DeviceSummary
+impl core::hash::Hash for rullst_auth::session_registry::DeviceSummary
+impl core::marker::Copy for rullst_auth::session_registry::DeviceSummary
+impl core::marker::Send for rullst_auth::session_registry::DeviceSummary
+impl core::marker::Sync for rullst_auth::session_registry::DeviceSummary
+impl core::marker::Unpin for rullst_auth::session_registry::DeviceSummary
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::DeviceSummary
+impl core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::DeviceSummary
+pub struct rullst_auth::session_registry::IssuedSession
+impl rullst_auth::session_registry::IssuedSession
+pub fn rullst_auth::session_registry::IssuedSession::expires_at(&self) -> u64
+pub fn rullst_auth::session_registry::IssuedSession::reference(&self) -> &rullst_auth::session_registry::SessionRef
+pub fn rullst_auth::session_registry::IssuedSession::set_cookie(&self, secure: bool) -> alloc::string::String
+pub fn rullst_auth::session_registry::IssuedSession::token(&self) -> &str
+impl core::fmt::Debug for rullst_auth::session_registry::IssuedSession
+impl core::marker::Send for rullst_auth::session_registry::IssuedSession
+impl core::marker::Sync for rullst_auth::session_registry::IssuedSession
+impl core::marker::Unpin for rullst_auth::session_registry::IssuedSession
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::IssuedSession
+impl core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::IssuedSession
+pub const rullst_auth::session_registry::LAST_SEEN_GRANULARITY_SECONDS: u64
+pub const rullst_auth::session_registry::MAX_PURGE_BATCH: u32
+pub const rullst_auth::session_registry::MAX_SESSIONS_PER_USER: u32
+pub type rullst_auth::session_registry::MySqlSessionRegistry = rullst_auth::session_registry::SessionRegistry<sqlx_mysql::database::MySql>
+pub struct rullst_auth::session_registry::NewSession
+impl rullst_auth::session_registry::NewSession
+pub fn rullst_auth::session_registry::NewSession::new(user_id: i32, epoch: u64) -> Self
+pub fn rullst_auth::session_registry::NewSession::with_device(self, device: rullst_auth::session_registry::DeviceSummary) -> Self
+pub fn rullst_auth::session_registry::NewSession::with_max_age(self, max_age: core::time::Duration) -> Self
+impl core::clone::Clone for rullst_auth::session_registry::NewSession
+impl core::cmp::Eq for rullst_auth::session_registry::NewSession
+impl core::cmp::PartialEq for rullst_auth::session_registry::NewSession
+impl core::fmt::Debug for rullst_auth::session_registry::NewSession
+impl core::marker::Send for rullst_auth::session_registry::NewSession
+impl core::marker::Sync for rullst_auth::session_registry::NewSession
+impl core::marker::Unpin for rullst_auth::session_registry::NewSession
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::NewSession
+impl core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::NewSession
+#[non_exhaustive] pub enum rullst_auth::session_registry::Platform
+pub rullst_auth::session_registry::Platform::Windows
+pub rullst_auth::session_registry::Platform::MacOs
+pub rullst_auth::session_registry::Platform::Ios
+pub rullst_auth::session_registry::Platform::Android
+pub rullst_auth::session_registry::Platform::ChromeOs
+pub rullst_auth::session_registry::Platform::Linux
+pub rullst_auth::session_registry::Platform::Unknown
+impl rullst_auth::session_registry::Platform
+pub fn rullst_auth::session_registry::Platform::name(self) -> &'static str
+impl core::clone::Clone for rullst_auth::session_registry::Platform
+impl core::cmp::Eq for rullst_auth::session_registry::Platform
+impl core::cmp::PartialEq for rullst_auth::session_registry::Platform
+impl core::fmt::Debug for rullst_auth::session_registry::Platform
+impl core::hash::Hash for rullst_auth::session_registry::Platform
+impl core::marker::Copy for rullst_auth::session_registry::Platform
+impl core::marker::Send for rullst_auth::session_registry::Platform
+impl core::marker::Sync for rullst_auth::session_registry::Platform
+impl core::marker::Unpin for rullst_auth::session_registry::Platform
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::Platform
+impl core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::Platform
+pub type rullst_auth::session_registry::PostgresSessionRegistry = rullst_auth::session_registry::SessionRegistry<sqlx_postgres::database::Postgres>
+pub trait rullst_auth::session_registry::RegistryPool
+pub type rullst_auth::session_registry::RegistryPool::Database: rullst_auth::session_registry::SessionDatabase
+impl<DB: rullst_auth::session_registry::SessionDatabase> rullst_auth::session_registry::RegistryPool for sqlx_core::pool::Pool<DB>
+pub trait rullst_auth::session_registry::SessionDatabase: rullst_auth::auth::session_registry::sql::sealed::Backend
+impl rullst_auth::session_registry::SessionDatabase for sqlx_mysql::database::MySql
+impl rullst_auth::session_registry::SessionDatabase for sqlx_postgres::database::Postgres
+impl rullst_auth::session_registry::SessionDatabase for sqlx_sqlite::database::Sqlite
+pub struct rullst_auth::session_registry::SessionInfo
+impl rullst_auth::session_registry::SessionInfo
+pub fn rullst_auth::session_registry::SessionInfo::created_at(&self) -> u64
+pub fn rullst_auth::session_registry::SessionInfo::device(&self) -> rullst_auth::session_registry::DeviceSummary
+pub fn rullst_auth::session_registry::SessionInfo::expires_at(&self) -> u64
+pub fn rullst_auth::session_registry::SessionInfo::is_current(&self, current: &rullst_auth::session_registry::CurrentSession) -> bool
+pub fn rullst_auth::session_registry::SessionInfo::last_seen_at(&self) -> u64
+pub fn rullst_auth::session_registry::SessionInfo::reference(&self) -> &rullst_auth::session_registry::SessionRef
+impl core::clone::Clone for rullst_auth::session_registry::SessionInfo
+impl core::cmp::Eq for rullst_auth::session_registry::SessionInfo
+impl core::cmp::PartialEq for rullst_auth::session_registry::SessionInfo
+impl core::fmt::Debug for rullst_auth::session_registry::SessionInfo
+impl core::marker::Send for rullst_auth::session_registry::SessionInfo
+impl core::marker::Sync for rullst_auth::session_registry::SessionInfo
+impl core::marker::Unpin for rullst_auth::session_registry::SessionInfo
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::SessionInfo
+impl core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::SessionInfo
+pub struct rullst_auth::session_registry::SessionRef(_)
+impl rullst_auth::session_registry::SessionRef
+pub fn rullst_auth::session_registry::SessionRef::as_str(&self) -> &str
+pub fn rullst_auth::session_registry::SessionRef::parse(value: &str) -> core::result::Result<Self, rullst_auth::session_registry::SessionRegistryError>
+impl core::clone::Clone for rullst_auth::session_registry::SessionRef
+impl core::cmp::Eq for rullst_auth::session_registry::SessionRef
+impl core::cmp::PartialEq for rullst_auth::session_registry::SessionRef
+impl core::fmt::Debug for rullst_auth::session_registry::SessionRef
+impl core::fmt::Display for rullst_auth::session_registry::SessionRef
+impl core::marker::Send for rullst_auth::session_registry::SessionRef
+impl core::marker::Sync for rullst_auth::session_registry::SessionRef
+impl core::marker::Unpin for rullst_auth::session_registry::SessionRef
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::SessionRef
+impl core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::SessionRef
+pub struct rullst_auth::session_registry::SessionRegistry<DB: rullst_auth::session_registry::SessionDatabase>
+impl<DB: rullst_auth::session_registry::SessionDatabase> rullst_auth::session_registry::SessionRegistry<DB>
+pub async fn rullst_auth::session_registry::SessionRegistry::authenticate(&self, token: &str, app_key: &[u8], now: u64) -> core::result::Result<rullst_auth::session_registry::AuthenticatedSession, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::authenticate_request(&self, headers: &http::header::map::HeaderMap) -> core::result::Result<rullst_auth::session_registry::AuthenticatedSession, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::connect(pool: sqlx_core::pool::Pool<DB>) -> core::result::Result<Self, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::create_session(&self, session: &rullst_auth::session_registry::NewSession, app_key: &[u8], now: u64) -> core::result::Result<rullst_auth::session_registry::IssuedSession, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::create_table(pool: &sqlx_core::pool::Pool<DB>) -> core::result::Result<(), rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::list_sessions(&self, user_id: i32, now: u64) -> core::result::Result<alloc::vec::Vec<rullst_auth::session_registry::SessionInfo>, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::open(pool: sqlx_core::pool::Pool<DB>) -> core::result::Result<Self, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::purge_expired(&self, now: u64, limit: u32) -> core::result::Result<u64, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::revoke(&self, current: &rullst_auth::session_registry::CurrentSession) -> core::result::Result<bool, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::revoke_all_sessions(&self, user_id: i32) -> core::result::Result<u64, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::revoke_all_sessions_on(connection: &mut <DB as sqlx_core::database::Database>::Connection, user_id: i32) -> core::result::Result<u64, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::revoke_other_sessions(&self, current: &rullst_auth::session_registry::CurrentSession) -> core::result::Result<u64, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::revoke_session(&self, user_id: i32, session: &rullst_auth::session_registry::SessionRef) -> core::result::Result<bool, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::revoke_token(&self, token: &str, app_key: &[u8]) -> core::result::Result<bool, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::sign_in(&self, session: &rullst_auth::session_registry::NewSession) -> core::result::Result<alloc::string::String, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::sign_out(&self, headers: &http::header::map::HeaderMap) -> core::result::Result<bool, rullst_auth::session_registry::SessionRegistryError>
+pub fn rullst_auth::session_registry::SessionRegistry::revalidation(&self, current: &rullst_auth::session_registry::CurrentSession) -> rullst_auth::session_registry::SessionRevalidation<DB>
+impl<DB: rullst_auth::session_registry::SessionDatabase> core::clone::Clone for rullst_auth::session_registry::SessionRegistry<DB>
+impl<DB: rullst_auth::session_registry::SessionDatabase> core::fmt::Debug for rullst_auth::session_registry::SessionRegistry<DB>
+impl<DB> !core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::SessionRegistry<DB>
+impl<DB> !core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::SessionRegistry<DB>
+impl<DB> core::marker::Send for rullst_auth::session_registry::SessionRegistry<DB>
+impl<DB> core::marker::Sync for rullst_auth::session_registry::SessionRegistry<DB>
+impl<DB> core::marker::Unpin for rullst_auth::session_registry::SessionRegistry<DB>
+#[non_exhaustive] pub enum rullst_auth::session_registry::SessionRegistryError
+pub rullst_auth::session_registry::SessionRegistryError::InvalidToken
+pub rullst_auth::session_registry::SessionRegistryError::Expired
+pub rullst_auth::session_registry::SessionRegistryError::Revoked
+pub rullst_auth::session_registry::SessionRegistryError::InvalidInput(&'static str)
+pub rullst_auth::session_registry::SessionRegistryError::Configuration
+pub rullst_auth::session_registry::SessionRegistryError::Crypto
+pub rullst_auth::session_registry::SessionRegistryError::Unavailable
+pub rullst_auth::session_registry::SessionRegistryError::Corrupt
+impl rullst_auth::session_registry::SessionRegistryError
+pub fn rullst_auth::session_registry::SessionRegistryError::is_signed_out(self) -> bool
+impl core::clone::Clone for rullst_auth::session_registry::SessionRegistryError
+impl core::cmp::Eq for rullst_auth::session_registry::SessionRegistryError
+impl core::cmp::PartialEq for rullst_auth::session_registry::SessionRegistryError
+impl core::error::Error for rullst_auth::session_registry::SessionRegistryError
+impl core::fmt::Debug for rullst_auth::session_registry::SessionRegistryError
+impl core::fmt::Display for rullst_auth::session_registry::SessionRegistryError
+impl core::marker::Copy for rullst_auth::session_registry::SessionRegistryError
+impl core::marker::Send for rullst_auth::session_registry::SessionRegistryError
+impl core::marker::Sync for rullst_auth::session_registry::SessionRegistryError
+impl core::marker::Unpin for rullst_auth::session_registry::SessionRegistryError
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::SessionRegistryError
+impl core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::SessionRegistryError
+pub type rullst_auth::session_registry::SessionRegistryFor<P> = rullst_auth::session_registry::SessionRegistry<<P as rullst_auth::session_registry::RegistryPool>::Database>
+pub struct rullst_auth::session_registry::SessionRevalidation<DB: rullst_auth::session_registry::SessionDatabase>
+impl<DB: rullst_auth::session_registry::SessionDatabase> core::fmt::Debug for rullst_auth::session_registry::SessionRevalidation<DB>
+impl<DB: rullst_auth::session_registry::SessionDatabase> rullst_core::realtime::revalidation::Revalidate for rullst_auth::session_registry::SessionRevalidation<DB>
+impl<DB> !core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::SessionRevalidation<DB>
+impl<DB> !core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::SessionRevalidation<DB>
+impl<DB> core::marker::Send for rullst_auth::session_registry::SessionRevalidation<DB>
+impl<DB> core::marker::Sync for rullst_auth::session_registry::SessionRevalidation<DB>
+impl<DB> core::marker::Unpin for rullst_auth::session_registry::SessionRevalidation<DB>
+pub type rullst_auth::session_registry::SqliteSessionRegistry = rullst_auth::session_registry::SessionRegistry<sqlx_sqlite::database::Sqlite>
+pub fn rullst_auth::session_registry::unix_now() -> core::result::Result<u64, rullst_auth::session_registry::SessionRegistryError>
 pub fn rullst_auth::validate_app_key(key: &[u8]) -> core::result::Result<(), rullst_auth::AuthError>
 pub fn rullst_auth::verify_password(password: &str, hash: &str) -> bool
 pub async fn rullst_auth::verify_password_async(password: impl core::convert::Into<alloc::string::String>, hash: impl core::convert::Into<alloc::string::String>) -> bool

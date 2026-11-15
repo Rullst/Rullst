@@ -238,9 +238,11 @@ def seeded(session, block) -> None:
 STARTER_USERS = "src/migrations/m20260601000000_create_users_table.rs"
 ACCOUNT_FILES = ("src/models/user.rs", "src/models/password_reset.rs",
                  "src/controllers/auth_controller.rs", "src/controllers/password_controller.rs",
+                 "src/controllers/sessions_controller.rs",
                  "src/middlewares/auth_middleware.rs", "src/pages/auth.rs",
                  "src/migrations/m*_add_account_columns_to_users_table.rs",
-                 "src/migrations/m*_create_password_reset_tokens_table.rs")
+                 "src/migrations/m*_create_password_reset_tokens_table.rs",
+                 "src/migrations/m*_create_rullst_auth_sessions_table.rs")
 
 
 def project_digest(session) -> str:
