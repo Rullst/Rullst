@@ -41,7 +41,7 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
         ""
     };
 
-    let sec_store = rullst_security::SecurityStore::global();
+    let sec_store = rullst_core::security::SecurityStore::global();
     let log_redactions = sec_store
         .log_redactions_count
         .load(std::sync::atomic::Ordering::Relaxed);

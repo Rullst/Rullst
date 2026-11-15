@@ -33,7 +33,11 @@ pub async fn nexus_security_page(
     State(state): State<Arc<NexusState>>,
     headers: axum::http::HeaderMap,
 ) -> Html<String> {
-    render_security_page(&state, &headers, rullst_security::SecurityStore::global())
+    render_security_page(
+        &state,
+        &headers,
+        rullst_core::security::SecurityStore::global(),
+    )
 }
 
 /// The security page for `store`; tests pass their own store instead of the
@@ -42,7 +46,7 @@ pub async fn nexus_security_page(
 fn render_security_page(
     state: &NexusState,
     headers: &axum::http::HeaderMap,
-    store: &rullst_security::SecurityStore,
+    store: &rullst_core::security::SecurityStore,
 ) -> Html<String> {
     let (ai_active, provider_name) = detect_ai_provider();
     let ai_status_badge = if ai_active {
