@@ -404,7 +404,7 @@ fn lockout_response(remaining: Duration) -> Response {
     if let Ok(value) = HeaderValue::from_str(&retry_after) {
         response.headers_mut().insert(header::RETRY_AFTER, value);
     }
-    rullst_security::SecurityStore::global().inc_rate_limit_blocks();
+    rullst_core::security::SecurityStore::global().inc_rate_limit_blocks();
     response
 }
 

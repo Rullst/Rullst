@@ -23,7 +23,9 @@ or JSON supplied by the caller. In a project with the
 [`cargo rullst auth`](11-authentication-system.md) scaffold, `auth_middleware`
 inserts the signed-in account id as `Extension<i32>`; build the context with
 `UserContext::new(user_id.to_string(), roles)` from roles your application
-stores. Generated projects already depend on `rullst-security`.
+stores. Generated projects do not depend on `rullst-security`: add it to
+`[dependencies]` for these imports (or enable the `rullst` facade's `security`
+feature and import them from `rullst::security::runtime`).
 
 ---
 
