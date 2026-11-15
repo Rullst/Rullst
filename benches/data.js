@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794719808423,
+  "lastUpdate": 1794725556120,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -34047,6 +34047,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1496,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c3f96c8074ad6b8b047abb0d3e6005a2e08385de",
+          "message": "Merge pull request #699 from Rullst/chore/v13-alpha6-dependency-majors\n\nchore(deps): move ed25519-dalek, jsonwebtoken and jsonschema to current majors",
+          "timestamp": "2026-11-15T03:34:36-03:00",
+          "tree_id": "5616113b7c7b5d1a5330ceadf4d3b210f88656aa",
+          "url": "https://github.com/Rullst/Rullst/commit/c3f96c8074ad6b8b047abb0d3e6005a2e08385de"
+        },
+        "date": 1794725553492,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 432,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 611,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 288,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1130,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
