@@ -4097,7 +4097,11 @@ provider](capital-custom-provider.md)); the
   keeps `ring` only for the AES-256-GCM recovery records of its
   `storage-multipart` feature. In the other crates `ring` stays a direct
   dependency for HMAC, digests, randomness and signatures, because it builds
-  for wasm and edge targets.
+  for wasm and edge targets. The exception is ES256 passkeys in `rullst-auth`
+  (since 13.0.0-alpha.6): the credential public key (an uncompressed SEC1
+  point, checked at registration and in the passkey stores) and the assertion
+  signature are checked with `aws-lc-rs`, which TLS already builds, instead of
+  `p256` and `ring`; `rullst-auth` is native-only in the facade.
 * **Process default:** `Server` start-up (Core `orm`, `storage-s3` or
   `telemetry`), the OTLP exporter, Redis TLS connections and the standalone
   `rullst-studio` binary install aws-lc-rs as the rustls process default only

@@ -169,3 +169,32 @@ fn counters_may_stay_at_zero_but_never_fall_back_or_repeat() {
         passkey_error(verify(stored, reported), "did not advance monotonically");
     }
 }
+
+#[test]
+fn compressed_cose_keys_cannot_be_registered() {
+    // RFC 9053 lets an EC2 key carry only x and the sign of y (a boolean -3),
+    // the compressed form; registration needs both coordinates as bytes.
+    for y in [0xf5, 0xf4] {
+        let auth = localhost_auth();
+        let fixture = fixture(&auth);
+        let (x, _) = coordinates(&fixture);
+        let mut key = vec![0xa5, 0x01, 0x02, 0x03, 0x26, 0x20, 0x01, 0x21, 0x58, 0x20];
+        key.extend_from_slice(&x);
+        key.extend_from_slice(&[0x22, y]);
+        let data = auth_data(4, &[10, 20, 30, 40], &key);
+        assert!(matches!(
+            finish(&auth, fixture, data, &[10, 20, 30, 40]),
+            Err(AuthError::CborParseError(message)) if message.contains("major type: 7")
+        ));
+    }
+    // A y coordinate of 33 bytes (a SEC1 compressed point) is refused by length.
+    let auth = localhost_auth();
+    let fixture = fixture(&auth);
+    let (x, y) = coordinates(&fixture);
+    let compressed = [vec![0x02 | (y[31] & 1)], x.clone()].concat();
+    let data = auth_data(4, &[10, 20, 30, 40], &cose_key(&x, &compressed));
+    passkey_error(
+        finish(&auth, fixture, data, &[10, 20, 30, 40]),
+        "coordinates must each contain 32 bytes",
+    );
+}

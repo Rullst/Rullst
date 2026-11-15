@@ -1,6 +1,6 @@
 //! Durable shared SQLite lifecycle for validated passkey credentials.
 
-use super::{Passkey, PasskeyAuth, PublicKeyCredential};
+use super::{Passkey, PasskeyAuth, PublicKeyCredential, es256};
 use crate::AuthError;
 use base64::Engine as _;
 mod storage;
@@ -470,8 +470,9 @@ fn validate_passkey(passkey: &Passkey) -> Result<(), PasskeyStoreError> {
     if passkey.public_key.len() != 65 || passkey.public_key.first() != Some(&0x04) {
         return Err(PasskeyStoreError::InvalidCredential);
     }
-    p256::PublicKey::from_sec1_bytes(&passkey.public_key)
-        .map_err(|_| PasskeyStoreError::InvalidCredential)?;
+    if !es256::is_valid_public_key(&passkey.public_key) {
+        return Err(PasskeyStoreError::InvalidCredential);
+    }
     Ok(())
 }
 

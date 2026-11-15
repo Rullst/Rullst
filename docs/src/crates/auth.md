@@ -203,8 +203,9 @@ v13 additions are opt-in and do not enable JWT or OAuth.
 `PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges
 (`challenge_ttl_seconds` from 1 to 86,400; `PasskeyAuth::new` rejects other values),
 client-data ceremony type, user-presence/user-verification flags, ES256 COSE keys, P-256 points,
-credential IDs, signatures, and monotonic counters. Only `none` attestation is advertised and
-accepted. With `sqlite`, `SqlitePasskeyStore` supplies bounded file-backed
+credential IDs, signatures, and monotonic counters. Public keys and ES256 signatures are checked
+with aws-lc-rs, the library behind Rullst's TLS; high-S signatures are accepted, as WebAuthn allows.
+Only `none` attestation is advertised and accepted. With `sqlite`, `SqlitePasskeyStore` supplies bounded file-backed
 registration, listing, renaming, revocation and optimistic counter CAS shared
 by processes on the same SQLite file. `finish_authenticate` verifies the ES256
 ceremony and atomically advances the stored counter; a stale concurrent update

@@ -4,7 +4,7 @@ use super::{
 };
 use crate::auth::passkey::{
     CreationChallengeResponse, Passkey, PasskeyAuth, PasskeyConfig, PublicKeyCredential,
-    RegisterPublicKeyCredential, RequestChallengeResponse, UserInfo,
+    RegisterPublicKeyCredential, RequestChallengeResponse, UserInfo, es256,
 };
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use sha2::{Digest, Sha256};
@@ -318,7 +318,7 @@ fn validate_passkey(passkey: &Passkey) -> Result<(), Error> {
         || passkey.credential_id.len() > 1023
         || passkey.public_key.len() != 65
         || passkey.public_key.first() != Some(&4)
-        || p256::PublicKey::from_sec1_bytes(&passkey.public_key).is_err()
+        || !es256::is_valid_public_key(&passkey.public_key)
     {
         return Err(Error::InvalidInput);
     }

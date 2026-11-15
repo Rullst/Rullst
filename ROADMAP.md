@@ -369,8 +369,11 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
       installed wherever TLS is used.
     - A five-field cron evaluator of Rullst's own replaces the `cron` crate
       (about 9 fewer), tested differentially against it.
-    - Passkeys without `p256` (about 18 fewer in the SaaS starter), checked
-      with test vectors.
+    - Passkeys without `p256`: ES256 public keys and assertion signatures
+      are checked with aws-lc-rs, which TLS already builds (18 fewer
+      `Cargo.lock` packages and 17 fewer compiled crates in the SaaS and API
+      starters), tested differentially against the previous `p256` and
+      `ring` checks and with the Wycheproof ECDSA P-256 vectors.
     - Core's `storage-multipart` recovery records move from `ring`'s
       AES-256-GCM to the RustCrypto `aes-gcm` crate, with the same stored
       format and known-answer tests, so `ring` leaves Core entirely.
