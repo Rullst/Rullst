@@ -175,3 +175,11 @@ cargo-rullst/src/generators/footprint/target.rs:214:79: replace < with <= in Own
 # rullst-studio remote mode (alpha.3 campaign, targeted runs with the package's
 # tests): see docs/src/mutation-testing.md "Accepted equivalent mutants".
 rullst-studio/src/remote/history.rs:72:51: replace > with >= in Sample::from_outcome
+
+# rullst-messaging (alpha.6 campaign, targeted runs with the package's tests):
+# each name below has a row in docs/src/mutation-testing.md "Accepted
+# equivalent mutants".
+rullst-messaging/src/webhooks/signature.rs:169:13: replace || with && in WebhookSignature::from_headers
+rullst-messaging/src/webhooks/signature.rs:170:13: replace || with && in WebhookSignature::from_headers
+rullst-messaging/src/webhooks/signature.rs:171:13: replace || with && in WebhookSignature::from_headers
+rullst-messaging/src/webhooks/signature.rs:190:28: replace || with && in WebhookSignature::from_headers
