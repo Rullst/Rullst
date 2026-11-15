@@ -15,7 +15,10 @@ extend-exclude = [
     "rullst-core/src/i18n/format/cldr_tests.rs",
     # Generated public-API listings: paths and names come from the checked
     # sources and their dependencies (for example `serde::ser`).
-    ".github/public-api/"
+    ".github/public-api/",
+    # Unmodified upstream Wycheproof vectors (base64 keys, upstream comments);
+    # the test checks the file's SHA-256, so it cannot be corrected here.
+    "rullst-auth/tests/fixtures/wycheproof/"
 ]
 
 [default.extend-words]
