@@ -2,7 +2,6 @@
 # +nightly-2026-08-21 rustdoc --locked --package rullst-security --lib --all-features -- --cfg docsrs -Z unstable-options --output-format json
 pub struct rullst_security::AuditChain
 impl rullst_security::AuditChain
-#[deprecated] pub fn rullst_security::AuditChain::new(secret_key: &[u8], logger: alloc::sync::Arc<dyn rullst_security::AuditLogger>) -> Self
 pub async fn rullst_security::AuditChain::record_event(&self, actor: &str, action: &str, resource: &str, payload: &str) -> core::result::Result<rullst_security::AuditRecord, rullst_security::SecurityError>
 pub fn rullst_security::AuditChain::try_new(secret_key: &[u8], logger: alloc::sync::Arc<dyn rullst_security::AuditLogger>) -> core::result::Result<Self, rullst_security::SecurityError>
 pub fn rullst_security::AuditChain::try_resume(secret_key: &[u8], logger: alloc::sync::Arc<dyn rullst_security::AuditLogger>, tip: &rullst_security::AuditRecord) -> core::result::Result<Self, rullst_security::SecurityError>
@@ -493,7 +492,6 @@ pub rullst_security::RateLimiter::max_requests: u64
 pub rullst_security::RateLimiter::window: core::time::Duration
 pub rullst_security::RateLimiter::backend: rullst_security::RateLimitBackend
 impl rullst_security::RateLimiter
-#[deprecated] pub fn rullst_security::RateLimiter::with_distributed(self) -> Self
 pub fn rullst_security::RateLimiter::check(&self, key: &str) -> bool
 pub fn rullst_security::RateLimiter::new(max_requests: u64, window: core::time::Duration) -> Self
 pub fn rullst_security::RateLimiter::try_with_distributed(self) -> core::result::Result<Self, rullst_security::RateLimitError>
