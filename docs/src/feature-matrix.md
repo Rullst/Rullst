@@ -427,7 +427,7 @@ select one backend (and, for Nexus, to leave out the AI assistant and
 | `rullst-nexus` | `strict-sqlite` | SQLite selection in Core and ORM |
 | `rullst-nexus` | `ai` | The AI assistant at `/nexus/chat` and `rullst-ai` (default); the `rullst` facade enables it only with `nexus-ai` |
 | `rullst-nexus` | `tz` | v13: `NexusTimeZone::named` for `DateTimeUtc` form values in a named IANA time zone (system zoneinfo, bundled `jiff` database as fallback) |
-| `rullst-studio` | `local` | The local Studio (`Studio`, `run_studio` and its pages), which reads the application's database through the ORM and adds the ORM and Security crates; every driver feature below enables it, and so does the `rullst` facade's `studio` |
+| `rullst-studio` | `local` | The local Studio (`Studio`, `run_studio` and its pages), which reads the application's database through the ORM and adds the ORM crate; every driver feature below enables it, and so does the `rullst` facade's `studio` |
 | `rullst-studio` | `capital` | v13 (13.0.0-alpha.6): `local` plus the revenue dashboard (`/studio/capital`, `/api/revenue`, `revenue_dashboard`) and `rullst-capital` with its HTTPS client (default); the `rullst` facade enables it with `capital`. Without it `/studio/capital` says how to enable it |
 | `rullst-studio` | `drivers-all` | All three SQLx drivers in Core and ORM (default) |
 | `rullst-studio` | `queue-sqlite` | Core's durable SQLite queue backend (default) |

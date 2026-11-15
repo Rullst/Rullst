@@ -29,12 +29,12 @@ default = ["drivers-all", "queue-sqlite", "capital"]
 # The local Studio (`Studio`, `run_studio` and its pages), which reads the
 # application's database through the ORM. Every driver profile below enables
 # it; `--no-default-features --features remote` builds only the remote Studio,
-# without the ORM and Security crates.
+# without the ORM crate. Neither depends on `rullst-security`: the security
+# pages read the store that Core defines (`rullst_core::security`).
 local = [
     "rullst-core/orm",
     "dep:rullst-orm",
     "dep:rullst-macros",
-    "dep:rullst-security",
     "dep:utoipa",
 ]
 # v13 (13.0.0-alpha.6): the revenue dashboard (`/studio/capital`,
@@ -58,7 +58,6 @@ rullst-core = { workspace = true }
 rullst-orm = { workspace = true, optional = true }
 rullst-capital = { workspace = true, optional = true }
 rullst-macros = { workspace = true, optional = true }
-rullst-security = { workspace = true, optional = true }
 
 axum = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
@@ -88,6 +87,8 @@ required-features = ["remote"]
 
 [dev-dependencies]
 rullst-orm = { workspace = true, features = ["drivers-all"] }
+# `security_event_flow` records through a `rullst-security` layer.
+rullst-security = { workspace = true }
 # The paused clock (`test-util`) drives the remote poller's loop in tests.
 tokio = { workspace = true, features = ["full", "test-util"] }
 rullst-core = { workspace = true, features = ["queue-sqlite"] }
