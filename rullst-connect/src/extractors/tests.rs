@@ -107,9 +107,19 @@ fn test_verify_state() {
         error: None,
         error_description: None,
     };
-    assert!(callback_empty.verify_state("").is_err());
-    assert!(callback_empty.verify_state("not_empty").is_err());
-    assert!(callback_valid.verify_state("").is_err());
+    // An empty value on either side is refused as empty, not compared.
+    for result in [
+        callback_empty.verify_state(""),
+        callback_empty.verify_state("not_empty"),
+        callback_valid.verify_state(""),
+    ] {
+        match result {
+            Err(crate::error::ConnectError::InvalidState(msg)) => {
+                assert_eq!(msg, "CSRF state cannot be empty");
+            }
+            other => panic!("Expected an empty-state error, got {other:?}"),
+        }
+    }
 
     // 5. Verify the return value on success is exactly Ok(())
     //    Kills the mutant: `replace verify_state -> Result<(), ConnectError> with Ok(())`
