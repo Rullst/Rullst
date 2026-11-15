@@ -26,6 +26,9 @@
 # building a TLS stack (13.0.0-alpha.6): 269 packages in this starter's
 # Cargo.lock, 223 of them compiled, measured as the job does, from
 # the repository Cargo.lock, on 2026-11-15.
+# binary_size_bytes was lowered by the same change, measured by run
+# 43680823606 (Rust 1.100.0): 7,600,752 bytes, 10,494,936 before (run
+# 43666669225).
 #
 # To raise a limit on purpose, copy the "Suggested limit" of the job summary
 # into this file in the pull request that causes the increase, update the
@@ -33,7 +36,7 @@
 # "Starter footprint budgets").
 
 [footprint.budgets]
-binary_size_bytes = 12_752_912   # measured 11_089_488
+binary_size_bytes = 8_740_865    # measured 7_600_752
 idle_rss_bytes = 11_865_293      # measured 9_887_744
 dependency_count = 283           # measured 269
 compiled_dependency_count = 235  # measured 223
