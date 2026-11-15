@@ -324,6 +324,7 @@ pub use rullst_auth::auth::session_registry::SessionRef = struct rullst_auth::se
 pub use rullst_auth::auth::session_registry::SessionRegistry = struct rullst_auth::session_registry::SessionRegistry
 pub use rullst_auth::auth::session_registry::SessionRegistryError = enum rullst_auth::session_registry::SessionRegistryError
 pub use rullst_auth::auth::session_registry::SessionRegistryFor = type_alias rullst_auth::session_registry::SessionRegistryFor
+pub use rullst_auth::auth::session_registry::SessionRevalidation = struct rullst_auth::session_registry::SessionRevalidation
 pub use rullst_auth::auth::session_registry::SqliteSessionRegistry = type_alias rullst_auth::session_registry::SqliteSessionRegistry
 pub use rullst_auth::auth::session_registry::unix_now = function rullst_auth::session_registry::unix_now
 pub use rullst_auth::auth::validate_app_key = function rullst_auth::validate_app_key
@@ -1381,17 +1382,21 @@ pub struct rullst_auth::session_registry::SessionRegistry<DB: rullst_auth::sessi
 impl<DB: rullst_auth::session_registry::SessionDatabase> rullst_auth::session_registry::SessionRegistry<DB>
 pub async fn rullst_auth::session_registry::SessionRegistry::authenticate(&self, token: &str, app_key: &[u8], now: u64) -> core::result::Result<rullst_auth::session_registry::AuthenticatedSession, rullst_auth::session_registry::SessionRegistryError>
 pub async fn rullst_auth::session_registry::SessionRegistry::authenticate_request(&self, headers: &http::header::map::HeaderMap) -> core::result::Result<rullst_auth::session_registry::AuthenticatedSession, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::connect(pool: sqlx_core::pool::Pool<DB>) -> core::result::Result<Self, rullst_auth::session_registry::SessionRegistryError>
 pub async fn rullst_auth::session_registry::SessionRegistry::create_session(&self, session: &rullst_auth::session_registry::NewSession, app_key: &[u8], now: u64) -> core::result::Result<rullst_auth::session_registry::IssuedSession, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::create_table(pool: &sqlx_core::pool::Pool<DB>) -> core::result::Result<(), rullst_auth::session_registry::SessionRegistryError>
 pub async fn rullst_auth::session_registry::SessionRegistry::list_sessions(&self, user_id: i32, now: u64) -> core::result::Result<alloc::vec::Vec<rullst_auth::session_registry::SessionInfo>, rullst_auth::session_registry::SessionRegistryError>
 pub async fn rullst_auth::session_registry::SessionRegistry::open(pool: sqlx_core::pool::Pool<DB>) -> core::result::Result<Self, rullst_auth::session_registry::SessionRegistryError>
 pub async fn rullst_auth::session_registry::SessionRegistry::purge_expired(&self, now: u64, limit: u32) -> core::result::Result<u64, rullst_auth::session_registry::SessionRegistryError>
 pub async fn rullst_auth::session_registry::SessionRegistry::revoke(&self, current: &rullst_auth::session_registry::CurrentSession) -> core::result::Result<bool, rullst_auth::session_registry::SessionRegistryError>
 pub async fn rullst_auth::session_registry::SessionRegistry::revoke_all_sessions(&self, user_id: i32) -> core::result::Result<u64, rullst_auth::session_registry::SessionRegistryError>
+pub async fn rullst_auth::session_registry::SessionRegistry::revoke_all_sessions_on(connection: &mut <DB as sqlx_core::database::Database>::Connection, user_id: i32) -> core::result::Result<u64, rullst_auth::session_registry::SessionRegistryError>
 pub async fn rullst_auth::session_registry::SessionRegistry::revoke_other_sessions(&self, current: &rullst_auth::session_registry::CurrentSession) -> core::result::Result<u64, rullst_auth::session_registry::SessionRegistryError>
 pub async fn rullst_auth::session_registry::SessionRegistry::revoke_session(&self, user_id: i32, session: &rullst_auth::session_registry::SessionRef) -> core::result::Result<bool, rullst_auth::session_registry::SessionRegistryError>
 pub async fn rullst_auth::session_registry::SessionRegistry::revoke_token(&self, token: &str, app_key: &[u8]) -> core::result::Result<bool, rullst_auth::session_registry::SessionRegistryError>
 pub async fn rullst_auth::session_registry::SessionRegistry::sign_in(&self, session: &rullst_auth::session_registry::NewSession) -> core::result::Result<alloc::string::String, rullst_auth::session_registry::SessionRegistryError>
 pub async fn rullst_auth::session_registry::SessionRegistry::sign_out(&self, headers: &http::header::map::HeaderMap) -> core::result::Result<bool, rullst_auth::session_registry::SessionRegistryError>
+pub fn rullst_auth::session_registry::SessionRegistry::revalidation(&self, current: &rullst_auth::session_registry::CurrentSession) -> rullst_auth::session_registry::SessionRevalidation<DB>
 impl<DB: rullst_auth::session_registry::SessionDatabase> core::clone::Clone for rullst_auth::session_registry::SessionRegistry<DB>
 impl<DB: rullst_auth::session_registry::SessionDatabase> core::fmt::Debug for rullst_auth::session_registry::SessionRegistry<DB>
 impl<DB> !core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::SessionRegistry<DB>
@@ -1423,6 +1428,14 @@ impl core::marker::Unpin for rullst_auth::session_registry::SessionRegistryError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::SessionRegistryError
 impl core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::SessionRegistryError
 pub type rullst_auth::session_registry::SessionRegistryFor<P> = rullst_auth::session_registry::SessionRegistry<<P as rullst_auth::session_registry::RegistryPool>::Database>
+pub struct rullst_auth::session_registry::SessionRevalidation<DB: rullst_auth::session_registry::SessionDatabase>
+impl<DB: rullst_auth::session_registry::SessionDatabase> core::fmt::Debug for rullst_auth::session_registry::SessionRevalidation<DB>
+impl<DB: rullst_auth::session_registry::SessionDatabase> rullst_core::realtime::revalidation::Revalidate for rullst_auth::session_registry::SessionRevalidation<DB>
+impl<DB> !core::panic::unwind_safe::RefUnwindSafe for rullst_auth::session_registry::SessionRevalidation<DB>
+impl<DB> !core::panic::unwind_safe::UnwindSafe for rullst_auth::session_registry::SessionRevalidation<DB>
+impl<DB> core::marker::Send for rullst_auth::session_registry::SessionRevalidation<DB>
+impl<DB> core::marker::Sync for rullst_auth::session_registry::SessionRevalidation<DB>
+impl<DB> core::marker::Unpin for rullst_auth::session_registry::SessionRevalidation<DB>
 pub type rullst_auth::session_registry::SqliteSessionRegistry = rullst_auth::session_registry::SessionRegistry<sqlx_sqlite::database::Sqlite>
 pub fn rullst_auth::session_registry::unix_now() -> core::result::Result<u64, rullst_auth::session_registry::SessionRegistryError>
 pub fn rullst_auth::validate_app_key(key: &[u8]) -> core::result::Result<(), rullst_auth::AuthError>

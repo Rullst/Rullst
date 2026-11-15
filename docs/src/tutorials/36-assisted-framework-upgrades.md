@@ -485,7 +485,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (121 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (107 rows).
+  of inputs that previously failed) (108 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
 has 161 rules. A row can map to several rules and a rule to
