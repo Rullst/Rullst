@@ -85,11 +85,13 @@ cargo rullst db:migrate
 The generated manifest enables `orm-turso` without a direct SQLx dependency,
 and the environment contains `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and
 `TURSO_OFFLINE_PATH` rather than a fictitious `DATABASE_URL`. Models use the
-same public derive with an explicit backend:
+same public derive with an explicit backend. Their `save()` writes every
+column, so a change that another request made to another column of the row is
+overwritten; `full_row_save` declares that, and the derive requires it:
 
 ```rust
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "events", backend = "turso")]
+#[orm(table = "events", backend = "turso", full_row_save)]
 struct Event {
     id: i64,
     label: String,
@@ -101,7 +103,7 @@ Initialize once before using the generated inherent methods:
 
 ```rust,no_run
 # #[derive(Debug, Clone, rullst_orm::Orm)]
-# #[orm(table = "events", backend = "turso")]
+# #[orm(table = "events", backend = "turso", full_row_save)]
 # struct Event {
 #     id: i64,
 #     label: String,

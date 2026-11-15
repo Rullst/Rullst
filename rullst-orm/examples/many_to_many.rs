@@ -1,11 +1,13 @@
-use rullst_orm::Orm;
 use rullst_orm::schema::Schema;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "roles")]
 pub struct Role {
     pub id: i32,
     pub name: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
@@ -18,6 +20,8 @@ pub struct User {
     #[orm(belongs_to_many = "Role", pivot_table = "role_user")]
     #[sqlx(skip)]
     pub roles: Option<Vec<Role>>,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -48,18 +52,21 @@ async fn main() -> Result<(), rullst_orm::Error> {
     let mut admin_role = Role {
         id: 0,
         name: "Admin".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     admin_role.save().await?;
 
     let mut editor_role = Role {
         id: 0,
         name: "Editor".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     editor_role.save().await?;
 
     let mut viewer_role = Role {
         id: 0,
         name: "Viewer".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     viewer_role.save().await?;
 
@@ -68,6 +75,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         id: 0,
         name: "Alice (Admin & Editor)".to_string(),
         roles: None,
+        snapshot: RowSnapshot::default(),
     };
     user1.save().await?;
 
@@ -75,6 +83,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         id: 0,
         name: "Bob (Viewer)".to_string(),
         roles: None,
+        snapshot: RowSnapshot::default(),
     };
     user2.save().await?;
 

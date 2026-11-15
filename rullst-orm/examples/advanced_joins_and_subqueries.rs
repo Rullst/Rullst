@@ -1,10 +1,12 @@
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,
     pub name: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
@@ -14,6 +16,8 @@ pub struct Post {
     pub user_id: i32,
     pub title: String,
     pub status: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -51,10 +55,12 @@ async fn main() -> Result<(), rullst_orm::Error> {
     let mut u1 = User {
         id: 0,
         name: "Alice".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     let mut u2 = User {
         id: 0,
         name: "Bob".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     u1.save().await?;
     u2.save().await?;
@@ -72,18 +78,21 @@ async fn main() -> Result<(), rullst_orm::Error> {
         user_id: saved_u1.id,
         title: "Rust Masterpiece".to_string(),
         status: "published".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     let mut p2 = Post {
         id: 0,
         user_id: saved_u1.id,
         title: "Vibe Coding".to_string(),
         status: "draft".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     let mut p3 = Post {
         id: 0,
         user_id: saved_u2.id,
         title: "SeaORM Guide".to_string(),
         status: "published".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     p1.save().await?;
     p2.save().await?;

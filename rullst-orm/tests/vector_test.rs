@@ -5,6 +5,7 @@ use rullst_orm::schema::Blueprint;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, Orm)]
+#[orm(full_row_save)]
 pub struct Document {
     pub id: i32,
     pub content: String,

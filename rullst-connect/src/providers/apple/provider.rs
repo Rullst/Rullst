@@ -53,8 +53,7 @@ impl AppleProvider {
             &key_id,
             &private_key_pem,
         ])?;
-        let http_client =
-            crate::configuration::provider_http_client(credential_mode, "apple", None);
+        let http_client = crate::configuration::provider_http_client(credential_mode, "apple");
 
         Ok(Self {
             client_id,
@@ -69,56 +68,6 @@ impl AppleProvider {
             credential_mode,
             jwks_cache: crate::provider::JwksCache::default(),
         })
-    }
-
-    /// Deprecated infallible constructor. Invalid configuration is disabled.
-    #[cfg_attr(
-        not(test),
-        deprecated(since = "12.0.0", note = "use try_new and handle ConnectError")
-    )]
-    pub fn new(
-        client_id: impl Into<String>,
-        team_id: impl Into<String>,
-        key_id: impl Into<String>,
-        private_key_pem: impl Into<String>,
-        redirect_url: impl Into<String>,
-    ) -> Self {
-        let client_id = client_id.into();
-        let team_id = team_id.into();
-        let key_id = key_id.into();
-        let private_key_pem = private_key_pem.into();
-        let mut redirect_url = redirect_url.into();
-        let (credential_mode, invalid_reason) =
-            match crate::configuration::validate_redirect_url(&redirect_url) {
-                Ok(_) => crate::configuration::legacy_credential_mode_for_values(&[
-                    &client_id,
-                    &team_id,
-                    &key_id,
-                    &private_key_pem,
-                ]),
-                Err(error) => {
-                    redirect_url = "about:blank".to_string();
-                    (
-                        crate::configuration::CredentialMode::Invalid,
-                        Some(error.to_string()),
-                    )
-                }
-            };
-        let http_client =
-            crate::configuration::provider_http_client(credential_mode, "apple", invalid_reason);
-        Self {
-            client_id,
-            team_id,
-            key_id,
-            private_key_pem,
-            redirect_url,
-            http_client,
-            scopes: "name email".to_string(),
-            state: None,
-            pkce_challenge: None,
-            credential_mode,
-            jwks_cache: crate::provider::JwksCache::default(),
-        }
     }
 
     pub fn credential_mode(&self) -> crate::configuration::CredentialMode {
@@ -214,11 +163,6 @@ impl AppleProvider {
     pub(crate) fn generate_client_secret(&self) -> Result<String, crate::error::ConnectError> {
         if self.credential_mode.is_mock() {
             return Ok("mock_apple_client_secret".to_string());
-        }
-        if self.credential_mode.is_invalid() {
-            return Err(crate::error::ConnectError::Offline(
-                "Apple provider is disabled by invalid configuration".to_string(),
-            ));
         }
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         let claims = AppleClaims {

@@ -91,9 +91,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_connect::ConnectUser
 #[non_exhaustive] pub enum rullst_connect::CredentialMode
 pub rullst_connect::CredentialMode::Live
 pub rullst_connect::CredentialMode::Mock
-pub rullst_connect::CredentialMode::Invalid
 impl rullst_connect::CredentialMode
-pub fn rullst_connect::CredentialMode::is_invalid(self) -> bool
 pub fn rullst_connect::CredentialMode::is_mock(self) -> bool
 impl core::clone::Clone for rullst_connect::CredentialMode
 impl core::cmp::Eq for rullst_connect::CredentialMode
@@ -878,7 +876,6 @@ pub use rullst_connect::provider::types::build_oauth_params = function rullst_co
 pub mod rullst_connect::providers
 pub struct rullst_connect::providers::AppleProvider
 impl rullst_connect::providers::AppleProvider
-#[deprecated] pub fn rullst_connect::providers::AppleProvider::new(client_id: impl core::convert::Into<alloc::string::String>, team_id: impl core::convert::Into<alloc::string::String>, key_id: impl core::convert::Into<alloc::string::String>, private_key_pem: impl core::convert::Into<alloc::string::String>, redirect_url: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_connect::providers::AppleProvider::credential_mode(&self) -> rullst_connect::CredentialMode
 pub fn rullst_connect::providers::AppleProvider::name_from_user_field(user: &str) -> core::option::Option<alloc::string::String>
 pub fn rullst_connect::providers::AppleProvider::try_new(client_id: impl core::convert::Into<alloc::string::String>, team_id: impl core::convert::Into<alloc::string::String>, key_id: impl core::convert::Into<alloc::string::String>, private_key_pem: impl core::convert::Into<alloc::string::String>, redirect_url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_connect::ConnectError>
@@ -896,7 +893,6 @@ impl core::marker::Sync for rullst_connect::providers::AppleProvider
 impl core::marker::Unpin for rullst_connect::providers::AppleProvider
 pub struct rullst_connect::providers::Auth0Provider
 impl rullst_connect::providers::Auth0Provider
-#[deprecated] pub fn rullst_connect::providers::Auth0Provider::new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>, domain: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_connect::providers::Auth0Provider::credential_mode(&self) -> rullst_connect::CredentialMode
 pub fn rullst_connect::providers::Auth0Provider::try_new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>, domain: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_connect::ConnectError>
 pub fn rullst_connect::providers::Auth0Provider::with_http_client(self, client: alloc::sync::Arc<dyn rullst_connect::client::HttpClient>) -> Self
@@ -912,7 +908,6 @@ impl core::marker::Sync for rullst_connect::providers::Auth0Provider
 impl core::marker::Unpin for rullst_connect::providers::Auth0Provider
 pub struct rullst_connect::providers::CognitoProvider
 impl rullst_connect::providers::CognitoProvider
-#[deprecated] pub fn rullst_connect::providers::CognitoProvider::new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>, domain: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_connect::providers::CognitoProvider::credential_mode(&self) -> rullst_connect::CredentialMode
 pub fn rullst_connect::providers::CognitoProvider::try_new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>, domain: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_connect::ConnectError>
 pub fn rullst_connect::providers::CognitoProvider::with_http_client(self, client: alloc::sync::Arc<dyn rullst_connect::client::HttpClient>) -> Self
@@ -927,7 +922,6 @@ impl core::marker::Sync for rullst_connect::providers::CognitoProvider
 impl core::marker::Unpin for rullst_connect::providers::CognitoProvider
 pub struct rullst_connect::providers::DiscordProvider
 impl rullst_connect::providers::DiscordProvider
-#[deprecated] pub fn rullst_connect::providers::DiscordProvider::new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_connect::providers::DiscordProvider::credential_mode(&self) -> rullst_connect::CredentialMode
 pub fn rullst_connect::providers::DiscordProvider::try_new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_connect::ConnectError>
 pub fn rullst_connect::providers::DiscordProvider::with_http_client(self, client: alloc::sync::Arc<dyn rullst_connect::client::HttpClient>) -> Self
@@ -943,7 +937,6 @@ impl core::marker::Sync for rullst_connect::providers::DiscordProvider
 impl core::marker::Unpin for rullst_connect::providers::DiscordProvider
 pub struct rullst_connect::providers::FacebookProvider
 impl rullst_connect::providers::FacebookProvider
-#[deprecated] pub fn rullst_connect::providers::FacebookProvider::new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_connect::providers::FacebookProvider::credential_mode(&self) -> rullst_connect::CredentialMode
 pub fn rullst_connect::providers::FacebookProvider::try_new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_connect::ConnectError>
 pub fn rullst_connect::providers::FacebookProvider::with_http_client(self, client: alloc::sync::Arc<dyn rullst_connect::client::HttpClient>) -> Self
@@ -959,7 +952,6 @@ impl core::marker::Sync for rullst_connect::providers::FacebookProvider
 impl core::marker::Unpin for rullst_connect::providers::FacebookProvider
 pub struct rullst_connect::providers::GithubProvider
 impl rullst_connect::providers::GithubProvider
-#[deprecated] pub fn rullst_connect::providers::GithubProvider::new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_connect::providers::GithubProvider::credential_mode(&self) -> rullst_connect::CredentialMode
 pub fn rullst_connect::providers::GithubProvider::try_new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_connect::ConnectError>
 pub fn rullst_connect::providers::GithubProvider::with_http_client(self, client: alloc::sync::Arc<dyn rullst_connect::client::HttpClient>) -> Self
@@ -975,7 +967,6 @@ impl core::marker::Sync for rullst_connect::providers::GithubProvider
 impl core::marker::Unpin for rullst_connect::providers::GithubProvider
 pub struct rullst_connect::providers::GoogleProvider
 impl rullst_connect::providers::GoogleProvider
-#[deprecated] pub fn rullst_connect::providers::GoogleProvider::new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> Self
 pub async fn rullst_connect::providers::GoogleProvider::verify_id_token(&self, id_token: &str, expected_nonce: &str) -> core::result::Result<rullst_connect::ConnectUser, rullst_connect::ConnectError>
 pub fn rullst_connect::providers::GoogleProvider::credential_mode(&self) -> rullst_connect::CredentialMode
 pub fn rullst_connect::providers::GoogleProvider::try_new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_connect::ConnectError>
@@ -994,7 +985,6 @@ impl core::marker::Sync for rullst_connect::providers::GoogleProvider
 impl core::marker::Unpin for rullst_connect::providers::GoogleProvider
 pub struct rullst_connect::providers::LinkedinProvider
 impl rullst_connect::providers::LinkedinProvider
-#[deprecated] pub fn rullst_connect::providers::LinkedinProvider::new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_connect::providers::LinkedinProvider::credential_mode(&self) -> rullst_connect::CredentialMode
 pub fn rullst_connect::providers::LinkedinProvider::try_new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_connect::ConnectError>
 pub fn rullst_connect::providers::LinkedinProvider::with_http_client(self, client: alloc::sync::Arc<dyn rullst_connect::client::HttpClient>) -> Self
@@ -1023,7 +1013,6 @@ impl core::marker::Sync for rullst_connect::providers::MicrosoftOidcProvider
 impl core::marker::Unpin for rullst_connect::providers::MicrosoftOidcProvider
 pub struct rullst_connect::providers::MicrosoftProvider
 impl rullst_connect::providers::MicrosoftProvider
-#[deprecated] pub fn rullst_connect::providers::MicrosoftProvider::new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_connect::providers::MicrosoftProvider::credential_mode(&self) -> rullst_connect::CredentialMode
 pub fn rullst_connect::providers::MicrosoftProvider::try_new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_connect::ConnectError>
 pub fn rullst_connect::providers::MicrosoftProvider::with_http_client(self, client: alloc::sync::Arc<dyn rullst_connect::client::HttpClient>) -> Self
@@ -1087,7 +1076,6 @@ impl core::marker::Sync for rullst_connect::providers::OidcProvider
 impl core::marker::Unpin for rullst_connect::providers::OidcProvider
 pub struct rullst_connect::providers::XProvider
 impl rullst_connect::providers::XProvider
-#[deprecated] pub fn rullst_connect::providers::XProvider::new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_connect::providers::XProvider::credential_mode(&self) -> rullst_connect::CredentialMode
 pub fn rullst_connect::providers::XProvider::try_new(client_id: impl core::convert::Into<alloc::string::String>, client_secret: secrecy::SecretString, redirect_url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_connect::ConnectError>
 pub fn rullst_connect::providers::XProvider::with_http_client(self, client: alloc::sync::Arc<dyn rullst_connect::client::HttpClient>) -> Self

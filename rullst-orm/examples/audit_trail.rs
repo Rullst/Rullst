@@ -1,3 +1,4 @@
+use rullst_orm::RowSnapshot;
 use rullst_orm::{
     Orm,
     audit::{AuditContext, with_audit_context},
@@ -9,6 +10,8 @@ pub struct User {
     pub id: i32,
     pub email: String,
     pub status: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -33,6 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         id: 0,
         email: "john@example.com".to_string(),
         status: "active".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     with_audit_context(audit_context.clone(), user.save()).await?;
 

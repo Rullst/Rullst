@@ -415,19 +415,24 @@ fn generate_struct(
     columns: &[ColumnInfo],
 ) -> Result<String, IntrospectionError> {
     validate_database_identifier(&table.database_name, "table")?;
-    // A `snapshot` column leaves the name to the column: that model keeps
-    // full-row saves instead of dirty tracking.
-    let tracked = columns.iter().all(|column| column.name != SNAPSHOT_FIELD);
-    let mut code = String::from(if tracked {
+    // The dirty-tracking field takes the first name no column has; a table
+    // with both columns keeps full-row saves, which the model then declares.
+    let snapshot_field = SNAPSHOT_FIELDS
+        .into_iter()
+        .find(|field| columns.iter().all(|column| column.name != *field));
+    let mut code = String::from(if snapshot_field.is_some() {
         "use rullst_orm::{Orm, RowSnapshot};\nuse serde::{Deserialize, Serialize};\n\n"
     } else {
         "use rullst_orm::Orm;\nuse serde::{Deserialize, Serialize};\n\n"
     });
     code.push_str("#[derive(Clone, Debug, Serialize, Deserialize, Orm)]\n");
-    code.push_str(&format!(
-        "#[orm(table = {})]\n",
-        rust_string_literal(&table.database_name)
-    ));
+    let table_name = rust_string_literal(&table.database_name);
+    code.push_str(&match snapshot_field {
+        Some(_) => format!("#[orm(table = {table_name})]\n"),
+        None => format!(
+            "// Columns named `snapshot` and `row_snapshot` leave no name for a\n// `RowSnapshot` field, so `save()` writes every column and overwrites\n// concurrent changes to other columns.\n#[orm(table = {table_name}, full_row_save)]\n"
+        ),
+    });
     code.push_str(&format!("pub struct {} {{\n", table.struct_name));
 
     let mut generated_fields = HashSet::new();
@@ -456,17 +461,18 @@ fn generate_struct(
         let rust_type = map_db_type_to_rust(&column.data_type, column.not_null);
         code.push_str(&format!("    pub {field_name}: {rust_type},\n"));
     }
-    if tracked {
-        code.push_str(SNAPSHOT_FIELD_SOURCE);
+    if let Some(field) = snapshot_field {
+        code.push_str(&format!(
+            "    // Remembers the loaded values, so `save()` writes only the columns this\n    // record changed. Build new records with `{field}: RowSnapshot::default()`.\n    #[serde(skip)]\n    #[sqlx(skip)]\n    pub {field}: RowSnapshot,\n"
+        ));
     }
     code.push_str("}\n");
     Ok(code)
 }
 
-/// The dirty-tracking field of generated models: `save()` writes only the
-/// columns a loaded record changed.
-const SNAPSHOT_FIELD: &str = "snapshot";
-const SNAPSHOT_FIELD_SOURCE: &str = "    // Remembers the loaded values, so `save()` writes only the columns this\n    // record changed. Build new records with `snapshot: RowSnapshot::default()`.\n    #[serde(skip)]\n    #[sqlx(skip)]\n    pub snapshot: RowSnapshot,\n";
+/// The names of the dirty-tracking field of generated models, in order of
+/// preference: `save()` writes only the columns a loaded record changed.
+const SNAPSHOT_FIELDS: [&str; 2] = ["snapshot", "row_snapshot"];
 
 #[cfg(test)]
 #[path = "introspect_tests.rs"]

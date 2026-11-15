@@ -11,7 +11,7 @@ use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::mariadb::Mariadb;
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "mariadb_users")]
+#[orm(table = "mariadb_users", full_row_save)]
 struct User {
     pub id: i32,
     pub name: String,

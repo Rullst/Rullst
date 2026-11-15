@@ -6,7 +6,7 @@
 use rullst_orm::Orm;
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "nullable_authors")]
+#[orm(table = "nullable_authors", full_row_save)]
 struct NullableAuthor {
     id: i32,
     name: String,
@@ -29,7 +29,7 @@ struct NullableAuthor {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "nullable_posts")]
+#[orm(table = "nullable_posts", full_row_save)]
 struct NullablePost {
     id: i32,
     author_id: Option<i32>,
@@ -41,7 +41,7 @@ struct NullablePost {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "nullable_profiles")]
+#[orm(table = "nullable_profiles", full_row_save)]
 struct NullableProfile {
     id: i32,
     author_id: Option<i32>,

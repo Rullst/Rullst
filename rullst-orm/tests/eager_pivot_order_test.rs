@@ -9,7 +9,7 @@ use std::sync::Arc;
 use rullst_orm::Orm;
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "ordered_articles")]
+#[orm(table = "ordered_articles", full_row_save)]
 struct OrderedArticle {
     id: i32,
     title: String,
@@ -24,7 +24,7 @@ struct OrderedArticle {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "ordered_labels")]
+#[orm(table = "ordered_labels", full_row_save)]
 struct OrderedLabel {
     id: i32,
     name: String,

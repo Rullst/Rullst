@@ -12,7 +12,7 @@ mod retry_tests;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use offline::{DisabledHttpClient, OfflineHttpClient};
+pub(crate) use offline::OfflineHttpClient;
 pub use request_builder::{HttpClientExt, RequestBuilder, ResponseWrapper};
 pub use reqwest_client::ReqwestClient;
 pub use traits::{HttpClient, HttpRequest, HttpResponse};

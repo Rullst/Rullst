@@ -2,7 +2,7 @@
 
 use super::{Ctx, FIRMWARE, TARGET, manager, manifest};
 use crate::{Ms, expected as x, outln, store::RamCounterStore, timed};
-use rullst_iot::{BootPartition, OtaError, OtaManager, OtaManifest, OtaStatus};
+use rullst_iot::{BootPartition, OtaError, OtaManifest, OtaStatus};
 
 /// RAM copy for the tampering cases (kept out of the heap measurement).
 static mut TAMPER_BUF: [u8; 32 * 1024] = [0; 32 * 1024];
@@ -297,11 +297,4 @@ pub(super) fn ota(ctx: &mut Ctx) {
     )
     .and_then(|mut ota| ota.commit_verified_update());
     ctx.expect_err("ota_commit_without_verify", r, OtaError::NoVerifiedUpdate);
-    #[allow(deprecated)]
-    let legacy = OtaManager::new("1.0.0").err();
-    ctx.check(
-        "ota_legacy_api_fails_closed",
-        matches!(legacy, Some(OtaError::LegacyApiUnsupported { .. })),
-        format_args!("{:?}", legacy),
-    );
 }

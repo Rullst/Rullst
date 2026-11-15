@@ -18,7 +18,7 @@ struct Preferences {
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "diff_documents")]
+#[orm(table = "diff_documents", full_row_save)]
 struct Document {
     id: i32,
     #[sqlx(json)]

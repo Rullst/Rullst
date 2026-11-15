@@ -1,4 +1,4 @@
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Clone, Debug, Default, rullst_orm::Orm)]
 #[orm(table = "documents", searchable)]
@@ -6,6 +6,8 @@ pub struct Document {
     pub id: i32,
     pub title: String,
     pub body: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -25,6 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         id: 0,
         title: "Rust ORM Guide".to_string(),
         body: "Learn how to build a scalable backend.".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     doc1.save().await.unwrap();
 
@@ -32,6 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         id: 0,
         title: "Full-Text Search".to_string(),
         body: "Scout makes searching models incredibly easy in Rust.".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     doc2.save().await.unwrap();
 

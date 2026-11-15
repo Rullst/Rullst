@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use rullst_orm::{Error, Orm, SearchEngine, set_search_engine, with_tenant};
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
+#[orm(full_row_save)]
 #[orm(
     table = "search_scope_records",
     searchable,

@@ -1,6 +1,6 @@
 use rand::RngExt;
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{Orm, Seeder, async_trait};
+use rullst_orm::{Orm, RowSnapshot, Seeder, async_trait};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "users")]
@@ -8,6 +8,8 @@ pub struct User {
     pub id: i32,
     pub name: String,
     pub email: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 // -----------------------------------------------------------------------------
@@ -28,6 +30,7 @@ impl Seeder for DatabaseSeeder {
                 id: 0, // Assigned by DB
                 name: format!("Fake User {}", random_id),
                 email: format!("user{}@example.com", random_id),
+                snapshot: RowSnapshot::default(),
             }
         })
         .count(50) // Create 50 fake users!

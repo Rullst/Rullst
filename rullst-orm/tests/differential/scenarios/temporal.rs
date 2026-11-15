@@ -9,7 +9,7 @@ use super::{create_table, in_order, sorted};
 use crate::transcript::Scenario;
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "diff_events")]
+#[orm(table = "diff_events", full_row_save)]
 struct Event {
     id: i32,
     title: String,

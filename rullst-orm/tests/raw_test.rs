@@ -7,7 +7,7 @@ use rullst_orm::{
 use std::fs;
 
 #[derive(rullst_orm::Orm, Debug, Clone, PartialEq)]
-#[orm(table = "raw_test_users")]
+#[orm(table = "raw_test_users", full_row_save)]
 pub struct RawUser {
     pub id: i32,
     pub name: String,

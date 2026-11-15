@@ -13,7 +13,7 @@ use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::mysql::Mysql;
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "mysql_users", auditable)]
+#[orm(table = "mysql_users", auditable, full_row_save)]
 struct User {
     pub id: i32,
     pub name: String,

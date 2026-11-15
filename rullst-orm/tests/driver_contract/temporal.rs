@@ -45,7 +45,7 @@ mod native {
     use rullst_orm::schema::Schema;
 
     #[derive(Debug, Clone, PartialEq, Orm)]
-    #[orm(table = "contract_calendar")]
+    #[orm(table = "contract_calendar", full_row_save)]
     struct CalendarEntry {
         id: i32,
         title: String,
@@ -222,7 +222,7 @@ mod any_pool {
 
     /// SQLx `Any` decodes no `chrono` type, so the fields are text.
     #[derive(Debug, Clone, Orm)]
-    #[orm(table = "contract_calendar")]
+    #[orm(table = "contract_calendar", full_row_save)]
     struct CalendarText {
         id: i32,
         title: String,

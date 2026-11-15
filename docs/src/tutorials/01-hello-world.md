@@ -35,8 +35,8 @@ cargo --version
 ```
 
 Rullst v13 requires Rust 1.96.0 or newer, the MSRV recorded in the
-[compatibility policy](../compatibility-policy.md). Run `rustup update` if
-`rustc --version` reports an older release.
+[compatibility policy](../compatibility-policy.md); the latest stable Rust is
+recommended. Run `rustup update` if `rustc --version` reports an older release.
 
 ## 2. Create a project
 

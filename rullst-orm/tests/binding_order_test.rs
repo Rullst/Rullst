@@ -3,7 +3,7 @@
 use rullst_orm::Orm;
 
 #[derive(Clone, Debug, Orm)]
-#[orm(table = "binding_records")]
+#[orm(table = "binding_records", full_row_save)]
 struct BindingRecord {
     id: i32,
     name: String,

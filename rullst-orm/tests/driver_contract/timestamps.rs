@@ -37,14 +37,14 @@ fn filled(stamp: &Option<Stamp>) -> bool {
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_timestamped_notes")]
+#[orm(table = "contract_timestamped_notes", full_row_save)]
 struct TimestampedNote {
     id: i32,
     title: String,
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_timestamped_notes")]
+#[orm(table = "contract_timestamped_notes", full_row_save)]
 struct TimestampedNoteView {
     id: i32,
     title: String,

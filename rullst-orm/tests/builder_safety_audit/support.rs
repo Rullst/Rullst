@@ -2,14 +2,18 @@ use rullst_orm::{Error, Orm};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "audit_records")]
+#[orm(table = "audit_records", full_row_save)]
 pub(super) struct AuditRecord {
     pub(super) id: i32,
     pub(super) name: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "audit_tenant_records", tenant_column = "tenant_id")]
+#[orm(
+    table = "audit_tenant_records",
+    tenant_column = "tenant_id",
+    full_row_save
+)]
 pub(super) struct AuditTenantRecord {
     pub(super) id: i32,
     pub(super) tenant_id: String,
@@ -17,7 +21,7 @@ pub(super) struct AuditTenantRecord {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "audit_soft_records", soft_delete)]
+#[orm(table = "audit_soft_records", soft_delete, full_row_save)]
 pub(super) struct AuditSoftRecord {
     pub(super) id: i32,
     pub(super) name: String,
@@ -25,6 +29,7 @@ pub(super) struct AuditSoftRecord {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
+#[orm(full_row_save)]
 #[orm(
     table = "audit_tenant_records",
     tenant_column = "tenant_id",
@@ -43,7 +48,7 @@ impl AuditScopedRecordQueryBuilder {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "audit_records", policy = "DenyDeletion")]
+#[orm(table = "audit_records", policy = "DenyDeletion", full_row_save)]
 pub(super) struct AuditProtectedRecord {
     pub(super) id: i32,
     pub(super) name: String,
@@ -52,7 +57,7 @@ pub(super) struct AuditProtectedRecord {
 struct DenyDeletion;
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "audit_records")]
+#[orm(table = "audit_records", full_row_save)]
 pub(super) struct AuditParent {
     pub(super) id: i32,
     pub(super) name: String,
@@ -70,14 +75,14 @@ pub(super) struct AuditParent {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "audit_roles")]
+#[orm(table = "audit_roles", full_row_save)]
 pub(super) struct AuditRole {
     pub(super) id: i32,
     pub(super) name: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "audit_children")]
+#[orm(table = "audit_children", full_row_save)]
 pub(super) struct AuditChild {
     pub(super) id: i32,
     pub(super) audit_record_id: i32,
@@ -85,7 +90,7 @@ pub(super) struct AuditChild {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "audit_records", after_fetch = "verify_exists")]
+#[orm(table = "audit_records", after_fetch = "verify_exists", full_row_save)]
 pub(super) struct AuditHookRecord {
     pub(super) id: i32,
     pub(super) name: String,

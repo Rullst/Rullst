@@ -4,8 +4,7 @@
 //!
 //! **Maturity: Core**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). `#[memoize]`
-//! is an experimental compatibility surface with a weaker promise; `#[route]`
-//! is a deprecated marker that registers nothing (use `rullst::routes!`).
+//! is an experimental compatibility surface with a weaker promise.
 //!
 //! Use these macros through the `rullst` facade rather than this crate: the
 //! expansions call `rullst::…` paths, `#[require_role]` needs the facade's
@@ -240,29 +239,6 @@ pub fn __i18n_translate(input: TokenStream) -> TokenStream {
 pub fn memoize(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as syn::ItemFn);
     expand_memoize(&input_fn).into()
-}
-
-/// Legacy compatibility marker that preserves the annotated function unchanged.
-///
-/// Route registration is defined by the `routes!` macro in `rullst-core`. This attribute never
-/// implemented path registration or content negotiation and is retained for one compatibility
-/// cycle so existing code does not have its function signature rewritten unexpectedly.
-#[deprecated(
-    since = "12.0.0",
-    note = "use rullst::routes! for route registration; this legacy marker will be removed"
-)]
-#[proc_macro_attribute]
-pub fn route(attr: TokenStream, item: TokenStream) -> TokenStream {
-    if attr.is_empty() {
-        item
-    } else {
-        syn::Error::new(
-            proc_macro2::Span::call_site(),
-            "#[route] does not register paths; use rullst::routes! instead",
-        )
-        .into_compile_error()
-        .into()
-    }
 }
 
 #[proc_macro_attribute]
