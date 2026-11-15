@@ -5,6 +5,8 @@
 //! are public, deterministic test fixtures. Never expose this router on a
 //! production listener or treat it as an OIDC conformance implementation.
 
+#[cfg(all(test, feature = "axum"))]
+mod config_tests;
 #[cfg(feature = "axum")]
 mod handlers;
 #[cfg(feature = "axum")]
