@@ -6,7 +6,7 @@ deployments publish it:
 
 | Address | Built by | Contents |
 | --- | --- | --- |
-| `https://rullst.win/`, `/privacy.html`, `/pt-br/`, `/pt-br/privacy.html`, `/assets/` | `Rullst/Rullst.github.io`, workflow `deploy.yml` | The landing and privacy pages in both languages, the stylesheet, script and language-switcher flags |
+| `https://rullst.win/`, `/privacy.html`, `/compare/`, `/pt-br/`, `/pt-br/privacy.html`, `/pt-br/comparar/`, `/assets/` | `Rullst/Rullst.github.io`, workflow `deploy.yml` | The landing, privacy and comparison pages in both languages, the stylesheet, script and language-switcher flags |
 | `https://rullst.win/Rullst/` | This repository's `pages.yml` | Only a redirect page to `https://rullst.win/`; nothing else moved |
 | `https://rullst.win/Rullst/book/`, `/Rullst/benches/`, `/Rullst/images/`, `/Rullst/llms.txt` | This repository's `pages.yml` | The mdBook, the benchmark dashboards, images and the LLM text indexes |
 | `https://rullst.win/Benchmarks/` | `Rullst/Benchmarks` | The cross-framework comparison (a separate project) |
@@ -20,6 +20,8 @@ The landing design and copy have one editable source, in `docs/`:
 | `home_template.pt-BR.html` | `/pt-br/` |
 | `privacy_template.html` | `/privacy.html` |
 | `privacy_template.pt-BR.html` | `/pt-br/privacy.html` |
+| `compare_template.html` | `/compare/` |
+| `compare_template.pt-BR.html` | `/pt-br/comparar/` |
 | `site.css`, `site.js` | `/assets/site.css`, `/assets/site.js` |
 | `flags/us.svg`, `flags/br.svg` | `/assets/flags/` |
 | `redirect_template.html` | `/Rullst/` (by `pages.yml`) |
@@ -101,6 +103,44 @@ load integrity-pinned Chart.js from jsDelivr; documentation can store display
 preferences and contain external content. Do not extend the landing's narrower
 description to those surfaces or to user-built applications. New tracking,
 embeds, forms or storage require a fresh privacy review before deployment.
+
+## The comparison page
+
+`/compare/` and `/pt-br/comparar/` compare Rullst, Loco and Topcoat topic by
+topic. Every Loco and Topcoat fact comes from that project's own
+documentation, repository or crates.io page, and the page states the versions
+and the date it was checked against (`loco-rs 1.3.1` and `topcoat 0.12.1` on
+14 November 2026); Rullst facts come from this repository. When either
+project releases a version that changes a fact, update both languages and the
+checked versions together: the validator requires the same topics, the same
+checked versions and dates and the same external links in both pages. Say
+"not documented" rather than guessing, and keep the "where each one fits"
+section fair to all three.
+
+Its Performance section is filled at build time, never by hand. The
+deployment downloads the latest results that `Rullst/Benchmarks` publishes and
+passes them to the assembler with `--benchmarks FILE`, which renders the
+Rullst, Loco and Topcoat rows into both languages. The page has no script and
+its CSP keeps `connect-src 'none'`. The file must be JSON of this shape:
+
+```json
+{
+  "schema": "rullst.benchmarks.latest.v1",
+  "measured_on": "2026-11-20",
+  "results": [
+    {"framework": "Rullst", "version": "13.0.0-alpha.6",
+     "json_rps": 90485.67, "db_single_rps": 16186.7,
+     "avg_latency_ms": 3.14, "peak_ram_mib": 20.83}
+  ]
+}
+```
+
+`framework` is matched without regard to case; at least one of the four
+metrics is required per row and other frameworks are ignored. An unknown
+schema, a bad date, a negative or non-finite number or an unexpected version
+string discards the whole file: the page then keeps its "first measurement in
+progress" text and the deployment continues. `.github/fixtures/site-benchmarks.json`
+is the test fixture (its numbers are not measurements).
 
 ## How the root site is deployed
 

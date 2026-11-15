@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 """Assemble the https://rullst.win/ root site from this repository's sources.
 
-    python3 .github/assemble-organization-site.py --out DIRECTORY
+    python3 .github/assemble-organization-site.py --out DIRECTORY [--benchmarks FILE]
 
-Writes the English landing and privacy pages at the root, their Brazilian
-Portuguese versions under pt-br/, and the shared assets (stylesheet, script
-and language-switcher flags) under assets/ into DIRECTORY, which must be
-missing or empty. The pages also reference /Rullst/book/, /Rullst/images/ and
+Writes the English landing, privacy and comparison pages (/, /privacy.html,
+/compare/), their Brazilian Portuguese versions under pt-br/ (/pt-br/comparar/
+for the comparison) and the shared assets (stylesheet, script and
+language-switcher flags) under assets/ into DIRECTORY, which must be missing
+or empty.
+
+--benchmarks names a downloaded copy of the Rullst/Benchmarks latest-results
+JSON (schema "rullst.benchmarks.latest.v1", described in
+docs/src/website-maintenance.md). Its Rullst, Loco and Topcoat rows are
+rendered into the comparison pages; without the file, or when it is invalid,
+the pages keep their "first measurement in progress" text and the script
+prints a warning instead of failing. The pages also reference /Rullst/book/, /Rullst/images/ and
 /Rullst/Rullst.png, which this repository's pages.yml deploys, so every path
 is valid at the site root.
 
@@ -18,7 +26,11 @@ never commits, pushes or deploys anything itself. validate-site.py runs it too.
 from __future__ import annotations
 
 import argparse
+from datetime import date
 from hashlib import sha256
+from html import escape
+import json
+import math
 from pathlib import Path
 import re
 import sys
@@ -33,6 +45,8 @@ FILES = {
     "privacy.html": "docs/privacy_template.html",
     "pt-br/index.html": "docs/home_template.pt-BR.html",
     "pt-br/privacy.html": "docs/privacy_template.pt-BR.html",
+    "compare/index.html": "docs/compare_template.html",
+    "pt-br/comparar/index.html": "docs/compare_template.pt-BR.html",
     "assets/site.css": "docs/site.css",
     "assets/site.js": "docs/site.js",
     "assets/flags/us.svg": "docs/flags/us.svg",
@@ -43,14 +57,118 @@ CANONICAL = {
     "privacy.html": SITE_URL + "privacy.html",
     "pt-br/index.html": SITE_URL + "pt-br/",
     "pt-br/privacy.html": SITE_URL + "pt-br/privacy.html",
+    "compare/index.html": SITE_URL + "compare/",
+    "pt-br/comparar/index.html": SITE_URL + "pt-br/comparar/",
 }
 LANDINGS = ("index.html", "pt-br/index.html")
 ASSET_REFERENCE = re.compile(r'(?:href|src)="/assets/(site\.(?:css|js))\?v=([0-9a-f]{16})"')
 LOCAL_ASSET = re.compile(r'(?:href|src)="/(assets/[^"?#]+)')
 
 
+COMPARE_PAGES = {"compare/index.html": "en", "pt-br/comparar/index.html": "pt-BR"}
+BENCHMARK_START = "<!-- benchmark-results:start -->"
+BENCHMARK_END = "<!-- benchmark-results:end -->"
+BENCHMARK_SCHEMA = "rullst.benchmarks.latest.v1"
+COMPARED = ("Rullst", "Loco", "Topcoat")
+# Result key -> English label, Portuguese label, unit, decimals.
+METRICS = {
+    "json_rps": ("JSON responses per second", "Respostas JSON por segundo", "", 0),
+    "db_single_rps": ("Responses with one database query per second", "Respostas com uma consulta ao banco por segundo", "", 0),
+    "avg_latency_ms": ("Average latency", "Latência média", " ms", 2),
+    "peak_ram_mib": ("Peak memory", "Pico de memória", " MiB", 1),
+}
+MONTHS = {
+    "en": ("January", "February", "March", "April", "May", "June", "July", "August",
+           "September", "October", "November", "December"),
+    "pt-BR": ("janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto",
+              "setembro", "outubro", "novembro", "dezembro"),
+}
+TEXT = {
+    "en": {
+        "measured": "Measured on {date} with the Rullst/Benchmarks suite. The rows update automatically after each new Rullst release; this page is rebuilt daily.",
+        "missing": "Not in this measurement run.",
+        "version": "version",
+    },
+    "pt-BR": {
+        "measured": "Medido em {date} com a suíte Rullst/Benchmarks. As linhas se atualizam automaticamente a cada nova versão do Rullst; esta página é reconstruída diariamente.",
+        "missing": "Fora desta rodada de medição.",
+        "version": "versão",
+    },
+}
+VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+-]{0,39}")
+
+
 class AssemblyError(Exception):
     """The sources cannot produce a consistent root site."""
+
+
+def load_benchmarks(path: Path) -> dict | None:
+    """Return the measured date and the compared frameworks' rows, or None.
+
+    Every value is checked before it reaches a page: an unknown schema, a bad
+    date, a non-finite or negative number or an unexpected version string
+    discards the whole file.
+    """
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or data.get("schema") != BENCHMARK_SCHEMA:
+            raise ValueError(f"schema is not {BENCHMARK_SCHEMA}")
+        measured_on = date.fromisoformat(str(data["measured_on"]))
+        rows = {}
+        for result in data["results"]:
+            name = str(result["framework"])
+            match = next((known for known in COMPARED if known.lower() == name.lower()), None)
+            if match is None:
+                continue
+            version = str(result["version"])
+            if not VERSION.fullmatch(version):
+                raise ValueError(f"unexpected version for {name}: {version!r}")
+            metrics = {}
+            for key in METRICS:
+                if key in result and result[key] is not None:
+                    value = float(result[key])
+                    if not math.isfinite(value) or value < 0:
+                        raise ValueError(f"{name}: {key} is not a finite, non-negative number")
+                    metrics[key] = value
+            if not metrics:
+                raise ValueError(f"{name}: no known metric")
+            rows[match] = {"version": version, "metrics": metrics}
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        print(f"warning: benchmark results not used ({error})", file=sys.stderr)
+        return None
+    if not rows:
+        print("warning: benchmark results name none of the compared frameworks", file=sys.stderr)
+        return None
+    return {"measured_on": measured_on, "rows": rows}
+
+
+def format_number(value: float, decimals: int, lang: str) -> str:
+    text = f"{value:,.{decimals}f}"
+    return text.translate(str.maketrans(",.", ".,")) if lang == "pt-BR" else text
+
+
+def render_benchmarks(results: dict, lang: str) -> str:
+    """HTML for the comparison page's results block, escaped throughout."""
+    measured = results["measured_on"]
+    month = MONTHS[lang][measured.month - 1]
+    day = f"{measured.day} de {month} de {measured.year}" if lang == "pt-BR" else f"{measured.day} {month} {measured.year}"
+    when = f'<time datetime="{measured.isoformat()}">{escape(day)}</time>'
+    lines = [f'<p class="benchmark-meta">{TEXT[lang]["measured"].format(date=when)}</p>', '<ul class="benchmark-rows">']
+    for name in COMPARED:
+        row = results["rows"].get(name)
+        if row is None:
+            lines.append(f'<li><h3>{name}</h3><p>{TEXT[lang]["missing"]}</p></li>')
+            continue
+        metrics = "".join(
+            f'<div><dt>{escape(METRICS[key][0 if lang == "en" else 1])}</dt>'
+            f'<dd>{format_number(value, METRICS[key][3], lang)}{METRICS[key][2]}</dd></div>'
+            for key, value in row["metrics"].items()
+        )
+        lines.append(
+            f'<li><h3>{name} <span>{TEXT[lang]["version"]} {escape(row["version"])}</span></h3><dl>{metrics}</dl></li>'
+        )
+    lines.append("</ul>")
+    return "\n".join(lines)
 
 
 def check_sources(root: Path = ROOT) -> dict[str, bytes]:
@@ -82,6 +200,10 @@ def check_sources(root: Path = ROOT) -> dict[str, bytes]:
                 raise AssemblyError(
                     f"{FILES[page]} references {name}?v={version}; the current content version is {digests[name]}"
                 )
+    for page in COMPARE_PAGES:
+        text = contents[page].decode("utf-8")
+        if text.count(BENCHMARK_START) != 1 or text.count(BENCHMARK_END) != 1 or text.index(BENCHMARK_START) > text.index(BENCHMARK_END):
+            raise AssemblyError(f"{FILES[page]} needs one benchmark-results block")
     for page in LANDINGS:
         landing = contents[page].decode("utf-8")
         for name in ("site.css", "site.js"):
@@ -90,9 +212,16 @@ def check_sources(root: Path = ROOT) -> dict[str, bytes]:
     return contents
 
 
-def assemble(out: Path, root: Path = ROOT) -> list[str]:
+def assemble(out: Path, root: Path = ROOT, benchmarks: Path | None = None) -> list[str]:
     """Write the root site into OUT and return the published paths."""
     contents = check_sources(root)
+    results = load_benchmarks(benchmarks) if benchmarks is not None else None
+    if results is not None:
+        for page, lang in COMPARE_PAGES.items():
+            text = contents[page].decode("utf-8")
+            start = text.index(BENCHMARK_START) + len(BENCHMARK_START)
+            end = text.index(BENCHMARK_END)
+            contents[page] = (text[:start] + "\n" + render_benchmarks(results, lang) + "\n" + text[end:]).encode("utf-8")
     if out.is_symlink() or (out.exists() and not out.is_dir()):
         raise AssemblyError(f"output must be a directory: {out}")
     if out.exists() and any(out.iterdir()):
@@ -107,9 +236,10 @@ def assemble(out: Path, root: Path = ROOT) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", required=True, type=Path, help="missing or empty output directory")
+    parser.add_argument("--benchmarks", type=Path, help="downloaded latest-results JSON of Rullst/Benchmarks")
     args = parser.parse_args(argv)
     try:
-        published = assemble(args.out)
+        published = assemble(args.out, benchmarks=args.benchmarks)
     except AssemblyError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

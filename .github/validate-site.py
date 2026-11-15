@@ -28,6 +28,9 @@ HOME = DOCS / "home_template.html"
 PRIVACY = DOCS / "privacy_template.html"
 HOME_PT_BR = DOCS / "home_template.pt-BR.html"
 PRIVACY_PT_BR = DOCS / "privacy_template.pt-BR.html"
+COMPARE = DOCS / "compare_template.html"
+COMPARE_PT_BR = DOCS / "compare_template.pt-BR.html"
+BENCHMARK_FIXTURE = ROOT / ".github" / "fixtures" / "site-benchmarks.json"
 REDIRECT = DOCS / "redirect_template.html"
 SITE_URL = "https://rullst.win/"
 # English external link -> its Brazilian Portuguese counterpart. Every other
@@ -249,6 +252,10 @@ def local_home_target(reference: str) -> Path | None:
         return HOME_PT_BR
     if path == "/pt-br/privacy.html":
         return PRIVACY_PT_BR
+    if path == "/compare/":
+        return COMPARE
+    if path == "/pt-br/comparar/":
+        return COMPARE_PT_BR
     if path == "/Rullst/book/":
         return DOCS / "book" / "index.html"
     if path.startswith("/Rullst/book/"):
@@ -322,21 +329,27 @@ LANGUAGES = {
               "slogan": "Inteligente, consciente da segurança e feito para uma produtividade sem esforço",
               "performance": "medida em junho de 2026, antes da v13"},
 }
-ALTERNATES = (("en", ""), ("pt-BR", "pt-br/"), ("x-default", ""))
 
 
-def validate_language_links(path: Path, source: str, document: "Document", page: str, lang: str) -> None:
-    """Language attribute, hreflang alternates and the flag switcher."""
+def validate_language_links(
+    path: Path, source: str, document: "Document", page: str, lang: str, pt_page: str | None = None
+) -> None:
+    """Language attribute, hreflang alternates and the flag switcher.
+
+    PAGE is the English path below the site root; PT_PAGE the Portuguese one
+    (default: the same path under pt-br/).
+    """
+    english, portuguese = f"/{page}", f"/pt-br/{page}" if pt_page is None else f"/{pt_page}"
     assert f'<html lang="{lang}">' in source, f"{path.name}: <html lang> must be {lang}"
-    for hreflang, prefix in ALTERNATES:
-        alternate = f'<link rel="alternate" hreflang="{hreflang}" href="{SITE_URL}{prefix}{page}">'
+    for hreflang, href in (("en", english), ("pt-BR", portuguese), ("x-default", english)):
+        alternate = f'<link rel="alternate" hreflang="{hreflang}" href="{SITE_URL}{href[1:]}">'
         assert alternate in source, f"{path.name}: missing {alternate}"
     switcher = re.search(r'<div class="lang-switch" role="group" aria-label="[^"]+">(.*?)</div>', source, re.DOTALL)
     assert switcher, f"{path.name}: missing the language switcher"
     entries = re.findall(r'<a href="([^"]+)" hreflang="([^"]+)" lang="([^"]+)"([^>]*)><img src="([^"]+)" alt="" [^>]*>([^<]+)</a>', switcher[1])
     assert [(href, hreflang, flag, text) for href, hreflang, _lang, _rest, flag, text in entries] == [
-        (f"/{page}", "en", "/assets/flags/us.svg", "English"),
-        (f"/pt-br/{page}", "pt-BR", "/assets/flags/br.svg", "Português"),
+        (english, "en", "/assets/flags/us.svg", "English"),
+        (portuguese, "pt-BR", "/assets/flags/br.svg", "Português"),
     ], f"{path.name}: language switcher entries: {entries}"
     current = [hreflang for _href, hreflang, _lang, rest, _flag, _text in entries if 'aria-current="page"' in rest]
     assert current == [lang], f"{path.name}: aria-current must mark only the {lang} entry"
@@ -396,14 +409,23 @@ def validate_landing(lang: str, readme: str) -> tuple[Document, str]:
 
 def validate_privacy(lang: str, home: Document) -> tuple[Document, str]:
     facts = LANGUAGES[lang]
-    path = facts["privacy"]
+    privacy, source = validate_static_page(facts["privacy"], lang, "privacy.html", None, home)
+    assert "Venelouis" in source, f"{facts['privacy'].name}: must name the responsible person"
+    return privacy, source
+
+
+def validate_static_page(path: Path, lang: str, page: str, pt_page: str | None, home: Document) -> tuple[Document, str]:
+    """Checks shared by the script-free pages (privacy notice, comparison)."""
+    facts = LANGUAGES[lang]
     privacy, source = parse(path)
     validate_document(path, privacy)
-    validate_language_links(path, source, privacy, "privacy.html", lang)
+    validate_language_links(path, source, privacy, page, lang, pt_page)
     assert privacy.has_main and privacy.has_nav and privacy.has_footer, f"{path.name}: needs nav, main and footer"
     assert "script-src 'none'" in source, f"{path.name}: must forbid scripts"
     assert not privacy.scripts and not privacy.inline_behavior and not privacy.embeds, f"{path.name}: must stay static"
-    assert f'<link rel="canonical" href="{facts["url"]}privacy.html">' in source, f"{path.name}: canonical URL"
+    url = SITE_URL + (page if lang == "en" else (pt_page or f"pt-br/{page}"))
+    assert f'<link rel="canonical" href="{url}">' in source, f"{path.name}: canonical URL must be {url}"
+    assert "connect-src 'none'" in source, f"{path.name}: must forbid connections"
     assert 'name="referrer" content="no-referrer"' in source, f"{path.name}: must suppress outgoing referrers"
     css_version = sha256((DOCS / "site.css").read_bytes()).hexdigest()[:16]
     assert privacy.stylesheets == [f"/assets/site.css?v={css_version}"], f"{path.name}: must load the current stylesheet"
@@ -415,8 +437,47 @@ def validate_privacy(lang: str, home: Document) -> tuple[Document, str]:
             assert reference.removeprefix(landing_prefix + "#") in home.ids, f"{path.name}: missing landing anchor {reference}"
         elif (target := local_home_target(reference)) is not None:
             assert target.is_file(), f"{path.name}: missing local target {reference} -> {target}"
-    assert "Venelouis" in source, f"{path.name}: must name the responsible person"
     return privacy, source
+
+
+CHECKED_CODE = re.compile(r'<p class="compare-checked" id="checked">(.*?)</p>', re.DOTALL)
+
+
+def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
+    """The comparison pages: same facts in both languages, data-driven benchmarks."""
+    compare, source = validate_static_page(COMPARE, "en", "compare/", "pt-br/comparar/", home)
+    compare_pt, source_pt = validate_static_page(COMPARE_PT_BR, "pt-BR", "compare/", "pt-br/comparar/", home_pt)
+    validate_translation(compare, source, compare_pt, source_pt, COMPARE_PT_BR.name)
+    checked = [CHECKED_CODE.search(text) for text in (source, source_pt)]
+    assert all(checked), "comparison pages must state what each fact was checked against"
+    versions = [re.findall(r"<code>(.*?)</code>|<time datetime=\"([0-9-]+)\">", match[1]) for match in checked]
+    assert versions[0] == versions[1], f"comparison pages checked different versions or dates: {versions}"
+    assert any(code.startswith("loco-rs ") for code, _ in versions[0]) and any(
+        code.startswith("topcoat ") for code, _ in versions[0]
+    ), "comparison must name the Loco and Topcoat versions it checked"
+    topics = [re.findall(r'<div class="compare-topic" id="([a-z-]+)">', text) for text in (source, source_pt)]
+    assert len(topics[0]) >= 11 and topics[0] == topics[1], f"comparison topics differ: {topics}"
+    for text, name in ((source, COMPARE.name), (source_pt, COMPARE_PT_BR.name)):
+        for topic in re.findall(r'<div class="compare-topic" id="[a-z-]+">(.*?)</dl>', text, re.DOTALL):
+            assert re.findall(r"<dt>(.*?)</dt>", topic) == ["Rullst", "Loco", "Topcoat"], f"{name}: each topic covers the three"
+        assert text.count(assembler.BENCHMARK_START) == 1 and 'class="benchmark-pending"' in text, (
+            f"{name}: needs the benchmark-results block with its pending text"
+        )
+    assert "/compare/" in home.links and "/pt-br/comparar/" in home_pt.links, "landing pages must link the comparison"
+    with tempfile.TemporaryDirectory(prefix="rullst-root-site-") as temp:
+        assembler.assemble(Path(temp) / "data", benchmarks=BENCHMARK_FIXTURE)
+        for page, expected in (("compare/index.html", ("90,486", "version 13.0.0-alpha.6", "Not in this measurement run.")),
+                               ("pt-br/comparar/index.html", ("90.486", "versão 13.0.0-alpha.6", "Fora desta rodada de medição."))):
+            rendered = (Path(temp) / "data" / page).read_text(encoding="utf-8")
+            assert 'class="benchmark-pending"' not in rendered, f"{page}: benchmark rows were not rendered"
+            assert all(text in rendered for text in expected), f"{page}: unexpected benchmark rendering"
+            assert "Actix" not in rendered, f"{page}: renders a framework outside the comparison"
+        bad = Path(temp) / "bad.json"
+        bad.write_text('{"schema": "rullst.benchmarks.latest.v1", "measured_on": "2026-11-20", "results": [{"framework": "Rullst", "version": "<b>", "json_rps": 1}]}')
+        assembler.assemble(Path(temp) / "bad", benchmarks=bad)
+        assert 'class="benchmark-pending"' in (Path(temp) / "bad" / "compare/index.html").read_text(encoding="utf-8"), (
+            "invalid benchmark data must keep the pending text"
+        )
 
 
 DEMO_LINKS = {
@@ -456,6 +517,11 @@ def main() -> None:
     privacy, privacy_source = validate_privacy("en", home)
     privacy_pt, privacy_source_pt = validate_privacy("pt-BR", home_pt)
     validate_translation(privacy, privacy_source, privacy_pt, privacy_source_pt, PRIVACY_PT_BR.name)
+    spec = importlib.util.spec_from_file_location("assemble_site", ROOT / ".github/assemble-organization-site.py")
+    assert spec is not None and spec.loader is not None, "cannot load assemble-organization-site.py"
+    assembler = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(assembler)
+    validate_comparison(home, home_pt, assembler)
 
     slogan = LANGUAGES["en"]["slogan"]
     assert all(link in readme for link in DEMO_LINKS), "README is missing a published example link"
@@ -486,10 +552,6 @@ def main() -> None:
     assert SITE_URL in redirect.links, "/Rullst/ needs a visible link to the root"
     assert not redirect.scripts and not redirect.stylesheets and not redirect.inline_behavior, "/Rullst/ stays static"
 
-    spec = importlib.util.spec_from_file_location("assemble_site", ROOT / ".github/assemble-organization-site.py")
-    assert spec is not None and spec.loader is not None, "cannot load assemble-organization-site.py"
-    assembler = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(assembler)
     with tempfile.TemporaryDirectory(prefix="rullst-root-site-") as temp:
         published = assembler.assemble(Path(temp) / "site")
         assert published == list(assembler.FILES), f"unexpected root site files: {published}"
@@ -516,8 +578,9 @@ def main() -> None:
     ).read_text(encoding="utf-8").count("}"), "unbalanced site CSS blocks"
     llms_pages = validate_llms()
     print(
-        f"validated English and Brazilian Portuguese landing and privacy pages ({integration_count} integration "
-        f"entries matching README, same ids, external links and integration names in both languages), "
+        f"validated English and Brazilian Portuguese landing, privacy and comparison pages ({integration_count} "
+        f"integration entries matching README; same ids, external links, integration names and checked versions "
+        f"in both languages; benchmark rows rendered from a fixture), "
         f"/Rullst/ redirect, assembled root site, {len(BENCH_TEMPLATES)} benchmark templates "
         f"and llms.txt/llms-full.txt for {llms_pages} book pages"
     )
