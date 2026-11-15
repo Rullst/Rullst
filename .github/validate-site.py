@@ -1,8 +1,18 @@
 #!/usr/bin/env python3
-"""Validate the static landing page and benchmark templates without network I/O."""
+"""Validate the static landing pages and benchmark templates without network I/O.
+
+The landing page and the full privacy notice, in English
+(docs/home_template.html, docs/privacy_template.html) and Brazilian
+Portuguese (docs/*.pt-BR.html), are published at https://rullst.win/ and
+https://rullst.win/pt-br/ by Rullst/Rullst.github.io through
+assemble-organization-site.py; /Rullst/ only serves
+docs/redirect_template.html, pointing there. The two languages must keep the
+same section ids, external links and integration names.
+"""
 
 from __future__ import annotations
 
+from html import unescape
 from html.parser import HTMLParser
 from hashlib import sha256
 import importlib.util
@@ -15,6 +25,24 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 HOME = DOCS / "home_template.html"
+PRIVACY = DOCS / "privacy_template.html"
+HOME_PT_BR = DOCS / "home_template.pt-BR.html"
+PRIVACY_PT_BR = DOCS / "privacy_template.pt-BR.html"
+REDIRECT = DOCS / "redirect_template.html"
+SITE_URL = "https://rullst.win/"
+# English external link -> its Brazilian Portuguese counterpart. Every other
+# external link (mailto: included) must appear identically on both pages.
+PT_BR_COUNTERPARTS = {
+    SITE_URL: SITE_URL + "pt-br/",
+    "https://academy.rullst.win/": "https://academy.rullst.win/pt-BR",
+    "https://academy.rullst.win/en/paths": "https://academy.rullst.win/pt-BR/paths",
+    "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement":
+        "https://docs.github.com/pt/site-policy/privacy-policies/github-general-privacy-statement",
+    "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement#international-data-transfers":
+        "https://docs.github.com/pt/site-policy/privacy-policies/github-general-privacy-statement#international-data-transfers",
+    "https://policies.google.com/privacy": "https://policies.google.com/privacy?hl=pt-BR",
+    "mailto:officialrullst@gmail.com?subject=Privacy%20request": "mailto:officialrullst@gmail.com?subject=Pedido%20de%20privacidade",
+}
 BENCH_TEMPLATES = sorted(DOCS.glob("benches*_template.html"))
 README = ROOT / "README.md"
 
@@ -44,6 +72,102 @@ def validate_llms() -> int:
         assert f"]({url})" in index, f"llms.txt is missing {page}"
         assert f"Source: {url}\n" in full, f"llms-full.txt is missing {page}"
     return len(pages)
+
+
+README_INTEGRATIONS = re.compile(r"^## 🔌 Integrations\n(?P<body>.*?)(?=^## )", re.MULTILINE | re.DOTALL)
+README_INTEGRATION_ROW = re.compile(r"^\| \*\*(?P<level>.+?)\*\* \| (?P<items>.+?) \|$", re.MULTILINE)
+LANDING_INTEGRATION_LEVEL = re.compile(
+    r'<article class="integration-level" data-integration-level="[a-z-]+">(?P<body>.*?)</article>', re.DOTALL
+)
+RECIPES = ("MongoDB", "DuckDB", "Qdrant")
+
+
+def plain_markdown(text: str) -> str:
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    return " ".join(text.replace("**", "").replace("`", "").split())
+
+
+def plain_html(fragment: str) -> str:
+    return " ".join(unescape(re.sub(r"<[^>]+>", "", fragment)).split())
+
+
+def sentence_case(text: str) -> str:
+    return text[:1].upper() + text[1:]
+
+
+def integration_names(source: str) -> list[tuple[str, list[list[str]]]]:
+    """Per evidence level: its id and, per entry, the bold service names."""
+    levels = re.findall(
+        r'<article class="integration-level" data-integration-level="([a-z-]+)">(.*?)</article>', source, re.DOTALL
+    )
+    return [
+        (level, [re.findall(r"<b>(.*?)</b>", item) for item in re.findall(r"<li>(.*?)</li>", body, re.DOTALL)])
+        for level, body in levels
+    ]
+
+
+def external_links(document: "Document") -> list[str]:
+    return sorted(link for link in document.links if urlparse(link).scheme)
+
+
+def validate_translation(english: "Document", english_source: str, translated: "Document", source: str, label: str) -> None:
+    """Fail when one language changes without the other."""
+    assert translated.ids == english.ids, (
+        f"{label}: section ids differ from the English page:\n"
+        f"English: {english.ids}\n{label}: {translated.ids}"
+    )
+    expected_links = sorted(PT_BR_COUNTERPARTS.get(link, link) for link in external_links(english))
+    assert external_links(translated) == expected_links, (
+        f"{label}: external links differ from the English page: "
+        f"missing {sorted(set(expected_links) - set(external_links(translated)))}, "
+        f"extra {sorted(set(external_links(translated)) - set(expected_links))}"
+    )
+    assert integration_names(source) == integration_names(english_source), (
+        f"{label}: integration names differ from the English page:\n"
+        f"English: {integration_names(english_source)}\n{label}: {integration_names(source)}"
+    )
+    for name in RECIPES:
+        recipes = re.search(r'<p class="integration-recipes" data-integration-recipes>(.*?)</p>', source, re.DOTALL)
+        if "integration-level" in source:
+            assert recipes and name in recipes[1], f"{label}: recipes line must name {name}"
+
+
+def validate_integrations(source: str, readme: str) -> int:
+    """Keep the landing's Integrations section on README's table, item by item.
+
+    Each README cell lists items separated by "; "; the landing shows the same
+    items, in the same order, one per list entry (only the first letter's case
+    may differ). MongoDB, DuckDB and Qdrant are recipes, never integrations.
+    """
+    section = README_INTEGRATIONS.search(readme)
+    assert section, "README is missing the Integrations section"
+    expected = [
+        (plain_markdown(row["level"]), [sentence_case(plain_markdown(item)) for item in row["items"].split("; ")])
+        for row in README_INTEGRATION_ROW.finditer(section["body"])
+    ]
+    assert len(expected) == 3, f"README Integrations table must have three evidence levels: {expected}"
+    landing = []
+    for level in LANDING_INTEGRATION_LEVEL.finditer(source):
+        title = re.search(r"<h3>(.*?)</h3>", level["body"], re.DOTALL)
+        assert title, "landing integration level is missing its title"
+        items = [sentence_case(plain_html(item)) for item in re.findall(r"<li>(.*?)</li>", level["body"], re.DOTALL)]
+        landing.append((plain_html(title[1]), items))
+    assert landing == expected, (
+        "landing Integrations section differs from README's table:\n"
+        f"landing: {landing}\nREADME:  {expected}"
+    )
+    recipes = re.search(r"<p class=\"integration-recipes\" data-integration-recipes>(.*?)</p>", source, re.DOTALL)
+    assert recipes, "landing must name the recipes separately from the integrations"
+    readme_after_table = section["body"][section["body"].rindex("|"):]
+    for name in RECIPES:
+        assert name in plain_html(recipes[1]), f"landing recipes line must name {name}"
+        assert name in readme_after_table, f"README must name {name} as a recipe"
+        assert not any(name in item for _level, items in landing for item in items), (
+            f"{name} is a recipe, not a built-in integration"
+        )
+    assert "/Rullst/book/recipes/index.html" in recipes[1], "landing recipes line must link the recipes"
+    assert "/Rullst/book/provider-conformance.html" in source, "landing must link the provider conformance kits"
+    return sum(len(items) for _level, items in landing)
 
 
 class Document(HTMLParser):
@@ -113,8 +237,18 @@ def local_home_target(reference: str) -> Path | None:
     if parsed.scheme or parsed.netloc or reference.startswith("mailto:"):
         return None
     path = parsed.path
-    if not path or path == "/Rullst/" or path.startswith("/Rullst/benches/"):
+    if not path or path == "/" or path == "/Benchmarks/" or path.startswith("/Rullst/benches/"):
+        # The root landing itself, the separate Rullst/Benchmarks site and the
+        # dashboards assembled from gh-pages data are checked elsewhere.
         return None
+    if path == "/Rullst/":
+        return REDIRECT
+    if path in ("/privacy.html", "./privacy.html"):
+        return PRIVACY
+    if path == "/pt-br/":
+        return HOME_PT_BR
+    if path == "/pt-br/privacy.html":
+        return PRIVACY_PT_BR
     if path == "/Rullst/book/":
         return DOCS / "book" / "index.html"
     if path.startswith("/Rullst/book/"):
@@ -123,10 +257,10 @@ def local_home_target(reference: str) -> Path | None:
         return DOCS / "Rullst.png"
     if path.startswith("/Rullst/images/"):
         return ROOT / path.removeprefix("/Rullst/")
-    if path == "./assets/site.css":
-        return DOCS / "site.css"
-    if path == "./assets/site.js":
-        return DOCS / "site.js"
+    if path in ("/assets/site.css", "/assets/site.js"):
+        return DOCS / path.removeprefix("/assets/")
+    if path.startswith("/assets/flags/"):
+        return DOCS / "flags" / path.removeprefix("/assets/flags/")
     raise AssertionError(f"unclassified local home reference: {reference}")
 
 
@@ -178,88 +312,213 @@ def validate_workflow_references(readme: str) -> int:
     return len(workflows)
 
 
-def main() -> None:
-    home, source = parse(HOME)
-    validate_document(HOME, home)
-    assert home.has_main and home.has_nav and home.has_footer, "landing page needs nav, main and footer"
-    assert source.count("All glory and honor to God") == 1, "landing page needs the footer dedication"
-    assert "Rullst v13 prerelease" in source, "landing page must identify the v13 prerelease line"
-    assert "Rullst v12 stable" not in source, "landing page still presents end-of-life v12 as current"
-    assert "evaluate before stable v12" not in source, "landing page retains obsolete RC copy"
-    assert "/Rullst/book/v12.html" not in home.links, "landing release-status links must not point to the v12 record"
+LANGUAGES = {
+    "en": {"home": HOME, "privacy": PRIVACY, "url": SITE_URL, "locale": "en_US",
+           "dedication": "All glory and honor to God", "status": "Rullst v13 prerelease",
+           "slogan": "Intelligent, Security-Conscious, and Designed for Effortless Productivity",
+           "performance": "measured in June 2026, before v13"},
+    "pt-BR": {"home": HOME_PT_BR, "privacy": PRIVACY_PT_BR, "url": SITE_URL + "pt-br/", "locale": "pt_BR",
+              "dedication": "Toda glória e honra a Deus", "status": "Pré-lançamento do Rullst v13",
+              "slogan": "Inteligente, consciente da segurança e feito para uma produtividade sem esforço",
+              "performance": "medida em junho de 2026, antes da v13"},
+}
+ALTERNATES = (("en", ""), ("pt-BR", "pt-br/"), ("x-default", ""))
+
+
+def validate_language_links(path: Path, source: str, document: "Document", page: str, lang: str) -> None:
+    """Language attribute, hreflang alternates and the flag switcher."""
+    assert f'<html lang="{lang}">' in source, f"{path.name}: <html lang> must be {lang}"
+    for hreflang, prefix in ALTERNATES:
+        alternate = f'<link rel="alternate" hreflang="{hreflang}" href="{SITE_URL}{prefix}{page}">'
+        assert alternate in source, f"{path.name}: missing {alternate}"
+    switcher = re.search(r'<div class="lang-switch" role="group" aria-label="[^"]+">(.*?)</div>', source, re.DOTALL)
+    assert switcher, f"{path.name}: missing the language switcher"
+    entries = re.findall(r'<a href="([^"]+)" hreflang="([^"]+)" lang="([^"]+)"([^>]*)><img src="([^"]+)" alt="" [^>]*>([^<]+)</a>', switcher[1])
+    assert [(href, hreflang, flag, text) for href, hreflang, _lang, _rest, flag, text in entries] == [
+        (f"/{page}", "en", "/assets/flags/us.svg", "English"),
+        (f"/pt-br/{page}", "pt-BR", "/assets/flags/br.svg", "Português"),
+    ], f"{path.name}: language switcher entries: {entries}"
+    current = [hreflang for _href, hreflang, _lang, rest, _flag, _text in entries if 'aria-current="page"' in rest]
+    assert current == [lang], f"{path.name}: aria-current must mark only the {lang} entry"
+
+
+def validate_landing(lang: str, readme: str) -> tuple[Document, str]:
+    facts = LANGUAGES[lang]
+    path = facts["home"]
+    home, source = parse(path)
+    validate_document(path, home)
+    validate_language_links(path, source, home, "", lang)
+    assert home.has_main and home.has_nav and home.has_footer, f"{path.name}: needs nav, main and footer"
+    assert source.count(facts["dedication"]) == 1, f"{path.name}: needs the footer dedication"
+    assert facts["status"] in source, f"{path.name}: must identify the v13 prerelease line"
+    assert facts["slogan"] in source, f"{path.name}: must preserve the project slogan"
+    assert "Rullst v12 stable" not in source, f"{path.name}: still presents end-of-life v12 as current"
+    assert "evaluate before stable v12" not in source, f"{path.name}: retains obsolete RC copy"
+    assert "/Rullst/book/v12.html" not in home.links, f"{path.name}: release-status links must not point to the v12 record"
     cli_version = CLI_VERSION.search((ROOT / "cargo-rullst" / "Cargo.toml").read_text(encoding="utf-8"))
     assert cli_version, "cannot read the cargo-rullst version"
     pins = INSTALL_PIN.findall(source)
     assert pins and set(pins) == {cli_version[1]}, (
-        f"landing install command must pin the current CLI version ={cli_version[1]}: {pins}"
+        f"{path.name}: install command must pin the current CLI version ={cli_version[1]}: {pins}"
     )
-    assert "Content-Security-Policy" in source, "landing page must declare a CSP"
-    assert not home.inline_behavior, f"landing page has inline behavior/style: {home.inline_behavior}"
+    assert "Content-Security-Policy" in source, f"{path.name}: must declare a CSP"
+    assert f'<link rel="canonical" href="{facts["url"]}">' in source, f"{path.name}: canonical must be {facts['url']}"
+    assert f'<meta property="og:url" content="{facts["url"]}">' in source, f"{path.name}: og:url must be {facts['url']}"
+    assert f'<meta property="og:locale" content="{facts["locale"]}">' in source, f"{path.name}: og:locale"
+    assert "academy" in home.ids and any(link.startswith("https://academy.rullst.win/") for link in home.links), (
+        f"{path.name}: must keep the Academy section"
+    )
+    assert {"integrations", "performance"} <= set(home.ids), f"{path.name}: needs Integrations and Performance"
+    assert {"/Rullst/benches/", "/Benchmarks/"} <= set(home.links), f"{path.name}: Performance must link both sources"
+    assert facts["performance"] in source, f"{path.name}: Performance must date the cross-framework comparison"
+    assert source.count('class="demo-host-note"') == 4, f"{path.name}: every Azure-hosted demo needs its startup note"
+    assert not home.inline_behavior, f"{path.name}: inline behavior/style: {home.inline_behavior}"
     for references, filename in ((home.stylesheets, "site.css"), (home.scripts, "site.js")):
         digest = sha256((DOCS / filename).read_bytes()).hexdigest()[:16]
-        expected = f"./assets/{filename}?v={digest}"
-        assert references == [expected], f"Use the current content-versioned local asset: {expected}"
-    assert not home.embeds, "landing privacy contract forbids third-party embeds"
-    assert "privacy" in home.ids, "landing page must expose its privacy notice"
-    assert 'name="referrer" content="no-referrer"' in source, "landing must suppress outgoing referrers"
-    assert not any(urlparse(src).netloc for src in home.images), "landing images must be same-origin"
-    required_social_links = {
-        "https://rullst.github.io", "https://github.com/Rullst",
-        "https://rullst.blogspot.com", "https://www.bilibili.tv/en/space/1436672033",
-        "https://daily.dev/squads/rullst", "https://dev.to/venelouis",
-        "https://discord.com/invite/2ntKFtsSjw", "https://rullst.hashnode.dev/",
-        "https://www.instagram.com/rullst_official/", "https://t.me/rullst",
-        "https://www.tiktok.com/@venelouis", "https://www.youtube.com/@rullst_official",
-        "https://x.com/venelouis",
-    }
-    assert required_social_links <= set(home.links), "missing requested community links"
-    demo_links = {
-        "https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/",
-        "https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/",
-        "https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/",
-        "https://github.com/Rullst/examples",
-    }
-    assert "examples" in home.ids, "landing must expose the demo directory"
-    assert demo_links <= set(home.links), "landing is missing a published example link"
+        expected = f"/assets/{filename}?v={digest}"
+        assert references == [expected], f"{path.name}: use the current content-versioned asset {expected}"
+    assert not home.embeds, f"{path.name}: privacy contract forbids third-party embeds"
+    assert "privacy" in home.ids, f"{path.name}: must expose its privacy notice"
+    assert 'name="referrer" content="no-referrer"' in source, f"{path.name}: must suppress outgoing referrers"
+    assert not any(urlparse(src).netloc for src in home.images), f"{path.name}: images must be same-origin"
+    assert "examples" in home.ids, f"{path.name}: must expose the demo directory"
+    assert DEMO_LINKS <= set(home.links), f"{path.name}: missing a published example link"
+    assert SOCIAL_LINKS <= set(home.links), f"{path.name}: missing requested community links"
+    for reference in [*home.links, *home.stylesheets, *home.scripts, *home.images]:
+        if reference.startswith("#"):
+            assert reference[1:] in home.ids, f"{path.name}: missing anchor {reference}"
+            continue
+        target = local_home_target(reference)
+        if target is not None:
+            assert target.is_file(), f"{path.name}: missing local target {reference} -> {target}"
+    return home, source
 
-    slogan = "Intelligent, Security-Conscious, and Designed for Effortless Productivity"
-    assert slogan in source, "landing page must preserve the project slogan"
+
+def validate_privacy(lang: str, home: Document) -> tuple[Document, str]:
+    facts = LANGUAGES[lang]
+    path = facts["privacy"]
+    privacy, source = parse(path)
+    validate_document(path, privacy)
+    validate_language_links(path, source, privacy, "privacy.html", lang)
+    assert privacy.has_main and privacy.has_nav and privacy.has_footer, f"{path.name}: needs nav, main and footer"
+    assert "script-src 'none'" in source, f"{path.name}: must forbid scripts"
+    assert not privacy.scripts and not privacy.inline_behavior and not privacy.embeds, f"{path.name}: must stay static"
+    assert f'<link rel="canonical" href="{facts["url"]}privacy.html">' in source, f"{path.name}: canonical URL"
+    assert 'name="referrer" content="no-referrer"' in source, f"{path.name}: must suppress outgoing referrers"
+    css_version = sha256((DOCS / "site.css").read_bytes()).hexdigest()[:16]
+    assert privacy.stylesheets == [f"/assets/site.css?v={css_version}"], f"{path.name}: must load the current stylesheet"
+    landing_prefix = "/" if lang == "en" else "/pt-br/"
+    for reference in [*privacy.links, *privacy.stylesheets, *privacy.images]:
+        if reference.startswith("#"):
+            assert reference[1:] in privacy.ids, f"{path.name}: missing anchor {reference}"
+        elif reference.startswith(landing_prefix + "#"):
+            assert reference.removeprefix(landing_prefix + "#") in home.ids, f"{path.name}: missing landing anchor {reference}"
+        elif (target := local_home_target(reference)) is not None:
+            assert target.is_file(), f"{path.name}: missing local target {reference} -> {target}"
+    assert "Venelouis" in source, f"{path.name}: must name the responsible person"
+    return privacy, source
+
+
+DEMO_LINKS = {
+    "https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/",
+    "https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/",
+    "https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/",
+    "https://saas.rullst.win/",
+    "https://github.com/Rullst/examples",
+}
+SOCIAL_LINKS = {
+    "https://rullst.github.io", "https://github.com/Rullst",
+    "https://rullst.blogspot.com", "https://www.bilibili.tv/en/space/1436672033",
+    "https://daily.dev/squads/rullst", "https://dev.to/venelouis",
+    "https://discord.com/invite/2ntKFtsSjw", "https://rullst.hashnode.dev/",
+    "https://www.instagram.com/officialrullst/", "https://t.me/rullst",
+    "https://www.tiktok.com/@venelouis", "https://www.youtube.com/@officialrullst",
+    "https://x.com/venelouis", "https://bsky.app/profile/rullst.bsky.social",
+    "https://www.linkedin.com/company/rullst", "https://www.reddit.com/r/rullst",
+    "https://substack.com/@rullst",
+}
+
+
+def main() -> None:
     readme = README.read_text(encoding="utf-8")
-    assert all(link in readme for link in demo_links), "README is missing a published example link"
+    home, source = validate_landing("en", readme)
+    home_pt, source_pt = validate_landing("pt-BR", readme)
+    validate_translation(home, source, home_pt, source_pt, HOME_PT_BR.name)
+    interface_text = set(re.findall(r"ui\.ui([A-Z]\w+)", (DOCS / "site.js").read_text(encoding="utf-8")))
+    translated_text = {
+        "".join(part.title() for part in name.split("-"))
+        for name in re.findall(r'data-ui-([a-z-]+)="[^"]+"', source_pt[source_pt.index("<body"):source_pt.index(">", source_pt.index("<body"))])
+    }
+    assert interface_text and translated_text == interface_text, (
+        f"{HOME_PT_BR.name}: <body> must translate every interface string of site.js: "
+        f"missing {sorted(interface_text - translated_text)}, unknown {sorted(translated_text - interface_text)}"
+    )
+    privacy, privacy_source = validate_privacy("en", home)
+    privacy_pt, privacy_source_pt = validate_privacy("pt-BR", home_pt)
+    validate_translation(privacy, privacy_source, privacy_pt, privacy_source_pt, PRIVACY_PT_BR.name)
+
+    slogan = LANGUAGES["en"]["slogan"]
+    assert all(link in readme for link in DEMO_LINKS), "README is missing a published example link"
+    assert readme.count("about 20–30 seconds") >= 1, "README must give the Azure demos' wake-up time"
     assert "🌐🦀📜 Rullst 📜🦀🌐" in readme, "README must preserve the project title identity"
     assert slogan in readme, "README must preserve the project slogan"
+    integration_count = validate_integrations(source, readme)
     workflow_count = validate_workflow_references(readme)
     assert f"({workflow_count} workflows)" in readme, "README workflow dashboard count is stale"
     assert (
         f"{workflow_count} workflow definitions" in readme
     ), "README workflow-definition count is stale"
 
-    for reference in [*home.links, *home.stylesheets, *home.scripts, *home.images]:
-        if reference.startswith("#"):
-            assert reference[1:] in home.ids, f"missing landing anchor: {reference}"
-            continue
-        target = local_home_target(reference)
-        if target is not None:
-            assert target.is_file(), f"missing local landing target: {reference} -> {target}"
+    # The landing summary and the full notice carry the statements of the two
+    # notices they replaced.
+    for statement in (
+        "We do not control GitHub's hosting logs or their retention.",
+        "benchmark pages currently load Chart.js from jsDelivr.",
+        "Public issues and social posts are not private support channels.",
+    ):
+        assert statement in source and statement in privacy_source, f"privacy statement missing: {statement}"
+    assert "Venelouis" in source and "Venelouis" in source_pt, "both landing pages must name the responsible person"
+
+    redirect, redirect_source = parse(REDIRECT)
+    validate_document(REDIRECT, redirect)
+    assert f'<meta http-equiv="refresh" content="0; url={SITE_URL}">' in redirect_source, "/Rullst/ must redirect to the root"
+    assert f'<link rel="canonical" href="{SITE_URL}">' in redirect_source, "/Rullst/ must name the root as canonical"
+    assert SITE_URL in redirect.links, "/Rullst/ needs a visible link to the root"
+    assert not redirect.scripts and not redirect.stylesheets and not redirect.inline_behavior, "/Rullst/ stays static"
+
+    spec = importlib.util.spec_from_file_location("assemble_site", ROOT / ".github/assemble-organization-site.py")
+    assert spec is not None and spec.loader is not None, "cannot load assemble-organization-site.py"
+    assembler = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(assembler)
+    with tempfile.TemporaryDirectory(prefix="rullst-root-site-") as temp:
+        published = assembler.assemble(Path(temp) / "site")
+        assert published == list(assembler.FILES), f"unexpected root site files: {published}"
+        for name, origin in assembler.FILES.items():
+            assert (Path(temp) / "site" / name).read_bytes() == (ROOT / origin).read_bytes(), f"assembled {name} differs"
 
     for template in BENCH_TEMPLATES:
         document, benchmark_source = parse(template)
         validate_document(template, document)
         assert not document.remote_scripts_without_integrity, f"{template}: unpinned external script"
-        assert "/Rullst/#privacy" in document.links, f"{template}: missing privacy link"
+        assert "/privacy.html" in document.links, f"{template}: missing privacy link"
+        assert "/Rullst/#privacy" not in document.links, f"{template}: privacy link points at the /Rullst/ redirect"
         assert "fonts.googleapis.com" not in benchmark_source, f"{template}: undocumented remote fonts"
 
     workflow = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
     assert "generate-llms-txt.py --out public_site" in workflow, "pages workflow does not publish llms.txt"
     for required_copy in ("docs/site.css", "docs/site.js", "images"):
         assert required_copy in workflow, f"pages workflow does not publish {required_copy}"
+    assert "cp docs/redirect_template.html public_site/index.html" in workflow, "/Rullst/ must serve the redirect page"
+    assert "cp docs/home_template.html" not in workflow, "the landing page is published only at the site root"
 
     assert (DOCS / "site.css").read_text(encoding="utf-8").count("{") == (
         DOCS / "site.css"
     ).read_text(encoding="utf-8").count("}"), "unbalanced site CSS blocks"
     llms_pages = validate_llms()
     print(
-        f"validated landing page, {len(BENCH_TEMPLATES)} benchmark templates "
+        f"validated English and Brazilian Portuguese landing and privacy pages ({integration_count} integration "
+        f"entries matching README, same ids, external links and integration names in both languages), "
+        f"/Rullst/ redirect, assembled root site, {len(BENCH_TEMPLATES)} benchmark templates "
         f"and llms.txt/llms-full.txt for {llms_pages} book pages"
     )
 

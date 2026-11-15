@@ -364,10 +364,18 @@ verification itself needed 143 (159 streamed). Peak stack depth:
 **Faster verification.** `rullst-iot` uses `ed25519-dalek` without its
 precomputed tables. An application can enable them through Cargo feature
 unification by adding
-`ed25519-dalek = { version = "2.2", default-features = false, features = ["fast"] }`
-to its own dependencies. On the micro:bit this made verification about 7%
-faster (34.2 ms and 59.8 ms), its stack 1.6 KiB smaller (6,144 B) and the
-firmware 7.5 KiB larger.
+`ed25519-dalek = { version = "3", default-features = false, features = ["fast"] }`
+to its own dependencies; the major must be the one `rullst-iot` uses (3 since
+13.0.0-alpha.6), or Cargo builds a second copy and the tables stay off. On the
+micro:bit this made verification about 7% faster (34.2 ms and 59.8 ms), its
+stack 1.6 KiB smaller (6,144 B) and the firmware 7.5 KiB larger.
+
+The measurements on this page were taken with `ed25519-dalek` 2.2 (13.0.0-alpha.5).
+13.0.0-alpha.6 moves to `ed25519-dalek` 3 (`curve25519-dalek` 5): the same
+fixture's release build grows by about 3.3 KB of flash (269,652 bytes of text
+against 266,380, and 281,500 against 278,212 with the precomputed tables), and
+its signatures and expected vectors are byte-identical. The board has not been
+re-run with it, so the times and stack depths above are those of 2.2.
 
 **Streamed and hashed once.** With the manifest built by `OtaManifest::new`
 or `from_signing_bytes`, the device hashes the image once, inside the

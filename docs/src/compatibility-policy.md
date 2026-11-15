@@ -136,8 +136,8 @@ public signatures, trait implementations or re-exports, such as
 `rullst::web::axum` and `rullst::db::sqlx`. For the whole 13.x line, each one
 stays on the version line below. Before the 13.0 freeze, planned for
 13.0.0-alpha.6, dependencies move to their current major so that 13.x starts
-from current lines; the planned moves are ed25519-dalek 3, jsonwebtoken 12
-and jsonschema 0.61, which the public API does not expose.
+from current lines: 13.0.0-alpha.6 moves ed25519-dalek to 3, jsonwebtoken to
+12 and jsonschema to 0.61, which the public API does not expose.
 
 | Crate | 13.x line | Where the API exposes it |
 | :--- | :--- | :--- |
