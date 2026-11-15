@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794744063387,
+  "lastUpdate": 1794744928441,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -34317,6 +34317,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1035,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4c3b392a2bdead1b23d08e1f789cb578ea7cbc5b",
+          "message": "Merge pull request #706 from Rullst/fix/v13-alpha6-orm-explicit-save\n\nfix(orm)!: require an explicit save mode on every model",
+          "timestamp": "2026-11-15T09:12:15-03:00",
+          "tree_id": "afa54e4a3576267b8ba2ec19f0da58059ae62b14",
+          "url": "https://github.com/Rullst/Rullst/commit/4c3b392a2bdead1b23d08e1f789cb578ea7cbc5b"
+        },
+        "date": 1794744925262,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 416,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 579,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 258,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 928,
+            "range": "± 55",
             "unit": "ns/iter"
           }
         ]
