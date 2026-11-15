@@ -13,6 +13,7 @@
 
 mod alpha5_runtime;
 mod alpha5_slimming;
+mod alpha6_defaults;
 mod api_cleanups;
 mod catalog;
 mod files;

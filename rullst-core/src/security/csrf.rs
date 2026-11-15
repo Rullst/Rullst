@@ -9,6 +9,8 @@ use axum::{
 use rand::distr::{Alphanumeric, SampleString};
 use subtle::ConstantTimeEq;
 
+use super::waf::security_config;
+
 /// Generates a cryptographically secure 32-character random alphanumeric string.
 pub fn generate_csrf_token() -> String {
     Alphanumeric.sample_string(&mut rand::rng(), 32)
@@ -65,17 +67,23 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 /// unchanged. A multipart body without a readable `_token` field is refused
 /// with a `403` that names this rule.
 ///
-/// A `GET` or `HEAD` whose path looks like a static file never mints a token
-/// or sets the cookie: `/robots.txt`, `/sitemap.xml`, `/favicon.ico`, anything
-/// under `/static/`, and any path ending in `.txt`, `.xml`, `.ico`, `.json`,
-/// `.css`, `.js`, `.png`, `.jpg`, `.jpeg`, `.svg`, `.webp` or `.wasm`. When
-/// the browser already sends a valid `rullst_csrf` cookie, such a request
-/// still receives the [`CsrfToken`] from it, so a dynamic page with one of
-/// those suffixes can render a form; a first visit that lands there does not.
-/// The suffixes do not affect state-changing requests, which always need the
-/// token. Nor is the cookie set on a response that shared caches may store
-/// (a `Cache-Control` with `public` or `s-maxage` and without `private` or
-/// `no-store`, such as one labelled by [`crate::cache_control::public`]).
+/// A `GET` or `HEAD` for a static file never mints a token or sets the
+/// cookie. Static files are the paths below a
+/// [`SecurityConfig::csrf_static_prefixes`](crate::config::SecurityConfig::csrf_static_prefixes)
+/// entry (default `/static/` and `/.well-known/`) and the exact
+/// [`SecurityConfig::csrf_static_paths`](crate::config::SecurityConfig::csrf_static_paths)
+/// (default `/favicon.ico`, `/robots.txt`, `/sitemap.xml`,
+/// `/manifest.webmanifest` and `/sw.js`), read from the request's
+/// `SecurityConfig` extension or the process-global configuration. Every
+/// other page gets a token on its first visit whatever its extension, so a
+/// dynamic `/report.json` page can render a form; until 13.0.0-alpha.5 a
+/// `.json`, `.xml`, `.txt`, `.js`, `.css` or image suffix also counted as
+/// static. When the browser already sends a valid `rullst_csrf` cookie, a
+/// static path still receives the [`CsrfToken`] from it. These paths do not
+/// affect state-changing requests, which always need the token. Nor is the
+/// cookie set on a response that shared caches may store (a `Cache-Control`
+/// with `public` or `s-maxage` and without `private` or `no-store`, such as
+/// one labelled by [`crate::cache_control::public`]).
 ///
 /// Applying this middleware more than once to the same request is idempotent. This
 /// matters when an application router adds the explicit development layer and
@@ -120,33 +128,10 @@ fn is_signed_webhook_exemption(req: &Request) -> bool {
         return false;
     }
 
-    let config = req
-        .extensions()
-        .get::<crate::config::SecurityConfig>()
-        .unwrap_or(&crate::config::RullstConfig::global().security);
-    config
+    security_config(req)
         .csrf_signed_webhook_paths
         .iter()
         .any(|path| path == req.uri().path())
-}
-
-pub(crate) fn is_csrf_exempt_path(path: &str) -> bool {
-    path == "/robots.txt"
-        || path == "/sitemap.xml"
-        || path == "/favicon.ico"
-        || path.starts_with("/static/")
-        || path.ends_with(".txt")
-        || path.ends_with(".xml")
-        || path.ends_with(".ico")
-        || path.ends_with(".json")
-        || path.ends_with(".css")
-        || path.ends_with(".js")
-        || path.ends_with(".png")
-        || path.ends_with(".jpg")
-        || path.ends_with(".jpeg")
-        || path.ends_with(".svg")
-        || path.ends_with(".webp")
-        || path.ends_with(".wasm")
 }
 
 async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
@@ -157,28 +142,16 @@ async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
         return next.run(req).await;
     }
 
-    // Static-looking paths never mint a token or set the cookie.
-    if is_csrf_exempt_path(req.uri().path()) {
+    // Static files never mint a token or set the cookie.
+    let security = security_config(&req);
+    if security.is_csrf_static_path(req.uri().path()) {
         return next.run(req).await;
     }
+    let same_site = security.csrf_same_site.clone();
 
     let token = generate_csrf_token();
     req.extensions_mut().insert(CsrfToken(token.clone()));
     {
-        // Like the webhook exemption, fall back to the process-global
-        // configuration when no per-application `SecurityConfig` is installed.
-        let same_site = req
-            .extensions()
-            .get::<crate::config::SecurityConfig>()
-            .map_or_else(
-                || {
-                    crate::config::RullstConfig::global()
-                        .security
-                        .csrf_same_site
-                        .clone()
-                },
-                |cfg| cfg.csrf_same_site.clone(),
-            );
         // `Secure` in staging and production, and over HTTPS everywhere.
         let secure_cookie = req
             .extensions()

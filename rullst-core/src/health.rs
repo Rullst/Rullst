@@ -1,4 +1,11 @@
 //! Kubernetes and Cloud-Native Health Probes (Liveness & Readiness)
+//!
+//! The probes answer any visitor, so since 13.0.0-alpha.6 they do not report
+//! the Rullst framework version: a public version string tells a scanner
+//! which known vulnerabilities to try. The opt-in production monitor
+//! (`GET /_rullst/monitor/v1`, behind its token or authorizer) reports it as
+//! `framework.version`. The `*_with_version` routers add only the
+//! application's own version, as `app_version`.
 #![cfg(not(target_arch = "wasm32"))]
 
 use crate::lifecycle::{ApplicationLifecycle, ReadinessSnapshot};
@@ -39,14 +46,16 @@ pub(crate) fn recorded_boot_time() -> u64 {
 }
 
 /// Structured response payload for health probes.
+///
+/// It carries no version: [`health_router_with_version`] adds the
+/// application's own version, as `app_version`, and only the authenticated
+/// production monitor reports the framework version (until 13.0.0-alpha.5
+/// it was this payload's `version` field).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct HealthProbeResponse {
     /// Service health status ("UP", "DOWN", or "DEGRADED").
     pub status: &'static str,
-    /// Version of the Rullst framework (`rullst-core`), not of the
-    /// application. [`health_router_with_version`] also reports the
-    /// application's own version, as `app_version`.
-    pub version: &'static str,
     /// Application uptime in seconds.
     pub uptime_seconds: u64,
     /// System Unix timestamp in seconds.
@@ -54,15 +63,15 @@ pub struct HealthProbeResponse {
 }
 
 /// Secret-minimized response payload for lifecycle-aware readiness probes.
+///
+/// Like [`HealthProbeResponse`] it carries no framework version;
+/// [`health_router_with_lifecycle_and_version`] adds the application's own
+/// version, as `app_version`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ReadinessProbeResponse {
     /// Readiness status (`UP` only while every bounded gate is ready).
     pub status: &'static str,
-    /// Version of the Rullst framework (`rullst-core`), not of the
-    /// application. [`health_router_with_lifecycle_and_version`] also reports
-    /// the application's own version, as `app_version`.
-    pub version: &'static str,
     /// Application uptime in seconds.
     pub uptime_seconds: u64,
     /// System Unix timestamp in seconds.
@@ -93,7 +102,6 @@ pub async fn liveness_handler() -> impl IntoResponse {
 
     let payload = HealthProbeResponse {
         status: "UP",
-        version: env!("CARGO_PKG_VERSION"),
         uptime_seconds: uptime,
         timestamp: now,
     };
@@ -107,7 +115,6 @@ pub async fn readiness_handler() -> impl IntoResponse {
 
     let payload = HealthProbeResponse {
         status: "UP",
-        version: env!("CARGO_PKG_VERSION"),
         uptime_seconds: uptime,
         timestamp: now,
     };
@@ -126,7 +133,6 @@ fn lifecycle_readiness(lifecycle: &ApplicationLifecycle) -> (StatusCode, Readine
     };
     let payload = ReadinessProbeResponse {
         status: if snapshot.ready { "UP" } else { "DOWN" },
-        version: env!("CARGO_PKG_VERSION"),
         uptime_seconds: uptime,
         timestamp: now,
         lifecycle: snapshot,
@@ -171,7 +177,6 @@ async fn versioned_process_probe(State(app_version): State<AppVersion>) -> Respo
     let (now, uptime) = time_snapshot();
     let probe = HealthProbeResponse {
         status: "UP",
-        version: env!("CARGO_PKG_VERSION"),
         uptime_seconds: uptime,
         timestamp: now,
     };
@@ -191,7 +196,9 @@ async fn versioned_lifecycle_readiness(State(state): State<VersionedLifecycle>) 
     (status, Json(payload)).into_response()
 }
 
-/// Returns an Axum `Router` mounting `/health` and `/ready` health probe routes.
+/// Returns an Axum `Router` mounting `/health` and `/ready` health probe
+/// routes. Their JSON is `status`, `uptime_seconds` and `timestamp`, with no
+/// version.
 pub fn health_router() -> Router {
     Router::new()
         .route("/health", get(liveness_handler))
@@ -211,8 +218,9 @@ pub fn health_router_with_lifecycle(lifecycle: ApplicationLifecycle) -> Router {
 }
 
 /// Returns [`health_router`]'s `/health` and `/ready`, whose JSON also
-/// carries the application's own version as `app_version`; `version` stays
-/// the framework version. Added in v13.
+/// carries the application's own version as `app_version`. Added in v13;
+/// until 13.0.0-alpha.5 the JSON also carried the framework version as
+/// `version`.
 ///
 /// ```no_run
 /// let probes = rullst_core::health::health_router_with_version(env!("CARGO_PKG_VERSION"));
@@ -226,8 +234,9 @@ pub fn health_router_with_version(app_version: impl Into<String>) -> Router {
 }
 
 /// Returns [`health_router_with_lifecycle`]'s `/health` and `/ready`, whose
-/// JSON also carries the application's own version as `app_version`;
-/// `version` stays the framework version. Added in v13.
+/// JSON also carries the application's own version as `app_version`. Added
+/// in v13; until 13.0.0-alpha.5 the JSON also carried the framework version
+/// as `version`.
 pub fn health_router_with_lifecycle_and_version(
     lifecycle: ApplicationLifecycle,
     app_version: impl Into<String>,
@@ -399,25 +408,49 @@ mod tests {
         (status, serde_json::from_slice(&body).unwrap())
     }
 
+    /// The JSON keys of `body`, sorted.
+    fn keys(body: &serde_json::Value) -> Vec<&str> {
+        let mut keys = body
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect::<Vec<_>>();
+        keys.sort_unstable();
+        keys
+    }
+
     #[tokio::test]
-    async fn probes_report_the_application_version_next_to_the_framework_version() {
+    async fn probes_report_the_application_version_and_never_the_framework_version() {
         let app = health_router_with_version(String::from("2.4.1+abc123"));
         for path in ["/health", "/ready"] {
             let (status, body) = probe(&app, path).await;
             assert_eq!(status, StatusCode::OK, "{path}");
             assert_eq!(body["status"], "UP", "{path}");
             assert_eq!(body["app_version"], "2.4.1+abc123", "{path}");
-            assert_eq!(body["version"], env!("CARGO_PKG_VERSION"), "{path}");
+            assert_eq!(
+                keys(&body),
+                ["app_version", "status", "timestamp", "uptime_seconds"],
+                "{path}"
+            );
             assert!(body["uptime_seconds"].is_u64(), "{path}");
             assert!(
                 body["timestamp"].as_u64().is_some_and(|now| now > 0),
                 "{path}"
             );
         }
-        // The original routers keep reporting only the framework version.
-        let (_, body) = probe(&health_router(), "/health").await;
-        assert_eq!(body["version"], env!("CARGO_PKG_VERSION"));
-        assert!(body.get("app_version").is_none());
+        // A visitor learns neither version from the plain routers.
+        for app in [
+            health_router(),
+            health_router_with_lifecycle(ApplicationLifecycle::new()),
+        ] {
+            let (_, body) = probe(&app, "/health").await;
+            assert_eq!(keys(&body), ["status", "timestamp", "uptime_seconds"]);
+            let (_, body) = probe(&app, "/ready").await;
+            assert!(body.get("version").is_none());
+            assert!(body.get("app_version").is_none());
+            assert!(!body.to_string().contains(env!("CARGO_PKG_VERSION")));
+        }
     }
 
     #[tokio::test]
@@ -430,7 +463,7 @@ mod tests {
         assert_eq!(body["status"], "DOWN");
         assert_eq!(body["phase"], "starting");
         assert_eq!(body["app_version"], "7.0.0");
-        assert_eq!(body["version"], env!("CARGO_PKG_VERSION"));
+        assert!(body.get("version").is_none());
 
         lifecycle.mark_ready().unwrap();
         let (status, body) = probe(&app, "/ready").await;
