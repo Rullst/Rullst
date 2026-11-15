@@ -25,7 +25,9 @@ role checks, and rate limiting.
 ## What the counters mean
 
 The dashboards read counters and bounded recent events from the in-process
-`SecurityStore`. A value increments only when the corresponding middleware or
+`SecurityStore` (defined in `rullst_core::security` and re-exported as
+`rullst_security::SecurityStore`; the `rullst-security` layers record into the
+same instance). A value increments only when the corresponding middleware or
 helper is installed and records an event. A zero means “nothing recorded by this
 process”, not “the application is proven attack-free”. Restarting a process may
 reset in-memory state unless the application exports it to durable telemetry.

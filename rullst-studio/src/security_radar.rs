@@ -31,7 +31,7 @@ pub struct ThreatRadarStats {
     pub prompt_injections_blocked: u64,
     pub audit_chain_integrity: Option<String>,
     pub threat_level: String,
-    pub live_events: Vec<rullst_security::LiveSecurityEvent>,
+    pub live_events: Vec<rullst_core::security::LiveSecurityEvent>,
 }
 
 pub fn router() -> Router {
@@ -49,7 +49,7 @@ pub fn stats_router() -> Router {
 }
 
 fn collect_stats() -> ThreatRadarStats {
-    let store = rullst_security::SecurityStore::global();
+    let store = rullst_core::security::SecurityStore::global();
     let active_ip_bans = store.active_banned_count();
     let mut events = store.live_events();
     events.truncate(20);
