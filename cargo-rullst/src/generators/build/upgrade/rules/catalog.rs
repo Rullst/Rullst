@@ -513,6 +513,9 @@ rules! {
     ORM_SAVE_MODE: "V13-ORM-SAVE-MODE", MustChange, "13.0.0-alpha.6", "ORM explicit save mode",
         "since 13.0.0-alpha.6 a model declares exactly one save mode, a `#[sqlx(skip)]` `RowSnapshot` field or `#[orm(full_row_save)]` (a Turso-primary model only the attribute); this one does not, so it no longer compiles",
         "Add `#[sqlx(skip)] pub snapshot: RowSnapshot,` (`rullst::orm::RowSnapshot`) so `save()` writes only the columns the record changed and concurrent edits of other columns persist; set `snapshot: RowSnapshot::default()` in the model's struct literals and add `#[serde(skip)]` when it derives Serde. Or add `full_row_save` to its `#[orm(...)]` to keep writing every column, which overwrites a change that another request made to another column since the record was read. Keep one of the two; a Turso-primary model takes `full_row_save` and no `RowSnapshot` field.";
+    PASSKEYS_FEATURE: "V13-AUTH-PASSKEYS-FEATURE", MustChange, "13.0.0-alpha.6", "Passkeys feature",
+        "this code uses Rullst's passkeys (`auth::passkey`), which since 13.0.0-alpha.6 compile only with `rullst-auth`'s `passkeys` feature, and no manifest here enables it",
+        "Enable `auth-passkeys` on `rullst` (`auth-sqlite` and `auth-passkey-postgres` include it), or `passkeys` on a direct `rullst-auth` dependency (`sqlite` and `passkey-postgres` include it).";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

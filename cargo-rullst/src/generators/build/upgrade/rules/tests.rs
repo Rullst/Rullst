@@ -14,6 +14,7 @@ mod alpha5_slimming;
 mod alpha6_defaults;
 mod alpha6_deprecated;
 mod alpha6_orm_save_mode;
+mod alpha6_passkeys;
 mod data;
 mod docs;
 mod files;

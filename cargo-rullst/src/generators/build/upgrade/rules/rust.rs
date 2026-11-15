@@ -440,6 +440,10 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
             if let Some(rule) = super::alpha6_deprecated::path_rule(&path, self.context.text) {
                 self.hit(rule, at);
             }
+            let facts = self.context.facts;
+            if let Some(rule) = super::alpha6_passkeys::path_rule(&path, self.context.text, facts) {
+                self.hit(rule, at);
+            }
         }
         visit::visit_item_use(self, item);
     }

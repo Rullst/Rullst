@@ -376,6 +376,10 @@ impl Scanner<'_, '_> {
         if let Some(rule) = super::alpha6_deprecated::path_rule(segments, self.context.text) {
             self.hit(rule, at);
         }
+        let facts = self.context.facts;
+        if let Some(rule) = super::alpha6_passkeys::path_rule(segments, self.context.text, facts) {
+            self.hit(rule, at);
+        }
         for pair in segments.windows(2) {
             match (pair[0].as_str(), pair[1].as_str()) {
                 ("FieldKind", "Number") if comparison_macro || compared(tokens, start, end) => {

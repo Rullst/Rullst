@@ -1,11 +1,14 @@
 # Rullst Auth
 
 `rullst-auth` provides Argon2id password hashing, versioned AES-GCM cookie sessions,
-role-based authorization middleware, WebAuthn/passkey ceremony verification, and
+role-based authorization middleware, opt-in WebAuthn/passkey ceremony verification, and
 an opt-in application JWT policy.
 
-Application JWTs are enabled with `jwt`. The `sqlite` feature also enables JWT
-and adds durable shared JWT revocation plus passkey device state. OAuth2/OIDC
+Passkeys are enabled with `passkeys` (`auth-passkeys` in `rullst`; since
+13.0.0-alpha.6 `auth` alone no longer includes them), the only feature that
+adds aws-lc-rs to this crate. Application JWTs are enabled with `jwt`. The
+`sqlite` feature also enables JWT and passkeys and adds durable shared JWT
+revocation plus passkey device state. OAuth2/OIDC
 providers remain a separate trust boundary enabled with `oauth`, which
 re-exports `rullst-connect`.
 
@@ -200,11 +203,12 @@ v13 additions are opt-in and do not enable JWT or OAuth.
 
 ## WebAuthn/passkeys
 
-`PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges
+With the `passkeys` feature (`auth-passkeys` in `rullst`), `PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges
 (`challenge_ttl_seconds` from 1 to 86,400; `PasskeyAuth::new` rejects other values),
 client-data ceremony type, user-presence/user-verification flags, ES256 COSE keys, P-256 points,
-credential IDs, signatures, and monotonic counters. Only `none` attestation is advertised and
-accepted. With `sqlite`, `SqlitePasskeyStore` supplies bounded file-backed
+credential IDs, signatures, and monotonic counters. Public keys and ES256 signatures are checked
+with aws-lc-rs, the library behind Rullst's TLS; high-S signatures are accepted, as WebAuthn allows.
+Only `none` attestation is advertised and accepted. With `sqlite`, `SqlitePasskeyStore` supplies bounded file-backed
 registration, listing, renaming, revocation and optimistic counter CAS shared
 by processes on the same SQLite file. `finish_authenticate` verifies the ES256
 ceremony and atomically advances the stored counter; a stale concurrent update
