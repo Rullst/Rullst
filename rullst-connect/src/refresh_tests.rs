@@ -330,3 +330,126 @@ async fn an_incomplete_refresh_keeps_the_issued_rotation_and_returns_its_cause()
     assert_eq!(lease.access_token().expose_secret(), "access-2");
     assert_eq!(lease.generation(), 2);
 }
+
+fn state_for(
+    user_id: &str,
+    access_token: String,
+    expires_in: u64,
+) -> Result<RefreshableTokenState, ConnectError> {
+    RefreshableTokenState::try_new(
+        user_id,
+        SecretString::from(access_token),
+        SecretString::from("refresh-0".to_string()),
+        1_000,
+        expires_in,
+    )
+}
+
+#[test]
+fn token_inputs_are_bounded_at_their_documented_limits() {
+    // Tokens hold 1 to 65,536 bytes without control characters.
+    assert!(state_for("user-1", "a".repeat(65_536), 60).is_ok());
+    assert!(state_for("user-1", "a".repeat(65_537), 60).is_err());
+    assert!(state_for("user-1", "acc\u{7}ess".to_string(), 60).is_err());
+    // Provider user IDs hold 1 to 512 bytes, without surrounding whitespace
+    // or control characters.
+    assert!(state_for(&"u".repeat(512), "access".to_string(), 60).is_ok());
+    for user_id in ["", &"u".repeat(513), " user-1", "user-1 ", "us\u{7}er"] {
+        assert!(
+            state_for(user_id, "access".to_string(), 60).is_err(),
+            "{user_id:?}"
+        );
+    }
+    // A lifetime may reach 366 days.
+    let longest = state_for("user-1", "access".to_string(), 31_622_400).expect("366 days");
+    assert_eq!(longest.expires_at(), 31_623_400);
+    assert!(state_for("user-1", "access".to_string(), 31_622_401).is_err());
+    let restore = |expires_at| {
+        RefreshableTokenState::try_restore(
+            "user-1".to_string(),
+            "access".to_string(),
+            "refresh".to_string(),
+            1_000,
+            expires_at,
+            3,
+        )
+    };
+    assert_eq!(restore(31_623_400).expect("366 days").generation(), 3);
+    assert!(restore(31_623_401).is_err());
+}
+
+#[test]
+fn debug_output_names_the_fields_and_hides_secrets() {
+    let state = state_for("user-1", "access-0".to_string(), 3_600).expect("state");
+    assert_eq!(
+        format!("{state:?}"),
+        "RefreshableTokenState { provider_user_id: \"[REDACTED]\", access_token: \
+         \"[REDACTED]\", refresh_token: \"[REDACTED]\", issued_at: 1000, expires_at: 4600, \
+         generation: 0 }"
+    );
+    let lease = lease_from(&state, true);
+    assert_eq!(lease.expires_at(), 4_600);
+    assert_eq!(
+        format!("{lease:?}"),
+        "AccessTokenLease { access_token: \"[REDACTED]\", expires_at: 4600, generation: 0, \
+         refreshed: true }"
+    );
+    let provider = CountingProvider::default();
+    let session = AutoRefreshingSession::new(&provider, state);
+    let debug = format!("{session:?}");
+    assert!(
+        debug.starts_with("AutoRefreshingSession { provider: \""),
+        "{debug}"
+    );
+    assert!(debug.contains("CountingProvider\""), "{debug}");
+    assert!(
+        debug.ends_with("state: \"[REDACTED]\", refresh_leeway_seconds: 60 }"),
+        "{debug}"
+    );
+}
+
+#[test]
+fn the_refresh_leeway_may_reach_one_hour() {
+    let provider = CountingProvider::default();
+    let state = || state_for("user-1", "access-0".to_string(), 3_600).expect("state");
+    let session = AutoRefreshingSession::new(&provider, state())
+        .with_refresh_leeway(3_600)
+        .expect("one hour");
+    assert!(format!("{session:?}").contains("refresh_leeway_seconds: 3600"));
+    assert!(
+        AutoRefreshingSession::new(&provider, state())
+            .with_refresh_leeway(3_601)
+            .is_err()
+    );
+}
+
+#[tokio::test]
+async fn the_system_clock_drives_from_user_and_access_token() {
+    let provider = CountingProvider::default();
+    let session = AutoRefreshingSession::from_user(
+        &provider,
+        &user(
+            "access-0",
+            Some(SecretString::from("refresh-0".to_string())),
+            Some(3_600),
+        ),
+    )
+    .expect("session");
+    // 2026-01-01T00:00:00Z: the clock is the real one, not a fixed value.
+    assert!(session.state_snapshot().await.issued_at() > 1_767_225_600);
+
+    // A generation received long ago is due now.
+    let stale = AutoRefreshingSession::from_user_at(
+        &provider,
+        &user(
+            "access-0",
+            Some(SecretString::from("refresh-0".to_string())),
+            Some(3_600),
+        ),
+        1_000,
+    )
+    .expect("session");
+    let lease = stale.access_token().await.expect("refreshed lease");
+    assert!(lease.was_refreshed());
+    assert_eq!(provider.refreshes.load(Ordering::SeqCst), 1);
+}
