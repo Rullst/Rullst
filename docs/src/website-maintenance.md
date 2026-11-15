@@ -68,7 +68,8 @@ with `python3 .github/generate-llms-txt.py --out <directory>`.
 
 The browser test checks both languages at desktop and 390/320-pixel layouts,
 the flag language switcher, keyboard and mobile navigation, the Academy
-greeting, clipboard success/denial, both privacy pages, reduced motion,
+greeting, clipboard success/denial, both privacy pages, both comparison pages
+at three widths, reduced motion,
 no-JavaScript navigation, resource failures, CSP errors, external requests and
 browser storage. It is not a complete accessibility audit or cross-browser
 certification. Optional `--screenshots /absolute/output/directory` records
