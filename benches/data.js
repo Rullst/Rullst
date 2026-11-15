@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794763379571,
+  "lastUpdate": 1794773927989,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -34641,6 +34641,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2059,
             "range": "± 23",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7e64160836729945f33525697fbd0c6dc051ca24",
+          "message": "Merge pull request #713 from Rullst/feat/v13-alpha6-production-monitor\n\nfeat(monitor): remote traces, security radar, desktop notifications and proxy support",
+          "timestamp": "2026-11-15T17:13:42-03:00",
+          "tree_id": "532c3e151365916c545ef29af2293fa2210e2af6",
+          "url": "https://github.com/Rullst/Rullst/commit/7e64160836729945f33525697fbd0c6dc051ca24"
+        },
+        "date": 1794773924768,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 389,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 541,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 275,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1019,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
