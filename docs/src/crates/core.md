@@ -577,6 +577,15 @@ logs a `warn` event with the rule and path of each request it would refuse.
 not inspect, for routes that accept text such as code samples (see
 [seeing and accepting WAF false positives](../security-layers.md#seeing-and-accepting-waf-false-positives)).
 
+The CSRF middleware mints a token on the first `GET` of every page except
+static files: paths below `[security]` `csrf_static_prefixes` (default
+`/static/`, `/.well-known/`) and the exact `csrf_static_paths` (default
+`/favicon.ico`, `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest`,
+`/sw.js`). Since 13.0.0-alpha.6 the extension does not count, so a dynamic
+`/report.json` page gets a token; list any other prefix you serve files
+under (see
+[static files and the CSRF token](../security-layers.md#static-files-and-the-csrf-token)).
+
 TLS connections use `aws-lc-rs` as the rustls crypto provider. Core hashes
 with the pure-Rust `sha2` crate and needs `ring` only for the AES-256-GCM
 recovery records of `storage-multipart`. With the `orm`,

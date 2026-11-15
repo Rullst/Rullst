@@ -717,6 +717,8 @@ pub rullst_core::SecurityConfig::coep: alloc::string::String
 pub rullst_core::SecurityConfig::user_agent_blocklist: alloc::vec::Vec<alloc::string::String>
 pub rullst_core::SecurityConfig::enable_pii_masking: bool
 pub rullst_core::SecurityConfig::csrf_signed_webhook_paths: alloc::vec::Vec<alloc::string::String>
+pub rullst_core::SecurityConfig::csrf_static_prefixes: alloc::vec::Vec<alloc::string::String>
+pub rullst_core::SecurityConfig::csrf_static_paths: alloc::vec::Vec<alloc::string::String>
 pub rullst_core::SecurityConfig::waf_body_exempt_paths: alloc::vec::Vec<alloc::string::String>
 pub rullst_core::SecurityConfig::trusted_proxies: alloc::vec::Vec<alloc::string::String>
 pub rullst_core::SecurityConfig::trusted_proxy_header: alloc::string::String
@@ -725,7 +727,10 @@ pub rullst_core::SecurityConfig::hsts_max_age_seconds: u64
 pub rullst_core::SecurityConfig::hsts_include_subdomains: bool
 pub rullst_core::SecurityConfig::hsts_preload: bool
 impl rullst_core::SecurityConfig
+pub fn rullst_core::SecurityConfig::is_csrf_static_path(&self, path: &str) -> bool
 pub fn rullst_core::SecurityConfig::validate(&self) -> core::result::Result<(), rullst_core::config::ConfigError>
+pub fn rullst_core::SecurityConfig::with_csrf_static_path(self, path: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn rullst_core::SecurityConfig::with_csrf_static_prefix(self, prefix: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for rullst_core::SecurityConfig
 impl core::default::Default for rullst_core::SecurityConfig
 impl core::fmt::Debug for rullst_core::SecurityConfig

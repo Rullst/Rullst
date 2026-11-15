@@ -123,12 +123,14 @@ fn rules_carry_the_release_of_their_change() {
             "V13-HTMX-2",
         ]
     );
-    // The health probes no longer report the framework version.
+    // The default changes of the 13.0 freeze: the health probes' framework
+    // version and CSRF static files by path.
     assert_eq!(
         codes_introduced_in("13.0.0-alpha.6"),
         [
             "V13-HEALTH-FRAMEWORK-VERSION",
             "V13-HEALTH-PROBE-VERSION-FIELD",
+            "V13-CSRF-STATIC-PREFIXES",
         ]
     );
     assert!(codes_introduced_in("13.0.0-rc.1").is_empty());

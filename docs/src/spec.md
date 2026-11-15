@@ -1952,11 +1952,22 @@ the same server-authoritative controls.
   send its _token field before any file field …`) instead of the generic
   `Invalid or missing CSRF token`; a readable but wrong token keeps the
   generic text. A `GET` or `HEAD` for a
-  static-looking path (`/robots.txt`, `/sitemap.xml`, `/favicon.ico`,
-  `/static/*`, or a `.txt`, `.xml`, `.ico`, `.json`, `.css`, `.js`, `.png`,
-  `.jpg`, `.jpeg`, `.svg`, `.webp` or `.wasm` suffix) never mints a token or
-  sets the cookie; since 13.0.0-alpha.2 it still receives the `CsrfToken` of
-  a valid existing cookie. Nested application and `Server` baseline composition is
+  static file never mints a token or sets the cookie; since 13.0.0-alpha.2 it
+  still receives the `CsrfToken` of a valid existing cookie. Since
+  13.0.0-alpha.6 a static file is a path below one of the `[security]`
+  `csrf_static_prefixes` (default `/static/` and `/.well-known/`, each entry
+  an absolute path ending with `/`) or equal to one of the
+  `csrf_static_paths` (default `/favicon.ico`, `/robots.txt`, `/sitemap.xml`,
+  `/manifest.webmanifest` and `/sw.js`); a list in `Rullst.toml` replaces its
+  default, `SecurityConfig::with_csrf_static_prefix` and
+  `with_csrf_static_path` add entries, `SecurityConfig::validate` rejects
+  `/`, wildcards, route parameters, dot segments and duplicates, and
+  `SecurityConfig::is_csrf_static_path` reports the decision. Every other
+  page, a dynamic `/report.json` included, gets the token on its first
+  visit; until 13.0.0-alpha.5 a `.txt`, `.xml`, `.ico`, `.json`, `.css`,
+  `.js`, `.png`, `.jpg`, `.jpeg`, `.svg`, `.webp` or `.wasm` suffix also
+  counted as static. These settings never change the verification of
+  state-changing requests. Nested application and `Server` baseline composition is
   request-idempotent: exactly one CSRF layer owns token validation/cookie
   emission, so an explicitly protected router remains valid when the production
   server wraps it. The cookie intentionally remains script-readable and must

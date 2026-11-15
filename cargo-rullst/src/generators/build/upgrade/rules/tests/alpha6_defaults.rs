@@ -1,4 +1,6 @@
-//! 13.0.0-alpha.6: the health probes no longer report the framework version.
+//! 13.0.0-alpha.6: the health probes no longer report the framework version,
+//! and the CSRF middleware decides static files by path instead of by
+//! extension.
 
 use super::super::alpha6_defaults::reads_probe_version;
 use super::files::Project;
@@ -6,6 +8,7 @@ use super::*;
 
 const VERSION: &str = "V13-HEALTH-FRAMEWORK-VERSION";
 const FIELD: &str = "V13-HEALTH-PROBE-VERSION-FIELD";
+const STATIC: &str = "V13-CSRF-STATIC-PREFIXES";
 const PACKAGE: &str = "[package]\nname = \"app\"\n";
 
 fn found(source: &str) -> Vec<(&'static str, usize)> {
@@ -67,6 +70,38 @@ fn build() -> HealthProbeResponse {
 }
 
 #[test]
+fn file_services_outside_the_default_static_paths_are_reviewed() {
+    let source = r#"
+use tower_http::services::{ServeDir, ServeFile};
+fn router() -> axum::Router {
+    axum::Router::new()
+        .nest_service("/assets", ServeDir::new("assets"))
+        .route_service("/humans.txt", ServeFile::new("humans.txt"))
+        .nest_service("/static", ServeDir::new("static"))
+        .nest_service("/static/images/", ServeDir::new("images"))
+        .nest_service("/.well-known", ServeDir::new("well-known"))
+        .route_service("/favicon.ico", ServeFile::new("favicon.ico"))
+        .route_service("/sw.js", ServeFile::new("sw.js"))
+        .nest_service("/", ServeDir::new("public"))
+}
+"#;
+    assert_eq!(found(source), [(STATIC, 5), (STATIC, 6), (STATIC, 12)]);
+    // Without a file service in the file, and for other methods, nothing.
+    assert_only(
+        "fn r(api: Svc) -> Router { Router::new().nest_service(\"/api\", api) }\n",
+        &[],
+    );
+    assert_only(
+        "use tower_http::services::ServeDir;\nfn r() -> Router { Router::new().nest(\"/assets\", other()).nest_service(path, ServeDir::new(\"a\")) }\n",
+        &[],
+    );
+    assert_only(
+        "use tower_http::services::ServeDir;\nfn r() -> Router { Router::new().nest_service(\"/staticx\", ServeDir::new(\"a\")) }\n",
+        &[STATIC],
+    );
+}
+
+#[test]
 fn scripts_reading_version_from_a_probe_are_reviewed() {
     let project = Project::new();
     project
@@ -121,6 +156,11 @@ fn the_alpha6_default_rules_name_their_rows_kinds_and_release() {
             &catalog::HEALTH_PROBE_VERSION_FIELD,
             FindingKind::MustChange,
             "Health probes without the framework version",
+        ),
+        (
+            &catalog::CSRF_STATIC_PREFIXES,
+            FindingKind::Review,
+            "CSRF static files by path",
         ),
     ] {
         assert_eq!((rule.kind, rule.row), (kind, row), "{}", rule.code);
