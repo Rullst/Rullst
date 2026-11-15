@@ -21,15 +21,25 @@
 # store moved to rullst-core): 325 packages in this starter's Cargo.lock,
 # measured as the job does, from the repository Cargo.lock, on 2026-11-14.
 #
+# dependency_count was lowered from 342 (measured 325) and
+# compiled_dependency_count added when SQLite-only starters stopped
+# building a TLS stack (13.0.0-alpha.6): 257 packages in this starter's
+# Cargo.lock, 212 of them compiled, measured as the job does, from the
+# repository Cargo.lock, on 2026-11-15 (main at 075f5a276 with this change).
+# binary_size_bytes was lowered by the same change, measured by run
+# 43680823606 (Rust 1.100.0): 7,600,752 bytes, 10,494,936 before (run
+# 43666669225).
+#
 # To raise a limit on purpose, copy the "Suggested limit" of the job summary
 # into this file in the pull request that causes the increase, update the
 # measured value beside it and say why in the pull request (MAINTAINING.md,
 # "Starter footprint budgets").
 
 [footprint.budgets]
-binary_size_bytes = 12_752_912   # measured 11_089_488
+binary_size_bytes = 8_740_865    # measured 7_600_752
 idle_rss_bytes = 11_865_293      # measured 9_887_744
-dependency_count = 342           # measured 325
+dependency_count = 270           # measured 257
+compiled_dependency_count = 223  # measured 212
 bytes_per_request = 1_112        # measured 88
 page_first_visit_bytes = 1_112   # measured 88
 page_repeat_visit_bytes = 1_112  # measured 88

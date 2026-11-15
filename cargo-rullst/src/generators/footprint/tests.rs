@@ -61,6 +61,7 @@ fn sample(bench: bool, grid_intensity: Option<f64>) -> Report {
             image_size_bytes: Metric::not_measured("bytes", "no image given"),
             idle_rss_bytes: Metric::measured(16 * 1024 * 1024, "bytes", "VmRSS"),
             dependency_count: Metric::measured(312, "packages", "Cargo.lock"),
+            compiled_dependency_count: Metric::measured(287, "packages", "cargo tree"),
         },
         benchmark,
         page_weight: if bench {
@@ -200,6 +201,7 @@ fn json_keys_are_stable_whatever_was_measured() {
         "benchmark.cpu_time_seconds",
         "benchmark.response_bytes",
         "measured.binary_size_bytes",
+        "measured.compiled_dependency_count",
         "measured.dependency_count",
         "measured.idle_rss_bytes",
         "measured.image_size_bytes",
@@ -220,6 +222,11 @@ fn json_keys_are_stable_whatever_was_measured() {
     assert_eq!(value["sci_estimate"]["label"], "estimate");
     assert_eq!(value["sci_estimate"]["inputs"]["cpu_watts"], 15.0);
     assert_eq!(value["measured"]["dependency_count"]["value"], 312);
+    assert_eq!(value["measured"]["compiled_dependency_count"]["value"], 287);
+    assert_eq!(
+        value["measured"]["compiled_dependency_count"]["unit"],
+        "packages"
+    );
     assert_eq!(value["benchmark"]["response_bytes"]["value"], 600_000);
     assert_eq!(value["benchmark"]["bytes_per_request"]["value"], 1500.0);
     assert_eq!(value["benchmark"]["accept_encoding"], "zstd, br, gzip");
@@ -317,6 +324,7 @@ fn plain_rendering_labels_measurements_and_the_estimate() {
         "Image size    NOT MEASURED",
         "Idle RSS      16.0 MiB",
         "Dependencies  312",
+        "Compiled deps 287",
         "Benchmark     NOT RUN",
         "pass --bench to measure CPU time per request",
         "Page weight   NOT RUN",

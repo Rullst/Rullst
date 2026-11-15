@@ -10,6 +10,13 @@ mod reset_token;
 mod session;
 mod session_claims;
 
+#[cfg(any(
+    feature = "session-registry-sqlite",
+    feature = "session-registry-postgres",
+    feature = "session-registry-mysql"
+))]
+pub mod session_registry;
+
 /// Largest password, in UTF-8 bytes, accepted by the Argon2 helpers and the
 /// recovery registry. Longer input is rejected rather than silently truncated.
 pub(crate) const MAX_PASSWORD_BYTES: usize = 72;

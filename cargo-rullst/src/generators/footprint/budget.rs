@@ -44,11 +44,12 @@ impl Unit {
 }
 
 /// Every limit a budget can set, in report order, with its unit.
-pub(super) const LIMITS: [(&str, Unit); 10] = [
+pub(super) const LIMITS: [(&str, Unit); 11] = [
     ("binary_size_bytes", Unit::Bytes),
     ("image_size_bytes", Unit::Bytes),
     ("idle_rss_bytes", Unit::Bytes),
     ("dependency_count", Unit::Count),
+    ("compiled_dependency_count", Unit::Count),
     ("cpu_ms_per_request", Unit::Milliseconds),
     ("bytes_per_request", Unit::Bytes),
     ("page_first_visit_bytes", Unit::Bytes),
@@ -225,6 +226,7 @@ pub(super) fn figure(name: &str, report: &Report) -> Result<f64, String> {
         "image_size_bytes" => counted(&report.measured.image_size_bytes),
         "idle_rss_bytes" => counted(&report.measured.idle_rss_bytes),
         "dependency_count" => counted(&report.measured.dependency_count),
+        "compiled_dependency_count" => counted(&report.measured.compiled_dependency_count),
         "cpu_ms_per_request" => metric(&report.benchmark.cpu_ms_per_request),
         "bytes_per_request" => metric(&report.benchmark.bytes_per_request),
         "page_first_visit_bytes" => page_figure(page.first_visit.bytes),

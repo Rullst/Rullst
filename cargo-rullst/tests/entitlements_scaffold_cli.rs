@@ -1,6 +1,6 @@
 //! Real generated SaaS/auth/database with an explicit test-only provider adapter,
-//! plus the generated session-epoch revocation of login cookies and the
-//! password change and reset flows.
+//! plus the generated registered sessions (sign-out, "Your devices", the
+//! session epoch) and the password change and reset flows.
 use cargo_rullst::{blueprints, generators::project::cargo_toml::build_cargo_toml};
 use std::{
     fs,
@@ -61,14 +61,14 @@ fn generated_saas_authorizes_only_current_bound_subscriptions() {
     source.push_str("\n#[cfg(test)]\n#[path = \"billing_entitlement_contract.rs\"]\nmod entitlement_contract;\n");
     fs::write(path, source).unwrap();
     fs::write(
-        root.join("src/middlewares/session_epoch_contract.rs"),
-        include_str!("fixtures/session_epoch_contract.rs"),
+        root.join("src/middlewares/session_registry_contract.rs"),
+        include_str!("fixtures/session_registry_contract.rs"),
     )
     .unwrap();
     let path = root.join("src/middlewares/auth_middleware.rs");
     let mut source = fs::read_to_string(&path).unwrap();
     source.push_str(
-        "\n#[cfg(test)]\n#[path = \"session_epoch_contract.rs\"]\nmod session_epoch_contract;\n",
+        "\n#[cfg(test)]\n#[path = \"session_registry_contract.rs\"]\nmod session_registry_contract;\n",
     );
     fs::write(path, source).unwrap();
     fs::write(
@@ -123,16 +123,17 @@ fn generated_saas_authorizes_only_current_bound_subscriptions() {
         eprintln!("generated entitlement report policy: {plans:?}");
         success(command.output().unwrap());
     }
-    // The generated login cookies are revocable through `users.session_epoch`.
+    // Every generated sign-in is a registered session: sign-out ends every
+    // copy of its cookie, and the session epoch still ends them all.
     let revocation = success(
-        contract("generated_session_epoch_contract")
+        contract("generated_session_registry_contract")
             .output()
             .unwrap(),
     );
     assert!(
         String::from_utf8_lossy(&revocation.stdout)
-            .contains("test middlewares::auth_middleware::session_epoch_contract::generated_session_epoch_contract ... ok"),
-        "the session epoch contract did not run"
+            .contains("test middlewares::auth_middleware::session_registry_contract::generated_session_registry_contract ... ok"),
+        "the session registry contract did not run"
     );
     // Password change and reset end every other session and use single-use tokens.
     let passwords = success(

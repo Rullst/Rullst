@@ -35,7 +35,8 @@ webhook-sql = ["dep:rullst-orm"]
 conformance = []
 
 [dependencies]
-rullst-core = { workspace = true }
+# HTTPS clients: Core installs aws-lc-rs as the rustls process default (`tls`).
+rullst-core = { workspace = true, features = ["tls"] }
 rullst-orm = { workspace = true, features = ["drivers-all"], optional = true }
 reqwest = { workspace = true, features = ["json", "rustls"] }
 serde = { workspace = true }

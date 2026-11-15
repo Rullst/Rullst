@@ -25,7 +25,8 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
 
 [dependencies]
-rullst-core = { workspace = true }
+# HTTPS clients: Core installs aws-lc-rs as the rustls process default (`tls`).
+rullst-core = { workspace = true, features = ["tls"] }
 reqwest = { workspace = true, features = ["json", "rustls", "stream"] }
 serde = { workspace = true }
 serde_json = { workspace = true }

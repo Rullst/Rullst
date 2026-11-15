@@ -67,6 +67,7 @@ impl Starter {
                 ("/password/forgot", 200),
                 ("/dashboard", 303),
                 ("/password/change", 303),
+                ("/sessions", 303),
                 ("/reports/billing", 303),
                 ("/health", 200),
             ],

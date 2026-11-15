@@ -29,7 +29,8 @@ def report(rss=20_000_000, limits=(), status="passed", failure=None, origins=())
         "schema": "rullst.footprint.v1", "cli_version": "13.0.0-alpha.5",
         "machine": {"os": "linux", "arch": "x86_64", "logical_cpus": 4, "cpu_model": "Test CPU"},
         "measured": {"binary_size_bytes": metric(8_000_000), "image_size_bytes": metric(None),
-                     "idle_rss_bytes": metric(rss), "dependency_count": metric(300)},
+                     "idle_rss_bytes": metric(rss), "dependency_count": metric(300),
+                     "compiled_dependency_count": metric(250)},
         "benchmark": {"requests": 5000, "http_errors": 0, "content_encodings": ["zstd"],
                       "cpu_ms_per_request": metric(0.12), "bytes_per_request": metric(1234.5)},
         "page_weight": {"status": "measured", "first_visit": {"bytes": 50_000, "requests": 4},
@@ -73,6 +74,7 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(CHECK.suggest("binary_size_bytes", 8_000_000), 9_200_000)
         self.assertEqual(CHECK.suggest("idle_rss_bytes", 20_000_001), 24_000_002)
         self.assertEqual(CHECK.suggest("dependency_count", 300), 315)
+        self.assertEqual(CHECK.suggest("compiled_dependency_count", 250), 263)
         self.assertEqual(CHECK.suggest("page_first_visit_bytes", 50_000), 55_000)
         self.assertEqual(CHECK.suggest("page_first_visit_bytes", 5_000), 6_024)
         self.assertEqual(CHECK.suggest("bytes_per_request", 1234.5), 2259)
@@ -85,6 +87,7 @@ class PolicyTests(unittest.TestCase):
         summary = CHECK.render({"blank": report()}, rows, problems)
         self.assertIn("| blank | `binary_size_bytes` | 8,000,000 | — | reported | 9,200,000 |", summary)
         self.assertIn("| blank | `page_third_party_origins` | 1 | — | reported | 1 |", summary)
+        self.assertIn("| blank | `compiled_dependency_count` | 250 | — | reported | 263 |", summary)
         self.assertIn("| blank | 0.12 | 5,000 | 0 | zstd |", summary)
         self.assertIn("[footprint.budgets]\nbinary_size_bytes = 9_200_000\nidle_rss_bytes = 24_000_000\n", summary)
         tomllib.loads(summary.split("```toml\n", 1)[1].split("```", 1)[0])

@@ -284,13 +284,16 @@ fn every_limit_is_clamped_into_its_range() {
     assert_eq!(defaults.max_lifetime(), Duration::from_secs(1800));
     assert_eq!(defaults.max_connections(), 1024);
     assert_eq!(defaults.max_payload_bytes(), 64 * 1024);
+    assert_eq!(defaults.revalidation_interval(), Duration::from_secs(15));
 
     let low = RealtimeSseConfig::new()
         .with_keep_alive(Duration::ZERO)
         .with_reconnect_delay(Duration::ZERO)
         .with_max_lifetime(Duration::ZERO)
         .with_max_connections(0)
-        .with_max_payload_bytes(0);
+        .with_max_payload_bytes(0)
+        .with_revalidation_interval(Duration::ZERO);
+    assert_eq!(low.revalidation_interval(), Duration::from_secs(1));
     assert_eq!(low.keep_alive(), Duration::from_secs(1));
     assert_eq!(low.reconnect_delay(), Duration::from_millis(100));
     assert_eq!(low.max_lifetime(), Duration::from_secs(1));
@@ -302,11 +305,131 @@ fn every_limit_is_clamped_into_its_range() {
         .with_reconnect_delay(Duration::MAX)
         .with_max_lifetime(Duration::MAX)
         .with_max_connections(usize::MAX)
-        .with_max_payload_bytes(usize::MAX);
+        .with_max_payload_bytes(usize::MAX)
+        .with_revalidation_interval(Duration::MAX);
+    assert_eq!(high.revalidation_interval(), Duration::from_secs(300));
     assert_eq!(high.keep_alive(), Duration::from_secs(300));
     assert_eq!(high.reconnect_delay(), Duration::from_secs(300));
     assert_eq!(high.max_lifetime(), Duration::from_secs(86_400));
     assert_eq!(high.max_connections(), 65_536);
     assert_eq!(high.max_payload_bytes(), 64 * 1024);
     assert_eq!(RealtimeSse::new(high).config(), high);
+}
+
+/// A check the test flips, with a change signal.
+struct Switch {
+    valid: Arc<std::sync::atomic::AtomicBool>,
+    checks: Arc<std::sync::atomic::AtomicUsize>,
+    signal: tokio::sync::watch::Receiver<u32>,
+}
+
+impl crate::realtime::Revalidate for Switch {
+    async fn still_valid(&mut self) -> bool {
+        self.checks
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.valid.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    async fn changed(&mut self) {
+        if self.signal.changed().await.is_err() {
+            std::future::pending::<()>().await;
+        }
+    }
+}
+
+type Controls = (
+    Arc<std::sync::atomic::AtomicBool>,
+    Arc<std::sync::atomic::AtomicUsize>,
+    tokio::sync::watch::Sender<u32>,
+);
+
+fn switch() -> (Switch, Controls) {
+    let valid = Arc::new(std::sync::atomic::AtomicBool::new(true));
+    let checks = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let (sender, signal) = tokio::sync::watch::channel(0);
+    (
+        Switch {
+            valid: Arc::clone(&valid),
+            checks: Arc::clone(&checks),
+            signal,
+        },
+        (valid, checks, sender),
+    )
+}
+
+fn fast_revalidation() -> RealtimeSse {
+    RealtimeSse::new(RealtimeSseConfig::new().with_revalidation_interval(Duration::from_secs(1)))
+}
+
+#[tokio::test]
+async fn a_valid_revalidated_stream_keeps_delivering() {
+    let manager = BroadcastManager::new();
+    let sse = fast_revalidation();
+    let (check, (_valid, checks, _signal)) = switch();
+    let mut body = admitted(sse.channel_revalidated(&manager, "feed", check)).await;
+    tokio::time::sleep(Duration::from_millis(2_300)).await;
+    manager.publish("feed", "item", "1").unwrap();
+    assert_eq!(
+        next_text(&mut body).await.as_deref(),
+        Some("event: item\ndata: 1\n\n")
+    );
+    // One check per interval, not per message.
+    let made = checks.load(std::sync::atomic::Ordering::SeqCst);
+    assert!((1..=3).contains(&made), "{made} checks");
+}
+
+#[tokio::test]
+async fn a_signal_ends_an_invalid_stream_at_once() {
+    let manager = BroadcastManager::new();
+    let sse = RealtimeSse::new(RealtimeSseConfig::new());
+    let (check, (valid, _checks, signal)) = switch();
+    let mut body = admitted(sse.channel_revalidated(&manager, "feed", check)).await;
+    manager.publish("feed", "item", "1").unwrap();
+    assert!(next_text(&mut body).await.is_some());
+    valid.store(false, std::sync::atomic::Ordering::SeqCst);
+    let started = tokio::time::Instant::now();
+    signal.send_replace(1);
+    assert_eq!(next_text(&mut body).await, None);
+    // Well before the 15-second interval.
+    assert!(started.elapsed() < Duration::from_secs(3));
+    assert_eq!(sse.open_connections(), 0);
+}
+
+#[tokio::test]
+async fn the_interval_ends_a_stream_revoked_without_a_signal() {
+    let manager = Arc::new(BroadcastManager::new());
+    let sse = fast_revalidation();
+    let (check, (valid, _checks, _signal)) = switch();
+    let mut body = admitted(sse.channel_revalidated(&manager, "feed", check)).await;
+    valid.store(false, std::sync::atomic::Ordering::SeqCst);
+    // A message published before the next check is still delivered.
+    manager.publish("feed", "item", "1").unwrap();
+    assert!(next_text(&mut body).await.is_some());
+    let started = tokio::time::Instant::now();
+    assert_eq!(next_text(&mut body).await, None);
+    assert!(started.elapsed() < Duration::from_millis(1_500));
+}
+
+#[tokio::test]
+async fn subscriptions_are_revalidated_too() {
+    let manager = BroadcastManager::new();
+    let sse = RealtimeSse::new(RealtimeSseConfig::new());
+    let (check, (valid, _checks, signal)) = switch();
+    let receiver = manager.get_or_create("feed").subscribe();
+    let mut body = admitted(sse.subscribe_revalidated(receiver, check)).await;
+    signal.send_replace(1);
+    manager.publish("feed", "item", "1").unwrap();
+    assert!(next_text(&mut body).await.is_some());
+    valid.store(false, std::sync::atomic::Ordering::SeqCst);
+    signal.send_replace(2);
+    assert_eq!(next_text(&mut body).await, None);
+    // Refused like `subscribe` after shutdown.
+    sse.shutdown();
+    let (check, _controls) = switch();
+    let (comment, _) =
+        refusal(sse.subscribe_revalidated(manager.get_or_create("feed").subscribe(), check)).await;
+    assert_eq!(comment, "shutting down");
+    let (check, _controls) = switch();
+    let (comment, _) = refusal(sse.channel_revalidated(&manager, "feed", check)).await;
+    assert_eq!(comment, "shutting down");
 }
