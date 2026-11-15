@@ -515,7 +515,7 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
-The v13 CLI's `rullst-upgrade-rules-v4` catalog (161 rules) parses Rust sources
+The v13 CLI's `rullst-upgrade-rules-v4` catalog (163 rules) parses Rust sources
 (with `syn`; comments, doc comments and strings never match an API rule), Cargo
 manifests and generated project files, and reports each finding as
 `MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed
@@ -1430,11 +1430,12 @@ written through a link):
 * `Caddyfile`: proxies to the app, checks its `/health` every 5 seconds and
   stops routing to it while that fails, and holds each request for up to 15
   seconds while the app is down (a restart or an update) instead of answering
-  `503` at once. It has no `encode` directive, and its comment says why:
-  pages carry the CSRF token, which is not masked per response, so
-  compressing them would expose it to BREACH; static files are served
-  pre-compressed. Add `encode` only for routes that never mix secrets with
-  reflected input (`encode /api/* zstd gzip`).
+  `503` at once. Since 13.0.0-alpha.6 it compresses pages
+  (`encode zstd gzip`), and its comment says why that is safe: the CSRF
+  token in pages is masked per response, so compression next to reflected
+  input does not reveal it (BREACH); no other secret should appear in a page
+  next to text from the request. Static files are served pre-compressed and
+  pass through unchanged. Until 13.0.0-alpha.6 it had no `encode` directive.
 
 Caddy is pinned to `172.31.250.10` on a `172.31.250.0/24` compose network,
 and the command adds that address to `[security] trusted_proxies` in

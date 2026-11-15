@@ -1,6 +1,7 @@
 //! 13.0.0-alpha.6: the health probes no longer report the framework version,
-//! and the CSRF middleware decides static files by path instead of by
-//! extension.
+//! the CSRF middleware decides static files by path instead of by extension,
+//! and pages embed the CSRF token masked per response, which the generated
+//! Caddyfile compresses.
 
 use super::super::alpha6_defaults::reads_probe_version;
 use super::files::Project;
@@ -9,6 +10,8 @@ use super::*;
 const VERSION: &str = "V13-HEALTH-FRAMEWORK-VERSION";
 const FIELD: &str = "V13-HEALTH-PROBE-VERSION-FIELD";
 const STATIC: &str = "V13-CSRF-STATIC-PREFIXES";
+const COOKIE: &str = "V13-CSRF-COOKIE-IN-PAGE";
+const ENCODE: &str = "V13-DEPLOY-CADDY-ENCODE";
 const PACKAGE: &str = "[package]\nname = \"app\"\n";
 
 fn found(source: &str) -> Vec<(&'static str, usize)> {
@@ -101,6 +104,87 @@ fn router() -> axum::Router {
     );
 }
 
+/// The `get_csrf_token` helper `make:auth` generated before 13.0.0-alpha.6.
+const RAW_COOKIE_HELPER: &str = r#"
+pub(crate) fn get_csrf_token(headers: &HeaderMap) -> String {
+    headers
+        .get(rullst::server::header::COOKIE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|cookie_header| {
+            cookie_header.split(';').find_map(|cookie| {
+                cookie
+                    .trim()
+                    .strip_prefix("rullst_csrf=")
+                    .map(ToOwned::to_owned)
+            })
+        })
+        .unwrap_or_default()
+}
+"#;
+
+#[test]
+fn reading_the_raw_csrf_cookie_outside_tests_is_reviewed() {
+    let found = |file: &str, source: &str| scan_with(source, file, &WorkspaceFacts::default());
+    assert_eq!(
+        found("src/controllers/auth_controller.rs", RAW_COOKIE_HELPER),
+        [(COOKIE, 10)]
+    );
+    // The helper generated since 13.0.0-alpha.6 masks the value.
+    let masked = RAW_COOKIE_HELPER.replace(
+        ".map(ToOwned::to_owned)",
+        ".and_then(rullst::security::mask_csrf_token)",
+    );
+    assert_eq!(found("src/controllers/auth_controller.rs", &masked), []);
+    // Tests read the cookie a response sets; other prefixes are not it.
+    for test_file in [
+        "tests/security.rs",
+        "tests/common/mod.rs",
+        "src/tests.rs",
+        "src/auth_tests.rs",
+        "src/auth_test.rs",
+    ] {
+        assert_eq!(found(test_file, RAW_COOKIE_HELPER), [], "{test_file}");
+    }
+    for source in [
+        "fn f(c: &str) -> Option<&str> { c.strip_prefix(\"rullst_session=\") }\n",
+        "fn f(c: &str) -> Option<&str> { c.strip_suffix(\"rullst_csrf=\") }\n",
+        "fn f(c: &str, p: &str) -> Option<&str> { c.strip_prefix(p) }\n",
+    ] {
+        assert_eq!(found("src/lib.rs", source), [], "{source}");
+    }
+}
+
+#[test]
+fn a_caddyfile_without_encode_is_reviewed_at_its_proxy() {
+    let alpha5 = "{$DOMAIN:localhost} {\n\t# No `encode`: pages carry the CSRF token unmasked\n\treverse_proxy app:3000 {\n\t\thealth_uri /health\n\t\tlb_try_duration 15s\n\t}\n}\n";
+    let project = Project::new();
+    project.write("Caddyfile", alpha5);
+    assert_eq!(
+        project.findings(PACKAGE),
+        [("Caddyfile".to_string(), ENCODE, 3)]
+    );
+    let commented = alpha5.replace("\treverse_proxy", "\t# encode zstd gzip\n\treverse_proxy");
+    let project = Project::new();
+    project.write("Caddyfile", &commented);
+    assert_eq!(
+        project.findings(PACKAGE),
+        [("Caddyfile".to_string(), ENCODE, 4)]
+    );
+    let api_only = alpha5.replace(
+        "\treverse_proxy",
+        "\tencode /api/* zstd gzip\n\treverse_proxy",
+    );
+    for caddyfile in [
+        crate::blueprints::deploy::CADDYFILE,
+        api_only.as_str(),
+        "example.com {\n    reverse_proxy web:8080\n}\n",
+    ] {
+        let project = Project::new();
+        project.write("Caddyfile", caddyfile);
+        assert_eq!(project.findings(PACKAGE), [], "{caddyfile}");
+    }
+}
+
 #[test]
 fn scripts_reading_version_from_a_probe_are_reviewed() {
     let project = Project::new();
@@ -161,6 +245,16 @@ fn the_alpha6_default_rules_name_their_rows_kinds_and_release() {
             &catalog::CSRF_STATIC_PREFIXES,
             FindingKind::Review,
             "CSRF static files by path",
+        ),
+        (
+            &catalog::CSRF_COOKIE_IN_PAGE,
+            FindingKind::Review,
+            "CSRF token masked per response",
+        ),
+        (
+            &catalog::DEPLOY_CADDY_ENCODE,
+            FindingKind::Review,
+            "Compressed pages in the generated Caddyfile",
         ),
     ] {
         assert_eq!((rule.kind, rule.row), (kind, row), "{}", rule.code);

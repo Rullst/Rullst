@@ -49,8 +49,14 @@ fn compose_pins_caddy_hardens_both_containers_and_checks_health() {
             .collect::<Vec<_>>(),
         ["\tencode zstd gzip"]
     );
-    assert!(CADDYFILE.contains("\t# Compress pages and API responses. The CSRF token in a page is masked\n"));
-    assert!(CADDYFILE.contains("never put\n\t# another secret in a page next to text from the request."));
+    assert!(
+        CADDYFILE
+            .contains("\t# Compress pages and API responses. The CSRF token in a page is masked\n")
+    );
+    assert!(
+        CADDYFILE
+            .contains("never put\n\t# another secret in a page next to text from the request.")
+    );
 }
 
 // Caddy's first active check runs before the app listens, and with a
