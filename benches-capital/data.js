@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794745750359,
+  "lastUpdate": 1794749514526,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -17194,6 +17194,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c83e401880a998039d0cb9f64e020fca7353f9e2",
+          "message": "Merge pull request #697 from Rullst/refactor/v13-alpha6-passkeys-without-p256\n\nfeat(auth)!: put passkeys behind a feature and check them with aws-lc-rs",
+          "timestamp": "2026-11-15T10:01:22-03:00",
+          "tree_id": "f48e56c96b31ab74bb332a0ed86af8a64e776a89",
+          "url": "https://github.com/Rullst/Rullst/commit/c83e401880a998039d0cb9f64e020fca7353f9e2"
+        },
+        "date": 1794749513593,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
