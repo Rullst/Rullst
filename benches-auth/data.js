@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794745495385,
+  "lastUpdate": 1794749121623,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -22439,6 +22439,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3022,
             "range": "± 71",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c83e401880a998039d0cb9f64e020fca7353f9e2",
+          "message": "Merge pull request #697 from Rullst/refactor/v13-alpha6-passkeys-without-p256\n\nfeat(auth)!: put passkeys behind a feature and check them with aws-lc-rs",
+          "timestamp": "2026-11-15T10:01:22-03:00",
+          "tree_id": "f48e56c96b31ab74bb332a0ed86af8a64e776a89",
+          "url": "https://github.com/Rullst/Rullst/commit/c83e401880a998039d0cb9f64e020fca7353f9e2"
+        },
+        "date": 1794749120696,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1002,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 727,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1766,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4385,
+            "range": "± 60",
             "unit": "ns/iter"
           }
         ]
