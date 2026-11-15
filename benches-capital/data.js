@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794726523171,
+  "lastUpdate": 1794728757336,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -17062,6 +17062,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "851b1bff4b0aa2201661ce8729f4dd5dd741a89e",
+          "message": "Merge pull request #703 from Rullst/docs/v13-site-compare\n\ndocs(site): compare Rullst, Loco and Topcoat in both languages",
+          "timestamp": "2026-11-15T04:23:16-03:00",
+          "tree_id": "2e20f230f7d3f696a6c5aa817a12e7026753b2d6",
+          "url": "https://github.com/Rullst/Rullst/commit/851b1bff4b0aa2201661ce8729f4dd5dd741a89e"
+        },
+        "date": 1794728756322,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
             "range": "± 0",
             "unit": "ns/iter"
           },
