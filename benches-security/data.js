@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794756690258,
+  "lastUpdate": 1794759602298,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -22654,6 +22654,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 31,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "075f5a2760e1ef4179934e0781223ba8d53ccc6f",
+          "message": "Merge pull request #708 from Rullst/feat/v13-alpha6-revocable-sessions\n\nfeat(auth): revocable server-side login sessions and a devices page",
+          "timestamp": "2026-11-15T13:01:23-03:00",
+          "tree_id": "cbae8a4ac4bf32be99bbf0674f248f41373bdd73",
+          "url": "https://github.com/Rullst/Rullst/commit/075f5a2760e1ef4179934e0781223ba8d53ccc6f"
+        },
+        "date": 1794759601348,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4057,
+            "range": "± 89",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 413,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 11,
             "range": "± 0",
             "unit": "ns/iter"
           }
