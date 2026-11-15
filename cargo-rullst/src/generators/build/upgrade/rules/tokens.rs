@@ -128,7 +128,7 @@ fn is_group(tree: Option<&TokenTree>, delimiter: Delimiter) -> bool {
 }
 
 /// The value of a string literal token, if it is one.
-fn string_value(tree: Option<&TokenTree>) -> Option<String> {
+pub(super) fn string_value(tree: Option<&TokenTree>) -> Option<String> {
     let Some(TokenTree::Literal(literal)) = tree else {
         return None;
     };
@@ -242,6 +242,11 @@ impl Scanner<'_, '_> {
                             }
                             if let Some(rule) =
                                 super::alpha5_runtime::field_rule(&name, self.context.text)
+                            {
+                                self.hit(rule, line(tree));
+                            }
+                            if let Some(rule) =
+                                super::alpha6_defaults::field_rule(&name, self.context.text)
                             {
                                 self.hit(rule, line(tree));
                             }
@@ -451,6 +456,9 @@ impl Scanner<'_, '_> {
     }
 
     fn method(&mut self, name: &str, chain: &[String], args: TokenStream, at: usize) {
+        if let Some(rule) = super::alpha6_defaults::method_rule(name, &args, self.context.text) {
+            self.hit(rule, at);
+        }
         let has = |names: &[&str]| chain.iter().any(|link| names.contains(&link.as_str()));
         match name {
             "remember"
@@ -498,6 +506,9 @@ impl Scanner<'_, '_> {
         }
         if removed_mail_string(value, key) {
             self.hit(&MAIL_REMOVED, at);
+        }
+        if let Some(rule) = super::alpha6_defaults::string_rule(value, self.context.text) {
+            self.hit(rule, at);
         }
     }
 

@@ -336,7 +336,10 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
     13.x ([public dependencies](docs/src/compatibility-policy.md#public-dependencies)),
     and 13.0 starts on current majors. The planned moves are ed25519-dalek 3,
     jsonwebtoken 12 and jsonschema 0.61, which the public API does not expose
-    today, and testcontainers 0.28, a dev-dependency.
+    today, and testcontainers 0.28, a dev-dependency. testcontainers 0.28
+    waits for a `testcontainers-modules` release built on it: 0.15.0, the
+    newest, requires testcontainers 0.27, and the database tests use its
+    PostgreSQL, MySQL, MariaDB and SurrealDB images.
   - **No deprecated APIs in 13.x:** every API still marked `#[deprecated]` is
     removed, so 13.x does not carry them. 13.0 is the major release that
     removes the 12.x deprecations, and those of the 13.0 prereleases go with

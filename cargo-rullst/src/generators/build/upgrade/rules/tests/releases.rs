@@ -123,9 +123,16 @@ fn rules_carry_the_release_of_their_change() {
             "V13-HTMX-2",
         ]
     );
+    // The default changes of the 13.0 freeze: the health probes' framework
+    // version and CSRF static files by path; and passkeys behind a feature.
     assert_eq!(
         codes_introduced_in("13.0.0-alpha.6"),
-        ["V13-AUTH-PASSKEYS-FEATURE"]
+        [
+            "V13-HEALTH-FRAMEWORK-VERSION",
+            "V13-HEALTH-PROBE-VERSION-FIELD",
+            "V13-CSRF-STATIC-PREFIXES",
+            "V13-AUTH-PASSKEYS-FEATURE",
+        ]
     );
     assert!(codes_introduced_in("13.0.0-rc.1").is_empty());
     let alpha4 = version("13.0.0-alpha.4");

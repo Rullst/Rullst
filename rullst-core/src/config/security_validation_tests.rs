@@ -1,4 +1,5 @@
-//! `[security]` settings added in v13: HSTS and WAF body exemptions.
+//! `[security]` settings added in v13: HSTS, WAF body exemptions and the CSRF
+//! static-file prefixes and paths.
 
 #![allow(
     clippy::unwrap_used,
@@ -123,4 +124,82 @@ fn waf_body_exemptions_are_read_from_the_security_table() {
             .unwrap()
             .security;
     assert_eq!(config.waf_body_exempt_paths, ["/lessons/answers"]);
+}
+
+#[test]
+fn csrf_static_files_are_read_from_the_security_table() {
+    let defaults = RullstConfig::from_toml("[security]\ncsrf_same_site = \"Lax\"\n")
+        .unwrap()
+        .security;
+    assert_eq!(defaults.csrf_static_prefixes, ["/static/", "/.well-known/"]);
+    assert_eq!(defaults.csrf_static_paths.len(), 5);
+    assert_eq!(defaults.validate(), Ok(()));
+
+    let config = RullstConfig::from_toml(
+        "[security]\ncsrf_static_prefixes = [\"/assets/\"]\ncsrf_static_paths = []\n",
+    )
+    .unwrap()
+    .security;
+    assert_eq!(config.csrf_static_prefixes, ["/assets/"]);
+    assert!(config.csrf_static_paths.is_empty());
+    assert_eq!(config.validate(), Ok(()));
+}
+
+#[test]
+fn csrf_static_prefixes_must_be_unique_paths_ending_with_a_slash() {
+    let config = SecurityConfig::default()
+        .with_csrf_static_prefix("/assets/")
+        .with_csrf_static_prefix("/a/b/");
+    assert_eq!(config.validate(), Ok(()));
+
+    for invalid in [
+        "/",
+        "",
+        "//",
+        "/assets",
+        "assets/",
+        "/assets/*/",
+        "/{tenant}/",
+        "/../",
+        "/assets/./",
+        "/assets?x/",
+    ] {
+        let mut config = SecurityConfig::default();
+        config.csrf_static_prefixes = vec![invalid.to_owned()];
+        assert_eq!(
+            config.validate(),
+            Err(ConfigError::InvalidSecurityConfiguration(format!(
+                "CSRF static prefix `{invalid}` must be an absolute path that ends with `/`, such as `/assets/`"
+            ))),
+            "{invalid}"
+        );
+    }
+    let config = SecurityConfig::default().with_csrf_static_prefix("/static/");
+    assert_eq!(
+        config.validate(),
+        Err(ConfigError::InvalidSecurityConfiguration(
+            "duplicate CSRF static prefix `/static/`".to_string()
+        )),
+    );
+}
+
+#[test]
+fn csrf_static_paths_must_be_unique_exact_paths() {
+    for invalid in ["/", "humans.txt", "/files/*", "/files/{name}"] {
+        let config = SecurityConfig::default().with_csrf_static_path(invalid);
+        assert_eq!(
+            config.validate(),
+            Err(ConfigError::InvalidSecurityConfiguration(format!(
+                "CSRF static path `{invalid}` must be an exact absolute path"
+            ))),
+            "{invalid}"
+        );
+    }
+    let config = SecurityConfig::default().with_csrf_static_path("/robots.txt");
+    assert_eq!(
+        config.validate(),
+        Err(ConfigError::InvalidSecurityConfiguration(
+            "duplicate CSRF static path `/robots.txt`".to_string()
+        )),
+    );
 }

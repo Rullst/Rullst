@@ -4,7 +4,7 @@ Rullst does not treat an ignored scanner finding as remediated. Any temporary
 exception must have a narrow scope, a compensating control, an owner, and an
 expiry date. CI must fail for every advisory that is not actively governed here.
 
-Last reviewed: **2026-11-09**.
+Last reviewed: **2026-11-14**.
 
 ## Active exceptions
 
@@ -37,7 +37,10 @@ only through `testcontainers`, a dev-dependency of the database integration
 tests of `rullst-orm`, `rullst-core`, `rullst-capital`, `rullst-studio`,
 `rullst-nexus` and `rullst-ai`. No published Rullst crate depends on it, and the
 tests use it only to copy their own files into local containers. `testcontainers`
-0.28.0, the newest release, still depends on it.
+0.28.0, the newest release, still depends on it (`astral-tokio-tar` ^0.6.1), so
+moving to it would not end the exception. The tests stay on 0.27.3 until
+`testcontainers-modules`, whose PostgreSQL, MySQL, MariaDB and SurrealDB images
+they use, publishes a release for 0.28: 0.15.0, the newest, requires 0.27.
 
 ## Remediation history
 
