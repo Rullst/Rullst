@@ -19,7 +19,7 @@ struct Settings {
 }
 
 #[derive(Debug, Clone, Default, Orm)]
-#[orm(table = "from_row_owners")]
+#[orm(table = "from_row_owners", full_row_save)]
 struct Owner {
     id: i32,
     name: String,
@@ -27,7 +27,7 @@ struct Owner {
 
 // `Default`: generated `from_json` fills skipped fields from it.
 #[derive(Debug, Clone, Default, Orm)]
-#[orm(table = "from_row_profiles")]
+#[orm(table = "from_row_profiles", full_row_save)]
 struct Profile {
     id: i32,
     owner_id: i32,
@@ -48,7 +48,7 @@ struct Profile {
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "from_row_counters")]
+#[orm(table = "from_row_counters", full_row_save)]
 #[sqlx(default)]
 struct Counter {
     id: i32,
@@ -67,7 +67,7 @@ impl Default for Counter {
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "from_row_owners", custom_from_row)]
+#[orm(table = "from_row_owners", custom_from_row, full_row_save)]
 struct ShoutingOwner {
     id: i32,
     name: String,

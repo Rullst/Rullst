@@ -17,22 +17,24 @@ import tempfile
 
 
 DRIVERS = {"strict-postgres": "postgres", "strict-mysql": "mysql", "strict-sqlite": "sqlite"}
-SOURCE = """use rullst_orm::Orm;
+SOURCE = """use rullst_orm::{Orm, RowSnapshot};
 use rullst_orm::sqlx::types::JsonValue;
 
 #[derive(Debug, Clone, Copy, rullst_orm::Enum)]
 #[rullst_enum(type_name = "consumer_state", rename_all = "snake_case")]
 pub enum State { Active, Disabled }
 
+// Full-row saves.
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "consumer_records")]
+#[orm(table = "consumer_records", full_row_save)]
 pub struct Record {
     pub id: i32,
     pub name: String,
 }
 
 // Auditable, tenant-scoped and soft-deleting, so every generated query span
-// (restore and force_delete included) is compiled too.
+// (restore and force_delete included) is compiled too, with the changed-column
+// save of a `RowSnapshot` field.
 #[derive(Debug, Clone, Orm)]
 #[orm(table = "consumer_notes", tenant_column = "tenant_id", auditable)]
 pub struct Note {
@@ -40,10 +42,12 @@ pub struct Note {
     pub tenant_id: String,
     pub body: String,
     pub deleted_at: Option<String>,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 // Every `#[sqlx(...)]` option the derived `FromRow` reads, decoded from the
-// selected driver's concrete row type.
+// selected driver's concrete row type; JSON columns tracked by document.
 #[derive(Debug, Clone, Default, Orm)]
 #[orm(table = "consumer_profiles")]
 #[sqlx(default)]
@@ -57,6 +61,8 @@ pub struct Profile {
     pub views: i64,
     #[sqlx(skip)]
     pub cache: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 // Compile real generated entrypoints against the selected concrete executor.

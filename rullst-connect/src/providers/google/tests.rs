@@ -11,11 +11,12 @@ use std::sync::Arc;
 
 #[test]
 fn test_google_redirect_url() {
-    let provider = GoogleProvider::new(
+    let provider = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
-    );
+    )
+    .unwrap();
 
     let url = provider.redirect_url();
     assert!(url.starts_with("https://accounts.google.com/o/oauth2/v2/auth?"));
@@ -72,11 +73,12 @@ impl HttpClient for MockGoogleClient {
 
 #[tokio::test]
 async fn test_google_get_user_success() {
-    let provider = GoogleProvider::new(
+    let provider = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockGoogleClient {
         token_status: 200,
         token_body: json!({
@@ -108,11 +110,12 @@ async fn test_google_get_user_success() {
 
 #[tokio::test]
 async fn test_google_token_error() {
-    let provider = GoogleProvider::new(
+    let provider = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockGoogleClient {
         token_status: 400,
         token_body: json!({"error": "invalid_grant"}),
@@ -136,11 +139,12 @@ async fn test_google_token_error() {
 
 #[tokio::test]
 async fn test_google_missing_id() {
-    let provider = GoogleProvider::new(
+    let provider = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockGoogleClient {
         token_status: 200,
         token_body: json!({"access_token": "mock_access_token"}),
@@ -161,11 +165,12 @@ async fn test_google_missing_id() {
 
 #[tokio::test]
 async fn test_google_id_token_invalid_jwt() {
-    let provider = GoogleProvider::new(
+    let provider = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockGoogleClient {
         token_status: 200,
         token_body: json!({
@@ -194,11 +199,12 @@ async fn test_google_id_token_missing_kid() {
     // Create a JWT without kid
     let id_token = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.ZHVtbXk".to_string();
 
-    let provider = GoogleProvider::new(
+    let provider = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockGoogleClient {
         token_status: 200,
         token_body: json!({
@@ -267,11 +273,12 @@ async fn test_google_id_token_kid_not_found() {
         }
     }
 
-    let provider = GoogleProvider::new(
+    let provider = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(KidNotFoundClient(id_token)));
 
     let err = provider
@@ -391,11 +398,12 @@ z1F4IZ42Gry2+4guKvvM+O8=\n\
         }
     }
 
-    let provider = GoogleProvider::new(
+    let provider = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(ValidClient {
         id_token,
         n: n_val.to_string(),
@@ -430,11 +438,12 @@ z1F4IZ42Gry2+4guKvvM+O8=\n\
 
 #[tokio::test]
 async fn test_google_refresh_token_success() {
-    let provider = GoogleProvider::new(
+    let provider = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockGoogleClient {
         token_status: 200,
         token_body: json!({
@@ -484,19 +493,21 @@ async fn test_google_revoke_token() {
         }
     }
 
-    let provider = GoogleProvider::new(
+    let provider = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockRevokeClient(200)));
     provider.revoke_token("some_token").await.unwrap();
 
-    let provider_err = GoogleProvider::new(
+    let provider_err = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockRevokeClient(500)));
     assert!(provider_err.revoke_token("some_token").await.is_err());
 }
@@ -504,11 +515,12 @@ async fn test_google_revoke_token() {
 #[test]
 #[cfg(feature = "retry")]
 fn test_google_with_retry() {
-    let provider = GoogleProvider::new(
+    let provider = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
-    );
+    )
+    .unwrap();
     let original_client = provider.http_client.clone();
     let provider = provider.with_retry(3);
     assert_eq!(provider.client_id, "client_id");
@@ -530,7 +542,7 @@ fn test_google_with_retry() {
 #[tokio::test]
 async fn test_google_id_token_invalid_algorithm() {
     let secret = b"super_secret_key_123456789012345";
-    let priv_key = jsonwebtoken::EncodingKey::from_secret(secret);
+    let priv_key = jsonwebtoken::EncodingKey::from_secret(secret).unwrap();
     let mut header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::HS256);
     header.kid = Some("valid_kid".to_string());
 
@@ -586,11 +598,12 @@ async fn test_google_id_token_invalid_algorithm() {
         }
     }
 
-    let provider = GoogleProvider::new(
+    let provider = GoogleProvider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(std::sync::Arc::new(MockClient { id_token }));
 
     let err = provider

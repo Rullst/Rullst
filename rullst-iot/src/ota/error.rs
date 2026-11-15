@@ -25,9 +25,6 @@ pub enum OtaError {
     },
     RollbackCounterStore(RollbackCounterError),
     NoVerifiedUpdate,
-    LegacyApiUnsupported {
-        replacement: &'static str,
-    },
     /// The allocator could not provide the manifest's signing buffer. Added
     /// in 13.0.0-alpha.5; earlier releases aborted instead.
     AllocationFailed,
@@ -69,10 +66,6 @@ impl fmt::Display for OtaError {
             ),
             Self::RollbackCounterStore(error) => write!(formatter, "{error}"),
             Self::NoVerifiedUpdate => formatter.write_str("no verified firmware update is pending"),
-            Self::LegacyApiUnsupported { replacement } => write!(
-                formatter,
-                "legacy OTA API is fail-closed; use {replacement}"
-            ),
             Self::AllocationFailed => {
                 formatter.write_str("OTA manifest signing buffer could not be allocated")
             }

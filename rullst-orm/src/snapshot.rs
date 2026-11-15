@@ -1,11 +1,13 @@
 //! Dirty tracking for `#[derive(Orm)]` models.
 //!
-//! A model opts in by declaring one `#[sqlx(skip)]` field of type
-//! [`RowSnapshot`]. Records loaded from the database then remember a
-//! fingerprint of every column that `save()` writes, and `save()` updates only
-//! the columns whose value changed since the record was loaded or last saved.
-//! Two requests that edit different fields of the same row therefore both
-//! persist.
+//! Every model chooses what `save()` writes to a stored row (since
+//! 13.0.0-alpha.6; a model without a choice does not compile): one
+//! `#[sqlx(skip)]` field of type [`RowSnapshot`], or `#[orm(full_row_save)]`
+//! for full-row updates that overwrite concurrent changes. With the field,
+//! records loaded from the database remember a fingerprint of every column that
+//! `save()` writes, and `save()` updates only the columns whose value changed
+//! since the record was loaded or last saved. Two requests that edit different
+//! fields of the same row therefore both persist.
 //!
 //! A fingerprint is a 64-bit SipHash, keyed with a random per-process key, of
 //! the value's `serde_json` serialization: plaintext for `#[orm(encrypted)]`
@@ -25,7 +27,8 @@ const UNKNOWN: u64 = 0;
 /// Column fingerprints of a model handle, as loaded from or last written to
 /// the database.
 ///
-/// Declare it on a model to make `save()` write only the columns that changed:
+/// Declare it on a model to make `save()` write only the columns that changed
+/// (the alternative, `#[orm(full_row_save)]`, writes every column):
 ///
 /// ```ignore
 /// #[derive(Debug, Clone, Orm)]

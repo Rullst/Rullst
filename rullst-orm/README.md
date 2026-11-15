@@ -195,7 +195,8 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   verifies the final inventory. It is an application-operated recovery
   primitive, not an online cross-store transaction or managed backup service.
 - **Bounded Turso Primary Profile**: `#[derive(Orm)]` with
-  `#[orm(backend = "turso")]` exposes typed CRUD/query methods through
+  `#[orm(backend = "turso", full_row_save)]` (its `save()` writes every
+  column) exposes typed CRUD/query methods through
   `TursoOrm`, reversible checked migrations, and a persistent offline or remote
   libSQL store. The CLI offers this primary path for the Blank and API
   starters (`cargo rullst new --database turso`); SQLx-specific relations,
@@ -395,7 +396,7 @@ Since 13.0.0-alpha.3 the crate enables no driver by default; without one,
 
 ```rust
 use rullst_orm::schema::Schema;
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 // 1. Just add the Orm macro to your struct!
 #[derive(Debug, Clone, Orm)]
@@ -405,6 +406,8 @@ pub struct User {
     pub email: String,
     #[orm(hidden)] // Excluded from generated to_json(), audit, event and search projections
     pub password: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -427,6 +430,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         name: "Alice".to_string(),
         email: "alice@example.com".to_string(),
         password: "secret_password".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     
     user.save().await?; // Runs INSERT and hydrates the generated ID.
@@ -447,15 +451,29 @@ async fn main() -> Result<(), rullst_orm::Error> {
 
 ### Concurrent updates and counters
 
-By default, `save()` on a loaded model writes every persisted column of that
-handle, so the last writer wins: when two requests load the same row, change
-different fields and save, the second `save()` silently reverts the first
-one's change. An insert also sends every field, so database column defaults
-(such as `DEFAULT CURRENT_TIMESTAMP`) do not apply to model fields, except to
-fields marked `#[orm(db_default)]`.
+Every model chooses what `save()` writes to a row it loaded, and since
+13.0.0-alpha.6 a model that does not choose fails to compile with an error
+that shows both one-line fixes:
 
-**Dirty tracking (v13).** Declare one `#[sqlx(skip)]` field of type
-`RowSnapshot`, and `save()` writes only the columns that this handle changed:
+| Choice | `save()` of a loaded record |
+| --- | --- |
+| `#[sqlx(skip)] pub snapshot: RowSnapshot,` (a field, recommended) | writes only the columns this handle changed, so concurrent edits of other columns persist |
+| `#[orm(full_row_save)]` (on the struct) | writes every persisted column of the handle, so the last writer wins |
+
+A full-row save loses updates: when two requests load the same row and change
+different fields (a student saves a profile edit while an XP award is saved),
+the later `save()` writes back the other field as it was read, and the first
+change silently disappears. Choose `full_row_save` only for a model whose code
+relies on overwriting the whole row. Turso-primary models always write every
+column and declare `#[orm(full_row_save)]`. Until 13.0.0-alpha.5 a model
+without the field got full-row saves without saying so.
+
+An insert sends every field either way, so database column defaults (such as
+`DEFAULT CURRENT_TIMESTAMP`) do not apply to model fields, except to fields
+marked `#[orm(db_default)]`.
+
+**Dirty tracking (v13).** With one `#[sqlx(skip)]` field of type
+`RowSnapshot`, `save()` writes only the columns that this handle changed:
 
 ```rust,no_run
 use rullst_orm::{Orm, RowSnapshot};
@@ -512,12 +530,22 @@ async fn rename(id: i32, name: String) -> Result<(), rullst_orm::Error> {
   snapshots compare equal and hash alike, so a derived `PartialEq` or `Hash`
   looks at the columns only. Since 13.0.0-alpha.3 every SQLx model that the
   CLI writes declares the field: `make:model` (and `make:resource`),
-  `generate:models` (with `#[serde(skip)]`; a table with its own `snapshot`
-  column keeps full-row saves), `auth`, `make:billing`,
+  `generate:models` (with `#[serde(skip)]`; for a table with its own
+  `snapshot` column the field is `row_snapshot`), `auth`, `make:billing`,
   `make:chat-session` and the models of every `cargo rullst new` starter
   (Blank, API and SaaS). Their struct literals set
-  `snapshot: RowSnapshot::default()`. Turso models have no dirty tracking.
-  Projects generated earlier keep their models until you add the field.
+  `snapshot: RowSnapshot::default()`. Turso models have no dirty tracking:
+  the CLI writes them with `#[orm(full_row_save)]`.
+  A model of a project generated earlier that lacks the field no longer
+  compiles: add the field, or `#[orm(full_row_save)]` to keep its behaviour;
+  `cargo rullst upgrade` lists each such model (`V13-ORM-SAVE-MODE`).
+- The `ORM differential databases` CI job runs this partial-save scenario (two
+  handles that change different columns, an unchanged save,
+  `mark_all_dirty()`, `update_partial()`, refreshed `#[orm(db_default)]`
+  timestamps, a row deleted meanwhile) on PostgreSQL, MySQL and MariaDB and
+  compares each transcript with SQLite's; the driver contract and the SQLite
+  tests check which columns each `UPDATE` wrote and that two concurrent saves
+  of different fields both persist.
 
 Dirty tracking merges edits of different columns. Two writers of the same
 column still race, and the last one wins:
@@ -537,7 +565,7 @@ column still race, and the last one wins:
   PostgreSQL and `?` on SQLite and MySQL/MariaDB.
 
 ```rust,no_run
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, Orm)]
 #[orm(table = "students")]
@@ -545,6 +573,8 @@ pub struct Student {
     pub id: i32,
     pub bio: String,
     pub xp: i32,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 /// Changes only `bio`: an XP award committed meanwhile is kept.
@@ -579,18 +609,20 @@ names only the constraint, because the database's own text can quote the
 rejected value (MySQL reports `Duplicate entry 'alice@example.com'`).
 
 ```rust,no_run
-use rullst_orm::{Error, Orm};
+use rullst_orm::{Error, Orm, RowSnapshot};
 
 #[derive(Debug, Clone, Orm)]
 #[orm(table = "members")]
 pub struct Member {
     pub id: i32,
     pub email: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 /// `Ok(None)` when the email is already registered.
 async fn register(email: String) -> Result<Option<Member>, Error> {
-    let mut member = Member { id: 0, email };
+    let mut member = Member { id: 0, email, snapshot: RowSnapshot::default() };
     match member.save().await {
         Ok(()) => Ok(Some(member)),
         Err(Error::UniqueViolation { .. }) => Ok(None),
@@ -618,7 +650,7 @@ missing values with `where_null`. `RullstValue` is `#[non_exhaustive]`; give a
 `match` on it a wildcard arm.
 
 ```rust,no_run
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, Orm)]
 #[orm(table = "progress")]
@@ -626,6 +658,8 @@ pub struct Progress {
     pub id: i32,
     pub lesson_id: Option<i64>,
     pub seconds: i64,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 async fn for_lesson(lesson_id: Option<i64>) -> Result<Vec<Progress>, rullst_orm::Error> {

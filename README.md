@@ -245,9 +245,10 @@ Real applications running today, every one of them built with Rullst. Click to e
   </tr>
 </table>
 
-> The demos scale to zero when idle, so the first visit can take a few seconds
-> to wake up — that is hosting startup, not Rullst's request time. The **SaaS
-> checkout is live and charges real money**; the Showcase payment demos are not.
+> Every demo runs in an Azure container that sleeps when idle, so the first load
+> can take about 20–30 seconds — that is hosting startup, not Rullst's request
+> time. The **SaaS checkout is live and charges real money**; the Showcase
+> payment demos are not.
 
 ▶️ **[Watch: how to build a SaaS with Rullst](https://www.youtube.com/watch?v=nDXLeNM327g)**
 
@@ -372,7 +373,7 @@ These results are evidence for their stated scope, not a security certification
 of every application built with Rullst.
 
 <details>
-<summary><strong>🛡️ Open the verification dashboard (34 workflows)</strong></summary>
+<summary><strong>🛡️ Open the verification dashboard (35 workflows)</strong></summary>
 
 <p align="center">
   Badges are pinned to the <code>main</code> branch; they report the latest matching run, not a certification or deployment guarantee.
@@ -381,7 +382,7 @@ of every application built with Rullst.
 | Continuous or change-aware gate | Development `main` status | Actual scope |
 | :--- | :---: | :--- |
 | **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain) | Format, all-target/all-feature Clippy, a Linux gate on pull requests (the complete matrix on pull requests labeled `full-matrix`), every Linux shard after merge and the complete Linux/macOS/Windows matrix nightly; Cargo-aware doctests sourced from every tutorial and the main guides, strict DB boundaries, feature boundaries, generated-code checks, the generated deployment started with Docker and rootless Podman, the first-hour documentation run as written, the generated starters driven in Chromium, Firefox and WebKit (keyboard, CSP and axe-core checks), and MSRV 1.96.0. |
-| **Declared MSRV** | [![MSRV 1.96.0](https://img.shields.io/badge/MSRV-1.96.0-f74c00?style=flat-square&logo=rust)](https://rullst.github.io/Rullst/book/compatibility-policy.html) | Every publishable manifest declares Rust 1.96.0 and CI runs an explicit workspace all-feature check with that toolchain. |
+| **Declared MSRV** | [![MSRV 1.96.0](https://img.shields.io/badge/MSRV-1.96.0-f74c00?style=flat-square&logo=rust)](https://rullst.github.io/Rullst/book/compatibility-policy.html) | Every publishable manifest declares Rust 1.96.0, the oldest supported compiler; the latest stable Rust is recommended. A required CI job compiles the workspace with every feature on 1.96.0, and a nightly workflow runs the central crates' tests on it. |
 | **GitHub Actions lint** | [![Workflow Lint](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/workflow-lint.yml?branch=main&style=flat-square&label=Workflow%20Lint)](https://github.com/Rullst/Rullst/actions/workflows/workflow-lint.yml?query=branch%3Amain) | Validates workflow syntax, expressions, embedded shell, and full-SHA third-party Action pins. |
 | **Documentation** | [![Documentation](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/documentation.yml?branch=main&style=flat-square&label=Docs)](https://github.com/Rullst/Rullst/actions/workflows/documentation.yml?query=branch%3Amain) | Builds the mdBook and rejects broken local links and anchors; scheduled/manual runs also preserve an informational external-link report. |
 | **End-to-end smoke** | [![E2E](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/e2e-smoke.yml?branch=main&style=flat-square&label=E2E)](https://github.com/Rullst/Rullst/actions/workflows/e2e-smoke.yml?query=branch%3Amain) | Boots the release blog example and verifies HTTP, security headers, form flow, and SQLite persistence. |
@@ -412,24 +413,25 @@ green main gates:
 | [Benchmark regression](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Weekly, `main` push, or manual; eight published groups backed by nine Criterion benchmark binaries emit non-blocking alerts at a 20% regression. |
 | [Property testing](https://github.com/Rullst/Rullst/actions/workflows/proptest.yml) | Weekly/manual release-mode invariant testing with 10,000 configured cases. |
 | [TSan and ASan](https://github.com/Rullst/Rullst/actions/workflows/sanitizers.yml) | Daily/manual package matrices on a pinned verifier-only nightly. |
+| [MSRV tests](https://github.com/Rullst/Rullst/actions/workflows/msrv-tests.yml) | Daily/manual informational run of the Core, ORM (SQLite), Security, Auth, macro and facade tests on Rust 1.96.0. |
 | [Fuzzing](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) | Forty-two manual libFuzzer jobs, one per declared target, required as release evidence. |
 | [OWASP ZAP](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Manual baseline over four release surfaces: the generated REST API, the generated SaaS starter (public pages, then signed-in pages with a disposable account) and the LMS example are blocking with no ignored alerts; the deliberately CDN-backed blog showcase remains an explicitly informational boundary. |
 | [Kani](https://github.com/Rullst/Rullst/actions/workflows/kani.yml), [Miri](https://github.com/Rullst/Rullst/actions/workflows/miri.yml) | Weekly on `main` and dispatched for release admission: the selected Kani harnesses and Miri scopes are strict. Only the dispatched run on the exact candidate commit counts as release evidence. The Miri run also has informational `cargo careful test` jobs. |
 | [Mutation testing](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml), [cargo-udeps](https://github.com/Rullst/Rullst/actions/workflows/udeps.yml) | Manual mutation campaigns and weekly unused-dependency scans; their findings remain explicitly informational. |
 | [v13 Verus pilot](https://github.com/Rullst/Rullst/blob/main/.github/workflows/verus.yml) | Optional production-linked age-policy proof with pinned tooling and three negative controls. Hosted registration/acceptance remains pending; no framework-wide correctness claim. |
-| [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys development documentation from `main`; it is not a code-quality gate. |
+| [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys development documentation and the benchmark dashboards from `main` under `/Rullst/`; the [rullst.win](https://rullst.win/) landing page is built from the same `docs/` sources by `Rullst/Rullst.github.io`. It is not a code-quality gate. |
 | [Release and provenance](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Exact version tags only: exact-SHA admission of the full CI matrix, package-all, evidence bundle, checksums, GitHub build-provenance attestation, changelog-derived release notes, and ordered crates.io publication. This does **not** claim a project-wide SLSA level or independent certification. |
 
 Scheduled events use the repository's default branch, so scheduled and
 continuous development evidence refer to `main`; the frozen v12 line has its own branch.
 The branch-protection profiles and the exact scope of all
-34 workflow definitions in this source branch are documented in
+35 workflow definitions in this source branch are documented in
 [WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).
 
 </details>
 
 - 📖 **[CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md)**:
-  the exact scope of all 34 workflow definitions and the branch-protection profiles.
+  the exact scope of all 35 workflow definitions and the branch-protection profiles.
 - 🧰 **[How the repository is maintained](https://github.com/Rullst/Rullst/blob/main/MAINTAINING.md)**:
   workstation rules, CI gates, fuzzing evidence and release admission.
 - 📋 [Capability status](https://rullst.github.io/Rullst/book/capability-status.html)
@@ -653,7 +655,7 @@ matter as much as new features.
 · [Issues](https://github.com/Rullst/Rullst/issues)
 · [Good first issues](https://github.com/Rullst/Rullst/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22)
 · [Discord](https://discord.com/invite/2ntKFtsSjw)
-· [Community links](https://rullst.github.io/Rullst/#community)
+· [Community links](https://rullst.win/#community)
 · [Our story and philosophy](https://rullst.github.io/Rullst/book/philosophy.html)
 
 <p align="center">
@@ -662,7 +664,7 @@ matter as much as new features.
 
 [MIT license](https://github.com/Rullst/Rullst/blob/main/LICENSE)
 · [Report a vulnerability privately](https://github.com/Rullst/Rullst/security/policy)
-· [Website privacy notice](https://rullst.github.io/Rullst/#privacy)
+· [Website privacy notice](https://rullst.win/privacy.html)
 
 <div align="center">
   <p><i>All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).</i></p>

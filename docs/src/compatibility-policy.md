@@ -93,15 +93,29 @@ changelog and migration guide. Security handling is the same for every tier.
 ## Minimum Supported Rust Version
 
 The v12 release line and v13 both declare **Rust 1.96.0** in every publishable
-manifest.
+manifest. The MSRV is the oldest compiler Rullst supports; the recommended
+toolchain is the latest stable Rust (`rustup update stable`). The repository
+itself is built with the compiler pinned in `rust-toolchain.toml`.
 
 - Patch releases do not raise the MSRV.
-- A minor release may raise it only with an explicit changelog entry, updated
-  manifests and documentation, and a green MSRV CI job for the release commit.
+- In 13.x, a minor release raises the MSRV only when a dependency, a security
+  fix or a concrete need (a language or standard library feature the release
+  uses) requires it, and only to a Rust release published at least six months
+  before that minor release. Rust 1.100.0 was published on 12 November 2026,
+  for example, so no 13.x minor release published before 12 May 2027 can
+  require it.
+- A minor release that raises it does so with an explicit changelog entry,
+  updated manifests and documentation, and a green MSRV CI job for the release
+  commit.
 - A major release may select a new baseline, which must be announced in its
   migration guide.
 
-The MSRV promise covers the supported feature boundaries exercised by CI. A
+The MSRV promise covers the supported feature boundaries exercised by CI: the
+required `Check MSRV (Rust 1.96.0)` job compiles the whole workspace with every
+feature on Rust 1.96.0, and the informational
+[MSRV Tests](https://github.com/Rullst/Rullst/blob/main/.github/workflows/msrv-tests.yml)
+workflow runs the unit and integration tests of Core, the ORM on SQLite,
+Security, Auth, the macro crates and the `rullst` facade on it every night. A
 nightly-only analysis tool or an experimental target does not change the crate
 MSRV and must be labelled separately.
 
@@ -114,11 +128,10 @@ release. Documentation must name the replacement when one exists.
 13.0 is the major release that removes the 12.x deprecations. Every API
 still marked `#[deprecated]`, whether it was deprecated in 12.x or during the
 13.0 prereleases (`rullst_orm::schema_diff`, deprecated in 13.0.0-alpha.5),
-is planned for removal in 13.0.0-alpha.6, the 13.0 feature and public API
-freeze, so 13.x does not carry it. Each removal gets a `cargo rullst upgrade`
-rule and a row in the [migration guide](migration-v13.md) that names the
-replacement. The period above applies to the deprecations made from 13.0.0
-on.
+was removed in 13.0.0-alpha.6, the 13.0 feature and public API freeze, so
+13.x does not carry it. Each removal has a `cargo rullst upgrade` rule and a
+row in the [migration guide](migration-v13.md) that names the replacement.
+The period above applies to the deprecations made from 13.0.0 on.
 
 An API that is unsound, enables a security bypass, or cannot be made safe may be
 disabled or removed sooner. Such an exception requires a security advisory or
@@ -137,8 +150,8 @@ public signatures, trait implementations or re-exports, such as
 `rullst::web::axum` and `rullst::db::sqlx`. For the whole 13.x line, each one
 stays on the version line below. Before the 13.0 freeze, planned for
 13.0.0-alpha.6, dependencies move to their current major so that 13.x starts
-from current lines; the planned moves are ed25519-dalek 3, jsonwebtoken 12
-and jsonschema 0.61, which the public API does not expose.
+from current lines: 13.0.0-alpha.6 moves ed25519-dalek to 3, jsonwebtoken to
+12 and jsonschema to 0.61, which the public API does not expose.
 
 | Crate | 13.x line | Where the API exposes it |
 | :--- | :--- | :--- |

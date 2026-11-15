@@ -471,9 +471,51 @@ rules! {
     AI_PROVIDER_PRESETS: "V13-AI-PROVIDER-PRESETS", MustChange, "13.0.0-alpha.5", "DeepSeek and Ollama as OpenAI-compatible presets",
         "`DeepSeekProvider` and `OllamaProvider` (`rullst_ai::ai::providers::deepseek` and `::ollama`) were removed in 13.0.0-alpha.5; this code no longer compiles",
         "Use the presets of the OpenAI-compatible adapter: `OpenAiCompatibleProvider::deepseek(api_key)?` (`.try_with_model(..)?` instead of `.with_model(..)`) and `OpenAiCompatibleProvider::ollama(host, model)?` (`.try_with_embedding_model(..)?` instead of `.with_embedding_model(..)`), from `rullst::ai::providers::openai_compatible`. Both return a `Result`; Ollama is now reached through its `/v1` API.";
+    HEALTH_FRAMEWORK_VERSION: "V13-HEALTH-FRAMEWORK-VERSION", Review, "13.0.0-alpha.6", "Health probes without the framework version",
+        "`/health` and `/ready` no longer report the framework version as `version` since 13.0.0-alpha.6; this file reads `version` next to a probe path",
+        "Read `app_version` instead, after mounting `health_router_with_version(env!(\"CARGO_PKG_VERSION\"))` (or `health_router_with_lifecycle_and_version`), or read `framework.version` from the authenticated production monitor (`Server::with_monitor`, `GET /_rullst/monitor/v1`). A probe the application writes itself is unaffected.";
+    HEALTH_PROBE_VERSION_FIELD: "V13-HEALTH-PROBE-VERSION-FIELD", MustChange, "13.0.0-alpha.6", "Health probes without the framework version",
+        "`HealthProbeResponse` and `ReadinessProbeResponse` have no `version` field since 13.0.0-alpha.6, and `HealthProbeResponse` is `#[non_exhaustive]`; this code no longer compiles",
+        "Remove the `version` reads and build a probe payload of your own type: the probes no longer carry the framework version. `health_router_with_version` adds the application's version as `app_version`, and the authenticated production monitor reports the framework version as `framework.version`.";
+    CSRF_STATIC_PREFIXES: "V13-CSRF-STATIC-PREFIXES", Review, "13.0.0-alpha.6", "CSRF static files by path",
+        "since 13.0.0-alpha.6 the CSRF middleware treats only `[security] csrf_static_prefixes` (default `/static/`, `/.well-known/`) and `csrf_static_paths` as static files, not file extensions; this router serves files at another path, whose first visit now sets the `rullst_csrf` cookie",
+        "List the prefix with the defaults you keep, `csrf_static_prefixes = [\"/static/\", \"/.well-known/\", \"/assets/\"]` in `Rullst.toml` (or one file in `csrf_static_paths`); in code, `SecurityConfig::with_csrf_static_prefix(\"/assets/\")` adds one. Nothing breaks if you leave it: those files then set the cookie for a visitor who has none, unless their response is publicly cacheable.";
     HTMX_2_CLIENT: "V13-HTMX-2", Review, "13.0.0-alpha.5", "htmx 2 client",
         "new applications load htmx 2.0.11 since 13.0.0-alpha.5; this one vendors htmx 1.9.12, which `render_page*` keep loading while it is the only htmx file in `static/`",
         "Nothing breaks if you wait. To move to htmx 2 (the SSE extension `hx-ext=\"sse\"` needs it), copy `htmx-2.0.11.min.js`, `htmx-ext-sse-2.2.4.js`, `HTMX-LICENSE` and `HTMX-EXT-SSE-LICENSE` from a new project's `static/`, point your own layouts at them and delete `static/htmx-1.9.12.min.js`; write `hx-on=\"click: …\"` as `hx-on:click`, and send the CSRF token of `hx-delete` in the `X-CSRF-Token` header (`hx-headers`), because htmx 2 puts DELETE parameters in the query string.";
+    MAIL_DEPRECATED_REMOVED: "V13-MAIL-DEPRECATED-REMOVED", MustChange, "13.0.0-alpha.6", "Mail deprecated constructors and tracking helpers removed",
+        "`ResendDriver::new`, `AwsSesDriver::new`, `Message::with_open_tracking`/`with_click_tracking` and the infallible `TrackingEngine` helpers, deprecated in 12.0.0, were removed in 13.0.0-alpha.6; this code no longer compiles",
+        "Use the fallible forms, which report invalid configuration instead of failing later or returning an empty token or the unchanged HTML: `ResendDriver::try_new(api_key)?`, `AwsSesDriver::try_new(region, token)?`, `message.try_with_open_tracking(url, secret, campaign)?`, `.try_with_click_tracking(url, secret)?`, and `TrackingEngine::try_generate_open_token`, `try_generate_click_token`, `try_inject_open_pixel` and `try_rewrite_links`.";
+    IOT_OTA_LEGACY_REMOVED: "V13-IOT-OTA-LEGACY-REMOVED", Review, "13.0.0-alpha.6", "IoT legacy OTA methods removed",
+        "`OtaManager::new`, `verify_signature` and `commit_update`, which always failed, and `OtaError::LegacyApiUnsupported` were removed in 13.0.0-alpha.6",
+        "Build the manager with `OtaManager::new_with_trusted_key(target, version, rollback_counter, public_key)?` (or `new_with_counter_store`), verify an image with `begin_update` or `verify_update(&manifest, firmware, signature)`, commit it with `commit_verified_update()`, and remove arms that match `LegacyApiUnsupported`. A `verify_signature` or `commit_update` of another type is unaffected.";
+    NEXUS_INFALLIBLE_BUILD_REMOVED: "V13-NEXUS-INFALLIBLE-BUILD-REMOVED", Review, "13.0.0-alpha.6", "Nexus `build` and `into_router` removed",
+        "`Nexus::build` and `Nexus::into_router`, deprecated in 12.0.0, were removed in 13.0.0-alpha.6; on a Nexus builder this call no longer compiles",
+        "End the Nexus builder with `.try_build()?` (or match its `NexusBuildError`), so a missing or invalid access policy stops start-up instead of mounting a router that answers 503. A `.build()` of another builder in the file is unaffected.";
+    AI_DEPRECATED_REMOVED: "V13-AI-DEPRECATED-REMOVED", Review, "13.0.0-alpha.6", "AI `structured_prompt` and `is_safe` removed",
+        "`AiClient::structured_prompt` and `GuardrailReport::is_safe`, deprecated in 12.0.0, were removed in 13.0.0-alpha.6",
+        "Replace `structured_prompt::<T>(text)`, which always returned `AiError::UnsupportedCapability`, with `json_prompt::<T>(text)` for parseable JSON or `structured_prompt_with_schema::<T>(text, &schema)` for output the provider checks against a JSON Schema, and `report.is_safe()` with `report.passed_heuristics()`.";
+    SECURITY_DEPRECATED_REMOVED: "V13-SECURITY-DEPRECATED-REMOVED", MustChange, "13.0.0-alpha.6", "Security `with_distributed` and `AuditChain::new` removed",
+        "`RateLimiter::with_distributed` and `AuditChain::new`, deprecated in 12.0.0, were removed in 13.0.0-alpha.6; this code no longer compiles",
+        "Replace `AuditChain::new(key, logger)` with `AuditChain::try_new(key, logger)?`, which rejects a weak key at start-up. Remove `.with_distributed()`: it selected a backend that does not exist, so every request was refused; keep the process-local `RateLimiter`, or share a budget between processes with `RedisRateLimiter` (feature `redis-rate-limit`).";
+    QUEUE_PURGE_COMPLETED_REMOVED: "V13-QUEUE-PURGE-COMPLETED-REMOVED", Review, "13.0.0-alpha.6", "Queue `purge_completed_jobs` removed",
+        "`Queue::purge_completed_jobs`, deprecated in 12.0.0, was removed in 13.0.0-alpha.6; on a `Queue` this call no longer compiles",
+        "Call `queue.purge_failed_jobs()`, which does what the alias did (it removed failed jobs), or `purge_completed_history()` to remove completed jobs where the driver keeps them. `QueueDriver::purge_completed_jobs`, the hook a custom driver implements, is unchanged.";
+    CONNECT_INFALLIBLE_NEW_REMOVED: "V13-CONNECT-INFALLIBLE-NEW-REMOVED", MustChange, "13.0.0-alpha.6", "Connect infallible `new` constructors removed",
+        "the infallible `new` constructors of the Connect providers and `CredentialMode::Invalid`, deprecated in 12.0.0, were removed in 13.0.0-alpha.6; this code no longer compiles",
+        "Call `try_new` with the same arguments (`GithubProvider::try_new(client_id, secret, redirect_url)?`) and handle its `ConnectError::InvalidConfiguration`, which names the invalid field, instead of mounting a disabled provider whose redirect is `about:blank`. Remove checks of `CredentialMode::Invalid` and `is_invalid()`: a provider that builds is live or mock.";
+    ROUTE_MARKER_REMOVED: "V13-ROUTE-MARKER-REMOVED", MustChange, "13.0.0-alpha.6", "`#[route]` marker removed",
+        "the `#[route]` marker attribute (`rullst::route`), deprecated in 12.0.0, was removed in 13.0.0-alpha.6; this code no longer compiles",
+        "Delete the attribute and its import: it never registered anything. Register the handler with `rullst::routes!` (`get(\"/path\" => handler)`).";
+    ORM_SCHEMA_DIFF_REMOVED: "V13-ORM-SCHEMA-DIFF-REMOVED", MustChange, "13.0.0-alpha.6", "ORM `schema_diff` removed",
+        "`rullst_orm::schema_diff` (`extract_tables_from_ast`, `ParsedTable`, `ParsedField`), deprecated in 13.0.0-alpha.5, was removed in 13.0.0-alpha.6; this code no longer compiles",
+        "It has no library replacement: write a migration from the models with `cargo rullst make:migration:auto`, or read their tables and columns with `cargo rullst inspect schema --json`.";
+    ORM_SAVE_MODE: "V13-ORM-SAVE-MODE", MustChange, "13.0.0-alpha.6", "ORM explicit save mode",
+        "since 13.0.0-alpha.6 a model declares exactly one save mode, a `#[sqlx(skip)]` `RowSnapshot` field or `#[orm(full_row_save)]` (a Turso-primary model only the attribute); this one does not, so it no longer compiles",
+        "Add `#[sqlx(skip)] pub snapshot: RowSnapshot,` (`rullst::orm::RowSnapshot`) so `save()` writes only the columns the record changed and concurrent edits of other columns persist; set `snapshot: RowSnapshot::default()` in the model's struct literals and add `#[serde(skip)]` when it derives Serde. Or add `full_row_save` to its `#[orm(...)]` to keep writing every column, which overwrites a change that another request made to another column since the record was read. Keep one of the two; a Turso-primary model takes `full_row_save` and no `RowSnapshot` field.";
+    PASSKEYS_FEATURE: "V13-AUTH-PASSKEYS-FEATURE", MustChange, "13.0.0-alpha.6", "Passkeys feature",
+        "this code uses Rullst's passkeys (`auth::passkey`), which since 13.0.0-alpha.6 compile only with `rullst-auth`'s `passkeys` feature, and no manifest here enables it",
+        "Enable `auth-passkeys` on `rullst` (`auth-sqlite` and `auth-passkey-postgres` include it), or `passkeys` on a direct `rullst-auth` dependency (`sqlite` and `passkey-postgres` include it).";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer
@@ -486,4 +528,8 @@ pub(crate) const REMOVED_API_RULES: &[&Rule] = &[
     &STORE_COLLECTIONS,
     &SECURITY_GLOBALS,
     &CONNECT_JWKS,
+    &IOT_OTA_LEGACY_REMOVED,
+    &NEXUS_INFALLIBLE_BUILD_REMOVED,
+    &AI_DEPRECATED_REMOVED,
+    &QUEUE_PURGE_COMPLETED_REMOVED,
 ];

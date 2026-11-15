@@ -38,7 +38,7 @@ queue-redis = ["dep:redis"]
 cache-redis = ["dep:redis"]
 scheduler-tz = ["dep:jiff"]
 storage-s3 = ["dep:aws-credential-types", "dep:aws-sigv4", "dep:reqwest", "tls"]
-storage-multipart = ["storage-s3", "dep:ring", "dep:roxmltree", "dep:zeroize"]
+storage-multipart = ["storage-s3", "dep:aes-gcm", "dep:roxmltree", "dep:zeroize"]
 telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "dep:opentelemetry-http", "dep:opentelemetry-proto", "dep:prost", "dep:reqwest", "reqwest/blocking", "tls"]
 strict-postgres = ["orm", "tls", "rullst-orm/strict-postgres"]
 strict-mysql = ["orm", "tls", "rullst-orm/strict-mysql"]
@@ -86,16 +86,15 @@ serde_urlencoded = "0.7"
 base64 = { workspace = true }
 uuid = { workspace = true, features = ["v4", "rng-getrandom"] }
 dashmap = { workspace = true }
-cron = "0.17.0"
 # IANA time zones for `Scheduler::task_in_tz`: the system zoneinfo database,
 # with the bundled copy as a fallback for images without one.
 jiff = { version = "0.2.35", optional = true, default-features = false, features = ["std", "tzdb-zoneinfo", "tzdb-bundle-always"] }
 chrono = { workspace = true, features = ["clock"] }
 validator = { workspace = true, features = ["derive"] }
 libloading = { workspace = true }
-# AES-256-GCM and the nonce source of `storage-multipart` recovery records;
-# SHA-256 uses `sha2`.
-ring = { workspace = true, features = ["std"], optional = true }
+# AES-256-GCM `storage-multipart` recovery records; `zeroize` clears the key
+# schedule on drop, and the default `getrandom` draws the nonces.
+aes-gcm = { version = "0.11.0", features = ["zeroize"], optional = true }
 sha2 = { workspace = true }
 tracing = { workspace = true }
 tracing-core = { workspace = true }
@@ -111,9 +110,13 @@ web-sys = { version = "0.3.100", features = ["console"] }
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_ProcessStatus", "Win32_System_Threading"] }
 
 [package.metadata.cargo-machete]
-ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "base64", "ring", "rullst-auth", "windows-sys"]
+ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "base64", "rullst-auth", "windows-sys"]
 
 [dev-dependencies]
+# Differential tests of the scheduler's cron evaluator against the `cron`
+# crate, which evaluated the fields until 13.0.0-alpha.5.
+cron = "0.17.0"
+proptest = "1.11.0"
 hmac = { workspace = true }
 criterion = { workspace = true, features = ["async_tokio"] }
 futures-util = { workspace = true, features = ["sink"] }

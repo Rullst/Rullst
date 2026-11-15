@@ -45,7 +45,6 @@ rullst-privacy = { version = "=13.0.0-alpha.5", path = "rullst-privacy", default
 rullst-ai = { version = "=13.0.0-alpha.5", path = "rullst-ai" }
 rullst-connect = { version = "=13.0.0-alpha.5", path = "rullst-connect" }
 rullst-iot = { version = "=13.0.0-alpha.5", path = "rullst-iot" }
-cargo-rullst = { version = "=13.0.0-alpha.5", path = "cargo-rullst" }
 
 # Shared external dependencies
 tokio = { version = "1.52.3", default-features = false }
@@ -54,7 +53,11 @@ http = "1.5.0"
 http-body = "1.1.0"
 serde = { version = "1.0.228", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.150", default-features = false }
-jsonschema = { version = "=0.60.2", default-features = false }
+# Exact pin: `rullst-security`'s JsonSchemaPolicy decides which request bodies
+# a route accepts, and jsonschema 0.x patch releases change that decision
+# (regex, format and `$ref` fixes). Each Rullst release ships the version its
+# tests ran against; Dependabot proposes every new release.
+jsonschema = { version = "=0.61.2", default-features = false }
 sqlx = { version = "0.9.0", default-features = false }
 tower = { version = "0.5.3", default-features = false }
 tower-http = { version = "0.7.1", default-features = false }
@@ -89,7 +92,7 @@ notify = "8.2.0"
 toml = "1.1.6"
 dotenvy = "0.15"
 redis = { version = "1.7.0", default-features = false }
-jsonwebtoken = { version = "11", default-features = false, features = ["aws_lc_rs", "use_pem"] }
+jsonwebtoken = { version = "12.0.0", default-features = false, features = ["aws_lc_rs", "use_pem"] }
 lettre = { version = "0.11.22", default-features = false }
 opentelemetry = { version = "0.33.0", default-features = false }
 opentelemetry-otlp = { version = "0.33.0", default-features = false }

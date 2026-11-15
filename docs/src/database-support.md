@@ -44,7 +44,10 @@ Notes:
    `TursoOrm::repository::<Model>()?.query()` (`where_eq`, `order_by`, `limit`,
    `offset`, `get`, `first`, `count`). It has no SQLx query builder, and the
    derive refuses relations, soft deletes, hooks, scopes, tenant columns,
-   policies, auditing, Scout search and embeddings at compile time.
+   policies, auditing, Scout search and embeddings at compile time. Its
+   `save()` writes every column, so the model declares
+   `#[orm(full_row_save)]` (since 13.0.0-alpha.6) and has no `RowSnapshot`
+   field.
 3. A Turso migration is a `TursoMigration` holding SQL statements, checksummed
    and reversible with `with_down`; the `Schema` and `Blueprint` builders never
    apply to Turso. `cargo rullst make:migration` writes one, and

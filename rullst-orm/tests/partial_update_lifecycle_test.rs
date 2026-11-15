@@ -6,7 +6,7 @@ mod partial_update_contract;
 use rullst_orm::{Error, Orm, Policy};
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "partial_lessons", policy = "LessonPolicy")]
+#[orm(table = "partial_lessons", policy = "LessonPolicy", full_row_save)]
 struct Lesson {
     id: i32,
     title: String,

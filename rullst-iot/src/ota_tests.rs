@@ -218,23 +218,7 @@ fn manifests_keys_signatures_hashes_targets_and_counters_fail_closed() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn legacy_apis_and_every_typed_error_remain_explicit() {
-    assert!(matches!(
-        OtaManager::new("1.0.0"),
-        Err(OtaError::LegacyApiUnsupported { .. })
-    ));
-    let mut manager = manager(0);
-    assert!(matches!(
-        manager.verify_signature(b"payload", &[0_u8; 64]),
-        Err(OtaError::LegacyApiUnsupported { .. })
-    ));
-    assert!(matches!(
-        manager.commit_update("2.0.0"),
-        Err(OtaError::LegacyApiUnsupported { .. })
-    ));
-    assert_eq!(manager.status(), OtaStatus::Failed);
-
+fn every_typed_error_remains_explicit() {
     let errors = [
         OtaError::EmptyTarget,
         OtaError::EmptyVersion,
@@ -255,9 +239,6 @@ fn legacy_apis_and_every_typed_error_remain_explicit() {
             proposed: 1,
         },
         OtaError::NoVerifiedUpdate,
-        OtaError::LegacyApiUnsupported {
-            replacement: "replacement",
-        },
         OtaError::AllocationFailed,
         OtaError::MalformedManifest,
     ];

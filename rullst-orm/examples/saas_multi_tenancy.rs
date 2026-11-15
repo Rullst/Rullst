@@ -1,4 +1,4 @@
-use rullst_orm::{Orm, with_tenant};
+use rullst_orm::{Orm, RowSnapshot, with_tenant};
 
 #[derive(Clone, Debug, Default, rullst_orm::Orm)]
 #[orm(table = "products", tenant_column = "tenant_id")]
@@ -6,6 +6,8 @@ pub struct Product {
     pub id: i32,
     pub name: String,
     pub tenant_id: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]

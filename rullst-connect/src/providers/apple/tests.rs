@@ -12,13 +12,14 @@ use std::sync::Arc;
 
 #[test]
 fn test_apple_redirect_url() {
-    let provider = AppleProvider::new(
+    let provider = AppleProvider::try_new(
         "client_id".to_string(),
         "team_id".to_string(),
         "key_id".to_string(),
         "private_key".to_string(),
         "https://redirect.url".to_string(),
-    );
+    )
+    .unwrap();
 
     let url = provider.redirect_url();
     assert!(url.starts_with("https://appleid.apple.com/auth/authorize?"));
@@ -48,7 +49,7 @@ async fn test_apple_empty_credentials_use_offline_mock() {
 
 #[test]
 fn test_apple_generate_client_secret_exp() {
-    let provider = AppleProvider::new(
+    let provider = AppleProvider::try_new(
         "client_id".to_string(),
         "team_id".to_string(),
         "key_id".to_string(),
@@ -59,7 +60,8 @@ fn test_apple_generate_client_secret_exp() {
         -----END PRIVATE KEY-----"
             .to_string(),
         "https://redirect.url".to_string(),
-    );
+    )
+    .unwrap();
 
     let secret = provider.generate_client_secret().unwrap();
     // Decode without signature verification to check claims
@@ -77,13 +79,14 @@ fn test_apple_generate_client_secret_exp() {
 
 #[tokio::test]
 async fn test_apple_get_user_from_token_invalid() {
-    let provider = AppleProvider::new(
+    let provider = AppleProvider::try_new(
         "client_id".to_string(),
         "team_id".to_string(),
         "key_id".to_string(),
         "private_key".to_string(),
         "https://redirect.url".to_string(),
-    );
+    )
+    .unwrap();
 
     let res = provider.get_user_from_token("invalid.token.format").await;
     assert!(res.is_err());
@@ -97,13 +100,14 @@ async fn test_apple_get_user_from_token_invalid() {
 
 #[tokio::test]
 async fn test_apple_generate_client_secret_invalid_key() {
-    let provider = AppleProvider::new(
+    let provider = AppleProvider::try_new(
         "client_id".to_string(),
         "team_id".to_string(),
         "key_id".to_string(),
         "invalid_private_key_pem".to_string(),
         "https://redirect.url".to_string(),
-    );
+    )
+    .unwrap();
 
     let err = provider
         .get_user(crate::provider::ExchangeParams {
@@ -140,13 +144,14 @@ impl HttpClient for MockAppleClient {
 
 #[tokio::test]
 async fn test_apple_token_error() {
-    let provider = AppleProvider::new(
+    let provider = AppleProvider::try_new(
         "client_id".to_string(),
         "team_id".to_string(),
         "key_id".to_string(),
         "private_key".to_string(),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockAppleClient {
         token_status: 400,
         token_body: json!({"error": "invalid_grant"}),
@@ -173,13 +178,14 @@ async fn test_apple_token_error() {
 
 #[tokio::test]
 async fn test_apple_missing_id_token() {
-    let provider = AppleProvider::new(
+    let provider = AppleProvider::try_new(
         "client_id".to_string(),
         "team_id".to_string(),
         "key_id".to_string(),
         "private_key".to_string(),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockAppleClient {
         token_status: 200,
         token_body: json!({
@@ -205,13 +211,14 @@ async fn test_apple_missing_id_token() {
 
 #[tokio::test]
 async fn test_apple_missing_access_token() {
-    let provider = AppleProvider::new(
+    let provider = AppleProvider::try_new(
         "client_id".to_string(),
         "team_id".to_string(),
         "key_id".to_string(),
         "private_key".to_string(),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockAppleClient {
         token_status: 200,
         token_body: json!({
@@ -336,13 +343,14 @@ z1F4IZ42Gry2+4guKvvM+O8=\n\
         }
     }
 
-    let provider = AppleProvider::new(
+    let provider = AppleProvider::try_new(
         "client_id".to_string(),
         "team_id".to_string(),
         "key_id".to_string(),
         "private_key".to_string(),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(std::sync::Arc::new(ValidAppleClient {
         id_token,
         n: n_val.to_string(),
@@ -466,13 +474,14 @@ MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgkdn4ngP0MJj/+G/Z\n\
 k/Tz7c8S43tqF0VK/mNC462881k2cryVtuV5FkH1XoPACJzJUQ5igUZV\n\
 -----END PRIVATE KEY-----";
 
-    let provider = AppleProvider::new(
+    let provider = AppleProvider::try_new(
         "client_id".to_string(),
         "team_id".to_string(),
         "key_id".to_string(),
         ec_pem.to_string(),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(std::sync::Arc::new(MockRefreshClient { id_token }));
 
     let user = provider.refresh_token("old_refresh").await.unwrap();
@@ -513,13 +522,14 @@ MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgkdn4ngP0MJj/+G/Z\n\
 k/Tz7c8S43tqF0VK/mNC462881k2cryVtuV5FkH1XoPACJzJUQ5igUZV\n\
 -----END PRIVATE KEY-----";
 
-    let provider = AppleProvider::new(
+    let provider = AppleProvider::try_new(
         "client_id".to_string(),
         "team_id".to_string(),
         "key_id".to_string(),
         ec_pem.to_string(),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(std::sync::Arc::new(MockRefreshErrorClient));
 
     let res = provider.refresh_token("old_refresh").await;
@@ -534,7 +544,7 @@ k/Tz7c8S43tqF0VK/mNC462881k2cryVtuV5FkH1XoPACJzJUQ5igUZV\n\
 #[tokio::test]
 async fn test_apple_id_token_invalid_algorithm() {
     let secret = b"super_secret_key_123456789012345";
-    let priv_key = jsonwebtoken::EncodingKey::from_secret(secret);
+    let priv_key = jsonwebtoken::EncodingKey::from_secret(secret).unwrap();
     let mut header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::HS256);
     header.kid = Some("valid_kid".to_string());
 
@@ -590,13 +600,14 @@ async fn test_apple_id_token_invalid_algorithm() {
         }
     }
 
-    let provider = AppleProvider::new(
+    let provider = AppleProvider::try_new(
         "client_id".to_string(),
         "team_id".to_string(),
         "key_id".to_string(),
         "private_key".to_string(),
         "https://redirect.url".to_string(),
     )
+    .unwrap()
     .with_http_client(std::sync::Arc::new(MockClient { id_token }));
 
     let form_data = crate::provider::TokenExchangeForm {

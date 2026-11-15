@@ -148,10 +148,14 @@ impl Scheduler {
     /// `FRI-SUN`, `1-5/2`, `*/2`). As in POSIX cron, when both day-of-month
     /// and day-of-week are restricted (neither starts with `*`), the task runs
     /// on a day matching either field; otherwise both must match. Minute,
-    /// hour, day-of-month and month use the usual ranges, names, lists and
-    /// steps. There is no seconds or year field; with the `scheduler-tz`
-    /// feature, `Scheduler::task_in_tz` evaluates the fields in a named time
-    /// zone instead of UTC.
+    /// hour, day-of-month and month take numbers, `*`, ranges (`9-17`), lists
+    /// (`0,30`) and steps (`*/15`, `1-30/2`, and `5/15`, from 5 to the
+    /// field's maximum); month also takes names (`jan`, `JAN-MAR`), and
+    /// day-of-month takes `?` as `*`. Each field must be valid on its own.
+    /// Occurrences are whole minutes from 1970 through 2100. There is no
+    /// seconds or year field and no `@daily`-style alias; with the
+    /// `scheduler-tz` feature, `Scheduler::task_in_tz` evaluates the fields
+    /// in a named time zone instead of UTC.
     ///
     /// # Errors
     /// Returns [`SchedulerError::InvalidCron`] when the expression does not

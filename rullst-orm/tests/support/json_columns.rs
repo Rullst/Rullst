@@ -13,7 +13,7 @@ pub struct Preferences {
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "json_profiles")]
+#[orm(table = "json_profiles", full_row_save)]
 pub struct JsonProfile {
     pub id: i32,
     #[sqlx(json)]

@@ -32,6 +32,34 @@ env:
   SCCACHE_GHA_RW_MODE: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'READ_WRITE' || 'READ_ONLY' }}
 
 jobs:
+  # Whether the pull request is a draft now: the event payload can be stale
+  # when a push and `ready_for_review` arrive together and the concurrency
+  # group keeps the push's run (.github/pull-request-draft.sh).
+  draft:
+    name: Pull request draft state
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      draft: ${{ steps.draft.outputs.draft }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/pull-request-draft.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Read the pull request's current draft state
+        id: draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PAYLOAD_DRAFT: ${{ github.event.pull_request.draft }}
+        run: bash .github/pull-request-draft.sh
+
   plan:
     name: Validate SemVer package inventory
     if: >-
@@ -57,11 +85,13 @@ jobs:
 
   semver:
     name: SemVer (${{ matrix.package }})
+    # The draft job is skipped outside pull requests, hence `!cancelled()`.
     if: >-
+      !cancelled() && needs.plan.result == 'success' &&
       (github.event_name != 'pull_request' ||
-       (github.base_ref != 'main' && github.event.pull_request.draft == false)) &&
+       (github.base_ref != 'main' && needs.draft.outputs.draft != 'true')) &&
       !inputs.public_api_only
-    needs: plan
+    needs: [plan, draft]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -95,7 +125,10 @@ jobs:
 
   public-api:
     name: Public API snapshot
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    if: >-
+      !cancelled() &&
+      (github.event_name != 'pull_request' || needs.draft.outputs.draft != 'true')
+    needs: draft
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:

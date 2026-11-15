@@ -114,6 +114,12 @@ through the main commands without changing a project. Without a terminal
 `--database` answer their questions. See the
 [CLI reference](cli_reference.md#cargo-rullst-new-name).
 
+The project's CI workflow (`.github/workflows/ci.yml`) fails on any Cargo or
+compiler warning. With Cargo 1.100 or later that includes a dependency you
+declared in `Cargo.toml` and do not use: remove it, or see
+[Testing your application](testing-your-app.md#githubworkflowsciyml-and-githubdependabotyml)
+for the `[lints.cargo]` setting when it is intentional.
+
 Prefer a small deterministic starter without navigating the wizard?
 
 <!-- first-hour: first-app new-terminal -->
@@ -312,7 +318,7 @@ The familiar derive explicitly selects the Turso backend:
 
 ```rust
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "users", backend = "turso")]
+#[orm(table = "users", backend = "turso", full_row_save)]
 struct User {
     id: i64,
     name: String,

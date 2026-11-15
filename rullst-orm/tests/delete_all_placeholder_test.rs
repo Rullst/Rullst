@@ -8,14 +8,18 @@
 use rullst_orm::{Orm, with_tenant};
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "bulk_items")]
+#[orm(table = "bulk_items", full_row_save)]
 struct BulkItem {
     id: i32,
     score: i32,
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "tenant_bulk_items", tenant_column = "tenant_id")]
+#[orm(
+    table = "tenant_bulk_items",
+    tenant_column = "tenant_id",
+    full_row_save
+)]
 struct TenantBulkItem {
     id: i32,
     tenant_id: String,
@@ -23,7 +27,7 @@ struct TenantBulkItem {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "bulk_posts")]
+#[orm(table = "bulk_posts", full_row_save)]
 struct BulkPost {
     id: i32,
     #[sqlx(default, skip)]
@@ -44,7 +48,7 @@ struct BulkPost {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "bulk_comments")]
+#[orm(table = "bulk_comments", full_row_save)]
 struct BulkComment {
     id: i32,
     bulk_post_id: i32,
@@ -53,7 +57,7 @@ struct BulkComment {
 
 /// A child whose model-wide scope hides unapproved rows from `query()`.
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "bulk_notes", global_scope = "approved")]
+#[orm(table = "bulk_notes", global_scope = "approved", full_row_save)]
 struct BulkNote {
     id: i32,
     bulk_post_id: i32,

@@ -229,10 +229,12 @@ same for an image held as one slice (for example memory-mapped internal
 flash). `OtaManifest::from_firmware` hashes the image; it is for the
 publisher.
 
-`OtaManager::new`, `verify_signature`, and `commit_update` are deprecated
-migration APIs. All three always return `OtaError` because keyless construction,
-payload-only verification, and unconditional commit cannot provide the required
-guarantees.
+13.0.0-alpha.6 removed `OtaManager::new`, `verify_signature` and
+`commit_update` (deprecated since 12.0.0), which always failed with
+`OtaError::LegacyApiUnsupported` because keyless construction, payload-only
+verification and an unconditional commit cannot provide these guarantees. Use
+`new_with_trusted_key`, `begin_update` or `verify_update`, and
+`commit_verified_update`.
 
 ## `no_std` use
 
@@ -241,11 +243,13 @@ firmware provides a `#[global_allocator]` (for example `embedded-alloc`) and a
 panic handler. Plan for about 8 KiB of stack in `begin_update` or
 `verify_update` and 2.6 KiB while building an `OtaManager`, plus your own
 frames; the heap needs little
-beyond the packets you encode. `rullst-iot` uses `ed25519-dalek` without its
-precomputed tables; adding `ed25519-dalek = { version = "2.2",
+beyond the packets you encode. `rullst-iot` uses `ed25519-dalek` 3 without its
+precomputed tables; adding `ed25519-dalek = { version = "3",
 default-features = false, features = ["fast"] }` to the application turns them
 on (about 7% faster verification and 1.6 KiB less stack on a Cortex-M4, for
-7.5 KiB more flash).
+7.5 KiB more flash, measured with `ed25519-dalek` 2.2). The application's
+requirement must be the same major as `rullst-iot`'s, or Cargo builds a second
+copy and the tables stay off.
 
 ## Hardware validation
 

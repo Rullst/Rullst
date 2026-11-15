@@ -8,7 +8,8 @@ Start here when your frontend is a separate app, mobile client or integration.
 This quickstart creates one runnable JSON endpoint without a database or an AI
 provider. It targets the v13 prerelease `13.0.0-alpha.5`; the v12 line reached
 end of life (see the [release record](../v12.md)). You need Rust 1.96.0 or
-newer ([Tutorial 01](01-hello-world.md#1-install-rust-and-cargo) shows how to
+newer, and the latest stable Rust is recommended
+([Tutorial 01](01-hello-world.md#1-install-rust-and-cargo) shows how to
 install it).
 
 ## 1. Create the application

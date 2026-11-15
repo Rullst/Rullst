@@ -161,7 +161,10 @@ Once everything is stable and verified:
    problems that `release.yml` would otherwise find hours later:
    - packages not at the tagged version, a missing changelog section, or
      changelog fragments not yet merged;
-   - a stale head or an existing tag;
+   - a stale head or an existing tag (for a tag whose release published
+     nothing, it prints the delete-and-recreate commands that
+     [MAINTAINING.md](MAINTAINING.md) section 7.5 allows only with the
+     maintainer's approval; it never deletes a tag);
    - an unregistered or foreign-owned crate name;
    - a version already on crates.io.
 

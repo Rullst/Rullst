@@ -14,9 +14,9 @@ domain crates opt in only when they actually use them.
 Queue monitoring capabilities are driver-specific. The trait defaults for
 listing all jobs, retrying failures and purging failures return
 `QueueError::Unsupported`; they never fabricate an empty snapshot or successful
-mutation. `purge_failed_jobs` is the canonical facade method. The deprecated
-`purge_completed_jobs` name is retained only as a source-compatibility alias for
-the historical operation, which actually removed failed jobs. The Redis driver
+mutation. `Queue::purge_failed_jobs` removes failed jobs. Its misnamed
+deprecated alias `Queue::purge_completed_jobs`, which also removed failed
+jobs, was removed in 13.0.0-alpha.6. The Redis driver
 implements all three: `list_all_jobs` returns at most 1,000 rows (failed jobs
 and dead letters newest first, then processing, pending and scheduled jobs, read
 without one atomic snapshot; `created_at` is empty because Redis does not record
@@ -131,9 +131,16 @@ day-of-month month day-of-week`) evaluated in UTC. Day-of-week accepts 0-7
 (0 and 7 are Sunday, 1 is Monday) and names, so `0 9 * * 1-5` runs Monday to
 Friday. When both day fields are restricted, a day matching either one runs
 the task (`0 0 1 * 1` is the 1st plus every Monday); a field starting with `*`
-keeps the intersection. Earlier releases passed the fields to the `cron`
-crate unchanged, where 1 was Sunday and 0 was rejected. Messaging's durable
-recurring publications keep their documented `cron`-crate projection.
+or `?` keeps the intersection. The other fields take numbers, `*`, ranges
+(`9-17`), lists (`0,30`) and steps (`*/15`, `1-30/2`, and `5/15`, from 5 to the
+field's maximum); month also takes names (`jan`, `JAN-MAR`) and day-of-month
+takes `?` as `*`. Each field must be valid on its own, occurrences are whole
+minutes from 1970 through 2100, and there are no seconds, years or
+`@daily`-style aliases. Since 13.0.0-alpha.6 Core evaluates the fields itself;
+earlier releases used the `cron` crate (12.x passed the fields to it
+unchanged, so 1 was Sunday and 0 was rejected), and Core's tests still compare
+the two. Messaging's durable recurring publications keep their documented
+`cron`-crate projection.
 See [time zones for scheduled tasks](#time-zones-for-scheduled-tasks) to
 match the fields against a local clock instead of UTC.
 `WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors. Once
@@ -194,8 +201,10 @@ remains separate.
   `init_radar` was called earlier; without a `Server`, call them yourself. The opt-in
   `health_router_with_lifecycle` returns readiness from the same bounded state
   that gates Server request admission; the application still performs and
-  times out its own dependency checks. The `version` field of both payloads is
-  the Rullst framework version. To report your application's version too, use
+  times out its own dependency checks. The payloads carry no version: since
+  13.0.0-alpha.6 they no longer tell visitors the framework release (the
+  authenticated production monitor reports it as `framework.version`). To
+  report your application's version, use
   `health_router_with_version(env!("CARGO_PKG_VERSION"))` or
   `health_router_with_lifecycle_and_version(lifecycle, env!("CARGO_PKG_VERSION"))`
   (v13), which add it as `app_version`; any string works, such as a commit
@@ -575,10 +584,20 @@ logs a `warn` event with the rule and path of each request it would refuse.
 not inspect, for routes that accept text such as code samples (see
 [seeing and accepting WAF false positives](../security-layers.md#seeing-and-accepting-waf-false-positives)).
 
+The CSRF middleware mints a token on the first `GET` of every page except
+static files: paths below `[security]` `csrf_static_prefixes` (default
+`/static/`, `/.well-known/`) and the exact `csrf_static_paths` (default
+`/favicon.ico`, `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest`,
+`/sw.js`). Since 13.0.0-alpha.6 the extension does not count, so a dynamic
+`/report.json` page gets a token; list any other prefix you serve files
+under (see
+[static files and the CSRF token](../security-layers.md#static-files-and-the-csrf-token)).
+
 TLS connections use `aws-lc-rs` as the rustls crypto provider. Core hashes
-with the pure-Rust `sha2` crate and needs `ring` only for the AES-256-GCM
-recovery records of `storage-multipart`. With the `tls` feature (which
-`strict-postgres`, `strict-mysql`, `drivers-all`, `storage-s3` and
+with the pure-Rust `sha2` crate and, since 13.0.0-alpha.6, encrypts the
+recovery records of `storage-multipart` with the pure-Rust `aes-gcm` crate in
+an unchanged format; it does not depend on `ring`. With the `tls` feature
+(which `strict-postgres`, `strict-mysql`, `drivers-all`, `storage-s3` and
 `telemetry` enable, and so do the Rullst crates that make TLS connections),
 `Server` start-up installs aws-lc-rs as the rustls process default before
 telemetry and the database pool build TLS clients, and so does the OTLP

@@ -22,13 +22,18 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
 default = []
-# `rullst-core/tls`: these features make TLS connections (OAuth over HTTPS,
-# PostgreSQL), so Core installs aws-lc-rs as the rustls process default.
+# `rullst-core/tls`: the OAuth and PostgreSQL features make TLS connections
+# (OAuth over HTTPS, PostgreSQL), so Core installs aws-lc-rs as the rustls
+# process default.
 oauth = ["dep:rullst-connect", "rullst-core/tls"]
+# WebAuthn ES256 passkeys (`auth::passkey`); the only feature that compiles
+# aws-lc-rs into this crate. `jwt` reaches aws-lc-rs through jsonwebtoken, so
+# `sqlite` (JWT revocation and the passkey device registry) includes it.
+passkeys = ["dep:aws-lc-rs"]
 jwt = ["dep:hex", "dep:jsonwebtoken"]
-sqlite = ["jwt", "dep:sqlx", "sqlx/sqlite"]
+sqlite = ["jwt", "passkeys", "dep:sqlx", "sqlx/sqlite"]
 recovery-sqlite = ["dep:sqlx", "sqlx/any", "sqlx/sqlite"]
-passkey-postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "rullst-core/tls"]
+passkey-postgres = ["passkeys", "dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "rullst-core/tls"]
 recovery-postgres = ["dep:sqlx", "sqlx/any", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "rullst-core/tls"]
 email-login-sqlite = ["recovery-sqlite"]
 email-login-postgres = ["recovery-postgres"]
@@ -50,7 +55,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 async-trait = { workspace = true }
 ring = { workspace = true, features = ["std"] }
-p256 = "0.14.0"
+# ES256 passkey keys and signatures (`passkeys`); the same features as
+# rustls's `aws_lc_rs`.
+aws-lc-rs = { version = "1.18.0", default-features = false, features = ["aws-lc-sys", "prebuilt-nasm"], optional = true }
 tower = { workspace = true }
 futures-util = { workspace = true }
 thiserror = { workspace = true }
@@ -65,6 +72,9 @@ sqlx = { workspace = true, optional = true, features = ["runtime-tokio"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "process", "io-std"] }
 tempfile = "3"
 criterion = { workspace = true, features = ["async_tokio"] }
+# Only the differential test of the ES256 checks (es256_differential_tests.rs)
+# compares aws-lc-rs with the p256 point check used before 13.0.0-alpha.6.
+p256 = "0.14.0"
 
 [[bench]]
 name = "auth_bench"

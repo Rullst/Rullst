@@ -1,5 +1,5 @@
 #[derive(rullst_orm::Orm, Debug, Clone, PartialEq)]
-#[orm(table_name = "test_mutants")]
+#[orm(table_name = "test_mutants", full_row_save)]
 #[orm(soft_delete)]
 struct MutantModel {
     id: i32,

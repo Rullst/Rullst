@@ -8,7 +8,7 @@ use tracing::{Event, Subscriber, span};
 use tracing_subscriber::{Layer, layer::Context, prelude::*};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "telemetry_probe")]
+#[orm(table = "telemetry_probe", full_row_save)]
 struct TelemetryProbe {
     id: i32,
     label: String,

@@ -55,7 +55,7 @@ Each module falls into one of four kinds:
 
 | Module | Kind | What it does | What it does not do |
 | :--- | :--- | :--- | :--- |
-| `ota` | Working + Contract | `OtaManager` verifies an Ed25519 signature over a domain-separated manifest that binds target, version, rollback counter, firmware length and SHA-256, then names the inactive A/B partition. `RollbackCounterStore` is the contract for durable compare-and-set of the counter. | No download, flash writes, bootloader handoff or concrete counter storage. The deprecated `new`, `verify_signature` and `commit_update` always fail. |
+| `ota` | Working + Contract | `OtaManager` verifies an Ed25519 signature over a domain-separated manifest that binds target, version, rollback counter, firmware length and SHA-256, then names the inactive A/B partition. `RollbackCounterStore` is the contract for durable compare-and-set of the counter. | No download, flash writes, bootloader handoff or concrete counter storage. The deprecated `new`, `verify_signature` and `commit_update`, which always failed, were removed in 13.0.0-alpha.6. |
 | `mqtt` | Working (encoder) | `MqttPublish` encodes one MQTT 5 PUBLISH packet: QoS 0/1/2, retain, DUP, topic validation and a 1 MiB ceiling. | No CONNECT, SUBSCRIBE, acknowledgement state, socket, TLS or retry. |
 | `coap` | Working (encoder) | `CoapRequest` encodes an RFC 7252 GET/POST/PUT/DELETE request with Uri-Path and Content-Format options under a 1152-byte ceiling. | No UDP/DTLS, retransmission, block-wise transfer or response decoding. |
 | `modbus` | Working (narrow) | Modbus CRC-16 and a Read Holding Registers (`0x03`) RTU request frame. | No response parsing and no write-request builder (`WriteSingleRegister` is only an enum value). It does not check the protocol's register-count limit and has no serial or TCP transport. |
@@ -364,10 +364,18 @@ verification itself needed 143 (159 streamed). Peak stack depth:
 **Faster verification.** `rullst-iot` uses `ed25519-dalek` without its
 precomputed tables. An application can enable them through Cargo feature
 unification by adding
-`ed25519-dalek = { version = "2.2", default-features = false, features = ["fast"] }`
-to its own dependencies. On the micro:bit this made verification about 7%
-faster (34.2 ms and 59.8 ms), its stack 1.6 KiB smaller (6,144 B) and the
-firmware 7.5 KiB larger.
+`ed25519-dalek = { version = "3", default-features = false, features = ["fast"] }`
+to its own dependencies; the major must be the one `rullst-iot` uses (3 since
+13.0.0-alpha.6), or Cargo builds a second copy and the tables stay off. On the
+micro:bit this made verification about 7% faster (34.2 ms and 59.8 ms), its
+stack 1.6 KiB smaller (6,144 B) and the firmware 7.5 KiB larger.
+
+The measurements on this page were taken with `ed25519-dalek` 2.2 (13.0.0-alpha.5).
+13.0.0-alpha.6 moves to `ed25519-dalek` 3 (`curve25519-dalek` 5): the same
+fixture's release build grows by about 3.3 KB of flash (269,652 bytes of text
+against 266,380, and 281,500 against 278,212 with the precomputed tables), and
+its signatures and expected vectors are byte-identical. The board has not been
+re-run with it, so the times and stack depths above are those of 2.2.
 
 **Streamed and hashed once.** With the manifest built by `OtaManifest::new`
 or `from_signing_bytes`, the device hashes the image once, inside the

@@ -1,9 +1,9 @@
 use super::{MultipartError, MultipartStorage, State};
-use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use ring::{
-    aead,
-    rand::{SecureRandom, SystemRandom},
+use aes_gcm::{
+    Aes256Gcm, KeyInit,
+    aead::{Aead, Generate, Nonce, Payload},
 };
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use std::{
     fmt,
     sync::Arc,
@@ -12,11 +12,12 @@ use std::{
 use zeroize::Zeroizing;
 
 const MAX_TOKEN: usize = 256 * 1024;
+const NONCE_BYTES: usize = 12;
 
 /// Independent AES-256-GCM key for durable recovery records; Debug is redacted.
 /// Retain the old key until its uploads are completed/aborted during rotation.
 #[derive(Clone)]
-pub struct MultipartKey(Arc<aead::LessSafeKey>);
+pub struct MultipartKey(Arc<Aes256Gcm>);
 
 impl MultipartKey {
     /// Accepts exactly 32 random bytes, encoded as canonical unpadded base64url.
@@ -34,9 +35,39 @@ impl MultipartKey {
         if bytes.len() != 32 || URL_SAFE_NO_PAD.encode(&*bytes) != *encoded {
             return Err(MultipartError::InvalidInput);
         }
-        let key = aead::UnboundKey::new(&aead::AES_256_GCM, &bytes)
-            .map_err(|_| MultipartError::InvalidInput);
-        Ok(Self(Arc::new(aead::LessSafeKey::new(key?))))
+        // The cipher clears its round keys and GHASH key when dropped.
+        let cipher = Aes256Gcm::new_from_slice(&bytes).map_err(|_| MultipartError::InvalidInput)?;
+        Ok(Self(Arc::new(cipher)))
+    }
+
+    /// The record `nonce || ciphertext || tag` of `plaintext`, authenticated
+    /// with `aad`: the layout that `ring` wrote before 13.0.0-alpha.6.
+    fn seal(
+        &self,
+        nonce: [u8; NONCE_BYTES],
+        aad: &[u8],
+        plaintext: &[u8],
+    ) -> Result<Vec<u8>, MultipartError> {
+        let payload = Payload {
+            msg: plaintext,
+            aad,
+        };
+        let sealed = self
+            .0
+            .encrypt(&Nonce::<Aes256Gcm>::from(nonce), payload)
+            .map_err(|_| MultipartError::InvalidCheckpoint)?;
+        Ok([nonce.as_slice(), &sealed].concat())
+    }
+
+    /// The plaintext of a record from [`Self::seal`] with the same `aad`.
+    fn open(&self, aad: &[u8], record: &[u8]) -> Result<Vec<u8>, MultipartError> {
+        let (nonce, sealed) = record
+            .split_first_chunk::<NONCE_BYTES>()
+            .ok_or(MultipartError::InvalidCheckpoint)?;
+        let payload = Payload { msg: sealed, aad };
+        self.0
+            .decrypt(&Nonce::<Aes256Gcm>::from(*nonce), payload)
+            .map_err(|_| MultipartError::InvalidCheckpoint)
     }
 }
 
@@ -50,7 +81,7 @@ mod tests {
     };
     use std::{collections::BTreeMap, time::Duration};
 
-    fn storage() -> MultipartStorage {
+    pub(super) fn storage() -> MultipartStorage {
         Storage::s3("test-bucket", "auto")
             .with_cloud_config(CloudStorageConfig::new(
                 CloudCredentials::new("", "").unwrap(),
@@ -232,6 +263,10 @@ mod tests {
     }
 }
 
+#[cfg(test)]
+#[path = "codec_aead_tests.rs"]
+mod aead_tests;
+
 impl fmt::Debug for MultipartKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("MultipartKey([REDACTED])")
@@ -272,21 +307,18 @@ pub(super) fn now() -> Result<u64, MultipartError> {
 
 impl MultipartStorage {
     pub(super) fn seal(&self, state: &State) -> Result<MultipartCheckpoint, MultipartError> {
-        let mut bytes = serde_json::to_vec(state).map_err(|_| MultipartError::InvalidCheckpoint)?;
-        let mut nonce = [0; 12];
-        SystemRandom::new()
-            .fill(&mut nonce)
-            .map_err(|_| MultipartError::InvalidCheckpoint)?;
-        self.key
-            .0
-            .seal_in_place_append_tag(
-                aead::Nonce::assume_unique_for_key(nonce),
-                aead::Aad::from(self.binding),
-                &mut bytes,
-            )
-            .map_err(|_| MultipartError::InvalidCheckpoint)?;
-        let mut token = nonce.to_vec();
-        token.extend(bytes);
+        let nonce =
+            Nonce::<Aes256Gcm>::try_generate().map_err(|_| MultipartError::InvalidCheckpoint)?;
+        self.seal_with_nonce(state, nonce.into())
+    }
+
+    fn seal_with_nonce(
+        &self,
+        state: &State,
+        nonce: [u8; NONCE_BYTES],
+    ) -> Result<MultipartCheckpoint, MultipartError> {
+        let bytes = serde_json::to_vec(state).map_err(|_| MultipartError::InvalidCheckpoint)?;
+        let token = self.key.seal(nonce, &self.binding, &bytes)?;
         MultipartCheckpoint::from_encoded(format!("mp1.{}", URL_SAFE_NO_PAD.encode(token)))
     }
 
@@ -302,27 +334,15 @@ impl MultipartStorage {
         if checkpoint.0.len() > MAX_TOKEN {
             return Err(MultipartError::InvalidCheckpoint);
         }
-        let mut bytes = URL_SAFE_NO_PAD
+        let bytes = URL_SAFE_NO_PAD
             .decode(text)
             .map_err(|_| MultipartError::InvalidCheckpoint)?;
         if bytes.len() < 28 || URL_SAFE_NO_PAD.encode(&bytes) != text {
             return Err(MultipartError::InvalidCheckpoint);
         }
-        let (nonce, body) = bytes.split_at_mut(12);
-        let nonce: [u8; 12] = nonce
-            .try_into()
-            .map_err(|_| MultipartError::InvalidCheckpoint)?;
-        let body = self
-            .key
-            .0
-            .open_in_place(
-                aead::Nonce::assume_unique_for_key(nonce),
-                aead::Aad::from(self.binding),
-                body,
-            )
-            .map_err(|_| MultipartError::InvalidCheckpoint)?;
+        let body = self.key.open(&self.binding, &bytes)?;
         let state: State =
-            serde_json::from_slice(body).map_err(|_| MultipartError::InvalidCheckpoint)?;
+            serde_json::from_slice(&body).map_err(|_| MultipartError::InvalidCheckpoint)?;
         if state.total == 0
             || state.total > self.limits.max_total
             || state.receipts.len() > 256

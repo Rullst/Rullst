@@ -116,18 +116,6 @@ impl RateLimiter {
         }
     }
 
-    /// Legacy distributed selection. Requests fail closed because the backend
-    /// is not implemented; use [`Self::try_with_distributed`] to detect this at
-    /// startup.
-    #[deprecated(
-        since = "12.0.0",
-        note = "use try_with_distributed and handle the error"
-    )]
-    pub fn with_distributed(mut self) -> Self {
-        self.backend = RateLimitBackend::Distributed;
-        self
-    }
-
     /// Attempts to configure a distributed backend.
     pub fn try_with_distributed(self) -> Result<Self, RateLimitError> {
         Err(RateLimitError::DistributedBackendUnsupported)

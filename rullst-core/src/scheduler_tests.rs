@@ -102,7 +102,7 @@ async fn task_loop_never_overlaps_slow_executions() {
     }));
     let task = ScheduledTask {
         label: "every second".to_string(),
-        schedule: CronSchedule::every_second().into(),
+        schedule: TaskSchedule::EverySecond,
         handler,
         deferral: None,
     };

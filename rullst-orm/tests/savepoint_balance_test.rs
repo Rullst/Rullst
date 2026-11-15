@@ -6,7 +6,7 @@
 use rullst_orm::{Error, Orm};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "balance_records")]
+#[orm(table = "balance_records", full_row_save)]
 struct BalanceRecord {
     id: i32,
     name: String,

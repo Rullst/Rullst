@@ -7,6 +7,7 @@ use rullst_orm::{Error, ModelCommittedEvent, Orm, Policy};
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Orm)]
+#[orm(full_row_save)]
 #[orm(
     table = "partial_lifecycle_lessons",
     tenant_column = "tenant_id",

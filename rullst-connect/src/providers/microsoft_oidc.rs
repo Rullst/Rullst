@@ -134,8 +134,7 @@ impl MicrosoftOidcProvider {
         crate::configuration::validate_redirect_url(&redirect_url)?;
         let credential_mode =
             crate::configuration::checked_credential_mode(&client_id, &client_secret)?;
-        let http_client =
-            crate::configuration::provider_http_client(credential_mode, "microsoft", None);
+        let http_client = crate::configuration::provider_http_client(credential_mode, "microsoft");
         Ok(Self {
             tenant,
             client_id,

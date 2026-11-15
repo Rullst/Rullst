@@ -8,7 +8,7 @@ use testcontainers::runners::AsyncRunner;
 use testcontainers::{GenericImage, ImageExt};
 
 #[derive(Clone, Debug, Orm)]
-#[orm(table = "vector_documents")]
+#[orm(table = "vector_documents", full_row_save)]
 struct VectorDocument {
     id: i32,
     title: String,

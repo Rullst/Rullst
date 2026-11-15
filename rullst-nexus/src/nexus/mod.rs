@@ -138,30 +138,6 @@ impl Nexus {
         self.with_auth_policy(NexusAuthPolicy::loopback_only(access))
     }
 
-    /// Legacy infallible conversion retained for one compatibility cycle.
-    ///
-    /// Invalid or absent access configuration produces a deny-all router. New code should use
-    /// [`Nexus::try_build`] so startup can report the typed configuration error.
-    #[deprecated(
-        since = "12.0.0",
-        note = "use `try_build()` and handle `NexusBuildError`; this compatibility method denies all requests on configuration errors"
-    )]
-    pub fn into_router(self) -> AxumRouter {
-        self.build_fail_closed()
-    }
-
-    /// Legacy infallible builder retained for one compatibility cycle.
-    ///
-    /// Invalid or absent access configuration produces a deny-all router. New code should use
-    /// [`Nexus::try_build`] so startup can report the typed configuration error.
-    #[deprecated(
-        since = "12.0.0",
-        note = "use `try_build()` and handle `NexusBuildError`; this compatibility method denies all requests on configuration errors"
-    )]
-    pub fn build(self) -> AxumRouter {
-        self.build_fail_closed()
-    }
-
     /// Builds the Nexus router only after validating an explicit access policy.
     ///
     /// Without the `ai` feature, `/chat` and `/chat/query` answer 404 with a
@@ -237,25 +213,6 @@ impl Nexus {
 
         Ok(router.with_state(state))
     }
-
-    fn build_fail_closed(self) -> AxumRouter {
-        match self.try_build() {
-            Ok(router) => router,
-            Err(error) => {
-                eprintln!("Nexus was not mounted because its access policy is invalid: {error}");
-                deny_all_router()
-            }
-        }
-    }
-}
-
-fn deny_all_router() -> AxumRouter {
-    AxumRouter::new().fallback(|| async {
-        (
-            axum::http::StatusCode::SERVICE_UNAVAILABLE,
-            "Nexus is unavailable because secure access has not been configured.",
-        )
-    })
 }
 
 /// The assistant's routes: the AI assistant with the `ai` feature, otherwise

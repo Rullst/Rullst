@@ -159,14 +159,24 @@ both a normal URL-encoded form submission and HTMX; no global cookie-forwarding
 script is required. JSON requests instead need the matching header, while the
 browser still sends the cookie. Do not forward tokens to third-party URLs.
 
-Serve form pages from ordinary paths. A `GET` for a path that looks like a
-static file never creates the token or sets the cookie: `/robots.txt`,
-`/sitemap.xml`, `/favicon.ico`, anything under `/static/`, and any path ending
-in `.txt`, `.xml`, `.ico`, `.json`, `.css`, `.js`, `.png`, `.jpg`, `.jpeg`,
-`.svg`, `.webp` or `.wasm`. Since 13.0.0-alpha.2 such a page still receives
-`CsrfToken` when the browser already has a valid `rullst_csrf` cookie from
-another page, but on a first visit there is none, and the
-`Extension<CsrfToken>` extractor fails with `500`.
+Serve form pages outside the static-file paths. A `GET` for a static file
+never creates the token or sets the cookie: anything under `/static/` or
+`/.well-known/`, and `/favicon.ico`, `/robots.txt`, `/sitemap.xml`,
+`/manifest.webmanifest` and `/sw.js` (the `[security]`
+`csrf_static_prefixes` and `csrf_static_paths` of `Rullst.toml`). Such a
+path still receives `CsrfToken` when the browser already has a valid
+`rullst_csrf` cookie from another page, but on a first visit there is none,
+and the `Extension<CsrfToken>` extractor fails with `500`. Every other path
+gets the token whatever its extension: since 13.0.0-alpha.6 a page at
+`/report.json` or `/feed.xml` can render a form (until 13.0.0-alpha.5 a
+`.json`, `.xml`, `.txt`, `.js`, `.css` or image suffix counted as static).
+If your application serves files under another prefix, list it, keeping the
+defaults you still use:
+
+```toml
+[security]
+csrf_static_prefixes = ["/static/", "/.well-known/", "/assets/"]
+```
 
 The development server does not automatically apply the production CSRF/WAF
 stack; its WAF only logs the requests production would refuse. For this

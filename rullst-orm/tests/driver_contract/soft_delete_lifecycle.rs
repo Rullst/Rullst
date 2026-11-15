@@ -5,7 +5,11 @@ use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::{Error, Orm, with_tenant};
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_archived_notes", tenant_column = "tenant_id")]
+#[orm(
+    table = "contract_archived_notes",
+    tenant_column = "tenant_id",
+    full_row_save
+)]
 struct ContractArchivedNote {
     id: i32,
     tenant_id: String,

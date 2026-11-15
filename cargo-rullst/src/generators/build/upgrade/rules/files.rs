@@ -2,6 +2,7 @@
 //! files of bounded size are read (never through a symlink), and a finding
 //! records a line number, never file contents.
 
+use super::alpha6_passkeys::passkey_features;
 use super::catalog::*;
 use super::{ManifestUpgradePlan, Rule, SourceFinding, WorkspaceFacts};
 use std::collections::BTreeMap;
@@ -254,6 +255,7 @@ pub(super) fn manifest_findings(
                     dependency_line(&plan.original, &key),
                 ));
             }
+            facts.passkeys |= has_feature(&declaration, passkey_features(&package));
             match package.as_str() {
                 "sqlx" => {
                     facts.sqlx_macros |= enables_sqlx_macros(&declaration);
@@ -291,6 +293,11 @@ pub(super) fn manifest_findings(
                 _ => {}
             }
         }
+        facts.passkeys |=
+            feature_reference(&document, &plan.original, &packages, |package, name| {
+                passkey_features(package).contains(&name).then_some(())
+            })
+            .is_some();
         if let Some((line, rule)) = removed_feature_reference(&document, &plan.original, &packages)
         {
             findings.push(finding(rule, plan.path.clone(), line));
