@@ -474,6 +474,9 @@ rules! {
     HTMX_2_CLIENT: "V13-HTMX-2", Review, "13.0.0-alpha.5", "htmx 2 client",
         "new applications load htmx 2.0.11 since 13.0.0-alpha.5; this one vendors htmx 1.9.12, which `render_page*` keep loading while it is the only htmx file in `static/`",
         "Nothing breaks if you wait. To move to htmx 2 (the SSE extension `hx-ext=\"sse\"` needs it), copy `htmx-2.0.11.min.js`, `htmx-ext-sse-2.2.4.js`, `HTMX-LICENSE` and `HTMX-EXT-SSE-LICENSE` from a new project's `static/`, point your own layouts at them and delete `static/htmx-1.9.12.min.js`; write `hx-on=\"click: …\"` as `hx-on:click`, and send the CSRF token of `hx-delete` in the `X-CSRF-Token` header (`hx-headers`), because htmx 2 puts DELETE parameters in the query string.";
+    PASSKEYS_FEATURE: "V13-AUTH-PASSKEYS-FEATURE", MustChange, "13.0.0-alpha.6", "Passkeys feature",
+        "this code uses Rullst's passkeys (`auth::passkey`), which since 13.0.0-alpha.6 compile only with `rullst-auth`'s `passkeys` feature, and no manifest here enables it",
+        "Enable `auth-passkeys` on `rullst` (`auth-sqlite` and `auth-passkey-postgres` include it), or `passkeys` on a direct `rullst-auth` dependency (`sqlite` and `passkey-postgres` include it).";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

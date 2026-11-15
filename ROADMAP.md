@@ -373,11 +373,14 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
     - A five-field cron evaluator of Rullst's own replaces the `cron` crate
       (about 9 fewer), tested differentially against it.
     - Passkeys without `p256`: ES256 public keys and assertion signatures
-      are checked with aws-lc-rs, which TLS already builds (18 fewer
-      `Cargo.lock` packages and 17 fewer compiled crates in the SaaS starter
-      and any application with `auth` or `nexus`), tested differentially
-      against the previous `p256` and `ring` checks and with the Wycheproof
-      ECDSA P-256 vectors.
+      are checked with aws-lc-rs, compiled into `rullst-auth` only with its
+      new `passkeys` feature (`auth-passkeys` in `rullst`; breaking for code
+      that uses passkeys with `auth` alone, located by
+      `cargo rullst upgrade`), so an application without passkeys builds
+      neither library for them (the SaaS starter: 18 fewer `Cargo.lock`
+      packages and 17 fewer compiled crates; Nexus and the starters enable no
+      passkeys). Tested differentially against the previous `p256` and
+      `ring` checks and with the Wycheproof ECDSA P-256 vectors.
     - Core's `storage-multipart` recovery records move from `ring`'s
       AES-256-GCM to the RustCrypto `aes-gcm` crate, with the same stored
       format and known-answer tests, so `ring` leaves Core entirely.

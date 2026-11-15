@@ -93,12 +93,16 @@ fn f() {
         "fn f() { let _ = rullst_nexus::generate_smart_nexus_ai_response; }",
         "fn f() { let _ = rullst_security::current_timestamp_str(); }",
         "use rullst_connect::client::DEFAULT_HTTP_CLIENT;",
-        "use rullst_auth::passkey::cbor::parse_cbor;",
         "fn f() { rullst_core::server::dylib_loader::load(); }",
         "fn f() { let _ = schema::MAX_QUERY_LIMIT; }",
     ] {
         assert_only(source, &["V13-HIDDEN-INTERNALS-PRIVATE"]);
     }
+    // No manifest here builds passkeys, which 13.0.0-alpha.6 put behind a feature.
+    assert_only(
+        "use rullst_auth::passkey::cbor::parse_cbor;",
+        &["V13-AUTH-PASSKEYS-FEATURE", "V13-HIDDEN-INTERNALS-PRIVATE"],
+    );
     assert_only("fn f() { let _ = CURRENT_TENANT; let _ = runner; }", &[]);
 }
 

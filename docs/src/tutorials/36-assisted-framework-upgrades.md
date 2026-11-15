@@ -287,6 +287,7 @@ release:
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
 | 13.0.0-alpha.5 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them), `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-SERVER-FUNCTIONS-REMOVED`, `V13-FRONTEND-ADAPTERS-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-ORM-ADAPTERS-REMOVED`, `V13-MAIL-MESSAGE-REPLY-TO`, `V13-PRIVACY-CONSENT-CHOICE-MATCH`, `V13-LABS-NON-EXHAUSTIVE-MATCH`, `V13-CLI-GREEN-RENAMED`, `V13-ACADEMY-REMOVED`, `V13-ORM-QDRANT-REMOVED`, `V13-AI-PROVIDER-PRESETS` |
+| 13.0.0-alpha.6 | `V13-AUTH-PASSKEYS-FEATURE` |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -298,10 +299,10 @@ The plan takes the application's Rullst version to be the oldest version that
 a Rullst requirement in the workspace manifests admits (`=13.0.0-alpha.3`,
 or `13.0.0-alpha.1`, a caret requirement) or that `Cargo.lock` holds. When that
 version is a 13.0 prerelease, only the rules introduced after it apply: an
-alpha.4 application gets the alpha.5 rules, an alpha.3 application also the
-alpha.4 rules, an alpha.2 application also the seven alpha.3 rules, and an
-alpha.1 application also the alpha.2 rules, because the earlier changes are
-already in the version it runs. The plan says what it skipped:
+alpha.5 application gets the alpha.6 rule, an alpha.4 application also the
+alpha.5 rules, an alpha.3 application also the alpha.4 rules, an alpha.2
+application also the seven alpha.3 rules, and an alpha.1 application also the
+alpha.2 rules, because the earlier changes are already in the version it runs. The plan says what it skipped:
 
 ```text
 Source findings (rullst-upgrade-rules-v4): 0 must-change, 1 review
@@ -479,7 +480,7 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (26 rows);
+  application source (27 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
   the affected API, feature or configuration, which the rules locate (115 rows);
 - **(c) none**: no application impact, or not detectable in the application
@@ -487,7 +488,7 @@ is classified for `rullst-upgrade-rules-v4`:
   of inputs that previously failed) (107 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 147 rules. A row can map to several rules and a rule to
+has 148 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -738,6 +739,7 @@ the rule together.
 | Labs outcomes and states | (a) must-change | `V13-LABS-NON-EXHAUSTIVE-MATCH` | A `match` whose arm patterns name `JobState`, `JobResult`, `CaseGrade`, `CaseOutput`, `TrapKind`, `WorkerOutcome`, `ExecutionFailure`, `ResultEvidence` or `ExecutionProfile` and that has no catch-all arm, in a file that names `rullst_labs`; reporting the wall limit as `TimeLimit` is a runner choice no rule locates; introduced in 13.0.0-alpha.5 |
 | Privacy consent choices | (a) must-change | `V13-PRIVACY-CONSENT-CHOICE-MATCH` | A `match` whose arm patterns name `ConsentChoice` and that has no catch-all arm, in a file that names `rullst_privacy` or `rullst::privacy`; comparisons keep compiling; introduced in 13.0.0-alpha.5 |
 | Supervision obscured camera and brightness statistics | (c) none | — | Opt-in additions to enums that were already `#[non_exhaustive]`; recording `Obscured` in an older store needs `upgrade_event_schema`, which the application calls at run time; introduced in 13.0.0-alpha.5 |
+| Passkeys feature | (a) must-change | `V13-AUTH-PASSKEYS-FEATURE` | `rullst::auth::passkey` and `rullst_auth::passkey` paths (also through `auth::auth`, and `auth::passkey` in a file that names `rullst::auth` or `rullst_auth`) in `use` items, groups and code, at every location, when no workspace manifest enables `auth-passkeys`, `auth-sqlite` or `auth-passkey-postgres` on `rullst`, or `passkeys`, `sqlite` or `passkey-postgres` on `rullst-auth`, in a dependency or a `[features]` entry; introduced in 13.0.0-alpha.6 |
 
 ## Planned simpler update experience
 

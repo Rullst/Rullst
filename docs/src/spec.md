@@ -4100,8 +4100,11 @@ provider](capital-custom-provider.md)); the
   for wasm and edge targets. The exception is ES256 passkeys in `rullst-auth`
   (since 13.0.0-alpha.6): the credential public key (an uncompressed SEC1
   point, checked at registration and in the passkey stores) and the assertion
-  signature are checked with `aws-lc-rs`, which TLS already builds, instead of
-  `p256` and `ring`; `rullst-auth` is native-only in the facade.
+  signature are checked with `aws-lc-rs` instead of `p256` and `ring`, only
+  with `rullst-auth`'s `passkeys` feature (`auth-passkeys` in the facade;
+  `sqlite` and `passkey-postgres` include it), so an application without
+  passkeys does not compile aws-lc-rs for them. `rullst-auth` is native-only
+  in the facade.
 * **Process default:** `Server` start-up (Core `orm`, `storage-s3` or
   `telemetry`), the OTLP exporter, Redis TLS connections and the standalone
   `rullst-studio` binary install aws-lc-rs as the rustls process default only

@@ -13,6 +13,7 @@
 
 mod alpha5_runtime;
 mod alpha5_slimming;
+mod alpha6_passkeys;
 mod api_cleanups;
 mod catalog;
 mod files;
@@ -213,6 +214,10 @@ pub(super) struct WorkspaceFacts {
     /// A manifest enables SQLx's derive or query macros itself: `derive` or
     /// `macros`, or SQLx's default features, which include `macros`.
     pub sqlx_macros: bool,
+    /// A manifest enables Rullst's passkeys (13.0.0-alpha.6): `auth-passkeys`
+    /// or a feature that includes it on `rullst`, or `passkeys` (or `sqlite`,
+    /// `passkey-postgres`) on `rullst-auth`, in a declaration or `[features]`.
+    pub passkeys: bool,
 }
 
 /// Scans the workspace when the plan targets v13.
