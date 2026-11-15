@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """Assemble the https://rullst.win/ root site from this repository's sources.
 
-    python3 .github/assemble-organization-site.py --out DIRECTORY [--benchmarks FILE]
+    python3 .github/assemble-organization-site.py --out DIRECTORY [--benchmarks]
 
 Writes the English landing, privacy and comparison pages (/, /privacy.html,
 /compare/), their Brazilian Portuguese versions under pt-br/ (/pt-br/comparar/
 for the comparison) and the shared assets (stylesheet, script and
 language-switcher flags) under assets/ into DIRECTORY, which must be missing
-or empty.
-
---benchmarks names a downloaded copy (inside the working directory, at most
-1 MiB) of the Rullst/Benchmarks latest-results JSON (schema "rullst.benchmarks.latest.v1", described in
-docs/src/website-maintenance.md). Its Rullst, Loco and Topcoat rows are
-rendered into the comparison pages; without the file, or when it is invalid,
-the pages keep their "first measurement in progress" text and the script
-prints a warning instead of failing. The pages also reference /Rullst/book/, /Rullst/images/ and
+or empty. The pages also reference /Rullst/book/, /Rullst/images/ and
 /Rullst/Rullst.png, which this repository's pages.yml deploys, so every path
 is valid at the site root.
+
+--benchmarks reads benchmarks.json from the working directory: a downloaded
+copy (at most 1 MiB) of the Rullst/Benchmarks latest-results JSON, schema
+"rullst.benchmarks.latest.v1" (see docs/src/website-maintenance.md). Its
+Rullst, Loco and Topcoat rows are rendered into the comparison pages; without
+the file, or when it is invalid, the pages keep their "first measurement in
+progress" text and the script prints a warning instead of failing.
 
 The Rullst/Rullst.github.io deployment workflow runs this script from a
 read-only checkout of this repository's main branch; it reads no secret and
@@ -104,6 +104,8 @@ class AssemblyError(Exception):
 
 
 BENCHMARK_LIMIT = 1024 * 1024
+# The command line selects this fixed name; it never takes a results path.
+BENCHMARK_FILE = "benchmarks.json"
 
 
 def read_benchmark_file(path: Path) -> object:
@@ -256,10 +258,13 @@ def assemble(out: Path, root: Path = ROOT, benchmarks: Path | None = None) -> li
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", required=True, type=Path, help="missing or empty output directory")
-    parser.add_argument("--benchmarks", type=Path, help="downloaded latest-results JSON of Rullst/Benchmarks")
+    parser.add_argument(
+        "--benchmarks", action="store_true",
+        help=f"render {BENCHMARK_FILE} (Rullst/Benchmarks latest results) from the working directory",
+    )
     args = parser.parse_args(argv)
     try:
-        published = assemble(args.out, benchmarks=args.benchmarks)
+        published = assemble(args.out, benchmarks=Path(BENCHMARK_FILE) if args.benchmarks else None)
     except AssemblyError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

@@ -120,7 +120,8 @@ section fair to all three.
 
 Its Performance section is filled at build time, never by hand. The
 deployment downloads the latest results that `Rullst/Benchmarks` publishes and
-passes them to the assembler with `--benchmarks FILE`, which renders the
+saves them as `benchmarks.json` in the working directory and runs the
+assembler with `--benchmarks`, which renders the
 Rullst, Loco and Topcoat rows into both languages. The page has no script and
 its CSP keeps `connect-src 'none'`. The file must be JSON of this shape:
 
