@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794704823867,
+  "lastUpdate": 1794708188829,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -16900,6 +16900,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f4a70949ad86821123a05cca7ac890edb16a2e37",
+          "message": "Merge pull request #696 from Rullst/docs/v13-site-alpha6-freeze\n\ndocs(site): name 13.0.0-alpha.6 as the 13.0 feature freeze",
+          "timestamp": "2026-11-14T22:42:08-03:00",
+          "tree_id": "7cd8b19464b222146a6e3fd99f5aba1eebfec23b",
+          "url": "https://github.com/Rullst/Rullst/commit/f4a70949ad86821123a05cca7ac890edb16a2e37"
+        },
+        "date": 1794708188526,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
