@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794738394729,
+  "lastUpdate": 1794743638432,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -13805,6 +13805,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 319,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1e723efe4ebf6456ddf8681de8805a5325cd2f6",
+          "message": "Merge pull request #709 from Rullst/ci/v13-alpha6-msrv-tests\n\nci(msrv): run tests on Rust 1.96.0 and bound MSRV raises in 13.x",
+          "timestamp": "2026-11-15T08:31:43-03:00",
+          "tree_id": "82f247539fa4456897b2dd7b72791a8444e7efa8",
+          "url": "https://github.com/Rullst/Rullst/commit/b1e723efe4ebf6456ddf8681de8805a5325cd2f6"
+        },
+        "date": 1794743637567,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 265,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
