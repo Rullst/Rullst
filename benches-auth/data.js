@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794709679320,
+  "lastUpdate": 1794720457334,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -22103,6 +22103,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4229,
             "range": "± 18",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3e7adcd5c446adb7e9ac4c6bf448666c923f8fd0",
+          "message": "Merge pull request #700 from Rullst/refactor/v13-alpha6-security-store-core\n\nrefactor(core): move SecurityStore and LiveSecurityEvent from rullst-security",
+          "timestamp": "2026-11-15T02:12:13-03:00",
+          "tree_id": "3e366578da2603e1c711af62b5b82ec373d4f3ef",
+          "url": "https://github.com/Rullst/Rullst/commit/3e7adcd5c446adb7e9ac4c6bf448666c923f8fd0"
+        },
+        "date": 1794720456242,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 918,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 713,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1679,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3759,
+            "range": "± 124",
             "unit": "ns/iter"
           }
         ]
