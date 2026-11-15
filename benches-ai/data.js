@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794709992063,
+  "lastUpdate": 1794720728236,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -19607,6 +19607,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 403,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3e7adcd5c446adb7e9ac4c6bf448666c923f8fd0",
+          "message": "Merge pull request #700 from Rullst/refactor/v13-alpha6-security-store-core\n\nrefactor(core): move SecurityStore and LiveSecurityEvent from rullst-security",
+          "timestamp": "2026-11-15T02:12:13-03:00",
+          "tree_id": "3e366578da2603e1c711af62b5b82ec373d4f3ef",
+          "url": "https://github.com/Rullst/Rullst/commit/3e7adcd5c446adb7e9ac4c6bf448666c923f8fd0"
+        },
+        "date": 1794720727169,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1401,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 309,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 283,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
