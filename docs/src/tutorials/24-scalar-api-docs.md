@@ -39,13 +39,21 @@ In a generated project, declare `mod controllers;` in `src/main.rs` if it is not
 there yet (the Blank and API starters have no `controllers` module), and merge
 the router where `main` builds the server; in the Blank and API starters that
 is `Server::new(router().merge_axum(controllers::docs_controller::router()))`.
-`Server`'s security baseline (in every environment since 13.0.0-alpha.6) sends
-its default Content Security Policy to every response that has none, and that
-policy blocks the page's remote and inline scripts, which leaves `/docs` blank.
-Give the docs responses a policy of their own, which the baseline keeps because
-an explicit value wins: for example, layer
-`rullst::server::middleware::map_response` on the docs router to insert a
-`Content-Security-Policy` that allows the Scalar script's origin.
+`/docs` works behind `Server`'s security baseline in every environment: the
+page answers with a Content Security Policy of its own, which the baseline
+keeps because it never replaces a policy a response already has. That policy
+admits only the request's nonce (on the page's inline style and scripts, and in
+the `csp-nonce` meta element Scalar reads for the styles it inserts) and the
+one pinned Scalar file, `@scalar/api-reference@1.67.0/dist/browser/standalone.js`
+from jsDelivr, which the page loads with Subresource Integrity; the style
+elements Scalar inserts without the nonce are admitted by their SHA-256
+hashes. The OpenAPI document and requests from the API client must be
+same-origin. There is no `'unsafe-eval'`, and `'unsafe-inline'` only in
+`style-src-attr`: Scalar sets `style` attributes with computed values, which no
+nonce or hash can cover. Scalar's remote fonts and its "Ask AI" agent (which
+calls `api.scalar.com`) are turned off, so the page uses system fonts. Loaded
+in Chromium, the page reports no policy violation and no console error. Every
+other route keeps the baseline's default policy.
 
 ---
 
