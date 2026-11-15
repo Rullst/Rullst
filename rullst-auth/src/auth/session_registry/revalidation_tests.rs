@@ -81,9 +81,11 @@ async fn the_check_follows_the_record() {
     let mut check = registry.revalidation(&live);
     assert!(check.still_valid().await);
     assert!(format!("{check:?}").starts_with("SessionRevalidation { session: CurrentSession"));
-    // Valid through its last second, expired after it.
+    // Valid through its last second, expired after it (at fixed times: the
+    // wall clock may pass a second boundary between two statements).
     let ending = signed_in(&registry, 9001, 10, 10).await;
-    assert!(registry.revalidation(&ending).still_valid().await);
+    assert!(registry.is_live(&ending, ending.expires_at).await);
+    assert!(!registry.is_live(&ending, ending.expires_at + 1).await);
     let expired = signed_in(&registry, 9001, 20, 10).await;
     assert!(!registry.revalidation(&expired).still_valid().await);
     // A record moved to another account no longer counts.
