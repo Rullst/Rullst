@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794728700179,
+  "lastUpdate": 1794738589979,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -19751,6 +19751,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 280,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a9044a5a0808a81ecfe39a8e3c7f8d35700ccdd4",
+          "message": "Merge pull request #694 from Rullst/ci/v13-alpha6-release-process\n\nci: live draft state, release evidence audit on PRs, existing-tag preflight guidance",
+          "timestamp": "2026-11-15T07:12:28-03:00",
+          "tree_id": "6e159e26c6ae3a4c85dba6d25f3505419d5de3ff",
+          "url": "https://github.com/Rullst/Rullst/commit/a9044a5a0808a81ecfe39a8e3c7f8d35700ccdd4"
+        },
+        "date": 1794738588593,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1087,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 218,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 269,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
