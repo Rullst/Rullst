@@ -31,6 +31,38 @@ mod machine_client_tests;
 #[cfg(kani)]
 mod kani_proofs;
 
+/// The rest of a middleware stack: axum's [`Next`](axum::middleware::Next),
+/// or a closure that runs the layers inside, so several baseline layers run
+/// as one middleware.
+pub(crate) trait Run: Send {
+    fn run(
+        self,
+        req: axum::extract::Request,
+    ) -> impl Future<Output = axum::response::Response> + Send;
+}
+
+impl Run for axum::middleware::Next {
+    fn run(
+        self,
+        req: axum::extract::Request,
+    ) -> impl Future<Output = axum::response::Response> + Send {
+        axum::middleware::Next::run(self, req)
+    }
+}
+
+impl<F, Fut> Run for F
+where
+    F: FnOnce(axum::extract::Request) -> Fut + Send,
+    Fut: Future<Output = axum::response::Response> + Send,
+{
+    fn run(
+        self,
+        req: axum::extract::Request,
+    ) -> impl Future<Output = axum::response::Response> + Send {
+        self(req)
+    }
+}
+
 // ─── Public Re-exports ──────────────────────────────────────────────────────
 
 pub use baseline::{

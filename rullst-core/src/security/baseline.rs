@@ -1,7 +1,11 @@
 //! Canonical composition of the runtime-owned browser security baseline.
 
 use crate::config::{Environment, SecurityConfig};
+use axum::extract::{Request, State};
+use axum::middleware::Next;
+use axum::response::Response;
 use axum::{Router, http};
+use std::sync::Arc;
 use std::time::Duration;
 use tower_http::cors::CorsLayer;
 
@@ -40,7 +44,10 @@ pub enum SecurityBaselineError {
 ///
 /// In staging/production the outer-to-inner order is secure headers → CORS →
 /// secure framework cookies → WAF/RASP → CSRF → optional response PII
-/// masking → handler. In development only CORS, secure framework cookies and
+/// masking → handler. Since 13.0.0-alpha.6 these run as one middleware (two
+/// around a CORS layer, plus PII masking when enabled), with the header
+/// values derived once from `security`, so a request pays for one layer
+/// instead of seven. In development only CORS, secure framework cookies and
 /// a report-only WAF run: it logs, at `warn` level, the rule and path of each
 /// request that staging and production would refuse, without refusing it.
 /// In every environment, the secure framework cookies layer adds `Secure` to
@@ -60,6 +67,7 @@ pub fn apply_security_baseline(
     security
         .validate()
         .map_err(|error| SecurityBaselineError::InvalidConfiguration(error.to_string()))?;
+    let cors = cors_layer(&security)?;
 
     if environment.requires_secure_defaults() {
         if security.enable_pii_masking {
@@ -67,10 +75,29 @@ pub fn apply_security_baseline(
                 crate::security::pii_masking_middleware,
             ));
         }
-        app = app
-            .layer(axum::middleware::from_fn(crate::security::csrf_middleware))
-            .layer(axum::middleware::from_fn(crate::security::waf_middleware));
-    } else if environment.allows_development_tools() {
+        // The layers run as one middleware, so a request pays for one layer
+        // instead of seven; only a CORS policy splits it, to keep its place.
+        let production = Arc::new(Production {
+            headers: super::headers::HeaderPlan::new(&security),
+            security,
+            environment,
+        });
+        return Ok(match cors {
+            None => app.layer(axum::middleware::from_fn_with_state(
+                production,
+                production_baseline,
+            )),
+            Some(cors) => app
+                .layer(axum::middleware::from_fn(request_checks))
+                .layer(cors)
+                .layer(axum::middleware::from_fn_with_state(
+                    production,
+                    production_headers,
+                )),
+        });
+    }
+
+    if environment.allows_development_tools() {
         // Development only logs what the WAF would refuse in production.
         app = app.layer(axum::middleware::from_fn(super::waf::waf_report_middleware));
     }
@@ -78,48 +105,105 @@ pub fn apply_security_baseline(
     app = app.layer(axum::middleware::from_fn(
         super::secure_cookies::secure_framework_cookies,
     ));
-
-    if !security.cors_allow_origins.is_empty() {
-        let origins = security
-            .cors_allow_origins
-            .iter()
-            .map(|origin| {
-                origin
-                    .parse::<http::HeaderValue>()
-                    .map_err(|_| SecurityBaselineError::InvalidCorsOrigin(origin.clone()))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        app = app.layer(
-            CorsLayer::new()
-                .allow_origin(origins)
-                .allow_methods([
-                    http::Method::GET,
-                    http::Method::HEAD,
-                    http::Method::POST,
-                    http::Method::PUT,
-                    http::Method::PATCH,
-                    http::Method::DELETE,
-                ])
-                .allow_headers([
-                    http::header::ACCEPT,
-                    http::header::AUTHORIZATION,
-                    http::header::CONTENT_TYPE,
-                    http::HeaderName::from_static("x-csrf-token"),
-                ])
-                .allow_credentials(security.cors_allow_credentials)
-                .max_age(Duration::from_secs(600)),
-        );
+    if let Some(cors) = cors {
+        app = app.layer(cors);
     }
-
-    if environment.requires_secure_defaults() {
-        app = app.layer(axum::middleware::from_fn(
-            crate::security::headers_middleware,
-        ));
-    }
-
     Ok(app
         .layer(axum::Extension(security))
         .layer(axum::Extension(environment)))
+}
+
+/// The CORS layer of `security.cors_allow_origins`, if it lists any origin.
+fn cors_layer(security: &SecurityConfig) -> Result<Option<CorsLayer>, SecurityBaselineError> {
+    if security.cors_allow_origins.is_empty() {
+        return Ok(None);
+    }
+    let origins = security
+        .cors_allow_origins
+        .iter()
+        .map(|origin| {
+            origin
+                .parse::<http::HeaderValue>()
+                .map_err(|_| SecurityBaselineError::InvalidCorsOrigin(origin.clone()))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Some(
+        CorsLayer::new()
+            .allow_origin(origins)
+            .allow_methods([
+                http::Method::GET,
+                http::Method::HEAD,
+                http::Method::POST,
+                http::Method::PUT,
+                http::Method::PATCH,
+                http::Method::DELETE,
+            ])
+            .allow_headers([
+                http::header::ACCEPT,
+                http::header::AUTHORIZATION,
+                http::header::CONTENT_TYPE,
+                http::HeaderName::from_static("x-csrf-token"),
+            ])
+            .allow_credentials(security.cors_allow_credentials)
+            .max_age(Duration::from_secs(600)),
+    ))
+}
+
+/// What the staging and production baseline needs for every request.
+struct Production {
+    security: SecurityConfig,
+    environment: Environment,
+    headers: super::headers::HeaderPlan,
+}
+
+/// The staging and production baseline without a CORS policy, outer to
+/// inner: configuration extensions, secure headers, secure framework cookies,
+/// WAF, CSRF.
+async fn production_baseline(
+    State(production): State<Arc<Production>>,
+    req: Request,
+    next: Next,
+) -> Response {
+    let req = production.install(req);
+    super::headers::with_security_headers(req, &production.headers, |req| {
+        with_request_checks(req, next)
+    })
+    .await
+}
+
+/// The part of the baseline outside a CORS policy: configuration extensions
+/// and secure headers.
+async fn production_headers(
+    State(production): State<Arc<Production>>,
+    req: Request,
+    next: Next,
+) -> Response {
+    let req = production.install(req);
+    super::headers::with_security_headers(req, &production.headers, |req| next.run(req)).await
+}
+
+/// The part of the baseline inside a CORS policy: secure framework cookies
+/// (outside CSRF, so the cookie it mints is covered too), WAF, CSRF.
+async fn request_checks(req: Request, next: Next) -> Response {
+    with_request_checks(req, next).await
+}
+
+async fn with_request_checks(req: Request, next: Next) -> Response {
+    super::secure_cookies::with_secure_framework_cookies(req, |req| {
+        super::waf::with_waf(req, |req| super::csrf::with_csrf(req, next))
+    })
+    .await
+}
+
+impl Production {
+    /// Installs the configuration and environment extensions, so every
+    /// middleware observes the exact application configuration rather than a
+    /// process-global fallback.
+    fn install(&self, mut req: Request) -> Request {
+        req.extensions_mut().insert(self.security.clone());
+        req.extensions_mut().insert(self.environment);
+        req
+    }
 }
 
 #[cfg(test)]
@@ -254,6 +338,81 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(accepted.status(), StatusCode::NO_CONTENT);
+    }
+
+    #[tokio::test]
+    async fn production_baseline_without_cors_runs_every_layer() {
+        let app = Router::new()
+            .route(
+                "/",
+                get(
+                    |Extension(nonce): Extension<CspNonce>,
+                     Extension(csrf): Extension<CsrfToken>,
+                     Extension(config): Extension<SecurityConfig>,
+                     Extension(environment): Extension<Environment>| async move {
+                        format!(
+                            "{}|{}|{}|{environment:?}",
+                            nonce.as_str(),
+                            csrf.as_str(),
+                            config.csrf_same_site
+                        )
+                    },
+                ),
+            )
+            .route("/write", post(|| async { StatusCode::NO_CONTENT }));
+        let app = apply_security_baseline(app, SecurityConfig::default(), Environment::Staging)
+            .expect("staging security baseline");
+        let get_page = |agent: &str| {
+            Request::get("/")
+                .header(header::USER_AGENT, agent)
+                .body(Body::empty())
+                .unwrap()
+        };
+
+        let response = app.clone().oneshot(get_page("Mozilla/5.0")).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[header::X_FRAME_OPTIONS], "DENY");
+        assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+        assert!(
+            !response
+                .headers()
+                .contains_key(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+        );
+        let csp = response.headers()[header::CONTENT_SECURITY_POLICY]
+            .to_str()
+            .unwrap()
+            .to_string();
+        let cookie = response.headers()[header::SET_COOKIE]
+            .to_str()
+            .unwrap()
+            .to_string();
+        let body = to_bytes(response.into_body(), 1024).await.unwrap();
+        let body = std::str::from_utf8(&body).unwrap().to_string();
+        let fields: Vec<&str> = body.split('|').collect();
+        assert_eq!(fields[2..], ["Lax", "Staging"]);
+        assert!(csp.contains(&format!("'nonce-{}'", fields[0])), "{csp}");
+        // The page's token may be a masked form of the cookie's.
+        assert!(!fields[1].is_empty());
+        assert!(cookie.starts_with("rullst_csrf="), "{cookie}");
+        assert!(
+            cookie.ends_with("; Path=/; SameSite=Lax; Secure"),
+            "{cookie}"
+        );
+
+        // The WAF and CSRF refusals still carry the secure headers.
+        for request in [
+            get_page("GPTBot/1.0"),
+            Request::post("/write").body(Body::empty()).unwrap(),
+        ] {
+            let refused = app.clone().oneshot(request).await.unwrap();
+            assert_eq!(refused.status(), StatusCode::FORBIDDEN);
+            assert!(
+                refused
+                    .headers()
+                    .contains_key(header::CONTENT_SECURITY_POLICY)
+            );
+            assert_eq!(refused.headers()[header::X_FRAME_OPTIONS], "DENY");
+        }
     }
 
     #[tokio::test]

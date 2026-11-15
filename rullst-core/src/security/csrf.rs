@@ -88,7 +88,12 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 /// Applying this middleware more than once to the same request is idempotent. This
 /// matters when an application router adds the explicit development layer and
 /// [`crate::Server`] later composes the production security baseline around it.
-pub async fn csrf_middleware(mut req: Request, next: Next) -> Response {
+pub async fn csrf_middleware(req: Request, next: Next) -> Response {
+    with_csrf(req, next).await
+}
+
+/// [`csrf_middleware`] in front of `next`.
+pub(crate) async fn with_csrf(mut req: Request, next: impl super::Run) -> Response {
     if let Some(policy) = req
         .extensions()
         .get::<super::MachineEndpointPolicy>()
@@ -134,7 +139,7 @@ fn is_signed_webhook_exemption(req: &Request) -> bool {
         .any(|path| path == req.uri().path())
 }
 
-async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
+async fn handle_csrf_get(mut req: Request, next: impl super::Run) -> Response {
     let cookie_token = csrf_token_from_cookies(req.headers());
 
     if let Some(token) = cookie_token {
@@ -215,7 +220,7 @@ fn csrf_token_from_cookies(headers: &header::HeaderMap) -> Option<String> {
 }
 
 #[cfg_attr(mutants, mutants::skip)]
-async fn handle_csrf_state_modifying(mut req: Request, next: Next) -> Response {
+async fn handle_csrf_state_modifying(mut req: Request, next: impl super::Run) -> Response {
     let csrf_cookie = csrf_token_from_cookies(req.headers());
 
     let Some(cookie_token) = csrf_cookie else {
