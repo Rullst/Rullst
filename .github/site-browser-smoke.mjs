@@ -46,6 +46,7 @@ const server = createServer(async (request, response) => {
     let relative;
     const rootSite = { "/": ["index.html", "docs/home_template.html"], "/privacy.html": ["privacy.html", "docs/privacy_template.html"],
       "/pt-br/": ["pt-br/index.html", "docs/home_template.pt-BR.html"], "/pt-br/privacy.html": ["pt-br/privacy.html", "docs/privacy_template.pt-BR.html"],
+      "/compare/": ["compare/index.html", "docs/compare_template.html"], "/pt-br/comparar/": ["pt-br/comparar/index.html", "docs/compare_template.pt-BR.html"],
       "/assets/site.css": ["assets/site.css", "docs/site.css"], "/assets/site.js": ["assets/site.js", "docs/site.js"],
       "/assets/flags/us.svg": ["assets/flags/us.svg", "docs/flags/us.svg"], "/assets/flags/br.svg": ["assets/flags/br.svg", "docs/flags/br.svg"] };
     if (rootSite[path]) {
@@ -287,6 +288,21 @@ try {
   assert(await evaluate("document.documentElement.lang === 'pt-BR' && document.title === 'Aviso de privacidade do site — Rullst' && document.querySelectorAll('main section h2').length === 9"), "Portuguese privacy page must render the full notice");
   assert.equal(await evaluate("document.querySelector('link[rel=canonical]').href"), "https://rullst.win/pt-br/privacy.html");
   assert.equal(await evaluate("document.querySelector('.lang-switch [aria-current=page]').hreflang"), "pt-BR");
+  for (const route of ["/compare/", "/pt-br/comparar/"]) {
+    for (const [width, height] of [[1440, 1100], [390, 844], [320, 740]]) {
+      await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
+      await navigate(true, route);
+      const page = await evaluate(`(() => ({
+        overflow: document.documentElement.scrollWidth > innerWidth,
+        topics: document.querySelectorAll('.compare-topic').length,
+        columns: [...document.querySelectorAll('.compare-topic')].every(topic => topic.querySelectorAll('dt').length === 3),
+        benchmarks: document.querySelectorAll('.benchmark-pending, .benchmark-rows').length,
+        current: document.querySelector('.lang-switch [aria-current=page]').getAttribute('href'),
+        flags: [...document.querySelectorAll('.lang-switch img')].every(image => image.complete && image.naturalWidth > 0),
+      }))()`);
+      assert.deepEqual(page, { overflow: false, topics: 11, columns: true, benchmarks: 1, current: route, flags: true }, `Comparison page ${route} at ${width}px`);
+    }
+  }
   await navigate(true, "/privacy.html");
   assert(await evaluate("document.title === 'Website privacy notice — Rullst' && document.querySelectorAll('main section h2').length === 9"), "Standalone privacy page must render the full notice");
   assert.equal(await evaluate("document.querySelector('link[rel=canonical]').href"), "https://rullst.win/privacy.html");
@@ -295,7 +311,7 @@ try {
   assert.deepEqual([...oldAssetReads.values()], [1, 1], "Current pages must not request the old unversioned assets again");
   assert([...requests].every(url => url.startsWith(origin + "/")), `External resource requests: ${[...requests].filter(url => !url.startsWith(origin + "/"))}`);
   assert.deepEqual(failures, [], "Browser errors, CSP failures or broken resources");
-  console.log(`PASS (${organization ? "assembled root site" : "sources"}): stale-cache upgrade, engine card styling, desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, Academy greeting/stop, integrations, canonical URLs, English and Brazilian Portuguese pages with flag language switcher, clipboard success/denial, privacy summary and full notice, reduced motion, no-JS navigation, no storage or external landing requests.`);
+  console.log(`PASS (${organization ? "assembled root site" : "sources"}): stale-cache upgrade, engine card styling, desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, Academy greeting/stop, integrations, canonical URLs, English and Brazilian Portuguese pages with flag language switcher, comparison pages, clipboard success/denial, privacy summary and full notice, reduced motion, no-JS navigation, no storage or external landing requests.`);
   await call("Browser.close");
 } finally {
   socket?.close();
