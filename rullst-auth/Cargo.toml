@@ -32,6 +32,11 @@ email-login-sqlite = ["recovery-sqlite"]
 email-login-postgres = ["recovery-postgres"]
 api-tokens-sqlite = ["recovery-sqlite"]
 api-tokens-postgres = ["recovery-postgres"]
+# Server-side registry of `rullst_session` logins (`session_registry`) over
+# the application's own SQLx pool, one feature per database.
+session-registry-sqlite = ["dep:sqlx", "sqlx/sqlite"]
+session-registry-postgres = ["dep:sqlx", "sqlx/postgres"]
+session-registry-mysql = ["dep:sqlx", "sqlx/mysql"]
 
 [dependencies]
 rullst-core = { workspace = true }
@@ -52,7 +57,7 @@ p256 = "0.14.0"
 tower = { workspace = true }
 futures-util = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["rt"] }
+tokio = { workspace = true, features = ["rt", "time"] }
 dotenvy = { workspace = true }
 url = "2.5.8"
 jsonwebtoken = { workspace = true, optional = true }
