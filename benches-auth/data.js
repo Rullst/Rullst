@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794775901559,
+  "lastUpdate": 1794781880254,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -22775,6 +22775,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1994,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b85cf2817cef5f07782f9b0da812cc185dbc31aa",
+          "message": "Merge pull request #714 from Rullst/perf/v13-alpha6-generated-stack-throughput\n\nperf(core): one-layer production baseline and background access log",
+          "timestamp": "2026-11-15T19:15:44-03:00",
+          "tree_id": "4f48d7ca78c4790dde0de598ff28adbc3c418652",
+          "url": "https://github.com/Rullst/Rullst/commit/b85cf2817cef5f07782f9b0da812cc185dbc31aa"
+        },
+        "date": 1794781879361,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 906,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 703,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1584,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3736,
+            "range": "± 144",
             "unit": "ns/iter"
           }
         ]
