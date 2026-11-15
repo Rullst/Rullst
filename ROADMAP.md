@@ -366,7 +366,10 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
     changing no public path:
     - Studio and Nexus stop depending on all of `rullst-security`:
       `SecurityStore` and `LiveSecurityEvent` move to Core and stay available
-      where they are today (about 48 fewer packages).
+      where they are today (about 48 fewer packages). Done in the development
+      source: both are defined in `rullst_core::security` and re-exported at
+      their `rullst_security` paths; the generated starters' `Cargo.lock` lists
+      49 fewer packages (SaaS 398 to 349, Blank and API 374 to 325).
     - SQLite-only starters build without a TLS stack (about 43 fewer packages,
       the largest binary-size gain); the rustls `CryptoProvider` must still be
       installed wherever TLS is used.

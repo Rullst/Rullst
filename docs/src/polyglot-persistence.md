@@ -194,11 +194,18 @@ The live path speaks the official Hrana HTTP v3 protocol directly through the
 workspace's Rustls-backed HTTP client; it does not embed the native SQLite
 engine or the legacy remote SDK dependency chain. URLs must use
 `libsql://` or HTTPS; cleartext HTTP requires an explicit loopback-development
-opt-in. Requests reject redirects and have a 30-second deadline. Tokens and
-endpoint details are redacted from `Debug`; remote responses are capped at
-16 MiB, result materialization at 1–10,000 rows, each statement at 1,024
-positional parameters/8 MiB of parameter data, and each transaction at 1,024
-statements/16 MiB of raw SQL plus parameters. SQL result cells can still be
+opt-in. Requests reject redirects and have a 30-second deadline. A
+multi-instance server such as Turso Cloud may answer the first request of an
+interactive stream (the insert that a text key's `DEFAULT` fills) with a
+`base_url` naming the instance that holds it; since 13.0.0-alpha.6 the rest of
+that stream goes there when the URL has the configured endpoint's scheme, host
+and port. Any other origin is refused with
+`PolyglotError::CrossOriginEndpoint` before a request, and so the token, is
+sent to it; the insert is not committed and the server drops its transaction
+with the stream. Tokens and endpoint details are redacted from `Debug`; remote
+responses are capped at 16 MiB, result materialization at 1–10,000 rows, each
+statement at 1,024 positional parameters/8 MiB of parameter data, and each
+transaction at 1,024 statements/16 MiB of raw SQL plus parameters. SQL result cells can still be
 large, so applications must also constrain selected columns and data at the
 schema/query boundary.
 

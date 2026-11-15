@@ -25,7 +25,7 @@ const CHECKS: [(&Rule, LineCheck); 10] = [
     (&ACADEMY_REMOVED, runs_academy_doctor),
 ];
 
-/// Each rule a script matches, at its first matching line that no
+/// Each rule a script matches, at every matching line that no
 /// `rullst-upgrade: reviewed` marker covers; the rule of every covered line
 /// is added to `reviewed`.
 pub(super) fn script_findings(
@@ -36,9 +36,10 @@ pub(super) fn script_findings(
     CHECKS
         .into_iter()
         .filter(|(_, matches)| line_of(text, matches).is_some())
-        .filter_map(|(rule, matches)| {
-            super::super::reviewed::first_unreviewed(&lines, rule, matches, reviewed)
-                .map(|line| (rule, line))
+        .flat_map(|(rule, matches)| {
+            super::super::reviewed::unreviewed_lines(&lines, rule, matches, reviewed)
+                .into_iter()
+                .map(move |line| (rule, line))
         })
         .collect()
 }

@@ -45,7 +45,6 @@ ai = ["dep:rullst-ai", "dep:ammonia"]
 rullst-core = { workspace = true, features = ["orm"] }
 rullst-orm = { workspace = true }
 rullst-auth = { workspace = true }
-rullst-security = { workspace = true }
 rullst-ai = { workspace = true, optional = true }
 axum = { workspace = true }
 # Sanitizes the assistant's answers (`ai`).
@@ -62,6 +61,8 @@ urlencoding = { workspace = true }
 
 [dev-dependencies]
 rullst-orm = { workspace = true, features = ["drivers-all"] }
+# `security_event_flow` records through a `rullst-security` layer.
+rullst-security = { workspace = true }
 testcontainers = { version = "0.27.3", default-features = false, features = ["aws-lc-rs"] }
 testcontainers-modules = { version = "0.15.0", default-features = false, features = ["aws-lc-rs", "postgres", "mysql"] }
 tower = { workspace = true, features = ["util"] }
