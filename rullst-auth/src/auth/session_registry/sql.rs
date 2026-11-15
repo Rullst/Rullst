@@ -194,21 +194,21 @@ where
             .fetch_one(&mut *transaction)
             .await
             .map_err(unavailable)?;
-        let excess = count - i64::from(per_user) + 1;
-        if excess > 0 {
-            let oldest: Vec<(String,)> = sqlx::query_as::<DB, (String,)>(Self::SQL.oldest_user)
-                .bind(row.user_id)
-                .bind(excess)
-                .fetch_all(&mut *transaction)
+        // The sessions beyond `per_user - 1`, least recently used first; none
+        // below the limit (`LIMIT 0`; a negative SQLite limit means none).
+        let excess = (count - i64::from(per_user) + 1).max(0);
+        let oldest: Vec<(String,)> = sqlx::query_as::<DB, (String,)>(Self::SQL.oldest_user)
+            .bind(row.user_id)
+            .bind(excess)
+            .fetch_all(&mut *transaction)
+            .await
+            .map_err(unavailable)?;
+        for (token_hash,) in oldest {
+            sqlx::query::<DB>(Self::SQL.delete_hash)
+                .bind(token_hash)
+                .execute(&mut *transaction)
                 .await
                 .map_err(unavailable)?;
-            for (token_hash,) in oldest {
-                sqlx::query::<DB>(Self::SQL.delete_hash)
-                    .bind(token_hash)
-                    .execute(&mut *transaction)
-                    .await
-                    .map_err(unavailable)?;
-            }
         }
         sqlx::query::<DB>(Self::SQL.insert)
             .bind(row.token_hash)

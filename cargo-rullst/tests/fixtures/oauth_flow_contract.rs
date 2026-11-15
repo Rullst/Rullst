@@ -9,6 +9,14 @@ use tower::ServiceExt;
 
 type App = rullst::web::axum::Router;
 
+/// What the registered session of a sign-in cookie says.
+async fn session_claims(token: &str) -> rullst::auth::SessionClaims {
+    let key = rullst::auth::get_app_key().unwrap();
+    let now = rullst::auth::session_registry::unix_now().unwrap();
+    let registry = crate::middlewares::auth_middleware::sessions().await.unwrap();
+    registry.authenticate(token, &key, now).await.unwrap().claims()
+}
+
 /// Each request comes from its own client, so the per-client sign-in budget
 /// (10 a minute) applies only where a test asks for it.
 static NEXT_PEER: std::sync::atomic::AtomicU16 = std::sync::atomic::AtomicU16::new(1);
@@ -157,7 +165,6 @@ async fn generated_oauth_flow_contract() {
     for migration in crate::migrations::get_migrations() {
         migration.up().await.unwrap();
     }
-    let key = rullst::auth::get_app_key().unwrap();
     let router = crate::router().unwrap();
     let app = router.as_axum();
     let login = get(app, "/login", &[]).await;
@@ -170,7 +177,7 @@ async fn generated_oauth_flow_contract() {
     }
 
     // A first sign-in creates a password-less account linked to the subject,
-    // and its session cookie carries the account's current epoch.
+    // and its registered session carries the account's current epoch.
     let (challenge, callback) = begin(app, None).await;
     let response = get(app, &callback, &[&challenge]).await;
     let token = signed_in(&response, "/dashboard");
@@ -178,7 +185,7 @@ async fn generated_oauth_flow_contract() {
     assert_eq!(account.password_hash, None);
     assert_eq!(account.oauth_provider.as_deref(), Some("google"));
     assert_eq!(account.session_epoch, 0);
-    let claims = rullst::auth::decrypt_session_claims(&token, &key).unwrap();
+    let claims = session_claims(&token).await;
     assert_eq!(claims.user_id, account.id);
     assert_eq!(claims.epoch, 0);
     assert!(account.accepts_session(&claims));
@@ -196,7 +203,7 @@ async fn generated_oauth_flow_contract() {
     User::revoke_sessions(account.id).await.unwrap();
     let (challenge, callback) = begin(app, Some("/password/change")).await;
     let token = signed_in(&get(app, &callback, &[&challenge]).await, "/password/change");
-    let claims = rullst::auth::decrypt_session_claims(&token, &key).unwrap();
+    let claims = session_claims(&token).await;
     assert_eq!((claims.user_id, claims.epoch), (account.id, 1));
     assert_eq!(users().await, 1);
     // The cookie issued before the revocation no longer counts.
@@ -271,7 +278,7 @@ async fn generated_oauth_flow_contract() {
             get(app, &callback, &[&challenge]).await
         };
         let token = signed_in_with(&response, provider, "/password/change");
-        let claims = rullst::auth::decrypt_session_claims(&token, &key).unwrap();
+        let claims = session_claims(&token).await;
         assert_eq!(claims.user_id, account.id);
         assert_eq!(OAuthIdentity::user_id(provider, subject).await.unwrap(), Some(account.id));
         // A verified email of no account creates a password-less account.

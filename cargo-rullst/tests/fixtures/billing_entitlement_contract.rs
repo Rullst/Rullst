@@ -86,7 +86,14 @@ async fn generated_entitlement_http_and_revision_contract() {
         .bind(2).bind("cus_forged").bind("sub_forged").bind("price_pro").bind("active").bind(1900000000_i64)
         .bind("2026-09-20T00:00:00+00:00").bind("2026-09-20T00:00:00+00:00").execute(pool).await.unwrap();
     let key = rullst::auth::get_app_key().unwrap();
-    let sessions = (1..=4).map(|id| rullst::auth::encrypt_session(id, &key).unwrap()).collect::<Vec<_>>();
+    // Registered sessions at epoch 0, as sign-ins create them (account 4 has none).
+    let registry = crate::middlewares::auth_middleware::sessions().await.unwrap();
+    let now = rullst::auth::session_registry::unix_now().unwrap();
+    let mut sessions = Vec::new();
+    for id in 1..=4 {
+        let login = rullst::auth::session_registry::NewSession::new(id, 0);
+        sessions.push(registry.create_session(&login, &key, now).await.unwrap().token().to_owned());
+    }
     let production_router = crate::router().unwrap();
     assert_eq!(request(production_router.as_axum(), None, "").await.status(), StatusCode::SEE_OTHER);
     assert_eq!(request(production_router.as_axum(), Some("forged"), "").await.status(), StatusCode::SEE_OTHER);

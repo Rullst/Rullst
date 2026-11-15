@@ -28,7 +28,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rullst = "12"
+rullst = { version = "12", features = ["strict-sqlite"] }
 serde = { version = "1", features = ["derive"] }
 "#,
         )

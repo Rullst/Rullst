@@ -40,6 +40,15 @@ fn expired_form(html: &str, session: &str) -> String {
     answer(html,"grant").1.replace(&format!("issued_at={}",value(html,"issued_at")),&format!("issued_at={issued}")).replace(&value(html,"proof"),&hex::encode(signature.as_ref()))
 }
 
+/// A registered session of account `id` at epoch 0, as a sign-in creates it.
+async fn registered(id: i32) -> String {
+    let key = rullst::auth::get_app_key().unwrap();
+    let now = rullst::auth::session_registry::unix_now().unwrap();
+    let registry = privacy_consumer::middlewares::auth_middleware::sessions().await.unwrap();
+    let login = rullst::auth::session_registry::NewSession::new(id, 0);
+    registry.create_session(&login, &key, now).await.unwrap().token().to_owned()
+}
+
 #[tokio::test]
 async fn authenticated_optional_processing_and_own_account_export() {
     rullst_orm::Orm::init("sqlite::memory:").await.unwrap();
@@ -49,10 +58,9 @@ async fn authenticated_optional_processing_and_own_account_export() {
         sqlx::query("INSERT INTO users (id,name,email,password_hash,created_at,updated_at) VALUES (?,?,?,?,?,?)")
             .bind(id).bind(format!("Member <{id}>")).bind(format!("member-{id}@example.test")).bind("credential-must-not-be-exported").bind("2026-09-20T00:00:00+00:00").bind("2026-09-20T00:00:00+00:00").execute(pool).await.unwrap();
     }
-    let key = rullst::auth::get_app_key().unwrap();
-    let first = rullst::auth::encrypt_session(1,&key).unwrap();
-    let second = rullst::auth::encrypt_session(2,&key).unwrap();
-    let rotated = rullst::auth::encrypt_session(1,&key).unwrap();
+    let first = registered(1).await;
+    let second = registered(2).await;
+    let rotated = registered(1).await;
     let mut app = router().unwrap();
     *app.as_axum_mut() = rullst::security::apply_security_baseline(app.as_axum().clone(),rullst::config::SecurityConfig::default(),rullst::config::Environment::Production).unwrap();
     assert_eq!(request(&app,"/privacy",None,None,None,None).await.status(),StatusCode::SEE_OTHER);
