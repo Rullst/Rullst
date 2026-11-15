@@ -39,13 +39,18 @@ In a generated project, declare `mod controllers;` in `src/main.rs` if it is not
 there yet (the Blank and API starters have no `controllers` module), and merge
 the router where `main` builds the server; in the Blank and API starters that
 is `Server::new(router().merge_axum(controllers::docs_controller::router()))`.
-`Server`'s security baseline (in every environment since 13.0.0-alpha.6) sends
-its default Content Security Policy to every response that has none, and that
-policy blocks the page's remote and inline scripts, which leaves `/docs` blank.
-Give the docs responses a policy of their own, which the baseline keeps because
-an explicit value wins: for example, layer
-`rullst::server::middleware::map_response` on the docs router to insert a
-`Content-Security-Policy` that allows the Scalar script's origin.
+`/docs` works behind `Server`'s security baseline in every environment: the
+page answers with a Content Security Policy of its own, which the baseline
+keeps because it never replaces a policy a response already has. That policy
+admits only the request's nonce (on the page's inline style and scripts, and in
+the `csp-nonce` meta element Scalar reads for the styles it inserts) and the
+one pinned Scalar file, `@scalar/api-reference@1.67.0/dist/browser/standalone.js`
+from jsDelivr, which the page loads with Subresource Integrity; the OpenAPI
+document and requests from the API client must be same-origin. It needs no
+`'unsafe-inline'` or `'unsafe-eval'`. Scalar's remote fonts are turned off, so
+the page uses system fonts, and the styles of Scalar's toast notifications,
+which it inserts without the nonce, are blocked. Every other route keeps the
+baseline's default policy.
 
 ---
 

@@ -118,3 +118,48 @@ async fn hsts_is_sent_over_https_in_every_environment_and_always_in_production()
         assert_eq!(hsts(&plain), expected, "{environment:?}");
     }
 }
+
+#[tokio::test]
+async fn a_policy_the_route_sets_is_kept_and_every_other_route_gets_the_default() {
+    let own = "default-src 'none'; script-src 'self'";
+    let app = Router::new()
+        .route(
+            "/own",
+            get(move || async move {
+                (
+                    [(header::CONTENT_SECURITY_POLICY, own)],
+                    axum::response::Html("own"),
+                )
+            }),
+        )
+        .route(
+            "/default",
+            get(|| async { axum::response::Html("default") }),
+        );
+    for environment in [Environment::Production, Environment::Development] {
+        let app =
+            apply_security_baseline(app.clone(), SecurityConfig::default(), environment).unwrap();
+        let kept = send(&app, Request::get("/own").body(Body::empty()).unwrap()).await;
+        assert_eq!(
+            kept.headers()[header::CONTENT_SECURITY_POLICY],
+            own,
+            "{environment:?}"
+        );
+        assert_eq!(
+            kept.headers()
+                .get_all(header::CONTENT_SECURITY_POLICY)
+                .iter()
+                .count(),
+            1
+        );
+        let default = send(&app, Request::get("/default").body(Body::empty()).unwrap()).await;
+        let policy = default.headers()[header::CONTENT_SECURITY_POLICY]
+            .to_str()
+            .unwrap();
+        assert!(
+            policy.starts_with("default-src 'self'; base-uri 'self';"),
+            "{policy}"
+        );
+        assert!(policy.contains("script-src 'self' 'nonce-"), "{policy}");
+    }
+}
