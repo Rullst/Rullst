@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794756790404,
+  "lastUpdate": 1794759696345,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -20038,6 +20038,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 279,
+            "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "075f5a2760e1ef4179934e0781223ba8d53ccc6f",
+          "message": "Merge pull request #708 from Rullst/feat/v13-alpha6-revocable-sessions\n\nfeat(auth): revocable server-side login sessions and a devices page",
+          "timestamp": "2026-11-15T13:01:23-03:00",
+          "tree_id": "cbae8a4ac4bf32be99bbf0674f248f41373bdd73",
+          "url": "https://github.com/Rullst/Rullst/commit/075f5a2760e1ef4179934e0781223ba8d53ccc6f"
+        },
+        "date": 1794759695419,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1399,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 298,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 277,
             "range": "± 2",
             "unit": "ns/iter"
           }
