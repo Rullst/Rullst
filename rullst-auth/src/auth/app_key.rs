@@ -173,10 +173,11 @@ fn cache_validated_app_key(key: Vec<u8>) -> Result<Vec<u8>, AuthError> {
 /// written there. Otherwise the project's key in the per-user state
 /// directory (`$XDG_STATE_HOME`, else `~/.local/state`, or `%LOCALAPPDATA%`,
 /// under `rullst/dev-keys/`) is used or created. A test harness (an
-/// executable in Cargo's `target/<profile>/deps`, where `cargo test` and
-/// cargo-nextest run unit and integration tests) never writes a key and
-/// keeps a new one in memory, so set `APP_KEY` where tests in several
-/// processes must share one. The resolved key is cached for the process.
+/// executable where `cargo test` and cargo-nextest run unit and integration
+/// tests: `target/<profile>/deps` up to Cargo 1.99,
+/// `target/<profile>/build/<package>/<hash>/out` since 1.100) never writes
+/// a key and keeps a new one in memory, so set `APP_KEY` where tests in
+/// several processes must share one. The resolved key is cached for the process.
 #[cfg_attr(mutants, mutants::skip)]
 pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
     if let Some(cached) = CACHED_APP_KEY.get() {

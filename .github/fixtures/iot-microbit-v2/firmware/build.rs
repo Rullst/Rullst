@@ -12,14 +12,9 @@ fn main() {
     fs::write(out.join("firmware.bin"), firmware_image()).expect("write firmware.bin");
     println!("cargo:rustc-link-search={}", out.display());
     println!("cargo:rustc-link-arg-bins=-Tlink.x");
-    // OUT_DIR = <target>/<triple>/<profile>/build/<package>-<hash>/out
-    let profile = out
-        .ancestors()
-        .nth(3)
-        .and_then(|path| path.file_name())
-        .and_then(|name| name.to_str())
-        .unwrap_or("unknown")
-        .to_owned();
+    // `debug` or `release`, whatever the build-directory layout (Cargo 1.100
+    // moved OUT_DIR to <target>/<triple>/<profile>/build/<package>/<hash>/out).
+    let profile = env::var("PROFILE").unwrap_or_else(|_| "unknown".to_owned());
     println!("cargo:rustc-env=FW_PROFILE={profile}");
     println!("cargo:rerun-if-changed=memory.x");
     println!("cargo:rerun-if-changed=image.rs");

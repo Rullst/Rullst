@@ -91,7 +91,7 @@ re-exports. Update both places when a tier changes.
 - Smaller files improve compile times, IDE performance, and AI context tracking precision.
 
 ### 3.8. Cross-Platform Build Hygiene & Windows File Locks
-- On Windows systems, procedural macro dynamic libraries (`.dll` files in `target/debug/deps/`) remain locked by running processes.
+- On Windows systems, procedural macro dynamic libraries (`.dll` files under `target/debug/build/`, or `target/debug/deps/` before Cargo 1.100) remain locked by running processes.
 - Always ensure active background compiler or test processes are terminated before executing destructive workspace operations like `cargo clean`.
 
 #### Local disk-space safety

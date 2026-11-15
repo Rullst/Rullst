@@ -69,9 +69,11 @@ written there any more: the key lives in the per-user state directory,
 `$XDG_STATE_HOME/rullst/dev-keys/` (else `~/.local/state/rullst/dev-keys/`)
 on Unix and macOS or `%LOCALAPPDATA%\rullst\dev-keys\` on Windows, in a file
 named after the SHA-256 of the canonical project directory (owner-only on
-Unix). A test harness, an executable in Cargo's `target/<profile>/deps`
-directory where `cargo test` and cargo-nextest run unit and integration
-tests, never writes a key: it keeps a new one in memory for the process.
+Unix). A test harness, an executable where `cargo test` and cargo-nextest
+run unit and integration tests (Cargo's `target/<profile>/deps` up to Cargo
+1.99; since Cargo 1.100, `target/<profile>/build/<package>/<hash>/out`, with a
+name ending in `-<hash>`), never writes a key: it keeps a new one in memory
+for the process.
 `cfg(test)` cannot make this choice, because it is set only for the crate
 under test, never for `rullst-auth` as its dependency. Tests that need one
 key in several processes (for example a test that starts the server binary
