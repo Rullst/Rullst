@@ -31,7 +31,7 @@ application/operator's responsibility.
 
 | Control | Primary implementation | Important boundary |
 |---|---|---|
-| Fallible provider construction | `src/macros.rs`, `src/configuration.rs`, specialized providers | Prefer `try_new`; deprecated `new` constructors fail closed but cannot report configuration errors directly. |
+| Fallible provider construction | `src/macros.rs`, `src/configuration.rs`, specialized providers | `try_new` is the only constructor; it reports invalid configuration as `ConnectError::InvalidConfiguration`. The infallible `new` constructors were removed in 13.0.0-alpha.6. |
 | Offline credential mode | `src/client/offline.rs`, `src/configuration.rs` | Empty or `mock_*` credentials never use the built-in network client. Functional mock identities require tests or the explicit `mock` feature so missing production secrets do not create a working login. |
 | Redirect/issuer parsing | `src/configuration.rs` | HTTPS is required except for exact loopback hosts. Lookalike names such as `localhost.evil` are rejected. |
 | OIDC discovery validation | `src/providers/oidc/discovery.rs` | The discovered issuer must match the requested issuer after URL normalization, ignoring trailing slashes. ID tokens must then carry the raw discovered `issuer` string exactly as published (for example Auth0's `https://TENANT/`). Discovered endpoints require HTTPS, except for the issuer's exact loopback origin. |

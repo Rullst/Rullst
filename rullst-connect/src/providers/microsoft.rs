@@ -142,11 +142,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_microsoft_get_user_success() {
-        let provider = MicrosoftProvider::new(
+        let provider = MicrosoftProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect.url".to_string(),
         )
+        .unwrap()
         .with_http_client(Arc::new(MockMicrosoftClient {
             token_status: 200,
             token_body: json!({
@@ -176,11 +177,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_microsoft_token_error() {
-        let provider = MicrosoftProvider::new(
+        let provider = MicrosoftProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect.url".to_string(),
         )
+        .unwrap()
         .with_http_client(Arc::new(MockMicrosoftClient {
             token_status: 400,
             token_body: json!({"error": "invalid_grant"}),
@@ -204,11 +206,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_microsoft_missing_id() {
-        let provider = MicrosoftProvider::new(
+        let provider = MicrosoftProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect.url".to_string(),
         )
+        .unwrap()
         .with_http_client(Arc::new(MockMicrosoftClient {
             token_status: 200,
             token_body: json!({"access_token": "mock_access_token"}),
@@ -229,11 +232,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_microsoft_missing_display_name() {
-        let provider = MicrosoftProvider::new(
+        let provider = MicrosoftProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect.url".to_string(),
         )
+        .unwrap()
         .with_http_client(Arc::new(MockMicrosoftClient {
             token_status: 200,
             token_body: json!({"access_token": "mock_access_token"}),
@@ -254,11 +258,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_microsoft_refresh_token_success() {
-        let provider = MicrosoftProvider::new(
+        let provider = MicrosoftProvider::try_new(
             "client_id".to_string(),
             secrecy::SecretString::from("client_secret".to_string()),
             "https://redirect.url".to_string(),
         )
+        .unwrap()
         .with_http_client(Arc::new(MockMicrosoftClient {
             token_status: 200,
             token_body: json!({

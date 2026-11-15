@@ -272,8 +272,9 @@ let github = GithubProvider::try_new(
 
 `try_new` validates the callback URL without panicking. HTTPS is required except for
 the exact loopback hosts `localhost`, `127.0.0.1`, and `::1`; names such as
-`localhost.evil` are rejected. The older infallible `new` constructor is deprecated and
-returns a disabled, fail-closed provider when configuration is invalid.
+`localhost.evil` are rejected. The infallible `new` constructors, deprecated in 12.0.0,
+were removed in 13.0.0-alpha.6; providers declared with `define_provider!` get only
+`try_new` as well.
 
 ### Credential modes and offline tests
 
@@ -281,10 +282,9 @@ Every provider exposes `credential_mode() -> CredentialMode`. An empty credentia
 value beginning with `mock_` selects `CredentialMode::Mock` and installs a transport that
 never accesses the network. That mode needs the Cargo feature `mock` (`oauth-mock` on the
 `rullst` facade). Without it, `try_new`, `Connect::driver` and `OidcProvider::discover`
-return `ConnectError::InvalidConfiguration` for the field `credentials`, and the deprecated
-`new` constructors return a disabled provider, so a missing production secret fails when
-the provider is built and never becomes a working authentication bypass. Enable the
-feature only in development and test builds.
+return `ConnectError::InvalidConfiguration` for the field `credentials`, so a missing
+production secret fails when the provider is built and never becomes a working
+authentication bypass. Enable the feature only in development and test builds.
 
 ```toml
 [dev-dependencies]
