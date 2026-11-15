@@ -316,8 +316,6 @@ fn credential_digest(passkey: &Passkey) -> [u8; 32] {
 fn validate_passkey(passkey: &Passkey) -> Result<(), Error> {
     if passkey.credential_id.is_empty()
         || passkey.credential_id.len() > 1023
-        || passkey.public_key.len() != 65
-        || passkey.public_key.first() != Some(&4)
         || !es256::is_valid_public_key(&passkey.public_key)
     {
         return Err(Error::InvalidInput);

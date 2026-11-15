@@ -467,9 +467,7 @@ fn validate_label(label: &str) -> Result<(), PasskeyStoreError> {
 
 fn validate_passkey(passkey: &Passkey) -> Result<(), PasskeyStoreError> {
     validate_credential_id(&passkey.credential_id)?;
-    if passkey.public_key.len() != 65 || passkey.public_key.first() != Some(&0x04) {
-        return Err(PasskeyStoreError::InvalidCredential);
-    }
+    // Also requires the uncompressed 65-byte form.
     if !es256::is_valid_public_key(&passkey.public_key) {
         return Err(PasskeyStoreError::InvalidCredential);
     }
