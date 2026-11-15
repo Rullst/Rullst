@@ -111,6 +111,10 @@ impl Seen {
     }
 }
 
+async fn v2_ok() -> Response {
+    json_response(document_v2("/orders/{id}").to_string())
+}
+
 async fn missing(State(seen): State<Arc<Seen>>, uri: Uri) -> StatusCode {
     if uri.path().ends_with("/_rullst/monitor/v2") {
         seen.v2_misses.fetch_add(1, Ordering::SeqCst);
@@ -148,10 +152,7 @@ pub(super) async fn start(redirect_to: Option<String>) -> (String, Arc<Seen>) {
     let redirect_to = redirect_to.unwrap_or_default();
     let app = Router::new()
         .route("/ok/_rullst/monitor/v1", get(ok))
-        .route(
-            "/v2/_rullst/monitor/v2",
-            get(|| async { json_response(document_v2("/orders/{id}").to_string()) }),
-        )
+        .route("/v2/_rullst/monitor/v2", get(v2_ok))
         .route(
             "/v2xss/_rullst/monitor/v2",
             get(|| async {
