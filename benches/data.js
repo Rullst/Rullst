@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794748387700,
+  "lastUpdate": 1794750813548,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -34425,6 +34425,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1877,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5e6b65c53be508c6f3dd24086a776b2862a8c9c9",
+          "message": "Merge pull request #701 from Rullst/refactor/v13-alpha6-core-deps\n\nrefactor(core)!: drop the cron and ring dependencies of rullst-core",
+          "timestamp": "2026-11-15T10:49:42-03:00",
+          "tree_id": "c1c0081908cdadfe63776038cbe6cca1c9e64283",
+          "url": "https://github.com/Rullst/Rullst/commit/5e6b65c53be508c6f3dd24086a776b2862a8c9c9"
+        },
+        "date": 1794750810893,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 438,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 618,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 308,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1161,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
