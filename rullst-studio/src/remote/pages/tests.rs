@@ -324,7 +324,10 @@ fn the_security_page_names_known_counters_and_lists_event_types() {
     ));
     let refusals = html.find("Rate-limit and lockout refusals").unwrap();
     let jail = html.find("Login Jail lockouts").unwrap();
-    let unknown = html.find(r#"break-all">/orders/{id}</td>"#).unwrap();
+    // An unknown counter keeps its own row, after the named ones.
+    let unknown = html
+        .find(r#"break-all">/orders/{id}</td><td class="px-3 py-2 break-all">9</td>"#)
+        .unwrap();
     assert!(refusals < jail && jail < unknown, "{html}");
     // Known counters appear by label only, absent ones not at all.
     assert!(!html.contains("rate_limit_blocks"));
