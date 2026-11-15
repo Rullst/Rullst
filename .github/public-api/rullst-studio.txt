@@ -583,7 +583,7 @@ pub rullst_studio::security_radar::ThreatRadarStats::timing_guard_protected: u64
 pub rullst_studio::security_radar::ThreatRadarStats::prompt_injections_blocked: u64
 pub rullst_studio::security_radar::ThreatRadarStats::audit_chain_integrity: core::option::Option<alloc::string::String>
 pub rullst_studio::security_radar::ThreatRadarStats::threat_level: alloc::string::String
-pub rullst_studio::security_radar::ThreatRadarStats::live_events: alloc::vec::Vec<rullst_security::telemetry::event::LiveSecurityEvent>
+pub rullst_studio::security_radar::ThreatRadarStats::live_events: alloc::vec::Vec<rullst_core::security::telemetry::event::LiveSecurityEvent>
 impl core::clone::Clone for rullst_studio::security_radar::ThreatRadarStats
 impl core::fmt::Debug for rullst_studio::security_radar::ThreatRadarStats
 impl serde_core::ser::Serialize for rullst_studio::security_radar::ThreatRadarStats
