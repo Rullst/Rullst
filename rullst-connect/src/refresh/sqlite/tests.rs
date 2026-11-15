@@ -369,3 +369,43 @@ async fn existing_symbolic_link_targets_are_rejected() {
     std::fs::remove_file(link).expect("remove link");
     std::fs::remove_file(target).expect("remove target");
 }
+
+#[tokio::test]
+async fn snapshots_metadata_and_debug_report_the_stored_values() {
+    let path = temporary_database("report");
+    let url = database_url(&path);
+    let store = SqliteTokenSnapshotStore::connect(&url, 3)
+        .await
+        .expect("bounded store");
+    let encryption_key = key("rotation-7", 9);
+    for account in ["first", "second"] {
+        store
+            .insert_initial(
+                &binding(account),
+                &state("access", "refresh", 0),
+                &encryption_key,
+            )
+            .await
+            .expect("insert row");
+    }
+    let snapshot = store.snapshot().await.expect("two of three entries");
+    assert_eq!(snapshot.entries(), 2);
+    assert_eq!(snapshot.max_entries(), 3);
+    let metadata = store
+        .metadata(&binding("first"))
+        .await
+        .expect("metadata")
+        .expect("stored row");
+    assert_eq!(metadata.key_id(), "rotation-7");
+    assert_eq!(metadata.generation(), 0);
+    assert_eq!(
+        format!("{store:?}"),
+        "SqliteTokenSnapshotStore { database: \"[REDACTED]\", max_entries: 3 }"
+    );
+
+    // Closing one handle closes the pool its clones share.
+    let clone = store.clone();
+    store.close().await;
+    assert!(clone.snapshot().await.is_err());
+    remove_database(&path);
+}
