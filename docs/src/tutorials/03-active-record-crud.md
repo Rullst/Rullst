@@ -133,10 +133,12 @@ if let Some(product) = Product::find(1).await? {
 # }
 ```
 
-Without a `RowSnapshot` field, `save()` on a loaded record writes every
-column, so the last writer wins; see the
-[ORM guide](../crates/orm.md#concurrent-updates-and-counters) for dirty
-tracking and `update_partial()`.
+The `snapshot` field that `make:model` wrote makes `save()` on a loaded record
+write only the columns it changed. Every model chooses this field or
+`#[orm(full_row_save)]` (every column, so the last writer wins), or does not
+compile; see the
+[ORM guide](../crates/orm.md#concurrent-updates-and-counters) for both
+choices, dirty tracking and `update_partial()`.
 
 ---
 
@@ -147,7 +149,7 @@ contract. For a different sentinel, configure it explicitly and ensure the
 migration uses the same representation:
 
 ```rust
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, Orm)]
 #[orm(
@@ -158,6 +160,8 @@ pub struct SoftUser {
     pub id: i32,
     pub name: String,
     pub is_deleted: i32,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 ```
 

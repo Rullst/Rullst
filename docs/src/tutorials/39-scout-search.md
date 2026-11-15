@@ -76,7 +76,7 @@ or admin key to browser code.
 ## Mark and query the model
 
 ```rust,no_run
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Clone, Debug, Orm)]
 #[orm(table = "articles", searchable)]
@@ -84,6 +84,8 @@ struct Article {
     id: i32,
     title: String,
     body: String,
+    #[sqlx(skip)]
+    snapshot: RowSnapshot,
 }
 
 # async fn find() -> Result<Vec<Article>, rullst_orm::Error> {

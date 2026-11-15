@@ -79,13 +79,15 @@ and Redis hash helpers follow this ORM feature (or the facade's `redis` /
 its own; earlier macro output checked the application's features instead.
 
 ```rust,no_run
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, Orm)]
 #[orm(table = "users")]
 struct User {
     id: i32,
     active: bool,
+    #[sqlx(skip)]
+    snapshot: RowSnapshot,
 }
 
 async fn load_recent_users() -> Result<(), Box<dyn std::error::Error>> {

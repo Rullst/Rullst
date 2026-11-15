@@ -312,7 +312,7 @@ The familiar derive explicitly selects the Turso backend:
 
 ```rust
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "users", backend = "turso")]
+#[orm(table = "users", backend = "turso", full_row_save)]
 struct User {
     id: i64,
     name: String,
