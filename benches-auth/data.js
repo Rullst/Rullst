@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794738341703,
+  "lastUpdate": 1794743587711,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -22295,6 +22295,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1979,
             "range": "± 28",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1e723efe4ebf6456ddf8681de8805a5325cd2f6",
+          "message": "Merge pull request #709 from Rullst/ci/v13-alpha6-msrv-tests\n\nci(msrv): run tests on Rust 1.96.0 and bound MSRV raises in 13.x",
+          "timestamp": "2026-11-15T08:31:43-03:00",
+          "tree_id": "82f247539fa4456897b2dd7b72791a8444e7efa8",
+          "url": "https://github.com/Rullst/Rullst/commit/b1e723efe4ebf6456ddf8681de8805a5325cd2f6"
+        },
+        "date": 1794743586838,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 655,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 500,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1170,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3138,
+            "range": "± 108",
             "unit": "ns/iter"
           }
         ]
