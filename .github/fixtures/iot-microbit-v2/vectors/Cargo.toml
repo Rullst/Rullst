@@ -10,5 +10,5 @@ description = "Writes the micro:bit firmware's expected bytes with the std build
 
 [dependencies]
 rullst-iot = { path = "../../../../rullst-iot" }
-ed25519-dalek = "=2.2.0"
+ed25519-dalek = "=3.0.0"
 serde_json = "=1.0.154"

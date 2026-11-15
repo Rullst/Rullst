@@ -30,7 +30,12 @@ fn claims_at(now: u64) -> ApplicationJwtClaims {
 
 /// Signs arbitrary claims with the development key, outside `issue`.
 fn signed(header: &Header, claims: &serde_json::Value) -> String {
-    encode(header, claims, &EncodingKey::from_secret(FIRST_SECRET)).expect("signed token")
+    encode(
+        header,
+        claims,
+        &EncodingKey::from_secret(FIRST_SECRET).expect("key"),
+    )
+    .expect("signed token")
 }
 
 fn kid_header() -> Header {

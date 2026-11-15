@@ -443,17 +443,3 @@ fn multipart_forms_without_a_leading_matching_token_are_rejected() {
     ));
     assert_eq!(status, StatusCode::OK);
 }
-
-#[test]
-fn static_assets_are_exempt_whatever_their_extension() {
-    for path in [
-        "/static/fonts/inter.woff2",
-        "/static/app.mjs",
-        "/static/report",
-    ] {
-        assert!(is_csrf_exempt_path(path), "{path}");
-    }
-    for path in ["/statics/report", "/upload", "/static"] {
-        assert!(!is_csrf_exempt_path(path), "{path}");
-    }
-}

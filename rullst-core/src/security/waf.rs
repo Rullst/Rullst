@@ -133,7 +133,7 @@ impl Rule {
 }
 
 /// The application's security configuration, else the process-global one.
-fn security_config(req: &Request) -> &crate::config::SecurityConfig {
+pub(super) fn security_config(req: &Request) -> &crate::config::SecurityConfig {
     req.extensions()
         .get::<crate::config::SecurityConfig>()
         .unwrap_or(&crate::config::RullstConfig::global().security)
