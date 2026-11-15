@@ -123,6 +123,9 @@ the drivers.
 | `auth-email-login-postgres` | no | v13 candidate: `auth` plus email login over the PostgreSQL recovery accounts and sessions |
 | `auth-api-tokens-sqlite` | no | v13 candidate: `auth` plus scoped API tokens over the SQLite recovery backend; see [the API-token contract](api-tokens.md) |
 | `auth-api-tokens-postgres` | no | v13 candidate: `auth` plus scoped API tokens over the PostgreSQL recovery backend |
+| `auth-session-registry-sqlite` | no | v13: `auth` plus the server-side login-session registry (`rullst::auth::session_registry`) over the application's SQLite pool: revocable `rullst_session` cookies, a device list and per-session sign-out; see [session management](session-management.md#server-side-login-sessions) |
+| `auth-session-registry-postgres` | no | v13: the session registry over the application's PostgreSQL pool |
+| `auth-session-registry-mysql` | no | v13: the session registry over the application's MySQL or MariaDB pool |
 | `account-mail-sqlite` | no | `auth` and `mail` plus the SQLite recovery store and the `account_mail` delivery bridge; see [account mail](account-mail-v12-1.md) |
 | `account-mail-postgres` | no | `auth` and `mail` plus the PostgreSQL recovery store and the `account_mail` delivery bridge |
 | `mail` | no | `rullst-mail` with HTTP/offline transports and no SMTP dependency |
@@ -156,7 +159,7 @@ the drivers.
 | `oauth-mock` | no | v13: `oauth` plus `rullst-connect/mock`, so empty or `mock_*` provider credentials build an offline mock provider that signs in a fixed mock user; enable it only in development and test builds |
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
 | `ai-sql-memory` | no | `ai` plus tenant-aware durable chat memory for SQLite, PostgreSQL, MySQL, and MariaDB |
-| `capital` | no | Provider-neutral billing contracts, the Stripe and InfinitePay adapters, webhooks and analytics from `rullst-capital` |
+| `capital` | no | Provider-neutral billing contracts, the Stripe and InfinitePay adapters, webhooks and analytics from `rullst-capital`; with `studio`, also Studio's revenue dashboard (`/studio/capital`, since 13.0.0-alpha.6) |
 | `capital-actix` | no | `capital` plus the Actix Web adapter for the canonical signed-webhook verifier |
 | `capital-quota-sql` | no | `capital` and `orm` plus atomic shared resource quotas for SQLite, PostgreSQL, MySQL, and MariaDB |
 | `capital-webhook-sql` | no | `capital` and `orm` plus bounded durable webhook replay/event claims for SQLite, PostgreSQL, MySQL, and MariaDB |
@@ -167,6 +170,7 @@ the drivers.
 | `iot` | no | IoT models, frame helpers, and signed OTA verification from `rullst-iot` |
 | `iot-ingest` | no | `iot` plus `rullst::iot_ingest`: the authenticated device telemetry receiver, its `DeviceDirectory` contract and an in-memory directory |
 | `telemetry` | no | OpenTelemetry dependencies and Core's OTLP integration |
+| `tls` | no | v13 (13.0.0-alpha.6): Core's `tls`, rustls with aws-lc-rs, which `Server` start-up installs as the rustls process default. Every feature that makes TLS connections enables it (HTTPS clients, PostgreSQL, MySQL, Redis, Turso); enable it yourself only when the application's own code makes rustls connections and relies on that default. SQLite-only and database-free selections build no TLS stack |
 | `strict-postgres` | no | `orm` with the concrete PostgreSQL pool/backend selected |
 | `strict-mysql` | no | `orm` with the concrete MySQL pool/backend selected when PostgreSQL is not also selected |
 | `strict-sqlite` | no | `orm` with the concrete SQLite pool/backend selected when PostgreSQL and MySQL are not also selected |
@@ -217,8 +221,9 @@ Default features: none.
 
 | Feature | Enables |
 | --- | --- |
-| `orm` | Optional `rullst-orm` and SQLx support, including Artisan and database-backed feature flags; it adds no SQLx driver |
-| `drivers-all` | `orm` plus the ORM's SQLite, PostgreSQL and MySQL/MariaDB drivers |
+| `orm` | Optional `rullst-orm` and SQLx support, including Artisan and database-backed feature flags; it adds no SQLx driver and no TLS stack |
+| `tls` | v13 (13.0.0-alpha.6): rustls with aws-lc-rs; `Server` start-up installs aws-lc-rs as the rustls process default. `drivers-all`, `strict-postgres`, `strict-mysql`, `storage-s3` and `telemetry` enable it, and so do `rullst-ai`, `rullst-capital`, `rullst-mail` and the TLS features of `rullst-auth` |
+| `drivers-all` | `orm` and `tls` plus the ORM's SQLite, PostgreSQL and MySQL/MariaDB drivers |
 | `queue-sqlite` | SQLx-backed durable SQLite queues without enabling the full ORM facade |
 | `queue-redis` | Redis-backed queues |
 | `cache-redis` | Redis-backed cache storage |
@@ -228,9 +233,9 @@ Default features: none.
 | `storage-multipart` | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization |
 | `studio` | Integration marker used by the umbrella Studio boundary; it adds no dependency by itself |
 | `telemetry` | OpenTelemetry tracing and OTLP export dependencies |
-| `strict-postgres` | `orm` plus the ORM PostgreSQL backend selection |
-| `strict-mysql` | `orm` plus the ORM MySQL backend selection |
-| `strict-sqlite` | `orm` plus the ORM SQLite backend selection |
+| `strict-postgres` | `orm` and `tls` plus the ORM PostgreSQL backend selection |
+| `strict-mysql` | `orm` and `tls` plus the ORM MySQL backend selection |
+| `strict-sqlite` | `orm` plus the ORM SQLite backend selection, without a TLS stack |
 
 Core's process-local Radar and span collector do not require `telemetry`.
 That feature is specifically for OpenTelemetry/OTLP integration.
@@ -416,8 +421,9 @@ The umbrella crate exposes this as `ai-sql-memory`, which also enables `ai`.
 ## Dashboard crates
 
 `rullst-nexus` enables `drivers-all` and `ai` by default, and `rullst-studio`
-enables `drivers-all` and `queue-sqlite`. Disable their defaults to select one
-backend (and, for Nexus, to leave out the AI assistant and `rullst-ai`):
+enables `drivers-all`, `queue-sqlite` and `capital`. Disable their defaults to
+select one backend (and, for Nexus, to leave out the AI assistant and
+`rullst-ai`; for Studio, the revenue dashboard and `rullst-capital`):
 
 | Crate | Feature | Enables |
 | --- | --- | --- |
@@ -427,7 +433,8 @@ backend (and, for Nexus, to leave out the AI assistant and `rullst-ai`):
 | `rullst-nexus` | `strict-sqlite` | SQLite selection in Core and ORM |
 | `rullst-nexus` | `ai` | The AI assistant at `/nexus/chat` and `rullst-ai` (default); the `rullst` facade enables it only with `nexus-ai` |
 | `rullst-nexus` | `tz` | v13: `NexusTimeZone::named` for `DateTimeUtc` form values in a named IANA time zone (system zoneinfo, bundled `jiff` database as fallback) |
-| `rullst-studio` | `local` | The local Studio (`Studio`, `run_studio` and its pages), which reads the application's database through the ORM and adds the ORM, Capital and Security crates; every driver feature below enables it, and so does the `rullst` facade's `studio` |
+| `rullst-studio` | `local` | The local Studio (`Studio`, `run_studio` and its pages), which reads the application's database through the ORM and adds the ORM crate; every driver feature below enables it, and so does the `rullst` facade's `studio` |
+| `rullst-studio` | `capital` | v13 (13.0.0-alpha.6): `local` plus the revenue dashboard (`/studio/capital`, `/api/revenue`, `revenue_dashboard`) and `rullst-capital` with its HTTPS client (default); the `rullst` facade enables it with `capital`. Without it `/studio/capital` says how to enable it |
 | `rullst-studio` | `drivers-all` | All three SQLx drivers in Core and ORM (default) |
 | `rullst-studio` | `queue-sqlite` | Core's durable SQLite queue backend (default) |
 | `rullst-studio` | `strict-postgres` | PostgreSQL selection in Core and ORM |

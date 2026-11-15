@@ -73,15 +73,61 @@ const OUTPUTS: [&str; 6] = [
     "src/pages/mfa.rs",
 ];
 
-/// Every generated source with its project path, for `accounts`.
-pub(crate) fn render_sources(accounts: Accounts) -> [(&'static str, &'static str); 6] {
+/// Where the starter adapter's `sign_in_cookie` goes.
+const SIGN_IN_COOKIE_MARKER: &str = "__RULLST_SIGN_IN_COOKIE__";
+/// `sign_in_cookie` of a starter that registers its sessions.
+const REGISTERED_SIGN_IN_COOKIE: &str = r#"/// The `rullst_session` cookie of a new registered session for the account,
+/// at its current session epoch; the request's `User-Agent` names the
+/// device in "Your devices".
+pub(super) async fn sign_in_cookie(id: i32, headers: &HeaderMap) -> Result<String, MfaError> {
+    let user = User::find(id)
+        .await
+        .map_err(unavailable)?
+        .ok_or(MfaError::Unavailable)?;
+    crate::middlewares::auth_middleware::start_session(&user, headers)
+        .await
+        .map_err(unavailable)
+}
+"#;
+/// `sign_in_cookie` of a starter made before 13.0.0-alpha.6, which issues
+/// stateless session-epoch cookies.
+const EPOCH_SIGN_IN_COOKIE: &str = r#"/// The `rullst_session` cookie of the password login for the account, at
+/// its current session epoch.
+pub(super) async fn sign_in_cookie(id: i32, _headers: &HeaderMap) -> Result<String, MfaError> {
+    let user = User::find(id)
+        .await
+        .map_err(unavailable)?
+        .ok_or(MfaError::Unavailable)?;
+    let epoch = user.current_session_epoch().ok_or(MfaError::Unavailable)?;
+    rullst::auth::make_login_cookie_with_epoch(
+        user.id,
+        epoch,
+        rullst::auth::DEFAULT_SESSION_MAX_AGE,
+    )
+    .map_err(unavailable)
+}
+"#;
+
+/// Every generated source with its project path, for `accounts`
+/// (`registered` when the starter registers its sessions).
+pub(crate) fn render_sources(accounts: Accounts, registered: bool) -> [(&'static str, String); 6] {
+    let sign_in = if registered {
+        REGISTERED_SIGN_IN_COOKIE
+    } else {
+        EPOCH_SIGN_IN_COOKIE
+    };
     [
-        (OUTPUTS[0], CONTROLLER_TEMPLATE),
-        (OUTPUTS[1], accounts.account_template()),
-        (OUTPUTS[2], ADMIN_TEMPLATE),
-        (OUTPUTS[3], CHALLENGE_TEMPLATE),
-        (OUTPUTS[4], FACTOR_TEMPLATE),
-        (OUTPUTS[5], PAGES_TEMPLATE),
+        (OUTPUTS[0], CONTROLLER_TEMPLATE.to_owned()),
+        (
+            OUTPUTS[1],
+            accounts
+                .account_template()
+                .replace(SIGN_IN_COOKIE_MARKER, sign_in),
+        ),
+        (OUTPUTS[2], ADMIN_TEMPLATE.to_owned()),
+        (OUTPUTS[3], CHALLENGE_TEMPLATE.to_owned()),
+        (OUTPUTS[4], FACTOR_TEMPLATE.to_owned()),
+        (OUTPUTS[5], PAGES_TEMPLATE.to_owned()),
     ]
 }
 
@@ -168,9 +214,11 @@ pub(crate) fn plan(root: &Path, timestamp: &str) -> Result<Plan, Box<dyn Error>>
     let accounts = accounts(root)?;
 
     let mut edits = Vec::new();
-    for (path, source) in render_sources(accounts) {
-        syn::parse_file(source)?;
-        edits.push(Edit::create(root.join(path), source.to_owned())?);
+    let registered = accounts == Accounts::Starter
+        && crate::generators::consumer_support::registers_sessions(root);
+    for (path, source) in render_sources(accounts, registered) {
+        syn::parse_file(&source)?;
+        edits.push(Edit::create(root.join(path), source)?);
     }
     let migration = format!("m{timestamp}{}", MIGRATION_SUFFIX.trim_end_matches(".rs"));
     let migrations = root.join("src/migrations");

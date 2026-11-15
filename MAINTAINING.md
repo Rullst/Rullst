@@ -224,8 +224,9 @@ each in release mode (its generated `[profile.release]`, the toolchain of
 `.github/starter-footprint/<starter>.toml`.
 
 - **What fails it:** a figure above its limit (release binary size, idle
-  memory, dependency count, bytes per request of `GET /`, and that page's
-  first-visit bytes, repeat-visit bytes, requests and third-party origins); a
+  memory, the `Cargo.lock` and compiled dependency counts, bytes per request
+  of `GET /`, and that page's first-visit bytes, repeat-visit bytes, requests
+  and third-party origins); a
   limited figure that was not measured; a starter that does not build, start
   or answer. CPU time per request is in the job summary but never limited,
   because it varies between shared runners.

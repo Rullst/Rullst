@@ -501,12 +501,14 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_core::RealtimeMessage
 pub struct rullst_core::RealtimeSse
 impl rullst_core::RealtimeSse
 pub fn rullst_core::RealtimeSse::channel(&self, manager: &rullst_core::BroadcastManager, channel: &str) -> axum_core::response::Response
+pub fn rullst_core::RealtimeSse::channel_revalidated<R: rullst_core::realtime::Revalidate>(&self, manager: &rullst_core::BroadcastManager, channel: &str, check: R) -> axum_core::response::Response
 pub fn rullst_core::RealtimeSse::config(&self) -> rullst_core::RealtimeSseConfig
 pub fn rullst_core::RealtimeSse::is_shut_down(&self) -> bool
 pub fn rullst_core::RealtimeSse::new(config: rullst_core::RealtimeSseConfig) -> Self
 pub fn rullst_core::RealtimeSse::open_connections(&self) -> usize
 pub fn rullst_core::RealtimeSse::shutdown(&self)
 pub fn rullst_core::RealtimeSse::subscribe(&self, receiver: tokio::sync::broadcast::Receiver<rullst_core::RealtimeMessage>) -> axum_core::response::Response
+pub fn rullst_core::RealtimeSse::subscribe_revalidated<R: rullst_core::realtime::Revalidate>(&self, receiver: tokio::sync::broadcast::Receiver<rullst_core::RealtimeMessage>, check: R) -> axum_core::response::Response
 impl core::clone::Clone for rullst_core::RealtimeSse
 impl core::fmt::Debug for rullst_core::RealtimeSse
 impl !core::panic::unwind_safe::RefUnwindSafe for rullst_core::RealtimeSse
@@ -522,11 +524,13 @@ pub fn rullst_core::RealtimeSseConfig::max_lifetime(&self) -> core::time::Durati
 pub fn rullst_core::RealtimeSseConfig::max_payload_bytes(&self) -> usize
 pub fn rullst_core::RealtimeSseConfig::new() -> Self
 pub fn rullst_core::RealtimeSseConfig::reconnect_delay(&self) -> core::time::Duration
+pub fn rullst_core::RealtimeSseConfig::revalidation_interval(&self) -> core::time::Duration
 pub fn rullst_core::RealtimeSseConfig::with_keep_alive(self, interval: core::time::Duration) -> Self
 pub fn rullst_core::RealtimeSseConfig::with_max_connections(self, connections: usize) -> Self
 pub fn rullst_core::RealtimeSseConfig::with_max_lifetime(self, lifetime: core::time::Duration) -> Self
 pub fn rullst_core::RealtimeSseConfig::with_max_payload_bytes(self, bytes: usize) -> Self
 pub fn rullst_core::RealtimeSseConfig::with_reconnect_delay(self, delay: core::time::Duration) -> Self
+pub fn rullst_core::RealtimeSseConfig::with_revalidation_interval(self, interval: core::time::Duration) -> Self
 impl core::clone::Clone for rullst_core::RealtimeSseConfig
 impl core::cmp::Eq for rullst_core::RealtimeSseConfig
 impl core::cmp::PartialEq for rullst_core::RealtimeSseConfig
@@ -1162,17 +1166,19 @@ impl core::marker::Sync for rullst_core::ValidationError
 impl core::marker::Unpin for rullst_core::ValidationError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::ValidationError
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::ValidationError
-pub struct rullst_core::WebSocket
+pub struct rullst_core::WebSocket<R = rullst_core::realtime::NoRevalidation>
 impl rullst_core::WebSocket
+pub fn rullst_core::WebSocket::new(inner: axum::extract::ws::WebSocket) -> Self
+impl<R: rullst_core::realtime::Revalidate> rullst_core::WebSocket<R>
 pub async fn rullst_core::WebSocket::recv(&mut self) -> core::option::Option<core::result::Result<alloc::string::String, rullst_core::WsError>>
 pub async fn rullst_core::WebSocket::send_html(&mut self, html_content: alloc::string::String) -> core::result::Result<(), rullst_core::WsError>
 pub async fn rullst_core::WebSocket::send_text(&mut self, text: impl core::convert::Into<alloc::string::String>) -> core::result::Result<(), rullst_core::WsError>
-pub fn rullst_core::WebSocket::new(inner: axum::extract::ws::WebSocket) -> Self
-impl !core::marker::Sync for rullst_core::WebSocket
-impl !core::panic::unwind_safe::RefUnwindSafe for rullst_core::WebSocket
-impl !core::panic::unwind_safe::UnwindSafe for rullst_core::WebSocket
-impl core::marker::Send for rullst_core::WebSocket
-impl core::marker::Unpin for rullst_core::WebSocket
+pub fn rullst_core::WebSocket::with_revalidation<S: rullst_core::realtime::Revalidate>(self, check: S, interval: core::time::Duration) -> rullst_core::WebSocket<S>
+impl<R = rullst_core::realtime::NoRevalidation> !core::marker::Sync for rullst_core::WebSocket<R>
+impl<R = rullst_core::realtime::NoRevalidation> !core::panic::unwind_safe::RefUnwindSafe for rullst_core::WebSocket<R>
+impl<R = rullst_core::realtime::NoRevalidation> !core::panic::unwind_safe::UnwindSafe for rullst_core::WebSocket<R>
+impl<R> core::marker::Send for rullst_core::WebSocket<R> where R: core::marker::Send
+impl<R> core::marker::Unpin for rullst_core::WebSocket<R> where R: core::marker::Unpin
 pub struct rullst_core::Worker
 impl rullst_core::Worker
 pub fn rullst_core::Worker::job_timeout(self, timeout: core::time::Duration) -> Self
@@ -2471,6 +2477,18 @@ pub async fn rullst_core::rate_limit_middleware(limiter: rullst_core::RateLimite
 pub mod rullst_core::realtime
 pub use rullst_core::realtime::BroadcastManager = struct rullst_core::BroadcastManager
 pub use rullst_core::realtime::Channel = struct rullst_core::Channel
+pub const rullst_core::realtime::DEFAULT_REVALIDATION_INTERVAL: core::time::Duration
+pub struct rullst_core::realtime::NoRevalidation;
+impl core::clone::Clone for rullst_core::realtime::NoRevalidation
+impl core::default::Default for rullst_core::realtime::NoRevalidation
+impl core::fmt::Debug for rullst_core::realtime::NoRevalidation
+impl core::marker::Copy for rullst_core::realtime::NoRevalidation
+impl rullst_core::realtime::Revalidate for rullst_core::realtime::NoRevalidation
+impl core::marker::Send for rullst_core::realtime::NoRevalidation
+impl core::marker::Sync for rullst_core::realtime::NoRevalidation
+impl core::marker::Unpin for rullst_core::realtime::NoRevalidation
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::realtime::NoRevalidation
+impl core::panic::unwind_safe::UnwindSafe for rullst_core::realtime::NoRevalidation
 pub struct rullst_core::realtime::PresenceTracker
 impl rullst_core::realtime::PresenceTracker
 pub fn rullst_core::realtime::PresenceTracker::count_online(&self, room: &str) -> usize
@@ -2483,12 +2501,24 @@ impl core::marker::Send for rullst_core::realtime::PresenceTracker
 impl core::marker::Sync for rullst_core::realtime::PresenceTracker
 impl core::marker::Unpin for rullst_core::realtime::PresenceTracker
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::realtime::PresenceTracker
+pub const rullst_core::realtime::REVALIDATION_DEADLINE: core::time::Duration
 pub use rullst_core::realtime::RealtimeError = enum rullst_core::RealtimeError
 pub use rullst_core::realtime::RealtimeMessage = struct rullst_core::RealtimeMessage
 pub use rullst_core::realtime::RealtimeSse = struct rullst_core::RealtimeSse
 pub use rullst_core::realtime::RealtimeSseConfig = struct rullst_core::RealtimeSseConfig
+pub trait rullst_core::realtime::Revalidate: core::marker::Send + 'static
+pub fn rullst_core::realtime::Revalidate::changed(&mut self) -> impl core::future::future::Future<Output = ()> + core::marker::Send
+pub fn rullst_core::realtime::Revalidate::still_valid(&mut self) -> impl core::future::future::Future<Output = bool> + core::marker::Send
+pub struct rullst_core::realtime::RevalidateWith<F>(_)
+impl<F, Fut> rullst_core::realtime::Revalidate for rullst_core::realtime::RevalidateWith<F> where F: core::ops::function::FnMut() -> Fut + core::marker::Send + 'static, Fut: core::future::future::Future<Output = bool> + core::marker::Send
+impl<F> core::marker::Send for rullst_core::realtime::RevalidateWith<F> where F: core::marker::Send
+impl<F> core::marker::Sync for rullst_core::realtime::RevalidateWith<F> where F: core::marker::Sync
+impl<F> core::marker::Unpin for rullst_core::realtime::RevalidateWith<F> where F: core::marker::Unpin
+impl<F> core::panic::unwind_safe::RefUnwindSafe for rullst_core::realtime::RevalidateWith<F> where F: core::panic::unwind_safe::RefUnwindSafe
+impl<F> core::panic::unwind_safe::UnwindSafe for rullst_core::realtime::RevalidateWith<F> where F: core::panic::unwind_safe::UnwindSafe
 pub use rullst_core::realtime::TenantPresence = struct rullst_core::TenantPresence
 pub use rullst_core::realtime::TenantRealtime = struct rullst_core::TenantRealtime
+pub fn rullst_core::realtime::revalidate_with<F, Fut>(check: F) -> rullst_core::realtime::RevalidateWith<F> where F: core::ops::function::FnMut() -> Fut + core::marker::Send + 'static, Fut: core::future::future::Future<Output = bool> + core::marker::Send
 pub fn rullst_core::render_page(htmx: &rullst_core::HtmxRequest, title: &str, content: impl core::convert::Into<rullst_core::Markup>) -> axum::response::Html<alloc::string::String>
 pub fn rullst_core::render_page_with_head(htmx: &rullst_core::HtmxRequest, lang: &str, title: &str, head: impl core::convert::Into<rullst_core::Markup>, content: impl core::convert::Into<rullst_core::Markup>) -> axum::response::Html<alloc::string::String>
 pub fn rullst_core::render_page_with_lang(htmx: &rullst_core::HtmxRequest, lang: &str, title: &str, content: impl core::convert::Into<rullst_core::Markup>) -> axum::response::Html<alloc::string::String>

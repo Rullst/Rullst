@@ -8,7 +8,10 @@ pub mod routes;
 
 use super::common;
 use crate::generators::{
-    auth::controllers::render_auth_controller, billing::render_billing_controller,
+    auth::controllers::{
+        render_auth_controller, render_auth_middleware, render_sessions_controller,
+    },
+    billing::render_billing_controller,
 };
 
 pub fn file_manifest(
@@ -40,6 +43,10 @@ pub fn file_manifest(
         crate::generators::auth::passwords::render_password_controller(),
     ));
     manifest.push((
+        "src/controllers/sessions_controller.rs",
+        render_sessions_controller(),
+    ));
+    manifest.push((
         "src/controllers/billing_controller.rs",
         render_billing_controller("user_id"),
     ));
@@ -51,7 +58,7 @@ pub fn file_manifest(
     // 2. Middlewares
     manifest.push((
         "src/middlewares/auth_middleware.rs",
-        include_str!("src/middlewares/auth_middleware.rs.template").to_string(),
+        render_auth_middleware(true),
     ));
     manifest.push((
         "src/middlewares/mod.rs",

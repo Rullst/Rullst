@@ -4,9 +4,10 @@ Status: **planned (recorded 2026-10-01)** for the v13 feature line. Nothing on
 this page is a shipped capability unless it links to existing documentation.
 Item 1 and parts of items 3, 4, 5, 6 and 7 exist in the v13 development source
 (`13.0.0-alpha.5`); see [measured release defaults](#measured-release-defaults).
-The compiled crate count in the report (item 1) and compressed pages after
-per-response CSRF masking (item 4) are planned for 13.0.0-alpha.6, the 13.0
-feature freeze; the rest comes after 13.0. The page was the "Green Software
+The compiled crate count in the report (item 1) and SQLite-only starters
+without a TLS stack (item 3) are in the 13.0.0-alpha.6 development source;
+compressed pages after per-response CSRF masking (item 4) are planned for
+13.0.0-alpha.6, the 13.0 feature freeze; the rest comes after 13.0. The page was the "Green Software
 Roadmap" until 13.0.0-alpha.5; it follows the methods of the green software
 discipline, such as the Green Software Foundation's SCI, without describing
 Rullst or the applications built with it as green.
@@ -46,9 +47,9 @@ can choose to publish.
 
 | # | Item | Notes |
 | :--- | :--- | :--- |
-| 1 | **`cargo rullst footprint` report** | **13.0.0-alpha.5 development source, a Core command of the CLI:** [`cargo rullst footprint`](footprint.md) (`green` in 13.0.0-alpha.4) reports only measured figures, each with its method: release binary size, a named local container image's size, the app's idle resident memory (Linux, macOS and Windows), the `Cargo.lock` dependency count, with `--bench` the app's CPU time and response bytes per request under a bounded loopback load, and with `--page-weight` a page's bytes and requests on a first and a repeat visit and the third-party origins it references. It measures no energy; a Software Carbon Intensity figure (SCI, ISO/IEC 21031:2024) appears only as a labelled estimate from the measured CPU time and bytes and the power, network and grid figures you supply. It is a measurement and an estimate, not a certification or an environmental claim. Planned for 13.0.0-alpha.6: the compiled crate count beside the lockfile count. Still planned after 13.0: a fixed multi-route reference scenario, repeated runs with a reported spread, and stated uncertainty for the estimate's inputs. |
+| 1 | **`cargo rullst footprint` report** | **13.0.0-alpha.5 development source, a Core command of the CLI:** [`cargo rullst footprint`](footprint.md) (`green` in 13.0.0-alpha.4) reports only measured figures, each with its method: release binary size, a named local container image's size, the app's idle resident memory (Linux, macOS and Windows), the `Cargo.lock` dependency count, with `--bench` the app's CPU time and response bytes per request under a bounded loopback load, and with `--page-weight` a page's bytes and requests on a first and a repeat visit and the third-party origins it references. It measures no energy; a Software Carbon Intensity figure (SCI, ISO/IEC 21031:2024) appears only as a labelled estimate from the measured CPU time and bytes and the power, network and grid figures you supply. It is a measurement and an estimate, not a certification or an environmental claim. 13.0.0-alpha.6 development source: the compiled dependency count beside the lockfile count (`cargo tree --locked --offline --edges normal,build` in the project directory, for the host platform and the default features; see [what is measured](footprint.md#what-is-measured)). Still planned after 13.0: a fixed multi-route reference scenario, repeated runs with a reported spread, and stated uncertainty for the estimate's inputs. |
 | 2 | **Reproducible public benchmark** | The same reference application implemented idiomatically in Rullst and in other frameworks, with published code, scenario, hardware and dates, so comparisons are verifiable instead of claimed. |
-| 3 | **Efficient release defaults** | v13 source: generated projects get a tuned `[profile.release]` (thin LTO, one codegen unit, stripped symbols; `panic` stays `unwind` so one panicking handler cannot stop the server) and a distroless runtime image ([CLI reference](cli_reference.md#cargo-rullst-new-name)). 13.0.0-alpha.6 development source: Studio and Nexus read the security telemetry store from Core instead of depending on `rullst-security`, so each generated starter's `Cargo.lock` lists 49 fewer packages (SaaS 398 to 349, Blank and API 374 to 325; registry packages, as `cargo rullst footprint` counts them). Passkeys check ES256 keys and signatures with aws-lc-rs, behind `rullst-auth`'s `passkeys` feature (`auth-passkeys` in `rullst`), instead of `p256`: an application without passkeys compiles neither, and the SaaS starter lists 18 fewer packages (349 to 331; Blank and API, which have no `rullst-auth`, are unchanged). Core also evaluates cron expressions itself instead of with the `cron` crate, 9 fewer packages in the Blank and API starters (325 to 316 in `Cargo.lock`, 251 to 242 compiled), and encrypts `storage-multipart` recovery records with RustCrypto `aes-gcm` in the same format, so `ring` leaves Core (with all features Core compiles 282 packages instead of 293). Remaining: measured image sizes and fast start-up suitable for scale-to-zero hosting. |
+| 3 | **Efficient release defaults** | v13 source: generated projects get a tuned `[profile.release]` (thin LTO, one codegen unit, stripped symbols; `panic` stays `unwind` so one panicking handler cannot stop the server) and a distroless runtime image ([CLI reference](cli_reference.md#cargo-rullst-new-name)). 13.0.0-alpha.6 development source: Studio and Nexus read the security telemetry store from Core instead of depending on `rullst-security`, so each generated starter's `Cargo.lock` lists 49 fewer packages (SaaS 398 to 349, Blank and API 374 to 325; registry packages, as `cargo rullst footprint` counts them). Passkeys check ES256 keys and signatures with aws-lc-rs, behind `rullst-auth`'s `passkeys` feature (`auth-passkeys` in `rullst`), instead of `p256`: an application without passkeys compiles neither, and the SaaS starter lists 18 fewer packages (349 to 331; Blank and API, which have no `rullst-auth`, are unchanged). Core also evaluates cron expressions itself instead of with the `cron` crate, 9 fewer packages in the Blank and API starters (325 to 316 in `Cargo.lock`, 251 to 242 compiled), and encrypts `storage-multipart` recovery records with RustCrypto `aes-gcm` in the same format, so `ring` leaves Core (with all features Core compiles 282 packages instead of 293). SQLite-only starters build no TLS stack ([measurements](#sqlite-starters-without-a-tls-stack)). Remaining: measured image sizes and fast start-up suitable for scale-to-zero hosting. |
 | 4 | **Efficient HTTP defaults** | v13 source: the standard `/static` mount sends `Cache-Control: public, max-age=31536000, immutable` for content-hashed file names and `no-cache` with `ETag`/`Last-Modified` revalidation (`304`) for other files ([static assets](tutorials/10-static-assets-and-compression.md#step-3-cache-headers)). Pre-compressed assets already exist: `cargo rullst build` writes Brotli/Zstandard siblings that the Core static handler serves, and since 13.0.0-alpha.5 the generated Dockerfile writes them in the image. Since 13.0.0-alpha.6 the CSRF token is masked per response (BREACH) and the `Caddyfile` that `cargo rullst deploy` writes compresses pages (`encode zstd gzip`); until then pages were sent uncompressed ([compressed pages and BREACH](security-layers.md#compressed-pages-and-breach)). Remaining: fingerprinted names written by the asset pipeline itself and modern image formats. |
 | 5 | **Lean pages** | Keep zero-bundle HTMX rendering the default. 13.0.0-alpha.5: `cargo rullst footprint --page-weight` reports a page's first-visit and repeat-visit bytes and requests ([page weight](footprint.md#page-weight)). Remaining: page weight in `cargo rullst dash` and warnings on oversized assets. |
 | 6 | **Database efficiency** | Development-time N+1 query warnings are in the v13 dash ([N+1 query warning](cli_reference.md#n1-query-warning)); slow-query hints are already visible there. Default pagination and index suggestions remain planned. |
@@ -98,6 +99,76 @@ Limits of this measurement:
 - Container image size was not measured: Docker is not available on this
   machine. Measure the generated distroless image with `docker image ls` in CI
   or on a machine with Docker before publishing a number.
+
+## SQLite starters without a TLS stack
+
+13.0.0-alpha.6 development source. A SQLite database needs no TLS, but until
+then every starter compiled rustls and aws-lc-rs: `rullst-orm` enabled SQLx's
+TLS for every driver, Core's `orm` built rustls to install its provider, and
+Studio built `rullst-capital` (and its HTTPS client) for the revenue page. Now
+SQLx's TLS comes with the PostgreSQL and MySQL drivers, Core's `tls` feature
+with every feature that makes TLS connections, and Studio's revenue dashboard
+with the `capital` feature (see
+[cryptography providers](security-architecture.md#cryptography-providers)).
+
+- **Projects:** each starter generated by the CLI of the commit measured, its
+  framework crates resolved from the checkout (as the
+  [starter footprint budgets](https://github.com/Rullst/Rullst/blob/main/MAINTAINING.md#starter-footprint-budgets)
+  job does) and its lock file resolved from the repository `Cargo.lock`.
+- **Before:** `main` at `075f5a276` (after the security store moved to Core,
+  passkeys without `p256`, Core without `ring` and `cron`, and the revocable
+  sessions). **After:** the same commit with this change.
+- **Counts:** `Cargo.lock` packages with a registry or git source, and those
+  that `cargo tree --edges normal,build` lists for `x86_64-unknown-linux-gnu`
+  (the `cargo rullst footprint` methods: third-party packages only, so the
+  compiled figure leaves out the Rullst path crates that some counts above
+  include), measured on 2026-11-15.
+
+| Starter | `Cargo.lock` packages | Compiled packages | rustls / aws-lc-rs compiled |
+| :--- | ---: | ---: | :--- |
+| Blank or API, SQLite | 316 → 257 | 234 → 212 | yes → no |
+| Blank, no database | 316 → 257 | 228 → 202 | yes → no |
+| Blank, PostgreSQL | 316 → 280 | 238 → 228 | yes → yes (SQLx only) |
+| Blank, MySQL | 316 → 280 | 231 → 220 | yes → yes (SQLx only) |
+| Blank, Turso | 317 → 316 | 234 → 232 | yes → yes (HTTPS) |
+| SaaS, SQLite | 322 → 321 | 242 → 241 | yes → yes (Stripe, mail HTTPS) |
+| SaaS, PostgreSQL | 322 → 322 | 246 → 246 | yes → yes |
+
+Release binaries and builds, measured earlier on `main` at `3e7adcd5c` (before
+the passkey, `ring` and `cron` changes) with and without this change:
+
+| Starter | Release binary (bytes) | Release build in the CI job |
+| :--- | ---: | ---: |
+| Blank, SQLite | 10,554,840 → 7,655,824 (−27.5 %) | 2 min 52 s → 1 min 44 s |
+| API, SQLite | 10,494,936 → 7,600,752 (−27.6 %) | 19.9 s → 18.8 s |
+| SaaS, SQLite | 15,121,560 → 15,120,432 | 1 min 38 s → 2 min 16 s |
+
+- **Binaries:** the "Starter footprint budgets" job on a GitHub-hosted
+  `ubuntu-latest` runner (4 logical CPUs, Rust 1.100.0), each starter's
+  generated `[profile.release]`; run 43666669225 (before) and run
+  43680823606 (after), one run each. Idle memory changed little (Blank
+  9,891,840 → 9,457,664 bytes, API 9,805,824 → 9,379,840, SaaS 12,070,912 →
+  12,099,584).
+- **CI build times** are not clean builds: the job builds Blank, SaaS and API
+  in that order into one target directory with sccache, so Blank's time is
+  the first build with whatever the cache held, and the SaaS starter now
+  compiles the TLS stack that the Blank build no longer leaves for it. All
+  three took 4 min 50 s before and 4 min 19 s after.
+- **Cold build on a workstation:** the Blank starter with SQLite,
+  `cargo build --release --offline` into a new empty target directory with
+  `CARGO_BUILD_JOBS=2` and no compiler cache, on the machine of
+  [measured release defaults](#measured-release-defaults) with Rust 1.100.0,
+  shared with other work, one run each: 3:46 → 2:50 wall clock, 367 s → 298 s
+  user CPU time, largest process 924 → 941 MiB, target directory 630 → 541
+  MiB, binary 10,274,864 → 7,494,928 bytes (rustc's default linker: the
+  generated `.cargo/config.toml` selected neither mold nor lld).
+
+The 22 packages a SQLite starter no longer compiles are rustls,
+rustls-webpki, rustls-pki-types, webpki-roots, rustls-native-certs,
+rustls-platform-verifier, openssl-probe, untrusted, tokio-rustls,
+hyper-rustls, aws-lc-rs, aws-lc-sys and its build tools (cmake, jobserver,
+dunce, fs_extra), and reqwest with the client-only packages it brought (ipnet,
+want, try-lock, hex and a second tower-http version).
 
 ## Carbon-aware deferrable jobs (v13)
 

@@ -86,7 +86,17 @@ authentication, tenant membership and authorization are deliberately
 application-owned: the framework cannot infer those policies without creating
 an insecure universal default. Generated applications must mount those layers
 in the declared slots, and protected parameterized routes must still perform an
-object-level ownership check.
+object-level ownership check. For session validation, a stateless
+`rullst_session` cookie stays valid after sign-out until it expires; the
+opt-in `rullst_auth::session_registry`, which `cargo rullst auth` and the SaaS
+starter use, checks a server-side record on every request, so sign-out ends
+every copy of the cookie and an account can sign out its other devices
+(threat `AUTH-08` in the [threat models](threat-models.md)). Sessions are
+checked when a request starts: a request already running when its session is
+revoked completes, and the next one is refused. Long-lived responses
+(`RealtimeSse::channel_revalidated`, `WebSocket::with_revalidation`) check
+again every 15 seconds by default and at once after a revocation in the same
+process.
 
 The direct socket peer is the default network identity. A deployment must not
 accept `Forwarded` or `X-Forwarded-For` until its exact proxy hops are configured
@@ -247,12 +257,20 @@ How each client chooses its provider:
 
 Rullst installs aws-lc-rs as the rustls process default when none is
 installed: at `Server` start-up, before telemetry and the database pool, when
-Core's `orm`, `storage-s3` or `telemetry` feature is enabled (the Core features
-that build rustls clients); when the OTLP exporter builds its HTTP client; before
-a Redis TLS connection; and in the standalone `rullst-studio` binary. It never
-replaces an installed provider, so an application chooses its own by installing
-it first, at the top of `main`, before `Server::run` and before it builds any
-client:
+Core's `tls` feature is enabled; when the OTLP exporter builds its HTTP client;
+before a Redis TLS connection; and in the standalone `rullst-studio` binary.
+Since 13.0.0-alpha.6 every feature that makes TLS connections enables Core's
+`tls`: Core's `strict-postgres`, `strict-mysql`, `drivers-all`, `storage-s3`
+and `telemetry`; the `rullst-ai`, `rullst-capital` and `rullst-mail` crates;
+the OAuth and PostgreSQL features of `rullst-auth`; and the facade's other
+HTTPS, Redis and PostgreSQL features. CI checks every facade feature
+(`.github/check-tls-provider.py`). A SQLite-only or database-free selection
+compiles no TLS stack at all (no rustls, aws-lc-rs or webpki roots), so there
+is nothing to install; an application whose own code makes rustls connections
+and relies on that process default enables the facade's `tls` feature. The
+installation never replaces an installed provider, so an application chooses
+its own by installing it first, at the top of `main`, before `Server::run` and
+before it builds any client:
 
 ```rust,ignore
 #[rullst::runtime::main]

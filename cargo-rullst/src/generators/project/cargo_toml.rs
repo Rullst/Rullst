@@ -123,6 +123,10 @@ pub fn build_cargo_toml(
     if blueprint_selection == SAAS_BLUEPRINT_ID {
         // `mail` sends the password reset links and password-changed notices.
         rullst_features.extend(["auth", "mail", "capital"]);
+        // Login sessions live in the application's database.
+        if db_needed && let Some(registry) = session_registry_feature(db_provider) {
+            rullst_features.push(registry);
+        }
     }
 
     let rullst_line = if rullst_features.is_empty() {
@@ -202,17 +206,16 @@ rust-version = "1.96.0"
     }
 
     if db_needed && db_provider != "Turso" {
-        let sqlx_driver_feature = match db_provider {
-            "Postgres" => "postgres",
-            "MySQL" | "MariaDB" => "mysql",
-            _ => "sqlite",
+        let sqlx_driver_feature = sqlx_driver(db_provider);
+        // PostgreSQL and MySQL connect over TLS with aws-lc-rs, like the
+        // framework's own SQLx dependencies (SQLx uses ring as soon as any
+        // crate enables one of its ring TLS features). SQLite needs no TLS,
+        // so a SQLite-only project compiles no TLS stack.
+        let sqlx_features = if sqlx_driver_feature == "sqlite" {
+            format!("\"runtime-tokio\", \"{sqlx_driver_feature}\"")
+        } else {
+            format!("\"runtime-tokio\", \"tls-rustls-aws-lc-rs\", \"{sqlx_driver_feature}\"")
         };
-        // aws-lc-rs, like the framework's own SQLx dependencies: SQLx uses
-        // ring as soon as any crate enables one of its ring TLS features.
-        let sqlx_features = format!(
-            "\"runtime-tokio\", \"tls-rustls-aws-lc-rs\", \"{}\"",
-            sqlx_driver_feature
-        );
 
         cargo_toml.push_str(&format!(
             r#"sqlx = {{ version = "0.9", default-features = false, features = [{sqlx_features}] }}
@@ -268,6 +271,26 @@ lto = "thin"
 codegen-units = 1
 strip = "symbols"
 "#;
+
+/// The SQLx driver feature of a primary SQLx database.
+fn sqlx_driver(db_provider: &str) -> &'static str {
+    match db_provider {
+        "Postgres" => "postgres",
+        "MySQL" | "MariaDB" => "mysql",
+        _ => "sqlite",
+    }
+}
+
+/// The `rullst` feature of the login-session registry over a database's
+/// strict profile.
+pub(crate) fn session_registry_feature(db_provider: &str) -> Option<&'static str> {
+    match db_provider {
+        "Postgres" => Some("auth-session-registry-postgres"),
+        "MySQL" | "MariaDB" => Some("auth-session-registry-mysql"),
+        "Sqlite" => Some("auth-session-registry-sqlite"),
+        _ => None,
+    }
+}
 
 fn relational_profile(db_provider: &str) -> Option<&'static str> {
     match db_provider {

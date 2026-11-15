@@ -1467,9 +1467,20 @@ Creates an authentication starting point in your codebase, including:
   `session_epoch` column.
 - Auth Controllers (Login, Registration, Logout, and `logout_everywhere`, which
   increments the account's session epoch to end its session on every device).
-- Encrypted-session middleware that inserts the signed-in user's id as
-  `Extension<i32>` and refuses a cookie whose session epoch is no longer the
-  account's.
+- Server-side sessions (since 13.0.0-alpha.6): every sign-in is a row of
+  `rullst_auth_sessions` in the application's database, created by a
+  `m<timestamp>_create_rullst_auth_sessions_table.rs` migration (its rollback
+  drops it), through `rullst::auth::session_registry` over `Orm::pool()`. A
+  row stores only a digest of the random secret in the encrypted cookie. The
+  middleware
+  (`src/middlewares/auth_middleware.rs`) checks that row on every request,
+  inserts the signed-in user's id as `Extension<i32>` and the
+  `AuthenticatedSession`, and refuses a cookie whose session epoch is no longer
+  the account's. Logout deletes the session, so a copied cookie stops working.
+- A "Your devices" controller (`src/controllers/sessions_controller.rs`):
+  `GET /sessions` lists the account's sessions (sign-in time, hour of last use,
+  browser and platform), `POST /sessions/revoke` signs out one and
+  `POST /sessions/revoke-others` every other one.
 - A password controller (`src/controllers/password_controller.rs`), a reset
   token model (`src/models/password_reset.rs`) and a
   `password_reset_tokens` migration: **change password** (signed in; checks the
@@ -1484,8 +1495,11 @@ Creates an authentication starting point in your codebase, including:
 - HTML Views for Login, Signup, Forgot password, Reset password and Change
   password.
 
-It targets the SQLx ORM: Turso-primary projects are rejected. The command
-enables the `orm`, `auth` and `mail` umbrella features, registers the generated
+It targets the SQLx ORM: Turso-primary projects are rejected, and the project
+needs exactly one strict database profile (`strict-sqlite`, `strict-postgres`
+or `strict-mysql`, as `cargo rullst new --database ...` selects), whose session
+registry feature (`auth-session-registry-sqlite`, `-postgres` or `-mysql`) it
+enables. The command enables the `orm`, `auth` and `mail` umbrella features, registers the generated
 `controllers`, `middlewares`, `models` and `pages` modules in `src/lib.rs` (or
 `src/main.rs`), and refreshes the migration registry.
 
@@ -1521,8 +1535,9 @@ migrations;` in `src/main.rs` or `src/lib.rs` plus a
 starters include), such as a `--no-database` starter, because nothing would
 compile or apply the users migration. Generated code names the ORM through the
 `rullst::orm` facade, so no direct `rullst-orm` dependency is needed. Mounting
-routes (including `POST /logout/everywhere` and `/password/change` behind
-`auth_middleware`, and `credential_rate_limit` on the password submissions),
+routes (including `POST /logout/everywhere`, `/password/change` and the three
+`/sessions` routes behind `auth_middleware`, and `credential_rate_limit` on the
+password submissions),
 the security baseline and the mail settings (`MAIL_DRIVER`, `MAIL_FROM`,
 `RULLST_PUBLIC_ORIGIN`) remain application work, as does calling
 `User::revoke_sessions` when you deactivate an account. The SaaS starter and
@@ -2167,7 +2182,9 @@ different report.
 Reports figures it measured for the app, each with its method: the release
 binary size, a local container image's size (`--image`, through `docker` or
 `podman image inspect`), the app's idle resident memory, the third-party
-dependency count from `Cargo.lock`; with `--bench`, the app process's CPU time
+dependency count from `Cargo.lock` and, since 13.0.0-alpha.6, how many of those
+packages Cargo compiles for the project (`cargo tree --edges normal,build`, the
+host platform and the default features); with `--bench`, the app process's CPU time
 and the response bytes it served during a bounded closed-loop loopback load,
 and both per request; with `--page-weight`, the bytes and requests of the
 `--path` page and its same-origin resources on a first and a repeat visit

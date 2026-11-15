@@ -96,8 +96,10 @@ with `APP_KEY`:
   it expires (30 days for `make_login_cookie`), the epoch changes, or
   `APP_KEY` is rotated, which signs out every user.
 
-For server-side sessions that can be listed and revoked one at a time, use
-`recovery::SqlRecoveryStore` (`recovery-sqlite` or `recovery-postgres`; see
+For sessions that can be listed and revoked one at a time, keep the cookie
+and add the [session registry](#revocable-sessions-the-session-registry), or
+use the complete account registry `recovery::SqlRecoveryStore`
+(`recovery-sqlite` or `recovery-postgres`; see
 [active-session management](../session-management.md)).
 
 ### Revocable cookies: the session epoch
@@ -146,11 +148,82 @@ if the current browser should stay signed in.
 - `rullst-auth` has no session middleware: the application loads the stored
   epoch, which costs one lookup per request.
 
-`cargo rullst auth` and the SaaS starter generate this wiring (the LMS example has it too): a
-`users.session_epoch` column, epoch cookies at sign-in and registration, the
-check in `auth_middleware`, `User::revoke_sessions`, a
-`POST /logout/everywhere` route, and a password change and a password reset
-that increment the epoch (below).
+`cargo rullst auth` and the SaaS starter generate this wiring, with the
+session registry below on top (the LMS example has the epoch only): a
+`users.session_epoch` column, the epoch in every cookie, the check in
+`auth_middleware`, `User::revoke_sessions`, a `POST /logout/everywhere` route,
+and a password change and a password reset that increment the epoch (below).
+
+### Revocable sessions: the session registry
+
+The epoch ends every session at once; it cannot end one device, list devices
+or make sign-out stop a copied cookie. `session_registry` (features
+`session-registry-sqlite`, `session-registry-postgres` and
+`session-registry-mysql`; the facade's `auth-session-registry-*`) adds one row
+per sign-in in the table `rullst_auth_sessions` of the application's own
+database, over its SQLx pool:
+
+```rust,no_run
+# #[cfg(feature = "session-registry-sqlite")]
+# async fn example(pool: sqlx::SqlitePool, headers: axum::http::HeaderMap, stored_epoch: u64)
+# -> Result<(), rullst_auth::session_registry::SessionRegistryError> {
+use rullst_auth::session_registry::{DeviceSummary, NewSession, SessionRegistry, unix_now};
+
+// `open` creates the table on first use; with a migration that calls
+// `SessionRegistry::create_table`, use `SessionRegistry::connect(pool)`.
+let sessions = SessionRegistry::open(pool).await?;
+// Sign-in: the `Set-Cookie` value of a new registered session.
+let login = NewSession::new(42, stored_epoch).with_device(DeviceSummary::from_headers(&headers));
+let set_cookie = sessions.sign_in(&login).await?;
+// Every request: one primary-key lookup; then compare the epoch as above.
+let session = sessions.authenticate_request(&headers).await?;
+session.claims().verify_epoch(stored_epoch).ok();
+// "Your devices", "sign out this device", "sign out of all other devices":
+let devices = sessions.list_sessions(session.user_id(), unix_now()?).await?;
+sessions.revoke_session(session.user_id(), devices[0].reference()).await?;
+sessions.revoke_other_sessions(session.current()).await?;
+// Sign-out ends every copy of this cookie; a password reset ends them all.
+sessions.sign_out(&headers).await?;
+sessions.revoke_all_sessions(42).await?;
+# let _ = set_cookie;
+# Ok(())
+# }
+```
+
+- The `v3.` cookie carries the account id, the epoch, the expiry and a random
+  256-bit session secret, sealed like the other cookies. The row stores only
+  a SHA-256 digest of the secret, so a copy of the table yields no cookie.
+  `decrypt_session_claims` refuses `v3.` cookies, so a route that skips the
+  registry fails closed.
+- `authenticate` checks the row on every request, without a cache: a
+  revocation applies on the next request of every process sharing the
+  database. The row's last-seen time is the start of the hour, written at most
+  once an hour. A database failure is `SessionRegistryError::Unavailable` and
+  never authenticates; `is_signed_out()` tells an invalid, expired or revoked
+  session (send the browser to sign in) from a failure.
+- The list shows the creation time, the last-seen hour, the expiry and a
+  `DeviceSummary` (browser and platform family, for example "Safari on iOS");
+  no IP address or raw `User-Agent` is stored. `SessionRef` values are
+  separate digests, safe to put in a form, and `revoke_session` takes the
+  signed-in account's id, so another account's reference revokes nothing.
+- An account keeps at most 50 sessions (`MAX_SESSIONS_PER_USER`); the next
+  sign-in signs out the least recently used. Schedule
+  `purge_expired(now, limit)` (1 to 1,000 rows) to delete expired rows.
+- Requests are checked when they start: one already running when its session
+  is revoked completes. For Server-Sent Events and WebSockets, pass
+  `sessions.revalidation(session.current())` to
+  `RealtimeSse::channel_revalidated` or `WebSocket::with_revalidation`: the
+  connection ends at once when this process revokes the session and within
+  the revalidation interval (15 seconds by default) when another one does.
+- `revoke_all_sessions_on(&mut *transaction, user_id)` revokes inside the
+  caller's transaction, for example with a password removal.
+
+`cargo rullst auth` and the SaaS starter generate the wiring: a migration owns
+the table, registration and sign-in register a session, `auth_middleware` inserts the
+`AuthenticatedSession`, `/logout` deletes the session, `/sessions` lists the
+devices with "Sign out" and "Sign out of all other devices", and password
+changes and resets delete the account's sessions. See
+[session management](../session-management.md#server-side-login-sessions).
 
 ### Password reset tokens
 

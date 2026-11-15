@@ -13,9 +13,9 @@ documentation = "https://docs.rs/rullst-studio"
 keywords = ["studio", "dashboard", "telemetry", "debugger", "devtools"]
 categories = ["development-tools", "web-programming"]
 
-# docs.rs documents the default features (`drivers-all`, `queue-sqlite`) plus
-# `remote`; the `strict-*` profiles select one ORM backend instead. Each driver
-# profile enables `local`.
+# docs.rs documents the default features (`drivers-all`, `queue-sqlite`,
+# `capital`) plus `remote`; the `strict-*` profiles select one ORM backend
+# instead. Each driver profile enables `local`.
 [package.metadata.docs.rs]
 features = ["remote"]
 rustdoc-args = ["--cfg", "docsrs"]
@@ -25,19 +25,24 @@ targets = ["x86_64-unknown-linux-gnu"]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
 [features]
-default = ["drivers-all", "queue-sqlite"]
+default = ["drivers-all", "queue-sqlite", "capital"]
 # The local Studio (`Studio`, `run_studio` and its pages), which reads the
 # application's database through the ORM. Every driver profile below enables
 # it; `--no-default-features --features remote` builds only the remote Studio,
-# without the ORM and Capital crates. Neither depends on `rullst-security`: the
-# security pages read the store that Core defines (`rullst_core::security`).
+# without the ORM crate. Neither depends on `rullst-security`: the security
+# pages read the store that Core defines (`rullst_core::security`).
 local = [
     "rullst-core/orm",
     "dep:rullst-orm",
-    "dep:rullst-capital",
     "dep:rullst-macros",
     "dep:utoipa",
 ]
+# v13 (13.0.0-alpha.6): the revenue dashboard (`/studio/capital`,
+# `/api/revenue`, `revenue_dashboard`), which reads `rullst-capital` and its
+# HTTPS client. Without it the page says how to enable it, and an application
+# without billing builds no TLS stack for Studio. The `rullst` facade enables
+# it with its `capital` feature.
+capital = ["local", "dep:rullst-capital"]
 drivers-all = ["local", "rullst-core/drivers-all", "rullst-orm/drivers-all"]
 queue-sqlite = ["rullst-core/queue-sqlite"]
 strict-sqlite = ["local", "rullst-core/strict-sqlite", "rullst-orm/strict-sqlite"]
@@ -60,7 +65,8 @@ tower = { workspace = true, features = ["util"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 utoipa = { version = "6", optional = true }
-sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls-aws-lc-rs"] }
+# TLS comes with the PostgreSQL and MySQL drivers of `rullst-orm`.
+sqlx = { workspace = true, features = ["runtime-tokio"] }
 urlencoding = { workspace = true }
 chrono = { workspace = true }
 tokio-stream = { version = "0.1.19", features = ["sync"] }

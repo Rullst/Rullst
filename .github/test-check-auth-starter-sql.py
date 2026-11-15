@@ -42,7 +42,7 @@ class GeneratedFilesTests(unittest.TestCase):
         for handler in ("register_view", "register_submit", "credential_rate_limit", "dashboard"):
             self.assertIn(f"pub async fn {handler}(", controller)
             self.assertIn(f"auth_controller::{handler}", MODULE.ROUTER_WITH_SIGNUP)
-        self.assertIn("pub async fn auth_middleware(", (CLI / "generators/auth/controllers.rs").read_text())
+        self.assertIn("pub async fn auth_middleware(", (CLI / "generators/auth/auth_middleware.rs.template").read_text())
 
     def test_expected_columns_follow_the_migration_template(self):
         template = ACCOUNT_MIGRATION.read_text()
