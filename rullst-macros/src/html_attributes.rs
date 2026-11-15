@@ -1,4 +1,3 @@
-#![cfg_attr(mutants, mutants::skip)]
 //! Element attributes inside `html!`: `name="text"`, `name={value}`, bare
 //! `name` and conditional `name?={value}`. Names are identifiers joined by
 //! `-`, `:`, `::` or `.`, optionally after a leading `@` or `:`, as Alpine.js

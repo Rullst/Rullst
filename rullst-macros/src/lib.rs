@@ -13,7 +13,6 @@
 //! has no Cargo features of its own. The
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-macros/README.md)
 //! lists the contract and the limits of each macro.
-#![cfg_attr(mutants, mutants::skip)]
 extern crate proc_macro;
 
 use memoize::expand_memoize;
