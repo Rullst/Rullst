@@ -45,12 +45,15 @@ keeps because it never replaces a policy a response already has. That policy
 admits only the request's nonce (on the page's inline style and scripts, and in
 the `csp-nonce` meta element Scalar reads for the styles it inserts) and the
 one pinned Scalar file, `@scalar/api-reference@1.67.0/dist/browser/standalone.js`
-from jsDelivr, which the page loads with Subresource Integrity; the OpenAPI
-document and requests from the API client must be same-origin. It needs no
-`'unsafe-inline'` or `'unsafe-eval'`. Scalar's remote fonts are turned off, so
-the page uses system fonts, and the styles of Scalar's toast notifications,
-which it inserts without the nonce, are blocked. Every other route keeps the
-baseline's default policy.
+from jsDelivr, which the page loads with Subresource Integrity; the style
+elements Scalar inserts without the nonce are admitted by their SHA-256
+hashes. The OpenAPI document and requests from the API client must be
+same-origin. There is no `'unsafe-eval'`, and `'unsafe-inline'` only in
+`style-src-attr`: Scalar sets `style` attributes with computed values, which no
+nonce or hash can cover. Scalar's remote fonts and its "Ask AI" agent (which
+calls `api.scalar.com`) are turned off, so the page uses system fonts. Loaded
+in Chromium, the page reports no policy violation and no console error. Every
+other route keeps the baseline's default policy.
 
 ---
 

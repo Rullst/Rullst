@@ -19,6 +19,15 @@ const SCALAR_SCRIPT: &str =
 /// other content at that URL.
 const SCALAR_INTEGRITY: &str =
     "sha384-6c7Vmx+i0yi8gBbltn0x1cavD+zsMGw2xmXXVyacPJLIGBxwaVimW5TW0WiW17Ir";
+/// The style elements [`SCALAR_SCRIPT`] inserts without the nonce (its reset,
+/// its `scalar-theme` layer, its toast styles and an empty element), by
+/// SHA-256 of their text, measured in Chromium with this page's
+/// configuration. A Scalar upgrade changes them: Chromium names the hash of
+/// each blocked `<style>` in its console.
+const SCALAR_STYLE_HASHES: &str = "'sha256-DLlkYCuDYGe6ME23YkUFB7Tc36rGDeo4mVBFbZX3uaU=' \
+     'sha256-9N0roUVL5nrrjsk+GVzVft7ZUV8OHjMjmV+NeHpJ81k=' \
+     'sha256-ZW1GSuo0pKyEx5Ar7ZC5Dflb/mjatjeTW9aVx0iZAzE=' \
+     'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='";
 
 /// Generates the HTML5 Scalar API documentation interface.
 ///
@@ -32,7 +41,13 @@ pub fn render_scalar_html(openapi_url: &str) -> String {
 /// The page, with `nonce` on its inline style and scripts and in the
 /// `csp-nonce` meta element Scalar reads for the styles it inserts.
 fn render_page(openapi_url: &str, nonce: Option<&CspNonce>) -> String {
-    let configuration = json!({ "url": openapi_url, "withDefaultFonts": false }).to_string();
+    // No remote fonts, and no "Ask AI" agent, which calls api.scalar.com.
+    let configuration = json!({
+        "url": openapi_url,
+        "withDefaultFonts": false,
+        "agent": { "disabled": true },
+    })
+    .to_string();
     let configuration = crate::html::escape_str(&configuration);
     let openapi_url = crate::html::escape_str(openapi_url);
     let (meta, nonce) = match nonce {
@@ -51,6 +66,7 @@ fn render_page(openapi_url: &str, nonce: Option<&CspNonce>) -> String {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">{meta}
+    <link rel="icon" href="data:,">
     <title>API Documentation — Rullst Scalar UI</title>
     <style{nonce}>
         body {{
@@ -64,6 +80,11 @@ fn render_page(openapi_url: &str, nonce: Option<&CspNonce>) -> String {
 </head>
 <body>
     <script id="api-reference" data-url="{openapi_url}" data-configuration="{configuration}"{nonce}></script>
+    <script{nonce}>
+        // Zod inside Scalar probes `Function('')` for compiled validators,
+        // which the policy refuses; it validates without them.
+        globalThis.__zod_globalConfig = {{ jitless: true }};
+    </script>
     <script src="{SCALAR_SCRIPT}" integrity="{SCALAR_INTEGRITY}" crossorigin="anonymous"{nonce}></script>
     <script{nonce}>
         // Status-only fallback for offline development environments.
@@ -88,18 +109,23 @@ fn render_page(openapi_url: &str, nonce: Option<&CspNonce>) -> String {
 }
 
 /// The Content Security Policy of the docs page: its own nonce, the one
-/// pinned Scalar file, styles Scalar inserts with the nonce, the same-origin
-/// OpenAPI document, and nothing else. No `'unsafe-inline'` or
-/// `'unsafe-eval'`: Scalar 1.67.0 evaluates no strings and reads the nonce
-/// from the `csp-nonce` meta element for its style sheets. Its toast
-/// notifications insert one style element without a nonce, which this
-/// policy blocks; the reference itself is unaffected.
+/// pinned Scalar file, the style elements Scalar inserts (with the nonce it
+/// reads from the `csp-nonce` meta element, or by hash), the same-origin
+/// OpenAPI document, and nothing else. No `'unsafe-eval'`, and no
+/// `'unsafe-inline'` for scripts or style elements. Style attributes are the
+/// exception: Scalar 1.67.0 sets `style` attributes with computed values
+/// (code block line counts, a scrollbar measurement), so `style-src-attr`
+/// allows them; a style attribute cannot load anything `img-src` and
+/// `font-src` refuse. Checked in Chromium: no violation and no console
+/// error, and the reference renders the operations of a same-origin document.
 fn docs_policy(nonce: &CspNonce) -> String {
     let nonce = nonce.as_str();
     format!(
         "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; \
          form-action 'self'; script-src 'nonce-{nonce}' {SCALAR_SCRIPT}; \
-         style-src 'self' 'nonce-{nonce}'; img-src 'self' data:; font-src 'self'; \
+         style-src 'self' 'nonce-{nonce}'; \
+         style-src-elem 'self' 'nonce-{nonce}' {SCALAR_STYLE_HASHES}; \
+         style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self'; \
          connect-src 'self'; worker-src 'self' blob:"
     )
 }
@@ -185,7 +211,8 @@ mod tests {
             "<script src=\"{SCALAR_SCRIPT}\" integrity=\"{SCALAR_INTEGRITY}\" crossorigin=\"anonymous\"></script>"
         )));
         assert!(!html.contains("nonce"));
-        assert!(html.contains("data-configuration=\"{&quot;url&quot;:&quot;javascript:alert(1)\\&quot; onload=\\&quot;alert(2)&quot;,&quot;withDefaultFonts&quot;:false}\""));
+        assert!(html.contains("data-configuration=\"{&quot;agent&quot;:{&quot;disabled&quot;:true},&quot;url&quot;:&quot;javascript:alert(1)\\&quot; onload=\\&quot;alert(2)&quot;,&quot;withDefaultFonts&quot;:false}\""));
+        assert!(html.contains("globalThis.__zod_globalConfig = { jitless: true };"));
         assert!(html.contains("&quot; onload=&quot;"));
         assert!(!html.contains("link.href"));
         assert!(!html.contains("data-url=\"javascript:alert(1)\" onload="));
@@ -218,7 +245,12 @@ mod tests {
             "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; \
              form-action 'self'; script-src 'nonce-{nonce}' \
              https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.67.0/dist/browser/standalone.js; \
-             style-src 'self' 'nonce-{nonce}'; img-src 'self' data:; font-src 'self'; \
+             style-src 'self' 'nonce-{nonce}'; style-src-elem 'self' 'nonce-{nonce}' \
+             'sha256-DLlkYCuDYGe6ME23YkUFB7Tc36rGDeo4mVBFbZX3uaU=' \
+             'sha256-9N0roUVL5nrrjsk+GVzVft7ZUV8OHjMjmV+NeHpJ81k=' \
+             'sha256-ZW1GSuo0pKyEx5Ar7ZC5Dflb/mjatjeTW9aVx0iZAzE=' \
+             'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='; \
+             style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self'; \
              connect-src 'self'; worker-src 'self' blob:"
         )
     }
@@ -238,13 +270,16 @@ mod tests {
             let (headers, html, nonce) = docs_through(app).await;
             let policy = headers[header::CONTENT_SECURITY_POLICY].to_str().unwrap();
             assert_eq!(policy, expected_policy(&nonce), "{environment:?}");
-            assert!(!policy.contains("unsafe-inline") && !policy.contains("unsafe-eval"));
+            assert!(!policy.contains("unsafe-eval"));
+            // Only style attributes may be inline.
+            assert_eq!(policy.matches("'unsafe-inline'").count(), 1);
+            assert!(policy.contains("style-src-attr 'unsafe-inline'"));
             // The rest of the baseline still applies.
             assert_eq!(headers[header::X_FRAME_OPTIONS], "DENY");
             assert_eq!(headers[header::CACHE_CONTROL], "no-store");
             // The inline style and every script carry the request's nonce.
             let attribute = format!("nonce=\"{nonce}\"");
-            assert_eq!(html.matches(&attribute).count(), 4, "{html}");
+            assert_eq!(html.matches(&attribute).count(), 5, "{html}");
             assert!(html.contains(&format!(
                 "<script src=\"{SCALAR_SCRIPT}\" integrity=\"{SCALAR_INTEGRITY}\" crossorigin=\"anonymous\" {attribute}></script>"
             )));
