@@ -11,6 +11,7 @@ mod alpha5_htmx;
 mod alpha5_removed_ui;
 mod alpha5_runtime;
 mod alpha5_slimming;
+mod alpha6_deprecated;
 mod data;
 mod docs;
 mod files;

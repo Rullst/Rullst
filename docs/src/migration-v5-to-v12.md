@@ -49,7 +49,8 @@ Important feature changes include:
 
 The v5 README demonstrated attribute-style `#[routes]` registration. V12's
 supported registration surface is the explicit `routes!` macro. The deprecated
-`#[route]` compatibility marker does not register a route.
+`#[route]` compatibility marker does not register a route (13.0.0-alpha.6
+removed it).
 
 ```rust,no_run
 use rullst::{Server, response::Html, routes};

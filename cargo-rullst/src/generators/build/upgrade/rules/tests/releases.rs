@@ -9,6 +9,7 @@ const RELEASES: &[&str] = &[
     "13.0.0-alpha.3",
     "13.0.0-alpha.4",
     "13.0.0-alpha.5",
+    "13.0.0-alpha.6",
     "13.0.0-rc.1",
 ];
 
@@ -120,6 +121,21 @@ fn rules_carry_the_release_of_their_change() {
             "V13-ORM-QDRANT-REMOVED",
             "V13-AI-PROVIDER-PRESETS",
             "V13-HTMX-2",
+        ]
+    );
+    // The removals of the APIs still deprecated before the 13.0 freeze.
+    assert_eq!(
+        codes_introduced_in("13.0.0-alpha.6"),
+        [
+            "V13-MAIL-DEPRECATED-REMOVED",
+            "V13-IOT-OTA-LEGACY-REMOVED",
+            "V13-NEXUS-INFALLIBLE-BUILD-REMOVED",
+            "V13-AI-DEPRECATED-REMOVED",
+            "V13-SECURITY-DEPRECATED-REMOVED",
+            "V13-QUEUE-PURGE-COMPLETED-REMOVED",
+            "V13-CONNECT-INFALLIBLE-NEW-REMOVED",
+            "V13-ROUTE-MARKER-REMOVED",
+            "V13-ORM-SCHEMA-DIFF-REMOVED",
         ]
     );
     assert!(codes_introduced_in("13.0.0-rc.1").is_empty());
