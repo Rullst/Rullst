@@ -5944,7 +5944,6 @@ dependencies = [
  "sha2 0.11.1",
  "sqlx",
  "sqlx-core",
- "syn 3.0.9",
  "testcontainers",
  "testcontainers-modules",
  "thiserror 2.0.21",
@@ -5954,7 +5953,6 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
- "walkdir",
  "zeroize",
 ]
 

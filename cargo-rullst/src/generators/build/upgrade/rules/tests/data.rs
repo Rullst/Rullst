@@ -17,7 +17,7 @@ async fn boot(queue: Queue, worker: &mut Worker) -> Result<(), Error> {
     rullst_orm::Outbox::install().await?;
     let memory = SqlChatMemory::connect(url).await?;
     rullst_orm::audit::create_audit_table().await?;
-    let chain = AuditChain::new(Arc::new(StdoutAuditLogger));
+    let chain = AuditChain::try_new(&key, Arc::new(StdoutAuditLogger))?;
     Ok(())
 }
 "#,

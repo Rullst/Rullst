@@ -3,12 +3,13 @@ use crate::provider::Provider;
 
 #[test]
 fn test_redirect_url() {
-    let provider = Auth0Provider::new(
+    let provider = Auth0Provider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
         "test.auth0.com".to_string(),
-    );
+    )
+    .unwrap();
     let url = provider.redirect_url();
     assert!(url.starts_with("https://test.auth0.com/authorize?"));
     assert!(url.contains("client_id=client_id"));
@@ -87,12 +88,13 @@ impl HttpClient for MockAuth0Client {
 
 #[tokio::test]
 async fn test_auth0_get_user_success() {
-    let provider = Auth0Provider::new(
+    let provider = Auth0Provider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
         "test.auth0.com".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockAuth0Client {
         token_status: 200,
         token_body: json!({
@@ -122,12 +124,13 @@ async fn test_auth0_get_user_success() {
 
 #[tokio::test]
 async fn test_auth0_token_error() {
-    let provider = Auth0Provider::new(
+    let provider = Auth0Provider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
         "test.auth0.com".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockAuth0Client {
         token_status: 400,
         token_body: json!({"error": "invalid_grant"}),
@@ -149,12 +152,13 @@ async fn test_auth0_token_error() {
 
 #[tokio::test]
 async fn test_auth0_missing_id() {
-    let provider = Auth0Provider::new(
+    let provider = Auth0Provider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
         "test.auth0.com".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockAuth0Client {
         token_status: 200,
         token_body: json!({"access_token": "mock_access_token"}),
@@ -173,12 +177,13 @@ async fn test_auth0_missing_id() {
 
 #[tokio::test]
 async fn test_auth0_refresh_token_success() {
-    let provider = Auth0Provider::new(
+    let provider = Auth0Provider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
         "test.auth0.com".to_string(),
     )
+    .unwrap()
     .with_http_client(Arc::new(MockAuth0Client {
         token_status: 200,
         token_body: json!({
@@ -209,12 +214,13 @@ async fn test_auth0_refresh_token_success() {
 #[test]
 #[cfg(feature = "retry")]
 fn test_auth0_with_retry() {
-    let provider = Auth0Provider::new(
+    let provider = Auth0Provider::try_new(
         "client_id".to_string(),
         secrecy::SecretString::from("client_secret".to_string()),
         "https://redirect.url".to_string(),
         "test.auth0.com".to_string(),
-    );
+    )
+    .unwrap();
     let original_client = provider.http_client.clone();
     let provider = provider.with_retry(3);
     assert_eq!(provider.client_id, "client_id");

@@ -217,22 +217,6 @@ fn nexus_rejects_invalid_registered_metadata_during_build() {
     ));
 }
 
-#[tokio::test]
-#[allow(deprecated)]
-async fn legacy_build_is_fail_closed_without_authentication() {
-    use axum::http::{Request, StatusCode};
-    use tower::ServiceExt;
-
-    let router = Nexus::new().build();
-    let request = Request::builder()
-        .uri("/")
-        .body(axum::body::Body::empty())
-        .expect("valid request");
-    let response = router.oneshot(request).await.expect("router response");
-
-    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
-}
-
 #[test]
 fn test_sanitize_identifier() {
     assert_eq!(sanitize_identifier("valid_id_123"), "valid_id_123");
@@ -301,21 +285,6 @@ fn registration_records_every_key_column_with_the_first_as_pk() {
     assert_eq!(slug.pk, "slug");
     assert_eq!(slug.key_columns(), ["slug"]);
     assert_eq!(nexus.registry[2].key_columns(), ["id"]);
-}
-
-#[tokio::test]
-#[allow(deprecated)]
-async fn legacy_into_router_is_also_fail_closed_without_authentication() {
-    use axum::http::{Request, StatusCode};
-    use tower::ServiceExt;
-
-    let router = Nexus::new().into_router();
-    let request = Request::builder()
-        .uri("/")
-        .body(axum::body::Body::empty())
-        .expect("valid request");
-    let response = router.oneshot(request).await.expect("router response");
-    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[test]

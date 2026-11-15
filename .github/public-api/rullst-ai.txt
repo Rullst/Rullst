@@ -26,7 +26,6 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::AiCancellation
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::AiCancellation
 pub struct rullst_ai::AiClient
 impl rullst_ai::AiClient
-#[deprecated] pub async fn rullst_ai::AiClient::structured_prompt<T>(&self, _text: &str) -> core::result::Result<T, rullst_ai::AiError> where T: serde_core::de::DeserializeOwned
 pub async fn rullst_ai::AiClient::embed(&self, text: &str) -> core::result::Result<alloc::vec::Vec<f32>, rullst_ai::AiError>
 pub async fn rullst_ai::AiClient::json_prompt<T>(&self, text: &str) -> core::result::Result<T, rullst_ai::AiError> where T: serde_core::de::DeserializeOwned
 pub async fn rullst_ai::AiClient::prompt(&self, text: &str) -> core::result::Result<alloc::string::String, rullst_ai::AiError>
@@ -650,7 +649,6 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::FetchedResource
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::FetchedResource
 #[non_exhaustive] pub struct rullst_ai::GuardrailReport
 impl rullst_ai::GuardrailReport
-#[deprecated] pub const fn rullst_ai::GuardrailReport::is_safe(&self) -> bool
 pub const fn rullst_ai::GuardrailReport::passed_heuristics(&self) -> bool
 pub const fn rullst_ai::GuardrailReport::pii_was_masked(&self) -> bool
 pub const fn rullst_ai::GuardrailReport::threat(&self) -> core::option::Option<rullst_ai::PromptThreat>

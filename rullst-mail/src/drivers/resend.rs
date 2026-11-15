@@ -27,16 +27,6 @@ impl ResendDriver {
         Ok(Self { api_key })
     }
 
-    /// Creates a driver while preserving the legacy infallible API.
-    ///
-    /// Prefer [`Self::try_new`]. Invalid configuration still fails closed in `send`.
-    #[deprecated(since = "12.0.0", note = "use ResendDriver::try_new")]
-    pub fn new(api_key: impl Into<String>) -> Self {
-        Self {
-            api_key: api_key.into(),
-        }
-    }
-
     /// Returns whether delivery will use the provider or the offline mock fallback.
     pub fn delivery_mode(&self) -> DeliveryMode {
         credential_mode(&self.api_key)

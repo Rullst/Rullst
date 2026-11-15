@@ -31,8 +31,7 @@ impl Auth0Provider {
         let domain = crate::configuration::validate_https_host("domain", &domain.into())?;
         let credential_mode =
             crate::configuration::checked_credential_mode(&client_id, &client_secret)?;
-        let http_client =
-            crate::configuration::provider_http_client(credential_mode, "auth0", None);
+        let http_client = crate::configuration::provider_http_client(credential_mode, "auth0");
 
         Ok(Self {
             client_id,
@@ -45,56 +44,6 @@ impl Auth0Provider {
             pkce_challenge: None,
             credential_mode,
         })
-    }
-
-    /// Deprecated infallible constructor. Invalid configuration is disabled.
-    #[cfg_attr(
-        not(test),
-        deprecated(since = "12.0.0", note = "use try_new and handle ConnectError")
-    )]
-    pub fn new(
-        client_id: impl Into<String>,
-        client_secret: secrecy::SecretString,
-        redirect_url: impl Into<String>,
-        domain: impl Into<String>,
-    ) -> Self {
-        let client_id = client_id.into();
-        let mut redirect_url = redirect_url.into();
-        let raw_domain = domain.into();
-        let redirect_result = crate::configuration::validate_redirect_url(&redirect_url);
-        let domain_result = crate::configuration::validate_https_host("domain", &raw_domain);
-        let (credential_mode, invalid_reason, domain) = match (redirect_result, domain_result) {
-            (Ok(_), Ok(domain)) => {
-                let (mode, reason) =
-                    crate::configuration::legacy_credential_mode(&client_id, &client_secret);
-                (mode, reason, domain)
-            }
-            (redirect, domain) => {
-                redirect_url = "about:blank".to_string();
-                let reason = match (redirect, domain) {
-                    (Err(error), _) | (_, Err(error)) => error.to_string(),
-                    (Ok(_), Ok(_)) => "invalid Auth0 configuration".to_string(),
-                };
-                (
-                    crate::configuration::CredentialMode::Invalid,
-                    Some(reason),
-                    "invalid.invalid".to_string(),
-                )
-            }
-        };
-        let http_client =
-            crate::configuration::provider_http_client(credential_mode, "auth0", invalid_reason);
-        Self {
-            client_id,
-            client_secret,
-            redirect_url,
-            domain,
-            http_client,
-            scopes: "openid profile email".to_string(),
-            state: None,
-            pkce_challenge: None,
-            credential_mode,
-        }
     }
 
     pub fn credential_mode(&self) -> crate::configuration::CredentialMode {
@@ -153,9 +102,6 @@ impl Auth0Provider {
 #[async_trait]
 impl Provider for Auth0Provider {
     fn redirect_url(&self) -> String {
-        if self.credential_mode.is_invalid() {
-            return "about:blank".to_string();
-        }
         if self.credential_mode.is_mock() {
             return crate::configuration::mock_redirect_url(
                 &self.redirect_url,
