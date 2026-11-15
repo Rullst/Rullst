@@ -194,8 +194,10 @@ remains separate.
   `init_radar` was called earlier; without a `Server`, call them yourself. The opt-in
   `health_router_with_lifecycle` returns readiness from the same bounded state
   that gates Server request admission; the application still performs and
-  times out its own dependency checks. The `version` field of both payloads is
-  the Rullst framework version. To report your application's version too, use
+  times out its own dependency checks. The payloads carry no version: since
+  13.0.0-alpha.6 they no longer tell visitors the framework release (the
+  authenticated production monitor reports it as `framework.version`). To
+  report your application's version, use
   `health_router_with_version(env!("CARGO_PKG_VERSION"))` or
   `health_router_with_lifecycle_and_version(lifecycle, env!("CARGO_PKG_VERSION"))`
   (v13), which add it as `app_version`; any string works, such as a commit
@@ -574,6 +576,15 @@ logs a `warn` event with the rule and path of each request it would refuse.
 `[security]` `waf_body_exempt_paths` lists exact paths whose bodies it does
 not inspect, for routes that accept text such as code samples (see
 [seeing and accepting WAF false positives](../security-layers.md#seeing-and-accepting-waf-false-positives)).
+
+The CSRF middleware mints a token on the first `GET` of every page except
+static files: paths below `[security]` `csrf_static_prefixes` (default
+`/static/`, `/.well-known/`) and the exact `csrf_static_paths` (default
+`/favicon.ico`, `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest`,
+`/sw.js`). Since 13.0.0-alpha.6 the extension does not count, so a dynamic
+`/report.json` page gets a token; list any other prefix you serve files
+under (see
+[static files and the CSRF token](../security-layers.md#static-files-and-the-csrf-token)).
 
 TLS connections use `aws-lc-rs` as the rustls crypto provider. Core hashes
 with the pure-Rust `sha2` crate and needs `ring` only for the AES-256-GCM

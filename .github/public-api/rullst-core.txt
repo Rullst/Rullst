@@ -716,6 +716,8 @@ pub rullst_core::SecurityConfig::coep: alloc::string::String
 pub rullst_core::SecurityConfig::user_agent_blocklist: alloc::vec::Vec<alloc::string::String>
 pub rullst_core::SecurityConfig::enable_pii_masking: bool
 pub rullst_core::SecurityConfig::csrf_signed_webhook_paths: alloc::vec::Vec<alloc::string::String>
+pub rullst_core::SecurityConfig::csrf_static_prefixes: alloc::vec::Vec<alloc::string::String>
+pub rullst_core::SecurityConfig::csrf_static_paths: alloc::vec::Vec<alloc::string::String>
 pub rullst_core::SecurityConfig::waf_body_exempt_paths: alloc::vec::Vec<alloc::string::String>
 pub rullst_core::SecurityConfig::trusted_proxies: alloc::vec::Vec<alloc::string::String>
 pub rullst_core::SecurityConfig::trusted_proxy_header: alloc::string::String
@@ -724,7 +726,10 @@ pub rullst_core::SecurityConfig::hsts_max_age_seconds: u64
 pub rullst_core::SecurityConfig::hsts_include_subdomains: bool
 pub rullst_core::SecurityConfig::hsts_preload: bool
 impl rullst_core::SecurityConfig
+pub fn rullst_core::SecurityConfig::is_csrf_static_path(&self, path: &str) -> bool
 pub fn rullst_core::SecurityConfig::validate(&self) -> core::result::Result<(), rullst_core::config::ConfigError>
+pub fn rullst_core::SecurityConfig::with_csrf_static_path(self, path: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn rullst_core::SecurityConfig::with_csrf_static_prefix(self, prefix: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for rullst_core::SecurityConfig
 impl core::default::Default for rullst_core::SecurityConfig
 impl core::fmt::Debug for rullst_core::SecurityConfig
@@ -1597,9 +1602,8 @@ pub fn rullst_core::feature::parse_variants(s: &str) -> alloc::vec::Vec<(alloc::
 pub fn rullst_core::feature::resolve_variant(variants: &[(alloc::string::String, u32)], bucket: u32) -> core::option::Option<alloc::string::String>
 pub async fn rullst_core::feature::variant(flag: &str, identifier: &str) -> core::option::Option<alloc::string::String>
 pub mod rullst_core::health
-pub struct rullst_core::health::HealthProbeResponse
+#[non_exhaustive] pub struct rullst_core::health::HealthProbeResponse
 pub rullst_core::health::HealthProbeResponse::status: &'static str
-pub rullst_core::health::HealthProbeResponse::version: &'static str
 pub rullst_core::health::HealthProbeResponse::uptime_seconds: u64
 pub rullst_core::health::HealthProbeResponse::timestamp: u64
 impl core::clone::Clone for rullst_core::health::HealthProbeResponse
@@ -1615,7 +1619,6 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::health::HealthProb
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::health::HealthProbeResponse
 #[non_exhaustive] pub struct rullst_core::health::ReadinessProbeResponse
 pub rullst_core::health::ReadinessProbeResponse::status: &'static str
-pub rullst_core::health::ReadinessProbeResponse::version: &'static str
 pub rullst_core::health::ReadinessProbeResponse::uptime_seconds: u64
 pub rullst_core::health::ReadinessProbeResponse::timestamp: u64
 pub rullst_core::health::ReadinessProbeResponse::lifecycle: rullst_core::ReadinessSnapshot

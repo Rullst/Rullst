@@ -287,7 +287,7 @@ release:
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
 | 13.0.0-alpha.5 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them), `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-SERVER-FUNCTIONS-REMOVED`, `V13-FRONTEND-ADAPTERS-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-ORM-ADAPTERS-REMOVED`, `V13-MAIL-MESSAGE-REPLY-TO`, `V13-PRIVACY-CONSENT-CHOICE-MATCH`, `V13-LABS-NON-EXHAUSTIVE-MATCH`, `V13-CLI-GREEN-RENAMED`, `V13-ACADEMY-REMOVED`, `V13-ORM-QDRANT-REMOVED`, `V13-AI-PROVIDER-PRESETS` |
-| 13.0.0-alpha.6 | `V13-MAIL-DEPRECATED-REMOVED`, `V13-IOT-OTA-LEGACY-REMOVED`, `V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, `V13-AI-DEPRECATED-REMOVED`, `V13-SECURITY-DEPRECATED-REMOVED`, `V13-QUEUE-PURGE-COMPLETED-REMOVED`, `V13-CONNECT-INFALLIBLE-NEW-REMOVED`, `V13-ROUTE-MARKER-REMOVED`, `V13-ORM-SCHEMA-DIFF-REMOVED` (the removal of every API still deprecated) |
+| 13.0.0-alpha.6 | `V13-HEALTH-FRAMEWORK-VERSION`, `V13-HEALTH-PROBE-VERSION-FIELD`, `V13-CSRF-STATIC-PREFIXES` (the default changes of the 13.0 freeze), `V13-MAIL-DEPRECATED-REMOVED`, `V13-IOT-OTA-LEGACY-REMOVED`, `V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, `V13-AI-DEPRECATED-REMOVED`, `V13-SECURITY-DEPRECATED-REMOVED`, `V13-QUEUE-PURGE-COMPLETED-REMOVED`, `V13-CONNECT-INFALLIBLE-NEW-REMOVED`, `V13-ROUTE-MARKER-REMOVED`, `V13-ORM-SCHEMA-DIFF-REMOVED` (the removal of every API still deprecated) |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -481,15 +481,15 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (31 rows);
+  application source (32 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (119 rows);
+  the affected API, feature or configuration, which the rules locate (121 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
   of inputs that previously failed) (106 rows).
 
 A row with both a must-change and a review part counts in both. The catalog
-has 156 rules. A row can map to several rules and a rule to
+has 159 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -663,6 +663,7 @@ the rule together.
 | Docker build context | (b) review | `V13-DOCKER-CONTEXT` |  |
 | Kubernetes Ingress | (b) review | `V13-K8S-INGRESS-TLS` |  |
 | Starter health probes | (b) review | `V13-HEALTH-PROBES` |  |
+| Health probes without the framework version | (a) must-change, (b) review | `V13-HEALTH-PROBE-VERSION-FIELD`, `V13-HEALTH-FRAMEWORK-VERSION` | Must-change: `.version` read in a file that names `HealthProbeResponse` or `ReadinessProbeResponse`, and a `HealthProbeResponse { .. }` literal. Review: a string `"version"` in a Rust file whose text has `"/health` or `"/ready` (such as `body["version"]` in a probe test), and a script, workflow, Makefile or justfile line that names `/health` or `/ready` and reads `.version`, `"version"` or `'version'`; a read spread over several lines is not located; at every location; introduced in 13.0.0-alpha.6 |
 | Kubernetes and Buildah names | (b) review | `V13-K8S-NAMES` |  |
 | Pre-compressed static assets | (c) none | — | CLI |
 | Static asset caching | (c) none | — | Runtime default; not detectable in source |
@@ -685,6 +686,7 @@ the rule together.
 | Multipart CSRF refusal | (c) none | — | Only the refusal text changes; tests that compare it are not located |
 | Secure cookies over HTTPS | (c) none | — | Runtime behaviour; not detectable in source |
 | CSRF cookie on cacheable responses | (c) none | — | `Cache-Control` values set by handlers are not located |
+| CSRF static files by path | (b) review | `V13-CSRF-STATIC-PREFIXES` | `.nest_service("/path", ..)` and `.route_service("/path", ..)` with a literal path that Core's default `csrf_static_prefixes` and `csrf_static_paths` do not cover, in a file that names `ServeDir` or `ServeFile`, at every location; dynamic pages that now get a token need no change and are not located; introduced in 13.0.0-alpha.6 |
 | Connect mock credentials | (c) none | — | Credentials come from configuration and are not located |
 | Connect mock authorization URL | (c) none | — | Mock mode only |
 | Account mail language and product name | (c) none | — | Generator output; existing projects keep their code |

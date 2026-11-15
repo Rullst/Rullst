@@ -123,10 +123,14 @@ fn rules_carry_the_release_of_their_change() {
             "V13-HTMX-2",
         ]
     );
-    // The removals of the APIs still deprecated before the 13.0 freeze.
+    // The changes of the 13.0 freeze: the health probes' framework version,
+    // CSRF static files by path, and the removal of the APIs still deprecated.
     assert_eq!(
         codes_introduced_in("13.0.0-alpha.6"),
         [
+            "V13-HEALTH-FRAMEWORK-VERSION",
+            "V13-HEALTH-PROBE-VERSION-FIELD",
+            "V13-CSRF-STATIC-PREFIXES",
             "V13-MAIL-DEPRECATED-REMOVED",
             "V13-IOT-OTA-LEGACY-REMOVED",
             "V13-NEXUS-INFALLIBLE-BUILD-REMOVED",
