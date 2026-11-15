@@ -1,4 +1,6 @@
-/// WebAuthn and Passkey authentication submodule.
+/// WebAuthn and Passkey authentication submodule (the `passkeys` feature).
+#[cfg(feature = "passkeys")]
+#[cfg_attr(docsrs, doc(cfg(feature = "passkeys")))]
 pub mod passkey;
 
 mod app_key;

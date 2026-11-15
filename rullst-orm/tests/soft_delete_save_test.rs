@@ -7,7 +7,7 @@ use rullst_orm::audit::{AuditContext, with_audit_context};
 use rullst_orm::{Error, Orm};
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "sd_posts")]
+#[orm(table = "sd_posts", full_row_save)]
 struct SdPost {
     id: i32,
     title: String,
@@ -15,7 +15,7 @@ struct SdPost {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm)]
-#[orm(table = "sd_audited_posts", auditable)]
+#[orm(table = "sd_audited_posts", auditable, full_row_save)]
 struct SdAuditedPost {
     id: i32,
     title: String,

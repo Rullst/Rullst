@@ -7,7 +7,7 @@
 //! `is_deleted` with an `i32` sentinel; the `secret` field is excluded
 //! from generated SQL via `#[orm(skip)]`.
 
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 // `is_deleted: 0` is the "not deleted" sentinel. The `delval`
 // expression `1` is interpolated verbatim into the generated UPDATE
@@ -32,6 +32,8 @@ pub struct SoftDeleteDemo {
     // the field — there is no `transient_note` column in the schema.
     #[sqlx(skip)]
     pub transient_note: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -56,6 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         name: "Alice".to_string(),
         is_deleted: 0,
         transient_note: "unpersisted in-memory tag".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     row.save().await?;
     println!("inserted id={} name={}", row.id, row.name);

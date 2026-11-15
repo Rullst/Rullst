@@ -3,7 +3,7 @@ use rullst_orm_macros::Orm;
 struct Post;
 
 #[derive(Orm)]
-#[orm(table = "accounts", backend = "turso")]
+#[orm(table = "accounts", backend = "turso", full_row_save)]
 struct Account {
     id: i64,
     #[orm(has_many = "Post")]

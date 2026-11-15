@@ -333,6 +333,7 @@ async fn seeding_is_idempotent_and_never_deletes_visitor_posts() {
             tenant_id: "tenant-enterprise".to_string(),
             title: lookalike.clone(),
             body: "Notes about Topcoat".to_string(),
+            snapshot: rullst_orm::RowSnapshot::default(),
         }
         .save()
         .await

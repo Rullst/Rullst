@@ -5,14 +5,14 @@ use rullst_orm::schema::{ForeignKeyAction, Schema};
 use rullst_orm::{Error, Orm};
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_authors")]
+#[orm(table = "contract_authors", full_row_save)]
 struct Author {
     id: i32,
     email: String,
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_books")]
+#[orm(table = "contract_books", full_row_save)]
 struct Book {
     id: i32,
     author_id: i32,
@@ -23,7 +23,7 @@ struct Book {
 
 /// `contract_books` after `Schema::table` added two columns.
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "contract_books")]
+#[orm(table = "contract_books", full_row_save)]
 struct ReviewedBook {
     id: i32,
     author_id: i32,

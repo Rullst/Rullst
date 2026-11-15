@@ -1,4 +1,4 @@
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "users")]
@@ -9,6 +9,8 @@ pub struct User {
     #[orm(has_many = "Post", foreign_key = "user_id")]
     #[sqlx(skip)]
     pub posts: Option<Vec<Post>>,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
@@ -18,6 +20,8 @@ pub struct Post {
     pub user_id: i32,
     pub title: String,
     pub status: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -56,6 +60,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         id: 0,
         name: "Orm Dev".to_string(),
         posts: None,
+        snapshot: RowSnapshot::default(),
     };
     user.save().await?;
 
@@ -67,18 +72,21 @@ async fn main() -> Result<(), rullst_orm::Error> {
         user_id: saved_user.id,
         title: "Rust: The Masterpiece ORM".to_string(),
         status: "published".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     let mut p2 = Post {
         id: 0,
         user_id: saved_user.id,
         title: "Vibe Coding in Rust".to_string(),
         status: "draft".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     let mut p3 = Post {
         id: 0,
         user_id: saved_user.id,
         title: "Rust: Eager Loading Tips".to_string(),
         status: "published".to_string(),
+        snapshot: RowSnapshot::default(),
     };
     p1.save().await?;
     p2.save().await?;

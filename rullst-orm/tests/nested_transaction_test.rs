@@ -14,7 +14,7 @@ use rullst_orm::{Error, Orm, Outbox, after_commit};
 use serde_json::json;
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "nested_records")]
+#[orm(table = "nested_records", full_row_save)]
 struct NestedRecord {
     id: i32,
     name: String,

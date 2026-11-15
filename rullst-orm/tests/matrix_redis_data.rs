@@ -12,7 +12,7 @@ use testcontainers::core::{IntoContainerPort, WaitFor};
 use testcontainers::runners::AsyncRunner;
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, PartialEq, Default)]
-#[orm(table = "redis_matrix_docs")]
+#[orm(table = "redis_matrix_docs", full_row_save)]
 struct RedisMatrixDoc {
     id: i32,
     title: String,
@@ -20,7 +20,11 @@ struct RedisMatrixDoc {
 }
 
 #[derive(Clone, Debug, rullst_orm::Orm, PartialEq)]
-#[orm(table = "redis_matrix_tenant_docs", tenant_column = "organization_id")]
+#[orm(
+    table = "redis_matrix_tenant_docs",
+    tenant_column = "organization_id",
+    full_row_save
+)]
 struct RedisMatrixTenantDoc {
     id: i32,
     organization_id: String,

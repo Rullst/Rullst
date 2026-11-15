@@ -15,14 +15,18 @@ its own, so pin it exactly:
 cargo add rullst-auth@=13.0.0-alpha.5
 ```
 
-Passwords, cookie sessions, passkey ceremonies, RBAC and policies need no
-feature. The optional parts are Cargo features:
+Passwords, cookie sessions, RBAC and policies need no feature. The optional
+parts are Cargo features:
 
+- `passkeys`: WebAuthn passkey ceremonies (`auth::passkey`, since
+  13.0.0-alpha.6 a feature). It is the only feature that adds aws-lc-rs,
+  which checks the ES256 keys and signatures, so an application without
+  passkeys builds neither.
 - `jwt`: the application JWT policy (`ApplicationJwtPolicy`).
-- `sqlite`: `jwt` plus durable SQLite JWT revocation and the SQLite passkey
-  device registry.
-- `passkey-postgres`: passkey ceremonies shared between hosts through
-  PostgreSQL.
+- `sqlite`: `jwt` and `passkeys` plus durable SQLite JWT revocation and the
+  SQLite passkey device registry.
+- `passkey-postgres`: `passkeys` plus passkey ceremonies shared between hosts
+  through PostgreSQL.
 - `recovery-sqlite` / `recovery-postgres`: `recovery::SqlRecoveryStore`
   (password recovery and revocable server-side sessions);
   `email-login-sqlite` / `email-login-postgres` and `api-tokens-sqlite` /
@@ -35,7 +39,7 @@ feature. The optional parts are Cargo features:
   providers remain a separate trust boundary.
 
 In a Rullst application, enable the `auth` feature of `rullst` (the crate is
-then `rullst::auth`), plus `auth-jwt`, `auth-sqlite`, `auth-passkey-postgres`,
+then `rullst::auth`), plus `auth-passkeys`, `auth-jwt`, `auth-sqlite`, `auth-passkey-postgres`,
 `auth-sessions-sqlite`/`-postgres`, `auth-email-login-sqlite`/`-postgres`,
 `auth-api-tokens-sqlite`/`-postgres` or
 `auth-session-registry-sqlite`/`-postgres`/`-mysql` for the optional parts.
@@ -261,11 +265,12 @@ admission passed in PR #239; final release admission remains separate.
 
 ## WebAuthn/passkeys
 
-`PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges
+With the `passkeys` feature (`auth-passkeys` in `rullst`), `PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges
 (`challenge_ttl_seconds` from 1 to 86,400; `PasskeyAuth::new` rejects other values),
 client-data ceremony type, user-presence/user-verification flags, ES256 COSE keys, P-256 points,
-credential IDs, signatures, and monotonic counters. Only `none` attestation is advertised and
-accepted. With `sqlite`, `SqlitePasskeyStore` supplies a bounded file-backed
+credential IDs, signatures, and monotonic counters. Public keys and ES256 signatures are checked
+with aws-lc-rs, the library behind Rullst's TLS; high-S signatures are accepted, as WebAuthn allows.
+Only `none` attestation is advertised and accepted. With `sqlite`, `SqlitePasskeyStore` supplies a bounded file-backed
 device registry: registration quotas, listing/renaming/revocation, restart-safe
 public credentials and optimistic counter CAS are shared by processes using the
 same SQLite file. `finish_authenticate` verifies the ES256 ceremony first and

@@ -1,4 +1,4 @@
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "users")]
@@ -13,6 +13,8 @@ pub struct User {
 
     // Enables soft deletes automatically
     pub deleted_at: Option<String>,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
@@ -25,6 +27,8 @@ pub struct Post {
     #[orm(belongs_to = "User", foreign_key = "user_id")]
     #[sqlx(skip)]
     pub author: Option<User>,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 #[tokio::main]
@@ -64,6 +68,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         name: "Eager User".to_string(),
         posts: None,
         deleted_at: None,
+        snapshot: RowSnapshot::default(),
     };
     user.save().await?;
 
@@ -74,12 +79,14 @@ async fn main() -> Result<(), rullst_orm::Error> {
         user_id: saved_user.id,
         title: "Post 1".to_string(),
         author: None,
+        snapshot: RowSnapshot::default(),
     };
     let mut post2 = Post {
         id: 0,
         user_id: saved_user.id,
         title: "Post 2".to_string(),
         author: None,
+        snapshot: RowSnapshot::default(),
     };
     post1.save().await?;
     post2.save().await?;

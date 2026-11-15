@@ -8,7 +8,7 @@ use super::create_table;
 use crate::transcript::Scenario;
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "diff_scores")]
+#[orm(table = "diff_scores", full_row_save)]
 pub struct Score {
     pub id: i32,
     pub name: String,

@@ -375,8 +375,15 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
       installed wherever TLS is used.
     - A five-field cron evaluator of Rullst's own replaces the `cron` crate
       (about 9 fewer), tested differentially against it.
-    - Passkeys without `p256` (about 18 fewer in the SaaS starter), checked
-      with test vectors.
+    - Passkeys without `p256`: ES256 public keys and assertion signatures
+      are checked with aws-lc-rs, compiled into `rullst-auth` only with its
+      new `passkeys` feature (`auth-passkeys` in `rullst`; breaking for code
+      that uses passkeys with `auth` alone, located by
+      `cargo rullst upgrade`), so an application without passkeys builds
+      neither library for them (the SaaS starter: 18 fewer `Cargo.lock`
+      packages and 17 fewer compiled crates; Nexus and the starters enable no
+      passkeys). Tested differentially against the previous `p256` and
+      `ring` checks and with the Wycheproof ECDSA P-256 vectors.
     - Core's `storage-multipart` recovery records move from `ring`'s
       AES-256-GCM to the RustCrypto `aes-gcm` crate, with the same stored
       format and known-answer tests, so `ring` leaves Core entirely.
@@ -393,7 +400,11 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
     application-owned mail transport examples for more providers
     ([#638](https://github.com/Rullst/Rullst/issues/638)) and a Portuguese
     first-hour guide ([#639](https://github.com/Rullst/Rullst/issues/639)).
-  - **Fixes:** the Turso Hrana client follows a same-origin `base_url` that a
+  - **Fixes:** every `#[derive(Orm)]` model declares what `save()` writes
+    (the changed columns, with a `RowSnapshot` field, or every column, with
+    `#[orm(full_row_save)]`), so a full-row save that loses a concurrent change
+    to another column is never the silent default; the Turso Hrana client
+    follows a same-origin `base_url` that a
     multi-instance server returns, so an insert whose text primary key a
     database `DEFAULT` fills no longer fails there; `cargo rullst upgrade`
     lists every location of a rule; generated CLI profile builds no longer

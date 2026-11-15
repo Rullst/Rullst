@@ -39,17 +39,17 @@ fn models_deriving_from_row_beside_orm_must_change() {
 use rullst::db::{FromRow, Orm};
 
 #[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "posts")]
+#[orm(table = "posts", full_row_save)]
 pub struct Post { pub id: i32 }
 
-#[derive(rullst::db::Orm, sqlx::FromRow)]
+#[derive(rullst::db::Orm, sqlx::FromRow)] #[orm(full_row_save)]
 pub struct Tag { pub id: i32 }
 
-#[derive(Orm)]
+#[derive(Orm)] #[orm(full_row_save)]
 #[derive(rullst_orm::FromRow)]
 pub struct Note { pub id: i32 }
 
-#[derive(Debug, Orm)]
+#[derive(Debug, Orm)] #[orm(full_row_save)]
 pub struct Clean { pub id: i32 }
 "#;
     for sqlx_macros in [false, true] {
@@ -68,7 +68,7 @@ pub struct Clean { pub id: i32 }
 fn custom_from_row_models_and_plain_structs_need_the_sqlx_derive_feature() {
     let source = r#"
 #[derive(Orm, sqlx::FromRow)]
-#[orm(table = "users", custom_from_row)]
+#[orm(table = "users", custom_from_row, full_row_save)]
 pub struct User { pub id: i32 }
 
 #[derive(Debug, sqlx::FromRow)]

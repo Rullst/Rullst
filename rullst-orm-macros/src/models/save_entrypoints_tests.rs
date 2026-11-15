@@ -16,13 +16,14 @@ fn save_doc(input: DeriveInput) -> String {
 #[test]
 fn save_documents_the_full_row_write_on_every_untracked_model() {
     for input in [
-        parse_quote! { struct Lesson { id: i32, title: String } },
+        parse_quote! { #[orm(full_row_save)] struct Lesson { id: i32, title: String } },
         parse_quote! {
-            #[orm(table = "lessons", auditable)]
+            #[orm(table = "lessons", auditable, full_row_save)]
             struct Lesson { id: i32, title: String }
         },
     ] {
         let doc = save_doc(input);
+        assert!(doc.contains("declares `#[orm(full_row_save)]`"), "{doc}");
         assert!(doc.contains("the last writer wins"), "{doc}");
         assert!(doc.contains("`rullst_orm::RowSnapshot`"), "{doc}");
         assert!(doc.contains("use `update_partial()`"), "{doc}");

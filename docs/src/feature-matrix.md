@@ -112,10 +112,11 @@ the drivers.
 | `nexus-ai` | no | v13: `nexus` plus the AI assistant at `/nexus/chat` (`rullst-nexus/ai`), which adds `rullst-ai`; without it `/nexus/chat` answers 404 with a notice naming this feature |
 | `nexus-tz` | no | v13: `nexus` plus `NexusTimeZone::named`, so `DateTimeUtc` form values are shown and read in a named IANA time zone with its daylight-saving rules; adds `jiff` with the system zoneinfo database and a bundled fallback |
 | `studio` | no | Studio plus Core's Studio integration marker |
-| `auth` | no | Authentication, sessions, passkeys, and RBAC helpers from `rullst-auth` |
+| `auth` | no | Authentication, sessions and RBAC helpers from `rullst-auth`; without passkeys since 13.0.0-alpha.6 |
+| `auth-passkeys` | no | v13 (13.0.0-alpha.6): `auth` plus WebAuthn passkeys (`rullst::auth::passkey`, Auth `passkeys`), which adds aws-lc-rs to `rullst-auth`; `auth-sqlite` and `auth-passkey-postgres` include it |
 | `auth-jwt` | no | `auth` plus the strict application-issued JWT policy |
-| `auth-sqlite` | no | `auth-jwt` plus bounded shared SQLite JWT revocation and passkey device lifecycle state |
-| `auth-passkey-postgres` | no | Optional v13 account/session-bound PostgreSQL passkey ceremony candidate; host credential-counter CAS remains required |
+| `auth-sqlite` | no | `auth-jwt` and `auth-passkeys` plus bounded shared SQLite JWT revocation and passkey device lifecycle state |
+| `auth-passkey-postgres` | no | `auth-passkeys` plus the optional v13 account/session-bound PostgreSQL passkey ceremony candidate; host credential-counter CAS remains required |
 | `auth-sessions-sqlite` | no | v13 candidate: `auth` plus the SQLite account registry, opaque sessions and session inventory (Auth `recovery-sqlite`); see [session management](session-management.md) |
 | `auth-sessions-postgres` | no | v13 candidate: `auth` plus the PostgreSQL account registry, opaque sessions and session inventory (Auth `recovery-postgres`) |
 | `auth-email-login-sqlite` | no | v13 candidate: `auth` plus email login over the SQLite recovery accounts and sessions; see [the email-login contract](email-login.md) |
@@ -373,19 +374,21 @@ Default features: none.
 | Feature | Enables |
 | --- | --- |
 | `oauth` | Optional `rullst-connect` OAuth2/OIDC integration and re-exports |
+| `passkeys` | WebAuthn ES256 passkeys (`auth::passkey`), checked with aws-lc-rs, the only feature that adds aws-lc-rs to this crate (13.0.0-alpha.6) |
 | `jwt` | Application-issued JWT claims, key rotation, and revocation-store policy |
-| `sqlite` | `jwt` plus bounded file-backed shared JWT revocation and passkey device lifecycle state |
+| `sqlite` | `jwt` and `passkeys` plus bounded file-backed shared JWT revocation and passkey device lifecycle state |
 | `recovery-sqlite` | SQLite account registry, recovery and opaque sessions (`SqlRecoveryStore`); the v13 candidate adds session inventory/logout |
 | `recovery-postgres` | The same recovery store on PostgreSQL |
-| `passkey-postgres` | v13 candidate: shared account/session-bound PostgreSQL passkey ceremonies |
+| `passkey-postgres` | v13 candidate: `passkeys` plus shared account/session-bound PostgreSQL passkey ceremonies |
 | `email-login-sqlite` | v13 candidate: `recovery-sqlite` plus email login over its accounts and sessions; see [the email-login contract](email-login.md) |
 | `email-login-postgres` | v13 candidate: `recovery-postgres` plus email login |
 | `api-tokens-sqlite` | v13 candidate: `recovery-sqlite` plus scoped API tokens; see [the API-token contract](api-tokens.md) |
 | `api-tokens-postgres` | v13 candidate: `recovery-postgres` plus scoped API tokens |
 
-The umbrella crate exposes `jwt` and `sqlite` as `auth-jwt` and `auth-sqlite`
-(`auth-sqlite` also enables `auth-jwt`), `recovery-*` as `auth-sessions-*`,
-`passkey-postgres` as `auth-passkey-postgres`, and the email-login and
+The umbrella crate exposes `passkeys`, `jwt` and `sqlite` as `auth-passkeys`,
+`auth-jwt` and `auth-sqlite` (`auth-sqlite` also enables `auth-jwt` and
+`auth-passkeys`), `recovery-*` as `auth-sessions-*`,
+`passkey-postgres` as `auth-passkey-postgres` (with `auth-passkeys`), and the email-login and
 API-token features as `auth-email-login-*` and `auth-api-tokens-*`; each
 enables `auth`. `account-mail-*` also selects `recovery-*`. The umbrella does
 not forward Auth's `oauth`; its own `oauth` feature adds `rullst-connect`

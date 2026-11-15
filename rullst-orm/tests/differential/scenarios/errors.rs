@@ -8,7 +8,7 @@ use super::create_table;
 use crate::transcript::Scenario;
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "diff_accounts")]
+#[orm(table = "diff_accounts", full_row_save)]
 struct Account {
     id: i32,
     email: String,
@@ -19,7 +19,7 @@ struct Account {
 /// The same table seen by a model whose `nickname` may be `None`, so the
 /// generated INSERT can send a NULL to the NOT NULL column.
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "diff_accounts")]
+#[orm(table = "diff_accounts", full_row_save)]
 struct AccountDraft {
     id: i32,
     email: String,
@@ -28,7 +28,7 @@ struct AccountDraft {
 }
 
 #[derive(Debug, Clone, Orm)]
-#[orm(table = "diff_memberships")]
+#[orm(table = "diff_memberships", full_row_save)]
 struct Membership {
     id: i32,
     account_id: i32,

@@ -24,7 +24,7 @@ const SQLITE_POLICY: &str =
     "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000;";
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "bench_users")]
+#[orm(table = "bench_users", full_row_save)]
 struct RullstUser {
     pub id: i32,
     pub name: String,

@@ -8,7 +8,8 @@ remains separate; this is not a WebAuthn conformance claim. The existing synchro
 SQLite credential registry persists credentials and counter CAS, not ceremonies.
 
 The optional path belongs in `rullst-auth`. Enable `passkey-postgres`, or
-`auth-passkey-postgres` through the umbrella package. `SharedPasskeyAuth<S>` composes a concrete
+`auth-passkey-postgres` through the umbrella package; both include the
+`passkeys` feature (`auth-passkeys`), which is enough for a store of your own. `SharedPasskeyAuth<S>` composes a concrete
 `PasskeyCeremonyStore` through static dispatch and the existing ES256/`none`
 verification engine. The first real adapter is opt-in PostgreSQL, because it
 serves separate application hosts. A shared SQLite ceremony adapter, additional

@@ -8,6 +8,7 @@ use rullst_orm::audit::{AuditContext, with_audit_context};
 use rullst_orm::{Error, Orm};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
+#[orm(full_row_save)]
 #[orm(
     table = "hooked_lessons",
     auditable,

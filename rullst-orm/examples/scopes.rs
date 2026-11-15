@@ -1,4 +1,4 @@
-use rullst_orm::Orm;
+use rullst_orm::{Orm, RowSnapshot};
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
 #[orm(table = "users", global_scope = "active_only")]
@@ -7,6 +7,8 @@ pub struct User {
     pub name: String,
     pub is_active: i32,
     pub votes: i32,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 // -----------------------------------------

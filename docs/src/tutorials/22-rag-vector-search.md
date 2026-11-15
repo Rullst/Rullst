@@ -83,7 +83,7 @@ CREATE TABLE knowledge_chunks (
 The model can use the re-exported typed `Vector`:
 
 ```rust,no_run
-use rullst::orm::{Orm, Vector};
+use rullst::orm::{Orm, Vector, RowSnapshot};
 
 #[derive(Clone, Debug, Orm)]
 #[orm(table = "knowledge_chunks", tenant_column = "tenant_id")]
@@ -92,6 +92,8 @@ struct KnowledgeChunk {
     tenant_id: String,
     content: String,
     embedding: Vector,
+    #[sqlx(skip)]
+    snapshot: RowSnapshot,
 }
 ```
 
@@ -109,6 +111,8 @@ use rullst::orm::{Orm, Vector, with_tenant};
 #     tenant_id: String,
 #     content: String,
 #     embedding: Vector,
+#     #[sqlx(skip)]
+#     snapshot: rullst::orm::RowSnapshot,
 # }
 
 # async fn retrieve(

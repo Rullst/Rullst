@@ -13,7 +13,7 @@ use testcontainers::core::IntoContainerPort;
 use testcontainers::runners::AsyncRunner;
 
 #[derive(Debug, Clone, PartialEq, rullst_orm::Orm)]
-#[orm(table = "remote_users", backend = "turso")]
+#[orm(table = "remote_users", backend = "turso", full_row_save)]
 struct RemoteUser {
     id: i64,
     name: String,
@@ -21,14 +21,14 @@ struct RemoteUser {
 }
 
 #[derive(Debug, Clone, PartialEq, rullst_orm::Orm)]
-#[orm(table = "remote_tags", backend = "turso")]
+#[orm(table = "remote_tags", backend = "turso", full_row_save)]
 struct RemoteTag {
     id: String,
     label: String,
 }
 
 #[derive(Debug, Clone, PartialEq, rullst_orm::Orm)]
-#[orm(table = "remote_notes", backend = "turso")]
+#[orm(table = "remote_notes", backend = "turso", full_row_save)]
 struct RemoteNote {
     id: String,
     body: String,

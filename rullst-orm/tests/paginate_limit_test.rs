@@ -7,7 +7,7 @@
 use rullst_orm::Orm;
 
 #[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "paginated_rows")]
+#[orm(table = "paginated_rows", full_row_save)]
 struct PaginatedRow {
     id: i32,
     label: String,

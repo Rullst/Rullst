@@ -2,12 +2,17 @@
 pub(crate) mod cbor;
 mod ceremony;
 pub mod config;
+mod es256;
 pub mod service;
 pub mod shared;
 #[cfg(feature = "sqlite")]
 mod sqlite;
 pub mod types;
 
+#[cfg(test)]
+mod es256_differential_tests;
+#[cfg(test)]
+mod es256_wycheproof_tests;
 #[cfg(test)]
 mod invariant_tests;
 #[cfg(test)]

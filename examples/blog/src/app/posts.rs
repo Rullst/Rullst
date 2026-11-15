@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use axum::{Extension, Form};
 use rullst::security::TenantContext;
 use rullst::{html, response::Redirect};
-use rullst_orm::with_tenant;
+use rullst_orm::{RowSnapshot, with_tenant};
 
 // --- Post Model & Active Record Query Builder ---
 /// A story owned by one tenant.
@@ -25,6 +25,10 @@ pub struct Post {
     pub tenant_id: String,
     pub title: String,
     pub body: String,
+    /// `save()` writes only the columns this handle changed, so two requests
+    /// that edit different columns of a post both persist.
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
 }
 
 impl rullst_nexus::NexusModel for Post {
@@ -169,6 +173,7 @@ pub async fn create_post(
             tenant_id: tenant_id.to_string(),
             title,
             body,
+            snapshot: RowSnapshot::default(),
         };
         post.save().await?;
         Ok(post)

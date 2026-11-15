@@ -4,7 +4,7 @@ use rullst_orm::Policy;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "documents", policy = "DocumentPolicy")]
+#[orm(table = "documents", policy = "DocumentPolicy", full_row_save)]
 pub struct Document {
     pub id: i32,
     pub title: String,

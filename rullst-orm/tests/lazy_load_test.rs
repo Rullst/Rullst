@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "users")]
+#[orm(table = "users", full_row_save)]
 pub struct User {
     pub id: i32,
     pub name: String,
@@ -13,7 +13,7 @@ pub struct User {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm)]
-#[orm(table = "posts")]
+#[orm(table = "posts", full_row_save)]
 pub struct Post {
     pub id: i32,
     pub user_id: i32,
