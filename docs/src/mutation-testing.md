@@ -302,8 +302,8 @@ every test of the file reaches, so no single test can fail first:
   `rullst-security/src/rasp/user_agent.rs`: the version scan's `index += 1`
   replaced by `*=`.
 - `rullst-macros/src/html_declarations.rs`: `parse_comment` returning
-  `Ok(())` consumes nothing, so the document parser finds the same `<!--`
-  forever in every test with an HTML comment.
+  `Ok(())` consumes nothing, so the document parser finds the same comment
+  opener forever in every test with an HTML comment.
 - `rullst-mail/src/security.rs`: the redaction scans, where
   `start + relative_end` in `redact_values_after` becomes `-`, `offset +
   relative` in `redact_aws_access_keys` or `redact_labelled_private_keys`
