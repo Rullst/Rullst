@@ -137,10 +137,10 @@ let password_change = routes![
 ```
 
 Add each group to the starter's router in `router()` (`src/main.rs`) with
-`.merge_axum(public_auth.into_axum())` and so on, before its
-`.layer(rullst::server::from_fn(rullst::security::csrf_middleware))` line so
-that CSRF protection covers them. The SaaS starter's `router()` shows the same
-routes registered one by one.
+`.merge_axum(public_auth.into_axum())` and so on. `Server` applies CSRF
+protection to every route, in development too; a router created before
+13.0.0-alpha.6 has its own `csrf_middleware` layer, and the groups go before
+it. The SaaS starter's `router()` shows the same routes registered one by one.
 
 `credential_rate_limit` allows ten submissions per minute for each connecting
 peer. Behind a reverse proxy, configure `[security] trusted_proxies` so clients

@@ -70,12 +70,11 @@ fn router() -> Result<Router, Box<dyn std::error::Error>> {
     // rullst-access: owner — find_owned() calls RbacGuard::authorize_owner_or_role
     .route("/notes/{id}/delete", rullst::routing::post(controllers::notes_controller::destroy)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
-    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
     .route("/billing/webhook", rullst::routing::post(controllers::billing_controller::webhook_handler)
         .route_layer(rullst::server::from_fn(controllers::billing_controller::verify_billing_webhook)))
+    // `Server` adds CSRF, the secure headers and the WAF in every environment.
     // `/health` and `/ready` for container, Kubernetes and PaaS probes.
     .merge_axum(rullst::health::health_router())
-    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
     .nest_axum("/nexus", nexus))
 }
 

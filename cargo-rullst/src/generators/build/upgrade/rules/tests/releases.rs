@@ -133,6 +133,7 @@ fn rules_carry_the_release_of_their_change() {
             "V13-HEALTH-PROBE-VERSION-FIELD",
             "V13-CSRF-STATIC-PREFIXES",
             "V13-CSRF-COOKIE-IN-PAGE",
+            "V13-ROUTER-BASELINE-LAYERS",
             "V13-DEPLOY-CADDY-ENCODE",
             "V13-MAIL-DEPRECATED-REMOVED",
             "V13-IOT-OTA-LEGACY-REMOVED",

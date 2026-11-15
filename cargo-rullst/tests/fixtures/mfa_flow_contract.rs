@@ -147,8 +147,14 @@ async fn generated_mfa_flow_contract() {
     for migration in crate::migrations::get_migrations() {
         migration.up().await.unwrap();
     }
-    let router = crate::router().unwrap();
-    let app = router.as_axum();
+    // `Server` adds CSRF and the secure headers to the router; so does this.
+    let router = rullst::security::apply_security_baseline(
+        crate::router().unwrap().into_axum(),
+        rullst::config::RullstConfig::global().security.clone(),
+        rullst::config::Environment::Test,
+    )
+    .unwrap();
+    let app = &router;
 
     // Registration signs in directly: a new account has no second factor.
     let registered = post(

@@ -123,9 +123,7 @@ fn the_saas_starter_is_wired_end_to_end() {
             router.find("\"/login/mfa\"").unwrap()
                 > router.find("\"/login\", rullst::routing::post").unwrap()
         );
-        assert!(
-            router.find("\"/account/security\"").unwrap() < router.find("csrf_middleware").unwrap()
-        );
+        assert!(!router.contains("csrf_middleware"));
         let main = read(&root, "src/main.rs");
         let reset = main.find("controllers::mfa::admin::run().await").unwrap();
         assert!(reset < main.find("rullst::artisan!(").unwrap());

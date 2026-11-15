@@ -181,8 +181,14 @@ async fn generated_password_flows_contract() {
         .execute(rullst::orm::Orm::pool().unwrap()).await.unwrap();
     rullst::mail::Mail::set_driver(Box::new(MemoryDriver::new()));
     MailTrap::clear();
-    let router = crate::router().unwrap();
-    let app = router.as_axum();
+    // `Server` adds CSRF and the secure headers to the router; so does this.
+    let router = rullst::security::apply_security_baseline(
+        crate::router().unwrap().into_axum(),
+        rullst::config::RullstConfig::global().security.clone(),
+        rullst::config::Environment::Test,
+    )
+    .unwrap();
+    let app = &router;
     // Two browsers sign in: two registered sessions.
     let sign_in = |password: &'static str| async move {
         let login = post(app, "/login", None, &format!("_token={CSRF}&email={MEMBER}&password={password}")).await;

@@ -149,12 +149,12 @@ What it does:
   the collected list items are inserted into the page as HTML, and the
   handlers return the page directly.
 
-Now mount the routes in the `router()` function of `src/main.rs`. Add them
-**before** the `csrf_middleware` layer, so every form post needs the CSRF token
-the pages include, and wrap each one in the starter's `auth_middleware`:
+Now mount the routes in the `router()` function of `src/main.rs`, next to the
+starter's own routes, and wrap each one in the starter's `auth_middleware`.
+`Server` checks the CSRF token that the pages include on every form post:
 
 ```rust,ignore
-{{#include zero-to-complete-app/main.rs:62:73}}
+{{#include zero-to-complete-app/main.rs:62:72}}
 ```
 
 The whole file is in [`zero-to-complete-app/main.rs`](zero-to-complete-app/main.rs).

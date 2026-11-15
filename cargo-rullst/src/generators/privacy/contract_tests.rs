@@ -91,9 +91,10 @@ fn a_router_without_the_csrf_boundary_is_left_to_the_application() {
     let temporary = tempfile::tempdir().unwrap();
     let root = saas(temporary.path());
     auth_contract::own_sign_in(&root);
+    // Neither a recognized CSRF layer nor the health probe merge.
     let main = read(&root, "src/main.rs").replace(
-        ".layer(rullst::server::from_fn(rullst::security::csrf_middleware))",
-        ".layer(from_fn(rullst::security::csrf_middleware))",
+        ".merge_axum(rullst::health::health_router())",
+        ".merge_axum(health_router()).layer(from_fn(rullst::security::csrf_middleware))",
     );
     fs::write(root.join("src/main.rs"), &main).unwrap();
     let planned = plan(
@@ -107,7 +108,9 @@ fn a_router_without_the_csrf_boundary_is_left_to_the_application() {
     )
     .unwrap();
     assert_eq!(planned.notes.len(), 1);
-    assert!(planned.notes[0].starts_with("Mount the routes inside your CSRF layer"));
+    assert!(planned.notes[0].starts_with(
+        "Mount the routes: add `.merge_axum(controllers::privacy_controller::routes().into_axum())`"
+    ));
     files::apply(&planned.edits).unwrap();
     assert_eq!(read(&root, "src/main.rs"), main);
     // A contract that lacks what privacy calls is refused.

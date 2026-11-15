@@ -465,6 +465,9 @@ impl Scanner<'_, '_> {
         if let Some(rule) = super::alpha6_defaults::method_rule(name, &args, self.context.text) {
             self.hit(rule, at);
         }
+        if let Some(rule) = super::alpha6_defaults::layer_rule(name, &args) {
+            self.hit(rule, at);
+        }
         if let Some(rule) =
             super::alpha6_defaults::cookie_rule(name, &args, self.context.text, self.context.path)
         {

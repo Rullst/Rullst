@@ -86,8 +86,14 @@ async fn generated_session_registry_contract() {
     rullst::db::sqlx::query("INSERT INTO users (id,name,email,password_hash,created_at,updated_at) VALUES (?,?,?,?,?,?)")
         .bind(1).bind("Member").bind(MEMBER).bind(hash).bind("2026-11-15T00:00:00+00:00").bind("2026-11-15T00:00:00+00:00")
         .execute(rullst::orm::Orm::pool().unwrap()).await.unwrap();
-    let router = crate::router().unwrap();
-    let app = router.as_axum();
+    // `Server` adds CSRF and the secure headers to the router; so does this.
+    let router = rullst::security::apply_security_baseline(
+        crate::router().unwrap().into_axum(),
+        rullst::config::RullstConfig::global().security.clone(),
+        rullst::config::Environment::Test,
+    )
+    .unwrap();
+    let app = &router;
 
     // Two sign-ins are two registered sessions; only digests are stored.
     let laptop = sign_in(app, FIREFOX).await;

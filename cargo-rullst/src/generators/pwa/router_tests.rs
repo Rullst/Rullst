@@ -55,7 +55,13 @@ fn a_router_without_health_probes_is_mounted_inside_its_header_layer() {
     );
     let main = read(&root, "src/main.rs");
     assert!(main.contains(&probes));
-    fs::write(root.join("src/main.rs"), main.replace(&probes, "")).unwrap();
+    // A router created before 13.0.0-alpha.6 still has its own header layer.
+    let headers = "    .layer(rullst::server::from_fn(rullst::security::headers_middleware))\n";
+    let server =
+        "    // `Server` adds CSRF, the secure headers and the WAF in every environment.\n";
+    let older = main.replace(&format!("{server}{probes}"), headers);
+    assert_ne!(older, main);
+    fs::write(root.join("src/main.rs"), older).unwrap();
 
     let planned = plan(&root, &with_router("src/main.rs")).unwrap();
     assert_eq!(planned.unmounted, None);

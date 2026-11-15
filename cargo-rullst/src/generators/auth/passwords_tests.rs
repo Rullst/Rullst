@@ -352,12 +352,8 @@ fn starters_ship_and_mount_the_password_flows() {
                 router.contains(change),
                 "{blueprint}: password change route"
             );
-            // Every password route sits before the CSRF layer.
-            let csrf = router.find("csrf_middleware").expect("CSRF layer");
-            assert!(
-                router.rfind("/password/").is_some_and(|last| last < csrf),
-                "{blueprint}"
-            );
+            // `Server` applies CSRF to every route; the router has no CSRF layer.
+            assert!(!router.contains("csrf_middleware"), "{blueprint}");
         }
     }
 }
