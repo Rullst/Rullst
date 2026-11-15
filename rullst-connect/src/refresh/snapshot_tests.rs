@@ -141,3 +141,128 @@ fn restored_state_rejects_invalid_lifetimes_and_tokens() {
         .is_err()
     );
 }
+
+/// An envelope of `length` bytes in the stored format, whose ciphertext is
+/// never decrypted.
+fn crafted_envelope(length: usize) -> String {
+    let nonce = URL_SAFE_NO_PAD.encode([0_u8; NONCE_BYTES]);
+    let mut key_id = "k".to_string();
+    loop {
+        let head = format!("{ENVELOPE_PREFIX}:{ENVELOPE_VERSION}:{key_id}:{nonce}:");
+        let ciphertext = length - head.len();
+        // Unpadded base64 never has a length of 1 modulo 4.
+        if ciphertext % 4 != 1 {
+            return format!("{head}{}", "A".repeat(ciphertext));
+        }
+        key_id.push('k');
+    }
+}
+
+#[test]
+fn stored_envelopes_hold_at_most_192_kib_in_five_fields() {
+    let longest = crafted_envelope(MAX_ENVELOPE_BYTES);
+    assert_eq!(longest.len(), 196_608);
+    assert!(EncryptedTokenSnapshot::try_from_envelope(longest).is_ok());
+    assert_eq!(
+        EncryptedTokenSnapshot::try_from_envelope(crafted_envelope(MAX_ENVELOPE_BYTES + 1)),
+        Err(TokenSnapshotError::InvalidEnvelope)
+    );
+    let nonce = |bytes: usize| URL_SAFE_NO_PAD.encode(vec![0_u8; bytes]);
+    let ciphertext = |bytes: usize| URL_SAFE_NO_PAD.encode(vec![0_u8; bytes]);
+    let envelope = |nonce: &str, ciphertext: &str, extra: &str| {
+        format!("{ENVELOPE_PREFIX}:{ENVELOPE_VERSION}:key:{nonce}:{ciphertext}{extra}")
+    };
+    // The tag alone is the shortest ciphertext.
+    assert!(
+        EncryptedTokenSnapshot::try_from_envelope(envelope(&nonce(12), &ciphertext(16), ""))
+            .is_ok()
+    );
+    for refused in [
+        envelope(&nonce(12), &ciphertext(15), ""),
+        envelope(&nonce(11), &ciphertext(16), ""),
+        envelope(&nonce(12), &ciphertext(16), ":extra"),
+    ] {
+        assert_eq!(
+            EncryptedTokenSnapshot::try_from_envelope(refused.as_str()),
+            Err(TokenSnapshotError::InvalidEnvelope),
+            "{refused}"
+        );
+    }
+}
+
+#[test]
+fn a_sealed_envelope_may_reach_exactly_192_kib() {
+    // Quotes double in JSON, so two full tokens of them overflow the bound.
+    let refresh = "\"".repeat(65_536);
+    let sealed = |quotes: usize, key_id: &str| {
+        let state = RefreshableTokenState::try_restore(
+            "provider-user".to_string(),
+            format!("a{}", "\"".repeat(quotes)),
+            refresh.clone(),
+            1_000,
+            4_600,
+            0,
+        )
+        .expect("bounded tokens");
+        EncryptedTokenSnapshot::seal(&state, &key(key_id, 5), &binding("account"))
+    };
+    let length = |quotes: usize| sealed(quotes, "k").map(|envelope| envelope.as_str().len());
+    assert_eq!(length(65_535), Err(TokenSnapshotError::InvalidEnvelope));
+    // The most quotes whose envelope still fits, by bisection.
+    let (mut fits, mut overflows) = (0, 65_535);
+    while overflows - fits > 1 {
+        let middle = (fits + overflows) / 2;
+        if length(middle).is_ok() {
+            fits = middle;
+        } else {
+            overflows = middle;
+        }
+    }
+    let shortfall = MAX_ENVELOPE_BYTES - length(fits).expect("fits");
+    // The key ID is written once, so each extra character adds one byte.
+    let exact = sealed(fits, &"k".repeat(1 + shortfall)).expect("exactly at the bound");
+    assert_eq!(exact.as_str().len(), 196_608);
+    assert_eq!(
+        sealed(fits, &"k".repeat(2 + shortfall)).err(),
+        Some(TokenSnapshotError::InvalidEnvelope)
+    );
+}
+
+#[test]
+fn key_ids_and_bindings_are_bounded_portable_labels() {
+    assert!(TokenSnapshotKey::try_new("k".repeat(128), [1; 32]).is_ok());
+    for key_id in [String::new(), "k".repeat(129)] {
+        assert_eq!(
+            TokenSnapshotKey::try_new(key_id, [1; 32]).err(),
+            Some(TokenSnapshotError::InvalidKeyId)
+        );
+    }
+    let bound = TokenSnapshotBinding::try_new("p".repeat(128), "a".repeat(512)).expect("limits");
+    assert_eq!(bound.provider(), "p".repeat(128));
+    for (provider, account, field) in [
+        (String::new(), "account".to_string(), "provider"),
+        ("p".repeat(129), "account".to_string(), "provider"),
+        ("github".to_string(), String::new(), "account"),
+        ("github".to_string(), "a".repeat(513), "account"),
+    ] {
+        assert_eq!(
+            TokenSnapshotBinding::try_new(provider, account).err(),
+            Some(TokenSnapshotError::InvalidBinding { field })
+        );
+    }
+}
+
+#[test]
+fn debug_output_shows_only_the_provider() {
+    let binding = TokenSnapshotBinding::try_new("github", "secret-account").expect("binding");
+    assert_eq!(
+        format!("{binding:?}"),
+        "TokenSnapshotBinding { provider: \"github\", account_id: \"[REDACTED]\" }"
+    );
+    let encrypted =
+        EncryptedTokenSnapshot::seal(&state(), &key("primary", 1), &binding).expect("sealed");
+    assert_eq!(
+        format!("{encrypted:?}"),
+        "EncryptedTokenSnapshot { envelope: \"[REDACTED]\" }"
+    );
+}
