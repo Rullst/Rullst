@@ -1,5 +1,105 @@
 # Active sessions and remote logout
 
+Rullst has two server-side session systems. The **login-session registry**
+(`rullst::auth::session_registry`, since 13.0.0-alpha.6) keeps a record per
+`rullst_session` cookie in the application's own database; `cargo rullst auth`
+and the SaaS starter use it. The **recovery store** (`SqlRecoveryStore`, below)
+is a complete account registry with its own credentials, opaque sessions and
+password recovery.
+
+## Server-side login sessions
+
+A `make_login_cookie_with_epoch` cookie is stateless: signing out deletes it
+from the browser, but a copy (stolen from a shared computer, a backup, malware
+or a proxy log) keeps working until it expires, and the session epoch can only
+end every session of an account at once. The registry closes that gap.
+
+- **Sign-in.** `SessionRegistry::create_session` (or `sign_in`, which reads
+  `APP_KEY` and the clock and returns the `Set-Cookie` value) stores one row in
+  `rullst_auth_sessions` and returns a `v3.` cookie: the account id, its
+  session epoch, the expiry and a random 256-bit session secret, sealed with
+  AES-256-GCM under `APP_KEY`. The row keeps only a SHA-256 digest of the
+  secret as its primary key, so a copy of the table names no cookie, and a
+  separate 128-bit digest as the account-visible reference.
+- **Every request.** `authenticate` (or `authenticate_request`) opens the
+  cookie and looks the row up by its primary key. There is no cache: a
+  revocation takes effect on the next request of every process that shares
+  the database, and a database failure fails closed (`Unavailable`). The
+  last-seen time is the start of the hour, written at most once an hour per
+  session. `decrypt_session_claims` refuses `v3.` cookies, so a route that
+  skips the registry cannot accept a revoked one; the session epoch still
+  works through `AuthenticatedSession::claims().verify_epoch`.
+- **Sign-out and devices.** `sign_out`/`revoke` delete the current row, so
+  every copy of the cookie stops working. `list_sessions(user_id, now)` lists
+  the account's live sessions, most recently used first;
+  `revoke_session(user_id, &reference)` signs out one (a reference of another
+  account's session revokes nothing), `revoke_other_sessions(&current)` all
+  but this one and `revoke_all_sessions(user_id)` all of them: call it on a
+  password reset or change, on "sign out everywhere" and when an account is
+  deactivated.
+- **Data kept.** The account id, creation time, last-seen hour, expiry and a
+  device summary: a browser family and a platform family read from the
+  sign-in's `User-Agent` ("Firefox on Linux"), never the header itself or a
+  version. No IP address, location or request history is stored, following
+  the data-minimization rules of the [legal compliance roadmap](legal-compliance-roadmap.md).
+  The summary is a hint for the account owner, not verified device identity.
+- **Limits and retention.** An account keeps at most 50 sessions; the next
+  sign-in signs out its least recently used one (exact on SQLite; concurrent
+  sign-ins on PostgreSQL and MySQL can pass it briefly by their number).
+  Revocation deletes the row. A sign-in deletes its account's expired rows,
+  and `purge_expired(now, limit)` deletes up to 1,000 expired rows per call:
+  schedule it. Every database call has a five-second deadline.
+- **Stores.** The registry uses the application's SQLx pool:
+  `session-registry-sqlite` (the facade's `auth-session-registry-sqlite`),
+  `-postgres` and `-mysql` (MySQL and MariaDB). `SessionRegistry::open(pool)`
+  creates the table and its indexes when they are missing, so the runtime
+  database role needs `CREATE` once; on PostgreSQL concurrent openings
+  serialize on an advisory lock. SQLite is shared-local: processes on one host
+  using the same file. `SessionRegistryFor<rullst::orm::RullstPool>` names the
+  registry of the ORM's strict backend.
+
+```rust,no_run
+# #[cfg(feature = "auth-session-registry-sqlite")]
+# async fn handlers(headers: rullst::server::HeaderMap) -> Result<(), rullst::auth::session_registry::SessionRegistryError> {
+use rullst::auth::session_registry::{DeviceSummary, NewSession, SessionRegistry};
+
+let pool = rullst::db::sqlx::SqlitePool::connect("sqlite://app.db").await
+    .map_err(|_| rullst::auth::session_registry::SessionRegistryError::Unavailable)?;
+let sessions = SessionRegistry::open(pool).await?;
+// After the password check, at the account's session epoch (0 without one):
+let set_cookie = sessions
+    .sign_in(&NewSession::new(42, 0).with_device(DeviceSummary::from_headers(&headers)))
+    .await?;
+// In the authentication middleware:
+let session = sessions.authenticate_request(&headers).await?;
+// "Sign out of all other devices":
+sessions.revoke_other_sessions(session.current()).await?;
+# let _ = set_cookie;
+# Ok(())
+# }
+```
+
+### Generated applications
+
+`cargo rullst auth` and the SaaS starter enable the registry feature of their
+strict database profile (`auth-session-registry-sqlite`, `-postgres` or
+`-mysql`; `cargo rullst auth` now refuses a project without exactly one strict
+profile). `src/middlewares/auth_middleware.rs` opens the registry over
+`Orm::pool()` on first use, registers every sign-in (`start_session`) and
+inserts the signed-in account's `AuthenticatedSession` next to its id. Sign-out
+deletes the session, `/sessions` lists the account's devices with a "Sign out"
+button each and "Sign out of all other devices", a password change deletes the
+account's sessions and gives the asking browser a new one, a password reset
+deletes them all, and `User::revoke_sessions` ("sign out everywhere") bumps the
+epoch and deletes them. `make:mfa` and `make:oauth` register their sign-ins the
+same way in such a starter; in a starter generated before 13.0.0-alpha.6 they
+keep issuing epoch cookies.
+
+Cookies issued before an application adopts the registry are refused, so every
+user signs in once more; see the [migration guide](migration-v13.md#changes-from-the-published-1210-source).
+
+## The recovery store
+
 The v13 candidate extends `rullst-auth::recovery::SqlRecoveryStore` with a bounded
 session inventory, selective sibling logout and logout of all other sessions.
 It uses the existing authoritative account registry and opaque bearer sessions;
@@ -22,13 +122,14 @@ unknown creation/label values if they predate those details. Encrypted-only
 all of a user's cookies at once, and independently issued JWTs through their
 own revocation store.
 
-Applications generated by `cargo rullst auth` and the SaaS starter (and the LMS example) use
-those epoch cookies. Their password change stores the new hash and increments
-the epoch in one `UPDATE`, then gives the browser that made the change a cookie
-with the new epoch, so only that browser stays signed in. Their password reset
-increments it in the transaction that consumes the single-use reset token and
-signs in nobody, so every device must sign in again. See
-[Tutorial 11](tutorials/11-authentication-system.md#what-the-scaffold-currently-enforces).
+Applications generated by `cargo rullst auth` and the SaaS starter use the
+[login-session registry](#server-side-login-sessions) on top of the epoch; the
+LMS example uses epoch cookies only. Their password change stores the new hash
+and increments the epoch in one `UPDATE`, then gives the browser that made the
+change a new session at the new epoch, so only that browser stays signed in.
+Their password reset increments it in the transaction that consumes the
+single-use reset token and signs in nobody, so every device must sign in again.
+See [Tutorial 11](tutorials/11-authentication-system.md#what-the-scaffold-currently-enforces).
 
 Stores are application/tenant boundaries selected by trusted server
 configuration, with separate databases and keys. A browser cannot choose a

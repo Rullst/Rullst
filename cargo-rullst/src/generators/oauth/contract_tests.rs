@@ -61,7 +61,7 @@ fn an_application_with_its_own_sign_in_gets_the_contract_flow() {
         "auth_contract::create_account(&mut transaction, email, &name)",
         "pub async fn credential_rate_limit(",
         "mod auth {",
-        "let session = match session_cookie(&user).await {",
+        "let session = match session_cookie(&user, headers).await {",
     ] {
         assert!(flow.contains(expected), "{expected}");
     }
@@ -129,6 +129,7 @@ fn the_starter_flow_keeps_its_accounts_after_the_split() {
             "google",
             "rullst::db::sqlx::Sqlite",
             Accounts::Starter,
+            true,
             second_step,
         );
         syn::parse_file(&flow).unwrap();
@@ -136,7 +137,8 @@ fn the_starter_flow_keeps_its_accounts_after_the_split() {
             "use crate::models::user::User;",
             "use crate::pages::auth;",
             "LinkAndResetPassword,",
-            "pub(crate) async fn session_cookie(user: &User)",
+            "pub(crate) async fn session_cookie(\n    user: &User,\n    headers: &HeaderMap,\n)",
+            "crate::middlewares::auth_middleware::start_session(user, headers).await",
             "oauth_identity::remove_password_and_sessions_with_tx(&mut transaction, user_id)",
             "pub mod google;",
             "SqlChallengeStore<rullst::db::sqlx::Sqlite>",
@@ -145,10 +147,23 @@ fn the_starter_flow_keeps_its_accounts_after_the_split() {
         }
         assert!(!flow.contains("__"), "unresolved placeholder");
         assert_eq!(flow.contains("mfa::second_step"), second_step);
+        // A starter made before the session registry keeps its epoch cookies.
+        let epoch = render_flow(
+            "google",
+            "rullst::db::sqlx::Sqlite",
+            Accounts::Starter,
+            false,
+            second_step,
+        );
+        syn::parse_file(&epoch).unwrap();
+        assert!(epoch.contains("rullst::auth::make_login_cookie_with_epoch(user.id, epoch,"));
+        assert!(!epoch.contains("start_session"));
+        assert!(!flow.contains("make_login_cookie"));
         let contract = render_flow(
             "google",
             "rullst::db::sqlx::Sqlite",
             Accounts::Contract,
+            false,
             second_step,
         );
         syn::parse_file(&contract).unwrap();

@@ -86,7 +86,12 @@ authentication, tenant membership and authorization are deliberately
 application-owned: the framework cannot infer those policies without creating
 an insecure universal default. Generated applications must mount those layers
 in the declared slots, and protected parameterized routes must still perform an
-object-level ownership check.
+object-level ownership check. For session validation, a stateless
+`rullst_session` cookie stays valid after sign-out until it expires; the
+opt-in `rullst_auth::session_registry`, which `cargo rullst auth` and the SaaS
+starter use, checks a server-side record on every request, so sign-out ends
+every copy of the cookie and an account can sign out its other devices
+(threat `AUTH-08` in the [threat models](threat-models.md)).
 
 The direct socket peer is the default network identity. A deployment must not
 accept `Forwarded` or `X-Forwarded-For` until its exact proxy hops are configured

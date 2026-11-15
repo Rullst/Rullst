@@ -29,6 +29,39 @@ const CONTRACT_ACCOUNTS: &str = include_str!("accounts_contract.rs.template");
 const IDENTITY_TEMPLATE: &str = include_str!("identity.rs.template");
 const IDENTITY_PASSWORD_TEMPLATE: &str = include_str!("identity_password.rs.template");
 const MIGRATION_TEMPLATE: &str = include_str!("migration.rs.template");
+/// Where the starter flow's `session_cookie` goes.
+const SESSION_COOKIE_MARKER: &str = "__RULLST_SESSION_COOKIE__";
+/// `session_cookie` of a starter that registers its sessions.
+const REGISTERED_SESSION_COOKIE: &str = r#"/// The password login's 30-day `rullst_session` cookie for `user`: a new
+/// registered session at its current session epoch
+/// (`start_session` in src/middlewares/auth_middleware.rs), listed in "Your
+/// devices" after the request's `User-Agent`. Both sign-in paths refuse an
+/// account whose `current_session_epoch()` is `None`; if you add an account
+/// status (for example blocked or inactive), check it here and in
+/// `login_submit`.
+pub(crate) async fn session_cookie(
+    user: &User,
+    headers: &HeaderMap,
+) -> Result<String, rullst::auth::session_registry::SessionRegistryError> {
+    crate::middlewares::auth_middleware::start_session(user, headers).await
+}
+"#;
+/// `session_cookie` of a starter made before 13.0.0-alpha.6, which issues
+/// stateless session-epoch cookies.
+const EPOCH_SESSION_COOKIE: &str = r#"/// The password login's 30-day `rullst_session` cookie for `user`, carrying
+/// its current session epoch. Both sign-in paths refuse an account whose
+/// `current_session_epoch()` is `None`; if you add an account status (for
+/// example blocked or inactive), check it here and in `login_submit`.
+pub(crate) async fn session_cookie(
+    user: &User,
+    _headers: &HeaderMap,
+) -> Result<String, rullst::auth::AuthError> {
+    let epoch = user
+        .current_session_epoch()
+        .ok_or(rullst::auth::AuthError::SessionRevoked)?;
+    rullst::auth::make_login_cookie_with_epoch(user.id, epoch, rullst::auth::DEFAULT_SESSION_MAX_AGE)
+}
+"#;
 /// Where `make:mfa` puts its second step in the shared flow.
 const SECOND_STEP_MARKER: &str = "    // __RULLST_MFA_SECOND_STEP__\n";
 /// File-name suffix of the identities migration.
@@ -36,12 +69,14 @@ const MIGRATION_SUFFIX: &str = "_create_oauth_identities_table.rs";
 const UNKNOWN_PROVIDER: &str = "make:oauth supports only: google, github, microsoft, apple";
 
 /// The shared flow of `provider` for `database`, for the starter's
-/// accounts or the authentication contract, with the second step of
-/// `make:mfa` when the project has it.
+/// accounts (`registered` when the starter registers its sessions) or the
+/// authentication contract, with the second step of `make:mfa` when the
+/// project has it.
 pub(crate) fn render_flow(
     provider: &str,
     database: &str,
     accounts: Accounts,
+    registered: bool,
     second_step: bool,
 ) -> String {
     let (header, account_part) = match accounts {
@@ -53,7 +88,13 @@ pub(crate) fn render_flow(
     } else {
         String::new()
     };
+    let session_cookie = if registered {
+        REGISTERED_SESSION_COOKIE
+    } else {
+        EPOCH_SESSION_COOKIE
+    };
     format!("{header}\n{CONTROLLER_TEMPLATE}\n{account_part}")
+        .replace(SESSION_COOKIE_MARKER, session_cookie)
         .replace(SECOND_STEP_MARKER, &hook)
         .replace("__PROVIDER__", provider)
         .replace("__CHALLENGE_DATABASE__", database)
@@ -62,7 +103,7 @@ pub(crate) fn render_flow(
 /// The shared flow for the starter's accounts.
 #[cfg(test)]
 pub(crate) fn render_controller(provider: &str, database: &str, second_step: bool) -> String {
-    render_flow(provider, database, Accounts::Starter, second_step)
+    render_flow(provider, database, Accounts::Starter, true, second_step)
 }
 
 /// The identity model and migration for `accounts`.
@@ -141,7 +182,15 @@ fn plan(root: &Path, name: &str, timestamp: &str) -> Result<Plan, Box<dyn std::e
             .into());
         }
         let second_step = crate::generators::auth::mfa::has_second_step(root);
-        let controller = render_flow(provider.name, database.sqlx_type(), accounts, second_step);
+        let registered = accounts == Accounts::Starter
+            && crate::generators::consumer_support::registers_sessions(root);
+        let controller = render_flow(
+            provider.name,
+            database.sqlx_type(),
+            accounts,
+            registered,
+            second_step,
+        );
         edits.push(Edit::create(oauth_dir.join("mod.rs"), rust(&controller)?)?);
         if second_step {
             notes.push(

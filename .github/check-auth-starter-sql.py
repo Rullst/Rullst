@@ -15,12 +15,14 @@ loopback, with the CLI built from this checkout (`--cli`):
    rejects a duplicate), the `user-<id>@no-email.invalid` placeholders without
    a password, the starter's columns, indexes and rows unchanged, and the
    batch's migration records and `password_reset_tokens` table.
-4. The built application: a sign-up over HTTP opens /dashboard and stores an
-   Argon2id hash.
+4. The built application: a sign-up over HTTP opens /dashboard, stores an
+   Argon2id hash and registers the login in `rullst_auth_sessions`, which the
+   session registry creates on first use (only a digest of the cookie's
+   session secret is stored).
 5. `cargo rullst db:rollback` restores the starter's columns, indexes, tables
-   and migration records exactly and keeps every row; `db:migrate` then
-   applies the batch again and gives every row, the signed-up one too, a
-   placeholder.
+   (beside the session table, which no migration owns) and migration records
+   exactly and keeps every row; `db:migrate` then applies the batch again and
+   gives every row, the signed-up one too, a placeholder.
 
 The generated builds share `--target-dir` (the workspace target, which the
 relational CLI profiles have just filled) and run offline from the
@@ -286,19 +288,29 @@ def check_server(server: Server, work: Path, env: dict[str, str], target_dir: Pa
                 f"SELECT id, name, created_at, updated_at FROM users WHERE email = '{ACCOUNT_EMAIL}'")
             expect(database.query(ACCOUNTS)[:2] == placeholder_accounts(before["rows"]),
                    "the sign-up left the existing rows unchanged")
+            sessions = database.query(
+                "SELECT COUNT(*), MIN(LENGTH(token_hash)), MIN(LENGTH(public_id)) FROM rullst_auth_sessions "
+                f"WHERE user_id = {signed_up[0][0]}")
+            expect(sessions == [("1", "64", "22")],
+                   "the sign-up registered one session, stored as a 64-character digest", sessions)
 
         with step(f"{server.name}: db:rollback, then db:migrate again"):
             run(["cargo", "rullst", "db:rollback"], cwd=project, env=env, timeout=BUILD_TIMEOUT)
             rolled_back = database.snapshot()
+            # The session registry's table is created on first use, not by a
+            # migration, so the rollback keeps it.
+            session_table = [("rullst_auth_sessions",)]
             for name in ("columns", "indexes", "tables", "migrations"):
-                expect(rolled_back[name] == before[name],
+                expected = sorted(before[name] + session_table) if name == "tables" else before[name]
+                expect(rolled_back[name] == expected,
                        f"db:rollback restores the starter's {name} exactly", rolled_back[name])
             expect(rolled_back["rows"] == before["rows"] + signed_up,
                    "db:rollback keeps every row, the signed-up one too", rolled_back["rows"])
             run(["cargo", "rullst", "db:migrate"], cwd=project, env=env, timeout=BUILD_TIMEOUT)
             again = database.snapshot()
             for name in ("columns", "indexes", "tables", "migrations"):
-                expect(again[name] == after[name], f"db:migrate applies the batch again ({name})", again[name])
+                expected = sorted(after[name] + session_table) if name == "tables" else after[name]
+                expect(again[name] == expected, f"db:migrate applies the batch again ({name})", again[name])
             accounts = database.query(ACCOUNTS)
             expect(accounts == placeholder_accounts(rolled_back["rows"]),
                    "every row, the signed-up one too, gets a placeholder again", accounts)

@@ -73,10 +73,11 @@ pub(crate) const SESSION_EPOCH_METHODS: &str = r##"
     }
 
     /// Signs out every device of this account: one UPDATE increments
-    /// `session_epoch`, so each login cookie issued before stops matching.
-    /// "Sign out everywhere" calls it; call it too when you deactivate or
-    /// delete the account. Password changes and resets bump the epoch in the
-    /// same UPDATE that stores the new hash.
+    /// `session_epoch`, so each login cookie issued before stops matching,
+    /// then the account's registered sessions are deleted, so they leave
+    /// "Your devices" too. "Sign out everywhere" calls it; call it too when
+    /// you deactivate or delete the account. Password changes and resets
+    /// bump the epoch in the same UPDATE that stores the new hash.
     pub async fn revoke_sessions(id: i32) -> Result<(), rullst::orm::Error> {
         let increment = if rullst::db::Orm::driver()? == "postgres" {
             "UPDATE users SET session_epoch = session_epoch + 1 WHERE id = $1"
@@ -87,6 +88,13 @@ pub(crate) const SESSION_EPOCH_METHODS: &str = r##"
             .bind(id)
             .execute(rullst::db::Orm::pool()?)
             .await?;
+        let registry = crate::middlewares::auth_middleware::sessions()
+            .await
+            .map_err(|error| rullst::orm::Error::DatabaseError(error.to_string()))?;
+        registry
+            .revoke_all_sessions(id)
+            .await
+            .map_err(|error| rullst::orm::Error::DatabaseError(error.to_string()))?;
         Ok(())
     }
 

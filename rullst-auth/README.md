@@ -27,13 +27,18 @@ feature. The optional parts are Cargo features:
   (password recovery and revocable server-side sessions);
   `email-login-sqlite` / `email-login-postgres` and `api-tokens-sqlite` /
   `api-tokens-postgres` build on them.
+- `session-registry-sqlite` / `session-registry-postgres` /
+  `session-registry-mysql`: `session_registry`, a server-side record per
+  `rullst_session` login over the application's own SQLx pool, so sign-out
+  ends every copy of a cookie and single sessions can be listed and revoked.
 - `oauth`: re-exports `rullst-connect` as `rullst_auth::connect`. OAuth2/OIDC
   providers remain a separate trust boundary.
 
 In a Rullst application, enable the `auth` feature of `rullst` (the crate is
 then `rullst::auth`), plus `auth-jwt`, `auth-sqlite`, `auth-passkey-postgres`,
-`auth-sessions-sqlite`/`-postgres`, `auth-email-login-sqlite`/`-postgres` or
-`auth-api-tokens-sqlite`/`-postgres` for the optional parts.
+`auth-sessions-sqlite`/`-postgres`, `auth-email-login-sqlite`/`-postgres`,
+`auth-api-tokens-sqlite`/`-postgres` or
+`auth-session-registry-sqlite`/`-postgres`/`-mysql` for the optional parts.
 
 ## Passwords
 
@@ -122,8 +127,11 @@ with `APP_KEY`:
   it expires (30 days for `make_login_cookie`), the epoch changes, or
   `APP_KEY` is rotated, which signs out every user.
 
-For server-side sessions that can be listed and revoked one at a time, use
-`recovery::SqlRecoveryStore` (`recovery-sqlite` or `recovery-postgres`; see
+For sessions that can be listed and revoked one at a time, keep the cookie and
+add `session_registry` (`session-registry-*`; see
+[server-side login sessions](https://github.com/Rullst/Rullst/blob/main/docs/src/session-management.md#server-side-login-sessions)),
+or use the complete account registry `recovery::SqlRecoveryStore`
+(`recovery-sqlite` or `recovery-postgres`; see
 [active-session management](https://github.com/Rullst/Rullst/blob/main/docs/src/session-management.md)).
 
 ### Revocable cookies: the session epoch

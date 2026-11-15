@@ -51,10 +51,53 @@ fn stable_blueprint_ids_enable_only_their_required_domain_features() {
         &isolated_root(),
     )
     .expect("Blank manifest");
-    assert!(saas.contains("\"nexus\", \"auth\", \"mail\", \"capital\""));
-    for feature in ["\"nexus\"", "\"auth\"", "\"mail\"", "\"capital\""] {
+    assert!(
+        saas.contains(
+            "\"nexus\", \"auth\", \"mail\", \"capital\", \"auth-session-registry-sqlite\""
+        )
+    );
+    for feature in [
+        "\"nexus\"",
+        "\"auth\"",
+        "\"mail\"",
+        "\"capital\"",
+        "\"auth-session-registry",
+    ] {
         assert!(!blank.contains(feature), "{feature}");
     }
+}
+
+#[test]
+fn the_saas_session_registry_follows_the_database() {
+    for (database, feature) in [
+        ("Sqlite", Some("auth-session-registry-sqlite")),
+        ("Postgres", Some("auth-session-registry-postgres")),
+        ("MySQL", Some("auth-session-registry-mysql")),
+        ("MariaDB", Some("auth-session-registry-mysql")),
+        ("Turso", None),
+        ("None", None),
+    ] {
+        assert_eq!(
+            super::session_registry_feature(database),
+            feature,
+            "{database}"
+        );
+    }
+    let postgres = build_cargo_toml(
+        "saas",
+        false,
+        true,
+        "Postgres",
+        &[],
+        false,
+        false,
+        SAAS_BLUEPRINT_ID,
+        "Zero-Bundle HTMX",
+        &isolated_root(),
+    )
+    .expect("SaaS manifest");
+    assert!(postgres.contains("\"capital\", \"auth-session-registry-postgres\""));
+    assert!(!postgres.contains("auth-session-registry-sqlite"));
 }
 
 #[test]

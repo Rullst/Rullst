@@ -5,41 +5,32 @@ use colored::*;
 use std::fs;
 use std::path::Path;
 
-const AUTH_MIDDLEWARE_TEMPLATE: &str = r##"use crate::models::user::User;
-use rullst::server::{IntoResponse, Next, Redirect, Request, Response, StatusCode};
+const AUTH_MIDDLEWARE_TEMPLATE: &str = include_str!("auth_middleware.rs.template");
+const IMPORTS_MARKER: &str = "__RULLST_MIDDLEWARE_IMPORTS__";
+const EXTENSIONS_MARKER: &str = "__RULLST_MIDDLEWARE_EXTENSIONS__";
+const SESSIONS_CONTROLLER_TEMPLATE: &str = include_str!("sessions_controller.rs.template");
 
-/// Resolves the signed-in user from the `rullst_session` cookie and inserts
-/// their id as `Extension<i32>`. A cookie counts only while it carries the
-/// account's current `session_epoch`, so `User::revoke_sessions` signs out
-/// every device.
-pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
-    let Some(cookie) = rullst::auth::extract_session_cookie(req.headers()) else {
-        return Redirect::to("/login").into_response();
+/// `src/middlewares/auth_middleware.rs`: the session registry, sign-in and
+/// the route middleware. The SaaS starter's (`billing`) also inserts the
+/// signed-in account's billing identity.
+pub(crate) fn render_auth_middleware(billing: bool) -> String {
+    let (imports, extensions) = if billing {
+        (
+            "use crate::controllers::billing_controller::BillingIdentity;\n",
+            "            req.extensions_mut().insert(BillingIdentity {\n                owner_id: user.id,\n                email: user.email.trim().to_ascii_lowercase(),\n            });\n",
+        )
+    } else {
+        ("", "")
     };
-    let app_key = match rullst::auth::get_app_key() {
-        Ok(key) => key,
-        Err(error) => {
-            eprintln!("Authentication middleware configuration error: {error}");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
-    };
-    let Ok(claims) = rullst::auth::decrypt_session_claims(&cookie, &app_key) else {
-        return Redirect::to("/login").into_response();
-    };
-    match User::find(claims.user_id).await {
-        Ok(Some(user)) if user.accepts_session(&claims) => {
-            req.extensions_mut().insert(user.id);
-            next.run(req).await
-        }
-        // Unknown account or revoked cookie.
-        Ok(_) => Redirect::to("/login").into_response(),
-        Err(error) => {
-            eprintln!("Authentication user query failed: {error}");
-            StatusCode::SERVICE_UNAVAILABLE.into_response()
-        }
-    }
+    AUTH_MIDDLEWARE_TEMPLATE
+        .replace(IMPORTS_MARKER, imports)
+        .replace(EXTENSIONS_MARKER, extensions)
 }
-"##;
+
+/// `src/controllers/sessions_controller.rs`: the "Your devices" page.
+pub(crate) fn render_sessions_controller() -> String {
+    SESSIONS_CONTROLLER_TEMPLATE.to_string()
+}
 
 const AUTH_CONTROLLER_TEMPLATE: &str = include_str!("auth_controller.rs.template");
 const REGISTRATION_HOOK_MARKER: &str = "// __RULLST_REGISTRATION_HOOK__";
@@ -53,7 +44,7 @@ pub fn generate_auth_controllers() -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(middlewares_dir)?;
     write_new(
         &middlewares_dir.join("auth_middleware.rs"),
-        AUTH_MIDDLEWARE_TEMPLATE.as_bytes(),
+        render_auth_middleware(false).as_bytes(),
     )?;
     println!("{}", "  ✨ Created 'auth_middleware' middleware.".green());
     register_mod_ast(&middlewares_dir.join("mod.rs"), "auth_middleware")?;
@@ -66,6 +57,15 @@ pub fn generate_auth_controllers() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     println!("{}", "  ✨ Created 'auth_controller' controller.".green());
     register_mod_ast(&controllers_dir.join("mod.rs"), "auth_controller")?;
+    write_new(
+        &controllers_dir.join("sessions_controller.rs"),
+        render_sessions_controller().as_bytes(),
+    )?;
+    println!(
+        "{}",
+        "  ✨ Created 'sessions_controller' (Your devices).".green()
+    );
+    register_mod_ast(&controllers_dir.join("mod.rs"), "sessions_controller")?;
 
     Ok(())
 }
@@ -118,31 +118,73 @@ mod tests {
     }
 
     #[test]
-    fn generated_login_cookies_are_revocable_by_session_epoch() {
+    fn generated_logins_are_registered_sessions() {
         let controller = render_auth_controller(None);
-        // Both sign-in paths issue the epoch cookie; none issues the
-        // irrevocable 30-day cookie any more.
-        assert_eq!(controller.matches("match login_cookie(&user) {").count(), 2);
-        assert!(!controller.contains("rullst_auth::make_login_cookie("));
-        assert!(controller.contains(
-            "rullst_auth::make_login_cookie_with_epoch(user.id, epoch, rullst_auth::DEFAULT_SESSION_MAX_AGE)"
-        ));
+        // Both sign-in paths register a session; none issues a stateless
+        // cookie any more.
+        assert_eq!(
+            controller
+                .matches("match login_cookie(&user, &headers).await {")
+                .count(),
+            2
+        );
+        assert!(!controller.contains("make_login_cookie"));
+        assert!(controller.contains("    start_session(user, headers).await\n"));
         assert!(controller.contains("        session_epoch: 0,\n"));
         assert!(controller.contains(
             "pub async fn logout_everywhere(Extension(user_id): Extension<i32>) -> Response {\n    match User::revoke_sessions(user_id).await {"
         ));
+        // Sign-out deletes the session, so a copied cookie stops working;
+        // only a storage failure keeps the cookie.
+        assert!(controller.contains(
+            "pub async fn logout(headers: HeaderMap) -> Response {\n    if rullst_auth::extract_session_cookie(&headers).is_some() {\n        let signed_out = match sessions().await {\n            Ok(registry) => registry.sign_out(&headers).await,"
+        ));
+        assert!(controller.contains("            Err(error) if error.is_signed_out() => {}\n"));
+        assert!(
+            controller
+                .contains("(StatusCode::SERVICE_UNAVAILABLE, \"Signing out failed. Try again.\")")
+        );
 
-        syn::parse_file(AUTH_MIDDLEWARE_TEMPLATE).expect("auth middleware must parse");
+        for billing in [false, true] {
+            let middleware = render_auth_middleware(billing);
+            syn::parse_file(&middleware).expect("auth middleware must parse");
+            assert!(!middleware.contains("__RULLST_"));
+            assert!(middleware.contains(
+                "pub type Sessions = rullst::auth::session_registry::SessionRegistryFor<rullst::orm::RullstPool>;"
+            ));
+            assert!(middleware.contains("Sessions::open(pool.clone()).await"));
+            assert!(middleware.contains("sessions().await?.sign_in(&login).await"));
+            assert!(middleware.contains(
+                "NewSession::new(user.id, epoch).with_device(DeviceSummary::from_headers(headers))"
+            ));
+            assert!(middleware.contains("match registry.authenticate_request(headers).await {"));
+            assert!(middleware.contains("Err(error) if error.is_signed_out() => return Ok(None),"));
+            assert!(middleware.contains(
+                "Ok(Some(user)) if user.accepts_session(&session.claims()) => Ok(Some((user, session))),"
+            ));
+            assert!(middleware.contains("            req.extensions_mut().insert(session);\n"));
+            assert!(!middleware.contains("decrypt_session"));
+            assert!(!middleware.contains(".unwrap("));
+            assert!(!middleware.contains(".expect("));
+            assert_eq!(middleware.contains("BillingIdentity {"), billing);
+        }
         assert!(
-            AUTH_MIDDLEWARE_TEMPLATE
-                .contains("rullst::auth::decrypt_session_claims(&cookie, &app_key)")
+            render_auth_middleware(true)
+                .contains("use crate::controllers::billing_controller::BillingIdentity;\nuse rullst::async_runtime")
         );
-        assert!(
-            AUTH_MIDDLEWARE_TEMPLATE
-                .contains("Ok(Some(user)) if user.accepts_session(&claims) => {")
-        );
-        assert!(!AUTH_MIDDLEWARE_TEMPLATE.contains("decrypt_session(&"));
-        assert!(!AUTH_MIDDLEWARE_TEMPLATE.contains(".unwrap("));
+    }
+
+    #[test]
+    fn the_devices_page_revokes_only_the_signed_in_accounts_sessions() {
+        let source = render_sessions_controller();
+        syn::parse_file(&source).expect("sessions controller must parse");
+        assert!(source.contains("registry.list_sessions(session.user_id(), now).await"));
+        assert!(source.contains("registry.revoke_session(session.user_id(), &reference).await"));
+        assert!(source.contains("registry.revoke_other_sessions(session.current()).await"));
+        assert!(source.contains("let Ok(reference) = SessionRef::parse(&form.session) else {"));
+        assert!(source.contains("HeaderValue::from_static(\"no-store\")"));
+        assert!(!source.contains(".unwrap("));
+        assert!(!source.contains(".expect("));
     }
 
     #[test]

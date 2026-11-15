@@ -41,6 +41,10 @@ rullst-mail/src/suppression/postgres/**
 rullst-connect/src/challenge/sql/postgres.rs
 rullst-connect/src/challenge/sql/mysql.rs
 
+# PostgreSQL and MySQL login sessions: .github/check-auth-session-registry.py.
+rullst-auth/src/auth/session_registry/postgres.rs
+rullst-auth/src/auth/session_registry/mysql.rs
+
 # MySQL/MariaDB live matrices in ci.yml.
 rullst-ai/src/ai/memory/sql/mysql.rs
 rullst-capital/src/quota/sql/mysql.rs

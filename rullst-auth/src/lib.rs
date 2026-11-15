@@ -6,7 +6,8 @@
 //! - Sessions: `rullst_session` cookies sealed with AES-256-GCM under
 //!   `APP_KEY`. [`make_login_cookie_with_epoch`] and [`decrypt_session_claims`]
 //!   carry a per-user session epoch that the application increments to sign
-//!   out every device.
+//!   out every device; the opt-in session registry also makes sign-out end
+//!   every copy of a cookie and lists and revokes single sessions.
 //! - Password reset: [`PasswordResetToken`] secrets, stored only as digests.
 //! - Passkeys: WebAuthn ES256 ceremonies with
 //!   [`PasskeyAuth`](auth::passkey::PasskeyAuth).
@@ -21,8 +22,12 @@
 //! registry; `passkey-postgres` shares passkey ceremonies through PostgreSQL;
 //! `recovery-sqlite` or `recovery-postgres` adds password recovery and
 //! revocable server-side sessions, with the `email-login-*` and
-//! `api-tokens-*` features on top; `oauth` re-exports `rullst-connect` as
-//! `connect`. In a Rullst application, enable the `auth` feature of `rullst`.
+//! `api-tokens-*` features on top; `session-registry-sqlite`,
+//! `session-registry-postgres` or `session-registry-mysql` adds the
+//! [`session_registry`](auth::session_registry) of revocable
+//! `rullst_session` logins over the application's own pool; `oauth`
+//! re-exports `rullst-connect` as `connect`. In a Rullst application, enable
+//! the `auth` feature of `rullst`.
 //!
 //! Guide: <https://rullst.github.io/Rullst/book/crates/auth.html>.
 #![cfg_attr(docsrs, feature(doc_cfg))]
