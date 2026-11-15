@@ -125,3 +125,7 @@ impl HttpClient for OfflineHttpClient {
         Ok(HttpResponse { status: 200, body })
     }
 }
+
+#[cfg(test)]
+#[path = "offline_tests.rs"]
+mod tests;
