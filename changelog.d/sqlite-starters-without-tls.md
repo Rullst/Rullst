@@ -1,9 +1,10 @@
 ### Changed
 
 - SQLite-only applications compile no TLS stack. The Blank and API starters
-  with SQLite went from 374 to 318 packages in `Cargo.lock` and from 297 to
-  276 compiled third-party packages, with no rustls, aws-lc-rs, aws-lc-sys or
-  webpki roots; the Blank starter without a database also dropped to 318.
+  with SQLite went from 316 to 257 packages in `Cargo.lock` and from 234 to
+  212 compiled third-party packages, with no rustls, aws-lc-rs, aws-lc-sys or
+  webpki roots, and their release binaries are about 27 % smaller (10.5 MB
+  to 7.7 MB in CI); the Blank starter without a database also dropped to 257.
   `rullst-orm` enables SQLx's `tls-rustls-aws-lc-rs` only with its PostgreSQL
   and MySQL drivers (`strict-postgres`, `strict-mysql`, `drivers-all`,
   `pgvector`), Core's `orm` and `strict-sqlite` no longer build rustls, and

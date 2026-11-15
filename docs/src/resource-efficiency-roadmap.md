@@ -115,24 +115,27 @@ with the `capital` feature (see
   framework crates resolved from the checkout (as the
   [starter footprint budgets](https://github.com/Rullst/Rullst/blob/main/MAINTAINING.md#starter-footprint-budgets)
   job does) and its lock file resolved from the repository `Cargo.lock`.
-- **Before:** `main` at `3e7adcd5c` (after the security store moved to Core).
-  **After:** the same commit with this change. Neither includes the passkey
-  rework of pull request 697.
+- **Before:** `main` at `075f5a276` (after the security store moved to Core,
+  passkeys without `p256`, Core without `ring` and `cron`, and the revocable
+  sessions). **After:** the same commit with this change.
 - **Counts:** `Cargo.lock` packages with a registry or git source, and those
   that `cargo tree --edges normal,build` lists for `x86_64-unknown-linux-gnu`
-  (the `cargo rullst footprint` methods), measured on 2026-11-15.
+  (the `cargo rullst footprint` methods: third-party packages only, so the
+  compiled figure leaves out the Rullst path crates that some counts above
+  include), measured on 2026-11-15.
 
 | Starter | `Cargo.lock` packages | Compiled packages | rustls / aws-lc-rs compiled |
 | :--- | ---: | ---: | :--- |
-| Blank or API, SQLite | 325 → 269 | 245 → 223 | yes → no |
-| Blank, no database | 325 → 269 | 239 → 213 | yes → no |
-| Blank, PostgreSQL | 325 → 292 | 249 → 239 | yes → yes (SQLx only) |
-| Blank, MySQL | 325 → 292 | 242 → 231 | yes → yes (SQLx only) |
-| Blank, Turso | 326 → 325 | 245 → 243 | yes → yes (HTTPS) |
-| SaaS, SQLite | 349 → 348 | 270 → 269 | yes → yes (Stripe, mail HTTPS) |
-| SaaS, PostgreSQL | 349 → 349 | 274 → 274 | yes → yes |
+| Blank or API, SQLite | 316 → 257 | 234 → 212 | yes → no |
+| Blank, no database | 316 → 257 | 228 → 202 | yes → no |
+| Blank, PostgreSQL | 316 → 280 | 238 → 228 | yes → yes (SQLx only) |
+| Blank, MySQL | 316 → 280 | 231 → 220 | yes → yes (SQLx only) |
+| Blank, Turso | 317 → 316 | 234 → 232 | yes → yes (HTTPS) |
+| SaaS, SQLite | 322 → 321 | 242 → 241 | yes → yes (Stripe, mail HTTPS) |
+| SaaS, PostgreSQL | 322 → 322 | 246 → 246 | yes → yes |
 
-Release binaries and builds:
+Release binaries and builds, measured earlier on `main` at `3e7adcd5c` (before
+the passkey, `ring` and `cron` changes) with and without this change:
 
 | Starter | Release binary (bytes) | Release build in the CI job |
 | :--- | ---: | ---: |
