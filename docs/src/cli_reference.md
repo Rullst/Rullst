@@ -522,6 +522,11 @@ manifests and generated project files, and reports each finding as
 behaviour of an API, feature or configuration in use) with a stable `V13-*`
 code, `file:line`, a one-line message and the title of its row in the
 [v13 migration guide](migration-v13.md#changes-from-the-published-1210-source).
+A rule is reported at every line it matches in Rust sources, scripts and
+project files (since 13.0.0-alpha.6; the manifest rules whose rows say so
+stay once per manifest): the plan lists a rule's lines in one file on one
+entry, in line order (`src/ai.rs:12, 40, 77`), and `--json` has one finding
+per location.
 Must-change findings stop the command before it changes anything (the plan
 and `--dry-run` say so, and the error names each rule's locations and
 guidance) unless `--keep-on-failure` asks it to change the versions anyway and
@@ -530,7 +535,7 @@ a failed Cargo gate repeats the guidance of `V13-CAPITAL-REMOVED` and
 `V13-MAIL-REMOVED` (removed APIs reported for review). A comment
 `rullst-upgrade: reviewed V13-…` after the code on a review finding's line, or
 alone on the line above it, records that the location was reviewed: the plan
-leaves it out, reports the rule's next unmarked location in that file, and
+leaves it out, still reports the rule's other locations in that file, and
 counts the marked locations (`finding_counts.reviewed` in JSON). Must-change
 findings ignore the marker. The plan ends with a link to the migration guide's
 checklist for the project's version (alpha.2, alpha.3, or alpha.4 and later

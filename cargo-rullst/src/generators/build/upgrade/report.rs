@@ -2,10 +2,11 @@
 
 use super::manifest::ManifestUpgradePlan;
 use super::relative_report_path;
-use super::rules::{self, FindingKind, RuleSelection, SourceScan};
+use super::rules::{self, FindingKind, RuleSelection, SourceFinding, SourceScan};
 use crate::term::display_path;
 use colored::Colorize;
 use semver::Version;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 /// The published v13 migration guide.
@@ -75,6 +76,46 @@ fn selection_note(selection: &RuleSelection) -> Option<String> {
     })
 }
 
+/// A rule's findings in one file and every line they are at, ascending.
+type FileRuleEntry<'a> = (&'a SourceFinding, Vec<usize>);
+
+/// The human plan's entries: one per rule and file, listing every line the
+/// rule matched there, ordered by file, first line and code. The JSON
+/// document keeps one finding per location.
+fn by_file_and_rule(findings: &[SourceFinding]) -> Vec<FileRuleEntry<'_>> {
+    let mut groups: BTreeMap<(&Path, &str), FileRuleEntry<'_>> = BTreeMap::new();
+    for finding in findings {
+        groups
+            .entry((finding.path.as_path(), finding.rule.code))
+            .or_insert_with(|| (finding, Vec::new()))
+            .1
+            .push(finding.line);
+    }
+    let mut entries: Vec<_> = groups
+        .into_values()
+        .map(|(finding, mut lines)| {
+            lines.sort_unstable();
+            (finding, lines)
+        })
+        .collect();
+    entries.sort_by(|(left, left_lines), (right, right_lines)| {
+        left.path
+            .cmp(&right.path)
+            .then(left_lines.first().cmp(&right_lines.first()))
+            .then(left.rule.code.cmp(right.rule.code))
+    });
+    entries
+}
+
+/// `12, 40, 77`.
+fn line_list(lines: &[usize]) -> String {
+    lines
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 /// The plan as plain text (no colour).
 pub(super) fn plan_text(
     root: &Path,
@@ -110,12 +151,12 @@ pub(super) fn plan_text(
     if let Some(note) = reviewed_note(scan) {
         lines.push(format!("  Reviewed: {note}"));
     }
-    for finding in &scan.findings {
+    for (finding, at) in by_file_and_rule(&scan.findings) {
         lines.push(format!(
             "  {} {}:{} [{}] {}",
             finding.rule.kind.label(),
             relative_report_path(root, &finding.path),
-            finding.line,
+            line_list(&at),
             finding.rule.code,
             finding.rule.message
         ));
@@ -201,12 +242,13 @@ pub(super) fn render_report(
             "No applicable source rules matched. This is not proof of runtime compatibility.\n",
         );
     }
-    for finding in &scan.findings {
+    for (finding, at) in by_file_and_rule(&scan.findings) {
         report.push_str(&format!(
-            "- **{}** `{}` line {} (`{}`): {} — migration row “{}”\n",
+            "- **{}** `{}` {} {} (`{}`): {} — migration row “{}”\n",
             finding.rule.kind.label(),
             relative_report_path(root, &finding.path),
-            finding.line,
+            if at.len() == 1 { "line" } else { "lines" },
+            line_list(&at),
             finding.rule.code,
             finding.rule.message,
             finding.rule.row
@@ -224,7 +266,8 @@ pub(super) fn render_report(
     report
 }
 
-/// The `rullst.upgrade-plan.v1` document. v13 extends it additively: each
+/// The `rullst.upgrade-plan.v1` document, with one finding per location
+/// (sorted by path, line and code). v13 extends it additively: each
 /// finding keeps `path`, `line`, `code`, `severity` and `message` and adds
 /// `kind`, `introduced_in`, `migration_row` and `migration_url`; the root adds
 /// `rule_selection`, and `finding_counts.reviewed` counts the review locations

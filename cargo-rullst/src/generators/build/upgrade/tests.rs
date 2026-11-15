@@ -2,6 +2,7 @@
 
 use super::*;
 
+mod locations;
 mod must_change;
 
 #[test]
