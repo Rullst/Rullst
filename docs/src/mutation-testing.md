@@ -30,7 +30,8 @@ received a test or is listed under
   [PR #532](https://github.com/Rullst/Rullst/pull/532): 78 files and 2,435
   mutants, 72 missed at the end. 71 are accepted equivalents; the last one
   needs an open PostgreSQL pool.
-- **`rullst-messaging`** (re-measured for 13.0.0-alpha.6, PR_LINK): targeted
+- **`rullst-messaging`** (re-measured for 13.0.0-alpha.6,
+  [PR #711](https://github.com/Rullst/Rullst/pull/711)): targeted
   runs of the 48 files outside `redis_streams/` (7 have no mutants) gave 1,377
   mutants: 1,078 caught, 208 unviable, no timeout and 91 missed. 65 of the
   misses are in the six `PostgresRecurringStore` files of `schedules/`, which
