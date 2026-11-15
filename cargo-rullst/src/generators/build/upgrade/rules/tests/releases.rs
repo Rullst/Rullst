@@ -9,6 +9,7 @@ const RELEASES: &[&str] = &[
     "13.0.0-alpha.3",
     "13.0.0-alpha.4",
     "13.0.0-alpha.5",
+    "13.0.0-alpha.6",
     "13.0.0-rc.1",
 ];
 
@@ -120,6 +121,14 @@ fn rules_carry_the_release_of_their_change() {
             "V13-ORM-QDRANT-REMOVED",
             "V13-AI-PROVIDER-PRESETS",
             "V13-HTMX-2",
+        ]
+    );
+    // The health probes no longer report the framework version.
+    assert_eq!(
+        codes_introduced_in("13.0.0-alpha.6"),
+        [
+            "V13-HEALTH-FRAMEWORK-VERSION",
+            "V13-HEALTH-PROBE-VERSION-FIELD",
         ]
     );
     assert!(codes_introduced_in("13.0.0-rc.1").is_empty());

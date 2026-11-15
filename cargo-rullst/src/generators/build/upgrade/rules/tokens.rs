@@ -245,6 +245,11 @@ impl Scanner<'_, '_> {
                             {
                                 self.hit(rule, line(tree));
                             }
+                            if let Some(rule) =
+                                super::alpha6_defaults::field_rule(&name, self.context.text)
+                            {
+                                self.hit(rule, line(tree));
+                            }
                             chain.push(name);
                             index += 1;
                         }
@@ -494,6 +499,9 @@ impl Scanner<'_, '_> {
         }
         if removed_mail_string(value, key) {
             self.hit(&MAIL_REMOVED, at);
+        }
+        if let Some(rule) = super::alpha6_defaults::string_rule(value, self.context.text) {
+            self.hit(rule, at);
         }
     }
 

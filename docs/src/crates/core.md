@@ -194,8 +194,10 @@ remains separate.
   `init_radar` was called earlier; without a `Server`, call them yourself. The opt-in
   `health_router_with_lifecycle` returns readiness from the same bounded state
   that gates Server request admission; the application still performs and
-  times out its own dependency checks. The `version` field of both payloads is
-  the Rullst framework version. To report your application's version too, use
+  times out its own dependency checks. The payloads carry no version: since
+  13.0.0-alpha.6 they no longer tell visitors the framework release (the
+  authenticated production monitor reports it as `framework.version`). To
+  report your application's version, use
   `health_router_with_version(env!("CARGO_PKG_VERSION"))` or
   `health_router_with_lifecycle_and_version(lifecycle, env!("CARGO_PKG_VERSION"))`
   (v13), which add it as `app_version`; any string works, such as a commit

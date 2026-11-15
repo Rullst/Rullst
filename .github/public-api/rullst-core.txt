@@ -1598,9 +1598,8 @@ pub fn rullst_core::feature::parse_variants(s: &str) -> alloc::vec::Vec<(alloc::
 pub fn rullst_core::feature::resolve_variant(variants: &[(alloc::string::String, u32)], bucket: u32) -> core::option::Option<alloc::string::String>
 pub async fn rullst_core::feature::variant(flag: &str, identifier: &str) -> core::option::Option<alloc::string::String>
 pub mod rullst_core::health
-pub struct rullst_core::health::HealthProbeResponse
+#[non_exhaustive] pub struct rullst_core::health::HealthProbeResponse
 pub rullst_core::health::HealthProbeResponse::status: &'static str
-pub rullst_core::health::HealthProbeResponse::version: &'static str
 pub rullst_core::health::HealthProbeResponse::uptime_seconds: u64
 pub rullst_core::health::HealthProbeResponse::timestamp: u64
 impl core::clone::Clone for rullst_core::health::HealthProbeResponse
@@ -1616,7 +1615,6 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::health::HealthProb
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::health::HealthProbeResponse
 #[non_exhaustive] pub struct rullst_core::health::ReadinessProbeResponse
 pub rullst_core::health::ReadinessProbeResponse::status: &'static str
-pub rullst_core::health::ReadinessProbeResponse::version: &'static str
 pub rullst_core::health::ReadinessProbeResponse::uptime_seconds: u64
 pub rullst_core::health::ReadinessProbeResponse::timestamp: u64
 pub rullst_core::health::ReadinessProbeResponse::lifecycle: rullst_core::ReadinessSnapshot
