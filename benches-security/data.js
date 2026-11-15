@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794782055075,
+  "lastUpdate": 1794785574697,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -22924,6 +22924,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cb30a27548713f5922a84ff120f9033760d3899f",
+          "message": "Merge pull request #716 from Rullst/feat/v13-alpha6-server-dev-baseline\n\nfeat(core): apply CSRF and secure headers in every environment",
+          "timestamp": "2026-11-15T20:12:04-03:00",
+          "tree_id": "9378f76398bebeb53df7304c281b2d4129bc4ebd",
+          "url": "https://github.com/Rullst/Rullst/commit/cb30a27548713f5922a84ff120f9033760d3899f"
+        },
+        "date": 1794785573783,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4383,
+            "range": "± 47",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 539,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 8,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 5,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 14,
             "range": "± 0",
             "unit": "ns/iter"
           }
