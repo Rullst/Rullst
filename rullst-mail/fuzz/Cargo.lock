@@ -1471,6 +1471,7 @@ dependencies = [
  "libloading",
  "rand 0.10.3",
  "rullst-macros",
+ "rustls",
  "serde",
  "serde_json",
  "serde_urlencoded",
