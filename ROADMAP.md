@@ -374,7 +374,10 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
       the largest binary-size gain); the rustls `CryptoProvider` must still be
       installed wherever TLS is used.
     - A five-field cron evaluator of Rullst's own replaces the `cron` crate
-      (about 9 fewer), tested differentially against it.
+      (about 9 fewer), tested differentially against it. Done in the
+      13.0.0-alpha.6 source: 9 fewer packages in the Blank and API starters
+      after the `rullst-security` change (lockfile 325 to 316, compiled 251 to
+      242); each field must now be valid on its own.
     - Passkeys without `p256`: ES256 public keys and assertion signatures
       are checked with aws-lc-rs, compiled into `rullst-auth` only with its
       new `passkeys` feature (`auth-passkeys` in `rullst`; breaking for code
@@ -386,7 +389,11 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
       `ring` checks and with the Wycheproof ECDSA P-256 vectors.
     - Core's `storage-multipart` recovery records move from `ring`'s
       AES-256-GCM to the RustCrypto `aes-gcm` crate, with the same stored
-      format and known-answer tests, so `ring` leaves Core entirely.
+      format and known-answer tests, so `ring` leaves Core entirely. Done in
+      the 13.0.0-alpha.6 source: `cargo tree -p rullst-core --all-features -i
+      ring` is empty, and Core with all features compiles 282 packages
+      instead of 293 with the cron change; the starters never compiled
+      `ring`.
     - `cargo rullst footprint` reports the compiled crate count beside the
       lockfile count, which includes packages that are never compiled.
   - **Production monitor:** desktop notifications in the standalone Studio,

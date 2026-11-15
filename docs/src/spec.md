@@ -2420,7 +2420,14 @@ the same server-authoritative controls.
   `dispatch_at`, so stored rows and keys are unchanged; Core ships no network
   source and makes no emissions claim. `Scheduler::deferrable_task` applies the
   window rule to each tick within a maximum delay.
-* `Scheduler::task` matches POSIX five-field cron against UTC. The v13 opt-in
+* `Scheduler::task` matches POSIX five-field cron against UTC. Since
+  13.0.0-alpha.6 Core evaluates the fields itself instead of with the `cron`
+  crate, which stays a dev-dependency for differential tests: the same syntax
+  (numbers, `*`, lists, ranges, steps, month and weekday names, `?` as `*` in
+  the day fields, weekdays 0-7), the same day-of-month or day-of-week rule and
+  whole-minute occurrences from 1970 through 2100, except that each field must
+  be valid on its own (the crate joined a field that starts or ends with `,`,
+  `-` or `/` with its neighbour). The v13 opt-in
   `scheduler-tz` Core/facade feature adds
   `Scheduler::task_in_tz(expression, zone, handler)`, which matches the same
   fields, day fields included, against the wall clock of an IANA time zone.
@@ -4143,9 +4150,11 @@ provider](capital-custom-provider.md)); the
   crate enables rustls' `ring` feature or a ring TLS feature of SQLx,
   lettre or testcontainers.
 * **Primitives:** `rullst-core` and `rullst-capital` hash and sign with the
-  pure-Rust RustCrypto `sha2` and `hmac` crates (since 13.0.0-alpha.5); Core
-  keeps `ring` only for the AES-256-GCM recovery records of its
-  `storage-multipart` feature. In the other crates `ring` stays a direct
+  pure-Rust RustCrypto `sha2` and `hmac` crates (since 13.0.0-alpha.5), and
+  since 13.0.0-alpha.6 Core encrypts the recovery records of its
+  `storage-multipart` feature with RustCrypto `aes-gcm` in the same `mp1.`
+  format, so `rullst-core` no longer depends on `ring` with any feature. In
+  the other crates `ring` stays a direct
   dependency for HMAC, digests, randomness and signatures, because it builds
   for wasm and edge targets. The exception is ES256 passkeys in `rullst-auth`
   (since 13.0.0-alpha.6): the credential public key (an uncompressed SEC1

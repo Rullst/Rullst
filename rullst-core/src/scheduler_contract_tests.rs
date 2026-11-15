@@ -30,7 +30,7 @@ where
     Scheduler {
         tasks: vec![ScheduledTask {
             label: "every second".to_string(),
-            schedule: CronSchedule::every_second().into(),
+            schedule: TaskSchedule::EverySecond,
             handler,
             deferral: None,
         }],
