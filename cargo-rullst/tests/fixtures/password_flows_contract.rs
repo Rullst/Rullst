@@ -1,7 +1,8 @@
 //! Real generated SaaS router, password controller, users and
 //! password_reset_tokens tables on SQLite: a password change keeps only the
-//! asking browser signed in, and an emailed reset token works once, expires,
-//! is replaced by a newer request and ends every session.
+//! asking browser signed in, with a new registered session, and an emailed
+//! reset token works once, expires, is replaced by a newer request and ends
+//! every session.
 use super::*;
 use rullst::mail::{MailTrap, MemoryDriver, Message};
 use rullst::server::{Body, Request, StatusCode};
@@ -96,6 +97,14 @@ async fn password_is(password: &str) -> bool {
     rullst::auth::verify_password(password, &hash)
 }
 
+/// The registered sessions of the member.
+async fn session_rows() -> i64 {
+    rullst::db::sqlx::query_scalar("SELECT COUNT(*) FROM rullst_auth_sessions WHERE user_id = 1")
+        .fetch_one(rullst::orm::Orm::pool().unwrap())
+        .await
+        .unwrap()
+}
+
 async fn reset_rows() -> Vec<(String, i64, i64)> {
     rullst::db::sqlx::query_as("SELECT token_hash, expires_at, created_at FROM password_reset_tokens")
         .fetch_all(rullst::orm::Orm::pool().unwrap())
@@ -168,11 +177,16 @@ async fn generated_password_flows_contract() {
         .execute(rullst::orm::Orm::pool().unwrap()).await.unwrap();
     rullst::mail::Mail::set_driver(Box::new(MemoryDriver::new()));
     MailTrap::clear();
-    let key = rullst::auth::get_app_key().unwrap();
-    let issue = |epoch| rullst::auth::encrypt_session_with_epoch(1, epoch, rullst::auth::DEFAULT_SESSION_MAX_AGE, &key).unwrap();
-    let (laptop, phone) = (issue(0), issue(0));
     let router = crate::router().unwrap();
     let app = router.as_axum();
+    // Two browsers sign in: two registered sessions.
+    let sign_in = |password: &'static str| async move {
+        let login = post(app, "/login", None, &format!("_token={CSRF}&email={MEMBER}&password={password}")).await;
+        assert_eq!(login.status, StatusCode::SEE_OTHER);
+        login.session().unwrap()
+    };
+    let (laptop, phone) = (sign_in(OLD_PASSWORD).await, sign_in(OLD_PASSWORD).await);
+    assert_eq!(session_rows().await, 2);
 
     // Change password: signed-in only, behind CSRF.
     assert_eq!(get(app, "/password/change", None).await.status, StatusCode::SEE_OTHER);
@@ -204,11 +218,14 @@ async fn generated_password_flows_contract() {
     assert_eq!(stored_epoch().await, 1);
     assert!(password_is(NEW_PASSWORD).await);
     assert!(!password_is(OLD_PASSWORD).await);
-    // This browser stays signed in; every other copy is revoked.
+    // This browser stays signed in with a new session; every other one,
+    // and this browser's previous cookie, is revoked.
+    assert_ne!(current, laptop);
     assert_eq!(get(app, "/dashboard", Some(&current)).await.status, StatusCode::OK);
     for revoked in [&laptop, &phone] {
         assert_eq!(get(app, "/dashboard", Some(revoked)).await.status, StatusCode::SEE_OTHER);
     }
+    assert_eq!(session_rows().await, 1);
     // A revoked cookie cannot change the password again.
     let stale = post(app, "/password/change", Some(&phone), &change(NEW_PASSWORD, RESET_PASSWORD, RESET_PASSWORD)).await;
     assert_eq!(stale.status, StatusCode::SEE_OTHER);
@@ -296,6 +313,8 @@ async fn generated_password_flows_contract() {
     assert!(password_is(RESET_PASSWORD).await);
     assert!(reset_rows().await.is_empty());
     assert_eq!(get(app, "/dashboard", Some(&current)).await.status, StatusCode::SEE_OTHER);
+    // The reset deleted every registered session of the account.
+    assert_eq!(session_rows().await, 0);
     assert!(get(app, "/login?reset=done", None).await.body.contains("Your password was reset"));
     assert!(mail_to(MEMBER, 3).await[2].subject.ends_with(": Your password was changed"));
 

@@ -139,6 +139,9 @@ jobs:
       - name: Measure PostgreSQL and MySQL OAuth login-challenge consumption
         run: python3 .github/check-connect-sql.py --coverage
 
+      - name: Measure PostgreSQL and MySQL login-session revocation
+        run: python3 .github/check-auth-session-registry.py --coverage
+
       - name: Measure private S3 access and service restart contracts
         run: bash .github/test-storage-s3-live.sh --coverage
 

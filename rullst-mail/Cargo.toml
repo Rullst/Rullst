@@ -35,7 +35,8 @@ postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "dep:url"]
 conformance = []
 
 [dependencies]
-rullst-core = { workspace = true }
+# HTTPS clients: Core installs aws-lc-rs as the rustls process default (`tls`).
+rullst-core = { workspace = true, features = ["tls"] }
 rullst-capital = { workspace = true, optional = true }
 # `tokio1-rustls-tls` would select ring; SMTP TLS uses aws-lc-rs, the
 # framework's rustls provider, unless the application installed another.

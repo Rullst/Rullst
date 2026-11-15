@@ -2,6 +2,7 @@
 //! factor uses them (`cargo rullst make:mfa`).
 use super::factor::MfaError;
 use crate::models::user::User;
+use rullst::server::HeaderMap;
 
 /// An account: its id and the e-mail authenticator apps show.
 pub struct Account {
@@ -40,22 +41,7 @@ pub(super) async fn find_by_email(email: &str) -> Result<Option<Account>, MfaErr
         .map(Account::from))
 }
 
-/// The `rullst_session` cookie of the password login for the account, at
-/// its current session epoch.
-pub(super) async fn sign_in_cookie(id: i32) -> Result<String, MfaError> {
-    let user = User::find(id)
-        .await
-        .map_err(unavailable)?
-        .ok_or(MfaError::Unavailable)?;
-    let epoch = user.current_session_epoch().ok_or(MfaError::Unavailable)?;
-    rullst::auth::make_login_cookie_with_epoch(
-        user.id,
-        epoch,
-        rullst::auth::DEFAULT_SESSION_MAX_AGE,
-    )
-    .map_err(unavailable)
-}
-
+__RULLST_SIGN_IN_COOKIE__
 /// Signs out every device of the account (bumps its session epoch).
 pub(super) async fn end_sessions(id: i32) -> Result<(), MfaError> {
     User::revoke_sessions(id).await.map_err(unavailable)

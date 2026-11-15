@@ -90,6 +90,7 @@ rullst-orm|scout-http
 rullst-orm|pgvector
 rullst-orm|ai
 rullst-core|orm
+rullst-core|tls
 rullst-core|drivers-all
 rullst-core|queue-sqlite
 rullst-core|queue-redis
@@ -101,6 +102,8 @@ rullst-core|storage-s3
 rullst-core|storage-multipart
 rullst-core|telemetry
 rullst-studio|remote
+rullst-studio|strict-sqlite
+rullst-studio|capital
 rullst-messaging|sqlite
 rullst-messaging|schedules-postgres
 rullst-messaging|webhooks
@@ -134,6 +137,9 @@ rullst-auth|email-login-sqlite
 rullst-auth|email-login-postgres
 rullst-auth|api-tokens-sqlite
 rullst-auth|api-tokens-postgres
+rullst-auth|session-registry-sqlite
+rullst-auth|session-registry-postgres
+rullst-auth|session-registry-mysql
 
 # Privacy candidate: preserve the database-free base graph.
 rullst-privacy|
@@ -188,6 +194,9 @@ rullst|auth-email-login-sqlite
 rullst|auth-email-login-postgres
 rullst|auth-api-tokens-sqlite
 rullst|auth-api-tokens-postgres
+rullst|auth-session-registry-sqlite
+rullst|auth-session-registry-postgres
+rullst|auth-session-registry-mysql
 rullst|mail-smtp
 rullst|mailer
 rullst|mail
@@ -232,6 +241,7 @@ rullst|security-redis
 rullst|iot
 rullst|iot-ingest
 rullst|telemetry
+rullst|tls
 rullst|nexus
 rullst|nexus-ai
 rullst|nexus-tz

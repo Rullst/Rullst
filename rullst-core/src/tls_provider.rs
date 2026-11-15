@@ -13,13 +13,14 @@
 ///
 /// An application that installed its own provider first keeps it: rustls
 /// refuses a second installation, and that refusal is ignored.
-#[cfg(any(feature = "orm", feature = "storage-s3", feature = "telemetry"))]
+#[cfg(feature = "tls")]
 pub(crate) fn install_default_provider() {
     if rustls::crypto::CryptoProvider::get_default().is_none() {
         let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
     }
 }
 
-/// Without a TLS-capable feature, Core builds no rustls client.
-#[cfg(not(any(feature = "orm", feature = "storage-s3", feature = "telemetry")))]
+/// Without `tls`, Core compiles no rustls: every feature that makes a TLS
+/// connection enables it, and SQLite needs none.
+#[cfg(not(feature = "tls"))]
 pub(crate) fn install_default_provider() {}

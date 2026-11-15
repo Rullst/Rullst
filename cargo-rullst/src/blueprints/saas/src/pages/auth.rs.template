@@ -18,6 +18,10 @@ input:focus { outline: none; border-color: #10b981; }
 .links a { color: #10b981; text-decoration: none; }
 .error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #f87171; padding: .75rem 1rem; border-radius: .5rem; margin-bottom: 1.5rem; font-size: .9rem; }
 .notice { background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.25); color: #6ee7b7; padding: .75rem 1rem; border-radius: .5rem; margin-bottom: 1.5rem; font-size: .9rem; }
+.device { text-align: left; border-bottom: 1px solid rgba(255,255,255,0.08); padding: 0.75rem 0; margin-bottom: 0.75rem; }
+.device .when { font-size: 0.85rem; color: #9ca3af; margin: 0.25rem 0 0.5rem; }
+.badge { font-size: 0.75rem; color: #10b981; border: 1px solid rgba(16,185,129,.4); border-radius: 999px; padding: 0.1rem 0.5rem; }
+.btn-secondary { padding: 0.4rem 0.9rem; border-radius: 0.5rem; background: transparent; color: #f3f4f6; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; }
 ";
 
 fn card_page(title: &str, heading: &str, content: Markup, csp_nonce: &str) -> Markup {
@@ -145,6 +149,50 @@ pub fn change_password_page(
     }, csp_nonce)
 }
 
+/// One signed-in device on the "Your devices" page.
+pub struct DeviceRow {
+    /// The session reference its "Sign out" form submits.
+    pub reference: String,
+    /// "Firefox on Linux": the browser and platform at sign-in.
+    pub device: String,
+    pub signed_in: String,
+    /// The hour of its last use.
+    pub last_active: String,
+    /// Whether it is this browser.
+    pub current: bool,
+}
+
+pub fn sessions_page(
+    csrf_token: &str,
+    devices: &[DeviceRow],
+    notice: Option<&str>,
+    error: Option<&str>,
+    csp_nonce: &str,
+) -> Markup {
+    card_page("Your devices", "Your devices", html! {
+        {status(notice)}
+        {alert(error)}
+        @for device in devices {
+            <div class="device">
+                <p><strong>{&device.device}</strong> @if device.current { " " <span class="badge">"This device"</span> }</p>
+                <p class="when">"Signed in " {&device.signed_in} ", last active " {&device.last_active}</p>
+                @if !device.current {
+                    <form method="POST" action="/sessions/revoke">
+                        <input type="hidden" name="_token" value={csrf_token} />
+                        <input type="hidden" name="session" value={&device.reference} />
+                        <button type="submit" class="btn-secondary">"Sign out"</button>
+                    </form>
+                }
+            </div>
+        }
+        <form method="POST" action="/sessions/revoke-others">
+            <input type="hidden" name="_token" value={csrf_token} />
+            <button type="submit" class="btn-primary">"Sign out of all other devices"</button>
+        </form>
+        <div class="links"><a href="/dashboard">"Back to dashboard"</a></div>
+    }, csp_nonce)
+}
+
 pub fn dashboard_page(user_name: &str, csrf_token: &str, csp_nonce: &str) -> Html<String> {
     let nonce = rullst::html::escape_str(csp_nonce);
     let user_name = rullst::html::escape_str(user_name);
@@ -181,13 +229,14 @@ pub fn dashboard_page(user_name: &str, csrf_token: &str, csp_nonce: &str) -> Htm
              <a href="/nexus" class="btn-nexus">⚙️ Nexus CMS</a>
              <a href="http://127.0.0.1:5555" target="_blank" class="btn-nexus">📊 Local Studio</a>
              <a href="/password/change" class="btn-nexus">🔑 Change password</a>
+             <a href="/sessions" class="btn-nexus">💻 Your devices</a>
              <form method="post" action="/logout" class="logout-form"><input type="hidden" name="_token" value="__RULLST_CSRF_TOKEN__" /><button type="submit" class="btn-logout">Logout</button></form>
              <form method="post" action="/logout/everywhere" class="logout-form"><input type="hidden" name="_token" value="__RULLST_CSRF_TOKEN__" /><button type="submit" class="btn-logout">Sign out everywhere</button></form>
            </div>
          </header>
          <main class="container">
            <h1>Welcome, __RULLST_USER_NAME__</h1>
-           <p class="muted">This starter authenticates passwords with Argon2id and stores the user ID and session epoch in an encrypted session cookie; signing out everywhere revokes every copy.</p>
+           <p class="muted">This starter authenticates passwords with Argon2id and keeps each sign-in as a server-side session named by an encrypted cookie; signing out ends that session on every copy of the cookie, and Your devices signs out any other one.</p>
            <div class="grid">
              <div class="card">
                <h2 class="subscription">💳 Subscription</h2>

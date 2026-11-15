@@ -63,6 +63,7 @@ RULLST_MONITOR_TOKEN=... cargo rullst footprint --page-weight --bench --monitor-
 | Image size | `docker image inspect --format {{.Size}}` (then `podman`) of the image you name with `--image` | Uncompressed size reported by the local engine. Only on a local socket (`DOCKER_HOST`/`CONTAINER_HOST` unset or `unix://`/`npipe://`); otherwise, or without `--image`, `NOT MEASURED` with the reason. |
 | Idle RSS | resident memory after start-up, before any page-weight or benchmark request: `VmRSS` from `/proc/<pid>/status` (Linux), the resident size from `proc_pidinfo(PROC_PIDTASKINFO)` (macOS), the working set from `GetProcessMemoryInfo` (Windows) | The method names the source on each platform. |
 | Dependencies | packages with a registry or git `source` in the nearest `Cargo.lock` | Every third-party crate Cargo resolved, for all targets and features; path and workspace packages are not counted. |
+| Compiled dependencies (13.0.0-alpha.6) | the packages of the Dependencies count that `cargo tree --locked --offline --edges normal,build --prefix none --format {p}` lists in the project directory, for its package, each `name version` once | What Cargo compiles for the release build footprint measures: the host platform, the default features and the same feature resolver as `cargo build`, with proc macros and build-script dependencies, without dev-dependencies, other platforms' dependencies or optional dependencies no enabled feature needs, all of which `Cargo.lock` also lists. Run footprint from the project directory (the one with `Cargo.toml`); `cargo tree` reads only the local index and lock file, so a project that was never built, or whose `Cargo.lock` is out of date, reads `NOT MEASURED` with the reason. |
 | CPU time (with `--bench`) | user + system CPU time of the app process over the benchmark: `utime + stime` from `/proc/<pid>/stat` (Linux), `proc_pidinfo` (macOS, converted from Mach time units), `GetProcessTimes` (Windows) | All threads of the process, not child processes. |
 | CPU per request (with `--bench`) | CPU time ÷ completed requests, in milliseconds | Responses of any status count. |
 | Bytes per request (with `--bench`) | response body bytes ÷ completed requests; every request sends `Accept-Encoding: zstd, br, gzip` and bodies are counted as served, never decompressed | Bodies only: HTTP headers, TLS and TCP overhead are not counted. The report lists the `Content-Encoding` values the app sent. |
@@ -247,6 +248,7 @@ project's configuration (the application ignores the table):
 binary_size_bytes = 25_000_000
 idle_rss_bytes = 64_000_000
 dependency_count = 450
+compiled_dependency_count = 380
 cpu_ms_per_request = 2.0
 bytes_per_request = 60_000
 page_first_visit_bytes = 500_000
@@ -255,7 +257,7 @@ page_requests = 25
 page_third_party_origins = 0
 ```
 
-Every key is optional; `image_size_bytes` is the tenth. Values are numbers of
+Every key is optional; `image_size_bytes` is the eleventh. Values are numbers of
 0 or more, in bytes, a count or milliseconds as the name says; an unknown key,
 a negative value or a string stops the run before anything is built, so a
 misspelt limit cannot pass unnoticed. `--check-budget` reads this table;
@@ -369,9 +371,10 @@ on the shape:
 
 - `target`: `mode` (`release_build` or `existing_url`), the URL (`null` when
   the build failed before a port was chosen), PID and how it was found.
-- `measured`: `binary_size_bytes`, `image_size_bytes`, `idle_rss_bytes` and
-  `dependency_count`, each `{status, value, unit, method, reason}` with
-  `status` `measured` or `not_measured`.
+- `measured`: `binary_size_bytes`, `image_size_bytes`, `idle_rss_bytes`,
+  `dependency_count` and (since 13.0.0-alpha.6) `compiled_dependency_count`,
+  each `{status, value, unit, method, reason}` with `status` `measured` or
+  `not_measured`.
 - `benchmark`: `status` (`run` or `not_run`), its inputs, requests, errors,
   `accept_encoding`, `content_encodings` and, in the same metric shape,
   `cpu_time_seconds`, `cpu_ms_per_request`, `response_bytes` and

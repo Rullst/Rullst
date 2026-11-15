@@ -1,0 +1,138 @@
+//! "Your devices": the account's signed-in sessions, each of which can be
+//! signed out, and "sign out of all other devices". Mount the routes behind
+//! `auth_middleware` and the CSRF layer.
+use crate::controllers::auth_controller::get_csp_nonce;
+use crate::middlewares::auth_middleware::sessions;
+use crate::pages::auth::{self, DeviceRow};
+use rullst::auth::session_registry::{AuthenticatedSession, SessionInfo, SessionRef, unix_now};
+use rullst::server::{
+    Extension, Form, HeaderValue, IntoResponse, Redirect, Response, StatusCode, Uri, header,
+};
+use serde::Deserialize;
+
+const SIGNED_OUT_ONE: &str = "That device was signed out.";
+const SIGNED_OUT_OTHERS: &str = "Every other device was signed out.";
+const UNAVAILABLE: &str = "Your devices cannot be shown right now. Try again later.";
+
+#[derive(Deserialize)]
+pub struct RevokeSessionDto {
+    /// The reference the list showed for the device.
+    pub session: String,
+}
+
+/// A Unix time as the page shows it: "2026-11-15 10:00 UTC".
+fn shown(seconds: u64) -> String {
+    i64::try_from(seconds)
+        .ok()
+        .and_then(|seconds| rullst::orm::chrono::DateTime::from_timestamp(seconds, 0))
+        .map_or_else(String::new, |time| time.format("%Y-%m-%d %H:%M UTC").to_string())
+}
+
+fn row(info: &SessionInfo, session: &AuthenticatedSession) -> DeviceRow {
+    DeviceRow {
+        reference: info.reference().as_str().to_owned(),
+        device: info.device().to_string(),
+        signed_in: shown(info.created_at()),
+        last_active: shown(info.last_seen_at()),
+        current: info.is_current(session.current()),
+    }
+}
+
+/// The page is about this account only: never cached or sent as a Referer.
+fn private(page: impl IntoResponse) -> Response {
+    let mut response = page.into_response();
+    let headers = response.headers_mut();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    headers.insert(header::REFERRER_POLICY, HeaderValue::from_static("no-referrer"));
+    response
+}
+
+/// `GET /sessions`, behind `auth_middleware`: the signed-in devices, most
+/// recently used first.
+pub async fn sessions_view(
+    Extension(session): Extension<AuthenticatedSession>,
+    uri: Uri,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+) -> Response {
+    let csrf_token = csrf
+        .as_ref()
+        .map(|Extension(token)| token.as_str())
+        .unwrap_or_default();
+    let nonce = get_csp_nonce(&csp_nonce);
+    let listed = match (sessions().await, unix_now()) {
+        (Ok(registry), Ok(now)) => registry.list_sessions(session.user_id(), now).await,
+        (Err(error), _) | (_, Err(error)) => Err(error),
+    };
+    let notice = match uri.query() {
+        Some("signed_out=one") => Some(SIGNED_OUT_ONE),
+        Some("signed_out=others") => Some(SIGNED_OUT_OTHERS),
+        _ => None,
+    };
+    match listed {
+        Ok(listed) => {
+            let rows: Vec<DeviceRow> = listed.iter().map(|info| row(info, &session)).collect();
+            private(auth::sessions_page(csrf_token, &rows, notice, None, nonce))
+        }
+        Err(error) => {
+            eprintln!("Session list failed: {error}");
+            private((
+                StatusCode::SERVICE_UNAVAILABLE,
+                auth::sessions_page(csrf_token, &[], None, Some(UNAVAILABLE), nonce),
+            ))
+        }
+    }
+}
+
+/// `POST /sessions/revoke`, behind `auth_middleware` and CSRF: signs out one
+/// device of the signed-in account. A reference of another account's
+/// session signs out nothing.
+pub async fn revoke_session(
+    Extension(session): Extension<AuthenticatedSession>,
+    Form(form): Form<RevokeSessionDto>,
+) -> Response {
+    let Ok(reference) = SessionRef::parse(&form.session) else {
+        return StatusCode::BAD_REQUEST.into_response();
+    };
+    let revoked = match sessions().await {
+        Ok(registry) => registry.revoke_session(session.user_id(), &reference).await,
+        Err(error) => Err(error),
+    };
+    match revoked {
+        // Revoking this browser's own session signs it out here too.
+        Ok(_) if reference == *session.current().reference() => Redirect::to("/login").into_response(),
+        Ok(_) => Redirect::to("/sessions?signed_out=one").into_response(),
+        Err(error) => {
+            eprintln!("Session revocation failed: {error}");
+            StatusCode::SERVICE_UNAVAILABLE.into_response()
+        }
+    }
+}
+
+/// `POST /sessions/revoke-others`, behind `auth_middleware` and CSRF: signs
+/// out every device of the account except this browser.
+pub async fn revoke_other_sessions(Extension(session): Extension<AuthenticatedSession>) -> Response {
+    let revoked = match sessions().await {
+        Ok(registry) => registry.revoke_other_sessions(session.current()).await,
+        Err(error) => Err(error),
+    };
+    match revoked {
+        Ok(_) => Redirect::to("/sessions?signed_out=others").into_response(),
+        Err(error) => {
+            eprintln!("Session revocation failed: {error}");
+            StatusCode::SERVICE_UNAVAILABLE.into_response()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn times_show_in_utc_minutes() {
+        assert_eq!(shown(1_794_736_800), "2026-11-15 10:00 UTC");
+        assert_eq!(shown(0), "1970-01-01 00:00 UTC");
+        assert_eq!(shown(u64::MAX), "");
+    }
+}

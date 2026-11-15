@@ -239,7 +239,7 @@ pub(crate) async fn complete<P: Provider + ?Sized>(
         }
     };
     // __RULLST_MFA_SECOND_STEP__
-    let session = match session_cookie(&user).await {
+    let session = match session_cookie(&user, headers).await {
         Ok(session) => session,
         Err(error) => {
             eprintln!("Session creation failed: {error}");
