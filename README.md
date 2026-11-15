@@ -245,9 +245,10 @@ Real applications running today, every one of them built with Rullst. Click to e
   </tr>
 </table>
 
-> The demos scale to zero when idle, so the first visit can take a few seconds
-> to wake up — that is hosting startup, not Rullst's request time. The **SaaS
-> checkout is live and charges real money**; the Showcase payment demos are not.
+> Every demo runs in an Azure container that sleeps when idle, so the first load
+> can take about 20–30 seconds — that is hosting startup, not Rullst's request
+> time. The **SaaS checkout is live and charges real money**; the Showcase
+> payment demos are not.
 
 ▶️ **[Watch: how to build a SaaS with Rullst](https://www.youtube.com/watch?v=nDXLeNM327g)**
 
@@ -417,7 +418,7 @@ green main gates:
 | [Kani](https://github.com/Rullst/Rullst/actions/workflows/kani.yml), [Miri](https://github.com/Rullst/Rullst/actions/workflows/miri.yml) | Weekly on `main` and dispatched for release admission: the selected Kani harnesses and Miri scopes are strict. Only the dispatched run on the exact candidate commit counts as release evidence. The Miri run also has informational `cargo careful test` jobs. |
 | [Mutation testing](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml), [cargo-udeps](https://github.com/Rullst/Rullst/actions/workflows/udeps.yml) | Manual mutation campaigns and weekly unused-dependency scans; their findings remain explicitly informational. |
 | [v13 Verus pilot](https://github.com/Rullst/Rullst/blob/main/.github/workflows/verus.yml) | Optional production-linked age-policy proof with pinned tooling and three negative controls. Hosted registration/acceptance remains pending; no framework-wide correctness claim. |
-| [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys development documentation from `main`; it is not a code-quality gate. |
+| [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys development documentation and the benchmark dashboards from `main` under `/Rullst/`; the [rullst.win](https://rullst.win/) landing page is built from the same `docs/` sources by `Rullst/Rullst.github.io`. It is not a code-quality gate. |
 | [Release and provenance](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Exact version tags only: exact-SHA admission of the full CI matrix, package-all, evidence bundle, checksums, GitHub build-provenance attestation, changelog-derived release notes, and ordered crates.io publication. This does **not** claim a project-wide SLSA level or independent certification. |
 
 Scheduled events use the repository's default branch, so scheduled and
@@ -653,7 +654,7 @@ matter as much as new features.
 · [Issues](https://github.com/Rullst/Rullst/issues)
 · [Good first issues](https://github.com/Rullst/Rullst/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22)
 · [Discord](https://discord.com/invite/2ntKFtsSjw)
-· [Community links](https://rullst.github.io/Rullst/#community)
+· [Community links](https://rullst.win/#community)
 · [Our story and philosophy](https://rullst.github.io/Rullst/book/philosophy.html)
 
 <p align="center">
@@ -662,7 +663,7 @@ matter as much as new features.
 
 [MIT license](https://github.com/Rullst/Rullst/blob/main/LICENSE)
 · [Report a vulnerability privately](https://github.com/Rullst/Rullst/security/policy)
-· [Website privacy notice](https://rullst.github.io/Rullst/#privacy)
+· [Website privacy notice](https://rullst.win/privacy.html)
 
 <div align="center">
   <p><i>All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).</i></p>

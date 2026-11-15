@@ -51,8 +51,10 @@ jobs:
         run: |
           mkdir -p public_site
 
-          # Root landing page
-          cp docs/home_template.html public_site/index.html
+          # The landing page lives at https://rullst.win/ (deployed by
+          # Rullst/Rullst.github.io from docs/home_template.html); /Rullst/
+          # only points there. Everything else under /Rullst/ stays put.
+          cp docs/redirect_template.html public_site/index.html
           mkdir -p public_site/assets
           cp docs/site.css public_site/assets/site.css
           cp docs/site.js public_site/assets/site.js
