@@ -72,6 +72,15 @@ fn line_of(text: &str, matches: impl Fn(&str) -> bool) -> Option<usize> {
         .map(|index| index + 1)
 }
 
+/// The 1-based lines satisfying `matches`, ascending.
+fn lines_of(text: &str, matches: impl Fn(&str) -> bool) -> Vec<usize> {
+    text.lines()
+        .enumerate()
+        .filter(|(_, line)| matches(line.trim()))
+        .map(|(index, _)| index + 1)
+        .collect()
+}
+
 /// The line declaring dependency `key` (`key = ...` or `[...dependencies.key]`).
 fn dependency_line(text: &str, key: &str) -> usize {
     line_of(text, |line| {
@@ -364,39 +373,40 @@ pub(super) fn project_findings(
         push(&GITIGNORE_DATABASES, ".gitignore", 1);
     }
     if let Some(text) = read_small(&root.join(".cargo/config.toml"))
-        && let Some(line) = line_of(&text, |line| line.contains("fuse-ld"))
         && !gitignore
             .as_deref()
             .is_some_and(|ignored| ignored.contains(".cargo/config.toml"))
     {
-        push(&LINKER_CONFIG, ".cargo/config.toml", line);
+        for line in lines_of(&text, |line| line.contains("fuse-ld")) {
+            push(&LINKER_CONFIG, ".cargo/config.toml", line);
+        }
     }
     // Files that only the 12.0 CLI generated: an MSVC flag the linker does
     // not support, an ignored lockfile and an unlocked container build.
-    if let Some(text) = read_small(&root.join(".cargo/config.toml"))
-        && let Some(line) = line_of(&text, |line| {
+    if let Some(text) = read_small(&root.join(".cargo/config.toml")) {
+        for line in lines_of(&text, |line| {
             !line.trim_start().starts_with('#') && line.contains("/DEBUG:FASTLINK")
-        })
-    {
-        push(&MSVC_FASTLINK, ".cargo/config.toml", line);
+        }) {
+            push(&MSVC_FASTLINK, ".cargo/config.toml", line);
+        }
     }
-    if let Some(text) = &gitignore
-        && let Some(line) = line_of(text, |line| {
+    if let Some(text) = &gitignore {
+        for line in lines_of(text, |line| {
             matches!(line.trim(), "Cargo.lock" | "/Cargo.lock" | "**/Cargo.lock")
-        })
-    {
-        push(&CARGO_LOCK_IGNORED, ".gitignore", line);
+        }) {
+            push(&CARGO_LOCK_IGNORED, ".gitignore", line);
+        }
     }
-    if let Some(text) = read_small(&root.join("Dockerfile"))
-        && let Some(line) = line_of(&text, |line| {
+    if let Some(text) = read_small(&root.join("Dockerfile")) {
+        for line in lines_of(&text, |line| {
             let line = line.trim_start();
             !line.starts_with('#')
                 && line.contains("cargo build")
                 && !line.contains("--locked")
                 && !line.contains("--frozen")
-        })
-    {
-        push(&DOCKER_UNLOCKED_BUILD, "Dockerfile", line);
+        }) {
+            push(&DOCKER_UNLOCKED_BUILD, "Dockerfile", line);
+        }
     }
     if let Some(line) = deploy::dockerfile_without_database_url(root) {
         push(&DEPLOY_SQLITE_URL, "Dockerfile", line);
@@ -456,13 +466,13 @@ pub(super) fn project_findings(
         let Some(text) = read_small(&root.join(name)) else {
             continue;
         };
-        if let Some(line) = line_of(&text, |line| line.starts_with("OTEL_EXPORTER_OTLP_")) {
+        for line in lines_of(&text, |line| line.starts_with("OTEL_EXPORTER_OTLP_")) {
             push(&OTLP_ENVIRONMENT, name, line);
         }
-        if let Some(line) = line_of(&text, removed_mail_setting) {
+        for line in lines_of(&text, removed_mail_setting) {
             push(&MAIL_REMOVED, name, line);
         }
-        if let Some(line) = line_of(&text, removed_billing_setting) {
+        for line in lines_of(&text, removed_billing_setting) {
             push(&CAPITAL_REMOVED, name, line);
         }
     }
@@ -502,8 +512,7 @@ pub(super) fn project_findings(
                 continue;
             };
             kubernetes |= text.contains("apiVersion:") && text.contains("kind:");
-            if let Some(line) = line_of(&text, |line| line.contains("kubernetes.io/ingress.class"))
-            {
+            for line in lines_of(&text, |line| line.contains("kubernetes.io/ingress.class")) {
                 push(&K8S_INGRESS_TLS, &relative, line);
             }
         } else if in_workflows || (entry.depth() == 1 && extension == Some("sh")) {

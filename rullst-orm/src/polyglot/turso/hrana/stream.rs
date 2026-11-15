@@ -2,6 +2,7 @@
 //! `DEFAULT`), run in a transaction on one interactive Hrana stream and
 //! committed only when the returned key is not NULL.
 
+use super::endpoint::continued_pipeline_url;
 use super::{
     Batch, BatchCondition, BatchStep, HranaClient, PipelineResponse, PolyglotError, StreamRequest,
     StreamResult, TursoQueryLimit, TursoStatement, TursoValue, WireStatement, expect_batch,
@@ -14,6 +15,13 @@ impl HranaClient {
     /// `Ok(None)`: the key was NULL and the insert was rolled back. Should the
     /// rollback itself not arrive, the server drops the uncommitted
     /// transaction with the stream.
+    ///
+    /// A multi-instance server (such as Turso Cloud) may answer the opening
+    /// request with a `base_url` naming the instance that holds the stream;
+    /// the commit or rollback goes there when it is at the configured
+    /// origin. Another origin is refused with
+    /// [`PolyglotError::CrossOriginEndpoint`] before anything is sent to it,
+    /// and the uncommitted transaction is dropped with the stream.
     pub(crate) async fn insert_returning_key(
         &self,
         insert: TursoStatement,
@@ -21,6 +29,7 @@ impl HranaClient {
     ) -> Result<Option<TursoValue>, PolyglotError> {
         let opened = self
             .post(
+                &self.pipeline_url,
                 None,
                 vec![StreamRequest::Batch {
                     batch: Batch {
@@ -38,11 +47,16 @@ impl HranaClient {
         let Some(baton) = opened.baton else {
             return Err(protocol_error("server closed the insert's stream"));
         };
+        let stream_url = match opened.base_url.as_deref() {
+            Some(base_url) => continued_pipeline_url(&self.pipeline_url, base_url)?,
+            None => self.pipeline_url.clone(),
+        };
         let key = inserted_key(opened.results, key_column);
         let commit = matches!(key, Ok(Some(_)));
         let finish = if commit { "COMMIT" } else { "ROLLBACK" };
         let finished = self
             .closing(
+                &stream_url,
                 Some(baton),
                 vec![
                     StreamRequest::Execute {

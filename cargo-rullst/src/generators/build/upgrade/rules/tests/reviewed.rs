@@ -2,7 +2,7 @@
 //! rules whose context guards read code only (13.0.0-alpha.5).
 
 use super::super::files::project_findings;
-use super::super::reviewed::{covers, first_unreviewed, marked_codes};
+use super::super::reviewed::{covers, marked_codes, unreviewed_lines};
 use super::files::Project;
 use super::*;
 
@@ -107,15 +107,12 @@ fn a_marker_covers_its_own_line_or_the_line_below_when_alone() {
     let mut reviewed = Vec::new();
     let paginates = |line: &str| line.contains("paginate");
     assert_eq!(
-        first_unreviewed(&lines, rule, paginates, &mut reviewed),
-        Some(5)
+        unreviewed_lines(&lines, rule, paginates, &mut reviewed),
+        [5]
     );
     assert_eq!(reviewed, [rule, rule]);
     let mut reviewed = Vec::new();
-    assert_eq!(
-        first_unreviewed(&lines[..4], rule, paginates, &mut reviewed),
-        None
-    );
+    assert!(unreviewed_lines(&lines[..4], rule, paginates, &mut reviewed).is_empty());
     assert_eq!(reviewed.len(), 2);
 }
 
@@ -329,4 +326,48 @@ fn comments_and_strings_never_decide_the_context_guards() {
         ),
         "V13-ORM-TRANSACTION-ERRORS"
     ));
+}
+
+/// Every unmarked location of a rule in a file is reported, in line order:
+/// three uses of `AiError::ApiError` (one marked), two script lines and two
+/// environment lines.
+#[test]
+fn every_unmarked_location_of_a_rule_in_a_file_is_reported() {
+    let project = Project::new();
+    project
+        .write(
+            "src/ai.rs",
+            "fn a(e: &AiError) -> bool { matches!(e, AiError::ApiError(m) if m.contains(\"429\")) }\n\
+fn b(e: &AiError) -> bool { matches!(e, AiError::ApiError(_)) }\n\
+// rullst-upgrade: reviewed V13-AI-HTTP-STATUS\n\
+fn c(e: &AiError) -> bool { matches!(e, AiError::ApiError(_)) }\n\
+fn d(e: &AiError) -> bool { matches!(e, AiError::ApiError(m) if m.contains(\"503\")) }\n",
+        )
+        .write(
+            ".github/workflows/ci.yml",
+            "steps:\n  - run: cargo rullst make:migration:auto\n  - run: cargo rullst make:migration:auto --name x\n",
+        )
+        .write(
+            ".env.example",
+            "OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318\nAPP_KEY=\nOTEL_EXPORTER_OTLP_HEADERS=x\n",
+        );
+    let (found, reviewed) = scan_project(project.root(), MANIFEST);
+    let at = |path: &str, code: &str| -> Vec<usize> {
+        found
+            .iter()
+            .filter(|(file, rule, _)| file == path && *rule == code)
+            .map(|(_, _, line)| *line)
+            .collect()
+    };
+    assert_eq!(at("src/ai.rs", "V13-AI-HTTP-STATUS"), [1, 2, 5]);
+    assert_eq!(
+        at(".github/workflows/ci.yml", "V13-CLI-MIGRATION-AUTO-STATUS"),
+        [2, 3]
+    );
+    assert_eq!(at(".env.example", "V13-OTLP-ENVIRONMENT"), [1, 3]);
+    assert_eq!(reviewed, ["V13-AI-HTTP-STATUS"]);
+    // The findings are sorted by file, line and code.
+    let mut sorted = found.clone();
+    sorted.sort_by(|left, right| (&left.0, left.2, left.1).cmp(&(&right.0, right.2, right.1)));
+    assert_eq!(found, sorted);
 }
