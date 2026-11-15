@@ -1,4 +1,6 @@
 //! Replace only the recognized dashboard method router, preserving other source.
+//! The age gate's form needs no CSRF layer on the router: `Server` applies
+//! CSRF to every route since 13.0.0-alpha.6.
 use quote::ToTokens;
 use std::{io, ops::Range};
 use syn::{Expr, ExprMethodCall, Lit, spanned::Spanned, visit::Visit};
@@ -29,7 +31,6 @@ struct DashboardVisitor {
     expected: String,
     dashboard_routes: usize,
     replacements: Vec<Range<usize>>,
-    csrf: bool,
 }
 
 impl<'ast> Visit<'ast> for DashboardVisitor {
@@ -49,19 +50,6 @@ impl<'ast> Visit<'ast> for DashboardVisitor {
         }
         syn::visit::visit_expr_method_call(self, node);
     }
-
-    fn visit_expr_path(&mut self, node: &'ast syn::ExprPath) {
-        let path = node
-            .path
-            .segments
-            .iter()
-            .map(|segment| segment.ident.to_string())
-            .collect::<Vec<_>>();
-        if path == ["rullst", "security", "csrf_middleware"] {
-            self.csrf = true;
-        }
-        syn::visit::visit_expr_path(self, node);
-    }
 }
 
 pub(super) fn protect(source: &str) -> Result<String, Box<dyn std::error::Error>> {
@@ -70,13 +58,12 @@ pub(super) fn protect(source: &str) -> Result<String, Box<dyn std::error::Error>
         expected: call_tokens(&syn::parse_str::<Expr>(ORIGINAL)?),
         dashboard_routes: 0,
         replacements: Vec::new(),
-        csrf: false,
     };
     visitor.visit_file(&parsed);
-    if visitor.dashboard_routes != 1 || visitor.replacements.len() != 1 || !visitor.csrf {
+    if visitor.dashboard_routes != 1 || visitor.replacements.len() != 1 {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            "unrecognized dashboard route or missing authentication/CSRF layer",
+            "unrecognized dashboard route or missing authentication layer",
         )
         .into());
     }
@@ -110,7 +97,12 @@ mod tests {
             ))
             .is_err()
         );
-        assert!(protect(&source.replace("csrf_middleware", "other_middleware")).is_err());
+        // `Server` applies CSRF, so the router needs no CSRF layer.
+        let without_csrf = source.replace(
+            ".layer(rullst::server::from_fn(rullst::security::csrf_middleware))",
+            "",
+        );
+        assert!(protect(&without_csrf).unwrap().contains(REPLACEMENT));
         assert!(protect(&source.replace("/dashboard", "/different")).is_err());
     }
 }

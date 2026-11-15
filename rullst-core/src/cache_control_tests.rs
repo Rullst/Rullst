@@ -116,7 +116,12 @@ fn shared_caching_needs_public_or_s_maxage_without_private_or_no_store() {
 }
 
 fn app(environment: Environment) -> axum::Router {
-    let router = axum::Router::new()
+    crate::security::apply_security_baseline(routes(), SecurityConfig::default(), environment)
+        .unwrap()
+}
+
+fn routes() -> axum::Router {
+    axum::Router::new()
         .route(
             "/calendar.ics",
             get(|| async { "BEGIN:VCALENDAR" }).layer(public(Duration::from_secs(300))),
@@ -133,9 +138,7 @@ fn app(environment: Environment) -> axum::Router {
             "/own",
             get(|| async { ([(header::CACHE_CONTROL, "no-cache")], "own") })
                 .layer(public(Duration::from_secs(300))),
-        );
-    crate::security::apply_security_baseline(router, SecurityConfig::default(), environment)
-        .unwrap()
+        )
 }
 
 async fn head(app: &axum::Router, path: &str) -> (StatusCode, HeaderMap) {
@@ -171,7 +174,7 @@ async fn behind_the_production_baseline_policies_replace_no_store_only_where_set
 
 #[tokio::test]
 async fn the_layer_works_without_the_baseline_too() {
-    let app = app(Environment::Development);
+    let app = routes();
     let (_, headers) = head(&app, "/calendar.ics").await;
     assert_eq!(headers[header::CACHE_CONTROL], "public, max-age=300");
     let (_, headers) = head(&app, "/missing").await;

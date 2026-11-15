@@ -405,3 +405,33 @@ async fn a_port_in_use_stops_the_studio_with_an_error() {
         "{outcome:?}"
     );
 }
+
+#[tokio::test]
+async fn traces_and_security_pages_render_version_2_escaped_and_explain_version_1() {
+    let (base, _) = start(None).await;
+    let studio = studio().await;
+    for (name, variant) in [("shop", "v2"), ("hostile", "v2xss"), ("older", "ok")] {
+        studio
+            .state
+            .store
+            .add(name, &format!("{base}{variant}/"), TOKEN)
+            .unwrap();
+    }
+    let (status, traces) = get(&studio, "/studio/traces?project=shop").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(traces.contains("Traces · shop"));
+    assert!(traces.contains("1250.500 ms"));
+    assert!(traces.contains(r#"href="/studio/security?project=shop""#));
+    let (status, security) = get(&studio, "/studio/security?project=shop").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(security.contains("LOGIN_JAIL_TRIGGERED"));
+    for path in ["/studio/traces", "/studio/security"] {
+        let (status, page) = get(&studio, &format!("{path}?project=hostile")).await;
+        assert_eq!(status, StatusCode::OK, "{path}");
+        assert!(!page.contains("<script>alert"), "{path}");
+        assert!(page.contains("&lt;script&gt;"), "{path}");
+        let (status, page) = get(&studio, &format!("{path}?project=older")).await;
+        assert_eq!(status, StatusCode::OK, "{path}");
+        assert!(page.contains("It serves rullst.monitor.v1 only."), "{path}");
+    }
+}

@@ -6,8 +6,10 @@
 //! [`run_remote_studio`] (the `rullst-studio` binary) serves Studio on
 //! `127.0.0.1` without an application process. It keeps a list of projects
 //! (name, base URL, monitor token) and renders each project's read-only
-//! `rullst.monitor.v1` document, which an application serves with
-//! `rullst_core::Server::with_monitor`. Studio only connects outwards; the
+//! monitoring document, which an application serves with
+//! `rullst_core::Server::with_monitor`: `rullst.monitor.v2` (with request
+//! traces and the security radar) when the application serves it, else
+//! `rullst.monitor.v1`. Studio only connects outwards; the
 //! data browser, `.env` viewer, AI and API playgrounds and migration pages are
 //! not part of this mode.
 //!
@@ -22,12 +24,16 @@ mod alerts;
 mod client;
 mod crypto;
 mod document;
+mod document_v2;
 mod history;
 mod monitoring;
+mod notify;
 mod pages;
 mod paths;
 mod poller;
+mod preferences;
 mod projects;
+mod proxy;
 mod router;
 mod secure_file;
 mod settings;
@@ -42,7 +48,13 @@ mod document_tests;
 #[cfg(test)]
 mod history_tests;
 #[cfg(test)]
+mod notify_tests;
+#[cfg(test)]
 mod poller_tests;
+#[cfg(test)]
+mod preferences_tests;
+#[cfg(test)]
+mod proxy_tests;
 #[cfg(test)]
 mod router_tests;
 #[cfg(test)]
@@ -151,15 +163,25 @@ pub(crate) async fn state(
     if let Some(history) = &history {
         monitoring.set_open_alerts(history.unacknowledged().await.unwrap_or(0));
     }
+    let store = projects::ProjectStore::new(options.paths.clone());
+    let proxy = store
+        .settings()
+        .map(|settings| settings.proxy)
+        .unwrap_or_default();
+    let plan = proxy::ProxyPlan::from_settings(&proxy);
     Ok(router::RemoteState {
-        store: projects::ProjectStore::new(options.paths.clone()),
-        client: client::MonitorClient::new(options.limits)
-            .map_err(|_| RemoteStudioError::Client)?,
+        store,
+        client: std::sync::RwLock::new(
+            client::MonitorClient::with_proxy(options.limits, &plan)
+                .map_err(|_| RemoteStudioError::Client)?,
+        ),
+        limits: options.limits,
         form_token: random_hex(32)?,
         monitoring,
         history,
-        webhooks: webhook::WebhookClient::new(),
+        webhooks: std::sync::RwLock::new(webhook::WebhookClient::new(&plan)),
         poll_interval: clamp_interval(options.poll_interval),
+        notifier: notify::Notifier::new(random_hex(8)?),
     })
 }
 

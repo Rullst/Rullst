@@ -515,7 +515,7 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
-The v13 CLI's `rullst-upgrade-rules-v4` catalog (161 rules) parses Rust sources
+The v13 CLI's `rullst-upgrade-rules-v4` catalog (163 rules) parses Rust sources
 (with `syn`; comments, doc comments and strings never match an API rule), Cargo
 manifests and generated project files, and reports each finding as
 `MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed
@@ -1430,11 +1430,12 @@ written through a link):
 * `Caddyfile`: proxies to the app, checks its `/health` every 5 seconds and
   stops routing to it while that fails, and holds each request for up to 15
   seconds while the app is down (a restart or an update) instead of answering
-  `503` at once. It has no `encode` directive, and its comment says why:
-  pages carry the CSRF token, which is not masked per response, so
-  compressing them would expose it to BREACH; static files are served
-  pre-compressed. Add `encode` only for routes that never mix secrets with
-  reflected input (`encode /api/* zstd gzip`).
+  `503` at once. Since 13.0.0-alpha.6 it compresses pages
+  (`encode zstd gzip`), and its comment says why that is safe: the CSRF
+  token in pages is masked per response, so compression next to reflected
+  input does not reveal it (BREACH); no other secret should appear in a page
+  next to text from the request. Static files are served pre-compressed and
+  pass through unchanged. Until 13.0.0-alpha.6 it had no `encode` directive.
 
 Caddy is pinned to `172.31.250.10` on a `172.31.250.0/24` compose network,
 and the command adds that address to `[security] trusted_proxies` in
@@ -1466,9 +1467,20 @@ Creates an authentication starting point in your codebase, including:
   `session_epoch` column.
 - Auth Controllers (Login, Registration, Logout, and `logout_everywhere`, which
   increments the account's session epoch to end its session on every device).
-- Encrypted-session middleware that inserts the signed-in user's id as
-  `Extension<i32>` and refuses a cookie whose session epoch is no longer the
-  account's.
+- Server-side sessions (since 13.0.0-alpha.6): every sign-in is a row of
+  `rullst_auth_sessions` in the application's database, created by a
+  `m<timestamp>_create_rullst_auth_sessions_table.rs` migration (its rollback
+  drops it), through `rullst::auth::session_registry` over `Orm::pool()`. A
+  row stores only a digest of the random secret in the encrypted cookie. The
+  middleware
+  (`src/middlewares/auth_middleware.rs`) checks that row on every request,
+  inserts the signed-in user's id as `Extension<i32>` and the
+  `AuthenticatedSession`, and refuses a cookie whose session epoch is no longer
+  the account's. Logout deletes the session, so a copied cookie stops working.
+- A "Your devices" controller (`src/controllers/sessions_controller.rs`):
+  `GET /sessions` lists the account's sessions (sign-in time, hour of last use,
+  browser and platform), `POST /sessions/revoke` signs out one and
+  `POST /sessions/revoke-others` every other one.
 - A password controller (`src/controllers/password_controller.rs`), a reset
   token model (`src/models/password_reset.rs`) and a
   `password_reset_tokens` migration: **change password** (signed in; checks the
@@ -1483,8 +1495,11 @@ Creates an authentication starting point in your codebase, including:
 - HTML Views for Login, Signup, Forgot password, Reset password and Change
   password.
 
-It targets the SQLx ORM: Turso-primary projects are rejected. The command
-enables the `orm`, `auth` and `mail` umbrella features, registers the generated
+It targets the SQLx ORM: Turso-primary projects are rejected, and the project
+needs exactly one strict database profile (`strict-sqlite`, `strict-postgres`
+or `strict-mysql`, as `cargo rullst new --database ...` selects), whose session
+registry feature (`auth-session-registry-sqlite`, `-postgres` or `-mysql`) it
+enables. The command enables the `orm`, `auth` and `mail` umbrella features, registers the generated
 `controllers`, `middlewares`, `models` and `pages` modules in `src/lib.rs` (or
 `src/main.rs`), and refreshes the migration registry.
 
@@ -1520,8 +1535,9 @@ migrations;` in `src/main.rs` or `src/lib.rs` plus a
 starters include), such as a `--no-database` starter, because nothing would
 compile or apply the users migration. Generated code names the ORM through the
 `rullst::orm` facade, so no direct `rullst-orm` dependency is needed. Mounting
-routes (including `POST /logout/everywhere` and `/password/change` behind
-`auth_middleware`, and `credential_rate_limit` on the password submissions),
+routes (including `POST /logout/everywhere`, `/password/change` and the three
+`/sessions` routes behind `auth_middleware`, and `credential_rate_limit` on the
+password submissions),
 the security baseline and the mail settings (`MAIL_DRIVER`, `MAIL_FROM`,
 `RULLST_PUBLIC_ORIGIN`) remain application work, as does calling
 `User::revoke_sessions` when you deactivate an account. The SaaS starter and
@@ -1645,8 +1661,9 @@ identities when you delete the account); a verified provider e-mail that
 already belongs to an account is always refused, because the contract cannot
 remove that account's password. `make:privacy` exports the contract's
 `find_account` and mounts its routes inside the router's single
-`rullst::server::from_fn(rullst::security::csrf_middleware)` layer, or prints
-the line to add. `make:age-gate` stays a SaaS consumer: it replaces the
+`rullst::server::from_fn(rullst::security::csrf_middleware)` layer, or, in a
+router without one (`Server` applies CSRF), before its single
+`.merge_axum(rullst::health::health_router())`, or prints the line to add. `make:age-gate` stays a SaaS consumer: it replaces the
 starter's `/dashboard` route and renders that handler after an allowed
 declaration, which an application's own pages do not have.
 
@@ -2166,7 +2183,9 @@ different report.
 Reports figures it measured for the app, each with its method: the release
 binary size, a local container image's size (`--image`, through `docker` or
 `podman image inspect`), the app's idle resident memory, the third-party
-dependency count from `Cargo.lock`; with `--bench`, the app process's CPU time
+dependency count from `Cargo.lock` and, since 13.0.0-alpha.6, how many of those
+packages Cargo compiles for the project (`cargo tree --edges normal,build`, the
+host platform and the default features); with `--bench`, the app process's CPU time
 and the response bytes it served during a bounded closed-loop loopback load,
 and both per request; with `--page-weight`, the bytes and requests of the
 `--path` page and its same-origin resources on a first and a repeat visit

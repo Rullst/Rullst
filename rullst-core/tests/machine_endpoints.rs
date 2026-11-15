@@ -573,7 +573,7 @@ async fn webhook_verification_is_idempotent_and_cannot_rewrite_the_request() {
 }
 
 #[tokio::test]
-async fn development_still_authenticates_machine_routes_and_rejects_duplicate_credentials() {
+async fn development_authenticates_machine_routes_and_requires_csrf_on_the_others() {
     let endpoint = MachineEndpoint::bearer(Method::POST, "/machine", TOKEN).unwrap();
     assert_eq!(endpoint.authentication(), MachineAuthentication::Bearer);
     let app = apply_security_baseline_with_machine_endpoints(
@@ -589,7 +589,8 @@ async fn development_still_authenticates_machine_routes_and_rejects_duplicate_cr
         ("/machine", 0, StatusCode::UNAUTHORIZED),
         ("/machine", 1, StatusCode::NO_CONTENT),
         ("/machine", 2, StatusCode::UNAUTHORIZED),
-        ("/ordinary", 0, StatusCode::NO_CONTENT),
+        // Since 13.0.0-alpha.6 development checks the CSRF token too.
+        ("/ordinary", 0, StatusCode::FORBIDDEN),
     ] {
         let mut request = Request::post(path);
         for _ in 0..headers {

@@ -4,7 +4,8 @@
 The consumer depends on nothing but `rullst-orm`: code that `#[derive(Orm)]`
 generates, its `FromRow` included, must reach SQLx, `tracing` and its other
 dependencies through `rullst_orm`. The graph must hold only the selected SQLx
-driver and no SQLx macro crate (`sqlx-macros`, `sqlx-macros-core`).
+driver and no SQLx macro crate (`sqlx-macros`, `sqlx-macros-core`). PostgreSQL
+and MySQL bring SQLx's rustls with aws-lc-rs; SQLite builds no TLS stack.
 """
 
 import argparse
@@ -139,13 +140,18 @@ def main():
         actual = packages.intersection({"sqlx-postgres", "sqlx-mysql", "sqlx-sqlite"})
         if actual != {expected}:
             raise SystemExit(f"{args.feature}: expected only {expected}, found {sorted(actual)}")
+        tls = sorted(packages.intersection({"rustls", "aws-lc-rs", "aws-lc-sys", "ring"}))
+        expected_tls = [] if args.feature == "strict-sqlite" else ["aws-lc-rs", "aws-lc-sys", "rustls"]
+        if tls != expected_tls:
+            raise SystemExit(f"{args.feature}: expected TLS packages {expected_tls}, found {tls}")
         macros = sorted(packages.intersection({"sqlx-macros", "sqlx-macros-core"}))
         if macros:
             raise SystemExit(f"{args.feature}: the ORM must not build SQLx macros, found {macros}")
         # A shared target is optional and caller-owned, never created under the
         # temporary project when CI/local policy supplies CARGO_TARGET_DIR.
         run(["cargo", "clippy", "--locked", "--lib", *network, "--", "-D", "warnings"], project)
-        print(f"PASS {args.feature}: generated CRUD/transaction/enum/FromRow consumer, only {expected}, no SQLx macros")
+        print(f"PASS {args.feature}: generated CRUD/transaction/enum/FromRow consumer, only {expected}, "
+              f"TLS {', '.join(tls) or 'none'}, no SQLx macros")
 
 
 if __name__ == "__main__":

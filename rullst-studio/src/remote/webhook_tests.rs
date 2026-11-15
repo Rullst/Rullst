@@ -3,6 +3,7 @@
 
 use super::alerts::AlertRules;
 use super::projects::{ProjectError, ProjectStore, WebhookChange};
+use super::proxy::ProxyPlan;
 use super::server_test::{RefusedPort, TOKEN, TempDir};
 use super::webhook::{WebhookClient, WebhookPayload, validate_webhook_url};
 use axum::Router;
@@ -132,7 +133,8 @@ fn payload() -> WebhookPayload<'static> {
 
 #[tokio::test]
 async fn delivery_posts_the_alert_once_and_reports_a_fixed_status() {
-    let client = WebhookClient::with_timeout(Duration::from_millis(500)).unwrap();
+    let client =
+        WebhookClient::with_timeout(Duration::from_millis(500), &ProxyPlan::Direct).unwrap();
     let (url, bodies) = receiver(StatusCode::NO_CONTENT, Duration::ZERO).await;
     assert_eq!(client.deliver(&url, &payload()).await, "delivered");
     let body: serde_json::Value = serde_json::from_str(&bodies.lock().unwrap()[0]).unwrap();
@@ -164,7 +166,7 @@ async fn delivery_posts_the_alert_once_and_reports_a_fixed_status() {
     let refused = RefusedPort::new();
     let closed = format!("http://127.0.0.1:{}/hook", refused.port);
     // Windows retries a refused loopback connection for about two seconds.
-    let patient = WebhookClient::with_timeout(Duration::from_secs(6)).unwrap();
+    let patient = WebhookClient::with_timeout(Duration::from_secs(6), &ProxyPlan::Direct).unwrap();
     assert_eq!(
         patient.deliver(&closed, &payload()).await,
         "failed: unreachable"

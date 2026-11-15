@@ -79,7 +79,7 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)), names)
         self.assertLess(router.index("let public_auth"), router.index("let password_change"))
         self.assertLess(router.index("let password_change"), router.index("\n    routes![\n"))
-        merges = re.findall(r"\.merge_axum\((\w+)\.into_axum\(\)\)", router.split("csrf_middleware")[0])
+        merges = re.findall(r"\.merge_axum\((\w+)\.into_axum\(\)\)", router.split("health::health_router")[0])
         self.assertEqual(merges[-4:], ["public_auth", "signed_in", "password_reset", "password_change"])
 
     def test_migration_edits_keep_the_generated_names(self):

@@ -155,6 +155,7 @@ pub async fn setup(
 /// second step) and renews this browser's.
 pub async fn confirm(
     Extension(user_id): Extension<i32>,
+    headers: HeaderMap,
     csrf: Option<Extension<CsrfToken>>,
     csp_nonce: Option<Extension<CspNonce>>,
     Form(form): Form<MfaCodeForm>,
@@ -185,7 +186,7 @@ pub async fn confirm(
         };
         return security_page(StatusCode::SERVICE_UNAVAILABLE, &view, csrf, nonce);
     }
-    match account::sign_in_cookie(user_id).await {
+    match account::sign_in_cookie(user_id, &headers).await {
         Ok(session) => {
             challenge::redirect_with_cookies(&format!("{SECURITY_PATH}?done=enabled"), &[session])
         }
@@ -281,7 +282,7 @@ pub async fn challenge_submit(
         Ok(false) => return restart(StatusCode::BAD_REQUEST, EXPIRED, nonce),
         Err(error) => return restart(status_of(error), error.message(), nonce),
     }
-    match account::sign_in_cookie(challenge.account_id).await {
+    match account::sign_in_cookie(challenge.account_id, &headers).await {
         Ok(session) => challenge::redirect_with_cookies(
             challenge::safe_target(&challenge.target),
             &[session, challenge::clear_cookie()],

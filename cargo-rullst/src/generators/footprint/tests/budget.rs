@@ -118,7 +118,7 @@ fn budgets_are_read_from_rullst_toml_or_a_file() {
 #[test]
 fn unmeasured_figures_are_skipped_never_passed() {
     let every = budget(
-        "[footprint.budgets]\nbinary_size_bytes = 1e9\nimage_size_bytes = 1e9\nidle_rss_bytes = 1e9\ndependency_count = 1000\ncpu_ms_per_request = 100\nbytes_per_request = 1e6\npage_first_visit_bytes = 1e9\npage_repeat_visit_bytes = 1e9\npage_requests = 100\npage_third_party_origins = 5\n",
+        "[footprint.budgets]\nbinary_size_bytes = 1e9\nimage_size_bytes = 1e9\nidle_rss_bytes = 1e9\ndependency_count = 1000\ncompiled_dependency_count = 300\ncpu_ms_per_request = 100\nbytes_per_request = 1e6\npage_first_visit_bytes = 1e9\npage_repeat_visit_bytes = 1e9\npage_requests = 100\npage_third_party_origins = 5\n",
     );
     let quiet = budget::check(&every, &sample(false, None));
     assert_eq!(
@@ -128,6 +128,7 @@ fn unmeasured_figures_are_skipped_never_passed() {
             ("image_size_bytes", "skipped"),
             ("idle_rss_bytes", "passed"),
             ("dependency_count", "passed"),
+            ("compiled_dependency_count", "passed"),
             ("cpu_ms_per_request", "skipped"),
             ("bytes_per_request", "skipped"),
             ("page_first_visit_bytes", "skipped"),
@@ -136,26 +137,46 @@ fn unmeasured_figures_are_skipped_never_passed() {
             ("page_third_party_origins", "skipped"),
         ]
     );
-    assert_eq!((quiet.passed, quiet.exceeded, quiet.skipped), (3, 0, 7));
+    assert_eq!((quiet.passed, quiet.exceeded, quiet.skipped), (4, 0, 7));
     assert_eq!(quiet.status, "passed");
     assert_eq!(quiet.limits[1].measured, None);
     assert_eq!(quiet.limits[1].reason.as_deref(), Some("no image given"));
+    assert_eq!(quiet.limits[3].measured, Some(312.0));
+    assert_eq!(quiet.limits[4].measured, Some(287.0));
+    assert_eq!(quiet.limits[4].unit, "count");
     assert_eq!(
-        quiet.limits[4].reason.as_deref(),
+        quiet.limits[5].reason.as_deref(),
         Some("no benchmark ran; pass --bench")
     );
     assert_eq!(
-        quiet.limits[9].reason.as_deref(),
+        quiet.limits[10].reason.as_deref(),
         Some("no page was weighed; pass --page-weight")
     );
 
     let measured = budget::check(&every, &sample(true, None));
     assert_eq!(measured.skipped, 1, "{measured:?}");
-    assert_eq!(measured.limits[9].measured, Some(1.0));
-    assert_eq!(measured.limits[6].measured, Some(48_000.0));
-    assert_eq!(measured.limits[7].measured, Some(1_200.0));
-    assert_eq!(measured.limits[8].measured, Some(6.0));
-    assert_eq!(measured.limits[5].measured, Some(1_500.0));
+    assert_eq!(measured.limits[10].measured, Some(1.0));
+    assert_eq!(measured.limits[7].measured, Some(48_000.0));
+    assert_eq!(measured.limits[8].measured, Some(1_200.0));
+    assert_eq!(measured.limits[9].measured, Some(6.0));
+    assert_eq!(measured.limits[6].measured, Some(1_500.0));
+
+    // The compiled count has a limit of its own, and an unmeasured one is
+    // skipped with its reason.
+    let compiled = budget("[footprint.budgets]\ncompiled_dependency_count = 286\n");
+    assert_eq!(
+        names(&budget::check(&compiled, &sample(false, None))),
+        [("compiled_dependency_count", "exceeded")]
+    );
+    let mut unmeasured = sample(false, None);
+    unmeasured.measured.compiled_dependency_count =
+        Metric::not_measured("packages", "no Cargo.toml in this directory");
+    let skipped = budget::check(&compiled, &unmeasured);
+    assert_eq!(names(&skipped), [("compiled_dependency_count", "skipped")]);
+    assert_eq!(
+        skipped.limits[0].reason.as_deref(),
+        Some("no Cargo.toml in this directory")
+    );
 
     let none = budget::check(
         &budget("[footprint.budgets]\nimage_size_bytes = 1\n"),

@@ -18,8 +18,9 @@ pub fn routes() -> Router {
         .layer(from_fn(
             crate::middlewares::auth_middleware::auth_middleware,
         ))
-        // Explicitly protect the additional application resource even in the
-        // loopback development profile; Server's production baseline is unchanged.
+        // Explicitly protect the additional application resource, the WAF
+        // refusing even in the loopback development profile; Server adds
+        // CSRF and the secure headers in every environment as well.
         .layer(from_fn(rullst::security::csrf_middleware))
         .layer(from_fn(rullst::security::headers_middleware))
         .layer(from_fn(rullst::security::waf_middleware))

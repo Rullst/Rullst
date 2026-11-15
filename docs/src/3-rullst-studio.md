@@ -17,8 +17,9 @@ cannot override that compile-time boundary.
 
 To watch a deployed application, mount the read-only
 [production monitoring endpoint](production-monitoring.md) instead (new in
-v13): it reports request rates, latency, errors, queues and N+1
-findings behind a token or the application's own sign-in. The standalone
+v13): it reports request rates, latency, errors, queues, N+1
+findings and (since 13.0.0-alpha.6) sampled request traces and the security
+radar behind a token or the application's own sign-in. The standalone
 `rullst-studio` binary
 (`cargo install rullst-studio --version =13.0.0-alpha.5 --no-default-features --features remote --locked`,
 then `rullst-studio` or `cargo rullst studio --remote`) reads it for several projects from your
@@ -93,7 +94,11 @@ mounted push-only ingestion router.
   connected.
 - `/studio/capital`: the in-process revenue view; it is not an accounting ledger.
   Its table lists the 20 most recent webhook events and its badge counts every
-  event the process-local manager retains (at most 100).
+  event the process-local manager retains (at most 100). Since
+  13.0.0-alpha.6 it needs Studio's `capital` feature, which the `rullst`
+  facade's `capital` enables (the SaaS starter has it); without it the page
+  says how to enable it, `/api/revenue` answers 404, and Studio builds no
+  `rullst-capital` or HTTPS client.
 - `/studio/traces`: local spans plus authenticated attribute-free distributed
   records and explicit slow/repeated SQL-label heuristics.
 - `/studio/cache`: metadata-only view of an explicitly supplied Memory/Redis

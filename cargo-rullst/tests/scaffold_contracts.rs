@@ -144,7 +144,7 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
                                 assert!(
                                     rust_sources.contains(
                                         "NexusAuthPolicy::local_development_or_application(\n        middlewares::nexus_access::NexusAdmins,"
-                                    ) && rust_sources.contains("Ok(Some(user)) if user.accepts_session(&claims) => Ok(if user.is_admin {"),
+                                    ) && rust_sources.contains("Ok(Some((user, _))) if user.is_admin => Ok(NexusAccess::allow(format!(\"user:{}\", user.id))),"),
                                     "{case}: Nexus local/application access policy drifted"
                                 );
                             }
@@ -449,7 +449,9 @@ fn state_changing_html_blueprints_emit_and_enforce_csrf_tokens() {
         .map(|(_, source)| source)
         .collect::<Vec<_>>()
         .join("\n");
-        assert!(blank.contains("rullst::security::csrf_middleware"));
+        // `Server` applies CSRF and the secure headers; the router adds none.
+        assert!(!blank.contains("rullst::security::csrf_middleware"));
+        assert!(!blank.contains("rullst::security::headers_middleware"));
         assert!(blank.contains("Extension<rullst::security::CsrfToken>"));
         assert!(blank.contains("name=\"_token\""));
         // The counter is an ordinary htmx route; there is no RPC module.
@@ -565,7 +567,9 @@ fn extracted_rust_templates_parse_after_substitution() {
         ),
         (
             "MFA starter accounts",
-            include_str!("../src/generators/auth/mfa/account_starter.rs.template").to_string(),
+            // `make:mfa` puts the registered or epoch `sign_in_cookie` here.
+            include_str!("../src/generators/auth/mfa/account_starter.rs.template")
+                .replace("__RULLST_SIGN_IN_COOKIE__", ""),
         ),
         (
             "MFA contract accounts",

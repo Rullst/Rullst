@@ -70,9 +70,19 @@ async fn first_visit(app: &Router) -> (String, String) {
     assert!(cookie.contains("; SameSite=Lax"));
     assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
     let pair = cookie.split(';').next().unwrap().to_owned();
-    let token = pair.strip_prefix("rullst_csrf=").unwrap().to_owned();
+    let cookie_token = pair.strip_prefix("rullst_csrf=").unwrap().to_owned();
     let html = to_bytes(response.into_body(), 8192).await.unwrap();
-    assert!(String::from_utf8_lossy(&html).contains(&format!("value=\"{token}\"")));
+    let html = String::from_utf8_lossy(&html);
+    // The form carries the cookie token masked for this response, which the
+    // tests below send back in the form field and the header.
+    let token = html
+        .split("name=\"_token\" value=\"")
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .expect("form token")
+        .to_owned();
+    assert_eq!((cookie_token.len(), token.len()), (32, 86));
+    assert!(!html.contains(&cookie_token));
     (pair, token)
 }
 

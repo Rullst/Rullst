@@ -51,10 +51,53 @@ fn stable_blueprint_ids_enable_only_their_required_domain_features() {
         &isolated_root(),
     )
     .expect("Blank manifest");
-    assert!(saas.contains("\"nexus\", \"auth\", \"mail\", \"capital\""));
-    for feature in ["\"nexus\"", "\"auth\"", "\"mail\"", "\"capital\""] {
+    assert!(
+        saas.contains(
+            "\"nexus\", \"auth\", \"mail\", \"capital\", \"auth-session-registry-sqlite\""
+        )
+    );
+    for feature in [
+        "\"nexus\"",
+        "\"auth\"",
+        "\"mail\"",
+        "\"capital\"",
+        "\"auth-session-registry",
+    ] {
         assert!(!blank.contains(feature), "{feature}");
     }
+}
+
+#[test]
+fn the_saas_session_registry_follows_the_database() {
+    for (database, feature) in [
+        ("Sqlite", Some("auth-session-registry-sqlite")),
+        ("Postgres", Some("auth-session-registry-postgres")),
+        ("MySQL", Some("auth-session-registry-mysql")),
+        ("MariaDB", Some("auth-session-registry-mysql")),
+        ("Turso", None),
+        ("None", None),
+    ] {
+        assert_eq!(
+            super::session_registry_feature(database),
+            feature,
+            "{database}"
+        );
+    }
+    let postgres = build_cargo_toml(
+        "saas",
+        false,
+        true,
+        "Postgres",
+        &[],
+        false,
+        false,
+        SAAS_BLUEPRINT_ID,
+        "Zero-Bundle HTMX",
+        &isolated_root(),
+    )
+    .expect("SaaS manifest");
+    assert!(postgres.contains("\"capital\", \"auth-session-registry-postgres\""));
+    assert!(!postgres.contains("auth-session-registry-sqlite"));
 }
 
 #[test]
@@ -328,7 +371,8 @@ fn primary_relational_choice_selects_one_strict_profile() {
                 );
             }
         }
-        // SQLx TLS uses aws-lc-rs, the framework's rustls provider.
+        // PostgreSQL and MySQL TLS uses aws-lc-rs, the framework's rustls
+        // provider; SQLite needs no TLS, so a SQLite project builds none.
         let sqlx = parsed["dependencies"]["sqlx"]["features"]
             .as_array()
             .expect("generated SQLx feature array")
@@ -336,7 +380,12 @@ fn primary_relational_choice_selects_one_strict_profile() {
             .filter_map(toml::Value::as_str)
             .filter(|feature| feature.starts_with("tls-"))
             .collect::<Vec<_>>();
-        assert_eq!(sqlx, ["tls-rustls-aws-lc-rs"], "{provider}");
+        let tls: &[&str] = if provider == "Sqlite" {
+            &[]
+        } else {
+            &["tls-rustls-aws-lc-rs"]
+        };
+        assert_eq!(sqlx, tls, "{provider}");
         assert_eq!(
             parsed["dependencies"]["rullst"]["default-features"].as_bool(),
             Some(false),

@@ -204,22 +204,35 @@ async fn nested_csrf_layers_emit_one_matching_cookie_and_accept_the_post() {
     let body = axum::body::to_bytes(response.into_body(), 128)
         .await
         .unwrap();
-    let token = std::str::from_utf8(&body).unwrap();
-    assert!(cookie.starts_with(&format!("rullst_csrf={token};")));
+    let masked = std::str::from_utf8(&body).unwrap();
+    let token = cookie
+        .strip_prefix("rullst_csrf=")
+        .and_then(|rest| rest.split(';').next())
+        .unwrap();
+    // Masked once, by the outer layer: the inner layer passes it through.
+    assert_eq!(masked.len(), 86);
+    assert!(bool::from(super::super::csrf_mask::csrf_proof_matches(
+        masked.as_bytes(),
+        token
+    )));
 
     let posted = app
         .oneshot(
             Request::post("/form")
                 .header(header::COOKIE, format!("rullst_csrf={token}"))
                 .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .body(Body::from(format!("_token={token}")))
+                .body(Body::from(format!("_token={masked}")))
                 .unwrap(),
         )
         .await
         .unwrap();
     assert_eq!(posted.status(), StatusCode::OK);
     let posted_body = axum::body::to_bytes(posted.into_body(), 128).await.unwrap();
-    assert_eq!(posted_body.as_ref(), token.as_bytes());
+    assert_ne!(posted_body.as_ref(), masked.as_bytes());
+    assert!(bool::from(super::super::csrf_mask::csrf_proof_matches(
+        &posted_body,
+        token
+    )));
 }
 
 #[tokio::test]

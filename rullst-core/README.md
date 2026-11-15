@@ -59,7 +59,9 @@ Server-Sent Events, i18n and process telemetry. The `rullst` facade re-exports i
   `Server::with_monitor` serves a read-only `GET /_rullst/monitor/v1` JSON
   document (request rate, latency, status classes and response bytes per
   route pattern,
-  queues, N+1 fingerprints, process radar) to a bearer token from
+  queues, N+1 fingerprints, process radar; since 13.0.0-alpha.6 also
+  `GET /_rullst/monitor/v2` with sampled request traces and the security
+  radar, without span names, event details or client addresses) to a bearer token from
   `RULLST_MONITOR_TOKENS` or to the application's own sign-in, with TLS
   evidence required in staging and production. Nothing is mounted without a
   credential. See [the guide](https://github.com/Rullst/Rullst/blob/main/docs/src/production-monitoring.md).
@@ -200,7 +202,10 @@ Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis` (or `redis` for
 both), `scheduler-tz`, `storage-s3`, `storage-multipart` or `telemetry` only
 when that integration is required. `orm` adds no SQLx driver:
 pair it with `drivers-all` or one `strict-*` backend (`queue-sqlite` adds only
-SQLite). Since 13.0.0-alpha.3 the primary `rullst` crate has no default
+SQLite). `tls` (rustls with aws-lc-rs, installed as the rustls process default
+at `Server` start-up) comes with `strict-postgres`, `strict-mysql`,
+`drivers-all`, `storage-s3` and `telemetry`; since 13.0.0-alpha.6 a
+SQLite-only build has no TLS stack. Since 13.0.0-alpha.3 the primary `rullst` crate has no default
 feature either: an application that uses the ORM or the SQLite queue enables
 `orm` with `drivers-all` or a `strict-*` backend, and `queue-sqlite`, itself.
 

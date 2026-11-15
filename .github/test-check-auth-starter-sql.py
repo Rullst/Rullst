@@ -32,8 +32,9 @@ class GeneratedFilesTests(unittest.TestCase):
         self.assertEqual(mounted.count('get("/register" => controllers::auth_controller::register_view)'), 1)
         self.assertIn("rullst::routing::post(controllers::auth_controller::register_submit)", mounted)
         self.assertIn("middlewares::auth_middleware::auth_middleware", mounted)
-        # Before the CSRF layer, so CSRF protection covers the form.
-        self.assertLess(mounted.index('.route("/register"'), mounted.index("security::csrf_middleware"))
+        # Before the health probes; `Server` applies CSRF to every route.
+        self.assertLess(mounted.index('.route("/register"'), mounted.index("rullst::health::health_router()"))
+        self.assertNotIn("security::csrf_middleware", mounted)
         with self.assertRaises(MODULE.Failure):
             MODULE.mount_signup_routes(source.replace("post(\"/clicked\" => clicked),", ""))
 
@@ -42,7 +43,7 @@ class GeneratedFilesTests(unittest.TestCase):
         for handler in ("register_view", "register_submit", "credential_rate_limit", "dashboard"):
             self.assertIn(f"pub async fn {handler}(", controller)
             self.assertIn(f"auth_controller::{handler}", MODULE.ROUTER_WITH_SIGNUP)
-        self.assertIn("pub async fn auth_middleware(", (CLI / "generators/auth/controllers.rs").read_text())
+        self.assertIn("pub async fn auth_middleware(", (CLI / "generators/auth/auth_middleware.rs.template").read_text())
 
     def test_expected_columns_follow_the_migration_template(self):
         template = ACCOUNT_MIGRATION.read_text()

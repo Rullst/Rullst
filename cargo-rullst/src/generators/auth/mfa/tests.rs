@@ -70,9 +70,15 @@ fn the_saas_starter_is_wired_end_to_end() {
         assert_eq!(planned.accounts, Accounts::Starter);
         writes::apply(&planned.edits).unwrap();
 
-        for (path, source) in render_sources(Accounts::Starter) {
+        for (path, source) in render_sources(Accounts::Starter, true) {
             assert_eq!(read(&root, path), source, "{path}");
         }
+        // The SaaS starter registers its sessions: so does the second step.
+        let account = read(&root, "src/controllers/mfa/account.rs");
+        assert!(
+            account.contains("crate::middlewares::auth_middleware::start_session(&user, headers)")
+        );
+        assert!(!account.contains("make_login_cookie"));
         assert!(
             read(&root, "src/controllers/mfa/account.rs")
                 .contains("use crate::models::user::User;")
@@ -102,7 +108,11 @@ fn the_saas_starter_is_wired_end_to_end() {
             1
         );
         let hook = login.find("mfa::second_step").unwrap();
-        assert!(hook < login.find("match login_cookie(&user) {").unwrap());
+        assert!(
+            hook < login
+                .find("match login_cookie(&user, &headers).await {")
+                .unwrap()
+        );
         let router_path = if hot { "src/lib.rs" } else { "src/main.rs" };
         let router = read(&root, router_path);
         assert_eq!(
@@ -113,9 +123,7 @@ fn the_saas_starter_is_wired_end_to_end() {
             router.find("\"/login/mfa\"").unwrap()
                 > router.find("\"/login\", rullst::routing::post").unwrap()
         );
-        assert!(
-            router.find("\"/account/security\"").unwrap() < router.find("csrf_middleware").unwrap()
-        );
+        assert!(!router.contains("csrf_middleware"));
         let main = read(&root, "src/main.rs");
         let reset = main.find("controllers::mfa::admin::run().await").unwrap();
         assert!(reset < main.find("rullst::artisan!(").unwrap());
@@ -236,10 +244,20 @@ fn the_password_sign_in_hook_goes_before_the_session_once() {
     // The registration keeps signing in directly.
     assert_eq!(hooked[register..].matches("mfa::second_step").count(), 0);
     let unrecognized = controller.replace(
-        "match login_cookie(&user) {\n        Ok(cookie) => redirect_with_cookie(\"/dashboard\"",
-        "match other(&user) {\n        Ok(cookie) => redirect_with_cookie(\"/dashboard\"",
+        "match login_cookie(&user, &headers).await {\n        Ok(cookie) => redirect_with_cookie(\"/dashboard\"",
+        "match other(&user, &headers).await {\n        Ok(cookie) => redirect_with_cookie(\"/dashboard\"",
     );
     assert_eq!(edits::login_hook(&unrecognized).unwrap(), None);
+    // A starter made before the session registry is still recognized.
+    let earlier = controller.replace(
+        "match login_cookie(&user, &headers).await {",
+        "match login_cookie(&user) {",
+    );
+    let hooked_earlier = edits::login_hook(&earlier).unwrap().unwrap();
+    assert!(
+        hooked_earlier.find("mfa::second_step").unwrap()
+            < hooked_earlier.find("match login_cookie(&user) {").unwrap()
+    );
 }
 
 #[test]
@@ -291,7 +309,7 @@ fn the_provider_sign_in_hook_clears_the_provider_cookie() {
     assert!(
         hooked.find("mfa::second_step").unwrap()
             < hooked
-                .find("let session = match session_cookie(&user)")
+                .find("let session = match session_cookie(&user, headers)")
                 .unwrap()
     );
     syn::parse_file(&hooked).unwrap();
@@ -304,8 +322,13 @@ fn the_provider_sign_in_hook_clears_the_provider_cookie() {
 
 #[test]
 fn generated_sources_are_panic_free_and_csp_strict() {
-    for accounts in [Accounts::Starter, Accounts::Contract] {
-        for (path, source) in render_sources(accounts) {
+    for (accounts, registered) in [
+        (Accounts::Starter, true),
+        (Accounts::Starter, false),
+        (Accounts::Contract, false),
+    ] {
+        for (path, source) in render_sources(accounts, registered) {
+            let source = source.as_str();
             syn::parse_file(source).unwrap();
             let production = source.split("#[cfg(test)]").next().unwrap();
             for forbidden in [

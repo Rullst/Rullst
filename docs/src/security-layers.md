@@ -39,9 +39,9 @@ contracts, and both crates are in the Core [maturity tier](maturity.md).
 
 | Starter | Mounted for you | Not mounted |
 | :--- | :--- | :--- |
-| Every starter | `Server` applies the Core baseline in **staging and production**: secure headers, CORS (only when `cors_allow_origins` is set), WAF and CSRF. PII masking stays off unless `enable_pii_masking = true`. In **development** the baseline adds only CORS (and machine-endpoint authentication when configured) and a report-only WAF that logs what it would refuse. | No `rullst-security` middleware layer (RASP, DLP, `SecureHeadersLayer`, honeypot, CSWSH, schema guard) is mounted by any starter. No global rate limit or Traffic Shield is configured. Trusted proxies are configured only when `cargo rullst deploy` adds its Caddy proxy address to `[security] trusted_proxies`. |
-| Blank (full stack), SaaS (and the LMS and Blog examples) | Core `csrf_middleware` and `headers_middleware` on the router too, so development behaves like production. | — |
-| API (Blank JSON API) | Core `headers_middleware` on the router. The example write route `POST /api/messages` is an exact machine endpoint (`Server::with_machine_endpoints`): clients send `Authorization: Bearer <API_TOKEN>` (a random value in the generated `.env`), requests with cookies are refused, and startup fails without `API_TOKEN`. | No CSRF layer on the router. In staging and production the `Server` baseline requires CSRF on every other write route, so add each new JSON write route to `machine_endpoints()` in `src/main.rs` (a `{id}` segment covers routes such as `PUT /api/posts/{id}`), or send the double-submit token from a browser. `make:controller --api` prints these lines. |
+| Every starter | `Server` applies the Core baseline: secure headers, CORS (only when `cors_allow_origins` is set), WAF and CSRF, as one middleware (two when CORS is set). PII masking stays off unless `enable_pii_masking = true`. Since 13.0.0-alpha.6 CSRF and the secure headers apply in **every environment**, development, test and the hot-reload server of `cargo rullst dev` included; outside staging and production `Strict-Transport-Security` is sent only over HTTPS, and the WAF only logs, in development, what it would refuse (in test it does not run). | No `rullst-security` middleware layer (RASP, DLP, `SecureHeadersLayer`, honeypot, CSWSH, schema guard) is mounted by any starter. No global rate limit or Traffic Shield is configured. Trusted proxies are configured only when `cargo rullst deploy` adds its Caddy proxy address to `[security] trusted_proxies`. |
+| Blank (full stack), SaaS | Since 13.0.0-alpha.6 no CSRF or header layer of their own: `Server` applies both in every environment. Projects created earlier add `csrf_middleware` and `headers_middleware` to the router, which `cargo rullst upgrade` reports (`V13-ROUTER-BASELINE-LAYERS`). The LMS and Blog examples keep theirs. | — |
+| API (Blank JSON API) | No header layer of its own since 13.0.0-alpha.6 (`Server` applies the headers). The example write route `POST /api/messages` is an exact machine endpoint (`Server::with_machine_endpoints`): clients send `Authorization: Bearer <API_TOKEN>` (a random value in the generated `.env`), requests with cookies are refused, and startup fails without `API_TOKEN`. | No CSRF layer on the router. The `Server` baseline requires CSRF on every other write route, in development too since 13.0.0-alpha.6, so add each new JSON write route to `machine_endpoints()` in `src/main.rs` (a `{id}` segment covers routes such as `PUT /api/posts/{id}`), or send the double-submit token from a browser. `make:controller --api` prints these lines. |
 | SaaS (and the LMS example) | A Core token-bucket limit on the credential routes; the SaaS `[security]` section exempts the exact signed billing webhook path from CSRF. The LMS example uses `rullst_security::{UserContext, RbacGuard}`. | Login jail, MFA (add it with `make:mfa`), audit chain. |
 
 Every generated `Cargo.toml` already lists `rullst-security`, so adding a layer
@@ -145,10 +145,16 @@ Leave these out unless you have a specific reason:
 | Headers | HSTS (one year with `includeSubDomains`, no `preload`, by default), `X-Frame-Options: DENY`, `nosniff`, `X-XSS-Protection: 0`, `Referrer-Policy`, `Permissions-Policy`, COOP, CORP, COEP, CSP | The same set, from the config; the default HSTS value is the same |
 | Existing values | Adds each header only when the response has none; leaves all of them alone after an inner `SecureHeadersLayer` | Replaces the handler's values with its configured ones |
 | `Cache-Control` | Adds `no-store` when the handler set none | Not touched |
-| CSP nonce | `CspNonce` request extension | Same `CspNonce`, reused when one already exists |
+| CSP nonce | `CspNonce` request extension; the header carries it only for a response that can be an HTML document (since 13.0.0-alpha.6) | Same `CspNonce`, reused when one already exists |
 
 Both layers reuse one `CspNonce` per request, so templates render a nonce that
-matches the final header. The Core baseline is a fallback: it fills in a
+matches the final header. Since 13.0.0-alpha.6 the Core baseline renders the
+nonce into the policy only for a response whose `Content-Type` is `text/html`
+or `application/xhtml+xml`, or that has none (a browser may sniff it); any
+other response (JSON, plain text, images, files) gets the same policy without
+a nonce, computed once: the configured `csp` when it has no `{NONCE}`,
+otherwise the default directives with `script-src 'self'` and
+`style-src 'self'`, which no inline script or style can satisfy. The Core baseline is a fallback: it fills in a
 security header only when the handler or an inner layer has not set it, so an
 **explicit value set by the application wins over the baseline**.
 `SecureHeadersLayer` marks its responses with
@@ -285,7 +291,7 @@ in the first place.
 
 | Control | Owner | Reduces | Mechanism | Does not protect against |
 | :--- | :--- | :--- | :--- | :--- |
-| Double-submit CSRF | Core | Cross-site form and fetch writes using ambient cookies | `rullst_csrf` cookie must match `X-CSRF-Token` or the `_token` form field, compared in constant time. A `GET` for a static file never mints the token; it only reuses an existing cookie's. Static files are the paths below `[security]` `csrf_static_prefixes` (default `/static/`, `/.well-known/`) and the exact `csrf_static_paths` (default `/favicon.ico`, `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest`, `/sw.js`); since 13.0.0-alpha.6 a file extension no longer counts, so a dynamic `/report.json` page gets a token ([static files and the CSRF token](#static-files-and-the-csrf-token)) | State changes in `GET` handlers; a sibling subdomain that can set cookies; an XSS bug that reads the token; WebSocket upgrades |
+| Double-submit CSRF | Core | Cross-site form and fetch writes using ambient cookies; since 13.0.0-alpha.6 BREACH recovery of the token from compressed pages ([compressed pages](#compressed-pages-and-breach)) | `rullst_csrf` cookie must match `X-CSRF-Token` or the `_token` form field, which carry the token masked per response (`CsrfToken::as_str()`) or the cookie value itself, compared in constant time. A `GET` for a static file never mints the token; it only reuses an existing cookie's. Static files are the paths below `[security]` `csrf_static_prefixes` (default `/static/`, `/.well-known/`) and the exact `csrf_static_paths` (default `/favicon.ico`, `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest`, `/sw.js`); since 13.0.0-alpha.6 a file extension no longer counts, so a dynamic `/report.json` page gets a token ([static files and the CSRF token](#static-files-and-the-csrf-token)) | State changes in `GET` handlers; a sibling subdomain that can set cookies; an XSS bug that reads the token; WebSocket upgrades |
 | Exact machine endpoints | Core | Webhook and API routes that must skip browser CSRF | Exact method and path, authenticated (bearer digest, signed-webhook, per-resource address-token or mTLS verifier) before the CSRF exemption applies | A weak verifier you supply; replay unless your verifier checks freshness; an unsigned address-token body, which the handler must confirm at the source |
 | Trusted-proxy resolution | Core | Spoofed `X-Forwarded-For` choosing the client identity | Forwarded headers read only from listed proxy networks, right to left | A listed proxy that forwards client headers unchanged; any host inside a listed network |
 | Tenant context | Core | Client-chosen tenant headers | Only tenant context inserted by your authentication middleware is used | Missing ownership checks in handlers |
@@ -342,6 +348,38 @@ paths now gets the `rullst_csrf` cookie when the visitor has none, unless
 its response may be stored by shared caches (`Cache-Control: public`), which
 never carries the cookie. The settings change only token issuance:
 `POST`, `PUT`, `PATCH` and `DELETE` need the token on every path.
+
+### Compressed pages and BREACH
+
+BREACH recovers a secret from a compressed HTTPS response when the same
+response also shows text the attacker chooses (a search term, a form value
+sent back with an error): the attacker makes the victim's browser send
+guesses and watches how many bytes each compressed response takes, because
+a guess that matches the secret compresses better. It needs the secret to be
+the same in every response.
+
+Since 13.0.0-alpha.6 the CSRF token is never the same twice in a page.
+`CsrfToken::as_str()` returns `mask || (token XOR mask)` in URL-safe base64,
+with a fresh random mask from the operating system for every request, so two
+responses embed different values (86 characters for the generated
+32-character token) that both unmask to the `rullst_csrf` cookie. The
+middleware unmasks a `_token` field or `X-CSRF-Token` header and compares it
+with the cookie in constant time; it still accepts the cookie value itself,
+for clients that read the cookie and send it in the header, and nothing
+else. The cookie is unchanged. Code that reads the cookie to render a form
+(the `get_csrf_token` helper that `make:auth` generated before alpha.6)
+should pass the value through `rullst::security::mask_csrf_token`;
+`cargo rullst upgrade` reports it (`V13-CSRF-COOKIE-IN-PAGE`).
+
+That is why the `Caddyfile` that `cargo rullst deploy` writes compresses
+pages (`encode zstd gzip`) since 13.0.0-alpha.6. Masking covers the CSRF
+token only. Any other secret an application puts in a compressed page next
+to attacker-controlled input stays exposed: an API key or session value
+printed into a page, a reset or invitation token shown on a page that also
+echoes a query parameter, a personal value reflected beside a search box.
+Do not put such secrets in pages; when one must be there, serve that route
+uncompressed (exclude it from `encode` with a path matcher), mask it per
+response the same way, or keep attacker-chosen text out of the response.
 
 ## What none of these layers do
 

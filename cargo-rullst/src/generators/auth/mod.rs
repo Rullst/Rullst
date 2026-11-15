@@ -4,6 +4,7 @@ pub mod controllers;
 pub mod mfa;
 pub mod models;
 pub(crate) mod passwords;
+pub(crate) mod sessions;
 pub(crate) mod users_table;
 pub mod views;
 
@@ -57,8 +58,10 @@ pub(crate) fn scaffold_auth() -> Result<bool, Box<dyn std::error::Error>> {
     let root_module = project_root_module()?;
     let manifest_path = Path::new("Cargo.toml");
     let manifest = fs::read_to_string(manifest_path)?;
-    // `mail` sends the password reset links and password-changed notices.
-    let updated_manifest = ensure_rullst_features(&manifest, &["orm", "auth", "mail"])?;
+    // `mail` sends the password reset links and password-changed notices;
+    // the session registry keeps the logins in the application's database.
+    let registry = sessions::registry_feature(&manifest)?;
+    let updated_manifest = ensure_rullst_features(&manifest, &["orm", "auth", "mail", registry])?;
 
     println!(
         "{}",
@@ -71,6 +74,7 @@ pub(crate) fn scaffold_auth() -> Result<bool, Box<dyn std::error::Error>> {
     let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
     models::write_user_model_and_migration(&users, &timestamp)?;
     passwords::generate_password_flows(&timestamp)?;
+    sessions::generate_sessions_migration(&timestamp)?;
     controllers::generate_auth_controllers()?;
     views::generate_auth_views()?;
     fs::write(manifest_path, updated_manifest)?;
@@ -99,6 +103,9 @@ pub(crate) fn scaffold_auth() -> Result<bool, Box<dyn std::error::Error>> {
         "👉 Mount the login/register/logout routes behind the CSRF and security baseline, and protect private routes and POST /logout/everywhere (logout_everywhere) with auth_middleware."
     );
     println!(
+        "👉 Mount sessions_controller's GET /sessions (sessions_view), POST /sessions/revoke (revoke_session) and POST /sessions/revoke-others (revoke_other_sessions) behind auth_middleware and CSRF: the account's devices, each of which can be signed out. Sign-ins are rows of rullst_auth_sessions, which its migration creates."
+    );
+    println!(
         "👉 Mount password_controller's /password/forgot and /password/reset (GET view, POST submit) and, behind auth_middleware, /password/change; put credential_rate_limit on the POST routes."
     );
     println!(
@@ -106,10 +113,10 @@ pub(crate) fn scaffold_auth() -> Result<bool, Box<dyn std::error::Error>> {
     );
     match users {
         UsersTable::Create => println!(
-            "👉 Run `cargo rullst db:migrate` to create the users and password_reset_tokens tables. Call User::revoke_sessions when you deactivate an account."
+            "👉 Run `cargo rullst db:migrate` to create the users, password_reset_tokens and rullst_auth_sessions tables. Call User::revoke_sessions when you deactivate an account."
         ),
         UsersTable::ExtendStarter(_) => println!(
-            "👉 Run `cargo rullst db:migrate` to add the account columns to users (existing rows keep their data and get a placeholder user-<id>@no-email.invalid email and no password) and create password_reset_tokens. Call User::revoke_sessions when you deactivate an account."
+            "👉 Run `cargo rullst db:migrate` to add the account columns to users (existing rows keep their data and get a placeholder user-<id>@no-email.invalid email and no password) and create password_reset_tokens and rullst_auth_sessions. Call User::revoke_sessions when you deactivate an account."
         ),
     }
     Ok(true)
@@ -175,10 +182,19 @@ fn has_migration_runner(roots: &[String]) -> bool {
             .any(|source| source.contains("get_migrations("))
 }
 
+/// The "Your devices" controller, added in 13.0.0-alpha.6. It is not part
+/// of [`AUTH_OUTPUTS`], so a SaaS starter or scaffold made before it still
+/// counts as scaffolded.
+const SESSIONS_OUTPUT: &str = "src/controllers/sessions_controller.rs";
+
 /// Refuses existing account files and reset-token migrations, then plans the
 /// users table.
 fn reject_existing_outputs() -> Result<UsersTable, IoError> {
-    let outputs = AUTH_OUTPUTS.map(PathBuf::from);
+    let outputs = AUTH_OUTPUTS
+        .into_iter()
+        .chain([SESSIONS_OUTPUT])
+        .map(PathBuf::from)
+        .collect::<Vec<_>>();
     reject_existing(
         "authentication scaffold",
         &outputs,
@@ -190,6 +206,16 @@ fn reject_existing_outputs() -> Result<UsersTable, IoError> {
             ErrorKind::AlreadyExists,
             format!(
                 "refusing to add a second password_reset_tokens migration: {} already creates it",
+                existing.display()
+            ),
+        ));
+    }
+    let sessions = existing_migrations(&[sessions::MIGRATION_SUFFIX.to_string()])?;
+    if let Some(existing) = sessions.first() {
+        return Err(IoError::new(
+            ErrorKind::AlreadyExists,
+            format!(
+                "refusing to add a second rullst_auth_sessions migration: {} already creates it",
                 existing.display()
             ),
         ));

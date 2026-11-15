@@ -6,7 +6,8 @@ fn oauth_feature_exposes_connect_crate() {
 
 /// The facade's own dev-dependency on `rullst-connect` enables Axum for every
 /// test build, so the manifest is the only place where a facade-only `oauth`
-/// application can lose the callback extractor.
+/// application can lose the callback extractor. `tls` makes `Server`
+/// start-up install aws-lc-rs for the providers' HTTPS clients.
 #[test]
 fn oauth_feature_enables_the_connect_axum_integration() {
     let manifest: toml::Table = toml::from_str(include_str!("../Cargo.toml")).unwrap();
@@ -15,7 +16,10 @@ fn oauth_feature_enables_the_connect_axum_integration() {
         .iter()
         .filter_map(toml::Value::as_str)
         .collect::<Vec<_>>();
-    assert_eq!(oauth, ["dep:rullst-connect", "rullst-connect/rullst"]);
+    assert_eq!(
+        oauth,
+        ["dep:rullst-connect", "tls", "rullst-connect/rullst"]
+    );
 }
 
 /// Each login-challenge store feature selects only its own Connect driver.

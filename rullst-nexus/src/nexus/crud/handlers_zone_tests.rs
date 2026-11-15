@@ -94,16 +94,19 @@ async fn the_new_form_names_the_panel_zone() {
 
 #[tokio::test]
 async fn the_edit_form_still_refuses_a_key_that_names_no_record() {
-    let (status, html) = body(
-        nexus_edit_form(
-            state(events()),
-            Path(("events".to_owned(), "+7".to_owned())),
-            None,
-            brasilia(),
-        )
-        .await,
+    let response = nexus_edit_form(
+        state(events()),
+        Path(("events".to_owned(), "+7".to_owned())),
+        None,
+        brasilia(),
     )
     .await;
+    // An htmx fragment, like the form: it keeps the page's nonce CSP.
+    assert_eq!(
+        response.headers()[axum::http::header::CONTENT_TYPE],
+        "text/html; charset=utf-8"
+    );
+    let (status, html) = body(response).await;
     assert_eq!(
         (status, html.as_str()),
         (StatusCode::NOT_FOUND, "Record not found.")

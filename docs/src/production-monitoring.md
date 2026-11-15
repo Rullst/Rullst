@@ -7,12 +7,16 @@ monitoring endpoint to the application itself:
 
 ```text
 GET /_rullst/monitor/v1
+GET /_rullst/monitor/v2   # since 13.0.0-alpha.6
 ```
 
 It answers a JSON document, versioned as `rullst.monitor.v1`, with request
 rates and latency per route pattern, status classes, queue depth and worker
-activity, possible N+1 queries and the process radar. It never contains
-database rows, request data or configuration. It is phase 1 of the Studio
+activity, possible N+1 queries and the process radar. Since 13.0.0-alpha.6,
+`/_rullst/monitor/v2` answers `rullst.monitor.v2`: the same fields plus
+[sampled request traces and the security radar](#version-2-traces-and-the-security-radar).
+Both paths are mounted together and share the credentials and limits below.
+Neither contains database rows, request data or configuration. It is phase 1 of the Studio
 production monitor delivered in
 [13.0.0-alpha.3](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha3---2026-10-23);
 phase 2 is the [standalone Studio](#watch-your-projects-from-studio) on your
@@ -305,12 +309,70 @@ values, error messages, environment variables or configuration values. Route
 patterns and queue names are chosen by your code, so keep personal data out of
 them.
 
+### Version 2: traces and the security radar
+
+`GET /_rullst/monitor/v2` (since 13.0.0-alpha.6) answers every field above
+with `"schema": "rullst.monitor.v2"`, plus two sections:
+
+```json
+{
+  "traces": {
+    "sample_limit": 50,
+    "sampled_total": 1834,
+    "requests": [
+      { "at": 1792648790, "method": "GET", "route": "/orders/{id}", "status": 503,
+        "duration_ms": 1250.5, "db_operations": 4, "n_plus_one": true }
+    ],
+    "spans": {
+      "kept": 120,
+      "kinds": [ { "kind": "sql", "count": 96, "total_us": 48210, "max_us": 2100, "last_at": 1792648788 } ]
+    }
+  },
+  "security": {
+    "events_total": 17,
+    "active_bans": 2,
+    "counters": { "rate_limit_blocks": 40, "login_jail_bans": 3, "honeypot_traps": 2, "…": 0 },
+    "events": [ { "type": "LOGIN_JAIL_TRIGGERED", "at": 1792648795 } ]
+  }
+}
+```
+
+- **Request traces** are summaries of single requests, newest first, at most
+  50: the time, the normalized method and matched route pattern (the same
+  labels as `http.routes`), the status, the duration to the response headers
+  in milliseconds (rounded to thousandths), the outermost ORM operations the
+  request started and whether it repeated one at least the N+1 threshold. They
+  are sampled: at most one ordinary request every 100 ms, and separately at
+  most one outlier (a `5xx` or a request taking at least one second) every
+  10 ms, so slow and failing requests stay visible under load.
+  `sampled_total` counts the summaries kept since start.
+- **Span totals** summarize the process's
+  [`SpanCollector`](https://docs.rs/rullst-core/latest/rullst_core/telemetry_spans/)
+  (records your code submits): count, total and longest duration and latest
+  time per kind (`http`, `sql`, `ai`, `job`, everything else as `other`).
+  Span names are free text that may contain SQL or paths, so they are never
+  sent.
+- **Security radar** reads the process's
+  [`SecurityStore`](https://docs.rs/rullst-core/latest/rullst_core/security/struct.SecurityStore.html),
+  which the `rullst-security` layers record into: every counter (rate-limit
+  and lockout refusals, Login Jail lockouts, honeypot and deception hits,
+  RBAC denials, refused cross-site WebSockets, schema violations, blocked
+  prompt injections and the rest), the number of active honeypot bans, the
+  events recorded since start (`events_total`, which keeps counting after the
+  buffer of 50 drops the oldest) and the type and time of each kept event
+  (`RASP_PAYLOAD_INTERCEPTED`, `LOGIN_JAIL_TRIGGERED`, …). An event's
+  details and client address stay on the server, like the banned addresses.
+
+Version 1 is unchanged, so existing clients keep working; read version 2
+when you want the new sections.
+
 ## Watch your projects from Studio
 
 The standalone Studio runs on your machine, without an application process,
 and shows the document of each project you add: overview (radar, request
-rate, error rate, latency), routes, queues and N+1 findings, with a project
-switcher in the header. It only connects outwards to your projects; nothing
+rate, error rate, latency), routes, queues, N+1 findings and, from an
+application on 13.0.0-alpha.6 or later, request traces and the security
+radar, with a project switcher in the header. It only connects outwards to your projects; nothing
 new is collected or stored on the servers.
 
 ```bash
@@ -339,14 +401,19 @@ AI and API playgrounds and migration pages do not exist in this mode.
 
 On the **Projects** page, enter a name, the project's base URL and one of the
 tokens of its `RULLST_MONITOR_TOKENS`; give each machine its own token, so you
-can revoke it alone. Studio reads `<base URL>_rullst/monitor/v1`.
+can revoke it alone. Studio reads `<base URL>_rullst/monitor/v2`; when the
+application answers `404` there (Rullst before 13.0.0-alpha.6), it reads
+`<base URL>_rullst/monitor/v1` instead and tries version 2 again after ten
+minutes. The **Traces** and **Security** pages then say that the application
+serves version 1 only.
 
 - The base URL must use `https://`, or `http://` to a loopback address such as
   `http://127.0.0.1:9000` (an SSH tunnel). User information, query strings and
   fragments are refused. Certificates are always validated.
 - The token is sent only as `Authorization: Bearer` to that origin. Studio
-  follows no redirect (a redirect is shown as a status), ignores
-  `HTTP_PROXY`/`HTTPS_PROXY`, and reads at most 1 MiB within 5 seconds.
+  follows no redirect (a redirect is shown as a status), connects directly
+  unless you [choose a proxy](#through-a-proxy), and reads at most 1 MiB
+  within 5 seconds.
   Anything else (an unreachable host, `401`, `426`, an invalid document) is a
   status on the page, never the remote body.
 - Every value from a project is HTML-escaped: a hostile or compromised
@@ -356,7 +423,7 @@ can revoke it alone. Studio reads `<base URL>_rullst/monitor/v1`.
 
 | File | Location (Linux and macOS / Windows) | Contents |
 | --- | --- | --- |
-| Project list | `$XDG_CONFIG_HOME/rullst/studio/projects.json` (default `~/.config/…`) / `%APPDATA%\rullst\studio\projects.json` | Names, base URLs, encrypted tokens |
+| Project list | `$XDG_CONFIG_HOME/rullst/studio/projects.json` (default `~/.config/…`) / `%APPDATA%\rullst\studio\projects.json` | Names, base URLs, encrypted tokens, Studio settings |
 | Key | `$XDG_DATA_HOME/rullst/studio/projects.key` (default `~/.local/share/…`) / `%LOCALAPPDATA%\rullst\studio\projects.key` | 32 random bytes |
 | History | `$XDG_DATA_HOME/rullst/studio/history.sqlite` / `%LOCALAPPDATA%\rullst\studio\history.sqlite` | Aggregates of watched projects and fired alerts |
 
@@ -374,8 +441,9 @@ both files; the operating system keychain is not used.
 On the **Alerts** page, tick **Watch** for a project: while Studio runs, it
 reads that project every 60 seconds and keeps, per poll, only aggregates the
 document already contains: whether it answered, requests per second, window
-requests, 5xx rate, p95 latency, and the pending and failed totals of its
-queues. Routes, queue names and other labels are not stored. The **History**
+requests, 5xx rate, p95 and p99 latency, the pending and failed totals of its
+queues and, from a version 2 document, the security events recorded since
+start. Routes, queue names and other labels are not stored. The **History**
 page charts them for the last hour, day or week. Samples older than seven
 days, beyond 10,080 per project (a week at one per minute) and alerts beyond
 the newest 500 are deleted on every write; removing a project deletes its
@@ -388,8 +456,10 @@ Each project has alert rules, all off by default:
 | Unreachable | the project cannot be read (any status on the overview page) |
 | 5xx rate | the window's 5xx share reaches the percentage, with at least 20 requests in the window |
 | p95 latency | the window's p95 reaches the milliseconds |
+| p99 latency | the window's p99 reaches the milliseconds (since 13.0.0-alpha.6) |
 | Pending jobs | the pending jobs of all its queues reach the count |
 | Queue failures | this many jobs failed between two polls (a server restart, which resets the counters, never fires it) |
+| Security events | the application recorded this many security events between two polls (a version 2 document is needed; a restart never fires it; since 13.0.0-alpha.6) |
 
 A rule fires again for the same project only after its cool-down (15 minutes
 by default, 1 to 1,440). Alerts appear on the Alerts page, with a badge until
@@ -403,13 +473,43 @@ configure (Slack, Teams, a chat bot, your own receiver):
 
 The webhook URL is a secret like a token: it is encrypted in the project list
 and never shown again. It must be `https://` without user information. The
-post follows no redirect, ignores proxy variables and gives up after five
+post follows no redirect, uses the [proxy setting](#through-a-proxy) and gives up after five
 seconds; the outcome (`delivered`, `failed: HTTP 500`, `failed: timeout`…) is
 recorded on the alert, and it is not retried. Alert text is Studio's own
 wording with the project name and numbers, never labels from the remote
 document. Polling stops when Studio stops; for alerts around the clock, run
 `rullst-studio` on an always-on machine or keep using your existing uptime
 monitoring.
+
+### Desktop notifications
+
+Since 13.0.0-alpha.6, alerts can also appear as notifications of your
+operating system. On the **Settings** page (`/studio/settings`), tick
+**Show alerts as desktop notifications**, save, and press **Allow in this
+browser** once; the browser asks for permission for Studio's own origin
+(`http://127.0.0.1:5556`, which browsers treat as a secure context). Every
+Studio page then asks Studio for new notifications every 15 seconds and shows
+them through the browser's Notifications API; clicking one opens the Alerts
+page.
+
+- **What fires them:** the alert rules above, for watched projects. The text
+  is the alert's own (Studio's wording with the project name and numbers).
+- **Debounce:** a project is notified at most once per quiet period (10
+  minutes by default, 1 to 1,440). Alerts in between are held and counted:
+  the project's next notification mentions them, and when the period ends
+  without one, a summary notification does. This comes on top of each rule's
+  cool-down.
+- **Where it works:** a Studio page must be open in a browser (a background
+  tab is enough; browsers may then check about once a minute). Studio keeps
+  at most the newest 32 notifications, a page that opens later shows none of
+  the older ones, and several tabs show each notification once. The setting
+  is kept in the project list; the permission belongs to the browser and can
+  be revoked in its site settings.
+
+Studio uses the browser instead of a native notification library: it already
+serves its pages to your browser, the browser's permission prompt is the
+consent, and it works the same on Linux, macOS and Windows without system
+libraries or a background service.
 
 ### Reaching private servers
 
@@ -423,6 +523,38 @@ Studio does not open tunnels itself. Use the tool you already trust:
   production, so put the application's reverse proxy (with HTTPS) on the VPN
   address, or use `tailscale serve` to publish it over HTTPS, and add that
   `https://` URL. Restrict `/_rullst/monitor/` to the VPN range in the proxy.
+
+### Through a proxy
+
+Since 13.0.0-alpha.6, the **Proxy** section of the Settings page decides how
+Studio reaches your projects and webhooks:
+
+| Choice | Behaviour |
+| --- | --- |
+| Connect directly (default) | Proxy variables are ignored, as before. |
+| Use `HTTPS_PROXY` and `NO_PROXY` | The proxy of `HTTPS_PROXY` (or `https_proxy`) in the environment that started `rullst-studio`, except for the hosts of `NO_PROXY` (or `no_proxy`). Without `HTTPS_PROXY`, connections are direct. `HTTP_PROXY` is never used. |
+| Use this proxy | An `http://` or `https://` proxy URL saved in the project list, without a user name or password, and an optional exception list. |
+
+- Only `https://` connections use a proxy, as an HTTP `CONNECT` tunnel: the
+  proxy relays the TLS stream and sees the host and port, never the token,
+  the path or the document. Certificates are still validated against the
+  monitored host.
+- Plain `http://` connections, which Studio makes only to loopback (an SSH
+  tunnel), and connections to a loopback host (`localhost`, `127.0.0.0/8`,
+  `::1`) are always direct.
+- Exceptions use the `NO_PROXY` syntax: host names, which also match their
+  subdomains (a leading dot is optional), IP addresses, CIDR ranges such as
+  `10.0.0.0/8`, or `*` for every host, separated by commas or spaces (at
+  most 4,096 characters).
+- A proxy that needs a password can only come from `HTTPS_PROXY`
+  (`http://user:password@proxy:3128`); Studio never stores it, and the
+  Settings page shows only the proxy's scheme, host and port. SOCKS proxies
+  are not supported.
+- When the chosen proxy cannot be used (an invalid `HTTPS_PROXY`, for
+  example), Studio connects to nothing and every project shows "the proxy
+  setting cannot be used", instead of quietly connecting directly.
+- A change applies to the next read, without restarting Studio; a change of
+  `HTTPS_PROXY` needs a restart of `rullst-studio`.
 
 ## Limits
 
@@ -440,7 +572,9 @@ Studio does not open tunnels itself. Use the tool you already trust:
 Collection runs on every request once the monitor is mounted: it reads the
 matched route, takes a read lock on the route table, updates that route's
 counters under its own lock, and gives the request a scope in which ORM
-operations are counted. Measured on an 8-thread Linux machine in a release
+operations are counted. Trace sampling adds one atomic read per request; the
+summary buffer's lock is taken only for a kept request, at most about 110
+times a second. Measured on an 8-thread Linux machine in a release
 build (`cargo test --release -p rullst-core --lib monitor::overhead_tests --
 --ignored --nocapture --test-threads=1`, from a clone of the Rullst
 repository): a trivial Axum route took 0.72 µs per request without

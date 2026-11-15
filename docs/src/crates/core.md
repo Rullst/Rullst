@@ -262,7 +262,12 @@ remains separate.
   latency, status classes and response bytes per route pattern, registered
   queues, N+1
   fingerprints and the radar, never request data or configuration, and
-  requires TLS evidence in staging and production. See the
+  requires TLS evidence in staging and production. Since 13.0.0-alpha.6 it
+  also serves `GET /_rullst/monitor/v2`: the same document plus sampled
+  request summaries (route pattern, status, duration, ORM operations),
+  per-kind `SpanCollector` totals without span names, and the
+  `SecurityStore` counters with the type and time of recent events, without
+  their details or client addresses. See the
   [production monitoring guide](../production-monitoring.md).
 - **Trusted-proxy client resolution (v13):** `Server::trusted_proxies`
   mounts `security::TrustedProxyLayer` outside every other framework layer.
@@ -596,10 +601,13 @@ under (see
 TLS connections use `aws-lc-rs` as the rustls crypto provider. Core hashes
 with the pure-Rust `sha2` crate and, since 13.0.0-alpha.6, encrypts the
 recovery records of `storage-multipart` with the pure-Rust `aes-gcm` crate in
-an unchanged format; it does not depend on `ring`. With the `orm`,
-`storage-s3` or `telemetry` feature, `Server` start-up installs aws-lc-rs as the
-rustls process default before telemetry and the database pool build TLS
-clients, and so does the OTLP exporter before it builds its HTTP client. An
+an unchanged format; it does not depend on `ring`. With the `tls` feature
+(which `strict-postgres`, `strict-mysql`, `drivers-all`, `storage-s3` and
+`telemetry` enable, and so do the Rullst crates that make TLS connections),
+`Server` start-up installs aws-lc-rs as the rustls process default before
+telemetry and the database pool build TLS clients, and so does the OTLP
+exporter before it builds its HTTP client. Since 13.0.0-alpha.6 `orm` and
+`strict-sqlite` no longer build rustls: SQLite needs no TLS. An
 application that installs its own provider first keeps it. See
 [cryptography providers](../security-architecture.md#cryptography-providers).
 

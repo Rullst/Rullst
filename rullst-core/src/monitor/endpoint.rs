@@ -10,9 +10,11 @@
 use super::auth::ErasedAuthorizer;
 use super::collector::Collector;
 use super::payload::{Application, Document, Pending, QueueReport};
+use super::payload_v2::DocumentV2;
 use super::token::{Presented, TokenSet, presented};
 use super::{
-    MAX_MONITOR_QUEUES, MONITOR_PATH, Monitor, MonitorAccess, MonitorError, MonitorVerifiedTls,
+    MAX_MONITOR_QUEUES, MONITOR_PATH, MONITOR_V2_PATH, Monitor, MonitorAccess, MonitorError,
+    MonitorVerifiedTls,
 };
 use crate::config::Environment;
 use crate::queue::Queue;
@@ -96,15 +98,23 @@ impl Installed {
         }))
     }
 
-    /// Adds the monitor route. Call it before the framework layers, so they
-    /// wrap it like any application route.
+    /// Adds the monitor routes (both versions share the credentials and the
+    /// per-client limits). Call it before the framework layers, so they wrap
+    /// them like any application route.
     pub(crate) fn mount(&self, router: Router) -> Router {
-        router.route(
-            MONITOR_PATH,
-            axum::routing::get(serve)
-                .with_state(Arc::clone(&self.state))
-                .layer(axum::middleware::map_response(protect)),
-        )
+        router
+            .route(
+                MONITOR_PATH,
+                axum::routing::get(serve_v1)
+                    .with_state(Arc::clone(&self.state))
+                    .layer(axum::middleware::map_response(protect)),
+            )
+            .route(
+                MONITOR_V2_PATH,
+                axum::routing::get(serve_v2)
+                    .with_state(Arc::clone(&self.state))
+                    .layer(axum::middleware::map_response(protect)),
+            )
     }
 
     /// Adds the recording layer. Call it after the framework layers.
@@ -167,7 +177,26 @@ fn validate_queues(queues: &[(String, Arc<Queue>)]) -> Result<(), MonitorError> 
     Ok(())
 }
 
-async fn serve(State(state): State<Arc<EndpointState>>, request: Request) -> Response {
+/// The schema version a route serves.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Version {
+    V1,
+    V2,
+}
+
+async fn serve_v1(state: State<Arc<EndpointState>>, request: Request) -> Response {
+    serve(state, request, Version::V1).await
+}
+
+async fn serve_v2(state: State<Arc<EndpointState>>, request: Request) -> Response {
+    serve(state, request, Version::V2).await
+}
+
+async fn serve(
+    State(state): State<Arc<EndpointState>>,
+    request: Request,
+    version: Version,
+) -> Response {
     if is_cross_origin(request.headers()) {
         return refusal(StatusCode::FORBIDDEN);
     }
@@ -184,7 +213,16 @@ async fn serve(State(state): State<Arc<EndpointState>>, request: Request) -> Res
         return refusal;
     }
     let document = state.document().await;
-    match serde_json::to_vec(&document) {
+    let encoded = match version {
+        Version::V1 => serde_json::to_vec(&document),
+        Version::V2 => serde_json::to_vec(&DocumentV2::new(
+            document,
+            &state.collector,
+            &crate::telemetry_spans::global_span_collector().snapshot(),
+            crate::security::SecurityStore::global(),
+        )),
+    };
+    match encoded {
         Ok(body) => {
             let mut response = Response::new(Body::from(body));
             response.headers_mut().insert(

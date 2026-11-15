@@ -15,7 +15,10 @@ pub enum ExistingAccountPolicy {
 pub const EXISTING_ACCOUNT_POLICY: ExistingAccountPolicy = ExistingAccountPolicy::Refuse;
 
 /// The session of a provider sign-in: `auth_contract::sign_in_cookie`.
-pub(crate) async fn session_cookie(user: &ContractAccount) -> Result<String, String> {
+pub(crate) async fn session_cookie(
+    user: &ContractAccount,
+    _headers: &HeaderMap,
+) -> Result<String, String> {
     auth_contract::sign_in_cookie(user.id)
         .await
         .map_err(|error| error.to_string())
@@ -104,15 +107,18 @@ async fn create_account(provider: &str, profile: &ConnectUser, email: &str) -> R
 
 // ── Helpers the starter's auth controller provides; here for this flow ──
 
-/// The CSRF token of the `rullst_csrf` cookie, when the request has none in
-/// its extensions.
+/// The CSRF token of the `rullst_csrf` cookie, masked for this response
+/// (BREACH), when the request has none in its extensions.
 pub(crate) fn get_csrf_token(headers: &HeaderMap) -> String {
     headers
         .get(header::COOKIE)
         .and_then(|value| value.to_str().ok())
         .and_then(|cookies| {
             cookies.split(';').find_map(|cookie| {
-                cookie.trim().strip_prefix("rullst_csrf=").map(ToOwned::to_owned)
+                cookie
+                    .trim()
+                    .strip_prefix("rullst_csrf=")
+                    .and_then(rullst::security::mask_csrf_token)
             })
         })
         .unwrap_or_default()

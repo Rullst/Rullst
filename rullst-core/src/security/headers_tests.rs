@@ -289,3 +289,162 @@ async fn hsts_follows_the_configured_settings() {
     assert_eq!(hsts_for(86_400, false, false).await, "max-age=86400");
     assert_eq!(hsts_for(0, false, true).await, "max-age=0; preload");
 }
+
+/// The CSP and COEP the baseline sends for one `[security]` configuration.
+async fn policies_for(csp: &str, coep: &str) -> (String, String, String) {
+    let mut security = crate::config::SecurityConfig::default();
+    security.csp = csp.to_string();
+    security.coep = coep.to_string();
+    let app = Router::new()
+        .route(
+            "/",
+            get(|Extension(nonce): Extension<CspNonce>| async move {
+                axum::response::Html(nonce.to_string())
+            }),
+        )
+        .layer(axum::middleware::from_fn(headers_middleware))
+        .layer(Extension(security));
+    let response = app
+        .oneshot(Request::get("/").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let csp = response.headers()[header::CONTENT_SECURITY_POLICY]
+        .to_str()
+        .unwrap()
+        .to_string();
+    let coep = response.headers()["cross-origin-embedder-policy"]
+        .to_str()
+        .unwrap()
+        .to_string();
+    let body = axum::body::to_bytes(response.into_body(), 1024)
+        .await
+        .unwrap();
+    (csp, coep, String::from_utf8(body.to_vec()).unwrap())
+}
+
+#[tokio::test]
+async fn configured_policies_are_rendered_or_replaced_by_the_defaults() {
+    use super::headers::DEFAULT_CSP_TEMPLATE;
+
+    let (csp, coep, nonce) = policies_for("script-src 'nonce-{NONCE}'", "credentialless").await;
+    assert_eq!(csp, format!("script-src 'nonce-{nonce}'"));
+    assert_eq!(coep, "credentialless");
+    let (csp, _, _) = policies_for("default-src 'none'", "require-corp").await;
+    assert_eq!(csp, "default-src 'none'");
+    // A blank template, or one a header value cannot carry, gives the default
+    // policy; an invalid COEP gives `require-corp`.
+    for template in ["   ", "script-src 'self'\u{7f}"] {
+        let (csp, coep, nonce) = policies_for(template, "bad\nvalue").await;
+        assert_eq!(
+            csp,
+            DEFAULT_CSP_TEMPLATE.replace("{NONCE}", &nonce),
+            "{template:?}"
+        );
+        assert_eq!(coep, "require-corp");
+    }
+}
+
+#[test]
+fn a_plan_cache_lends_the_plan_of_its_first_configuration() {
+    use super::headers::PlanCache;
+    use std::borrow::Cow;
+
+    let cache = PlanCache::new();
+    let first = crate::config::SecurityConfig::default();
+    assert!(matches!(cache.plan(&first), Cow::Borrowed(_)));
+    assert!(matches!(cache.plan(&first.clone()), Cow::Borrowed(_)));
+    let changes: [fn(&mut crate::config::SecurityConfig); 5] = [
+        |config| config.csp = "default-src 'none'".to_string(),
+        |config| config.coep = "credentialless".to_string(),
+        |config| config.hsts_max_age_seconds = 60,
+        |config| config.hsts_include_subdomains = false,
+        |config| config.hsts_preload = true,
+    ];
+    for (index, change) in changes.into_iter().enumerate() {
+        let mut other = first.clone();
+        change(&mut other);
+        let plan = cache.plan(&other);
+        assert!(matches!(plan, Cow::Owned(_)), "change {index}");
+        assert_eq!(
+            format!("{:?}", plan.as_ref()),
+            format!("{:?}", super::headers::HeaderPlan::new(&other)),
+            "change {index}"
+        );
+    }
+}
+
+/// The CSP the baseline sends for a response of `content_type` (none: no
+/// `Content-Type`) under the `csp` template, and the request's nonce.
+async fn csp_of(csp: &str, content_type: Option<&'static str>) -> (String, String) {
+    let mut security = crate::config::SecurityConfig::default();
+    security.csp = csp.to_string();
+    let app = Router::new()
+        .route(
+            "/",
+            get(move |Extension(nonce): Extension<CspNonce>| async move {
+                let mut response = Response::new(Body::from(nonce.to_string()));
+                if let Some(content_type) = content_type {
+                    response
+                        .headers_mut()
+                        .insert(header::CONTENT_TYPE, HeaderValue::from_static(content_type));
+                }
+                response
+            }),
+        )
+        .layer(axum::middleware::from_fn(headers_middleware))
+        .layer(Extension(security));
+    let response = app
+        .oneshot(Request::get("/").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let csp = response.headers()[header::CONTENT_SECURITY_POLICY]
+        .to_str()
+        .unwrap()
+        .to_string();
+    let body = axum::body::to_bytes(response.into_body(), 1024)
+        .await
+        .unwrap();
+    (csp, String::from_utf8(body.to_vec()).unwrap())
+}
+
+#[tokio::test]
+async fn only_responses_that_can_be_documents_get_the_nonce_policy() {
+    use super::headers::{DEFAULT_CSP_TEMPLATE, render_csp_policy};
+
+    let static_policy = render_csp_policy(None, None);
+    for content_type in [
+        Some("text/html"),
+        Some("text/html; charset=utf-8"),
+        Some("TEXT/HTML"),
+        Some("application/xhtml+xml"),
+        None,
+    ] {
+        let (csp, nonce) = csp_of(DEFAULT_CSP_TEMPLATE, content_type).await;
+        assert_eq!(
+            csp,
+            DEFAULT_CSP_TEMPLATE.replace("{NONCE}", &nonce),
+            "{content_type:?}"
+        );
+    }
+    for content_type in [
+        "application/json",
+        "text/plain; charset=utf-8",
+        "image/svg+xml",
+        "text/htmlx",
+    ] {
+        let (csp, _) = csp_of(DEFAULT_CSP_TEMPLATE, Some(content_type)).await;
+        assert_eq!(csp, static_policy, "{content_type}");
+    }
+    // A template without a placeholder is the policy of every response.
+    let fixed = "default-src 'none'; frame-ancestors 'none'";
+    assert_eq!(csp_of(fixed, Some("application/json")).await.0, fixed);
+    assert_eq!(csp_of(fixed, Some("text/html")).await.0, fixed);
+    // A custom template with one gives other responses the static policy.
+    let custom = "script-src 'nonce-{NONCE}'";
+    let (csp, nonce) = csp_of(custom, Some("text/html")).await;
+    assert_eq!(csp, format!("script-src 'nonce-{nonce}'"));
+    assert_eq!(
+        csp_of(custom, Some("application/json")).await.0,
+        static_policy
+    );
+}

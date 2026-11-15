@@ -5,7 +5,8 @@
 //!
 //! Measured: the release binary size, a container image's size when one is
 //! named (`--image`), the idle resident memory of the app, the dependency
-//! count from `Cargo.lock`; with `--bench`, the app's CPU time and the bytes
+//! count from `Cargo.lock` and how many of those packages Cargo compiles
+//! ([`compiled`]); with `--bench`, the app's CPU time and the bytes
 //! it served during a bounded loopback load, per request; with
 //! `--page-weight`, the bytes and requests of a page and its same-origin
 //! resources on a first and a repeat visit ([`page`]). Estimated, and
@@ -27,6 +28,7 @@
 
 mod artifacts;
 mod budget;
+mod compiled;
 mod failure;
 mod load;
 mod options;
@@ -161,6 +163,7 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
             None => Metric::not_measured("bytes", unmeasured),
         },
         dependency_count: artifacts::dependency_count(&std::env::current_dir()?),
+        compiled_dependency_count: compiled::compiled_dependency_count(&std::env::current_dir()?),
     };
     let production = match &options.monitor_url {
         Some(url) => {

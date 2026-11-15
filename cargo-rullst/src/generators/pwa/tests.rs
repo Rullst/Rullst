@@ -127,7 +127,7 @@ fn the_blank_starter_gets_the_core_layout_and_its_own_files() {
         "    render_page_with_head(\n        &htmx,\n        \"en\",\n        \"Welcome to Rullst\",\n        crate::pwa::head(),\n        content,\n    )\n}"
     ));
     assert!(main.contains(
-        ".merge_axum(rullst::health::health_router())\n    // Service worker and offline page (cargo rullst make:pwa).\n    .merge_axum(crate::pwa::router().into_axum())\n    .layer(rullst::server::from_fn(rullst::security::headers_middleware))"
+        ".merge_axum(rullst::health::health_router())\n    // Service worker and offline page (cargo rullst make:pwa).\n    .merge_axum(crate::pwa::router().into_axum())\n}"
     ));
     // The blank starter ships its stylesheet, htmx and logo, so the worker stores them.
     let worker = read(&root, "src/pwa/sw.js");

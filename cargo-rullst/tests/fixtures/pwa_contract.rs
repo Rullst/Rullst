@@ -111,8 +111,13 @@ async fn asset_links_follow_the_project_setting() {
 
 #[tokio::test]
 async fn only_get_is_answered() {
-    // Development has no CSRF layer, so the method reaches the router.
-    let request = Request::post("/sw.js").body(Body::empty()).expect("POST request");
+    // With the CSRF token the method reaches the router, which answers
+    // only GET.
+    let request = Request::post("/sw.js")
+        .header(header::COOKIE, "rullst_csrf=pwacontracttoken")
+        .header("x-csrf-token", "pwacontracttoken")
+        .body(Body::empty())
+        .expect("POST request");
     let response = send(request, Environment::Development).await;
     assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
 }

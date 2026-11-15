@@ -98,7 +98,8 @@ fn the_saas_starter_gets_routes_link_store_identities_and_features() {
         .find("controllers::oauth::google::initialize()?;")
         .unwrap();
     assert!(router.find("fn router()").unwrap() < initialize && initialize < login);
-    assert!(router.find("csrf_middleware").unwrap() > callback);
+    // `Server` applies CSRF to every route; the router has no CSRF layer.
+    assert!(!router.contains("csrf_middleware"));
 
     let page = read(&root, "src/pages/auth.rs");
     let link = page
@@ -113,7 +114,12 @@ fn the_saas_starter_gets_routes_link_store_identities_and_features() {
     assert!(controller.contains(
         "pub const EXISTING_ACCOUNT_POLICY: ExistingAccountPolicy = ExistingAccountPolicy::Refuse;"
     ));
-    assert!(controller.contains("rullst_auth::make_login_cookie_with_epoch("));
+    // The starter registers its sessions: a provider sign-in is one too.
+    assert!(
+        controller
+            .contains("crate::middlewares::auth_middleware::start_session(user, headers).await")
+    );
+    assert!(!controller.contains("make_login_cookie"));
     assert!(
         controller.contains("if profile.email_verified != Some(true) || !valid_email(&email) {")
     );

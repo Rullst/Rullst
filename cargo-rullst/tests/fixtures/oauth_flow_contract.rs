@@ -9,6 +9,14 @@ use tower::ServiceExt;
 
 type App = rullst::web::axum::Router;
 
+/// What the registered session of a sign-in cookie says.
+async fn session_claims(token: &str) -> rullst::auth::SessionClaims {
+    let key = rullst::auth::get_app_key().unwrap();
+    let now = rullst::auth::session_registry::unix_now().unwrap();
+    let registry = crate::middlewares::auth_middleware::sessions().await.unwrap();
+    registry.authenticate(token, &key, now).await.unwrap().claims()
+}
+
 /// Each request comes from its own client, so the per-client sign-in budget
 /// (10 a minute) applies only where a test asks for it.
 static NEXT_PEER: std::sync::atomic::AtomicU16 = std::sync::atomic::AtomicU16::new(1);
@@ -157,9 +165,14 @@ async fn generated_oauth_flow_contract() {
     for migration in crate::migrations::get_migrations() {
         migration.up().await.unwrap();
     }
-    let key = rullst::auth::get_app_key().unwrap();
-    let router = crate::router().unwrap();
-    let app = router.as_axum();
+    // `Server` adds CSRF and the secure headers to the router; so does this.
+    let router = rullst::security::apply_security_baseline(
+        crate::router().unwrap().into_axum(),
+        rullst::config::RullstConfig::global().security.clone(),
+        rullst::config::Environment::Test,
+    )
+    .unwrap();
+    let app = &router;
     let login = get(app, "/login", &[]).await;
     let page = String::from_utf8(
         rullst::web::axum::body::to_bytes(login.into_body(), 1 << 20).await.unwrap().to_vec(),
@@ -170,7 +183,7 @@ async fn generated_oauth_flow_contract() {
     }
 
     // A first sign-in creates a password-less account linked to the subject,
-    // and its session cookie carries the account's current epoch.
+    // and its registered session carries the account's current epoch.
     let (challenge, callback) = begin(app, None).await;
     let response = get(app, &callback, &[&challenge]).await;
     let token = signed_in(&response, "/dashboard");
@@ -178,7 +191,7 @@ async fn generated_oauth_flow_contract() {
     assert_eq!(account.password_hash, None);
     assert_eq!(account.oauth_provider.as_deref(), Some("google"));
     assert_eq!(account.session_epoch, 0);
-    let claims = rullst::auth::decrypt_session_claims(&token, &key).unwrap();
+    let claims = session_claims(&token).await;
     assert_eq!(claims.user_id, account.id);
     assert_eq!(claims.epoch, 0);
     assert!(account.accepts_session(&claims));
@@ -196,7 +209,7 @@ async fn generated_oauth_flow_contract() {
     User::revoke_sessions(account.id).await.unwrap();
     let (challenge, callback) = begin(app, Some("/password/change")).await;
     let token = signed_in(&get(app, &callback, &[&challenge]).await, "/password/change");
-    let claims = rullst::auth::decrypt_session_claims(&token, &key).unwrap();
+    let claims = session_claims(&token).await;
     assert_eq!((claims.user_id, claims.epoch), (account.id, 1));
     assert_eq!(users().await, 1);
     // The cookie issued before the revocation no longer counts.
@@ -271,7 +284,7 @@ async fn generated_oauth_flow_contract() {
             get(app, &callback, &[&challenge]).await
         };
         let token = signed_in_with(&response, provider, "/password/change");
-        let claims = rullst::auth::decrypt_session_claims(&token, &key).unwrap();
+        let claims = session_claims(&token).await;
         assert_eq!(claims.user_id, account.id);
         assert_eq!(OAuthIdentity::user_id(provider, subject).await.unwrap(), Some(account.id));
         // A verified email of no account creates a password-less account.
@@ -334,6 +347,16 @@ async fn generated_oauth_flow_contract() {
         ..User::default()
     };
     owner.save().await.unwrap();
+    // The owner's two signed-in devices.
+    let registry = crate::middlewares::auth_middleware::sessions().await.unwrap();
+    let key = rullst::auth::get_app_key().unwrap();
+    let now = rullst::auth::session_registry::unix_now().unwrap();
+    let mut devices = Vec::new();
+    for _ in 0..2 {
+        let login = rullst::auth::session_registry::NewSession::new(owner.id, 0);
+        devices.push(registry.create_session(&login, &key, now).await.unwrap().token().to_owned());
+    }
+    assert_eq!(registry.list_sessions(owner.id, now).await.unwrap().len(), 2);
     let verified = profile("sub-owner", "Owner@Example.test", Some(true));
     assert!(matches!(
         resolve_account("google", &verified, ExistingAccountPolicy::Refuse).await,
@@ -350,6 +373,17 @@ async fn generated_oauth_flow_contract() {
         OAuthIdentity::user_id("google", "sub-owner").await.unwrap(),
         Some(owner.id)
     );
+    // Its sessions were deleted with the password: revoked and gone from
+    // "Your devices".
+    assert!(registry.list_sessions(owner.id, now).await.unwrap().is_empty());
+    for device in &devices {
+        assert_eq!(
+            registry.authenticate(device, &key, now).await.err(),
+            Some(rullst::auth::session_registry::SessionRegistryError::Revoked)
+        );
+        let session = format!("rullst_session={device}");
+        assert_eq!(get(app, "/dashboard", &[&session]).await.status(), StatusCode::SEE_OTHER);
+    }
 }
 
 #[test]

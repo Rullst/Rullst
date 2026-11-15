@@ -1,9 +1,10 @@
 //! Routes of the remote mode. Only remote pages exist here: the data browser,
 //! `.env` viewer, AI and API playgrounds and migration pages are not mounted.
 
-use super::client::MonitorClient;
+use super::client::{FetchError, FetchLimits, MonitorClient};
 use super::pages::{self, Chrome, Page};
 use super::projects::{Project, ProjectError, ProjectStore};
+use super::proxy::{ProxyPlan, ProxySettings};
 use crate::access::VerifiedLocalStudioAccess;
 use axum::Router;
 use axum::extract::{DefaultBodyLimit, Extension, Form, Query, State};
@@ -11,7 +12,7 @@ use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use serde::Deserialize;
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError, RwLock};
 
 /// Largest accepted form body.
 const MAX_FORM_BYTES: usize = 8 * 1024;
@@ -19,16 +20,54 @@ const MAX_FORM_BYTES: usize = 8 * 1024;
 /// Shared state of the remote Studio.
 pub(crate) struct RemoteState {
     pub(crate) store: ProjectStore,
-    pub(crate) client: MonitorClient,
+    /// Replaced when the proxy setting changes; read it with [`Self::client`].
+    pub(crate) client: RwLock<MonitorClient>,
+    /// Bounds of each read of a project.
+    pub(crate) limits: FetchLimits,
     /// Random per process; required by every form that changes state.
     pub(crate) form_token: String,
     pub(crate) monitoring: super::monitoring::Monitoring,
     /// The local history, when its database could be opened.
     pub(crate) history: Option<Arc<super::history::History>>,
-    /// Webhook delivery, when the HTTP client could be created.
-    pub(crate) webhooks: Option<super::webhook::WebhookClient>,
+    /// Webhook delivery, when the HTTP client could be created; read it
+    /// with [`Self::webhooks`].
+    pub(crate) webhooks: RwLock<Option<super::webhook::WebhookClient>>,
     /// How often watched projects are read.
     pub(crate) poll_interval: std::time::Duration,
+    /// Desktop notifications waiting for an open page.
+    pub(crate) notifier: super::notify::Notifier,
+}
+
+impl RemoteState {
+    /// The client that reads projects.
+    pub(crate) fn client(&self) -> MonitorClient {
+        self.client
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+
+    /// The client that delivers webhooks, if it could be created.
+    pub(crate) fn webhooks(&self) -> Option<super::webhook::WebhookClient> {
+        self.webhooks
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+
+    /// Replaces both clients with ones that connect as `proxy` says. On
+    /// failure the current clients stay.
+    pub(crate) fn reconnect(&self, proxy: &ProxySettings) -> Result<(), FetchError> {
+        let plan = ProxyPlan::from_settings(proxy);
+        let client = MonitorClient::with_proxy(self.limits, &plan)?;
+        let webhooks = super::webhook::WebhookClient::new(&plan);
+        *self.client.write().unwrap_or_else(PoisonError::into_inner) = client;
+        *self
+            .webhooks
+            .write()
+            .unwrap_or_else(PoisonError::into_inner) = webhooks;
+        Ok(())
+    }
 }
 
 pub(crate) fn router(state: Arc<RemoteState>) -> Router {
@@ -41,6 +80,8 @@ pub(crate) fn router(state: Arc<RemoteState>) -> Router {
         .route("/studio/routes", get(routes_page))
         .route("/studio/queues", get(queues_page))
         .route("/studio/queries", get(queries_page))
+        .route("/studio/traces", get(traces_page))
+        .route("/studio/security", get(security_page))
         .route("/studio/history", get(super::settings::history_page))
         .route("/studio/alerts", get(super::settings::alerts_page))
         .route(
@@ -50,6 +91,19 @@ pub(crate) fn router(state: Arc<RemoteState>) -> Router {
         .route(
             "/studio/alerts/acknowledge",
             post(super::settings::acknowledge),
+        )
+        .route("/studio/settings", get(super::preferences::settings_page))
+        .route(
+            "/studio/settings/notifications",
+            post(super::preferences::save_notifications),
+        )
+        .route(
+            "/studio/settings/proxy",
+            post(super::preferences::save_proxy),
+        )
+        .route(
+            "/studio/notifications",
+            get(super::preferences::notifications_feed),
         )
         .layer(DefaultBodyLimit::max(MAX_FORM_BYTES))
         .with_state(state)
@@ -229,6 +283,7 @@ async fn remove_project(
     match state.store.remove(&form.name) {
         Ok(()) => {
             state.monitoring.forget(&form.name);
+            state.notifier.forget(&form.name);
             if let Some(history) = &state.history {
                 let _ = history.forget(&form.name).await;
             }
@@ -301,7 +356,7 @@ async fn monitor_page(
         Ok(selected) => selected,
         Err(response) => return *response,
     };
-    let fetched = state.client.fetch(&project).await;
+    let fetched = state.client().fetch(&project).await;
     state.monitoring.observe(&project.name, &fetched);
     let content = match &fetched {
         Ok(document) => body(&project.name, document),
@@ -352,6 +407,27 @@ async fn queries_page(
         Page::Queries,
         "N+1 queries",
         pages::monitor::queries,
+    )
+    .await
+}
+
+async fn traces_page(
+    State(state): State<Arc<RemoteState>>,
+    Query(query): Query<ProjectQuery>,
+) -> Response {
+    monitor_page(state, query, Page::Traces, "Traces", pages::traces::traces).await
+}
+
+async fn security_page(
+    State(state): State<Arc<RemoteState>>,
+    Query(query): Query<ProjectQuery>,
+) -> Response {
+    monitor_page(
+        state,
+        query,
+        Page::Security,
+        "Security",
+        pages::security::security,
     )
     .await
 }

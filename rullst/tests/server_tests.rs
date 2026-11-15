@@ -157,8 +157,9 @@ async fn test_server_run_production_middlewares() {
     let _production = ProductionEnvironment::select();
 
     let port = get_free_port();
+    // A page: only a document's policy carries the nonce.
     let router = Router::new()
-        .route("/", get(|| async { "OK" }))
+        .route("/", get(|| async { rullst::server::Html("OK") }))
         .route("/write", post(|| async { "written" }));
     let handle = tokio::spawn(async move {
         let _ = Server::new(router).run(port).await;

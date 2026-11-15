@@ -241,7 +241,7 @@ fn plan(
     let mut edits = vec![Edit::replace(manifest_path, original, manifest.to_string())];
     match mounted {
         Some(updated) => edits.push(Edit::replace(router_path, router, updated)),
-        None => notes.push("Mount the routes inside your CSRF layer (rullst::security::csrf_middleware): add `.merge_axum(controllers::privacy_controller::routes().into_axum())` to your router; the routes require auth_contract::require_account themselves.".to_owned()),
+        None => notes.push("Mount the routes: add `.merge_axum(controllers::privacy_controller::routes().into_axum())` to your router, inside its own CSRF layer if it has one (`Server` applies CSRF to every route); the routes require auth_contract::require_account themselves.".to_owned()),
     }
     edits.push(Edit::replace(registry, old_registry, new_registry));
     // The smoke test of `cargo rullst new` checks the preferences page too

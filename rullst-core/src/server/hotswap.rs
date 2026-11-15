@@ -30,6 +30,11 @@ pub struct HotSwapService {
     pub(crate) machine_endpoints: Option<crate::security::MachineEndpointPolicy>,
     /// Whether access-log lines show the matched route (`Server::access_log_paths`).
     pub(crate) access_log_route_paths: bool,
+    /// Which requests the access log writes (`RULLST_ACCESS_LOG`).
+    pub(crate) access_log_recording: super::console::Recording,
+    /// The `[security]` settings of the development security baseline that
+    /// wraps every router generation.
+    pub(crate) security: crate::config::SecurityConfig,
 }
 
 impl HotSwapService {
@@ -239,13 +244,16 @@ impl Service<axum::extract::Request> for HotSwapService {
 
         // Innermost, after routing, as in the static server stack. Hot reload
         // runs only in development, which logs every probe.
-        router = router.layer(axum::middleware::from_fn_with_state(
-            super::console::AccessLog {
-                log_health_probes: true,
-                route_paths: self.access_log_route_paths,
-            },
-            super::console::access_log_middleware,
-        ));
+        if self.access_log_recording != super::console::Recording::Off {
+            router = router.layer(axum::middleware::from_fn_with_state(
+                super::console::AccessLog {
+                    log_health_probes: true,
+                    route_paths: self.access_log_route_paths,
+                    recording: self.access_log_recording,
+                },
+                super::console::access_log_middleware,
+            ));
+        }
         router = super::traffic::apply_traffic_controls(
             router,
             self.limiter.clone(),
@@ -255,9 +263,30 @@ impl Service<axum::extract::Request> for HotSwapService {
         if let Some(ref lifecycle) = self.lifecycle {
             router = crate::lifecycle::apply_lifecycle(router, lifecycle.clone());
         }
-        if let Some(ref policy) = self.machine_endpoints {
-            router = crate::security::require_machine_authentication(router, policy.clone());
-        }
+        // The development security baseline, as the static server applies it.
+        let baseline = match self.machine_endpoints.clone() {
+            Some(policy) => crate::security::apply_security_baseline_with_machine_endpoints(
+                router,
+                self.security.clone(),
+                crate::config::Environment::Development,
+                policy,
+            ),
+            None => crate::security::apply_security_baseline(
+                router,
+                self.security.clone(),
+                crate::config::Environment::Development,
+            ),
+        };
+        router = match baseline {
+            Ok(router) => router,
+            Err(error) => {
+                let response = Self::response(
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    error.to_string(),
+                );
+                return Box::pin(async move { Ok(response) });
+            }
+        };
         // Outermost, as in the static server stack.
         if let Some(ref layer) = self.trusted_proxy {
             router = router.layer(layer.clone());

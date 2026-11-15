@@ -320,9 +320,41 @@ mod tests {
             );
 
             let middleware = file(&manifest, "src/middlewares/auth_middleware.rs");
-            assert!(middleware.contains("rullst::auth::decrypt_session_claims(&cookie, &app_key)"));
-            assert!(middleware.contains("Ok(Some(user)) if user.accepts_session(&claims) => {"));
-            assert!(!middleware.contains("decrypt_session(&"), "{blueprint}");
+            assert_eq!(
+                middleware,
+                crate::generators::auth::controllers::render_auth_middleware(true)
+            );
+            assert!(middleware.contains("match registry.authenticate_request(headers).await {"));
+            assert!(middleware.contains(
+                "Ok(Some(user)) if user.accepts_session(&session.claims()) => Ok(Some((user, session))),"
+            ));
+            assert!(!middleware.contains("decrypt_session"), "{blueprint}");
+            assert!(user.contains(".revoke_all_sessions(id)"));
+            assert_eq!(
+                file(&manifest, "src/controllers/sessions_controller.rs"),
+                crate::generators::auth::controllers::render_sessions_controller()
+            );
+            assert!(
+                file(&manifest, "src/controllers/mod.rs")
+                    .contains("pub mod sessions_controller;\n")
+            );
+            // A migration owns the sessions table, after the users table.
+            assert_eq!(
+                file(
+                    &manifest,
+                    "src/migrations/m20260601000003_create_rullst_auth_sessions_table.rs"
+                ),
+                crate::generators::auth::sessions::render_sessions_migration(
+                    "m20260601000003_create_rullst_auth_sessions_table"
+                )
+            );
+            let migrations = file(&manifest, "src/migrations/mod.rs");
+            assert!(
+                migrations.contains("pub mod m20260601000003_create_rullst_auth_sessions_table;\n")
+            );
+            assert!(migrations.contains(
+                "        Box::new(m20260601000003_create_rullst_auth_sessions_table::MigrationImpl),\n    ]"
+            ));
 
             let migration = manifest
                 .iter()
@@ -351,6 +383,24 @@ mod tests {
                 file(&manifest, "src/pages/auth.rs").contains("action=\"/logout/everywhere\""),
                 "{blueprint}: no sign-out everywhere form"
             );
+            for (path, handler, method) in [
+                ("/sessions", "sessions_view", "get"),
+                ("/sessions/revoke", "revoke_session", "post"),
+                ("/sessions/revoke-others", "revoke_other_sessions", "post"),
+            ] {
+                let route = format!(
+                    ".route(\"{path}\", rullst::routing::{method}(controllers::sessions_controller::{handler})\n        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))"
+                );
+                assert_eq!(routers.matches(&route).count(), 1, "{blueprint}: {path}");
+            }
+            let pages = file(&manifest, "src/pages/auth.rs");
+            for form in [
+                "action=\"/sessions/revoke\"",
+                "action=\"/sessions/revoke-others\"",
+                "href=\"/sessions\"",
+            ] {
+                assert!(pages.contains(form), "{blueprint}: {form}");
+            }
         }
     }
 

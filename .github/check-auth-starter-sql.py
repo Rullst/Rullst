@@ -14,13 +14,15 @@ loopback, with the CLI built from this checkout (`--cli`):
    nullability and defaults, the unique index `users_email_unique` (which
    rejects a duplicate), the `user-<id>@no-email.invalid` placeholders without
    a password, the starter's columns, indexes and rows unchanged, and the
-   batch's migration records and `password_reset_tokens` table.
-4. The built application: a sign-up over HTTP opens /dashboard and stores an
-   Argon2id hash.
+   batch's migration records and its `password_reset_tokens` and
+   `rullst_auth_sessions` tables.
+4. The built application: a sign-up over HTTP opens /dashboard, stores an
+   Argon2id hash and registers the login in `rullst_auth_sessions` (only a
+   digest of the cookie's session secret is stored).
 5. `cargo rullst db:rollback` restores the starter's columns, indexes, tables
-   and migration records exactly and keeps every row; `db:migrate` then
-   applies the batch again and gives every row, the signed-up one too, a
-   placeholder.
+   and migration records exactly (its sessions migration drops
+   `rullst_auth_sessions`) and keeps every row; `db:migrate` then applies the
+   batch again and gives every row, the signed-up one too, a placeholder.
 
 The generated builds share `--target-dir` (the workspace target, which the
 relational CLI profiles have just filled) and run offline from the
@@ -66,22 +68,23 @@ ACCOUNT_NAME = "Signup Smoke"
 ACCOUNT_EMAIL = "signup-smoke@example.com"
 ACCOUNT_COLUMNS_SUFFIX = "_add_account_columns_to_users_table.rs"
 RESET_TOKENS_SUFFIX = "_create_password_reset_tokens_table.rs"
+SESSIONS_SUFFIX = "_create_rullst_auth_sessions_table.rs"
 # The Blank starter's router, and the same lines with Tutorial 11's sign-up
-# routes before the CSRF layer.
+# routes before its health probes (`Server` applies CSRF to every route).
 ROUTER_ANCHOR = """        post("/clicked" => clicked),
     ]
-    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    // `Server` adds CSRF, the secure headers and the WAF in every environment.
 """
 ROUTER_WITH_SIGNUP = """        post("/clicked" => clicked),
         get("/register" => controllers::auth_controller::register_view),
     ]
     // Mounted by .github/check-auth-starter-sql.py as Tutorial 11 (Step 2)
-    // describes, before the CSRF layer.
+    // describes, before the health probes.
     .route("/register", rullst::routing::post(controllers::auth_controller::register_submit)
         .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
     .route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
-    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    // `Server` adds CSRF, the secure headers and the WAF in every environment.
 """
 TIMINGS: list[tuple[str, float]] = []
 
@@ -243,6 +246,7 @@ def check_server(server: Server, work: Path, env: dict[str, str], target_dir: Pa
             run(["cargo", "rullst", "auth"], cwd=project, env=env)
             account_columns = migration_name(project, ACCOUNT_COLUMNS_SUFFIX)
             reset_tokens = migration_name(project, RESET_TOKENS_SUFFIX)
+            sessions_table = migration_name(project, SESSIONS_SUFFIX)
             main_rs = project / "src/main.rs"
             main_rs.write_text(mount_signup_routes(main_rs.read_text()))
             run(["cargo", "rullst", "db:migrate"], cwd=project, env=env, timeout=BUILD_TIMEOUT)
@@ -254,10 +258,11 @@ def check_server(server: Server, work: Path, env: dict[str, str], target_dir: Pa
                    "types, nullability and defaults", after["columns"])
             expect(sorted(after["indexes"]) == sorted(before["indexes"] + [server.email_index]),
                    "the unique index users_email_unique on email is the only new index", after["indexes"])
-            expect(after["tables"] == sorted(before["tables"] + [("password_reset_tokens",)]),
-                   "password_reset_tokens is the only new table", after["tables"])
-            expect(after["migrations"] == before["migrations"] + [(account_columns, "2"), (reset_tokens, "2")],
-                   "both auth migrations are recorded as batch 2", after["migrations"])
+            expect(after["tables"] == sorted(before["tables"] + [("password_reset_tokens",), ("rullst_auth_sessions",)]),
+                   "password_reset_tokens and rullst_auth_sessions are the only new tables", after["tables"])
+            expect(after["migrations"] == before["migrations"]
+                   + [(account_columns, "2"), (reset_tokens, "2"), (sessions_table, "2")],
+                   "the three auth migrations are recorded as batch 2", after["migrations"])
             expect(after["rows"] == before["rows"], "the existing rows keep their id, name and timestamps",
                    after["rows"])
             accounts = database.query(ACCOUNTS)
@@ -286,6 +291,11 @@ def check_server(server: Server, work: Path, env: dict[str, str], target_dir: Pa
                 f"SELECT id, name, created_at, updated_at FROM users WHERE email = '{ACCOUNT_EMAIL}'")
             expect(database.query(ACCOUNTS)[:2] == placeholder_accounts(before["rows"]),
                    "the sign-up left the existing rows unchanged")
+            sessions = database.query(
+                "SELECT COUNT(*), MIN(LENGTH(token_hash)), MIN(LENGTH(public_id)) FROM rullst_auth_sessions "
+                f"WHERE user_id = {signed_up[0][0]}")
+            expect(sessions == [("1", "64", "22")],
+                   "the sign-up registered one session, stored as a 64-character digest", sessions)
 
         with step(f"{server.name}: db:rollback, then db:migrate again"):
             run(["cargo", "rullst", "db:rollback"], cwd=project, env=env, timeout=BUILD_TIMEOUT)

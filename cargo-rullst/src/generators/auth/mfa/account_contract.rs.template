@@ -3,6 +3,7 @@
 //! (`cargo rullst make:mfa`).
 use super::factor::MfaError;
 use crate::auth_contract::{self, ContractAccount};
+use rullst::server::HeaderMap;
 
 /// An account: its id and the e-mail authenticator apps show.
 pub struct Account {
@@ -42,7 +43,7 @@ pub(super) async fn find_by_email(email: &str) -> Result<Option<Account>, MfaErr
 }
 
 /// The cookie of a full session for the account.
-pub(super) async fn sign_in_cookie(id: i32) -> Result<String, MfaError> {
+pub(super) async fn sign_in_cookie(id: i32, _headers: &HeaderMap) -> Result<String, MfaError> {
     auth_contract::sign_in_cookie(id).await.map_err(unavailable)
 }
 

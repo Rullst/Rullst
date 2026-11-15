@@ -397,7 +397,7 @@ pub(crate) async fn vary_on_htmx_request(request: Request, next: Next) -> Respon
     response
 }
 
-fn vary_html_on_htmx_request(headers: &mut HeaderMap) {
+pub(crate) fn vary_html_on_htmx_request(headers: &mut HeaderMap) {
     let is_html = headers
         .get(header::CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())

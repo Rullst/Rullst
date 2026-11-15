@@ -1,6 +1,7 @@
 //! Deployment files written before 13.0.0-alpha.4 changed what `cargo rullst
 //! deploy` and `dockerize` generate: the SQLite `DATABASE_URL` of the
-//! Dockerfile and the health checks of the Caddyfile.
+//! Dockerfile and the health checks of the Caddyfile; and before
+//! 13.0.0-alpha.6, which compresses pages in the Caddyfile.
 
 use super::{line_of, read_small};
 use crate::generators::project::database_provider;
@@ -38,6 +39,16 @@ pub(super) fn dockerfile_without_database_url(root: &Path) -> Option<usize> {
 pub(super) fn caddyfile_without_health_checks(text: &str) -> Option<usize> {
     let has = |directive: &str| line_of(text, |line| line.starts_with(directive)).is_some();
     if has("health_uri") && has("lb_try_duration") {
+        return None;
+    }
+    line_of(text, |line| line.starts_with("reverse_proxy app:3000"))
+}
+
+/// The `reverse_proxy app:3000` line of a `Caddyfile` without an `encode`
+/// directive: `deploy` writes `encode zstd gzip` since 13.0.0-alpha.6, when
+/// the CSRF token in pages became masked per response.
+pub(super) fn caddyfile_without_encode(text: &str) -> Option<usize> {
+    if line_of(text, |line| line.starts_with("encode")).is_some() {
         return None;
     }
     line_of(text, |line| line.starts_with("reverse_proxy app:3000"))

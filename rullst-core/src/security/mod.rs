@@ -8,6 +8,7 @@
 
 mod baseline;
 mod csrf;
+mod csrf_mask;
 mod csrf_multipart;
 mod headers;
 mod machine;
@@ -31,12 +32,45 @@ mod machine_client_tests;
 #[cfg(kani)]
 mod kani_proofs;
 
+/// The rest of a middleware stack: axum's [`Next`](axum::middleware::Next),
+/// or a closure that runs the layers inside, so several baseline layers run
+/// as one middleware.
+pub(crate) trait Run: Send {
+    fn run(
+        self,
+        req: axum::extract::Request,
+    ) -> impl Future<Output = axum::response::Response> + Send;
+}
+
+impl Run for axum::middleware::Next {
+    fn run(
+        self,
+        req: axum::extract::Request,
+    ) -> impl Future<Output = axum::response::Response> + Send {
+        axum::middleware::Next::run(self, req)
+    }
+}
+
+impl<F, Fut> Run for F
+where
+    F: FnOnce(axum::extract::Request) -> Fut + Send,
+    Fut: Future<Output = axum::response::Response> + Send,
+{
+    fn run(
+        self,
+        req: axum::extract::Request,
+    ) -> impl Future<Output = axum::response::Response> + Send {
+        self(req)
+    }
+}
+
 // ─── Public Re-exports ──────────────────────────────────────────────────────
 
 pub use baseline::{
     SecurityBaselineError, apply_security_baseline, apply_security_baseline_with_machine_endpoints,
 };
 pub use csrf::{CsrfToken, csrf_middleware, generate_csrf_token};
+pub use csrf_mask::mask_csrf_token;
 pub(crate) use csrf_multipart::{
     MAX_TOKEN_PREFIX_BYTES, MULTIPART_TOKEN_ORDER_MESSAGE, form_data_boundary,
 };
@@ -44,7 +78,6 @@ pub use headers::{
     CspNonce, DEFAULT_CSP_TEMPLATE, SecurityHeadersApplied, apply_referrer_policy,
     headers_middleware, render_csp_policy,
 };
-pub(crate) use machine::require_machine_authentication;
 pub use machine::{
     MachineAuthentication, MachineEndpoint, MachineEndpointError, MachineEndpointPolicy,
     MachineRequestVerifier,

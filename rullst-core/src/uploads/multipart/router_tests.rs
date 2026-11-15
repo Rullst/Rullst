@@ -150,26 +150,41 @@ async fn waf_signatures_in_text_fields_are_refused_only_where_the_waf_enforces()
     let (status, body) = post_form(&exempt, Some(&token), comment(&token)).await;
     assert_eq!(status, StatusCode::OK);
     assert!(body.starts_with("<script>"));
-    // Development only reports what production would refuse.
+    // Development only reports what production would refuse; it checks the
+    // CSRF token like production does.
     let development = app(Environment::Development, false);
-    let (status, _) = post_form(&development, None, comment("t")).await;
+    let token = csrf_token(&development).await;
+    let (status, _) = post_form(&development, Some(&token), comment(&token)).await;
     assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        post_form(&development, None, comment("t")).await.0,
+        StatusCode::FORBIDDEN
+    );
 }
 
 #[tokio::test]
 async fn limits_and_content_checks_answer_before_the_handler_succeeds() {
     let development = app(Environment::Development, false);
-    let too_large = form(&[file_part("document", "big.pdf", &vec![b'x'; 200_001])]);
-    let (status, body) = post_form(&development, None, too_large).await;
+    let token = csrf_token(&development).await;
+    let too_large = form(&[
+        field("_token", &token),
+        file_part("document", "big.pdf", &vec![b'x'; 200_001]),
+    ]);
+    let (status, body) = post_form(&development, Some(&token), too_large).await;
     assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
     assert_eq!(body, "an uploaded file exceeds its size limit");
-    let image = form(&[file_part("document", "photo.pdf", b"\x89PNG\r\n\x1a\n0000")]);
-    let (status, _) = post_form(&development, None, image).await;
+    let image = form(&[
+        field("_token", &token),
+        file_part("document", "photo.pdf", b"\x89PNG\r\n\x1a\n0000"),
+    ]);
+    let (status, _) = post_form(&development, Some(&token), image).await;
     assert_eq!(status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
     let response = within(
         development.clone().oneshot(
             HttpRequest::post("/upload")
                 .header(header::CONTENT_TYPE, "application/json")
+                .header(header::COOKIE, format!("rullst_csrf={token}"))
+                .header("x-csrf-token", token.as_str())
                 .body(Body::from("{}"))
                 .unwrap(),
         ),

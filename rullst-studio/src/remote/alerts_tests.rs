@@ -14,8 +14,10 @@ fn sample(at: u64) -> Sample {
         window_requests: Some(40),
         error_rate_percent: Some(10.0),
         p95_ms: Some(150.0),
+        p99_ms: Some(400.0),
         queue_pending: Some(12),
         queue_failed_total: Some(15),
+        security_events_total: Some(30),
     }
 }
 
@@ -24,8 +26,10 @@ fn rules() -> AlertRules {
         unreachable: true,
         error_rate_percent: Some(5.0),
         p95_ms: Some(100.0),
+        p99_ms: None,
         queue_pending: Some(10),
         queue_failures: Some(5),
+        security_events: None,
         cooldown_minutes: 15,
     }
 }
@@ -141,8 +145,10 @@ fn an_unreachable_project_fires_only_its_own_rule() {
         window_requests: None,
         error_rate_percent: None,
         p95_ms: None,
+        p99_ms: None,
         queue_pending: None,
         queue_failed_total: None,
+        security_events_total: None,
         at: NOW,
     };
     let firings = evaluate(
@@ -248,4 +254,125 @@ fn a_saved_rule_set_without_a_cool_down_waits_15_minutes() {
     let rules: AlertRules = serde_json::from_str("{}").unwrap();
     assert_eq!(rules.cooldown_minutes, 15);
     assert_eq!(rules, AlertRules::default());
+}
+
+#[test]
+fn p99_latency_and_security_event_bursts_fire_between_two_polls() {
+    let rules = AlertRules {
+        p99_ms: Some(400.0),
+        security_events: Some(10),
+        ..AlertRules::default()
+    };
+    let previous = Sample {
+        security_events_total: Some(20),
+        ..sample(NOW - 60)
+    };
+    // p99 400 ms reaches the threshold; 30 - 20 = 10 events reach theirs.
+    let firings = evaluate("shop", &rules, &sample(NOW), Some(&previous), NOW, |_| None);
+    assert_eq!(kinds(&firings), [RuleKind::P99, RuleKind::SecurityEvents]);
+    assert_eq!(
+        firings[0].message,
+        "shop: p99 latency 400.0 ms (threshold 400 ms)"
+    );
+    assert_eq!(
+        firings[1].message,
+        "shop: 10 security events since the previous poll (threshold 10)"
+    );
+    assert_eq!(RuleKind::P99.as_str(), "p99_latency");
+    assert_eq!(RuleKind::SecurityEvents.as_str(), "security_events");
+
+    let below = Sample {
+        p99_ms: Some(399.9),
+        security_events_total: Some(29),
+        ..sample(NOW)
+    };
+    let quiet = evaluate("shop", &rules, &below, Some(&previous), NOW, |_| None);
+    assert!(quiet.is_empty(), "{quiet:?}");
+    // A restart resets the counter; a version 1 document has none.
+    let restarted = Sample {
+        security_events_total: Some(25),
+        ..sample(NOW - 60)
+    };
+    let current = Sample {
+        security_events_total: Some(3),
+        ..sample(NOW)
+    };
+    let after_restart = evaluate("shop", &rules, &current, Some(&restarted), NOW, |_| None);
+    assert_eq!(kinds(&after_restart), [RuleKind::P99]);
+    let version_1 = Sample {
+        security_events_total: None,
+        ..sample(NOW)
+    };
+    let without = evaluate("shop", &rules, &version_1, Some(&previous), NOW, |_| None);
+    assert_eq!(kinds(&without), [RuleKind::P99]);
+}
+
+#[test]
+fn p99_and_security_thresholds_are_range_checked() {
+    for (valid, rules) in [
+        (
+            true,
+            AlertRules {
+                p99_ms: Some(600_000.0),
+                ..rules()
+            },
+        ),
+        (
+            false,
+            AlertRules {
+                p99_ms: Some(600_000.1),
+                ..rules()
+            },
+        ),
+        (
+            false,
+            AlertRules {
+                p99_ms: Some(0.0),
+                ..rules()
+            },
+        ),
+        (
+            false,
+            AlertRules {
+                p99_ms: Some(f64::INFINITY),
+                ..rules()
+            },
+        ),
+        (
+            true,
+            AlertRules {
+                security_events: Some(1),
+                ..rules()
+            },
+        ),
+        (
+            true,
+            AlertRules {
+                security_events: Some(1_000_000_000),
+                ..rules()
+            },
+        ),
+        (
+            false,
+            AlertRules {
+                security_events: Some(0),
+                ..rules()
+            },
+        ),
+        (
+            false,
+            AlertRules {
+                security_events: Some(1_000_000_001),
+                ..rules()
+            },
+        ),
+    ] {
+        assert_eq!(rules.valid(), valid, "{rules:?}");
+    }
+    // Unset rules are not written, so older Studios keep reading the file.
+    let written = serde_json::to_string(&rules()).unwrap();
+    assert!(!written.contains("p99_ms") && !written.contains("security_events"));
+    let read: AlertRules =
+        serde_json::from_str(r#"{"p99_ms": 250.0, "security_events": 5}"#).unwrap();
+    assert_eq!((read.p99_ms, read.security_events), (Some(250.0), Some(5)));
 }

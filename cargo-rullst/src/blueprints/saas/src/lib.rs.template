@@ -41,7 +41,8 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
         .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
     .route("/password/reset", rullst::routing::post(controllers::password_controller::reset_password_submit)
         .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
-    // A password change bumps the session epoch: every other device is signed out.
+    // A password change bumps the session epoch and renews this browser's
+    // session: every other device is signed out.
     .route("/password/change", rullst::routing::get(controllers::password_controller::change_password_view)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .route("/password/change", rullst::routing::post(controllers::password_controller::change_password_submit)
@@ -49,8 +50,16 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
-    // Bumps the account's session epoch: every device is signed out.
+    // Bumps the account's session epoch and deletes its sessions: every
+    // device is signed out.
     .route("/logout/everywhere", rullst::routing::post(controllers::auth_controller::logout_everywhere)
+        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
+    // Your devices: the account's sessions, each of which can be signed out.
+    .route("/sessions", rullst::routing::get(controllers::sessions_controller::sessions_view)
+        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
+    .route("/sessions/revoke", rullst::routing::post(controllers::sessions_controller::revoke_session)
+        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
+    .route("/sessions/revoke-others", rullst::routing::post(controllers::sessions_controller::revoke_other_sessions)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .route("/reports/billing", rullst::routing::get(controllers::billing_controller::billing_report)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
@@ -58,12 +67,11 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .route("/billing/portal", rullst::routing::post(controllers::billing_controller::portal_redirect)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
-    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
     .route("/billing/webhook", rullst::routing::post(controllers::billing_controller::webhook_handler)
         .route_layer(rullst::server::from_fn(controllers::billing_controller::verify_billing_webhook)))
+    // `Server` adds CSRF, the secure headers and the WAF in every environment.
     // `/health` and `/ready` for container, Kubernetes and PaaS probes.
     .merge_axum(rullst::health::health_router())
-    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
     .nest_axum("/nexus", nexus))
 }
 

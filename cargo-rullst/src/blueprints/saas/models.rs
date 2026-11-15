@@ -46,6 +46,12 @@ pub fn get_models_and_migrations() -> Vec<(&'static str, String)> {
             ),
         ),
         (
+            "src/migrations/m20260601000003_create_rullst_auth_sessions_table.rs",
+            crate::generators::auth::sessions::render_sessions_migration(
+                "m20260601000003_create_rullst_auth_sessions_table",
+            ),
+        ),
+        (
             "src/migrations/mod.rs",
             include_str!("src/migrations/mod.rs.template").to_string(),
         ),

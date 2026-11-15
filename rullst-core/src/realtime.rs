@@ -9,7 +9,12 @@ use tokio::sync::broadcast;
 
 use crate::security::{TenantContext, tenant_namespaced_name};
 
+pub(crate) mod revalidation;
 mod sse;
+pub use revalidation::{
+    DEFAULT_REVALIDATION_INTERVAL, NoRevalidation, REVALIDATION_DEADLINE, Revalidate,
+    RevalidateWith, revalidate_with,
+};
 pub use sse::{RealtimeSse, RealtimeSseConfig};
 
 const MAX_CHANNEL_BYTES: usize = 128;

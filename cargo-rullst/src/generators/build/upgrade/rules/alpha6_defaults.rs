@@ -1,14 +1,20 @@
 //! The 13.0.0-alpha.6 default changes that application code can name: the
-//! health probes no longer report the framework version, and the CSRF
+//! health probes no longer report the framework version, the CSRF
 //! middleware decides static files by path (`csrf_static_prefixes` and
-//! `csrf_static_paths`) instead of by extension. [`super::tokens`] calls the
-//! field, string and method rules with what it reads, [`super::rust`] the
-//! struct rule with each struct literal and [`super::files`] the script rule
-//! with each script line.
+//! `csrf_static_paths`) instead of by extension, the CSRF token a page
+//! embeds is masked per response, and `Server` applies the CSRF check and the
+//! secure headers in every environment. [`super::tokens`] calls the field, string
+//! and method rules with what it reads, [`super::rust`] the struct rule with
+//! each struct literal and [`super::files`] the script rule with each script
+//! line.
 
 use super::Rule;
-use super::catalog::{CSRF_STATIC_PREFIXES, HEALTH_FRAMEWORK_VERSION, HEALTH_PROBE_VERSION_FIELD};
+use super::catalog::{
+    CSRF_COOKIE_IN_PAGE, CSRF_STATIC_PREFIXES, HEALTH_FRAMEWORK_VERSION,
+    HEALTH_PROBE_VERSION_FIELD, ROUTER_BASELINE_LAYERS,
+};
 use proc_macro2::TokenStream;
+use std::path::{Component, Path};
 
 /// The probe payload types whose `version` field 13.0.0-alpha.6 removed.
 const PROBE_TYPES: &[&str] = &["HealthProbeResponse", "ReadinessProbeResponse"];
@@ -57,6 +63,61 @@ pub(super) fn method_rule(name: &str, args: &TokenStream, text: &str) -> Option<
     }
     let path = super::tokens::string_value(args.clone().into_iter().next().as_ref())?;
     (path.starts_with('/') && !default_static(&path)).then_some(&CSRF_STATIC_PREFIXES)
+}
+
+/// The rule for a method call with `args`: `.layer(..)` or `.route_layer(..)`
+/// whose argument names Core's `csrf_middleware` or `headers_middleware`,
+/// which `Server` applies in every environment since 13.0.0-alpha.6.
+pub(super) fn layer_rule(name: &str, args: &TokenStream) -> Option<&'static Rule> {
+    if !matches!(name, "layer" | "route_layer") {
+        return None;
+    }
+    let mut pending = vec![args.clone()];
+    while let Some(tokens) = pending.pop() {
+        for token in tokens {
+            match token {
+                proc_macro2::TokenTree::Group(group) => pending.push(group.stream()),
+                proc_macro2::TokenTree::Ident(ident)
+                    if ident == "csrf_middleware" || ident == "headers_middleware" =>
+                {
+                    return Some(&ROUTER_BASELINE_LAYERS);
+                }
+                _ => {}
+            }
+        }
+    }
+    None
+}
+
+/// Whether `path`, relative to its package root, is test code: below a
+/// `tests` directory or a `tests.rs`/`*_tests.rs`/`*_test.rs` file.
+fn is_test_path(path: &Path) -> bool {
+    let name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or_default();
+    path.components()
+        .any(|part| part == Component::Normal("tests".as_ref()))
+        || name == "tests.rs"
+        || name.ends_with("_tests.rs")
+        || name.ends_with("_test.rs")
+}
+
+/// The rule for a method call with `args` in the file at `path`:
+/// `.strip_prefix("rullst_csrf=")`, which reads the raw CSRF cookie value
+/// (the `get_csrf_token` helper generated before 13.0.0-alpha.6), outside
+/// test code and in a file that does not call `mask_csrf_token`.
+pub(super) fn cookie_rule(
+    name: &str,
+    args: &TokenStream,
+    text: &str,
+    path: &Path,
+) -> Option<&'static Rule> {
+    if name != "strip_prefix" || text.contains("mask_csrf_token") || is_test_path(path) {
+        return None;
+    }
+    let prefix = super::tokens::string_value(args.clone().into_iter().next().as_ref())?;
+    (prefix == "rullst_csrf=").then_some(&CSRF_COOKIE_IN_PAGE)
 }
 
 /// A script line that reads `version` from a `/health` or `/ready` response

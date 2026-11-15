@@ -1,13 +1,58 @@
-//! The path an access-log line shows: the matched route template, or a
-//! bounded and escaped request path ([`crate::config::AccessLogPaths`]).
+//! Which requests the access log writes (`RULLST_ACCESS_LOG`), and the path
+//! a line shows: the matched route template, or a bounded and escaped request
+//! path ([`crate::config::AccessLogPaths`]).
 
 use axum::extract::MatchedPath;
 use axum::http::Extensions;
 use std::fmt::Write;
+use std::num::NonZeroU32;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Longest request path, in bytes, a line shows for a request that matched
 /// no route; a longer one is cut and ends in `…`.
 const MAX_UNMATCHED_PATH_BYTES: usize = 128;
+
+/// Largest `N` of `RULLST_ACCESS_LOG=1/N`.
+pub(crate) const MAX_SAMPLE_INTERVAL: u32 = 1_000_000;
+
+/// Which completed requests the access log writes, from `RULLST_ACCESS_LOG`.
+/// Every variant still applies the health-probe and development-poll rules
+/// of [`super::console::should_log`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Recording {
+    /// Every request (`on`, the default).
+    All,
+    /// Only responses with a status of 400 or above (`errors`).
+    Errors,
+    /// Every response with a status of 400 or above, and one in `N` of the
+    /// others (`1/N`).
+    Sample(NonZeroU32),
+    /// No request (`off`): `Server` does not install the access log.
+    Off,
+}
+
+/// Requests below status 400 that a [`Recording::Sample`] log has seen.
+static SAMPLED: AtomicU64 = AtomicU64::new(0);
+
+impl Recording {
+    /// Whether a response with `status` is written.
+    pub(crate) fn records(self, status: u16) -> bool {
+        match self {
+            Self::All => true,
+            Self::Off => false,
+            Self::Errors => status >= 400,
+            Self::Sample(interval) => {
+                status >= 400 || in_sample(SAMPLED.fetch_add(1, Ordering::Relaxed), interval)
+            }
+        }
+    }
+}
+
+/// Whether the `seen`-th sampled request (counting from 0) is written: the
+/// first of every `interval`.
+fn in_sample(seen: u64, interval: NonZeroU32) -> bool {
+    seen.is_multiple_of(u64::from(interval.get()))
+}
 
 /// The access-log settings `Server` resolves at start-up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,17 +61,37 @@ pub(crate) struct AccessLog {
     pub(crate) log_health_probes: bool,
     /// Whether lines show the matched route instead of the request path.
     pub(crate) route_paths: bool,
+    /// Which requests are written.
+    pub(crate) recording: Recording,
+}
+
+/// The path an access-log line shows.
+#[derive(Debug, Clone)]
+pub(crate) enum ShownPath {
+    /// The route that matched, shared with the request.
+    Route(MatchedPath),
+    /// The request path, or its bounded form.
+    Text(String),
+}
+
+impl ShownPath {
+    pub(crate) fn as_str(&self) -> &str {
+        match self {
+            Self::Route(route) => route.as_str(),
+            Self::Text(text) => text,
+        }
+    }
 }
 
 impl AccessLog {
     /// The path a line shows for a request to `path` with `extensions`.
-    pub(crate) fn shown_path(self, path: &str, extensions: &Extensions) -> String {
+    pub(crate) fn shown_path(self, path: &str, extensions: &Extensions) -> ShownPath {
         if !self.route_paths {
-            return path.to_string();
+            return ShownPath::Text(path.to_string());
         }
         match extensions.get::<MatchedPath>() {
-            Some(route) => route.as_str().to_string(),
-            None => bounded_path(path),
+            Some(route) => ShownPath::Route(route.clone()),
+            None => ShownPath::Text(bounded_path(path)),
         }
     }
 }
@@ -62,11 +127,36 @@ mod tests {
     const ROUTES: AccessLog = AccessLog {
         log_health_probes: true,
         route_paths: true,
+        recording: Recording::All,
     };
     const PATHS: AccessLog = AccessLog {
         log_health_probes: true,
         route_paths: false,
+        recording: Recording::All,
     };
+
+    #[test]
+    fn recordings_choose_statuses_and_samples() {
+        for status in [200, 302, 399] {
+            assert!(Recording::All.records(status));
+            assert!(!Recording::Errors.records(status));
+            assert!(!Recording::Off.records(status));
+        }
+        for status in [400, 404, 503] {
+            assert!(Recording::All.records(status));
+            assert!(Recording::Errors.records(status));
+            assert!(!Recording::Off.records(status));
+        }
+        let three = NonZeroU32::new(3).unwrap();
+        let picked: Vec<bool> = (0..7).map(|seen| in_sample(seen, three)).collect();
+        assert_eq!(picked, [true, false, false, true, false, false, true]);
+        let one = NonZeroU32::new(1).unwrap();
+        assert!((0..4).all(|seen| in_sample(seen, one)));
+        // Only this test samples, so 12 consecutive successes write exactly 3.
+        let sample = Recording::Sample(NonZeroU32::new(4).unwrap());
+        assert_eq!((0..12).filter(|_| sample.records(200)).count(), 3);
+        assert!((0..5).all(|_| sample.records(500)));
+    }
 
     #[test]
     fn unmatched_paths_are_escaped_and_bounded() {
@@ -106,7 +196,7 @@ mod tests {
                     let record = record.clone();
                     async move {
                         let path = log.shown_path(request.uri().path(), request.extensions());
-                        record.lock().unwrap().push(path);
+                        record.lock().unwrap().push(path.as_str().to_string());
                         next.run(request).await
                     }
                 },

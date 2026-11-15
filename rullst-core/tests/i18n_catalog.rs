@@ -206,7 +206,14 @@ async fn the_language_menu_marks_the_current_locale() {
         .body(Body::empty())
         .unwrap();
     let page = body(app.oneshot(request).await.unwrap()).await;
-    assert!(page.contains("value=\"token123\""), "{page}");
+    // The cookie token, masked for this response (8 bytes: 22 characters).
+    let token = page
+        .split("name=\"_token\" value=\"")
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .expect("form token");
+    assert_eq!(token.len(), 22, "{page}");
+    assert!(!page.contains("token123"), "{page}");
     assert!(
         page.contains("<label>Idioma<select name=\"locale\">"),
         "{page}"

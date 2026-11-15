@@ -225,8 +225,14 @@ async fn nexus_pages_run_under_the_default_production_csp() {
             .to_owned();
         for directive in ["script-src", "style-src"] {
             let sources = csp_directive(&policy, directive);
-            assert!(sources.contains("'self'") && sources.contains("'nonce-"));
-            assert!(!sources.contains("unsafe-inline") && !sources.contains("unsafe-eval"));
+            assert!(
+                sources.contains("'self'") && sources.contains("'nonce-"),
+                "{route}: {directive} {sources}"
+            );
+            assert!(
+                !sources.contains("unsafe-inline") && !sources.contains("unsafe-eval"),
+                "{route}: {directive} {sources}"
+            );
         }
         let body = axum::body::to_bytes(response.into_body(), 512 * 1024)
             .await

@@ -2,8 +2,9 @@
 //!
 //! An owner-only SQLite file in the user's data directory (`0700`), holding
 //! only aggregates the monitoring document already exposes: reachability,
-//! request rate, window requests, 5xx rate, p95 latency, queue pending and
-//! failed totals. No token, route or other label is stored. Every write
+//! request rate, window requests, 5xx rate, p95 and p99 latency, queue
+//! pending and failed totals and the security events recorded since start.
+//! No token, route or other label is stored. Every write
 //! deletes samples older than the retention age and beyond the per-project
 //! row limit, and keeps a bounded number of alerts.
 
@@ -45,8 +46,11 @@ pub(crate) struct Sample {
     pub(crate) window_requests: Option<u64>,
     pub(crate) error_rate_percent: Option<f64>,
     pub(crate) p95_ms: Option<f64>,
+    pub(crate) p99_ms: Option<f64>,
     pub(crate) queue_pending: Option<u64>,
     pub(crate) queue_failed_total: Option<u64>,
+    /// Security events since the application started (version 2 only).
+    pub(crate) security_events_total: Option<u64>,
 }
 
 fn finite(value: f64) -> Option<f64> {
@@ -64,8 +68,10 @@ impl Sample {
                 window_requests: None,
                 error_rate_percent: None,
                 p95_ms: None,
+                p99_ms: None,
                 queue_pending: None,
                 queue_failed_total: None,
+                security_events_total: None,
             };
         };
         let window = &document.http.window;
@@ -89,12 +95,17 @@ impl Sample {
             window_requests: Some(window.requests),
             error_rate_percent: error_rate_percent.and_then(finite),
             p95_ms: window.latency_ms.and_then(|latency| finite(latency.p95)),
+            p99_ms: window.latency_ms.and_then(|latency| finite(latency.p99)),
             queue_pending: pending.filter(|_| has_queues),
             queue_failed_total: has_queues.then(|| {
                 document.queues.iter().fold(0_u64, |total, queue| {
                     total.saturating_add(queue.failed_total)
                 })
             }),
+            security_events_total: document
+                .security
+                .as_ref()
+                .map(|security| security.events_total),
         }
     }
 }
@@ -132,6 +143,8 @@ const SCHEMA: [&str; 3] = [
         p95_ms REAL,
         queue_pending INTEGER,
         queue_failed_total INTEGER,
+        p99_ms REAL,
+        security_events_total INTEGER,
         PRIMARY KEY (project, at)
     )",
     "CREATE TABLE IF NOT EXISTS alerts (
@@ -144,6 +157,16 @@ const SCHEMA: [&str; 3] = [
         acknowledged INTEGER NOT NULL DEFAULT 0
     )",
     "CREATE INDEX IF NOT EXISTS alerts_by_rule ON alerts (project, rule, at)",
+];
+
+/// Columns added after 13.0.0-alpha.5, with the statement that adds each to
+/// an older database.
+const ADDED_COLUMNS: [(&str, &str); 2] = [
+    ("p99_ms", "ALTER TABLE samples ADD COLUMN p99_ms REAL"),
+    (
+        "security_events_total",
+        "ALTER TABLE samples ADD COLUMN security_events_total INTEGER",
+    ),
 ];
 
 fn int(value: u64) -> i64 {
@@ -178,6 +201,15 @@ impl History {
         for statement in SCHEMA {
             sqlx::query(statement).execute(&pool).await?;
         }
+        let columns: Vec<String> =
+            sqlx::query_scalar("SELECT name FROM pragma_table_info('samples')")
+                .fetch_all(&pool)
+                .await?;
+        for (column, statement) in ADDED_COLUMNS {
+            if !columns.iter().any(|existing| existing == column) {
+                sqlx::query(statement).execute(&pool).await?;
+            }
+        }
         Ok(Self { pool, retention })
     }
 
@@ -185,8 +217,9 @@ impl History {
     pub(crate) async fn record(&self, project: &str, sample: &Sample) -> Result<(), HistoryError> {
         sqlx::query(
             "INSERT OR REPLACE INTO samples (project, at, reachable, requests_per_second,
-                window_requests, error_rate_percent, p95_ms, queue_pending, queue_failed_total)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                window_requests, error_rate_percent, p95_ms, queue_pending, queue_failed_total,
+                p99_ms, security_events_total)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         )
         .bind(project)
         .bind(int(sample.at))
@@ -197,6 +230,8 @@ impl History {
         .bind(sample.p95_ms)
         .bind(sample.queue_pending.map(int))
         .bind(sample.queue_failed_total.map(int))
+        .bind(sample.p99_ms)
+        .bind(sample.security_events_total.map(int))
         .execute(&self.pool)
         .await?;
         sqlx::query("DELETE FROM samples WHERE at < ?1")
@@ -224,7 +259,7 @@ impl History {
     ) -> Result<Vec<Sample>, HistoryError> {
         let rows = sqlx::query(
             "SELECT at, reachable, requests_per_second, window_requests, error_rate_percent,
-                    p95_ms, queue_pending, queue_failed_total
+                    p95_ms, queue_pending, queue_failed_total, p99_ms, security_events_total
              FROM samples WHERE project = ?1 AND at >= ?2 ORDER BY at",
         )
         .bind(project)
@@ -240,8 +275,10 @@ impl History {
                     window_requests: uint(row.try_get("window_requests")?),
                     error_rate_percent: row.try_get("error_rate_percent")?,
                     p95_ms: row.try_get("p95_ms")?,
+                    p99_ms: row.try_get("p99_ms")?,
                     queue_pending: uint(row.try_get("queue_pending")?),
                     queue_failed_total: uint(row.try_get("queue_failed_total")?),
+                    security_events_total: uint(row.try_get("security_events_total")?),
                 })
             })
             .collect::<Result<Vec<_>, sqlx::Error>>()
