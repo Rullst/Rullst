@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794749447018,
+  "lastUpdate": 1794751608846,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -19943,6 +19943,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 400,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5e6b65c53be508c6f3dd24086a776b2862a8c9c9",
+          "message": "Merge pull request #701 from Rullst/refactor/v13-alpha6-core-deps\n\nrefactor(core)!: drop the cron and ring dependencies of rullst-core",
+          "timestamp": "2026-11-15T10:49:42-03:00",
+          "tree_id": "c1c0081908cdadfe63776038cbe6cca1c9e64283",
+          "url": "https://github.com/Rullst/Rullst/commit/5e6b65c53be508c6f3dd24086a776b2862a8c9c9"
+        },
+        "date": 1794751608536,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1161,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 250,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 282,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
