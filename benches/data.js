@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794758799527,
+  "lastUpdate": 1794763379571,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -34587,6 +34587,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1547,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f71231910ab0a300685a11f585e35567a485db65",
+          "message": "Merge pull request #705 from Rullst/perf/v13-alpha6-sqlite-without-tls\n\nperf(cli): SQLite-only starters without a TLS stack; footprint compiled crate count",
+          "timestamp": "2026-11-15T14:17:53-03:00",
+          "tree_id": "192d5536f409ee703e520a4daab54cf5271756fa",
+          "url": "https://github.com/Rullst/Rullst/commit/f71231910ab0a300685a11f585e35567a485db65"
+        },
+        "date": 1794763375292,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 663,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 885,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 415,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2059,
+            "range": "± 23",
             "unit": "ns/iter"
           }
         ]
