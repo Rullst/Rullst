@@ -261,8 +261,9 @@ impl ApplicationJwtPolicy {
             .ok_or(JwtError::InvalidConfiguration("active key"))?;
         let mut header = Header::new(Algorithm::HS256);
         header.kid = Some(self.active_kid.clone());
-        encode(&header, &claims, &EncodingKey::from_secret(key))
-            .map_err(|error| JwtError::Encoding(error.to_string()))
+        let key =
+            EncodingKey::from_secret(key).map_err(|error| JwtError::Encoding(error.to_string()))?;
+        encode(&header, &claims, &key).map_err(|error| JwtError::Encoding(error.to_string()))
     }
 
     pub fn verify<R: JwtRevocationStore>(
@@ -317,10 +318,12 @@ impl ApplicationJwtPolicy {
         validation.leeway = self.clock_skew.as_secs();
         validation.validate_exp = true;
         validation.validate_nbf = true;
-        let claims =
-            decode::<ApplicationJwtClaims>(token, &DecodingKey::from_secret(key), &validation)
-                .map_err(|_| JwtError::InvalidToken)?
-                .claims;
+        // `JwtSigningKey::new` refuses weak keys, so jsonwebtoken never sees an
+        // empty one; refuse the token rather than report a key problem.
+        let key = DecodingKey::from_secret(key).map_err(|_| JwtError::InvalidToken)?;
+        let claims = decode::<ApplicationJwtClaims>(token, &key, &validation)
+            .map_err(|_| JwtError::InvalidToken)?
+            .claims;
         self.validate_claims(&claims, now)?;
         Ok(claims)
     }

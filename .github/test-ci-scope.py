@@ -152,6 +152,70 @@ else:
         self.assertEqual(output, "runtime_required=true")
 
 
+class DraftStateTests(unittest.TestCase):
+    """pull-request-draft.sh reports the live state and fails open, offline."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="rullst-draft-state-")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        executable = self.root / "gh"
+        executable.write_text('''#!/usr/bin/env python3
+import os, pathlib, sys
+root = pathlib.Path(os.environ["RULLST_DRAFT_FIXTURE"])
+(root / "api-called").write_text(" ".join(sys.argv[1:]))
+if os.environ.get("RULLST_DRAFT_API_FAIL"):
+    sys.exit(1)
+print(os.environ["RULLST_DRAFT_LIVE"])
+''')
+        executable.chmod(0o755)
+
+    def execute(self, **overrides):
+        output = self.root / "output"
+        output.unlink(missing_ok=True)
+        (self.root / "api-called").unlink(missing_ok=True)
+        env = dict(os.environ, PATH=str(self.root) + os.pathsep + os.environ["PATH"],
+                   RULLST_DRAFT_FIXTURE=str(self.root), RULLST_DRAFT_LIVE="false",
+                   GITHUB_EVENT_NAME="pull_request", GITHUB_REPOSITORY="Rullst/Rullst",
+                   PR_NUMBER="668", PAYLOAD_DRAFT="true", GITHUB_OUTPUT=str(output))
+        env.update(overrides)
+        result = subprocess.run(["bash", str(HERE / "pull-request-draft.sh")], cwd=self.root, env=env,
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result, output.read_text()
+
+    def api_call(self):
+        called = self.root / "api-called"
+        return called.read_text() if called.exists() else None
+
+    def test_live_state_overrides_a_stale_payload(self):
+        # The surviving push run of PR #668 carried `draft: true` after the
+        # pull request was marked ready.
+        result, output = self.execute()
+        self.assertEqual(output, "draft=false\n")
+        self.assertEqual(self.api_call(), "api repos/Rullst/Rullst/pulls/668 --jq .draft")
+        self.assertIn("event payload draft=true, current draft=false", result.stdout)
+        _, output = self.execute(RULLST_DRAFT_LIVE="true", PAYLOAD_DRAFT="false")
+        self.assertEqual(output, "draft=true\n")
+
+    def test_unreadable_state_runs_the_ready_jobs(self):
+        for changes in ({"RULLST_DRAFT_API_FAIL": "1"}, {"RULLST_DRAFT_LIVE": "null"},
+                        {"RULLST_DRAFT_LIVE": ""}, {"RULLST_DRAFT_LIVE": "true\ntrue"}):
+            with self.subTest(changes=changes):
+                result, output = self.execute(**changes)
+                self.assertEqual(output, "draft=false\n")
+                self.assertIn("::warning::", result.stdout)
+
+    def test_other_events_and_invalid_inputs_never_query(self):
+        for changes in ({"GITHUB_EVENT_NAME": "push"}, {"GITHUB_EVENT_NAME": "workflow_dispatch"},
+                        {"GITHUB_EVENT_NAME": "schedule"}, {"PR_NUMBER": ""}, {"PR_NUMBER": "0"},
+                        {"PR_NUMBER": "1;id"}, {"GITHUB_REPOSITORY": "Rullst/Rullst/../x y"}):
+            with self.subTest(changes=changes):
+                _, output = self.execute(RULLST_DRAFT_LIVE="true", **changes)
+                self.assertEqual(output, "draft=false\n")
+                self.assertIsNone(self.api_call())
+
+
 class WorkflowGuardTests(unittest.TestCase):
     def test_all_runtime_jobs_have_failure_safe_development_only_guards(self):
         text = (HERE / "workflows/ci.yml").read_text().split("\njobs:\n", 1)[1]
@@ -186,6 +250,15 @@ class WorkflowGuardTests(unittest.TestCase):
         scorecard_guard = jobs["quality-scorecard"].split("    if: >-\n", 1)[1].split("    needs:", 1)[0]
         self.assertIn("!cancelled()", scorecard_guard)
         self.assertNotIn("always()", scorecard_guard)
+        # The scope job reads the pull request's current draft state; no job
+        # gates on the event payload's, which a newer run can carry stale.
+        self.assertIn("pr_draft: ${{ steps.draft.outputs.draft }}", jobs["scope"])
+        self.assertIn("run: bash .github/pull-request-draft.sh", jobs["scope"])
+        self.assertIn("      pull-requests: read\n", jobs["scope"])
+        self.assertNotIn("github.event.pull_request.draft ==", text)
+        for name in ("test", "quality-scorecard"):
+            self.assertIn("needs.scope.outputs.pr_draft != 'true'", jobs[name])
+        self.assertIn("      - scope\n", jobs["quality-scorecard"].split("    needs:", 1)[1].split("    runs-on:", 1)[0])
         self.assertIn("RULLST_CI_SHARD: ${{ inputs.shard }}", jobs["scope"])
         self.assertIn("RULLST_CI_PLATFORM: ${{ inputs.platform }}", jobs["scope"])
         self.assertIn("inputs.shard != 'packaged-distribution' || inputs.platform == 'all'", jobs["check"])
@@ -206,12 +279,14 @@ class WorkflowGuardTests(unittest.TestCase):
             with self.subTest(job=shard):
                 body = jobs[shard]
                 guard = body.split("    runs-on:", 1)[0]
-                for clause in ("!cancelled()", "github.event_name != 'push'",
-                               "github.event.pull_request.draft == false",
+                for clause in ("needs: scope\n", "!cancelled()", "github.event_name != 'push'",
+                               "(github.event_name != 'pull_request' || needs.scope.outputs.pr_draft != 'true')",
                                f"inputs.shard == 'all' || inputs.shard == '{shard}'"):
                     self.assertIn(clause, guard)
                 self.assertNotIn("inputs.platform", guard)
-                self.assertNotIn("needs:", guard)
+                # It needs the scope job only for the draft state, never for
+                # the site-only admission of branch pushes.
+                self.assertNotIn("runtime_required", guard)
                 self.assertIn(f"python3 .github/{script}", body)
                 self.assertIn("if [ \"$EVENT_NAME\" != pull_request ]", body)
                 self.assertFalse(any(job.startswith(name) for job in required_jobs))

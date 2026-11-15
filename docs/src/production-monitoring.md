@@ -260,6 +260,11 @@ route, and the endpoint's own requests are not counted in its statistics.
 }
 ```
 
+- **Versions:** `application` is what `Monitor::with_application` names, and
+  `framework` the Rullst release. Since 13.0.0-alpha.6 the public `/health`
+  and `/ready` probes no longer report the framework release, and report the
+  application's only through `health_router_with_version`, so this
+  authenticated document is where the framework version appears.
 - **Routes** are keyed by the matched route pattern (`/orders/{id}`) and a
   normalized method (the standard methods, else `OTHER`); requests that matched
   no route are counted as `(unmatched)`. At most 256 method and pattern pairs

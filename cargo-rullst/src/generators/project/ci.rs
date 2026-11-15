@@ -167,6 +167,19 @@ mod tests {
     }
 
     #[test]
+    fn cargo_warnings_stay_denied_and_the_unused_dependency_fix_is_explained() {
+        let (_, workflow) = FILES[0];
+        // setup-rust-toolchain's default `build-warnings: deny` stays in force.
+        assert!(!workflow.contains("build-warnings:"));
+        assert!(!workflow.contains("CARGO_BUILD_WARNINGS:"));
+        let comment = "      # The action's `build-warnings` input defaults to `deny`\n      # (CARGO_BUILD_WARNINGS=deny), so any Cargo or compiler warning fails\n      # this job. Since Cargo 1.100 that includes `cargo::unused_dependencies`:\n";
+        let fix = "      #   [lints.cargo]\n      #   unused_dependencies = \"allow\"\n      - name: Set up Rust with a dependency cache\n";
+        assert!(workflow.contains(comment), "{comment}");
+        assert!(workflow.contains(fix), "{fix}");
+        assert!(workflow.contains("Remove the dependency"));
+    }
+
+    #[test]
     fn dependabot_updates_both_ecosystems_monthly_in_groups() {
         let (path, config) = FILES[1];
         assert_eq!(path, ".github/dependabot.yml");

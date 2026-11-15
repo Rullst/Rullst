@@ -57,6 +57,15 @@ jobs:
         with:
           persist-credentials: false
 
+      # The action's `build-warnings` input defaults to `deny`
+      # (CARGO_BUILD_WARNINGS=deny), so any Cargo or compiler warning fails
+      # this job. Since Cargo 1.100 that includes `cargo::unused_dependencies`:
+      # a crate in [dependencies] that no target uses. Remove the dependency
+      # or, when it is there on purpose (for example only to turn on a
+      # feature of a crate another dependency brings in), allow the lint in
+      # Cargo.toml:
+      #   [lints.cargo]
+      #   unused_dependencies = "allow"
       - name: Set up Rust with a dependency cache
         uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:

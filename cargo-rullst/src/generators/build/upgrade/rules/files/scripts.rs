@@ -1,10 +1,12 @@
 //! Scripts, workflows, Makefiles and justfiles that run CLI commands which
-//! later releases removed or changed. Each predicate reads one line.
+//! later releases removed or changed, or read what the health probes no
+//! longer report. Each predicate reads one line.
 
+use super::super::alpha6_defaults::reads_probe_version;
 use super::super::catalog::{
     ACADEMY_REMOVED, BLUEPRINTS_REMOVED, CLI_AI_REMOVED, CLI_SELF_UPDATE,
-    DEPLOY_GENERATORS_REMOVED, DEPLOY_TARGETS_REMOVED, ISLAND_COMMANDS_REMOVED,
-    LIVE_COMMAND_REMOVED, MIGRATION_AUTO_STATUS, OMNI_REMOVED,
+    DEPLOY_GENERATORS_REMOVED, DEPLOY_TARGETS_REMOVED, HEALTH_FRAMEWORK_VERSION,
+    ISLAND_COMMANDS_REMOVED, LIVE_COMMAND_REMOVED, MIGRATION_AUTO_STATUS, OMNI_REMOVED,
 };
 use super::{Rule, line_of};
 
@@ -12,7 +14,7 @@ use super::{Rule, line_of};
 type LineCheck = fn(&str) -> bool;
 
 /// Each script rule with the line predicate that locates it.
-const CHECKS: [(&Rule, LineCheck); 10] = [
+const CHECKS: [(&Rule, LineCheck); 11] = [
     (&OMNI_REMOVED, runs_omni),
     (&CLI_AI_REMOVED, runs_removed_cli_command),
     (&CLI_SELF_UPDATE, runs_removed_update_command),
@@ -23,6 +25,7 @@ const CHECKS: [(&Rule, LineCheck); 10] = [
     (&ISLAND_COMMANDS_REMOVED, runs_island_command),
     (&LIVE_COMMAND_REMOVED, runs_live_command),
     (&ACADEMY_REMOVED, runs_academy_doctor),
+    (&HEALTH_FRAMEWORK_VERSION, reads_probe_version),
 ];
 
 /// Each rule a script matches, at every matching line that no

@@ -85,7 +85,7 @@ rand = { workspace = true }
 # `iot:keygen` and `iot:sign`: rullst-iot's own manifest encoding and verifier,
 # and Ed25519 signing (rullst-iot itself only verifies).
 rullst-iot = { workspace = true }
-ed25519-dalek = "2.2.0"
+ed25519-dalek = "3.0.0"
 zeroize = "1.9.1"
 quote = "1.0.47"
 proc-macro2 = { version = "1.0.107", features = ["span-locations"] }

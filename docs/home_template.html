@@ -9,18 +9,23 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta property="og:title" content="Rullst — Intelligent, Security-Conscious, and Designed for Effortless Productivity">
   <meta property="og:description" content="Build beyond the endpoint with Rullst v13, code you can inspect and boundaries you control.">
-  <meta property="og:url" content="https://rullst.win/Rullst/">
+  <meta property="og:url" content="https://rullst.win/">
   <meta property="og:image" content="https://rullst.win/Rullst/Rullst.png">
   <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="pt_BR">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Rullst — Intelligent, Security-Conscious, and Designed for Effortless Productivity">
   <meta name="twitter:description" content="A coordinated, open-source Rust framework suite. Explore v13, its source and its evidence.">
   <meta name="twitter:image" content="https://rullst.win/Rullst/Rullst.png">
   <title>Rullst — Intelligent, Security-Conscious, and Designed for Effortless Productivity</title>
-  <link rel="canonical" href="https://rullst.win/Rullst/">
+  <link rel="canonical" href="https://rullst.win/">
+  <link rel="alternate" hreflang="en" href="https://rullst.win/">
+  <link rel="alternate" hreflang="pt-BR" href="https://rullst.win/pt-br/">
+  <link rel="alternate" hreflang="x-default" href="https://rullst.win/">
   <link rel="icon" type="image/png" href="/Rullst/Rullst.png">
-  <link rel="stylesheet" href="./assets/site.css?v=a9c02c02f40a7a79">
-  <script src="./assets/site.js?v=28d1b7b10c198430" defer></script>
+  <link rel="stylesheet" href="/assets/site.css?v=b706e48ca0268ff6">
+  <script src="/assets/site.js?v=662d08b21f63ee4d" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -38,12 +43,16 @@
         <img src="/Rullst/Rullst.png" alt="" width="40" height="40">
         <span>rullst<span class="brand-period">.</span></span>
       </a>
+      <div class="lang-switch" role="group" aria-label="Language">
+        <a href="/" hreflang="en" lang="en" aria-current="page"><img src="/assets/flags/us.svg" alt="" width="27" height="14">English</a>
+        <a href="/pt-br/" hreflang="pt-BR" lang="pt-BR" aria-label="Português (Brasil)"><img src="/assets/flags/br.svg" alt="" width="20" height="14">Português</a>
+      </div>
       <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-controls="navigation" aria-expanded="false" data-nav-toggle>☰</button>
       <div class="nav-links" id="navigation" data-navigation>
         <a href="#why">Why Rullst</a>
         <a href="#examples">Examples</a>
         <a href="#ecosystem">Ecosystem</a>
-        <a href="/Rullst/book/start-here.html">Learn</a>
+        <a class="nav-academy" href="#academy">Academy <span aria-hidden="true">↗</span></a>
         <a href="/Rullst/book/">Documentation</a>
         <a href="#community">Community</a>
         <a class="nav-source" href="https://github.com/Rullst/Rullst">Source code ↗</a>
@@ -64,6 +73,7 @@
         </div>
         <div class="hero-tags" aria-label="Project foundations"><span>Web-first</span><span>20 coordinated packages</span><span>MIT licensed</span></div>
         <p class="hero-note">Axum + Tokio + Tower + SQLx. Your code. Your application policy.</p>
+        <a class="hero-academy-link" href="#academy"><span aria-hidden="true">✦</span> A new place to learn. Meet Rullst Academy <span aria-hidden="true">↓</span></a>
       </div>
 
       <div class="workbench">
@@ -121,12 +131,77 @@
       <a href="/Rullst/book/axum-sqlx-migration.html">Keep your escape hatches ↗</a>
     </div>
 
+    <section id="academy" class="shell academy-section" aria-labelledby="academy-heading" data-reveal>
+      <div class="academy-spotlight">
+        <div class="academy-content">
+          <p class="academy-label"><span class="academy-badge">Rullst Academy</span> YOUR FREE TECHNOLOGY SCHOOL</p>
+          <h2 id="academy-heading">A world to discover.<br><span>One step at a time.</span></h2>
+          <p class="academy-copy">Turn curiosity into something you can build. Learn Rust, create with Rullst and explore GitHub through short lessons, hands-on challenges and your own projects.</p>
+          <ul class="academy-subjects" aria-label="Explore subjects in the Academy"><li>Rust &amp; Rullst</li><li>GitHub</li><li>AI &amp; cybersecurity</li><li>Robotics &amp; math</li></ul>
+          <div class="academy-actions">
+            <a class="button button-primary" href="https://academy.rullst.win/">Explore Rullst Academy <span aria-hidden="true">↗</span></a>
+            <a class="academy-path-link" href="https://academy.rullst.win/en/paths">Find your learning path <span aria-hidden="true">↗</span></a>
+          </div>
+          <p class="academy-note">Português · English · Español <span aria-hidden="true">/</span> Try the first lesson of each path without an account.</p>
+        </div>
+        <div class="academy-companion">
+          <div class="academy-art" aria-hidden="true">
+            <div class="academy-orbit academy-orbit-outer"></div><div class="academy-orbit academy-orbit-inner"></div>
+            <span class="academy-spark academy-spark-one">✦</span><span class="academy-spark academy-spark-two">+</span><span class="academy-spark academy-spark-three">✳</span>
+            <span class="academy-art-label">CURIOSITY, MEET YOUR COMPANION.</span>
+            <div class="academy-crab">
+              <!-- Rullst Academy's own mascot, adapted from its public homepage. -->
+              <svg viewBox="0 0 300 250" fill="none" focusable="false">
+                <defs>
+                  <linearGradient id="academy-crab-shell" x1="118" y1="80" x2="185" y2="183" gradientUnits="userSpaceOnUse"><stop stop-color="#c4f995"/><stop offset="1" stop-color="#63b946"/></linearGradient>
+                  <linearGradient id="academy-crab-claw" x1="40" y1="40" x2="90" y2="120" gradientUnits="userSpaceOnUse"><stop stop-color="#ffbc65"/><stop offset="1" stop-color="#f17e25"/></linearGradient>
+                  <linearGradient id="academy-crab-steel" x1="100" y1="170" x2="110" y2="220" gradientUnits="userSpaceOnUse"><stop stop-color="#a3bdb0"/><stop offset="1" stop-color="#456757"/></linearGradient>
+                </defs>
+                <ellipse class="academy-crab-shadow" cx="151" cy="230" rx="85" ry="9" fill="#030c0a" opacity=".5"/>
+                <g class="academy-crab-body">
+                  <g stroke="#294f38" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+                    <g fill="url(#academy-crab-steel)">
+                      <g class="academy-crab-legs-left"><path d="m106 156-35 19-14 34 19 5 15-28 30-13z"/><path d="m113 172-17 28 3 21 18-1 2-21 15-21z"/><path d="m96 141-43 9-19 29 18 9 22-25 32-5z"/></g>
+                      <g class="academy-crab-legs-right"><path d="m194 156 35 19 14 34-19 5-15-28-30-13z"/><path d="m187 172 17 28-3 21-18-1-2-21-15-21z"/><path d="m204 141 43 9 19 29-18 9-22-25-32-5z"/></g>
+                    </g>
+                    <g class="academy-crab-claw-left">
+                      <path d="m100 126-32-5-13-29" stroke="#648b71" stroke-width="15"/><circle cx="68" cy="117" r="9" fill="#bdd5b9"/>
+                      <path d="M58 98C30 101 15 81 22 57L42 72 45 45C69 46 85 64 79 81 76 90 69 96 58 98Z" fill="url(#academy-crab-claw)"/><path d="m30 68 9 11" stroke="#ffd69b" stroke-width="4"/>
+                    </g>
+                    <g class="academy-crab-claw-right">
+                      <path d="m200 126 32-5 13-29" stroke="#648b71" stroke-width="15"/><circle cx="232" cy="117" r="9" fill="#bdd5b9"/>
+                      <path d="M242 98c28 3 43-17 36-41l-20 15-3-27c-24 1-40 19-34 36 3 9 10 15 21 17Z" fill="url(#academy-crab-claw)"/><path d="m270 68-9 11" stroke="#ffd69b" stroke-width="4"/>
+                    </g>
+                    <path d="M122 91V65m56 26V65" stroke="#789d75" stroke-width="12"/>
+                    <rect x="107" y="49" width="30" height="24" rx="9" fill="#192f25"/><rect x="163" y="49" width="30" height="24" rx="9" fill="#192f25"/>
+                    <path d="M93 98c10-19 104-19 114 0l12 51c5 28-23 41-69 41s-74-13-69-41Z" fill="url(#academy-crab-shell)"/>
+                    <path d="M107 100c24-9 62-9 85 0" stroke="#e0ffb8" stroke-width="5"/>
+                    <rect x="108" y="115" width="84" height="39" rx="17" fill="#193e2c" stroke-width="4"/><path d="M141 137q9 10 18 0" stroke="#b9f583" stroke-width="3"/>
+                    <path d="M150 87V70" stroke="#53734b" stroke-width="4"/><circle cx="150" cy="64" r="6" fill="#ff9b36" stroke-width="3"/>
+                    <rect x="131" y="164" width="38" height="18" rx="6" fill="#315f37" stroke-width="2"/><path d="m143 169-4 4 4 4m14-8 4 4-4 4" stroke="#c7f499" stroke-width="2"/>
+                  </g>
+                  <g fill="#b9f583" class="academy-crab-eyes"><rect x="119" y="56" width="6" height="10" rx="3"/><rect x="175" y="56" width="6" height="10" rx="3"/></g>
+                  <g fill="#a9e783"><circle cx="126" cy="131" r="3"/><circle cx="174" cy="131" r="3"/></g>
+                  <g fill="#e5f8c8" stroke="#4b803d" stroke-width="2"><circle cx="98" cy="153" r="4"/><circle cx="202" cy="153" r="4"/></g>
+                  <g stroke="#4b803d" stroke-width="1.5"><path d="m96 153h4m100 0h4"/></g>
+                </g>
+              </svg>
+            </div>
+            <span class="academy-code-token">&lt;hello, explorer /&gt;</span>
+            <span class="academy-discovery"><span>✓</span> Small steps. New possibilities.</span>
+          </div>
+          <div class="academy-companion-caption"><span>Your robot crab. Ready to explore.</span><button class="academy-wave-button" type="button" data-academy-wave aria-pressed="false" hidden>Say hello <span aria-hidden="true">↗</span></button></div>
+        </div>
+      </div>
+    </section>
+
     <section id="examples" class="shell section examples-section" data-reveal>
       <div class="section-heading">
         <p class="eyebrow">00 / Less imagining. More exploring.</p>
         <h2>Not just a framework.<br><span class="gradient-text">A suite to bring your ideas to life.</span></h2>
-        <p>Explore three independently deployed applications on Azure Container Apps. Follow the source, discover a starting point, then make it yours.</p>
+        <p>Explore four independently deployed applications on Azure Container Apps. Follow the source, discover a starting point, then make it yours.</p>
       </div>
+      <p class="demo-startup-note"><strong>Demo startup notice.</strong> These applications may scale to zero when idle. The next request triggers a cold start while Azure Container Apps starts a container instance and initializes the application. This can temporarily increase the initial response time. Please allow a moment for the site to load.</p>
       <div class="demo-grid">
         <article class="demo-card demo-showcase">
           <div class="demo-art" aria-hidden="true">
@@ -134,7 +209,7 @@
             <svg viewBox="0 0 200 120" fill="none" stroke="currentColor" stroke-width="2"><rect x="22" y="14" width="156" height="94" rx="9"/><path d="M22 34h156M34 24h3m7 0h3m7 0h3"/><rect x="36" y="48" width="55" height="43" rx="4"/><path d="M105 51h56m-56 13h42m-42 13h56m-56 13h29"/></svg>
             <span class="demo-art-caption">ROUTES / DATA / IDEAS</span>
           </div>
-          <div class="demo-content"><span class="demo-kicker">01 / EXPLORE THE BUILDING BLOCKS</span><h3>Rullst Showcase</h3><p>A blog and application showcase. Explore server-rendered pages and selected integration demonstrations.</p><a class="button button-secondary" href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>Explore Showcase <span aria-hidden="true">↗</span></a></div>
+          <div class="demo-content"><span class="demo-kicker">01 / EXPLORE THE BUILDING BLOCKS</span><h3>Rullst Showcase</h3><p>A blog and application showcase. Explore server-rendered pages and selected integration demonstrations.</p><p class="demo-host-note">Runs in an Azure container that sleeps when idle, so the first load can take about 20–30 seconds.</p><a class="button button-secondary" href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>Explore Showcase <span aria-hidden="true">↗</span></a></div>
         </article>
         <article class="demo-card demo-lms">
           <div class="demo-art" aria-hidden="true">
@@ -142,7 +217,7 @@
             <svg viewBox="0 0 200 120" fill="none" stroke="currentColor" stroke-width="2"><path d="m30 45 70-28 70 28-70 28zM55 56v29q45 32 90 0V56M170 45v42"/><circle cx="170" cy="93" r="5"/><path d="M87 45h26M100 36v18"/></svg>
             <span class="demo-art-caption">LESSONS / QUIZZES / PROGRESS</span>
           </div>
-          <div class="demo-content"><span class="demo-kicker">02 / MAKE ROOM FOR LEARNING</span><h3>LMS Academy</h3><p>Discover a learning-platform example, with a public course catalog and account entry points.</p><a class="button button-secondary" href="https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>Explore the LMS <span aria-hidden="true">↗</span></a></div>
+          <div class="demo-content"><span class="demo-kicker">02 / MAKE ROOM FOR LEARNING</span><h3>LMS Academy</h3><p>Discover a learning-platform example, with a public course catalog and account entry points.</p><p class="demo-host-note">Runs in an Azure container that sleeps when idle, so the first load can take about 20–30 seconds.</p><a class="button button-secondary" href="https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>Explore the LMS <span aria-hidden="true">↗</span></a></div>
         </article>
         <article class="demo-card demo-portfolio">
           <div class="demo-art" aria-hidden="true">
@@ -150,10 +225,18 @@
             <svg viewBox="0 0 200 120" fill="none" stroke="currentColor" stroke-width="2"><rect x="27" y="18" width="146" height="86" rx="9"/><circle cx="57" cy="48" r="13"/><path d="M83 41h63m-63 13h42M43 79h35m-35 10h22"/><rect x="96" y="70" width="25" height="22" rx="3"/><rect x="132" y="70" width="25" height="22" rx="3"/></svg>
             <span class="demo-art-caption">PROJECTS / SKILLS / YOUR STORY</span>
           </div>
-          <div class="demo-content"><span class="demo-kicker">03 / PUT YOUR WORK OUT THERE</span><h3>Developer Portfolio</h3><p>A portfolio starting point for presenting projects, skills and experience in a focused web application.</p><a class="button button-secondary" href="https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>Explore Portfolio <span aria-hidden="true">↗</span></a></div>
+          <div class="demo-content"><span class="demo-kicker">03 / PUT YOUR WORK OUT THERE</span><h3>Developer Portfolio</h3><p>A portfolio starting point for presenting projects, skills and experience in a focused web application.</p><p class="demo-host-note">Runs in an Azure container that sleeps when idle, so the first load can take about 20–30 seconds.</p><a class="button button-secondary" href="https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>Explore Portfolio <span aria-hidden="true">↗</span></a></div>
+        </article>
+        <article class="demo-card demo-saas">
+          <div class="demo-art" aria-hidden="true">
+            <span class="demo-orbit"></span>
+            <svg viewBox="0 0 200 120" fill="none" stroke="currentColor" stroke-width="2"><rect x="22" y="14" width="156" height="94" rx="9"/><path d="M22 34h156M64 34v74M34 24h3m7 0h3m7 0h3M34 49h18m-18 14h18m-18 14h12"/><rect x="78" y="47" width="35" height="20" rx="3"/><rect x="127" y="47" width="35" height="20" rx="3"/><path d="M80 93V80m18 13V76m18 17V83m18 10V74m18 19V78"/></svg>
+            <span class="demo-art-caption">BLUEPRINT / PRODUCT / POSSIBILITIES</span>
+          </div>
+          <div class="demo-content"><span class="demo-kicker">04 / START YOUR NEXT PRODUCT</span><h3>SaaS Blueprint</h3><p>A SaaS application blueprint. Explore a starting point for building your own software-as-a-service product.</p><p class="demo-host-note">Runs in an Azure container that sleeps when idle, so the first load can take about 20–30 seconds.</p><a class="button button-secondary" href="https://saas.rullst.win/" data-demo-link>Explore SaaS <span aria-hidden="true">↗</span></a></div>
         </article>
       </div>
-      <div class="demo-footnote"><p>Public demos, not production certifications. Each demo is upgraded on its own schedule and can run an earlier Rullst release than 13.0.0-alpha.5; Showcase payment fixtures are not live checkout. Use test data, not sensitive information. Availability is managed separately.</p><a href="https://github.com/Rullst/examples">Source &amp; deployment recipes ↗</a></div>
+      <div class="demo-footnote"><p>Public demos, not production certifications. Each demo is upgraded on its own schedule and can run an earlier Rullst release than 13.0.0-alpha.5. The SaaS checkout is live and charges real money; the Showcase payment fixtures are not live checkout. Apart from a purchase you intend to make, use test data, not sensitive information. Availability is managed separately.</p><a href="https://github.com/Rullst/examples">Source &amp; deployment recipes ↗</a></div>
     </section>
 
     <section id="why" class="shell section" data-reveal>
@@ -233,7 +316,59 @@
         <a class="evidence-card" href="/Rullst/book/v12-release-audit.html"><span class="evidence-number">02 / V12 RELEASE REVIEW</span><h3>What was verified for v12?</h3><p>Historical record of the end-of-life v12 line: release evidence, corrections, bounded claims and the checks repeated for its stable release.</p><span class="evidence-action">Open the v12 release audit ↗</span></a>
         <a class="evidence-card" href="/Rullst/benches/"><span class="evidence-number">03 / PERFORMANCE</span><h3>What did we measure?</h3><p>Eight benchmark groups, exact workloads and methodology—not a production-throughput promise.</p><span class="evidence-action">Explore benchmark history ↗</span></a>
       </div>
+      <div id="performance" class="performance-pointer">
+        <h3>Performance</h3>
+        <p>Two sources, measured differently. The <a href="/Rullst/benches/">microbenchmark dashboards</a> record eight Criterion groups on <code>main</code> commits to catch regressions; they are not a ranking. The <a href="/Benchmarks/">cross-framework comparison</a> was measured in June 2026, before v13; a v13 run is planned before 13.0.0. <a href="/compare/">Rullst, Loco and Topcoat compared</a> puts three Rust frameworks side by side, with the version each fact was checked against.</p>
+      </div>
       <p class="section-note">Current CI, coverage and OpenSSF evidence are linked from the <a href="https://github.com/Rullst/Rullst#readme">repository verification dashboard</a>. Results belong to their recorded commits.</p>
+    </section>
+
+    <section id="integrations" class="shell section integrations-section" aria-labelledby="integrations-heading" data-reveal>
+      <div class="section-heading">
+        <p class="eyebrow">05 / Integrations, by evidence</p>
+        <h2 id="integrations-heading">How far each integration<br><span class="accent-green">has been tested.</span></h2>
+        <p>Every built-in integration, grouped by the strongest evidence behind it. Names are plain text: listing a service implies no partnership or endorsement.</p>
+      </div>
+      <div class="integration-levels">
+        <article class="integration-level" data-integration-level="real-accounts">
+          <span class="integration-index">01 / REAL ACCOUNTS</span>
+          <h3>Validated with real accounts</h3>
+          <ul>
+            <li><b>Stripe</b> (real payments)</li>
+            <li><b>InfinitePay</b> (a real Pix payment)</li>
+            <li><b>Bunny Stream</b>, <b>Resend</b>, <b>SMTP</b> mail, <b>Google Gemini</b>, <b>Google</b> sign-in and <b>GitHub</b> sign-in (used in production applications)</li>
+            <li><b>PostgreSQL</b> and <b>SQLite</b> (in production in the maintainer's applications, besides CI)</li>
+            <li>The OpenAI-compatible AI adapter (validated with <b>Groq</b>, an OpenAI-compatible provider, not with OpenAI)</li>
+          </ul>
+          <a href="/Rullst/book/maturity.html#what-supported-promises">What "supported" promises ↗</a>
+        </article>
+        <article class="integration-level" data-integration-level="ci-containers">
+          <span class="integration-index">02 / LOCAL CONTAINERS IN CI</span>
+          <h3>Tested in CI against servers in local containers</h3>
+          <ul>
+            <li><b>MySQL</b> and <b>MariaDB</b></li>
+            <li><b>Redis</b> (cache, queues, rate limits, ORM data structures and Redis Streams messaging)</li>
+            <li><b>SurrealDB</b></li>
+            <li><b>Turso/libSQL</b> (the <code>libsql-server</code> image, which is <code>sqld</code>)</li>
+            <li><b>Meilisearch</b> search</li>
+            <li><b>pgvector</b></li>
+            <li><b>S3</b>-compatible storage (a <b>Garage</b> server)</li>
+          </ul>
+          <a href="/Rullst/book/database-support.html#where-the-live-tests-run">Where the live tests run ↗</a>
+        </article>
+        <article class="integration-level" data-integration-level="offline">
+          <span class="integration-index">03 / OFFLINE ONLY</span>
+          <h3>Offline only: mock mode, local fixtures or a conformance kit</h3>
+          <ul>
+            <li><b>AWS SES</b> and <b>SendPulse</b> mail</li>
+            <li><b>OpenAI</b> and <b>Anthropic Claude</b>, and the <b>DeepSeek</b> and <b>Ollama</b> presets of the OpenAI-compatible adapter</li>
+            <li><b>Microsoft</b>, <b>Apple</b>, <b>Auth0</b>, <b>AWS Cognito</b>, <b>Facebook</b>, <b>X (Twitter)</b>, <b>Discord</b>, <b>LinkedIn</b> and generic <b>OpenID Connect</b> sign-in</li>
+            <li>The <b>S3/R2</b> adapter of <code>rullst-media</code></li>
+          </ul>
+          <a href="/Rullst/book/provider-conformance.html">Provider conformance kits ↗</a>
+        </article>
+      </div>
+      <p class="integration-recipes" data-integration-recipes><strong>Recipes, not integrations.</strong> MongoDB, DuckDB and Qdrant are application recipes: your code uses their official crates directly. Their built-in adapters were removed in 13.0.0-alpha.5. Other services are application code too: write an adapter on the provider trait (payments, mail, video) or follow a recipe. <a href="/Rullst/book/recipes/index.html">Read the recipes ↗</a></p>
     </section>
 
     <section id="community" class="shell section" data-reveal>
@@ -252,33 +387,37 @@
   <footer class="footer">
     <div class="shell">
       <div class="footer-main">
-        <div><a class="brand" href="https://rullst.github.io/">rullst<span class="brand-period">.</span></a><p>Because With Rullst, We Rule!</p><span class="footer-subtitle">An open-source framework suite.<br>Built in the open, with room for you.</span></div>
-        <div class="footer-group"><h2>Build</h2><a href="/Rullst/book/">Documentation</a><a href="/Rullst/book/philosophy.html">Our story</a><a href="/Rullst/benches/">Benchmarks</a><a href="https://github.com/Rullst/Rullst">Source code</a><a href="https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md">Contribute</a></div>
-        <div class="footer-group"><h2>Connect</h2><a href="mailto:officialrullst@gmail.com">Contact the team</a><a href="https://github.com/Rullst/Rullst/security/policy">Report a vulnerability</a><a href="#privacy">Privacy notice</a><a href="/Rullst/book/compatibility-policy.html#source-branches">Release status</a></div>
+        <div><a class="brand" href="https://rullst.win/">rullst<span class="brand-period">.</span></a><p>Because With Rullst, We Rule!</p><span class="footer-subtitle">An open-source framework suite.<br>Built in the open, with room for you.</span></div>
+        <div class="footer-group"><h2>Build</h2><a href="https://academy.rullst.win/">Rullst Academy</a><a href="/Rullst/book/">Documentation</a><a href="/Rullst/book/philosophy.html">Our story</a><a href="/Rullst/benches/">Benchmarks</a><a href="https://github.com/Rullst/Rullst">Source code</a><a href="https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md">Contribute</a></div>
+        <div class="footer-group"><h2>Connect</h2><a href="mailto:officialrullst@gmail.com">Contact the team</a><a href="https://github.com/Rullst/Rullst/security/policy">Report a vulnerability</a><a href="./privacy.html">Privacy notice</a><a href="/Rullst/book/compatibility-policy.html#source-branches">Release status</a></div>
       </div>
       <nav class="social-links" aria-label="Rullst social and community links">
         <a href="https://rullst.github.io">Website ↗</a>
         <a href="https://github.com/Rullst">GitHub ↗</a>
         <a href="https://rullst.blogspot.com">Blogspot ↗</a>
         <a href="https://www.bilibili.tv/en/space/1436672033">BiliBili ↗</a>
+        <a href="https://bsky.app/profile/rullst.bsky.social">Bluesky ↗</a>
         <a href="https://daily.dev/squads/rullst">Daily.dev ↗</a>
         <a href="https://dev.to/venelouis">Dev.to ↗</a>
         <a href="https://discord.com/invite/2ntKFtsSjw">Discord ↗</a>
         <a href="https://rullst.hashnode.dev/">Hashnode ↗</a>
-        <a href="https://www.instagram.com/rullst_official/">Instagram ↗</a>
+        <a href="https://www.instagram.com/officialrullst/">Instagram ↗</a>
+        <a href="https://www.linkedin.com/company/rullst">LinkedIn ↗</a>
+        <a href="https://www.reddit.com/r/rullst">Reddit ↗</a>
+        <a href="https://substack.com/@rullst">Substack ↗</a>
         <a href="https://t.me/rullst">Telegram ↗</a>
         <a href="https://www.tiktok.com/@venelouis">TikTok ↗</a>
-        <a href="https://www.youtube.com/@rullst_official">YouTube ↗</a>
+        <a href="https://www.youtube.com/@officialrullst">YouTube ↗</a>
         <a href="https://x.com/venelouis">X ↗</a>
       </nav>
       <section id="privacy" class="privacy-notice" aria-labelledby="privacy-heading">
         <h2 id="privacy-heading">A small footprint. A clear privacy notice.</h2>
         <p>This landing page has no analytics, advertising pixels or embedded social feeds. Its code does not set cookies or use browser storage. Copy buttons write only the displayed command to your clipboard, only when clicked.</p>
-        <details><summary>Hosting, linked pages &amp; contacting us</summary><div>
+        <details><summary>Hosting, linked pages &amp; your privacy rights</summary><div>
           <p>The site is hosted on GitHub Pages. Requests necessarily reach the host, which may process IP addresses and technical request information under the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub Privacy Statement</a>. We do not control GitHub's hosting logs or their retention.</p>
-          <p>Social links are ordinary links, not embeds. Following them opens a service with its own privacy practices. The documentation can store display preferences locally and include external resources; benchmark pages currently load Chart.js from jsDelivr. The no-tracking description above applies to this landing page, not to every linked service.</p>
-          <p>If you email <a href="mailto:officialrullst@gmail.com">officialrullst@gmail.com</a>, the team and its email provider receive your address and message to handle your inquiry. Don't include credentials or unnecessary personal data. Contact that address about privacy questions or requests; public issues and social posts are not private support channels.</p>
-          <p>Last reviewed: September 12, 2026. This notice describes the website—not data processing in applications built with Rullst—and does not claim universal legal compliance.</p>
+          <p>Social links are ordinary links, not embeds. Following them opens a service with its own privacy practices. Rullst Academy, documentation, benchmarks and the Showcase, LMS, Portfolio and SaaS demos have separate data flows. The documentation can store display preferences locally and include external resources; benchmark pages currently load Chart.js from jsDelivr. The no-tracking description above applies to this landing page, not to every linked service.</p>
+          <p><strong>Responsible for this website:</strong> Venelouis, Brazil. For questions or requests to access, correct or delete personal data, contact <a href="mailto:officialrullst@gmail.com">officialrullst@gmail.com</a>. If you email that address, the team and its email provider receive your address and message to handle your inquiry. Email is handled through Gmail; please don't include credentials or unnecessary personal data. Public issues and social posts are not private support channels. Your rights depend on the law that applies to your situation.</p>
+          <p><a href="./privacy.html">Read the full privacy notice</a> for purposes, legal bases, retention, international processing and regional rights, including LGPD and GDPR where applicable. This notice describes the website—not data processing in applications built with Rullst—and does not claim universal legal compliance. Last updated: November 14, 2026.</p>
         </div></details>
       </section>
       <div class="footer-bottom"><span>Built with care. Shared in the open.</span><a href="#main">Back to top ↑</a></div>

@@ -15,7 +15,9 @@ extend-exclude = [
     "rullst-core/src/i18n/format/cldr_tests.rs",
     # Generated public-API listings: paths and names come from the checked
     # sources and their dependencies (for example `serde::ser`).
-    ".github/public-api/"
+    ".github/public-api/",
+    # Brazilian Portuguese website pages; the dictionary is English.
+    "docs/*.pt-BR.html"
 ]
 
 [default.extend-words]

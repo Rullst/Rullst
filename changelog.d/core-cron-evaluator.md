@@ -3,7 +3,7 @@
 - **Breaking:** `Scheduler::task`, `task_in_tz`, `deferrable_task` and
   `deferrable_task_in_tz` evaluate cron expressions with Core's own
   five-field evaluator instead of the `cron` crate, which leaves the
-  dependency graph (8 fewer packages in the Blank and API starters, compiled
+  dependency graph (9 fewer packages in the Blank and API starters, compiled
   and in `Cargo.lock`). The syntax, the day-of-month or day-of-week rule,
   time zones and occurrences from 1970 through 2100 are unchanged, checked
   against the `cron` crate by property tests. Each field must now be valid

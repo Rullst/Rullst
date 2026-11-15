@@ -1,5 +1,8 @@
-// Real Chromium checks for the landing page. No npm packages or external requests.
-// Run after `mdbook build docs`; optional: --screenshots /absolute/output/directory.
+// Real Chromium checks for the rullst.win landing and privacy pages, served at
+// the site root as Rullst/Rullst.github.io publishes them. No npm packages or
+// external requests. Run after `mdbook build docs`; optional:
+// --screenshots /absolute/output/directory, and --organization-site DIRECTORY
+// to serve the pages from assemble-organization-site.py output instead.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -15,8 +18,8 @@ const outputIndex = process.argv.indexOf("--screenshots");
 const output = outputIndex < 0 ? null : process.argv[outputIndex + 1];
 const organizationIndex = process.argv.indexOf("--organization-site");
 const organization = organizationIndex < 0 ? null : resolve(process.argv[organizationIndex + 1]);
-const landingPath = organization ? "/" : "/Rullst/";
-const assetPaths = organization ? ["/src/style.css", "/src/main.js"] : ["/Rullst/assets/site.css", "/Rullst/assets/site.js"];
+const landingPath = "/";
+const assetPaths = ["/assets/site.css", "/assets/site.js"];
 const oldAssetReads = new Map(assetPaths.map(path => [path, 0]));
 if (outputIndex >= 0) assert(output, "--screenshots requires a directory");
 if (output) await mkdir(output, { recursive: true });
@@ -41,13 +44,15 @@ const server = createServer(async (request, response) => {
     }
     let base = root;
     let relative;
-    if (organization && ["/", "/privacy.html", "/src/style.css", "/src/main.js"].includes(path)) {
-      base = organization;
-      relative = path === "/" ? "index.html" : path.slice(1);
+    const rootSite = { "/": ["index.html", "docs/home_template.html"], "/privacy.html": ["privacy.html", "docs/privacy_template.html"],
+      "/pt-br/": ["pt-br/index.html", "docs/home_template.pt-BR.html"], "/pt-br/privacy.html": ["pt-br/privacy.html", "docs/privacy_template.pt-BR.html"],
+      "/compare/": ["compare/index.html", "docs/compare_template.html"], "/pt-br/comparar/": ["pt-br/comparar/index.html", "docs/compare_template.pt-BR.html"],
+      "/assets/site.css": ["assets/site.css", "docs/site.css"], "/assets/site.js": ["assets/site.js", "docs/site.js"],
+      "/assets/flags/us.svg": ["assets/flags/us.svg", "docs/flags/us.svg"], "/assets/flags/br.svg": ["assets/flags/br.svg", "docs/flags/br.svg"] };
+    if (rootSite[path]) {
+      if (organization) base = organization;
+      relative = rootSite[path][organization ? 0 : 1];
     }
-    else if (path === "/Rullst/") relative = "docs/home_template.html";
-    else if (path === "/Rullst/assets/site.css") relative = "docs/site.css";
-    else if (path === "/Rullst/assets/site.js") relative = "docs/site.js";
     else if (path === "/Rullst/Rullst.png") relative = "docs/Rullst.png";
     else if (path.startsWith("/Rullst/book/")) { base = join(root, "docs/book"); relative = path.slice(13) || "index.html"; }
     else if (path.startsWith("/Rullst/images/")) { base = join(root, "images"); relative = path.slice(15); }
@@ -144,9 +149,9 @@ try {
     await loaded;
     if (scriptsEnabled) await evaluate("document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))");
   };
-  const layout = async (width, height) => {
+  const layout = async (width, height, route = landingPath) => {
     await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
-    await navigate();
+    await navigate(true, route);
     const horizontal = await evaluate(`(() => ({
       viewport: innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
@@ -165,20 +170,37 @@ try {
       `Horizontal overflow at ${width}px: ${JSON.stringify(horizontal)}`,
     );
     assert.equal(await evaluate("document.querySelectorAll('h1').length"), 1);
-    assert.equal(await evaluate("document.querySelectorAll('.social-links a').length"), 13);
+    assert.equal(await evaluate("document.querySelectorAll('.social-links a').length"), 17);
     assert.deepEqual(await evaluate("[...document.querySelectorAll('[data-demo-link]')].map(link => link.href)"), [
       "https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/",
       "https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/",
       "https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/",
+      "https://saas.rullst.win/",
     ], "Demo buttons must retain the independently hosted application URLs");
+    assert.equal(await evaluate("document.querySelectorAll('#integrations [data-integration-level] li').length"), 16, "Integrations must list every README entry");
+    assert(await evaluate("[...document.querySelectorAll('#academy a')].some(link => link.href.startsWith('https://academy.rullst.win/'))"), "Academy section must link the Academy");
+    const language = await evaluate(`(() => {
+      const switcher = document.querySelector('.lang-switch');
+      const box = switcher.getBoundingClientRect();
+      return {
+        lang: document.documentElement.lang,
+        current: [...switcher.querySelectorAll('[aria-current=page]')].map(link => link.hreflang),
+        labels: [...switcher.querySelectorAll('a')].map(link => link.textContent.trim()),
+        flags: [...switcher.querySelectorAll('img')].every(image => image.complete && image.naturalWidth > 0),
+        visible: getComputedStyle(switcher).display !== 'none' && box.left >= 0 && box.right <= innerWidth && box.height > 0,
+      };
+    })()`);
+    const expectedLanguage = route === "/pt-br/" ? "pt-BR" : "en";
+    assert.deepEqual(language, { lang: expectedLanguage, current: [expectedLanguage], labels: ["English", "Português"], flags: true, visible: true },
+      `Language switcher at ${width}px on ${route}`);
     assert(await evaluate("[...document.images].filter(i => i.loading !== 'lazy').every(i => i.complete && i.naturalWidth > 0)"), "Hero image failed");
-    assert(await evaluate("document.body.innerText.includes('Rullst v13 prerelease')"));
+    assert(await evaluate(`document.body.innerText.includes(${JSON.stringify(route === "/pt-br/" ? "Pré-lançamento do Rullst v13" : "Rullst v13 prerelease")})`));
     assert.equal(await evaluate("window.__oldSiteScript === true"), false, "A cached old script must not run with new HTML");
     assert.deepEqual(await evaluate(`Array.from(document.querySelectorAll('.engine-module'), element => {
       const style = getComputedStyle(element);
       return { position: style.position, border: style.borderTopWidth, background: style.backgroundImage !== 'none' };
     })`), Array.from({length: 3}, () => ({position: "absolute", border: "1px", background: true})), "All three engine cards must load their actual layout and box styling");
-    assert(await evaluate("document.querySelector('#examples h2').textContent.includes('Not just a framework.')"));
+    assert(await evaluate(`document.querySelector('#examples h2').textContent.includes(${JSON.stringify(route === "/pt-br/" ? "Não é só um framework." : "Not just a framework.")})`));
     if (output) {
       // Capture the settled identity, not an arbitrary color mid-intro.
       await evaluate("new Promise(resolve => setTimeout(resolve, 5100))");
@@ -186,13 +208,13 @@ try {
       // Cancellation is not a page error; an unbounded animation still times out.
       await evaluate("Promise.allSettled(document.getAnimations().map(animation => animation.finished))");
       const { data } = await send("Page.captureScreenshot", { format: "png" });
-      await writeFile(join(output, `rullst-site-${width}.png`), Buffer.from(data, "base64"));
+      await writeFile(join(output, `rullst-site-${expectedLanguage}-${width}.png`), Buffer.from(data, "base64"));
       await evaluate("document.querySelector('#examples').scrollIntoView({behavior:'instant'}); new Promise(resolve => setTimeout(resolve, 1200))");
       const demoScreenshot = await send("Page.captureScreenshot", { format: "png" });
-      await writeFile(join(output, `rullst-examples-${width}.png`), Buffer.from(demoScreenshot.data, "base64"));
+      await writeFile(join(output, `rullst-examples-${expectedLanguage}-${width}.png`), Buffer.from(demoScreenshot.data, "base64"));
       // Scrolling an element into view changes Chromium's sequential focus
       // navigation starting point. Reload so the keyboard test starts fresh.
-      await navigate();
+      await navigate(true, route);
     }
   };
   await navigate(true, "/_cache-probe.html");
@@ -216,6 +238,12 @@ try {
   assert(await evaluate("document.activeElement.classList.contains('skip-link')"), "First keyboard target must skip navigation");
   await evaluate("new Promise(resolve => { document.querySelector('#ecosystem').scrollIntoView({ behavior: 'instant', block: 'center' }); setTimeout(resolve, 120); })");
   assert(await evaluate("document.querySelector('#ecosystem').classList.contains('is-visible')"), "Scroll reveal must initialize");
+  assert(await evaluate("!document.querySelector('[data-academy-wave]').hidden"), "Academy greeting control must appear with motion allowed");
+  await evaluate("document.querySelector('.academy-companion').scrollIntoView({ behavior: 'instant', block: 'center' }); new Promise(resolve => setTimeout(resolve, 200))");
+  if (!await evaluate("document.querySelector('#academy').classList.contains('academy-is-waving')")) await evaluate("document.querySelector('[data-academy-wave]').click()");
+  assert(await evaluate("document.querySelector('[data-academy-wave]').getAttribute('aria-pressed') === 'true' && document.getAnimations().some(animation => animation.animationName === 'academy-claw-wave')"), "Academy mascot must wave");
+  await evaluate("document.querySelector('[data-academy-wave]').click()");
+  assert(await evaluate("!document.querySelector('#academy').classList.contains('academy-is-waving') && document.querySelector('[data-academy-wave]').getAttribute('aria-pressed') === 'false'"), "Academy greeting must stop on request");
   await send("Browser.grantPermissions", { origin, permissions: ["clipboardReadWrite", "clipboardSanitizedWrite"] });
   await evaluate("document.querySelector('[data-copy-command=install-command]').click()");
   assert.match(await evaluate("navigator.clipboard.readText()"), /^cargo install cargo-rullst --version =\S+ --locked$/);
@@ -238,6 +266,7 @@ try {
   await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
   await evaluate("new Promise(resolve => setTimeout(resolve, 100))");
   assert(await evaluate("document.querySelector('[data-intro-toggle]').hidden && !document.documentElement.classList.contains('intro-playing')"), "Changing reduced-motion preference must stop an active intro");
+  assert(await evaluate("document.querySelector('[data-academy-wave]').hidden && !document.querySelector('#academy').classList.contains('academy-is-waving')"), "Reduced motion must hide and stop the Academy greeting");
   await navigate();
   assert.equal(await evaluate("document.getAnimations().length"), 0, "Reduced motion must remove entrance animation");
   assert(await evaluate("[...document.querySelectorAll('[data-reveal]')].every(element => element.classList.contains('is-visible'))"), "Reduced motion must reveal content immediately");
@@ -247,19 +276,42 @@ try {
   assert(snapshot.strings.includes("nav-links"), "No-JS navigation remains in document");
   await send("Emulation.setScriptExecutionDisabled", { value: false });
   assert(await evaluate("!document.documentElement.classList.contains('js') && getComputedStyle(document.querySelector('[data-navigation]')).display !== 'none'"), "Mobile navigation must work without JS");
-  assert(await evaluate("document.querySelector('[data-intro-toggle]').hidden"), "Nonfunctional intro controls must stay hidden without JS");
+  assert(await evaluate("document.querySelector('[data-intro-toggle]').hidden && document.querySelector('[data-academy-wave]').hidden"), "Nonfunctional motion controls must stay hidden without JS");
   assert.equal(await evaluate("document.cookie"), "");
   assert.equal(await evaluate("localStorage.length + sessionStorage.length"), 0);
-  if (organization) {
-    await navigate(true, "/privacy.html");
-    assert(await evaluate("document.title === 'Website privacy notice — Rullst' && document.querySelector('#privacy details').open"), "Standalone privacy page must render with expanded notice");
-    assert.equal(await evaluate("document.querySelector('link[rel=canonical]').href"), "https://rullst.win/privacy.html");
-    assert.equal(await evaluate("getComputedStyle(document.body).margin"), "0px", "Privacy must also load the current stylesheet despite stale cached CSS");
+  await send("Emulation.setEmulatedMedia", { features: [] });
+  for (const [width, height] of [[1440, 1100], [390, 844], [320, 740]]) await layout(width, height, "/pt-br/");
+  await evaluate("document.querySelector('[data-copy-command=new-command]').click()");
+  assert.equal(await evaluate("document.querySelector('[data-copy-status]').textContent"), "Comando copiado.", "Portuguese page must announce copies in Portuguese");
+  assert.equal(await evaluate("document.querySelector('[data-intro-toggle]').textContent"), await evaluate("document.documentElement.classList.contains('intro-playing') ? 'Parar introdução' : 'Repetir introdução'"));
+  await navigate(true, "/pt-br/privacy.html");
+  assert(await evaluate("document.documentElement.lang === 'pt-BR' && document.title === 'Aviso de privacidade do site — Rullst' && document.querySelectorAll('main section h2').length === 9"), "Portuguese privacy page must render the full notice");
+  assert.equal(await evaluate("document.querySelector('link[rel=canonical]').href"), "https://rullst.win/pt-br/privacy.html");
+  assert.equal(await evaluate("document.querySelector('.lang-switch [aria-current=page]').hreflang"), "pt-BR");
+  for (const route of ["/compare/", "/pt-br/comparar/"]) {
+    for (const [width, height] of [[1440, 1100], [390, 844], [320, 740]]) {
+      await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
+      await navigate(true, route);
+      const page = await evaluate(`(() => ({
+        overflow: document.documentElement.scrollWidth > innerWidth,
+        topics: document.querySelectorAll('.compare-topic').length,
+        columns: [...document.querySelectorAll('.compare-topic')].every(topic => topic.querySelectorAll('dt').length === 3),
+        benchmarks: document.querySelectorAll('.benchmark-pending, .benchmark-rows').length,
+        current: document.querySelector('.lang-switch [aria-current=page]').getAttribute('href'),
+        flags: [...document.querySelectorAll('.lang-switch img')].every(image => image.complete && image.naturalWidth > 0),
+      }))()`);
+      assert.deepEqual(page, { overflow: false, topics: 11, columns: true, benchmarks: 1, current: route, flags: true }, `Comparison page ${route} at ${width}px`);
+    }
   }
+  await navigate(true, "/privacy.html");
+  assert(await evaluate("document.title === 'Website privacy notice — Rullst' && document.querySelectorAll('main section h2').length === 9"), "Standalone privacy page must render the full notice");
+  assert.equal(await evaluate("document.querySelector('link[rel=canonical]').href"), "https://rullst.win/privacy.html");
+  assert.equal(await evaluate("getComputedStyle(document.body).margin"), "0px", "Privacy must also load the current stylesheet despite stale cached CSS");
+  assert.equal(await evaluate("getComputedStyle(document.querySelector('.privacy-page')).maxWidth"), "950px", "Privacy page layout styles must load");
   assert.deepEqual([...oldAssetReads.values()], [1, 1], "Current pages must not request the old unversioned assets again");
   assert([...requests].every(url => url.startsWith(origin + "/")), `External resource requests: ${[...requests].filter(url => !url.startsWith(origin + "/"))}`);
   assert.deepEqual(failures, [], "Browser errors, CSP failures or broken resources");
-  console.log("PASS: stale-cache upgrade, engine card styling, desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, canonical URLs, clipboard success/denial, privacy, reduced motion, no-JS navigation, no storage or external landing requests.");
+  console.log(`PASS (${organization ? "assembled root site" : "sources"}): stale-cache upgrade, engine card styling, desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, Academy greeting/stop, integrations, canonical URLs, English and Brazilian Portuguese pages with flag language switcher, comparison pages, clipboard success/denial, privacy summary and full notice, reduced motion, no-JS navigation, no storage or external landing requests.`);
   await call("Browser.close");
 } finally {
   socket?.close();
