@@ -33,6 +33,13 @@ wins; fix this guide.
   matching `rullst-core` understands, and a caret requirement would let Cargo
   pair different alphas. The CLI writes the same exact pin into generated
   projects.
+- The website at `https://rullst.win/` (English at `/`, Brazilian Portuguese at
+  `/pt-br/`) is built from `docs/home_template*.html`, `docs/privacy_template*.html`,
+  `docs/site.css`, `docs/site.js` and `docs/flags/` in this repository, but
+  deployed by the `deploy.yml` workflow of `Rullst/Rullst.github.io` (daily, or
+  run it by hand after a site change). `pages.yml` here deploys the book and the
+  benchmark dashboards under `/Rullst/`. See
+  [website maintenance](docs/src/website-maintenance.md).
 
 ## 2. Workstation operating rules
 
