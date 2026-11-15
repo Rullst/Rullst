@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794764210320,
+  "lastUpdate": 1794774582015,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -14045,6 +14045,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 543,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7e64160836729945f33525697fbd0c6dc051ca24",
+          "message": "Merge pull request #713 from Rullst/feat/v13-alpha6-production-monitor\n\nfeat(monitor): remote traces, security radar, desktop notifications and proxy support",
+          "timestamp": "2026-11-15T17:13:42-03:00",
+          "tree_id": "532c3e151365916c545ef29af2293fa2210e2af6",
+          "url": "https://github.com/Rullst/Rullst/commit/7e64160836729945f33525697fbd0c6dc051ca24"
+        },
+        "date": 1794774581040,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 272,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
