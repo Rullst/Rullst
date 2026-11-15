@@ -191,10 +191,16 @@ and fails on any surviving mutant.
   feature.
 - **Advisories.** Every exception must appear in `deny.toml`, the ledger
   [`docs/src/security-advisory-exceptions.md`](docs/src/security-advisory-exceptions.md)
-  and the `--ignore`/`--audit-ignore` flags of every workflow that scans
-  advisories (`supply-chain.yml`, `crypto-containment.yml`, `release.yml` and
-  `pr-security-evidence.yml`), with an expiry; the governance job in
-  `supply-chain.yml` compares the three. Prefer an upgrade; an exception is
+  and the `--ignore`/`--audit-ignore` flags of every scanner: `supply-chain.yml`,
+  `crypto-containment.yml` and
+  [`.github/release-evidence-audit.sh`](.github/release-evidence-audit.sh), the
+  release evidence audits that `release.yml` runs, with an expiry; the
+  governance job in `supply-chain.yml` compares the three. The `Release
+  evidence audit` job of `supply-chain.yml` runs that script on pull requests
+  that change it, `release.yml`, `deny.toml`, the ledger, the CLI's audit code
+  or `Cargo.lock`, so a missing flag fails there rather than on the tag.
+  (`pr-security-evidence.yml` installs no cargo-audit, so its dependency check
+  reports NOT CHECKED and takes no flags.) Prefer an upgrade; an exception is
   temporary and time-bounded.
 - **CodeQL.** Rust results go through
   `.github/filter-codeql-test-fixtures.py` before upload, which drops the
@@ -324,7 +330,9 @@ testing.
 5. Never bypass a failing gate to publish. Fix the cause and admit the new
    commit. A tag whose release published nothing may be deleted and recreated
    only with the maintainer's approval; a published version is never
-   reused — release the next version instead.
+   reused — release the next version instead. While the tag exists,
+   `release-preflight.py` refuses; when no package has that version on
+   crates.io, it prints the commands for this case. It never deletes a tag.
 6. Record the publication in `ROADMAP.md` (release lines) and
    `docs/src/v13-delivery-plan.md`.
 
