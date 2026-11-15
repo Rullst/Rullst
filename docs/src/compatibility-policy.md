@@ -93,15 +93,29 @@ changelog and migration guide. Security handling is the same for every tier.
 ## Minimum Supported Rust Version
 
 The v12 release line and v13 both declare **Rust 1.96.0** in every publishable
-manifest.
+manifest. The MSRV is the oldest compiler Rullst supports; the recommended
+toolchain is the latest stable Rust (`rustup update stable`). The repository
+itself is built with the compiler pinned in `rust-toolchain.toml`.
 
 - Patch releases do not raise the MSRV.
-- A minor release may raise it only with an explicit changelog entry, updated
-  manifests and documentation, and a green MSRV CI job for the release commit.
+- In 13.x, a minor release raises the MSRV only when a dependency, a security
+  fix or a concrete need (a language or standard library feature the release
+  uses) requires it, and only to a Rust release published at least six months
+  before that minor release. Rust 1.100.0 was published on 12 November 2026,
+  for example, so no 13.x minor release published before 12 May 2027 can
+  require it.
+- A minor release that raises it does so with an explicit changelog entry,
+  updated manifests and documentation, and a green MSRV CI job for the release
+  commit.
 - A major release may select a new baseline, which must be announced in its
   migration guide.
 
-The MSRV promise covers the supported feature boundaries exercised by CI. A
+The MSRV promise covers the supported feature boundaries exercised by CI: the
+required `Check MSRV (Rust 1.96.0)` job compiles the whole workspace with every
+feature on Rust 1.96.0, and the informational
+[MSRV Tests](https://github.com/Rullst/Rullst/blob/main/.github/workflows/msrv-tests.yml)
+workflow runs the unit and integration tests of Core, the ORM on SQLite,
+Security, Auth, the macro crates and the `rullst` facade on it every night. A
 nightly-only analysis tool or an experimental target does not change the crate
 MSRV and must be labelled separately.
 
