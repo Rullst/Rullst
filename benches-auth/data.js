@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794756511753,
+  "lastUpdate": 1794759429445,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -22583,6 +22583,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3768,
             "range": "± 42",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "075f5a2760e1ef4179934e0781223ba8d53ccc6f",
+          "message": "Merge pull request #708 from Rullst/feat/v13-alpha6-revocable-sessions\n\nfeat(auth): revocable server-side login sessions and a devices page",
+          "timestamp": "2026-11-15T13:01:23-03:00",
+          "tree_id": "cbae8a4ac4bf32be99bbf0674f248f41373bdd73",
+          "url": "https://github.com/Rullst/Rullst/commit/075f5a2760e1ef4179934e0781223ba8d53ccc6f"
+        },
+        "date": 1794759428517,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 924,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 713,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1639,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3738,
+            "range": "± 74",
             "unit": "ns/iter"
           }
         ]
