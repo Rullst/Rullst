@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794720457334,
+  "lastUpdate": 1794726197678,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -22151,6 +22151,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3759,
             "range": "± 124",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c3f96c8074ad6b8b047abb0d3e6005a2e08385de",
+          "message": "Merge pull request #699 from Rullst/chore/v13-alpha6-dependency-majors\n\nchore(deps): move ed25519-dalek, jsonwebtoken and jsonschema to current majors",
+          "timestamp": "2026-11-15T03:34:36-03:00",
+          "tree_id": "5616113b7c7b5d1a5330ceadf4d3b210f88656aa",
+          "url": "https://github.com/Rullst/Rullst/commit/c3f96c8074ad6b8b047abb0d3e6005a2e08385de"
+        },
+        "date": 1794726197384,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 749,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 598,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1353,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1996,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
