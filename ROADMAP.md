@@ -23,9 +23,10 @@ Intentions, not promises; dates follow the evidence gates described below.
 - **v13:** `13.0.0-alpha.1` to `alpha.3` were published from 11 to 24
   October 2026, `13.0.0-alpha.4` on 31 October and `13.0.0-alpha.5` on
   14 November; alpha.5 adds what the applications upgraded to alpha.4 asked
-  for and is the 13.0 feature and public API freeze. Then `13.0.0-rc.1` (fixes and documentation only,
-  driven by user feedback) and `13.0.0` stable, from which the
-  [maturity tiers](docs/src/maturity.md) apply; see the
+  for. `13.0.0-alpha.6` is planned as the 13.0 feature and public API freeze,
+  with every pending fix and improvement. Then `13.0.0-rc.1` (fixes and
+  documentation only, driven by user feedback) and `13.0.0` stable, from which
+  the [maturity tiers](docs/src/maturity.md) apply; see the
   [path to 13.0.0](#path-to-1300).
 - **13.x:** compatible minors after 13.0.0, ordered by user demand (see
   [13.x minor candidates](#13x-minor-candidates-and-decided-non-goals));
@@ -167,9 +168,9 @@ evidence, not more badges or absolute claims.
 
 | Experiment | Status and plan |
 | :--- | :--- |
-| Differential database testing | **In CI for 13.0.0-rc.1 (test-only).** The `ORM differential databases` job of `ci.yml` runs the same ORM scenarios on SQLite, PostgreSQL, MySQL and MariaDB and compares normalized results, errors and transaction behaviour; provider-specific semantics are an explicit, reasoned list (`rullst-orm/tests/differential/expected.rs`), and the two ORM defects it found are fixed in 13.0.0-rc.1. Described in [WORKFLOWS.md](WORKFLOWS.md#required-local-and-release-baseline). |
-| Cross-browser and accessibility testing | **Implemented in CI (13.0.0-rc.1 window, test-only).** The `Generated starters in browsers` job of `ci.yml` drives the Blank and SaaS starters with Playwright on Chromium, Firefox and WebKit: console and CSP errors, keyboard paths and forms, and axe-core (`serious`/`critical` fail); traces and screenshots are kept on failure ([WORKFLOWS.md](WORKFLOWS.md#packaged-distribution-and-generated-application-jobs)). Not yet a required release job. Complements ZAP and the server-level tests; it is not WCAG certification. |
-| `cargo-careful` | **Implemented in CI (13.0.0-rc.1 window, test-only).** `miri.yml` runs `cargo careful test` weekly and on dispatch over the `rullst-core`, `rullst-security` and `rullst-orm` library unit tests; informational ([WORKFLOWS.md](WORKFLOWS.md#formal-dynamic-and-stress-analysis)). |
+| Differential database testing | **In CI since 13.0.0-alpha.5 (test-only).** The `ORM differential databases` job of `ci.yml` runs the same ORM scenarios on SQLite, PostgreSQL, MySQL and MariaDB and compares normalized results, errors and transaction behaviour; provider-specific semantics are an explicit, reasoned list (`rullst-orm/tests/differential/expected.rs`), and the two ORM defects it found were fixed in 13.0.0-alpha.5. Described in [WORKFLOWS.md](WORKFLOWS.md#required-local-and-release-baseline). |
+| Cross-browser and accessibility testing | **Implemented in CI since 13.0.0-alpha.5 (test-only).** The `Generated starters in browsers` job of `ci.yml` drives the Blank and SaaS starters with Playwright on Chromium, Firefox and WebKit: console and CSP errors, keyboard paths and forms, and axe-core (`serious`/`critical` fail); traces and screenshots are kept on failure ([WORKFLOWS.md](WORKFLOWS.md#packaged-distribution-and-generated-application-jobs)). Not yet a required check or release job; planned as a required check in 13.0.0-alpha.6 if its nightly history is stable. Complements ZAP and the server-level tests; it is not WCAG certification. |
+| `cargo-careful` | **Implemented in CI since 13.0.0-alpha.5 (test-only).** `miri.yml` runs `cargo careful test` weekly and on dispatch over the `rullst-core`, `rullst-security` and `rullst-orm` library unit tests; informational ([WORKFLOWS.md](WORKFLOWS.md#formal-dynamic-and-stress-analysis)). |
 | Shuttle (in place of Loom) | **Optional 13.x, no date (decided 31 October 2026).** Only if a concurrency defect appears in, or time allows for, the two in-process primitives with explicit invariants: `rullst-messaging`'s in-memory broker (leases, consumer groups) and the rate limiter. Most of Rullst's important concurrency happens inside the database (transactions, `SKIP LOCKED` claims), which a Rust-level scheduler cannot explore. Loom is not planned: it does not model Tokio's async primitives. Never applied to the whole workspace. |
 | Chaos testing with `fail-rs` | **Not planned (decided 31 October 2026).** Rullst injects failures explicitly: injectable `Clock` traits, failing test doubles and storage-outage scenarios in Messaging and the queues. `fail-rs`'s global, name-keyed failpoints are the implicit runtime behaviour the [AI-native directives](AGENTS.md) avoid. More fault coverage extends the trait-based doubles instead. |
 | `cargo-vet` dependency review | **Not planned while Rullst has a sole maintainer (decided 31 October 2026).** Every dependency update would need an audit or a recorded exemption, and with one reviewer the exemptions become a rubber stamp: ceremony without assurance. The supply chain is covered by `cargo-deny` (licenses, advisories, sources), `cargo audit`, the locked dependency graph, the [public-dependency policy](docs/src/compatibility-policy.md), SBOMs and attested releases. Revisit with a second maintainer or when an adopter requires it, starting from imported audits (Mozilla, Google, Bytecode Alliance). |
@@ -208,11 +209,18 @@ every OS with a material gain, no new flakes or lost tests, and a rollback path.
 On 9 November 2026 the maintainer moved the freeze to 13.0.0-alpha.5: the
 three applications upgraded to alpha.4 asked for API additions, one breaking
 change (invoice amounts in integer minor units) and a frontend toolkit, which
-are cheaper to settle before 13.0 than to add around a frozen API. 13.0.0-rc.1
-then carries fixes for defects found in alpha.5, documentation corrections and
-the test-only checks planned for its window in the
-[verification roadmap](#verification-roadmap); it adds no feature. 13.0.0 follows once rc.1 leaves no open defect in the
-stability scope, and the [maturity tiers](docs/src/maturity.md) and
+are cheaper to settle before 13.0 than to add around a frozen API. On
+14 November 2026, the day alpha.5 was published, the maintainer moved the
+freeze again, to 13.0.0-alpha.6. It carries every pending fix and
+improvement: the current toolchain and dependency majors, the removal of
+every API still deprecated (in 12.x or during the 13.0 prereleases), smaller
+dependency graphs and several items that were 13.x candidates, so that 13.0.0
+starts from current versions and without deprecated APIs
+([planned scope](#planned-after-1300-alpha5)). The platforms upgraded to
+alpha.6 then report, and 13.0.0-rc.1 carries fixes for the defects found in
+alpha.6 and documentation corrections; it adds no feature. 13.0.0 follows
+once rc.1 leaves no open defect in the stability scope, and the
+[maturity tiers](docs/src/maturity.md) and
 [13.x support window](docs/src/compatibility-policy.md#supported-release-window)
 apply from it. The September 2026 execution order (verification efficiency,
 the 12.1.0 update experience, then v13 product work) is complete; its
@@ -223,6 +231,8 @@ and the [priority revision](docs/src/v13-priorities.md).
 
 Planned after 13.0.0-alpha.4, prepared on 12 November 2026 and published on
 14 November (see the table below). They add no milestone to the counts above.
+alpha.5 was planned as the 13.0 freeze; the same day the freeze moved to
+13.0.0-alpha.6 (see the [path to 13.0.0](#path-to-1300)).
 
 - **13.0.0-alpha.5: the 13.0 feature and public API freeze.** It carries the
   fixes for the defects the applications found in alpha.4 and these
@@ -311,31 +321,96 @@ Planned after 13.0.0-alpha.4, prepared on 12 November 2026 and published on
 
 ### Planned after 13.0.0-alpha.5
 
-Work items for later prereleases, not shipped features. They add no milestone
-to the counts above.
+Work items for later prereleases, decided with the maintainer on 14 November
+2026; they are not shipped features and add no milestone to the counts above.
+The order is 13.0.0-alpha.6 (the freeze), reports from the platforms upgraded
+to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
 
-- **13.0.0-rc.1: fixes and documentation only.** 13.0.0-alpha.5 freezes the
+- **13.0.0-alpha.6: the 13.0 feature and public API freeze.** It carries every
+  pending fix and improvement, including the fixes for defects that the
+  platforms upgraded to alpha.5 report before the freeze, each with its tests
+  and documentation:
+  - **Toolchain and dependencies:** Rust 1.100 as the pinned toolchain (the
+    MSRV stays 1.96.0). Dependencies move to their current major before the
+    freeze: a public dependency then stays on its version line for all of
+    13.x ([public dependencies](docs/src/compatibility-policy.md#public-dependencies)),
+    and 13.0 starts on current majors. The planned moves are ed25519-dalek 3,
+    jsonwebtoken 12 and jsonschema 0.61, which the public API does not expose
+    today, and testcontainers 0.28, a dev-dependency.
+  - **No deprecated APIs in 13.x:** every API still marked `#[deprecated]` is
+    removed, so 13.x does not carry them. 13.0 is the major release that
+    removes the 12.x deprecations, and those of the 13.0 prereleases go with
+    them:
+    - Deprecated in 12.0.0: in Mail, `ResendDriver::new`,
+      `AwsSesDriver::new`, `Message::with_open_tracking` and
+      `with_click_tracking`, and `TrackingEngine::generate_open_token`,
+      `generate_click_token`, `inject_open_pixel` and `rewrite_links`; in
+      IoT, `OtaManager::new`, `verify_signature` and `commit_update`; in
+      Nexus, `Nexus::into_router` and `Nexus::build`; in AI,
+      `AiClient::structured_prompt` and `GuardrailReport::is_safe`; in
+      Security, `RateLimiter::with_distributed` and `AuditChain::new`; in
+      Core, `Queue::purge_completed_jobs`; in Connect, the providers'
+      infallible `new` constructors; and the `#[route]` marker attribute of
+      `rullst-macros`. Each deprecation note names its replacement.
+    - Deprecated in 13.0.0-alpha.5: `rullst_orm::schema_diff`
+      (`extract_tables_from_ast`, `ParsedTable`, `ParsedField`), first
+      announced for removal in 14.0.
+
+    Each removal gets a `cargo rullst upgrade` rule and a
+    [migration-guide](docs/src/migration-v13.md) row that names the
+    replacement.
+  - **Smaller dependency graphs** (from the starter dependency audit),
+    changing no public path:
+    - Studio and Nexus stop depending on all of `rullst-security`:
+      `SecurityStore` and `LiveSecurityEvent` move to Core and stay available
+      where they are today (about 48 fewer packages).
+    - SQLite-only starters build without a TLS stack (about 43 fewer packages,
+      the largest binary-size gain); the rustls `CryptoProvider` must still be
+      installed wherever TLS is used.
+    - A five-field cron evaluator of Rullst's own replaces the `cron` crate
+      (about 9 fewer), tested differentially against it.
+    - Passkeys without `p256` (about 18 fewer in the SaaS starter), checked
+      with test vectors.
+    - Core's `storage-multipart` recovery records move from `ring`'s
+      AES-256-GCM to the RustCrypto `aes-gcm` crate, with the same stored
+      format and known-answer tests, so `ring` leaves Core entirely.
+    - `cargo rullst footprint` reports the compiled crate count beside the
+      lockfile count, which includes packages that are never compiled.
+  - **Production monitor:** desktop notifications in the standalone Studio,
+    remote traces and security radar, and proxy support.
+  - **Compressed pages:** the CSRF token is masked per response (BREACH
+    defence), then the generated Caddyfile compresses dynamic HTML. Since
+    13.0.0-alpha.5 generated deployments serve static files pre-compressed
+    and pages uncompressed.
+  - **Locales, mail and documentation:** more i18n locales and currency
+    formats as CLDR data ([#636](https://github.com/Rullst/Rullst/issues/636)),
+    application-owned mail transport examples for more providers
+    ([#638](https://github.com/Rullst/Rullst/issues/638)) and a Portuguese
+    first-hour guide ([#639](https://github.com/Rullst/Rullst/issues/639)).
+  - **Fixes:** the Turso Hrana client follows a same-origin `base_url` that a
+    multi-instance server returns, so an insert whose text primary key a
+    database `DEFAULT` fills no longer fails there; `cargo rullst upgrade`
+    lists every location of a rule; generated CLI profile builds no longer
+    race; CI's required checks always report on a pull request that is ready
+    for review; a pull-request check runs the release audit evidence
+    commands; and the release preflight gives a clear message for a tag whose
+    release published nothing.
+  - **Process:** changelog fragments
+    ([#668](https://github.com/Rullst/Rullst/pull/668)), a merge queue, and
+    `Generated starters in browsers` as a required check if its nightly
+    history is stable.
+- **Reports from the platforms upgraded to 13.0.0-alpha.6.** They choose the
+  fixes of rc.1, as the reports on alpha.1 to alpha.5 chose those of the next
+  prerelease.
+- **13.0.0-rc.1: fixes and documentation only.** 13.0.0-alpha.6 freezes the
   features and the public API of 13.0. rc.1 adds no feature: it carries fixes
-  for defects found in alpha.5 (by its release admission, the first-hour and
+  for defects found in alpha.6 (by its release admission, the first-hour and
   deployment jobs and the platforms upgraded to it) and documentation
   corrections. A change to a `.github/public-api/` listing must be such a fix
   and is listed in the changelog and the migration guide. The
   [maturity tiers](docs/src/maturity.md) state which packages the 13.x
   promise covers. After rc.1, changes are limited to defects found in the
   release candidate.
-- **Verification in the rc.1 window (test and process only):** changelog
-  fragments ([#668](https://github.com/Rullst/Rullst/pull/668)), a merge
-  queue, and `Generated starters in browsers` as a required check.
-- **Turso/libSQL beyond the blank and API starters**, only if users ask for it
-  and the maintenance cost stays low. Turso can be the primary database only
-  in those starters and does not work with `#[derive(Orm)]`, `Schema`,
-  `artisan!`, `Server::with_db`, Nexus or Studio. A partial bridge (`Schema`
-  emitting Turso migrations, `#[derive(Orm)]` also generating the Turso model)
-  could be a 13.x candidate on that condition. Full ORM parity is a decided
-  non-goal (see "13.x minor candidates and decided non-goals").
-- **Feedback from the platforms upgraded to 13.0.0-alpha.3, alpha.4 and
-  alpha.5.** Their reports choose the fixes and priorities of the next
-  prerelease, as the alpha.1 and alpha.2 reports did before.
 - **Then 13.0.0**, once rc.1 leaves no open defect in the stability scope.
 
 ### Published and planned release lines
@@ -353,8 +428,9 @@ to the counts above.
 | **v13.0.0-alpha.2** | `[x] Published prerelease` | All twenty packages were published on 17 October 2026 from tag `v13.0.0-alpha.2` at `0daf4941` ([release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)): the fixes from the alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema` date/time and Nexus changes. A first tag at `669befe6` failed release verification before publishing anything and was replaced. |
 | **v13.0.0-alpha.3** | `[x] Published prerelease` | All twenty packages were published on 24 October 2026 from tag `v13.0.0-alpha.3` at `be336833` ([release run 40129821475](https://github.com/Rullst/Rullst/actions/runs/40129821475)) after all 25 required workflows passed on that commit. See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha3---2026-10-23). |
 | **v13.0.0-alpha.4** | `[x] Published prerelease` | All twenty packages were published on 31 October 2026 from tag `v13.0.0-alpha.4` at `2bd3c2ad` ([release run 41233925160](https://github.com/Rullst/Rullst/actions/runs/41233925160)). See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha4---2026-10-31). |
-| **v13.0.0-alpha.5** | `[x] Published prerelease` | All twenty packages were published on 14 November 2026 from tag `v13.0.0-alpha.5` at `5feda4ac` ([release run 43631881119](https://github.com/Rullst/Rullst/actions/runs/43631881119)) after all 23 required workflows passed on that commit. A first tag at `034df65e` stopped in release verification before publishing anything (`cargo rullst audit` lacked the governed advisory exceptions, #690) and was replaced with the maintainer's approval. The 13.0 feature and public API freeze, with the fixes and additions from the applications upgraded to alpha.4. See [Delivered in 13.0.0-alpha.5](#delivered-in-1300-alpha5) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14). |
-| **v13.0.0-rc.1** | `[ ] Planned` | Fixes and documentation only after the alpha.5 feature and API freeze. See [Planned after 13.0.0-alpha.5](#planned-after-1300-alpha5). |
+| **v13.0.0-alpha.5** | `[x] Published prerelease` | All twenty packages were published on 14 November 2026 from tag `v13.0.0-alpha.5` at `5feda4ac` ([release run 43631881119](https://github.com/Rullst/Rullst/actions/runs/43631881119)) after all 23 required workflows passed on that commit. A first tag at `034df65e` stopped in release verification before publishing anything (`cargo rullst audit` lacked the governed advisory exceptions, #690) and was replaced with the maintainer's approval. The fixes and additions from the applications upgraded to alpha.4; planned as the 13.0 feature and public API freeze, which moved to alpha.6 the same day. See [Delivered in 13.0.0-alpha.5](#delivered-in-1300-alpha5) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14). |
+| **v13.0.0-alpha.6** | `[ ] Planned` | The 13.0 feature and public API freeze: every pending fix and improvement, the Rust 1.100 toolchain and current dependency majors, the removal of every API still deprecated (in 12.x or during the 13.0 prereleases) and smaller dependency graphs. See [Planned after 13.0.0-alpha.5](#planned-after-1300-alpha5). |
+| **v13.0.0-rc.1** | `[ ] Planned` | Fixes and documentation only after the alpha.6 feature and API freeze. See [Planned after 13.0.0-alpha.5](#planned-after-1300-alpha5). |
 | **v13.0.0** | `[ ] Planned stable` | Follows once rc.1 leaves no open defect in the stability scope; the [maturity tiers](docs/src/maturity.md) apply from this release. |
 | **v13.x** | `[ ] After 13.0.0` | Compatible capabilities continue in 13.1 and later minors: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
@@ -367,34 +443,27 @@ and compliance claims must state their threat model and evidence scope.
 
 Recorded on 30 October 2026 with the maintainer. Minor releases may add these
 without breaking the 13.x API ([support window](docs/src/compatibility-policy.md#supported-release-window));
-none is scheduled, and real user demand orders them.
+none is scheduled, and real user demand orders them. On 14 November 2026 the
+production monitor, more i18n locales, the smaller dependency graphs, the
+compiled crate count of `cargo rullst footprint` and per-response CSRF
+masking with compressed pages moved into 13.0.0-alpha.6 (see
+[Planned after 13.0.0-alpha.5](#planned-after-1300-alpha5)).
 
-- **Production monitor** (13.1 candidate): desktop notifications in the
-  standalone Studio, remote traces and security radar, and proxy support.
-- **More i18n locales and currency formats**, added as CLDR data when requested.
-- **Smaller internal dependency graphs** (13.0.x or 13.1, from the starter
-  dependency audit), changing no public path:
-  - Studio and Nexus stop depending on all of `rullst-security`:
-    `SecurityStore` and `LiveSecurityEvent` move to Core and stay available
-    where they are today (about 48 fewer packages).
-  - SQLite-only starters build without a TLS stack (about 43 fewer packages,
-    the largest binary-size gain); the rustls `CryptoProvider` must still be
-    installed wherever TLS is used.
-  - A five-field cron evaluator of Rullst's own replaces the `cron` crate
-    (about 9 fewer), tested differentially against it.
-  - Passkeys without `p256` (about 18 fewer in the SaaS starter), checked with
-    test vectors.
-  - Core's `storage-multipart` recovery records move from `ring`'s AES-256-GCM
-    to the RustCrypto `aes-gcm` crate, with the same stored format and
-    known-answer tests, so `ring` leaves Core entirely.
-- **`cargo rullst footprint` reports the compiled crate count** beside the
-  lockfile count, which includes packages that are never compiled.
 - **htmx 4 as an opt-in for new applications**, once npm's `latest` tag points
   to 4.x and its Server-Sent Events extension is stable; existing applications
   keep the htmx they use.
-- **Mask the CSRF token per response (BREACH defence), then compress dynamic
-  HTML in the generated Caddyfile.** Since 13.0.0-alpha.5 generated
-  deployments serve static files pre-compressed and pages uncompressed.
+- **`rullst-iot` on an ESP32-C3** (RISC-V,
+  [#637](https://github.com/Rullst/Rullst/issues/637)) and **`cargo rullst
+  footprint` idle memory and CPU time on FreeBSD**
+  ([#640](https://github.com/Rullst/Rullst/issues/640)). Both need hardware
+  to validate: an ESP32-C3 board and a FreeBSD machine.
+- **Turso/libSQL beyond the Blank and API starters**, only if users ask for it
+  and the maintenance cost stays low. Turso can be the primary database only
+  in those starters and does not work with `#[derive(Orm)]`, `Schema`,
+  `artisan!`, `Server::with_db`, Nexus or Studio. A partial bridge (`Schema`
+  emitting Turso migrations, `#[derive(Orm)]` also generating the Turso model)
+  is a candidate on that condition; full ORM parity is a decided non-goal
+  (below).
 
 Decided non-goals (not planned, so they are documented as scope rather than as
 pending work):
@@ -470,10 +539,11 @@ Breaking ideas raised during 13.x are collected here instead of shipping in a
 None is scheduled; v14 development starts only when they justify it. The four
 clean-ups recorded here before 13.0 (crate-private internals, Rullst error
 types instead of third-party ones, private `SecurityStore` fields, one path per
-item) moved into 13.0.0-alpha.5.
-
-- **Remove `rullst_orm::schema_diff`**, deprecated in 13.0.0-alpha.5. It stays
-  available, unchanged, in every 13.x release.
+item) moved into 13.0.0-alpha.5. The removal of `rullst_orm::schema_diff`,
+deprecated in 13.0.0-alpha.5 and recorded here for 14.0, moved into
+13.0.0-alpha.6 on 14 November 2026 (see
+[Planned after 13.0.0-alpha.5](#planned-after-1300-alpha5)). No breaking
+idea is recorded for v14 yet.
 
 ---
 

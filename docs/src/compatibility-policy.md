@@ -111,6 +111,15 @@ A stable public API scheduled for removal is marked with `#[deprecated]` and
 kept for at least one released minor version before removal in the next major
 release. Documentation must name the replacement when one exists.
 
+13.0 is the major release that removes the 12.x deprecations. Every API
+still marked `#[deprecated]`, whether it was deprecated in 12.x or during the
+13.0 prereleases (`rullst_orm::schema_diff`, deprecated in 13.0.0-alpha.5),
+is planned for removal in 13.0.0-alpha.6, the 13.0 feature and public API
+freeze, so 13.x does not carry it. Each removal gets a `cargo rullst upgrade`
+rule and a row in the [migration guide](migration-v13.md) that names the
+replacement. The period above applies to the deprecations made from 13.0.0
+on.
+
 An API that is unsound, enables a security bypass, or cannot be made safe may be
 disabled or removed sooner. Such an exception requires a security advisory or
 changelog entry describing impact, affected versions, and the supported
@@ -126,7 +135,10 @@ regression tests.
 Some third-party crates are part of Rullst's public API: their types appear in
 public signatures, trait implementations or re-exports, such as
 `rullst::web::axum` and `rullst::db::sqlx`. For the whole 13.x line, each one
-stays on the version line below.
+stays on the version line below. Before the 13.0 freeze, planned for
+13.0.0-alpha.6, dependencies move to their current major so that 13.x starts
+from current lines; the planned moves are ed25519-dalek 3, jsonwebtoken 12
+and jsonschema 0.61, which the public API does not expose.
 
 | Crate | 13.x line | Where the API exposes it |
 | :--- | :--- | :--- |
@@ -157,6 +169,7 @@ stays on the version line below.
 | `url` | `2` | AI `ValidatedEgressUrl::into_url` and Connect |
 | `utoipa` | `6` | Studio: `Studio::with_openapi` |
 | `validator` | `0.21` | `rullst::Validate`, `ValidatedForm` and `ValidatedJson` |
+| `zeroize` | `1` | `Zeroizing` values returned by Auth, Labs and Security |
 
 Since 13.0.0-alpha.5 no public error variant or `From` conversion names a
 third-party error type: the AI, Connect, Core, IoT and ORM errors carry
@@ -166,7 +179,6 @@ chain. Security's collections are private behind methods (`SecurityStore`,
 `JsonWebKeySet`. `reqwest`, `base64`, `dashmap` and `jsonwebtoken` are
 therefore no longer public dependencies; `redis` stays one on purpose, and
 `serde_json` only through `Value` arguments and results.
-| `zeroize` | `1` | `Zeroizing` values returned by Auth, Labs and Security |
 
 Types that one of these crates takes from its own dependencies (for example
 `axum-core`, `serde_core`, the SQLx drivers, `tokio-macros` or `actix-http`)
