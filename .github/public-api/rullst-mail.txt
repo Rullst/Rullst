@@ -114,7 +114,6 @@ pub trait rullst_mail::AttachmentInspector: core::marker::Send + core::marker::S
 pub fn rullst_mail::AttachmentInspector::inspect(&self, attachment: &rullst_mail::Attachment) -> impl core::future::future::Future<Output = core::result::Result<(), rullst_mail::AttachmentInspectionError>> + core::marker::Send
 pub struct rullst_mail::AwsSesDriver
 impl rullst_mail::AwsSesDriver
-#[deprecated] pub fn rullst_mail::AwsSesDriver::new(region: impl core::convert::Into<alloc::string::String>, auth_token: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_mail::AwsSesDriver::delivery_mode(&self) -> rullst_mail::DeliveryMode
 pub fn rullst_mail::AwsSesDriver::endpoint(&self) -> alloc::string::String
 pub fn rullst_mail::AwsSesDriver::from_native_config(config: aws_sdk_sesv2::config::Config) -> core::result::Result<Self, rullst_mail::MailError>
@@ -540,8 +539,6 @@ pub rullst_mail::Message::unsubscribe_email: core::option::Option<alloc::string:
 pub rullst_mail::Message::send_at: core::option::Option<chrono::datetime::DateTime<chrono::offset::utc::Utc>>
 pub rullst_mail::Message::attachments: alloc::vec::Vec<rullst_mail::Attachment>
 impl rullst_mail::Message
-#[deprecated] pub fn rullst_mail::Message::with_click_tracking(self, base_tracker_url: &str, secret: &[u8]) -> Self
-#[deprecated] pub fn rullst_mail::Message::with_open_tracking(self, base_tracker_url: &str, secret: &[u8], campaign_id: &str) -> Self
 pub fn rullst_mail::Message::attach(self, attachment: rullst_mail::Attachment) -> Self
 pub fn rullst_mail::Message::attach_bytes(self, filename: impl core::convert::Into<alloc::string::String>, content: impl core::convert::Into<alloc::vec::Vec<u8>>, mime_type: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_mail::Message::attach_cid(self, cid: impl core::convert::Into<alloc::string::String>, filename: impl core::convert::Into<alloc::string::String>, content: impl core::convert::Into<alloc::vec::Vec<u8>>, mime_type: impl core::convert::Into<alloc::string::String>) -> Self
@@ -698,7 +695,6 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_mail::PreparedMessage
 pub struct rullst_mail::ResendDriver
 pub rullst_mail::ResendDriver::api_key: alloc::string::String
 impl rullst_mail::ResendDriver
-#[deprecated] pub fn rullst_mail::ResendDriver::new(api_key: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_mail::ResendDriver::delivery_mode(&self) -> rullst_mail::DeliveryMode
 pub fn rullst_mail::ResendDriver::try_new(api_key: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_mail::MailError>
 impl rullst_mail::MailDriver for rullst_mail::ResendDriver
@@ -885,10 +881,6 @@ impl core::marker::Sync for rullst_mail::TenantMailResolver
 impl core::marker::Unpin for rullst_mail::TenantMailResolver
 pub struct rullst_mail::TrackingEngine;
 impl rullst_mail::TrackingEngine
-#[deprecated] pub fn rullst_mail::TrackingEngine::generate_click_token(secret: &[u8], email: &str, target_url: &str, timestamp: u64) -> alloc::string::String
-#[deprecated] pub fn rullst_mail::TrackingEngine::generate_open_token(secret: &[u8], email: &str, campaign_id: &str, timestamp: u64) -> alloc::string::String
-#[deprecated] pub fn rullst_mail::TrackingEngine::inject_open_pixel(html: &str, tracker_url: &str) -> alloc::string::String
-#[deprecated] pub fn rullst_mail::TrackingEngine::rewrite_links(html: &str, base_tracker_url: &str, secret: &[u8], email: &str, timestamp: u64) -> alloc::string::String
 pub fn rullst_mail::TrackingEngine::try_generate_click_token(secret: &[u8], email: impl core::convert::Into<alloc::string::String>, target_url: impl core::convert::Into<alloc::string::String>, timestamp: u64) -> core::result::Result<alloc::string::String, rullst_mail::TrackingError>
 pub fn rullst_mail::TrackingEngine::try_generate_open_token(secret: &[u8], email: impl core::convert::Into<alloc::string::String>, campaign_id: impl core::convert::Into<alloc::string::String>, timestamp: u64) -> core::result::Result<alloc::string::String, rullst_mail::TrackingError>
 pub fn rullst_mail::TrackingEngine::try_inject_open_pixel(html: &str, tracker_url: &str) -> core::result::Result<alloc::string::String, rullst_mail::TrackingError>

@@ -293,7 +293,7 @@ async fn bearer_proxy_rejects_attachments_beyond_ses_limits_before_network() {
 }
 
 #[tokio::test]
-async fn bearer_proxy_rejects_transport_schedule_and_deprecated_invalid_configuration() {
+async fn bearer_proxy_rejects_transport_schedule_and_an_unchecked_endpoint() {
     let refused = crate::test_support::RefusedPort::new();
     let endpoint = format!("http://127.0.0.1:{}/send", refused.port);
     let driver = AwsSesDriver::try_new("us-east-1", "proxy-secret")
@@ -321,8 +321,9 @@ async fn bearer_proxy_rejects_transport_schedule_and_deprecated_invalid_configur
         Err(MailError::ConfigError(_))
     ));
 
-    #[allow(deprecated)]
-    let invalid = AwsSesDriver::new("bad_region", "proxy-secret")
+    // `with_endpoint` does not validate; `send` refuses the endpoint.
+    let invalid = AwsSesDriver::try_new("us-east-1", "proxy-secret")
+        .unwrap()
         .with_endpoint("http://not-loopback.invalid/send");
     assert!(matches!(
         invalid.send(&message()).await,

@@ -117,22 +117,6 @@ impl TrackingEngine {
         )
     }
 
-    /// Legacy infallible generator. Weak keys fail closed by returning an empty token.
-    #[deprecated(since = "12.0.0", note = "use TrackingEngine::try_generate_open_token")]
-    // The zero-panic policy intentionally avoids unwrap-family calls in production code.
-    #[allow(clippy::manual_unwrap_or_default)]
-    pub fn generate_open_token(
-        secret: &[u8],
-        email: &str,
-        campaign_id: &str,
-        timestamp: u64,
-    ) -> String {
-        match Self::try_generate_open_token(secret, email, campaign_id, timestamp) {
-            Ok(token) => token,
-            Err(_) => String::new(),
-        }
-    }
-
     /// Verifies an open token using the default TTL and current system time.
     pub fn verify_open_token(secret: &[u8], token: &str) -> Result<OpenEvent, TrackingError> {
         Self::verify_open_token_at(secret, token, unix_now()?, DEFAULT_TRACKING_TTL)
@@ -166,25 +150,6 @@ impl TrackingEngine {
                 timestamp,
             },
         )
-    }
-
-    /// Legacy infallible generator. Weak keys fail closed by returning an empty token.
-    #[deprecated(
-        since = "12.0.0",
-        note = "use TrackingEngine::try_generate_click_token"
-    )]
-    // The zero-panic policy intentionally avoids unwrap-family calls in production code.
-    #[allow(clippy::manual_unwrap_or_default)]
-    pub fn generate_click_token(
-        secret: &[u8],
-        email: &str,
-        target_url: &str,
-        timestamp: u64,
-    ) -> String {
-        match Self::try_generate_click_token(secret, email, target_url, timestamp) {
-            Ok(token) => token,
-            Err(_) => String::new(),
-        }
     }
 
     /// Verifies a click token using the default TTL and current system time.
@@ -222,15 +187,6 @@ impl TrackingEngine {
         }
     }
 
-    /// Legacy injection helper. Invalid tracker URLs leave HTML unchanged.
-    #[deprecated(since = "12.0.0", note = "use TrackingEngine::try_inject_open_pixel")]
-    pub fn inject_open_pixel(html: &str, tracker_url: &str) -> String {
-        match Self::try_inject_open_pixel(html, tracker_url) {
-            Ok(result) => result,
-            Err(_) => html.to_string(),
-        }
-    }
-
     /// Rewrites absolute HTTP(S) `<a href="...">` links through a validated
     /// tracker endpoint; `<link>`, `<base>` and other elements are unchanged.
     ///
@@ -249,21 +205,6 @@ impl TrackingEngine {
         links::rewrite_links(html, &tracker_base, |target| {
             Self::try_generate_click_token(secret, email, target, timestamp)
         })
-    }
-
-    /// Legacy link rewriter. Invalid secrets or tracker URLs leave HTML unchanged.
-    #[deprecated(since = "12.0.0", note = "use TrackingEngine::try_rewrite_links")]
-    pub fn rewrite_links(
-        html: &str,
-        base_tracker_url: &str,
-        secret: &[u8],
-        email: &str,
-        timestamp: u64,
-    ) -> String {
-        match Self::try_rewrite_links(html, base_tracker_url, secret, email, timestamp) {
-            Ok(result) => result,
-            Err(_) => html.to_string(),
-        }
     }
 }
 

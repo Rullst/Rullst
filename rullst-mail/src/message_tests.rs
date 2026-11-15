@@ -131,36 +131,6 @@ fn tracking_builders_handle_html_absence_success_and_invalid_configuration() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn legacy_tracking_builders_leave_content_unchanged_on_errors() {
-    let html = r#"<a href="https://rullst.dev">Guide</a>"#;
-    let open = Message::new()
-        .to("reader@example.com")
-        .html(html)
-        .with_open_tracking("not a URL", b"weak", "campaign");
-    assert_eq!(open.body_html.as_deref(), Some(html));
-
-    let click = Message::new()
-        .to("reader@example.com")
-        .html(html)
-        .with_click_tracking("not a URL", b"weak");
-    assert_eq!(click.body_html.as_deref(), Some(html));
-
-    assert!(
-        Message::new()
-            .with_open_tracking("not a URL", b"weak", "campaign")
-            .body_html
-            .is_none()
-    );
-    assert!(
-        Message::new()
-            .with_click_tracking("not a URL", b"weak")
-            .body_html
-            .is_none()
-    );
-}
-
-#[test]
 fn plain_text_conversion_handles_structural_tags_entities_and_hidden_content() {
     let html = concat!(
         "<style>.hidden { color: red; }</style>",
@@ -208,7 +178,6 @@ fn one_click_unsubscribe_requires_https() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn tracking_tokens_sign_the_bare_delivered_address() {
     const SECRET: &[u8] = b"rullst-message-tracking-secret-with-diversity";
     let token_after = |html: &str, marker: &str| {
@@ -221,25 +190,19 @@ fn tracking_tokens_sign_the_bare_delivered_address() {
             .to("Alice Doe <alice@example.com>")
             .html(r#"<p><a href="https://example.com/next">Next</a></p>"#)
     };
-    for tracked in [
-        message()
-            .try_with_open_tracking("https://t.example", SECRET, "c1")
-            .unwrap()
-            .try_with_click_tracking("https://t.example", SECRET)
-            .unwrap(),
-        message()
-            .with_open_tracking("https://t.example", SECRET, "c1")
-            .with_click_tracking("https://t.example", SECRET),
-    ] {
-        let html = tracked.body_html.as_deref().unwrap();
-        let open = token_after(html, "/track/open/");
-        let click = token_after(html, "/track/click/");
-        let open = crate::TrackingEngine::verify_open_token(SECRET, &open).unwrap();
-        let click = crate::TrackingEngine::verify_click_token(SECRET, &click).unwrap();
-        assert_eq!(open.email, "alice@example.com");
-        assert_eq!(click.email, "alice@example.com");
-        assert_eq!(click.target_url, "https://example.com/next");
-    }
+    let tracked = message()
+        .try_with_open_tracking("https://t.example", SECRET, "c1")
+        .unwrap()
+        .try_with_click_tracking("https://t.example", SECRET)
+        .unwrap();
+    let html = tracked.body_html.as_deref().unwrap();
+    let open = token_after(html, "/track/open/");
+    let click = token_after(html, "/track/click/");
+    let open = crate::TrackingEngine::verify_open_token(SECRET, &open).unwrap();
+    let click = crate::TrackingEngine::verify_click_token(SECRET, &click).unwrap();
+    assert_eq!(open.email, "alice@example.com");
+    assert_eq!(click.email, "alice@example.com");
+    assert_eq!(click.target_url, "https://example.com/next");
 }
 
 #[test]
