@@ -25,6 +25,17 @@ received a test or is listed under
   modes reach.
 - **`rullst-orm-macros`**: 542 mutants, 514 caught, 26 unviable and 2 accepted
   equivalents.
+- **`rullst-macros`** (13.0.0-alpha.6, PR_LINK): until this
+  campaign a file-level `mutants::skip` kept the `html!` files and the crate
+  root out of every mutation run and of the pull-request gate; only the Kani
+  proofs keep one. Targeted runs of the 13 files with mutants (`i18n/mod.rs`
+  has none) first gave 456 mutants: 294 caught, 94 unviable, 1 timeout and 67
+  missed, 23 of them in the Kani proofs. New unit tests and stand-in
+  integration tests (`tests/html_url_guard.rs`, `tests/memoize_expansion.rs`
+  and more `tests/html_hygiene.rs` cases) killed 43, and a redundant arm of the
+  plural-variant map was removed. The final runs gave 432 mutants: 314 caught,
+  117 unviable, 1 timeout (listed below) and no survivor; a mutant whose
+  expansion no longer compiles in an integration test counts as unviable.
 - **`rullst-core`**: the files the first pass left
   ([PR #465](https://github.com/Rullst/Rullst/pull/465)) were finished in
   [PR #532](https://github.com/Rullst/Rullst/pull/532): 78 files and 2,435
@@ -111,7 +122,8 @@ of the `green` command (now `footprint`), `generators/deploy.rs` and `update/gui
 covers the files `.github/mutants-pr-cli.txt` lists, and the campaign status above names the
 survivors left in the others) and the Studio remote-mode campaign (targeted runs of every
 `rullst-studio/src/remote` file and of the `rullst-studio` binary with the
-package's tests) gave every missed mutant in their files a test, except these.
+package's tests), the `rullst-macros` campaign (targeted runs of every
+file with the package's unit and stand-in integration tests) gave every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
@@ -288,6 +300,9 @@ every test of the file reaches, so no single test can fail first:
   `||`, so pruning or eviction never removes an entry; and
   `rullst-security/src/rasp/user_agent.rs`: the version scan's `index += 1`
   replaced by `*=`.
+- `rullst-macros/src/html_declarations.rs`: `parse_comment` returning
+  `Ok(())` consumes nothing, so the document parser finds the same `<!--`
+  forever in every test with an HTML comment.
 - `rullst-mail/src/security.rs`: the redaction scans, where
   `start + relative_end` in `redact_values_after` becomes `-`, `offset +
   relative` in `redact_aws_access_keys` or `redact_labelled_private_keys`
