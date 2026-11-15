@@ -8,6 +8,7 @@
 
 mod baseline;
 mod csrf;
+mod csrf_mask;
 mod csrf_multipart;
 mod headers;
 mod machine;
@@ -37,6 +38,7 @@ pub use baseline::{
     SecurityBaselineError, apply_security_baseline, apply_security_baseline_with_machine_endpoints,
 };
 pub use csrf::{CsrfToken, csrf_middleware, generate_csrf_token};
+pub use csrf_mask::mask_csrf_token;
 pub(crate) use csrf_multipart::{
     MAX_TOKEN_PREFIX_BYTES, MULTIPART_TOKEN_ORDER_MESSAGE, form_data_boundary,
 };

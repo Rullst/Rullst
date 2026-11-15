@@ -138,11 +138,15 @@ fn link_token(message: &Message, origin: &str) -> String {
 }
 
 /// The page without its per-request CSP nonce.
-fn without_nonce(body: &str) -> String {
-    body.split("nonce=\"")
-        .enumerate()
-        .map(|(index, part)| if index == 0 { part } else { part.split_once('"').unwrap().1 })
-        .collect()
+/// `body` without the values that differ in every response: the CSP nonce
+/// and the CSRF token, which is masked per response.
+fn without_per_response_values(body: &str) -> String {
+    ["nonce=\"", "name=\"_token\" value=\""].iter().fold(body.to_owned(), |body, marker| {
+        body.split(marker)
+            .enumerate()
+            .map(|(index, part)| if index == 0 { part } else { part.split_once('"').unwrap().1 })
+            .collect()
+    })
 }
 
 fn accept_language(value: &str) -> HeaderMap {
@@ -247,7 +251,7 @@ async fn generated_password_flows_contract() {
     assert!(known.body.contains("If an account uses that email address, we sent it a link"));
     // The answer, the email and the stored token state one lifetime.
     assert!(known.body.contains("The link expires in 30 minutes."));
-    assert_eq!(without_nonce(&unknown.body), without_nonce(&known.body));
+    assert_eq!(without_per_response_values(&unknown.body), without_per_response_values(&known.body));
     let first_mail = mail_to(MEMBER, 1).await;
     assert_eq!(first_mail.len(), 1);
     assert!(mail_to("nobody@example.test", 0).await.is_empty());

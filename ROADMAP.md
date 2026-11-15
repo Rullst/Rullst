@@ -401,7 +401,12 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
   - **Compressed pages:** the CSRF token is masked per response (BREACH
     defence), then the generated Caddyfile compresses dynamic HTML. Since
     13.0.0-alpha.5 generated deployments serve static files pre-compressed
-    and pages uncompressed.
+    and pages uncompressed. Done in the 13.0.0-alpha.6 source:
+    `CsrfToken::as_str()` is `mask || (token XOR mask)` with a fresh OS
+    random mask per request, verified in constant time (the raw cookie value
+    is still accepted), and the generated `Caddyfile` has
+    `encode zstd gzip`; `cargo rullst upgrade` reports raw cookie embeds and
+    a `Caddyfile` without `encode`.
   - **Locales, mail and documentation:** more i18n locales and currency
     formats as CLDR data ([#636](https://github.com/Rullst/Rullst/issues/636)),
     application-owned mail transport examples for more providers

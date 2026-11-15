@@ -223,7 +223,12 @@ mod tests {
         let csrf = fields.next().expect("CSRF field");
         assert_eq!(fields.next(), Some("Strict"));
         assert!(csp.contains(&format!("'nonce-{nonce}'")));
-        assert!(cookie.starts_with(&format!("rullst_csrf={csrf};")));
+        // The page gets the cookie token masked for this response.
+        let cookie_token = cookie
+            .strip_prefix("rullst_csrf=")
+            .and_then(|rest| rest.split(';').next())
+            .expect("CSRF cookie token");
+        assert_eq!((cookie_token.len(), csrf.len()), (32, 86));
         assert!(cookie.contains("SameSite=Strict"));
         assert!(cookie.contains("; Secure"));
 
@@ -246,7 +251,7 @@ mod tests {
         let accepted = app
             .oneshot(
                 browser_request(http::Method::POST, "/write")
-                    .header(header::COOKIE, format!("rullst_csrf={csrf}"))
+                    .header(header::COOKIE, format!("rullst_csrf={cookie_token}"))
                     .header("x-csrf-token", csrf)
                     .body(Body::empty())
                     .unwrap(),

@@ -418,10 +418,13 @@ pub(super) fn project_findings(
     if let Some(line) = deploy::dockerfile_without_database_url(root) {
         push(&DEPLOY_SQLITE_URL, "Dockerfile", line);
     }
-    if let Some(line) = read_small(&root.join("Caddyfile"))
-        .and_then(|text| deploy::caddyfile_without_health_checks(&text))
-    {
-        push(&DEPLOY_CADDY_HEALTH, "Caddyfile", line);
+    if let Some(text) = read_small(&root.join("Caddyfile")) {
+        if let Some(line) = deploy::caddyfile_without_health_checks(&text) {
+            push(&DEPLOY_CADDY_HEALTH, "Caddyfile", line);
+        }
+        if let Some(line) = deploy::caddyfile_without_encode(&text) {
+            push(&DEPLOY_CADDY_ENCODE, "Caddyfile", line);
+        }
     }
     if let Some(text) = read_small(&root.join(".dockerignore"))
         && !(text.contains(".env.*") && text.contains("*.sqlite"))

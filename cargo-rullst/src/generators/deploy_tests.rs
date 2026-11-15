@@ -39,15 +39,24 @@ fn compose_pins_caddy_hardens_both_containers_and_checks_health() {
     );
     assert!(CADDYFILE.contains("\treverse_proxy app:3000 {\n"));
     assert!(CADDYFILE.contains("\t\thealth_uri /health\n"));
-    // Pages carry the unmasked CSRF token, so Caddy does not compress them
-    // (BREACH); the comment says when `encode` may be added.
-    assert!(
+    // Pages are compressed since 13.0.0-alpha.6, when the CSRF token in them
+    // became masked per response; the comment says why that is safe and
+    // what must stay out of a compressed page (BREACH).
+    assert_eq!(
         CADDYFILE
             .lines()
-            .all(|line| !line.trim_start().starts_with("encode"))
+            .filter(|line| line.trim_start().starts_with("encode"))
+            .collect::<Vec<_>>(),
+        ["\tencode zstd gzip"]
     );
-    assert!(CADDYFILE.contains("\t# No `encode`: pages carry the CSRF token unmasked"));
-    assert!(CADDYFILE.contains("such as `encode /api/* zstd gzip`.\n"));
+    assert!(
+        CADDYFILE
+            .contains("\t# Compress pages and API responses. The CSRF token in a page is masked\n")
+    );
+    assert!(
+        CADDYFILE
+            .contains("never put\n\t# another secret in a page next to text from the request.")
+    );
 }
 
 // Caddy's first active check runs before the app listens, and with a
@@ -64,6 +73,7 @@ fn caddy_recovers_quickly_and_holds_requests_while_the_app_restarts() {
         directives,
         [
             "{$DOMAIN:localhost} {",
+            "encode zstd gzip",
             "reverse_proxy app:3000 {",
             "health_uri /health",
             "health_interval 5s",

@@ -107,8 +107,15 @@ jobs:
           form_token=$(grep -o 'name="_token" value="[^"]*"' pricing.html \
             | head -1 | cut -d '"' -f 4)
           cookie_token=$(awk '$6 == "rullst_csrf" { print $7 }' pricing-cookies.txt)
-          test -n "$form_token"
-          test "$form_token" = "$cookie_token"
+          test -n "$form_token" && test -n "$cookie_token"
+          # The form carries the cookie token masked for this response
+          # (BREACH): 86 URL-safe base64 characters, never the cookie value.
+          [[ "$form_token" =~ ^[A-Za-z0-9_-]{86}$ ]]
+          test "$form_token" != "$cookie_token"
+          if grep -qF "$cookie_token" pricing.html; then
+            echo "::error::the page embeds the raw CSRF cookie value"
+            exit 1
+          fi
 
           curl -sS -b pricing-cookies.txt -A "Mozilla/5.0" \
             -H "Content-Type: application/x-www-form-urlencoded" \
@@ -119,7 +126,7 @@ jobs:
             http://localhost:3000/checkout \
             | grep -F "OFFLINE FIXTURE"
 
-          echo "✅ Nested CSRF composition emits one matching token and accepts the offline form."
+          echo "✅ Nested CSRF composition emits one cookie, masks its token in the form and accepts the offline form."
 
       - name: Verify POST /posts & Database Persistence
         run: |

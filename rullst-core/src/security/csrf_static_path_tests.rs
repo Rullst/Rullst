@@ -57,10 +57,11 @@ async fn get_page(app: &Router, path: &str, cookie: Option<&str>) -> (String, us
     (body, cookies)
 }
 
-/// Whether a first `GET` of `path` mints a 32-character token and sets it.
+/// Whether a first `GET` of `path` mints a token and sets it: the page gets
+/// the 32-character token masked, 86 characters.
 async fn first_visit_mints(app: &Router, path: &str) -> bool {
     match get_page(app, path, None).await {
-        (token, 1) if token.len() == 32 => true,
+        (token, 1) if token.len() == 86 => true,
         (token, 0) if token == "none" => false,
         other => panic!("{path}: unexpected {other:?}"),
     }
@@ -157,10 +158,15 @@ async fn dynamic_pages_get_a_token_whatever_their_extension() {
 async fn static_files_reuse_an_existing_cookie_token_without_setting_one() {
     let app = token_echo_app(None);
     for path in ["/static/page", "/favicon.ico"] {
-        assert_eq!(
-            get_page(&app, path, Some("theme=dark; rullst_csrf=existingToken123")).await,
-            ("existingToken123".to_owned(), 0),
-            "{path}"
+        let (token, cookies) =
+            get_page(&app, path, Some("theme=dark; rullst_csrf=existingToken123")).await;
+        assert_eq!(cookies, 0, "{path}");
+        assert!(
+            bool::from(super::super::csrf_mask::csrf_proof_matches(
+                token.as_bytes(),
+                "existingToken123"
+            )),
+            "{path}: {token}"
         );
         // A malformed cookie is not a token.
         assert_eq!(
