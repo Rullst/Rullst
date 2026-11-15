@@ -67,6 +67,12 @@ class StackThroughputTest(unittest.TestCase):
         self.assertIn("Passed.", text)
         self.assertIn("**Failed:** slow", CHECK.summary(measured, 0.7, ["slow"]))
 
+    def test_the_summary_names_the_cpu_model(self):
+        self.assertEqual(CHECK.cpu_model("processor\t: 0\nmodel name\t: AMD EPYC 7763 64-Core Processor\n"),
+                         "AMD EPYC 7763 64-Core Processor")
+        self.assertEqual(CHECK.cpu_model(""), "unknown CPU")
+        self.assertIn("CPU: Test CPU", CHECK.summary(rounds([1000], [600]), None, [], "Test CPU"))
+
     def test_the_budget_holds_a_ratio_below_one(self):
         budget = tomllib.loads(CHECK.BUDGET.read_text())["throughput"]
         self.assertGreater(budget["min_ratio"], 0)

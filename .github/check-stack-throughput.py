@@ -110,9 +110,18 @@ def missing_security(headers: dict[str, str]) -> list[str]:
     return missing
 
 
-def summary(rounds: list[dict], min_ratio: float | None, problems: list[str]) -> str:
+def cpu_model(cpuinfo: str) -> str:
+    """The first `model name` of /proc/cpuinfo text: ratios differ between runner models."""
+    for line in cpuinfo.splitlines():
+        name, _, value = line.partition(":")
+        if name.strip() == "model name":
+            return value.strip()
+    return "unknown CPU"
+
+
+def summary(rounds: list[dict], min_ratio: float | None, problems: list[str], cpu: str = "unknown CPU") -> str:
     """The job summary in Markdown."""
-    lines = [f"## {TITLE}", ""]
+    lines = [f"## {TITLE}", "", f"CPU: {cpu}", ""]
     lines.append("| Round | Stack | Requests/s | p99 (ms) | Server CPU µs/request | Server CPUs |")
     lines.append("| ---: | :--- | ---: | ---: | ---: | ---: |")
     for index, measured in enumerate(rounds, 1):
@@ -239,7 +248,8 @@ def main() -> int:
             rounds.append({stack: measure(stack, args.bombardier, server_cpus, client_cpus, args.out, index)
                            for stack in ("minimal", "generated")})
         problems = verdict(rounds, min_ratio)
-        text = summary(rounds, min_ratio, problems)
+        cpuinfo = Path("/proc/cpuinfo")
+        text = summary(rounds, min_ratio, problems, cpu_model(cpuinfo.read_text() if cpuinfo.exists() else ""))
     except Failure as failure:
         problems = [str(failure)]
         text = f"## {TITLE}\n\n**Failed:** {failure}\n"
