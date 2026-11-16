@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794823681199,
+  "lastUpdate": 1794833478420,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23495,6 +23495,52 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3663,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "@venelouis",
+            "username": "venelouis",
+            "email": "37526748+venelouis@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "fc8c05016f38058919dd60f6af0ff04c77ff71c3",
+          "message": "Merge pull request #735 from Rullst/perf/v13-alpha6-sqlite-wal\n\nperf(orm): opt-in WAL journal for SQLite pools and WAL in generated starters",
+          "timestamp": "2026-11-16T09:52:19Z",
+          "url": "https://github.com/Rullst/Rullst/commit/fc8c05016f38058919dd60f6af0ff04c77ff71c3"
+        },
+        "date": 1794833478105,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 727,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 564,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1308,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1958,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
