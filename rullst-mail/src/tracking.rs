@@ -27,6 +27,7 @@ pub const PIXEL_1X1_GIF: &[u8] = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xf
 
 /// Open event payload decoded from an open tracking token.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub struct OpenEvent {
     /// Recipient email address.
     pub email: String,
@@ -38,6 +39,7 @@ pub struct OpenEvent {
 
 /// Click event payload decoded from a click tracking token.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub struct ClickEvent {
     /// Recipient email address.
     pub email: String,

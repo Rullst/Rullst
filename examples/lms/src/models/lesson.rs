@@ -30,88 +30,50 @@ impl NexusModel for Lesson {
     }
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
-            FieldMeta {
-                name: "id",
-                label: "ID",
-                kind: FieldKind::Number,
-                hidden: true,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "course_id",
-                label: "Course",
-                kind: FieldKind::ForeignKey {
+            FieldMeta::new("id", "ID", FieldKind::Number)
+                .hidden()
+                .readonly(),
+            FieldMeta::new(
+                "course_id",
+                "Course",
+                FieldKind::ForeignKey {
                     table: "courses",
                     label_col: "title",
                 },
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "module_id",
-                label: "Module",
-                kind: FieldKind::ForeignKey {
+            ),
+            FieldMeta::new(
+                "module_id",
+                "Module",
+                FieldKind::ForeignKey {
                     table: "course_modules",
                     label_col: "title",
                 },
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "title",
-                label: "Title",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: false,
-            },
+            ),
+            FieldMeta::new("title", "Title", FieldKind::Text),
             // The player plays exactly these kinds.
-            FieldMeta {
-                name: "media_kind",
-                label: "Media Kind",
-                kind: FieldKind::Enum {
+            FieldMeta::new(
+                "media_kind",
+                "Media Kind",
+                FieldKind::Enum {
                     options: vec!["video", "audio"],
                 },
-                hidden: false,
-                readonly: false,
-            },
+            ),
             // Text, not Url: the player accepts HTTPS or same-origin paths such
             // as the seeded `/static/media/*.vtt` captions, which the CSP and
             // `<track>` need, while Nexus `Url` fields require an absolute URL.
-            FieldMeta {
-                name: "media_url",
-                label: "Media URL (https:// or /path)",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "captions_url",
-                label: "Captions URL (https:// or /path)",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "transcript",
-                label: "Transcript",
-                kind: FieldKind::Textarea,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "language_tag",
-                label: "Language",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "duration",
-                label: "Duration (mins)",
-                kind: FieldKind::Number,
-                hidden: false,
-                readonly: false,
-            },
+            FieldMeta::new(
+                "media_url",
+                "Media URL (https:// or /path)",
+                FieldKind::Text,
+            ),
+            FieldMeta::new(
+                "captions_url",
+                "Captions URL (https:// or /path)",
+                FieldKind::Text,
+            ),
+            FieldMeta::new("transcript", "Transcript", FieldKind::Textarea),
+            FieldMeta::new("language_tag", "Language", FieldKind::Text),
+            FieldMeta::new("duration", "Duration (mins)", FieldKind::Number),
         ]
     }
 }

@@ -478,7 +478,7 @@ impl core::marker::Sync for rullst_ai::ConversationId
 impl core::marker::Unpin for rullst_ai::ConversationId
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::ConversationId
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::ConversationId
-pub enum rullst_ai::DurableAuditError
+#[non_exhaustive] pub enum rullst_ai::DurableAuditError
 pub rullst_ai::DurableAuditError::InvalidCapacity
 pub rullst_ai::DurableAuditError::InvalidPath
 pub rullst_ai::DurableAuditError::UnsafeFileType
@@ -633,7 +633,7 @@ impl !core::panic::unwind_safe::UnwindSafe for rullst_ai::FallbackProvider
 impl core::marker::Send for rullst_ai::FallbackProvider
 impl core::marker::Sync for rullst_ai::FallbackProvider
 impl core::marker::Unpin for rullst_ai::FallbackProvider
-pub struct rullst_ai::FetchedResource
+#[non_exhaustive] pub struct rullst_ai::FetchedResource
 pub rullst_ai::FetchedResource::final_url: alloc::string::String
 pub rullst_ai::FetchedResource::status: u16
 pub rullst_ai::FetchedResource::content_type: core::option::Option<alloc::string::String>
@@ -697,7 +697,7 @@ impl core::marker::Sync for rullst_ai::InMemoryToolAuditTrail
 impl core::marker::Unpin for rullst_ai::InMemoryToolAuditTrail
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::InMemoryToolAuditTrail
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::InMemoryToolAuditTrail
-pub enum rullst_ai::JsonCapability
+#[non_exhaustive] pub enum rullst_ai::JsonCapability
 pub rullst_ai::JsonCapability::Unsupported
 pub rullst_ai::JsonCapability::PromptOnly
 pub rullst_ai::JsonCapability::NativeMode
@@ -725,11 +725,12 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_ai::LocalImagePolicy
 pub const rullst_ai::MAX_AI_AUDIT_BYTES: u64
 pub const rullst_ai::MAX_AI_AUDIT_RECORDS: usize
 pub const rullst_ai::MAX_VISION_IMAGE_BYTES: u64
-pub struct rullst_ai::Message
+#[non_exhaustive] pub struct rullst_ai::Message
 pub rullst_ai::Message::role: alloc::string::String
 pub rullst_ai::Message::content: alloc::string::String
 impl rullst_ai::Message
 pub fn rullst_ai::Message::assistant(content: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn rullst_ai::Message::new(role: impl core::convert::Into<alloc::string::String>, content: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_ai::Message::system(content: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_ai::Message::user(content: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for rullst_ai::Message
@@ -761,7 +762,7 @@ impl core::marker::Sync for rullst_ai::PromptThreat
 impl core::marker::Unpin for rullst_ai::PromptThreat
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::PromptThreat
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::PromptThreat
-pub struct rullst_ai::ProviderCapabilities
+#[non_exhaustive] pub struct rullst_ai::ProviderCapabilities
 pub rullst_ai::ProviderCapabilities::text: bool
 pub rullst_ai::ProviderCapabilities::chat: bool
 pub rullst_ai::ProviderCapabilities::embeddings: bool
@@ -786,7 +787,7 @@ impl core::marker::Sync for rullst_ai::ProviderCapabilities
 impl core::marker::Unpin for rullst_ai::ProviderCapabilities
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::ProviderCapabilities
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::ProviderCapabilities
-pub struct rullst_ai::RecordedToolAuditEvent
+#[non_exhaustive] pub struct rullst_ai::RecordedToolAuditEvent
 pub rullst_ai::RecordedToolAuditEvent::sequence: u64
 pub rullst_ai::RecordedToolAuditEvent::event: rullst_ai::ToolAuditEvent
 impl core::clone::Clone for rullst_ai::RecordedToolAuditEvent
@@ -800,7 +801,7 @@ impl core::marker::Sync for rullst_ai::RecordedToolAuditEvent
 impl core::marker::Unpin for rullst_ai::RecordedToolAuditEvent
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::RecordedToolAuditEvent
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::RecordedToolAuditEvent
-pub enum rullst_ai::SqlChatBackend
+#[non_exhaustive] pub enum rullst_ai::SqlChatBackend
 pub rullst_ai::SqlChatBackend::Postgres
 pub rullst_ai::SqlChatBackend::Mysql
 pub rullst_ai::SqlChatBackend::Sqlite
@@ -945,7 +946,7 @@ impl core::marker::Sync for rullst_ai::TokenUsage
 impl core::marker::Unpin for rullst_ai::TokenUsage
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::TokenUsage
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::TokenUsage
-pub struct rullst_ai::ToolAuditEvent
+#[non_exhaustive] pub struct rullst_ai::ToolAuditEvent
 pub rullst_ai::ToolAuditEvent::principal: alloc::string::String
 pub rullst_ai::ToolAuditEvent::tool: alloc::string::String
 pub rullst_ai::ToolAuditEvent::risk: core::option::Option<rullst_ai::ToolRisk>
@@ -1042,11 +1043,13 @@ impl core::marker::Sync for rullst_ai::ToolExecutionPolicy
 impl core::marker::Unpin for rullst_ai::ToolExecutionPolicy
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::ToolExecutionPolicy
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::ToolExecutionPolicy
-pub struct rullst_ai::ToolParam
+#[non_exhaustive] pub struct rullst_ai::ToolParam
 pub rullst_ai::ToolParam::name: alloc::string::String
 pub rullst_ai::ToolParam::param_type: alloc::string::String
 pub rullst_ai::ToolParam::description: alloc::string::String
 pub rullst_ai::ToolParam::required: bool
+impl rullst_ai::ToolParam
+pub fn rullst_ai::ToolParam::new(name: impl core::convert::Into<alloc::string::String>, param_type: impl core::convert::Into<alloc::string::String>, description: impl core::convert::Into<alloc::string::String>, required: bool) -> Self
 impl core::clone::Clone for rullst_ai::ToolParam
 impl core::cmp::Eq for rullst_ai::ToolParam
 impl core::cmp::PartialEq for rullst_ai::ToolParam
@@ -1101,7 +1104,7 @@ impl core::marker::Sync for rullst_ai::ValidatedEgressUrl
 impl core::marker::Unpin for rullst_ai::ValidatedEgressUrl
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::ValidatedEgressUrl
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::ValidatedEgressUrl
-pub struct rullst_ai::VectorDocument
+#[non_exhaustive] pub struct rullst_ai::VectorDocument
 pub rullst_ai::VectorDocument::id: alloc::string::String
 pub rullst_ai::VectorDocument::vector: alloc::vec::Vec<f32>
 pub rullst_ai::VectorDocument::payload: serde_json::value::Value
@@ -1446,7 +1449,9 @@ impl core::marker::Sync for rullst_ai::rag::RagAnswer
 impl core::marker::Unpin for rullst_ai::rag::RagAnswer
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::rag::RagAnswer
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::rag::RagAnswer
-pub struct rullst_ai::rag::RagAuditError(pub alloc::string::String)
+#[non_exhaustive] pub struct rullst_ai::rag::RagAuditError(pub alloc::string::String)
+impl rullst_ai::rag::RagAuditError
+pub fn rullst_ai::rag::RagAuditError::new(message: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for rullst_ai::rag::RagAuditError
 impl core::cmp::Eq for rullst_ai::rag::RagAuditError
 impl core::cmp::PartialEq for rullst_ai::rag::RagAuditError
@@ -1458,7 +1463,7 @@ impl core::marker::Sync for rullst_ai::rag::RagAuditError
 impl core::marker::Unpin for rullst_ai::rag::RagAuditError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::rag::RagAuditError
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::rag::RagAuditError
-pub struct rullst_ai::rag::RagAuditEvent
+#[non_exhaustive] pub struct rullst_ai::rag::RagAuditEvent
 pub rullst_ai::rag::RagAuditEvent::tenant_id: alloc::string::String
 pub rullst_ai::rag::RagAuditEvent::query_sha256: alloc::string::String
 pub rullst_ai::rag::RagAuditEvent::retrieved_documents: usize
@@ -1561,7 +1566,9 @@ impl<R, A> !core::panic::unwind_safe::UnwindSafe for rullst_ai::rag::RagPipeline
 impl<R, A> core::marker::Send for rullst_ai::rag::RagPipeline<R, A> where R: core::marker::Send, A: core::marker::Send
 impl<R, A> core::marker::Sync for rullst_ai::rag::RagPipeline<R, A> where R: core::marker::Sync, A: core::marker::Sync
 impl<R, A> core::marker::Unpin for rullst_ai::rag::RagPipeline<R, A> where R: core::marker::Unpin, A: core::marker::Unpin
-pub struct rullst_ai::rag::RagRetrievalError(pub alloc::string::String)
+#[non_exhaustive] pub struct rullst_ai::rag::RagRetrievalError(pub alloc::string::String)
+impl rullst_ai::rag::RagRetrievalError
+pub fn rullst_ai::rag::RagRetrievalError::new(message: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for rullst_ai::rag::RagRetrievalError
 impl core::cmp::Eq for rullst_ai::rag::RagRetrievalError
 impl core::cmp::PartialEq for rullst_ai::rag::RagRetrievalError
@@ -1590,7 +1597,7 @@ impl core::marker::Sync for rullst_ai::rag::RagSource
 impl core::marker::Unpin for rullst_ai::rag::RagSource
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_ai::rag::RagSource
 impl core::panic::unwind_safe::UnwindSafe for rullst_ai::rag::RagSource
-pub struct rullst_ai::rag::RecordedRagAuditEvent
+#[non_exhaustive] pub struct rullst_ai::rag::RecordedRagAuditEvent
 pub rullst_ai::rag::RecordedRagAuditEvent::sequence: u64
 pub rullst_ai::rag::RecordedRagAuditEvent::event: rullst_ai::rag::RagAuditEvent
 impl core::clone::Clone for rullst_ai::rag::RecordedRagAuditEvent

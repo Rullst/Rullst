@@ -79,6 +79,7 @@ impl EgressResolver for SystemEgressResolver {
 
 /// Bounded successful response from [`EgressFetcher::fetch_bytes`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct FetchedResource {
     /// Final validated URL after manual redirects.
     pub final_url: String,

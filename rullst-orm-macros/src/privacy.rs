@@ -115,11 +115,11 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
         // Register the model in the Rullst compliance engine
         impl rullst_orm::privacy::ComplianceModel for #name {
             fn compliance_schema() -> rullst_orm::privacy::PrivacyReport {
-                rullst_orm::privacy::PrivacyReport {
-                    table_name: #table_name.to_string(),
-                    has_encrypted_data: #has_encrypted_data,
-                    encrypted_fields: vec![ #( #encrypted_fields ),* ],
-                }
+                rullst_orm::privacy::PrivacyReport::new(
+                    #table_name,
+                    #has_encrypted_data,
+                    vec![ #( #encrypted_fields ),* ],
+                )
             }
 
             fn personal_fields() -> Vec<&'static str> {
@@ -151,17 +151,16 @@ mod tests {
             }
         };
         let expanded = super::expand(&input).expect("expand").to_string();
-        assert!(expanded.contains("table_name : \"people\" . to_string ()"));
-        assert!(expanded.contains("has_encrypted_data : true"));
-        assert!(expanded.contains("encrypted_fields : vec ! [\"tax_id\" , \"api_key\"]"));
+        assert!(expanded.contains(
+            "PrivacyReport :: new (\"people\" , true , vec ! [\"tax_id\" , \"api_key\"] ,)"
+        ));
         assert!(expanded.contains("vec ! [\"ssn\" , \"tax_id\"]"));
 
         let plain: DeriveInput = parse_quote! {
             struct UserData { id: i32, #[privacy] ssn: String }
         };
         let expanded = super::expand(&plain).expect("expand").to_string();
-        assert!(expanded.contains("table_name : \"userdatas\" . to_string ()"));
-        assert!(expanded.contains("has_encrypted_data : false"));
+        assert!(expanded.contains("PrivacyReport :: new (\"userdatas\" , false , vec ! [] ,)"));
     }
 
     #[test]
@@ -177,11 +176,7 @@ mod tests {
         };
         let expanded = super::expand(&input).expect("expand").to_string();
         assert!(
-            expanded.contains("has_encrypted_data : false"),
-            "{expanded}"
-        );
-        assert!(
-            expanded.contains("encrypted_fields : vec ! []"),
+            expanded.contains("PrivacyReport :: new (\"accounts\" , false , vec ! [] ,)"),
             "{expanded}"
         );
     }

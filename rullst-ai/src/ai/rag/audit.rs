@@ -36,6 +36,7 @@ pub enum RagAuditOutcome {
 /// absent. `query_sha256` is a correlation digest, not encryption, and can still be susceptible to
 /// guessing for low-entropy questions.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct RagAuditEvent {
     /// Tenant selected by trusted authentication context.
     pub tenant_id: String,
@@ -54,7 +55,17 @@ pub struct RagAuditEvent {
 /// Failure returned by an application-provided RAG audit sink.
 #[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
 #[error("RAG audit unavailable: {0}")]
+#[non_exhaustive]
 pub struct RagAuditError(pub String);
+
+impl RagAuditError {
+    /// The error an audit sink returns when it cannot record an event. The
+    /// struct is `#[non_exhaustive]` since 13.0.0-alpha.6, so sinks outside
+    /// this crate build it here.
+    pub fn new(message: impl Into<String>) -> Self {
+        Self(message.into())
+    }
+}
 
 /// Application-provided RAG audit destination. An unavailable sink fails the operation closed.
 pub trait RagAuditSink: Send + Sync {
@@ -73,6 +84,7 @@ where
 
 /// Sequence-numbered event returned by the in-memory and durable RAG trails.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct RecordedRagAuditEvent {
     /// Monotonic sequence within this trail.
     pub sequence: u64,

@@ -16,6 +16,7 @@ const MAX_EVENT_DETAILS_BYTES: usize = 2 * 1024;
 /// publishes the JSON Schema of version 1 as
 /// `rullst_security::LIVE_SECURITY_EVENT_V1_JSON_SCHEMA`.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct LiveSecurityEvent {
     /// Schema version. Missing values in legacy JSON deserialize as version 1.
     #[serde(default = "security_event_schema_version")]

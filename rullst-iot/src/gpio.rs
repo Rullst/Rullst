@@ -2,6 +2,7 @@
 
 /// GPIO Pin operating mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PinMode {
     Input,
     Output,
@@ -9,6 +10,8 @@ pub enum PinMode {
 }
 
 /// GPIO Pin logic state.
+///
+/// Exhaustive on purpose: a digital pin is low or high.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PinState {
     Low = 0,

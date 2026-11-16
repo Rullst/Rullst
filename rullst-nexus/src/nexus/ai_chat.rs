@@ -25,6 +25,7 @@ use sanitize::sanitize_chat_html;
 pub(crate) const AI_ASSISTANT: bool = cfg!(feature = "ai");
 
 #[derive(Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct ChatRequest {
     pub message: String,
 }

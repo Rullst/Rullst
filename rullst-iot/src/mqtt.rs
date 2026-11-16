@@ -20,6 +20,10 @@ pub const MAX_MQTT_PACKET_BYTES: usize = 1024 * 1024;
 const MQTT_MAX_VARIABLE_BYTE_INTEGER: usize = 268_435_455;
 
 /// MQTT quality-of-service bits supported by the PUBLISH encoder.
+///
+/// Exhaustive on purpose: MQTT defines exactly three QoS levels (0, 1 and 2; 3
+/// is malformed), and each one decides which acknowledgements the caller must
+/// handle.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MqttQos {
     /// Best-effort delivery; no packet identifier is encoded.

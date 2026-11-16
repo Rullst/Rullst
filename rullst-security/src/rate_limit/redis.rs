@@ -25,6 +25,7 @@ return { current, ttl }
 
 /// Runtime mode selected by [`RedisRateLimiter`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RedisRateLimitMode {
     /// Atomic shared Redis counter with a server-side expiry.
     Distributed,
@@ -34,6 +35,7 @@ pub enum RedisRateLimitMode {
 
 /// Result of consuming one request from a bounded window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct RateLimitDecision {
     /// Whether the request is within the configured budget.
     pub allowed: bool,

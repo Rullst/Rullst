@@ -22,20 +22,10 @@ impl NexusModel for Category {
     }
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
-            FieldMeta {
-                name: "id",
-                label: "ID",
-                kind: FieldKind::Number,
-                hidden: true,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "name",
-                label: "Name",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: false,
-            },
+            FieldMeta::new("id", "ID", FieldKind::Number)
+                .hidden()
+                .readonly(),
+            FieldMeta::new("name", "Name", FieldKind::Text),
         ]
     }
 }

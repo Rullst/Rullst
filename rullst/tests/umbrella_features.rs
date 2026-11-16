@@ -130,10 +130,7 @@ async fn oauth_mock_feature_builds_an_offline_provider() {
     .map_err(|error| error.to_string())
     .unwrap();
     let user = provider
-        .get_user(ExchangeParams {
-            auth_code: "mock_authorization_code",
-            ..Default::default()
-        })
+        .get_user(ExchangeParams::new("mock_authorization_code"))
         .await
         .unwrap();
     assert_eq!(user.email.as_deref(), Some("mock@example.invalid"));

@@ -34,9 +34,7 @@ fn test_mail_error_formatting() {
 
 #[test]
 fn test_driver_constructors() {
-    let resend = ResendDriver {
-        api_key: "re_123456789".to_string(),
-    };
+    let resend = ResendDriver::try_new("re_123456789").expect("structurally valid key");
     assert_eq!(resend.api_key, "re_123456789");
 
     let sendpulse = SendPulseDriver::try_new("mock_sendpulse").unwrap();

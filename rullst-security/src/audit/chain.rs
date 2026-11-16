@@ -16,6 +16,7 @@ const GENESIS_HASH: &str = "GENESIS_HASH";
 pub const MIN_AUDIT_KEY_BYTES: usize = 32;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct AuditRecord {
     pub sequence_id: u64,
     pub timestamp: u64,

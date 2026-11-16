@@ -63,7 +63,7 @@ impl core::marker::Sync for rullst_orm::Capability
 impl core::marker::Unpin for rullst_orm::Capability
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::Capability
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::Capability
-pub struct rullst_orm::ClaimedOutboxEvent
+#[non_exhaustive] pub struct rullst_orm::ClaimedOutboxEvent
 pub rullst_orm::ClaimedOutboxEvent::id: i64
 pub rullst_orm::ClaimedOutboxEvent::stream: alloc::string::String
 pub rullst_orm::ClaimedOutboxEvent::event_key: alloc::string::String
@@ -75,6 +75,7 @@ pub rullst_orm::ClaimedOutboxEvent::claim_expires_at_epoch: i64
 impl rullst_orm::ClaimedOutboxEvent
 pub fn rullst_orm::ClaimedOutboxEvent::payload(&self) -> core::result::Result<serde_json::value::Value, rullst_orm::Error>
 impl core::clone::Clone for rullst_orm::ClaimedOutboxEvent
+impl core::default::Default for rullst_orm::ClaimedOutboxEvent
 impl core::fmt::Debug for rullst_orm::ClaimedOutboxEvent
 impl<'r, R> sqlx_core::from_row::FromRow<'r, R> for rullst_orm::ClaimedOutboxEvent where R: sqlx_core::row::Row, &'r str: sqlx_core::column::ColumnIndex<R>, i64: sqlx_core::decode::Decode<'r, <R as sqlx_core::row::Row>::Database> + sqlx_core::types::Type<<R as sqlx_core::row::Row>::Database>, i32: sqlx_core::decode::Decode<'r, <R as sqlx_core::row::Row>::Database> + sqlx_core::types::Type<<R as sqlx_core::row::Row>::Database>, alloc::string::String: sqlx_core::decode::Decode<'r, <R as sqlx_core::row::Row>::Database> + sqlx_core::types::Type<<R as sqlx_core::row::Row>::Database>
 impl core::marker::Send for rullst_orm::ClaimedOutboxEvent
@@ -266,7 +267,7 @@ impl core::marker::Sync for rullst_orm::EncryptedDocumentSnapshot
 impl core::marker::Unpin for rullst_orm::EncryptedDocumentSnapshot
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::EncryptedDocumentSnapshot
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::EncryptedDocumentSnapshot
-pub struct rullst_orm::EnqueuedOutboxEvent
+#[non_exhaustive] pub struct rullst_orm::EnqueuedOutboxEvent
 pub rullst_orm::EnqueuedOutboxEvent::id: i64
 pub rullst_orm::EnqueuedOutboxEvent::inserted: bool
 impl core::clone::Clone for rullst_orm::EnqueuedOutboxEvent
@@ -325,7 +326,7 @@ impl core::marker::Sync for rullst_orm::IntentAnalyzer
 impl core::marker::Unpin for rullst_orm::IntentAnalyzer
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::IntentAnalyzer
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::IntentAnalyzer
-pub struct rullst_orm::JoinClause
+#[non_exhaustive] pub struct rullst_orm::JoinClause
 pub rullst_orm::JoinClause::table: alloc::string::String
 pub rullst_orm::JoinClause::conditions: alloc::vec::Vec<alloc::string::String>
 pub rullst_orm::JoinClause::bindings: alloc::vec::Vec<rullst_orm::RullstValue>
@@ -358,7 +359,7 @@ impl<T> core::marker::Sync for rullst_orm::Json<T> where T: core::marker::Sync
 impl<T> core::marker::Unpin for rullst_orm::Json<T> where T: core::marker::Unpin
 impl<T> core::panic::unwind_safe::RefUnwindSafe for rullst_orm::Json<T> where T: core::panic::unwind_safe::RefUnwindSafe
 impl<T> core::panic::unwind_safe::UnwindSafe for rullst_orm::Json<T> where T: core::panic::unwind_safe::UnwindSafe
-pub struct rullst_orm::JsonResource<'a, T: rullst_orm::ApiResource>
+#[non_exhaustive] pub struct rullst_orm::JsonResource<'a, T: rullst_orm::ApiResource>
 pub rullst_orm::JsonResource::data: &'a T
 impl<'a, T: rullst_orm::ApiResource> rullst_orm::JsonResource<'a, T>
 pub fn rullst_orm::JsonResource::new(data: &'a T) -> Self
@@ -404,7 +405,7 @@ impl core::marker::Sync for rullst_orm::MockSearchEngine
 impl core::marker::Unpin for rullst_orm::MockSearchEngine
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::MockSearchEngine
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::MockSearchEngine
-pub struct rullst_orm::ModelCommittedEvent
+#[non_exhaustive] pub struct rullst_orm::ModelCommittedEvent
 pub rullst_orm::ModelCommittedEvent::table: &'static str
 pub rullst_orm::ModelCommittedEvent::id: i32
 pub rullst_orm::ModelCommittedEvent::operation: rullst_orm::ModelOperation
@@ -420,7 +421,7 @@ impl core::marker::Sync for rullst_orm::ModelCommittedEvent
 impl core::marker::Unpin for rullst_orm::ModelCommittedEvent
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::ModelCommittedEvent
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::ModelCommittedEvent
-pub enum rullst_orm::ModelOperation
+#[non_exhaustive] pub enum rullst_orm::ModelOperation
 pub rullst_orm::ModelOperation::Created
 pub rullst_orm::ModelOperation::Updated
 pub rullst_orm::ModelOperation::Deleted
@@ -486,12 +487,14 @@ impl core::marker::Sync for rullst_orm::OutboxMigration
 impl core::marker::Unpin for rullst_orm::OutboxMigration
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::OutboxMigration
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::OutboxMigration
-pub struct rullst_orm::PaginationResult<T>
+#[non_exhaustive] pub struct rullst_orm::PaginationResult<T>
 pub rullst_orm::PaginationResult::data: alloc::vec::Vec<T>
 pub rullst_orm::PaginationResult::total: i64
 pub rullst_orm::PaginationResult::per_page: usize
 pub rullst_orm::PaginationResult::current_page: usize
 pub rullst_orm::PaginationResult::last_page: usize
+impl<T> rullst_orm::PaginationResult<T>
+pub fn rullst_orm::PaginationResult::new(data: alloc::vec::Vec<T>, total: i64, per_page: usize, current_page: usize, last_page: usize) -> Self
 impl<T: core::clone::Clone> core::clone::Clone for rullst_orm::PaginationResult<T>
 impl<T: core::fmt::Debug> core::fmt::Debug for rullst_orm::PaginationResult<T>
 impl<T> core::marker::Send for rullst_orm::PaginationResult<T> where T: core::marker::Send
@@ -536,10 +539,12 @@ impl core::marker::Sync for rullst_orm::PolyglotError
 impl core::marker::Unpin for rullst_orm::PolyglotError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::PolyglotError
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::PolyglotError
-pub struct rullst_orm::PrivacyReport
+#[non_exhaustive] pub struct rullst_orm::PrivacyReport
 pub rullst_orm::PrivacyReport::table_name: alloc::string::String
 pub rullst_orm::PrivacyReport::has_encrypted_data: bool
 pub rullst_orm::PrivacyReport::encrypted_fields: alloc::vec::Vec<&'static str>
+impl rullst_orm::PrivacyReport
+pub fn rullst_orm::PrivacyReport::new(table_name: impl core::convert::Into<alloc::string::String>, has_encrypted_data: bool, encrypted_fields: alloc::vec::Vec<&'static str>) -> Self
 impl core::marker::Send for rullst_orm::PrivacyReport
 impl core::marker::Sync for rullst_orm::PrivacyReport
 impl core::marker::Unpin for rullst_orm::PrivacyReport
@@ -688,7 +693,7 @@ pub fn rullst_orm::Repository::find_by_id<'life0, 'async_trait>(&'life0 self, id
 pub fn rullst_orm::Repository::save<'life0, 'life1, 'async_trait>(&'life0 self, entity: &'life1 T) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<(), <Self as rullst_orm::Repository>::Error>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait, 'life1: 'async_trait
 pub type rullst_orm::Repository::Error: core::marker::Send + core::marker::Sync
 pub type rullst_orm::Repository::Id: core::marker::Send + core::marker::Sync
-pub struct rullst_orm::ResourceCollection<'a, T: rullst_orm::ApiResource>
+#[non_exhaustive] pub struct rullst_orm::ResourceCollection<'a, T: rullst_orm::ApiResource>
 pub rullst_orm::ResourceCollection::data: &'a [T]
 impl<'a, T: rullst_orm::ApiResource> rullst_orm::ResourceCollection<'a, T>
 pub fn rullst_orm::ResourceCollection::new(data: &'a [T]) -> Self
@@ -847,7 +852,7 @@ impl core::marker::Sync for rullst_orm::audit::AuditContext
 impl core::marker::Unpin for rullst_orm::audit::AuditContext
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::audit::AuditContext
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::audit::AuditContext
-pub struct rullst_orm::audit::AuditLog
+#[non_exhaustive] pub struct rullst_orm::audit::AuditLog
 pub rullst_orm::audit::AuditLog::id: i32
 pub rullst_orm::audit::AuditLog::model_type: alloc::string::String
 pub rullst_orm::audit::AuditLog::model_id: i32
@@ -892,7 +897,7 @@ impl core::marker::Sync for rullst_orm::auto_healing::SchemaErrorInterceptor
 impl core::marker::Unpin for rullst_orm::auto_healing::SchemaErrorInterceptor
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::auto_healing::SchemaErrorInterceptor
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::auto_healing::SchemaErrorInterceptor
-pub struct rullst_orm::auto_healing::SuggestedMigration
+#[non_exhaustive] pub struct rullst_orm::auto_healing::SuggestedMigration
 pub rullst_orm::auto_healing::SuggestedMigration::name: alloc::string::String
 pub rullst_orm::auto_healing::SuggestedMigration::sql_statement: alloc::string::String
 pub rullst_orm::auto_healing::SuggestedMigration::target_table: alloc::string::String
@@ -1286,7 +1291,7 @@ pub mod rullst_orm::query_cache
 pub async fn rullst_orm::query_cache::invalidate_table(table: &str) -> core::result::Result<usize, rullst_orm::Error>
 pub fn rullst_orm::query_cache::query_key(table: &str, query: &str, bindings: &[rullst_orm::RullstValue]) -> core::result::Result<alloc::string::String, rullst_orm::Error>
 pub mod rullst_orm::raw
-pub struct rullst_orm::raw::RawQueryBuilder
+#[non_exhaustive] pub struct rullst_orm::raw::RawQueryBuilder
 pub rullst_orm::raw::RawQueryBuilder::sql: alloc::string::String
 pub rullst_orm::raw::RawQueryBuilder::bindings: alloc::vec::Vec<rullst_orm::RullstValue>
 impl rullst_orm::raw::RawQueryBuilder
@@ -1364,7 +1369,7 @@ impl core::marker::Sync for rullst_orm::schema::Check
 impl core::marker::Unpin for rullst_orm::schema::Check
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::schema::Check
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::schema::Check
-pub struct rullst_orm::schema::Column
+#[non_exhaustive] pub struct rullst_orm::schema::Column
 pub rullst_orm::schema::Column::name: alloc::string::String
 pub rullst_orm::schema::Column::col_type: alloc::string::String
 pub rullst_orm::schema::Column::is_nullable: bool
@@ -1384,7 +1389,7 @@ impl core::marker::Sync for rullst_orm::schema::Column
 impl core::marker::Unpin for rullst_orm::schema::Column
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::schema::Column
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::schema::Column
-pub enum rullst_orm::schema::ColumnDefault
+#[non_exhaustive] pub enum rullst_orm::schema::ColumnDefault
 pub rullst_orm::schema::ColumnDefault::CurrentTimestamp
 pub rullst_orm::schema::ColumnDefault::Null
 pub rullst_orm::schema::ColumnDefault::Integer(i64)

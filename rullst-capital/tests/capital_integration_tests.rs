@@ -10,23 +10,17 @@ fn test_revenue_metrics_and_dashboard() {
     assert_eq!(initial.mrr_cents, 0);
     assert_eq!(initial.arr_cents, 0);
 
-    let event1 = WebhookEventRecord {
-        id: "evt_sub_1".to_string(),
-        provider: "stripe".to_string(),
-        event_type: "customer.subscription.created".to_string(),
-        status: "processed".to_string(),
-        timestamp: 1700000000,
-        payload_snippet: r#"{"type":"subscription_created"}"#.to_string(),
-    };
+    let event1 = WebhookEventRecord::new(
+        "evt_sub_1",
+        "stripe",
+        "customer.subscription.created",
+        "processed",
+        1700000000,
+        r#"{"type":"subscription_created"}"#.to_string(),
+    );
 
     mgr.record_event(event1);
-    mgr.update_metrics(RevenueMetrics {
-        mrr_cents: 2900,
-        arr_cents: 2900 * 12,
-        net_revenue_cents: 2900,
-        active_subscriptions: 1,
-        churn_rate_percent: 0.0,
-    });
+    mgr.update_metrics(RevenueMetrics::new(2900, 2900 * 12, 2900, 1, 0.0));
     let after_sub = mgr.get_metrics();
     assert_eq!(after_sub.active_subscriptions, 1);
     assert_eq!(after_sub.mrr_cents, 2900);

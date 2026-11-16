@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 
 /// Configuration for the Anti-Timing Attack Guard.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct TimingGuardConfig {
     /// Target minimum response duration before scheduler and transport effects.
     pub min_duration: Duration,
@@ -17,6 +18,24 @@ pub struct TimingGuardConfig {
     pub max_jitter: Duration,
     /// Whether to execute synthetic CPU hash cycles for non-existent users.
     pub enable_synthetic_cpu_cycles: bool,
+}
+
+impl TimingGuardConfig {
+    /// A configuration that pads to `min_duration` plus up to `max_jitter`.
+    /// The struct is `#[non_exhaustive]` since 13.0.0-alpha.6, so code outside
+    /// this crate builds it here or starts from `TimingGuardConfig::default()`
+    /// (250 ms, 20 ms of jitter, synthetic CPU cycles on).
+    pub fn new(
+        min_duration: Duration,
+        max_jitter: Duration,
+        enable_synthetic_cpu_cycles: bool,
+    ) -> Self {
+        Self {
+            min_duration,
+            max_jitter,
+            enable_synthetic_cpu_cycles,
+        }
+    }
 }
 
 impl Default for TimingGuardConfig {
@@ -126,6 +145,15 @@ pub async fn timing_guard_middleware(req: Request, next: Next) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn new_sets_every_field() {
+        let config =
+            TimingGuardConfig::new(Duration::from_millis(7), Duration::from_millis(3), false);
+        assert_eq!(config.min_duration, Duration::from_millis(7));
+        assert_eq!(config.max_jitter, Duration::from_millis(3));
+        assert!(!config.enable_synthetic_cpu_cycles);
+    }
 
     #[tokio::test]
     async fn test_timing_guard_normalizes_fast_execution() {

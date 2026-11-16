@@ -21,12 +21,7 @@ impl AiTool for WeatherTool {
         "Get current weather in given city"
     }
     fn parameters(&self) -> Vec<ToolParam> {
-        vec![ToolParam {
-            name: "city".into(),
-            param_type: "string".into(),
-            description: "Target city name".into(),
-            required: true,
-        }]
+        vec![ToolParam::new("city", "string", "Target city name", true)]
     }
     fn risk(&self) -> ToolRisk {
         ToolRisk::ReadOnly

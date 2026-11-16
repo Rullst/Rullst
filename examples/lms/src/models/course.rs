@@ -25,44 +25,20 @@ impl NexusModel for Course {
     }
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
-            FieldMeta {
-                name: "id",
-                label: "ID",
-                kind: FieldKind::Number,
-                hidden: true,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "category_id",
-                label: "Category",
-                kind: FieldKind::ForeignKey {
+            FieldMeta::new("id", "ID", FieldKind::Number)
+                .hidden()
+                .readonly(),
+            FieldMeta::new(
+                "category_id",
+                "Category",
+                FieldKind::ForeignKey {
                     table: "categories",
                     label_col: "name",
                 },
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "title",
-                label: "Title",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "description",
-                label: "Description",
-                kind: FieldKind::Textarea,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "thumbnail",
-                label: "Thumbnail URL",
-                kind: FieldKind::Url,
-                hidden: false,
-                readonly: false,
-            },
+            ),
+            FieldMeta::new("title", "Title", FieldKind::Text),
+            FieldMeta::new("description", "Description", FieldKind::Textarea),
+            FieldMeta::new("thumbnail", "Thumbnail URL", FieldKind::Url),
         ]
     }
 }

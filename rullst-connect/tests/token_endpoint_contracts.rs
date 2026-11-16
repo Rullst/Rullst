@@ -157,11 +157,10 @@ async fn x_authenticates_confidential_token_requests_with_http_basic() {
     .with_http_client(LoopbackClient::shared(server.uri()));
 
     let user = provider
-        .get_user(rullst_connect::provider::ExchangeParams {
-            auth_code: "x-code",
-            code_verifier: Some("x-verifier"),
-            ..Default::default()
-        })
+        .get_user(
+            rullst_connect::provider::ExchangeParams::new("x-code")
+                .with_code_verifier("x-verifier"),
+        )
         .await
         .expect("code exchange uses client_secret_basic");
     assert_eq!(user.id, "2244994945");
@@ -214,17 +213,10 @@ async fn a_profile_failure_after_rotation_keeps_the_issued_refresh_token() {
         .await;
 
     let github = github(&server);
-    let signed_in = ConnectUser {
-        id: "42".to_string(),
-        name: "octocat".to_string(),
-        email: None,
-        email_verified: None,
-        avatar_url: None,
-        raw_data: serde_json::json!({}),
-        access_token: SecretString::from("ghu-first".to_string()),
-        refresh_token: Some(SecretString::from("ghr-first".to_string())),
-        expires_in: Some(10),
-    };
+    let mut signed_in = ConnectUser::new("42", "octocat", "ghu-first");
+    signed_in.raw_data = serde_json::json!({});
+    signed_in.refresh_token = Some(SecretString::from("ghr-first".to_string()));
+    signed_in.expires_in = Some(10);
     let session = AutoRefreshingSession::from_user_at(&github, &signed_in, 1_000)
         .expect("session")
         .with_refresh_leeway(0)

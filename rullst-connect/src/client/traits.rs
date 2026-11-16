@@ -4,6 +4,7 @@ use std::fmt;
 
 /// The request structure passed to the HttpClient.
 #[derive(Clone)]
+#[non_exhaustive]
 pub struct HttpRequest {
     pub method: std::borrow::Cow<'static, str>,
     pub url: String,
@@ -12,6 +13,24 @@ pub struct HttpRequest {
     pub json: Option<Value>,
     pub basic_auth: Option<(String, Option<String>)>,
     pub bearer_auth: Option<String>,
+}
+
+impl HttpRequest {
+    /// A request without headers, body or credentials; set those fields on
+    /// the value. Rullst builds the requests it sends; this constructor is
+    /// for tests of a custom [`HttpClient`]. The struct is
+    /// `#[non_exhaustive]` since 13.0.0-alpha.6.
+    pub fn new(method: impl Into<std::borrow::Cow<'static, str>>, url: impl Into<String>) -> Self {
+        Self {
+            method: method.into(),
+            url: url.into(),
+            headers: reqwest::header::HeaderMap::new(),
+            form: None,
+            json: None,
+            basic_auth: None,
+            bearer_auth: None,
+        }
+    }
 }
 
 impl fmt::Debug for HttpRequest {
@@ -44,9 +63,19 @@ fn redacted_debug_url(value: &str) -> String {
 
 /// The response structure returned by the HttpClient.
 #[derive(Clone)]
+#[non_exhaustive]
 pub struct HttpResponse {
     pub status: u16,
     pub body: Value,
+}
+
+impl HttpResponse {
+    /// The response a custom [`HttpClient`] returns: the HTTP status and the
+    /// JSON body. The struct is `#[non_exhaustive]` since 13.0.0-alpha.6, so
+    /// clients outside this crate build it here.
+    pub fn new(status: u16, body: Value) -> Self {
+        Self { status, body }
+    }
 }
 
 impl fmt::Debug for HttpResponse {

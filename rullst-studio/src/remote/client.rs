@@ -26,6 +26,7 @@ const MAX_LEGACY_PROJECTS: usize = 64;
 
 /// Size and time bounds for one read.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct FetchLimits {
     /// Largest accepted response body.
     pub max_bytes: usize,

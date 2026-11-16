@@ -487,11 +487,7 @@ async fn test_timing_guard_synthetic_work() {
     synthetic_argon2_cpu_work();
 
     let start = Instant::now();
-    let config = TimingGuardConfig {
-        min_duration: Duration::from_millis(15),
-        max_jitter: Duration::from_millis(5),
-        enable_synthetic_cpu_cycles: true,
-    };
+    let config = TimingGuardConfig::new(Duration::from_millis(15), Duration::from_millis(5), true);
 
     let scope = TimingScope::start(config.clone());
     scope.finish().await;

@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::{fmt::Write, sync::atomic::Ordering};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ThreatRadarStats {
     pub honeypot_traps_blocked: u64,
     pub active_ip_bans: usize,

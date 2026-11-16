@@ -38,6 +38,7 @@ mod unicode;
 
 /// Categorization of detected prompt injection attack vectors.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum PromptThreatCategory {
     /// Direct override or jailbreak (e.g., DAN, Developer Mode, Ignore Instructions).
     DirectJailbreak,
@@ -65,6 +66,7 @@ impl PromptThreatCategory {
 
 /// Safety inspection assessment report for a scrutinized prompt.
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct PromptSafetyReport {
     pub is_safe: bool,
     pub threat_category: Option<PromptThreatCategory>,

@@ -1,6 +1,7 @@
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// The top-level response sent to the browser to begin a WebAuthn credential registration ceremony.
 /// Wraps [`PublicKeyCredentialCreationOptions`] under the `publicKey` JSON key as required by the W3C spec.
+#[non_exhaustive]
 pub struct CreationChallengeResponse {
     #[serde(rename = "publicKey")]
     /// The full set of options passed to `navigator.credentials.create()` on the client.
@@ -10,6 +11,7 @@ pub struct CreationChallengeResponse {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// Options passed to `navigator.credentials.create()` to register a new public-key credential.
 /// Serialized under the `publicKey` field of the JSON challenge response.
+#[non_exhaustive]
 pub struct PublicKeyCredentialCreationOptions {
     /// Base64url-encoded random challenge used to prevent replay attacks.
     pub challenge: String,
@@ -31,6 +33,7 @@ pub struct PublicKeyCredentialCreationOptions {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// Identifies the Relying Party to the authenticator.
+#[non_exhaustive]
 pub struct RelyingPartyInfo {
     /// Human-readable Relying Party name shown to the user (e.g. `"My App"`).
     pub name: String,
@@ -40,6 +43,7 @@ pub struct RelyingPartyInfo {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// Identifies the user account being registered to the authenticator.
+#[non_exhaustive]
 pub struct UserInfo {
     /// Base64url-encoded RP-scoped user handle. The legacy API encodes 16 bytes;
     /// shared ceremonies accept an application-owned opaque handle of 1–64 bytes.
@@ -52,6 +56,7 @@ pub struct UserInfo {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// Specifies a cryptographic algorithm and credential type accepted by the Relying Party.
+#[non_exhaustive]
 pub struct PubKeyCredParam {
     /// Credential type, always `"public-key"`.
     pub r#type: String,
@@ -61,6 +66,7 @@ pub struct PubKeyCredParam {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// Controls authenticator selection criteria during credential creation.
+#[non_exhaustive]
 pub struct AuthenticatorSelection {
     /// User verification requirement (`"required"`, `"preferred"`, or `"discouraged"`).
     pub user_verification: String,
@@ -71,6 +77,7 @@ pub struct AuthenticatorSelection {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// The top-level response sent to the browser to begin a WebAuthn assertion (login) ceremony.
 /// Wraps [`PublicKeyCredentialRequestOptions`] under the `publicKey` JSON key as required by the W3C spec.
+#[non_exhaustive]
 pub struct RequestChallengeResponse {
     #[serde(rename = "publicKey")]
     /// The options passed to `navigator.credentials.get()` on the client.
@@ -79,6 +86,7 @@ pub struct RequestChallengeResponse {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// Options passed to `navigator.credentials.get()` to authenticate using an existing public-key credential.
+#[non_exhaustive]
 pub struct PublicKeyCredentialRequestOptions {
     /// Base64url-encoded random challenge to prevent replay attacks.
     pub challenge: String,
@@ -94,6 +102,7 @@ pub struct PublicKeyCredentialRequestOptions {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// Identifies an existing credential allowed to satisfy an assertion request.
+#[non_exhaustive]
 pub struct AllowCredential {
     /// Credential type, always `"public-key"`.
     pub r#type: String,
@@ -103,6 +112,7 @@ pub struct AllowCredential {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// The JSON payload returned by `navigator.credentials.create()` during registration.
+#[non_exhaustive]
 pub struct RegisterPublicKeyCredential {
     /// Base64url-encoded credential ID.
     pub id: String,
@@ -116,6 +126,7 @@ pub struct RegisterPublicKeyCredential {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// Attestation details produced by an authenticator during credential creation.
+#[non_exhaustive]
 pub struct AuthenticatorAttestationResponse {
     /// Base64url-encoded CBOR-encoded attestation object containing authData and public key.
     pub attestation_object: String,
@@ -125,6 +136,7 @@ pub struct AuthenticatorAttestationResponse {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// The JSON payload returned by `navigator.credentials.get()` during authentication.
+#[non_exhaustive]
 pub struct PublicKeyCredential {
     /// Base64url-encoded credential ID.
     pub id: String,
@@ -138,6 +150,7 @@ pub struct PublicKeyCredential {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// Assertion details produced by an authenticator during authentication.
+#[non_exhaustive]
 pub struct AuthenticatorAssertionResponse {
     /// Base64url-encoded authenticator data containing flags, sign count, and rpIdHash.
     pub authenticator_data: String,
@@ -149,6 +162,7 @@ pub struct AuthenticatorAssertionResponse {
 
 #[derive(Clone, Debug)]
 /// Persisted in the database after successful WebAuthn registration.
+#[non_exhaustive]
 pub struct Passkey {
     /// The credential ID returned by the authenticator, used to match credentials during authentication.
     pub credential_id: Vec<u8>,
@@ -157,4 +171,18 @@ pub struct Passkey {
     /// Signature counter used to detect authenticator cloning. A zero value means the
     /// authenticator does not implement counters; otherwise every assertion must advance it.
     pub sign_count: u32,
+}
+
+impl Passkey {
+    /// A stored passkey, as an application reads it back from its own table to
+    /// pass to [`PasskeyAuth::start_authenticate`](crate::passkey::PasskeyAuth::start_authenticate)
+    /// and `finish_authenticate`. The struct is `#[non_exhaustive]` since
+    /// 13.0.0-alpha.6, so code outside this crate builds it here.
+    pub fn new(credential_id: Vec<u8>, public_key: Vec<u8>, sign_count: u32) -> Self {
+        Self {
+            credential_id,
+            public_key,
+            sign_count,
+        }
+    }
 }

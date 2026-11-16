@@ -20,14 +20,12 @@ struct CaptureClient {
 impl HttpClient for CaptureClient {
     async fn execute(&self, request: HttpRequest) -> Result<HttpResponse, ConnectError> {
         *self.request.lock().await = Some(request);
-        Ok(HttpResponse {
-            status: self.status,
-            body: if self.status >= 400 {
-                json!({"error_description": "provider-secret-marker"})
-            } else {
-                json!({})
-            },
-        })
+        let body = if self.status >= 400 {
+            json!({"error_description": "provider-secret-marker"})
+        } else {
+            json!({})
+        };
+        Ok(HttpResponse::new(self.status, body))
     }
 }
 

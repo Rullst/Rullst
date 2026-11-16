@@ -16,6 +16,7 @@ use tokio_stream::StreamExt;
 use tokio_stream::wrappers::BroadcastStream;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct RequestLog {
     pub method: String,
     pub uri: String,
@@ -25,6 +26,7 @@ pub struct RequestLog {
 }
 
 #[derive(Clone)]
+#[non_exhaustive]
 pub struct LoggerState {
     pub tx: broadcast::Sender<RequestLog>,
 }

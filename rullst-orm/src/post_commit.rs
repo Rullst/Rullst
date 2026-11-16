@@ -18,6 +18,7 @@ tokio::task_local! {
 
 /// Database mutation represented by a committed model event.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum ModelOperation {
     /// A new model row was created.
     Created,
@@ -40,6 +41,7 @@ impl ModelOperation {
 
 /// Owned model snapshot delivered only after a managed transaction commits.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub struct ModelCommittedEvent {
     /// Persisted table name generated from the model metadata.
     pub table: &'static str,

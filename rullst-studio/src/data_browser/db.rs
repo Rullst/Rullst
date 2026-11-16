@@ -14,6 +14,7 @@ pub use super::search::count_table_rows;
 
 /// Query parameters for the Studio table viewer, supporting pagination and live search.
 #[derive(Deserialize, Debug)]
+#[non_exhaustive]
 pub struct TableQuery {
     pub page: Option<usize>,
     pub search: Option<String>,

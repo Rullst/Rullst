@@ -121,18 +121,8 @@ impl AiTool for CalculatorTool {
 
     fn parameters(&self) -> Vec<ToolParam> {
         vec![
-            ToolParam {
-                name: "a".to_string(),
-                param_type: "number".to_string(),
-                description: "First number".to_string(),
-                required: true,
-            },
-            ToolParam {
-                name: "b".to_string(),
-                param_type: "number".to_string(),
-                description: "Second number".to_string(),
-                required: true,
-            },
+            ToolParam::new("a", "number", "First number", true),
+            ToolParam::new("b", "number", "Second number", true),
         ]
     }
 

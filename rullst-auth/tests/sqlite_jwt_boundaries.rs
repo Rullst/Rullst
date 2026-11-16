@@ -40,20 +40,23 @@ fn remove_database(path: &Path) {
     }
 }
 
+// Only `ApplicationJwtPolicy` issues claims, and the struct is
+// `#[non_exhaustive]`: a test reads them from their JSON form.
 fn claims(jti: &str, subject: &str, issued_at: u64) -> ApplicationJwtClaims {
-    ApplicationJwtClaims {
-        sub: subject.to_string(),
-        iss: "https://auth.example.test".to_string(),
-        aud: "rullst-academy".to_string(),
-        iat: issued_at,
-        nbf: issued_at,
-        exp: now() + 3_600,
-        jti: jti.to_string(),
-        session_version: 5,
-        scopes: Vec::new(),
-        token_use: "access".to_string(),
-        schema_version: 1,
-    }
+    serde_json::from_value(serde_json::json!({
+        "sub": subject,
+        "iss": "https://auth.example.test",
+        "aud": "rullst-academy",
+        "iat": issued_at,
+        "nbf": issued_at,
+        "exp": now() + 3_600,
+        "jti": jti,
+        "session_version": 5,
+        "scopes": [],
+        "token_use": "access",
+        "schema_version": 1,
+    }))
+    .expect("test claims")
 }
 
 #[tokio::test]

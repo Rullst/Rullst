@@ -17,6 +17,7 @@ const MAX_QUEUE_THRESHOLD: u64 = 1_000_000_000;
 /// The thresholds of one project; `None` disables a rule.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct AlertRules {
     /// Fire when the project cannot be read.
     #[serde(default)]

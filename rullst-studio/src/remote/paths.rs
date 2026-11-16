@@ -12,6 +12,7 @@ const DIRECTORY: [&str; 2] = ["rullst", "studio"];
 
 /// The files of the standalone Studio.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct StudioPaths {
     /// The project list (`projects.json`).
     pub projects: PathBuf,

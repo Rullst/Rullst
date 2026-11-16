@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 /// displays as `normal`, `warning` or `critical anomaly` (13.0.0-alpha.5).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum AnomalyState {
     /// Within one tolerance of the expected mean (inclusive).
     Normal,

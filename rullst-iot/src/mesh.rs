@@ -6,6 +6,7 @@ use alloc::vec::Vec;
 
 /// Recorded status of a topology node.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum NodeStatus {
     Online,
     Degraded,
@@ -14,6 +15,7 @@ pub enum NodeStatus {
 
 /// A single node record. This type does not implement a mesh transport.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct MeshNode {
     pub node_id: String,
     pub status: NodeStatus,
@@ -35,6 +37,7 @@ impl MeshNode {
 ///
 /// This type does not route packets, detect failures, or control a self-healing
 /// P2P mesh transport.
+#[non_exhaustive]
 pub struct MeshTopology {
     pub nodes: Vec<MeshNode>,
 }

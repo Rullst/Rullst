@@ -22,12 +22,10 @@ struct SeededQueue {
 
 impl SeededQueue {
     fn seed(&self, id: &str, payload: Value) {
-        self.pending.lock().unwrap().push_back(QueuedJob {
-            id: id.to_string(),
-            name: "rullst_mail_send".to_string(),
-            payload,
-            attempts: 0,
-        });
+        self.pending
+            .lock()
+            .unwrap()
+            .push_back(QueuedJob::new(id, "rullst_mail_send", payload, 0));
     }
 
     fn settled(&self) -> usize {

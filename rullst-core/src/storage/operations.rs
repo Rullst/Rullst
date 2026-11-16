@@ -6,6 +6,7 @@ use std::{sync::Arc, time::Duration};
 
 /// Metadata for one object. ETags are opaque provider values, not SHA-256 guarantees.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ObjectMetadata {
     /// Byte length reported by the backend.
     pub size_bytes: u64,
