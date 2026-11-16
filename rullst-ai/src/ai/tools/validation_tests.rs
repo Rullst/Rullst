@@ -183,3 +183,40 @@ fn tool_schema_accepts_each_exact_ceiling() {
     assert!(validate_non_empty_bounded("label", "abc", 3).is_ok());
     assert!(validate_non_empty_bounded("label", "abcd", 3).is_err());
 }
+
+#[test]
+fn execution_accepts_payloads_of_exactly_the_policy_limits() {
+    use crate::ai::tools::{
+        InMemoryToolAuditTrail, ToolExecutionContext, ToolExecutionPolicy, ToolRegistry,
+    };
+
+    let mut registry = ToolRegistry::new();
+    assert_eq!((registry.len(), registry.is_empty()), (0, true));
+    registry
+        .register(SchemaTool::new(vec![parameter("value", "string", false)]))
+        .expect("valid tool");
+    let mut second = SchemaTool::new(Vec::new());
+    second.name = "second-tool".to_string();
+    registry.register(second).expect("second tool");
+    assert_eq!((registry.len(), registry.is_empty()), (2, false));
+
+    // `{"value":"abc"}` is 15 bytes in and, echoed, 15 bytes out.
+    let payload = serde_json::json!({"value": "abc"});
+    let policy = ToolExecutionPolicy::new(["schema-tool"])
+        .expect("policy")
+        .with_payload_limits(15, 15)
+        .expect("limits");
+    let mut context =
+        ToolExecutionContext::new("user-1", ["schema-tool"], 2).expect("authorization");
+    let audit = InMemoryToolAuditTrail::new(8).expect("audit");
+    let output = registry
+        .execute(
+            "schema-tool",
+            payload.clone(),
+            &mut context,
+            &policy,
+            &audit,
+        )
+        .expect("payloads at the limits are accepted");
+    assert_eq!(output, payload);
+}
