@@ -108,3 +108,21 @@ fn a_mail_message_literal_reports_both_releases() {
         [("V13-MAIL-MESSAGE-REPLY-TO", 2), (LITERAL, 2), (LITERAL, 3)]
     );
 }
+
+#[test]
+fn test_code_is_reported_because_it_no_longer_compiles_either() {
+    // Must-change rules are not among the production-only rules that skip
+    // test code: a test with these literals or matches fails to build too.
+    let source = "use rullst::capital::{SubscriptionStatus, WebhookEvent};\n#[cfg(test)]\nmod tests {\n    use super::*;\n    #[test]\n    fn paid() {\n        let event = WebhookEvent { subscription_id: String::new(), customer_id: String::new(), customer_email: String::new(), plan_id: String::new(), status: SubscriptionStatus::Active, ends_at: None };\n        match event.status {\n            SubscriptionStatus::Active | SubscriptionStatus::Trialing | SubscriptionStatus::Paused => {}\n            SubscriptionStatus::Canceled | SubscriptionStatus::PastDue | SubscriptionStatus::Unpaid => {}\n        }\n    }\n}\n";
+    assert_eq!(found(source, LITERAL), [7]);
+    assert_eq!(found(source, MATCH), [8]);
+    let in_tests_directory = scan_with(source, "tests/billing.rs", &WorkspaceFacts::default());
+    assert!(
+        in_tests_directory.contains(&(LITERAL, 7)),
+        "{in_tests_directory:?}"
+    );
+    assert!(
+        in_tests_directory.contains(&(MATCH, 8)),
+        "{in_tests_directory:?}"
+    );
+}
