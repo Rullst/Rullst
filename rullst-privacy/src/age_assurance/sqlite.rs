@@ -4,10 +4,10 @@ use super::{
     AgeError, ReplayDurability, ReplayStore,
     replay::{nonce_digest, validate_claim},
 };
-use crate::sqlite_establish::retry;
+use crate::sqlite_establish::{Waits, outlived, retry};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
 use sqlx::{SqliteConnection, SqlitePool};
-use std::{path::Path, time::Duration};
+use std::path::Path;
 
 const SCHEMA_VERSION: i64 = 1;
 const SCHEMA: &[&str] = &[
@@ -38,10 +38,19 @@ impl SqliteReplayStore {
     /// database URL, in-memory database or caller-configured pool. Capacity is
     /// 1..=100,000 and must agree across every opener. Opening is startup work.
     pub async fn open(path: impl AsRef<Path>, capacity: usize) -> Result<Self, AgeError> {
+        Self::open_with(path.as_ref(), capacity, Waits::STORE).await
+    }
+
+    /// [`open`](Self::open) with the given waits, so that a test can hold a
+    /// lock past them quickly.
+    pub(crate) async fn open_with(
+        path: &Path,
+        capacity: usize,
+        waits: Waits,
+    ) -> Result<Self, AgeError> {
         if !(1..=100_000).contains(&capacity) {
             return Err(AgeError::InvalidConfiguration);
         }
-        let path = path.as_ref();
         let filename = path
             .file_name()
             .filter(|name| *name != ":memory:")
@@ -69,15 +78,15 @@ impl SqliteReplayStore {
             .journal_mode(SqliteJournalMode::Wal)
             .synchronous(SqliteSynchronous::Full)
             .foreign_keys(true)
-            .busy_timeout(Duration::from_secs(5));
+            .busy_timeout(waits.lock);
         let pool = retry(|| {
             SqlitePoolOptions::new()
                 .max_connections(4)
-                .acquire_timeout(Duration::from_secs(5))
+                .acquire_timeout(waits.pool)
                 .connect_with(options.clone())
         })
         .await
-        .map_err(|_| AgeError::StoreUnavailable)?;
+        .map_err(startup)?;
         let store = Self {
             pool,
             capacity: capacity as i64,
@@ -95,12 +104,12 @@ impl SqliteReplayStore {
         self.pool.close().await;
     }
 
-    /// Runs only in `open`, so it retries a connection that times out while
-    /// it is established (see `sqlite_establish`).
+    /// Runs only in `open`, so it retries a step whose wait runs out (see
+    /// `sqlite_establish`).
     async fn prepare(&self) -> Result<(), AgeError> {
         let mut tx = retry(|| self.pool.begin_with("BEGIN IMMEDIATE"))
             .await
-            .map_err(|_| AgeError::StoreUnavailable)?;
+            .map_err(startup)?;
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlite_schema WHERE type = 'table' AND name IN ('rullst_age_replay_meta', 'rullst_age_replay_claims')")
             .fetch_one(&mut *tx).await.map_err(|_| AgeError::StoreUnavailable)?;
         match count {
@@ -225,5 +234,15 @@ impl ReplayStore for SqliteReplayStore {
                 Err(error)
             }
         }
+    }
+}
+
+/// The failure of a bootstrap step that [`retry`] ran: `StoreTimeout` when
+/// its wait ran out at every attempt.
+fn startup(error: sqlx::Error) -> AgeError {
+    if outlived(&error) {
+        AgeError::StoreTimeout
+    } else {
+        AgeError::StoreUnavailable
     }
 }

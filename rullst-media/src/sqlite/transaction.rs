@@ -1,6 +1,6 @@
 use super::{
     record::Record,
-    store::{SqliteMedia, storage},
+    store::{SqliteMedia, startup, storage},
 };
 use crate::{Clock, MediaError as Error, Reference, Scope, contracts::checked_time};
 use sqlx::{Sqlite, Transaction};
@@ -22,13 +22,13 @@ impl<'a, C: Clock> Operation<'a, C> {
             .map_err(storage)?;
         Self::started(store, before, tx).await
     }
-    /// [`begin`](Self::begin) for `open`, which retries a connection that
-    /// times out while it is established (see `establish`).
+    /// [`begin`](Self::begin) for `open`, which retries a step whose wait
+    /// runs out (see `establish`).
     pub async fn bootstrap(store: &'a SqliteMedia<C>) -> Result<Self, Error> {
         let before = checked_time(store.clock.now()?)?;
         let tx = super::establish::retry(|| store.pool.begin_with("BEGIN IMMEDIATE"))
             .await
-            .map_err(storage)?;
+            .map_err(startup)?;
         Self::started(store, before, tx).await
     }
     async fn started(

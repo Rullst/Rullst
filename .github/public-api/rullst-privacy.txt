@@ -75,6 +75,7 @@ pub rullst_privacy::age_assurance::AgeError::InvalidSignature
 pub rullst_privacy::age_assurance::AgeError::Replay
 pub rullst_privacy::age_assurance::AgeError::DurableReplayRequired
 pub rullst_privacy::age_assurance::AgeError::StoreUnavailable
+pub rullst_privacy::age_assurance::AgeError::StoreTimeout
 pub rullst_privacy::age_assurance::AgeError::StoreCapacity
 pub rullst_privacy::age_assurance::AgeError::StoreConfiguration
 pub rullst_privacy::age_assurance::AgeError::ClockRollback
@@ -346,6 +347,7 @@ pub rullst_privacy::consent::ConsentError::RevisionConflict
 pub rullst_privacy::consent::ConsentError::RevisionExhausted
 pub rullst_privacy::consent::ConsentError::DurableStateRequired
 pub rullst_privacy::consent::ConsentError::StoreUnavailable
+pub rullst_privacy::consent::ConsentError::StoreTimeout
 pub rullst_privacy::consent::ConsentError::StoreCapacity
 pub rullst_privacy::consent::ConsentError::StoreConfiguration
 pub rullst_privacy::consent::ConsentError::ClockRollback

@@ -1,4 +1,4 @@
-use super::store::{SqliteLabs, storage};
+use super::store::{SqliteLabs, startup, storage};
 use crate::{Clock, LabError as Error, authorization::checked_time};
 use sqlx::{Sqlite, Transaction};
 
@@ -28,12 +28,12 @@ impl<'a, C: Clock> Operation<'a, C> {
         Self::started(store, deadline, before, tx).await
     }
     /// [`begin`](Self::begin) for `initialize` and `open`, which retry a
-    /// connection that times out while it is established (see `establish`).
+    /// step whose wait runs out (see `establish`).
     pub async fn bootstrap(store: &'a SqliteLabs<C>) -> Result<Self, Error> {
         let before = checked_time(store.clock.now()?)?;
         let tx = super::establish::retry(|| store.pool.begin_with("BEGIN IMMEDIATE"))
             .await
-            .map_err(storage)?;
+            .map_err(startup)?;
         Self::started(store, None, before, tx).await
     }
     async fn started(
