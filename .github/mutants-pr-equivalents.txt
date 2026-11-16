@@ -13,6 +13,10 @@ rullst-iot/src/coap.rs:206:18: replace | with ^ in CoapRequest::write_to
 rullst-iot/src/coap.rs:206:52: replace | with ^ in CoapRequest::write_to
 rullst-iot/src/coap.rs:261:35: replace | with ^ in write_option
 
+# rullst-ai: each name below has a row in docs/src/mutation-testing.md
+# "Accepted equivalent mutants".
+rullst-ai/src/ai/evaluation/types.rs:298:9: replace AiEvaluationReport::schema_version -> u8 with 1
+
 # rullst-orm: compiled only without a strict driver feature (SQLx Any pool), so
 # absent from the gate's --all-features build; default-feature tests cover them.
 rullst-orm/src/schema/schema_builder.rs:78:8: delete ! in prepare_postgres_enums

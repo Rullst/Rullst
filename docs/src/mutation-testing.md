@@ -307,6 +307,7 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-ai/src/ai/guardrails/markdown_code.rs`: `indentation`, the tab step `4 - column % 4` with `4 + column % 4` | Indentation is only compared with 4, and either step takes a tab to at least four columns. |
 | `rullst-ai/src/ai/guardrails/tax_ids.rs`: `token_end`, `bytes.get(index + 1)` with `index - 1` | A separator then joins when a digit precedes it instead of follows it, but the end moves only on digits and a second separator stops both scans, so every token ends at the same digit. |
 | `rullst-ai/src/ai/guardrails/tax_ids.rs`: `is_valid_tax_id`, the CNPJ `all_digits && token.len() == 14` with `\|\|` | `digit_values` still requires exactly 14 digits, which only a 14-digit token or the CNPJ layout holds. |
+| `rullst-ai/src/ai/evaluation/types.rs`: `AiEvaluationReport::schema_version` with `1` | Its fields are private to the evaluation module, whose only constructor, `build_report`, sets `schema_version: 1`; the report has no `Deserialize`. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the

@@ -430,3 +430,25 @@ async fn transport_errors_never_expose_the_configured_endpoint() {
         assert_endpoint_redacted(error, &base_url);
     }
 }
+
+#[tokio::test]
+async fn vision_input_of_exactly_ten_mebibytes_is_accepted() {
+    let provider = OpenAiCompatibleProvider::mock("local-model")
+        .expect("valid mock provider")
+        .with_capabilities(OpenAiCompatibleCapabilities::chat_only().with_vision());
+    let image = vec![0_u8; 10_485_760];
+    let answer = provider
+        .prompt_with_image("describe", &image)
+        .await
+        .expect("a 10 MiB image is within the bound");
+    assert!(answer.contains("image_bytes: 10485760"), "{answer}");
+
+    let error = provider
+        .prompt_with_image("describe", &vec![0_u8; 10_485_761])
+        .await
+        .expect_err("one byte over 10 MiB is refused");
+    assert!(
+        matches!(&error, AiError::ConfigError(message) if message == "OpenAI-compatible vision input exceeds 10 MiB"),
+        "unexpected error: {error:?}"
+    );
+}

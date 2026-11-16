@@ -266,3 +266,42 @@ async fn openai_reports_an_incomplete_reply_on_text_and_vision_paths() {
     assert!(request.contains("image_url"));
     assert!(!request.contains("max_tokens"));
 }
+
+fn compatible(endpoint: &str) -> OpenAiCompatibleProvider {
+    OpenAiCompatibleProvider::try_local(format!("{endpoint}/v1"), "fixture-model")
+        .unwrap()
+        .with_request_timeout(Duration::from_secs(3))
+}
+
+fn without_length(body: &str) -> String {
+    format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{body}")
+}
+
+#[tokio::test]
+async fn compatible_provider_response_size_boundary_is_exact() {
+    let prefix = r#"{"choices":[{"message":{"content":""#;
+    let suffix = r#""}}]}"#;
+    let payload = "a".repeat(2_097_152 - prefix.len() - suffix.len());
+    let body = format!("{prefix}{payload}{suffix}");
+    assert_eq!(body.len(), 2_097_152);
+    // 2 MiB is accepted whether the length is declared or only streamed.
+    for response in [success(&body), without_length(&body)] {
+        let (endpoint, server) = serve(response).await;
+        let answer = compatible(&endpoint).prompt("hello").await.unwrap();
+        assert_eq!(answer, payload);
+        assert!(server.await.unwrap().is_some());
+    }
+
+    // One more byte is refused, also when no Content-Length announces it.
+    let oversized = format!("{prefix}{payload}a{suffix}");
+    for response in [success(&oversized), without_length(&oversized)] {
+        let (endpoint, server) = serve(response).await;
+        let result = compatible(&endpoint).prompt("hello").await;
+        assert!(server.await.unwrap().is_some());
+        assert!(
+            matches!(&result, Err(crate::ai::AiError::ApiError(message)) if message == "OpenAI-compatible response exceeds 2097152 bytes"),
+            "unexpected result length: {:?}",
+            result.as_ref().map(String::len)
+        );
+    }
+}

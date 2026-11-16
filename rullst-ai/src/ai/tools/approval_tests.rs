@@ -91,3 +91,84 @@ fn unaudited_authorization_keeps_the_approval_for_a_retry() {
         Err(ToolExecutionError::HumanApprovalRequired { .. })
     ));
 }
+
+fn audit_event(principal: &str, tool: &str, approval: Option<(&str, &str)>) -> ToolAuditEvent {
+    ToolAuditEvent {
+        principal: principal.to_string(),
+        tool: tool.to_string(),
+        risk: Some(ToolRisk::Financial),
+        approved_by: approval.map(|(approver, _)| approver.to_string()),
+        approval_reason: approval.map(|(_, reason)| reason.to_string()),
+        outcome: ToolAuditOutcome::Succeeded,
+    }
+}
+
+#[test]
+fn durable_tool_audit_events_bound_principal_tool_and_approval() {
+    use crate::ai::durable_audit::DurableAuditRecord;
+
+    let principal_256 = "p".repeat(256);
+    let principal_257 = "p".repeat(257);
+    assert_eq!(
+        audit_event(&principal_256, "issue_refund", None).validate(),
+        Ok(())
+    );
+    for principal in ["", "   ", principal_257.as_str()] {
+        assert_eq!(
+            audit_event(principal, "issue_refund", None).validate(),
+            Err("event has an invalid principal")
+        );
+    }
+
+    let tool_64 = "t".repeat(64);
+    let tool_65 = "t".repeat(65);
+    assert_eq!(audit_event("user-1", &tool_64, None).validate(), Ok(()));
+    for tool in ["", tool_65.as_str(), "issue refund"] {
+        assert_eq!(
+            audit_event("user-1", tool, None).validate(),
+            Err("event has an invalid tool identifier")
+        );
+    }
+
+    let approver_256 = "a".repeat(256);
+    let approver_257 = "a".repeat(257);
+    let reason_2048 = "r".repeat(2_048);
+    let reason_2049 = "r".repeat(2_049);
+    for approval in [
+        ("reviewer-9", "ticket FIN-42"),
+        (approver_256.as_str(), reason_2048.as_str()),
+    ] {
+        assert_eq!(
+            audit_event("user-1", "issue_refund", Some(approval)).validate(),
+            Ok(())
+        );
+    }
+    for approval in [
+        ("   ", "ticket FIN-42"),
+        ("reviewer-9", "   "),
+        (approver_257.as_str(), "ticket FIN-42"),
+        ("reviewer-9", reason_2049.as_str()),
+    ] {
+        assert_eq!(
+            audit_event("user-1", "issue_refund", Some(approval)).validate(),
+            Err("event has invalid approval evidence")
+        );
+    }
+    let mut half_approval = audit_event("user-1", "issue_refund", None);
+    half_approval.approved_by = Some("reviewer-9".to_string());
+    assert_eq!(
+        half_approval.validate(),
+        Err("event has invalid approval evidence")
+    );
+
+    // Only a denial may omit the tool's risk.
+    let mut denied = audit_event("user-1", "issue_refund", None);
+    denied.risk = None;
+    denied.outcome = ToolAuditOutcome::Denied;
+    assert_eq!(denied.validate(), Ok(()));
+    denied.outcome = ToolAuditOutcome::Failed;
+    assert_eq!(
+        denied.validate(),
+        Err("event omits risk for a non-denied outcome")
+    );
+}

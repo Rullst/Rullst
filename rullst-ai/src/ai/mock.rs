@@ -272,4 +272,80 @@ mod tests {
             ));
         }
     }
+
+    #[test]
+    fn vision_fixture_echoes_the_prompt_and_image_size() {
+        assert_eq!(
+            vision_response("Fixture", "model-1", "describe", b"abc"),
+            "Mock vision response from Fixture (model: model-1, image_bytes: 3): Echo 'describe'"
+        );
+    }
+
+    #[test]
+    fn embedding_values_are_pinned_and_span_both_signs() {
+        let values = embedding("rullst");
+        let bits = values
+            .iter()
+            .map(|value| value.to_bits())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            bits,
+            [
+                0xbf21_ab86,
+                0x3d34_4d00,
+                0x3eab_6508,
+                0xbf0e_a5d8,
+                0x3f20_0e76,
+                0xbdfe_2588,
+                0xbf5f_9e0a,
+                0xbeee_0f06,
+                0xbe21_a424,
+                0x3e38_76a0,
+                0x3da6_4e60,
+                0x3b87_c500,
+                0xbf54_1eb8,
+                0xbe23_6684,
+                0x3f13_0326,
+                0x3efa_da68,
+            ]
+        );
+        assert!(values.iter().all(|value| (-1.0..=1.0).contains(value)));
+    }
+
+    fn fixture(schema: serde_json::Value) -> Result<String, AiError> {
+        structured_response(&StructuredOutputSchema::new("fixture", schema).expect("valid schema"))
+    }
+
+    #[test]
+    fn nullable_type_lists_use_their_first_non_null_type() {
+        let response = fixture(serde_json::json!({
+            "type": "object",
+            "properties": {"name": {"type": ["null", "string"]}}
+        }))
+        .expect("nullable string fixture");
+        assert_eq!(response, r#"{"name":"mock_string"}"#);
+    }
+
+    #[test]
+    fn every_nesting_form_stops_after_sixteen_levels() {
+        let wrappers: [fn(serde_json::Value) -> serde_json::Value; 3] = [
+            |inner| serde_json::json!({"type": "object", "properties": {"inner": inner}}),
+            |inner| serde_json::json!({"type": "array", "minItems": 1, "items": inner}),
+            |inner| serde_json::json!({"anyOf": [inner, {"type": "null"}]}),
+        ];
+        for wrap in wrappers {
+            let nested = |levels: usize| {
+                (0..levels).fold(serde_json::json!({"type": "string"}), |inner, _| {
+                    wrap(inner)
+                })
+            };
+            // The innermost string sits at depth 16, the deepest one accepted.
+            let accepted = fixture(nested(16)).expect("sixteen levels are accepted");
+            assert!(accepted.contains("mock_string"), "{accepted}");
+            assert!(matches!(
+                fixture(nested(17)),
+                Err(AiError::InvalidSchema(message)) if message == "mock schema nesting exceeds 16 levels"
+            ));
+        }
+    }
 }
