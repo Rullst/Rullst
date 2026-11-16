@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794795371555,
+  "lastUpdate": 1794798317090,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23111,6 +23111,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4195,
             "range": "± 143",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "160a54f0bcf23c13576de05bd34113f0b518e529",
+          "message": "Merge pull request #726 from Rullst/feat/site-compare-how-to-read\n\nfeat(site): explain how to read the comparison benchmarks",
+          "timestamp": "2026-11-15T23:47:02-03:00",
+          "tree_id": "d26d8891ed741470e5908fbbe1c891f361452314",
+          "url": "https://github.com/Rullst/Rullst/commit/160a54f0bcf23c13576de05bd34113f0b518e529"
+        },
+        "date": 1794798316147,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1002,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 748,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1752,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4229,
+            "range": "± 72",
             "unit": "ns/iter"
           }
         ]
