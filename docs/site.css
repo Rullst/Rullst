@@ -352,13 +352,19 @@ h1 { margin: 0; font-size: clamp(3rem, 4.5vw, 4rem); line-height: 1.08; font-wei
 .compare-topic dd { margin: 0.4rem 0 0; color: var(--muted); font-size: 0.84rem; }
 .benchmark-pending { padding: 1rem 1.2rem; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 0.86rem; }
 .benchmark-meta { color: var(--muted); font-size: 0.84rem; }
-.benchmark-rows { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.benchmark-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 1rem 0 0; padding: 0; list-style: none; }
 .benchmark-rows > li { min-width: 0; padding: 1.3rem; border: 1px solid var(--line); border-radius: 12px; background: #0e1622; color: var(--muted); font-size: 0.84rem; }
 .benchmark-rows h3 { margin: 0 0 0.7rem; color: var(--text); font-size: 1.05rem; }
 .benchmark-rows h3 span { color: var(--muted); font: 0.68rem var(--mono); }
 .benchmark-rows dl { margin: 0; }
 .benchmark-rows dl > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.45rem 0; border-top: 1px solid #1d2b3d; }
 .benchmark-rows dd { margin: 0; color: var(--text); font-family: var(--mono); white-space: nowrap; text-align: right; }
+.benchmark-variant { margin: -0.3rem 0 0.7rem; color: var(--muted); font-size: 0.8rem; }
+.benchmark-howto { margin: 1.2rem 0; padding: 1rem 1.2rem; border: 1px solid var(--line); border-radius: 8px; background: #0e1622; color: var(--muted); font-size: 0.86rem; line-height: 1.55; }
+.benchmark-howto h3 { margin: 0 0 0.5rem; color: var(--text); font-size: 1.02rem; }
+.benchmark-howto ul { margin: 0; padding-left: 1.1rem; }
+.benchmark-howto li + li { margin-top: 0.4rem; }
+.benchmark-howto strong { color: var(--text); }
 .benchmark-absolute { display: block; color: var(--muted); font-size: 0.74rem; }
 .benchmark-note { margin: 1rem 0; padding: 0.9rem 1.1rem; border-left: 3px solid var(--orange); border-radius: 0 8px 8px 0; background: #1d1810; color: var(--text); font-size: 0.86rem; line-height: 1.55; }
 .footer-bottom { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.4rem; color: #a2b09d; font: 0.66rem var(--mono); }
@@ -580,7 +586,7 @@ h1 { margin: 0; font-size: clamp(3rem, 4.5vw, 4rem); line-height: 1.08; font-wei
   .gradient-text, .hero .hero-wordmark { background: none; -webkit-text-fill-color: currentColor; }
   .wordmark-period { -webkit-text-fill-color: currentColor; }
   .button, .feature, .evidence-card, .terminal, .social-links a { border: 1px solid ButtonText; }
-  .integration-level, .performance-pointer, .integration-recipes, .compare-fit li, .compare-topic dl > div, .benchmark-rows > li, .benchmark-note { border: 1px solid CanvasText; }
+  .integration-level, .performance-pointer, .integration-recipes, .compare-fit li, .compare-topic dl > div, .benchmark-rows > li, .benchmark-note, .benchmark-howto { border: 1px solid CanvasText; }
   .demo-card, .demo-art, .hero-tags span { border: 1px solid ButtonText; }
   .demo-content .button, .demo-art, .demo-kicker { color: LinkText; }
   .ambient-scene, .signal-map, .hero-content::before, .terminal::after, .feature::after, .evidence-card::after, .demo-orbit, .demo-art::before, .button::after { display: none; }

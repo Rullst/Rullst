@@ -69,7 +69,8 @@ with `python3 .github/generate-llms-txt.py --out <directory>`.
 The browser test checks both languages at desktop and 390/320-pixel layouts,
 the flag language switcher, keyboard and mobile navigation, the Academy
 greeting, clipboard success/denial, both privacy pages, both comparison pages
-at three widths, reduced motion,
+at three widths (as written and with benchmark rows assembled from the
+fixture, served under `/_rendered/`), reduced motion,
 no-JavaScript navigation, resource failures, CSP errors, external requests and
 browser storage. It is not a complete accessibility audit or cross-browser
 certification. Optional `--screenshots /absolute/output/directory` records
@@ -122,7 +123,7 @@ Its Performance section is filled at build time, never by hand. The
 deployment downloads the latest results that `Rullst/Benchmarks` publishes and
 saves them as `benchmarks.json` in the working directory and runs the
 assembler with `--benchmarks`, which renders the
-Rullst, Loco and Topcoat rows into both languages. The page has no script and
+Rullst, Rullst (minimal), Loco and Topcoat rows into both languages. The page has no script and
 its CSP keeps `connect-src 'none'`. The file must be JSON of this shape:
 
 ```json
@@ -137,17 +138,31 @@ its CSP keeps `connect-src 'none'`. The file must be JSON of this shape:
      "json_rps": 90485.67, "db_single_rps": 16186.7,
      "avg_latency_ms": 3.14, "peak_ram_mib": 20.83,
      "vs_axum": {"json_rps": 0.48, "db_single_rps": 0.81,
-                 "avg_latency_ms": 2.1, "peak_ram_mib": 1.9}}
+                 "avg_latency_ms": 2.1, "peak_ram_mib": 1.9}},
+    {"framework": "Rullst (minimal)", "variant": "minimal",
+     "version": "13.0.0-alpha.6", "json_rps": 114421.89,
+     "vs_axum": {"json_rps": 0.9958}}
   ]
 }
 ```
 
 `framework` is matched without regard to case; at least one of the four
-metrics is required per row and other frameworks are ignored. When a row has
+metrics is required per row and other frameworks are ignored. `Rullst` is the
+application `cargo rullst new` generates, with its security middleware on;
+`Rullst (minimal)` is the framework without that middleware (the
+`frameworks/rullst-minimal` folder of Rullst/Benchmarks). The minimal row is
+shown after Rullst, labelled "Rullst (minimal)" / "Rullst (mínimo)" with a line
+saying it lacks the generated app's security layers, and is left out without a
+placeholder when the data has no such row; a missing Rullst, Loco or Topcoat
+row says it is not in this run. When a row has
 `vs_axum` (each metric divided by Axum's, measured on the same machine in the
 same round), the page shows that ratio first and the absolute median in
 parentheses: the runs use different GitHub-hosted machines, so the ratio is
-the comparable number. `note` is shown on the English page and `note_pt_br`
+the comparable number. Above the rows, a static "How to read these numbers"
+block in each template (`benchmark-howto`, four points) explains 1.00×, which
+direction is better, why ratios beat absolute numbers and the two Rullst rows;
+the validator requires it in both languages, before the results block, naming
+the minimal row as the assembler labels it. `note` is shown on the English page and `note_pt_br`
 on the Portuguese one (the English note, marked `lang="en"`, when there is no
 Portuguese note); `run.url` must be a `Rullst/Benchmarks` Actions run and is
 linked as the measurement run. An unknown schema, a bad date, a negative or
