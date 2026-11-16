@@ -452,7 +452,7 @@ rules! {
         "Remove the feature and use the official `mongodb` or `duckdb` crate in the application: one client opened at start-up, shared through application state, behind a small trait with an offline fake for tests. https://rullst.github.io/Rullst/book/recipes/mongodb.html and https://rullst.github.io/Rullst/book/recipes/duckdb.html show both; `CollectionName`, `DocumentId`, the document traits and encrypted document recovery stay in `rullst::orm::polyglot`.";
     MAIL_MESSAGE_REPLY_TO: "V13-MAIL-MESSAGE-REPLY-TO", MustChange, "13.0.0-alpha.5", "Mail Reply-To",
         "Mail's `Message` has a `reply_to` field since 13.0.0-alpha.5, so a struct literal that lists every field without `..` no longer compiles",
-        "Build the message with `Message::new()` and its builders (`.to(..)`, `.subject(..)`, `.reply_to(..)`), or add `reply_to: None` or `..Message::new()` to the literal.";
+        "Build the message with `Message::new()` and its builders (`.to(..)`, `.subject(..)`, `.reply_to(..)`); since 13.0.0-alpha.6 `Message` is `#[non_exhaustive]`, so no literal compiles outside `rullst-mail`.";
     PRIVACY_CONSENT_CHOICE_MATCH: "V13-PRIVACY-CONSENT-CHOICE-MATCH", MustChange, "13.0.0-alpha.5", "Privacy consent choices",
         "`rullst-privacy`'s `ConsentChoice` is `#[non_exhaustive]` since 13.0.0-alpha.5; a `match` on it without a wildcard arm no longer compiles",
         "Add a wildcard arm (`_ => ...`) that treats an unknown choice like `Unset`: no consent, so the optional processing stays off.";
@@ -525,6 +525,12 @@ rules! {
     PASSKEYS_FEATURE: "V13-AUTH-PASSKEYS-FEATURE", MustChange, "13.0.0-alpha.6", "Passkeys feature",
         "this code uses Rullst's passkeys (`auth::passkey`), which since 13.0.0-alpha.6 compile only with `rullst-auth`'s `passkeys` feature, and no manifest here enables it",
         "Enable `auth-passkeys` on `rullst` (`auth-sqlite` and `auth-passkey-postgres` include it), or `passkeys` on a direct `rullst-auth` dependency (`sqlite` and `passkey-postgres` include it).";
+    NON_EXHAUSTIVE_MATCH: "V13-NON-EXHAUSTIVE-MATCH", MustChange, "13.0.0-alpha.6", "Non-exhaustive enums and structs",
+        "this `match` names a Rullst enum that is `#[non_exhaustive]` since 13.0.0-alpha.6 (an error, status, kind, mode or backend that a 13.x release may extend) and has no wildcard arm, so it no longer compiles",
+        "Add a wildcard arm (`_ => ...`): report an unknown error generically, and treat an unknown status, kind or mode as the most cautious one the code handles. The authorization and decision enums of Labs (`Action`, `Teardown`, `LeaseStatus`) and Privacy (`AgeDecision`, `AgeOutcome`, `Assurance`, `AgeDeclaration`) stay exhaustive on purpose, so a new variant there will be a compile error to handle.";
+    NON_EXHAUSTIVE_LITERAL: "V13-NON-EXHAUSTIVE-LITERAL", MustChange, "13.0.0-alpha.6", "Non-exhaustive enums and structs",
+        "this struct literal builds a Rullst struct that is `#[non_exhaustive]` since 13.0.0-alpha.6, which code outside its crate cannot build with a literal (also with `..Default::default()`), so it no longer compiles",
+        "Build it with its constructor and set optional fields on the value: `FieldMeta::new(name, label, kind).hidden().readonly()`, `Message::new().to(..).subject(..)` (Mail), `ExchangeParams::new(code).with_code_verifier(verifier)`, `ConnectUser::new(id, name, access_token)`, `HttpResponse::new(status, body)`, `WebhookEvent::new(..)`, `WebhookEventRecord::new(..)`, `RevenueMetrics::new(..)`, `QueuedJob::new(..)`, `QueuedJobDetail::new(..)`, `TraceSpan::new(..)`, `ToolParam::new(..)`, `Passkey::new(..)`, `PaginationResult::new(..)`, `PrivacyReport::new(..)`, `RegistryEntry::new(..)`, `NexusState::new(..)`, `TimingGuardConfig::new(..)`, `RagRetrievalError::new(..)`; start an `AuthCallback` or `ClaimedOutboxEvent` from `default()`, and `ProviderCapabilities` from `PORTABLE` or `NONE`, then assign fields. Reports, events and snapshots that Rullst returns are read, not built: a test deserializes one or takes it from the call that returns it.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

@@ -125,7 +125,8 @@ fn rules_carry_the_release_of_their_change() {
     );
     // The changes of the 13.0 freeze: the health probes' framework version,
     // CSRF static files by path, the removal of the APIs still deprecated,
-    // the explicit ORM save mode and passkeys behind a feature.
+    // the explicit ORM save mode, passkeys behind a feature and the
+    // non-exhaustive public types.
     assert_eq!(
         codes_introduced_in("13.0.0-alpha.6"),
         [
@@ -146,6 +147,8 @@ fn rules_carry_the_release_of_their_change() {
             "V13-ORM-SCHEMA-DIFF-REMOVED",
             "V13-ORM-SAVE-MODE",
             "V13-AUTH-PASSKEYS-FEATURE",
+            "V13-NON-EXHAUSTIVE-MATCH",
+            "V13-NON-EXHAUSTIVE-LITERAL",
         ]
     );
     assert!(codes_introduced_in("13.0.0-rc.1").is_empty());

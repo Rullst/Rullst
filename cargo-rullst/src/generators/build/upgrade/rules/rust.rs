@@ -14,6 +14,8 @@ use syn::{Attribute, Expr, Fields, Lit, Pat, Token};
 mod capital_mail;
 #[path = "rust/functions.rs"]
 mod functions;
+#[path = "rust/non_exhaustive.rs"]
+mod non_exhaustive;
 #[path = "rust/removed_ui.rs"]
 mod removed_ui;
 #[path = "rust/save_mode.rs"]
@@ -498,12 +500,21 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
             {
                 self.hit(rule, line(expr.match_token.span()));
             }
+            if let Some(rule) = super::alpha6_non_exhaustive::match_rule(names, self.context.text) {
+                self.hit(rule, line(expr.match_token.span()));
+            }
         }
         visit::visit_expr_match(self, expr);
     }
 
+    fn visit_expr_call(&mut self, expr: &'ast syn::ExprCall) {
+        self.non_exhaustive_call(expr);
+        visit::visit_expr_call(self, expr);
+    }
+
     fn visit_expr_struct(&mut self, expr: &'ast syn::ExprStruct) {
         self.capital_mail_literal(expr);
+        self.non_exhaustive_literal(expr);
         if let Some(last) = expr.path.segments.last()
             && let Some(rule) = super::alpha6_defaults::struct_rule(&last.ident.to_string())
         {
