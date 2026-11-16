@@ -43,61 +43,31 @@ impl NexusModel for LessonProgress {
     }
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
-            FieldMeta {
-                name: "id",
-                label: "ID",
-                kind: FieldKind::Number,
-                hidden: true,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "user_id",
-                label: "Learner",
-                kind: FieldKind::ForeignKey {
+            FieldMeta::new("id", "ID", FieldKind::Number)
+                .hidden()
+                .readonly(),
+            FieldMeta::new(
+                "user_id",
+                "Learner",
+                FieldKind::ForeignKey {
                     table: "users",
                     label_col: "email",
                 },
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "lesson_id",
-                label: "Lesson",
-                kind: FieldKind::ForeignKey {
+            )
+            .readonly(),
+            FieldMeta::new(
+                "lesson_id",
+                "Lesson",
+                FieldKind::ForeignKey {
                     table: "lessons",
                     label_col: "title",
                 },
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "progress_percent",
-                label: "Progress %",
-                kind: FieldKind::Number,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "completed",
-                label: "Completed",
-                kind: FieldKind::Number,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "created_at",
-                label: "Created At",
-                kind: FieldKind::DateTimeUtc,
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "updated_at",
-                label: "Updated At",
-                kind: FieldKind::DateTimeUtc,
-                hidden: false,
-                readonly: true,
-            },
+            )
+            .readonly(),
+            FieldMeta::new("progress_percent", "Progress %", FieldKind::Number),
+            FieldMeta::new("completed", "Completed", FieldKind::Number),
+            FieldMeta::new("created_at", "Created At", FieldKind::DateTimeUtc).readonly(),
+            FieldMeta::new("updated_at", "Updated At", FieldKind::DateTimeUtc).readonly(),
         ]
     }
 }

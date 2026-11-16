@@ -117,69 +117,21 @@ impl NexusModel for User {
     }
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
-            FieldMeta {
-                name: "id",
-                label: "ID",
-                kind: FieldKind::Number,
-                hidden: true,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "name",
-                label: "Name",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "email",
-                label: "Email",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "password_hash",
-                label: "Password Hash",
-                kind: FieldKind::Text,
-                hidden: true,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "oauth_provider",
-                label: "OAuth Provider",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "oauth_id",
-                label: "OAuth ID",
-                kind: FieldKind::Text,
-                hidden: true,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "is_admin",
-                label: "Nexus administrator",
-                kind: FieldKind::Boolean,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "created_at",
-                label: "Created At",
-                kind: FieldKind::DateTimeUtc,
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "updated_at",
-                label: "Updated At",
-                kind: FieldKind::DateTimeUtc,
-                hidden: false,
-                readonly: true,
-            },
+            FieldMeta::new("id", "ID", FieldKind::Number)
+                .hidden()
+                .readonly(),
+            FieldMeta::new("name", "Name", FieldKind::Text),
+            FieldMeta::new("email", "Email", FieldKind::Text),
+            FieldMeta::new("password_hash", "Password Hash", FieldKind::Text)
+                .hidden()
+                .readonly(),
+            FieldMeta::new("oauth_provider", "OAuth Provider", FieldKind::Text).readonly(),
+            FieldMeta::new("oauth_id", "OAuth ID", FieldKind::Text)
+                .hidden()
+                .readonly(),
+            FieldMeta::new("is_admin", "Nexus administrator", FieldKind::Boolean),
+            FieldMeta::new("created_at", "Created At", FieldKind::DateTimeUtc).readonly(),
+            FieldMeta::new("updated_at", "Updated At", FieldKind::DateTimeUtc).readonly(),
         ]
     }
 }

@@ -76,9 +76,7 @@ async fn test_mail_resolution_flow() {
 #[tokio::test]
 #[cfg_attr(miri, ignore)]
 async fn test_resend_driver_send_mock() {
-    let driver = ResendDriver {
-        api_key: "dummy_key".to_string(),
-    };
+    let driver = ResendDriver::try_new("dummy_key").expect("structurally valid key");
     let msg = Message::new()
         .to("recipient@example.com")
         .subject("Hi")
