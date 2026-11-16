@@ -143,6 +143,13 @@ fn the_page_is_weighed_before_the_benchmark() {
     let (_, outcome, shown, stderr) = footprint(&["--page-weight", "--json"]);
     assert_eq!(outcome, "ok");
     let report: serde_json::Value = serde_json::from_str(&shown).unwrap();
+    // The app was already running, so it has no start-up time.
+    assert_eq!(report["startup"]["status"], "not_measured");
+    assert_eq!(
+        report["startup"]["reason"],
+        super::super::startup::ALREADY_RUNNING
+    );
+    assert_eq!(report["startup"]["runs"], serde_json::Value::Null);
     let page = &report["page_weight"];
     assert_eq!(page["status"], "measured", "{report}");
     assert_eq!(page["first_visit"]["requests"], 1);
@@ -233,6 +240,8 @@ fn a_published_site_reports_its_page_weight_only_and_fails_when_unreachable() {
     }
     assert_eq!(report["benchmark"]["status"], "not_run");
     assert_eq!(report["benchmark"]["cpu_time_seconds"]["reason"], reason);
+    assert_eq!(report["startup"]["status"], "not_measured");
+    assert_eq!(report["startup"]["reason"], reason);
     assert_eq!(report["page_weight"]["status"], "not_measured");
     assert_eq!(report["failure"]["stage"], "reach");
     assert_eq!(report["failure"]["title"], "Site not reachable");
@@ -289,6 +298,7 @@ fn an_unreachable_app_still_reports_the_static_figures_and_the_failure() {
     assert_eq!(outcome, format!("Nothing answered on {url}/."));
     for expected in [
         "Dependencies  1 ",
+        "Startup time  NOT MEASURED",
         "Process       NOT RUNNING",
         "Not measured\n  App not reachable: the app was not reachable",
     ] {

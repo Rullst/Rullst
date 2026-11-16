@@ -174,8 +174,8 @@ cargo-rullst/src/update/project/snapshot.rs:163:24: replace + with * in read
 cargo-rullst/src/generators/footprint/artifacts.rs:86:40: replace < with <= in inspect
 cargo-rullst/src/generators/footprint/load.rs:58:26: replace < with <= in worker
 cargo-rullst/src/generators/footprint/procfs.rs:30:73: replace > with >= in ticks_per_second
-cargo-rullst/src/generators/footprint/target.rs:170:30: replace < with <= in OwnedApp::wait_ready
-cargo-rullst/src/generators/footprint/target.rs:214:79: replace < with <= in OwnedApp::stop
+cargo-rullst/src/generators/footprint/target.rs:196:30: replace < with <= in OwnedApp::wait_ready
+cargo-rullst/src/generators/footprint/target.rs:240:79: replace < with <= in OwnedApp::stop
 
 # rullst-studio remote mode (alpha.3 campaign, targeted runs with the package's
 # tests): see docs/src/mutation-testing.md "Accepted equivalent mutants".

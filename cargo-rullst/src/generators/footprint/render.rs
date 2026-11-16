@@ -3,6 +3,7 @@
 //! is an estimate. Plain under `NO_COLOR`, `CI` or when stdout is not a
 //! terminal.
 use super::report::{Metric, Report};
+use super::startup::Startup;
 use crate::term::Style;
 
 struct Row {
@@ -131,7 +132,32 @@ fn measured_rows(report: &Report) -> Vec<Row> {
             &measured.compiled_dependency_count,
             |count| count.to_string(),
         ),
+        startup_row(&report.startup),
     ]
+}
+
+/// The median start-up time with the number of starts and their range.
+fn startup_row(startup: &Startup) -> Row {
+    let (Some(median), Some(runs), Some(fastest), Some(slowest)) = (
+        startup.median_ms,
+        startup.runs,
+        startup.min_ms,
+        startup.max_ms,
+    ) else {
+        return missing(
+            "Startup time",
+            "NOT MEASURED",
+            startup.reason.clone().unwrap_or_default(),
+        );
+    };
+    row(
+        "Startup time",
+        format!("{median:.1} ms"),
+        format!(
+            "median of {runs} cold starts ({fastest:.1} to {slowest:.1} ms), spawn to the first answer to GET {}",
+            startup.path.as_deref().unwrap_or("/")
+        ),
+    )
 }
 
 fn benchmark_rows(report: &Report) -> Vec<Row> {

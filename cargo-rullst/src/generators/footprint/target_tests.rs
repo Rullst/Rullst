@@ -124,7 +124,8 @@ fn only_a_single_owner_identifies_the_app() {
 #[cfg(unix)]
 mod owned {
     use super::*;
-    use crate::generators::footprint::tests::support::{TestServer, script};
+    use crate::generators::footprint::tests::support::{TestServer, response, script};
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     /// Starts `binary`, retrying while another test's fork still holds the
     /// freshly written script open (ETXTBSY).
@@ -220,9 +221,39 @@ mod owned {
         let directory = tempfile::tempdir().unwrap();
         let app = script(directory.path(), "app", "exec sleep 30");
         let mut started = start(&app, 4321, "production");
+        // The start-up time runs from the spawn: move the spawn two seconds
+        // back, so the time is at least that whatever this machine's speed.
+        started.spawned = Instant::now().checked_sub(Duration::from_secs(2)).unwrap();
         let client = super::super::super::load::client().unwrap();
-        block_on(started.wait_ready(&client, &server.url("/health"))).unwrap();
+        let elapsed = block_on(started.wait_ready(&client, &server.url("/health"))).unwrap();
         assert_eq!(server.paths(), ["/health"]);
+        assert!(elapsed >= Duration::from_secs(2), "{elapsed:?}");
+        assert!(elapsed < Duration::from_secs(30), "{elapsed:?}");
+    }
+
+    #[test]
+    fn the_start_up_time_ends_at_the_first_answer_probed_every_five_milliseconds() {
+        assert_eq!(PROBE_INTERVAL, Duration::from_millis(5));
+        // The first three probes find the port but no answer, as an app that
+        // is still starting gives.
+        let probes = Arc::new(AtomicUsize::new(0));
+        let seen = Arc::clone(&probes);
+        let server = TestServer::with(Arc::new(move |_| {
+            if seen.fetch_add(1, Ordering::SeqCst) < 3 {
+                None
+            } else {
+                response("503 Service Unavailable", "", b"starting")
+            }
+        }));
+        let directory = tempfile::tempdir().unwrap();
+        let app = script(directory.path(), "app", "exec sleep 30");
+        let mut started = start(&app, 4321, "production");
+        let client = super::super::super::load::client().unwrap();
+        let elapsed = block_on(started.wait_ready(&client, &server.url("/ready"))).unwrap();
+        // Any status answers; each probe without one waits 5 ms.
+        assert_eq!(server.paths(), ["/ready"; 4]);
+        assert!(elapsed >= Duration::from_millis(15), "{elapsed:?}");
+        assert!(elapsed < Duration::from_secs(30), "{elapsed:?}");
     }
 
     #[test]
