@@ -1,8 +1,8 @@
 {
   "schema": "rullst.benchmarks.latest.v1",
   "measured_on": "2026-11-20",
-  "note": "Fixture note: these numbers are not measurements.",
-  "note_pt_br": "Nota do fixture: estes números não são medições.",
+  "note": "Fixture note: these numbers are not measurements of `cargo rullst new` starters; `<b>` and a lone ` stay text.",
+  "note_pt_br": "Nota do fixture: estes números não são medições de projetos `cargo rullst new`; `<b>` e uma ` sozinha ficam como texto.",
   "run": {"id": "1", "url": "https://github.com/Rullst/Benchmarks/actions/runs/1"},
   "results": [
     {"framework": "Rullst", "version": "13.0.0-alpha.6", "json_rps": 90485.67, "db_single_rps": 16186.7, "avg_latency_ms": 3.14, "peak_ram_mib": 20.83,
