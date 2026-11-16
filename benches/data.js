@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794791465192,
+  "lastUpdate": 1794791760792,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -35073,6 +35073,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 987,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "108de1d3053ab304b43eb66108e3e8dd3623fab1",
+          "message": "Merge pull request #723 from Rullst/docs/v13-first-hour-pt-br\n\ndocs(pt-br): Brazilian Portuguese first-hour guide with a code-block check",
+          "timestamp": "2026-11-15T22:12:32-03:00",
+          "tree_id": "5814e8dc249fecfb553b5c4a045dd5677c64d4b3",
+          "url": "https://github.com/Rullst/Rullst/commit/108de1d3053ab304b43eb66108e3e8dd3623fab1"
+        },
+        "date": 1794791757468,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 404,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 556,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 270,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 891,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
