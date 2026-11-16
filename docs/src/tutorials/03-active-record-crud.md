@@ -1,5 +1,7 @@
 # Tutorial 03: Active Record CRUD Operations 🗄️
 
+> 🇧🇷 [Leia esta página em português](../pt-BR/tutorials/03-active-record-crud.md).
+
 `rullst-orm` derives a typed query builder and persistence methods from a Rust
 struct. The SQLx-backed model uses an `i32` primary key named `id`; a zero value
 means that `save()` inserts, while a non-zero value means that it updates.
