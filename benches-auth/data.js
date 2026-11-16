@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794810946264,
+  "lastUpdate": 1794812538836,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23303,6 +23303,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2746,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e8d1da147c51ee729d6140ce849918c00d829672",
+          "message": "Merge pull request #731 from Rullst/perf/v13-alpha6-lazy-nonce-csrf-mask\n\nperf: cheaper per-request security work and a measured SaaS starter",
+          "timestamp": "2026-11-16T03:45:37-03:00",
+          "tree_id": "f3be0e86efe51cdd848f6dca8b7c375c21c320a8",
+          "url": "https://github.com/Rullst/Rullst/commit/e8d1da147c51ee729d6140ce849918c00d829672"
+        },
+        "date": 1794812537752,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 968,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 750,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1740,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2565,
+            "range": "± 18",
             "unit": "ns/iter"
           }
         ]
