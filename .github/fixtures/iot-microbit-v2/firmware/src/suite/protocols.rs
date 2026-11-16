@@ -183,6 +183,8 @@ pub(super) fn anomaly(ctx: &mut Ctx) {
                 AnomalyState::Normal => 0,
                 AnomalyState::Warning => 1,
                 AnomalyState::CriticalAnomaly => 2,
+                // `AnomalyState` is `#[non_exhaustive]`; a later state reads as unknown.
+                _ => u8::MAX,
             };
         }
     });

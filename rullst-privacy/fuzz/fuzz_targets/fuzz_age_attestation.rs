@@ -97,6 +97,7 @@ fuzz_target!(|data: &[u8]| {
                 AgeMethod::SelfDeclaration => Assurance::Declared,
                 AgeMethod::FacialEstimation => Assurance::Estimated,
                 AgeMethod::VerifiedAttribute => Assurance::VerifiedAttribute,
+                other => panic!("the fuzz policy selects no {other:?} challenge"),
             }
         );
         assert_eq!(assessment.policy_version(), "fuzz-policy-v1");
