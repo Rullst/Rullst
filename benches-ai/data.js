@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794809861452,
+  "lastUpdate": 1794811186547,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -20663,6 +20663,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 408,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f57a8f353bafa5ccf3dd98a515ce836a8c23d1dd",
+          "message": "Merge pull request #732 from Rullst/fix/v13-alpha6-macos-nightly\n\ntest: fix the two macOS (aarch64) failures on main",
+          "timestamp": "2026-11-16T03:18:30-03:00",
+          "tree_id": "c0d727be8576d27a850fda1dcd622e918b4a0800",
+          "url": "https://github.com/Rullst/Rullst/commit/f57a8f353bafa5ccf3dd98a515ce836a8c23d1dd"
+        },
+        "date": 1794811185742,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1492,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 289,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 338,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
