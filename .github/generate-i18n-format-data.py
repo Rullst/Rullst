@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Regenerates the CLDR tables behind `rullst::i18n` formatting.
 
-Writes rullst-core/src/i18n/format/data_numbers.rs, data_dates.rs and
-cldr_tests.rs. Numbers, currencies and the date-time joiners come from ICU
-through Node.js `Intl` (Node 24: ICU 78 / CLDR 48); date and time patterns,
-month, weekday and day-period names come from CLDR through Babel (2.17), which
-keeps CLDR's U+202F where V8 writes a space. Every date output is checked
-against ICU before it is written. Run `cargo fmt --all` afterwards.
+Writes rullst-core/src/i18n/format/data_numbers.rs, data_dates.rs,
+cldr_tests.rs and cldr_date_tests.rs. Numbers, currencies, currency names and
+the date-time joiners come from ICU through Node.js `Intl` (Node 24: ICU 78 /
+CLDR 48); date and time patterns, month, weekday and day-period names come
+from CLDR through Babel (2.17), which keeps CLDR's U+202F where V8 writes a
+space. Every date output is checked against ICU before it is written. Run
+`cargo fmt --all` afterwards.
 
 Usage: python3 -I .github/generate-i18n-format-data.py
 """
@@ -23,8 +24,8 @@ OUT = ROOT / "rullst-core/src/i18n/format"
 
 NODE_NUMBERS = r"""
 // Number, percent and currency data per locale from ICU (CLDR 48).
-const L = JSON.parse(process.argv[1]);
-const CUR = ['BRL', 'USD', 'EUR', 'GBP', 'JPY', 'XTS'];
+const [L, LOCALIZED] = JSON.parse(process.argv[1]);
+const CUR = [...LOCALIZED, 'XTS'];
 function pattern(parts) {
   // Replace the digits with '#', keep everything else (affixes).
   let out = '', inNumber = false, done = false;
@@ -77,7 +78,13 @@ for (const l of L) {
     }
     glue.push(found);
   }
-  res[l] = { decimal, group, minGrouping, negative, percent, currency, glue };
+  const names = new Intl.DisplayNames(l, { type: 'currency', fallback: 'none' });
+  const currencyNames = LOCALIZED.map(c => {
+    const name = names.of(c);
+    if (!name || name === c) throw new Error(`${l} ${c} has no name`);
+    return name;
+  });
+  res[l] = { decimal, group, minGrouping, negative, percent, currency, currencyNames, glue };
 }
 console.log(JSON.stringify(res));
 """
@@ -110,7 +117,7 @@ for (const l of L) {
 console.log(JSON.stringify(out));
 """
 
-TESTS_TAIL = r"""
+HELPERS = r"""
 fn locale(tag: &'static str) -> Locale {
     Locale { tag }
 }
@@ -128,7 +135,9 @@ fn groups(joined: &'static str, count: usize) -> Vec<&'static str> {
     assert_eq!(groups.len(), count, "{joined}");
     groups
 }
+"""
 
+TESTS_TAIL = r"""
 #[test]
 fn numbers_percentages_and_money_match_cldr() {
     for (tag, numbers, percents, currencies) in NUMBER_CASES {
@@ -141,7 +150,7 @@ fn numbers_percentages_and_money_match_cldr() {
             let ratio: Decimal = value.parse().unwrap();
             assert_eq!(locale.format_percent(ratio), expected, "{tag} {value}");
         }
-        for ((code, digits), joined) in CURRENCIES.iter().zip(groups(currencies, 6)) {
+        for ((code, digits), joined) in CURRENCIES.iter().zip(groups(currencies, CURRENCIES.len())) {
             let currency = Currency::new(*code, *digits).unwrap();
             for (minor, expected) in MINOR_UNITS.iter().zip(outputs(joined, MINOR_UNITS.len())) {
                 assert_eq!(
@@ -152,9 +161,27 @@ fn numbers_percentages_and_money_match_cldr() {
             }
         }
     }
-    assert_eq!(NUMBER_CASES.len(), 20);
+    assert_eq!(NUMBER_CASES.len(), LOCALES);
 }
 
+#[test]
+fn currency_names_match_cldr() {
+    for (tag, names) in NAME_CASES {
+        let locale = locale(tag);
+        let localized = &CURRENCIES[..CURRENCIES.len() - 1];
+        for ((code, digits), expected) in localized.iter().zip(outputs(names, localized.len())) {
+            let currency = Currency::new(*code, *digits).unwrap();
+            assert_eq!(locale.currency_name(currency), Some(expected), "{tag} {code}");
+        }
+        let test_currency = Currency::new("XTS", 2).unwrap();
+        assert_eq!(locale.currency_name(test_currency), None, "{tag}");
+    }
+    assert_eq!(NAME_CASES.len(), LOCALES);
+}
+
+"""
+
+DATE_TESTS_TAIL = r"""
 #[test]
 fn dates_and_times_match_cldr() {
     let samples: Vec<_> = DATES
@@ -199,7 +226,7 @@ fn dates_and_times_match_cldr() {
             }
         }
     }
-    assert_eq!(DATE_CASES.len(), 20);
+    assert_eq!(DATE_CASES.len(), LOCALES);
 }
 """
 
@@ -210,7 +237,12 @@ def node(script, argument):
     return json.loads(run.stdout)
 
 
-TAGS = ['en','en-GB','pt','pt-PT','es','fr','de','it','nl','ru','uk','pl','cs','ro','ar','he','ja','zh','ko','tr']
+TAGS = ['en','en-GB','pt','pt-PT','es','es-419','es-MX','es-AR','es-CL','es-CO','es-PE','es-UY',
+        'fr','de','it','nl','ru','uk','pl','cs','ro','ar','he','ja','zh','ko','tr']
+# Currencies with localized symbols and names, with their ISO 4217 minor digits.
+LOCALIZED = [['BRL', 2], ['USD', 2], ['EUR', 2], ['GBP', 2], ['JPY', 0], ['ARS', 2], ['MXN', 2],
+             ['CLP', 0], ['COP', 2], ['PEN', 2], ['UYU', 2], ['CAD', 2], ['AUD', 2], ['CHF', 2],
+             ['CNY', 2]]
 TOKENS = {'d','dd','M','MM','MMM','MMMM','y','yy','EEEE','h','H','HH','mm','ss','a'}
 
 def rust(s):
@@ -246,13 +278,16 @@ def convert(pattern):
     return out
 
 def write_data(numbers, out_dir):
-    n = ['//! CLDR 48 number, percent and currency symbols (generated from ICU 78;',
-         '//! see `format/mod.rs`). `#` stands for the digits, `¤` for a currency code.',
+    codes = [c for c, _ in LOCALIZED]
+    n = ['//! CLDR 48 number, percent and currency symbols and currency names',
+         '//! (generated from ICU 78; see `format/mod.rs`). `#` stands for the digits,',
+         '//! `¤` for a currency code; currency patterns and names are `|`-separated.',
          '',
          'use super::NumberData;',
          '',
-         '/// Currencies with localized symbols, in `NumberData::currency` order.',
-         'pub(super) const CURRENCIES: [&str; 5] = ["BRL", "USD", "EUR", "GBP", "JPY"];',
+         '/// Currencies with localized symbols and names, in `NumberData::currency`',
+         '/// and `NumberData::currency_names` order.',
+         f'pub(super) const CURRENCIES: [&str; {len(codes)}] = [{", ".join(rust(c) for c in codes)}];',
          '',
          f'pub(super) static NUMBERS: [NumberData; {len(TAGS)}] = [']
     for tag in TAGS:
@@ -260,6 +295,10 @@ def write_data(numbers, out_dir):
         cur = v['currency']
         for p in cur + v['percent'] + [v['negative']]:
             assert p.count('#') == 1, (tag, p)
+        for p in cur[:-2]:
+            assert '¤' not in p, (tag, p)
+        for x in cur + v['currencyNames']:
+            assert '|' not in x, (tag, x)
         n.append('    NumberData {')
         n.append(f'        tag: {rust(tag)},')
         n.append(f'        decimal: {rust(v["decimal"])},')
@@ -267,15 +306,16 @@ def write_data(numbers, out_dir):
         n.append(f'        min_grouping: {v["minGrouping"]},')
         n.append(f'        negative: {rust(v["negative"])},')
         n.append(f'        percent: [{rust(v["percent"][0])}, {rust(v["percent"][1])}],')
-        pairs = ', '.join(f'[{rust(cur[i])}, {rust(cur[i+1])}]' for i in range(0, len(cur), 2))
-        n.append(f'        currency: [{pairs}],')
+        n.append(f'        currency: {rust("|".join(cur))},')
+        n.append(f'        currency_names: {rust("|".join(v["currencyNames"]))},')
         n.append('    },')
     n.append('];')
     open(f'{out_dir}/data_numbers.rs', 'w').write('\n'.join(n) + '\n')
 
     d = ['//! CLDR date and time patterns and names (generated from CLDR through',
          '//! Babel and ICU 78; see `format/mod.rs`). `{x}` is a CLDR field, names',
-         '//! are `|`-separated, months from January and weekdays from Monday.',
+         '//! are `|`-separated, the abbreviated then the wide months from January',
+         '//! and weekdays from Monday.',
          '',
          'use super::DateData;',
          '',
@@ -296,7 +336,7 @@ def write_data(numbers, out_dir):
         d.append(f'        date: [{", ".join(rust(p) for p in date)}],')
         d.append(f'        time: [{", ".join(rust(p) for p in time)}],')
         d.append(f'        glue: [{", ".join(rust(p) for p in glue)}],')
-        d.append(f'        months: [{rust(months_abbr)}, {rust(months_wide)}],')
+        d.append(f'        months: {rust(months_abbr + "|" + months_wide)},')
         d.append(f'        weekdays: {rust(weekdays)},')
         d.append(f'        day_periods: [{rust(am)}, {rust(pm)}],')
         d.append('    },')
@@ -308,13 +348,24 @@ NUM = ['0', '7', '-7', '123', '1234', '-1234.5', '12345', '123456.7', '1234567.8
        '123456789012345678901234567890.12']
 PCT = ['0.25', '-0.25', '1', '0', '0.256', '12.3456', '1234.5', '0.0005', '-0.5']
 MINOR = ['123456', '-123456', '0', '5', '-1', '123456789012']
-CUR = [['BRL', 2], ['USD', 2], ['EUR', 2], ['GBP', 2], ['JPY', 0], ['XTS', 2]]
+CUR = LOCALIZED + [['XTS', 2]]
 DATES = [(2026,1,5,0,5,9), (2025,2,28,12,0,0), (1999,3,1,23,59,59), (2009,4,30,9,30,5), (2026,5,17,11,59,0),
          (2024,6,9,13,1,2), (2026,7,4,1,0,0), (2026,8,31,18,45,30), (2026,9,1,12,30,0), (2026,10,22,15,45,30),
          (2026,11,11,7,7,7), (2026,12,31,22,10,50)]
 
 
-def write_tests(numbers, out_file):
+def header(first_line, imports):
+    return [first_line,
+            '//! locale with data; dates use CLDR\'s own patterns (U+202F where browsers',
+            '//! write a space) and were cross-checked with ICU. Generated: do not edit',
+            '//! by hand. Each string joins one output per sample with `|`.',
+            '',
+            'use super::*;'] + imports + [
+            '',
+            f'const LOCALES: usize = {len(TAGS)};']
+
+
+def write_tests(numbers, out_file, date_file):
     glue = {t: v['glue'] for t, v in numbers.items()}
     expect = node(NODE_EXPECT, [TAGS, NUM, PCT, MINOR, CUR])
     # Node (V8) writes U+0020 where CLDR's date patterns have U+202F.
@@ -328,20 +379,12 @@ for (const l of L) { o[l] = D.map(([y,m,d,h,mi,s]) => { const t = new Date(Date.
   return r; }); }
 console.log(JSON.stringify(o));''', json.dumps([TAGS, DATES])], check=True, capture_output=True, text=True).stdout)
     norm = lambda s: s.replace(' ', ' ')
-    lines = ['//! Expected outputs from CLDR 48 (ICU 78, through Node.js `Intl`) for every',
-             '//! locale with data; dates use CLDR\'s own patterns (U+202F where browsers',
-             '//! write a space) and were cross-checked with ICU. Generated: do not edit',
-             '//! by hand. Each string joins one output per sample with `|`.',
-             '',
-             'use super::*;',
-             'use crate::i18n::{Decimal, Locale};',
-             'use chrono::NaiveDate;',
-             '',
+    lines = header('//! Expected outputs from CLDR 48 (ICU 78, through Node.js `Intl`) for every',
+                   ['use crate::i18n::{Decimal, Locale};']) + [
              f'const NUMBERS: [&str; {len(NUM)}] = [{", ".join(rust(v) for v in NUM)}];',
              f'const PERCENTS: [&str; {len(PCT)}] = [{", ".join(rust(v) for v in PCT)}];',
              f'const MINOR_UNITS: [i64; {len(MINOR)}] = [{", ".join(MINOR)}];',
              f'const CURRENCIES: [(&str, u8); {len(CUR)}] = [{", ".join(f"({rust(c)}, {d})" for c, d in CUR)}];',
-             f'const DATES: [(i32, u32, u32, u32, u32, u32); {len(DATES)}] = [{", ".join(str(d) for d in DATES)}];',
              '',
              '/// `(tag, numbers, percents, currencies)`; currencies are `;`-separated',
              '/// in `CURRENCIES` order.',
@@ -354,6 +397,18 @@ console.log(JSON.stringify(o));''', json.dumps([TAGS, DATES])], check=True, capt
         cur = ';'.join(joined(e['currency'][c]) for c, _ in CUR)
         lines.append(f'    ({rust(t)}, {rust(joined(e["number"]))}, {rust(joined(e["percent"]))}, {rust(cur)}),')
     lines.append('];')
+    lines += ['', '/// `(tag, names)`: CLDR display names in `CURRENCIES` order, without `XTS`.',
+              'const NAME_CASES: &[(&str, &str)] = &[']
+    for t in TAGS:
+        lines.append(f'    ({rust(t)}, {rust(joined(numbers[t]["currencyNames"]))}),')
+    lines.append('];')
+    lines += HELPERS.split('\n')
+    lines.append(TESTS_TAIL)
+    open(out_file, 'w').write('\n'.join(lines))
+
+    lines = header('//! Expected dates and times from CLDR 48 (ICU 78, through Node.js `Intl`) for every',
+                   ['use crate::i18n::Locale;', 'use chrono::NaiveDate;']) + [
+             f'const DATES: [(i32, u32, u32, u32, u32, u32); {len(DATES)}] = [{", ".join(str(d) for d in DATES)}];']
     lines += ['', '/// `(tag, dates, times, dates with the short time, dates with the medium',
               '/// time)`: `;` separates the date styles (short, medium, long, full,',
               '/// numeric; four for the joined forms) and the time styles (short, medium).',
@@ -384,14 +439,15 @@ console.log(JSON.stringify(o));''', json.dumps([TAGS, DATES])], check=True, capt
         with_medium = ';'.join(joined(both[(ds, 'medium')]) for ds in ['short','medium','long','full'])
         lines.append(f'    ({rust(t)}, {rust(dates)}, {rust(times)}, {rust(with_short)}, {rust(with_medium)}),')
     lines.append('];')
-    lines.append(TESTS_TAIL)
-    open(out_file, 'w').write('\n'.join(lines))
+    lines += HELPERS.split('\n')
+    lines.append(DATE_TESTS_TAIL)
+    open(date_file, 'w').write('\n'.join(lines))
 
 
 def main():
-    numbers = node(NODE_NUMBERS, TAGS)
+    numbers = node(NODE_NUMBERS, [TAGS, [c for c, _ in LOCALIZED]])
     write_data(numbers, OUT)
-    write_tests(numbers, OUT / "cldr_tests.rs")
+    write_tests(numbers, OUT / "cldr_tests.rs", OUT / "cldr_date_tests.rs")
 
 
 main()

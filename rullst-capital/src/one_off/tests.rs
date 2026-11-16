@@ -275,3 +275,124 @@ fn request_digest_is_a_sha256_known_answer() {
         "4d5c56d95de660d8096c8543f8f6d455a605f2da2b56ae0c5d1c3926b08141f7"
     );
 }
+
+#[test]
+fn a_notification_url_is_validated_and_bound_to_the_digest() {
+    let url = "https://app.example/webhooks/42?token=t";
+    let notified = request().with_notification_url(url).unwrap();
+    assert_eq!(notified.notification_url(), Some(url));
+    assert_eq!(request().notification_url(), None);
+    // Without a URL the alpha.5 digest is unchanged (see the known answer
+    // above); with one, the URL is hashed after the other fields.
+    assert_eq!(
+        hex::encode(notified.request_digest()),
+        "69b56485bfb1d426fd5056ddae793f825ade8ec8e8ee9ed8ef7f52b1292912c7"
+    );
+    assert_ne!(notified.idempotency_key(), request().idempotency_key());
+    assert!(!format!("{notified:?}").contains("token"));
+    for invalid in [
+        "http://app.example/hook",
+        "http://localhost:3000/hook",
+        "https://user:pass@app.example/hook",
+        "https://app.example/hook#t",
+        "/hook",
+    ] {
+        assert!(
+            matches!(
+                request().with_notification_url(invalid),
+                Err(CapitalError::ConfigurationError(_))
+            ),
+            "{invalid}"
+        );
+    }
+}
+
+#[test]
+fn a_checkout_reports_the_notification_url_only_once_sent() {
+    let url = "https://app.example/webhooks/42";
+    let notified = request().with_notification_url(url).unwrap();
+    let checkout = OneOffCheckout::from_verified_provider_response(
+        "acmepay",
+        &notified,
+        "https://pay.acme.example/c/1",
+    )
+    .unwrap();
+    assert_eq!(checkout.notification_url(), None);
+    let sent = checkout.clone().with_notification_url_sent();
+    assert_eq!(sent.notification_url(), Some(url));
+    assert_ne!(sent, checkout);
+    let plain = OneOffCheckout::mock("acmepay", &request()).with_notification_url_sent();
+    assert_eq!(plain.notification_url(), None);
+    assert_eq!(
+        OneOffCheckout::mock("acmepay", &notified)
+            .with_notification_url_sent()
+            .notification_url(),
+        Some(url)
+    );
+}
+
+#[test]
+fn payment_methods_map_provider_names() {
+    assert_eq!(
+        PaymentMethod::from_provider_name("pix").unwrap(),
+        PaymentMethod::Pix
+    );
+    assert_eq!(
+        PaymentMethod::from_provider_name("PIX").unwrap(),
+        PaymentMethod::Pix
+    );
+    assert_eq!(
+        PaymentMethod::from_provider_name("credit_card").unwrap(),
+        PaymentMethod::CreditCard
+    );
+    let other = PaymentMethod::from_provider_name("Boleto-2").unwrap();
+    assert!(matches!(&other, PaymentMethod::Other(name) if name.as_str() == "boleto-2"));
+    assert_eq!(other.as_str(), "boleto-2");
+    assert_eq!(PaymentMethod::Pix.as_str(), "pix");
+    assert_eq!(PaymentMethod::CreditCard.to_string(), "credit_card");
+    assert_eq!(other.to_string(), "boleto-2");
+    assert!(PaymentMethod::from_provider_name(&"x".repeat(64)).is_ok());
+    for invalid in [
+        "",
+        "credit card",
+        "pix.",
+        "pix/1",
+        "é",
+        "x".repeat(65).as_str(),
+    ] {
+        assert!(
+            matches!(
+                PaymentMethod::from_provider_name(invalid),
+                Err(CapitalError::PayloadParseError(_))
+            ),
+            "{invalid:?}"
+        );
+    }
+}
+
+#[test]
+fn a_payment_records_its_method_and_installments() {
+    let request = request();
+    let paid = OneOffPayment::paid("acmepay", &request, 4_990, 5_100, "brl").unwrap();
+    assert_eq!((paid.payment_method(), paid.installments()), (None, None));
+    let paid = paid
+        .with_payment_method(PaymentMethod::CreditCard)
+        .with_installments(3)
+        .unwrap();
+    assert_eq!(paid.payment_method(), Some(&PaymentMethod::CreditCard));
+    assert_eq!(paid.installments(), Some(3));
+    assert_eq!(
+        paid.clone().with_installments(1).unwrap().installments(),
+        Some(1)
+    );
+    assert!(matches!(
+        paid.clone().with_installments(0),
+        Err(CapitalError::PayloadParseError(_))
+    ));
+    let debug = format!("{paid:?}");
+    assert!(
+        debug.contains("payment_method: Some(CreditCard)")
+            && debug.contains("installments: Some(3)"),
+        "{debug}"
+    );
+}

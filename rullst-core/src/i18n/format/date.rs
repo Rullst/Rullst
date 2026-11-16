@@ -46,7 +46,6 @@ fn name(names: &'static str, index: u32) -> &'static str {
 
 /// Writes one CLDR field.
 fn field(out: &mut String, token: &str, data: &DateData, fields: &Fields) {
-    let [abbreviated, wide] = data.months;
     let hour12 = match fields.hour % 12 {
         0 => 12,
         hour => hour,
@@ -56,8 +55,12 @@ fn field(out: &mut String, token: &str, data: &DateData, fields: &Fields) {
         "dd" => write!(out, "{:02}", fields.day),
         "M" => write!(out, "{}", fields.month),
         "MM" => write!(out, "{:02}", fields.month),
-        "MMM" => write!(out, "{}", name(abbreviated, fields.month.saturating_sub(1))),
-        "MMMM" => write!(out, "{}", name(wide, fields.month.saturating_sub(1))),
+        "MMM" => write!(out, "{}", name(data.months, fields.month.saturating_sub(1))),
+        "MMMM" => write!(
+            out,
+            "{}",
+            name(data.months, fields.month.saturating_sub(1) + 12)
+        ),
         "y" => write!(out, "{}", fields.year),
         "yy" => write!(out, "{:02}", fields.year.rem_euclid(100)),
         "EEEE" => write!(out, "{}", name(data.weekdays, fields.weekday)),

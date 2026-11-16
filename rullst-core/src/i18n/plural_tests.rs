@@ -253,6 +253,30 @@ fn every_language_matches_the_cldr_samples() {
     assert_eq!(checked, 1058);
 }
 
+/// CLDR 48 has one Spanish rule (`plurals.json` lists `es` only), so every
+/// Spanish locale with format data selects the `es` samples' categories.
+#[test]
+fn spanish_locales_with_format_data_follow_the_cldr_es_samples() {
+    let (_, spanish) = CLDR_SAMPLES.iter().find(|(tag, _)| *tag == "es").unwrap();
+    let mut checked = 0;
+    for tag in [
+        "es-419", "es-MX", "es-AR", "es-CL", "es-CO", "es-PE", "es-UY",
+    ] {
+        let locale = crate::i18n::Locale { tag };
+        for (category, notation) in *spanish {
+            for number in samples(notation) {
+                assert_eq!(
+                    locale.plural_category(number),
+                    Some(*category),
+                    "{tag} {number}"
+                );
+                checked += 1;
+            }
+        }
+    }
+    assert_eq!(checked, 7 * 48);
+}
+
 #[test]
 fn tags_map_to_their_language_rule() {
     let cases = [
@@ -269,6 +293,8 @@ fn tags_map_to_their_language_rule() {
         ("fr-CA", Some(__Plural::ZeroOne)),
         ("tr", Some(__Plural::ExactOne)),
         ("es-419", Some(__Plural::ExactOneMany)),
+        ("es-MX", Some(__Plural::ExactOneMany)),
+        ("es-AR", Some(__Plural::ExactOneMany)),
         ("ru", Some(__Plural::EastSlavic)),
         ("uk", Some(__Plural::EastSlavic)),
         ("pl", Some(__Plural::Polish)),

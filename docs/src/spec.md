@@ -242,8 +242,15 @@ refresh prevent replay/reordering from granting access or publishing assets.
 Webhook status numbers and API video status numbers are distinct protocols.
 
 Publication is an explicit application mutation after current provider readiness;
-processing completion alone cannot publish. Playback requires current entitlement,
-fresh ready state and configured provider protection; withdrawal/deletion stop
+processing completion alone cannot publish. `Processing` (`#[non_exhaustive]`
+since 13.0.0-alpha.6) maps Bunny's API status 4 (`Finished`) to `Ready` and,
+since 13.0.0-alpha.6, status 8 (`JitPlaylistsCreated`, just-in-time encoding) to
+`Playable`; status 7 (`JitSegmenting`) stays `Processing`. A `Playable` video
+can be published and receives only `PlaybackKind::Embed` grants, because Bunny
+supports just-in-time playback only in its own player; `Hls` and `Mp4_720p` are
+`Unsupported` until `Ready`, which still means finished. A published video whose
+current read is neither withdraws publication. Playback requires current entitlement,
+fresh playable state and configured provider protection; withdrawal/deletion stop
 new grants but cannot immediately invalidate previously issued bearer tokens or
 provider caches. Upload grants are scoped and expiring, not cryptographic proofs
 of a one-shot upload, file type or byte limit. Library upload quotas and direct
@@ -2481,16 +2488,24 @@ the same server-authoritative controls.
   78 and CLDR's date patterns by `.github/generate-i18n-format-data.py`; no
   runtime data or network). Data exist for `ar`, `cs`, `de`, `en`, `en-GB`,
   `es`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`, `pt-PT`, `ro`, `ru`,
-  `tr`, `uk` and `zh`; another tag uses its `language-REGION` entry, else its
-  language's, else `en`'s (`Locale::format_data_tag`). Numbers use the
+  `tr`, `uk` and `zh`, and since 13.0.0-alpha.6 for `es-419`, `es-AR`,
+  `es-CL`, `es-CO`, `es-MX`, `es-PE` and `es-UY`; another tag uses its
+  `language-REGION` entry, else its language's, else `en`'s
+  (`Locale::format_data_tag`; CLDR's parent locales are not followed, so
+  `es-VE` uses `es`). Numbers use the
   locale's decimal and grouping separators, minimum grouping digits (`es`,
   `it`, `pl`, `pt-PT` write `1234`), minus sign and Latin digits, and show
   every fraction digit of the `Decimal` (`Decimal::round_half_even` and
   `round_half_up` round explicitly). Percentages multiply the ratio by 100.
-  `Currency` (`BRL`, `USD`, `EUR`, `GBP`, `JPY` constants with localized
-  symbols; `Currency::new(code, minor_digits)` for other ISO codes, written
-  as the code; `CurrencyError::{InvalidCode, TooManyDigits}`) takes amounts
-  in integer minor units, so no floating-point rounding occurs. `DateStyle`
+  `Currency` (`BRL`, `USD`, `EUR`, `GBP`, `JPY` constants, and since
+  13.0.0-alpha.6 `ARS`, `MXN`, `CLP`, `COP`, `PEN`, `UYU`, `CAD`, `AUD`,
+  `CHF`, `CNY`, with localized symbols and ISO 4217 minor digits;
+  `Currency::new(code, minor_digits)` for other ISO codes, written as the
+  code; `CurrencyError::{InvalidCode, TooManyDigits}`) takes amounts in
+  integer minor units, so no floating-point rounding occurs.
+  `Locale::currency_name(Currency)` (13.0.0-alpha.6) returns the CLDR
+  display name of a currency with a constant in the locale's data, else
+  `None`. `DateStyle`
   is `Short`, `Medium`, `Long`, `Full` (CLDR's date formats) or `Numeric`
   (CLDR's `yMd` skeleton); `TimeStyle` is `Short` or `Medium` (no zone
   names); both are `#[non_exhaustive]`. Date and time are joined with CLDR's
@@ -3973,11 +3988,28 @@ proves payment. `PaymentNotification` names the payment without a status.
 `OneOffPayment::paid` fails with `InvalidCharge` unless the provider's charged
 amount equals the request's total, the currency matches and the paid amount is
 not lower (it may be higher when the buyer pays instalment fees);
-`OneOffPaymentState::Mock` never counts as paid. Stripe creates a card-only
+`OneOffPaymentState::Mock` never counts as paid. Since 13.0.0-alpha.6 a
+payment also carries, when the provider reports them, how the buyer paid
+(`payment_method()`: `PaymentMethod::Pix`, `CreditCard` or `Other` with the
+provider's name of 1 to 64 ASCII letters, digits, `_` or `-`, stored in
+lowercase; the enum is `#[non_exhaustive]`) and the number of instalments
+(`installments()`, 1 to 255); both are informational and never change
+`is_paid()`. `OneOffCheckoutRequest::with_notification_url` (13.0.0-alpha.6)
+names a per-checkout notification URL instead of the provider's default:
+HTTPS, no credentials or fragment, at most 2048 bytes, query allowed. It is
+hashed into the request digest after the other fields, so a request without
+one keeps its 13.0.0-alpha.5 digest. A provider that cannot notify a
+per-checkout URL refuses the request with `UnsupportedOperation`; an adapter
+that sends it calls `OneOffCheckout::with_notification_url_sent`, and
+`OneOffCheckout::notification_url()` reports it. Stripe creates a card-only
 `mode=payment` Checkout Session with inline `price_data`, the request's
 quantity, disabled discounts, adaptive pricing and automatic tax, and an
 Idempotency-Key derived from the request digest; it confirms by reading the
 session back (`complete` and `paid`, bound reference, total and currency).
+Stripe notifies the account's configured webhook endpoints, so it refuses a
+request with a notification URL (also with a `mock_*` key), and its session
+reports the offered payment methods, not the one used, so its payments have
+no `payment_method()` or `installments()`.
 
 ### 6.2.2. InfinitePay Adapter
 
@@ -3987,12 +4019,15 @@ enables `options.single_payment`) and `with_webhook_url` the per-link
 notification URL. `create_one_off_checkout` requires BRL and at least 100 cents
 per unit and sends `POST /links` (`handle`, one item with `quantity`, `price`
 and `description`, `order_nsu` = reference, `redirect_url` = success URL,
-`webhook_url`, optional `customer.email`); only an HTTPS `infinitepay.io` link
+`webhook_url`: the request's notification URL, else the provider's; optional
+`customer.email`); only an HTTPS `infinitepay.io` link
 is accepted. `parse_payment_notification` reads `order_nsu`, `transaction_nsu`
 and `invoice_slug` (or `slug`) from a body of at most 64 KiB and ignores its
 amounts and status. `confirm_one_off_payment` sends `POST /payment_check`
 (`handle`, `order_nsu`, `transaction_nsu`, `slug`) and is paid only for
-`success` and `paid` with `amount` equal to the request's total. Plan checkout,
+`success` and `paid` with `amount` equal to the request's total; a paid answer
+maps `capture_method` (`pix`, `credit_card`) to `payment_method()` and
+`installments` to `installments()`, leaving out a value it cannot read. Plan checkout,
 portal, subscriptions, usage, coupons and trials return `UnsupportedOperation`.
 An empty or `mock_*` handle runs offline fixtures. `InfinitePayProvider::new`
 remains for its offline fixtures and has no handle for live operations.

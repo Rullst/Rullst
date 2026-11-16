@@ -22,6 +22,7 @@
 //! | `mode.declared` | `webhook_verification_mode` returns a mode |
 //! | `checkout.inputs_validated` | plan checkout refuses blank e-mail addresses and plans |
 //! | `checkout.server_side_amount` | the one-off checkout is bound to the server-side request, or `UnsupportedOperation` without one-off support |
+//! | `checkout.notification_url` | a request's per-checkout notification URL is sent (and reported by the checkout) or refused with `UnsupportedOperation`, never ignored |
 //! | `offline.deterministic` | the same checkout input gives the same result |
 //! | `notification.forged_refused` | `handle_webhook` refuses unsigned, re-signed and tampered bodies, and every body of a provider that confirms at the source |
 //! | `notification.replay_idempotent` | the same authentic notification read twice gives the same result |
@@ -185,6 +186,7 @@ where
         run_case("mode.declared", subject.mode_declared()).await,
         run_case("checkout.inputs_validated", subject.checkout_inputs()).await,
         run_case("checkout.server_side_amount", subject.server_side_amount()).await,
+        run_case("checkout.notification_url", subject.notification_url()).await,
         run_case("offline.deterministic", subject.deterministic()).await,
         run_case("notification.forged_refused", subject.forged_refused()).await,
         run_case(

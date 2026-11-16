@@ -23,7 +23,9 @@ const API_BASE: &str = "https://api.checkout.infinitepay.io";
 ///   `POST https://api.checkout.infinitepay.io/links`: one item priced in
 ///   cents from the server-side [`OneOffCheckoutRequest`] (BRL, at least
 ///   R$ 1.00 per unit), the request's reference as `order_nsu`, its success
-///   URL as `redirect_url` and the configured `webhook_url`. With an
+///   URL as `redirect_url` and, as `webhook_url`, the request's
+///   [`notification_url`](OneOffCheckoutRequest::notification_url) or else
+///   the one configured with [`Self::with_webhook_url`]. With an
 ///   `inchk_…` API key ([`Self::with_api_key`]) the link also accepts a single
 ///   payment. InfinitePay has no cancel URL. Until the merchant enables
 ///   external checkout ("Checkout externo") for the InfiniteTag in the
@@ -38,7 +40,10 @@ const API_BASE: &str = "https://api.checkout.infinitepay.io";
 ///   [`BillingProvider::confirm_one_off_payment`] calls
 ///   `POST /payment_check` and reports the payment paid only when InfinitePay
 ///   confirms it and its `amount` equals the request's total (`paid_amount`
-///   may be higher when the buyer pays instalment fees).
+///   may be higher when the buyer pays instalment fees). A paid answer also
+///   carries `capture_method` as the
+///   [`payment_method`](OneOffPayment::payment_method) (`pix`, `credit_card`)
+///   and `installments` as [`installments`](OneOffPayment::installments).
 /// - InfinitePay has no subscriptions, customer portal, metered usage,
 ///   coupons, trials or sandbox: those operations, and plan-only
 ///   `create_checkout_session` with a live handle, return
@@ -125,7 +130,10 @@ impl InfinitePayProvider {
     /// The URL InfinitePay notifies after a payment (`webhook_url` of each
     /// link). It must be HTTPS when a live handle creates a link; mount it
     /// behind Capital's webhook middleware or call
-    /// [`BillingProvider::parse_payment_notification`] in the handler.
+    /// [`BillingProvider::parse_payment_notification`] in the handler. A
+    /// request's own
+    /// [`with_notification_url`](OneOffCheckoutRequest::with_notification_url)
+    /// replaces it for that link.
     pub fn with_webhook_url(mut self, url: impl Into<String>) -> Result<Self, CapitalError> {
         let url = url.into();
         super::validate_redirect_url(&url).map_err(|_| {
@@ -227,7 +235,7 @@ impl BillingProvider for InfinitePayProvider {
     ) -> Result<OneOffCheckout, CapitalError> {
         api::validate_request(request)?;
         if self.is_mock() {
-            return Ok(OneOffCheckout::mock(self.name(), request));
+            return Ok(OneOffCheckout::mock(self.name(), request).with_notification_url_sent());
         }
         let handle = self.live_handle()?;
         api::create_link(self, handle, request).await
@@ -364,3 +372,7 @@ fn unsigned_notification() -> CapitalError {
 #[cfg(test)]
 #[path = "infinitepay_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "infinitepay_details_tests.rs"]
+mod details_tests;

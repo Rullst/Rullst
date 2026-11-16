@@ -146,6 +146,7 @@ fn rules_carry_the_release_of_their_change() {
             "V13-ORM-SCHEMA-DIFF-REMOVED",
             "V13-ORM-SAVE-MODE",
             "V13-AUTH-PASSKEYS-FEATURE",
+            "V13-MEDIA-PROCESSING-MATCH",
         ]
     );
     assert!(codes_introduced_in("13.0.0-rc.1").is_empty());

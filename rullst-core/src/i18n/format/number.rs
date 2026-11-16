@@ -62,17 +62,25 @@ pub(super) fn currency(data: &NumberData, minor_units: i64, currency: Currency) 
     let amount = Decimal::new(i128::from(minor_units), currency.minor_digits());
     let (integer, fraction) = amount.digits();
     let body = digits(data, &integer, &fraction);
-    let negative = amount.is_negative();
     let code = currency.code();
-    let pattern = CURRENCIES
-        .iter()
-        .position(|known| *known == code)
-        .and_then(|index| data.currency.get(index));
-    match pattern {
-        Some(patterns) => apply(signed(patterns, negative), &body),
-        None => {
-            let [.., other] = &data.currency;
-            apply(&signed(other, negative).replace('¤', code), &body)
-        }
-    }
+    // Each localized code has a positive and a negative pattern; the last
+    // pair, with `¤` for the code, serves any other code.
+    let pair = localized(code).unwrap_or(CURRENCIES.len());
+    let slot = 2 * pair + usize::from(amount.is_negative());
+    let pattern = entry(data.currency, slot).unwrap_or("#");
+    apply(&pattern.replace('¤', code), &body)
+}
+
+pub(super) fn currency_name(data: &NumberData, currency: Currency) -> Option<&'static str> {
+    entry(data.currency_names, localized(currency.code())?)
+}
+
+/// The index of a code in `CURRENCIES`.
+fn localized(code: &str) -> Option<usize> {
+    CURRENCIES.iter().position(|known| *known == code)
+}
+
+/// The `index`th entry of a `|`-separated table string.
+fn entry(joined: &'static str, index: usize) -> Option<&'static str> {
+    joined.split('|').nth(index)
 }
