@@ -146,6 +146,15 @@ pub async fn timing_guard_middleware(req: Request, next: Next) -> Response {
 mod tests {
     use super::*;
 
+    #[test]
+    fn new_sets_every_field() {
+        let config =
+            TimingGuardConfig::new(Duration::from_millis(7), Duration::from_millis(3), false);
+        assert_eq!(config.min_duration, Duration::from_millis(7));
+        assert_eq!(config.max_jitter, Duration::from_millis(3));
+        assert!(!config.enable_synthetic_cpu_cycles);
+    }
+
     #[tokio::test]
     async fn test_timing_guard_normalizes_fast_execution() {
         let config = TimingGuardConfig {

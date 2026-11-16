@@ -185,6 +185,31 @@ mod tests {
     use super::*;
 
     #[test]
+    fn exchange_params_builders_set_each_field() {
+        let plain = ExchangeParams::new("code-1");
+        assert_eq!(
+            (plain.auth_code, plain.code_verifier, plain.expected_nonce),
+            ("code-1", None, None)
+        );
+        let full = ExchangeParams::new("code-2")
+            .with_code_verifier("verifier-2")
+            .with_expected_nonce("nonce-2");
+        assert_eq!(
+            (full.auth_code, full.code_verifier, full.expected_nonce),
+            ("code-2", Some("verifier-2"), Some("nonce-2"))
+        );
+        let form = TokenExchangeForm::new("client-3", "code-3", "https://app.test/cb");
+        assert_eq!(
+            serde_json::to_value(&form).unwrap(),
+            serde_json::json!({
+                "client_id": "client-3",
+                "code": "code-3",
+                "redirect_uri": "https://app.test/cb"
+            })
+        );
+    }
+
+    #[test]
     fn token_response_debug_redacts_access_and_refresh_tokens() {
         let response = Oauth2TokenResponse {
             access_token: "plaintext-access-token".to_string(),
