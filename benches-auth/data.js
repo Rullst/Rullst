@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794809503489,
+  "lastUpdate": 1794810946264,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23255,6 +23255,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4275,
             "range": "± 39",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f57a8f353bafa5ccf3dd98a515ce836a8c23d1dd",
+          "message": "Merge pull request #732 from Rullst/fix/v13-alpha6-macos-nightly\n\ntest: fix the two macOS (aarch64) failures on main",
+          "timestamp": "2026-11-16T03:18:30-03:00",
+          "tree_id": "c0d727be8576d27a850fda1dcd622e918b4a0800",
+          "url": "https://github.com/Rullst/Rullst/commit/f57a8f353bafa5ccf3dd98a515ce836a8c23d1dd"
+        },
+        "date": 1794810945444,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1073,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 806,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1898,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2746,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
